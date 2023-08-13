@@ -378,19 +378,42 @@ app.post('/', express.json(), (req, res) => {
     });
 });
 
-function redirectIfHumman(req, res) {
-    if (req.headers['user-agent'] === 'Valve/Steam HTTP Client 1.0 (4000)') {
-        // reply by not found
-        res.status(404).send('not found');
-    } else {
-        // redirect to the main page
-        res.redirect('https://gmod-integration.com');
+function missingArguments(res, args) {
+    let missingArgs = [];
+    for (const arg in args) {
+        // check is not undefined
+        if (args[arg] === undefined) {
+            missingArgs.push(arg);
+        }
     }
+    if (missingArgs.length > 0) {
+        res.status(400).send(`Missing arguments: ${missingArgs.join(', ')}`);
+        return missingArgs;
+    }
+    return false;
 }
+
+app.get('/user/isLinked', (req, res) => {
+    // get variables from the url
+    const { discordID, steamID64 } = req.query;
+    // get from db gm_user (discord_id, steam_id)
+    getConnection().then(connection => {
+        connection.query('SELECT * FROM gm_user WHERE id = ? OR steam = ?', [discordID, steamID64], (error, results) => {
+            if (error) throw error;
+            if (results.length > 0) {
+                // reply in json if the user is linked
+                res.status(200).json({ linked: true });
+            } else {
+                // reply in json if the user is not linked
+                res.status(200).json({ linked: false });
+            }
+        });
+    });
+});
 
 // redirect human to the website
 app.use((req, res) => {
-    redirectIfHumman(req, res);
+    res.status(404).send('not found');
 });
 
 // Start the server
