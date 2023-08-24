@@ -319,6 +319,10 @@ const postFuncs = {
         kills = kills || 0;
         money = money || 0;
 
+        if (money > 1000000000) {
+            money = 1000000000;
+        }
+
         // check arguments are valid if de
         if (!steam || !rank) {
             res.status(400).send('missing arguments: steam: ' + !!steam + ', kills: ' + !!kills + ', deaths: ' + !!deaths + ', money: ' + !!money + ', rank: ' + !!rank);
