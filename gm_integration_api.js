@@ -85,11 +85,6 @@ function removePort(ip) {
     return ip.split(':')[0];
 }
 
-// Function to clear username from special characters
-function clearUserName(username) {
-    return clearString(username, 'NAME NOT AVAILABLE');
-}
-
 //
 // Express App
 //
@@ -213,6 +208,14 @@ Database Structure
     gm_user_steam(steam_id, username, last_ip, last_connect, total_time, total_death, total_kill) last_connect = curent timestamp
 */
 
+function addTodoTask(task, data) {
+    getConnection().then(connection => {
+        connection.query('INSERT INTO gm_todo (task, data) VALUES (?, ?)', [task, data], (error) => {
+            if (error) throw error;
+        });
+    });
+}
+
 // Function of the post request
 const postFuncs = {
     tryConfig: (req, res, guild, server_id) => {
@@ -273,10 +276,13 @@ const postFuncs = {
             connection.query('SELECT * FROM gm_user WHERE steam = ?', [steam], (error, results) => {
                 if (error) throw error;
                 if (results.length > 0) {
-                    // insert or update the username in gm_user_username (discord_id, guild_id, steam_id, rp_name)
-                    connection.query('INSERT INTO gm_user_username (discord_id, guild_id, steam_id, username) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE username = ?', [results[0].id, guild, steam, rp_name, rp_name], (error) => {
-                        if (error) throw error;
-                    });
+                    // add to todo list
+                    addTodoTask('userChangeName', JSON.stringify({
+                        discord_id: results[0].id,
+                        guild_id: guild,
+                        steam_id: steam,
+                        username: rp_name
+                    }));
                 }
             });
         });
@@ -302,10 +308,13 @@ const postFuncs = {
             connection.query('SELECT * FROM gm_user WHERE steam = ?', [steam], (error, results) => {
                 if (error) throw error;
                 if (results.length > 0) {
-                    // insert or update the username in gm_user_username (discord_id, guild_id, steam_id, rp_name)
-                    connection.query('INSERT INTO gm_user_username (discord_id, guild_id, steam_id, username) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE username = ?', [results[0].id, guild, steam, rp_name, rp_name], (error) => {
-                        if (error) throw error;
-                    });
+                    // add to todo list
+                    addTodoTask('userChangeName', JSON.stringify({
+                        discord_id: results[0].id,
+                        guild_id: guild,
+                        steam_id: steam,
+                        username: rp_name
+                    }));
                 }
             });
         });
