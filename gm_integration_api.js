@@ -277,7 +277,7 @@ const postFuncs = {
                 if (error) throw error;
                 if (results.length > 0) {
                     // add to todo list
-                    addTodoTask('userChangeName', JSON.stringify({
+                    addTodoTask('updateUserName', JSON.stringify({
                         discord_id: results[0].id,
                         guild_id: guild,
                         steam_id: steam,
@@ -309,7 +309,7 @@ const postFuncs = {
                 if (error) throw error;
                 if (results.length > 0) {
                     // add to todo list
-                    addTodoTask('userChangeName', JSON.stringify({
+                    addTodoTask('updateUserName', JSON.stringify({
                         discord_id: results[0].id,
                         guild_id: guild,
                         steam_id: steam,
