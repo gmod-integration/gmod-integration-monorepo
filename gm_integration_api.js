@@ -210,7 +210,7 @@ Database Structure
 
 function addTodoTask(task, data) {
     getConnection().then(connection => {
-        connection.query('INSERT INTO gm_todo (task, data) VALUES (?, ?)', [task, data], (error) => {
+        connection.query('INSERT INTO gm_todo_task (task, data) VALUES (?, ?)', [task, data], (error) => {
             if (error) throw error;
         });
     });
