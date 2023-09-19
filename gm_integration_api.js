@@ -349,13 +349,13 @@ const postFuncs = {
     },
     serverStatus: (req, res, guild, server_id) => {
         // get variables from the request
-        const players = clearString("" + req.body.players);
-        const maxplayers = clearString("" + req.body.maxplayers);
-        const map = clearString("" + req.body.map);
-        const hostname = clearString("" + req.body.hostname);
-        const gamemode = clearString("" + req.body.gamemode);
-        const port = clearString("" + req.body.port);
-        const ip = clearString("" + removePort(req.body.ip));
+        const players = req.body.players;
+        const maxplayers = req.body.maxplayers;
+        const map = req.body.map;
+        const hostname = req.body.hostname;
+        const gamemode = req.body.gamemode;
+        const port = req.body.port;
+        const ip = removePort(req.body.ip);
 
         // check arguments are valid
         if ((!players && !(players == 0)) || !maxplayers || !map || !hostname || !gamemode || !port || !ip) {
