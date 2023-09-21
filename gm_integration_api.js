@@ -182,15 +182,7 @@ function validateAuth(req, res, next) {
     });
 }
 
-app.use(validUserAgent);
-app.use(retroConvertData);
-app.use(verifArgs);
-app.use(validateAuth);
-
-// test
-app.get('/auth', (req, res) => {
-    res.status(200).json({ success: true });
-});
+app.use('/server', validUserAgent, retroConvertData, verifArgs, validateAuth);
 
 //
 // Functions
@@ -218,6 +210,10 @@ function postServerStatus(req, res) {
             res.status(200).send('data received');
         });
     });
+}
+
+function getServerAuth(req, res) {
+    res.status(200).json({ id: req.headers.id, version: req.headers.version });
 }
 
 function getServerGuild(req, res) {
@@ -339,10 +335,18 @@ app.post('/', express.json(), (req, res) => {
 // New API
 //
 
+app.get('/server/auth', getServerAuth);
 app.get('/server/guild', getServerGuild);
 app.post('/server/status', postServerStatus);
 app.post('/server/user/say', postUserSay);
 app.post('/server/user/connect', postUserConnect);
+app.post('/server/user/finishConnect', postUserFinishConnect);
+app.post('/server/user/changeName', postUserChangeName);
+app.post('/server/user/disconnect', postUserDisconnect);
+
+//
+// Public API
+//
 
 app.get('/user/isLinked', (req, res) => {
     // get variables from the url
