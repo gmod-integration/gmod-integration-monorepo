@@ -137,7 +137,7 @@ function validUserAgent(req, res, next) {
     if (userAgent === 'Valve/Steam HTTP Client 1.0 (4000)') {
         next();
     } else {
-        res.redirect('https://gmod-integration.com');
+        return res.redirect('https://gmod-integration.com');
     }
 }
 
@@ -193,8 +193,7 @@ function postServerStatus(req, res) {
     let { players, maxplayers, map, hostname, gamemode, port, ip } = req.body;
 
     if (badArgument([players, maxplayers, map, hostname, gamemode, port, ip])) {
-        res.status(400).send('missing arguments players: ' + !!players + ', maxplayers: ' + !!maxplayers + ', map: ' + !!map + ', hostname: ' + !!hostname + ', gamemode: ' + !!gamemode + ', port: ' + !!port + ', ip: ' + !!ip);
-        return;
+        return res.status(400).send('missing arguments players: ' + !!players + ', maxplayers: ' + !!maxplayers + ', map: ' + !!map + ', hostname: ' + !!hostname + ', gamemode: ' + !!gamemode + ', port: ' + !!port + ', ip: ' + !!ip);
     };
 
     ip = ipGetIP(ip);
@@ -204,30 +203,28 @@ function postServerStatus(req, res) {
         connection.query('INSERT INTO gm_server_status (id, ip, port, hostname, map, players, maxplayers, gamemode) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE ip = ?, port = ?, hostname = ?, map = ?, players = ?, maxplayers = ?, gamemode = ?, last_update = ?', [id, ip, port, hostname, map, players, maxplayers, gamemode, ip, port, hostname, map, players, maxplayers, gamemode, new Date()], (error) => {
             if (error) {
                 console.error(error);
-                res.status(500).send('internal server error');
-                return;
+                return res.status(500).send('internal server error');
             }
-            res.status(200).send('data received');
+            return res.status(200).send('data received');
         });
     });
 }
 
 function getServerAuth(req, res) {
-    res.status(200).json({ id: req.headers.id, version: req.headers.version });
+    return res.status(200).json({ id: req.headers.id, version: req.headers.version });
 }
 
 function getServerGuild(req, res) {
     const { guild } = req.headers;
 
-    res.status(200).json({ guild: guild });
+    return res.status(200).json({ guild: guild });
 }
 
 function postUserSay(req, res) {
     const { steamID64, message } = req.body;
 
     if (badArgument([steamID64, message])) {
-        res.status(400).send('missing arguments steamID64: ' + !!steamID64 + ', message: ' + !!message);
-        return;
+        return res.status(400).send('missing arguments steamID64: ' + !!steamID64 + ', message: ' + !!message);
     }
 
     addTodoTask('userSay', JSON.stringify({
@@ -251,7 +248,7 @@ function postUserConnect(req, res) {
         connection.query('INSERT INTO gm_server_stat (steam_id, server_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_connect = ?, total_connect = total_connect + 1', [steam, id, new Date()], (error) => {
             if (error) throw error;
         });
-        res.status(200).send('data received');
+        return res.status(200).send('data received');
     });
 }
 
@@ -282,7 +279,7 @@ function postUserFinishConnect(req, res) {
             }
         });
     });
-    res.status(200).send('data received');
+    return res.status(200).send('data received');
 };
 
 function postUserChangeName(req, res) {
@@ -304,8 +301,21 @@ function postUserDisconnect(req, res) {
         });
         connection.query('INSERT INTO gm_user_steam (steam_id, total_kill, total_death, total_time) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE total_kill = total_kill + ?, total_death = total_death + ?, total_time = total_time + TIMESTAMPDIFF(SECOND, last_connect, ?), last_connect = ?', [steam, kills, deaths, 0, kills, deaths, new Date(), new Date()]);
     });
-    res.status(200).send('data received');
+    return res.status(200).send('data received');
 }
+
+//
+// New API
+//
+
+app.get('/server/auth', getServerAuth);
+app.get('/server/guild', getServerGuild);
+app.post('/server/status', postServerStatus);
+app.post('/server/user/say', postUserSay);
+app.post('/server/user/connect', postUserConnect);
+app.post('/server/user/finishConnect', postUserFinishConnect);
+app.post('/server/user/changeName', postUserChangeName);
+app.post('/server/user/disconnect', postUserDisconnect);
 
 //
 // Retro Compatibility
@@ -320,7 +330,7 @@ const postFuncs = {
     serverStatus: postServerStatus
 };
 
-app.post('/', express.json(), (req, res) => {
+app.post('/', express.json(), (req, res, next) => {
     const { id, guild } = req.headers;
     const request = req.query.request;
 
@@ -328,21 +338,10 @@ app.post('/', express.json(), (req, res) => {
     if (postFuncs[request]) {
         console.log('request: ' + request + ', id: ' + id + ', guild: ' + guild);
         postFuncs[request](req, res, guild, id);
+    } else {
+        next();
     }
 });
-
-//
-// New API
-//
-
-app.get('/server/auth', getServerAuth);
-app.get('/server/guild', getServerGuild);
-app.post('/server/status', postServerStatus);
-app.post('/server/user/say', postUserSay);
-app.post('/server/user/connect', postUserConnect);
-app.post('/server/user/finishConnect', postUserFinishConnect);
-app.post('/server/user/changeName', postUserChangeName);
-app.post('/server/user/disconnect', postUserDisconnect);
 
 //
 // Public API
