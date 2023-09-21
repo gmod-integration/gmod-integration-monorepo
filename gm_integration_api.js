@@ -318,6 +318,28 @@ app.post('/server/user/changeName', postUserChangeName);
 app.post('/server/user/disconnect', postUserDisconnect);
 
 //
+// Public API
+//
+
+app.get('/user/isLinked', (req, res) => {
+    // get variables from the url
+    const { discordID, steamID64 } = req.query;
+    // get from db gm_user (discord_id, steam_id)
+    getConnection().then(connection => {
+        connection.query('SELECT * FROM gm_user WHERE id = ? OR steam = ?', [discordID, steamID64], (error, results) => {
+            if (error) throw error;
+            if (results.length > 0) {
+                // reply in json if the user is linked
+                res.status(200).json({ linked: true });
+            } else {
+                // reply in json if the user is not linked
+                res.status(200).json({ linked: false });
+            }
+        });
+    });
+});
+
+//
 // Retro Compatibility
 //
 
@@ -341,28 +363,6 @@ app.post('/', express.json(), (req, res, next) => {
     } else {
         next();
     }
-});
-
-//
-// Public API
-//
-
-app.get('/user/isLinked', (req, res) => {
-    // get variables from the url
-    const { discordID, steamID64 } = req.query;
-    // get from db gm_user (discord_id, steam_id)
-    getConnection().then(connection => {
-        connection.query('SELECT * FROM gm_user WHERE id = ? OR steam = ?', [discordID, steamID64], (error, results) => {
-            if (error) throw error;
-            if (results.length > 0) {
-                // reply in json if the user is linked
-                res.status(200).json({ linked: true });
-            } else {
-                // reply in json if the user is not linked
-                res.status(200).json({ linked: false });
-            }
-        });
-    });
 });
 
 // for other method replace by 404
