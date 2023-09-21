@@ -64,6 +64,23 @@ getConnection();
 // Functions
 //
 
+function badArgument(list) {
+    for (let i = 0; i < list.length; i++) {
+        if (list[i] === undefined) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function addTodoTask(task, data) {
+    getConnection().then(connection => {
+        connection.query('INSERT INTO gm_todo_task (task, data) VALUES (?, ?)', [task, data], (error) => {
+            if (error) throw error;
+        });
+    });
+}
+
 function clearString(varString, alter) {
     if (typeof varString !== 'string') {
         return alter || '';
@@ -103,57 +120,6 @@ function isSkipRequest(request) {
     return false;
 }
 
-function tokenIsValid(token, id, request, callback) {
-    // if the request is skipable skip the verification
-    if (isSkipRequest(request)) {
-        callback(true);
-        return;
-    }
-    getConnection().then(connection => {
-        connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
-            if (error) throw error;
-            if (results.length > 0) {
-                callback(results[0].guild, results[0].id);
-            } else {
-                callback(false);
-            }
-        });
-    });
-}
-
-// valid request & as autorisation
-function validRequest(req, res, callback) {
-    // check the user-agent need to be Garry's Mod
-    if (req.headers['user-agent'] !== 'Valve/Steam HTTP Client 1.0 (4000)') {
-        res.status(401).send('user-agent not valid');
-        callback(false);
-        return;
-    }
-
-    // get arguments from the url
-    const { id, token, request, version } = req.query;
-
-    // check if the url contain required arguments (id, token, request, version)
-    if (!id || !token || !request || !version) {
-        res.status(400).send('missing arguments id: ' + !!id + ', token: ' + !!token + ', request: ' + !!request + ', version: ' + !!version);
-        callback(false);
-        return;
-    }
-
-    // check if the token is valid
-    tokenIsValid(token, id, request, (guild, id) => {
-        if (!guild) {
-            res.status(401).send('token not valid');
-            callback(false);
-        } else {
-            callback(guild, id);
-        }
-        // log request gm_log_api(id, request, valid, is_post, value)
-        const valid = guild ? 'true' : 'false';
-        gmLog('Request from server: ' + id + ' (' + req.headers['x-forwarded-for'] + ') request: ' + request + ' valid: ' + valid + ' content: ' + JSON.stringify(req.body));
-    });
-}
-
 function serverGenerateToken(length) {
     // generate a random token with the length A-Z a-z 0-9
     let token = '';
@@ -185,36 +151,71 @@ function saveNewServerGenerate(token, ip, port, name) {
     });
 }
 
-// Custom API (Fetch)
-app.get('/api', (req, res) => {
-    // check if the request is valid if not cancel the request
-    validRequest(req, res, (valid, guild) => {
-        if (!valid) return;
+//
+// Middleware
+//
 
-        // extract element from the query (id, token, request)
-        const { id, token, request } = req.query;
+function validUserAgent(req, res, next) {
+    const userAgent = req.headers['user-agent'];
 
-        if (request === 'all_good') {
-            res.status(200).send('all good');
-        } else {
-            // remply by all good
-            res.status(404).send('request not found');
-        }
-    });
-});
+    if (userAgent === 'Valve/Steam HTTP Client 1.0 (4000)') {
+        next();
+    } else {
+        res.redirect('https://gmod-integration.com');
+    }
+}
 
-/*
-Database Structure
-    gm_user_steam(steam_id, username, last_ip, last_connect, total_time, total_death, total_kill) last_connect = curent timestamp
-*/
+function retroConvertData(req, res, next) {
+    const { id, token, request, version } = req.query;
 
-function addTodoTask(task, data) {
+    req.headers.id = req.headers.id || id;
+    req.headers.token = req.headers.token || token;
+    req.headers.version = req.headers.version || version;
+
+    next();
+}
+
+function verifArgs(req, res, next) {
+    const { id, token, version } = req.headers;
+
+    if (badArgument([id, token, version])) {
+        console.log('missing arguments id: ' + id + ', token: ' + token + ', version: ' + version);
+        return res.status(400).json({ error: 'missing arguments id: ' + !!id + ', token: ' + !!token + ', version: ' + !!version });
+    }
+
+    next();
+}
+
+function validateAuth(req, res, next) {
+    const { id, token } = req.headers;
+
     getConnection().then(connection => {
-        connection.query('INSERT INTO gm_todo_task (task, data) VALUES (?, ?)', [task, data], (error) => {
-            if (error) throw error;
+        connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
+            if (error) {
+                gmLog('Error connecting to MySQL Database');
+                console.error(err);
+                return res.status(500).json({ error: 'internal server error' });
+            }
+            if (results.length > 0) {
+                req.headers.guild = results[0].guild;
+                next();
+            } else {
+                return res.status(401).json({ error: 'invalid auth, id or token not valid' });
+            }
         });
     });
 }
+
+app.use(validUserAgent);
+app.use(retroConvertData);
+app.use(verifArgs);
+app.use(validateAuth);
+
+// test
+app.get('/auth', (req, res) => {
+    res.status(200).json({ success: true });
+});
+
 
 // Function of the post request
 const postFuncs = {
@@ -370,41 +371,26 @@ const postFuncs = {
             });
         });
         res.status(200).send('data received');
-    }
+    },
+    userSay: (req, res, guild, server_id) => {
+        const steam = clearString("" + req.body.steam);
+        const message = clearString("" + req.body.text);
+    },
 };
 
 // Custom API (POST)
 app.post('/', express.json(), (req, res) => {
-    // check if the request is valid if not cancel the request
-    validRequest(req, res, (guild, server_id) => {
-        if (!guild) return;
+    const { id, guild } = req.headers;
+    const request = req.query.request;
 
-        // extract the request from the query
-        const request = req.query.request;
-
-        // if the request is valid execute the function else reply by not found
-        if (postFuncs[request]) {
-            postFuncs[request](req, res, guild, server_id);
-        } else {
-            res.status(404).send('request not found');
-        }
-    });
+    // if the request is valid execute the function else reply by not found
+    if (postFuncs[request]) {
+        console.log('request: ' + request + ', id: ' + id + ', guild: ' + guild);
+        postFuncs[request](req, res, guild, id);
+    } else {
+        res.status(404).send('request not found');
+    }
 });
-
-function missingArguments(res, args) {
-    let missingArgs = [];
-    for (const arg in args) {
-        // check is not undefined
-        if (args[arg] === undefined) {
-            missingArgs.push(arg);
-        }
-    }
-    if (missingArgs.length > 0) {
-        res.status(400).send(`Missing arguments: ${missingArgs.join(', ')}`);
-        return missingArgs;
-    }
-    return false;
-}
 
 app.get('/user/isLinked', (req, res) => {
     // get variables from the url
@@ -424,9 +410,9 @@ app.get('/user/isLinked', (req, res) => {
     });
 });
 
-// redirect human to the website
-app.use((req, res) => {
-    res.status(404).send('not found');
+// for other method replace by 404
+app.all('*', (req, res) => {
+    return res.status(404).json({ error: '404 Not Found' });
 });
 
 // Start the server
