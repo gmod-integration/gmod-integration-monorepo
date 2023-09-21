@@ -95,7 +95,14 @@ function clearString(varString, alter) {
     return new_var;
 }
 
-function removePort(ip) {
+function ipGetPort(ip) {
+    if (!ip || typeof ip !== 'string' || ip.length === 0) {
+        return '';
+    }
+    return ip.split(':')[1];
+}
+
+function ipGetIP(ip) {
     if (!ip || typeof ip !== 'string' || ip.length === 0) {
         return '';
     }
@@ -120,37 +127,6 @@ function isSkipRequest(request) {
     return false;
 }
 
-function serverGenerateToken(length) {
-    // generate a random token with the length A-Z a-z 0-9
-    let token = '';
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < length; i++) {
-        token += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-
-    getConnection().then(connection => {
-        // verify if the token is not already used (table: gm_server_generate)
-        connection.query('SELECT * FROM gm_server_generate WHERE token = ?', [token], (error, results) => {
-            if (error) throw error;
-            if (results.length > 0) {
-                // token already used
-                serverGenerateToken(length);
-            }
-        });
-    });
-    return token;
-}
-
-
-function saveNewServerGenerate(token, ip, port, name) {
-    getConnection().then(connection => {
-        // save the new server (table: gm_server_generate)
-        connection.query('INSERT INTO gm_server_generate (token, ip, port, name) VALUES (?, ?, ?, ?)', [token, ip, port, name], (error) => {
-            if (error) throw error;
-        });
-    });
-}
-
 //
 // Middleware
 //
@@ -166,7 +142,7 @@ function validUserAgent(req, res, next) {
 }
 
 function retroConvertData(req, res, next) {
-    const { id, token, request, version } = req.query;
+    const { id, token, version } = req.query;
 
     req.headers.id = req.headers.id || id;
     req.headers.token = req.headers.token || token;
@@ -216,169 +192,138 @@ app.get('/auth', (req, res) => {
     res.status(200).json({ success: true });
 });
 
+//
+// Functions
+//
 
-// Function of the post request
-const postFuncs = {
-    tryConfig: (req, res, guild, server_id) => {
-        res.status(200).send(guild);
-    },
-    generate: (req, res, guild, server_id) => {
-        const ip = clearString("" + removePort(req.body.ip));
-        const port = clearString("" + req.body.port);
-        const name = clearString("" + req.body.name);
+function postServerStatus(req, res) {
+    const { id } = req.headers;
+    let { players, maxplayers, map, hostname, gamemode, port, ip } = req.body;
 
-        // check if the ip, port and name are valid
-        if (!ip || !port || !name) {
-            // missing arguments
-            res.status(400).send('missing arguments');
-            return;
-        } else {
-            const genToken = serverGenerateToken(16);
-            saveNewServerGenerate(genToken, ip, port, name);
-            res.status(200).send(genToken);
-        }
-    },
-    userConnect: (req, res, guild, server_id) => {
-        const steam = clearString("" + req.body.steam);
-        const ip = clearString("" + removePort(req.body.address));
-        const username = clearString("" + req.body.name);
+    if (badArgument([players, maxplayers, map, hostname, gamemode, port, ip])) {
+        res.status(400).send('missing arguments players: ' + !!players + ', maxplayers: ' + !!maxplayers + ', map: ' + !!map + ', hostname: ' + !!hostname + ', gamemode: ' + !!gamemode + ', port: ' + !!port + ', ip: ' + !!ip);
+        return;
+    };
 
-        if (!ip || !steam || !username) {
-            res.status(400).send('missing arguments');
-            return;
-        }
+    ip = ipGetIP(ip);
 
-        getConnection().then(connection => {
-            connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steam, username, ip, username, ip], (error) => {
-                if (error) throw error;
-            });
-            connection.query('INSERT INTO gm_server_stat (steam_id, server_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_connect = ?, total_connect = total_connect + 1', [steam, server_id, new Date()], (error) => {
-                if (error) throw error;
-            });
+    // save the server data to the database
+    getConnection().then(connection => {
+        connection.query('INSERT INTO gm_server_status (id, ip, port, hostname, map, players, maxplayers, gamemode) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE ip = ?, port = ?, hostname = ?, map = ?, players = ?, maxplayers = ?, gamemode = ?, last_update = ?', [id, ip, port, hostname, map, players, maxplayers, gamemode, ip, port, hostname, map, players, maxplayers, gamemode, new Date()], (error) => {
+            if (error) {
+                console.error(error);
+                res.status(500).send('internal server error');
+                return;
+            }
+            res.status(200).send('data received');
+        });
+    });
+}
+
+function getServerGuild(req, res) {
+    const { guild } = req.headers;
+
+    res.status(200).json({ guild: guild });
+}
+
+function postUserSay(req, res) {
+    const { steamID64, message } = req.body;
+
+    if (badArgument([steamID64, message])) {
+        res.status(400).send('missing arguments steamID64: ' + !!steamID64 + ', message: ' + !!message);
+        return;
+    }
+
+    addTodoTask('userSay', JSON.stringify({
+        steam_id: steamID64,
+        message: message
+    }));
+}
+
+function postUserConnect(req, res) {
+    const { id } = req.headers;
+    const { steam, ip, username } = req.body;
+
+    if (badArgument([steam, ip, username])) {
+        return res.status(400).send('missing arguments steam: ' + !!steam + ', ip: ' + !!ip + ', username: ' + !!username);
+    }
+
+    getConnection().then(connection => {
+        connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steam, username, ip, username, ip], (error) => {
+            if (error) throw error;
+        });
+        connection.query('INSERT INTO gm_server_stat (steam_id, server_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_connect = ?, total_connect = total_connect + 1', [steam, id, new Date()], (error) => {
+            if (error) throw error;
         });
         res.status(200).send('data received');
-    },
-    userFinishConnect: (req, res, guild, server_id) => {
-        const steam = clearString("" + req.body.steam);
-        const rp_name = clearString("" + req.body.name);
+    });
+}
 
-        if (!steam || !rp_name) {
-            // missing arguments
-            res.status(400).send('missing arguments');
-            return;
-        }
+function postUserFinishConnect(req, res) {
+    const { guild, id } = req.headers;
+    const { steam, rp_name } = req.body;
 
-        getConnection().then(connection => {
-            // update gm_server_stat (name)
-            connection.query('UPDATE gm_server_stat SET name = ? WHERE steam_id = ? AND server_id = ?', [rp_name, steam, server_id], (error) => {
-                if (error) throw error;
-            });
-            // insert or update the username in gm_user_username (discord_id, guild_id, steam_id, rp_name)
-            connection.query('SELECT * FROM gm_user WHERE steam = ?', [steam], (error, results) => {
-                if (error) throw error;
-                if (results.length > 0) {
-                    // add to todo list
-                    addTodoTask('updateUserName', JSON.stringify({
-                        discord_id: results[0].id,
-                        guild_id: guild,
-                        steam_id: steam,
-                        username: rp_name
-                    }));
-                }
-            });
+    if (badArgument([steam, rp_name])) {
+        return res.status(400).send('missing arguments steam: ' + !!steam + ', rp_name: ' + !!rp_name);
+    }
+
+    getConnection().then(connection => {
+        // update gm_server_stat (name)
+        connection.query('UPDATE gm_server_stat SET name = ? WHERE steam_id = ? AND server_id = ?', [rp_name, steam, id], (error) => {
+            if (error) throw error;
         });
-        res.status(200).send('data received');
-    },
-    userChangeName: (req, res, guild, server_id) => {
-        // get variables from the request
-        const steam = clearString("" + req.body.steam);
-        const rp_name = clearString("" + req.body.name);
-
-        // check arguments are valid
-        if (!steam || !rp_name) {
-            // missing arguments
-            res.status(400).send('missing arguments');
-            return;
-        }
-
-        // save the user data to the database (last_connect = curent timestamp) and add the rp_name
-        getConnection().then(connection => {
-            connection.query('UPDATE gm_server_stat SET name = ? WHERE steam_id = ? AND server_id = ?', [rp_name, steam, server_id], (error) => {
-                if (error) throw error;
-            });
-            connection.query('SELECT * FROM gm_user WHERE steam = ?', [steam], (error, results) => {
-                if (error) throw error;
-                if (results.length > 0) {
-                    // add to todo list
-                    addTodoTask('updateUserName', JSON.stringify({
-                        discord_id: results[0].id,
-                        guild_id: guild,
-                        steam_id: steam,
-                        username: rp_name
-                    }));
-                }
-            });
+        // insert or update the username in gm_user_username (discord_id, guild_id, steam_id, rp_name)
+        connection.query('SELECT * FROM gm_user WHERE steam = ?', [steam], (error, results) => {
+            if (error) throw error;
+            if (results.length > 0) {
+                // add to todo list
+                addTodoTask('updateUserName', JSON.stringify({
+                    discord_id: results[0].id,
+                    guild_id: guild,
+                    steam_id: steam,
+                    username: rp_name
+                }));
+            }
         });
-        res.status(200).send('data received');
-    },
-    userDisconnect: (req, res, guild, server_id) => {
-        // get variables from the request
-        let { steam, kills, deaths, money, rank } = req.body;
-
-        deaths = deaths || 0;
-        kills = kills || 0;
-        money = money || 0;
-
-        if (money > 1000000000) {
-            money = 1000000000;
-        }
-
-        // check arguments are valid if de
-        if (!steam || !rank) {
-            res.status(400).send('missing arguments: steam: ' + !!steam + ', kills: ' + !!kills + ', deaths: ' + !!deaths + ', money: ' + !!money + ', rank: ' + !!rank);
-            return;
-        }
-
-        // update the user data to the database (total_kill, total_deathn total_time) total_time = total_time + (curent timestamp - last_connect) in seconds after change last_connect to curent timestamp
-        getConnection().then(connection => {
-            connection.query('INSERT INTO gm_server_stat (steam_id, server_id, total_kill, total_death, total_time, total_money, rank) VALUES (?, ?, ?, ?, TIMESTAMPDIFF(SECOND, last_connect, ?), ?, ?) ON DUPLICATE KEY UPDATE total_kill = total_kill + ?, total_death = total_death + ?, total_time = total_time + TIMESTAMPDIFF(SECOND, last_connect, ?), last_connect = ?, total_money = ?, rank = ?', [steam, server_id, kills, deaths, new Date(), money, rank, kills, deaths, new Date(), new Date(), money, rank], (error) => {
-                if (error) throw error;
-            });
-            connection.query('INSERT INTO gm_user_steam (steam_id, total_kill, total_death, total_time) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE total_kill = total_kill + ?, total_death = total_death + ?, total_time = total_time + TIMESTAMPDIFF(SECOND, last_connect, ?), last_connect = ?', [steam, kills, deaths, 0, kills, deaths, new Date(), new Date()]);
-        });
-        res.status(200).send('data received');
-    },
-    serverStatus: (req, res, guild, server_id) => {
-        // get variables from the request
-        const players = req.body.players;
-        const maxplayers = req.body.maxplayers;
-        const map = req.body.map;
-        const hostname = req.body.hostname;
-        const gamemode = req.body.gamemode;
-        const port = req.body.port;
-        const ip = removePort(req.body.ip);
-
-        // check arguments are valid
-        if ((!players && !(players == 0)) || !maxplayers || !map || !hostname || !gamemode || !port || !ip) {
-            res.status(400).send('missing arguments: players: ' + !!players + ', maxplayers: ' + !!maxplayers + ', map: ' + !!map + ', hostname: ' + !!hostname + ', gamemode: ' + !!gamemode + ', version: ' + ', port: ' + !!port + ', ip: ' + !!ip);
-            return;
-        }
-
-        // save the server data to the database
-        getConnection().then(connection => {
-            connection.query('INSERT INTO gm_server_status (id, hostname, map, players, maxplayers, gamemode) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE hostname = ?, map = ?, players = ?, maxplayers = ?, gamemode = ?, last_update = ?', [server_id, hostname, map, players, maxplayers, gamemode, hostname, map, players, maxplayers, gamemode, new Date()], (error) => {
-                if (error) throw error;
-            });
-        });
-        res.status(200).send('data received');
-    },
-    userSay: (req, res, guild, server_id) => {
-        const steam = clearString("" + req.body.steam);
-        const message = clearString("" + req.body.text);
-    },
+    });
+    res.status(200).send('data received');
 };
 
-// Custom API (POST)
+function postUserChangeName(req, res) {
+    postUserFinishConnect(req, res);
+}
+
+function postUserDisconnect(req, res) {
+    const { id } = req.headers;
+    const { steam, kills, deaths, money, rank } = req.body;
+
+    if (badArgument([steam, kills, deaths, money, rank])) {
+        return res.status(400).send('missing arguments steam: ' + !!steam + ', kills: ' + !!kills + ', deaths: ' + !!deaths + ', money: ' + !!money + ', rank: ' + !!rank);
+    }
+
+    // update the user data to the database (total_kill, total_deathn total_time) total_time = total_time + (curent timestamp - last_connect) in seconds after change last_connect to curent timestamp
+    getConnection().then(connection => {
+        connection.query('INSERT INTO gm_server_stat (steam_id, server_id, total_kill, total_death, total_time, total_money, rank) VALUES (?, ?, ?, ?, TIMESTAMPDIFF(SECOND, last_connect, ?), ?, ?) ON DUPLICATE KEY UPDATE total_kill = total_kill + ?, total_death = total_death + ?, total_time = total_time + TIMESTAMPDIFF(SECOND, last_connect, ?), last_connect = ?, total_money = ?, rank = ?', [steam, id, kills, deaths, new Date(), money, rank, kills, deaths, new Date(), new Date(), money, rank], (error) => {
+            if (error) throw error;
+        });
+        connection.query('INSERT INTO gm_user_steam (steam_id, total_kill, total_death, total_time) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE total_kill = total_kill + ?, total_death = total_death + ?, total_time = total_time + TIMESTAMPDIFF(SECOND, last_connect, ?), last_connect = ?', [steam, kills, deaths, 0, kills, deaths, new Date(), new Date()]);
+    });
+    res.status(200).send('data received');
+}
+
+//
+// Retro Compatibility
+//
+
+const postFuncs = {
+    tryConfig: getServerGuild,
+    userConnect: postUserConnect,
+    userFinishConnect: postUserFinishConnect,
+    userChangeName: postUserChangeName,
+    userDisconnect: postUserDisconnect,
+    serverStatus: postServerStatus
+};
+
 app.post('/', express.json(), (req, res) => {
     const { id, guild } = req.headers;
     const request = req.query.request;
@@ -387,10 +332,17 @@ app.post('/', express.json(), (req, res) => {
     if (postFuncs[request]) {
         console.log('request: ' + request + ', id: ' + id + ', guild: ' + guild);
         postFuncs[request](req, res, guild, id);
-    } else {
-        res.status(404).send('request not found');
     }
 });
+
+//
+// New API
+//
+
+app.get('/server/guild', getServerGuild);
+app.post('/server/status', postServerStatus);
+app.post('/server/user/say', postUserSay);
+app.post('/server/user/connect', postUserConnect);
 
 app.get('/user/isLinked', (req, res) => {
     // get variables from the url
