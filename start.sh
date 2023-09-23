@@ -13,6 +13,6 @@ fi
 cd "${SCRIPT_PATH}"
 
 # Start the API as a background process in logs and with the date in the log name
-nohup node "${SCRIPT_PATH}/gm_integration_api.js" >>"${LOGS_DIR}/$(date +"%Y-%m-%d").log" 2>&1 &
+nohup node "${SCRIPT_PATH}/gm_integration_api.js" > "${LOGS_DIR}/$(date +"%Y-%m-%d").log" 2>&1 &
 
 echo "API Started"
