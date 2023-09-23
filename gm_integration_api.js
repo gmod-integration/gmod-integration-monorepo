@@ -273,37 +273,40 @@ function postUserSay(req, res) {
 
 function postUserConnect(req, res) {
     const { id } = req.headers;
-    const { address, name, networkid, steam } = req.body.data;
+    const { address, name, networkid, steam } = req.body;
 
     if (badArgument([address, name, networkid, steam])) {
         return res.status(400).send('missing arguments steam: ' + !!steam + ', address: ' + !!address + ', name: ' + !!name + ', networkid: ' + !!networkid);
     }
 
+    const ip = ipGetIP(address);
+
     getConnection().then(connection => {
-        connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steam, name, ip, username, ip], (error) => {
+        connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steam, name, ip, name, ip], (error) => {
             if (error) throw error;
         });
         connection.query('INSERT INTO gm_server_stat (steam_id, server_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_connect = ?, total_connect = total_connect + 1', [steam, id, new Date()], (error) => {
             if (error) throw error;
         });
-        return res.status(200).send('data received');
     });
+
+    return res.status(200).send('data received');
 }
 
 function postUserFinishConnect(req, res) {
     const { guild, id } = req.headers;
-    const { steam, rp_name } = req.body;
+    const { steam, name } = req.body;
 
-    if (badArgument([steam, rp_name])) {
-        return res.status(400).send('missing arguments steam: ' + !!steam + ', rp_name: ' + !!rp_name);
+    if (badArgument([steam, name])) {
+        return res.status(400).send('missing arguments steam: ' + !!steam + ', name: ' + !!name);
     }
 
     getConnection().then(connection => {
         // update gm_server_stat (name)
-        connection.query('UPDATE gm_server_stat SET name = ? WHERE steam_id = ? AND server_id = ?', [rp_name, steam, id], (error) => {
+        connection.query('UPDATE gm_server_stat SET name = ? WHERE steam_id = ? AND server_id = ?', [name, steam, id], (error) => {
             if (error) throw error;
         });
-        // insert or update the username in gm_user_username (discord_id, guild_id, steam_id, rp_name)
+        // insert or update the username in gm_user_username (discord_id, guild_id, steam_id, name)
         connection.query('SELECT * FROM gm_user WHERE steam = ?', [steam], (error, results) => {
             if (error) throw error;
             if (results.length > 0) {
@@ -312,7 +315,7 @@ function postUserFinishConnect(req, res) {
                     discord_id: results[0].id,
                     guild_id: guild,
                     steam_id: steam,
-                    username: rp_name
+                    username: name
                 }));
             }
         });
