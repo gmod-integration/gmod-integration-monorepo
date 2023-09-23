@@ -20,6 +20,7 @@ const path = require('path');
 
 // File System
 const fs = require('fs');
+const { connect } = require('http2');
 
 function gmLog(message) {
     // log format: [2023-07-10 04:28:25] [INFO]
@@ -350,6 +351,22 @@ function postUserDisconnect(req, res) {
     return res.status(200).send('data received');
 }
 
+function postServerUserBan(req, res) {
+    const { id } = req.headers;
+    const { steam, duration, reason, by } = req.body;
+
+    // TODO influence trust factor
+    // save in bb
+
+    getConnection().then(connection => {
+        connection.query('INSERT INTO gm_server_ban (server, steam, duration, reason, by) VALUES (?, ?, ?, ?, ?)', [steam, id, duration, reason, by], (error) => {
+            if (error) throw error;
+        });
+    });
+
+    return res.status(200).send('data received');
+}
+
 function getServerUser(req, res) {
     const { id } = req.headers;
     const { steamID64 } = req.query;
@@ -455,6 +472,7 @@ app.get('/server/auth', getServerAuth);
 app.get('/server/guild', getServerGuild);
 app.post('/server/status', postServerStatus);
 app.get('/server/user', checkMissingArgs(['steamID64'], 'query'), getServerUser);
+app.post('/server/user/ban', checkMissingArgs(['steamid', 'duration', 'reason', 'by'], 'body'), postServerUserBan);
 app.post('/server/user/say', postUserSay);
 app.post('/server/user/connect', postUserConnect);
 app.post('/server/user/finishConnect', postUserFinishConnect);
