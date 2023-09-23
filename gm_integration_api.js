@@ -3,7 +3,9 @@
 //
 
 // Configuration Variables
-const { port_api, dbConfig, token } = require('../config.json');
+const { port_api, dbConfig, token, steamAPI } = require('../config.json');
+const SteamAPI = require('steamapi');
+const steam = new SteamAPI(steamAPI);
 
 // HTTP Requests
 const { request } = require('undici');
@@ -260,16 +262,37 @@ function getServerGuild(req, res) {
 }
 
 function postUserSay(req, res) {
-    const { steamID64, message } = req.body;
+    const { id } = req.headers;
+    let { steamID64, message, name } = req.body;
 
-    if (badArgument([steamID64, message])) {
-        return res.status(400).send('missing arguments steamID64: ' + !!steamID64 + ', message: ' + !!message);
-    }
+    // addTodoTask('userSay', JSON.stringify({
+    //     steam_id: steamID64,
+    //     message: message
+    // }));
 
-    addTodoTask('userSay', JSON.stringify({
-        steam_id: steamID64,
-        message: message
-    }));
+    // get user avatar from steam api
+    getConnection().then(connection => {
+        connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [id], async (error, results) => {
+            if (error) throw error;
+            if (results.length > 0) {
+                steam.getUserSummary(steamID64).then(summary => {
+                    request(results[0].webhook, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            content: message,
+                            username: name || summary.nickname,
+                            avatar_url: summary.avatar.large,
+                        })
+                    });
+                });
+            }
+        });
+    });
+
+    return res.status(200).send('data received');
 }
 
 function postUserConnect(req, res) {
@@ -473,7 +496,7 @@ app.get('/server/guild', getServerGuild);
 app.post('/server/status', postServerStatus);
 app.get('/server/user', checkMissingArgs(['steamID64'], 'query'), getServerUser);
 app.post('/server/user/ban', checkMissingArgs(['steamid', 'duration', 'reason', 'by'], 'body'), postServerUserBan);
-app.post('/server/user/say', postUserSay);
+app.post('/server/user/say', checkMissingArgs(['steamID64', 'message'], 'body'), postUserSay);
 app.post('/server/user/connect', postUserConnect);
 app.post('/server/user/finishConnect', postUserFinishConnect);
 app.post('/server/user/changeName', postUserChangeName);
