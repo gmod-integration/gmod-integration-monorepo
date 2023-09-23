@@ -109,6 +109,38 @@ function ipGetIP(ip) {
     return ip.split(':')[0];
 }
 
+function checkMissingArgs(requiredArgs, location) {
+    return function (req, res, next) {
+        const missingArgs = [];
+
+        requiredArgs.forEach((arg) => {
+            let value;
+            switch (location) {
+                case 'body':
+                    value = req.body[arg];
+                    break;
+                case 'header':
+                    value = req.headers[arg.toLowerCase()];
+                    break;
+                case 'query':
+                    value = req.query[arg];
+                    break;
+                default:
+                    value = undefined;
+            }
+            if (value === undefined || value === null) {
+                missingArgs.push(arg);
+            }
+        });
+
+        if (missingArgs.length > 0) {
+            return res.status(400).json({ message: `Missing arguments: ${missingArgs.join(', ')}` });
+        }
+
+        next();
+    }
+}
+
 //
 // Express App
 //
@@ -118,14 +150,6 @@ const app = express();
 // Body Parser
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
-
-// Whitelist Requests
-function isSkipRequest(request) {
-    if (request === 'generate') {
-        return true;
-    }
-    return false;
-}
 
 //
 // Middleware
@@ -155,7 +179,6 @@ function verifArgs(req, res, next) {
     const { id, token, version } = req.headers;
 
     if (badArgument([id, token, version])) {
-        console.log('missing arguments id: ' + id + ', token: ' + token + ', version: ' + version);
         return res.status(400).json({ error: 'missing arguments id: ' + !!id + ', token: ' + !!token + ', version: ' + !!version });
     }
 
@@ -176,13 +199,28 @@ function validateAuth(req, res, next) {
                 req.headers.guild = results[0].guild;
                 next();
             } else {
+                gmLog('Invalid auth, id or token not valid');
                 return res.status(401).json({ error: 'invalid auth, id or token not valid' });
             }
         });
     });
 }
 
-app.use('/server', validUserAgent, retroConvertData, verifArgs, validateAuth);
+app.use(validUserAgent, retroConvertData, verifArgs, validateAuth);
+
+//
+// Log
+//
+
+app.use((req, res, next) => {
+    const method = req.method;
+    const url = req.url;
+    const body = JSON.stringify(req.body);
+    const server = req.headers.id;
+
+    gmLog("Method: " + method + ", URL: " + url + ", Body: " + body + ", Server: " + server);
+    next();
+});
 
 //
 // Functions
@@ -235,14 +273,14 @@ function postUserSay(req, res) {
 
 function postUserConnect(req, res) {
     const { id } = req.headers;
-    const { steam, ip, username } = req.body;
+    const { address, name, networkid, steam } = req.body.data;
 
-    if (badArgument([steam, ip, username])) {
-        return res.status(400).send('missing arguments steam: ' + !!steam + ', ip: ' + !!ip + ', username: ' + !!username);
+    if (badArgument([address, name, networkid, steam])) {
+        return res.status(400).send('missing arguments steam: ' + !!steam + ', address: ' + !!address + ', name: ' + !!name + ', networkid: ' + !!networkid);
     }
 
     getConnection().then(connection => {
-        connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steam, username, ip, username, ip], (error) => {
+        connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steam, name, ip, username, ip], (error) => {
             if (error) throw error;
         });
         connection.query('INSERT INTO gm_server_stat (steam_id, server_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_connect = ?, total_connect = total_connect + 1', [steam, id, new Date()], (error) => {
@@ -294,6 +332,11 @@ function postUserDisconnect(req, res) {
         return res.status(400).send('missing arguments steam: ' + !!steam + ', kills: ' + !!kills + ', deaths: ' + !!deaths + ', money: ' + !!money + ', rank: ' + !!rank);
     }
 
+    // limit money to 100 000 000 000
+    if (money > 100000000000) {
+        money = 100000000000;
+    }
+
     // update the user data to the database (total_kill, total_deathn total_time) total_time = total_time + (curent timestamp - last_connect) in seconds after change last_connect to curent timestamp
     getConnection().then(connection => {
         connection.query('INSERT INTO gm_server_stat (steam_id, server_id, total_kill, total_death, total_time, total_money, rank) VALUES (?, ?, ?, ?, TIMESTAMPDIFF(SECOND, last_connect, ?), ?, ?) ON DUPLICATE KEY UPDATE total_kill = total_kill + ?, total_death = total_death + ?, total_time = total_time + TIMESTAMPDIFF(SECOND, last_connect, ?), last_connect = ?, total_money = ?, rank = ?', [steam, id, kills, deaths, new Date(), money, rank, kills, deaths, new Date(), new Date(), money, rank], (error) => {
@@ -301,6 +344,48 @@ function postUserDisconnect(req, res) {
         });
         connection.query('INSERT INTO gm_user_steam (steam_id, total_kill, total_death, total_time) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE total_kill = total_kill + ?, total_death = total_death + ?, total_time = total_time + TIMESTAMPDIFF(SECOND, last_connect, ?), last_connect = ?', [steam, kills, deaths, 0, kills, deaths, new Date(), new Date()]);
     });
+    return res.status(200).send('data received');
+}
+
+function postServerShutdown(req, res) {
+    const { id } = req.headers;
+
+    // TODO
+
+    return res.status(200).send('data received');
+}
+
+function postServerChangeLevel(req, res) {
+    const { id } = req.headers;
+    const { map } = req.body;
+
+    if (badArgument([map])) {
+        return res.status(400).send('missing arguments map: ' + !!map);
+    }
+
+    // TODO
+
+    return res.status(200).send('data received');
+}
+
+function postServerChangeGamemode(req, res) {
+    const { id } = req.headers;
+    const { gamemode } = req.body;
+
+    if (badArgument([gamemode])) {
+        return res.status(400).send('missing arguments gamemode: ' + !!gamemode);
+    }
+
+    // TODO
+
+    return res.status(200).send('data received');
+}
+
+function postServerStart(req, res) {
+    const { id } = req.headers;
+
+    // TODO
+
     return res.status(200).send('data received');
 }
 
@@ -316,6 +401,10 @@ app.post('/server/user/connect', postUserConnect);
 app.post('/server/user/finishConnect', postUserFinishConnect);
 app.post('/server/user/changeName', postUserChangeName);
 app.post('/server/user/disconnect', postUserDisconnect);
+app.post('/server/shutdown', postServerShutdown);
+app.post('/server/changeLevel', postServerChangeLevel);
+app.post('/server/changeGamemode', postServerChangeGamemode);
+app.post('/server/start', postServerStart);
 
 //
 // Public API
@@ -358,7 +447,6 @@ app.post('/', express.json(), (req, res, next) => {
 
     // if the request is valid execute the function else reply by not found
     if (postFuncs[request]) {
-        console.log('request: ' + request + ', id: ' + id + ', guild: ' + guild);
         postFuncs[request](req, res, guild, id);
     } else {
         next();
