@@ -3,7 +3,7 @@
 //
 
 // Configuration Variables
-const { port_api, dbConfig } = require('../config.json');
+const { port_api, dbConfig, token } = require('../config.json');
 
 // HTTP Requests
 const { request } = require('undici');
@@ -350,6 +350,61 @@ function postUserDisconnect(req, res) {
     return res.status(200).send('data received');
 }
 
+function getServerUser(req, res) {
+    const { id } = req.headers;
+    const { steamID64 } = req.query;
+
+    // get from db gm_user (discord_id, steam_id)
+    getConnection().then(connection => {
+        connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
+            if (error) throw error;
+            if (results.length > 0) {
+                // remove email
+                delete results[0].email;
+                // made a api request to discord to now if user is ban or not (/guilds/{guild.id}/bans/{user.id})
+                connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results2) => {
+                    if (error) throw error;
+                    if (results2.length > 0) {
+                        connection.query('SELECT * FROM banUsers WHERE steamID64 = ? OR discordID = ? OR ip = ?', [steamID64, results[0].id, ipGetIP(req.headers['x-forwarded-for'])], (error, results3) => {
+                            if (error) throw error;
+                            if (results3.length > 0) {
+                                // user is ban
+                                return res.status(200).json({ ban: true, ban_reason: results3[0].reason, ...results[0] });
+                            } else {
+                                // user is not ban
+                                const guild = results2[0].guild;
+                                request(`https://discord.com/api/guilds/${guild}/bans/${results[0].id}`, {
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Authorization': `Bot ${token}`,
+                                    },
+                                }).then((userBanInfo) => {
+                                    if (userBanInfo.statusCode === 200) {
+                                        // user is ban
+                                        return res.status(200).json({ discord_ban: true, discord_ban_reason: userBanInfo.body.reason, ...results[0] });
+                                    } else if (userBanInfo.statusCode === 404) {
+                                        // user is not ban
+                                        return res.status(200).json({ discord_ban: false, ...results[0] });
+                                    } else {
+                                        // error
+                                        return res.status(200).json({ error: 'discord api error' });
+                                    }
+                                });
+                            }
+                        });
+                    } else {
+                        // error
+                        return res.status(200).json({ error: 'server not found' });
+                    }
+                });
+            } else {
+                // user not found
+                return res.status(200).json({ error: 'user not found' });
+            }
+        });
+    });
+}
+
 function postServerShutdown(req, res) {
     const { id } = req.headers;
 
@@ -399,6 +454,7 @@ function postServerStart(req, res) {
 app.get('/server/auth', getServerAuth);
 app.get('/server/guild', getServerGuild);
 app.post('/server/status', postServerStatus);
+app.get('/server/user', checkMissingArgs(['steamID64'], 'query'), getServerUser);
 app.post('/server/user/say', postUserSay);
 app.post('/server/user/connect', postUserConnect);
 app.post('/server/user/finishConnect', postUserFinishConnect);
