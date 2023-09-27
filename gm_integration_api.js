@@ -3,7 +3,9 @@
 //
 
 // Configuration Variables
-const { port_api, dbConfig, token, steamAPI } = require('../config.json');
+const { port_api, port_websocket, dbConfig, token, steamAPI, internToken } = require('../config.json');
+
+// Steam API
 const SteamAPI = require('steamapi');
 const steam = new SteamAPI(steamAPI);
 
@@ -264,11 +266,6 @@ function getServerGuild(req, res) {
 function postUserSay(req, res) {
     const { id } = req.headers;
     let { steamID64, message, name } = req.body;
-
-    // addTodoTask('userSay', JSON.stringify({
-    //     steam_id: steamID64,
-    //     message: message
-    // }));
 
     // get user avatar from steam api
     getConnection().then(connection => {
@@ -558,5 +555,5 @@ app.all('*', (req, res) => {
     return res.status(404).json({ error: '404 Not Found' });
 });
 
-// Start the server
+// Start the API AND WebSocket server
 app.listen(port_api, () => gmLog(`Server listening on port ${port_api}`));
