@@ -1,0 +1,21 @@
+{
+    "name": "api",
+    "version": "1.0.0",
+    "description": "",
+    "main": "gm_integration_api.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "node gm_integration_api.js",
+        "dev": "nodemon gm_integration_api.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/gmod-integration/api.git"
+    },
+    "author": "Linventif",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/gmod-integration/api/issues"
+    },
+    "homepage": "https://github.com/gmod-integration/api#readme"
+}
