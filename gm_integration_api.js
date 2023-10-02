@@ -3,7 +3,7 @@
 //
 
 // Configuration Variables
-const { port_api, port_websocket, dbConfig, token, steamAPI, internToken } = require('../config.json');
+const { port_api, dbConfig, token, steamAPI } = require('../config.json');
 
 // Steam API
 const SteamAPI = require('steamapi');
@@ -18,13 +18,6 @@ const bodyParser = require('body-parser');
 
 // MySQL Database
 const mysql = require('mysql');
-
-// Path
-const path = require('path');
-
-// File System
-const fs = require('fs');
-const { connect } = require('http2');
 
 function gmLog(message) {
     // log format: [2023-07-10 04:28:25] [INFO]
