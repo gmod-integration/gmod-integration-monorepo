@@ -19,6 +19,9 @@ const bodyParser = require('body-parser');
 // MySQL Database
 const mysql = require('mysql');
 
+// Rate Limit
+const rateLimit = require('express-rate-limit');
+
 function gmLog(message) {
     // log format: [2023-07-10 04:28:25] [INFO]
     console.log('[' + new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') + '] [INFO] ' + message);
@@ -144,6 +147,16 @@ function checkMissingArgs(requiredArgs, location) {
 //
 
 const app = express();
+
+// Define a rate limiter middleware
+const limiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: "Too many requests from this IP, please try again later",
+});
+
+//  apply to all requests
+app.use(limiter);
 
 // Body Parser
 app.use(bodyParser.urlencoded({ extended: false }));
