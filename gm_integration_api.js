@@ -369,10 +369,20 @@ function postUserDisconnect(req, res) {
 
     // update the user data to the database (total_kill, total_deathn total_time) total_time = total_time + (curent timestamp - last_connect) in seconds after change last_connect to curent timestamp
     getConnection().then(connection => {
-        connection.query('INSERT INTO gm_server_stat (steam_id, server_id, total_kill, total_death, total_time, total_money, rank) VALUES (?, ?, ?, ?, TIMESTAMPDIFF(SECOND, last_connect, ?), ?, ?) ON DUPLICATE KEY UPDATE total_kill = total_kill + ?, total_death = total_death + ?, total_time = total_time + TIMESTAMPDIFF(SECOND, last_connect, ?), last_connect = ?, total_money = ?, rank = ?', [steam, id, kills, deaths, new Date(), money, rank, kills, deaths, new Date(), new Date(), money, rank], (error) => {
-            if (error) throw error;
+        connection.query(`UPDATE gm_server_stat SET total_kill = total_kill + ?, total_death = total_death + ?, total_time = CASE WHEN TIMESTAMPDIFF(SECOND, last_connect, ?) <= 86400 THEN total_time + TIMESTAMPDIFF(SECOND, last_connect, ?) ELSE total_time END, last_connect = ?, total_money = ?, rank = ?WHERE steam_id = ? AND server_id = ?`, [kills, deaths, new Date(), new Date(), new Date(), money, rank, steam, id], (error) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).send('internal server error');
+            }
         });
-        connection.query('INSERT INTO gm_user_steam (steam_id, total_kill, total_death, total_time) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE total_kill = total_kill + ?, total_death = total_death + ?, total_time = total_time + TIMESTAMPDIFF(SECOND, last_connect, ?), last_connect = ?', [steam, kills, deaths, 0, kills, deaths, new Date(), new Date()]);
+
+        connection.query(`UPDATE gm_user_steam SET total_kill = total_kill + ?, total_death = total_death + ?, total_time = CASE WHEN TIMESTAMPDIFF(SECOND, last_connect, ?) <= 86400 THEN total_time + TIMESTAMPDIFF(SECOND, last_connect, ?) ELSE total_time END, last_connect = ?WHERE steam_id = ?`, [kills, deaths, new Date(), new Date(), new Date(), steam], (error) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).send('internal server error');
+            }
+        });
+
     });
     return res.status(200).send('data received');
 }
