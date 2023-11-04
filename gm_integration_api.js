@@ -1,274 +1,3 @@
-//
-// Variables Declaration & Libraries Import
-//
-
-// Configuration Variables
-const { port_api, dbConfig, token, steamAPI } = require('../config.json');
-
-// Steam API
-const SteamAPI = require('steamapi');
-const steam = new SteamAPI(steamAPI);
-
-// HTTP Requests
-const { request } = require('undici');
-const express = require('express');
-
-// Body Parser
-const bodyParser = require('body-parser');
-
-// MySQL Database
-const mysql = require('mysql');
-
-// Rate Limit
-const rateLimit = require('express-rate-limit');
-
-function gmLog(message) {
-    // log format: [2023-07-10 04:28:25] [INFO]
-    console.log('[' + new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '') + '] [INFO] ' + message);
-}
-
-//
-// MySQL Database
-//
-
-let connection;
-
-// create func how return connection, if connection is not alive, create new connection
-function getConnection() {
-    return new Promise((resolve, reject) => {
-        if (connection && connection.state !== 'disconnected') {
-            resolve(connection);
-        } else {
-            connection = mysql.createConnection(dbConfig);
-            connection.connect((err) => {
-                if (err) {
-                    gmLog('Error connecting to MySQL Database');
-                    console.error(err);
-                    reject(err);
-                } else {
-                    gmLog('Connected to MySQL Database');
-                    // Keep connection alive by pinging every 60 seconds
-                    setInterval(() => {
-                        connection.ping();
-                    }, 60000);
-                    resolve(connection);
-                }
-            });
-        }
-    });
-}
-
-// Init connection
-getConnection();
-
-//
-// Functions
-//
-
-function badArgument(list) {
-    for (let i = 0; i < list.length; i++) {
-        if (list[i] === undefined) {
-            return true;
-        }
-    }
-    return false;
-}
-
-function addTodoTask(task, data) {
-    getConnection().then(connection => {
-        connection.query('INSERT INTO gm_todo_task (task, data) VALUES (?, ?)', [task, data], (error) => {
-            if (error) throw error;
-        });
-    });
-}
-
-function clearString(varString, alter) {
-    if (typeof varString !== 'string') {
-        return alter || '';
-    } else if (varString.length === 0) {
-        return alter || '';
-    }
-    // Inclure tous les caractères alphanumériques, les opérateurs mathématiques et les caractères utilisés pour les URL
-    let new_var = varString.replace(/[^a-zA-Z0-9.:+\-*/=^%?&#!~_ ]/g, '');
-    if (new_var.length === 0) {
-        new_var = alter || '';
-    }
-    return new_var;
-}
-
-function ipGetPort(ip) {
-    if (!ip || typeof ip !== 'string' || ip.length === 0) {
-        return '';
-    }
-    return ip.split(':')[1];
-}
-
-function ipGetIP(ip) {
-    if (!ip || typeof ip !== 'string' || ip.length === 0) {
-        return '';
-    }
-    return ip.split(':')[0];
-}
-
-function checkMissingArgs(requiredArgs, location) {
-    return function (req, res, next) {
-        const missingArgs = [];
-
-        requiredArgs.forEach((arg) => {
-            let value;
-            switch (location) {
-                case 'body':
-                    value = req.body[arg];
-                    break;
-                case 'header':
-                    value = req.headers[arg.toLowerCase()];
-                    break;
-                case 'query':
-                    value = req.query[arg];
-                    break;
-                default:
-                    value = undefined;
-            }
-            if (value === undefined || value === null) {
-                missingArgs.push(arg);
-            }
-        });
-
-        if (missingArgs.length > 0) {
-            return res.status(400).json({ message: `Missing arguments: ${missingArgs.join(', ')}` });
-        }
-
-        next();
-    }
-}
-
-//
-// Express App
-//
-
-const app = express();
-
-// Define a rate limiter middleware
-const limiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 100, // limit each IP to 100 requests per windowMs
-    message: "Too many requests from this IP, please try again later",
-});
-
-//  apply to all requests
-app.use(limiter);
-
-// Body Parser
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
-
-//
-// Middleware
-//
-
-function validUserAgent(req, res, next) {
-    const userAgent = req.headers['user-agent'];
-
-    if (userAgent === 'Valve/Steam HTTP Client 1.0 (4000)') {
-        next();
-    } else {
-        return res.redirect('https://gmod-integration.com');
-    }
-}
-
-function retroConvertData(req, res, next) {
-    const { id, token, version } = req.query;
-
-    req.headers.id = req.headers.id || id;
-    req.headers.token = req.headers.token || token;
-    req.headers.version = req.headers.version || version;
-
-    next();
-}
-
-function verifArgs(req, res, next) {
-    const { id, token, version } = req.headers;
-
-    if (badArgument([id, token, version])) {
-        return res.status(400).json({ error: 'missing arguments id: ' + !!id + ', token: ' + !!token + ', version: ' + !!version });
-    }
-
-    next();
-}
-
-function validateAuth(req, res, next) {
-    const { id, token } = req.headers;
-
-    getConnection().then(connection => {
-        connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
-            if (error) {
-                gmLog('Error connecting to MySQL Database');
-                console.error(err);
-                return res.status(500).json({ error: 'internal server error' });
-            }
-            if (results.length > 0) {
-                req.headers.guild = results[0].guild;
-                next();
-            } else {
-                gmLog('Invalid auth, id or token not valid');
-                return res.status(401).json({ error: 'invalid auth, id or token not valid' });
-            }
-        });
-    });
-}
-
-app.use(validUserAgent, retroConvertData, verifArgs, validateAuth);
-
-//
-// Log
-//
-
-app.use((req, res, next) => {
-    const method = req.method;
-    const url = req.url;
-    const body = JSON.stringify(req.body);
-    const server = req.headers.id;
-
-    gmLog("Method: " + method + ", URL: " + url + ", Body: " + body + ", Server: " + server);
-    next();
-});
-
-//
-// Functions
-//
-
-function postServerStatus(req, res) {
-    const { id } = req.headers;
-    let { players, maxplayers, map, hostname, gamemode, port, ip } = req.body;
-
-    if (badArgument([players, maxplayers, map, hostname, gamemode, port, ip])) {
-        return res.status(400).send('missing arguments players: ' + !!players + ', maxplayers: ' + !!maxplayers + ', map: ' + !!map + ', hostname: ' + !!hostname + ', gamemode: ' + !!gamemode + ', port: ' + !!port + ', ip: ' + !!ip);
-    };
-
-    ip = ipGetIP(ip);
-
-    // save the server data to the database
-    getConnection().then(connection => {
-        connection.query('INSERT INTO gm_server_status (id, ip, port, hostname, map, players, maxplayers, gamemode) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE ip = ?, port = ?, hostname = ?, map = ?, players = ?, maxplayers = ?, gamemode = ?, last_update = ?', [id, ip, port, hostname, map, players, maxplayers, gamemode, ip, port, hostname, map, players, maxplayers, gamemode, new Date()], (error) => {
-            if (error) {
-                console.error(error);
-                return res.status(500).send('internal server error');
-            }
-            return res.status(200).send('data received');
-        });
-    });
-}
-
-function getServerAuth(req, res) {
-    return res.status(200).json({ id: req.headers.id, version: req.headers.version });
-}
-
-function getServerGuild(req, res) {
-    const { guild } = req.headers;
-
-    return res.status(200).json({ guild: guild });
-}
-
 function postUserSay(req, res) {
     const { id } = req.headers;
     let { steamID64, message, name } = req.body;
@@ -458,15 +187,52 @@ function getServerUser(req, res) {
     });
 }
 
-function postServerShutdown(req, res) {
+
+//
+// New API
+//
+
+app.post('/server/status', (req, res) => {
+    const { id } = req.headers;
+    let { players, maxplayers, map, hostname, gamemode, port, ip } = req.body;
+
+    if (badArgument([players, maxplayers, map, hostname, gamemode, port, ip])) {
+        return res.status(400).send('missing arguments players: ' + !!players + ', maxplayers: ' + !!maxplayers + ', map: ' + !!map + ', hostname: ' + !!hostname + ', gamemode: ' + !!gamemode + ', port: ' + !!port + ', ip: ' + !!ip);
+    };
+
+    ip = ipGetIP(ip);
+
+    // save the server data to the database
+    getConnection().then(connection => {
+        connection.query('INSERT INTO gm_server_status (id, ip, port, hostname, map, players, maxplayers, gamemode) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE ip = ?, port = ?, hostname = ?, map = ?, players = ?, maxplayers = ?, gamemode = ?, last_update = ?', [id, ip, port, hostname, map, players, maxplayers, gamemode, ip, port, hostname, map, players, maxplayers, gamemode, new Date()], (error) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).send('internal server error');
+            }
+            return res.status(200).send('data received');
+        });
+    });
+});
+
+app.get('/server/user', checkMissingArgs(['steamID64'], 'query'), getServerUser);
+app.post('/server/user/ban', checkMissingArgs(['steamid', 'duration', 'reason', 'by'], 'body'), postServerUserBan);
+app.post('/server/user/say', checkMissingArgs(['steamID64', 'message'], 'body'), postUserSay);
+app.post('/server/user/connect', postUserConnect);
+app.post('/server/user/finishConnect', postUserFinishConnect);
+app.post('/server/user/changeName', postUserChangeName);
+app.post('/server/user/disconnect', postUserDisconnect);
+
+app.post('/server/shutdown', (req, res) => {
+
     const { id } = req.headers;
 
     // TODO
 
     return res.status(200).send('data received');
-}
+});
 
-function postServerChangeLevel(req, res) {
+app.post('/server/changeLevel', (req, res) => {
+
     const { id } = req.headers;
     const { map } = req.body;
 
@@ -477,9 +243,10 @@ function postServerChangeLevel(req, res) {
     // TODO
 
     return res.status(200).send('data received');
-}
+});
 
-function postServerChangeGamemode(req, res) {
+app.post('/server/changeGamemode', (req, res) => {
+
     const { id } = req.headers;
     const { gamemode } = req.body;
 
@@ -490,86 +257,13 @@ function postServerChangeGamemode(req, res) {
     // TODO
 
     return res.status(200).send('data received');
-}
+});
 
-function postServerStart(req, res) {
+app.post('/server/start', (req, res) => {
+
     const { id } = req.headers;
 
     // TODO
 
     return res.status(200).send('data received');
-}
-
-//
-// New API
-//
-
-app.get('/server/auth', getServerAuth);
-app.get('/server/guild', getServerGuild);
-app.post('/server/status', postServerStatus);
-app.get('/server/user', checkMissingArgs(['steamID64'], 'query'), getServerUser);
-app.post('/server/user/ban', checkMissingArgs(['steamid', 'duration', 'reason', 'by'], 'body'), postServerUserBan);
-app.post('/server/user/say', checkMissingArgs(['steamID64', 'message'], 'body'), postUserSay);
-app.post('/server/user/connect', postUserConnect);
-app.post('/server/user/finishConnect', postUserFinishConnect);
-app.post('/server/user/changeName', postUserChangeName);
-app.post('/server/user/disconnect', postUserDisconnect);
-app.post('/server/shutdown', postServerShutdown);
-app.post('/server/changeLevel', postServerChangeLevel);
-app.post('/server/changeGamemode', postServerChangeGamemode);
-app.post('/server/start', postServerStart);
-
-//
-// Public API
-//
-
-app.get('/user/isLinked', (req, res) => {
-    // get variables from the url
-    const { discordID, steamID64 } = req.query;
-    // get from db gm_user (discord_id, steam_id)
-    getConnection().then(connection => {
-        connection.query('SELECT * FROM gm_user WHERE id = ? OR steam = ?', [discordID, steamID64], (error, results) => {
-            if (error) throw error;
-            if (results.length > 0) {
-                // reply in json if the user is linked
-                res.status(200).json({ linked: true });
-            } else {
-                // reply in json if the user is not linked
-                res.status(200).json({ linked: false });
-            }
-        });
-    });
 });
-
-//
-// Retro Compatibility
-//
-
-const postFuncs = {
-    tryConfig: getServerGuild,
-    userConnect: postUserConnect,
-    userFinishConnect: postUserFinishConnect,
-    userChangeName: postUserChangeName,
-    userDisconnect: postUserDisconnect,
-    serverStatus: postServerStatus
-};
-
-app.post('/', express.json(), (req, res, next) => {
-    const { id, guild } = req.headers;
-    const request = req.query.request;
-
-    // if the request is valid execute the function else reply by not found
-    if (postFuncs[request]) {
-        postFuncs[request](req, res, guild, id);
-    } else {
-        next();
-    }
-});
-
-// for other method replace by 404
-app.all('*', (req, res) => {
-    return res.status(404).json({ error: '404 Not Found' });
-});
-
-// Start the API AND WebSocket server
-app.listen(port_api, () => gmLog(`Server listening on port ${port_api}`));
