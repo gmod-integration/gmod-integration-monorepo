@@ -8,7 +8,6 @@ const bodyParser = require('body-parser');
 const config = require('./config');
 const logger = require('./utils/logger');
 
-const rateLimiterMiddleware = require('./middleware/rateLimiter');
 const userAgentMiddleware = require('./middleware/userAgentValidator');
 const authValidatorMiddleware = require('./middleware/authValidator');
 
@@ -21,22 +20,28 @@ const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
-// Loger
-app.use((req, res, next) => {
-    logger.gmLog('http', `${req.method} ${req.url}`);
-    next();
-});
-
 //
 // Middleware
 //
 
-// Rate Limiter
-app.use(rateLimiterMiddleware);
+// Proxy
+app.set('trust proxy', true);
 
 // Body Parser
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+// Loger
+app.use((req, res, next) => {
+    const method = req.method;
+    const url = req.url;
+    const ip = req.headers['cf-connecting-ip'] || req.ip;
+    const body = JSON.stringify(req.body);
+    const query = JSON.stringify(req.query);
+    const id = req.headers['id'] || 'unknown';
+    logger.gmLog('api', `Request: ${method} ${url} from ${ip} with body ${body} and query ${query} and server id ${id}`);
+    next();
+});
 
 // Auth Validator
 app.use(userAgentMiddleware, authValidatorMiddleware);
