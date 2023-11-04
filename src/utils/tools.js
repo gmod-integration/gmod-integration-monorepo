@@ -39,14 +39,6 @@ function badArgument(list) {
     return false;
 }
 
-function addTodoTask(task, data) {
-    getConnection().then(connection => {
-        connection.query('INSERT INTO gm_todo_task (task, data) VALUES (?, ?)', [task, data], (error) => {
-            if (error) throw error;
-        });
-    });
-}
-
 function ipGetIP(ip) {
     if (!ip || typeof ip !== 'string' || ip.length === 0) {
         return '';
@@ -57,6 +49,5 @@ function ipGetIP(ip) {
 module.exports = {
     checkMissingArgs,
     badArgument,
-    addTodoTask,
     ipGetIP
 };
