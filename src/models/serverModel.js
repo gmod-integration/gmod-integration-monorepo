@@ -6,9 +6,9 @@ function updateServerStatus(id, players, maxplayers, map, hostname, gamemode, po
             connection.query('INSERT INTO gm_server_status (id, ip, port, hostname, map, players, maxplayers, gamemode) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE ip = ?, port = ?, hostname = ?, map = ?, players = ?, maxplayers = ?, gamemode = ?, last_update = ?', [id, ip, port, hostname, map, players, maxplayers, gamemode, ip, port, hostname, map, players, maxplayers, gamemode, new Date()], (error) => {
                 if (error) {
                     console.error(error);
-                    return res.status(500).send('internal server error');
+                    reject(error);
                 }
-                return res.status(200).send('data received');
+                resolve();
             });
         }).catch((err) => {
             reject(err);
