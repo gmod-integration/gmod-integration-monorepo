@@ -1,5 +1,8 @@
 const { getConnection } = require('../database/connection');
 const { addTodoTask } = require('../utils/todoTask');
+const { ipGetIP } = require('../utils/tools');
+const axios = require('axios');
+const { bot_token } = require('../config/index');
 
 function getUserData(discordID, steamID64) {
     return new Promise((resolve, reject) => {
@@ -17,42 +20,50 @@ function getUserData(discordID, steamID64) {
     });
 }
 
-function getUserServerData(serverID, steamID64) {
+function getUserServerData(serverID, steamID64, ip) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results2) => {
+            connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
                 if (error) throw error;
-                if (results2.length > 0) {
-                    connection.query('SELECT * FROM banUsers WHERE steamID64 = ? OR discordID = ? OR ip = ?', [steamID64, results[0].id, ipGetIP(req.headers['x-forwarded-for'])], (error, results3) => {
+                if (results.length > 0) {
+                    connection.query('SELECT * FROM gm_server WHERE id = ?', [serverID], (error, results2) => {
                         if (error) throw error;
-                        if (results3.length > 0) {
-                            // user is ban
-                            return res.status(200).json({ ban: true, ban_reason: results3[0].reason, ...results[0] });
-                        } else {
-                            // user is not ban
-                            const guild = results2[0].guild;
-                            request(`https://discord.com/api/guilds/${guild}/bans/${results[0].id}`, {
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    'Authorization': `Bot ${token}`,
-                                },
-                            }).then((userBanInfo) => {
-                                if (userBanInfo.statusCode === 200) {
-                                    // user is ban
-                                    return res.status(200).json({ discord_ban: true, discord_ban_reason: userBanInfo.body.reason, ...results[0] });
-                                } else if (userBanInfo.statusCode === 404) {
-                                    // user is not ban
-                                    return res.status(200).json({ discord_ban: false, ...results[0] });
+                        if (results2.length > 0) {
+                            connection.query('SELECT * FROM banUsers WHERE steamID64 = ? OR discordID = ? OR ip = ?', [steamID64, results[0].id, ip], (error, results3) => {
+                                if (error) throw error;
+                                if (results3.length > 0) {
+                                    resolve(results[0], results3[0].reason);
                                 } else {
-                                    // error
-                                    return res.status(200).json({ error: 'discord api error' });
+                                    // user is not ban
+                                    const guild = results2[0].guild;
+                                    console.log(guild, results[0].id);
+                                    resolve(results[0]);
+
+                                    axios.get(`https://discord.com/api/guilds/${guild}/bans/${results[0].id}`, {
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': `Bot ${bot_token}`
+                                        },
+                                    }).then((response) => {
+                                        // Check if user is banned on Discord
+                                        if (response.status === 200) {
+                                            resolve(results[0], response.data.reason);
+                                        } else if (response.status === 404) {
+                                            resolve(results[0]);
+                                        }
+                                    }).catch((error) => {
+                                        resolve(results[0]);
+                                    });
                                 }
                             });
+                        } else {
+                            // return res.status(200).json({ error: 'server not found' });
+                            reject('server not found');
                         }
                     });
                 } else {
-                    // error
-                    return res.status(200).json({ error: 'server not found' });
+                    // return res.status(200).json({ error: 'user not found' });
+                    reject('user not found');
                 }
             });
         }).catch((err) => {
@@ -137,6 +148,7 @@ function addUserSay(steamID64, message, name, id) {
 module.exports = {
     getUserData,
     addUserSteam,
+    getUserServerData,
     addUserServerConnect,
     addUserSay,
 };

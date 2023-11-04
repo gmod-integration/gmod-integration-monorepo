@@ -3,29 +3,23 @@ const { badArgument, ipGetIP } = require('../utils/tools');
 
 function getUser(req, res) {
     const { id } = req.headers;
+    const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
     const { steamID64 } = req.query;
 
     if (badArgument([steamID64])) {
         return res.status(400).send('missing arguments steam: ' + !!steamID64);
     }
 
-    userModel.getUserData(id, steamID64).then((result) => {
-        if (result.length === 0) {
-            res.status(200).json({ error: 'user not found' });
-        } else {
-            // remove email
-            delete result[0].email;
-            userModel.getUserServerData(id, steamID64).then((result2) => {
-                if (result2.length === 0) {
-                    res.status(200).json({ error: 'user not found' });
-                } else {
-                    res.status(200).json({ ...result[0], ...result2[0] });
-                }
-            }).catch((err) => {
-                console.log(err);
-                res.status(500).json({ error: 'Internal server error' });
-            });
-        }
+    userModel.getUserServerData(id, steamID64, ip).then((data, banReason) => {
+        return res.status(200).json({
+            discord_ban: banReason ? true : false,
+            id: data.id,
+            steam: data.steam,
+            username: data.username,
+            rank: data.rank,
+            last_oauth: data.last_oauth,
+            trust: data.trust
+        });
     }).catch((err) => {
         console.log(err);
         res.status(500).json({ error: 'Internal server error' });
