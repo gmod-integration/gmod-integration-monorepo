@@ -67,7 +67,7 @@ function postUserConnect(req, res) {
 
     const ip = ipGetIP(address);
 
-    userModel.addUserSteam(steam, name, ip).then(() => {
+    userModel.addUserSteam(steam, name, ip, id).then(() => {
         userModel.addUserServerStat(steam, id).then(() => {
             return res.status(200).send('User Added');
         }).catch((err) => {

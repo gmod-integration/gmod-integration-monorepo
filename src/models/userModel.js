@@ -72,7 +72,7 @@ function getUserServerData(serverID, steamID64, ip) {
     });
 }
 
-function addUserSteam(steamID64, name, ip) {
+function addUserSteam(steamID64, name, ip, id) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
             connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steamID64, name, ip, name, ip], (error) => {
