@@ -2,11 +2,12 @@
     "name": "api",
     "version": "2.0.0",
     "description": "",
-    "main": "src/app.js",
+    "main": "src/gm_integration_api.js",
     "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "start": "node src/app.js",
-        "dev": "nodemon src/app.js"
+        "start": "nohup node src/gm_integration_api.js >> logs/$(date +%F).log 2>&1 &",
+        "stop": "pkill -f gm_integration_api.js",
+        "dev": "nodemon src/gm_integration_api.js",
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
     "repository": {
         "type": "git",
