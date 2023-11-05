@@ -32,6 +32,5 @@ function postServerStatus(req, res) {
 
 module.exports = {
     getServer,
-    getServerGuild,
     postServerStatus,
 };
