@@ -165,4 +165,5 @@ module.exports = {
     getUserServerData,
     addUserServerConnect,
     addUserSay,
+    addUserServerStat
 };
