@@ -11,15 +11,20 @@ function getUser(req, res) {
     }
 
     userModel.getUserServerData(id, steamID64, ip).then((data, banReason) => {
-        return res.status(200).json({
-            discord_ban: banReason ? true : false,
-            id: data.id,
-            steam: data.steam,
-            username: data.username,
-            rank: data.rank,
-            last_oauth: data.last_oauth,
-            trust: data.trust
-        });
+        if (!data) {
+            return res.status(400).json({ error: 'User not Found' });
+        } else {
+            return res.status(200).json({
+                discord_ban: banReason ? true : false,
+                discord_ban_reason: banReason ? banReason : null,
+                id: data.id,
+                steam: data.steam,
+                username: data.username,
+                rank: data.rank,
+                last_oauth: data.last_oauth,
+                trust: data.trust
+            });
+        }
     }).catch((err) => {
         console.log(err);
         res.status(500).json({ error: 'Internal server error' });

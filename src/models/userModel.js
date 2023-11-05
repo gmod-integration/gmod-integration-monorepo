@@ -36,7 +36,6 @@ function getUserServerData(serverID, steamID64, ip) {
                                 } else {
                                     // user is not ban
                                     const guild = results2[0].guild;
-                                    console.log(guild, results[0].id);
                                     resolve(results[0]);
 
                                     axios.get(`https://discord.com/api/guilds/${guild}/bans/${results[0].id}`, {
@@ -57,13 +56,11 @@ function getUserServerData(serverID, steamID64, ip) {
                                 }
                             });
                         } else {
-                            // return res.status(200).json({ error: 'server not found' });
-                            reject('server not found');
+                            resolve(false);
                         }
                     });
                 } else {
-                    // return res.status(200).json({ error: 'user not found' });
-                    reject('user not found');
+                    resolve(false);
                 }
             });
         }).catch((err) => {
