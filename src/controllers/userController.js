@@ -12,7 +12,7 @@ function getUser(req, res) {
 
     userModel.getUserServerData(id, steamID64, ip).then((data, banReason) => {
         if (!data) {
-            return res.status(400).json({ error: 'User not Found' });
+            return res.status(200).json({ error: 'User not Found' });
         } else {
             return res.status(200).json({
                 discord_ban: banReason ? true : false,
