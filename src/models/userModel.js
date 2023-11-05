@@ -125,6 +125,7 @@ function addUserServerConnect(guildID, serverID, steamID64, userName) {
                         username: userName
                     }));
                 }
+                resolve();
             });
         }).catch((err) => {
             reject(err);
