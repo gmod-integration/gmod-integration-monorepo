@@ -28,26 +28,8 @@ function postServerStatus(req, res) {
     });
 }
 
-function postServerShutdown(req, res) {
-    // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
-}
-
-function postServerChangeLevel(req, res) {
-    // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
-}
-
-function postServerChangeGameMode(req, res) {
-    // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
-}
-
 module.exports = {
     getServer,
     getServerGuild,
     postServerStatus,
-    postServerShutdown,
-    postServerChangeLevel,
-    postServerChangeGameMode
 };
