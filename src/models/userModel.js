@@ -70,6 +70,7 @@ function getUserServerData(serverID, steamID64, ip) {
 }
 
 function addUserServerStat(steamID64, id) {
+    // TODO SAVE STATS
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
             connection.query('INSERT INTO gm_server_stat (steam_id, server_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_connect = ?, total_connect = total_connect + 1', [steamID64, id, new Date()], (error) => {

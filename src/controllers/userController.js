@@ -87,15 +87,16 @@ function postUserConnect(req, res) {
 
 function postUserDisconnect(req, res) {
     const { id } = req.headers;
-    let { steam, kills, deaths, money, rank } = req.body;
+    let { steam, kills, deaths, money, rank, time } = req.body;
 
     if (badArgument([steam, kills, deaths, money, rank])) {
         return res.status(400).send('missing arguments steam: ' + !!steam + ', kills: ' + !!kills + ', deaths: ' + !!deaths + ', money: ' + !!money + ', rank: ' + !!rank);
     }
 
-    money = (parseInt(money) || 0) > 1000000000;
+    money = money && (parseInt(money) > 0) || 0;
+    time = time && (parseInt(time) > 0) || 0;
 
-    userModel.addUserServerStat(steam, id, kills, deaths, money, rank).then(() => {
+    userModel.addUserServerStat(steam, id, kills, deaths, money, rank, time).then(() => {
         return res.status(200).send('User Updated');
     }).catch((err) => {
         console.log(err);
