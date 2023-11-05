@@ -7,7 +7,7 @@ const { bot_token } = require('../config/index');
 function getUserData(discordID, steamID64) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
-            connection.query(`SELECT * FROM gm_user WHERE id = ? OR steam = ?`, [discordID, steamID64], (err, rows) => {
+            connection.query('SELECT * FROM gm_user WHERE id = ? OR steam = ?', [discordID, steamID64], (err, rows) => {
                 if (err) {
                     reject(err);
                 } else {
@@ -72,6 +72,22 @@ function getUserServerData(serverID, steamID64, ip) {
     });
 }
 
+function addUserServerStat(steamID64, id) {
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            connection.query('INSERT INTO gm_server_stat (steam_id, server_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_connect = ?, total_connect = total_connect + 1', [steamID64, id, new Date()], (error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 function addUserSteam(steamID64, name, ip, id) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
@@ -79,12 +95,10 @@ function addUserSteam(steamID64, name, ip, id) {
                 if (error) {
                     reject(error);
                 } else {
-                    connection.query('INSERT INTO gm_server_stat (steam_id, server_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_connect = ?, total_connect = total_connect + 1', [steamID64, id, new Date()], (error) => {
-                        if (error) {
-                            reject(error);
-                        } else {
-                            resolve();
-                        }
+                    addUserServerStat(steamID64, id).then(() => {
+                        resolve();
+                    }).catch((err) => {
+                        reject(err);
                     });
                 }
             });
