@@ -16,6 +16,24 @@ function updateServerStatus(id, players, maxplayers, map, hostname, gamemode, po
     });
 }
 
+function getServer(serverID) {
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            connection.query('SELECT * FROM gm_server WHERE id = ?', [serverID], (error, results) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    delete results[0].token; // remove for security
+                    resolve(results[0]);
+                }
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 module.exports = {
-    updateServerStatus
+    updateServerStatus,
+    getServer,
 };

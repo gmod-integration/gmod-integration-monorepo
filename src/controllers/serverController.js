@@ -2,12 +2,14 @@ const serverModel = require('../models/serverModel');
 const { badArgument, ipGetIP } = require('../utils/tools');
 
 function getServer(req, res) {
-    // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
-}
+    const { id } = req.headers;
 
-function getServerGuild(req, res) {
-    res.status(200).json({ guild: req.headers.guild });
+    serverModel.getServer(id).then((result) => {
+        res.status(200).json(result);
+    }).catch((err) => {
+        console.log(err);
+        res.status(500).json({ error: 'Internal server error' });
+    });
 }
 
 function postServerStatus(req, res) {
