@@ -1,4 +1,4 @@
-const getConnection = require('../database/connection');
+const { getConnection } = require('../database/connection');
 
 function addTodoTask(task, data) {
     getConnection().then(connection => {
