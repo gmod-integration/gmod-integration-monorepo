@@ -17,7 +17,7 @@ function getConnection() {
                     console.error(err);
                     reject(err);
                 } else {
-                    gmLog('mysql', 'Connected');
+                    gmLog('mysql', 'Connected to ' + dbConfig.host + ':' + (dbConfig.port || 3306) + '/' + dbConfig.database);
                     // Keep connection alive by pinging every 60 seconds
                     setInterval(() => {
                         connection.ping();
