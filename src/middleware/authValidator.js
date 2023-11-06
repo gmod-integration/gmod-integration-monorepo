@@ -12,7 +12,7 @@ module.exports = (req, res, next) => {
         connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
             if (error) {
                 gmLog('authValidator', 'Internal Server Error');
-                console.error(err);
+                console.error(error);
                 return res.status(500).json({ error: 'Internal Server Error' });
             }
             if (results.length > 0) {
