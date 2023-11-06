@@ -69,6 +69,46 @@ function getUserServerData(serverID, steamID64, ip) {
     });
 }
 
+function updateUserServerStat(serverID, steamID64, userData) {
+    const name = userData.name;
+    const ip = ipGetIP(userData.ip);
+    const rank = userData.rank;
+    const time = userData.time;
+    const kills = userData.kills;
+    const deaths = userData.deaths;
+    const customValues = userData.customValues;
+
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            // update values (if counter add to previus), and update last_connect to current timestamp | only update time if last_connect - current_timestamp > time to minutes
+            connection.query(`
+            UPDATE gm_server_stat SET
+            name = ?,
+            last_ip = ?,
+            rank = ?,
+            total_time = CASE 
+                WHEN TIMESTAMPDIFF(SECOND, last_connect, CURRENT_TIMESTAMP) > ? THEN total_time + ?
+                ELSE total_time 
+            END,
+            total_kills = total_kills + ?,
+            total_deaths = total_deaths + ?,
+            total_connect = total_connect + 1,
+            custom_values = ?,
+            last_connect = CURRENT_TIMESTAMP
+            WHERE steam_id = ? AND server_id = ?
+        `, [name, ip, rank, time, time, kills, deaths, customValues, steamID64, serverID], (error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 function addUserServerStat(steamID64, id) {
     // TODO SAVE STATS
     return new Promise((resolve, reject) => {
