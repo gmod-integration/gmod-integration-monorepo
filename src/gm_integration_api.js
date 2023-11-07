@@ -20,27 +20,51 @@ const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
+
 //
 // Middleware
 //
+
+// ID
+let requestID = "0000"
+app.use((req, res, next) => {
+    // base hexadecimal to encode requestID (unique for each request) limit to 4 characters / reboot
+    if (requestID === "ffff") {
+        requestID = 0;
+    } else {
+        requestID++;
+    }
+    req.requestID = requestID.toString(16).padStart(4, '0');
+    next();
+});
 
 // Proxy
 app.set('trust proxy', true);
 
 // Body Parser
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // Loger
+let requestIDGlobal = 0;
 app.use((req, res, next) => {
+    const reqID = req.requestID;
     const method = req.method;
     const url = req.url;
     const ip = req.headers['cf-connecting-ip'] || req.ip;
     const body = JSON.stringify(req.body);
     const query = JSON.stringify(req.query);
     const id = req.headers['id'] || 'unknown';
-    logger.gmLog('api', `Request: ${method} ${url} from ${ip} with body ${body} and query ${query} and server id ${id}`);
+    logger.gmLog('api', 'Request #' + reqID + ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' ID: ' + id + ' Body: ' + body + ' Query: ' + query);
     next();
+});
+
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        logger.gmLog('api', 'Request #' + req.requestID + ' Bad Request: Invalid JSON');
+        return res.status(400).send('Bad Request: Invalid JSON');
+    }
+    next(err);
 });
 
 // Auth Validator
