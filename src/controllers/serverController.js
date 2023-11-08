@@ -18,7 +18,7 @@ function postServerStatus(req, res) {
 
     if (badArgument([players, maxplayers, map, hostname, gamemode, port, ip])) {
         return res.status(400).send('missing arguments players: ' + !!players + ', maxplayers: ' + !!maxplayers + ', map: ' + !!map + ', hostname: ' + !!hostname + ', gamemode: ' + !!gamemode + ', port: ' + !!port + ', ip: ' + !!ip);
-    };
+    }
 
     ip = ipGetIP(ip);
 

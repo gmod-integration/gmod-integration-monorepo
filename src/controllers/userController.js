@@ -15,7 +15,7 @@ function getUser(req, res) {
             return res.status(200).json({ error: 'User not Found' });
         } else {
             return res.status(200).json({
-                discord_ban: banReason ? true : false,
+                discord_ban: !!banReason,
                 discord_ban_reason: banReason ? banReason : null,
                 id: data.id,
                 steam: data.steam,
@@ -89,15 +89,30 @@ function postUserDisconnect(req, res) {
     const { id } = req.headers;
     let { steam, kills, deaths, money, rank, time } = req.body;
 
-    if (badArgument([steam, kills, deaths, money, rank])) {
-        return res.status(400).send('missing arguments steam: ' + !!steam + ', kills: ' + !!kills + ', deaths: ' + !!deaths + ', money: ' + !!money + ', rank: ' + !!rank);
+    if (badArgument([steam, kills, deaths, rank])) {
+        return res.status(400).send('missing arguments steam: ' + !!steam + ', kills: ' + !!kills + ', deaths: ' + !!deaths + ', rank: ' + !!rank);
     }
 
-    money = money && (parseInt(money) > 0) || 0;
-    time = time && (parseInt(time) > 0) || 0;
+    // limit money
+    money = money && money > 100000000000 ? 100000000000 : money;
+
+    const userData = {
+        rank: rank,
+        time: time,
+        kills: kills,
+        deaths: deaths,
+        customValues: {
+            money: money,
+        },
+    };
 
     userModel.addUserServerStat(steam, id, kills, deaths, money, rank, time).then(() => {
-        return res.status(200).send('User Updated');
+        userModel.postUserStatDisconnect(id, steam, userData).then(() => {
+            return res.status(200).send('data received');
+        }).catch((err) => {
+            console.log(err);
+            return res.status(500).send('Internal Server Error');
+        });
     }).catch((err) => {
         console.log(err);
         return res.status(500).send('Internal Server Error');

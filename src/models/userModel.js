@@ -1,6 +1,5 @@
 const { getConnection } = require('../database/connection');
 const { addTodoTask } = require('../utils/todoTask');
-const { ipGetIP } = require('../utils/tools');
 const axios = require('axios');
 const { bot_token } = require('../config/index');
 
@@ -69,38 +68,28 @@ function getUserServerData(serverID, steamID64, ip) {
     });
 }
 
-function updateUserServerStat(serverID, steamID64, userData) {
-    const name = userData.name;
-    const ip = ipGetIP(userData.ip);
+function postUserStatDisconnect(serverID, steamID64, userData) {
     const rank = userData.rank;
     const time = userData.time;
     const kills = userData.kills;
     const deaths = userData.deaths;
-    const customValues = userData.customValues;
+    const customValues = JSON.stringify(userData.customValues);
 
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
-            // update values (if counter add to previus), and update last_connect to current timestamp | only update time if last_connect - current_timestamp > time to minutes
             connection.query(`
             UPDATE gm_server_stat SET
-            name = ?,
-            last_ip = ?,
             rank = ?,
-            total_time = CASE 
-                WHEN TIMESTAMPDIFF(SECOND, last_connect, CURRENT_TIMESTAMP) > ? THEN total_time + ?
-                ELSE total_time 
-            END,
-            total_kills = total_kills + ?,
-            total_deaths = total_deaths + ?,
-            total_connect = total_connect + 1,
-            custom_values = ?,
-            last_connect = CURRENT_TIMESTAMP
+            total_time = total_time + ?,
+            total_kill = total_kill + ?,
+            total_death = total_death + ?,
+            custom_values = ?
             WHERE steam_id = ? AND server_id = ?
-        `, [name, ip, rank, time, time, kills, deaths, customValues, steamID64, serverID], (error) => {
+        `, [rank, time, time, kills, deaths, customValues, steamID64, serverID], (error, results) => {
                 if (error) {
                     reject(error);
                 } else {
-                    resolve();
+                    resolve(results);
                 }
             });
         }).catch((err) => {
@@ -177,20 +166,21 @@ function addUserSay(steamID64, message, name, id) {
             connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [id], async (error, results) => {
                 if (error) throw error;
                 if (results.length > 0) {
-                    steam.getUserSummary(steamID64).then(summary => {
-                        request(results[0].webhook, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                content: message,
-                                username: name || summary.nickname,
-                                avatar_url: summary.avatar.large,
-                            })
-                        });
-                    });
+                    // steam.getUserSummary(steamID64).then(summary => {
+                        // request(results[0].webhook, {
+                        //     method: 'POST',
+                        //     headers: {
+                        //         'Content-Type': 'application/json',
+                        //     },
+                        //     body: JSON.stringify({
+                        //         content: message,
+                        //         username: name || summary.nickname,
+                        //         avatar_url: summary.avatar.large,
+                        //     })
+                        // });
+                    // });
                 }
+
             });
         }).catch((err) => {
             reject(err);
@@ -204,5 +194,6 @@ module.exports = {
     getUserServerData,
     addUserServerConnect,
     addUserSay,
-    addUserServerStat
+    addUserServerStat,
+    postUserStatDisconnect,
 };

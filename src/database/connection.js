@@ -29,8 +29,6 @@ function getConnection() {
     });
 }
 
-getConnection();
-
 module.exports = {
     getConnection
 };

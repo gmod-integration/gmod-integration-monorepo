@@ -26,14 +26,10 @@ const app = express();
 //
 
 // ID
-let requestID = "0000"
+let requestID = 0; // "ffff
 app.use((req, res, next) => {
     // base hexadecimal to encode requestID (unique for each request) limit to 4 characters / reboot
-    if (requestID === "ffff") {
-        requestID = 0;
-    } else {
-        requestID++;
-    }
+    requestID = (requestID + 1) % 65536;
     req.requestID = requestID.toString(16).padStart(4, '0');
     next();
 });
@@ -45,8 +41,7 @@ app.set('trust proxy', true);
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Loger
-let requestIDGlobal = 0;
+// Logger
 app.use((req, res, next) => {
     const reqID = req.requestID;
     const method = req.method;
