@@ -142,18 +142,19 @@ function addUserServerConnect(guildID, serverID, steamID64, userName) {
                 if (error) throw error;
             });
 
-            connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
-                if (error) throw error;
-                if (results.length > 0) {
-                    addTodoTask('updateUserName', JSON.stringify({
-                        discord_id: results[0].id,
-                        guild_id: guildID,
-                        steam_id: steamID64,
-                        username: userName
-                    }));
-                }
-                resolve();
-            });
+            // connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
+            //     if (error) throw error;
+            //     if (results.length > 0) {
+            //         // addTodoTask('updateUserName', JSON.stringify({
+            //         //     discord_id: results[0].id,
+            //         //     guild_id: guildID,
+            //         //     steam_id: steamID64,
+            //         //     username: userName
+            //         // }));
+            //     }
+            //     resolve();
+            // });
+            resolve();
         }).catch((err) => {
             reject(err);
         });
@@ -167,17 +168,17 @@ function addUserSay(steamID64, message, name, id) {
                 if (error) throw error;
                 if (results.length > 0) {
                     // steam.getUserSummary(steamID64).then(summary => {
-                        // request(results[0].webhook, {
-                        //     method: 'POST',
-                        //     headers: {
-                        //         'Content-Type': 'application/json',
-                        //     },
-                        //     body: JSON.stringify({
-                        //         content: message,
-                        //         username: name || summary.nickname,
-                        //         avatar_url: summary.avatar.large,
-                        //     })
-                        // });
+                    // request(results[0].webhook, {
+                    //     method: 'POST',
+                    //     headers: {
+                    //         'Content-Type': 'application/json',
+                    //     },
+                    //     body: JSON.stringify({
+                    //         content: message,
+                    //         username: name || summary.nickname,
+                    //         avatar_url: summary.avatar.large,
+                    //     })
+                    // });
                     // });
                 }
 
