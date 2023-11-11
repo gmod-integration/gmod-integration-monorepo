@@ -116,14 +116,34 @@ function addUserServerConnect(guildID, serverID, steamID64, userName) {
             connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
                 if (error) throw error;
                 if (results.length > 0) {
-                    addTodoTask('updateUserName', JSON.stringify({
-                        discord_id: results[0].id,
-                        guild_id: guildID,
-                        steam_id: steamID64,
-                        username: userName
-                    }));
+                    const discordID = results[0].id;
+                    connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64], (error, results) => {
+                        if (error) throw error;
+                        if (results.length > 0) {
+                            addTodoTask('updateUserName', JSON.stringify({
+                                discord_id: discordID,
+                                guild_id: guildID,
+                                steam_id: steamID64,
+                                username: userName,
+                                server_id: serverID,
+                                user_role: results[0].rank,
+                            }));
+                            resolve();
+                        } else {
+                            addTodoTask('updateUserName', JSON.stringify({
+                                discord_id: discordID,
+                                guild_id: guildID,
+                                steam_id: steamID64,
+                                username: userName,
+                                server_id: serverID,
+                                user_role: 'user',
+                            }));
+                            resolve();
+                        }
+                    });
+                } else {
+                    reject('User not found');
                 }
-                resolve();
             });
         }).catch((err) => {
             reject(err);
