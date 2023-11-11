@@ -43,6 +43,11 @@ app.use((req, res, next) => {
     next();
 });
 
+// API Status route
+app.get('/', (req, res) => {
+    res.json({ status: 'ok' });
+});
+
 // Auth Validator
 app.use(userAgentMiddleware, authValidatorMiddleware);
 
