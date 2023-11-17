@@ -20,32 +20,49 @@ const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
+
 //
 // Middleware
 //
+
+// ID
+app.use((req, res, next) => {
+    // gen a 8 char token A-Z a-z 0-9
+    req.requestID = Math.random().toString(36).substr(2, 8);
+    next();
+});
 
 // Proxy
 app.set('trust proxy', true);
 
 // Body Parser
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-// Loger
+// Logger
 app.use((req, res, next) => {
+    const reqID = req.requestID;
     const method = req.method;
     const url = req.url;
     const ip = req.headers['cf-connecting-ip'] || req.ip;
     const body = JSON.stringify(req.body);
     const query = JSON.stringify(req.query);
     const id = req.headers['id'] || 'unknown';
-    logger.gmLog('api', `Request: ${method} ${url} from ${ip} with body ${body} and query ${query} and server id ${id}`);
+    logger.gmLog('api', 'RequestID #' + reqID + ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' ID: ' + id + ' Body: ' + body + ' Query: ' + query);
     next();
 });
 
 // API Status route
 app.get('/', (req, res) => {
     res.json({ status: 'ok' });
+});
+  
+app.use((err, req, res, next) => {
+    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+        logger.gmLog('api', 'Request #' + req.requestID + ' Bad Request: Invalid JSON');
+        return res.status(400).send('Bad Request: Invalid JSON');
+    }
+    next(err);
 });
 
 // Auth Validator

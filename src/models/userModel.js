@@ -1,6 +1,5 @@
 const { getConnection } = require('../database/connection');
 const { addTodoTask } = require('../utils/todoTask');
-const { ipGetIP } = require('../utils/tools');
 const axios = require('axios');
 const { bot_token } = require('../config/index');
 
@@ -69,6 +68,36 @@ function getUserServerData(serverID, steamID64, ip) {
     });
 }
 
+function postUserStatDisconnect(serverID, steamID64, userData) {
+    const rank = userData.rank;
+    const time = userData.time;
+    const kills = userData.kills;
+    const deaths = userData.deaths;
+    const customValues = JSON.stringify(userData.customValues);
+
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            connection.query(`
+            UPDATE gm_server_stat SET
+            rank = ?,
+            total_time = total_time + ?,
+            total_kill = total_kill + ?,
+            total_death = total_death + ?,
+            custom_values = ?
+            WHERE steam_id = ? AND server_id = ?
+        `, [rank, time, time, kills, deaths, customValues, steamID64, serverID], (error, results) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(results);
+                }
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 function addUserServerStat(steamID64, id) {
     // TODO SAVE STATS
     return new Promise((resolve, reject) => {
@@ -112,39 +141,19 @@ function addUserServerConnect(guildID, serverID, steamID64, userName) {
             connection.query('UPDATE gm_server_stat SET name = ? WHERE steam_id = ? AND server_id = ?', [userName, steamID64, serverID], (error) => {
                 if (error) throw error;
             });
-
-            connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
-                if (error) throw error;
-                if (results.length > 0) {
-                    const discordID = results[0].id;
-                    connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64], (error, results) => {
-                        if (error) throw error;
-                        if (results.length > 0) {
-                            addTodoTask('updateUserName', JSON.stringify({
-                                discord_id: discordID,
-                                guild_id: guildID,
-                                steam_id: steamID64,
-                                username: userName,
-                                server_id: serverID,
-                                user_role: results[0].rank,
-                            }));
-                            resolve();
-                        } else {
-                            addTodoTask('updateUserName', JSON.stringify({
-                                discord_id: discordID,
-                                guild_id: guildID,
-                                steam_id: steamID64,
-                                username: userName,
-                                server_id: serverID,
-                                user_role: 'user',
-                            }));
-                            resolve();
-                        }
-                    });
-                } else {
-                    reject('User not found');
-                }
-            });
+            // connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
+            //     if (error) throw error;
+            //     if (results.length > 0) {
+            //         // addTodoTask('updateUserName', JSON.stringify({
+            //         //     discord_id: results[0].id,
+            //         //     guild_id: guildID,
+            //         //     steam_id: steamID64,
+            //         //     username: userName
+            //         // }));
+            //     }
+            //     resolve();
+            // });
+            resolve();
         }).catch((err) => {
             reject(err);
         });
@@ -157,20 +166,22 @@ function addUserSay(steamID64, message, name, id) {
             connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [id], async (error, results) => {
                 if (error) throw error;
                 if (results.length > 0) {
-                    steam.getUserSummary(steamID64).then(summary => {
-                        request(results[0].webhook, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                content: message,
-                                username: name || summary.nickname,
-                                avatar_url: summary.avatar.large,
-                            })
-                        });
-                    });
+                    // steam.getUserSummary(steamID64).then(summary => {
+                    // request(results[0].webhook, {
+                    //     method: 'POST',
+                    //     headers: {
+                    //         'Content-Type': 'application/json',
+                    //     },
+                    //     body: JSON.stringify({
+                    //         content: message,
+                    //         username: name || summary.nickname,
+                    //         avatar_url: summary.avatar.large,
+                    //     })
+                    // });
+                    // });
+                    resolve();
                 }
+
             });
         }).catch((err) => {
             reject(err);
@@ -184,5 +195,6 @@ module.exports = {
     getUserServerData,
     addUserServerConnect,
     addUserSay,
-    addUserServerStat
+    addUserServerStat,
+    postUserStatDisconnect,
 };
