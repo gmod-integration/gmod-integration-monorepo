@@ -8,6 +8,6 @@ module.exports = (req, res, next) => {
     if (authUserAgent.includes(userAgent)) {
         next();
     } else {
-        res.status(401).send('Unauthorized');
+        res.status(401).json({error: 'unauthorized'});
     }
 };

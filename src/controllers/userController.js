@@ -1,18 +1,29 @@
 const userModel = require('../models/userModel');
-const { badArgument, ipGetIP } = require('../utils/tools');
+const {badArgument, ipGetIP} = require('../utils/tools');
 
 function getUser(req, res) {
-    const { id } = req.headers;
+    const {id} = req.headers;
     const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-    const { steamID64 } = req.query;
+    const {steamID64} = req.query;
 
     if (badArgument([steamID64])) {
-        return res.status(400).send('missing arguments steam: ' + !!steamID64);
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                steamID64: !!steamID64
+            }
+        });
     }
 
     userModel.getUserServerData(id, steamID64, ip).then((data, banReason) => {
         if (!data) {
-            return res.status(200).json({ error: 'User not Found' });
+            return res.status(200).json(
+                {
+                    error: 'user_not_found',
+                    discord_ban: !!banReason,
+                    discord_ban_reason: banReason ? banReason : null,
+                }
+            );
         } else {
             return res.status(200).json({
                 discord_ban: !!banReason,
@@ -27,47 +38,62 @@ function getUser(req, res) {
         }
     }).catch((err) => {
         console.log(err);
-        res.status(500).json({ error: 'Internal server error' });
+        return res.status(500).json({error: 'internal_server_error'})
     });
 }
 
 function getUserIsLinked(req, res) {
-    const { discordID, steamID64 } = req.query;
+    const {discordID, steamID64} = req.query;
 
     userModel.getUserData(discordID, steamID64).then((result) => {
         if (result.length === 0) {
-            res.status(200).json({ isLinked: false });
+            res.status(200).json({isLinked: false});
         } else {
-            res.status(200).json({ isLinked: true });
+            res.status(200).json({isLinked: true});
         }
     }).catch((err) => {
         console.log(err);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({error: 'internal_server_error'});
     });
 }
 
 function postUserSay(req, res) {
-    const { id } = req.headers;
-    let { steamID64, message, name } = req.body;
+    const {id} = req.headers;
+    let {steamID64, message, name} = req.body;
 
     if (badArgument([steamID64, message, name])) {
-        return res.status(400).send('missing arguments steam: ' + !!steamID64 + ', message: ' + !!message + ', name: ' + !!name);
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                steamID64: !!steamID64,
+                message: !!message,
+                name: !!name,
+            }
+        });
     }
 
     userModel.addUserSay(steamID64, message, name, id).then(() => {
-        return res.status(200).send('data received');
+        return res.status(200).json({message: 'data_received'});
     }).catch((err) => {
         console.log(err);
-        return res.status(500).send('Internal Server Error');
+        return res.status(500).json({error: 'internal_server_error'});
     });
 }
 
 function postUserConnect(req, res) {
-    const { id } = req.headers;
-    const { address, name, networkid, steam } = req.body;
+    const {id} = req.headers;
+    const {address, name, networkid, steam} = req.body;
 
     if (badArgument([address, name, networkid, steam])) {
-        return res.status(400).send('missing arguments steam: ' + !!steam + ', address: ' + !!address + ', name: ' + !!name + ', networkid: ' + !!networkid);
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                address: !!address,
+                name: !!name,
+                networkid: !!networkid,
+                steam: !!steam,
+            }
+        });
     }
 
     const ip = ipGetIP(address);
@@ -77,20 +103,28 @@ function postUserConnect(req, res) {
             return res.status(200).send('User Added');
         }).catch((err) => {
             console.log(err);
-            return res.status(500).send('Internal Server Error');
+            return res.status(500).json({error: 'internal_server_error'})
         });
     }).catch((err) => {
         console.log(err);
-        return res.status(500).send('Internal Server Error');
+        return res.status(500).json({error: 'internal_server_error'})
     });
 }
 
 function postUserDisconnect(req, res) {
-    const { id } = req.headers;
-    let { steam, kills, deaths, money, rank, time } = req.body;
+    const {id} = req.headers;
+    let {steam, kills, deaths, money, rank, time} = req.body;
 
     if (badArgument([steam, kills, deaths, rank])) {
-        return res.status(400).send('missing arguments steam: ' + !!steam + ', kills: ' + !!kills + ', deaths: ' + !!deaths + ', rank: ' + !!rank);
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                steam: !!steam,
+                kills: !!kills,
+                deaths: !!deaths,
+                rank: !!rank,
+            }
+        });
     }
 
     // limit money
@@ -108,30 +142,36 @@ function postUserDisconnect(req, res) {
 
     userModel.addUserServerStat(steam, id, kills, deaths, money, rank, time).then(() => {
         userModel.postUserStatDisconnect(id, steam, userData).then(() => {
-            return res.status(200).send('data received');
+            return res.status(200).send('OK');
         }).catch((err) => {
             console.log(err);
-            return res.status(500).send('Internal Server Error');
+            return res.status(500).json({error: 'internal_server_error'});
         });
     }).catch((err) => {
         console.log(err);
-        return res.status(500).send('Internal Server Error');
+        return res.status(500).json({error: 'internal_server_error'});
     });
 }
 
 function postUserFinishConnect(req, res) {
-    const { guild, id } = req.headers;
-    const { steam, name } = req.body;
+    const {guild, id} = req.headers;
+    const {steam, name} = req.body;
 
     if (badArgument([steam, name])) {
-        return res.status(400).send('missing arguments steam: ' + !!steam + ', name: ' + !!name);
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                steam: !!steam,
+                name: !!name,
+            }
+        });
     }
 
     userModel.addUserServerConnect(guild, id, steam, name).then(() => {
         return res.status(200).send('data received');
     }).catch((err) => {
         console.log(err);
-        return res.status(500).send('Internal Server Error');
+        return res.status(500).json({error: 'internal_server_error'})
     });
 }
 
@@ -141,37 +181,37 @@ function postUserChangeName(req, res) {
 
 function postUserKick(req, res) {
     // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
+    return res.status(200).json({message: 'Not Implemented'});
 }
 
 function postUserWarn(req, res) {
     // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
+    return res.status(200).json({message: 'Not Implemented'});
 }
 
 function postUserUnwarn(req, res) {
     // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
+    return res.status(200).json({message: 'Not Implemented'});
 }
 
 function postUserMute(req, res) {
     // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
+    return res.status(200).json({message: 'Not Implemented'});
 }
 
 function postUserUnmute(req, res) {
     // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
+    return res.status(200).json({message: 'Not Implemented'});
 }
 
 function postUserBan(req, res) {
     // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
+    return res.status(200).json({message: 'Not Implemented'});
 }
 
 function postUserUnban(req, res) {
     // TODO
-    return res.status(200).json({ message: 'Not Implemented' });
+    return res.status(200).json({message: 'Not Implemented'});
 }
 
 module.exports = {
