@@ -52,6 +52,11 @@ app.use((req, res, next) => {
     next();
 });
 
+// API Status route
+app.get('/', (req, res) => {
+    res.json({ status: 'ok' });
+});
+  
 app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
         logger.gmLog('api', 'Request #' + req.requestID + ' Bad Request: Invalid JSON');

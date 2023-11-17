@@ -141,7 +141,6 @@ function addUserServerConnect(guildID, serverID, steamID64, userName) {
             connection.query('UPDATE gm_server_stat SET name = ? WHERE steam_id = ? AND server_id = ?', [userName, steamID64, serverID], (error) => {
                 if (error) throw error;
             });
-
             // connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
             //     if (error) throw error;
             //     if (results.length > 0) {
