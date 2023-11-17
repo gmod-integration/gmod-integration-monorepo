@@ -180,6 +180,7 @@ function addUserSay(steamID64, message, name, id) {
                     //     })
                     // });
                     // });
+                    resolve();
                 }
 
             });
