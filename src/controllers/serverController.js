@@ -41,7 +41,14 @@ function postServerStatus(req, res) {
     });
 }
 
+function postServerLog(type, req, res) {
+    console.log('postServerLog', type);
+    // reply in development
+    res.status(299).send('DEV');
+}
+
 module.exports = {
     getServer,
     postServerStatus,
+    postServerLog
 };

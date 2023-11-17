@@ -6,6 +6,9 @@ router.get('/', serverController.getServer);
 router.get('/guild', serverController.getServer);
 router.post('/status', serverController.postServerStatus);
 
+// for all /log/:type routes use serverController.postServerLog(type, req, res)
+router.post('/log/:type', serverController.postServerLog);
+
 // Retro Compatibility
 const userController = require('../controllers/userController');
 router.get('/user', userController.getUser);
