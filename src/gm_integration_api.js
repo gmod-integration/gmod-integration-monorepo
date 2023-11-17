@@ -26,11 +26,9 @@ const app = express();
 //
 
 // ID
-let requestID = 0; // "ffff
 app.use((req, res, next) => {
-    // base hexadecimal to encode requestID (unique for each request) limit to 4 characters / reboot
-    requestID = (requestID + 1) % 65536;
-    req.requestID = requestID.toString(16).padStart(4, '0');
+    // gen a 8 char token A-Z a-z 0-9
+    req.requestID = Math.random().toString(36).substr(2, 8);
     next();
 });
 
@@ -50,7 +48,7 @@ app.use((req, res, next) => {
     const body = JSON.stringify(req.body);
     const query = JSON.stringify(req.query);
     const id = req.headers['id'] || 'unknown';
-    logger.gmLog('api', 'Request #' + reqID + ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' ID: ' + id + ' Body: ' + body + ' Query: ' + query);
+    logger.gmLog('api', 'RequestID #' + reqID + ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' ID: ' + id + ' Body: ' + body + ' Query: ' + query);
     next();
 });
 
