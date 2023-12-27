@@ -33,7 +33,24 @@ function getServer(serverID) {
     });
 }
 
+function addServerLog(id, log) {
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            connection.query('INSERT INTO gm_server_logs (serverID, type, data) VALUES (?, ?, ?)', [id, log.type, JSON.stringify(log.data)], (error) => {
+                if (error) {
+                    console.error(error);
+                    reject(error);
+                }
+                resolve();
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 module.exports = {
     updateServerStatus,
     getServer,
+    addServerLog
 };
