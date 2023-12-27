@@ -48,7 +48,8 @@ app.use((req, res, next) => {
     const body = JSON.stringify(req.body);
     const query = JSON.stringify(req.query);
     const id = req.headers['id'] || 'unknown';
-    logger.gmLog('api', 'RequestID #' + reqID + ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' ID: ' + id + ' Body: ' + body + ' Query: ' + query);
+    const version = req.headers['version'] || 'unknown';
+    logger.gmLog('api', 'RequestID #' + reqID + ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' Version: ' + version + ' Server ID: ' + id + ' Body: ' + body + ' Query: ' + query);
     next();
 });
 
@@ -56,7 +57,7 @@ app.use((req, res, next) => {
 app.get('/', (req, res) => {
     res.json({ status: 'ok' });
 });
-  
+
 app.use((err, req, res, next) => {
     if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
         logger.gmLog('api', 'Request #' + req.requestID + ' Bad Request: Invalid JSON');
