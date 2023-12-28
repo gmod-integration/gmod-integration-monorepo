@@ -51,6 +51,7 @@ const logTypes = [
     { type: "playerDisconnect", args: ["ply"] },
     { type: "playerConnect", args: ["data"] },
     { type: "playerGive", args: ["ply", "class", "swep"] },
+    { type: "damageTaken", args: ["ply", "attacker", "healthRemaining", "damageTaken"] },
 ];
 
 function postServerLog(req, res) {
