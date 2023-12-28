@@ -68,16 +68,67 @@ function getUserServerData(serverID, steamID64, ip) {
     });
 }
 
-function postUserStatDisconnect(serverID, steamID64, userData) {
-    const rank = userData.rank;
-    const time = userData.time;
-    const kills = userData.kills;
-    const deaths = userData.deaths;
-    const customValues = JSON.stringify(userData.customValues);
+// function postUserStatDisconnect(serverID, steamID64, userData) {
+//     console.log(serverID);
+//     console.log(steamID64);
+//     console.log(userData);
+//     /*
+//         Q9SuZQRFmR
+//         76561198219049673
+//         {
+//         rank: 'superadmin',
+//         time: 709,
+//         kills: 1,
+//         deaths: 0,
+//         customValues: '{"money":127720}'
+//         }
+//     */
 
-    return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query(`
+//     const rank = userData.rank;
+//     const time = userData.time;
+//     const kills = userData.kills;
+//     const deaths = userData.deaths;
+//     const customValues = JSON.stringify(userData.customValues);
+
+//     return new Promise((resolve, reject) => {
+//         getConnection().then((connection) => {
+//             connection.query(`
+//             UPDATE gm_server_stat SET
+//             rank = ?,
+//             total_time = total_time + ?,
+//             total_kill = total_kill + ?,
+//             total_death = total_death + ?,
+//             custom_values = ?
+//             WHERE steam_id = ? AND server_id = ?
+//         `, [rank, time, time, kills, deaths, customValues, steamID64, serverID], (error, results) => {
+//                 if (error) {
+//                     reject(error);
+//                 } else {
+//                     resolve(results);
+//                     console.log(results);
+//                 }
+//             });
+//         }).catch((err) => {
+//             reject(err);
+//         });
+//     });
+// }
+
+async function postUserStatDisconnect(serverID, steamID64, userData) {
+    console.log(serverID, steamID64, userData);
+
+    // Déconstruction des données utilisateur
+    const { rank, time, kills, deaths, customValues } = userData;
+
+    // Convertir customValues en chaîne JSON si nécessaire
+    const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
+
+    try {
+        // Obtenir une connexion à la base de données
+        const connection = await getConnection();
+
+        // Préparation de la requête SQL
+        const query = `
             UPDATE gm_server_stat SET
             rank = ?,
             total_time = total_time + ?,
@@ -85,47 +136,36 @@ function postUserStatDisconnect(serverID, steamID64, userData) {
             total_death = total_death + ?,
             custom_values = ?
             WHERE steam_id = ? AND server_id = ?
-        `, [rank, time, time, kills, deaths, customValues, steamID64, serverID], (error, results) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve(results);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
-        });
-    });
+        `;
+
+        // Exécution de la requête
+        const [results] = await connection.query(query, [rank, time, kills, deaths, customValuesString, steamID64, serverID]);
+
+        console.log('Update Results:', results);
+
+        // Fermer la connexion (si nécessaire, selon la méthode de gestion de la connexion)
+        // connection.end();
+
+        return results;
+    } catch (error) {
+        console.error('Error in postUserStatDisconnect:', error);
+        throw error; // Ou gérer l'erreur comme vous le souhaitez
+    }
 }
 
-function addUserServerStat(steamID64, id) {
-    // TODO SAVE STATS
+function addUserSteam(steamID64, name, ip, serverID) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
-            connection.query('INSERT INTO gm_server_stat (steam_id, server_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE last_connect = ?, total_connect = total_connect + 1', [steamID64, id, new Date()], (error) => {
+            connection.query('INSERT INTO gm_server_stat (steam_id, server_id, name) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = ?, total_connect = total_connect + 1', [steamID64, serverID, name, name], (error) => {
                 if (error) {
                     reject(error);
                 } else {
-                    resolve();
-                }
-            });
-        }).catch((err) => {
-            reject(err);
-        });
-    });
-}
-
-function addUserSteam(steamID64, name, ip, id) {
-    return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steamID64, name, ip, name, ip], (error) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    addUserServerStat(steamID64, id).then(() => {
-                        resolve();
-                    }).catch((err) => {
-                        reject(err);
+                    connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steamID64, name, ip, name, ip], (error) => {
+                        if (error) {
+                            reject(error);
+                        } else {
+                            resolve();
+                        }
                     });
                 }
             });
@@ -195,6 +235,5 @@ module.exports = {
     getUserServerData,
     addUserServerConnect,
     addUserSay,
-    addUserServerStat,
     postUserStatDisconnect,
 };

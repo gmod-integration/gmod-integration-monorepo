@@ -99,12 +99,7 @@ function postUserConnect(req, res) {
     const ip = ipGetIP(address);
 
     userModel.addUserSteam(steam, name, ip, id).then(() => {
-        userModel.addUserServerStat(steam, id).then(() => {
-            return res.status(200).send('User Added');
-        }).catch((err) => {
-            console.log(err);
-            return res.status(500).json({ error: 'internal_server_error' })
-        });
+        return res.status(200).send('User Added');
     }).catch((err) => {
         console.log(err);
         return res.status(500).json({ error: 'internal_server_error' })
@@ -113,7 +108,7 @@ function postUserConnect(req, res) {
 
 function postUserDisconnect(req, res) {
     const { id } = req.headers;
-    let { steam, kills, deaths, money, rank, time } = req.body;
+    let { steam, kills, deaths, rank, customValues, time } = req.body;
 
     if (badArgument([steam, kills, deaths, rank])) {
         return res.status(400).json({
@@ -127,26 +122,16 @@ function postUserDisconnect(req, res) {
         });
     }
 
-    // limit money
-    money = money && money > 100000000000 ? 100000000000 : money;
-
     const userData = {
         rank: rank,
         time: time,
         kills: kills,
         deaths: deaths,
-        customValues: {
-            money: money,
-        },
+        customValues: customValues,
     };
 
-    userModel.addUserServerStat(steam, id, kills, deaths, money, rank, time).then(() => {
-        userModel.postUserStatDisconnect(id, steam, userData).then(() => {
-            return res.status(200).send('OK');
-        }).catch((err) => {
-            console.log(err);
-            return res.status(500).json({ error: 'internal_server_error' });
-        });
+    userModel.postUserStatDisconnect(id, steam, userData).then(() => {
+        return res.status(200).send('OK');
     }).catch((err) => {
         console.log(err);
         return res.status(500).json({ error: 'internal_server_error' });
