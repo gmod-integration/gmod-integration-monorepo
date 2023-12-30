@@ -114,21 +114,15 @@ function getUserServerData(serverID, steamID64, ip) {
 //     });
 // }
 
-async function postUserStatDisconnect(serverID, steamID64, userData) {
-    console.log(serverID, steamID64, userData);
-
+function postUserStatDisconnect(serverID, steamID64, userData) {
     // Déconstruction des données utilisateur
     const { rank, time, kills, deaths, customValues } = userData;
 
     // Convertir customValues en chaîne JSON si nécessaire
     const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
 
-    try {
-        // Obtenir une connexion à la base de données
-        const connection = await getConnection();
-
-        // Préparation de la requête SQL
-        const query = `
+    getConnection().then((connection) => {
+        connection.query(`
             UPDATE gm_server_stat SET
             rank = ?,
             total_time = total_time + ?,
@@ -136,21 +130,32 @@ async function postUserStatDisconnect(serverID, steamID64, userData) {
             total_death = total_death + ?,
             custom_values = ?
             WHERE steam_id = ? AND server_id = ?
-        `;
+        `, [rank, time, time, kills, deaths, customValuesString, steamID64, serverID], (error, results) => {
+            if (error) {
+                throw error;
+            } else {
+                console.log(results);
+            }
+        });
+    }).catch((err) => {
+        throw err;
+    });
+}
 
-        // Exécution de la requête
-        const [results] = await connection.query(query, [rank, time, kills, deaths, customValuesString, steamID64, serverID]);
-
-        console.log('Update Results:', results);
-
-        // Fermer la connexion (si nécessaire, selon la méthode de gestion de la connexion)
-        // connection.end();
-
-        return results;
-    } catch (error) {
-        console.error('Error in postUserStatDisconnect:', error);
-        throw error; // Ou gérer l'erreur comme vous le souhaitez
-    }
+function postSaveUserSession(serverID, steamID64, userData) {
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            connection.query('INSERT INTO gm_server_stat_session(serverID, steamID64, time, deaths, kills, customValues) VALUES (?, ?, ?, ?, ?, ?)', [serverID, steamID64, userData.time, userData.deaths, userData.kills, JSON.stringify(userData.customValues)], (error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
 }
 
 function addUserSteam(steamID64, name, ip, serverID) {
@@ -236,4 +241,5 @@ module.exports = {
     addUserServerConnect,
     addUserSay,
     postUserStatDisconnect,
+    postSaveUserSession,
 };

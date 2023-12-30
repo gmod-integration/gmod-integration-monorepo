@@ -130,8 +130,11 @@ function postUserDisconnect(req, res) {
         customValues: customValues,
     };
 
-    userModel.postUserStatDisconnect(id, steam, userData).then(() => {
-        return res.status(200).send('OK');
+    Promise.all([
+        userModel.postUserStatDisconnect(id, steam, userData),
+        userModel.postSaveUserSession(id, steam, userData)
+    ]).then(() => {
+        return res.status(200).json({ message: 'data_received' });
     }).catch((err) => {
         console.log(err);
         return res.status(500).json({ error: 'internal_server_error' });
