@@ -135,9 +135,7 @@ function postUserStatDisconnect(serverID, steamID64, userData) {
             last_connect = DEFAULT
         `, [steamID64, serverID, rank, time, kills, deaths, customValuesString], (error, results) => {
             if (error) {
-                throw error;
-            } else {
-                console.log(results);
+                // skip error
             }
         });
     }).catch((err) => {
