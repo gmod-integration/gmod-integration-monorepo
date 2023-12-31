@@ -122,15 +122,18 @@ function postUserStatDisconnect(serverID, steamID64, userData) {
     const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
 
     getConnection().then((connection) => {
+        // set last connect to default
         connection.query(`
-            UPDATE gm_server_stat SET
-            rank = ?,
-            total_time = total_time + ?,
-            total_kill = total_kill + ?,
-            total_death = total_death + ?,
-            custom_values = ?
-            WHERE steam_id = ? AND server_id = ?
-        `, [rank, time, time, kills, deaths, customValuesString, steamID64, serverID], (error, results) => {
+            INSERT INTO gm_server_stat (steam_id, server_id, rank, total_time, total_kill, total_death, custom_values, last_connect)
+            VALUES (?, ?, ?, ?, ?, ?, ?, DEFAULT)
+            ON DUPLICATE KEY UPDATE
+            rank = VALUES(rank),
+            total_time = total_time + VALUES(total_time),
+            total_kill = total_kill + VALUES(total_kill),
+            total_death = total_death + VALUES(total_death),
+            custom_values = VALUES(custom_values),
+            last_connect = DEFAULT
+        `, [steamID64, serverID, rank, time, kills, deaths, customValuesString], (error, results) => {
             if (error) {
                 throw error;
             } else {
