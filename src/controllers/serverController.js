@@ -58,8 +58,6 @@ function postServerLog(req, res) {
     const { id } = req.headers;
     const type = req.params.type;
 
-    console.log(req.body);
-
     if (!logTypes.find((logType) => logType.type === type)) {
         return res.status(400).json({ error: 'invalid_log_type' });
     }
