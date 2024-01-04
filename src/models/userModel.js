@@ -170,7 +170,7 @@ function saveGlobalUser(steamID64, steamID, name, ip) {
 
                 if (results.length > 0) {
                     const ips = JSON.parse(results[0].IPS || '[]');
-                    ips.push(data.address);
+                    ips.push(ip);
 
                     connection.query('UPDATE users SET name = ?, lastUpdate = ?, lastIP = ?, IPS = ? WHERE steamID64 = ?', [name, new Date(), ip, JSON.stringify(ips), steamID64], (err) => {
                         if (err) {
