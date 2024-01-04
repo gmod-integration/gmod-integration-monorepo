@@ -159,16 +159,30 @@ function postSaveUserSession(serverID, steamID64, userData) {
     });
 }
 
-function addUserSteam(steamID64, name, ip, serverID) {
+function saveGlobalUser(steamID64, steamID, name, ip) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
-            connection.query('INSERT INTO gm_server_stat (steam_id, server_id, name) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = ?, total_connect = total_connect + 1', [steamID64, serverID, name, name], (error) => {
-                if (error) {
-                    reject(error);
+            connection.query('SELECT lastUpdate FROM users WHERE steamID64 = ?', [steamID64], (err, results) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                if (results.length > 0) {
+                    const ips = JSON.parse(results[0].IPS || '[]');
+                    ips.push(data.address);
+
+                    connection.query('UPDATE users SET name = ?, lastUpdate = ?, lastIP = ?, IPS = ? WHERE steamID64 = ?', [name, new Date(), ip, JSON.stringify(ips), steamID64], (err) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve();
+                        }
+                    });
                 } else {
-                    connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steamID64, name, ip, name, ip], (error) => {
-                        if (error) {
-                            reject(error);
+                    connection.query('INSERT IGNORE INTO users (steamID64, steamID, name, lastUpdate, lastIP, IPS) VALUES (?, ?, ?, ?, ?, ?)', [steamID64, steamID, name, new Date(), ip, JSON.stringify([ip])], (err) => {
+                        if (err) {
+                            reject(err);
                         } else {
                             resolve();
                         }
@@ -181,24 +195,61 @@ function addUserSteam(steamID64, name, ip, serverID) {
     });
 }
 
+function saveUser(steamID64, name, ip) {
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, last_ip = ?, total_connect = total_connect + 1', [steamID64, name, ip, name, ip], (error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
+function saveUserServer(serverID, steamID64, name) {
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            connection.query('INSERT INTO gm_server_stat (steam_id, server_id, name) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = ?, total_connect = total_connect + 1', [steamID64, serverID, name, name], (error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            });
+        }
+        ).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
+function addUserSteam(steamID64, name, ip, serverID) {
+    // promise all
+    return new Promise((resolve, reject) => {
+        Promise.all([
+            saveGlobalUser(steamID64, name, ip),
+            saveUser(steamID64, name, ip),
+            saveUserServer(serverID, steamID64, name)
+        ]).then(() => {
+            resolve();
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 function addUserServerConnect(guildID, serverID, steamID64, userName) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
             connection.query('UPDATE gm_server_stat SET name = ? WHERE steam_id = ? AND server_id = ?', [userName, steamID64, serverID], (error) => {
                 if (error) throw error;
             });
-            // connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
-            //     if (error) throw error;
-            //     if (results.length > 0) {
-            //         // addTodoTask('updateUserName', JSON.stringify({
-            //         //     discord_id: results[0].id,
-            //         //     guild_id: guildID,
-            //         //     steam_id: steamID64,
-            //         //     username: userName
-            //         // }));
-            //     }
-            //     resolve();
-            // });
+            // TODO if user is in table gm_user update ingame name
             resolve();
         }).catch((err) => {
             reject(err);
