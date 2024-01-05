@@ -206,7 +206,7 @@ connection.connect((err) => {
 
     // Créer une interface de lecture de ligne par ligne pour le fichier de log
     const rl = readline.createInterface({
-        input: fs.createReadStream('./logs/2023-12-27.log'),
+        input: fs.createReadStream('./logs/2024-01-04.log'),
         output: process.stdout,
         terminal: false
     })
