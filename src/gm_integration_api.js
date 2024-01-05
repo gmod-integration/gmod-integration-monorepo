@@ -25,33 +25,12 @@ const app = express();
 // Middleware
 //
 
-// ID
-app.use((req, res, next) => {
-    // gen a 8 char token A-Z a-z 0-9
-    req.requestID = Math.random().toString(36).substr(2, 8);
-    next();
-});
-
 // Proxy
 app.set('trust proxy', true);
 
 // Body Parser
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-
-// Logger
-app.use((req, res, next) => {
-    const reqID = req.requestID;
-    const method = req.method;
-    const url = req.url;
-    const ip = req.headers['cf-connecting-ip'] || req.ip;
-    const body = JSON.stringify(req.body);
-    const query = JSON.stringify(req.query);
-    const id = req.headers['id'] || 'unknown';
-    const version = req.headers['version'] || 'unknown';
-    logger.gmLog('api', 'RequestID #' + reqID + ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' Version: ' + version + ' Server ID: ' + id + ' Body: ' + body + ' Query: ' + query);
-    next();
-});
 
 // API Status route
 app.get('/', (req, res) => {
@@ -68,6 +47,19 @@ app.use((err, req, res, next) => {
 
 // Auth Validator
 app.use(userAgentMiddleware, authValidatorMiddleware);
+
+// Logger
+app.use((req, res, next) => {
+    const method = req.method;
+    const url = req.url;
+    const ip = req.headers['cf-connecting-ip'] || req.ip;
+    const body = JSON.stringify(req.body);
+    const query = JSON.stringify(req.query);
+    const id = req.headers['id'] || 'unknown';
+    const version = req.headers['version'] || 'unknown';
+    logger.gmLog('api', ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' Version: ' + version + ' Server ID: ' + id + ' Body: ' + body + ' Query: ' + query);
+    next();
+});
 
 //
 // Routes
