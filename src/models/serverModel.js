@@ -16,6 +16,22 @@ function updateServerStatus(id, players, maxplayers, map, hostname, gamemode, po
     });
 }
 
+function getServerSetting(serverID, setting) {
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            connection.query('SELECT * FROM gm_server_settings WHERE serverID = ?', [serverID], (error, results) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve(results[0][setting] || null);
+                }
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 function getServer(serverID) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
@@ -52,5 +68,6 @@ function addServerLog(id, log) {
 module.exports = {
     updateServerStatus,
     getServer,
-    addServerLog
+    addServerLog,
+    getServerSetting,
 };

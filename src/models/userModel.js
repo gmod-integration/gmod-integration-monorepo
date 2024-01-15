@@ -1,7 +1,10 @@
 const { getConnection } = require('../database/connection');
 const { addTodoTask } = require('../utils/todoTask');
 const axios = require('axios');
-const { bot_token } = require('../config/index');
+const { bot_token, steamAPI } = require('../config/index');
+const serverModels = require("./serverModel");
+const steamApi = require('steamapi');
+const steam = new steamApi(steamAPI);
 
 function getUserData(discordID, steamID64) {
     return new Promise((resolve, reject) => {
@@ -258,27 +261,37 @@ function addUserServerConnect(guildID, serverID, steamID64, userName) {
 }
 
 function addUserSay(steamID64, message, name, id) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
+        const syncChat = await serverModels.getServerSetting(id, 'syncChat');
+        const syncChatDirection = await serverModels.getServerSetting(id, 'syncChatDirection');
+        const syncChatTriggerAll = await serverModels.getServerSetting(id, 'syncChatTriggerAll');
+
+        if (!syncChat || syncChatDirection === 'discordToGmod') {
+            resolve();
+        }
+
+        if (!syncChatTriggerAll) {
+            // TODO check if message start with trigger
+            resolve();
+        }
+
         getConnection().then((connection) => {
             connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [id], async (error, results) => {
                 if (error) throw error;
                 if (results.length > 0) {
-                    // steam.getUserSummary(steamID64).then(summary => {
-                    // request(results[0].webhook, {
-                    //     method: 'POST',
-                    //     headers: {
-                    //         'Content-Type': 'application/json',
-                    //     },
-                    //     body: JSON.stringify({
-                    //         content: message,
-                    //         username: name || summary.nickname,
-                    //         avatar_url: summary.avatar.large,
-                    //     })
-                    // });
-                    // });
-                    resolve();
-                }
+                    const summary = await steam.getUserSummary(steamID64);
+                    const avatarUrl = summary.avatar.large;
 
+                    axios.post( `https://discord.com/api/webhooks/${results[0].id}/${results[0].token}`, {
+                        content: message,
+                        username: name || summary.nickname,
+                        avatar_url: avatarUrl,
+                    }).then(() => {
+                        resolve();
+                    }).catch((err) => {
+                        reject(err);
+                    });
+                }
             });
         }).catch((err) => {
             reject(err);
