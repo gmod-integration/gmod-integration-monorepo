@@ -289,6 +289,7 @@ function addUserSay(steamID64, message, name, id) {
                     }).then(() => {
                         resolve();
                     }).catch((err) => {
+                        console.error(err);
                         reject(err);
                     });
                 }
