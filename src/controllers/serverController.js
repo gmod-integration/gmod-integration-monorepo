@@ -14,9 +14,9 @@ function getServer(req, res) {
 
 function postServerStatus(req, res) {
     const { id } = req.headers;
-    let { players, maxplayers, map, hostname, gamemode, port, ip } = req.body;
+    let { players, maxplayers, map, hostname, gamemode, port, ip, start } = req.body;
 
-    if (badArgument([players, maxplayers, map, hostname, gamemode, port, ip])) {
+    if (badArgument([players, maxplayers, map, hostname, gamemode, port, ip, start])) {
         return res.status(400).json({
             error: 'missing_arguments',
             args: {
@@ -34,7 +34,16 @@ function postServerStatus(req, res) {
     ip = ipGetIP(ip);
 
     serverModel.updateServerStatus(id, players, maxplayers, map, hostname, gamemode, port, ip).then(() => {
-        res.status(200).send('OK');
+        if (!start) {
+            return res.status(200).send('OK');
+        } else {
+            serverModel.refreshPublicTempToken(id).then((token) => {
+                res.status(200).json({ publicTempToken: token });
+            }).catch((err) => {
+                console.log(err);
+                res.status(500).json({ error: 'internal_server_error' });
+            });
+        }
     }).catch((err) => {
         console.log(err);
         res.status(500).json({ error: 'internal_server_error' });
