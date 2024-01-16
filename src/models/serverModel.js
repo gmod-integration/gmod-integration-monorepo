@@ -20,12 +20,13 @@ function updateServerStatus(id, players, maxplayers, map, hostname, gamemode, po
 function refreshPublicTempToken(id) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
-            connection.query('UPDATE gm_server SET publicTempToken = ? WHERE id = ?', [generateToken(32), id], (error) => {
+            const publicTempToken = generateToken(16);
+            connection.query('UPDATE gm_server SET publicTempToken = ? WHERE id = ?', [publicTempToken, id], (error) => {
                 if (error) {
                     console.error(error);
                     reject(error);
                 }
-                resolve();
+                resolve(publicTempToken);
             });
         }).catch((err) => {
             reject(err);
