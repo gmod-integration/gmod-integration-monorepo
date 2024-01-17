@@ -50,6 +50,9 @@ app.use((err, req, res, next) => {
     next(err);
 });
 
+// public screenshots
+app.use('/screenshots', express.static('screenshots'));
+
 // Auth Validator
 app.use(userAgentMiddleware);
 

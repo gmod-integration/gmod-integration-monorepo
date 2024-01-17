@@ -31,11 +31,20 @@ function checkMissingArgs(requiredArgs, location) {
 }
 
 function badArgument(list) {
+    let valid = true;
+    const failedArg = [];
+
     for (let i = 0; i < list.length; i++) {
         if (list[i] === undefined) {
-            return true;
+            valid = false;
+            failedArg.push(i);
         }
     }
+
+    if (!valid) {
+        return failedArg.join(', ');
+    }
+
     return false;
 }
 
