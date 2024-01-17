@@ -31,11 +31,20 @@ function checkMissingArgs(requiredArgs, location) {
 }
 
 function badArgument(list) {
+    let valid = true;
+    const failedArg = [];
+
     for (let i = 0; i < list.length; i++) {
         if (list[i] === undefined) {
-            return true;
+            valid = false;
+            failedArg.push(i);
         }
     }
+
+    if (!valid) {
+        return failedArg.join(', ');
+    }
+
     return false;
 }
 
@@ -46,8 +55,18 @@ function ipGetIP(ip) {
     return ip.split(':')[0];
 }
 
+function generateToken(length) {
+    let token = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < length; i++) {
+        token += characters.charAt(Math.floor(Math.random() * characters.length));
+    }
+    return token;
+}
+
 module.exports = {
     checkMissingArgs,
     badArgument,
-    ipGetIP
+    ipGetIP,
+    generateToken
 };
