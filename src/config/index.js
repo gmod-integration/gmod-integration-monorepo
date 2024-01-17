@@ -1,7 +1,9 @@
-const dbConfig = require('../../../config.json').dbConfig;
-const port_api = require('../../../config.json').port_api;
-const bot_token = require('../../../config.json').bot_token;
-const steamAPI = require('../../../config.json').steamAPI;
+require('dotenv').config();
+
+const dbConfig = process.env.dbConfig;
+const port_api = process.env.PORT_API;
+const bot_token = process.env.DISCORD_BOT_TOKEN;
+const steamAPI = process.env.STEAM_API_KEY;
 
 module.exports = {
     dbConfig,
