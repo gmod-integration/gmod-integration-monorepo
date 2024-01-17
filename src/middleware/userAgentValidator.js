@@ -1,13 +1,12 @@
-const authUserAgent = [
-    'Valve/Steam HTTP Client 1.0 (4000)'
-]
+const {gmLog} = require("../utils/logger");
 
 module.exports = (req, res, next) => {
     const userAgent = req.headers['user-agent'];
 
-    if (authUserAgent.includes(userAgent)) {
+    if (userAgent.includes('Valve/Steam HTTP Client 1.0')) {
         next();
     } else {
+        gmLog('userAgentValidator', 'unauthorized');
         res.status(401).json({error: 'unauthorized'});
     }
 };

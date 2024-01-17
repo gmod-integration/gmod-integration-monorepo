@@ -10,9 +10,11 @@ const logger = require('./utils/logger');
 
 const userAgentMiddleware = require('./middleware/userAgentValidator');
 const authValidatorMiddleware = require('./middleware/authValidator');
+const playerValidatorMiddleware = require('./middleware/playerValidator');
 
 const serverRoutes = require('./routes/serverRoutes');
 const userRoutes = require('./routes/userRoutes');
+const playerRoutes = require('./routes/playerRoutes');
 
 //
 // Express
@@ -20,6 +22,9 @@ const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
+// express max body content = 10mb
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 //
 // Middleware
@@ -46,14 +51,17 @@ app.use((err, req, res, next) => {
 });
 
 // Auth Validator
-app.use(userAgentMiddleware, authValidatorMiddleware);
+app.use(userAgentMiddleware);
 
 // Logger
 app.use((req, res, next) => {
     const method = req.method;
     const url = req.url;
     const ip = req.headers['cf-connecting-ip'] || req.ip;
-    const body = JSON.stringify(req.body);
+    let body = JSON.stringify(req.body);
+    if (url.includes('/screenshots/')) {
+        body = 'screenshot';
+    }
     const query = JSON.stringify(req.query);
     const id = req.headers['id'] || 'unknown';
     const version = req.headers['version'] || 'unknown';
@@ -65,8 +73,13 @@ app.use((req, res, next) => {
 // Routes
 //
 
+app.use('/server', authValidatorMiddleware);
+app.use('/user', authValidatorMiddleware);
 app.use('/server', serverRoutes);
 app.use('/user', userRoutes);
+
+app.use('/player', playerValidatorMiddleware);
+app.use('/player', playerRoutes);
 
 //
 // Redirects
