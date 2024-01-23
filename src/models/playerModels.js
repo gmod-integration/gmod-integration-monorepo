@@ -64,7 +64,7 @@ function postScreenshot(webhookID, webhookToken, playerName, playerSteamID64, av
         const embed = {
             "embeds": [
                 {
-                    "title": "Check out this screenshot!",
+                    // "title": "Check out this screenshot!",
                     // "description": "A new screenshot has been uploaded",
                     "image": {
                         "url": screenshotUrl,
