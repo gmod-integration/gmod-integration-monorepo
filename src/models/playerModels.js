@@ -18,9 +18,10 @@ function getSteamProfile(steamID64) {
 
 function saveScreenshot(id, screenshot, steamID64, options) {
     return new Promise(async (resolve, reject) => {
-        // Define the format and the filename
+        // Define the format and the filename (YYYY-MM-DD_HH-mm-ss_<steamID64>_<token(8)>.<format>)
         const format = options.format || 'png';
-        const filename = `${new Date().toISOString().replace(/:/g, '-').replace(/\./g, '-').replace(/T/g, '_')}_${steamID64}_${generateToken(8)}.${format}`;
+        const dateFormatted = new Date().toISOString().replace(/T/g, '_').replace(/\..+/, '').replace(/:/g, '-');
+        const filename = `${dateFormatted}_${steamID64}_${generateToken(8)}.${format}`;
         const path = `./screenshots/${filename}`;
 
         // Remove the Base64 prefix if present
@@ -58,16 +59,19 @@ function getScreenshotsChannels(serverID) {
     });
 }
 
-function postScreenshot(webhookID, webhookToken, playerName, avatarUrl, screenshotUrl) {
+function postScreenshot(webhookID, webhookToken, playerName, playerSteamID64, avatarUrl, screenshotUrl) {
     return new Promise(async (resolve, reject) => {
         const embed = {
             "embeds": [
                 {
-                    // "title": "New Screenshot",
+                    "title": "Check out this screenshot!",
                     // "description": "A new screenshot has been uploaded",
                     "image": {
-                        "url": avatarUrl,
-                    }
+                        "url": screenshotUrl,
+                    },
+                    "footer": {
+                        "text": playerSteamID64 + " - " + new Date().toISOString().replace(/T/g, ' ').replace(/\..+/, ''),
+                    },
                 }
             ],
             "username": playerName,
