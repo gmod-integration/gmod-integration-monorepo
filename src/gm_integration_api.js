@@ -62,8 +62,8 @@ app.use((req, res, next) => {
     const url = req.url;
     const ip = req.headers['cf-connecting-ip'] || req.ip;
     let body = JSON.stringify(req.body);
-    if (url.includes('/screenshots/')) {
-        body = 'screenshot';
+    if (url.includes('screenshots')) {
+        body = '[REDACTED]';
     }
     const query = JSON.stringify(req.query);
     const id = req.headers['id'] || 'unknown';
