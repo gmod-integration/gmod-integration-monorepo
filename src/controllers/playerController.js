@@ -14,7 +14,7 @@ async function postScreenshot(req, res) {
     playerModels.saveScreenshot(id, screenshot, steamID64, options).then((result) => {
         playerModels.getScreenshotsChannels(id).then((channels) => {
             channels.forEach((channel) => {
-                // if (channel.adminCmd) return;
+                if (channel.adminCmd) return;
                 playerModels.postScreenshot(channel.webhook, channel.token, name || steamSummary.nickname, steamID64, steamSummary.avatar.medium, `https://${host}/screenshots/${result.filename}`).then(() => {
                     console.log(`Posted screenshot to ${channel.guildID} - ${channel.channelID}`);
                 }).catch((err) => {
