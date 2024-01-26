@@ -8,6 +8,7 @@ const bodyParser = require('body-parser');
 const config = require('./config');
 const logger = require('./utils/logger');
 
+const gmodstoreValidatorMiddleware = require('./middleware/gmodstoreValidator');
 const userAgentMiddleware = require('./middleware/userAgentValidator');
 const authValidatorMiddleware = require('./middleware/authValidator');
 const playerValidatorMiddleware = require('./middleware/playerValidator');
@@ -15,6 +16,8 @@ const playerValidatorMiddleware = require('./middleware/playerValidator');
 const serverRoutes = require('./routes/serverRoutes');
 const userRoutes = require('./routes/userRoutes');
 const playerRoutes = require('./routes/playerRoutes');
+const gmodstoreRoutes = require('./routes/gmodstoreRoutes');
+const crypto = require("crypto");
 
 //
 // Express
@@ -23,8 +26,8 @@ const playerRoutes = require('./routes/playerRoutes');
 const app = express();
 
 // express max body content = 10mb
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({limit: '10mb'}));
+app.use(express.urlencoded({limit: '10mb', extended: true}));
 
 //
 // Middleware
@@ -34,12 +37,12 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.set('trust proxy', true);
 
 // Body Parser
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
 // API Status route
 app.get('/', (req, res) => {
-    res.json({ status: 'ok' });
+    res.json({status: 'ok'});
 });
 
 app.use((err, req, res, next) => {
@@ -52,6 +55,9 @@ app.use((err, req, res, next) => {
 
 // public screenshots
 app.use('/screenshots', express.static('screenshots'));
+
+app.use('/webhooks/gms', gmodstoreValidatorMiddleware);
+app.use('/webhooks/gms', gmodstoreRoutes);
 
 // Auth Validator
 app.use(userAgentMiddleware);
@@ -89,7 +95,7 @@ app.use('/player', playerRoutes);
 //
 
 app.all('*', (req, res) => {
-    res.status(404).json({ error: '404 Not Found' });
+    res.status(404).json({error: '404 Not Found'});
 });
 
 //
