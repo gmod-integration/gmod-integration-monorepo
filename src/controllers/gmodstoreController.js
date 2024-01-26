@@ -4,13 +4,40 @@ async function purchase(req, res) {
     const userID = req.body.data.userId;
 
     if (!userID) return res.status(400).json({error: 'missing_arguments'});
-    console.log(userID);
 
     gmodStoreModels.getUser(userID).then((user) => {
         if (!user || !user.data) return res.status(400).json({error: 'invalid_user'});
+
         const steamID64 = user.data.steamId;
-        console.log("steamID64: " + steamID64);
-        res.json({status: 'ok'});
+
+        gmodStoreModels.saveGmodStorePurchase(steamID64, false).then(() => {
+            res.json({status: 'ok'});
+        }).catch((err) => {
+            console.log(err);
+            res.status(500).json({error: 'internal_server_error'});
+        });
+    }).catch((err) => {
+        console.log(err);
+        res.status(500).json({error: 'internal_server_error'});
+    });
+}
+
+async function revoke(req, res) {
+    const userID = req.body.data.userId;
+
+    if (!userID) return res.status(400).json({error: 'missing_arguments'});
+
+    gmodStoreModels.getUser(userID).then((user) => {
+        if (!user || !user.data) return res.status(400).json({error: 'invalid_user'});
+
+        const steamID64 = user.data.steamId;
+
+        gmodStoreModels.saveGmodStorePurchase(steamID64, true).then(() => {
+            res.json({status: 'ok'});
+        }).catch((err) => {
+            console.log(err);
+            res.status(500).json({error: 'internal_server_error'});
+        });
     }).catch((err) => {
         console.log(err);
         res.status(500).json({error: 'internal_server_error'});
@@ -24,6 +51,8 @@ async function subRoute(req, res) {
 
     if (event === 'product_purchase.created' || event === 'product_purchase.unrevoked') {
         await purchase(req, res);
+    } else if (event === 'product_purchase.revoked') {
+        await revoke(req, res);
     } else {
         res.json({status: 'ok'});
     }

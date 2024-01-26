@@ -4,6 +4,7 @@ const {
     signingSecretWebhook,
     gmodStoreAPIKey
 } = require('../config');
+const {getConnection} = require("../database/connection");
 
 
 async function verifyWebhookSignature(headers, payload) {
@@ -51,8 +52,24 @@ function getUser(userID) {
     });
 }
 
+function saveGmodStorePurchase(steamID64, revoke) {
+    return new Promise(async (resolve, reject) => {
+        getConnection().then((connection) => {
+            connection.query('INSERT INTO gm_gmodstore_purchases (steamID64, `revoke`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `revoke` = ?', [steamID64, revoke, revoke], (error) => {
+                if (error) {
+                    console.error(error);
+                    reject(error);
+                }
+                resolve();
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
 
 module.exports = {
     verifyWebhookSignature,
     getUser,
+    saveGmodStorePurchase,
 }
