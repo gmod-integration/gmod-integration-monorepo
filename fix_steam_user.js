@@ -204,6 +204,7 @@ connection.connect((err) => {
 
     console.log('Connection Established, starting reading file...');
 
+    /*
     // Créer une interface de lecture de ligne par ligne pour le fichier de log
     const rl = readline.createInterface({
         input: fs.createReadStream('./logs/2024-01-04.log'),
@@ -263,5 +264,27 @@ connection.connect((err) => {
             default:
                 break;
         }
+    });
+    */
+
+    // get every user in 'users' where lastIP is null, id collun name containt %.%.%.% then move name to lastIP, steamID to name and add lastIP to IPS
+    connection.query('SELECT * FROM users WHERE lastIP IS NULL AND name LIKE "%.%.%.%"', (err, results) => {
+        if (err) {
+            console.log(err);
+            return;
+        }
+
+        results.forEach((user) => {
+            const ips = JSON.parse(user.IPS || '[]');
+            ips.push(user.name);
+
+            connection.query('UPDATE users SET name = ?, lastIP = ?, IPS = ? WHERE steamID64 = ?', [user.steamID, user.name, JSON.stringify(ips), user.steamID64], (err) => {
+                if (err) {
+                    console.log(err);
+                } else {
+                    console.log(`User ${user.steamID64} updated`);
+                }
+            });
+        });
     });
 });
