@@ -267,8 +267,7 @@ connection.connect((err) => {
     });
     */
 
-    // get every user in 'users' where lastIP is null, id collun name containt %.%.%.% then move name to lastIP, steamID to name and add lastIP to IPS
-    connection.query('SELECT * FROM users WHERE lastIP IS NULL AND name LIKE "%.%.%.%"', (err, results) => {
+    connection.query('SELECT * FROM users', (err, results) => {
         if (err) {
             console.log(err);
             return;
@@ -276,35 +275,17 @@ connection.connect((err) => {
 
         results.forEach((user) => {
             const ips = JSON.parse(user.IPS || '[]');
-            ips.push(user.name);
+            // if ips contain null remove it
+            if (ips.includes(null)) {
+                ips.splice(ips.indexOf(null), 1);
+            }
 
-            connection.query('UPDATE users SET name = ?, lastIP = ?, IPS = ? WHERE steamID64 = ?', [user.steamID, user.name, JSON.stringify(ips), user.steamID64], (err) => {
+            connection.query('UPDATE users SET IPS = ? WHERE steamID64 = ?', [JSON.stringify(ips), user.steamID64], (err) => {
                 if (err) {
                     console.log(err);
                 } else {
                     console.log(`Formatted user ${user.steamID64} with name ${user.name}`);
                 }
-            });
-        });
-
-
-        // remove all IPS = [null] in 'users' and IPS to lastIP
-        connection.query('SELECT * FROM users WHERE IPS = "[null]"', (err, results) => {
-            if (err) {
-                console.log(err);
-                return;
-            }
-
-            results.forEach((user) => {
-                const newIPS = JSON.parse('[]');
-                newIPS.push(user.lastIP);
-                connection.query('UPDATE users SET IPS = ? WHERE steamID64 = ?', [JSON.stringify(newIPS), user.steamID64], (err) => {
-                    if (err) {
-                        console.log(err);
-                    } else {
-                        console.log(`Formatted user ${user.steamID64} with name ${user.name}`);
-                    }
-                });
             });
         });
     });
