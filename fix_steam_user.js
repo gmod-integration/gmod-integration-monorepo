@@ -1,6 +1,6 @@
 const fs = require('fs');
 const readline = require('readline');
-const mysql = require('mysql');
+const mysql = require('mysql2');
 const dbConfig = require('../config.json').dbConfig;
 const connection = mysql.createConnection(dbConfig);
 
@@ -139,14 +139,14 @@ function saveUser(data) {
 function saveDisconnect(data) {
     return new Promise((resolve, reject) => {
         const query = `
-            INSERT INTO gm_server_stat (server_id, steam_id, name, rank, total_time, total_death, total_kill, custom_values)
+            INSERT INTO gm_server_stat (server_id, steam_id, name, rank, total_time, total_death, total_kill,
+                                        custom_values)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                total_time = total_time + ?,
-                total_death = total_death + ?,
-                total_kill = total_kill + ?,
-                custom_values = ?,
-                last_connect = DEFAULT
+            ON DUPLICATE KEY UPDATE total_time    = total_time + ?,
+                                    total_death   = total_death + ?,
+                                    total_kill    = total_kill + ?,
+                                    custom_values = ?,
+                                    last_connect  = DEFAULT
         `;
 
         const values = [
@@ -282,8 +282,29 @@ connection.connect((err) => {
                 if (err) {
                     console.log(err);
                 } else {
-                    console.log(`User ${user.steamID64} updated`);
+                    console.log(`Formatted user ${user.steamID64} with name ${user.name}`);
                 }
+            });
+        });
+
+
+        // remove all IPS = [null] in 'users' and IPS to lastIP
+        connection.query('SELECT * FROM users WHERE IPS = "[null]"', (err, results) => {
+            if (err) {
+                console.log(err);
+                return;
+            }
+
+            results.forEach((user) => {
+                const newIPS = JSON.parse('[]');
+                newIPS.push(user.lastIP);
+                connection.query('UPDATE users SET IPS = ? WHERE steamID64 = ?', [JSON.stringify(newIPS), user.steamID64], (err) => {
+                    if (err) {
+                        console.log(err);
+                    } else {
+                        console.log(`Formatted user ${user.steamID64} with name ${user.name}`);
+                    }
+                });
             });
         });
     });
