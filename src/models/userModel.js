@@ -1,7 +1,7 @@
-const { getConnection } = require('../database/connection');
-const { addTodoTask } = require('../utils/todoTask');
+const {getConnection} = require('../database/connection');
+const {addTodoTask} = require('../utils/todoTask');
 const axios = require('axios');
-const { bot_token, steamAPI } = require('../config/index');
+const {bot_token, steamAPI} = require('../config/index');
 const serverModels = require("./serverModel");
 const steamApi = require('steamapi');
 const steam = new steamApi(steamAPI);
@@ -119,7 +119,7 @@ function getUserServerData(serverID, steamID64, ip) {
 
 function postUserStatDisconnect(serverID, steamID64, userData) {
     // Déconstruction des données utilisateur
-    const { rank, time, kills, deaths, customValues } = userData;
+    const {rank, time, kills, deaths, customValues} = userData;
 
     // Convertir customValues en chaîne JSON si nécessaire
     const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
@@ -127,15 +127,15 @@ function postUserStatDisconnect(serverID, steamID64, userData) {
     getConnection().then((connection) => {
         // set last connect to default
         connection.query(`
-            INSERT INTO gm_server_stat (steam_id, server_id, rank, total_time, total_kill, total_death, custom_values, last_connect)
+            INSERT INTO gm_server_stat (steam_id, server_id, rank, total_time, total_kill, total_death, custom_values,
+                                        last_connect)
             VALUES (?, ?, ?, ?, ?, ?, ?, DEFAULT)
-            ON DUPLICATE KEY UPDATE
-            rank = VALUES(rank),
-            total_time = total_time + VALUES(total_time),
-            total_kill = total_kill + VALUES(total_kill),
-            total_death = total_death + VALUES(total_death),
-            custom_values = VALUES(custom_values),
-            last_connect = DEFAULT
+            ON DUPLICATE KEY UPDATE rank          = VALUES(rank),
+                                    total_time    = total_time + VALUES(total_time),
+                                    total_kill    = total_kill + VALUES(total_kill),
+                                    total_death   = total_death + VALUES(total_death),
+                                    custom_values = VALUES(custom_values),
+                                    last_connect  = DEFAULT
         `, [steamID64, serverID, rank, time, kills, deaths, customValuesString], (error, results) => {
             if (error) {
                 // skip error
@@ -217,25 +217,25 @@ function saveUser(steamID64, name, ip) {
 function saveUserServer(serverID, steamID64, name) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
-            connection.query('INSERT INTO gm_server_stat (steam_id, server_id, name) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = ?, total_connect = total_connect + 1', [steamID64, serverID, name, name], (error) => {
-                if (error) {
-                    reject(error);
-                } else {
-                    resolve();
-                }
-            });
-        }
+                connection.query('INSERT INTO gm_server_stat (steam_id, server_id, name) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE name = ?, total_connect = total_connect + 1', [steamID64, serverID, name, name], (error) => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve();
+                    }
+                });
+            }
         ).catch((err) => {
             reject(err);
         });
     });
 }
 
-function addUserSteam(steamID64, name, ip, serverID) {
+function addUserSteam(steamID64, networkid, name, ip, serverID) {
     // promise all
     return new Promise((resolve, reject) => {
         Promise.all([
-            saveGlobalUser(steamID64, name, ip),
+            saveGlobalUser(steamID64, networkid, name, ip),
             saveUser(steamID64, name, ip),
             saveUserServer(serverID, steamID64, name)
         ]).then(() => {
@@ -282,7 +282,7 @@ function addUserSay(steamID64, message, name, id) {
                     const summary = await steam.getUserSummary(steamID64);
                     const avatarUrl = summary.avatar.large;
 
-                    axios.post( `https://discord.com/api/webhooks/${results[0].id}/${results[0].token}`, {
+                    axios.post(`https://discord.com/api/webhooks/${results[0].id}/${results[0].token}`, {
                         content: message,
                         username: name || summary.nickname,
                         avatar_url: avatarUrl,
