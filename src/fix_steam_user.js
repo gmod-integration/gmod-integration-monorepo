@@ -1,7 +1,7 @@
 const fs = require('fs');
 const readline = require('readline');
 const mysql = require('mysql2');
-const dbConfig = require('../config.json').dbConfig;
+const {dbConfig} = require('./config/index');
 const connection = mysql.createConnection(dbConfig);
 
 function formatToDate(logLine) {
