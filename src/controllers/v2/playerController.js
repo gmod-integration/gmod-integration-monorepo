@@ -1,5 +1,5 @@
-const playerModels = require('../models/playerModels');
-const {badArgument} = require("../utils/tools");
+const playerModels = require('../../models/v2/playerModels');
+const {badArgument} = require("../../utils/tools");
 
 async function postScreenshot(req, res) {
     const {id} = req.headers;

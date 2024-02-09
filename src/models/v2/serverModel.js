@@ -1,5 +1,5 @@
-const { getConnection } = require('../database/connection');
-const { generateToken } = require('../utils/tools');
+const {getConnection} = require('../../database/connection');
+const {generateToken} = require('../../utils/tools');
 
 function updateServerStatus(id, players, maxplayers, map, hostname, gamemode, port, ip) {
     return new Promise((resolve, reject) => {

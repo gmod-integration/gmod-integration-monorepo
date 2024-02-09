@@ -1,32 +1,34 @@
 {
-    "name": "api",
-    "version": "2.0.0",
-    "description": "",
-    "main": "src/gm_integration_api.js",
-    "scripts": {
-        "start": "nohup node src/gm_integration_api.js >> logs/$(date +%F).log 2>&1 &",
-        "stop": "pkill -f gm_integration_api.js",
-        "dev": "nodemon src/gm_integration_api.js",
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/gmod-integration/api.git"
-    },
-    "author": "Linventif",
-    "license": "Proprietary",
-    "bugs": {
-        "url": "https://github.com/gmod-integration/api/issues"
-    },
-    "homepage": "https://github.com/gmod-integration/api#readme",
-    "dependencies": {
-        "axios": "^1.6.0",
-        "body-parser": "^1.20.2",
-        "dotenv": "^16.3.1",
-        "express": "^4.18.2",
-        "mysql2": "^3.6.3",
-        "nodemon": "^3.0.1",
-        "steamapi": "^2.4.2",
-        "undici": "^5.27.2"
-    }
+  "name": "api",
+  "version": "2.0.0",
+  "description": "",
+  "main": "src/gm_integration_api.js",
+  "scripts": {
+    "start": "nohup node src/gm_integration_api.js >> logs/$(date +%F).log 2>&1 &",
+    "stop": "pkill -f gm_integration_api.js",
+    "dev": "nodemon src/gm_integration_api.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gmod-integration/api.git"
+  },
+  "author": "Linventif",
+  "license": "Proprietary",
+  "bugs": {
+    "url": "https://github.com/gmod-integration/api/issues"
+  },
+  "homepage": "https://github.com/gmod-integration/api#readme",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "body-parser": "^1.20.2",
+    "discord": "^0.8.2",
+    "discord.js": "^14.14.1",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mysql2": "^3.6.3",
+    "nodemon": "^3.0.1",
+    "steamapi": "^2.4.2",
+    "undici": "^5.27.2"
+  }
 }

@@ -1,5 +1,5 @@
-const {getConnection} = require('../database/connection');
-const {gmLog} = require('../utils/logger');
+const {getConnection} = require('../../database/connection');
+const {gmLog} = require('../../utils/logger');
 
 module.exports = (req, res, next) => {
     const {id, token} = req.headers;

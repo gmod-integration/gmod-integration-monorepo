@@ -1,4 +1,4 @@
-const {gmLog} = require("../utils/logger");
+const {gmLog} = require("../../utils/logger");
 
 module.exports = (req, res, next) => {
     const userAgent = req.headers['user-agent'];

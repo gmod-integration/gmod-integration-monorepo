@@ -1,0 +1,51 @@
+const {badArgument} = require("../../utils/tools");
+const playerModel = require('../../models/v3/serversPlayersModels');
+const serversModels = require('../../models/v3/serversModels');
+
+async function getPlayer(req, res) {
+    const {serverID, steamID64} = req.params;
+
+    if (badArgument([steamID64])) {
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                steamID64: !!steamID64
+            }
+        });
+    }
+
+    playerModel.getPlayerInformations(steamID64).then((player) => {
+        return res.status(200).json(player);
+    }).catch((err) => {
+        console.error(err);
+        return res.status(500).json({error: 'internal_error'});
+    });
+}
+
+async function getPlayerBans(req, res) {
+    const {serverID, steamID64} = req.params;
+
+    if (badArgument([steamID64])) {
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                steamID64: !!steamID64
+            }
+        });
+    }
+    let bansList = [];
+
+    const guildID = await serversModels.getGuildID(serverID);
+
+    playerModel.getPlayerBan(steamID64).then((ban) => {
+        return res.status(200).json(ban);
+    }).catch((err) => {
+        console.error(err);
+        return res.status(500).json({error: 'internal_error'});
+    });
+}
+
+module.exports = {
+    getPlayer,
+    getPlayerBans,
+}

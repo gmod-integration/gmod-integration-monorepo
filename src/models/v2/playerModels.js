@@ -1,9 +1,9 @@
 const fs = require('fs');
 const axios = require('axios');
-const {generateToken} = require("../utils/tools");
-const {steamAPI} = require("../config");
+const {generateToken} = require("../../utils/tools");
+const {steamAPI} = require("../../config");
 const steamApi = require('steamapi');
-const {getConnection} = require("../database/connection");
+const {getConnection} = require("../../database/connection");
 const steam = new steamApi(steamAPI);
 
 function getSteamProfile(steamID64) {

@@ -1,5 +1,5 @@
-const {getConnection} = require('../database/connection');
-const {gmLog} = require('../utils/logger');
+const {getConnection} = require('../../database/connection');
+const {gmLog} = require('../../utils/logger');
 const crypto = require('crypto');
 
 module.exports = (req, res, next) => {

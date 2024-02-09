@@ -5,19 +5,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 
-const config = require('./config');
+const {port_api, bodyLimit} = require('./config');
 const logger = require('./utils/logger');
-
-const gmodstoreValidatorMiddleware = require('./middleware/gmodstoreValidator');
-const userAgentMiddleware = require('./middleware/userAgentValidator');
-const authValidatorMiddleware = require('./middleware/authValidator');
-const playerValidatorMiddleware = require('./middleware/playerValidator');
-
-const serverRoutes = require('./routes/serverRoutes');
-const userRoutes = require('./routes/userRoutes');
-const playerRoutes = require('./routes/playerRoutes');
-const gmodstoreRoutes = require('./routes/gmodstoreRoutes');
-const crypto = require("crypto");
 
 //
 // Express
@@ -26,12 +15,8 @@ const crypto = require("crypto");
 const app = express();
 
 // express max body content = 10mb
-app.use(express.json({limit: '10mb'}));
-app.use(express.urlencoded({limit: '10mb', extended: true}));
-
-//
-// Middleware
-//
+app.use(express.json({limit: bodyLimit, type: 'application/json'}));
+app.use(express.urlencoded({limit: bodyLimit, extended: true}));
 
 // Proxy
 app.set('trust proxy', true);
@@ -40,58 +25,38 @@ app.set('trust proxy', true);
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
-// API Status route
-app.get('/', (req, res) => {
-    res.json({status: 'ok'});
-});
+//
+// Logger Middleware
+//
 
-app.use((err, req, res, next) => {
-    if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-        logger.gmLog('api', 'Request #' + req.requestID + ' Bad Request: Invalid JSON');
-        return res.status(400).send('Bad Request: Invalid JSON');
-    }
-    next(err);
-});
+const loggerMiddleware = require('./middleware/v3/loggers');
+app.use(loggerMiddleware);
 
-// public screenshots
+//
+// Public Static
+//
+
 app.use('/screenshots', express.static('screenshots'));
 
-app.use('/webhooks/gms', gmodstoreValidatorMiddleware);
-app.use('/webhooks/gms', gmodstoreRoutes);
+//
+// Version Middleware
+//
 
-// Auth Validator
-app.use(userAgentMiddleware);
-
-// Logger
-app.use((req, res, next) => {
-    const method = req.method;
-    const url = req.url;
-    const ip = req.headers['cf-connecting-ip'] || req.ip;
-    let body = JSON.stringify(req.body);
-    if (url.includes('screenshots')) {
-        body = '[REDACTED]';
-    }
-    const query = JSON.stringify(req.query);
-    const id = req.headers['id'] || 'unknown';
-    const version = req.headers['version'] || 'unknown';
-    logger.gmLog('api', ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' Version: ' + version + ' Server ID: ' + id + ' Body: ' + body + ' Query: ' + query);
-    next();
-});
+const versioningMiddleware = require('./middleware/v3/versioningMiddleware');
+app.use(versioningMiddleware);
 
 //
 // Routes
 //
 
-app.use('/server', authValidatorMiddleware);
-app.use('/user', authValidatorMiddleware);
-app.use('/server', serverRoutes);
-app.use('/user', userRoutes);
+const v2Routes = require('./routes/v2/_v2Routes');
+app.use('/v2', v2Routes);
 
-app.use('/player', playerValidatorMiddleware);
-app.use('/player', playerRoutes);
+const v3Routes = require('./routes/v3/_v3Routes');
+app.use('/v3', v3Routes);
 
 //
-// Redirects
+// 404 Not Found
 //
 
 app.all('*', (req, res) => {
@@ -99,8 +64,6 @@ app.all('*', (req, res) => {
 });
 
 //
-// Server
+// Start Server
 //
-
-const port = config.port_api;
-app.listen(port, () => logger.gmLog('system', `API listening on port ${port}`));
+app.listen(port_api, () => logger.gmLog('system', `API listening on port ${port_api}`));

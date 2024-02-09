@@ -1,5 +1,5 @@
-const userModel = require('../models/userModel');
-const {badArgument, ipGetIP} = require('../utils/tools');
+const userModel = require('../../models/v2/userModel');
+const {badArgument, ipGetIP} = require('../../utils/tools');
 
 function getUser(req, res) {
     const {id} = req.headers;

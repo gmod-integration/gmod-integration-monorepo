@@ -9,10 +9,11 @@ exports.dbConfig = {
     "connectTimeout": 60000,
     "charset": "utf8mb4_unicode_ci"
 };
-
+exports.bodyLimit = '10mb';
 exports.port_api = 53136;
 exports.bot_token = process.env.DISCORD_BOT_TOKEN;
 exports.steamAPI = process.env.STEAM_API_KEY;
 exports.signingSecretWebhook = process.env.SIGNING_SECRET_WEBHOOK;
 exports.gmodStoreAPIKey = process.env.GMODSTORE_API_KEY;
 exports.productID = "7523cd69-0370-47c6-82e6-39675e9a56d3";
+exports.token = process.env.DISCORD_BOT_TOKEN;

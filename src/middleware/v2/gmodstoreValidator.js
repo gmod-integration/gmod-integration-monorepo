@@ -1,5 +1,5 @@
-const {gmLog} = require('../utils/logger');
-const {verifyWebhookSignature} = require("../models/gmodstoreModels");
+const {gmLog} = require('../../utils/logger');
+const {verifyWebhookSignature} = require("../../models/v2/gmodstoreModels");
 
 module.exports = async (req, res, next) => {
     const headers = req.headers;

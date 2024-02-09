@@ -1,7 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const userController = require('../controllers/userController');
 
+// Validator
+const authValidatorMiddleware = require("../../middleware/v2/authValidator");
+router.use('/', authValidatorMiddleware);
+
+// Routes
+const userController = require("../../controllers/v2/userController");
 router.get('/', userController.getUser);
 router.get('/isLinked', userController.getUserIsLinked);
 router.post('/say', userController.postUserSay);
@@ -17,4 +22,5 @@ router.post('/unmute', userController.postUserUnmute);
 router.post('/ban', userController.postUserBan);
 router.post('/unban', userController.postUserUnban);
 
+// Export
 module.exports = router;

@@ -1,7 +1,7 @@
-const {getConnection} = require('../database/connection');
-const {addTodoTask} = require('../utils/todoTask');
+const {getConnection} = require('../../database/connection');
+const {addTodoTask} = require('../../utils/todoTask');
 const axios = require('axios');
-const {bot_token, steamAPI} = require('../config/index');
+const {bot_token, steamAPI} = require('../../config');
 const serverModels = require("./serverModel");
 const steamApi = require('steamapi');
 const steam = new steamApi(steamAPI);

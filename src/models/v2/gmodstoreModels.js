@@ -3,8 +3,8 @@ const crypto = require('crypto')
 const {
     signingSecretWebhook,
     gmodStoreAPIKey
-} = require('../config');
-const {getConnection} = require("../database/connection");
+} = require('../../config');
+const {getConnection} = require("../../database/connection");
 
 
 async function verifyWebhookSignature(headers, payload) {
