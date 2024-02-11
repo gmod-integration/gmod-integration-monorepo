@@ -37,27 +37,39 @@ class Player {
             userGroup: this.userGroup
         };
     }
+
+    async getDiscordID() {
+        const connection = await getConnection();
+        const results = await connection.query('SELECT * FROM gm_user WHERE steam = ?', [this.steamID64]);
+        if (results.length > 0) {
+            return results[0].id;
+        }
+        return null;
+    }
 }
 
 function getPlayerServerInformations(serverID, steamID64) {
-    return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server_stat WHERE server_id = ? AND steam_id = ?', [serverID, steamID64], (error, results) => {
-                if (error) return reject(error);
-
-                if (results.length > 0) {
-                    return resolve(Player.fromObject(results[0]));
-                } else {
-                    return resolve(null);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
-        });
+    return new Promise(async (resolve, reject) => {
+        const connection = await getConnection();
+        const results = await connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64]);
+        if (results.length > 0) {
+            return resolve(Player.fromObject(results[0]));
+        }
+        return reject('Player not found');
     });
+}
+
+async function getPlayerServerInformationsFromDiscordID(serverID, discordID) {
+    const connection = await getConnection();
+    const results = await connection.query('SELECT * FROM gm_user WHERE id = ?', [discordID]);
+    if (results.length > 0) {
+        return getPlayerServerInformations(serverID, results[0].steam);
+    }
+    return null;
 }
 
 module.exports = {
     Player,
-    getPlayerServerInformations
+    getPlayerServerInformations,
+    getPlayerServerInformationsFromDiscordID
 };

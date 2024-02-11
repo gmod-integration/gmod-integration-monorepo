@@ -25,5 +25,5 @@ async function getProfile(steamID64) {
 }
 
 module.exports = {
-    getProfile,
+    getProfile
 }
