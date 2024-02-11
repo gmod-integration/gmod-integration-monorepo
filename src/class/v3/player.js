@@ -1,26 +1,26 @@
 import {badArgument} from "../../utils/tools";
 import {getConnection} from "../../database/connection";
+import {Team} from "./team";
 
 class Player {
-    constructor(steamID, steamID64, connectTime, kills, customValues, deaths, team, teamName, name, userGroup) {
+    constructor(steamID, steamID64, connectTime, kills, customValues, deaths, team, name, userGroup) {
         this.steamID = steamID;
         this.steamID64 = steamID64;
         this.connectTime = connectTime;
         this.kills = kills;
         this.customValues = customValues;
         this.deaths = deaths;
-        this.team = team;
-        this.teamName = teamName;
+        this.team = Team.fromObject(team);
         this.name = name;
         this.userGroup = userGroup;
     }
 
     isValid() {
-        return !badArgument([this.steamID, this.steamID64, this.connectTime, this.kills, this.customValues, this.deaths, this.team, this.teamName, this.name, this.userGroup]);
+        return !badArgument([this.steamID, this.steamID64, this.connectTime, this.kills, this.customValues, this.deaths, this.team.isValid(), this.name, this.userGroup]);
     }
 
     static fromObject(obj) {
-        return new Player(obj.steamID, obj.steamID64, obj.connectTime, obj.kills, obj.customValues, obj.deaths, obj.team, obj.teamName, obj.name, obj.userGroup);
+        return new Player(obj.steamID, obj.steamID64, obj.connectTime, obj.kills, obj.customValues, obj.deaths, obj.team.fromObject(), obj.name, obj.userGroup);
     }
 
     toObject() {
@@ -31,8 +31,7 @@ class Player {
             kills: this.kills,
             customValues: this.customValues,
             deaths: this.deaths,
-            team: this.team,
-            teamName: this.teamName,
+            team: this.team.toObject(),
             name: this.name,
             userGroup: this.userGroup
         };
