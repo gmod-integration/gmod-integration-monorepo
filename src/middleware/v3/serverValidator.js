@@ -10,7 +10,7 @@ module.exports = (req, res, next) => {
         return res.status(400).json({error: 'missing_arguments', args: {serverID: !!serverID, token: !!token}});
     }
     const token = authorization.split(' ')[1];
-
+    
     serverModel.isValidAuth(serverID, token).then((result) => {
         if (result) {
             req.headers.guild = result.guild;

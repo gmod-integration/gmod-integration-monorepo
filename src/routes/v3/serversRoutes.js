@@ -9,15 +9,19 @@ router.use('/:serverID', serverValidator);
 const serverController = require('../../controllers/v3/serversControllers');
 router.get('/:serverID', serverController.getInfo);
 router.post('/:serverID/status', serverController.postStatus);
+router.post('/:serverID/error', serverController.reportError);
 
 const logController = require('../../controllers/v3/logsControllers');
 // router.post('/:serverID/log/:logType', serverController.postServerLog);
+
+const errorsControllers = require('../../controllers/v3/errorsControllers');
+router.post('/:serverID/errors', errorsControllers.reportError);
 
 const playersControllers = require("../../controllers/v3/serversPlayersController");
 router.get('/:serverID/players/:steamID64', playersControllers.getPlayer);
 router.get('/:serverID/players/:steamID64/bans', playersControllers.getPlayerBans);
 // router.get('/:serverID/players/:steamID64/isLinked', playersControllers.getUserIsLinked);
-// router.post('/:serverID/players/:steamID64/say', playersControllers.postUserSay);
+router.post('/:serverID/players/:steamID64/say', playersControllers.say);
 // router.post('/:serverID/players/:steamID64/connect', playersControllers.postUserConnect);
 // router.post('/:serverID/players/:steamID64/disconnect', playersControllers.postUserDisconnect);
 // router.post('/:serverID/players/:steamID64/finishConnect', playersControllers.postUserFinishConnect);

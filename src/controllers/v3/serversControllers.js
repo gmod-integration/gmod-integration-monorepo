@@ -18,34 +18,51 @@ function getInfo(req, res) {
 
 function postStatus(req, res) {
     const {serverID} = req.params;
-    const {players, maxplayers, map, hostname, gamemode, port, ip, start} = req.body;
+    const {
+        players,
+        maxPlayers,
+        map,
+        hostname,
+        gameMode,
+        port,
+        ip,
+        uptime,
+    } = req.body;
 
-    if (badArgument([players, maxplayers, map, hostname, gamemode, port, ip, start])) return res.status(400).json({
-        error: 'missing_arguments',
-        args: {
-            players: !!players,
-            maxplayers: !!maxplayers,
-            map: !!map,
-            hostname: !!hostname,
-            gamemode: !!gamemode,
-            port: !!port,
-            ip: !!ip
-        }
-    });
+    if (badArgument([players, maxPlayers, map, hostname, gameMode, port, ip, uptime])) {
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                players: !!players,
+                maxPlayers: !!maxPlayers,
+                map: !!map,
+                hostname: !!hostname,
+                gameMode: !!gameMode,
+                port: !!port,
+                ip: !!ip,
+                uptime: !!uptime,
+            }
+        });
+    }
 
     const extractIP = ipGetIP(ip);
 
-    serverModel.postStatus(serverID, players, maxplayers, map, hostname, gamemode, port, extractIP).then(() => {
-        if (!start) {
-            return res.status(200).send('OK');
-        } else {
-            serverModel.refreshPublicTempToken(serverID).then((token) => {
-                res.status(200).json({publicTempToken: token});
-            }).catch((err) => {
-                console.log(err);
-                res.status(500).json({error: 'internal_server_error'});
-            });
-        }
+    serverModel.postStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime).then(() => {
+        return res.status(200).json({success: true});
+    }).catch((err) => {
+        console.log(err);
+        res.status(500).json({error: 'internal_server_error'});
+    });
+}
+
+function reportError(req, res) {
+    const {serverID} = req.params;
+    const {error} = req.body;
+
+    if (badArgument([error])) return res.status(400).json({error: 'missing_arguments'});
+
+    serverModel.reportError(serverID, error).then(() => {
+        res.status(200).json({success: true});
     }).catch((err) => {
         console.log(err);
         res.status(500).json({error: 'internal_server_error'});
@@ -55,4 +72,5 @@ function postStatus(req, res) {
 module.exports = {
     getInfo,
     postStatus,
+    reportError,
 }

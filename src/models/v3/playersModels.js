@@ -1,31 +1,19 @@
-import {getConnection} from "../../database/connection";
+const {getConnection} = require('../../database/connection');
 
-async function getPlayerDiscordIDFromSteamID64(steamID64) {
+async function getProfile(steamID64) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
             connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
                 if (error) return reject(error);
 
                 if (results.length > 0) {
-                    return resolve(results[0].id);
-                } else {
-                    return resolve(null);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
-        });
-    });
-}
-
-async function getPlayerSteamID64FromDiscordID(discordID) {
-    return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_user WHERE id = ?', [discordID], (error, results) => {
-                if (error) return reject(error);
-
-                if (results.length > 0) {
-                    return resolve(results[0].steam);
+                    return resolve({
+                        discordID: results[0].id,
+                        steamID64: results[0].steam,
+                        trustFactor: results[0].trust,
+                        rank: results[0].rank,
+                        username: results[0].username,
+                    });
                 } else {
                     return resolve(null);
                 }
@@ -37,6 +25,5 @@ async function getPlayerSteamID64FromDiscordID(discordID) {
 }
 
 module.exports = {
-    getPlayerDiscordIDFromSteamID64,
-    getPlayerSteamID64FromDiscordID
+    getProfile,
 }
