@@ -75,8 +75,37 @@ function say(req, res) {
     });
 }
 
+function updatePseudo(req, res) {
+    const {serverID, steamID64} = req.params;
+    const {player, oldName, newName} = req.body;
+
+    if (badArgument([steamID64, player, oldName, newName])) {
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                steamID64: !!steamID64,
+                player: !!player,
+                oldName: !!oldName,
+                newName: !!newName
+            }
+        });
+    }
+
+    if (!serversPlayersModels.validPlayerFormat(player)) {
+        return res.status(400).json({error: 'bad_argument', arguments: player});
+    }
+
+    serversPlayersModels.updatePlayerPseudo(serverID, player, newName).then(() => {
+        return res.status(200).json({message: 'data_received'});
+    }).catch((err) => {
+        console.log(err);
+        return res.status(500).json({error: 'internal_server_error'});
+    });
+}
+
 module.exports = {
     getPlayer,
     getPlayerBans,
-    say
+    say,
+    updatePseudo,
 }

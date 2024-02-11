@@ -2,9 +2,9 @@ const {getConnection} = require('../../database/connection');
 const serverModels = require("../v2/serverModel");
 const axios = require("axios");
 const steam = require("../../steam");
-const discord = require("../../discord");
 const {badArgument} = require("../../utils/tools");
 const {WebhookClient} = require('discord.js');
+const playersModels = require("./playersModels");
 
 function validPlayerFormat(player) {
     console.log(player);
@@ -136,10 +136,27 @@ function sendPlayerSay(serverID, player, text, team) {
     });
 }
 
+function updatePlayerPseudo(serverID, player, name) {
+    return new Promise((resolve, reject) => {
+        // get discordID
+        playersModels.getDiscordIDFromSteamID64(player.steamID64).then((discordID) => {
+            // update pseudo
+            playersModels.updatePseudo(discordID, name).then(() => {
+                resolve();
+            }).catch((err) => {
+                reject(err);
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 module.exports = {
     getInformations,
     isValidAuth,
     getPlayerInformations,
     validPlayerFormat,
     sendPlayerSay,
+    updatePlayerPseudo,
 };
