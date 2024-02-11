@@ -14,8 +14,16 @@ router.use('/servers', serversRoutes);
 const bansRoutes = require('./bansRoutes');
 router.use('/bans', bansRoutes);
 
+// Clients
+const clientsRoutes = require('./clientsRoutes');
+router.use('/clients', clientsRoutes);
+
 // Players
 const playersRoutes = require('./playersRoutes');
 router.use('/players', playersRoutes);
+
+// Errors
+const errorsRoutes = require('./errorsRoutes');
+router.use('/errors', errorsRoutes);
 
 module.exports = router;
