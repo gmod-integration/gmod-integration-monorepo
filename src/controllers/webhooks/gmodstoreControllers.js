@@ -1,4 +1,4 @@
-const gmodStoreModels = require("../../models/webhooks/gmodstoreModels");
+const gmodStoreModels = require("../../models/webhooks/gmodStoreModels");
 
 async function purchase(req, res) {
     const userID = req.body.data.userId;

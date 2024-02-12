@@ -6,7 +6,6 @@ const {
 } = require('../../config');
 const {getConnection} = require("../../database/connection");
 
-
 async function verifyWebhookSignature(headers, payload) {
     const webhookSignature = headers['webhook-signature'];
     const webhookTimestamp = headers['webhook-timestamp'];

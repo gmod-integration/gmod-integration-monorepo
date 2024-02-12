@@ -1,5 +1,5 @@
 const {gmLog} = require('../../utils/logger');
-const {verifyWebhookSignature} = require("../../models/webhooks/gmodstoreModels");
+const {verifyWebhookSignature} = require("../../models/webhooks/gmodStoreModels");
 const {
     stripeSecretKey,
     stripePublicKey,
