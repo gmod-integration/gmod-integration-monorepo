@@ -26,8 +26,11 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
 //
-// Logger Middleware
+// Middleware
 //
+
+const errorMiddleware = require('./middleware/errorMiddleware');
+app.use(errorMiddleware);
 
 const loggerMiddleware = require('./middleware/v3/loggers');
 app.use(loggerMiddleware);
@@ -54,6 +57,9 @@ app.use('/v2', v2Routes);
 
 const v3Routes = require('./routes/v3/_v3Routes');
 app.use('/v3', v3Routes);
+
+const webhooksRoutes = require('./routes/webhooks/_webhooksRoutes');
+app.use('/webhooks', webhooksRoutes);
 
 //
 // 404 Not Found
