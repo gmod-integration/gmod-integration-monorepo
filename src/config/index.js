@@ -10,7 +10,7 @@ exports.dbConfig = {
     "charset": "utf8mb4_unicode_ci"
 };
 exports.bodyLimit = '10mb';
-exports.port_api = 53136;
+exports.port_api = process.env.PORT_API;
 exports.bot_token = process.env.DISCORD_BOT_TOKEN;
 exports.steamAPI = process.env.STEAM_API_KEY;
 exports.signingSecretWebhook = process.env.SIGNING_SECRET_WEBHOOK;
