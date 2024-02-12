@@ -42,6 +42,13 @@ app.use(loggerMiddleware);
 app.use('/screenshots', express.static('screenshots'));
 
 //
+// Webhooks
+//
+
+const webhooksRoutes = require('./routes/webhooks/_webhooksRoutes');
+app.use('/webhooks', webhooksRoutes);
+
+//
 // Version Middleware
 //
 
@@ -57,9 +64,6 @@ app.use('/v2', v2Routes);
 
 const v3Routes = require('./routes/v3/_v3Routes');
 app.use('/v3', v3Routes);
-
-const webhooksRoutes = require('./routes/webhooks/_webhooksRoutes');
-app.use('/webhooks', webhooksRoutes);
 
 //
 // 404 Not Found
