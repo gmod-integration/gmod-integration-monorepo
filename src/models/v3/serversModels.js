@@ -71,17 +71,12 @@ function isValidAuth(id, token) {
     });
 }
 
-function postStatus(id) {
+function postStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
+            connection.query('INSERT INTO gm_server_status_v3 (serverID, players, maxPlayers, map, hostname, gameMode, port, ip, uptime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE players = ?, maxPlayers = ?, map = ?, hostname = ?, gameMode = ?, port = ?, ip = ?, uptime = ?', [serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime], (error) => {
                 if (error) return reject(error);
-
-                if (results.length > 0) {
-                    return resolve(results[0].status);
-                } else {
-                    reject('Server not found');
-                }
+                resolve();
             });
         }).catch((err) => {
             reject(err);
@@ -124,10 +119,28 @@ function getPlayer(serverID, steamID64) {
     });
 }
 
+function reportError(serverID, error) {
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            // connection.query('INSERT INTO gm_server_error (serverID, error) VALUES (?, ?)', [serverID, error], (error) => {
+            //     if (error) {
+            //         console.error(error);
+            //         reject(error);
+            //     }
+            //     resolve();
+            // });
+            resolve();
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 module.exports = {
     getInformations,
     isValidAuth,
     postStatus,
     refreshPublicTempToken,
     getGuildID,
+    reportError,
 };
