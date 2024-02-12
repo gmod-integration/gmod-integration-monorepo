@@ -1,10 +1,10 @@
-const {gmLog} = require('../utils/logger');
-const {verifyWebhookSignature} = require("../models/gmodstoreModels");
+const {gmLog} = require('../../utils/logger');
+const {verifyWebhookSignature} = require("../../models/webhooks/gmodstoreModels");
 const {
     stripeSecretKey,
     stripePublicKey,
     stripeWebhookSecret,
-} = require('../config');
+} = require('../../config');
 
 const stripe = require('stripe')(stripeSecretKey, {
     apiVersion: '2023-10-16',
