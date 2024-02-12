@@ -11,14 +11,14 @@ async function purchase(req, res) {
         const steamID64 = user.data.steamId;
 
         gmodStoreModels.saveGmodStorePurchase(steamID64, false).then(() => {
-            res.status(200).json({status: 'ok'});
+            return res.status(200).json({status: 'ok'});
         }).catch((err) => {
             console.log(err);
-            res.status(500).json({error: 'internal_server_error'});
+            return res.status(500).json({error: 'internal_server_error'});
         });
     }).catch((err) => {
         console.log(err);
-        res.status(500).json({error: 'internal_server_error'});
+        return res.status(500).json({error: 'internal_server_error'});
     });
 }
 
@@ -33,14 +33,14 @@ async function revoke(req, res) {
         const steamID64 = user.data.steamId;
 
         gmodStoreModels.saveGmodStorePurchase(steamID64, true).then(() => {
-            res.status(200).json({status: 'ok'});
+            return res.status(200).json({status: 'ok'});
         }).catch((err) => {
             console.log(err);
-            res.status(500).json({error: 'internal_server_error'});
+            return res.status(500).json({error: 'internal_server_error'});
         });
     }).catch((err) => {
         console.log(err);
-        res.status(500).json({error: 'internal_server_error'});
+        return res.status(500).json({error: 'internal_server_error'});
     });
 }
 
