@@ -1,1 +1,0 @@
-// create class server : id, token,
