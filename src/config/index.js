@@ -17,3 +17,7 @@ exports.signingSecretWebhook = process.env.SIGNING_SECRET_WEBHOOK;
 exports.gmodStoreAPIKey = process.env.GMODSTORE_API_KEY;
 exports.productID = "7523cd69-0370-47c6-82e6-39675e9a56d3";
 exports.token = process.env.DISCORD_BOT_TOKEN;
+exports.production = process.env.PRODUCTION;
+exports.domain = process.env.DOMAIN_URL;
+exports.port_website = process.env.PORT_WEBSITE;
+exports.intern_websocket_token = process.env.INTERN_WEBSOCKET_TOKEN;
