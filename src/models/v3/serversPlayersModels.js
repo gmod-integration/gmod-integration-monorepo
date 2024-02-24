@@ -6,11 +6,6 @@ const {badArgument} = require("../../utils/tools");
 const {WebhookClient} = require('discord.js');
 const playersModels = require("./playersModels");
 
-function validPlayerFormat(player) {
-    console.log(player);
-    return !badArgument([player.steamID, player.steamID64, player.connectTime, player.kills, player.customValues, player.deaths, player.team, player.teamName, player.name, player.userGroup]);
-}
-
 function getInformations(id) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
