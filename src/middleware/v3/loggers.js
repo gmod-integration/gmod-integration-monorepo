@@ -9,8 +9,8 @@ module.exports = (req, res, next) => {
     let id = req.params.serverID || 'unknown';
     let body = JSON.stringify(req.body);
 
-    if (url.includes('screenshots')) {
-        body = '[REDACTED]';
+    if (url.includes('screenshots') || url.includes('streams')) {
+        body = 'HIDDEN';
     }
 
     const query = JSON.stringify(req.query);
@@ -20,7 +20,6 @@ module.exports = (req, res, next) => {
     if (url.startsWith('/v')) {
         id = url.split('/')[2];
     }
-
 
     logger.gmLog('api', ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' Version: ' + version + ' Server ID: ' + id + ' Body: ' + body + ' Query: ' + query);
 
