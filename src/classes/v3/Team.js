@@ -1,5 +1,4 @@
 const BaseClass = require("./BaseClass");
-const {badArgument} = require("../../utils/tools");
 
 class Team extends BaseClass {
     constructor(obj = {}) {
