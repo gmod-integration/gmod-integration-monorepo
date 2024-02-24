@@ -7,7 +7,7 @@ class BaseClass {
                     return false;
                 }
             } else {
-                if (!this[key] || this[key] === "" || this[key] === null || this[key] === undefined) {
+                if (this[key] === null || this[key] === undefined) {
                     return false;
                 }
             }
