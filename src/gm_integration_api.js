@@ -14,23 +14,16 @@ const logger = require('./utils/logger');
 
 const app = express();
 
-// express max body content = 10mb
+// Set body size limit and parse JSON and URL-encoded bodies
 app.use(express.json({limit: bodyLimit, type: 'application/json'}));
 app.use(express.urlencoded({limit: bodyLimit, extended: true}));
 
 // Proxy
 app.set('trust proxy', true);
 
-// Body Parser
-app.use(bodyParser.urlencoded({extended: true}));
-app.use(bodyParser.json());
-
 //
-// Middleware
+// Logger
 //
-
-const errorMiddleware = require('./middleware/errorMiddleware');
-app.use(errorMiddleware);
 
 const loggerMiddleware = require('./middleware/v3/loggers');
 app.use(loggerMiddleware);
@@ -70,8 +63,15 @@ app.use('/v3', v3Routes);
 //
 
 app.all('*', (req, res) => {
-    res.status(404).json({error: '404 Not Found'});
+    return res.status(404).json({error: '404 Not Found'});
 });
+
+//
+// Error Middleware
+//
+
+const errorMiddleware = require('./middleware/errorMiddleware');
+app.use(errorMiddleware);
 
 //
 // Start Server
