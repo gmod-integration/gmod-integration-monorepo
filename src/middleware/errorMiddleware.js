@@ -1,9 +1,6 @@
 module.exports = async (err, req, res, next) => {
-    if (res.headersSent) {
-        return next(err);
-    }
+    const error_uuid = require('uuid').v4();
 
-    console.log(err);
-    res.status(500).json({error: 'internal_server_error', message: err.message});
-    next();
+    console.log(`Error UUID: ${error_uuid}`, err);
+    return res.status(500).json({error: 'internal_server_error', error_uuid});
 }
