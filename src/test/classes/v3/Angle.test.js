@@ -1,20 +1,22 @@
-const test = require('node:test');
+const {describe, it} = require('node:test');
 const assert = require('node:assert');
 const Angle = require('../../../classes/v3/Angle');
 
-test('Angle Creation Success', () => {
-    const ang = new Angle({
-        p: 1,
-        y: 2,
-        r: 3
+describe('Angle', () => {
+    it('Creation Success', () => {
+        const ang = new Angle({
+            p: 1,
+            y: 0,
+            r: 3
+        });
+        assert.strictEqual(ang.isValid(), true);
     });
-    assert.strictEqual(ang.isValid(), true);
-});
 
-test('Angle Creation Fail', () => {
-    const ang = new Angle({
-        p: 1,
-        y: 2
+    it('Creation Fail', () => {
+        const ang = new Angle({
+            p: 1,
+            y: 2
+        });
+        assert.strictEqual(ang.isValid(), false);
     });
-    assert.strictEqual(ang.isValid(), false);
 });
