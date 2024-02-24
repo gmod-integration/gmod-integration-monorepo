@@ -151,7 +151,6 @@ module.exports = {
     getInformations,
     isValidAuth,
     getPlayerInformations,
-    validPlayerFormat,
     sendPlayerSay,
     updatePlayerPseudo,
 };
