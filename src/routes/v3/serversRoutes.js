@@ -12,7 +12,7 @@ router.post('/:serverID/status', serverController.postStatus);
 router.post('/:serverID/error', serverController.reportError);
 
 const logController = require('../../controllers/v3/logsControllers');
-// router.post('/:serverID/log/:logType', serverController.postServerLog);
+router.post('/:serverID/log/:logType', serverController.postServerLog);
 
 const errorsControllers = require('../../controllers/v3/errorsControllers');
 router.post('/:serverID/errors', errorsControllers.reportError);
@@ -20,17 +20,18 @@ router.post('/:serverID/errors', errorsControllers.reportError);
 const playersControllers = require("../../controllers/v3/serversPlayersController");
 router.get('/:serverID/players/:steamID64', playersControllers.getPlayer);
 router.get('/:serverID/players/:steamID64/bans', playersControllers.getPlayerBans);
-// router.get('/:serverID/players/:steamID64/isLinked', playersControllers.getUserIsLinked);
 router.post('/:serverID/players/:steamID64/say', playersControllers.say);
-// router.post('/:serverID/players/:steamID64/connect', playersControllers.postUserConnect);
-// router.post('/:serverID/players/:steamID64/disconnect', playersControllers.postUserDisconnect);
-// router.post('/:serverID/players/:steamID64/finishConnect', playersControllers.postUserFinishConnect);
-// router.post('/:serverID/players/:steamID64/changeName', playersControllers.postUserChangeName);
-// router.post('/:serverID/players/:steamID64/kick', playersControllers.postUserKick);
-// router.post('/:serverID/players/:steamID64/mute', playersControllers.postUserMute);
-// router.post('/:serverID/players/:steamID64/unmute', playersControllers.postUserUnmute);
-// router.post('/:serverID/players/:steamID64/ban', playersControllers.postUserBan);
-// router.post('/:serverID/players/:steamID64/unban', playersControllers.postUserUnban);
+
+const playersControllersOld = require("../../controllers/v2/userController");
+router.post('/:serverID/players/:steamID64/connect', playersControllersOld.postUserConnect);
+router.post('/:serverID/players/:steamID64/disconnect', playersControllersOld.postUserDisconnect);
+router.post('/:serverID/players/:steamID64/finish-connect', playersControllersOld.postUserFinishConnect);
+router.post('/:serverID/players/:steamID64/changeName', playersControllersOld.postUserChangeName);
+router.post('/:serverID/players/:steamID64/kick', playersControllersOld.postUserKick);
+router.post('/:serverID/players/:steamID64/mute', playersControllersOld.postUserMute);
+router.post('/:serverID/players/:steamID64/unmute', playersControllersOld.postUserUnmute);
+router.post('/:serverID/players/:steamID64/ban', playersControllersOld.postUserBan);
+router.post('/:serverID/players/:steamID64/unban', playersControllersOld.postUserUnban);
 
 // Export
 module.exports = router;
