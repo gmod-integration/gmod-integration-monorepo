@@ -3,6 +3,7 @@ const playerModel = require('../../models/v3/serversPlayersModels');
 const serversModels = require('../../models/v3/serversModels');
 const userModel = require("../../models/v2/userModel");
 const serversPlayersModels = require('../../models/v3/serversPlayersModels');
+const {Player} = require('../../classes/v3/Player');
 
 async function getPlayer(req, res) {
     const {serverID, steamID64} = req.params;
@@ -49,25 +50,27 @@ async function getPlayerBans(req, res) {
 
 function say(req, res) {
     const {serverID, steamID64} = req.params;
-    let {player, text, team} = req.body;
+    let {player, text, teamOnly} = req.body;
 
-    if (badArgument([steamID64, player, text, team])) {
+    if (badArgument([steamID64, player, text, teamOnly])) {
         return res.status(400).json({
             error: 'missing_arguments',
             args: {
                 steamID64: !!steamID64,
                 player: !!player,
                 text: !!text,
-                team: !!team
+                teamOnly: !!teamOnly
             }
         });
     }
 
-    if (!serversPlayersModels.validPlayerFormat(player)) {
-        return res.status(400).json({error: 'bad_argument', arguments: player});
+    const ply = new Player(player);
+
+    if (!ply.isValid()) {
+        return res.status(400).json({error: 'player_bad_format', arguments: ply.isValidGetInformations()});
     }
 
-    serversPlayersModels.sendPlayerSay(serverID, player, text, team).then(() => {
+    serversPlayersModels.sendPlayerSay(serverID, player, text, teamOnly).then(() => {
         return res.status(200).json({message: 'data_received'});
     }).catch((err) => {
         console.log(err);
