@@ -41,7 +41,7 @@ function getServerSetting(serverID, setting) {
                 if (error) {
                     reject(error);
                 } else {
-                    resolve(results[0][setting] || null);
+                    resolve(results[0] ? results[0][setting] : null);
                 }
             });
         }).catch((err) => {
