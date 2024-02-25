@@ -49,10 +49,11 @@ async function getPlayerBans(req, res) {
 }
 
 function say(req, res) {
-    const {serverID, steamID64} = req.params;
+    const server = req.server;
+    const {steamID64} = req.params;
     let {player, text, teamOnly} = req.body;
 
-    if (badArgument([steamID64, player, text, teamOnly])) {
+    if (badArgument([player, text, teamOnly])) {
         return res.status(400).json({
             error: 'missing_arguments',
             args: {
@@ -70,7 +71,7 @@ function say(req, res) {
         return res.status(400).json({error: 'player_bad_format', arguments: ply.isValidGetInformations()});
     }
 
-    serversPlayersModels.sendPlayerSay(serverID, player, text, teamOnly).then(() => {
+    serversPlayersModels.sendPlayerSay(server, player, text, teamOnly).then(() => {
         return res.status(200).json({message: 'data_received'});
     }).catch((err) => {
         console.log(err);

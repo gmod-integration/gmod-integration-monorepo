@@ -88,34 +88,29 @@ async function getPlayerBan(steamID64) {
     });
 }
 
-function sendPlayerSay(serverID, player, text, team) {
+function sendPlayerSay(server, player, text, onlyTeam) {
     return new Promise(async (resolve, reject) => {
-        const syncChat = await serverModels.getServerSetting(serverID, 'syncChat');
-        const syncChatDirection = await serverModels.getServerSetting(serverID, 'syncChatDirection');
-        const syncChatTriggerAll = await serverModels.getServerSetting(serverID, 'syncChatTriggerAll');
-        const steamAPI = await steam.getSteamApi()
-
+        const syncChat = await server.getSetting('syncChat');
+        const syncChatDirection = await server.getSetting('syncChatDirection');
         if (!syncChat || syncChatDirection === 'discordToGmod') {
             resolve();
         }
 
+        const syncChatTriggerAll = await server.getSetting('syncChatTriggerAll');
         if (!syncChatTriggerAll) {
             // TODO check if message start with trigger
             resolve();
         }
 
         getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [serverID], async (error, results) => {
+            connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [server.id], async (error, results) => {
                 if (error) throw error;
                 if (results.length > 0) {
-                    const summary = await steamAPI.getUserSummary(player.steamID64);
-                    const avatarUrl = await summary.avatar.large;
-
                     const webhookClient = new WebhookClient({id: results[0].id, token: results[0].token});
 
                     webhookClient.send({
                         username: player.name,
-                        avatarURL: avatarUrl,
+                        avatarURL: await steam.getSteamUserAvatarLarge(player.steamID64),
                         content: text,
                     }).then(() => {
                         resolve();
@@ -126,6 +121,7 @@ function sendPlayerSay(serverID, player, text, team) {
                 }
             });
         }).catch((err) => {
+            console.error(err);
             reject(err);
         });
     });
