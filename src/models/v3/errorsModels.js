@@ -1,9 +1,9 @@
 const {getConnection} = require('../../database/connection');
 
-function reportError({error, stack, id, name, realm, identifier}) {
+function reportError({error, stack, id, name, realm, identifier, uptime}) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
-            connection.query('INSERT INTO gm_errors (error, stack, workshopID, name, realm, identifier) VALUES (?, ?, ?, ?, ?, ?)', [error, stack, id, name, realm, identifier], (error) => {
+            connection.query('INSERT INTO gm_errors (error, stack, workshopID, name, realm, identifier, uptime) VALUES (?, ?, ?, ?, ?, ?, ?)', [error, stack, id, name, realm, identifier, uptime], (error) => {
                 if (error) {
                     console.error(error);
                     reject(error);
