@@ -3,21 +3,23 @@ const playerModel = require('../../models/v3/serversPlayersModels');
 const serversModels = require('../../models/v3/serversModels');
 const userModel = require("../../models/v2/userModel");
 const serversPlayersModels = require('../../models/v3/serversPlayersModels');
-const {Player} = require('../../classes/v3/Player');
+const {Player} = require('../../classes/v3/PlayerGmod');
+const {getServerPlayer} = require("../../classes/v3/Player");
 
-async function getPlayer(req, res) {
-    const {serverID, steamID64} = req.params;
+function getPlayer(req, res) {
+    const {steamID64} = req.params;
+    const server = req.server;
 
     if (badArgument([steamID64])) {
         return res.status(400).json({
             error: 'missing_arguments',
-            arguments: {
+            args: {
                 steamID64: !!steamID64
             }
         });
     }
 
-    playerModel.getPlayerInformations(steamID64).then((player) => {
+    getServerPlayer(server.getID(), steamID64).then((player) => {
         return res.status(200).json(player);
     }).catch((err) => {
         console.error(err);
