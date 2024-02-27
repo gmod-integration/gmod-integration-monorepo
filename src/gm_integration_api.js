@@ -3,7 +3,6 @@
 //
 
 const express = require('express');
-const bodyParser = require('body-parser');
 
 const {port_api, bodyLimit} = require('./config');
 const logger = require('./utils/logger');
@@ -20,6 +19,12 @@ app.use(express.urlencoded({limit: bodyLimit, extended: true}));
 
 // Proxy
 app.set('trust proxy', true);
+
+//
+// Websocket
+//
+
+const ws = require('./websockets');
 
 //
 // Logger
