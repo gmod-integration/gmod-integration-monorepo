@@ -55,20 +55,6 @@ function postStatus(req, res) {
     });
 }
 
-function reportError(req, res) {
-    const {serverID} = req.params;
-    const {error} = req.body;
-
-    if (badArgument([error])) return res.status(400).json({error: 'missing_arguments'});
-
-    serverModel.reportError(serverID, error).then(() => {
-        res.status(200).json({success: true});
-    }).catch((err) => {
-        console.log(err);
-        res.status(500).json({error: 'internal_server_error'});
-    });
-}
-
 const logTypes = [
     {type: "playerSay", args: ["ply", "text", "teamChat"]},
     {type: "playerDeath", args: ["ply", "inflictor", "attacker"]},
@@ -123,6 +109,5 @@ function postServerLog(req, res) {
 module.exports = {
     getInfo,
     postStatus,
-    reportError,
     postServerLog,
 }

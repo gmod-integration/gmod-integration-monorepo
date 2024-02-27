@@ -119,23 +119,6 @@ function getPlayer(serverID, steamID64) {
     });
 }
 
-function reportError(serverID, error) {
-    return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            // connection.query('INSERT INTO gm_server_error (serverID, error) VALUES (?, ?)', [serverID, error], (error) => {
-            //     if (error) {
-            //         console.error(error);
-            //         reject(error);
-            //     }
-            //     resolve();
-            // });
-            resolve();
-        }).catch((err) => {
-            reject(err);
-        });
-    });
-}
-
 function addServerLog(id, log) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
@@ -158,6 +141,5 @@ module.exports = {
     postStatus,
     refreshPublicTempToken,
     getGuildID,
-    reportError,
     addServerLog,
 };

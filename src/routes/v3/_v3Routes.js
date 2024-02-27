@@ -22,8 +22,4 @@ router.use('/clients', clientsRoutes);
 const playersRoutes = require('./playersRoutes');
 router.use('/players', playersRoutes);
 
-// Errors
-const errorsRoutes = require('./errorsRoutes');
-router.use('/errors', errorsRoutes);
-
 module.exports = router;
