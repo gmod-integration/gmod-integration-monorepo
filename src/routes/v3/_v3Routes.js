@@ -19,7 +19,7 @@ const clientsRoutes = require('./clientsRoutes');
 router.use('/clients', clientsRoutes);
 
 // Players
-const playersRoutes = require('./playersRoutes');
-router.use('/players', playersRoutes);
+const usersRoutes = require('./usersRoutes');
+router.use('/users', usersRoutes);
 
 module.exports = router;
