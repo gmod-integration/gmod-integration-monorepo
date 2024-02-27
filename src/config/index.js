@@ -1,5 +1,10 @@
 require('dotenv').config();
 
+exports.port_website = 53134;
+exports.port_panel = 53135;
+exports.port_api = 53136;
+exports.port_verify = 53137;
+exports.port_websocket = 53139;
 exports.dbConfig = {
     host: process.env.DATABASE_HOST,
     user: process.env.DATABASE_USER,
