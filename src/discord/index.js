@@ -1,8 +1,19 @@
 const {Client, GatewayIntentBits} = require('discord.js');
 const client = new Client({
     intents: [
+        GatewayIntentBits.AutoModerationConfiguration,
+        GatewayIntentBits.AutoModerationExecution,
+        GatewayIntentBits.DirectMessages,
+        GatewayIntentBits.GuildBans,
+        GatewayIntentBits.GuildEmojisAndStickers,
+        GatewayIntentBits.GuildInvites,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildModeration,
+        GatewayIntentBits.GuildScheduledEvents,
         GatewayIntentBits.GuildWebhooks,
         GatewayIntentBits.Guilds,
+        GatewayIntentBits.MessageContent,
     ]
 });
 const {
@@ -28,6 +39,46 @@ async function getClient() {
     }
 }
 
+function updateGuildUserPseudo(guildID, userID, pseudo) {
+    return new Promise((resolve, reject) => {
+        if (!guildID || !userID || !pseudo) {
+            return reject({
+                error: 'missing_arguments',
+                args: {
+                    guildID: !!guildID,
+                    userID: !!userID,
+                    pseudo: !!pseudo,
+                }
+            });
+        }
+
+        getClient().then(async (client) => {
+            const guild = client.guilds.cache.get(guildID);
+            if (!guild) {
+                return reject('Guild not found');
+            }
+
+            if (guild.ownerId === userID) {
+                return resolve();
+            }
+
+            guild.members.fetch(userID)
+                .then(member => {
+                    if (!member) {
+                        return reject('User not found');
+                    }
+                    member.setNickname(pseudo)
+                        .then(updatedMember => {
+                            return resolve(updatedMember);
+                        })
+                        .catch(reject);
+                })
+                .catch(reject);
+        }).catch(reject);
+    });
+}
+
 module.exports = {
-    getClient
+    getClient,
+    updateGuildUserPseudo,
 }
