@@ -1,8 +1,9 @@
 const {badArgument} = require("../../utils/tools");
-const playersModel = require('../../models/v3/playersModels');
+const {getServerPlayer} = require("../../classes/v3/Player");
 
-function getProfile(req, res) {
+function getPlayer(req, res) {
     const {steamID64} = req.params;
+    const server = req.server;
 
     if (badArgument([steamID64])) {
         return res.status(400).json({
@@ -13,7 +14,7 @@ function getProfile(req, res) {
         });
     }
 
-    playersModel.getProfile(steamID64).then((player) => {
+    getServerPlayer(server.getID(), steamID64).then((player) => {
         return res.status(200).json(player);
     }).catch((err) => {
         console.error(err);
@@ -22,5 +23,5 @@ function getProfile(req, res) {
 }
 
 module.exports = {
-    getProfile,
+    getPlayer,
 };

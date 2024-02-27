@@ -19,6 +19,10 @@ class Server extends BaseClass {
         return this.token === token;
     }
 
+    getID() {
+        return this.id;
+    }
+
     getSetting(setting) {
         return new Promise((resolve, reject) => {
             getConnection().then((connection) => {
