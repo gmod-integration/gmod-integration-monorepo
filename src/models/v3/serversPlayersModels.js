@@ -4,7 +4,7 @@ const axios = require("axios");
 const steam = require("../../steam");
 const {badArgument} = require("../../utils/tools");
 const {WebhookClient} = require('discord.js');
-const playersModels = require("./playersModels");
+const playersModels = require("./usersModels");
 
 function getInformations(id) {
     return new Promise((resolve, reject) => {

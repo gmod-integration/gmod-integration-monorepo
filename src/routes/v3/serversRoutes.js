@@ -19,7 +19,7 @@ router.post('/:serverID/players/:steamID64/say', playersControllers.say);
 // router.post('/:serverID/players/:steamID64/connect', playersControllers.postUserConnect);
 // router.post('/:serverID/players/:steamID64/disconnect', playersControllers.postUserDisconnect);
 // router.post('/:serverID/players/:steamID64/ready', playersControllers.postUserFinishConnect);
-// router.post('/:serverID/players/:steamID64/name', playersControllers.postUserChangeName)
+router.post('/:serverID/players/:steamID64/name', playersControllers.playerChangeName)
 
 // Export
 module.exports = router;

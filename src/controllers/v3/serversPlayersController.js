@@ -3,8 +3,9 @@ const playerModel = require('../../models/v3/serversPlayersModels');
 const serversModels = require('../../models/v3/serversModels');
 const userModel = require("../../models/v2/userModel");
 const serversPlayersModels = require('../../models/v3/serversPlayersModels');
-const {Player} = require('../../classes/v3/PlayerGmod');
+const {PlayerGmod} = require('../../classes/v3/PlayerGmod');
 const {getServerPlayer} = require("../../classes/v3/Player");
+const {updateGuildUserPseudo} = require("../../discord");
 
 function getPlayer(req, res) {
     const {steamID64} = req.params;
@@ -22,8 +23,12 @@ function getPlayer(req, res) {
     getServerPlayer(server.getID(), steamID64).then((player) => {
         return res.status(200).json(player);
     }).catch((err) => {
-        console.error(err);
-        return res.status(500).json({error: 'internal_error'});
+        if (err.error === 'player_not_found') {
+            return res.status(404).json({error: 'player_not_found'});
+        } else {
+            console.error(err);
+            return res.status(500).json({error: 'internal_error'});
+        }
     });
 }
 
@@ -53,8 +58,8 @@ async function getPlayerBans(req, res) {
 function say(req, res) {
     const server = req.server;
     const {steamID64} = req.params;
-    let {player, text, teamOnly} = req.body;
 
+    const {player, text, teamOnly} = req.body;
     if (badArgument([player, text, teamOnly])) {
         return res.status(400).json({
             error: 'missing_arguments',
@@ -67,8 +72,7 @@ function say(req, res) {
         });
     }
 
-    const ply = new Player(player);
-
+    const ply = new PlayerGmod(player);
     if (!ply.isValid()) {
         return res.status(400).json({error: 'player_bad_format', arguments: ply.isValidGetInformations()});
     }
@@ -81,29 +85,32 @@ function say(req, res) {
     });
 }
 
-function updatePseudo(req, res) {
-    const {serverID, steamID64} = req.params;
-    const {player, oldName, newName} = req.body;
+async function playerChangeName(req, res) {
+    const server = req.server;
+    const {steamID64} = req.params;
 
-    if (badArgument([steamID64, player, oldName, newName])) {
+    const {player, oldName, newName} = req.body;
+    if (badArgument([player, oldName, newName])) {
         return res.status(400).json({
             error: 'missing_arguments',
             args: {
-                steamID64: !!steamID64,
-                player: !!player,
                 oldName: !!oldName,
                 newName: !!newName
             }
         });
     }
 
-    if (!serversPlayersModels.validPlayerFormat(player)) {
-        return res.status(400).json({error: 'bad_argument', arguments: player});
+    const ply = new PlayerGmod(player);
+    if (!ply.isValid()) {
+        return res.status(400).json({error: 'player_bad_format', arguments: ply.isValidGetInformations()});
     }
 
-    serversPlayersModels.updatePlayerPseudo(serverID, player, newName).then(() => {
-        return res.status(200).json({message: 'data_received'});
+    updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), newName).then(() => {
+        return res.status(200).json({success: true});
     }).catch((err) => {
+        if (err.error === 'missing_arguments') {
+            return res.status(200).json({success: false, error: 'user_not_found'});
+        }
         console.log(err);
         return res.status(500).json({error: 'internal_server_error'});
     });
@@ -113,5 +120,5 @@ module.exports = {
     getPlayer,
     getPlayerBans,
     say,
-    updatePseudo,
+    playerChangeName
 }
