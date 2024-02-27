@@ -3,7 +3,7 @@ const router = express.Router();
 
 // Routes
 const playersControllers = require('../../controllers/v3/playersControllers');
-router.get('/:steamID64', playersControllers.getPlayer);
+router.get('/:steamID64', playersControllers.getProfile);
 
 // Export
 module.exports = router;
