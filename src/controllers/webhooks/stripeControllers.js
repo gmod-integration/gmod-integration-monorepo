@@ -9,7 +9,7 @@ async function subRoute(req, res) {
         console.log(stripeEvent);
         console.log("discordID" + stripeEvent.data.object.metadata ? stripeEvent.data.object.metadata.discordID : "none");
     } else {
-        console.log('event not handle')
+        console.log('events not handle')
         console.log(event)
         res.json({status: 'ok'});
     }
