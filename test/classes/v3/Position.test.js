@@ -1,6 +1,6 @@
 const {describe, it} = require('node:test');
 const assert = require('node:assert');
-const Position = require('../../../classes/v3/Position');
+const Position = require('../../../src/classes/v3/Position');
 
 describe('Position', () => {
     it('Creation Success', () => {

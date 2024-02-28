@@ -1,6 +1,6 @@
 const {describe, it} = require('node:test');
 const assert = require('node:assert');
-const Team = require('../../../classes/v3/Team');
+const Team = require('../../../src/classes/v3/Team');
 
 describe('Team', () => {
     it('Creation Success', () => {

@@ -1,6 +1,6 @@
 const {describe, it} = require('node:test');
 const assert = require('node:assert');
-const Angle = require('../../../classes/v3/Angle');
+const Angle = require('../../../src/classes/v3/Angle');
 
 describe('Angle', () => {
     it('Creation Success', () => {

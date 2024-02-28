@@ -1,6 +1,6 @@
 const {describe, it} = require('node:test');
 const assert = require('node:assert');
-const CustomValues = require('../../../classes/v3/CustomValues');
+const CustomValues = require('../../../src/classes/v3/CustomValues');
 
 describe('CustomValues', () => {
     it('Creation Success', () => {

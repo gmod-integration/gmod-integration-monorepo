@@ -1,6 +1,6 @@
 const {describe, it} = require('node:test');
 const assert = require('node:assert');
-const {PlayerGmod} = require('../../../classes/v3/PlayerGmod');
+const {PlayerGmod} = require('../../../src/classes/v3/PlayerGmod');
 
 describe('Player', () => {
     it('Creation Success', async () => {
