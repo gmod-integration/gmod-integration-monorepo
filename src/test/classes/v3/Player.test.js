@@ -1,10 +1,10 @@
 const {describe, it} = require('node:test');
 const assert = require('node:assert');
-const {Player} = require('../../../classes/v3/Player');
+const {PlayerGmod} = require('../../../classes/v3/PlayerGmod');
 
 describe('Player', () => {
-    it('Creation Success', () => {
-        const ply = new Player({
+    it('Creation Success', async () => {
+        const ply = new PlayerGmod({
             steamID: 'STEAM_0:0:11101',
             steamID64: '0123456789',
             connectTime: 1,
@@ -21,7 +21,7 @@ describe('Player', () => {
     });
 
     it('Creation Fail', () => {
-        const ply = new Player({
+        const ply = new PlayerGmod({
             steamID: 'STEAM_0:0:11101',
             steamID64: '0123456789',
             connectTime: 1,
