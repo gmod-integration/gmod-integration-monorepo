@@ -1,5 +1,5 @@
 const BaseClass = require("./BaseClass");
-const {getConnection} = require("../../database/connection");
+const {getConnection, getConnectionPromisse} = require("../../database/connection");
 
 class Server extends BaseClass {
     constructor(obj = {}) {
@@ -23,20 +23,19 @@ class Server extends BaseClass {
         return this.id;
     }
 
-    getSetting(setting) {
-        return new Promise((resolve, reject) => {
-            getConnection().then((connection) => {
-                connection.query('SELECT * FROM gm_server_settings WHERE serverID = ?', [this.id], (error, results) => {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        resolve(results[0] ? results[0][setting] : null);
-                    }
-                });
-            }).catch((err) => {
-                reject(err);
-            });
-        });
+    getGuildID() {
+        return this.guild;
+    }
+
+    async getSetting(setting) {
+        try {
+            const connection = await getConnectionPromisse();
+            const [results] = await connection.query('SELECT * FROM gm_server_settings WHERE serverID = ? AND setting = ?', [this.id, setting]);
+            return results[0] ? results[0].value : null;
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
     }
 
     getSettings() {
@@ -74,7 +73,26 @@ async function getServerFromID(serverID) {
     });
 }
 
+async function getServerFromDiscordGuildID(guildID) {
+    return new Promise((resolve, reject) => {
+        getConnection().then((connection) => {
+            connection.query('SELECT * FROM gm_server WHERE guild = ?', [guildID], (error, results) => {
+                if (error) return reject(error);
+
+                if (results.length > 0) {
+                    return resolve(new Server(results[0]));
+                } else {
+                    reject('Server not found');
+                }
+            });
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 module.exports = {
     Server,
     getServerFromID,
+    getServerFromDiscordGuildID,
 }
