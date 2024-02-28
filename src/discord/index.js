@@ -19,6 +19,7 @@ const client = new Client({
 const {
     token,
 } = require('../config/index');
+const {readdirSync} = require("fs");
 
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
@@ -36,6 +37,16 @@ async function getClient() {
             });
         });
         return client;
+    }
+}
+
+
+// Load Events
+const eventFiles = readdirSync('./src/discord/events').filter(file => file.endsWith('.js'));
+for (const file of eventFiles) {
+    const event = require(`./events/${file}`);
+    if (event.name) {
+        client.on(event.name, (...args) => event.execute(...args, client));
     }
 }
 
