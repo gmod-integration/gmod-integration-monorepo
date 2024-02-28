@@ -13,6 +13,7 @@ class Player extends BaseClass {
         this.playTime = obj.playTime;
         this.rank = obj.rank;
         this.name = obj.name;
+        this.bypassMaintenance = obj.bypassMaintenance || false;
     }
 }
 
@@ -29,10 +30,11 @@ function getServerPlayer(serverID, steamID64) {
                         deaths: results[0].total_death,
                         playTime: results[0].total_time,
                         rank: results[0].rank,
-                        name: results[0].name
+                        name: results[0].name,
+                        bypassMaintenance: results[0].bypassMaintenance === 1,
                     }));
                 }
-                return reject('Player not found');
+                return reject('player_not_found');
             });
         });
     });
