@@ -42,29 +42,43 @@ wss.on('connection', function connection(ws, req) {
     const {id, token} = req.headers;
 
     console.log('Client connected ' + id);
-    clients = clients.filter(client => client.id != id);
+    clients = clients.filter(client => client.id !== id);
     clients.push({id: id, ws: ws});
 
     ws.on('close', () => {
         console.log('Client disconnected ' + id);
-        clients = clients.filter(client => client.id != id);
+        clients = clients.filter(client => client.id !== id);
     });
 
-    // log message from client
-    ws.on('message', function incoming(message) {
-        console.log('received: %s', message);
-        if (token === intern_websocket_token) {
-            const msgData = JSON.parse(message);
-            // executeTodoTaskFromWS(msgData.id, msgData.task, msgData.data, (data) => {
-            //     let toSend = {id: msgData.id, data: data};
-            //     toSend = JSON.stringify(toSend);
-            //     console.log('Sending to client ' + msgData.id + ': ' + toSend);
-            //     ws.send(toSend);
-            // }).then(r => {
-            //     console.log('Task ' + msgData.task + ' executed');
-            // });
-        }
-    });
+    // // log message from client
+    // ws.on('message', function incoming(message) {
+    //     console.log('received: %s', message);
+    //     if (token === intern_websocket_token) {
+    //         const msgData = JSON.parse(message);
+    //         // executeTodoTaskFromWS(msgData.id, msgData.task, msgData.data, (data) => {
+    //         //     let toSend = {id: msgData.id, data: data};
+    //         //     toSend = JSON.stringify(toSend);
+    //         //     console.log('Sending to client ' + msgData.id + ': ' + toSend);
+    //         //     ws.send(toSend);
+    //         // }).then(r => {s
+    //
+    //         //     console.log('Task ' + msgData.task + ' executed');
+    //         // });
+    //
+    //         console.log('Task ' + msgData.task + ' executed');
+    //         switch (msgData.task) {
+    //             case 'getServerPlayer':
+    //                 console.log('getServerPlayer');
+    //                 break;
+    //             case 'getPlayerServerInformations':
+    //                 console.log('getPlayerServerInformations');
+    //                 break;
+    //             default: {
+    //                 console.log('Task not found');
+    //             }
+    //         }
+    //     }
+    // });
 
     // stay alive
     setInterval(() => {
@@ -72,7 +86,7 @@ wss.on('connection', function connection(ws, req) {
     }, 10000);
 });
 
-function wsSendToClient(id, data) {
+function wsSendToServer(id, data) {
     let success = false;
     clients.forEach(client => {
         if (client.id === id) {
@@ -100,5 +114,5 @@ setInterval(() => {
 }, 300000);
 
 module.exports = {
-    wsSendToClient,
+    wsSendToServer,
 };
