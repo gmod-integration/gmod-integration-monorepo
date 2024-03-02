@@ -13,7 +13,7 @@ function insertOptions(str, options) {
 
 function getDefaultTrad(key, options) {
     try {
-        const defaultLanguage = require('../languages/en.json');
+        const defaultLanguage = require('../locales/en.json');
 
         if (key in defaultLanguage) {
             return insertOptions(defaultLanguage[key], options);
