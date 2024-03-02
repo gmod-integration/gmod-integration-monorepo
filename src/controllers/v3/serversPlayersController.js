@@ -6,6 +6,9 @@ const serversPlayersModels = require('../../models/v3/serversPlayersModels');
 const {PlayerGmod} = require('../../classes/v3/PlayerGmod');
 const {getServerPlayer} = require("../../classes/v3/Player");
 const {updateGuildUserPseudo} = require("../../discord");
+const {updateGuildUserSyncRoles} = require("../../models/v3/discordModels");
+const {getRoleFromRole} = require("../../classes/v3/Role");
+const {getUserFromSteamID64} = require("../../classes/v3/User");
 
 function getPlayer(req, res) {
     const {steamID64} = req.params;
@@ -116,9 +119,41 @@ async function playerChangeName(req, res) {
     });
 }
 
+async function playerChangeGroup(req, res) {
+    const server = req.server;
+    const {steamID64} = req.params;
+
+    const {oldGroup, newGroup} = req.body;
+    if (badArgument([oldGroup, newGroup])) {
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                oldGroup: !!oldGroup,
+                newGroup: !!newGroup
+            }
+        });
+    }
+
+    const user = await getUserFromSteamID64(steamID64);
+    if (!user) {
+        return res.status(404).json({error: 'user_not_found'});
+    }
+
+    updateGuildUserSyncRoles(server, user, newGroup).then(() => {
+        return res.status(200).json({success: true});
+    }).catch((err) => {
+        if (err.error === 'missing_arguments') {
+            return res.status(200).json({success: false, error: 'user_not_found'});
+        }
+        console.log(err);
+        return res.status(500).json({error: 'internal_server_error'});
+    });
+}
+
 module.exports = {
     getPlayer,
     getPlayerBans,
     say,
-    playerChangeName
+    playerChangeName,
+    playerChangeGroup,
 }

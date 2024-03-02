@@ -1,5 +1,6 @@
 const BaseClass = require("./BaseClass");
 const {getConnection, getConnectionPromisse} = require("../../database/connection");
+const {Role} = require("./Role");
 
 class Server extends BaseClass {
     constructor(obj = {}) {
@@ -52,6 +53,17 @@ class Server extends BaseClass {
                 reject(err);
             });
         });
+    }
+
+    async getRoles() {
+        try {
+            const connection = await getConnectionPromisse();
+            const [results] = await connection.query('SELECT * FROM gm_server_roles WHERE serverID = ?', [this.id]);
+            return results.map((result) => new Role(result));
+        } catch (error) {
+            console.error(error);
+            return [];
+        }
     }
 }
 

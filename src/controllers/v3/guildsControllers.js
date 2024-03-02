@@ -1,5 +1,3 @@
-const {badArgument} = require("../../utils/tools");
-const clientsModels = require('../../models/v3/clientsModels');
 const {getConnection} = require("../../database/connection");
 const {isGuildPremium} = require("../../classes/v3/Guild");
 const {getTranslate} = require("../../utils/localizations");
@@ -61,6 +59,7 @@ async function sendMessageToGmod(message) {
     });
 }
 
+
 module.exports = {
-    sendMessageToGmod
+    sendMessageToGmod,
 }

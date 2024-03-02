@@ -11,6 +11,7 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildModeration,
         GatewayIntentBits.GuildScheduledEvents,
+        GatewayIntentBits.GuildPresences,
         GatewayIntentBits.GuildWebhooks,
         GatewayIntentBits.Guilds,
         GatewayIntentBits.MessageContent,
@@ -20,6 +21,10 @@ const {
     token,
 } = require('../config/index');
 const {readdirSync} = require("fs");
+const {getRoleFromRole, getRoleFromDiscordRoleID} = require("../classes/v3/Role");
+const {getUserFromDiscordID} = require("../classes/v3/User");
+const {wsSendToServer} = require("../websockets");
+const {getServerFromDiscordGuildID} = require("../classes/v3/Server");
 
 client.on('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
@@ -37,16 +42,6 @@ async function getClient() {
             });
         });
         return client;
-    }
-}
-
-
-// Load Events
-const eventFiles = readdirSync('./src/discord/events').filter(file => file.endsWith('.js'));
-for (const file of eventFiles) {
-    const event = require(`./events/${file}`);
-    if (event.name) {
-        client.on(event.name, (...args) => event.execute(...args, client));
     }
 }
 
@@ -92,4 +87,13 @@ function updateGuildUserPseudo(guildID, userID, pseudo) {
 module.exports = {
     getClient,
     updateGuildUserPseudo,
+};
+
+// Load Events
+const eventFiles = readdirSync('./src/discord/events').filter(file => file.endsWith('.js'));
+for (const file of eventFiles) {
+    const event = require(`./events/${file}`);
+    if (event.name) {
+        client.on(event.name, (...args) => event.execute(...args, client));
+    }
 }
