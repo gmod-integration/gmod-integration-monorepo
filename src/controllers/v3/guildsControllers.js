@@ -17,7 +17,6 @@ async function sendMessageToGmod(message) {
     }
 
     const syncChat = await servInfo.getSetting('syncChat');
-    console.log(syncChat);
     if (!syncChat || syncChat === 'false') {
         return message.reply({
             content: getTranslate('sync_chat_not_enabled', lang),
@@ -26,8 +25,7 @@ async function sendMessageToGmod(message) {
     }
 
     const syncChatDirection = await servInfo.getSetting('syncChatDirection');
-    console.log(syncChatDirection);
-    if (syncChatDirection === 'toDiscord') {
+    if (syncChatDirection === 'gmodToDiscord') {
         return message.reply({
             content: getTranslate('sync_chat_not_enabled_from_discord', lang),
             ephemeral: true
@@ -44,6 +42,7 @@ async function sendMessageToGmod(message) {
                         ephemeral: true
                     });
                 } else {
+                    if (rows[0].id !== message.channel.id) return;
                     wsSendToServer(
                         servInfo.getID(),
                         {
