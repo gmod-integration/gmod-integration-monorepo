@@ -25,7 +25,7 @@ function updateGuildUserSyncRoles(server, user, newGroup) {
             return reject('Guild not found');
         }
 
-        userUpdateRoleCurrent[`guildID-${guild.id}`] = true;
+        userUpdateRoleCurrent[`guildID-${guild.id}`] = new Date().getTime();
 
         await guild.members.fetch(user.getDiscordID()).then(async member => {
             if (!member) {
@@ -53,10 +53,10 @@ async function updateRolesToGmod(newMember, roleID, add = true) {
     const guildID = newMember.guild.id;
     const memberID = newMember.id;
 
-    if (userUpdateRoleCurrent[`guildID-${guildID}`]) {
+    if (userUpdateRoleCurrent[`guildID-${guildID}`] && userUpdateRoleCurrent[`guildID-${guildID}`] > new Date().getTime() - 5000) {
         return;
     } else {
-        userUpdateRoleCurrent[`guildID-${guildID}`] = true;
+        userUpdateRoleCurrent[`guildID-${guildID}`] = new Date().getTime();
     }
 
     return new Promise(async (resolve, reject) => {
