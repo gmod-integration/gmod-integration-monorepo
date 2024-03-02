@@ -7,6 +7,14 @@ class User {
         this.rank = obj.rank
         this.lastVerification = obj.lastVerification;
     }
+
+    getDiscordID() {
+        return this.discordID;
+    }
+
+    getSteamID64() {
+        return this.steamID64;
+    }
 }
 
 function getUser(userInfo) {
@@ -39,8 +47,13 @@ function getUserFromSteamID64(steamID64) {
     return getUser({steamID64});
 }
 
+function getUserFromDiscordID(discordID) {
+    return getUser({discordID});
+}
+
 module.exports = {
     User,
     getUser,
-    getUserFromSteamID64
+    getUserFromSteamID64,
+    getUserFromDiscordID,
 }
