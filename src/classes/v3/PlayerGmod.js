@@ -29,7 +29,7 @@ class PlayerGmod extends BaseClass {
             if (results.length > 0) {
                 return results[0].id;
             }
-            
+
             return null;
         } catch (error) {
             console.error(error);
@@ -61,5 +61,5 @@ async function getPlayerServerInformationsFromDiscordID(serverID, discordID) {
 module.exports = {
     PlayerGmod,
     getPlayerServerInformations,
-    getPlayerServerInformationsFromDiscordID
+    getPlayerServerInformationsFromDiscordID,
 };
