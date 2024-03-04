@@ -13,6 +13,10 @@ const logger = require('./utils/logger');
 
 const app = express();
 
+// raw body
+const rawBodyMiddleware = require('./middleware/rawBodyMiddleware')
+app.use(rawBodyMiddleware)
+
 // Set body size limit and parse JSON and URL-encoded bodies
 app.use(express.json({limit: bodyLimit, type: 'application/json'}));
 app.use(express.urlencoded({limit: bodyLimit, extended: true}));
@@ -76,6 +80,7 @@ app.all('*', (req, res) => {
 //
 
 const errorMiddleware = require('./middleware/errorMiddleware');
+const { raw } = require('body-parser');
 app.use(errorMiddleware);
 
 //
