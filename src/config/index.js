@@ -26,3 +26,5 @@ exports.production = process.env.PRODUCTION;
 exports.domain = process.env.DOMAIN_URL;
 exports.port_website = process.env.PORT_WEBSITE;
 exports.intern_websocket_token = process.env.INTERN_WEBSOCKET_TOKEN;
+exports.stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+exports.stripeSecretKey = process.env.STRIPE_SECRET_KEY;
