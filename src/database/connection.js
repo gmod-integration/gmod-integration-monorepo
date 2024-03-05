@@ -51,15 +51,13 @@ async function getConnectionPromisse() {
     }
 }
 
-// Keep connectionPromise alive by pinging every 60 seconds
 setInterval(async () => {
     try {
         await connectionPromise.ping();
-    } catch (error) {
-        console.error(error);
-        gmLog('mysql2', 'Ping failed');
+    } catch (e) {
+        console.error('Error pinging database:', e);
     }
-}, 60000);
+}, 10000);
 
 async function executeSqlFile(filePath) {
     try {
@@ -75,8 +73,6 @@ async function executeSqlFile(filePath) {
         for (let command of commands) {
             await connection.execute(command);
         }
-
-        await connection.end();
     } catch (error) {
         console.error('Error executing SQL file:', error);
     }
