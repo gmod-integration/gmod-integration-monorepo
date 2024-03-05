@@ -12,7 +12,8 @@ exports.dbConfig = {
     database: process.env.DATABASE_NAME,
     port: process.env.DATABASE_PORT,
     "connectTimeout": 60000,
-    "charset": "utf8mb4_unicode_ci"
+    "charset": "utf8mb4_unicode_ci",
+    "multipleStatements": true
 };
 exports.bodyLimit = '10mb';
 exports.port_api = process.env.PORT_API;
