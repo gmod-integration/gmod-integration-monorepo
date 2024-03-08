@@ -65,6 +65,16 @@ class Server extends BaseClass {
             return [];
         }
     }
+
+    async saveUserConnectionInfo(steamID64, name) {
+        try {
+            const connection = await getConnectionPromisse();
+            await connection.query('INSERT INTO gm_server_stat (steam_id, server_id, name, last_connect, total_connect) VALUES (?, ?, ?, NOW(), 1) ON DUPLICATE KEY UPDATE last_connect = NOW(), total_connect = total_connect + 1', [steamID64, this.id, name]);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
 }
 
 async function getServerFromID(serverID) {

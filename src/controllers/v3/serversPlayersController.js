@@ -1,4 +1,4 @@
-const {badArgument} = require("../../utils/tools");
+const {badArgument, ipGetIP} = require("../../utils/tools");
 const playerModel = require('../../models/v3/serversPlayersModels');
 const serversModels = require('../../models/v3/serversModels');
 const userModel = require("../../models/v2/userModel");
@@ -9,6 +9,8 @@ const {updateGuildUserPseudo} = require("../../discord");
 const {updateGuildUserSyncRoles} = require("../../models/v3/discordModels");
 const {getRoleFromRole} = require("../../classes/v3/Role");
 const {getUserFromSteamID64} = require("../../classes/v3/User");
+const {steamAPI} = require("../../config");
+const {saveConnectionGlobalInfo, saveConnectionSteamInfo} = require("../../models/v3/serversPlayersModels");
 
 function getPlayer(req, res) {
     const {steamID64} = req.params;
@@ -150,10 +152,40 @@ async function playerChangeGroup(req, res) {
     });
 }
 
+async function playerConnect(req, res) {
+    const server = req.server;
+    const {address, name, networkid, steamID64} = req.body;
+
+    if (badArgument([address, name, networkid, steamID64])) {
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                address: !!address,
+                name: !!name,
+                networkid: !!networkid,
+                steam: !!steamID64,
+            }
+        });
+    }
+
+    const ip = ipGetIP(address);
+
+    try {
+        await saveConnectionGlobalInfo(steamID64, networkid, ip, name);
+        await saveConnectionSteamInfo(steamID64, networkid, ip);
+        await server.saveUserConnectionInfo(steamID64, name, ip);
+        return res.status(200).json({success: true});
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({error: 'internal_server_error'});
+    }
+}
+
 module.exports = {
     getPlayer,
     getPlayerBans,
-    say,
+    playerSay: say,
     playerChangeName,
     playerChangeGroup,
+    playerConnect
 }

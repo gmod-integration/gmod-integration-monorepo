@@ -15,8 +15,8 @@ router.post('/:serverID/errors', errorsControllers.reportError);
 
 const playersControllers = require("../../controllers/v3/serversPlayersController");
 router.get('/:serverID/players/:steamID64', playersControllers.getPlayer);
-router.post('/:serverID/players/:steamID64/say', playersControllers.say);
-// router.post('/:serverID/players/:steamID64/connect', playersControllers.postUserConnect);
+router.post('/:serverID/players/:steamID64/say', playersControllers.playerSay);
+router.post('/:serverID/players/:steamID64/connect', playersControllers.playerConnect);
 // router.post('/:serverID/players/:steamID64/disconnect', playersControllers.postUserDisconnect);
 // router.post('/:serverID/players/:steamID64/ready', playersControllers.postUserFinishConnect);
 router.post('/:serverID/players/:steamID64/name', playersControllers.playerChangeName)
