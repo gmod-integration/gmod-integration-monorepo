@@ -3,7 +3,7 @@ const playerModel = require('../../models/v3/serversPlayersModels');
 const serversModels = require('../../models/v3/serversModels');
 const userModel = require("../../models/v2/userModel");
 const serversPlayersModels = require('../../models/v3/serversPlayersModels');
-const {PlayerGmod} = require('../../classes/v3/PlayerGmod');
+const {PlayerGmod, updatePlayerUserGroup} = require('../../classes/v3/PlayerGmod');
 const {getServerPlayer} = require("../../classes/v3/Player");
 const {updateGuildUserPseudo} = require("../../discord");
 const {updateGuildUserSyncRoles} = require("../../models/v3/discordModels");
@@ -141,7 +141,8 @@ async function playerChangeGroup(req, res) {
         return res.status(404).json({error: 'user_not_found'});
     }
 
-    updateGuildUserSyncRoles(server, user, newGroup).then(() => {
+    updateGuildUserSyncRoles(server, user, newGroup).then(async () => {
+        await updatePlayerUserGroup(server.getID(), steamID64, newGroup);
         return res.status(200).json({success: true});
     }).catch((err) => {
         if (err.error === 'missing_arguments') {

@@ -89,6 +89,16 @@ function getPlayerServerInformations(serverID, steamID64) {
     });
 }
 
+async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
+    try {
+        const connection = await getConnectionPromisse();
+        await connection.query('UPDATE gm_server_stat SET rank = ? WHERE steam_id = ? AND server_id = ?', [userGroup, steamID64, serverID]);
+    } catch (error) {
+        console.error(error);
+        throw error;
+    }
+}
+
 async function getPlayerServerInformationsFromDiscordID(serverID, discordID) {
     const connection = await getConnection();
     const results = await connection.query('SELECT * FROM gm_user WHERE id = ?', [discordID]);
@@ -102,4 +112,5 @@ module.exports = {
     PlayerGmod,
     getPlayerServerInformations,
     getPlayerServerInformationsFromDiscordID,
+    updatePlayerUserGroup
 };
