@@ -17,7 +17,7 @@ const playersControllers = require("../../controllers/v3/serversPlayersControlle
 router.get('/:serverID/players/:steamID64', playersControllers.getPlayer);
 router.post('/:serverID/players/:steamID64/say', playersControllers.playerSay);
 router.post('/:serverID/players/:steamID64/connect', playersControllers.playerConnect);
-// router.post('/:serverID/players/:steamID64/disconnect', playersControllers.postUserDisconnect);
+router.post('/:serverID/players/:steamID64/disconnect', playersControllers.playerDisconnect);
 // router.post('/:serverID/players/:steamID64/ready', playersControllers.postUserFinishConnect);
 router.post('/:serverID/players/:steamID64/name', playersControllers.playerChangeName)
 router.post('/:serverID/players/:steamID64/group', playersControllers.playerChangeGroup)

@@ -36,6 +36,46 @@ class PlayerGmod extends BaseClass {
             return null;
         }
     }
+
+    async saveServerStat(serverID) {
+        try {
+            const {connectTime, kills, deaths, customValues, userGroup, steamID64} = this;
+            const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
+
+            const connection = await getConnectionPromisse();
+            await connection.query(`
+                INSERT INTO gm_server_stat (steam_id, server_id, rank, total_time, total_kill, total_death,
+                                            custom_values,
+                                            last_connect)
+                VALUES (?, ?, ?, ?, ?, ?, ?, DEFAULT)
+                ON DUPLICATE KEY UPDATE rank          = VALUES(rank),
+                                        total_time    = total_time + VALUES(total_time),
+                                        total_kill    = total_kill + VALUES(total_kill),
+                                        total_death   = total_death + VALUES(total_death),
+                                        custom_values = VALUES(custom_values),
+                                        last_connect  = DEFAULT
+            `, [steamID64, serverID, userGroup, connectTime, kills, deaths, customValuesString]);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    async saveServerStatSession(serverID) {
+        try {
+            const {connectTime, deaths, kills, customValues, steamID64} = this;
+            const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
+
+            const connection = await getConnectionPromisse();
+            await connection.query(`
+                INSERT INTO gm_server_stat_session (serverID, steamID64, time, deaths, kills, customValues)
+                VALUES (?, ?, ?, ?, ?, ?)
+            `, [serverID, steamID64, connectTime, deaths, kills, customValuesString]);
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
 }
 
 function getPlayerServerInformations(serverID, steamID64) {

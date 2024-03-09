@@ -181,11 +181,40 @@ async function playerConnect(req, res) {
     }
 }
 
+async function playerDisconnect(req, res) {
+    const server = req.server;
+    const {player} = req.body;
+
+    if (badArgument([player])) {
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                player: !!player
+            }
+        });
+    }
+
+    const ply = new PlayerGmod(player);
+    if (!ply.isValid()) {
+        return res.status(400).json({error: 'player_bad_format', arguments: ply.isValidGetInformations()});
+    }
+
+    try {
+        await ply.saveServerStat(server.getID());
+        await ply.saveServerStatSession(server.getID());
+        return res.status(200).json({success: true});
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({error: 'internal_server_error'});
+    }
+}
+
 module.exports = {
     getPlayer,
     getPlayerBans,
     playerSay: say,
     playerChangeName,
     playerChangeGroup,
-    playerConnect
+    playerConnect,
+    playerDisconnect,
 }
