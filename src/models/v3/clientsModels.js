@@ -3,6 +3,8 @@ const fs = require("fs");
 const {
     domain
 } = require("../../config");
+const {WebhookClient} = require("discord.js");
+const steam = require("../../steam");
 
 function saveScreenshot(screenshot, captureData, player) {
     return new Promise(async (resolve, reject) => {
@@ -22,7 +24,6 @@ function saveScreenshot(screenshot, captureData, player) {
         // Write the data to a file
         fs.writeFile(path, buffer, (err) => {
             if (err) {
-                console.log(err);
                 reject(err);
             }
 
@@ -35,6 +36,46 @@ function saveScreenshot(screenshot, captureData, player) {
     });
 }
 
+function sendScreenshotToDiscord(screenshot, player, server) {
+    return new Promise(async (resolve, reject) => {
+        const channelInfo = await server.getScreenshotsChannel();
+        if (!channelInfo) {
+            return reject('channel_not_found');
+        }
+
+        const webhookClient = new WebhookClient({
+            id: channelInfo.webhook,
+            token: channelInfo.token
+        });
+
+        // webhookClient.send({
+        //     content: `New screenshot from ${player.name} (${player.steamID64})`,
+        //     files: [screenshot.path]
+        // }).then(() => {
+        //     resolve();
+        // }).catch((err) => {
+        //     reject(err);
+        // });
+
+        // use embed
+        const embed = {
+            title: `New screenshot from ${player.name} (${player.steamID64})`,
+            image: {
+                url: screenshot.url
+            }
+        };
+
+        webhookClient.send({
+            embeds: [embed]
+        }).then(() => {
+            resolve();
+        }).catch((err) => {
+            reject(err);
+        });
+    });
+}
+
 module.exports = {
-    saveScreenshot
+    saveScreenshot,
+    sendScreenshotToDiscord
 };

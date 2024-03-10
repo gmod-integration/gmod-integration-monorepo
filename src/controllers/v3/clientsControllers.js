@@ -1,11 +1,12 @@
 const {badArgument} = require("../../utils/tools");
 const clientsModels = require('../../models/v3/clientsModels');
+const {getClient} = require("../../discord");
+const {PlayerGmod} = require("../../classes/v3/PlayerGmod");
+const {sendScreenshotToDiscord} = require("../../models/v3/clientsModels");
 
-function uploadScreenshot(req, res) {
-    const {clientID64} = req.params;
+async function uploadScreenshot(req, res) {
+    const server = req.server;
     const {player, screenshot, captureData, size} = req.body;
-
-    console.log(clientID64, captureData, size);
 
     if (badArgument([player, screenshot, captureData, size])) {
         return res.status(400).json({
@@ -19,9 +20,14 @@ function uploadScreenshot(req, res) {
         });
     }
 
-    clientsModels.saveScreenshot(screenshot, captureData, player).then((result) => {
-        console.log(result);
-        return res.status(200).json({success: true, path: result.path});
+    clientsModels.saveScreenshot(screenshot, captureData, player).then(async (result) => {
+        try {
+            await sendScreenshotToDiscord(result, player, server);
+        } catch (err) {
+            console.error(err);
+            return res.status(500).json({error: 'internal_server_error'});
+        }
+        return res.status(200).json({success: true, url: result.url})
     }).catch((err) => {
         console.log(err);
         return res.status(500).json({error: 'internal_server_error'});
