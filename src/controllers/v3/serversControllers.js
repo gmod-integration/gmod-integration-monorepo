@@ -106,8 +106,15 @@ function postServerLog(req, res) {
     });
 }
 
+async function getPublicToken(req, res) {
+    const server = req.server;
+    await server.regeneratePublicTempToken();
+    return res.status(200).json({publicTempToken: server.getPublicToken()});
+}
+
 module.exports = {
     getInfo,
     postStatus,
     postServerLog,
+    getPublicToken
 }

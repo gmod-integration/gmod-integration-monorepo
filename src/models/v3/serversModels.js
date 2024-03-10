@@ -84,23 +84,6 @@ function postStatus(serverID, players, maxPlayers, map, hostname, gameMode, port
     });
 }
 
-function refreshPublicTempToken(id) {
-    return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            const publicTempToken = generateToken(16);
-            connection.query('UPDATE gm_server SET publicTempToken = ? WHERE id = ?', [publicTempToken, id], (error) => {
-                if (error) {
-                    console.error(error);
-                    reject(error);
-                }
-                resolve(publicTempToken);
-            });
-        }).catch((err) => {
-            reject(err);
-        });
-    });
-}
-
 function getPlayer(serverID, steamID64) {
     return new Promise((resolve, reject) => {
         getConnection().then((connection) => {
@@ -139,7 +122,6 @@ module.exports = {
     getInformations,
     isValidAuth,
     postStatus,
-    refreshPublicTempToken,
     getGuildID,
     addServerLog,
 };

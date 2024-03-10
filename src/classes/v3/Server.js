@@ -1,6 +1,7 @@
 const BaseClass = require("./BaseClass");
 const {getConnection, getConnectionPromisse} = require("../../database/connection");
 const {Role} = require("./Role");
+const {generateToken} = require("../../utils/tools");
 
 class Server extends BaseClass {
     constructor(obj = {}) {
@@ -26,6 +27,37 @@ class Server extends BaseClass {
 
     getGuildID() {
         return this.guild;
+    }
+
+    getPublicToken() {
+        return this.publicTempToken;
+    }
+
+    getToken() {
+        return this.token;
+    }
+
+    async regeneratePublicTempToken() {
+        try {
+            const connection = await getConnectionPromisse();
+            const newToken = generateToken(16);
+            await connection.query('UPDATE gm_server SET publicTempToken = ? WHERE id = ?', [newToken, this.id]);
+            this.publicTempToken = newToken;
+        } catch (error) {
+            console.error(error);
+            throw error;
+        }
+    }
+
+    async getScreenshotsChannel() {
+        try {
+            const connection = await getConnectionPromisse();
+            const [results] = await connection.query('SELECT * FROM gm_server_screenshot_channels WHERE serverID = ?', [this.id]);
+            return results && results[0] ? results[0] : null;
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
     }
 
     async getSetting(setting) {
@@ -74,6 +106,10 @@ class Server extends BaseClass {
             console.error(error);
             throw error;
         }
+    }
+
+    async isValidPlayerToken(steamID64, token, createDate) {
+
     }
 }
 

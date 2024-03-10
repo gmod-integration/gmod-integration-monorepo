@@ -9,6 +9,7 @@ router.use('/:serverID', serverValidator);
 const serverController = require('../../controllers/v3/serversControllers');
 router.get('/:serverID', serverController.getInfo);
 router.post('/:serverID/status', serverController.postStatus);
+router.get('/:serverID/public-token', serverController.getPublicToken);
 
 const errorsControllers = require('../../controllers/v3/errorsControllers');
 router.post('/:serverID/errors', errorsControllers.reportError);
