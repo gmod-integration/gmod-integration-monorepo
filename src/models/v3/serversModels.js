@@ -1,5 +1,6 @@
 const {getConnection} = require('../../database/connection');
 const {generateToken} = require("../../utils/tools");
+const {updateServerStatus} = require("../v2/serverModel");
 
 /**
  * Get the server informations
@@ -73,14 +74,24 @@ function isValidAuth(id, token) {
 
 function postStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('INSERT INTO gm_server_status_v3 (serverID, players, maxPlayers, map, hostname, gameMode, port, ip, uptime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE players = ?, maxPlayers = ?, map = ?, hostname = ?, gameMode = ?, port = ?, ip = ?, uptime = ?', [serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime], (error) => {
-                if (error) return reject(error);
-                resolve();
-            });
+        // TODO use v3
+        updateServerStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP).then(() => {
+            resolve();
         }).catch((err) => {
             reject(err);
         });
+        // getConnection().then((connection) => {
+        //     // New format
+        //     // connection.query('INSERT INTO gm_server_status_v3 (serverID, players, maxPlayers, map, hostname, gameMode, port, ip, uptime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE players = ?, maxPlayers = ?, map = ?, hostname = ?, gameMode = ?, port = ?, ip = ?, uptime = ?', [serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime], (error) => {
+        //     //     if (error) return reject(error);
+        //     //     resolve();
+        //     // });
+        //     // Use old (v2) format
+        //     //id, players, maxplayers, map, hostname, gamemode, port, ip
+        //
+        // }).catch((err) => {
+        //     reject(err);
+        // });
     });
 }
 
