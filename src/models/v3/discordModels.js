@@ -1,6 +1,6 @@
 const {getRoleFromRole, getRoleFromDiscordRoleID} = require("../../classes/v3/Role");
 const {getUserFromDiscordID} = require("../../classes/v3/User");
-const {getServerFromDiscordGuildID} = require("../../classes/v3/Server");
+const {getServersFromDiscordGuildID} = require("../../classes/v3/Server");
 const {wsSendToServer} = require("../../websockets");
 const {getClient} = require("../../discord");
 
@@ -70,44 +70,50 @@ async function updateRolesToGmod(newMember, roleID, add = true) {
             return reject('User not linked');
         }
 
-        const servInfo = await getServerFromDiscordGuildID(guildID).catch(reject);
-        if (!servInfo || !servInfo.isValid()) {
-            return reject('Server not found');
+        const serversInfo = await getServersFromDiscordGuildID(guildID).catch(reject);
+        if (!serversInfo || serversInfo.length === 0) {
+            return reject('No servers found');
         }
 
-        const roleInfo = await getRoleFromDiscordRoleID(servInfo.getID(), roleID);
-        if (!roleInfo || !roleInfo.isValid()) {
-            return reject('Role not found');
-        }
-        if (!roleInfo.isSyncEnabled()) {
-            return reject('Role not sync');
-        }
-        if (!roleInfo.getDiscordRoleID()) {
-            return reject('Role not linked');
-        }
-
-        if (add === true) {
-            await servInfo.getRoles().then(async (roles) => {
-                let rolesToRemove = [];
-                for (let i = 0; i < roles.length; i++) {
-                    if (roles[i].getDiscordRoleID() && roles[i].getDiscordRoleID() !== roleInfo.getDiscordRoleID()) {
-                        rolesToRemove.push(roles[i].getDiscordRoleID());
-                    }
-                }
-
-                await newMember.roles.remove(rolesToRemove).catch(reject);
-            }).catch(reject);
-        }
-
-        wsSendToServer(
-            servInfo.getID(),
-            {
-                method: 'wsPlayerUpdateGroup',
-                steamID64: userInfo.getSteamID64(),
-                group: roleInfo.role,
-                add: add,
+        for (const servInfo of serversInfo) {
+            if (!servInfo.isValid()) {
+                continue;
             }
-        );
+
+            const roleInfo = await getRoleFromDiscordRoleID(servInfo.getID(), roleID);
+            if (!roleInfo || !roleInfo.isValid()) {
+                continue;
+            }
+            if (!roleInfo.isSyncEnabled()) {
+                continue;
+            }
+            if (!roleInfo.getDiscordRoleID()) {
+                continue;
+            }
+
+            if (add === true) {
+                await servInfo.getRoles().then(async (roles) => {
+                    let rolesToRemove = [];
+                    for (let i = 0; i < roles.length; i++) {
+                        if (roles[i].getDiscordRoleID() && roles[i].getDiscordRoleID() !== roleInfo.getDiscordRoleID()) {
+                            rolesToRemove.push(roles[i].getDiscordRoleID());
+                        }
+                    }
+
+                    await newMember.roles.remove(rolesToRemove).catch(reject);
+                }).catch(reject);
+            }
+
+            wsSendToServer(
+                servInfo.getID(),
+                {
+                    method: 'wsPlayerUpdateGroup',
+                    steamID64: userInfo.getSteamID64(),
+                    group: roleInfo.role,
+                    add: add,
+                }
+            );
+        }
 
         userUpdateRoleCurrent[`guildID-${guildID}`] = null;
         resolve();

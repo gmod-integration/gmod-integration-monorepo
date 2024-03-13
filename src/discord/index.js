@@ -21,10 +21,6 @@ const {
     token,
 } = require('../config/index');
 const {readdirSync} = require("fs");
-const {getRoleFromRole, getRoleFromDiscordRoleID} = require("../classes/v3/Role");
-const {getUserFromDiscordID} = require("../classes/v3/User");
-const {wsSendToServer} = require("../websockets");
-const {getServerFromDiscordGuildID} = require("../classes/v3/Server");
 const {gmLog} = require("../utils/logger");
 
 client.on('ready', () => {

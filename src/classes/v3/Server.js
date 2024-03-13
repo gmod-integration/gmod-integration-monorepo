@@ -131,48 +131,14 @@ async function getServerFromID(serverID) {
     });
 }
 
-async function getServerFromDiscordGuildID(guildID) {
-    return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE guild = ?', [guildID], (error, results) => {
-                if (error) return reject(error);
-
-                if (results.length > 0) {
-                    return resolve(new Server(results[0]));
-                } else {
-                    reject('Server not found');
-                }
-            });
-        }).catch((err) => {
-            reject(err);
-        });
-    });
-}
-
 async function getServersFromDiscordGuildID(guildID) {
     const connection = await getConnectionPromisse();
     const [results] = await connection.query('SELECT * FROM gm_server WHERE guild = ?', [guildID]);
     return results.map((result) => new Server(result));
-    // return new Promise((resolve, reject) => {
-    //     getConnection().then((connection) => {
-    //         connection.query('SELECT * FROM gm_server WHERE guild = ?', [guildID], (error, results) => {
-    //             if (error) return reject(error);
-    //
-    //             if (results.length > 0) {
-    //                 return resolve(results.map((result) => new Server(result)));
-    //             } else {
-    //                 reject('Server not found');
-    //             }
-    //         });
-    //     }).catch((err) => {
-    //         reject(err);
-    //     });
-    // });
 }
 
 module.exports = {
     Server,
     getServerFromID,
-    getServerFromDiscordGuildID,
     getServersFromDiscordGuildID
 }
