@@ -50,23 +50,24 @@ async function uploadStreamsFrames(req, res) {
         });
     }
 
+    // TODO send to panel
     // post to /api/players/:steamID64/streams/frames
-    await fetch(`http://localhost:53134/api/players/${clientID64}/streams/frames`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            player,
-            base64Capture,
-            captureConfig,
-            size,
-        }),
-    }).then((response) => {
-        console.log(response);
-    }).catch((err) => {
-        console.log(err);
-    });
+    // await fetch(`http://localhost:53134/api/players/${clientID64}/streams/frames`, {
+    //     method: 'POST',
+    //     headers: {
+    //         'Content-Type': 'application/json',
+    //     },
+    //     body: JSON.stringify({
+    //         player,
+    //         base64Capture,
+    //         captureConfig,
+    //         size,
+    //     }),
+    // }).then((response) => {
+    //     console.log(response);
+    // }).catch((err) => {
+    //     console.log(err);
+    // });
 
     return res.status(200).json({success: true});
 }
