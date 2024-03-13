@@ -34,7 +34,7 @@ function getUser(userInfo) {
                         lastVerification: results[0].last_oauth
                     }));
                 } else {
-                    return resolve({});
+                    reject({error: 'user_not_found'});
                 }
             });
         }).catch((err) => {
