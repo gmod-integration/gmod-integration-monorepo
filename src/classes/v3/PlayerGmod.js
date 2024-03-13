@@ -39,22 +39,23 @@ class PlayerGmod extends BaseClass {
 
     async saveServerStat(serverID) {
         try {
-            const {connectTime, kills, deaths, customValues, userGroup, steamID64} = this;
+            const {connectTime, kills, deaths, customValues, userGroup, steamID64, name} = this;
             const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
 
             const connection = await getConnectionPromisse();
             await connection.query(`
-                INSERT INTO gm_server_stat (steam_id, server_id, rank, total_time, total_kill, total_death,
+                INSERT INTO gm_server_stat (steam_id, server_id, rank, name, total_time, total_kill, total_death,
                                             custom_values,
                                             last_connect)
-                VALUES (?, ?, ?, ?, ?, ?, ?, DEFAULT)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, DEFAULT)
                 ON DUPLICATE KEY UPDATE rank          = VALUES(rank),
+                                        name          = VALUES(name),
                                         total_time    = total_time + VALUES(total_time),
                                         total_kill    = total_kill + VALUES(total_kill),
                                         total_death   = total_death + VALUES(total_death),
                                         custom_values = VALUES(custom_values),
                                         last_connect  = DEFAULT
-            `, [steamID64, serverID, userGroup, connectTime, kills, deaths, customValuesString]);
+            `, [steamID64, serverID, userGroup, name, connectTime, kills, deaths, customValuesString]);
         } catch (error) {
             console.error(error);
             throw error;
