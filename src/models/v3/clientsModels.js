@@ -48,25 +48,17 @@ function sendScreenshotToDiscord(screenshot, player, server) {
             token: channelInfo.token
         });
 
-        // webhookClient.send({
-        //     content: `New screenshot from ${player.name} (${player.steamID64})`,
-        //     files: [screenshot.path]
-        // }).then(() => {
-        //     resolve();
-        // }).catch((err) => {
-        //     reject(err);
-        // });
-
-        // use embed
-        const embed = {
-            title: `New screenshot from ${player.name} (${player.steamID64})`,
-            image: {
-                url: screenshot.url
-            }
-        };
-
         webhookClient.send({
-            embeds: [embed]
+            username: player.name,
+            avatarURL: await steam.getSteamUserAvatarLarge(player.steamID64),
+            embeds: [{
+                image: {
+                    url: screenshot.url
+                },
+                footer: {
+                    text: `SteamID64: ${player.steamID64} - Server: ${server.name}`
+                }
+            }]
         }).then(() => {
             resolve();
         }).catch((err) => {
