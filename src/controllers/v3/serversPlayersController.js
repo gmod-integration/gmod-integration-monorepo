@@ -37,6 +37,53 @@ function getPlayer(req, res) {
     });
 }
 
+async function playerSpawn(req, res) {
+    const server = req.server;
+    const {steamID64} = req.params;
+    const {player} = req.body;
+
+    if (badArgument([player])) {
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                player: !!player
+            }
+        });
+    }
+
+    const ply = new PlayerGmod(player);
+    if (!ply.isValid()) {
+        return res.status(400).json({error: 'player_bad_format', arguments: ply.isValidGetInformations()});
+    }
+
+    // TODO
+    res.status(200).json({success: true});
+}
+
+async function playerReady(req, res) {
+    const server = req.server;
+    const {steamID64} = req.params;
+    const {player} = req.body;
+
+    if (badArgument([player])) {
+        return res.status(400).json({
+            error: 'missing_arguments',
+            args: {
+                player: !!player
+            }
+        });
+    }
+
+    const ply = new PlayerGmod(player);
+    if (!ply.isValid()) {
+        return res.status(400).json({error: 'player_bad_format', arguments: ply.isValidGetInformations()});
+    }
+
+    // TODO
+    res.status(200).json({success: true});
+}
+
+
 async function getPlayerBans(req, res) {
     const {serverID, steamID64} = req.params;
 
@@ -218,4 +265,6 @@ module.exports = {
     playerChangeGroup,
     playerConnect,
     playerDisconnect,
+    playerSpawn,
+    playerReady
 }
