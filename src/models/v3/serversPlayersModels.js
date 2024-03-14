@@ -109,7 +109,7 @@ function sendPlayerSay(server, player, text, onlyTeam) {
                     const webhookClient = new WebhookClient({id: results[0].id, token: results[0].token});
 
                     webhookClient.send({
-                        username: player.name,
+                        username: player.name || "Invalid Name",
                         avatarURL: await steam.getSteamUserAvatarLarge(player.steamID64),
                         content: text,
                     }).then(() => {
