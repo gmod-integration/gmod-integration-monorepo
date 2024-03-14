@@ -147,13 +147,12 @@ async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {
     try {
         const connection = await getConnectionPromisse();
         const [results] = await connection.query('SELECT * FROM users WHERE steamID64 = ?', [steamID64]);
+        const IPs = results.length === 0 ? [] : JSON.parse(results[0].IPS);
+        IPs.push(IP);
+
         if (results.length === 0) {
-            await connection.query('INSERT INTO users (steamID64, steamID, name, lastIP, IPS, lastUpdate) VALUES (?, ?, ?, ?, ?, NOW())', [steamID64, steamID, name, IP, `[${IP}]`]);
+            await connection.query('INSERT INTO users (steamID64, steamID, name, lastIP, IPS, lastUpdate) VALUES (?, ?, ?, ?, ?, NOW())', [steamID64, steamID, name, IP, JSON.stringify(IPs)]);
         } else {
-            let IPs = JSON.parse(results[0].IPS);
-            if (!IPs.includes(IP)) {
-                IPs.push(IP);
-            }
             await connection.query('UPDATE users SET lastIP = ?, IPS = ?, lastUpdate = NOW() WHERE steamID64 = ?', [IP, JSON.stringify(IPs), steamID64]);
         }
     } catch (err) {
