@@ -143,7 +143,7 @@ function updatePlayerPseudo(serverID, player, name) {
     });
 }
 
-async function saveConnectionGlobalInfo(steamID64, steamID, name, IP) {
+async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {
     try {
         const connection = await getConnectionPromisse();
         const [results] = await connection.query('SELECT * FROM users WHERE steamID64 = ?', [steamID64]);
