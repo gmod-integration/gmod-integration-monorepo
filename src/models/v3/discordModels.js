@@ -10,26 +10,26 @@ function updateGuildUserSyncRoles(server, user, newGroup) {
     return new Promise(async (resolve, reject) => {
         const role = await getRoleFromRole(server.getID(), newGroup);
         if (!role || !role.isValid()) {
-            return reject({error: 'role_not_found'});
+            return reject({error: 'role_not_found', itsFine: true});
         }
         if (!role.isSyncEnabled()) {
-            return reject({error: 'role_not_sync'});
+            return reject({error: 'role_not_sync', itsFine: true});
         }
         if (!role.getDiscordRoleID()) {
-            return reject({error: 'role_not_linked'});
+            return reject({error: 'role_not_linked', itsFine: true});
         }
 
         let theClient = await getClient();
         const guild = theClient.guilds.cache.get(await server.getGuildID());
         if (!guild) {
-            return reject('Guild not found');
+            return reject({error: 'guild_not_found', itsFine: true});
         }
 
         userUpdateRoleCurrent[`guildID-${guild.id}`] = new Date().getTime();
 
         await guild.members.fetch(user.getDiscordID()).then(async member => {
             if (!member) {
-                return reject('User not found');
+                return reject({error: 'member_not_found', itsFine: true});
             }
             await member.roles.add(role.getDiscordRoleID()).catch(reject);
             await server.getRoles().then(async roles => {

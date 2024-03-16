@@ -82,8 +82,8 @@ async function playerReady(req, res) {
     updateGuildUserSyncRoles(server, await getUserFromSteamID64(steamID64), player.userGroup).then(() => {
         return res.status(200).json({success: true});
     }).catch((err) => {
-        if (err.error === 'missing_arguments') {
-            return res.status(200).json({success: false, error: 'user_not_found'});
+        if (err.itsFine === true) {
+            return res.status(200).json({success: false, error: err.error});
         }
         console.log(err);
         return res.status(500).json({error: 'internal_server_error'});
@@ -199,8 +199,8 @@ async function playerChangeGroup(req, res) {
         await updatePlayerUserGroup(server.getID(), steamID64, newGroup);
         return res.status(200).json({success: true});
     }).catch((err) => {
-        if (err.error === 'missing_arguments') {
-            return res.status(200).json({success: false, error: 'user_not_found'});
+        if (err.itsFine === true) {
+            return res.status(200).json({success: false, error: err.error});
         }
         console.log(err);
         return res.status(500).json({error: 'internal_server_error'});
