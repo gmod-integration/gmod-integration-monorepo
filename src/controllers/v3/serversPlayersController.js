@@ -79,8 +79,15 @@ async function playerReady(req, res) {
         return res.status(400).json({error: 'player_bad_format', arguments: ply.isValidGetInformations()});
     }
 
-    // TODO
-    res.status(200).json({success: true});
+    updateGuildUserSyncRoles(server, await getUserFromSteamID64(steamID64), player.userGroup).then(() => {
+        return res.status(200).json({success: true});
+    }).catch((err) => {
+        if (err.error === 'missing_arguments') {
+            return res.status(200).json({success: false, error: 'user_not_found'});
+        }
+        console.log(err);
+        return res.status(500).json({error: 'internal_server_error'});
+    });
 }
 
 
