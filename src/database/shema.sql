@@ -619,3 +619,31 @@ create table if not exists users
     lastUpdate timestamp                    null
 );
 
+
+create table if not exists gm_server_sync_chat_rules_preset
+(
+    id       int auto_increment
+        primary key,
+    field    text null,
+    operator text null,
+    value    text null,
+    action   text null
+);
+
+create table if not exists gm_server_sync_chat_rules
+(
+    id                int auto_increment
+        primary key,
+    serverID          char(255)  null,
+    field             text       null,
+    operator          text       null,
+    value             text       null,
+    action            text       null,
+    enable            tinyint(1) null,
+    presetOverwriteID int        null,
+    constraint gm_server_sync_chat_rules_gm_server_id_fk
+        foreign key (serverID) references gm_server (id)
+            on update cascade on delete cascade,
+    constraint gm_server_sync_chat_rules_gm_server_sync_chat_rules_preset_id_fk
+        foreign key (presetOverwriteID) references gm_server_sync_chat_rules_preset (id)
+);
