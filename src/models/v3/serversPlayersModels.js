@@ -108,10 +108,13 @@ function sendPlayerSay(server, player, text, onlyTeam) {
                 if (results.length > 0) {
                     const webhookClient = new WebhookClient({id: results[0].id, token: results[0].token});
 
+                    player.name.replace(/[^\x00-\x7F]/g, "");
+                    text.replace(/[^\x00-\x7F]/g, "");
+
                     webhookClient.send({
-                        username: player.name || "Invalid Name",
+                        username: player.name ? player.name : 'Unknown',
                         avatarURL: await steam.getSteamUserAvatarLarge(player.steamID64),
-                        content: text,
+                        content: text ? text : 'Unknown',
                     }).then(() => {
                         resolve();
                     }).catch((err) => {
