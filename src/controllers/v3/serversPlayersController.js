@@ -257,6 +257,8 @@ async function playerDisconnect(req, res) {
     try {
         await ply.saveServerStat(server.getID());
         await ply.saveServerStatSession(server.getID());
+        updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), ply.name).catch(() => {
+        });
         return res.status(200).json({success: true});
     } catch (err) {
         console.error(err);
