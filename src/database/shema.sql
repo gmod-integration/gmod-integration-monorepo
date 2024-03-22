@@ -165,11 +165,12 @@ create table if not exists gm_guild_verify_message
 
 create table if not exists gm_guild_verify_roles
 (
-    guildID char(255)            not null,
-    roleID  char(255)            not null,
+    id      int auto_increment
+        primary key,
+    guildID char(255)            null,
+    roleID  char(255)            null,
     isGive  tinyint(1) default 1 null,
-    enable  tinyint(1) default 0 null,
-    primary key (guildID, roleID)
+    enable  tinyint(1) default 0 null
 );
 
 create table if not exists gm_link
