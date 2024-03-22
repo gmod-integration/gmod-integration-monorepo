@@ -27,7 +27,11 @@ function updateGuildUserSyncRoles(server, user, newGroup) {
 
         userUpdateRoleCurrent[`guildID-${guild.id}`] = new Date().getTime();
 
-        await guild.members.fetch(user.getDiscordID()).then(async member => {
+        const userDiscordID = user.getDiscordID();
+        if (!userDiscordID) {
+            return reject({error: 'user_not_linked', itsFine: true});
+        }
+        await guild.members.fetch(userDiscordID).then(async member => {
             if (!member) {
                 return reject({error: 'member_not_found', itsFine: true});
             }
