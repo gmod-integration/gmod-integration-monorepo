@@ -31,35 +31,17 @@ function updateGuildUserSyncRoles(server, user, newGroup, oldGroup = null) {
             return reject({error: 'user_not_found', itsFine: true});
         }
 
-        // remove old role
         if (oldGroup) {
             const oldRole = await getRoleFromRole(server.getID(), oldGroup);
-            if (!oldRole || !oldRole.isValid()) {
-                return reject({error: 'role_not_found', itsFine: true});
+            if (oldRole && oldRole.isValid() && oldRole.isSyncEnabled() && oldRole.getDiscordRoleID()) {
+                await guildUser.roles.remove(oldRole.getDiscordRoleID()).catch(reject);
             }
-            if (!oldRole.isSyncEnabled()) {
-                return reject({error: 'role_not_sync', itsFine: true});
-            }
-            if (!oldRole.getDiscordRoleID()) {
-                return reject({error: 'role_not_linked', itsFine: true});
-            }
-
-            await guildUser.roles.remove(oldRole.getDiscordRoleID()).catch(reject);
         }
 
-        // add new role
         const role = await getRoleFromRole(server.getID(), newGroup);
-        if (!role || !role.isValid()) {
-            return reject({error: 'role_not_found', itsFine: true});
+        if (role && role.isValid() && role.isSyncEnabled() && role.getDiscordRoleID()) {
+            await guildUser.roles.add(role.getDiscordRoleID()).catch(reject);
         }
-        if (!role.isSyncEnabled()) {
-            return reject({error: 'role_not_sync', itsFine: true});
-        }
-        if (!role.getDiscordRoleID()) {
-            return reject({error: 'role_not_linked', itsFine: true});
-        }
-
-        await guildUser.roles.add(role.getDiscordRoleID()).catch(reject);
 
         // remove other roles
         await server.getRoles().then(async (roles) => {
