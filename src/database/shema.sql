@@ -635,13 +635,13 @@ create table if not exists gm_server_sync_chat_rules
 (
     id                int auto_increment
         primary key,
-    serverID          char(255)  null,
-    field             text       null,
-    operator          text       null,
-    value             text       null,
-    action            text       null,
-    enable            tinyint(1) null,
-    presetOverwriteID int        null,
+    serverID          char(255)                      null,
+    field             text       default 'message'   null,
+    operator          text       default 'startWith' null,
+    value             text       default '/cmd'      null,
+    action            text       default 'block'     null,
+    enable            tinyint(1) default 0           null,
+    presetOverwriteID int                            null,
     constraint gm_server_sync_chat_rules_gm_server_id_fk
         foreign key (serverID) references gm_server (id)
             on update cascade on delete cascade,

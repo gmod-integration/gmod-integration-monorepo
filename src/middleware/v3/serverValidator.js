@@ -14,7 +14,7 @@ module.exports = (req, res, next) => {
             }
         });
     }
-    
+
     const token = authorization.split(' ')[1];
     Server.getServerFromID(serverID).then((server) => {
         if (!server) return res.status(404).json({error: 'server_not_found'});
@@ -25,6 +25,7 @@ module.exports = (req, res, next) => {
         return next();
     }).catch((err) => {
         console.error(err);
+        if (err === 'invalid_server_id') return res.status(400).json({error: 'invalid_server_id'});
         return res.status(500).json({error: 'internal_server_error'});
     });
 };

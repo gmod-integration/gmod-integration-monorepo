@@ -87,6 +87,28 @@ class Server extends BaseClass {
         });
     }
 
+    async getChatRules() {
+        try {
+            const connection = await getConnectionPromisse();
+            const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules WHERE serverID = ?', [this.id]);
+            return results;
+        } catch (error) {
+            console.error(error);
+            return [];
+        }
+    }
+
+    async getGlobalChatRules() {
+        try {
+            const connection = await getConnectionPromisse();
+            const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules_preset');
+            return results;
+        } catch (error) {
+            console.error(error);
+            return [];
+        }
+    }
+
     async getRoles() {
         try {
             const connection = await getConnectionPromisse();
@@ -122,7 +144,7 @@ async function getServerFromID(serverID) {
                 if (results.length > 0) {
                     return resolve(new Server(results[0]));
                 } else {
-                    reject('Server not found');
+                    reject('invalid_server_id');
                 }
             });
         }).catch((err) => {
