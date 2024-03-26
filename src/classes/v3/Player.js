@@ -15,6 +15,14 @@ class Player extends BaseClass {
         this.name = obj.name;
         this.bypassMaintenance = obj.bypassMaintenance || false;
     }
+
+    getSteamID64() {
+        return this.steamID64;
+    }
+
+    isSuperAdmin() {
+        return this.rank === 'superadmin';
+    }
 }
 
 function getServerPlayer(serverID, steamID64) {
