@@ -96,12 +96,12 @@ function sendPlayerSay(server, player, text, onlyTeam) {
 
         const syncChatChannel = await server.getSyncChatChannel();
         if (!syncChatChannel) {
-            return reject({message: 'Sync chat channel not found or not set'});
+            return reject({skip: true, message: 'Sync chat channel not found or not set'});
         }
 
         const syncChatDirection = await server.getSetting('syncChatDirection');
         if (syncChatDirection && syncChatDirection === "discordToGmod") {
-            return reject({message: 'Sync chat direction is discord to gmod'});
+            return reject({skip: true, message: 'Sync chat direction is discord to gmod'});
         }
 
         const syncChatTriggerAll = await server.getSetting('syncChatTriggerAll');
@@ -195,7 +195,7 @@ function sendPlayerSay(server, player, text, onlyTeam) {
             });
 
             if (!relayMessage || blocked) {
-                return reject({message: 'Message blocked or not relayed'});
+                return reject({skip: true, message: 'Message blocked or not relayed'});
             }
         }
 
