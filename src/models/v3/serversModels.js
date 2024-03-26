@@ -1,4 +1,4 @@
-const {getConnection} = require('../../database/connection');
+const {getConnection, getConnectionPromisse} = require('../../database/connection');
 const {generateToken} = require("../../utils/tools");
 const {updateServerStatus} = require("../v2/serverModel");
 
@@ -129,10 +129,28 @@ function addServerLog(id, log) {
     });
 }
 
+async function getServerList(interaction, focusedOption, choices, callback) {
+    getConnection().then(connection => {
+        connection.query(`SELECT *
+                          FROM gm_server
+                          WHERE guild = ?`, [interaction.guild.id], (err, rows) => {
+            if (rows && rows.length > 0) {
+                rows.forEach(row => {
+                    // use value = id and name = name both string
+                    choices[row.name] = row.id;
+                });
+            }
+            const filtered = Object.keys(choices).filter(choice => choice.startsWith(focusedOption.value));
+            callback(filtered);
+        });
+    });
+}
+
 module.exports = {
     getInformations,
     isValidAuth,
     postStatus,
     getGuildID,
     addServerLog,
+    getServerList,
 };
