@@ -6,7 +6,7 @@
   "scripts": {
     "start": "nohup node src/gm_integration_api.js >> logs/$(date +%F).log 2>&1 &",
     "stop": "pkill -f gm_integration_api.js",
-    "dev": "nodemon src/gm_integration_api.js",
+    "dev": "node --watch --trace-warnings --trace-deprecation src/gm_integration_api.js",
     "test": "node --experimental-vm-modules --recursive src/test/*.js"
   },
   "repository": {
@@ -30,7 +30,6 @@
     "nodemon": "^3.0.1",
     "steamapi": "^2.4.2",
     "stripe": "^14.16.0",
-    "undici": "^6.6.1",
     "uuid": "^9.0.1",
     "ws": "^8.16.0"
   }
