@@ -6,7 +6,7 @@ const {getClient} = require("../../discord");
 
 let userUpdateRoleCurrent = {};
 
-function updateGuildUserSyncRoles(server, user, newGroup) {
+function updateGuildUserSyncRoles(server, user, newGroup, oldGroup = null) {
     return new Promise(async (resolve, reject) => {
         // check if user is User and not null
         if (!user) {
@@ -15,6 +15,39 @@ function updateGuildUserSyncRoles(server, user, newGroup) {
             return reject({error: 'user_not_found', itsFine: true});
         }
 
+        const userDiscordID = user.getDiscordID();
+        if (!userDiscordID) {
+            return reject({error: 'user_not_linked', itsFine: true});
+        }
+
+        let theClient = await getClient();
+        const guild = theClient.guilds.cache.get(await server.getGuildID());
+        if (!guild) {
+            return reject({error: 'guild_not_found', itsFine: true});
+        }
+
+        const guildUser = await guild.members.fetch(userDiscordID).catch(reject);
+        if (!guildUser) {
+            return reject({error: 'user_not_found', itsFine: true});
+        }
+
+        // remove old role
+        if (oldGroup) {
+            const oldRole = await getRoleFromRole(server.getID(), oldGroup);
+            if (!oldRole || !oldRole.isValid()) {
+                return reject({error: 'role_not_found', itsFine: true});
+            }
+            if (!oldRole.isSyncEnabled()) {
+                return reject({error: 'role_not_sync', itsFine: true});
+            }
+            if (!oldRole.getDiscordRoleID()) {
+                return reject({error: 'role_not_linked', itsFine: true});
+            }
+
+            await guildUser.roles.remove(oldRole.getDiscordRoleID()).catch(reject);
+        }
+
+        // add new role
         const role = await getRoleFromRole(server.getID(), newGroup);
         if (!role || !role.isValid()) {
             return reject({error: 'role_not_found', itsFine: true});
@@ -26,37 +59,20 @@ function updateGuildUserSyncRoles(server, user, newGroup) {
             return reject({error: 'role_not_linked', itsFine: true});
         }
 
-        let theClient = await getClient();
-        const guild = theClient.guilds.cache.get(await server.getGuildID());
-        if (!guild) {
-            return reject({error: 'guild_not_found', itsFine: true});
-        }
+        await guildUser.roles.add(role.getDiscordRoleID()).catch(reject);
 
-        userUpdateRoleCurrent[`guildID-${guild.id}`] = new Date().getTime();
-
-        const userDiscordID = user.getDiscordID();
-        if (!userDiscordID) {
-            return reject({error: 'user_not_linked', itsFine: true});
-        }
-        await guild.members.fetch(userDiscordID).then(async member => {
-            if (!member) {
-                return reject({error: 'member_not_found', itsFine: true});
-            }
-            await member.roles.add(role.getDiscordRoleID()).catch(reject);
-            await server.getRoles().then(async roles => {
-                let rolesToRemove = [];
-                for (let i = 0; i < roles.length; i++) {
-                    if (roles[i].getDiscordRoleID() && roles[i].getDiscordRoleID() !== role.getDiscordRoleID()) {
-                        rolesToRemove.push(roles[i].getDiscordRoleID());
-                    }
+        // remove other roles
+        await server.getRoles().then(async (roles) => {
+            let rolesToRemove = [];
+            for (let i = 0; i < roles.length; i++) {
+                if (roles[i].getDiscordRoleID() && roles[i].getDiscordRoleID() !== role.getDiscordRoleID()) {
+                    rolesToRemove.push(roles[i].getDiscordRoleID());
                 }
+            }
 
-                await member.roles.remove(rolesToRemove).catch(reject);
-            }).catch(reject);
+            await guildUser.roles.remove(rolesToRemove).catch(reject);
+            return resolve();
         }).catch(reject);
-
-        userUpdateRoleCurrent[`guildID-${guild.id}`] = null;
-        resolve();
     });
 }
 

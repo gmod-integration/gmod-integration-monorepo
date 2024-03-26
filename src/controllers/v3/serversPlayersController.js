@@ -198,7 +198,7 @@ async function playerChangeGroup(req, res) {
         return res.status(404).json({error: 'user_not_found'});
     }
 
-    updateGuildUserSyncRoles(server, user, newGroup).then(async () => {
+    updateGuildUserSyncRoles(server, user, newGroup, oldGroup).then(async () => {
         await updatePlayerUserGroup(server.getID(), steamID64, newGroup);
         return res.status(200).json({success: true});
     }).catch((err) => {
