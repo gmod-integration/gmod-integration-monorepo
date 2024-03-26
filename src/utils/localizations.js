@@ -30,13 +30,13 @@ function getDefaultTrad(key, options) {
 function getTranslate(key, language, options) {
     try {
         language = language ? language.substring(0, 2) : 'en';
-        const filePath = path.join(__dirname, `../languages/${language}.json`);
+        const filePath = path.join(__dirname, `../locales/${language}.json`);
 
         if (!fs.existsSync(filePath)) {
             language = 'en';
         }
 
-        const translate = require(`../languages/${language}.json`);
+        const translate = require(`../locales/${language}.json`);
         if (key in translate) {
             return insertOptions(translate[key], options);
         } else {
