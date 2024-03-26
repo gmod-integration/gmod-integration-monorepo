@@ -34,13 +34,14 @@ function updateGuildUserSyncRoles(server, user, newGroup, oldGroup = null) {
         if (oldGroup) {
             const oldRole = await getRoleFromRole(server.getID(), oldGroup);
             if (oldRole && oldRole.isValid() && oldRole.isSyncEnabled() && oldRole.getDiscordRoleID()) {
-                userUpdateRoleCurrent[`guildID-${guild.id}`] = new Date().getTime();
+                userUpdateRoleCurrent[oldRole.getDiscordRoleID()] = false;
                 await guildUser.roles.remove(oldRole.getDiscordRoleID()).catch(reject);
             }
         }
 
         const role = await getRoleFromRole(server.getID(), newGroup);
         if (role && role.isValid() && role.isSyncEnabled() && role.getDiscordRoleID()) {
+            userUpdateRoleCurrent[role.getDiscordRoleID()] = true;
             await guildUser.roles.add(role.getDiscordRoleID()).catch(reject);
         }
 
@@ -49,11 +50,11 @@ function updateGuildUserSyncRoles(server, user, newGroup, oldGroup = null) {
             let rolesToRemove = [];
             for (let i = 0; i < roles.length; i++) {
                 if (roles[i].getDiscordRoleID() && role && role.getDiscordRoleID() && roles[i].getDiscordRoleID() !== role.getDiscordRoleID()) {
+                    userUpdateRoleCurrent[roles[i].getDiscordRoleID()] = false;
                     rolesToRemove.push(roles[i].getDiscordRoleID());
                 }
             }
 
-            userUpdateRoleCurrent[`guildID-${guild.id}`] = new Date().getTime();
             await guildUser.roles.remove(rolesToRemove).catch(reject);
             return resolve();
         }).catch(reject);
@@ -64,11 +65,18 @@ async function updateRolesToGmod(newMember, roleID, add = true) {
     const guildID = newMember.guild.id;
     const memberID = newMember.id;
 
-    if (userUpdateRoleCurrent[`guildID-${guildID}`] && userUpdateRoleCurrent[`guildID-${guildID}`] > new Date().getTime() - 10000) {
+    // if (userUpdateRoleCurrent[`guildID-${guildID}`] && userUpdateRoleCurrent[`guildID-${guildID}`] > new Date().getTime() - 10000) {
+    //     return;
+    // } else {
+    //     userUpdateRoleCurrent[`guildID-${guildID}`] = new Date().getTime();
+    // }
+    if (userUpdateRoleCurrent[roleID] !== null && userUpdateRoleCurrent[roleID] === add) {
         return;
     } else {
-        userUpdateRoleCurrent[`guildID-${guildID}`] = new Date().getTime();
+        userUpdateRoleCurrent[roleID] = add;
     }
+
+    console.log(userUpdateRoleCurrent[roleID] === add);
 
     return new Promise(async (resolve, reject) => {
         console.log('updateRolesToGmod', guildID, memberID, roleID, add);
@@ -107,6 +115,7 @@ async function updateRolesToGmod(newMember, roleID, add = true) {
                     let rolesToRemove = [];
                     for (let i = 0; i < roles.length; i++) {
                         if (roles[i].getDiscordRoleID() && roles[i].getDiscordRoleID() !== roleInfo.getDiscordRoleID()) {
+                            userUpdateRoleCurrent[roles[i].getDiscordRoleID()] = false;
                             rolesToRemove.push(roles[i].getDiscordRoleID());
                         }
                     }
@@ -126,7 +135,6 @@ async function updateRolesToGmod(newMember, roleID, add = true) {
             );
         }
 
-        userUpdateRoleCurrent[`guildID-${guildID}`] = null;
         resolve();
     });
 }
