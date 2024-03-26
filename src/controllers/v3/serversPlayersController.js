@@ -139,6 +139,9 @@ function say(req, res) {
     serversPlayersModels.sendPlayerSay(server, player, text, teamOnly).then(() => {
         return res.status(200).json({message: 'data_received'});
     }).catch((err) => {
+        if (err.message) {
+            return res.status(400).json({error: err.message});
+        }
         console.log(err);
         return res.status(500).json({error: 'internal_server_error'});
     });

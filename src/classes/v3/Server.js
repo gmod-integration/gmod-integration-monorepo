@@ -60,6 +60,17 @@ class Server extends BaseClass {
         }
     }
 
+    async getSyncChatChannel() {
+        try {
+            const connection = await getConnectionPromisse();
+            const [results] = await connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [this.id]);
+            return results && results[0] ? results[0] : null;
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
+    }
+
     async getSetting(setting) {
         try {
             const connection = await getConnectionPromisse();

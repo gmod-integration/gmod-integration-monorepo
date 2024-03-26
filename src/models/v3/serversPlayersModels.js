@@ -91,10 +91,17 @@ async function getPlayerBan(steamID64) {
 function sendPlayerSay(server, player, text, onlyTeam) {
     let anonymous = false;
     return new Promise(async (resolve, reject) => {
-        const syncChat = await server.getSetting('syncChat');
+        player.name.replace(/[^\x00-\x7F]/g, "");
+        text.replace(/[^\x00-\x7F]/g, "");
+
+        const syncChatChannel = await server.getSyncChatChannel();
+        if (!syncChatChannel) {
+            return reject({message: 'Sync chat channel not found or not set'});
+        }
+
         const syncChatDirection = await server.getSetting('syncChatDirection');
-        if (!syncChat || syncChatDirection === 'discordToGmod') {
-            resolve();
+        if (syncChatDirection && syncChatDirection === "discordToGmod") {
+            return reject({message: 'Sync chat direction is discord to gmod'});
         }
 
         const syncChatTriggerAll = await server.getSetting('syncChatTriggerAll');
@@ -188,34 +195,20 @@ function sendPlayerSay(server, player, text, onlyTeam) {
             });
 
             if (!relayMessage || blocked) {
-                return resolve();
+                return reject({message: 'Message blocked or not relayed'});
             }
         }
 
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [server.id], async (error, results) => {
-                if (error) throw error;
-                if (results.length > 0) {
-                    const webhookClient = new WebhookClient({id: results[0].id, token: results[0].token});
-
-                    player.name.replace(/[^\x00-\x7F]/g, "");
-                    text.replace(/[^\x00-\x7F]/g, "");
-
-                    webhookClient.send({
-                        username: anonymous ? 'Anonymous' : (player.name ? player.name : 'Unknown'),
-                        avatarURL: anonymous ? 'https://i.imgur.com/MfkZJfm.jpeg' : await steam.getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
-                        content: text ? text : 'No message',
-                    }).then(() => {
-                        resolve();
-                    }).catch((err) => {
-                        console.error(err);
-                        reject(err);
-                    });
-                }
-            });
+        const webhookClient = new WebhookClient({id: syncChatChannel.id, token: syncChatChannel.token});
+        webhookClient.send({
+            username: anonymous ? 'Anonymous' : (player.name ? player.name : 'Unknown'),
+            avatarURL: anonymous ? 'https://i.imgur.com/MfkZJfm.jpeg' : await steam.getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
+            content: text ? text : 'No message',
+        }).then(() => {
+            return resolve();
         }).catch((err) => {
             console.error(err);
-            reject(err);
+            return reject(err);
         });
     });
 }
