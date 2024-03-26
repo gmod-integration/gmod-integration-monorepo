@@ -8,6 +8,13 @@ let userUpdateRoleCurrent = {};
 
 function updateGuildUserSyncRoles(server, user, newGroup) {
     return new Promise(async (resolve, reject) => {
+        // check if user is User and not null
+        if (!user || !user.isValid || !user.isValid()) {
+            console.log(user);
+            console.log(user === null);
+            return reject({error: 'user_not_found', itsFine: true});
+        }
+        
         const role = await getRoleFromRole(server.getID(), newGroup);
         if (!role || !role.isValid()) {
             return reject({error: 'role_not_found', itsFine: true});
