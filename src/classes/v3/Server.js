@@ -1,6 +1,7 @@
 const BaseClass = require("./BaseClass");
 const {getConnection, getConnectionPromisse} = require("../../database/connection");
 const {Role} = require("./Role");
+const {Player} = require("./Player");
 const {generateToken} = require("../../utils/tools");
 
 class Server extends BaseClass {
@@ -142,6 +143,18 @@ class Server extends BaseClass {
     }
 
     async isValidPlayerToken(steamID64, token, createDate) {
+
+    }
+
+    async getServerPlayer(steamID64) {
+        try {
+            const connection = await getConnectionPromisse();
+            const [results] = await connection.query('SELECT * FROM gm_server_stat WHERE server_id = ? AND steam_id = ?', [this.id, steamID64]);
+            return results && results[0] ? new Player(results[0]) : null;
+        } catch (error) {
+            console.error(error);
+            return null;
+        }
 
     }
 }
