@@ -8,7 +8,6 @@ let userUpdateRoleCurrent = {};
 
 function updateGuildUserSyncRoles(server, user, newGroup, oldGroup = null) {
     return new Promise(async (resolve, reject) => {
-        // check if user is User and not null
         if (!user) {
             console.log(user);
             console.log(user === null);
@@ -45,7 +44,6 @@ function updateGuildUserSyncRoles(server, user, newGroup, oldGroup = null) {
             await guildUser.roles.add(role.getDiscordRoleID()).catch(reject);
         }
 
-        // remove other roles
         await server.getRoles().then(async (roles) => {
             let rolesToRemove = [];
             for (let i = 0; i < roles.length; i++) {
@@ -65,11 +63,6 @@ async function updateRolesToGmod(newMember, roleID, add = true) {
     const guildID = newMember.guild.id;
     const memberID = newMember.id;
 
-    // if (userUpdateRoleCurrent[`guildID-${guildID}`] && userUpdateRoleCurrent[`guildID-${guildID}`] > new Date().getTime() - 10000) {
-    //     return;
-    // } else {
-    //     userUpdateRoleCurrent[`guildID-${guildID}`] = new Date().getTime();
-    // }
     if (userUpdateRoleCurrent[roleID] !== null && userUpdateRoleCurrent[roleID] === add) {
         return;
     } else {
