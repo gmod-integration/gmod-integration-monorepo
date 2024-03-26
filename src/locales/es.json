@@ -145,5 +145,7 @@
   "help_content_verification": "Pendiente",
   "help_content_default": "Pendiente",
   "leaderboard": "Clasificación de {1}",
-  "leaderboard_desc": "Buscar por {1}, página {2}/{3}"
+  "leaderboard_desc": "Buscar por {1}, página {2}/{3}",
+  "rcon_command_error": "¡Se produjo un error al enviar el comando!",
+  "rcon_command_success": "¡Comando enviado con éxito!"
 }

@@ -108,5 +108,7 @@
   "setup_role_give": "Le rôle <@&{1}> sera maintenant donné à l'utilisateur lorsqu'il est vérifié !",
   "server_id_not_found": "ID du serveur introuvable",
   "server_list_desc": "Ceci est une liste de tous vos serveurs enregistrés sur la guilde actuelle, vous pouvez modifier toutes les valeurs sauf l'ID et le token avec `{1}`",
-  "server_add_desc": "Le serveur {1} avec l'ID {2} a été ajouté avec succès !\nPour voir tous vos serveurs, utilisez {3}\n\nL'étape suivante pour l'installation est d'ajouter le contenu du workshop à votre serveur {4}\nEt configurez le token et l'ID avec {5} et {6}.\n\nAprès cela, vous pouvez redemarrez votre serveur Garry's Mod et vous êtes prêt a utiliser le bot !"
+  "server_add_desc": "Le serveur {1} avec l'ID {2} a été ajouté avec succès !\nPour voir tous vos serveurs, utilisez {3}\n\nL'étape suivante pour l'installation est d'ajouter le contenu du workshop à votre serveur {4}\nEt configurez le token et l'ID avec {5} et {6}.\n\nAprès cela, vous pouvez redemarrez votre serveur Garry's Mod et vous êtes prêt a utiliser le bot !",
+  "rcon_command_error": "Une erreur s'est produite lors de l'envoi de la commande !",
+  "rcon_command_success": "Commande envoyée avec succès !"
 }

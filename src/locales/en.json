@@ -155,5 +155,7 @@
   "close_ticket": "Close Ticket",
   "join_ticket_admin": "Join Ticket as Staff",
   "admin_ticket_waiting": "Waiting for a staff to join the ticket...",
-  "ticket_not_found": "Ticket not found !"
+  "ticket_not_found": "Ticket not found !",
+  "rcon_command_error": "An error occured while sending the command !",
+  "rcon_command_success": "Command successfully sent !"
 }

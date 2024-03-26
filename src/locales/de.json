@@ -145,5 +145,7 @@
   "help_content_verification": "Ausstehend",
   "help_content_default": "Ausstehend",
   "leaderboard": "Bestenliste von {1}",
-  "leaderboard_desc": "Suche nach {1}, Seite {2}/{3}"
+  "leaderboard_desc": "Suche nach {1}, Seite {2}/{3}",
+  "rcon_command_error": "Ein Fehler ist aufgetreten beim Senden des Befehls!",
+  "rcon_command_success": "Befehl erfolgreich gesendet!"
 }

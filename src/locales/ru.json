@@ -145,5 +145,7 @@
   "help_content_verification": "План",
   "help_content_default": "План",
   "leaderboard": "Таблица лидеров {1}",
-  "leaderboard_desc": "Поиск по {1}, страница {2}/{3}"
+  "leaderboard_desc": "Поиск по {1}, страница {2}/{3}",
+  "rcon_command_error": "Произошла ошибка при отправке команды!",
+  "rcon_command_success": "Команда успешно отправлена!"
 }

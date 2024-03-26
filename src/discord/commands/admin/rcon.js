@@ -52,7 +52,7 @@ module.exports = {
         const player = await server.getServerPlayer(user.getSteamID64());
         if (!player) {
             return interaction.reply({
-                content: getTranslate('rcon_player_not_found', lang),
+                content: getTranslate('rcon_steam_link', lang),
                 ephemeral: true
             });
         }
@@ -76,7 +76,7 @@ module.exports = {
             command: interaction.options.getString('command')
         })) {
             return interaction.reply({
-                content: getTranslate('rcon_command_sent', lang),
+                content: getTranslate('rcon_command_success', lang),
                 ephemeral: true
             });
         } else {
