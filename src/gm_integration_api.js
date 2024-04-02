@@ -3,6 +3,7 @@
 //
 
 const express = require('express');
+const statusMonitor = require('express-status-monitor');
 
 const {port_api, bodyLimit} = require('./config');
 const logger = require('./utils/logger');
@@ -12,6 +13,7 @@ const logger = require('./utils/logger');
 //
 
 const app = express();
+app.use(statusMonitor());
 
 // raw body
 const rawBodyMiddleware = require('./middleware/rawBodyMiddleware')
@@ -80,7 +82,7 @@ app.all('*', (req, res) => {
 //
 
 const errorMiddleware = require('./middleware/errorMiddleware');
-const { raw } = require('body-parser');
+const {raw} = require('body-parser');
 app.use(errorMiddleware);
 
 //
