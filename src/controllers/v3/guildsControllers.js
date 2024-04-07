@@ -2,7 +2,9 @@ const {getConnectionPromisse} = require("../../database/connection");
 const {isGuildPremium, replyNeedPremium} = require("../../classes/v3/Guild");
 const {getTranslate} = require("../../utils/localizations");
 const {wsSendToServer} = require("../../websockets");
-const {getServersFromDiscordGuildID} = require("../../classes/v3/Server");
+const { getServersFromDiscordGuildID } = require("../../classes/v3/Server");
+// const { ButtonPremium } = require("../utils/buttons.js");
+// const { MessageActionRow } = require("discord.js");
 
 async function sendMessageToGmod(message) {
     if (message.author.bot || !message.guild) return;
@@ -18,26 +20,30 @@ async function sendMessageToGmod(message) {
     for (const row of rows) {
         const server = serversInfo.find(server => server.getID() === row.server);
         if (!server || !server.isValid()) {
+            console.error(`Server ${row.server} not found`);
             continue;
         }
 
-        const syncChat = await server.getSetting('syncChat');
-        if (!syncChat || syncChat === 'false') {
+        const syncChatChannel = await server.getSyncChatChannel();
+        if (!syncChatChannel) {
+            console.error(`Server ${row.server} not syncing chat because syncChatChannel is not set`);
             continue;
         }
 
         const syncChatDirection = await server.getSetting('syncChatDirection');
         if (syncChatDirection === "gmodToDiscord") {
+            console.log(`Server ${row.server} syncing chat from Gmod to Discord`);
             continue;
         }
 
         if (!await isGuildPremium(message.guild.id)) {
-            // message.reply({
-            //     content: getTranslate('premium_required', lang),
-            //     ephemeral: true
-            // });
-            // return;
-            return replyNeedPremium(interaction);
+            // create button to upgrade
+            // ButtonPremium(lang)
+            return message.reply({
+                content: getTranslate('premium_required', lang),
+                ephemeral: true,
+                // rows: new MessageActionRow().addComponents(ButtonPremium(lang)),
+            });
         }
 
         wsSendToServer(

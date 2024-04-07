@@ -35,6 +35,8 @@ async function replyNeedPremium(interaction) {
             'Authorization': `Bot ${process.env.DISCORD_BOT_TOKEN}`,
             'Content-Type': 'application/json'
         }
+    }).catch(err => {
+        console.error(err);
     });
 }
 
