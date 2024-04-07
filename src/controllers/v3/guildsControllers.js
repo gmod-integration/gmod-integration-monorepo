@@ -2,9 +2,9 @@ const {getConnectionPromisse} = require("../../database/connection");
 const {isGuildPremium, replyNeedPremium} = require("../../classes/v3/Guild");
 const {getTranslate} = require("../../utils/localizations");
 const {wsSendToServer} = require("../../websockets");
-const { getServersFromDiscordGuildID } = require("../../classes/v3/Server");
-// const { ButtonPremium } = require("../utils/buttons.js");
-// const { MessageActionRow } = require("discord.js");
+const {getServersFromDiscordGuildID} = require("../../classes/v3/Server");
+const {ButtonPremium} = require("../../discord/utils/buttons");
+const {ActionRowBuilder} = require("discord.js");
 
 async function sendMessageToGmod(message) {
     if (message.author.bot || !message.guild) return;
@@ -38,11 +38,11 @@ async function sendMessageToGmod(message) {
 
         if (!await isGuildPremium(message.guild.id)) {
             // create button to upgrade
-            // ButtonPremium(lang)
+            // ButtonPremium()
             return message.reply({
                 content: getTranslate('premium_required', lang),
                 ephemeral: true,
-                // rows: new MessageActionRow().addComponents(ButtonPremium(lang)),
+                components: [new ActionRowBuilder().addComponents(ButtonPremium(lang))],
             });
         }
 

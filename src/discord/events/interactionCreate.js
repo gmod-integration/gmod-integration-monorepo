@@ -1,3 +1,5 @@
+const {replyNeedPremium} = require("../../classes/v3/Guild");
+
 module.exports = {
     name: 'interactionCreate',
     execute(interaction) {
