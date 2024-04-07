@@ -4,7 +4,7 @@ const {getUserFromDiscordID} = require("../../../classes/v3/User");
 const {getTranslate} = require("../../../utils/localizations");
 const {ButtonVerificationWebsite} = require("../../utils/buttons");
 const {getServerFromID} = require("../../../classes/v3/Server");
-const {isGuildPremium} = require("../../../classes/v3/Guild");
+const {isGuildPremium, replyNeedPremium} = require("../../../classes/v3/Guild");
 const {wsSendToServer} = require("../../../websockets");
 
 
@@ -64,10 +64,11 @@ module.exports = {
         }
 
         if (await isGuildPremium(interaction.guild.id) === false) {
-            return interaction.reply({
-                content: getTranslate('premium_feature', lang, [' [Gmod Integration - Premium](https://gmod-integration.com/premium)']),
-                ephemeral: true
-            });
+            // return interaction.reply({
+            //     content: getTranslate('premium_feature', lang, [' [Gmod Integration - Premium](https://gmod-integration.com/premium)']),
+            //     ephemeral: true
+            // });
+            return replyNeedPremium(interaction);
         }
 
         if (wsSendToServer(serverID, {

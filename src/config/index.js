@@ -18,6 +18,7 @@ exports.dbConfig = {
 exports.bodyLimit = '10mb';
 exports.port_api = process.env.PORT_API;
 exports.bot_token = process.env.DISCORD_BOT_TOKEN;
+exports.client_id = process.env.DISCORD_CLIENT_ID;
 exports.steamAPI = process.env.STEAM_API_KEY;
 exports.signingSecretWebhook = process.env.SIGNING_SECRET_WEBHOOK;
 exports.gmodStoreAPIKey = process.env.GMODSTORE_API_KEY;

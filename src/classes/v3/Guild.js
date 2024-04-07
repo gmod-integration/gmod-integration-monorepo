@@ -1,16 +1,44 @@
 const {getConnection} = require("../../database/connection");
+const axios = require("axios");
+const {
+    client_id
+} = require("../../config");
 
 async function isGuildPremium(guildID) {
-    return new Promise((resolve, reject) => {
-        getConnection().then(connection => {
-            connection.query('SELECT * FROM gm_premium WHERE guild = ?', [guildID], (error, results) => {
-                if (error) return reject(error);
-                resolve(results.length > 0);
-            });
+    return new Promise(async (resolve, reject) => {
+        const response = await axios.get(`https://discord.com/api/v10/applications/${client_id}/entitlements`, {
+            headers: {
+                'Authorization': `Bot ${process.env.DISCORD_BOT_TOKEN}`
+            }
         });
+
+        let isPremium = false;
+        await response.data.forEach(entitlement => {
+            if (entitlement.guild_id === guildID) {
+                isPremium = true;
+            }
+        });
+
+        resolve(isPremium);
+    });
+}
+
+async function replyNeedPremium(interaction) {
+    const url = `https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`;
+    const json = {
+        type: 10,
+        data: {}
+    };
+
+    await axios.post(url, json, {
+        headers: {
+            'Authorization': `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+            'Content-Type': 'application/json'
+        }
     });
 }
 
 module.exports = {
-    isGuildPremium
+    isGuildPremium,
+    replyNeedPremium
 }

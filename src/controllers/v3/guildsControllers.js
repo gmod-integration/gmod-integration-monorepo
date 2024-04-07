@@ -1,5 +1,5 @@
 const {getConnectionPromisse} = require("../../database/connection");
-const {isGuildPremium} = require("../../classes/v3/Guild");
+const {isGuildPremium, replyNeedPremium} = require("../../classes/v3/Guild");
 const {getTranslate} = require("../../utils/localizations");
 const {wsSendToServer} = require("../../websockets");
 const {getServersFromDiscordGuildID} = require("../../classes/v3/Server");
@@ -32,11 +32,12 @@ async function sendMessageToGmod(message) {
         }
 
         if (!await isGuildPremium(message.guild.id)) {
-            message.reply({
-                content: getTranslate('premium_required', lang),
-                ephemeral: true
-            });
-            return;
+            // message.reply({
+            //     content: getTranslate('premium_required', lang),
+            //     ephemeral: true
+            // });
+            // return;
+            return replyNeedPremium(interaction);
         }
 
         wsSendToServer(
