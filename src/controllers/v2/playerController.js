@@ -8,7 +8,11 @@ async function postScreenshot(req, res) {
 
     if (badArgument([id, screenshot, steamID64, options, host, name])) return res.status(400).json({error: 'missing_arguments'});
 
-    const steamSummary = await playerModels.getSteamProfile(steamID64);
+    const steamSummary = await playerModels.getSteamProfile(steamID64).catch((err) => {
+        console.log(err);
+        return res.status(400).json({error: 'invalid_steamid64'});
+    });
+
     if (!steamSummary) return res.status(400).json({error: 'invalid_steamid64'});
 
     playerModels.saveScreenshot(id, screenshot, steamID64, options).then((result) => {
