@@ -74,6 +74,13 @@ function ButtonForum(lang, url) {
         .setURL('https://gmod-integration.com/open-link?link=' + url);
 }
 
+function ButtonPremium(lang) {
+    return new ButtonBuilder()
+        .setStyle(ButtonStyle.Primary)
+        .setLabel('⠀' + getTranslate('premium', lang))
+        .setEmoji('💎')
+        .setCustomId('premium');
+}
 
 module.exports = {
     ButtonVerificationWebsite,
@@ -85,4 +92,5 @@ module.exports = {
     ButtonShop,
     ButtonWorkshop,
     ButtonForum,
+    ButtonPremium,
 }
