@@ -6,7 +6,7 @@
   "scripts": {
     "start": "nohup node src/gm_integration_api.js >> logs/$(date +%F).log 2>&1 &",
     "stop": "pkill -f gm_integration_api.js",
-    "dev": "node --watch --trace-warnings --trace-deprecation src/gm_integration_api.js",
+    "dev": "node --watch --trace-warnings --trace-deprecation .",
     "test": "node --experimental-vm-modules --recursive src/test/*.js"
   },
   "repository": {

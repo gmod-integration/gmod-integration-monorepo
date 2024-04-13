@@ -27,13 +27,19 @@ export async function getConnectionPromise() {
     }
 }
 
-setInterval(async () => {
+async function pingDatabase() {
     try {
         const connection = await getConnectionPromise();
         await connection.ping();
     } catch (error) {
         console.error('Error pinging database:', error);
     }
+}
+
+await pingDatabase();
+
+setInterval(async () => {
+    await pingDatabase();
 }, 10000);
 
 export async function executeSqlFile(filePath) {

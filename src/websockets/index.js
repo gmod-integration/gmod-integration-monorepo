@@ -1,8 +1,8 @@
 import {WebSocketServer} from 'ws';
 import {serverConfig} from '../config/index.js';
 import {getConnectionPromise} from "../database/connection.js";
+import {gmLog} from "../utils/logger.js";
 
-// TypeError: WebSocket.Server is not a constructor
 const wss = new WebSocketServer({
     port: serverConfig.ports.websocket, clientTracking: true, verifyClient: (info, cb) => {
         const {id, token} = info.req.headers;
@@ -16,30 +16,29 @@ const wss = new WebSocketServer({
         connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (err, rows) => {
             if (err) throw err;
             if (rows && rows.length > 0) {
-                console.log('Verified client ' + id);
+                gmLog('websocket', 'Authorized client ' + id);
                 cb(true);
             } else {
-                console.log('Unauthorized client ' + id);
+                gmLog('websocket', 'Unauthorized client ' + id);
                 cb(false, 401, 'Unauthorized');
             }
         });
     }
 });
 
-console.log('WebSocket server started on port ' + serverConfig.ports.websocket);
+gmLog('websocket', 'Websocket listening on port ' + serverConfig.ports.websocket);
 
 let clients = [];
 
-// when a client connects log header info
 wss.on('connection', function connection(ws, req) {
     const {id, token} = req.headers;
 
-    console.log('Client connected ' + id);
+    gmLog('websocket', 'Client connected ' + id);
     clients = clients.filter(client => client.id !== id);
     clients.push({id: id, ws: ws});
 
     ws.on('close', () => {
-        console.log('Client disconnected ' + id);
+        gmLog('websocket', 'Client disconnected ' + id);
         clients = clients.filter(client => client.id !== id);
     });
 
@@ -89,9 +88,9 @@ export function wsSendToServer(id, data) {
     });
 
     if (!success) {
-        console.log('Client ' + id + ' not found');
+        gmLog('websocket', 'Client ' + id + ' not found');
     } else {
-        console.log('Sent to client ' + id + ': ' + JSON.stringify(data));
+        gmLog('websocket', 'Sent to client ' + id + ': ' + JSON.stringify(data));
     }
     return success;
 }
@@ -99,7 +98,7 @@ export function wsSendToServer(id, data) {
 setInterval(() => {
     clients.forEach(client => {
         if (client.ws.readyState !== WebSocket.OPEN) {
-            console.log('Client ' + client.id + ' not alive');
+            gmLog('websocket', 'Lost connection with client ' + client.id);
             clients = clients.filter(c => c.id !== client.id);
         }
     });

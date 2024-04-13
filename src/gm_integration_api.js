@@ -20,7 +20,7 @@ app.set('trust proxy', true);
 
 // Middleware
 app.use(rawBodyMiddleware);
-//
+
 // Body Parser
 app.use(express.json({limit: serverConfig.bodyLimit, type: 'application/json'}));
 app.use(express.urlencoded({limit: serverConfig.bodyLimit, extended: true}));
@@ -43,4 +43,6 @@ app.all('*', (req, res) => {
 app.use(errorMiddleware);
 
 // Listen
-app.listen(serverConfig.ports.api, () => gmLog('system', `API listening on port ${serverConfig.ports.api}`));
+app.listen(serverConfig.ports.api, () => {
+    gmLog('express', `API listening on port ${serverConfig.ports.api}`);
+});

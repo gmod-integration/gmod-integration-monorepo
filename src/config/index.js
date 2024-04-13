@@ -19,9 +19,9 @@ export const serverConfig = {
     domain: process.env.DOMAIN_URL,
     internWebsocketToken: process.env.INTERN_WEBSOCKET_TOKEN,
     ports: {
-        website: process.env.PORT_WEBSITE || 53134,
+        website: 53134,
         panel: 53135,
-        api: process.env.PORT_API || 53136,
+        api: 53136,
         verify: 53137,
         websocket: 53139
     }
