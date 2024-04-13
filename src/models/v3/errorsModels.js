@@ -1,4 +1,4 @@
-const {getConnection} = require('../../database/connection');
+const {getConnection} = require('../../database/connection.js');
 
 function reportError({error, stack, id, name, realm, identifier, uptime}) {
     return new Promise((resolve, reject) => {

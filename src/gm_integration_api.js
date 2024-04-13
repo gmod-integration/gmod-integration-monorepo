@@ -7,6 +7,12 @@ import loggerMiddleware from './middleware/v3/loggers.js';
 import webhooksRoutes from './routes/webhooks/_webhooksRoutes.js';
 import v3Routes from './routes/v3/_v3Routes.js';
 import errorMiddleware from './middleware/errorMiddleware.js';
+import {executeSqlFile} from "./database/connection.js";
+
+// Database
+executeSqlFile('./src/database/schema.sql').then(() => {
+    gmLog('mysql2', 'Database schema created');
+});
 
 // Express
 const app = express();

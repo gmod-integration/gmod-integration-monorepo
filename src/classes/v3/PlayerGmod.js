@@ -1,4 +1,4 @@
-const {getConnectionPromisse, getConnection} = require('../../database/connection');
+const {getConnectionPromisse, getConnection} = require('../../database/connection.js');
 const Team = require('./Team');
 const Position = require('./Position');
 const Angle = require('./Angle');

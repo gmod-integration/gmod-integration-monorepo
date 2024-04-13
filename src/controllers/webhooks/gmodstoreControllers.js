@@ -1,16 +1,16 @@
-const gmodStoreModels = require("../../models/webhooks/gmodStoreModels");
+import {getUser, saveGmodStorePurchase} from '../../models/webhooks/gmodStoreModels.js';
 
 async function purchase(req, res) {
     const userID = req.body.data.userId;
 
     if (!userID) return res.status(400).json({error: 'missing_arguments'});
 
-    gmodStoreModels.getUser(userID).then((user) => {
+    getUser(userID).then((user) => {
         if (!user || !user.data) return res.status(400).json({error: 'invalid_user'});
 
         const steamID64 = user.data.steamId;
 
-        gmodStoreModels.saveGmodStorePurchase(steamID64, false).then(() => {
+        saveGmodStorePurchase(steamID64, false).then(() => {
             return res.status(200).json({status: 'ok'});
         }).catch((err) => {
             console.log(err);
@@ -27,12 +27,12 @@ async function revoke(req, res) {
 
     if (!userID) return res.status(400).json({error: 'missing_arguments'});
 
-    gmodStoreModels.getUser(userID).then((user) => {
+    getUser(userID).then((user) => {
         if (!user || !user.data) return res.status(400).json({error: 'invalid_user'});
 
         const steamID64 = user.data.steamId;
 
-        gmodStoreModels.saveGmodStorePurchase(steamID64, true).then(() => {
+        saveGmodStorePurchase(steamID64, true).then(() => {
             return res.status(200).json({status: 'ok'});
         }).catch((err) => {
             console.log(err);
@@ -44,7 +44,16 @@ async function revoke(req, res) {
     });
 }
 
-module.exports = {
-    purchase,
-    revoke
+export default async (req, res) => {
+    const event = req.body.eventType;
+
+    if (!event) return res.status(400).json({error: 'missing_arguments'});
+
+    if (event === 'product_purchase.created' || event === 'product_purchase.unrevoked') {
+        await purchase(req, res);
+    } else if (event === 'product_purchase.revoked') {
+        await revoke(req, res);
+    } else {
+        res.status(400).json({error: 'invalid_event'});
+    }
 }

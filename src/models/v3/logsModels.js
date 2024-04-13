@@ -1,4 +1,4 @@
-const {getConnection} = require('../../database/connection');
+const {getConnection} = require('../../database/connection.js');
 
 function getInformations(id) {
     return new Promise((resolve, reject) => {

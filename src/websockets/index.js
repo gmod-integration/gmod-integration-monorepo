@@ -1,5 +1,5 @@
 const {port_websocket, intern_websocket_token} = require('../config/index');
-const {getConnection} = require('../database/connection');
+const {getConnection} = require('../database/connection.js');
 const WebSocket = require('ws');
 
 // timeout in 10min

@@ -34,16 +34,11 @@ export const discordConfig = {
     redirectUri: process.env.DISCORD_REDIRECT_URI,
 }
 
-export const stripeConfig = {
-    secretKey: process.env.STRIPE_SECRET_KEY,
-    publicKey: process.env.STRIPE_PUBLIC_KEY,
-    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET
-}
-
 export const steamConfig = {
     apiKey: process.env.STEAM_API_KEY
 }
 
 export const gmodStoreConfig = {
-    apiKey: process.env.GMODSTORE_API_KEY
+    apiKey: process.env.GMODSTORE_API_KEY,
+    signingSecretKey: process.env.SIGNING_SECRET_WEBHOOK
 }

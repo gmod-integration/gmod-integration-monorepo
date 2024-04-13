@@ -1,4 +1,4 @@
-const {getConnection, getConnectionPromisse} = require('../../database/connection');
+const {getConnection, getConnectionPromisse} = require('../../database/connection.js');
 const serverModels = require("../v2/serverModel");
 const axios = require("axios");
 const steam = require("../../steam");

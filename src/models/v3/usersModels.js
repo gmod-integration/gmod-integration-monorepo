@@ -1,4 +1,4 @@
-const {getConnection} = require('../../database/connection');
+const {getConnection} = require('../../database/connection.js');
 
 async function getProfile(steamID64) {
     return new Promise((resolve, reject) => {

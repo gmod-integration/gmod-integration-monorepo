@@ -1,7 +1,7 @@
-const {gmLog} = require('../../utils/logger.js');
-const {verifyWebhookSignature} = require("../../models/webhooks/gmodStoreModels");
+import {gmLog} from '../../utils/logger.js';
+import {verifyWebhookSignature} from "../../models/webhooks/gmodStoreModels.js";
 
-module.exports = async (req, res, next) => {
+export default async (req, res, next) => {
     const headers = req.headers;
     const payload = req.body;
 
@@ -9,6 +9,6 @@ module.exports = async (req, res, next) => {
         next();
     } else {
         gmLog('webhooks', 'gmodStoreValidator', 'unauthorized');
-        res.status(401).json({error: 'unauthorized'});
+        return res.status(401).json({error: 'unauthorized'});
     }
-};
+}

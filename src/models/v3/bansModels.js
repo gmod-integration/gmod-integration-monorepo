@@ -1,4 +1,4 @@
-const {getConnection} = require('../../database/connection');
+const {getConnection} = require('../../database/connection.js');
 const {getClient} = require("../../discord");
 
 function banFormat(ban) {
