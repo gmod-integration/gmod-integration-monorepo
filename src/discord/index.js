@@ -1,4 +1,9 @@
-const {Client, GatewayIntentBits, Collection, Events} = require('discord.js');
+import {Client, Collection, Events, GatewayIntentBits} from 'discord.js';
+import {discordConfig} from '../config/index.js';
+import {readdirSync} from 'fs';
+import {gmLog} from '../utils/logger.js';
+import {join} from 'path';
+
 const client = new Client({
     intents: [
         GatewayIntentBits.AutoModerationConfiguration,
@@ -17,28 +22,17 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
     ]
 });
-const {
-    token,
-} = require('../config/index');
-const {readdirSync} = require("fs");
-const {gmLog} = require("../utils/logger.js");
-const {join} = require("path");
 
 client.on('ready', () => {
     gmLog('discord', 'Connected to Discord');
 });
 
-client.login(token).catch(console.error);
-
-module.exports = {
-    getClient,
-    updateGuildUserPseudo,
-};
+client.login(discordConfig.botToken).catch(console.error);
 
 // Load Events
 const eventFiles = readdirSync('./src/discord/events').filter(file => file.endsWith('.js'));
 for (const file of eventFiles) {
-    const event = require(`./events/${file}`);
+    const event = await import(`./events/${file}`);
     if (event.name) {
         client.on(event.name, (...args) => event.execute(...args, client));
     }
@@ -55,7 +49,7 @@ for (const folder of commandFolders) {
 
     for (const file of commandFiles) {
         const filePath = join(commandsPath, file);
-        const command = require(filePath);
+        const command = await import(filePath);
 
         if ('data' in command && 'execute' in command) {
             client.commands.set(command.data.name, command);
@@ -101,7 +95,7 @@ client.on(Events.InteractionCreate, async interaction => {
     }
 });
 
-async function getClient() {
+export async function getClient() {
     if (client.readyAt) {
         return client;
     } else {
@@ -114,7 +108,7 @@ async function getClient() {
     }
 }
 
-function updateGuildUserPseudo(guildID, userID, pseudo) {
+export function updateGuildUserPseudo(guildID, userID, pseudo) {
     return new Promise((resolve, reject) => {
         if (!guildID || !userID || !pseudo) {
             return reject({

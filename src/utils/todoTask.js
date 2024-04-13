@@ -1,13 +1,8 @@
-const {getConnection} = require('../database/connection.js');
+import {getConnectionPromise} from "../database/connection.js";
 
-function addTodoTask(task, data) {
-    getConnection().then(connection => {
-        connection.query('INSERT INTO gm_todo_task (task, data) VALUES (?, ?)', [task, data], (error) => {
-            if (error) throw error;
-        });
+export function addTodoTask(task, data) {
+    const connection = getConnectionPromise();
+    connection.query('INSERT INTO gm_todo_task (task, data) VALUES (?, ?)', [task, data], (error) => {
+        if (error) throw error;
     });
 }
-
-module.exports = {
-    addTodoTask
-};

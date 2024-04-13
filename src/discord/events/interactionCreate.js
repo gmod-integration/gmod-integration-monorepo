@@ -1,6 +1,6 @@
-const {replyNeedPremium} = require("../../classes/v3/Guild");
+import {replyNeedPremium} from "../../classes/v3/Guild.js";
 
-module.exports = {
+export default {
     name: 'interactionCreate',
     execute(interaction) {
         if (interaction.guild && interaction.isButton()) {

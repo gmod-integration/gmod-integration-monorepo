@@ -31,7 +31,8 @@ export const discordConfig = {
     clientID: process.env.DISCORD_CLIENT_ID,
     clientSecret: process.env.DISCORD_CLIENT_SECRET,
     botToken: process.env.DISCORD_BOT_TOKEN,
-    redirectUri: process.env.DISCORD_REDIRECT_URI,
+    oauth: process.env.OAUTH_VERIF_URL,
+    invite: process.env.DISCORD_BOT_INVITE_URL
 }
 
 export const steamConfig = {

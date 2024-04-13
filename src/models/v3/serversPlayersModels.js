@@ -1,94 +1,78 @@
-const {getConnection, getConnectionPromise} = require('../../database/connection.js');
-const serverModels = require("../v2/serverModel");
-const axios = require("axios");
-const steam = require("../../steam");
-const {badArgument} = require("../../utils/tools.js");
-const {WebhookClient} = require('discord.js');
-const playersModels = require("./usersModels");
+import {getConnectionPromise} from '../../database/connection.js';
+import {WebhookClient} from 'discord.js';
+import {getSteamUserAvatarLarge} from "../../steam/index.js";
 
-function getInformations(id) {
+export function getInformations(id) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(results[0]);
-                } else {
-                    reject('Server not found');
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(results[0]);
+            } else {
+                reject('Server not found');
+            }
         });
     });
 }
 
-function isValidAuth(id, token) {
+export function isValidAuth(id, token) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(true);
-                } else {
-                    return resolve(false);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(true);
+            } else {
+                return resolve(false);
+            }
         });
     });
 }
 
-function getPlayerInformations(steamID64) {
+export function getPlayerInformations(steamID64) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve({
-                        steamID64: results[0].steam_id,
-                        customValue: JSON.parse(results[0].custom_values || '{}'),
-                        lastConnection: results[0].last_connect,
-                        firstConnection: results[0].first_connect,
-                        playtime: results[0].total_time,
-                        totalConnections: results[0].total_connect,
-                        totalKills: results[0].total_kill,
-                        totalDeaths: results[0].total_death,
-                        name: results[0].name,
-                    });
-                } else {
-                    return resolve(null);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve({
+                    steamID64: results[0].steam_id,
+                    customValue: JSON.parse(results[0].custom_values || '{}'),
+                    lastConnection: results[0].last_connect,
+                    firstConnection: results[0].first_connect,
+                    playtime: results[0].total_time,
+                    totalConnections: results[0].total_connect,
+                    totalKills: results[0].total_kill,
+                    totalDeaths: results[0].total_death,
+                    name: results[0].name,
+                });
+            } else {
+                return resolve(null);
+            }
         });
     });
 }
 
-async function getPlayerBan(steamID64) {
+export async function getPlayerBan(steamID64) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_ban WHERE steam_id = ?', [steamID64], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM gm_ban WHERE steam_id = ?', [steamID64], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(results[0]);
-                } else {
-                    return resolve(null);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(results[0]);
+            } else {
+                return resolve(null);
+            }
         });
     });
 }
 
-function sendPlayerSay(server, player, text, onlyTeam) {
+export function sendPlayerSay(server, player, text, onlyTeam) {
     let anonymous = false;
     return new Promise(async (resolve, reject) => {
         player.name.replace(/[^\x00-\x7F]/g, "");
@@ -202,7 +186,7 @@ function sendPlayerSay(server, player, text, onlyTeam) {
         const webhookClient = new WebhookClient({id: syncChatChannel.id, token: syncChatChannel.token});
         webhookClient.send({
             username: anonymous ? 'Anonymous' : (player.name ? player.name : 'Unknown'),
-            avatarURL: anonymous ? 'https://i.imgur.com/MfkZJfm.jpeg' : await steam.getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
+            avatarURL: anonymous ? 'https://i.imgur.com/MfkZJfm.jpeg' : await getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
             content: text ? text : 'No message',
         }).then(() => {
             return resolve();
@@ -213,12 +197,12 @@ function sendPlayerSay(server, player, text, onlyTeam) {
     });
 }
 
-function updatePlayerPseudo(serverID, player, name) {
+export function updatePlayerPseudo(serverID, player, name) {
     return new Promise((resolve, reject) => {
         // get discordID
-        playersModels.getDiscordIDFromSteamID64(player.steamID64).then((discordID) => {
+        getDiscordIDFromSteamID64(player.steamID64).then((discordID) => {
             // update pseudo
-            playersModels.updatePseudo(discordID, name).then(() => {
+            updatePseudo(discordID, name).then(() => {
                 resolve();
             }).catch((err) => {
                 reject(err);
@@ -229,7 +213,7 @@ function updatePlayerPseudo(serverID, player, name) {
     });
 }
 
-async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {
+export async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {
     try {
         const connection = await getConnectionPromise();
         const [results] = await connection.query('SELECT * FROM users WHERE steamID64 = ?', [steamID64]);
@@ -247,7 +231,7 @@ async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {
     }
 }
 
-async function saveConnectionSteamInfo(steamID64, name, IP) {
+export async function saveConnectionSteamInfo(steamID64, name, IP) {
     try {
         const connection = await getConnectionPromise();
         await connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip, last_connect, total_connect) VALUES (?, ?, ?, NOW(), 1) ON DUPLICATE KEY UPDATE last_ip = ?, last_connect = NOW(), total_connect = total_connect + 1', [steamID64, name, IP, IP]);
@@ -256,13 +240,3 @@ async function saveConnectionSteamInfo(steamID64, name, IP) {
         throw err;
     }
 }
-
-module.exports = {
-    getInformations,
-    isValidAuth,
-    getPlayerInformations,
-    sendPlayerSay,
-    updatePlayerPseudo,
-    saveConnectionGlobalInfo,
-    saveConnectionSteamInfo,
-};

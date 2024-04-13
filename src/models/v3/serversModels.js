@@ -1,156 +1,92 @@
-const {getConnection, getConnectionPromise} = require('../../database/connection.js');
-const {generateToken} = require("../../utils/tools.js");
-const {updateServerStatus} = require("../v2/serverModel");
+import {getConnectionPromise} from "../../database/connection.js";
 
-/**
- * Get the server informations
- * @param id
- * @returns {Promise<unknown>}
- */
-function getInformations(id) {
+export function getInformations(id) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(results[0]);
-                } else {
-                    reject('Server not found');
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(results[0]);
+            } else {
+                reject('Server not found');
+            }
         });
     });
 }
 
-/**
- * Get the server guild
- * @param id
- * @returns {Promise<unknown>}
- */
-function getGuildID(id) {
+export function getGuildID(id) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(results[0].guild);
-                } else {
-                    reject('Server not found');
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(results[0].guild);
+            } else {
+                reject('Server not found');
+            }
         });
     });
 }
 
-/**
- * Check if the server is existing and the token is valid
- * @param id
- * @param token
- * @returns {Promise<unknown>}
- */
-function isValidAuth(id, token) {
+export function isValidAuth(id, token) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(true);
-                } else {
-                    return resolve(false);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(true);
+            } else {
+                return resolve(false);
+            }
         });
     });
 }
 
-function postStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime) {
+export function saveStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime) {
     return new Promise((resolve, reject) => {
-        // TODO use v3
-        updateServerStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP).then(() => {
+        const connection = getConnectionPromise();
+        // Old
+        connection.query('INSERT INTO gm_server_status(id, ip, port, last_update, hostname, maxplayers, players, map, gamemode) VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE last_update = NOW(), hostname = ?, maxplayers = ?, players = ?, map = ?, gamemode = ?', [serverID, extractIP, port, hostname, maxPlayers, players, map, gameMode, hostname, maxPlayers, players, map, gameMode], (error) => {
+            if (error) return reject(error);
             resolve();
-        }).catch((err) => {
-            reject(err);
         });
-        // getConnection().then((connection) => {
-        //     // New format
-        //     // connection.query('INSERT INTO gm_server_status_v3 (serverID, players, maxPlayers, map, hostname, gameMode, port, ip, uptime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE players = ?, maxPlayers = ?, map = ?, hostname = ?, gameMode = ?, port = ?, ip = ?, uptime = ?', [serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime], (error) => {
-        //     //     if (error) return reject(error);
-        //     //     resolve();
-        //     // });
-        //     // Use old (v2) format
-        //     //id, players, maxplayers, map, hostname, gamemode, port, ip
-        //
-        // }).catch((err) => {
-        //     reject(err);
+        // TODO: Change to new
+        // connection.query('INSERT INTO gm_server_status_v3 (serverID, players, maxPlayers, map, hostname, gameMode, port, ip, uptime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE players = ?, maxPlayers = ?, map = ?, hostname = ?, gameMode = ?, port = ?, ip = ?, uptime = ?', [serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime], (error) => {
+        //     if (error) return reject(error);
+        //     resolve();
         // });
     });
 }
 
-function getPlayer(serverID, steamID64) {
+export function addServerLog(id, log) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_player WHERE serverID = ? AND steamID64 = ?', [serverID, steamID64], (error, results) => {
-                if (error) return reject(error);
-
-                if (results.length > 0) {
-                    return resolve(results[0]);
-                } else {
-                    reject('Player not found');
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+        const connection = getConnectionPromise();
+        connection.query('INSERT INTO gm_server_logs (serverID, type, data) VALUES (?, ?, ?)', [id, log.type, JSON.stringify(log.data)], (error) => {
+            if (error) {
+                console.error(error);
+                reject(error);
+            }
+            resolve();
         });
     });
 }
 
-function addServerLog(id, log) {
-    return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('INSERT INTO gm_server_logs (serverID, type, data) VALUES (?, ?, ?)', [id, log.type, JSON.stringify(log.data)], (error) => {
-                if (error) {
-                    console.error(error);
-                    reject(error);
-                }
-                resolve();
-            });
-        }).catch((err) => {
-            reject(err);
-        });
-    });
-}
-
-async function getServerList(interaction, focusedOption, choices, callback) {
-    getConnection().then(connection => {
+export async function getServerList(interaction, focusedOption, choices, callback) {
+    return new Promise(async (resolve, reject) => {
+        const connection = await getConnectionPromise();
         connection.query(`SELECT *
                           FROM gm_server
                           WHERE guild = ?`, [interaction.guild.id], (err, rows) => {
             if (rows && rows.length > 0) {
                 rows.forEach(row => {
-                    // use value = id and name = name both string
                     choices[row.name] = row.id;
                 });
             }
             const filtered = Object.keys(choices).filter(choice => choice.startsWith(focusedOption.value));
-            callback(filtered);
+            resolve(filtered);
         });
     });
 }
-
-module.exports = {
-    getInformations,
-    isValidAuth,
-    postStatus,
-    getGuildID,
-    addServerLog,
-    getServerList,
-};

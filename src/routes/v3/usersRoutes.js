@@ -1,9 +1,8 @@
-const express = require('express');
+import express from 'express';
+import {getProfile} from '../../controllers/v3/usersControllers.js';
+
 const router = express.Router();
 
-// Routes
-const playersControllers = require('../../controllers/v3/usersControllers');
-router.get('/', playersControllers.getProfile);
+router.get('/', getProfile);
 
-// Export
-module.exports = router;
+export default router;

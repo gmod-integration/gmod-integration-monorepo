@@ -1,14 +1,14 @@
-const serverModel = require('../../models/v3/serversModels');
-const {badArgument, ipGetIP} = require("../../utils/tools.js");
+import {addServerLog, getInformations, saveStatus} from "../../models/v3/serversModels.js";
+import {badArgument, ipGetIP} from "../../utils/tools.js";
 
-function getInfo(req, res) {
+export function getInfo(req, res) {
     const {serverID} = req.params;
 
     if (badArgument([serverID])) {
         return res.status(400).json({error: 'missing_arguments'});
     }
 
-    serverModel.getInformations(serverID).then((result) => {
+    getInformations(serverID).then((result) => {
         return res.status(200).json(result);
     }).catch((err) => {
         console.log(err);
@@ -16,7 +16,7 @@ function getInfo(req, res) {
     });
 }
 
-function postStatus(req, res) {
+export function postStatus(req, res) {
     const {serverID} = req.params;
     const {
         players,
@@ -47,7 +47,7 @@ function postStatus(req, res) {
 
     const extractIP = ipGetIP(ip);
 
-    serverModel.postStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime).then(() => {
+    saveStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime).then(() => {
         return res.status(200).json({success: true});
     }).catch((err) => {
         console.log(err);
@@ -68,7 +68,7 @@ const logTypes = [
     {type: "damageTaken", args: ["ply", "attacker", "healthRemaining", "damageTaken"]},
 ];
 
-function postServerLog(req, res) {
+export function postServerLog(req, res) {
     const {id} = req.headers;
     const type = req.params.type;
 
@@ -98,7 +98,7 @@ function postServerLog(req, res) {
         data: req.body
     };
 
-    serverModel.addServerLog(id, log).then(() => {
+    addServerLog(id, log).then(() => {
         res.status(200).send('OK');
     }).catch((err) => {
         console.log(err);
@@ -106,15 +106,8 @@ function postServerLog(req, res) {
     });
 }
 
-async function getPublicToken(req, res) {
+export async function getPublicToken(req, res) {
     const server = req.server;
     await server.regeneratePublicTempToken();
     return res.status(200).json({publicTempToken: server.getPublicToken()});
-}
-
-module.exports = {
-    getInfo,
-    postStatus,
-    postServerLog,
-    getPublicToken
 }

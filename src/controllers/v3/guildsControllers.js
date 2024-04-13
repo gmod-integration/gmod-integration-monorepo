@@ -1,12 +1,12 @@
-const {getConnectionPromise} = require("../../database/connection");
-const {isGuildPremium, replyNeedPremium} = require("../../classes/v3/Guild");
-const {getTranslate} = require("../../utils/localizations");
-const {wsSendToServer} = require("../../websockets");
-const {getServersFromDiscordGuildID} = require("../../classes/v3/Server");
-const {ButtonPremium} = require("../../discord/utils/buttons");
-const {ActionRowBuilder} = require("discord.js");
+import {getConnectionPromise} from "../../database/connection.js";
+import {getServersFromDiscordGuildID} from "../../classes/v3/Server.js";
+import {isGuildPremium} from "../../classes/v3/Guild.js";
+import {getTranslate} from "../../utils/localizations.js";
+import {ActionRowBuilder} from "discord.js";
+import {ButtonPremium} from "../../discord/utils/buttons.js";
+import {wsSendToServer} from "../../websockets/index.js";
 
-async function sendMessageToGmod(message) {
+export async function sendMessageToGmod(message) {
     if (message.author.bot || !message.guild) return;
     const lang = message.guild.preferredLocale;
 
@@ -37,8 +37,6 @@ async function sendMessageToGmod(message) {
         }
 
         if (!await isGuildPremium(message.guild.id)) {
-            // create button to upgrade
-            // ButtonPremium()
             return message.reply({
                 content: getTranslate('premium_required', lang),
                 ephemeral: true,
@@ -57,7 +55,3 @@ async function sendMessageToGmod(message) {
         );
     }
 }
-
-module.exports = {
-    sendMessageToGmod,
-};

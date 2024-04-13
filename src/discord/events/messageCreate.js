@@ -1,8 +1,8 @@
-const guildsControllers = require('../../controllers/v3/guildsControllers');
+import {sendMessageToGmod} from "../../controllers/v3/guildsControllers.js";
 
-module.exports = {
+export default {
     name: 'messageCreate',
     async execute(message) {
-        await guildsControllers.sendMessageToGmod(message);
+        await sendMessageToGmod(message);
     }
 };

@@ -1,6 +1,6 @@
-const {updateRolesToGmod} = require("../../models/v3/discordModels");
+import {updateRolesToGmod} from "../../models/v3/discordModels.js";
 
-module.exports = {
+export default {
     name: 'guildMemberUpdate',
     async execute(oldMember, newMember) {
         const addedRoles = newMember.roles.cache.filter(role => !oldMember.roles.cache.has(role.id));

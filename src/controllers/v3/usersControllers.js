@@ -1,6 +1,6 @@
-const {getUser} = require('../../classes/v3/User');
+import {getUser} from "../../classes/v3/User.js";
 
-function getProfile(req, res) {
+export function getProfile(req, res) {
     const {
         steamID64,
         discordID
@@ -13,7 +13,3 @@ function getProfile(req, res) {
         return res.status(500).json({error: 'internal_error'});
     });
 }
-
-module.exports = {
-    getProfile,
-};

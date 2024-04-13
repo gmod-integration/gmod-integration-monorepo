@@ -29,9 +29,10 @@ export async function getConnectionPromise() {
 
 setInterval(async () => {
     try {
-        await connectionPromise.ping();
-    } catch (e) {
-        console.error('Error pinging database:', e);
+        const connection = await getConnectionPromise();
+        await connection.ping();
+    } catch (error) {
+        console.error('Error pinging database:', error);
     }
 }, 10000);
 

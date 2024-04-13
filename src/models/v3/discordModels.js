@@ -1,12 +1,12 @@
-const {getRoleFromRole, getRoleFromDiscordRoleID} = require("../../classes/v3/Role");
-const {getUserFromDiscordID} = require("../../classes/v3/User");
-const {getServersFromDiscordGuildID} = require("../../classes/v3/Server");
-const {wsSendToServer} = require("../../websockets");
-const {getClient} = require("../../discord");
+import {getRoleFromDiscordRoleID, getRoleFromRole} from "../../classes/v3/Role.js";
+import {getUserFromDiscordID} from "../../classes/v3/User.js";
+import {getServersFromDiscordGuildID} from "../../classes/v3/Server.js";
+import {wsSendToServer} from "../../websockets/index.js";
+import {getClient} from "../../discord/index.js";
 
 let userUpdateRoleCurrent = {};
 
-function updateGuildUserSyncRoles(server, user, newGroup, oldGroup = null) {
+export function updateGuildUserSyncRoles(server, user, newGroup, oldGroup = null) {
     return new Promise(async (resolve, reject) => {
         if (!user) {
             console.log(user);
@@ -59,7 +59,7 @@ function updateGuildUserSyncRoles(server, user, newGroup, oldGroup = null) {
     });
 }
 
-async function updateRolesToGmod(newMember, roleID, add = true) {
+export async function updateRolesToGmod(newMember, roleID, add = true) {
     const guildID = newMember.guild.id;
     const memberID = newMember.id;
 
@@ -130,9 +130,4 @@ async function updateRolesToGmod(newMember, roleID, add = true) {
 
         resolve();
     });
-}
-
-module.exports = {
-    updateGuildUserSyncRoles,
-    updateRolesToGmod,
 }

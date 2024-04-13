@@ -1,10 +1,10 @@
-const {port_websocket, intern_websocket_token} = require('../config/index');
-const {getConnection} = require('../database/connection.js');
-const WebSocket = require('ws');
+import {WebSocketServer} from 'ws';
+import {serverConfig} from '../config/index.js';
+import {getConnectionPromise} from "../database/connection.js";
 
-// timeout in 10min
-const wss = new WebSocket.Server({
-    port: port_websocket, clientTracking: true, verifyClient: (info, cb) => {
+// TypeError: WebSocket.Server is not a constructor
+const wss = new WebSocketServer({
+    port: serverConfig.ports.websocket, clientTracking: true, verifyClient: (info, cb) => {
         const {id, token} = info.req.headers;
 
         if (!id || !token) {
@@ -12,28 +12,21 @@ const wss = new WebSocket.Server({
             return;
         }
 
-        if (token === intern_websocket_token) {
-            console.log('Verified internal client');
-            cb(true);
-            return;
-        }
-
-        getConnection().then(connection => {
-            connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (err, rows) => {
-                if (err) throw err;
-                if (rows && rows.length > 0) {
-                    console.log('Verified client ' + id);
-                    cb(true);
-                } else {
-                    console.log('Unauthorized client ' + id);
-                    cb(false, 401, 'Unauthorized');
-                }
-            });
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (err, rows) => {
+            if (err) throw err;
+            if (rows && rows.length > 0) {
+                console.log('Verified client ' + id);
+                cb(true);
+            } else {
+                console.log('Unauthorized client ' + id);
+                cb(false, 401, 'Unauthorized');
+            }
         });
     }
 });
 
-console.log('WebSocket server started on port ' + port_websocket);
+console.log('WebSocket server started on port ' + serverConfig.ports.websocket);
 
 let clients = [];
 
@@ -86,7 +79,7 @@ wss.on('connection', function connection(ws, req) {
     }, 10000);
 });
 
-function wsSendToServer(id, data) {
+export function wsSendToServer(id, data) {
     let success = false;
     clients.forEach(client => {
         if (client.id === id) {
@@ -103,7 +96,6 @@ function wsSendToServer(id, data) {
     return success;
 }
 
-// every 5min check every client and remove if not alive
 setInterval(() => {
     clients.forEach(client => {
         if (client.ws.readyState !== WebSocket.OPEN) {
@@ -112,7 +104,3 @@ setInterval(() => {
         }
     });
 }, 300000);
-
-module.exports = {
-    wsSendToServer,
-};

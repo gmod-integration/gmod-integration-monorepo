@@ -1,4 +1,4 @@
-const {getConnectionPromise} = require('../../database/connection.js');
+import {getConnectionPromise} from '../../database/connection.js';
 
 export async function saveError({error, stack, id, name, realm, identifier, uptime}) {
     return new Promise(async (resolve, reject) => {

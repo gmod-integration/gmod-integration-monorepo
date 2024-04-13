@@ -1,5 +1,5 @@
-const {getConnection} = require('../../database/connection.js');
-const {getClient} = require("../../discord");
+import {getConnectionPromise} from '../../database/connection.js';
+import {getClient} from "../../discord/index.js";
 
 export function banFormat(ban) {
     return {
@@ -15,18 +15,15 @@ export function isGlobalBanIP(IP) {
     return new Promise((resolve, reject) => {
         if (!IP) return resolve(false);
 
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM banUsers WHERE ip LIKE ?', [IP], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM banUsers WHERE ip LIKE ?', [IP], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(banFormat(results[0]));
-                } else {
-                    return resolve(false);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(banFormat(results[0]));
+            } else {
+                return resolve(false);
+            }
         });
     });
 }
@@ -35,18 +32,15 @@ export function isGlobalBanSteamID64(steamID64) {
     return new Promise((resolve, reject) => {
         if (!steamID64) return resolve(false);
 
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM banUsers WHERE steamID64 = ?', [steamID64], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM banUsers WHERE steamID64 = ?', [steamID64], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(banFormat(results[0]));
-                } else {
-                    return resolve(false);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(banFormat(results[0]));
+            } else {
+                return resolve(false);
+            }
         });
     });
 }
@@ -55,18 +49,15 @@ export function isGlobalBanDiscordID(discordID) {
     return new Promise((resolve, reject) => {
         if (!discordID) return resolve(false);
 
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM banUsers WHERE discordID = ?', [discordID], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM banUsers WHERE discordID = ?', [discordID], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(banFormat(results[0]));
-                } else {
-                    return resolve(false);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(banFormat(results[0]));
+            } else {
+                return resolve(false);
+            }
         });
     });
 }

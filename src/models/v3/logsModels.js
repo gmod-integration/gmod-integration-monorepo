@@ -1,42 +1,31 @@
-const {getConnection} = require('../../database/connection.js');
+import {getConnectionPromise} from '../../database/connection.js';
 
-function getInformations(id) {
+export function getInformations(id) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(results[0]);
-                } else {
-                    reject('Server not found');
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(results[0]);
+            } else {
+                reject('Server not found');
+            }
         });
     });
 }
 
-function isValidAuth(id, token) {
+export function isValidAuth(id, token) {
     return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
-                if (error) return reject(error);
+        const connection = getConnectionPromise();
+        connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
+            if (error) return reject(error);
 
-                if (results.length > 0) {
-                    return resolve(true);
-                } else {
-                    return resolve(false);
-                }
-            });
-        }).catch((err) => {
-            reject(err);
+            if (results.length > 0) {
+                return resolve(true);
+            } else {
+                return resolve(false);
+            }
         });
     });
 }
-
-module.exports = {
-    getInformations,
-    isValidAuth,
-};

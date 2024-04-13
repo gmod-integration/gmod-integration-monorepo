@@ -2,13 +2,10 @@ import {badArgument} from "../../utils/tools.js";
 import {updateGuildUserSyncRoles} from "../../models/v3/discordModels.js";
 import {PlayerGmod, updatePlayerUserGroup} from "../../classes/v3/PlayerGmod.js";
 import {getUserFromSteamID64} from "../../classes/v3/User.js";
-import serversPlayersModels, {
-    saveConnectionGlobalInfo,
-    saveConnectionSteamInfo
-} from "../../models/v3/serversPlayersModels.js";
+import {saveConnectionGlobalInfo, saveConnectionSteamInfo} from "../../models/v3/serversPlayersModels.js";
 import {updateGuildUserPseudo} from "../../discord/index.js";
 import {getServerPlayer} from "../../classes/v3/Player.js";
-import serversModels from "../../models/v3/serversModels.js";
+import {getGuildID} from "../../models/v3/serversModels.js";
 
 export async function getPlayer(req, res) {
     const {steamID64} = req.params;
@@ -102,7 +99,7 @@ export async function getPlayerBans(req, res) {
     }
     let bansList = [];
 
-    const guildID = await serversModels.getGuildID(serverID);
+    const guildID = await getGuildID(serverID);
 
     getPlayerBan(steamID64).then((ban) => {
         return res.status(200).json(ban);

@@ -1,14 +1,13 @@
-const {getServerList} = require("../../../models/v3/serversModels");
-const {ActionRowBuilder, SlashCommandBuilder} = require("discord.js");
-const {getUserFromDiscordID} = require("../../../classes/v3/User");
-const {getTranslate} = require("../../../utils/localizations");
-const {ButtonVerificationWebsite} = require("../../utils/buttons");
-const {getServerFromID} = require("../../../classes/v3/Server");
-const {isGuildPremium, replyNeedPremium} = require("../../../classes/v3/Guild");
-const {wsSendToServer} = require("../../../websockets");
+import {SlashCommandBuilder} from 'discord.js';
+import {getServerList} from '../../../models/v3/serversModels.js';
+import {getUserFromDiscordID} from '../../../classes/v3/User.js';
+import {getTranslate} from '../../../utils/localizations.js';
+import {ButtonVerificationWebsite} from '../../utils/buttons.js';
+import {getServerFromID} from '../../../classes/v3/Server.js';
+import {isGuildPremium, replyNeedPremium} from '../../../classes/v3/Guild.js';
+import {wsSendToServer} from '../../../websockets/index.js';
 
-
-module.exports = {
+export default {
     data: new SlashCommandBuilder()
         .setName('rcon')
         .setDescription('Execute a command on the server console.')

@@ -1,16 +1,16 @@
-const {ButtonBuilder, ButtonStyle, ActionRowBuilder} = require("discord.js");
-const {oauth, invite} = require("../../config");
-const {getTranslate} = require("../../utils/localizations");
+import {ButtonBuilder, ButtonStyle} from "discord.js";
+import {discordConfig} from "../../config";
+import {getTranslate} from "../../utils/localizations.js";
 
-function ButtonVerificationWebsite(lang) {
+export function ButtonVerificationWebsite(lang) {
     return new ButtonBuilder()
         .setStyle(ButtonStyle.Link)
         .setLabel('⠀' + getTranslate('verify_yourself', lang))
         .setEmoji('🛡️')
-        .setURL(oauth);
+        .setURL(discordConfig.oauth);
 }
 
-function ButtonWebsite(lang) {
+export function ButtonWebsite(lang) {
     return new ButtonBuilder()
         .setStyle(ButtonStyle.Link)
         .setLabel('⠀' + getTranslate('website', lang))
@@ -18,7 +18,7 @@ function ButtonWebsite(lang) {
         .setURL('https://gmod-integration.com');
 }
 
-function ButtonDiscordSupport(lang) {
+export function ButtonDiscordSupport(lang) {
     return new ButtonBuilder()
         .setStyle(ButtonStyle.Link)
         .setLabel('⠀' + getTranslate('discord_support', lang))
@@ -26,15 +26,15 @@ function ButtonDiscordSupport(lang) {
         .setURL('https://discord.gg/AexDDx5RaU');
 }
 
-function ButtonInviteBot(lang) {
+export function ButtonInviteBot(lang) {
     return new ButtonBuilder()
         .setStyle(ButtonStyle.Link)
         .setLabel('⠀' + getTranslate('invite_bot', lang))
         .setEmoji('🔗')
-        .setURL(invite);
+        .setURL(discordConfig.invite);
 }
 
-function ButtonVerify(lang) {
+export function ButtonVerify(lang) {
     return new ButtonBuilder()
         .setStyle(ButtonStyle.Secondary)
         .setLabel('⠀' + getTranslate('check_verification', lang))
@@ -42,7 +42,7 @@ function ButtonVerify(lang) {
         .setCustomId('verify');
 }
 
-function ButtonConnect(lang, ip, port) {
+export function ButtonConnect(lang, ip, port) {
     return new ButtonBuilder()
         .setStyle(ButtonStyle.Link)
         .setLabel('⠀' + getTranslate('server-connect', lang))
@@ -50,7 +50,7 @@ function ButtonConnect(lang, ip, port) {
         .setURL(`https://gmod-integration.com/open-link?link=steam://connect/${ip}:${port}`);
 }
 
-function ButtonShop(lang, url) {
+export function ButtonShop(lang, url) {
     return new ButtonBuilder()
         .setStyle(ButtonStyle.Link)
         .setLabel('⠀' + getTranslate('server-shop', lang))
@@ -58,7 +58,7 @@ function ButtonShop(lang, url) {
         .setURL('https://gmod-integration.com/open-link?link=' + url);
 }
 
-function ButtonWorkshop(lang, url) {
+export function ButtonWorkshop(lang, url) {
     return new ButtonBuilder()
         .setStyle(ButtonStyle.Link)
         .setLabel('⠀' + getTranslate('server-workshop', lang))
@@ -66,7 +66,7 @@ function ButtonWorkshop(lang, url) {
         .setURL('https://gmod-integration.com/open-link?link=' + url);
 }
 
-function ButtonForum(lang, url) {
+export function ButtonForum(lang, url) {
     return new ButtonBuilder()
         .setStyle(ButtonStyle.Link)
         .setLabel('⠀' + getTranslate('server-forum', lang))
@@ -74,23 +74,10 @@ function ButtonForum(lang, url) {
         .setURL('https://gmod-integration.com/open-link?link=' + url);
 }
 
-function ButtonPremium(lang) {
+export function ButtonPremium(lang) {
     return new ButtonBuilder()
         .setStyle(ButtonStyle.Primary)
         .setLabel('⠀' + getTranslate('premium', lang))
         .setEmoji('💎')
         .setCustomId('premium');
-}
-
-module.exports = {
-    ButtonVerificationWebsite,
-    ButtonWebsite,
-    ButtonDiscordSupport,
-    ButtonInviteBot,
-    ButtonVerify,
-    ButtonConnect,
-    ButtonShop,
-    ButtonWorkshop,
-    ButtonForum,
-    ButtonPremium,
 }

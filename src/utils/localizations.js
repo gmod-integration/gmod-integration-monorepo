@@ -1,5 +1,5 @@
-const fs = require('fs');
-const path = require('path');
+import {existsSync, readFileSync} from 'fs';
+import {join} from 'path';
 
 function insertOptions(str, options) {
     if (!options) return str;
@@ -13,7 +13,7 @@ function insertOptions(str, options) {
 
 function getDefaultTrad(key, options) {
     try {
-        const defaultLanguage = require('../locales/en.json');
+        const defaultLanguage = JSON.parse(readFileSync(join(__dirname, '../locales/en.json'), 'utf8'));
 
         if (key in defaultLanguage) {
             return insertOptions(defaultLanguage[key], options);
@@ -27,16 +27,16 @@ function getDefaultTrad(key, options) {
     }
 }
 
-function getTranslate(key, language, options) {
+export function getTranslate(key, language, options) {
     try {
         language = language ? language.substring(0, 2) : 'en';
-        const filePath = path.join(__dirname, `../locales/${language}.json`);
+        const filePath = join(__dirname, `../locales/${language}.json`);
 
-        if (!fs.existsSync(filePath)) {
+        if (!existsSync(filePath)) {
             language = 'en';
         }
 
-        const translate = require(`../locales/${language}.json`);
+        const translate = JSON.parse(readFileSync(filePath, 'utf8'));
         if (key in translate) {
             return insertOptions(translate[key], options);
         } else {
@@ -47,7 +47,3 @@ function getTranslate(key, language, options) {
         return getDefaultTrad(key, options);
     }
 }
-
-module.exports = {
-    getTranslate
-};
