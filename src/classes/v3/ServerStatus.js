@@ -1,6 +1,6 @@
-const BaseClass = require("./BaseClass");
+import {BaseClass} from "./BaseClass.js";
 
-class ServerStatus extends BaseClass {
+export class ServerStatus extends BaseClass {
     constructor(obj = {}) {
         super();
         this.hostname = obj.hostname;
@@ -12,8 +12,4 @@ class ServerStatus extends BaseClass {
         this.gameMode = obj.gameMode;
         this.uptime = obj.uptime;
     }
-}
-
-module.exports = {
-    ServerStatus
 }

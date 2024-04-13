@@ -1,6 +1,6 @@
-const BaseClass = require('./BaseClass');
+import {BaseClass} from './BaseClass'
 
-class Angle extends BaseClass {
+export class Angle extends BaseClass {
     constructor(obj = {}) {
         super();
         this.p = obj.p
@@ -8,5 +8,3 @@ class Angle extends BaseClass {
         this.r = obj.r
     }
 }
-
-module.exports = Angle

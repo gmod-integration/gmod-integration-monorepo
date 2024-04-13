@@ -1,11 +1,9 @@
-const BaseClass = require("./BaseClass");
+import {BaseClass} from "./BaseClass.js";
 
-class Team extends BaseClass {
+export class Team extends BaseClass {
     constructor(obj = {}) {
         super();
         this.id = obj.id
         this.name = obj.name
     }
 }
-
-module.exports = Team;

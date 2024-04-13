@@ -1,11 +1,11 @@
-const {getConnectionPromise, getConnection} = require('../../database/connection.js');
-const Team = require('./Team');
-const Position = require('./Position');
-const Angle = require('./Angle');
-const BaseClass = require('./BaseClass');
-const CustomValues = require('./CustomValues');
+import {BaseClass} from "./BaseClass.js";
+import {getConnectionPromise} from "../../database/connection.js";
+import {CustomValues} from "./CustomValues.js";
+import {Team} from "./Team.js";
+import {Position} from "./Position.js";
+import {Angle} from "./Angle.js";
 
-class PlayerGmod extends BaseClass {
+export class PlayerGmod extends BaseClass {
     constructor(obj = {}) {
         super();
         this.steamID = obj.steamID;
@@ -79,9 +79,9 @@ class PlayerGmod extends BaseClass {
     }
 }
 
-function getPlayerServerInformations(serverID, steamID64) {
+export function getPlayerServerInformations(serverID, steamID64) {
     return new Promise(async (resolve, reject) => {
-        const connection = await getConnection();
+        const connection = await getConnectionPromise();
         const results = await connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64]);
         if (results.length > 0) {
             return resolve(new PlayerGmod(results[0]));
@@ -90,7 +90,7 @@ function getPlayerServerInformations(serverID, steamID64) {
     });
 }
 
-async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
+export async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
     try {
         const connection = await getConnectionPromise();
         await connection.query('UPDATE gm_server_stat SET rank = ? WHERE steam_id = ? AND server_id = ?', [userGroup, steamID64, serverID]);
@@ -100,18 +100,11 @@ async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
     }
 }
 
-async function getPlayerServerInformationsFromDiscordID(serverID, discordID) {
-    const connection = await getConnection();
+export async function getPlayerServerInformationsFromDiscordID(serverID, discordID) {
+    const connection = await getConnectionPromise();
     const results = await connection.query('SELECT * FROM gm_user WHERE id = ?', [discordID]);
     if (results.length > 0) {
         return getPlayerServerInformations(serverID, results[0].steam);
     }
     return null;
 }
-
-module.exports = {
-    PlayerGmod,
-    getPlayerServerInformations,
-    getPlayerServerInformationsFromDiscordID,
-    updatePlayerUserGroup
-};

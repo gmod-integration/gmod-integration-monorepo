@@ -1,6 +1,6 @@
-const BaseClass = require("./BaseClass");
+import {BaseClass} from "./BaseClass.js";
 
-class CustomValues extends BaseClass {
+export class CustomValues extends BaseClass {
     constructor(obj = {}) {
         super();
         const keys = Object.keys(obj);
@@ -13,5 +13,3 @@ class CustomValues extends BaseClass {
         return true;
     }
 }
-
-module.exports = CustomValues;

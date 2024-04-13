@@ -1,14 +1,11 @@
-const {getConnection} = require("../../database/connection");
-const axios = require("axios");
-const {
-    client_id
-} = require("../../config");
+import axios from 'axios';
+import {discordConfig} from '../../config/index.js';
 
-async function isGuildPremium(guildID) {
+export async function isGuildPremium(guildID) {
     return new Promise(async (resolve, reject) => {
-        const response = await axios.get(`https://discord.com/api/v10/applications/${client_id}/entitlements`, {
+        const response = await axios.get(`https://discord.com/api/v10/applications/${discordConfig.clientID}/entitlements`, {
             headers: {
-                'Authorization': `Bot ${process.env.DISCORD_BOT_TOKEN}`
+                'Authorization': `Bot ${discordConfig.botToken}`
             }
         });
 
@@ -23,7 +20,7 @@ async function isGuildPremium(guildID) {
     });
 }
 
-async function replyNeedPremium(interaction) {
+export async function replyNeedPremium(interaction) {
     const url = `https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`;
     const json = {
         type: 10,
@@ -32,15 +29,10 @@ async function replyNeedPremium(interaction) {
 
     await axios.post(url, json, {
         headers: {
-            'Authorization': `Bot ${process.env.DISCORD_BOT_TOKEN}`,
+            'Authorization': `Bot ${discordConfig.botToken}`,
             'Content-Type': 'application/json'
         }
     }).catch(err => {
         console.error(err);
     });
-}
-
-module.exports = {
-    isGuildPremium,
-    replyNeedPremium
 }

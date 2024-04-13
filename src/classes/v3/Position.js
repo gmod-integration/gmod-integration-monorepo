@@ -1,6 +1,6 @@
-const BaseClass = require("./BaseClass");
+import {BaseClass} from "./BaseClass.js";
 
-class Position extends BaseClass {
+export class Position extends BaseClass {
     constructor(obj = {}) {
         super();
         this.x = obj.x;
@@ -8,5 +8,3 @@ class Position extends BaseClass {
         this.z = obj.z;
     }
 }
-
-module.exports = Position;
