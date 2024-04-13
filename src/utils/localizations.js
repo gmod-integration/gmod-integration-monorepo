@@ -1,5 +1,6 @@
 import {existsSync, readFileSync} from 'fs';
 import {join} from 'path';
+import {gmLog} from "./logger.js";
 
 function insertOptions(str, options) {
     if (!options) return str;
@@ -14,7 +15,7 @@ function insertOptions(str, options) {
 function getDefaultTrad(key, options) {
     try {
         const defaultLanguage = JSON.parse(readFileSync(join(process.cwd(), 'src/locales/en.json'), 'utf8'));
-        
+
         if (key in defaultLanguage) {
             return insertOptions(defaultLanguage[key], options);
         } else {
@@ -29,11 +30,10 @@ function getDefaultTrad(key, options) {
 
 export function getTranslate(key, language, options) {
     try {
-        language = language ? language.substring(0, 2) : 'en';
-        const filePath = join(process.cwd(), `src/locales/${language}.json`);
+        let filePath = join(process.cwd(), `src/locales/${language ? language.substring(0, 2) : 'en'}.json`);
 
         if (!existsSync(filePath)) {
-            language = 'en';
+            filePath = join(process.cwd(), 'src/locales/en.json');
         }
 
         const translate = JSON.parse(readFileSync(filePath, 'utf8'));
@@ -43,7 +43,7 @@ export function getTranslate(key, language, options) {
             return getDefaultTrad(key, options);
         }
     } catch (error) {
-        console.error(`Error in getTranslate: ${error.message}`);
+        gmLog('localization', `Error in getTranslate: ${error.message}`);
         return getDefaultTrad(key, options);
     }
 }

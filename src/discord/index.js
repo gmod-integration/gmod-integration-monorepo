@@ -41,7 +41,7 @@ for (const file of eventFiles) {
 }
 
 // Load Slash Commands
-client.commands = new Collection();
+let commands = new Collection();
 const foldersPath = join(process.cwd(), 'src/discord/commands');
 const commandFolders = readdirSync(foldersPath);
 
@@ -53,7 +53,7 @@ for (const folder of commandFolders) {
         const filePath = join(commandsPath, file);
         import(filePath).then((command) => {
             if (command.default && command.default.data) {
-                client.commands.set(command.default.data.name, command.default);
+                commands.set(command.default.data.name, command.default);
                 gmLog('command', `Command ${filePath} loaded`);
             } else {
                 if (!command.default) {
@@ -68,32 +68,16 @@ for (const folder of commandFolders) {
 }
 
 client.on(Events.InteractionCreate, async interaction => {
+    const command = commands.get(interaction.commandName);
+    if (!command) return;
+
     if (interaction.isChatInputCommand()) {
-        const command = client.commands.get(interaction.commandName);
-
-        if (!command) return;
-
         try {
             await command.execute(interaction);
         } catch (error) {
             console.error(error);
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({
-                    content: 'There was an error while executing this command!',
-                    ephemeral: true
-                });
-            } else {
-                await interaction.reply({content: 'There was an error while executing this command!', ephemeral: true});
-            }
         }
     } else if (interaction.isAutocomplete()) {
-        const command = interaction.client.commands.get(interaction.commandName);
-
-        if (!command) {
-            console.error(`No command matching ${interaction.commandName} was found.`);
-            return;
-        }
-
         try {
             await command.autocomplete(interaction);
         } catch (error) {
