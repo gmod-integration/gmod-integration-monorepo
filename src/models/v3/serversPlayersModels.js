@@ -2,7 +2,7 @@ const {getConnection, getConnectionPromisse} = require('../../database/connectio
 const serverModels = require("../v2/serverModel");
 const axios = require("axios");
 const steam = require("../../steam");
-const {badArgument} = require("../../utils/tools");
+const {badArgument} = require("../../utils/tools.js");
 const {WebhookClient} = require('discord.js');
 const playersModels = require("./usersModels");
 

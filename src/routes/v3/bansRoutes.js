@@ -1,9 +1,8 @@
-const express = require('express');
+import express from 'express';
+import {isGlobalBanSomewhere} from '../../controllers/v3/bansControllers.js';
+
 const router = express.Router();
 
-// Bans
-const banController = require('../../controllers/v3/bansControllers');
-router.get('/', banController.isGlobalBanSomewhere);
+router.get('/', isGlobalBanSomewhere);
 
-// Export
-module.exports = router;
+export default router;

@@ -1,4 +1,4 @@
-const {badArgument, ipGetIP} = require("../../utils/tools");
+const {badArgument, ipGetIP} = require("../../utils/tools.js");
 const playerModel = require('../../models/v3/serversPlayersModels');
 const serversModels = require('../../models/v3/serversModels');
 const userModel = require("../../models/v2/userModel");

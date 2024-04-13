@@ -1,7 +1,7 @@
 const {getConnection} = require('../../database/connection.js');
 const {getClient} = require("../../discord");
 
-function banFormat(ban) {
+export function banFormat(ban) {
     return {
         reason: ban.reason,
         banDate: ban.banDate,
@@ -11,7 +11,7 @@ function banFormat(ban) {
     };
 }
 
-function isGlobalBanIP(IP) {
+export function isGlobalBanIP(IP) {
     return new Promise((resolve, reject) => {
         if (!IP) return resolve(false);
 
@@ -31,7 +31,7 @@ function isGlobalBanIP(IP) {
     });
 }
 
-function isGlobalBanSteamID64(steamID64) {
+export function isGlobalBanSteamID64(steamID64) {
     return new Promise((resolve, reject) => {
         if (!steamID64) return resolve(false);
 
@@ -51,7 +51,7 @@ function isGlobalBanSteamID64(steamID64) {
     });
 }
 
-function isGlobalBanDiscordID(discordID) {
+export function isGlobalBanDiscordID(discordID) {
     return new Promise((resolve, reject) => {
         if (!discordID) return resolve(false);
 
@@ -71,7 +71,7 @@ function isGlobalBanDiscordID(discordID) {
     });
 }
 
-async function isBanFromGuild(guildID, discordID) {
+export async function isBanFromGuild(guildID, discordID) {
     return new Promise(async (resolve, reject) => {
         const client = await getClient()
 
@@ -92,14 +92,14 @@ async function isBanFromGuild(guildID, discordID) {
     });
 }
 
-async function isBanFromServer(serverID, steamID64) {
+export async function isBanFromServer(serverID, steamID64) {
     return new Promise((resolve, reject) => {
-        // TODO: Implement this function, for now use is global ban steamID64
+        // TODO: Implement this export function, for now use is global ban steamID64
         isGlobalBanSteamID64(steamID64).then(resolve).catch(reject);
     });
 }
 
-async function isGlobalBan(IP, discordID, steamID64) {
+export async function isGlobalBan(IP, discordID, steamID64) {
     const banIP = await isGlobalBanIP(IP);
     if (banIP) return banIP;
 
@@ -110,13 +110,4 @@ async function isGlobalBan(IP, discordID, steamID64) {
     if (banSteamID64) return banSteamID64;
 
     return false;
-}
-
-module.exports = {
-    isGlobalBanIP,
-    isGlobalBanSteamID64,
-    isGlobalBanDiscordID,
-    isBanFromGuild,
-    isBanFromServer,
-    isGlobalBan
 }

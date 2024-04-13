@@ -1,4 +1,4 @@
-function checkMissingArgs(requiredArgs, location) {
+export function checkMissingArgs(requiredArgs, location) {
     return function (req, res, next) {
         const missingArgs = [];
 
@@ -23,14 +23,14 @@ function checkMissingArgs(requiredArgs, location) {
         });
 
         if (missingArgs.length > 0) {
-            return res.status(400).json({ message: `Missing arguments: ${missingArgs.join(', ')}` });
+            return res.status(400).json({message: `Missing arguments: ${missingArgs.join(', ')}`});
         }
 
         next();
     }
 }
 
-function badArgument(list) {
+export function badArgument(list) {
     let valid = true;
     const failedArg = [];
 
@@ -48,14 +48,14 @@ function badArgument(list) {
     return false;
 }
 
-function ipGetIP(ip) {
+export function ipGetIP(ip) {
     if (!ip || typeof ip !== 'string' || ip.length === 0) {
         return '';
     }
     return ip.split(':')[0];
 }
 
-function generateToken(length) {
+export function generateToken(length) {
     let token = '';
     const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     for (let i = 0; i < length; i++) {
@@ -63,10 +63,3 @@ function generateToken(length) {
     }
     return token;
 }
-
-module.exports = {
-    checkMissingArgs,
-    badArgument,
-    ipGetIP,
-    generateToken
-};

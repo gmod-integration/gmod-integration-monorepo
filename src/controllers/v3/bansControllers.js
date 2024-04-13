@@ -1,11 +1,11 @@
-const bansModels = require('../../models/v3/bansModels');
-const {ipGetIP} = require("../../utils/tools");
+import {isGlobalBan} from '../../models/v3/bansModels.js';
+import {ipGetIP} from "../../utils/tools.js";
 
 async function isGlobalBanSomewhere(req, res) {
     const {steamID64, IP, discordID} = req.query;
-    return res.status(200).json(await bansModels.isGlobalBan(IP && ipGetIP(IP), discordID, steamID64))
+    return res.status(200).json(await isGlobalBan(IP && ipGetIP(IP), discordID, steamID64))
 }
 
-module.exports = {
+export {
     isGlobalBanSomewhere
 }

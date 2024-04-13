@@ -1,5 +1,5 @@
 const serverModel = require('../../models/v3/serversModels');
-const {badArgument, ipGetIP} = require("../../utils/tools");
+const {badArgument, ipGetIP} = require("../../utils/tools.js");
 
 function getInfo(req, res) {
     const {serverID} = req.params;

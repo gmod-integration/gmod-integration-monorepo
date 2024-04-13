@@ -2,7 +2,7 @@ const BaseClass = require("./BaseClass");
 const {getConnection, getConnectionPromisse} = require("../../database/connection");
 const {Role} = require("./Role");
 const {Player} = require("./Player");
-const {generateToken} = require("../../utils/tools");
+const {generateToken} = require("../../utils/tools.js");
 
 class Server extends BaseClass {
     constructor(obj = {}) {

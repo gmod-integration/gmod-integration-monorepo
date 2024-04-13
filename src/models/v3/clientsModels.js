@@ -1,4 +1,4 @@
-const {generateToken} = require("../../utils/tools");
+const {generateToken} = require("../../utils/tools.js");
 const fs = require("fs");
 const {
     domain

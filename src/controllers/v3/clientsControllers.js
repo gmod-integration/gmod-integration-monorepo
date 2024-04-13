@@ -1,4 +1,4 @@
-const {badArgument} = require("../../utils/tools");
+const {badArgument} = require("../../utils/tools.js");
 const clientsModels = require('../../models/v3/clientsModels');
 const {getClient} = require("../../discord");
 const {PlayerGmod} = require("../../classes/v3/PlayerGmod");

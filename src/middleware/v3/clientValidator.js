@@ -1,4 +1,4 @@
-const {badArgument} = require("../../utils/tools");
+const {badArgument} = require("../../utils/tools.js");
 const Server = require('../../classes/v3/Server');
 const crypto = require('crypto');
 

@@ -1,5 +1,5 @@
 const {getConnection, getConnectionPromisse} = require('../../database/connection.js');
-const {generateToken} = require("../../utils/tools");
+const {generateToken} = require("../../utils/tools.js");
 const {updateServerStatus} = require("../v2/serverModel");
 
 /**

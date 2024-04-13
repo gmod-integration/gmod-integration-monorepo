@@ -1,5 +1,5 @@
 const errorsModels = require('../../models/v3/errorsModels');
-const {badArgument} = require("../../utils/tools");
+const {badArgument} = require("../../utils/tools.js");
 
 function reportError(req, res) {
     let {
