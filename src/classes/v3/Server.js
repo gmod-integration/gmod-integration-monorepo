@@ -1,10 +1,10 @@
-const BaseClass = require("./BaseClass");
-const {getConnection, getConnectionPromisse} = require("../../database/connection");
-const {Role} = require("./Role");
-const {Player} = require("./Player");
-const {generateToken} = require("../../utils/tools.js");
+import {BaseClass} from "./BaseClass.js";
+import {Role} from "./Role.js";
+import {Player} from "./Player.js";
+import {generateToken} from "../../utils/tools.js";
+import {getConnectionPromise} from "../../database/connection.js";
 
-class Server extends BaseClass {
+export class Server extends BaseClass {
     constructor(obj = {}) {
         super();
         this.token = obj.token;
@@ -40,7 +40,7 @@ class Server extends BaseClass {
 
     async regeneratePublicTempToken() {
         try {
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             const newToken = generateToken(16);
             await connection.query('UPDATE gm_server SET publicTempToken = ? WHERE id = ?', [newToken, this.id]);
             this.publicTempToken = newToken;
@@ -52,7 +52,7 @@ class Server extends BaseClass {
 
     async getScreenshotsChannel() {
         try {
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_server_screenshot_channels WHERE serverID = ?', [this.id]);
             return results && results[0] ? results[0] : null;
         } catch (error) {
@@ -63,7 +63,7 @@ class Server extends BaseClass {
 
     async getSyncChatChannel() {
         try {
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [this.id]);
             return results && results[0] ? results[0] : null;
         } catch (error) {
@@ -74,7 +74,7 @@ class Server extends BaseClass {
 
     async getSetting(setting) {
         try {
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_server_settings WHERE serverID = ? AND setting = ?', [this.id, setting]);
             return results[0] ? results[0].value : null;
         } catch (error) {
@@ -83,25 +83,20 @@ class Server extends BaseClass {
         }
     }
 
-    getSettings() {
-        return new Promise((resolve, reject) => {
-            getConnection().then((connection) => {
-                connection.query('SELECT * FROM gm_server_settings WHERE serverID = ?', [this.id], (error, results) => {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        resolve(results[0]);
-                    }
-                });
-            }).catch((err) => {
-                reject(err);
-            });
-        });
+    async getSettings() {
+        try {
+            const connection = await getConnectionPromise();
+            const [results] = await connection.query('SELECT * FROM gm_server_settings WHERE serverID = ?', [this.id]);
+            return results ? results : [];
+        } catch (error) {
+            console.error(error);
+            return [];
+        }
     }
 
     async getChatRules() {
         try {
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules WHERE serverID = ?', [this.id]);
             return results;
         } catch (error) {
@@ -112,7 +107,7 @@ class Server extends BaseClass {
 
     async getGlobalChatRules() {
         try {
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules_preset');
             return results;
         } catch (error) {
@@ -123,7 +118,7 @@ class Server extends BaseClass {
 
     async getRoles() {
         try {
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_server_roles WHERE serverID = ?', [this.id]);
             return results.map((result) => new Role(result));
         } catch (error) {
@@ -134,7 +129,7 @@ class Server extends BaseClass {
 
     async saveUserConnectionInfo(steamID64, name) {
         try {
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             await connection.query('INSERT INTO gm_server_stat (steam_id, server_id, name, last_connect, total_connect) VALUES (?, ?, ?, NOW(), 1) ON DUPLICATE KEY UPDATE last_connect = NOW(), total_connect = total_connect + 1', [steamID64, this.id, name]);
         } catch (error) {
             console.error(error);
@@ -142,49 +137,36 @@ class Server extends BaseClass {
         }
     }
 
-    async isValidPlayerToken(steamID64, token, createDate) {
-
-    }
-
     async getServerPlayer(steamID64) {
         try {
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_server_stat WHERE server_id = ? AND steam_id = ?', [this.id, steamID64]);
             return results && results[0] ? new Player(results[0]) : null;
         } catch (error) {
             console.error(error);
             return null;
         }
-
     }
 }
 
-async function getServerFromID(serverID) {
-    return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('SELECT * FROM gm_server WHERE id = ?', [serverID], (error, results) => {
-                if (error) return reject(error);
-
-                if (results.length > 0) {
-                    return resolve(new Server(results[0]));
-                } else {
-                    reject('invalid_server_id');
-                }
-            });
-        }).catch((err) => {
-            reject(err);
-        });
-    });
+export async function getServerFromID(serverID) {
+    try {
+        const connection = await getConnectionPromise();
+        const [results] = await connection.query('SELECT * FROM gm_server WHERE id = ?', [serverID]);
+        return results[0] ? new Server(results[0]) : null;
+    } catch (error) {
+        console.error(error);
+        return null;
+    }
 }
 
-async function getServersFromDiscordGuildID(guildID) {
-    const connection = await getConnectionPromisse();
-    const [results] = await connection.query('SELECT * FROM gm_server WHERE guild = ?', [guildID]);
-    return results.map((result) => new Server(result));
-}
-
-module.exports = {
-    Server,
-    getServerFromID,
-    getServersFromDiscordGuildID
+export async function getServersFromDiscordGuildID(guildID) {
+    try {
+        const connection = await getConnectionPromise();
+        const [results] = await connection.query('SELECT * FROM gm_server WHERE guild = ?', [guildID]);
+        return results.map((result) => new Server(result));
+    } catch (error) {
+        console.error(error);
+        return [];
+    }
 }

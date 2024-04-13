@@ -5,7 +5,7 @@ import {readFileSync} from "fs";
 
 let connectionPromise;
 
-async function getConnectionPromise() {
+export async function getConnectionPromise() {
     if (connectionPromise && connectionPromise.state !== 'disconnected') {
         return connectionPromise;
     } else {
@@ -35,7 +35,7 @@ setInterval(async () => {
     }
 }, 10000);
 
-async function executeSqlFile(filePath) {
+export async function executeSqlFile(filePath) {
     try {
         const connection = await getConnectionPromise();
 
@@ -49,8 +49,3 @@ async function executeSqlFile(filePath) {
         console.error('Error executing SQL file:', error);
     }
 }
-
-export {
-    getConnectionPromise,
-    executeSqlFile
-};

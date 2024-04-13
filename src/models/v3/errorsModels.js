@@ -1,21 +1,9 @@
-const {getConnection} = require('../../database/connection.js');
+const {getConnectionPromise} = require('../../database/connection.js');
 
-function reportError({error, stack, id, name, realm, identifier, uptime}) {
-    return new Promise((resolve, reject) => {
-        getConnection().then((connection) => {
-            connection.query('INSERT INTO gm_errors (error, stack, workshopID, name, realm, identifier, uptime) VALUES (?, ?, ?, ?, ?, ?, ?)', [error, stack, id, name, realm, identifier, uptime], (error) => {
-                if (error) {
-                    console.error(error);
-                    reject(error);
-                }
-                resolve();
-            });
-        }).catch((err) => {
-            reject(err);
-        });
+export async function saveError({error, stack, id, name, realm, identifier, uptime}) {
+    return new Promise(async (resolve, reject) => {
+        const connection = await getConnectionPromise();
+        await connection.query('INSERT INTO gm_errors (error, stack, workshopID, name, realm, identifier, uptime) VALUES (?, ?, ?, ?, ?, ?, ?)', [error, stack, id, name, realm, identifier, uptime]);
+        resolve();
     });
-}
-
-module.exports = {
-    reportError,
 }

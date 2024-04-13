@@ -1,8 +1,8 @@
 const {getConnection} = require('../../database/connection.js');
-const BaseClass = require('./BaseClass');
-const CustomValues = require('./CustomValues');
+const {BaseClass} = require('./BaseClass');
+const {CustomValues} = require('./CustomValues');
 
-class Player extends BaseClass {
+export class Player extends BaseClass {
     constructor(obj = {}) {
         super();
         this.steamID64 = obj.steamID64;
@@ -25,7 +25,7 @@ class Player extends BaseClass {
     }
 }
 
-function getServerPlayer(serverID, steamID64) {
+export function getServerPlayer(serverID, steamID64) {
     return new Promise(async (resolve, reject) => {
         getConnection().then((connection) => {
             connection.query('SELECT * FROM gm_server_stat WHERE server_id = ? AND steam_id = ?', [serverID, steamID64], (error, results) => {
@@ -47,8 +47,3 @@ function getServerPlayer(serverID, steamID64) {
         });
     });
 }
-
-module.exports = {
-    Player,
-    getServerPlayer
-};

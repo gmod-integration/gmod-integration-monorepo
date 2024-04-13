@@ -1,36 +1,29 @@
-const steamApi = require('steamapi');
-const {steamAPI} = require("../config");
+import steamApi from 'steamapi';
+import {steamConfig} from "../config/index.js";
 
-const steam = new steamApi(steamAPI);
+const steam = new steamApi(steamConfig.apiKey);
 
-function getSteamApi() {
+export function getSteamApi() {
     return steam;
 }
 
-function getSteamUserSummary(steamID64) {
+export function getSteamUserSummary(steamID64) {
     return new Promise(async (resolve, reject) => {
         const summary = await steam.getUserSummary(steamID64);
         resolve(summary);
     });
 }
 
-function getSteamUserAvatars(steamID64) {
+export function getSteamUserAvatars(steamID64) {
     return new Promise(async (resolve, reject) => {
         const summary = await steam.getUserSummary(steamID64);
         resolve(summary.avatar);
     });
 }
 
-function getSteamUserAvatarLarge(steamID64) {
+export function getSteamUserAvatarLarge(steamID64) {
     return new Promise(async (resolve, reject) => {
         const summary = await steam.getUserSummary(steamID64);
         resolve(summary.avatar.large);
     });
-}
-
-module.exports = {
-    getSteamApi,
-    getSteamUserSummary,
-    getSteamUserAvatars,
-    getSteamUserAvatarLarge,
 }

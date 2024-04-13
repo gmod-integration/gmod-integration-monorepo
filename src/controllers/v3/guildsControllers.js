@@ -1,4 +1,4 @@
-const {getConnectionPromisse} = require("../../database/connection");
+const {getConnectionPromise} = require("../../database/connection");
 const {isGuildPremium, replyNeedPremium} = require("../../classes/v3/Guild");
 const {getTranslate} = require("../../utils/localizations");
 const {wsSendToServer} = require("../../websockets");
@@ -10,7 +10,7 @@ async function sendMessageToGmod(message) {
     if (message.author.bot || !message.guild) return;
     const lang = message.guild.preferredLocale;
 
-    const connection = await getConnectionPromisse();
+    const connection = await getConnectionPromise();
     const [rows] = await connection.query('SELECT * FROM gm_sync_chat WHERE guild = ? AND channel = ?', [message.guild.id, message.channel.id]);
 
     if (!rows || rows.length === 0) return;

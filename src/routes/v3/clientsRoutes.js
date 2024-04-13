@@ -1,17 +1,13 @@
-const express = require('express');
+import express from 'express';
+import {uploadScreenshot} from '../../controllers/v3/clientsControllers.js';
+import {reportError} from '../../controllers/v3/errorsControllers.js';
+import clientValidator from '../../middleware/v3/clientValidator.js';
+
 const router = express.Router();
 
-// Validator
-const clientValidator = require('../../middleware/v3/clientValidator');
 router.use('/:clientID64/servers/:serverID/', clientValidator);
 
-// Routes
-const playersControllers = require('../../controllers/v3/clientsControllers');
-router.post('/:clientID64/servers/:serverID/screenshots', playersControllers.uploadScreenshot);
-router.post('/:clientID64/servers/:serverID/streams/frames', playersControllers.uploadStreamsFrames);
+router.post('/:clientID64/servers/:serverID/screenshots', uploadScreenshot);
+router.post('/:clientID64/servers/:serverID/errors', reportError);
 
-const errorsControllers = require('../../controllers/v3/errorsControllers');
-router.post('/:clientID64/servers/:serverID/errors', errorsControllers.reportError);
-
-// Export
-module.exports = router;
+export default router;

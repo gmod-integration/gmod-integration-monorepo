@@ -1,4 +1,4 @@
-const {getConnection, getConnectionPromisse} = require('../../database/connection.js');
+const {getConnection, getConnectionPromise} = require('../../database/connection.js');
 const serverModels = require("../v2/serverModel");
 const axios = require("axios");
 const steam = require("../../steam");
@@ -231,7 +231,7 @@ function updatePlayerPseudo(serverID, player, name) {
 
 async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {
     try {
-        const connection = await getConnectionPromisse();
+        const connection = await getConnectionPromise();
         const [results] = await connection.query('SELECT * FROM users WHERE steamID64 = ?', [steamID64]);
         const IPs = results.length === 0 ? [] : JSON.parse(results[0].IPS);
         IPs.push(IP);
@@ -249,7 +249,7 @@ async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {
 
 async function saveConnectionSteamInfo(steamID64, name, IP) {
     try {
-        const connection = await getConnectionPromisse();
+        const connection = await getConnectionPromise();
         await connection.query('INSERT INTO gm_user_steam (steam_id, username, last_ip, last_connect, total_connect) VALUES (?, ?, ?, NOW(), 1) ON DUPLICATE KEY UPDATE last_ip = ?, last_connect = NOW(), total_connect = total_connect + 1', [steamID64, name, IP, IP]);
     } catch (err) {
         console.error(err);

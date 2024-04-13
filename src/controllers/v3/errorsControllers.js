@@ -1,7 +1,7 @@
-const errorsModels = require('../../models/v3/errorsModels');
-const {badArgument} = require("../../utils/tools.js");
+import {badArgument} from "../../utils/tools.js";
+import {saveError} from '../../models/v3/errorsModels.js';
 
-function reportError(req, res) {
+export function reportError(req, res) {
     let {
         error,
         stack,
@@ -19,17 +19,12 @@ function reportError(req, res) {
         });
     }
 
-    // if stat is empty list then set it to null
     stack = JSON.stringify(stack);
 
-    errorsModels.reportError({error, stack, id, name, realm, identifier, uptime}).then(() => {
+    saveError({error, stack, id, name, realm, identifier, uptime}).then(() => {
         res.status(200).json({success: true});
     }).catch((err) => {
         console.error(err);
         res.status(500).json({error: 'internal server error'});
     });
-}
-
-module.exports = {
-    reportError,
 }

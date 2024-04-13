@@ -1,8 +1,8 @@
-const {badArgument} = require("../../utils/tools.js");
-const Server = require('../../classes/v3/Server');
-const crypto = require('crypto');
+import {badArgument} from "../../utils/tools.js";
+import {getServerFromID} from '../../classes/v3/Server.js';
+import crypto from 'crypto';
 
-module.exports = (req, res, next) => {
+export default (req, res, next) => {
     const {serverID, clientID64} = req.params;
     const {authorization} = req.headers;
 
@@ -20,7 +20,7 @@ module.exports = (req, res, next) => {
     const token = authorization.split(' ')[1];
     const userID = authorization.split(' ')[2];
 
-    Server.getServerFromID(serverID).then((server) => {
+    getServerFromID(serverID).then((server) => {
         if (!server) return res.status(404).json({error: 'server_not_found'});
 
         const hash = crypto.createHash('sha256');
@@ -38,4 +38,4 @@ module.exports = (req, res, next) => {
         console.error(err);
         return res.status(500).json({error: 'internal_server_error'});
     });
-};
+}

@@ -1,4 +1,4 @@
-const {getConnectionPromisse, getConnection} = require('../../database/connection.js');
+const {getConnectionPromise, getConnection} = require('../../database/connection.js');
 const Team = require('./Team');
 const Position = require('./Position');
 const Angle = require('./Angle');
@@ -23,7 +23,7 @@ class PlayerGmod extends BaseClass {
 
     async getDiscordID() {
         try {
-            const connection = await getConnectionPromisse(); // Assurez-vous que getConnection retourne une promesse
+            const connection = await getConnectionPromise(); // Assurez-vous que getConnection retourne une promesse
             const [results] = await connection.query('SELECT * FROM gm_user WHERE steam = ?', [this.steamID64]);
 
             if (results.length > 0) {
@@ -42,7 +42,7 @@ class PlayerGmod extends BaseClass {
             const {connectTime, kills, deaths, customValues, userGroup, steamID64, name} = this;
             const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
 
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             await connection.query(`
                 INSERT INTO gm_server_stat (steam_id, server_id, rank, name, total_time, total_kill, total_death,
                                             custom_values,
@@ -67,7 +67,7 @@ class PlayerGmod extends BaseClass {
             const {connectTime, deaths, kills, customValues, steamID64} = this;
             const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
 
-            const connection = await getConnectionPromisse();
+            const connection = await getConnectionPromise();
             await connection.query(`
                 INSERT INTO gm_server_stat_session (serverID, steamID64, time, deaths, kills, customValues)
                 VALUES (?, ?, ?, ?, ?, ?)
@@ -92,7 +92,7 @@ function getPlayerServerInformations(serverID, steamID64) {
 
 async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
     try {
-        const connection = await getConnectionPromisse();
+        const connection = await getConnectionPromise();
         await connection.query('UPDATE gm_server_stat SET rank = ? WHERE steam_id = ? AND server_id = ?', [userGroup, steamID64, serverID]);
     } catch (error) {
         console.error(error);

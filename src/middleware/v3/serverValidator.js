@@ -1,7 +1,7 @@
-const {badArgument} = require("../../utils/tools.js");
-const Server = require('../../classes/v3/Server');
+import {badArgument} from "../../utils/tools.js";
+import {getServerFromID} from '../../classes/v3/Server.js';
 
-module.exports = (req, res, next) => {
+export default (req, res, next) => {
     const {serverID} = req.params;
     const {authorization} = req.headers;
 
@@ -16,12 +16,13 @@ module.exports = (req, res, next) => {
     }
 
     const token = authorization.split(' ')[1];
-    Server.getServerFromID(serverID).then((server) => {
+    getServerFromID(serverID).then((server) => {
         if (!server) return res.status(404).json({error: 'server_not_found'});
         if (!server.isValidToken(token)) return res.status(401).json({error: 'unauthorized'});
 
         req.headers.guild = server.guild;
         req.server = server;
+        
         return next();
     }).catch((err) => {
         console.error(err);

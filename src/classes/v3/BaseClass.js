@@ -1,4 +1,4 @@
-class BaseClass {
+export class BaseClass {
     isValid() {
         const keys = Object.keys(this);
         for (const key of keys) {
@@ -28,5 +28,3 @@ class BaseClass {
         return result;
     }
 }
-
-module.exports = BaseClass;

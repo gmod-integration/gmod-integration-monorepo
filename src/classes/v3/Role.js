@@ -1,7 +1,6 @@
-const BaseClass = require("./BaseClass");
-const {getConnectionPromisse} = require("../../database/connection");
+import {getConnectionPromise} from "../../database/connection.js";
 
-class Role {
+export class Role {
     constructor(obj = {}) {
         this.id = obj.id || null;
         this.serverID = obj.serverID || null;
@@ -26,9 +25,9 @@ class Role {
     }
 }
 
-async function getRoleFromDiscordRoleID(serverID, discordRoleID) {
+export async function getRoleFromDiscordRoleID(serverID, discordRoleID) {
     try {
-        const connection = await getConnectionPromisse();
+        const connection = await getConnectionPromise();
         const [results] = await connection.query('SELECT * FROM gm_server_roles WHERE serverID = ? AND discordRoleID = ?', [serverID, discordRoleID]);
         if (results.length > 0) {
             return new Role(results[0]);
@@ -40,9 +39,9 @@ async function getRoleFromDiscordRoleID(serverID, discordRoleID) {
     }
 }
 
-async function getRoleFromRole(serverID, role) {
+export async function getRoleFromRole(serverID, role) {
     try {
-        const connection = await getConnectionPromisse();
+        const connection = await getConnectionPromise();
         const [results] = await connection.query('SELECT * FROM gm_server_roles WHERE serverID = ? AND role = ?', [serverID, role]);
         if (results.length > 0) {
             return new Role(results[0]);
@@ -52,10 +51,4 @@ async function getRoleFromRole(serverID, role) {
         console.error(error);
         return null;
     }
-}
-
-module.exports = {
-    Role,
-    getRoleFromDiscordRoleID,
-    getRoleFromRole,
 }
