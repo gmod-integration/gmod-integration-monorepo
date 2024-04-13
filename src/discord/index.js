@@ -16,31 +16,33 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildModeration,
         GatewayIntentBits.GuildScheduledEvents,
-        // GatewayIntentBits.GuildPresences,
         GatewayIntentBits.GuildWebhooks,
         GatewayIntentBits.Guilds,
         GatewayIntentBits.MessageContent,
     ]
 });
 
-client.on('ready', () => {
-    gmLog('discord', 'Connected to Discord');
-});
-
-client.login(discordConfig.botToken).catch(console.error);
-
-// Load Events
-const eventFiles = readdirSync('./src/discord/events').filter(file => file.endsWith('.js'));
+const eventFiles = readdirSync(join(process.cwd(), 'src/discord/events')).filter(file => file.endsWith('.js'));
 for (const file of eventFiles) {
-    const event = await import(`./events/${file}`);
-    if (event.name) {
-        client.on(event.name, (...args) => event.execute(...args, client));
-    }
+    const filePath = join(process.cwd(), 'src/discord/events', file);
+    import(filePath).then((event) => {
+        if (event.default && event.default.name) {
+            client.on(event.default.name, event.default.execute);
+            gmLog('event', `Event ${filePath} loaded`);
+        } else {
+            if (!event.default) {
+                gmLog('event', `Event ${filePath} is missing default export`);
+            }
+            if (!event.default.name) {
+                gmLog('event', `Event ${filePath} is missing name`);
+            }
+        }
+    });
 }
 
 // Load Slash Commands
 client.commands = new Collection();
-const foldersPath = join(__dirname, 'commands');
+const foldersPath = join(process.cwd(), 'src/discord/commands');
 const commandFolders = readdirSync(foldersPath);
 
 for (const folder of commandFolders) {
@@ -49,14 +51,19 @@ for (const folder of commandFolders) {
 
     for (const file of commandFiles) {
         const filePath = join(commandsPath, file);
-        const command = await import(filePath);
-
-        if ('data' in command && 'execute' in command) {
-            client.commands.set(command.data.name, command);
-            console.log(`[INFO] Loaded command ${command.data.name} from ${filePath}`);
-        } else {
-            console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
-        }
+        import(filePath).then((command) => {
+            if (command.default && command.default.data) {
+                client.commands.set(command.default.data.name, command.default);
+                gmLog('command', `Command ${filePath} loaded`);
+            } else {
+                if (!command.default) {
+                    gmLog('command', `Command ${filePath} is missing default export`);
+                }
+                if (!command.default.data) {
+                    gmLog('command', `Command ${filePath} is missing data`);
+                }
+            }
+        });
     }
 }
 
@@ -146,3 +153,9 @@ export function updateGuildUserPseudo(guildID, userID, pseudo) {
         }).catch(reject);
     });
 }
+
+client.on('ready', () => {
+    gmLog('discord', 'Connected to Discord');
+});
+
+client.login(discordConfig.botToken).catch(console.error);

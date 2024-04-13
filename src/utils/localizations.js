@@ -13,8 +13,8 @@ function insertOptions(str, options) {
 
 function getDefaultTrad(key, options) {
     try {
-        const defaultLanguage = JSON.parse(readFileSync(join(__dirname, '../locales/en.json'), 'utf8'));
-
+        const defaultLanguage = JSON.parse(readFileSync(join(process.cwd(), 'src/locales/en.json'), 'utf8'));
+        
         if (key in defaultLanguage) {
             return insertOptions(defaultLanguage[key], options);
         } else {
@@ -30,7 +30,7 @@ function getDefaultTrad(key, options) {
 export function getTranslate(key, language, options) {
     try {
         language = language ? language.substring(0, 2) : 'en';
-        const filePath = join(__dirname, `../locales/${language}.json`);
+        const filePath = join(process.cwd(), `src/locales/${language}.json`);
 
         if (!existsSync(filePath)) {
             language = 'en';

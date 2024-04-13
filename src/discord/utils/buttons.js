@@ -1,5 +1,5 @@
 import {ButtonBuilder, ButtonStyle} from "discord.js";
-import {discordConfig} from "../../config";
+import {discordConfig} from "../../config/index.js";
 import {getTranslate} from "../../utils/localizations.js";
 
 export function ButtonVerificationWebsite(lang) {

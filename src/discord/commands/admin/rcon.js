@@ -1,4 +1,4 @@
-import {SlashCommandBuilder} from 'discord.js';
+import {ActionRowBuilder, SlashCommandBuilder} from 'discord.js';
 import {getServerList} from '../../../models/v3/serversModels.js';
 import {getUserFromDiscordID} from '../../../classes/v3/User.js';
 import {getTranslate} from '../../../utils/localizations.js';
