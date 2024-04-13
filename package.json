@@ -13,6 +13,7 @@
     "type": "git",
     "url": "git+https://github.com/gmod-integration/api.git"
   },
+  "type": "module",
   "author": "Linventif",
   "license": "Proprietary",
   "bugs": {
