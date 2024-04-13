@@ -53,18 +53,8 @@ const webhooksRoutes = require('./routes/webhooks/_webhooksRoutes');
 app.use('/webhooks', webhooksRoutes);
 
 //
-// Version Middleware
-//
-
-const versioningMiddleware = require('./middleware/v3/versioningMiddleware');
-app.use(versioningMiddleware);
-
-//
 // Routes
 //
-
-const v2Routes = require('./routes/v2/_v2Routes');
-app.use('/v2', v2Routes);
 
 const v3Routes = require('./routes/v3/_v3Routes');
 app.use('/v3', v3Routes);
