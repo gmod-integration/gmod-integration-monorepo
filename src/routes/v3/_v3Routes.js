@@ -1,25 +1,18 @@
-const express = require('express');
+import express from 'express';
+import serversRoutes from './serversRoutes.js';
+import bansRoutes from './bansRoutes.js';
+import clientsRoutes from './clientsRoutes.js';
+import usersRoutes from './usersRoutes.js';
+
 const router = express.Router();
 
-// Check API Version
 router.get('/', (req, res) => {
     res.json({status: 'ok', version: 'v3'});
 });
 
-// Servers
-const serversRoutes = require('./serversRoutes');
 router.use('/servers', serversRoutes);
-
-// Bans
-const bansRoutes = require('./bansRoutes');
 router.use('/bans', bansRoutes);
-
-// Clients
-const clientsRoutes = require('./clientsRoutes');
 router.use('/clients', clientsRoutes);
-
-// Players
-const usersRoutes = require('./usersRoutes');
 router.use('/users', usersRoutes);
 
-module.exports = router;
+export default router;

@@ -1,4 +1,4 @@
-const {gmLog} = require('../../utils/logger');
+const {gmLog} = require('../../utils/logger.js');
 const {verifyWebhookSignature} = require("../../models/webhooks/gmodStoreModels");
 const {
     stripeSecretKey,

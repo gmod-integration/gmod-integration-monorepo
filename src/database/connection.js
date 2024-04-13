@@ -1,7 +1,7 @@
 // database/connection.js
 const mysql = require('mysql2');
 const {dbConfig} = require('../config');
-const {gmLog} = require('../utils/logger');
+const {gmLog} = require('../utils/logger.js');
 
 let connection;
 

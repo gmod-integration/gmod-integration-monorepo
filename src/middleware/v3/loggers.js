@@ -1,27 +1,18 @@
-const logger = require("../../utils/logger");
+import {gmLog} from '../../utils/logger.js';
 
-// url example: /v3/servers/:serverID
-// script is execute a the main entry point of the server so no parameters are passed
-module.exports = (req, res, next) => {
+export default (req, res, next) => {
     const method = req.method;
     const url = req.url;
     const ip = req.headers['cf-connecting-ip'] || req.ip;
-    let id = req.params.serverID || 'unknown';
-    let body = JSON.stringify(req.body);
+    const id = url.split('/')[2];
+    const query = JSON.stringify(req.query);
 
+    let body = JSON.stringify(req.body);
     if (url.includes('screenshots') || url.includes('streams')) {
         body = 'HIDDEN';
     }
 
-    const query = JSON.stringify(req.query);
-    const version = req.headers['version'] || 'unknown';
-
-    // if start with /v? extract the server id from the url
-    if (url.startsWith('/v')) {
-        id = url.split('/')[2];
-    }
-
-    logger.gmLog('api', ' Method: ' + method + ' URL: ' + url + ' IP: ' + ip + ' Version: ' + version + ' Server ID: ' + id + ' Body: ' + body + ' Query: ' + query);
+    gmLog('api', `Method: ${method} URL: ${url} IP: ${ip} Server ID: ${id} Body: ${body} Query: ${query}`);
 
     next();
-};
+}

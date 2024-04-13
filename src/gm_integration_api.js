@@ -1,81 +1,40 @@
-//
-// Dependencies
-//
+import express from 'express';
+import statusMonitor from 'express-status-monitor';
+import {serverConfig} from './config/index.js';
+import {gmLog} from './utils/logger.js';
+import rawBodyMiddleware from './middleware/rawBodyMiddleware.js';
+import loggerMiddleware from './middleware/v3/loggers.js';
+import webhooksRoutes from './routes/webhooks/_webhooksRoutes.js';
+import v3Routes from './routes/v3/_v3Routes.js';
+import errorMiddleware from './middleware/errorMiddleware.js';
 
-const express = require('express');
-const statusMonitor = require('express-status-monitor');
-
-const {port_api, bodyLimit} = require('./config');
-const logger = require('./utils/logger');
-
-//
 // Express
-//
-
 const app = express();
-app.use(statusMonitor());
-
-// raw body
-const rawBodyMiddleware = require('./middleware/rawBodyMiddleware')
-app.use(rawBodyMiddleware)
-
-// Set body size limit and parse JSON and URL-encoded bodies
-app.use(express.json({limit: bodyLimit, type: 'application/json'}));
-app.use(express.urlencoded({limit: bodyLimit, extended: true}));
-
-// Proxy
 app.set('trust proxy', true);
 
+// Middleware
+app.use(rawBodyMiddleware);
 //
-// Websocket
-//
+// Body Parser
+app.use(express.json({limit: serverConfig.bodyLimit, type: 'application/json'}));
+app.use(express.urlencoded({limit: serverConfig.bodyLimit, extended: true}));
 
-const ws = require('./websockets');
-
-//
 // Logger
-//
-
-const loggerMiddleware = require('./middleware/v3/loggers');
 app.use(loggerMiddleware);
 
-//
-// Public Static
-//
-
-app.use('/screenshots', express.static('screenshots'));
-
-//
-// Webhooks
-//
-
-const webhooksRoutes = require('./routes/webhooks/_webhooksRoutes');
-app.use('/webhooks', webhooksRoutes);
-
-//
 // Routes
-//
-
-const v3Routes = require('./routes/v3/_v3Routes');
+app.use(statusMonitor());
+app.use('/screenshots', express.static('screenshots'));
+app.use('/webhooks', webhooksRoutes);
 app.use('/v3', v3Routes);
 
-//
-// 404 Not Found
-//
-
+// 404
 app.all('*', (req, res) => {
     return res.status(404).json({error: '404 Not Found'});
 });
 
-//
-// Error Middleware
-//
-
-const errorMiddleware = require('./middleware/errorMiddleware');
-const {raw} = require('body-parser');
+// Errors
 app.use(errorMiddleware);
 
-//
-// Start Server
-//
-app.listen(port_api, () => logger.gmLog('system', `API listening on port ${port_api}`));
+// Listen
+app.listen(serverConfig.ports.api, () => gmLog('system', `API listening on port ${serverConfig.ports.api}`));

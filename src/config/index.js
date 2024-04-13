@@ -1,32 +1,49 @@
-require('dotenv').config();
+import dotenv from 'dotenv';
 
-exports.port_website = 53134;
-exports.port_panel = 53135;
-exports.port_api = 53136;
-exports.port_verify = 53137;
-exports.port_websocket = 53139;
-exports.dbConfig = {
+dotenv.config();
+
+export const databaseConfig = {
     host: process.env.DATABASE_HOST,
     user: process.env.DATABASE_USER,
     password: process.env.DATABASE_PASSWORD,
     database: process.env.DATABASE_NAME,
     port: process.env.DATABASE_PORT,
-    "connectTimeout": 60000,
-    "charset": "utf8mb4_unicode_ci",
-    "multipleStatements": true
-};
-exports.bodyLimit = '10mb';
-exports.port_api = process.env.PORT_API;
-exports.bot_token = process.env.DISCORD_BOT_TOKEN;
-exports.client_id = process.env.DISCORD_CLIENT_ID;
-exports.steamAPI = process.env.STEAM_API_KEY;
-exports.signingSecretWebhook = process.env.SIGNING_SECRET_WEBHOOK;
-exports.gmodStoreAPIKey = process.env.GMODSTORE_API_KEY;
-exports.productID = "7523cd69-0370-47c6-82e6-39675e9a56d3";
-exports.token = process.env.DISCORD_BOT_TOKEN;
-exports.production = process.env.PRODUCTION;
-exports.domain = process.env.DOMAIN_URL;
-exports.port_website = process.env.PORT_WEBSITE;
-exports.intern_websocket_token = process.env.INTERN_WEBSOCKET_TOKEN;
-exports.stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-exports.stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+    connectTimeout: 60000,
+    charset: 'utf8mb4_unicode_ci',
+    multipleStatements: true
+}
+
+export const serverConfig = {
+    production: process.env.PRODUCTION,
+    bodyLimit: '10mb',
+    domain: process.env.DOMAIN_URL,
+    internWebsocketToken: process.env.INTERN_WEBSOCKET_TOKEN,
+    ports: {
+        website: process.env.PORT_WEBSITE || 53134,
+        panel: 53135,
+        api: process.env.PORT_API || 53136,
+        verify: 53137,
+        websocket: 53139
+    }
+}
+
+export const discordConfig = {
+    clientID: process.env.DISCORD_CLIENT_ID,
+    clientSecret: process.env.DISCORD_CLIENT_SECRET,
+    botToken: process.env.DISCORD_BOT_TOKEN,
+    redirectUri: process.env.DISCORD_REDIRECT_URI,
+}
+
+export const stripeConfig = {
+    secretKey: process.env.STRIPE_SECRET_KEY,
+    publicKey: process.env.STRIPE_PUBLIC_KEY,
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET
+}
+
+export const steamConfig = {
+    apiKey: process.env.STEAM_API_KEY
+}
+
+export const gmodStoreConfig = {
+    apiKey: process.env.GMODSTORE_API_KEY
+}

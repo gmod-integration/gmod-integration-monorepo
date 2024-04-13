@@ -1,12 +1,12 @@
-const express = require('express');
+import express from 'express';
+import gmodStoreValidatorMiddleware from '../../middleware/webhooks/gmodStoreValidator.js';
+import gmodStoreRoutes from './gmodstore/_gmodStoreRoutes.js';
+import stripeValidatorMiddleware from '../../middleware/webhooks/stripeValidator.js';
+import stripeRoutes from './stripe/_stripeRoutes.js';
+
 const router = express.Router();
 
-const gmodStoreValidatorMiddleware = require('../../middleware/webhooks/gmodStoreValidator');
-const gmodStoreRoutes = require('./gmodstore/_gmodStoreRoutes');
 router.use('/gmod-store', gmodStoreValidatorMiddleware, gmodStoreRoutes);
-
-const stripeValidatorMiddleware = require('../../middleware/webhooks/stripeValidator');
-const stripeRoutes = require('./stripe/_stripeRoutes');
 router.use('/stripe', stripeValidatorMiddleware, stripeRoutes);
 
-module.exports = router;
+export default router;

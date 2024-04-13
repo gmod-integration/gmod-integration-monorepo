@@ -21,7 +21,7 @@ const {
     token,
 } = require('../config/index');
 const {readdirSync} = require("fs");
-const {gmLog} = require("../utils/logger");
+const {gmLog} = require("../utils/logger.js");
 const {join} = require("path");
 
 client.on('ready', () => {

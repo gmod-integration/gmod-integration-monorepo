@@ -1,5 +1,5 @@
 // import {getTranslate} from "../../utils/localizations";
-// import {gmLog} from "../../utils/logger";
+// import {gmLog} from "../../utils/logger.js";
 // import {ActionRowBuilder, ButtonBuilder} from "discord.js";
 // import {ButtonConnect} from "./buttons";
 //
