@@ -1,8 +1,13 @@
-import {badArgument} from "../../utils/tools.js";
+import {badArgument, ipGetIP} from "../../utils/tools.js";
 import {updateGuildUserSyncRoles} from "../../models/v3/discordModels.js";
 import {PlayerGmod, updatePlayerUserGroup} from "../../classes/v3/PlayerGmod.js";
 import {getUserFromSteamID64} from "../../classes/v3/User.js";
-import {saveConnectionGlobalInfo, saveConnectionSteamInfo} from "../../models/v3/serversPlayersModels.js";
+import {
+    getPlayerBan,
+    saveConnectionGlobalInfo,
+    saveConnectionSteamInfo,
+    sendPlayerSay
+} from "../../models/v3/serversPlayersModels.js";
 import {updateGuildUserPseudo} from "../../discord/index.js";
 import {getServerPlayer} from "../../classes/v3/Player.js";
 import {getGuildID} from "../../models/v3/serversModels.js";
@@ -131,7 +136,7 @@ export function playerSay(req, res) {
         return res.status(400).json({error: 'player_bad_format', arguments: ply.isValidGetInformations()});
     }
 
-    serversPlayersModels.sendPlayerSay(server, player, text, teamOnly).then(() => {
+    sendPlayerSay(server, player, text, teamOnly).then(() => {
         return res.status(200).json({message: 'data_received'});
     }).catch((err) => {
         if (err.message && err.skip) {

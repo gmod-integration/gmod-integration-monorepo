@@ -1,7 +1,6 @@
 import {getConnectionPromise} from '../../database/connection.js';
 import {WebhookClient} from 'discord.js';
 import {getSteamUserAvatarLarge} from "../../steam/index.js";
-import {getUserFromSteamID64} from "../../classes/v3/User.js";
 
 export function getInformations(id) {
     return new Promise((resolve, reject) => {
@@ -194,23 +193,6 @@ export function sendPlayerSay(server, player, text, onlyTeam) {
         }).catch((err) => {
             console.error(err);
             return reject(err);
-        });
-    });
-}
-
-export function updatePlayerPseudo(serverID, player, name) {
-    return new Promise(async (resolve, reject) => {
-        const user = await getUserFromSteamID64(player.steamID64);
-        if (!user) {
-            return reject('User not found');
-        }
-        if (!user.getDiscordID()) {
-            return reject('User not linked');
-        }
-        updatePseudo(discordID, name).then(() => {
-            resolve();
-        }).catch((err) => {
-            reject(err);
         });
     });
 }
