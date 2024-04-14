@@ -50,6 +50,20 @@ export class Server extends BaseClass {
         }
     }
 
+    async saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime) {
+        return new Promise(async (resolve, reject) => {
+            const connection = await getConnectionPromise();
+            const query = 'INSERT INTO gm_server_status (id, ip, port, last_update, hostname, map, gamemode, players, maxplayers) VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE ip = ?, port = ?, last_update = NOW(), hostname = ?, map = ?, gamemode = ?, players = ?, maxplayers = ?';
+            const values = [this.getID(), ip, port, hostname, map, gameMode, players, maxPlayers, ip, port, hostname, map, gameMode, players, maxPlayers];
+            const [results] = await connection.query(query, values);
+            if (results.affectedRows >= 1) {
+                resolve();
+            } else {
+                reject('Failed to save status');
+            }
+        });
+    }
+
     async getScreenshotsChannel() {
         try {
             const connection = await getConnectionPromise();

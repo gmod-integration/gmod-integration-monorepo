@@ -1,20 +1,5 @@
 import {getConnectionPromise} from "../../database/connection.js";
 
-export function getInformations(id) {
-    return new Promise(async (resolve, reject) => {
-        const connection = await getConnectionPromise();
-        connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
-            if (error) return reject(error);
-
-            if (results.length > 0) {
-                return resolve(results[0]);
-            } else {
-                reject('Server not found');
-            }
-        });
-    });
-}
-
 export async function getGuildID(id) {
     const connection = await getConnectionPromise();
     const [rows] = connection.query('SELECT * FROM gm_server WHERE id = ?', [id]);
@@ -28,25 +13,6 @@ export async function isValidAuth(id, token) {
     const connection = await getConnectionPromise();
     const [rows] = connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token]);
     return rows.length > 0;
-}
-
-export async function saveStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime) {
-    const connection = await getConnectionPromise();
-    const query = 'INSERT INTO gm_server_status_v3 (serverID, players, maxPlayers, map, hostname, gameMode, port, ip, uptime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE players = ?, maxPlayers = ?, map = ?, hostname = ?, gameMode = ?, port = ?, ip = ?, uptime = ?';
-    const values = [serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime];
-    connection.query(query, values, (error) => {
-        if (error) {
-            console.error(error);
-            return false;
-        }
-        return true;
-    });
-
-    // TODO: Change to new
-    // connection.query('INSERT INTO gm_server_status_v3 (serverID, players, maxPlayers, map, hostname, gameMode, port, ip, uptime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE players = ?, maxPlayers = ?, map = ?, hostname = ?, gameMode = ?, port = ?, ip = ?, uptime = ?', [serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime], (error) => {
-    //     if (error) return reject(error);
-    //     resolve();
-    // });
 }
 
 export async function addServerLog(id, log) {
