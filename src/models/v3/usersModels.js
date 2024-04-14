@@ -1,7 +1,7 @@
 import {getConnectionPromise} from "../../database/connection.js";
 
 export async function getProfile(steamID64) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         const connection = await getConnectionPromise();
         connection.query('SELECT * FROM gm_user WHERE steam = ?', [steamID64], (error, results) => {
             if (error) return reject(error);

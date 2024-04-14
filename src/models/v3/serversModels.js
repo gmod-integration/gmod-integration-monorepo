@@ -1,7 +1,7 @@
 import {getConnectionPromise} from "../../database/connection.js";
 
 export function getInformations(id) {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         const connection = await getConnectionPromise();
         connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
             if (error) return reject(error);
@@ -15,7 +15,7 @@ export function getInformations(id) {
     });
 }
 
-export function getGuildID(id) {
+export async function getGuildID(id) {
     const connection = await getConnectionPromise();
     const [rows] = connection.query('SELECT * FROM gm_server WHERE id = ?', [id]);
     if (rows.length > 0) {
@@ -24,13 +24,13 @@ export function getGuildID(id) {
     return null;
 }
 
-export function isValidAuth(id, token) {
+export async function isValidAuth(id, token) {
     const connection = await getConnectionPromise();
     const [rows] = connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token]);
     return rows.length > 0;
 }
 
-export function saveStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime) {
+export async function saveStatus(serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime) {
     const connection = await getConnectionPromise();
     const query = 'INSERT INTO gm_server_status_v3 (serverID, players, maxPlayers, map, hostname, gameMode, port, ip, uptime) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE players = ?, maxPlayers = ?, map = ?, hostname = ?, gameMode = ?, port = ?, ip = ?, uptime = ?';
     const values = [serverID, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime, players, maxPlayers, map, hostname, gameMode, port, extractIP, uptime];
@@ -49,7 +49,7 @@ export function saveStatus(serverID, players, maxPlayers, map, hostname, gameMod
     // });
 }
 
-export function addServerLog(id, log) {
+export async function addServerLog(id, log) {
     const connection = await getConnectionPromise();
     const query = 'INSERT INTO gm_server_logs (serverID, type, data) VALUES (?, ?, ?)';
     const values = [id, log.type, JSON.stringify(log.data)];

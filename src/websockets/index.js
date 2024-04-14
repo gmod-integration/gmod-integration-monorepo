@@ -4,7 +4,7 @@ import {getConnectionPromise} from "../database/connection.js";
 import {gmLog} from "../utils/logger.js";
 
 const wss = new WebSocketServer({
-    port: serverConfig.ports.websocket, clientTracking: true, verifyClient: (info, cb) => {
+    port: serverConfig.ports.websocket, clientTracking: true, verifyClient: async (info, cb) => {
         const {id, token} = info.req.headers;
 
         if (!id || !token) {
