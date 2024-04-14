@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/gm_integration_api.js",
   "scripts": {
-    "start": "pm2 start . >> logs/$(date +%F).log 2>&1 &",
+    "start": "pm2 start src/gm_integration_api.js --log logs/$(date +'%F').log --name gmod-integration-api",
     "dev": "node --watch --trace-warnings --trace-deprecation .",
     "test": "node --experimental-vm-modules --recursive src/test/*.js"
   },
