@@ -12,7 +12,7 @@ const wss = new WebSocketServer({
             return;
         }
 
-        const connection = getConnectionPromise();
+        const connection = await getConnectionPromise();
         connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (err, rows) => {
             if (err) throw err;
             if (rows && rows.length > 0) {

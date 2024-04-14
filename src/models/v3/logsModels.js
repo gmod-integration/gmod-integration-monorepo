@@ -2,7 +2,7 @@ import {getConnectionPromise} from '../../database/connection.js';
 
 export function getInformations(id) {
     return new Promise((resolve, reject) => {
-        const connection = getConnectionPromise();
+        const connection = await getConnectionPromise();
         connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
             if (error) return reject(error);
 
@@ -17,7 +17,7 @@ export function getInformations(id) {
 
 export function isValidAuth(id, token) {
     return new Promise((resolve, reject) => {
-        const connection = getConnectionPromise();
+        const connection = await getConnectionPromise();
         connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
             if (error) return reject(error);
 

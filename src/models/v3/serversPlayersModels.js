@@ -4,7 +4,7 @@ import {getSteamUserAvatarLarge} from "../../steam/index.js";
 
 export function getInformations(id) {
     return new Promise((resolve, reject) => {
-        const connection = getConnectionPromise();
+        const connection = await getConnectionPromise();
         connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
             if (error) return reject(error);
 
@@ -19,7 +19,7 @@ export function getInformations(id) {
 
 export function isValidAuth(id, token) {
     return new Promise((resolve, reject) => {
-        const connection = getConnectionPromise();
+        const connection = await getConnectionPromise();
         connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
             if (error) return reject(error);
 
@@ -34,7 +34,7 @@ export function isValidAuth(id, token) {
 
 export function getPlayerInformations(steamID64) {
     return new Promise((resolve, reject) => {
-        const connection = getConnectionPromise();
+        const connection = await getConnectionPromise();
         connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64], (error, results) => {
             if (error) return reject(error);
 
@@ -59,7 +59,7 @@ export function getPlayerInformations(steamID64) {
 
 export async function getPlayerBan(steamID64) {
     return new Promise((resolve, reject) => {
-        const connection = getConnectionPromise();
+        const connection = await getConnectionPromise();
         connection.query('SELECT * FROM gm_ban WHERE steam_id = ?', [steamID64], (error, results) => {
             if (error) return reject(error);
 

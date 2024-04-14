@@ -87,12 +87,10 @@ export default {
         }
     },
     async autocomplete(interaction) {
+        console.log('autocomplete');
         const focusedOption = interaction.options.getFocused(true);
         let choices = {};
-        await getServerList(interaction, focusedOption, choices, (filtered) => {
-            interaction.respond(
-                filtered.map(choice => ({name: choice, value: choices[choice]})),
-            );
-        });
+        const filtered = await getServerList(interaction, focusedOption, choices);
+        return interaction.respond(filtered.map(choice => ({name: choice, value: choices[choice]})));
     }
 };
