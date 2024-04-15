@@ -8,6 +8,7 @@ import webhooksRoutes from './routes/webhooks/_webhooksRoutes.js';
 import v3Routes from './routes/v3/_v3Routes.js';
 import errorMiddleware from './middleware/errorMiddleware.js';
 import {executeSqlFile} from "./database/connection.js";
+import cors from 'cors';
 
 // Database
 executeSqlFile('./src/database/schema.sql').then(() => {
@@ -17,6 +18,22 @@ executeSqlFile('./src/database/schema.sql').then(() => {
 // Express
 const app = express();
 app.set('trust proxy', true);
+
+const whitelist = [
+    'https://dev.gmod-integration.com',
+    'https://gmod-integration.com',
+];
+const corsOptions = {
+    origin: function (origin, callback) {
+        if (whitelist.indexOf(origin) !== -1 || !origin) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    }
+};
+
+app.use(cors(corsOptions));
 
 // Middleware
 app.use(rawBodyMiddleware);
