@@ -3,6 +3,8 @@ import {getUserFromDiscordID} from "../../classes/v3/User.js";
 import {getServersFromDiscordGuildID} from "../../classes/v3/Server.js";
 import {wsSendToServer} from "../../websockets/index.js";
 import {getClient} from "../../discord/index.js";
+import {getConnectionPromise} from "../../database/connection.js";
+import {isGuildPremium} from "../../classes/v3/Guild.js";
 
 let userUpdateRoleCurrent = {};
 
@@ -130,4 +132,46 @@ export async function updateRolesToGmod(newMember, roleID, add = true) {
 
         resolve();
     });
+}
+
+export async function getUserGuildsWithPermsForPanel(panelUser) {
+    const guilds = [];
+    const guildsResult = await fetch(
+        'https://discord.com/api/users/@me/guilds',
+        {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${panelUser.getDiscordToken()}`,
+            },
+        }
+    );
+    const rawGuilds = await guildsResult.json();
+    const connection = await getConnectionPromise();
+
+    for (const guildData of rawGuilds) {
+        const guildID = guildData.id;
+        if (!(guildData.owner || (guildData.permissions & 0x8) === 0x8)) {
+            continue;
+        }
+
+        let hasBot = false;
+        const query = `SELECT *
+                       FROM gm_guild
+                       WHERE guild = ?`;
+        const [rows] = await connection.execute(query, [guildID]);
+        if (rows.length > 0) {
+            hasBot = true;
+        }
+
+        guilds.push({
+            value: guildID,
+            label: guildData.name,
+            icon: guildData.icon,
+            hasBot: hasBot,
+            owner: guildData.owner,
+            premium: await isGuildPremium(guildID)
+        });
+    }
+
+    return guilds;
 }
