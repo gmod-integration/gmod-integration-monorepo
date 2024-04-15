@@ -169,7 +169,7 @@ export async function getUserGuildsWithPermsForPanel(panelUser) {
             icon: guildData.icon,
             hasBot: hasBot,
             isOwner: guildData.owner,
-            isPremium: await isGuildPremium(guildID)
+            isPremium: hasBot ? await isGuildPremium(guildID) : false,
         });
     }
 
