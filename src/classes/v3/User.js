@@ -17,30 +17,38 @@ export class User {
     }
 }
 
-export function getUser(userInfo) {
-    const steamID64 = userInfo.steamID64;
-    const discordID = userInfo.discordID;
+export async function getUserFromSteamID64(steamID64) {
+    const connection = await getConnectionPromise();
+    const query = `SELECT *
+                   FROM gm_user
+                   WHERE steam = ?`;
+    const [rows] = await connection.execute(query, [steamID64]);
+    if (rows.length === 0) {
+        return null;
+    }
 
-    return new Promise(async (resolve, reject) => {
-        const connection = await getConnectionPromise();
-        const results = await connection.query('SELECT * FROM gm_user WHERE steam = ? OR id = ?', [steamID64, discordID]);
-        if (results.length > 0) {
-            return resolve(new User({
-                steamID64: results[0].steam,
-                discordID: results[0].id,
-                rank: results[0].rank,
-                lastVerification: results[0].last_oauth
-            }));
-        } else {
-            resolve(null);
-        }
+    return new User({
+        steamID64: rows[0].steam,
+        discordID: rows[0].id,
+        rank: rows[0].rank,
+        lastVerification: rows[0].last_oauth
     });
 }
 
-export function getUserFromSteamID64(steamID64) {
-    return getUser({steamID64});
-}
+export async function getUserFromDiscordID(discordID) {
+    const connection = await getConnectionPromise();
+    const query = `SELECT *
+                   FROM gm_user
+                   WHERE id = ?`;
+    const [rows] = await connection.execute(query, [discordID]);
+    if (rows.length === 0) {
+        return null;
+    }
 
-export function getUserFromDiscordID(discordID) {
-    return getUser({discordID});
+    return new User({
+        steamID64: rows[0].steam,
+        discordID: rows[0].id,
+        rank: rows[0].rank,
+        lastVerification: rows[0].last_oauth
+    });
 }
