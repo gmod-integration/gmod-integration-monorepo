@@ -1,7 +1,11 @@
 import { ApplicationCommandType, ContextMenuCommandBuilder, REST, Routes } from 'discord.js';
 import { discordConfig } from '../config/index.js';
 
-const commandsData = [new ContextMenuCommandBuilder().setName('Show Profile').setType(ApplicationCommandType.USER)];
+const commandsData = [
+  new ContextMenuCommandBuilder().setName('Profile').setType(ApplicationCommandType.User),
+  new ContextMenuCommandBuilder().setName('Statistics').setType(ApplicationCommandType.User),
+  new ContextMenuCommandBuilder().setName('Leaderboard').setType(ApplicationCommandType.User),
+];
 
 const rest = new REST().setToken(discordConfig.botToken);
 try {
