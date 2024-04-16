@@ -1,5 +1,6 @@
 import steamApi from 'steamapi';
 import {steamConfig} from "../config/index.js";
+import redis from "../redis/index.js";
 
 const steam = new steamApi(steamConfig.apiKey);
 
@@ -23,7 +24,14 @@ export function getSteamUserAvatars(steamID64) {
 
 export function getSteamUserAvatarLarge(steamID64) {
     return new Promise(async (resolve, reject) => {
+        const redisKey = `steam:${steamID64}:avatar`;
+        const redisValue = await redis.get(redisKey);
+        if (redisValue) {
+            return resolve(redisValue);
+        }
+
         const summary = await steam.getUserSummary(steamID64);
+        await redis.set(redisKey, summary.avatar.large, 'EX', 60 * 60 * 24);
         resolve(summary.avatar.large);
     });
 }
