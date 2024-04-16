@@ -3,6 +3,7 @@ import {Role} from "./Role.js";
 import {Player} from "./Player.js";
 import {generateToken} from "../../utils/tools.js";
 import {getConnectionPromise} from "../../database/connection.js";
+import redis from "../../redis/index.js";
 
 export class Server extends BaseClass {
     constructor(obj = {}) {
@@ -77,9 +78,20 @@ export class Server extends BaseClass {
 
     async getSyncChatChannel() {
         try {
+            const redisKey = `server:${this.id}:syncChatChannel`;
+            const redisData = await redis.get(redisKey);
+            if (redisData) {
+                return JSON.parse(redisData);
+            }
+
             const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [this.id]);
-            return results && results[0] ? results[0] : null;
+            if (results && results[0]) {
+                await redis.set(redisKey, JSON.stringify(results[0]), 'EX', 60);
+                return results[0];
+            }
+
+            return null;
         } catch (error) {
             console.error(error);
             return null;
@@ -88,9 +100,20 @@ export class Server extends BaseClass {
 
     async getSetting(setting) {
         try {
+            const redisKey = `server:${this.id}:setting:${setting}`;
+            const redisData = await redis.get(redisKey);
+            if (redisData) {
+                return JSON.parse(redisData);
+            }
+
             const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_server_settings WHERE serverID = ? AND setting = ?', [this.id, setting]);
-            return results[0] ? results[0].value : null;
+            if (results && results[0]) {
+                await redis.set(redisKey, JSON.stringify(results[0].value), 'EX', 60);
+                return results[0].value;
+            }
+
+            return null;
         } catch (error) {
             console.error(error);
             return null;
@@ -110,9 +133,20 @@ export class Server extends BaseClass {
 
     async getChatRules() {
         try {
+            const redisKey = `server:${this.id}:chatRules`;
+            const redisData = await redis.get(redisKey);
+            if (redisData) {
+                return JSON.parse(redisData);
+            }
+
             const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules WHERE serverID = ?', [this.id]);
-            return results;
+            if (results && results[0]) {
+                await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
+                return results;
+            }
+
+            return [];
         } catch (error) {
             console.error(error);
             return [];
@@ -121,9 +155,20 @@ export class Server extends BaseClass {
 
     async getGlobalChatRules() {
         try {
+            const redisKey = `server:${this.id}:chatRulesPreset`;
+            const redisData = await redis.get(redisKey);
+            if (redisData) {
+                return JSON.parse(redisData);
+            }
+
             const connection = await getConnectionPromise();
             const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules_preset');
-            return results;
+            if (results && results[0]) {
+                await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
+                return results;
+            }
+
+            return [];
         } catch (error) {
             console.error(error);
             return [];
