@@ -8,7 +8,8 @@ try {
   console.log('Started refreshing application.');
 
   await rest.put(Routes.applicationCommands(discordConfig.clientID), {
-    body: commandsData,  });
+    body: commandsData,
+  });
 
   console.log('Successfully reloaded application.');
 } catch (error) {

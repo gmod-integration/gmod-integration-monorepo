@@ -1,49 +1,50 @@
-import {BaseClass} from "./BaseClass.js";
-import {getConnectionPromise} from "../../database/connection.js";
-import {CustomValues} from "./CustomValues.js";
-import {Team} from "./Team.js";
-import {Position} from "./Position.js";
-import {Angle} from "./Angle.js";
+import { BaseClass } from './BaseClass.js';
+import { getConnectionPromise } from '../../database/connection.js';
+import { CustomValues } from './CustomValues.js';
+import { Team } from './Team.js';
+import { Position } from './Position.js';
+import { Angle } from './Angle.js';
 
 export class PlayerGmod extends BaseClass {
-    constructor(obj = {}) {
-        super();
-        this.steamID = obj.steamID;
-        this.steamID64 = obj.steamID64;
-        this.connectTime = obj.connectTime;
-        this.kills = obj.kills;
-        this.customValues = new CustomValues(obj.customValues);
-        this.deaths = obj.deaths;
-        this.team = new Team(obj.team);
-        this.name = obj.name;
-        this.userGroup = obj.userGroup;
-        this.position = new Position(obj.position);
-        this.angle = new Angle(obj.angle);
+  constructor(obj = {}) {
+    super();
+    this.steamID = obj.steamID;
+    this.steamID64 = obj.steamID64;
+    this.connectTime = obj.connectTime;
+    this.kills = obj.kills;
+    this.customValues = new CustomValues(obj.customValues);
+    this.deaths = obj.deaths;
+    this.team = new Team(obj.team);
+    this.name = obj.name;
+    this.userGroup = obj.userGroup;
+    this.position = new Position(obj.position);
+    this.angle = new Angle(obj.angle);
+  }
+
+  async getDiscordID() {
+    try {
+      const connection = await getConnectionPromise(); // Assurez-vous que getConnection retourne une promesse
+      const [results] = await connection.query('SELECT * FROM gm_user WHERE steam = ?', [this.steamID64]);
+
+      if (results.length > 0) {
+        return results[0].id;
+      }
+
+      return null;
+    } catch (error) {
+      console.error(error);
+      return null;
     }
+  }
 
-    async getDiscordID() {
-        try {
-            const connection = await getConnectionPromise(); // Assurez-vous que getConnection retourne une promesse
-            const [results] = await connection.query('SELECT * FROM gm_user WHERE steam = ?', [this.steamID64]);
+  async saveServerStat(serverID) {
+    try {
+      const { connectTime, kills, deaths, customValues, userGroup, steamID64, name } = this;
+      const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
 
-            if (results.length > 0) {
-                return results[0].id;
-            }
-
-            return null;
-        } catch (error) {
-            console.error(error);
-            return null;
-        }
-    }
-
-    async saveServerStat(serverID) {
-        try {
-            const {connectTime, kills, deaths, customValues, userGroup, steamID64, name} = this;
-            const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
-
-            const connection = await getConnectionPromise();
-            await connection.query(`
+      const connection = await getConnectionPromise();
+      await connection.query(
+        `
                 INSERT INTO gm_server_stat (steam_id, server_id, rank, name, total_time, total_kill, total_death,
                                             custom_values,
                                             last_connect)
@@ -55,56 +56,65 @@ export class PlayerGmod extends BaseClass {
                                         total_death   = total_death + VALUES(total_death),
                                         custom_values = VALUES(custom_values),
                                         last_connect  = DEFAULT
-            `, [steamID64, serverID, userGroup, name, connectTime, kills, deaths, customValuesString]);
-        } catch (error) {
-            console.error(error);
-            throw error;
-        }
+            `,
+        [steamID64, serverID, userGroup, name, connectTime, kills, deaths, customValuesString],
+      );
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
+  }
 
-    async saveServerStatSession(serverID) {
-        try {
-            const {connectTime, deaths, kills, customValues, steamID64} = this;
-            const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
+  async saveServerStatSession(serverID) {
+    try {
+      const { connectTime, deaths, kills, customValues, steamID64 } = this;
+      const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
 
-            const connection = await getConnectionPromise();
-            await connection.query(`
+      const connection = await getConnectionPromise();
+      await connection.query(
+        `
                 INSERT INTO gm_server_stat_session (serverID, steamID64, time, deaths, kills, customValues)
                 VALUES (?, ?, ?, ?, ?, ?)
-            `, [serverID, steamID64, connectTime, deaths, kills, customValuesString]);
-        } catch (error) {
-            console.error(error);
-            throw error;
-        }
+            `,
+        [serverID, steamID64, connectTime, deaths, kills, customValuesString],
+      );
+    } catch (error) {
+      console.error(error);
+      throw error;
     }
+  }
 }
 
 export function getPlayerServerInformations(serverID, steamID64) {
-    return new Promise(async (resolve, reject) => {
-        const connection = await getConnectionPromise();
-        const results = await connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64]);
-        if (results.length > 0) {
-            return resolve(new PlayerGmod(results[0]));
-        }
-        return reject('PlayerGmod not found');
-    });
+  return new Promise(async (resolve, reject) => {
+    const connection = await getConnectionPromise();
+    const results = await connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64]);
+    if (results.length > 0) {
+      return resolve(new PlayerGmod(results[0]));
+    }
+    return reject('PlayerGmod not found');
+  });
 }
 
 export async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
-    try {
-        const connection = await getConnectionPromise();
-        await connection.query('UPDATE gm_server_stat SET rank = ? WHERE steam_id = ? AND server_id = ?', [userGroup, steamID64, serverID]);
-    } catch (error) {
-        console.error(error);
-        throw error;
-    }
+  try {
+    const connection = await getConnectionPromise();
+    await connection.query('UPDATE gm_server_stat SET rank = ? WHERE steam_id = ? AND server_id = ?', [
+      userGroup,
+      steamID64,
+      serverID,
+    ]);
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
 }
 
 export async function getPlayerServerInformationsFromDiscordID(serverID, discordID) {
-    const connection = await getConnectionPromise();
-    const results = await connection.query('SELECT * FROM gm_user WHERE id = ?', [discordID]);
-    if (results.length > 0) {
-        return getPlayerServerInformations(serverID, results[0].steam);
-    }
-    return null;
+  const connection = await getConnectionPromise();
+  const results = await connection.query('SELECT * FROM gm_user WHERE id = ?', [discordID]);
+  if (results.length > 0) {
+    return getPlayerServerInformations(serverID, results[0].steam);
+  }
+  return null;
 }

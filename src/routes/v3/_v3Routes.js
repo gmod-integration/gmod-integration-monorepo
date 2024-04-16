@@ -7,7 +7,7 @@ import usersRoutes from './usersRoutes.js';
 const router = express.Router();
 
 router.get('/', (req, res) => {
-    res.json({status: 'ok', version: 'v3'});
+  res.json({ status: 'ok', version: 'v3' });
 });
 
 router.use('/servers', serversRoutes);

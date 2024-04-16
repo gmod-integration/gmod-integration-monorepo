@@ -1,8 +1,8 @@
-import {sendMessageToGmod} from "../../controllers/v3/guildsControllers.js";
+import { sendMessageToGmod } from '../../controllers/v3/guildsControllers.js';
 
 export default {
-    name: 'messageCreate',
-    async execute(message) {
-        await sendMessageToGmod(message);
-    }
+  name: 'messageCreate',
+  async execute(message) {
+    await sendMessageToGmod(message);
+  },
 };
