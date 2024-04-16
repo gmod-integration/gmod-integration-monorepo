@@ -11,7 +11,6 @@ export function saveScreenshot(screenshot, captureData, player) {
     const filename = `${dateFormatted}_${player.steamID64}_${generateToken(8)}.${format}`;
 
     const path = `./screenshots/${filename}`;
-    const url = `${serverConfig.domain}/screenshots/${filename}`;
 
     const base64Data = screenshot.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
@@ -24,13 +23,12 @@ export function saveScreenshot(screenshot, captureData, player) {
       resolve({
         path,
         filename,
-        url,
       });
     });
   });
 }
 
-export function sendScreenshotToDiscord(screenshot, player, server) {
+export function sendScreenshotToDiscord(path, filename, player, server) {
   return new Promise(async (resolve, reject) => {
     const channelInfo = await server.getScreenshotsChannel();
     if (!channelInfo) {
@@ -49,7 +47,7 @@ export function sendScreenshotToDiscord(screenshot, player, server) {
         embeds: [
           {
             image: {
-              url: screenshot.url,
+              url: `${serverConfig.domain}/screenshots/${filename}`,
             },
             footer: {
               text: `SteamID64: ${player.steamID64} - Server: ${server.name}`,

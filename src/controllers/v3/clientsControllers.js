@@ -17,18 +17,12 @@ export async function uploadScreenshot(req, res) {
     });
   }
 
-  saveScreenshot(screenshot, captureData, player)
-    .then(async (result) => {
-      try {
-        await sendScreenshotToDiscord(result, player, server);
-      } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: 'internal_server_error' });
-      }
-      return res.status(200).json({ success: true, url: result.url });
-    })
-    .catch((err) => {
-      console.log(err);
-      return res.status(500).json({ error: 'internal_server_error' });
-    });
+  try {
+    const { path, filename } = await saveScreenshot(screenshot, captureData, player);
+    await sendScreenshotToDiscord(path, filename, player, server);
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'internal_error' });
+  }
 }

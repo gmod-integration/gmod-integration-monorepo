@@ -84,11 +84,22 @@ export class Server extends BaseClass {
 
   async getScreenshotsChannel() {
     try {
+      const redisKey = `server:${this.id}:screenshotsChannel`;
+      const redisData = await redis.get(redisKey);
+      if (redisData) {
+        return JSON.parse(redisData);
+      }
+
       const connection = await getConnectionPromise();
       const [results] = await connection.query('SELECT * FROM gm_server_screenshot_channels WHERE serverID = ?', [
         this.id,
       ]);
-      return results && results[0] ? results[0] : null;
+      if (results && results[0]) {
+        await redis.set(redisKey, JSON.stringify(results[0]), 'EX', 60);
+        return results[0];
+      }
+
+      return null;
     } catch (error) {
       console.error(error);
       return null;
