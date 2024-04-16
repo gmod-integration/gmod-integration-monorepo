@@ -6,6 +6,7 @@
   "scripts": {
     "start": "pm2 start src/gm_integration_api.js --log logs/$(date +'%F').log --name gmod-integration-api",
     "dev": "node --watch --trace-warnings --trace-deprecation .",
+    "discord:push:context": "node src/discord/discord_push_context.js",
     "test": "node --experimental-vm-modules --recursive src/test/*.js"
   },
   "repository": {
@@ -19,6 +20,9 @@
     "url": "https://github.com/gmod-integration/api/issues"
   },
   "homepage": "https://github.com/gmod-integration/api#readme",
+  "devDependencies": {
+    "prettier": "^3.2.5"
+  },
   "dependencies": {
     "axios": "^1.6.0",
     "body-parser": "^1.20.2",
