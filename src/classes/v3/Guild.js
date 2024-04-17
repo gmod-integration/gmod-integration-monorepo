@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { discordConfig } from '../../config/index.js';
 import redis from '../../redis/index.js';
+import { getConnectionPromise } from '../../database/connection.js';
 
 export async function isGuildPremium(guildID) {
   return new Promise(async (resolve, reject) => {
@@ -53,4 +54,19 @@ export async function replyNeedPremium(interaction) {
     .catch((err) => {
       console.error(err);
     });
+}
+
+export async function getGuildLinks(guildID) {
+  const connection = await getConnectionPromise();
+  const [rows] = await connection.execute('SELECT * FROM gm_link WHERE guild = ? AND active = 1', [guildID]);
+  return rows || [];
+}
+
+export async function getGuildLink(guildID, linkID) {
+  const connection = await getConnectionPromise();
+  const [rows] = await connection.execute('SELECT * FROM gm_link WHERE guild = ? AND id = ? AND active = 1', [
+    guildID,
+    linkID,
+  ]);
+  return rows[0] || null;
 }
