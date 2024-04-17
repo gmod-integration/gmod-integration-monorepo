@@ -10,6 +10,7 @@ import errorMiddleware from './middleware/errorMiddleware.js';
 import { executeSqlFile } from './database/connection.js';
 import cors from 'cors';
 import corsMiddleware from './middleware/corsMiddleware.js';
+import './websockets/index.js';
 
 // Database
 executeSqlFile('./src/database/schema.sql').then(() => {
