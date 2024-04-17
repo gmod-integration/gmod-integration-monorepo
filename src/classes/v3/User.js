@@ -20,8 +20,8 @@ export class User {
 export async function getUserFromSteamID64(steamID64) {
   const connection = await getConnectionPromise();
   const query = `SELECT *
-                   FROM gm_user
-                   WHERE steam = ?`;
+                 FROM gm_user
+                 WHERE steam = ?`;
   const [rows] = await connection.execute(query, [steamID64]);
   if (rows.length === 0) {
     return null;
@@ -38,8 +38,8 @@ export async function getUserFromSteamID64(steamID64) {
 export async function getUserFromDiscordID(discordID) {
   const connection = await getConnectionPromise();
   const query = `SELECT *
-                   FROM gm_user
-                   WHERE id = ?`;
+                 FROM gm_user
+                 WHERE id = ?`;
   const [rows] = await connection.execute(query, [discordID]);
   if (rows.length === 0) {
     return null;
