@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { getTranslate } from '../../../utils/localizations.js';
-import { getGuildLinks } from '../../../classes/v3/Guild.js';
+import { getGuildLink, getGuildLinks } from '../../../classes/v3/Guild.js';
 
 export default {
   data: new SlashCommandBuilder()
