@@ -48,7 +48,9 @@ export function sendScreenshotToDiscord(path, filename, player, server) {
           {
             image: {
               url: `${serverConfig.domain}/screenshots/${filename}`,
+              proxy_url: `${serverConfig.domain}/screenshots/${filename}`,
             },
+            content: `${serverConfig.domain}/screenshots/${filename}`,
             footer: {
               text: `SteamID64: ${player.steamID64} - Server: ${server.name}`,
             },
