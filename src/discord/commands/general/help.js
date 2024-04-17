@@ -12,12 +12,9 @@ export default {
   category: 'general',
   async execute(interaction) {
     const lang = interaction.guild.preferredLocale;
-
     const helpCategories = ['verification', 'setup', 'premium', 'contributing', 'features', 'legal', 'support'];
-
     const select = new StringSelectMenuBuilder().setCustomId('help').setPlaceholder(getTranslate('help_select', lang));
 
-    // for every category, add an option to the select menu
     helpCategories.forEach((category) => {
       select.addOptions(
         new StringSelectMenuOptionBuilder()
@@ -31,7 +28,6 @@ export default {
     const butDiscordSupport = new ButtonDiscordSupport();
     const butInviteBot = new ButtonInviteBot();
 
-    // made 2 rows of buttons
     const row1 = new ActionRowBuilder().addComponents(select);
     const row2 = new ActionRowBuilder().addComponents(butWebsite, butDiscordSupport, butInviteBot);
 
