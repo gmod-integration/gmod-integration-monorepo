@@ -1,3 +1,4 @@
+import './utils/update-log.js';
 import express from 'express';
 import statusMonitor from 'express-status-monitor';
 import { serverConfig } from './config/index.js';
