@@ -14,7 +14,7 @@ import './websockets/index.js';
 
 // Database
 executeSqlFile('./src/database/schema.sql').then(() => {
-    gmLog('mysql2', 'Database schema created');
+  gmLog('mysql2', 'Database schema created');
 });
 
 // Express
@@ -40,7 +40,7 @@ app.use('/v3', v3Routes);
 
 // 404
 app.all('*', (req, res) => {
-    return res.status(404).json({ error: '404 Not Found' });
+  return res.status(404).json({ error: '404 Not Found' });
 });
 
 // Errors
@@ -48,5 +48,10 @@ app.use(errorMiddleware);
 
 // Listen
 app.listen(serverConfig.ports.api, () => {
-    gmLog('express', `API listening on port ${serverConfig.ports.api}`);
+  gmLog('express', `API listening on port ${serverConfig.ports.api}`);
+});
+
+// Unhandled Errors
+process.on('unhandledRejection', (error) => {
+  gmLog('UNHANDLED REJECTION', error);
 });
