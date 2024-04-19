@@ -16,13 +16,7 @@ export default {
   async execute(interaction) {
     const user = interaction.options.getUser('user') || interaction.user;
     const lang = interaction.guild.preferredLocale;
-
     const gm_user = await getUserFromDiscordID(user.id);
-
-    gm_user.last_oauth =
-      (gm_user.last_oauth && gm_user.last_oauth.toISOString().slice(0, 10)) || getTranslate('never', lang);
-    gm_user.rank = gm_user.rank || 'user';
-    gm_user.trust = gm_user.trust || 50;
 
     const embed = {
       color: 0x2b2d31,
@@ -43,7 +37,7 @@ export default {
         },
         {
           name: '🛠️⠀' + getTranslate('bot_rank', lang),
-          value: getTranslate(gm_user.rank, lang),
+          value: getTranslate(gm_user.rank || 'user', lang),
           inline: true,
         },
         {
@@ -52,7 +46,7 @@ export default {
         },
         {
           name: '🛡️⠀' + getTranslate('trust_rank', lang),
-          value: getTrustRank(gm_user.trust, lang),
+          value: getTrustRank(gm_user.trustLevel || 50, lang),
           inline: true,
         },
         {
@@ -62,7 +56,9 @@ export default {
         },
         {
           name: '⌚⠀' + getTranslate('last_verification', lang),
-          value: gm_user.last_oauth,
+          value: gm_user.lastVerification
+            ? '<t:' + Math.floor(gm_user.lastVerification.getTime() / 1000) + ':R>'
+            : getTranslate('never', lang),
           inline: true,
         },
         {

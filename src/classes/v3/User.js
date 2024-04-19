@@ -6,6 +6,7 @@ export class User {
     this.discordID = obj.discordID || null;
     this.rank = obj.rank;
     this.lastVerification = obj.lastVerification;
+    this.trustLevel = obj.trustLevel || 50;
   }
 
   getDiscordID() {
@@ -32,6 +33,7 @@ export async function getUserFromSteamID64(steamID64) {
     discordID: rows[0].id,
     rank: rows[0].rank,
     lastVerification: rows[0].last_oauth,
+    trustLevel: rows[0].trust,
   });
 }
 
@@ -50,5 +52,6 @@ export async function getUserFromDiscordID(discordID) {
     discordID: rows[0].id,
     rank: rows[0].rank,
     lastVerification: rows[0].last_oauth,
+    trustLevel: rows[0].trust,
   });
 }
