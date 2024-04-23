@@ -162,13 +162,15 @@ export async function getUserGuildsWithPermsForPanel(panelUser) {
   }
 
   const connection = await getConnectionPromise();
+  const placeholder = permGuildsID.map(() => '?').join(',');
   const query = `SELECT *
                  FROM gm_guild
-                 WHERE guild IN (?)`;
-  const [rows] = await connection.execute(query, [permGuildsID.join(',')]);
+                 WHERE guild IN (${placeholder})`;
+  const [rows] = await connection.execute(query, permGuildsID);
   const hasBotGuildsID = [];
   for (const guildData of rows) {
     hasBotGuildsID.push(guildData.guild);
+    console.log(guildData.guild);
   }
 
   for (const guildData of rawGuilds) {
