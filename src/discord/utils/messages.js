@@ -10,8 +10,8 @@ export async function getStatusMessage(server, data, buttons, lang) {
   const hostname = data.hostname ? data.hostname : await getTranslate('offline', lang);
   const map = data.map ? data.map : await getTranslate('offline', lang);
   const gameMode = data.gameMode ? data.gameMode : await getTranslate('offline', lang);
-  const players = data.players ? data.players : await getTranslate('offline', lang);
-  const maxPlayers = data.maxPlayers ? data.maxPlayers : await getTranslate('offline', lang);
+  const players = data.players ? data.players : 0;
+  const maxPlayers = data.maxPlayers ? data.maxPlayers : 0;
   const uptime = data.uptime ? data.uptime : await getTranslate('offline', lang);
 
   const embed = {
