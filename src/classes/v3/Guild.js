@@ -4,37 +4,39 @@ import redis from '../../redis/index.js';
 import { getConnectionPromise } from '../../database/connection.js';
 
 export async function isGuildPremium(guildID) {
-  return new Promise(async (resolve, reject) => {
-    const redisKey = `guild:${guildID}:premium`;
-    const redisData = await redis.get(redisKey);
-    if (redisData) {
-      return JSON.parse(redisData);
+  const redisKey = `guild:${guildID}:premium`;
+  const redisKey2 = `discord:entitlements`;
+
+  try {
+    const cachedPremiumStatus = await redis.get(redisKey);
+    if (cachedPremiumStatus !== null) {
+      return JSON.parse(cachedPremiumStatus);
     }
 
-    const redisKey2 = `discord:entitlements`;
-    const redisData2 = await redis.get(redisKey);
-    let response = null;
-    if (redisData2) {
-      response = JSON.parse(redisData2);
+    let entitlementGuilds = await redis.get(redisKey2);
+    if (entitlementGuilds === null) {
+      const response = await axios.get(
+        `https://discord.com/api/v10/applications/${discordConfig.clientID}/entitlements`,
+        {
+          headers: {
+            Authorization: `Bot ${discordConfig.botToken}`,
+          },
+        }
+      );
+      entitlementGuilds = response.data;
+      await redis.set(redisKey2, JSON.stringify(entitlementGuilds), 'EX', 60);
     } else {
-      response = await axios.get(`https://discord.com/api/v10/applications/${discordConfig.clientID}/entitlements`, {
-        headers: {
-          Authorization: `Bot ${discordConfig.botToken}`,
-        },
-      });
-      redis.set(redisKey2, JSON.stringify(response.data), 'EX', 60);
+      entitlementGuilds = JSON.parse(entitlementGuilds);
     }
 
-    let isPremium = false;
-    await response.data.forEach((entitlement) => {
-      if (entitlement.guild_id === guildID) {
-        isPremium = true;
-        redis.set(redisKey, JSON.stringify(isPremium), 'EX', 60);
-      }
-    });
+    let isPremium = entitlementGuilds.some(entitlement => entitlement.guild_id === guildID);
+    await redis.set(redisKey, JSON.stringify(isPremium), 'EX', 60); // Cache the result
 
-    resolve(isPremium);
-  });
+    return isPremium;
+  } catch (error) {
+    console.error('Error checking premium status:', error);
+    return false;
+  }
 }
 
 export async function replyNeedPremium(interaction) {

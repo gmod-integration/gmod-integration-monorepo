@@ -102,7 +102,6 @@
   "total_kills": "Total Kills",
   "kill": "Kills",
   "death": "Deaths",
-  "connect": "Connect",
   "total_join": "Total Join",
   "total_connect": "Total Connection",
   "last_connect": "Last Connection",
@@ -157,5 +156,6 @@
   "admin_ticket_waiting": "Waiting for a staff to join the ticket...",
   "ticket_not_found": "Ticket not found !",
   "rcon_command_error": "An error occured while sending the command !",
-  "rcon_command_success": "Command successfully sent !"
+  "rcon_command_success": "Command successfully sent !",
+  "your_guild_is_premium": "Congratulations, your guild is premium !"
 }
