@@ -170,7 +170,6 @@ export async function getUserGuildsWithPermsForPanel(panelUser) {
   const hasBotGuildsID = [];
   for (const guildData of rows) {
     hasBotGuildsID.push(guildData.guild);
-    console.log(guildData.guild);
   }
 
   for (const guildData of rawGuilds) {
