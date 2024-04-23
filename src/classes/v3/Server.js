@@ -19,6 +19,28 @@ export class Server extends BaseClass {
     this.publicTempToken = obj.publicTempToken;
   }
 
+  // async getStatusChannel() {
+  //   try {
+  //     const redisKey = `server:${this.id}:statusChannel`;
+  //     const redisData = await redis.get(redisKey);
+  //     if (redisData) {
+  //       return JSON.parse(redisData);
+  //     }
+  //
+  //     const connection = await getConnectionPromise();
+  //     const [results] = await connection.query('SELECT * FROM gm_server_status_channels WHERE serverID = ?', [this.id]);
+  //     if (results && results[0]) {
+  //       await redis.set(redisKey, JSON.stringify(results[0]), 'EX', 60);
+  //       return results[0];
+  //     }
+  //
+  //     return null;
+  //   } catch (error) {
+  //     console.error(error);
+  //     return null;
+  //   }
+  // }
+
   isValidToken(token) {
     return this.token === token;
   }
