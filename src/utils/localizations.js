@@ -37,7 +37,6 @@ export async function getTranslate(key, language, options) {
   const redisKey = `language:${language}:${key}`;
   const cachedTranslation = await redis.get(redisKey);
   if (cachedTranslation !== null) {
-    console.log('cachedTranslation', cachedTranslation);
     return insertOptions(cachedTranslation, options);
   }
 
