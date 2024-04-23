@@ -4,6 +4,8 @@ import { Player } from './Player.js';
 import { generateToken } from '../../utils/tools.js';
 import { getConnectionPromise } from '../../database/connection.js';
 import redis from '../../redis/index.js';
+import { getClient } from '../../discord/index.js';
+import { getStatusMessage } from '../../discord/utils/messages.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -19,30 +21,37 @@ export class Server extends BaseClass {
     this.publicTempToken = obj.publicTempToken;
   }
 
-  // async getStatusChannel() {
-  //   try {
-  //     const redisKey = `server:${this.id}:statusChannel`;
-  //     const redisData = await redis.get(redisKey);
-  //     if (redisData) {
-  //       return JSON.parse(redisData);
-  //     }
-  //
-  //     const connection = await getConnectionPromise();
-  //     const [results] = await connection.query('SELECT * FROM gm_server_status_channels WHERE serverID = ?', [this.id]);
-  //     if (results && results[0]) {
-  //       await redis.set(redisKey, JSON.stringify(results[0]), 'EX', 60);
-  //       return results[0];
-  //     }
-  //
-  //     return null;
-  //   } catch (error) {
-  //     console.error(error);
-  //     return null;
-  //   }
-  // }
+  async getStatusChannelAndMessage() {
+    try {
+      const redisKey = `server:${this.id}:statusChannel`;
+      const redisData = await redis.get(redisKey);
+      if (redisData) {
+        return JSON.parse(redisData);
+      }
+
+      const connection = await getConnectionPromise();
+      const [results] = await connection.query('SELECT * FROM gm_status WHERE guild = ? AND server = ?', [
+        this.guild,
+        this.id,
+      ]);
+      if (results && results[0]) {
+        await redis.set(redisKey, JSON.stringify(results[0]), 'EX', 60);
+        return results[0];
+      }
+
+      return null;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  }
 
   isValidToken(token) {
     return this.token === token;
+  }
+
+  getName() {
+    return this.name;
   }
 
   getID() {
@@ -73,6 +82,53 @@ export class Server extends BaseClass {
     }
   }
 
+  async getServerStatusButtons() {
+    const connection = await getConnectionPromise();
+    const [results] = await connection.query('SELECT * FROM gm_status_button WHERE server = ? AND enable = 1', [
+      this.getID(),
+    ]);
+    if (results && results[0]) {
+      return results.map((result) => {
+        return {
+          label: result.name,
+          emoji: result.emoji,
+          link: result.ulr,
+        };
+      });
+    }
+    return [];
+  }
+
+  async editStatusChannelAndMessage(msgData) {
+    return new Promise(async (resolve, reject) => {
+      const dscClient = await getClient();
+      const serverStatusInfo = await this.getStatusChannelAndMessage();
+      if (!serverStatusInfo) {
+        return reject('No status channel and message found');
+      }
+
+      const guild = await dscClient.guilds.fetch(serverStatusInfo.guild);
+      if (!guild) {
+        return reject('Guild not found');
+      }
+
+      const channel = await dscClient.channels.fetch(serverStatusInfo.channel);
+      if (!channel) {
+        return reject('Channel not found');
+      }
+
+      const message = await channel.messages.fetch(serverStatusInfo.message);
+      if (!message) {
+        return reject('Message not found');
+      }
+
+      const lang = await guild.preferredLocale;
+      const newMsgContent = await getStatusMessage(this, msgData, await this.getServerStatusButtons(), lang);
+      await message.edit(newMsgContent);
+      resolve();
+    });
+  }
+
   async saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime) {
     return new Promise(async (resolve, reject) => {
       const connection = await getConnectionPromise();
@@ -95,12 +151,16 @@ export class Server extends BaseClass {
         players,
         maxPlayers,
       ];
-      const [results] = await connection.query(query, values);
-      if (results.affectedRows >= 1) {
-        resolve();
-      } else {
-        reject('Failed to save status');
-      }
+      await this.editStatusChannelAndMessage({
+        hostname,
+        map,
+        gameMode,
+        players,
+        maxPlayers,
+        uptime,
+      });
+      await connection.query(query, values);
+      resolve();
     });
   }
 

@@ -1,6 +1,6 @@
-import { badArgument, ipGetIP } from '../../utils/tools.js';
+import { badArgument } from '../../utils/tools.js';
 
-export function postStatus(req, res) {
+export async function postStatus(req, res) {
   const server = req.server;
   const { players, maxPlayers, map, hostname, gameMode, port, ip, uptime } = req.body;
 
@@ -20,15 +20,12 @@ export function postStatus(req, res) {
     });
   }
 
-  server
-    .saveStatus(ipGetIP(ip), port, hostname, map, gameMode, players, maxPlayers, uptime)
-    .then(() => {
-      return res.status(200).json({ status: 'ok' });
-    })
-    .catch((error) => {
-      console.error(error);
-      return res.status(500).json({ error: 'internal_error' });
-    });
+  try {
+    await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime);
+    return res.status(200).json({ success: true });
+  } catch (error) {
+    return res.status(500).json({ error: 'internal_error' });
+  }
 }
 
 export async function getInfo(req, res) {
