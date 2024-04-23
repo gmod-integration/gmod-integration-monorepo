@@ -151,30 +151,40 @@ export async function getUserGuildsWithPermsForPanel(panelUser) {
     },
   });
   const rawGuilds = await guildsResult.json();
+
+  const permGuildsID = [];
+  for (const guildData of rawGuilds) {
+    const guildID = guildData.id;
+
+    if (guildData.owner || (guildData.permissions & 0x8) === 0x8) {
+      permGuildsID.push(guildID);
+    }
+  }
+
   const connection = await getConnectionPromise();
+  const query = `SELECT *
+                 FROM gm_guild
+                 WHERE guild IN (?)`;
+  const [rows] = await connection.execute(query, [permGuildsID.join(',')]);
+  const hasBotGuildsID = [];
+  for (const guildData of rows) {
+    hasBotGuildsID.push(guildData.guild);
+  }
 
   for (const guildData of rawGuilds) {
     const guildID = guildData.id;
-    if (!(guildData.owner || (guildData.permissions & 0x8) === 0x8)) {
-      continue;
-    }
 
-    let hasBot = false;
-    const query = `SELECT *
-                       FROM gm_guild
-                       WHERE guild = ?`;
-    const [rows] = await connection.execute(query, [guildID]);
-    if (rows.length > 0) {
-      hasBot = true;
+    if (!permGuildsID.includes(guildID)) {
+      continue;
     }
 
     guilds.push({
       id: guildID,
       name: guildData.name,
       icon: guildData.icon,
-      hasBot: hasBot,
+      hasBot: hasBotGuildsID.includes(guildID),
       isOwner: guildData.owner,
-      isPremium: hasBot ? await isGuildPremium(guildID) : false,
+      isPremium: hasBotGuildsID.includes(guildID) ? await isGuildPremium(guildID) : false,
     });
   }
 
