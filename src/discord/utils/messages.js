@@ -87,8 +87,8 @@ export async function getStatusMessage(server, data, buttons, lang) {
 
     const theButton = new ButtonBuilder()
       .setStyle(ButtonStyle.Link)
-      .setLabel(`⠀${label}`)
-      .setEmoji(emoji)
+      .setLabel(`${emoji}⠀${label}`)
+      // .setEmoji(emoji)
       .setURL(`https://gmod-integration.com/open-link?link=${url}`);
 
     // Ajouter le bouton à la ligne
