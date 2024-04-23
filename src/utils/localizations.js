@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { gmLog } from './logger.js';
-import { redis } from '../redis/index.js';
+import redis from '../redis/index.js';
 
 function insertOptions(str, options) {
   if (!options) return str;
@@ -32,15 +32,17 @@ function getDefaultTrad(key, options) {
 }
 
 export async function getTranslate(key, language, options) {
-  // get redis cache
+  language = language ? language.substring(0, 2) : 'en';
+
   const redisKey = `language:${language}:${key}`;
   const cachedTranslation = await redis.get(redisKey);
   if (cachedTranslation !== null) {
+    console.log('cachedTranslation', cachedTranslation);
     return insertOptions(cachedTranslation, options);
   }
 
   try {
-    let filePath = join(process.cwd(), `src/locales/${language ? language.substring(0, 2) : 'en'}.json`);
+    let filePath = join(process.cwd(), `src/locales/${language}.json`);
 
     if (!existsSync(filePath)) {
       filePath = join(process.cwd(), 'src/locales/en.json');
