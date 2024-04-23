@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { getTranslate } from '../../../utils/localizations.js';
 import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild.js';
+import { getTranslate } from '../../../utils/localizations.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -12,9 +12,9 @@ export default {
     const lang = interaction.guild.preferredLocale;
 
     if (await isGuildPremium(interaction.guild.id)) {
-      return await interaction.reply({ content: getTranslate('your_guild_is_premium', lang), ephemeral: true });
+      return await interaction.reply({ content: await getTranslate('your_guild_is_premium', lang), ephemeral: true });
     } else {
       return await replyNeedPremium(interaction);
     }
-  },
+  }
 };

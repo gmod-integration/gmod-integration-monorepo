@@ -1,11 +1,11 @@
 import { ActionRowBuilder, SlashCommandBuilder } from 'discord.js';
 import { getServerList } from '../../../models/v3/serversModels.js';
 import { getUserFromDiscordID } from '../../../classes/v3/User.js';
-import { getTranslate } from '../../../utils/localizations.js';
 import { ButtonVerificationWebsite } from '../../utils/buttons.js';
 import { getServerFromID } from '../../../classes/v3/Server.js';
 import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild.js';
 import { wsSendToServer } from '../../../websockets/index.js';
+import { getTranslate } from '../../../utils/localizations.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -31,7 +31,7 @@ export default {
     const server = await getServerFromID(serverID);
     if (!server) {
       return interaction.reply({
-        content: getTranslate('server_not_found', lang),
+        content: await getTranslate('server_not_found', lang),
         ephemeral: true,
       });
     }
@@ -39,7 +39,7 @@ export default {
     const user = await getUserFromDiscordID(interaction.user.id);
     if (!user) {
       return interaction.reply({
-        content: getTranslate('rcon_steam_link', lang),
+        content: await getTranslate('rcon_steam_link', lang),
         ephemeral: true,
         components: [new ActionRowBuilder().addComponents(ButtonVerificationWebsite(lang))],
       });
@@ -48,20 +48,20 @@ export default {
     const player = await server.getServerPlayer(user.getSteamID64());
     if (!player) {
       return interaction.reply({
-        content: getTranslate('rcon_steam_link', lang),
+        content: await getTranslate('rcon_steam_link', lang),
         ephemeral: true,
       });
     }
     if (!player.isSuperAdmin()) {
       return interaction.reply({
-        content: getTranslate('rcon_superadmin', lang),
+        content: await getTranslate('rcon_superadmin', lang),
         ephemeral: true,
       });
     }
 
     if ((await isGuildPremium(interaction.guild.id)) === false) {
       // return interaction.reply({
-      //     content: getTranslate('premium_feature', lang, [' [Gmod Integration - Premium](https://gmod-integration.com/premium)']),
+      //     content: await getTranslate('premium_feature', lang, [' [Gmod Integration - Premium](https://gmod-integration.com/premium)']),
       //     ephemeral: true
       // });
       return replyNeedPremium(interaction);
@@ -75,12 +75,12 @@ export default {
       })
     ) {
       return interaction.reply({
-        content: getTranslate('rcon_command_success', lang),
+        content: await getTranslate('rcon_command_success', lang),
         ephemeral: true,
       });
     } else {
       return interaction.reply({
-        content: getTranslate('rcon_command_error', lang),
+        content: await getTranslate('rcon_command_error', lang),
         ephemeral: true,
       });
     }

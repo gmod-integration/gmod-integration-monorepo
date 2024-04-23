@@ -56,7 +56,7 @@ export async function getTranslate(key, language, options) {
       return getDefaultTrad(key, options);
     }
   } catch (error) {
-    gmLog('localization', `Error in getTranslate: ${error.message}`);
+    gmLog('localization', `Error in await getTranslate: ${error.message}`);
     return getDefaultTrad(key, options);
   }
 }

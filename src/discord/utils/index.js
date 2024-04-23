@@ -11,15 +11,15 @@ const trust_ranks = {
   100: 'legendary',
 };
 
-export function getTrustRank(trust, lang) {
+export async function getTrustRank(trust, lang) {
   let lastKey = 0;
 
   for (let key in trust_ranks) {
     if (trust <= key) {
-      return getTranslate(trust_ranks[lastKey], lang);
+      return await getTranslate(trust_ranks[lastKey], lang);
     }
     lastKey = key;
   }
 
-  return getTranslate('unknown_rank', lang);
+  return await getTranslate('unknown_rank', lang);
 }

@@ -41,7 +41,7 @@ export async function sendMessageToGmod(message) {
 
     if (!(await isGuildPremium(message.guild.id))) {
       return message.reply({
-        content: getTranslate('premium_required', lang),
+        content: await getTranslate('premium_required', lang),
         ephemeral: true,
         components: [new ActionRowBuilder().addComponents(ButtonPremium(lang))],
       });
