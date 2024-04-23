@@ -147,5 +147,6 @@
   "leaderboard": "Bestenliste von {1}",
   "leaderboard_desc": "Suche nach {1}, Seite {2}/{3}",
   "rcon_command_error": "Ein Fehler ist aufgetreten beim Senden des Befehls!",
-  "rcon_command_success": "Befehl erfolgreich gesendet!"
+  "rcon_command_success": "Befehl erfolgreich gesendet!",
+  "your_guild_is_premium": "Herzlichen Glückwunsch, Ihr Server ist Premium!"
 }
