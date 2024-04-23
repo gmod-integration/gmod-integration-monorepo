@@ -150,6 +150,10 @@ export async function getUserGuildsWithPermsForPanel(panelUser) {
       Authorization: `Bearer ${panelUser.getDiscordToken()}`,
     },
   });
+  if (!guildsResult.ok) {
+    return guilds;
+  }
+
   const rawGuilds = await guildsResult.json();
 
   const permGuildsID = [];
