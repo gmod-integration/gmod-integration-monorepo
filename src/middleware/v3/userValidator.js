@@ -1,7 +1,9 @@
 import { badArgument } from '../../utils/tools.js';
 import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
+import { getClient } from '../../discord/index.js';
+import { getServerFromID } from '../../classes/v3/Server.js';
 
-export default async (req, res, next) => {
+export async function userValidator(req, res, next) {
   const { discordID } = req.params;
   const { authorization } = req.headers;
 
@@ -31,4 +33,46 @@ export default async (req, res, next) => {
 
   req.panelUser = panelUser;
   next();
-};
+}
+
+export async function userAdminGuildValidator(req, res, next) {
+  const panelUser = req.panelUser;
+  const { guildID } = req.params;
+
+  if (!(await panelUser.isAdminOfGuild(guildID))) {
+    return res.status(403).json({
+      error: 'not_admin_of_guild',
+    });
+  }
+
+  const dscClient = await getClient();
+  const guild = dscClient.guilds.cache.get(guildID);
+  if (!guild) {
+    return res.status(404).json({
+      error: 'guild_not_found',
+    });
+  }
+
+  req.dscGuild = guild;
+  next();
+}
+
+export async function userServerValidator(req, res, next) {
+  const { serverID } = req.params;
+
+  const server = await getServerFromID(serverID);
+  if (!server) {
+    return res.status(404).json({
+      error: 'server_not_found',
+    });
+  }
+
+  if (server.getGuildID() !== req.dscGuild.id) {
+    return res.status(403).json({
+      error: 'server_not_in_guild',
+    });
+  }
+
+  req.server = server;
+  next();
+}
