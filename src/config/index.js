@@ -18,6 +18,7 @@ export const serverConfig = {
   bodyLimit: '10mb',
   domain: process.env.DOMAIN_URL,
   internWebsocketToken: process.env.INTERN_WEBSOCKET_TOKEN,
+  debug: process.env.DEBUG,
   ports: {
     website: 53134,
     panel: 53135,
