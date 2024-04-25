@@ -6,6 +6,7 @@ import { getConnectionPromise } from '../../database/connection.js';
 import redis from '../../redis/index.js';
 import { getClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
+import { gmLog } from '../../utils/logger.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -22,28 +23,23 @@ export class Server extends BaseClass {
   }
 
   async getStatusChannelAndMessage() {
-    try {
-      const redisKey = `server:${this.id}:statusChannel`;
-      const redisData = await redis.get(redisKey);
-      if (redisData) {
-        return JSON.parse(redisData);
-      }
-
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_status WHERE guild = ? AND server = ?', [
-        this.guild,
-        this.id,
-      ]);
-      if (results && results[0]) {
-        await redis.set(redisKey, JSON.stringify(results[0]), 'EX', 60);
-        return results[0];
-      }
-
-      return null;
-    } catch (error) {
-      console.error(error);
-      return null;
+    const redisKey = `server:${this.id}:statusChannel`;
+    const redisData = await redis.get(redisKey);
+    if (redisData) {
+      return JSON.parse(redisData);
     }
+
+    const connection = await getConnectionPromise();
+    const [results] = await connection.query('SELECT * FROM gm_status WHERE guild = ? AND server = ?', [
+      this.guild,
+      this.id,
+    ]);
+    if (results && results[0]) {
+      await redis.set(redisKey, JSON.stringify(results[0]), 'EX', 60);
+      return results[0];
+    }
+
+    return null;
   }
 
   isValidToken(token) {
@@ -100,67 +96,71 @@ export class Server extends BaseClass {
   }
 
   async editStatusChannelAndMessage(msgData) {
-    return new Promise(async (resolve, reject) => {
-      const dscClient = await getClient();
-      const serverStatusInfo = await this.getStatusChannelAndMessage();
-      if (!serverStatusInfo) {
-        return reject('No status channel and message found');
-      }
+    const dscClient = await getClient();
+    const serverStatusInfo = await this.getStatusChannelAndMessage();
+    if (!serverStatusInfo) {
+      gmLog('status', `Status channel not found for server ${this.getID()}`, true);
+      return;
+    }
 
-      const guild = await dscClient.guilds.fetch(serverStatusInfo.guild);
-      if (!guild) {
-        return reject('Guild not found');
-      }
+    const guild = await dscClient.guilds.fetch(serverStatusInfo.guild);
+    if (!guild) {
+      gmLog('status', `Guild not found for server ${this.getID()}`, true);
+      return;
+    }
 
-      const channel = await dscClient.channels.fetch(serverStatusInfo.channel);
-      if (!channel) {
-        return reject('Channel not found');
-      }
+    const channel = await dscClient.channels.fetch(serverStatusInfo.channel);
+    if (!channel) {
+      gmLog('status', `Channel not found for server ${this.getID()}`, true);
+      return;
+    }
 
-      const message = await channel.messages.fetch(serverStatusInfo.message);
-      if (!message) {
-        return reject('Message not found');
-      }
+    const message = await channel.messages.fetch(serverStatusInfo.message);
+    if (!message) {
+      gmLog('status', `Message not found for server ${this.getID()}`, true);
+      return;
+    }
 
-      const lang = await guild.preferredLocale;
-      const newMsgContent = await getStatusMessage(this, msgData, await this.getServerStatusButtons(), lang);
-      await message.edit(newMsgContent);
-      resolve();
-    });
+    const lang = await guild.preferredLocale;
+    const newMsgContent = await getStatusMessage(this, msgData, await this.getServerStatusButtons(), lang);
+    await message.edit(newMsgContent);
   }
 
   async saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime) {
-    return new Promise(async (resolve, reject) => {
-      const connection = await getConnectionPromise();
-      const query =
-        'INSERT INTO gm_server_status (id, ip, port, last_update, hostname, map, gamemode, players, maxplayers) VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE ip = ?, port = ?, last_update = NOW(), hostname = ?, map = ?, gamemode = ?, players = ?, maxplayers = ?';
-      const values = [
-        this.getID(),
-        ip,
-        port,
-        hostname,
-        map,
-        gameMode,
-        players,
-        maxPlayers,
-        ip,
-        port,
-        hostname,
-        map,
-        gameMode,
-        players,
-        maxPlayers,
-      ];
-      await this.editStatusChannelAndMessage({
-        hostname,
-        map,
-        gameMode,
-        players,
-        maxPlayers,
-        uptime,
-      });
-      await connection.query(query, values);
-      resolve();
+    const connection = await getConnectionPromise();
+    const query =
+      'INSERT INTO gm_server_status (id, ip, port, last_update, hostname, map, gamemode, players, maxplayers) VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE ip = ?, port = ?, last_update = NOW(), hostname = ?, map = ?, gamemode = ?, players = ?, maxplayers = ?';
+    const values = [
+      this.getID(),
+      ip,
+      port,
+      hostname,
+      map,
+      gameMode,
+      players,
+      maxPlayers,
+      ip,
+      port,
+      hostname,
+      map,
+      gameMode,
+      players,
+      maxPlayers,
+    ];
+    const [results] = await connection.query(query, values);
+    if (results.affectedRows === 0) {
+      throw new Error('Failed to save server status in database');
+    } else {
+      gmLog('status', `Saved status for server ${this.getID()} in database`, true);
+    }
+
+    await this.editStatusChannelAndMessage({
+      hostname,
+      map,
+      gameMode,
+      players,
+      maxPlayers,
+      uptime,
     });
   }
 

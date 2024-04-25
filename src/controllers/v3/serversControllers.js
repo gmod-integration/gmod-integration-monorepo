@@ -1,4 +1,5 @@
 import { badArgument } from '../../utils/tools.js';
+import { gmLog } from '../../utils/logger.js';
 
 export async function postStatus(req, res) {
   const server = req.server;
@@ -22,8 +23,10 @@ export async function postStatus(req, res) {
 
   try {
     await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime);
+    gmLog('server', `Status of ${server.getID()} updated`, true);
     return res.status(200).json({ success: true });
   } catch (error) {
+    console.error(error);
     return res.status(500).json({ error: 'internal_error' });
   }
 }
