@@ -17,5 +17,13 @@ router.use('/:discordID', userValidator);
 router.get('/:discordID/guilds', getUserGuildsOwnOrAdmins);
 
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
+router.get('/:discordID/guilds/:guildID', findGuild);
+router.get('/:discordID/guilds/:guildID/channels', findGuildChannels);
+router.get('/:discordID/guilds/:guildID/servers', findGuildServers);
+
+router.use('/:discordID/guilds/:guildID/servers/:serverID', userServerValidator);
+router.get('/:discordID/guilds/:guildID/servers/:serverID', findGuildServer);
+// router.get('/:discordID/guilds/:guildID/status', findGuild);
+// router.post('/:discordID/guilds/:guildID/status', createGuildStatusServer);
 
 export default router;

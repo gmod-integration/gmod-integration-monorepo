@@ -35,7 +35,41 @@ export class PanelUser {
   }
 
   async findGuildsWithPerms() {
+    const guildsResult = await fetch('https://discord.com/api/users/@me/guilds', {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.getDiscordToken()}`,
+      },
+    });
+
+    if (!guildsResult.ok) {
+      throw new Error('Failed to fetch guilds');
+    }
+
+    const permGuildsID = [];
+    for (const guildData of await guildsResult.json()) {
+      if (guildData.owner || (guildData.permissions & 0x8) === 0x8) {
+        permGuildsID.push(guildData);
+      }
+    }
+
+    return permGuildsID;
+  }
+
+  async findGuildsWithPermsForPanel() {
     return await getUserGuildsWithPermsForPanel(this);
+  }
+
+  async isAdminOfGuild(guildID) {
+    const guilds = await this.findGuildsWithPerms();
+
+    for (const guild of guilds) {
+      if (guild.id === guildID) {
+        return true;
+      }
+    }
+
+    return false;
   }
 }
 

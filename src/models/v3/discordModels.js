@@ -144,39 +144,21 @@ export async function updateRolesToGmod(newMember, roleID, add = true) {
 
 export async function getUserGuildsWithPermsForPanel(panelUser) {
   const guilds = [];
-  const guildsResult = await fetch('https://discord.com/api/users/@me/guilds', {
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${panelUser.getDiscordToken()}`,
-    },
-  });
-  if (!guildsResult.ok) {
-    return guilds;
-  }
-
-  const rawGuilds = await guildsResult.json();
-
-  const permGuildsID = [];
-  for (const guildData of rawGuilds) {
-    const guildID = guildData.id;
-
-    if (guildData.owner || (guildData.permissions & 0x8) === 0x8) {
-      permGuildsID.push(guildID);
-    }
-  }
+  const permGuilds = await panelUser.findGuildsWithPerms();
+  const permGuildsID = permGuilds.map((guild) => guild.id);
 
   const connection = await getConnectionPromise();
   const placeholder = permGuildsID.map(() => '?').join(',');
   const query = `SELECT *
-                 FROM gm_guild
-                 WHERE guild IN (${placeholder})`;
+                   FROM gm_guild
+                   WHERE guild IN (${placeholder})`;
   const [rows] = await connection.execute(query, permGuildsID);
   const hasBotGuildsID = [];
   for (const guildData of rows) {
     hasBotGuildsID.push(guildData.guild);
   }
 
-  for (const guildData of rawGuilds) {
+  for (const guildData of permGuilds) {
     const guildID = guildData.id;
 
     if (!permGuildsID.includes(guildID)) {
