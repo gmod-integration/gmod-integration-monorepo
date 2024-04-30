@@ -1,9 +1,11 @@
 import express from 'express';
 import {
+  createGuildStatusServer,
   findGuild,
   findGuildChannels,
   findGuildServer,
   findGuildServers,
+  findServerStatus,
   getProfile,
   getUserGuildsOwnOrAdmins,
 } from '../../controllers/v3/usersControllers.js';
@@ -23,7 +25,7 @@ router.get('/:discordID/guilds/:guildID/servers', findGuildServers);
 
 router.use('/:discordID/guilds/:guildID/servers/:serverID', userServerValidator);
 router.get('/:discordID/guilds/:guildID/servers/:serverID', findGuildServer);
-// router.get('/:discordID/guilds/:guildID/status', findGuild);
-// router.post('/:discordID/guilds/:guildID/status', createGuildStatusServer);
+router.get('/:discordID/guilds/:guildID/servers/:serverID/status', findServerStatus);
+router.post('/:discordID/guilds/:guildID/servers/:serverID/status', createGuildStatusServer);
 
 export default router;

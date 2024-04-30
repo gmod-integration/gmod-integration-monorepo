@@ -75,3 +75,9 @@ export async function createGuildStatusServer(req, res) {
     error: 'Not implemented',
   });
 }
+
+export async function findServerStatus(req, res) {
+  const server = req.server;
+
+  return res.send(server.getStatusChannelAndMessage());
+}

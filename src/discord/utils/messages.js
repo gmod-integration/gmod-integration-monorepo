@@ -2,6 +2,7 @@ import { getTranslate } from '../../utils/localizations.js';
 import { gmLog } from '../../utils/logger.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { ButtonConnect } from './buttons.js';
+import { getClient } from '../index.js';
 
 export async function getStatusMessage(server, data, buttons, lang) {
   gmLog('status', 'refresh server status message for ' + server.getID());
@@ -76,6 +77,8 @@ export async function getStatusMessage(server, data, buttons, lang) {
     row1.addComponents(await ButtonConnect(lang, data.ip, data.port));
   }
 
+  const disClient = await getClient();
+
   function addButtons(button, theRow) {
     let { label, emoji, url } = button;
 
@@ -85,10 +88,16 @@ export async function getStatusMessage(server, data, buttons, lang) {
 
     label = label.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
 
+    // check the validity of the emoji
+    if (!disClient.emojis.cache.find((e) => e.name === emoji)) {
+      gmLog('status', 'invalid emoji for button: ' + emoji);
+      emoji = '❓';
+    }
+
     const theButton = new ButtonBuilder()
       .setStyle(ButtonStyle.Link)
-      .setLabel(`${emoji}⠀${label}`)
-      // .setEmoji(emoji)
+      .setLabel(`⠀${label}`)
+      .setEmoji(emoji)
       .setURL(`https://gmod-integration.com/open-link?link=${url}`);
 
     // Ajouter le bouton à la ligne
