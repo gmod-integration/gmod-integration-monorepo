@@ -3,6 +3,7 @@ import serversRoutes from './serversRoutes.js';
 import bansRoutes from './bansRoutes.js';
 import clientsRoutes from './clientsRoutes.js';
 import usersRoutes from './usersRoutes.js';
+import mainRoutes from './mainRoutes.js';
 
 const router = express.Router();
 
@@ -14,5 +15,6 @@ router.use('/servers', serversRoutes);
 router.use('/bans', bansRoutes);
 router.use('/clients', clientsRoutes);
 router.use('/users', usersRoutes);
+router.use('/', mainRoutes);
 
 export default router;
