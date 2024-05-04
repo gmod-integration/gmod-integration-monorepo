@@ -29,6 +29,10 @@ export async function getProfile(req, res) {
   });
 }
 
+export async function findCurrentUser(req, res) {
+  return res.send(req.panelUser.user);
+}
+
 export async function getUserGuildsOwnOrAdmins(req, res) {
   const panelUser = req.panelUser;
 

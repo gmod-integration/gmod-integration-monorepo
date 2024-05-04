@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   createGuildStatusServer,
+  findCurrentUser,
   findGuild,
   findGuildChannels,
   findGuildServer,
@@ -16,6 +17,7 @@ const router = express.Router();
 router.get('/', getProfile);
 
 router.use('/:discordID', userValidator);
+router.get('/:discordID', findCurrentUser);
 router.get('/:discordID/guilds', getUserGuildsOwnOrAdmins);
 
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
