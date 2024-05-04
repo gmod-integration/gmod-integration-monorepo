@@ -274,3 +274,8 @@ export async function addUserToGuild(guildID, userID, userToken) {
 
   return response.ok;
 }
+
+export async function getDiscordUserFromID(discordID) {
+  const client = await getClient();
+  return client.users.fetch(discordID);
+}

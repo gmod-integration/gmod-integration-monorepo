@@ -3,6 +3,7 @@ import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { discordConfig } from '../../config/index.js';
 import {
   addUserToGuild,
+  getDiscordUserFromID,
   getUserFromToken,
   getUserTokenFromCode,
   saveUserPanel,
@@ -37,7 +38,7 @@ export async function getProfile(req, res) {
 }
 
 export async function findCurrentUser(req, res) {
-  return res.send(req.panelUser.user);
+  return res.send(await getDiscordUserFromID(req.params.discordID));
 }
 
 export async function oauthLogin(req, res) {
