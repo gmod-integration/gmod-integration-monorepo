@@ -9,12 +9,14 @@ import {
   findServerStatus,
   getProfile,
   getUserGuildsOwnOrAdmins,
+  oauthLogin,
 } from '../../controllers/v3/usersControllers.js';
 import { userAdminGuildValidator, userServerValidator, userValidator } from '../../middleware/v3/userValidator.js';
 
 const router = express.Router();
 
 router.get('/', getProfile);
+router.get('/login', oauthLogin);
 
 router.use('/:discordID', userValidator);
 router.get('/:discordID', findCurrentUser);

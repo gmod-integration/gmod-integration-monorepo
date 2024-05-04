@@ -1,5 +1,12 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
+import { discordConfig } from '../../config/index.js';
+import {
+  addUserToGuild,
+  getUserFromToken,
+  getUserTokenFromCode,
+  saveUserPanel,
+} from '../../models/v3/discordModels.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -31,6 +38,48 @@ export async function getProfile(req, res) {
 
 export async function findCurrentUser(req, res) {
   return res.send(req.panelUser.user);
+}
+
+export async function oauthLogin(req, res) {
+  const { code } = req.query;
+
+  if (!code) {
+    return res.redirect(discordConfig.oauthPanel);
+  }
+
+  const discordUserToken = await getUserTokenFromCode(
+    code,
+    `${req.protocol}://${req.headers.host}${req.originalUrl.split('?')[0]}`,
+  );
+  if (!discordUserToken) {
+    return res.status(401).send({
+      error: 'unauthorized',
+    });
+  }
+
+  discordUserToken.expirationDate = new Date(Date.now() + discordUserToken.expires_in * 1000);
+  discordUserToken.creationDate = new Date();
+
+  const discordUser = await getUserFromToken(`${discordUserToken.token_type} ${discordUserToken.access_token}`);
+  if (!discordUser) {
+    return res.status(401).send({
+      error: 'unauthorized',
+    });
+  }
+
+  await addUserToGuild(discordConfig.guildID, discordUser.id, discordUserToken.access_token)
+    .then(() => {
+      console.log('User added to guild');
+    })
+    .catch((error) => {
+      console.error(error);
+    });
+
+  const panelAccessToken = await saveUserPanel(discordUser.id, discordUserToken);
+
+  return res.redirect(
+    `${discordConfig.oauthPanelRedirect}?discordID=${discordUser.id}&accessToken=${panelAccessToken}&expirationDate=${discordUserToken.expirationDate.getTime()}`,
+  );
 }
 
 export async function getUserGuildsOwnOrAdmins(req, res) {

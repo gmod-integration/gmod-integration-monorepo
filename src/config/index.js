@@ -31,8 +31,12 @@ export const serverConfig = {
 export const discordConfig = {
   clientID: process.env.DISCORD_CLIENT_ID,
   clientSecret: process.env.DISCORD_CLIENT_SECRET,
+  guildID: process.env.DISCORD_GUILD_ID,
   botToken: process.env.DISCORD_BOT_TOKEN,
-  oauth: process.env.OAUTH_VERIF_URL,
+  oauthVerify: process.env.OAUTH_VERIF_URL,
+  oauthVerifyRedirect: process.env.OAUTH_REDIRECT_URL,
+  oauthPanel: process.env.OAUTH_PANEL_URL,
+  oauthPanelRedirect: process.env.OAUTH_REDIRECT_URL,
   invite: process.env.DISCORD_BOT_INVITE_URL,
 };
 

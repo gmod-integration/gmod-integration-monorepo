@@ -5,6 +5,8 @@ import { wsSendToServer } from '../../websockets/index.js';
 import { getClient } from '../../discord/index.js';
 import { getConnectionPromise } from '../../database/connection.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
+import { discordConfig } from '../../config/index.js';
+import { generateToken } from '../../utils/tools.js';
 
 let userUpdateRoleCurrent = {};
 
@@ -150,8 +152,8 @@ export async function getUserGuildsWithPermsForPanel(panelUser) {
   const connection = await getConnectionPromise();
   const placeholder = permGuildsID.map(() => '?').join(',');
   const query = `SELECT *
-                   FROM gm_guild
-                   WHERE guild IN (${placeholder})`;
+                 FROM gm_guild
+                 WHERE guild IN (${placeholder})`;
   const [rows] = await connection.execute(query, permGuildsID);
   const hasBotGuildsID = [];
   for (const guildData of rows) {
@@ -176,4 +178,99 @@ export async function getUserGuildsWithPermsForPanel(panelUser) {
   }
 
   return guilds;
+}
+
+export async function getUserTokenFromCode(code, redirectURI) {
+  console.log(redirectURI);
+  const discordRequest = await fetch('https://discord.com/api/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: discordConfig.clientID,
+      client_secret: discordConfig.clientSecret,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectURI,
+      scope: 'identify guilds.join email guilds',
+    }).toString(),
+  });
+
+  if (!discordRequest.ok) {
+    return null;
+  }
+
+  return await discordRequest.json();
+}
+
+export async function getUserFromToken(token) {
+  const discordRequest = await fetch('https://discord.com/api/users/@me', {
+    headers: {
+      authorization: token,
+    },
+  });
+
+  if (!discordRequest.ok) {
+    return null;
+  }
+
+  return await discordRequest.json();
+}
+
+export async function saveUser(id, username, email) {
+  const connection = await getConnectionPromise();
+  const query =
+    'INSERT INTO gm_user (id, username, email) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, email = ?';
+  await connection.execute(query, [id, username, email, username, email]);
+
+  return true;
+}
+
+export async function saveUserPanel(discordID, discordUserToken) {
+  const connection = await getConnectionPromise();
+  const query =
+    'INSERT INTO gm_discordToken (discordID, accessToken, refreshToken, creationDate, expirationDate) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE accessToken = ?, refreshToken = ?, creationDate = ?, expirationDate = ?';
+  await connection.execute(query, [
+    discordID,
+    discordUserToken.access_token,
+    discordUserToken.refresh_token,
+    discordUserToken.creationDate,
+    discordUserToken.expirationDate,
+    discordUserToken.access_token,
+    discordUserToken.refresh_token,
+    discordUserToken.creationDate,
+    discordUserToken.expirationDate,
+  ]);
+
+  const panelAccessToken = generateToken(32);
+
+  const query2 =
+    'INSERT INTO gm_panelToken (discordID, accessToken, creationDate, expirationDate) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE accessToken = ?, creationDate = ?, expirationDate = ?';
+  await connection.execute(query2, [
+    discordID,
+    panelAccessToken,
+    discordUserToken.creationDate,
+    discordUserToken.expirationDate,
+    panelAccessToken,
+    discordUserToken.creationDate,
+    discordUserToken.expirationDate,
+  ]);
+
+  return panelAccessToken;
+}
+
+export async function addUserToGuild(guildID, userID, userToken) {
+  const response = await fetch(`https://discord.com/api/guilds/${guildID}/members/${userID}`, {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bot ${discordConfig.botToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      access_token: userToken,
+    }),
+  });
+
+  return response.ok;
 }
