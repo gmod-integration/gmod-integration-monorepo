@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   createGuildStatusServer,
+  createNewServer,
   findCurrentUser,
   findGuild,
   findGuildChannels,
@@ -26,6 +27,7 @@ router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', findGuild);
 router.get('/:discordID/guilds/:guildID/channels', findGuildChannels);
 router.get('/:discordID/guilds/:guildID/servers', findGuildServers);
+router.post('/:discordID/guilds/:guildID/servers', createNewServer);
 
 router.use('/:discordID/guilds/:guildID/servers/:serverID', userServerValidator);
 router.get('/:discordID/guilds/:guildID/servers/:serverID', findGuildServer);

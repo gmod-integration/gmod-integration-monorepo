@@ -329,6 +329,16 @@ export class Server extends BaseClass {
   }
 }
 
+export async function generateServerUniqueID() {
+  const generatedID = generateToken(10);
+  const connection = await getConnectionPromise();
+  const [results] = await connection.query('SELECT * FROM gm_server WHERE id = ?', [generatedID]);
+  if (results && results[0]) {
+    return await generateServerUniqueID();
+  }
+  return generatedID;
+}
+
 export async function getServerFromID(serverID) {
   try {
     const connection = await getConnectionPromise();
@@ -349,4 +359,18 @@ export async function getServersFromDiscordGuildID(guildID) {
     console.error(error);
     return [];
   }
+}
+
+export async function createServer(guildID) {
+  const connection = await getConnectionPromise();
+  const serverID = await generateServerUniqueID();
+  const [results] = await connection.query('INSERT INTO gm_server (id, token, guild) VALUES (?, ?, ?)', [
+    serverID,
+    generateToken(16),
+    guildID,
+  ]);
+  if (results.affectedRows === 0) {
+    return null;
+  }
+  return await getServerFromID(serverID);
 }

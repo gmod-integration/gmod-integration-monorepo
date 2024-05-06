@@ -4,6 +4,10 @@ import redis from '../../redis/index.js';
 import { getConnectionPromise } from '../../database/connection.js';
 
 export async function isGuildPremium(guildID) {
+  if (discordConfig.premiumGuilds.includes(guildID)) {
+    return true;
+  }
+
   const redisKey = `guild:${guildID}:premium`;
   const redisKey2 = `discord:entitlements`;
 
@@ -21,7 +25,7 @@ export async function isGuildPremium(guildID) {
           headers: {
             Authorization: `Bot ${discordConfig.botToken}`,
           },
-        }
+        },
       );
       entitlementGuilds = response.data;
       await redis.set(redisKey2, JSON.stringify(entitlementGuilds), 'EX', 60);
@@ -29,7 +33,7 @@ export async function isGuildPremium(guildID) {
       entitlementGuilds = JSON.parse(entitlementGuilds);
     }
 
-    let isPremium = entitlementGuilds.some(entitlement => entitlement.guild_id === guildID);
+    let isPremium = entitlementGuilds.some((entitlement) => entitlement.guild_id === guildID);
     await redis.set(redisKey, JSON.stringify(isPremium), 'EX', 60); // Cache the result
 
     return isPremium;

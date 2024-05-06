@@ -32,8 +32,8 @@ export async function getServerList(interaction, focusedOption, choices) {
   const connection = await getConnectionPromise();
   const [rows] = await connection.query(
     `SELECT *
-         FROM gm_server
-         WHERE guild = ?`,
+     FROM gm_server
+     WHERE guild = ?`,
     [interaction.guild.id],
   );
   if (rows && rows.length > 0) {

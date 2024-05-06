@@ -1,5 +1,5 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
-import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
+import { createServer, getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { discordConfig } from '../../config/index.js';
 import {
   addUserToGuild,
@@ -8,6 +8,7 @@ import {
   getUserTokenFromCode,
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
+import { isGuildPremium } from '../../classes/v3/Guild.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -134,4 +135,19 @@ export async function findServerStatus(req, res) {
   const server = req.server;
 
   return res.send(server.getStatusChannelAndMessage());
+}
+
+export async function createNewServer(req, res) {
+  const dscGuild = req.dscGuild;
+  const isPremium = await isGuildPremium(dscGuild.id);
+  const servers = await getServersFromDiscordGuildID(dscGuild.id);
+
+  if (servers.length >= 1 && !isPremium) {
+    return res.status(403).send({
+      error: 'Server limit reached',
+    });
+  }
+
+  const newServer = await createServer(dscGuild.id);
+  return res.send(newServer);
 }

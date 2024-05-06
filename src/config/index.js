@@ -38,6 +38,7 @@ export const discordConfig = {
   oauthPanel: process.env.OAUTH_PANEL_URL,
   oauthPanelRedirect: process.env.OAUTH_REDIRECT_URL,
   invite: process.env.DISCORD_BOT_INVITE_URL,
+  premiumGuilds: ['1051881514020917408'],
 };
 
 export const steamConfig = {
