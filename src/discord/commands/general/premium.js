@@ -16,5 +16,5 @@ export default {
     } else {
       return await replyNeedPremium(interaction);
     }
-  }
+  },
 };
