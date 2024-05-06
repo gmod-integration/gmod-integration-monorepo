@@ -12,6 +12,7 @@ import { executeSqlFile } from './database/connection.js';
 import cors from 'cors';
 import corsMiddleware from './middleware/corsMiddleware.js';
 import './websockets/index.js';
+import helmet from 'helmet';
 
 // Database
 executeSqlFile('./src/database/schema.sql').then(() => {
@@ -23,6 +24,7 @@ const app = express();
 app.set('trust proxy', true);
 
 // Middleware
+app.use(helmet());
 app.use(cors(corsMiddleware));
 app.use(rawBodyMiddleware);
 
