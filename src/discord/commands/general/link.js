@@ -7,7 +7,7 @@ export default {
     .setName('link')
     .setDescription('Select a link to get.')
     .addStringOption((option) =>
-      option.setName('link').setDescription('The link to get.').setRequired(true).setAutocomplete(true)
+      option.setName('link').setDescription('The link to get.').setRequired(true).setAutocomplete(true),
     )
     .setDMPermission(false),
   category: 'general',
@@ -20,21 +20,21 @@ export default {
       if (interaction.member.permissions.has('ADMINISTRATOR')) {
         return await interaction.reply({
           content:
-            await getTranslate('the_link_to_not_set', lang, ['`' + linkID + '`']) +
+            (await getTranslate('the_link_to_not_set', lang, ['`' + linkID + '`'])) +
             '\n' +
-            await getTranslate('how_to_set_the_link', lang, ['gmod-integration']),
-          ephemeral: true
+            (await getTranslate('how_to_set_the_link', lang, ['gmod-integration'])),
+          ephemeral: true,
         });
       }
 
       return await interaction.reply({
         content: await getTranslate('the_link_to_not_set', lang, ['`' + linkID + '`']),
-        ephemeral: true
+        ephemeral: true,
       });
     }
 
     return await interaction.reply({
-      content: await getTranslate('the_link_to', lang, ['[' + linkInfo.alias + '](' + linkInfo.url + ')'])
+      content: await getTranslate('the_link_to', lang, ['[' + linkInfo.alias + '](' + linkInfo.url + ')']),
     });
   },
   async autocomplete(interaction) {
@@ -48,5 +48,5 @@ export default {
 
     const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value));
     await interaction.respond(filtered.map((choice) => ({ name: choices[choice], value: choice })));
-  }
+  },
 };
