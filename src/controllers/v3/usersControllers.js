@@ -8,7 +8,7 @@ import {
   getUserTokenFromCode,
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
-import { isGuildPremium } from '../../classes/v3/Guild.js';
+import Link from '../../classes/v3/guild/Link.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -138,9 +138,10 @@ export async function findServerStatus(req, res) {
 }
 
 export async function createNewServer(req, res) {
-  const dscGuild = req.dscGuild;
-  const isPremium = await isGuildPremium(dscGuild.id);
-  const servers = await getServersFromDiscordGuildID(dscGuild.id);
+  const guild = req.guild;
+
+  const isPremium = await guild.isPremium();
+  const servers = await guild.getServers();
 
   if (servers.length >= 1 && !isPremium) {
     return res.status(403).send({
@@ -148,6 +149,96 @@ export async function createNewServer(req, res) {
     });
   }
 
-  const newServer = await createServer(dscGuild.id);
+  const newServer = await createServer(guild.id);
   return res.send(newServer);
+}
+
+export async function getGuildLinks(req, res) {
+  const guild = req.guild;
+  return res.send(await guild.getLinks());
+}
+
+export async function postGuildLinks(req, res) {
+  const guild = req.guild;
+  const isPremium = await guild.isPremium();
+
+  const links = await guild.getLinks();
+  if (links.length >= 2 && !isPremium) {
+    return res.status(403).send({
+      error: 'Link limit reached',
+    });
+  }
+
+  const newLink = await Link.create({
+    guild: guild.id,
+  });
+  await newLink.save();
+
+  return res.send(newLink);
+}
+
+export async function putGuildLinks(req, res) {
+  const { linkID } = req.params;
+  const guild = req.guild;
+  const { url, alias, active } = req.body;
+
+  const link = await Link.findByPk(linkID);
+  if (!link) {
+    return res.status(404).send({
+      error: 'Link not found',
+    });
+  }
+
+  if (link.guild !== guild.id) {
+    return res.status(403).send({
+      error: 'Not authorized',
+    });
+  }
+
+  link.url = url || '';
+  link.alias = alias || '';
+  link.active = active || true;
+  await link.save();
+
+  return res.send(link);
+}
+
+export async function deleteGuildLinks(req, res) {
+  const { linkID } = req.params;
+  const guild = req.guild;
+
+  const link = await Link.findByPk(linkID);
+  if (!link) {
+    return res.status(404).send({
+      error: 'Link not found',
+    });
+  }
+
+  if (link.guild !== guild.id) {
+    return res.status(403).send({
+      error: 'Not authorized',
+    });
+  }
+
+  await link.destroy();
+  return res.send(link);
+}
+
+/*
+
+  putGuildServer,
+  postGuildServer,
+  deleteGuildServer,
+ */
+
+export async function putGuildServer(req, res) {
+  //
+}
+
+export async function postGuildServer(req, res) {
+  //
+}
+
+export async function deleteGuildServer(req, res) {
+  //
 }

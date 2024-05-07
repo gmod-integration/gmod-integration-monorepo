@@ -2,6 +2,27 @@ import axios from 'axios';
 import { discordConfig } from '../../config/index.js';
 import redis from '../../redis/index.js';
 import { getConnectionPromise } from '../../database/connection.js';
+import { getServersFromDiscordGuildID } from './Server.js';
+import Link from './guild/Link.js';
+
+export class Guild {
+  constructor(guild) {
+    this.dscGuild = guild;
+    this.id = guild.id;
+  }
+
+  async isPremium() {
+    return await isGuildPremium(this.id);
+  }
+
+  async getServers() {
+    return await getServersFromDiscordGuildID(this.id);
+  }
+
+  async getLinks() {
+    return await getGuildLinks(this.id);
+  }
+}
 
 export async function isGuildPremium(guildID) {
   if (discordConfig.premiumGuilds.includes(guildID)) {
@@ -63,9 +84,11 @@ export async function replyNeedPremium(interaction) {
 }
 
 export async function getGuildLinks(guildID) {
-  const connection = await getConnectionPromise();
-  const [rows] = await connection.execute('SELECT * FROM gm_link WHERE guild = ? AND active = 1', [guildID]);
-  return rows || [];
+  return await Link.findAll({
+    where: {
+      guild: guildID,
+    },
+  });
 }
 
 export async function getGuildLink(guildID, linkID) {
