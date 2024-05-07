@@ -2,6 +2,7 @@ import { badArgument } from '../../utils/tools.js';
 import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
 import { getClient } from '../../discord/index.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
+import { Guild } from '../../classes/v3/Guild.js';
 
 export async function userValidator(req, res, next) {
   const { discordID } = req.params;
@@ -46,14 +47,22 @@ export async function userAdminGuildValidator(req, res, next) {
   }
 
   const dscClient = await getClient();
-  const guild = dscClient.guilds.cache.get(guildID);
+  const dscGuild = dscClient.guilds.cache.get(guildID);
+  if (!dscGuild) {
+    return res.status(404).json({
+      error: 'guild_not_found',
+    });
+  }
+
+  const guild = new Guild(dscGuild);
   if (!guild) {
     return res.status(404).json({
       error: 'guild_not_found',
     });
   }
 
-  req.dscGuild = guild;
+  req.guild = guild;
+  req.dscGuild = dscGuild;
   next();
 }
 
