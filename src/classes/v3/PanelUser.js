@@ -43,7 +43,7 @@ export class PanelUser {
     });
 
     if (!guildsResult.ok) {
-      throw new Error('Failed to fetch guilds');
+      return [];
     }
 
     const permGuildsID = [];
@@ -76,16 +76,16 @@ export class PanelUser {
 export async function getPanelUserFromDiscordID(discordID) {
   const connection = await getConnectionPromise();
   const queryPanelToken = `SELECT *
-                             FROM gm_panelToken
-                             WHERE discordID = ?`;
+                           FROM gm_panelToken
+                           WHERE discordID = ?`;
   const [rowsPanelToken] = await connection.execute(queryPanelToken, [discordID]);
   if (rowsPanelToken.length === 0) {
     return null;
   }
 
   const queryDiscordToken = `SELECT *
-                               FROM gm_discordToken
-                               WHERE discordID = ?`;
+                             FROM gm_discordToken
+                             WHERE discordID = ?`;
   const [rowsDiscordToken] = await connection.execute(queryDiscordToken, [discordID]);
   if (rowsDiscordToken.length === 0) {
     return null;
