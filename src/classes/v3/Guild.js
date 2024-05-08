@@ -3,7 +3,7 @@ import { discordConfig } from '../../config/index.js';
 import redis from '../../redis/index.js';
 import { getConnectionPromise } from '../../database/connection.js';
 import { getServersFromDiscordGuildID } from './Server.js';
-import Link from './guild/Link.js';
+import gm_link from '../../database/shema/gm_link.js';
 
 export class Guild {
   constructor(guild) {
@@ -84,7 +84,7 @@ export async function replyNeedPremium(interaction) {
 }
 
 export async function getGuildLinks(guildID) {
-  return await Link.findAll({
+  return await gm_link.findAll({
     where: {
       guild: guildID,
     },

@@ -8,7 +8,7 @@ import {
   getUserTokenFromCode,
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
-import Link from '../../classes/v3/guild/Link.js';
+import gm_link from '../../database/shema/gm_link.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -165,11 +165,11 @@ export async function postGuildLinks(req, res) {
   const links = await guild.getLinks();
   if (links.length >= 2 && !isPremium) {
     return res.status(403).send({
-      error: 'Link limit reached',
+      error: 'gm_link limit reached',
     });
   }
 
-  const newLink = await Link.create({
+  const newLink = await gm_link.create({
     guild: guild.id,
   });
   await newLink.save();
@@ -182,10 +182,10 @@ export async function putGuildLinks(req, res) {
   const guild = req.guild;
   const { url, alias, active } = req.body;
 
-  const link = await Link.findByPk(linkID);
+  const link = await gm_link.findByPk(linkID);
   if (!link) {
     return res.status(404).send({
-      error: 'Link not found',
+      error: 'gm_link not found',
     });
   }
 
@@ -207,10 +207,10 @@ export async function deleteGuildLinks(req, res) {
   const { linkID } = req.params;
   const guild = req.guild;
 
-  const link = await Link.findByPk(linkID);
+  const link = await gm_link.findByPk(linkID);
   if (!link) {
     return res.status(404).send({
-      error: 'Link not found',
+      error: 'gm_link not found',
     });
   }
 

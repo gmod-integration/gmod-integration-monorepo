@@ -1,14 +1,14 @@
-import sequelize from '../../../database/sequelize.js';
+import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
-import { gmLog } from '../../../utils/logger.js';
+import { gmLog } from '../../utils/logger.js';
 
-class Link extends Model {
+class gm_link extends Model {
   getUrlBase64() {
     return Buffer.from(this.url).toString('base64');
   }
 }
 
-Link.init(
+gm_link.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -37,13 +37,14 @@ Link.init(
   },
   {
     sequelize,
-    modelName: 'Link',
+    modelName: 'gm_link',
     tableName: 'gm_link',
     timestamps: false,
   },
 );
 
-Link.sync({ alter: true })
+gm_link
+  .sync({ alter: true })
   .then(() => {
     gmLog('sequelize', 'Table created: gm_link');
   })
@@ -51,4 +52,4 @@ Link.sync({ alter: true })
     console.error('Error creating link table:', error);
   });
 
-export default Link;
+export default gm_link;
