@@ -79,16 +79,6 @@ create table if not exists gm_gmodstore_purchases
     editDate  timestamp default current_timestamp() null on update current_timestamp()
 );
 
-create table if not exists gm_guild
-(
-    guild    char(255) charset utf8mb4 not null
-        primary key,
-    name     text                      null,
-    member   int                       null,
-    language text                      null
-)
-    collate = utf8mb4_unicode_ci;
-
 create table if not exists gm_guild_member
 (
     guild_id char(255)                             not null,
@@ -172,17 +162,6 @@ create table if not exists gm_guild_verify_roles
     isGive  tinyint(1) default 1 null,
     enable  tinyint(1) default 0 null
 );
-
-create table if not exists gm_link
-(
-    id     int auto_increment
-        primary key,
-    guild  text charset utf8mb4                     not null,
-    alias  text       default 'example'             not null,
-    url    text       default 'https://example.com' not null,
-    active tinyint(1) default 0                     not null
-)
-    collate = utf8mb4_unicode_ci;
 
 create table if not exists gm_log_api
 (
