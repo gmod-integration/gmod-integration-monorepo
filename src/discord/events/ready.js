@@ -1,25 +1,32 @@
-import { getConnectionPromise } from '../../database/connection.js';
-import { gmLog } from '../../utils/logger.js';
 import { getClient } from '../index.js';
+import gm_guild from '../../database/shema/gm_guild.js';
 
 export default {
   name: 'ready',
   async execute() {
     const client = await getClient();
-    const connection = await getConnectionPromise();
-    const query = `INSERT INTO gm_guild(guild, name, member, language)
-                    VALUES (?, ?, ?, ?)
-                    ON DUPLICATE KEY UPDATE name = ?, member = ?, language = ?`;
-    client.guilds.cache.forEach(async (guild) => {
-      gmLog('guild', `Bot connected to guild: ${guild.name} (${guild.id}) with ${guild.memberCount} members and language ${guild.preferredLocale}`);
-      await connection.query(query, [guild.id, guild.name, guild.memberCount, guild.preferredLocale, guild.name, guild.memberCount, guild.preferredLocale], (err) => {
-        if (err) {
-          gmLog('error', `Error updating guild: ${guild.name} (${guild.id})`);
-          throw err;
-        } else {
-          gmLog('database', `Guild updated: ${guild.name} (${guild.id})`);
-        }
+
+    const guilds = client.guilds.cache;
+    for (const [id, guild] of guilds) {
+      const guildDB = await gm_guild.findOne({
+        where: {
+          guild: id,
+        },
       });
-    });
-  }
+
+      if (!guildDB) {
+        await gm_guild.create({
+          guild: id,
+          name: guild.name,
+          member: guild.memberCount,
+          language: guild.preferredLocale,
+        });
+      } else {
+        guildDB.member = guild.memberCount;
+        guildDB.language = guild.preferredLocale;
+        guildDB.name = guild.name;
+        await guildDB.save();
+      }
+    }
+  },
 };
