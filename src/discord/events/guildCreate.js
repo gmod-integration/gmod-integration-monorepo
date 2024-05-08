@@ -6,13 +6,11 @@ export default {
   async execute(guild) {
     gmLog('event', `Bot joined guild: ${guild.name}`);
 
-    const newGuild = await gm_guild.create({
+    await gm_guild.create({
       guild: guild.id,
       name: guild.name,
       member: guild.memberCount,
       language: guild.preferredLocale,
     });
-
-    await newGuild.save();
   },
 };
