@@ -1,16 +1,16 @@
 import gm_guild from '../../database/shema/gm_guild.js';
 
 export default {
-  name: 'guildMemberRemove',
-  async execute(remove_info) {
+  name: 'guildMemberAdd',
+  async execute(add_info) {
     const editedGuild = await gm_guild.findOne({
       where: {
-        guild: remove_info.guild.id,
+        guild: add_info.guild.id,
       },
     });
 
     if (editedGuild) {
-      editedGuild.member = remove_info.guild.memberCount;
+      editedGuild.member = add_info.guild.memberCount;
       await editedGuild.save();
     }
   },
