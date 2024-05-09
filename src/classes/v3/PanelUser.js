@@ -1,6 +1,7 @@
 import { getConnectionPromise } from '../../database/connection.js';
 import { getUserFromDiscordID } from './User.js';
 import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels.js';
+import redis from '../../redis/index.js';
 
 export class PanelUser {
   constructor(obj = {}) {
@@ -35,6 +36,12 @@ export class PanelUser {
   }
 
   async findGuildsWithPerms() {
+    const redisKey = `user:${this.user.id}:guilds`;
+    const cachedUserPermsGuilds = await redis.get(redisKey);
+    if (cachedUserPermsGuilds !== null) {
+      return JSON.parse(cachedUserPermsGuilds);
+    }
+
     const guildsResult = await fetch('https://discord.com/api/users/@me/guilds', {
       headers: {
         'Content-Type': 'application/json',
@@ -52,6 +59,8 @@ export class PanelUser {
         permGuildsID.push(guildData);
       }
     }
+
+    await redis.set(redisKey, JSON.stringify(permGuildsID), 'EX', 60);
 
     return permGuildsID;
   }
