@@ -195,9 +195,9 @@ export async function putGuildLinks(req, res) {
     });
   }
 
-  link.url = url || '';
-  link.alias = alias || '';
-  link.active = active || true;
+  link.url = url;
+  link.alias = alias;
+  link.active = active;
   await link.save();
 
   return res.send(link);
