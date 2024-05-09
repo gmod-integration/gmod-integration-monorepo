@@ -1,5 +1,5 @@
 import { gmLog } from '../../utils/logger.js';
-import gm_guild from '../../database/shema/gm_guild.js';
+import { updateGuildStat } from '../../models/v3/discordModels.js';
 
 export default {
   name: 'guildUpdate',
@@ -7,16 +7,6 @@ export default {
     if (oldGuild.name === newGuild.name) return;
 
     gmLog('event', `Guild name changed from ${oldGuild.name} to ${newGuild.name}`);
-
-    const editedGuild = await gm_guild.findOne({
-      where: {
-        guild: newGuild.id,
-      },
-    });
-
-    if (editedGuild) {
-      editedGuild.name = newGuild.name;
-      await editedGuild.save();
-    }
+    await updateGuildStat(newGuild);
   },
 };

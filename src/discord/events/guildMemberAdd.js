@@ -1,5 +1,6 @@
-import gm_guild from '../../database/shema/gm_guild.js';
 import { discordConfig } from '../../config/index.js';
+import { updateGuildStat } from '../../models/v3/discordModels.js';
+import { gmLog } from '../../utils/logger.js';
 
 export default {
   name: 'guildMemberAdd',
@@ -8,15 +9,7 @@ export default {
       return;
     }
 
-    const editedGuild = await gm_guild.findOne({
-      where: {
-        guild: add_info.guild.id,
-      },
-    });
-
-    if (editedGuild) {
-      editedGuild.member = add_info.guild.memberCount;
-      await editedGuild.save();
-    }
+    gmLog('event', `New member joined guild: ${add_info.guild.name}`);
+    await updateGuildStat(add_info.guild);
   },
 };

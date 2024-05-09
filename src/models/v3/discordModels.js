@@ -7,6 +7,7 @@ import { getConnectionPromise } from '../../database/connection.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { discordConfig } from '../../config/index.js';
 import { generateToken } from '../../utils/tools.js';
+import gm_guild from '../../database/shema/gm_guild.js';
 
 let userUpdateRoleCurrent = {};
 
@@ -142,6 +143,31 @@ export async function updateRolesToGmod(newMember, roleID, add = true) {
 
     resolve();
   });
+}
+
+export async function updateGuildStat(guild) {
+  const guildDB = await gm_guild.findOne({
+    where: {
+      guild: guild.id,
+    },
+  });
+
+  if (!guildDB) {
+    await gm_guild.create({
+      guild: guild.id,
+      name: guild.name,
+      member: guild.memberCount,
+      language: guild.preferredLocale,
+    });
+  } else {
+    const oldGuildDB = guildDB;
+    guildDB.member = guild.memberCount;
+    guildDB.language = guild.preferredLocale;
+    guildDB.name = guild.name;
+    if (oldGuildDB !== guildDB) {
+      await guildDB.save();
+    }
+  }
 }
 
 export async function getUserGuildsWithPermsForPanel(panelUser) {
