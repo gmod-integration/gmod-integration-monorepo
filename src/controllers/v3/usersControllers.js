@@ -155,14 +155,24 @@ export async function createNewServer(req, res) {
 
 export async function getGuildLinks(req, res) {
   const guild = req.guild;
-  return res.send(await guild.getLinks());
+  return res.send(
+    await gm_link.findAll({
+      where: {
+        guild: guild.id,
+      },
+    }),
+  );
 }
 
 export async function postGuildLinks(req, res) {
   const guild = req.guild;
   const isPremium = await guild.isPremium();
 
-  const links = await guild.getLinks();
+  const links = await gm_link.findAll({
+    where: {
+      guild: guild.id,
+    },
+  });
   if (links.length >= 2 && !isPremium) {
     return res.status(403).send({
       error: 'gm_link limit reached',
