@@ -69,15 +69,8 @@ export class Server extends BaseClass {
   }
 
   async regeneratePublicTempToken() {
-    try {
-      const connection = await getConnectionPromise();
-      const newToken = generateToken(16);
-      await connection.query('UPDATE gm_server SET publicTempToken = ? WHERE id = ?', [newToken, this.id]);
-      this.publicTempToken = newToken;
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    this.publicTempToken = generateToken(16);
+    await this.save();
   }
 
   async regenerateToken() {
