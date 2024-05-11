@@ -15,7 +15,7 @@ gm_server.init(
     },
     token: {
       type: DataTypes.STRING,
-      defaultValue: '',
+      allowNull: false,
     },
     publicTempToken: {
       type: DataTypes.STRING,
@@ -23,19 +23,23 @@ gm_server.init(
     },
     guild: {
       type: DataTypes.STRING,
-      defaultValue: '',
+      allowNull: false,
+      references: {
+        model: 'gm_guild',
+        key: 'guild',
+      },
     },
     ip: {
       type: DataTypes.STRING,
-      defaultValue: '',
+      defaultValue: '127.0.0.1',
     },
     port: {
       type: DataTypes.STRING,
-      defaultValue: '',
+      defaultValue: '27015',
     },
     name: {
       type: DataTypes.STRING,
-      defaultValue: '',
+      defaultValue: 'New Gmod Server',
     },
     image: {
       type: DataTypes.STRING,
