@@ -5,7 +5,7 @@ import { gmLog } from '../../utils/logger.js';
 export default {
   name: 'guildMemberAdd',
   async execute(add_info) {
-    if (add_info.member.id === discordConfig.clientID) {
+    if (add_info.user.id === discordConfig.clientID) {
       return;
     }
 
