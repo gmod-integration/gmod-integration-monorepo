@@ -348,46 +348,41 @@ export class Server extends BaseClass {
 
 export async function generateServerUniqueID() {
   const generatedID = generateToken(10);
-  const connection = await getConnectionPromise();
-  const [results] = await connection.query('SELECT * FROM gm_server WHERE id = ?', [generatedID]);
-  if (results && results[0]) {
+  const server = await gm_server.findOne({
+    where: {
+      id: generatedID,
+    },
+  });
+  if (server) {
     return await generateServerUniqueID();
   }
   return generatedID;
 }
 
 export async function getServerFromID(serverID) {
-  try {
-    const connection = await getConnectionPromise();
-    const [results] = await connection.query('SELECT * FROM gm_server WHERE id = ?', [serverID]);
-    return results[0] ? new Server(results[0]) : null;
-  } catch (error) {
-    console.error(error);
-    return null;
-  }
+  const server = await gm_server.findOne({
+    where: {
+      id: serverID,
+    },
+  });
+  return server ? new Server(server) : null;
 }
 
 export async function getServersFromDiscordGuildID(guildID) {
-  try {
-    const connection = await getConnectionPromise();
-    const [results] = await connection.query('SELECT * FROM gm_server WHERE guild = ?', [guildID]);
-    return results.map((result) => new Server(result));
-  } catch (error) {
-    console.error(error);
-    return [];
-  }
+  const servers = await gm_server.findAll({
+    where: {
+      guild: guildID,
+    },
+  });
+  return servers.map((server) => new Server(server));
 }
 
 export async function createServer(guildID) {
-  const connection = await getConnectionPromise();
   const serverID = await generateServerUniqueID();
-  const [results] = await connection.query('INSERT INTO gm_server (id, token, guild) VALUES (?, ?, ?)', [
-    serverID,
-    generateToken(16),
-    guildID,
-  ]);
-  if (results.affectedRows === 0) {
-    return null;
-  }
-  return await getServerFromID(serverID);
+  const server = await gm_server.create({
+    id: serverID,
+    token: generateToken(16),
+    guild: guildID,
+  });
+  return new Server(server);
 }
