@@ -60,7 +60,7 @@ export class PanelUser {
       }
     }
 
-    await redis.set(redisKey, JSON.stringify(permGuildsID), 'EX', 15);
+    await redis.set(redisKey, JSON.stringify(permGuildsID), 'EX', 30);
 
     return permGuildsID;
   }
