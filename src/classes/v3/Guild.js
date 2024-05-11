@@ -1,9 +1,7 @@
 import axios from 'axios';
 import { discordConfig } from '../../config/index.js';
 import redis from '../../redis/index.js';
-import { getConnectionPromise } from '../../database/connection.js';
 import { getServersFromDiscordGuildID } from './Server.js';
-import gm_link from '../../database/shema/gm_link.js';
 
 export class Guild {
   constructor(guild) {
@@ -19,8 +17,17 @@ export class Guild {
     return await getServersFromDiscordGuildID(this.id);
   }
 
-  async getLinks() {
-    return await getGuildLinks(this.id);
+  async getAdmins() {
+    const members = await this.dscGuild.members.fetch();
+    return members
+      .filter((member) => member.permissions.has('Administrator') && !member.user.bot)
+      .map((member) => {
+        return {
+          id: member.id,
+          name: member.displayName,
+          avatar: member.user.displayAvatarURL(),
+        };
+      });
   }
 }
 
@@ -81,21 +88,4 @@ export async function replyNeedPremium(interaction) {
     .catch((err) => {
       console.error(err);
     });
-}
-
-export async function getGuildLinks(guildID) {
-  return await gm_link.findAll({
-    where: {
-      guild: guildID,
-    },
-  });
-}
-
-export async function getGuildLink(guildID, linkID) {
-  const connection = await getConnectionPromise();
-  const [rows] = await connection.execute('SELECT * FROM gm_link WHERE guild = ? AND id = ? AND active = 1', [
-    guildID,
-    linkID,
-  ]);
-  return rows[0] || null;
 }

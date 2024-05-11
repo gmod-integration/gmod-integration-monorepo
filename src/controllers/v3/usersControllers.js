@@ -252,3 +252,9 @@ export async function postGuildServer(req, res) {
 export async function deleteGuildServer(req, res) {
   //
 }
+
+export async function getGuildAdmins(req, res) {
+  const guild = req.guild;
+
+  return res.send(await guild.getAdmins());
+}

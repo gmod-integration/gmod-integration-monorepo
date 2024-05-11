@@ -10,6 +10,7 @@ import {
   findGuildServer,
   findGuildServers,
   findServerStatus,
+  getGuildAdmins,
   getGuildLinks,
   getProfile,
   getUserGuildsOwnOrAdmins,
@@ -32,6 +33,7 @@ router.get('/:discordID/guilds', getUserGuildsOwnOrAdmins);
 
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', findGuild);
+router.get('/:discordID/guilds/:guildID/admins', getGuildAdmins);
 router.get('/:discordID/guilds/:guildID/links', getGuildLinks);
 router.post('/:discordID/guilds/:guildID/links', postGuildLinks);
 router.put('/:discordID/guilds/:guildID/links/:linkID', putGuildLinks);
