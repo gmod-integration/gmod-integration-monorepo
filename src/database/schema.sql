@@ -219,21 +219,6 @@ create table if not exists gm_role_auto
     primary key (guild, id)
 );
 
-create table if not exists gm_server
-(
-    id              char(255)                       not null
-        primary key,
-    token           char(255)                       not null,
-    publicTempToken text                            null,
-    guild           text                            not null,
-    ip              text       default '127.0.0.1'  not null,
-    port            text       default '27015'      not null,
-    name            text       default 'New Server' not null,
-    image           text       default ''           not null,
-    verified        tinyint(1) default 0            not null,
-    bump            int        default 0            null
-);
-
 create table if not exists gm_server_ban
 (
     id       int auto_increment
