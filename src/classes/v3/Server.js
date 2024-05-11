@@ -328,6 +328,17 @@ export class Server extends BaseClass {
     }
   }
 
+  async delete() {
+    const serverToDelete = await gm_server.findOne({
+      where: {
+        id: this.id,
+      },
+    });
+    if (serverToDelete) {
+      await serverToDelete.destroy();
+    }
+  }
+
   async save() {
     const serverToSave = await gm_server.findOne({
       where: {

@@ -250,24 +250,18 @@ export async function postGuildServer(req, res) {
 }
 
 export async function deleteGuildServer(req, res) {
-  //
+  const server = req.server;
+  await server.delete();
+  return res.send(server);
 }
 
 export async function getGuildAdmins(req, res) {
   const guild = req.guild;
-
   return res.send(await guild.getAdmins());
 }
 
 export async function postGuildServerToken(req, res) {
   const server = req.server;
-
-  try {
-    await server.regenerateToken();
-    return res.send(server);
-  } catch (error) {
-    console.log('Error when regenerating token for server:', server.id);
-    console.error(error);
-    return res.status(500);
-  }
+  await server.regenerateToken();
+  return res.send(server);
 }
