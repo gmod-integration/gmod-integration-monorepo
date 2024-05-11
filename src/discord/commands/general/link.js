@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { getGuildLink, getGuildLinks } from '../../../classes/v3/Guild.js';
 import { getTranslate } from '../../../utils/localizations.js';
+import gm_link from '../../../database/shema/gm_link.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -14,7 +14,11 @@ export default {
   async execute(interaction) {
     const lang = interaction.guild.preferredLocale;
     const linkID = interaction.options.getString('link');
-    const linkInfo = await getGuildLink(interaction.guild.id, linkID);
+    const linkInfo = await gm_link.findOne({
+      where: {
+        id: linkID,
+      },
+    });
 
     if (!linkInfo) {
       if (interaction.member.permissions.has('ADMINISTRATOR')) {
@@ -41,7 +45,12 @@ export default {
     const focusedOption = interaction.options.getFocused(true);
     const choices = {};
 
-    const guildLinks = await getGuildLinks(interaction.guild.id);
+    const guildLinks = await gm_link.findAll({
+      where: {
+        guild: interaction.guild.id,
+      },
+    });
+
     guildLinks.forEach((link) => {
       choices[link.id] = link.alias;
     });
