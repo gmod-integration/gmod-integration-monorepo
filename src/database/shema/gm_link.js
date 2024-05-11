@@ -39,7 +39,7 @@ gm_link.init(
     sequelize,
     modelName: 'gm_link',
     tableName: 'gm_link',
-    timestamps: false,
+    timestamps: true,
   },
 );
 

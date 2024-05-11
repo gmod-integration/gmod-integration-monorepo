@@ -33,7 +33,7 @@ gm_guild.init(
     sequelize,
     modelName: 'gm_guild',
     tableName: 'gm_guild',
-    timestamps: false,
+    timestamps: true,
   },
 );
 
