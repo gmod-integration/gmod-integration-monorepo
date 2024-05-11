@@ -9,6 +9,7 @@ import {
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
 import gm_link from '../../database/shema/gm_link.js';
+import { badArgument } from '../../utils/tools.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -234,19 +235,23 @@ export async function deleteGuildLinks(req, res) {
   return res.send(link);
 }
 
-/*
-
-  putGuildServer,
-  postGuildServer,
-  deleteGuildServer,
- */
-
 export async function putGuildServer(req, res) {
-  //
-}
+  const server = req.server;
+  const { name, image, ip, port } = req.body;
 
-export async function postGuildServer(req, res) {
-  //
+  if (badArgument([name, image, ip, port])) {
+    return res.status(400).send({
+      error: 'Missing required fields',
+    });
+  }
+
+  server.name = name;
+  server.image = image;
+  server.ip = ip;
+  server.port = port;
+
+  await server.save();
+  return res.send(server);
 }
 
 export async function deleteGuildServer(req, res) {
