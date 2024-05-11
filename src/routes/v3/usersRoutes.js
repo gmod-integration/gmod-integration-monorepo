@@ -17,6 +17,7 @@ import {
   oauthLogin,
   postGuildLinks,
   postGuildServer,
+  postGuildServerToken,
   putGuildLinks,
   putGuildServer,
 } from '../../controllers/v3/usersControllers.js';
@@ -46,6 +47,7 @@ router.use('/:discordID/guilds/:guildID/servers/:serverID', userServerValidator)
 router.get('/:discordID/guilds/:guildID/servers/:serverID', findGuildServer);
 router.put('/:discordID/guilds/:guildID/servers/:serverID', putGuildServer);
 router.post('/:discordID/guilds/:guildID/servers/:serverID', postGuildServer);
+router.post('/:discordID/guilds/:guildID/servers/:serverID/token', postGuildServerToken);
 router.delete('/:discordID/guilds/:guildID/servers/:serverID', deleteGuildServer);
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status', findServerStatus);
 router.post('/:discordID/guilds/:guildID/servers/:serverID/status', createGuildStatusServer);

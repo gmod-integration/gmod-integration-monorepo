@@ -7,6 +7,7 @@ import redis from '../../redis/index.js';
 import { getClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import { gmLog } from '../../utils/logger.js';
+import gm_server from '../../database/shema/gm_server.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -20,6 +21,7 @@ export class Server extends BaseClass {
     this.image = obj.image;
     this.verified = obj.verified;
     this.publicTempToken = obj.publicTempToken;
+    this.bump = obj.bump;
   }
 
   async getStatusChannelAndMessage() {
@@ -76,6 +78,11 @@ export class Server extends BaseClass {
       console.error(error);
       throw error;
     }
+  }
+
+  async regenerateToken() {
+    this.token = generateToken(16);
+    await this.save();
   }
 
   async getServerStatusButtons() {
@@ -325,6 +332,23 @@ export class Server extends BaseClass {
     } catch (error) {
       console.error(error);
       return null;
+    }
+  }
+
+  async save() {
+    const serverToSave = await gm_server.findOne({
+      where: {
+        id: this.id,
+      },
+    });
+    if (serverToSave) {
+      serverToSave.name = this.name;
+      serverToSave.ip = this.ip;
+      serverToSave.port = this.port;
+      serverToSave.image = this.image;
+      serverToSave.bump = this.bump;
+      serverToSave.verified = this.verified;
+      await serverToSave.save();
     }
   }
 }

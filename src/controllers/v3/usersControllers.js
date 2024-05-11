@@ -258,3 +258,16 @@ export async function getGuildAdmins(req, res) {
 
   return res.send(await guild.getAdmins());
 }
+
+export async function postGuildServerToken(req, res) {
+  const server = req.server;
+
+  try {
+    await server.regenerateToken();
+    return res.send(server);
+  } catch (error) {
+    console.log('Error when regenerating token for server:', server.id);
+    console.error(error);
+    return res.status(500);
+  }
+}
