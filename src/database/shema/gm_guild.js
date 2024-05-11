@@ -43,7 +43,7 @@ gm_guild
     gmLog('sequelize', 'Table created: gm_guild');
   })
   .catch((error) => {
-    console.error('Error creating link table:', error);
+    console.error('Error creating gm_guild table:', error);
   });
 
 export default gm_guild;
