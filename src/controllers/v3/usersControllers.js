@@ -314,5 +314,11 @@ export async function createGuildVerificationsRoles(req, res) {
     });
   }
 
+  if (!guild.dscGuild.roles.cache.has(roleID)) {
+    return res.status(404).send({
+      error: 'role not found',
+    });
+  }
+
   return res.send(await guild.createVerificationRole(roleID));
 }
