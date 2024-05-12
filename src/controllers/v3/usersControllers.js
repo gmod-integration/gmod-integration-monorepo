@@ -9,7 +9,6 @@ import {
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
 import gm_link from '../../database/shema/gm_link.js';
-import { badArgument } from '../../utils/tools.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -156,13 +155,13 @@ export async function createNewServer(req, res) {
 
 export async function getGuildLinks(req, res) {
   const guild = req.guild;
-  return res.send(
-    await gm_link.findAll({
-      where: {
-        guild: guild.id,
-      },
-    }),
-  );
+  const links = await gm_link.findAll({
+    where: {
+      guild: guild.id,
+    },
+  });
+
+  return res.send(links);
 }
 
 export async function postGuildLinks(req, res) {
@@ -174,16 +173,16 @@ export async function postGuildLinks(req, res) {
       guild: guild.id,
     },
   });
+
   if (links.length >= 2 && !isPremium) {
     return res.status(403).send({
-      error: 'gm_link limit reached',
+      error: 'max links reached',
     });
   }
 
   const newLink = await gm_link.create({
     guild: guild.id,
   });
-  await newLink.save();
 
   return res.send(newLink);
 }
@@ -193,24 +192,24 @@ export async function putGuildLinks(req, res) {
   const guild = req.guild;
   const { url, alias, active } = req.body;
 
-  const link = await gm_link.findByPk(linkID);
+  const link = await gm_link.findOne({
+    where: {
+      id: linkID,
+      guild: guild.id,
+    },
+  });
+
   if (!link) {
     return res.status(404).send({
-      error: 'gm_link not found',
+      error: 'link not found or not belong to guild',
     });
   }
 
-  if (link.guild !== guild.id) {
-    return res.status(403).send({
-      error: 'Not authorized',
-    });
-  }
+  link.url = url || link.url;
+  link.alias = alias || link.alias;
+  link.active = active || link.active;
 
-  link.url = url;
-  link.alias = alias;
-  link.active = active;
   await link.save();
-
   return res.send(link);
 }
 
@@ -218,16 +217,16 @@ export async function deleteGuildLinks(req, res) {
   const { linkID } = req.params;
   const guild = req.guild;
 
-  const link = await gm_link.findByPk(linkID);
+  const link = await gm_link.findOne({
+    where: {
+      id: linkID,
+      guild: guild.id,
+    },
+  });
+
   if (!link) {
     return res.status(404).send({
-      error: 'gm_link not found',
-    });
-  }
-
-  if (link.guild !== guild.id) {
-    return res.status(403).send({
-      error: 'Not authorized',
+      error: 'link not found or not belong to guild',
     });
   }
 
@@ -239,16 +238,10 @@ export async function putGuildServer(req, res) {
   const server = req.server;
   const { name, image, ip, port } = req.body;
 
-  if (badArgument([name, image, ip, port])) {
-    return res.status(400).send({
-      error: 'Missing required fields',
-    });
-  }
-
-  server.name = name;
-  server.image = image;
-  server.ip = ip;
-  server.port = port;
+  server.name = name || server.name;
+  server.image = image || server.image;
+  server.ip = ip || server.ip;
+  server.port = port || server.port;
 
   await server.save();
   return res.send(server);
