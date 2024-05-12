@@ -138,31 +138,6 @@ create table if not exists gm_guild_tickets
     primary key (guildID, threadID)
 );
 
-create table if not exists gm_guild_verify_channel
-(
-    guildID   char(255) not null
-        primary key,
-    channelID text      null
-);
-
-create table if not exists gm_guild_verify_message
-(
-    guildID   char(255) not null
-        primary key,
-    channelID text      null,
-    messageID text      null
-);
-
-create table if not exists gm_guild_verify_roles
-(
-    id      int auto_increment
-        primary key,
-    guildID char(255)            null,
-    roleID  char(255)            null,
-    isGive  tinyint(1) default 1 null,
-    enable  tinyint(1) default 0 null
-);
-
 create table if not exists gm_log_api
 (
     server_id char(255)  null,
