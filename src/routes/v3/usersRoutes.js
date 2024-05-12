@@ -13,6 +13,7 @@ import {
   getGuildAdmins,
   getGuildLinks,
   getProfile,
+  getTodo,
   getUserGuildsOwnOrAdmins,
   oauthLogin,
   postGuildLinks,
@@ -38,6 +39,12 @@ router.get('/:discordID/guilds/:guildID/links', getGuildLinks);
 router.post('/:discordID/guilds/:guildID/links', postGuildLinks);
 router.put('/:discordID/guilds/:guildID/links/:linkID', putGuildLinks);
 router.delete('/:discordID/guilds/:guildID/links/:linkID', deleteGuildLinks);
+router.get('/:discordID/guilds/:guildID/verifications', getTodo);
+router.put('/:discordID/guilds/:guildID/verifications', getTodo);
+router.get('/:discordID/guilds/:guildID/verifications/roles', getTodo);
+router.put('/:discordID/guilds/:guildID/verifications/roles/:roleID', getTodo);
+router.post('/:discordID/guilds/:guildID/verifications/roles/:roleID', getTodo);
+router.delete('/:discordID/guilds/:guildID/verifications/roles/:roleID', getTodo);
 router.get('/:discordID/guilds/:guildID/channels', findGuildChannels);
 router.get('/:discordID/guilds/:guildID/servers', findGuildServers);
 router.post('/:discordID/guilds/:guildID/servers', createNewServer);
