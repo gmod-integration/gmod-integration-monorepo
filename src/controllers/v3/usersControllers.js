@@ -113,6 +113,21 @@ export async function findGuildChannels(req, res, next) {
   );
 }
 
+export async function getGuildRoles(req, res) {
+  const dscGuild = req.dscGuild;
+
+  return res.send(
+    dscGuild.roles.cache
+      .map((role) => ({
+        id: role.id,
+        name: role.name,
+        position: role.position,
+      }))
+      .filter((role) => role.name !== '@everyone')
+      .sort((a, b) => a.position - b.position),
+  );
+}
+
 export async function findGuildServers(req, res) {
   const dscGuild = req.dscGuild;
 

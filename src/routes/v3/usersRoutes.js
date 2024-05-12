@@ -14,6 +14,7 @@ import {
   findServerStatus,
   getGuildAdmins,
   getGuildLinks,
+  getGuildRoles,
   getGuildVerificationsRoles,
   getProfile,
   getTodo,
@@ -38,6 +39,10 @@ router.get('/:discordID/guilds', getUserGuildsOwnOrAdmins);
 
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', findGuild);
+router.get('/:discordID/guilds/:guildID/channels', findGuildChannels);
+router.get('/:discordID/guilds/:guildID/roles', getGuildRoles);
+router.get('/:discordID/guilds/:guildID/servers', findGuildServers);
+router.post('/:discordID/guilds/:guildID/servers', createNewServer);
 router.get('/:discordID/guilds/:guildID/admins', getGuildAdmins);
 router.get('/:discordID/guilds/:guildID/links', getGuildLinks);
 router.post('/:discordID/guilds/:guildID/links', postGuildLinks);
@@ -49,9 +54,6 @@ router.get('/:discordID/guilds/:guildID/verifications/roles', getGuildVerificati
 router.put('/:discordID/guilds/:guildID/verifications/roles/:roleID', putGuildVerificationsRoles);
 router.post('/:discordID/guilds/:guildID/verifications/roles/:roleID', createGuildVerificationsRoles);
 router.delete('/:discordID/guilds/:guildID/verifications/roles/:roleID', deleteGuildVerificationsRoles);
-router.get('/:discordID/guilds/:guildID/channels', findGuildChannels);
-router.get('/:discordID/guilds/:guildID/servers', findGuildServers);
-router.post('/:discordID/guilds/:guildID/servers', createNewServer);
 
 router.use('/:discordID/guilds/:guildID/servers/:serverID', userServerValidator);
 router.get('/:discordID/guilds/:guildID/servers/:serverID', findGuildServer);
