@@ -183,9 +183,9 @@ export async function putGuildLinks(req, res) {
     });
   }
 
-  link.url = url || link.url;
-  link.alias = alias || link.alias;
-  link.active = active || link.active;
+  link.url = url !== undefined ? url : link.url;
+  link.alias = alias !== undefined ? alias : link.alias;
+  link.active = active !== undefined ? active : link.active;
 
   await link.save();
   return res.send(link);
@@ -210,10 +210,10 @@ export async function putGuildServer(req, res) {
   const server = req.server;
   const { name, image, ip, port } = req.body;
 
-  server.name = name || server.name;
-  server.image = image || server.image;
-  server.ip = ip || server.ip;
-  server.port = port || server.port;
+  server.name = name !== undefined ? name : server.name;
+  server.image = image !== undefined ? image : server.image;
+  server.ip = ip !== undefined ? ip : server.ip;
+  server.port = port !== undefined ? port : server.port;
 
   await server.save();
   return res.send(server);
@@ -245,4 +245,59 @@ export function getTodo(req, res) {
 export async function getGuildVerificationsRoles(req, res) {
   const guild = req.guild;
   return res.send(await guild.getVerificationRoles());
+}
+
+export async function putGuildVerificationsRoles(req, res) {
+  const guild = req.guild;
+  const { roleID } = req.params;
+  const { isGiveRole, enabled } = req.body;
+
+  const verificationRole = await guild.getVerificationRole(roleID);
+  if (!verificationRole) {
+    return res.status(404).send({
+      error: 'role not found or not belong to guild',
+    });
+  }
+
+  verificationRole.isGiveRole = isGiveRole !== undefined ? isGiveRole : verificationRole.isGiveRole;
+  verificationRole.enabled = enabled !== undefined ? enabled : verificationRole.enabled;
+
+  await verificationRole.save();
+  return res.send(verificationRole);
+}
+
+export async function deleteGuildVerificationsRoles(req, res) {
+  const guild = req.guild;
+  const { roleID } = req.params;
+
+  const verificationRole = await guild.getVerificationRole(roleID);
+  if (!verificationRole) {
+    return res.status(404).send({
+      error: 'role not found or not belong to guild',
+    });
+  }
+
+  await verificationRole.destroy();
+  return res.send(verificationRole);
+}
+
+export async function createGuildVerificationsRoles(req, res) {
+  const guild = req.guild;
+  const { roleID } = req.params;
+  const isPremium = await guild.isPremium();
+
+  const verificationRoles = await guild.getVerificationRoles();
+  if (verificationRoles.length >= 2 && !isPremium) {
+    return res.status(403).send({
+      error: 'max verification roles reached',
+    });
+  }
+
+  if (verificationRoles.find((role) => role.roleID === roleID)) {
+    return res.status(409).send({
+      error: 'role already exists',
+    });
+  }
+
+  return res.send(await guild.createVerificationRole(roleID));
 }

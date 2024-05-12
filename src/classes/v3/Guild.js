@@ -3,6 +3,7 @@ import { discordConfig } from '../../config/index.js';
 import redis from '../../redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
 import gm_link from '../../database/shema/gm_link.js';
+import gm_guild_verify_role from '../../database/shema/gm_guild_verify_role.js';
 
 export class Guild {
   constructor(guild) {
@@ -51,6 +52,30 @@ export class Guild {
   async createNewLink() {
     return await gm_link.create({
       guild: this.id,
+    });
+  }
+
+  async getVerificationRoles() {
+    return await gm_guild_verify_role.findAll({
+      where: {
+        guildID: this.id,
+      },
+    });
+  }
+
+  async getVerificationRole(roleID) {
+    return await gm_guild_verify_role.findOne({
+      where: {
+        guildID: this.id,
+        roleID,
+      },
+    });
+  }
+
+  async createVerificationRole(roleID) {
+    return await gm_guild_verify_role.create({
+      guildID: this.id,
+      roleID,
     });
   }
 }

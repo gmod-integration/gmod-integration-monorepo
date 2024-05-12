@@ -1,9 +1,11 @@
 import express from 'express';
 import {
   createGuildStatusServer,
+  createGuildVerificationsRoles,
   createNewServer,
   deleteGuildLinks,
   deleteGuildServer,
+  deleteGuildVerificationsRoles,
   findCurrentUser,
   findGuild,
   findGuildChannels,
@@ -12,6 +14,7 @@ import {
   findServerStatus,
   getGuildAdmins,
   getGuildLinks,
+  getGuildVerificationsRoles,
   getProfile,
   getTodo,
   getUserGuildsOwnOrAdmins,
@@ -20,6 +23,7 @@ import {
   postGuildServerToken,
   putGuildLinks,
   putGuildServer,
+  putGuildVerificationsRoles,
 } from '../../controllers/v3/usersControllers.js';
 import { userAdminGuildValidator, userServerValidator, userValidator } from '../../middleware/v3/userValidator.js';
 
@@ -41,10 +45,10 @@ router.put('/:discordID/guilds/:guildID/links/:linkID', putGuildLinks);
 router.delete('/:discordID/guilds/:guildID/links/:linkID', deleteGuildLinks);
 router.get('/:discordID/guilds/:guildID/verifications', getTodo);
 router.put('/:discordID/guilds/:guildID/verifications', getTodo);
-router.get('/:discordID/guilds/:guildID/verifications/roles', getTodo);
-router.put('/:discordID/guilds/:guildID/verifications/roles/:roleID', getTodo);
-router.post('/:discordID/guilds/:guildID/verifications/roles/:roleID', getTodo);
-router.delete('/:discordID/guilds/:guildID/verifications/roles/:roleID', getTodo);
+router.get('/:discordID/guilds/:guildID/verifications/roles', getGuildVerificationsRoles);
+router.put('/:discordID/guilds/:guildID/verifications/roles/:roleID', putGuildVerificationsRoles);
+router.post('/:discordID/guilds/:guildID/verifications/roles/:roleID', createGuildVerificationsRoles);
+router.delete('/:discordID/guilds/:guildID/verifications/roles/:roleID', deleteGuildVerificationsRoles);
 router.get('/:discordID/guilds/:guildID/channels', findGuildChannels);
 router.get('/:discordID/guilds/:guildID/servers', findGuildServers);
 router.post('/:discordID/guilds/:guildID/servers', createNewServer);
