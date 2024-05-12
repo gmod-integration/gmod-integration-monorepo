@@ -8,7 +8,6 @@ import {
   getUserTokenFromCode,
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
-import gm_link from '../../database/shema/gm_link.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -155,36 +154,21 @@ export async function createNewServer(req, res) {
 
 export async function getGuildLinks(req, res) {
   const guild = req.guild;
-  const links = await gm_link.findAll({
-    where: {
-      guild: guild.id,
-    },
-  });
-
-  return res.send(links);
+  return res.send(await guild.getLinks());
 }
 
 export async function postGuildLinks(req, res) {
   const guild = req.guild;
   const isPremium = await guild.isPremium();
 
-  const links = await gm_link.findAll({
-    where: {
-      guild: guild.id,
-    },
-  });
-
+  const links = await guild.getLinks();
   if (links.length >= 2 && !isPremium) {
     return res.status(403).send({
       error: 'max links reached',
     });
   }
 
-  const newLink = await gm_link.create({
-    guild: guild.id,
-  });
-
-  return res.send(newLink);
+  return res.send(await guild.createNewLink());
 }
 
 export async function putGuildLinks(req, res) {
@@ -192,13 +176,7 @@ export async function putGuildLinks(req, res) {
   const guild = req.guild;
   const { url, alias, active } = req.body;
 
-  const link = await gm_link.findOne({
-    where: {
-      id: linkID,
-      guild: guild.id,
-    },
-  });
-
+  const link = await guild.getLink(linkID);
   if (!link) {
     return res.status(404).send({
       error: 'link not found or not belong to guild',
@@ -217,13 +195,7 @@ export async function deleteGuildLinks(req, res) {
   const { linkID } = req.params;
   const guild = req.guild;
 
-  const link = await gm_link.findOne({
-    where: {
-      id: linkID,
-      guild: guild.id,
-    },
-  });
-
+  const link = await guild.getLink(linkID);
   if (!link) {
     return res.status(404).send({
       error: 'link not found or not belong to guild',
@@ -262,4 +234,15 @@ export async function postGuildServerToken(req, res) {
   const server = req.server;
   await server.regenerateToken();
   return res.send(server);
+}
+
+export function getTodo(req, res) {
+  return res.status(501).send({
+    error: 'Not Implemented',
+  });
+}
+
+export async function getGuildVerificationsRoles(req, res) {
+  const guild = req.guild;
+  return res.send(await guild.getVerificationRoles());
 }

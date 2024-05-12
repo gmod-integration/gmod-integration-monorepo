@@ -2,6 +2,7 @@ import axios from 'axios';
 import { discordConfig } from '../../config/index.js';
 import redis from '../../redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
+import gm_link from '../../database/shema/gm_link.js';
 
 export class Guild {
   constructor(guild) {
@@ -28,6 +29,29 @@ export class Guild {
           avatar: member.user.displayAvatarURL(),
         };
       });
+  }
+
+  async getLinks() {
+    return await gm_link.findAll({
+      where: {
+        guild: this.id,
+      },
+    });
+  }
+
+  async getLink(linkID) {
+    return await gm_link.findOne({
+      where: {
+        guild: this.id,
+        id: linkID,
+      },
+    });
+  }
+
+  async createNewLink() {
+    return await gm_link.create({
+      guild: this.id,
+    });
   }
 }
 
