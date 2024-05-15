@@ -16,8 +16,9 @@ export default {
   async execute(interaction) {
     const user = interaction.options.getUser('user') || interaction.user;
     const lang = interaction.guild.preferredLocale;
-    const gm_user = await getUserFromDiscordID(user.id);
+    let gm_user = await getUserFromDiscordID(user.id);
     if (!gm_user) {
+      gm_user = {};
       gm_user.rank = 'user';
       gm_user.trustLevel = 50;
     }
