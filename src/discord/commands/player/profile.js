@@ -17,6 +17,10 @@ export default {
     const user = interaction.options.getUser('user') || interaction.user;
     const lang = interaction.guild.preferredLocale;
     const gm_user = await getUserFromDiscordID(user.id);
+    if (!gm_user) {
+      gm_user.rank = 'user';
+      gm_user.trustLevel = 50;
+    }
 
     const embed = {
       color: 0x2b2d31,
@@ -37,7 +41,7 @@ export default {
         },
         {
           name: '🛠️⠀' + (await getTranslate('bot_rank', lang)),
-          value: await getTranslate(gm_user.rank || 'user', lang),
+          value: await getTranslate(gm_user.rank, lang),
           inline: true,
         },
         {
@@ -46,7 +50,7 @@ export default {
         },
         {
           name: '🛡️⠀' + (await getTranslate('trust_rank', lang)),
-          value: await getTrustRank(gm_user.trustLevel || 50, lang),
+          value: await getTrustRank(gm_user.trustLevel, lang),
           inline: true,
         },
         {
