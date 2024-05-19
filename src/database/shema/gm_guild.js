@@ -10,7 +10,6 @@ gm_guild.init(
   {
     guild: {
       type: DataTypes.STRING,
-      autoIncrement: true,
       primaryKey: true,
     },
     name: {
