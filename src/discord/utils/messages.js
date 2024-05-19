@@ -6,14 +6,14 @@ import { getClient } from '../index.js';
 
 export async function getStatusMessage(server, data, buttons, lang) {
   gmLog('status', 'refresh server status message for ' + server.getID());
-
-  const servOnline = !!data.hostname;
-  const hostname = data.hostname ? data.hostname : await getTranslate('offline', lang);
-  const map = data.map ? data.map : await getTranslate('offline', lang);
-  const gameMode = data.gameMode ? data.gameMode : await getTranslate('offline', lang);
-  const players = data.players ? data.players : 0;
-  const maxPlayers = data.maxPlayers ? data.maxPlayers : 0;
-  const uptime = data.uptime ? data.uptime : await getTranslate('offline', lang);
+  
+  let { servOnline, hostname, map, gameMode, players, maxPlayers } = data || {};
+  servOnline = !!hostname;
+  hostname = hostname === undefined ? await getTranslate('offline', lang) : hostname;
+  map = map === undefined ? await getTranslate('offline', lang) : map;
+  gameMode = gameMode === undefined ? await getTranslate('offline', lang) : gameMode;
+  players = players === undefined ? 0 : players;
+  maxPlayers = maxPlayers === undefined ? 0 : maxPlayers;
 
   const embed = {
     color: 0x2b2d31,
