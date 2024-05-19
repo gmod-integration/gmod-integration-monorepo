@@ -322,3 +322,64 @@ export async function createGuildVerificationsRoles(req, res) {
 
   return res.send(await guild.createVerificationRole(roleID));
 }
+
+// Status Buttons
+
+export async function getServerStatus(req, res) {
+  return getTodo(req, res);
+}
+
+export async function postServerStatus(req, res) {
+  return getTodo(req, res);
+}
+
+export async function deleteServerStatus(req, res) {
+  return getTodo(req, res);
+}
+
+export async function getServerStatusButtons(req, res) {
+  const server = req.server;
+  return res.send(await server.findStatusButtons());
+}
+
+export async function putServerStatusButtons(req, res) {
+  const server = req.server;
+  const { buttonID } = req.params;
+  const { name, emoji, url, enable } = req.body;
+
+  const button = await server.findStatusButton(buttonID);
+  if (!button) {
+    return res.status(404).send({
+      error: 'button not found',
+    });
+  }
+
+  button.name = name !== undefined ? name : button.name;
+  button.emoji = emoji !== undefined ? emoji : button.emoji;
+  button.url = url !== undefined ? url : button.url;
+  button.enable = enable !== undefined ? enable : button.enable;
+
+  await button.save();
+  return res.send(button);
+}
+
+export async function createServerStatusButtons(req, res) {
+  const server = req.server;
+  const button = await server.createStatusButton();
+  return res.send(button);
+}
+
+export async function deleteServerStatusButtons(req, res) {
+  const server = req.server;
+  const { buttonID } = req.params;
+
+  const button = await server.findStatusButton(buttonID);
+  if (!button) {
+    return res.status(404).send({
+      error: 'button not found',
+    });
+  }
+
+  await server.destroyStatusButton(buttonID);
+  return res.send(button);
+}

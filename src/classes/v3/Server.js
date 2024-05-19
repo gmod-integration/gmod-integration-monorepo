@@ -8,6 +8,7 @@ import { getClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import { gmLog } from '../../utils/logger.js';
 import gm_server from '../../database/shema/gm_server.js';
+import gm_status_button from '../../database/shema/gm_status_button.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -353,6 +354,40 @@ export class Server extends BaseClass {
       serverToSave.bump = this.bump;
       serverToSave.verified = this.verified;
       await serverToSave.save();
+    }
+  }
+
+  async findStatusButtons() {
+    return await gm_status_button.findAll({
+      where: {
+        server: this.id,
+      },
+    });
+  }
+
+  async findStatusButton(id) {
+    return await gm_status_button.findOne({
+      where: {
+        id,
+        server: this.id,
+      },
+    });
+  }
+
+  async createStatusButton() {
+    return await gm_status_button.create({
+      server: this.id,
+    });
+  }
+
+  async destroyStatusButton() {
+    const statusButton = await gm_status_button.findOne({
+      where: {
+        server: this.id,
+      },
+    });
+    if (statusButton) {
+      await statusButton.destroy();
     }
   }
 }

@@ -1,22 +1,23 @@
 import express from 'express';
 import {
-  createGuildStatusServer,
   createGuildVerificationsRoles,
   createNewServer,
+  createServerStatusButtons,
   deleteGuildLinks,
   deleteGuildServer,
   deleteGuildVerificationsRoles,
+  deleteServerStatusButtons,
   findCurrentUser,
   findGuild,
   findGuildChannels,
   findGuildServer,
   findGuildServers,
-  findServerStatus,
   getGuildAdmins,
   getGuildLinks,
   getGuildRoles,
   getGuildVerificationsRoles,
   getProfile,
+  getServerStatusButtons,
   getTodo,
   getUserGuildsOwnOrAdmins,
   oauthLogin,
@@ -25,6 +26,7 @@ import {
   putGuildLinks,
   putGuildServer,
   putGuildVerificationsRoles,
+  putServerStatusButtons,
 } from '../../controllers/v3/usersControllers.js';
 import { userAdminGuildValidator, userServerValidator, userValidator } from '../../middleware/v3/userValidator.js';
 
@@ -41,13 +43,16 @@ router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', findGuild);
 router.get('/:discordID/guilds/:guildID/channels', findGuildChannels);
 router.get('/:discordID/guilds/:guildID/roles', getGuildRoles);
+router.get('/:discordID/guilds/:guildID/admins', getGuildAdmins);
+// Servers
 router.get('/:discordID/guilds/:guildID/servers', findGuildServers);
 router.post('/:discordID/guilds/:guildID/servers', createNewServer);
-router.get('/:discordID/guilds/:guildID/admins', getGuildAdmins);
+// Links
 router.get('/:discordID/guilds/:guildID/links', getGuildLinks);
 router.post('/:discordID/guilds/:guildID/links', postGuildLinks);
 router.put('/:discordID/guilds/:guildID/links/:linkID', putGuildLinks);
 router.delete('/:discordID/guilds/:guildID/links/:linkID', deleteGuildLinks);
+// Verifications
 router.get('/:discordID/guilds/:guildID/verifications', getTodo);
 router.put('/:discordID/guilds/:guildID/verifications', getTodo);
 router.get('/:discordID/guilds/:guildID/verifications/roles', getGuildVerificationsRoles);
@@ -60,7 +65,13 @@ router.get('/:discordID/guilds/:guildID/servers/:serverID', findGuildServer);
 router.put('/:discordID/guilds/:guildID/servers/:serverID', putGuildServer);
 router.post('/:discordID/guilds/:guildID/servers/:serverID/token', postGuildServerToken);
 router.delete('/:discordID/guilds/:guildID/servers/:serverID', deleteGuildServer);
-router.get('/:discordID/guilds/:guildID/servers/:serverID/status', findServerStatus);
-router.post('/:discordID/guilds/:guildID/servers/:serverID/status', createGuildStatusServer);
+// Status
+// router.get('/:discordID/guilds/:guildID/servers/:serverID/status', getServerStatus);
+// router.post('/:discordID/guilds/:guildID/servers/:serverID/status/:channelID', postServerStatus);
+// router.delete('/:discordID/guilds/:guildID/servers/:serverID/status', deleteServerStatus);
+router.get('/:discordID/guilds/:guildID/servers/:serverID/status/buttons', getServerStatusButtons);
+router.put('/:discordID/guilds/:guildID/servers/:serverID/status/buttons/:buttonID', putServerStatusButtons);
+router.post('/:discordID/guilds/:guildID/servers/:serverID/status/buttons', createServerStatusButtons);
+router.delete('/:discordID/guilds/:guildID/servers/:serverID/status/buttons/:buttonID', deleteServerStatusButtons);
 
 export default router;
