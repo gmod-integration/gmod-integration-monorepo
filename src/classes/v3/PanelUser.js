@@ -6,6 +6,7 @@ import redis from '../../redis/index.js';
 export class PanelUser {
   constructor(obj = {}) {
     this.user = obj.user;
+    this.discordID = obj.discordID;
     this.panelToken = {
       token: obj.panelToken.token,
       creationDate: obj.panelToken.creationDate,
@@ -36,13 +37,13 @@ export class PanelUser {
   }
 
   async findGuilds() {
-    const redisKey = `user:${this.user.id}:guilds`;
+    const redisKey = `user:${this.discordID}:guilds`;
     const cachedUserGuilds = await redis.get(redisKey);
     if (cachedUserGuilds !== null) {
       return JSON.parse(cachedUserGuilds);
     }
 
-    const redisKey2 = `user:${this.user.id}:isWaitingGuilds`;
+    const redisKey2 = `user:${this.discordID}:isWaitingGuilds`;
     const isWaitingGuilds = await redis.get(redisKey2);
 
     if (isWaitingGuilds) {
@@ -57,7 +58,7 @@ export class PanelUser {
       return await this.findGuilds();
     }
 
-    await redis.set(redisKey2, 'true');
+    await redis.set(redisKey2, 'true', 'EX', 30);
     const guildsResult = await fetch('https://discord.com/api/users/@me/guilds', {
       headers: {
         'Content-Type': 'application/json',
