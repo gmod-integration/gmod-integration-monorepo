@@ -207,7 +207,6 @@ export async function getUserGuildsWithPermsForPanel(panelUser) {
 }
 
 export async function getUserTokenFromCode(code, redirectURI) {
-  console.log(redirectURI);
   const discordRequest = await fetch('https://discord.com/api/oauth2/token', {
     method: 'POST',
     headers: {
