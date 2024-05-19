@@ -11,6 +11,7 @@ gm_status.init(
     server: {
       type: DataTypes.STRING,
       allowNull: false,
+      primaryKey: true,
       references: {
         model: 'gm_server',
         key: 'id',

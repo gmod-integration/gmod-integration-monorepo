@@ -1,6 +1,7 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
 import { createServer, getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { discordConfig } from '../../config/index.js';
+import { ChannelType } from 'discord.js';
 import {
   addUserToGuild,
   getDiscordUserFromID,
@@ -162,8 +163,7 @@ export async function createGuildStatusServer(req, res) {
 
 export async function findServerStatus(req, res) {
   const server = req.server;
-
-  return res.send(server.getStatusChannelAndMessage());
+  return res.send(await server.getStatusChannelAndMessage());
 }
 
 export async function createNewServer(req, res) {
@@ -340,12 +340,28 @@ export async function createGuildVerificationsRoles(req, res) {
 
 // Status Buttons
 
-export async function postServerStatus(req, res) {
-  return getTodo(req, res);
+export async function deleteServerStatus(req, res) {
+  try {
+    const server = req.server;
+    return res.send(await server.deleteStatus());
+  } catch (error) {
+    return res.status(500).send({
+      error: error.message,
+    });
+  }
 }
 
-export async function deleteServerStatus(req, res) {
-  return getTodo(req, res);
+export async function postServerStatus(req, res) {
+  try {
+    const server = req.server;
+    const { channelID } = req.body;
+    await server.deleteStatus();
+    return res.send(await server.createStatus(channelID));
+  } catch (error) {
+    return res.status(500).send({
+      error: error.message,
+    });
+  }
 }
 
 export async function getServerStatusButtons(req, res) {

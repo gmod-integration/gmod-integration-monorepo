@@ -10,6 +10,8 @@ import { gmLog } from '../../utils/logger.js';
 import gm_server from '../../database/schema/gm_server.js';
 import gm_status_button from '../../database/schema/gm_status_button.js';
 import gm_status from '../../database/schema/gm_status.js';
+import gm_server_status from '../../database/schema/gm_server_status.js';
+import { ChannelType } from 'discord.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -98,6 +100,66 @@ export class Server extends BaseClass {
     return [];
   }
 
+  async getDiscordGuild() {
+    const dscClient = await getClient();
+    const guild = await dscClient.guilds.fetch(this.guild);
+    if (!guild) {
+      throw new Error('Guild not found');
+    }
+    return guild;
+  }
+
+  async deleteStatus() {
+    const status = await gm_status.findOne({
+      where: {
+        server: this.id,
+      },
+    });
+    if (!status) return;
+
+    const guild = await this.getDiscordGuild();
+    if (!guild) return;
+
+    const channel = await guild.channels.cache.get(status.channel);
+    if (!channel) return;
+
+    const message = await channel.messages.fetch(status.message);
+    if (!message) return;
+
+    await message.delete();
+    await status.destroy();
+
+    return status;
+  }
+
+  async createStatus(channelID) {
+    const guild = await this.getDiscordGuild();
+
+    if (!channelID) {
+      throw new Error('Channel ID is required');
+    }
+
+    const channel = await guild.channels.cache.get(channelID);
+    if (!channel || channel.type !== ChannelType.GuildText) {
+      throw new Error('Channel not found');
+    }
+
+    const msgData = await gm_server_status.findOne({
+      where: {
+        id: this.getID(),
+      },
+    });
+
+    const embed = await getStatusMessage(this, msgData, await this.getServerStatusButtons(), guild.preferredLocale);
+    const message = await channel.send(embed);
+
+    return await gm_status.create({
+      server: this.getID(),
+      message: message.id,
+      channel: channel.id,
+    });
+  }
+
   async editStatusChannelAndMessage(msgData) {
     const dscClient = await getClient();
     const serverStatusInfo = await this.getStatusChannelAndMessage();
@@ -130,11 +192,8 @@ export class Server extends BaseClass {
   }
 
   async saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime) {
-    const connection = await getConnectionPromise();
-    const query =
-      'INSERT INTO gm_server_status (id, ip, port, last_update, hostname, map, gamemode, players, maxplayers) VALUES (?, ?, ?, NOW(), ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE ip = ?, port = ?, last_update = NOW(), hostname = ?, map = ?, gamemode = ?, players = ?, maxplayers = ?';
-    const values = [
-      this.getID(),
+    await gm_server_status.create({
+      id: this.getID(),
       ip,
       port,
       hostname,
@@ -142,20 +201,7 @@ export class Server extends BaseClass {
       gameMode,
       players,
       maxPlayers,
-      ip,
-      port,
-      hostname,
-      map,
-      gameMode,
-      players,
-      maxPlayers,
-    ];
-    const [results] = await connection.query(query, values);
-    if (results.affectedRows === 0) {
-      throw new Error('Failed to save server status in database');
-    } else {
-      gmLog('status', `Saved status for server ${this.getID()} in database`, true);
-    }
+    });
 
     await this.editStatusChannelAndMessage({
       hostname,

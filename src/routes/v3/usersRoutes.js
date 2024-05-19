@@ -6,6 +6,7 @@ import {
   deleteGuildLinks,
   deleteGuildServer,
   deleteGuildVerificationsRoles,
+  deleteServerStatus,
   deleteServerStatusButtons,
   findCurrentUser,
   findGuild,
@@ -25,6 +26,7 @@ import {
   oauthLogin,
   postGuildLinks,
   postGuildServerToken,
+  postServerStatus,
   putGuildLinks,
   putGuildServer,
   putGuildVerificationsRoles,
@@ -70,8 +72,8 @@ router.post('/:discordID/guilds/:guildID/servers/:serverID/token', postGuildServ
 router.delete('/:discordID/guilds/:guildID/servers/:serverID', deleteGuildServer);
 // Status
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status', findServerStatus);
-// router.post('/:discordID/guilds/:guildID/servers/:serverID/status/:channelID', postServerStatus);
-// router.delete('/:discordID/guilds/:guildID/servers/:serverID/status', deleteServerStatus);
+router.post('/:discordID/guilds/:guildID/servers/:serverID/status', postServerStatus);
+router.delete('/:discordID/guilds/:guildID/servers/:serverID/status', deleteServerStatus);
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status/buttons', getServerStatusButtons);
 router.put('/:discordID/guilds/:guildID/servers/:serverID/status/buttons/:buttonID', putServerStatusButtons);
 router.post('/:discordID/guilds/:guildID/servers/:serverID/status/buttons', createServerStatusButtons);

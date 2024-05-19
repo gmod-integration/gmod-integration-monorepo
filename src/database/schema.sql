@@ -303,41 +303,6 @@ create table if not exists gm_server_settings
             on update cascade on delete cascade
 );
 
-create table if not exists gm_server_status
-(
-    id          char(255) charset utf8mb4                        not null
-        primary key,
-    ip          text                                             null,
-    port        text                                             null,
-    last_update timestamp            default current_timestamp() null,
-    hostname    text                 default 'Gmod Server'       null,
-    maxplayers  int                  default 0                   null,
-    players     int                  default 0                   null,
-    map         text charset utf8mb4 default 'gm_construct'      null,
-    gamemode    text charset utf8mb4 default 'sandbox'           null,
-    constraint gm_server_status_gm_server_id_fk
-        foreign key (id) references gm_server (id)
-            on update cascade on delete cascade
-)
-    collate = utf8mb4_unicode_ci;
-
-create table if not exists gm_server_status_v3
-(
-    serverID   char(255) not null
-        primary key,
-    players    int       null,
-    maxPlayers int       null,
-    map        text      null,
-    hostname   text      null,
-    gameMode   text      null,
-    port       text      null,
-    ip         text      null,
-    uptime     int       null,
-    constraint gm_server_status_v3_gm_server_id_fk
-        foreign key (serverID) references gm_server (id)
-            on update cascade on delete cascade
-);
-
 create table if not exists gm_server_subscription
 (
     serverID     char(255)                             null,
