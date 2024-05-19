@@ -113,6 +113,21 @@ export async function findGuildChannels(req, res, next) {
   );
 }
 
+export async function getGuildEmojis(req, res) {
+  const dscGuild = req.dscGuild;
+  const totalEmojis = [];
+
+  dscGuild.emojis.cache.forEach((emoji) => {
+    totalEmojis.push({
+      id: emoji.id,
+      name: emoji.name,
+      url: emoji.url,
+    });
+  });
+
+  return res.send(totalEmojis);
+}
+
 export async function getGuildRoles(req, res) {
   const dscGuild = req.dscGuild;
 
@@ -324,10 +339,6 @@ export async function createGuildVerificationsRoles(req, res) {
 }
 
 // Status Buttons
-
-export async function getServerStatus(req, res) {
-  return getTodo(req, res);
-}
 
 export async function postServerStatus(req, res) {
   return getTodo(req, res);

@@ -12,7 +12,9 @@ import {
   findGuildChannels,
   findGuildServer,
   findGuildServers,
+  findServerStatus,
   getGuildAdmins,
+  getGuildEmojis,
   getGuildLinks,
   getGuildRoles,
   getGuildVerificationsRoles,
@@ -44,6 +46,7 @@ router.get('/:discordID/guilds/:guildID', findGuild);
 router.get('/:discordID/guilds/:guildID/channels', findGuildChannels);
 router.get('/:discordID/guilds/:guildID/roles', getGuildRoles);
 router.get('/:discordID/guilds/:guildID/admins', getGuildAdmins);
+router.get('/:discordID/guilds/:guildID/emojis', getGuildEmojis);
 // Servers
 router.get('/:discordID/guilds/:guildID/servers', findGuildServers);
 router.post('/:discordID/guilds/:guildID/servers', createNewServer);
@@ -66,7 +69,7 @@ router.put('/:discordID/guilds/:guildID/servers/:serverID', putGuildServer);
 router.post('/:discordID/guilds/:guildID/servers/:serverID/token', postGuildServerToken);
 router.delete('/:discordID/guilds/:guildID/servers/:serverID', deleteGuildServer);
 // Status
-// router.get('/:discordID/guilds/:guildID/servers/:serverID/status', getServerStatus);
+router.get('/:discordID/guilds/:guildID/servers/:serverID/status', findServerStatus);
 // router.post('/:discordID/guilds/:guildID/servers/:serverID/status/:channelID', postServerStatus);
 // router.delete('/:discordID/guilds/:guildID/servers/:serverID/status', deleteServerStatus);
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status/buttons', getServerStatusButtons);
