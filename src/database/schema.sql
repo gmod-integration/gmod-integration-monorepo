@@ -362,34 +362,6 @@ create table if not exists gm_stat_discord
     id           int null
 );
 
-create table if not exists gm_status
-(
-    guild   char(255) not null,
-    server  char(255) not null,
-    message char(255) not null,
-    channel text      null,
-    primary key (guild, server),
-    constraint gm_status_gm_server_id_fk
-        foreign key (server) references gm_server (id)
-            on update cascade on delete cascade
-);
-
-create table if not exists gm_status_button
-(
-    id     int auto_increment
-        primary key,
-    guild  text charset utf8mb4                               null,
-    server char(255) charset utf8mb4                          null,
-    name   text charset utf8mb4 default 'example'             null,
-    url    text charset utf8mb4 default 'https://example.com' null,
-    emoji  text                 default ''                    null,
-    enable tinyint(1)           default 0                     null,
-    constraint gm_status_button_gm_server_id_fk
-        foreign key (server) references gm_server (id)
-            on update cascade on delete cascade
-)
-    collate = utf8mb4_unicode_ci;
-
 create table if not exists gm_sync_chat
 (
     guild   char(255) not null,
