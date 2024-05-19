@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { getTranslate } from '../../../utils/localizations.js';
-import gm_link from '../../../database/shema/gm_link.js';
+import gm_link from '../../../database/schema/gm_link.js';
 
 export default {
   data: new SlashCommandBuilder()

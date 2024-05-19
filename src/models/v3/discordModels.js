@@ -7,7 +7,7 @@ import { getConnectionPromise } from '../../database/connection.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { discordConfig } from '../../config/index.js';
 import { generateToken } from '../../utils/tools.js';
-import gm_guild from '../../database/shema/gm_guild.js';
+import gm_guild from '../../database/schema/gm_guild.js';
 
 let userUpdateRoleCurrent = {};
 

@@ -2,8 +2,8 @@ import axios from 'axios';
 import { discordConfig } from '../../config/index.js';
 import redis from '../../redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
-import gm_link from '../../database/shema/gm_link.js';
-import gm_guild_verify_role from '../../database/shema/gm_guild_verify_role.js';
+import gm_link from '../../database/schema/gm_link.js';
+import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';
 
 export class Guild {
   constructor(guild) {

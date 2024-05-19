@@ -7,8 +7,9 @@ import redis from '../../redis/index.js';
 import { getClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import { gmLog } from '../../utils/logger.js';
-import gm_server from '../../database/shema/gm_server.js';
-import gm_status_button from '../../database/shema/gm_status_button.js';
+import gm_server from '../../database/schema/gm_server.js';
+import gm_status_button from '../../database/schema/gm_status_button.js';
+import gm_status from '../../database/schema/gm_status.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -32,14 +33,15 @@ export class Server extends BaseClass {
       return JSON.parse(redisData);
     }
 
-    const connection = await getConnectionPromise();
-    const [results] = await connection.query('SELECT * FROM gm_status WHERE guild = ? AND server = ?', [
-      this.guild,
-      this.id,
-    ]);
-    if (results && results[0]) {
-      await redis.set(redisKey, JSON.stringify(results[0]), 'EX', 60);
-      return results[0];
+    const status = await gm_status.findOne({
+      where: {
+        server: this.id,
+      },
+    });
+
+    if (status) {
+      await redis.set(redisKey, JSON.stringify(status), 'EX', 60);
+      return status;
     }
 
     return null;
@@ -104,7 +106,7 @@ export class Server extends BaseClass {
       return;
     }
 
-    const guild = await dscClient.guilds.fetch(serverStatusInfo.guild);
+    const guild = await dscClient.guilds.fetch(this.getGuildID());
     if (!guild) {
       gmLog('status', `Guild not found for server ${this.getID()}`, true);
       return;

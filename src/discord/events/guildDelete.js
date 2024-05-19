@@ -1,5 +1,5 @@
 import { gmLog } from '../../utils/logger.js';
-import gm_guild from '../../database/shema/gm_guild.js';
+import gm_guild from '../../database/schema/gm_guild.js';
 
 export default {
   name: 'guildDelete',
