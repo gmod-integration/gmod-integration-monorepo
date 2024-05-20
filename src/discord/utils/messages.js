@@ -3,10 +3,11 @@ import { gmLog } from '../../utils/logger.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { ButtonConnect } from './buttons.js';
 import { getClient } from '../index.js';
+import { getEmojiVersion } from '../../utils/tools.js';
 
 export async function getStatusMessage(server, data, buttons, lang) {
   gmLog('status', 'refresh server status message for ' + server.getID());
-  
+
   let { servOnline, hostname, map, gameMode, players, maxPlayers } = data || {};
   servOnline = !!hostname;
   hostname = hostname === undefined ? await getTranslate('offline', lang) : hostname;
@@ -88,9 +89,9 @@ export async function getStatusMessage(server, data, buttons, lang) {
 
     label = label.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
 
-    // check the validity of the emoji
-    if (!disClient.emojis.cache.find((e) => e.name === emoji)) {
-      gmLog('status', 'invalid emoji for button: ' + emoji);
+    // check that emoji is a valid emoji (emoji-version="12.0") or remplace with ?
+    const emojiVersion = getEmojiVersion(emoji);
+    if (!emojiVersion || emojiVersion > 12) {
       emoji = '❓';
     }
 

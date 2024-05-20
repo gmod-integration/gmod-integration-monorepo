@@ -1,3 +1,5 @@
+import { getEmojis } from 'unicode-emoji';
+
 export function checkMissingArgs(requiredArgs, location) {
   return function (req, res, next) {
     const missingArgs = [];
@@ -28,6 +30,16 @@ export function checkMissingArgs(requiredArgs, location) {
 
     next();
   };
+}
+
+export function getEmojiVersion(emoji) {
+  const emojis = getEmojis();
+  const emojiData = emojis.find((e) => e.emoji === emoji);
+  if (emojiData) {
+    return emojiData.version;
+  } else {
+    return null;
+  }
 }
 
 export function badArgument(list) {
