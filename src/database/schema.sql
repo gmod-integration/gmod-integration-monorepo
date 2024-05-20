@@ -278,20 +278,6 @@ create table if not exists gm_server_roles
             on update cascade on delete cascade
 );
 
-create table if not exists gm_server_screenshot_channels
-(
-    guildID   char(255)            not null,
-    serverID  char(255)            not null,
-    adminCmd  tinyint(1) default 0 not null,
-    channelID text                 null,
-    webhook   text                 null,
-    token     text                 null,
-    primary key (serverID, guildID, adminCmd),
-    constraint gm_server_screenshot_channels_gm_server_id_fk
-        foreign key (serverID) references gm_server (id)
-            on update cascade on delete cascade
-);
-
 create table if not exists gm_server_settings
 (
     serverID char(255) not null,

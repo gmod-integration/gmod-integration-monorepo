@@ -12,6 +12,7 @@ import gm_status_button from '../../database/schema/gm_status_button.js';
 import gm_status from '../../database/schema/gm_status.js';
 import gm_server_status from '../../database/schema/gm_server_status.js';
 import { ChannelType } from 'discord.js';
+import gm_server_screenshot_channels from '../../database/schema/gm_server_screenshot_channels.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -230,30 +231,6 @@ export class Server extends BaseClass {
     });
   }
 
-  async getScreenshotsChannel() {
-    try {
-      const redisKey = `server:${this.id}:screenshotsChannel`;
-      const redisData = await redis.get(redisKey);
-      if (redisData) {
-        return JSON.parse(redisData);
-      }
-
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_screenshot_channels WHERE serverID = ?', [
-        this.id,
-      ]);
-      if (results && results[0]) {
-        await redis.set(redisKey, JSON.stringify(results[0]), 'EX', 60);
-        return results[0];
-      }
-
-      return null;
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
-  }
-
   async getSyncChatChannel() {
     try {
       const redisKey = `server:${this.id}:syncChatChannel`;
@@ -451,9 +428,50 @@ export class Server extends BaseClass {
         server: this.id,
       },
     });
-    if (statusButton) {
-      await statusButton.destroy();
-    }
+
+    if (statusButton) await statusButton.destroy();
+    return statusButton;
+  }
+
+  async getScreenshotsChannel() {
+    return await gm_server_screenshot_channels.findOne({
+      where: {
+        server: this.id,
+      },
+    });
+  }
+
+  async destroyScreenshotChannel() {
+    const screenshotChannel = await gm_server_screenshot_channels.findOne({
+      where: {
+        server: this.id,
+      },
+    });
+
+    if (screenshotChannel) await screenshotChannel.destroy();
+    return screenshotChannel;
+  }
+
+  async createScreenshotChannel(channelID) {
+    await this.destroyScreenshotChannel();
+
+    const guild = await this.getDiscordGuild();
+    if (!guild) throw new Error('Guild not found');
+
+    const channel = await guild.channels.cache.get(channelID);
+    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found');
+
+    const webhook = await channel.createWebhook({
+      name: 'Server Screenshots',
+    });
+    if (!webhook) throw new Error('Webhook not created');
+
+    return await gm_server_screenshot_channels.create({
+      server: this.id,
+      channelID,
+      webhook: webhook.id,
+      token: webhook.token,
+    });
   }
 }
 

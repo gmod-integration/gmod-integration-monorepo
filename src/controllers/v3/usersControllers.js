@@ -410,3 +410,40 @@ export async function deleteServerStatusButtons(req, res) {
   await server.destroyStatusButton(buttonID);
   return res.send(button);
 }
+
+export async function findServerScreenshots(req, res) {
+  try {
+    const server = req.server;
+    return res.send(await server.getScreenshotsChannel());
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      error: error.message,
+    });
+  }
+}
+
+export async function postServerScreenshots(req, res) {
+  try {
+    const server = req.server;
+    const { channelID } = req.body;
+    return res.send(await server.createScreenshotChannel(channelID));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      error: error.message,
+    });
+  }
+}
+
+export async function deleteServerScreenshots(req, res) {
+  try {
+    const server = req.server;
+    return res.send(await server.destroyScreenshotChannel());
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      error: error.message,
+    });
+  }
+}
