@@ -24,22 +24,22 @@ gm_status_button.init(
     name: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: '',
+      defaultValue: 'Example',
     },
     url: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: '',
+      defaultValue: 'https://example.com',
     },
     emoji: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: '',
+      defaultValue: '🔗',
     },
     enable: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: false,
     },
   },
   {
