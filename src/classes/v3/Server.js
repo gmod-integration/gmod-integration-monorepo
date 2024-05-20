@@ -192,16 +192,33 @@ export class Server extends BaseClass {
   }
 
   async saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime) {
-    await gm_server_status.create({
-      id: this.getID(),
-      ip,
-      port,
-      hostname,
-      map,
-      gameMode,
-      players,
-      maxPlayers,
+    const serverStatus = await gm_server_status.findOne({
+      where: {
+        id: this.getID(),
+      },
     });
+
+    if (serverStatus) {
+      serverStatus.ip = ip;
+      serverStatus.port = port;
+      serverStatus.hostname = hostname;
+      serverStatus.map = map;
+      serverStatus.gameMode = gameMode;
+      serverStatus.players = players;
+      serverStatus.maxPlayers = maxPlayers;
+      await serverStatus.save();
+    } else {
+      await gm_server_status.create({
+        id: this.getID(),
+        ip,
+        port,
+        hostname,
+        map,
+        gameMode,
+        players,
+        maxPlayers,
+      });
+    }
 
     await this.editStatusChannelAndMessage({
       hostname,
