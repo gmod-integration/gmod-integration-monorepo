@@ -110,6 +110,7 @@ export async function findGuildChannels(req, res, next) {
       name: channel.name,
       type: channel.type,
       position: channel.position,
+      parentID: channel.parent ? channel.parent.id : null,
     })),
   );
 }
