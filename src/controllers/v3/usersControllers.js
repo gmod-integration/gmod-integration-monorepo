@@ -9,6 +9,7 @@ import {
   getUserTokenFromCode,
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
+import { badArgument } from '../../utils/tools.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -441,6 +442,49 @@ export async function deleteServerScreenshots(req, res) {
   try {
     const server = req.server;
     return res.send(await server.destroyScreenshotChannel());
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      error: error.message,
+    });
+  }
+}
+
+export async function getServerPlayers(req, res) {
+  try {
+    const server = req.server;
+    return res.send(await server.getDBPlayers());
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      error: error.message,
+    });
+  }
+}
+
+export async function putPlayerBypassMaintenance(req, res) {
+  try {
+    const server = req.server;
+    const { playerID } = req.params;
+    const { bypassMaintenance } = req.body;
+
+    if (badArgument([bypassMaintenance])) {
+      return res.status(400).send({
+        error: 'missing arguments',
+      });
+    }
+
+    const player = await server.getPlayerStats(playerID);
+    if (!player) {
+      return res.status(404).send({
+        error: 'player not found',
+      });
+    }
+
+    player.bypassMaintenance = bypassMaintenance !== undefined ? bypassMaintenance : player.bypassMaintenance;
+
+    await player.save();
+    return res.send(player);
   } catch (error) {
     console.error(error);
     return res.status(500).send({

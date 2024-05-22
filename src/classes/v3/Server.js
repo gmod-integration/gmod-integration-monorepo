@@ -13,6 +13,7 @@ import gm_status from '../../database/schema/gm_status.js';
 import gm_server_status from '../../database/schema/gm_server_status.js';
 import { ChannelType } from 'discord.js';
 import gm_server_screenshot_channels from '../../database/schema/gm_server_screenshot_channels.js';
+import gm_server_stat from '../../database/schema/gm_server_stat.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -451,6 +452,23 @@ export class Server extends BaseClass {
 
     if (screenshotChannel) await screenshotChannel.destroy();
     return screenshotChannel;
+  }
+
+  async getDBPlayers() {
+    return await gm_server_stat.findAll({
+      where: {
+        server_id: this.id,
+      },
+    });
+  }
+
+  async getPlayerStats(steamID64) {
+    return await gm_server_stat.findOne({
+      where: {
+        server_id: this.id,
+        steam_id: steamID64,
+      },
+    });
   }
 
   async createScreenshotChannel(channelID) {

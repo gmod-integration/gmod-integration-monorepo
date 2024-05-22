@@ -22,6 +22,7 @@ import {
   getGuildRoles,
   getGuildVerificationsRoles,
   getProfile,
+  getServerPlayers,
   getServerStatusButtons,
   getTodo,
   getUserGuildsOwnOrAdmins,
@@ -33,6 +34,7 @@ import {
   putGuildLinks,
   putGuildServer,
   putGuildVerificationsRoles,
+  putPlayerBypassMaintenance,
   putServerStatusButtons,
 } from '../../controllers/v3/usersControllers.js';
 import { userAdminGuildValidator, userServerValidator, userValidator } from '../../middleware/v3/userValidator.js';
@@ -72,6 +74,8 @@ router.use('/:discordID/guilds/:guildID/servers/:serverID', userServerValidator)
 router.get('/:discordID/guilds/:guildID/servers/:serverID', findGuildServer);
 router.put('/:discordID/guilds/:guildID/servers/:serverID', putGuildServer);
 router.post('/:discordID/guilds/:guildID/servers/:serverID/token', postGuildServerToken);
+router.get('/:discordID/guilds/:guildID/servers/:serverID/players', getServerPlayers);
+router.put('/:discordID/guilds/:guildID/servers/:serverID/players/:playerID', putPlayerBypassMaintenance);
 router.delete('/:discordID/guilds/:guildID/servers/:serverID', deleteGuildServer);
 // Screenshots
 router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', findServerScreenshots);
