@@ -395,6 +395,7 @@ export class Server extends BaseClass {
       serverToSave.image = this.image;
       serverToSave.bump = this.bump;
       serverToSave.verified = this.verified;
+      serverToSave.publicTempToken = this.publicTempToken;
       await serverToSave.save();
     }
   }
