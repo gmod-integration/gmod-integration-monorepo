@@ -9,7 +9,6 @@ import {
   sendPlayerSay,
 } from '../../models/v3/serversPlayersModels.js';
 import { updateGuildUserPseudo } from '../../discord/index.js';
-import { getServerPlayer } from '../../classes/v3/Player.js';
 import { getGuildID } from '../../models/v3/serversModels.js';
 
 export async function getPlayer(req, res) {
@@ -25,7 +24,8 @@ export async function getPlayer(req, res) {
     });
   }
 
-  getServerPlayer(server.getID(), steamID64)
+  server
+    .getPlayerStats(steamID64)
     .then((player) => {
       return res.status(200).json(player);
     })
