@@ -3,7 +3,9 @@ import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 
 class gm_server_stat extends Model {
-  // Extend the class here
+  isSuperAdmin() {
+    return this.rank === 'superadmin';
+  }
 }
 
 gm_server_stat.init(

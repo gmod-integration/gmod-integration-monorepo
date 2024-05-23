@@ -379,43 +379,6 @@ create table if not exists gm_user_invoices
     invoiceID text null
 );
 
-create table if not exists gm_user_steam
-(
-    steam_id      char(30)                              not null
-        primary key,
-    username      text                                  null,
-    last_ip       text                                  null,
-    last_connect  timestamp default current_timestamp() null,
-    total_time    int       default 0                   null,
-    total_death   int       default 0                   null,
-    total_kill    int       default 0                   null,
-    total_connect int       default 1                   null
-);
-
-create table if not exists gm_server_stat
-(
-    steam_id          char(30)                               not null,
-    server_id         char(255)                              not null,
-    name              text       default 'unknown'           null,
-    `rank`            text       default 'user'              null,
-    total_time        int        default 0                   not null,
-    total_death       int        default 0                   not null,
-    total_kill        int        default 0                   not null,
-    total_money       int        default 0                   not null,
-    total_connect     int        default 0                   not null,
-    last_connect      timestamp  default current_timestamp() not null,
-    first_join        timestamp  default current_timestamp() not null,
-    custom_values     longtext   default '{}'                null,
-    bypassMaintenance tinyint(1) default 0                   null,
-    primary key (server_id, steam_id),
-    constraint gm_server_stat_gm_server_id_fk
-        foreign key (server_id) references gm_server (id)
-            on update cascade on delete cascade,
-    constraint gm_server_stat_gm_user_steam_steam_id_fk
-        foreign key (steam_id) references gm_user_steam (steam_id)
-            on update cascade on delete cascade
-);
-
 create table if not exists gm_server_stat_session
 (
     serverID            char(255)                             null,

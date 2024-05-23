@@ -1,61 +1,7 @@
 import { getConnectionPromise } from '../../database/connection.js';
 import { WebhookClient } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
-
-export function getInformations(id) {
-  return new Promise(async (resolve, reject) => {
-    const connection = await getConnectionPromise();
-    connection.query('SELECT * FROM gm_server WHERE id = ?', [id], (error, results) => {
-      if (error) return reject(error);
-
-      if (results.length > 0) {
-        return resolve(results[0]);
-      } else {
-        reject('Server not found');
-      }
-    });
-  });
-}
-
-export function isValidAuth(id, token) {
-  return new Promise(async (resolve, reject) => {
-    const connection = await getConnectionPromise();
-    connection.query('SELECT * FROM gm_server WHERE id = ? AND token = ?', [id, token], (error, results) => {
-      if (error) return reject(error);
-
-      if (results.length > 0) {
-        return resolve(true);
-      } else {
-        return resolve(false);
-      }
-    });
-  });
-}
-
-export function getPlayerInformations(steamID64) {
-  return new Promise(async (resolve, reject) => {
-    const connection = await getConnectionPromise();
-    connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64], (error, results) => {
-      if (error) return reject(error);
-
-      if (results.length > 0) {
-        return resolve({
-          steamID64: results[0].steam_id,
-          customValue: JSON.parse(results[0].custom_values || '{}'),
-          lastConnection: results[0].last_connect,
-          firstConnection: results[0].first_connect,
-          playtime: results[0].total_time,
-          totalConnections: results[0].total_connect,
-          totalKills: results[0].total_kill,
-          totalDeaths: results[0].total_death,
-          name: results[0].name,
-        });
-      } else {
-        return resolve(null);
-      }
-    });
-  });
-}
+import gm_user_steam from '../../database/schema/gm_user_steam.js';
 
 export async function getPlayerBan(steamID64) {
   return new Promise(async (resolve, reject) => {
@@ -229,11 +175,24 @@ export async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {
 
 export async function saveConnectionSteamInfo(steamID64, name, IP) {
   try {
-    const connection = await getConnectionPromise();
-    await connection.query(
-      'INSERT INTO gm_user_steam (steam_id, username, last_ip, last_connect, total_connect) VALUES (?, ?, ?, NOW(), 1) ON DUPLICATE KEY UPDATE last_ip = ?, last_connect = NOW(), total_connect = total_connect + 1',
-      [steamID64, name, IP, IP],
-    );
+    const player = await gm_user_steam.findOne({
+      where: {
+        steam_id: steamID64,
+      },
+    });
+
+    if (player) {
+      player.username = name;
+      player.last_ip = IP;
+      player.total_connect += 1;
+      await player.save();
+    } else {
+      await gm_user_steam.create({
+        steam_id: steamID64,
+        username: name,
+        last_ip: IP,
+      });
+    }
   } catch (err) {
     console.error(err);
     throw err;

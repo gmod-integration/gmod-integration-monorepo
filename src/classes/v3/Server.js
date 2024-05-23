@@ -1,6 +1,5 @@
 import { BaseClass } from './BaseClass.js';
 import { Role } from './Role.js';
-import { Player } from './Player.js';
 import { generateToken } from '../../utils/tools.js';
 import { getConnectionPromise } from '../../database/connection.js';
 import redis from '../../redis/index.js';
@@ -347,11 +346,24 @@ export class Server extends BaseClass {
 
   async saveUserConnectionInfo(steamID64, name) {
     try {
-      const connection = await getConnectionPromise();
-      await connection.query(
-        'INSERT INTO gm_server_stat (steam_id, server_id, name, last_connect, total_connect) VALUES (?, ?, ?, NOW(), 1) ON DUPLICATE KEY UPDATE last_connect = NOW(), total_connect = total_connect + 1',
-        [steamID64, this.id, name],
-      );
+      const player = await gm_server_stat.findOne({
+        where: {
+          steam_id: steamID64,
+          server_id: this.id,
+        },
+      });
+
+      if (player) {
+        player.total_connect += 1;
+        player.name = name;
+        await player.save();
+      } else {
+        await gm_server_stat.create({
+          steam_id: steamID64,
+          server_id: this.id,
+          name,
+        });
+      }
     } catch (error) {
       console.error(error);
       throw error;
@@ -360,12 +372,12 @@ export class Server extends BaseClass {
 
   async getServerPlayer(steamID64) {
     try {
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_stat WHERE server_id = ? AND steam_id = ?', [
-        this.id,
-        steamID64,
-      ]);
-      return results && results[0] ? new Player(results[0]) : null;
+      return await gm_server_stat.findOne({
+        where: {
+          server_id: this.id,
+          steam_id: steamID64,
+        },
+      });
     } catch (error) {
       console.error(error);
       return null;

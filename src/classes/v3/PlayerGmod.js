@@ -4,6 +4,7 @@ import { CustomValues } from './CustomValues.js';
 import { Team } from './Team.js';
 import { Position } from './Position.js';
 import { Angle } from './Angle.js';
+import gm_server_stat from '../../database/schema/gm_server_stat.js';
 
 export class PlayerGmod extends BaseClass {
   constructor(obj = {}) {
@@ -42,23 +43,34 @@ export class PlayerGmod extends BaseClass {
       const { connectTime, kills, deaths, customValues, userGroup, steamID64, name } = this;
       const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
 
-      const connection = await getConnectionPromise();
-      await connection.query(
-        `
-                INSERT INTO gm_server_stat (steam_id, server_id, rank, name, total_time, total_kill, total_death,
-                                            custom_values,
-                                            last_connect)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, DEFAULT)
-                ON DUPLICATE KEY UPDATE rank          = VALUES(rank),
-                                        name          = VALUES(name),
-                                        total_time    = total_time + VALUES(total_time),
-                                        total_kill    = total_kill + VALUES(total_kill),
-                                        total_death   = total_death + VALUES(total_death),
-                                        custom_values = VALUES(custom_values),
-                                        last_connect  = DEFAULT
-            `,
-        [steamID64, serverID, userGroup, name, connectTime, kills, deaths, customValuesString],
-      );
+      const player = await gm_server_stat.findOne({
+        where: {
+          steam_id: steamID64,
+          server_id: serverID,
+        },
+      });
+
+      if (player) {
+        await player.update({
+          rank: userGroup,
+          name,
+          total_time: player.total_time + connectTime,
+          total_kill: player.total_kill + kills,
+          total_death: player.total_death + deaths,
+          custom_values: customValuesString,
+        });
+      } else {
+        await gm_server_stat.create({
+          steam_id: steamID64,
+          server_id: serverID,
+          rank: userGroup,
+          name,
+          total_time: connectTime,
+          total_kill: kills,
+          total_death: deaths,
+          custom_values: customValuesString,
+        });
+      }
     } catch (error) {
       console.error(error);
       throw error;
@@ -73,9 +85,9 @@ export class PlayerGmod extends BaseClass {
       const connection = await getConnectionPromise();
       await connection.query(
         `
-                INSERT INTO gm_server_stat_session (serverID, steamID64, time, deaths, kills, customValues)
-                VALUES (?, ?, ?, ?, ?, ?)
-            `,
+            INSERT INTO gm_server_stat_session (serverID, steamID64, time, deaths, kills, customValues)
+            VALUES (?, ?, ?, ?, ?, ?)
+        `,
         [serverID, steamID64, connectTime, deaths, kills, customValuesString],
       );
     } catch (error) {
@@ -87,10 +99,14 @@ export class PlayerGmod extends BaseClass {
 
 export function getPlayerServerInformations(serverID, steamID64) {
   return new Promise(async (resolve, reject) => {
-    const connection = await getConnectionPromise();
-    const results = await connection.query('SELECT * FROM gm_server_stat WHERE steam_id = ?', [steamID64]);
-    if (results.length > 0) {
-      return resolve(new PlayerGmod(results[0]));
+    const player = await gm_server_stat.findOne({
+      where: {
+        steam_id: steamID64,
+        server_id: serverID,
+      },
+    });
+    if (player) {
+      return resolve(new PlayerGmod(player));
     }
     return reject('PlayerGmod not found');
   });
@@ -98,12 +114,16 @@ export function getPlayerServerInformations(serverID, steamID64) {
 
 export async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
   try {
-    const connection = await getConnectionPromise();
-    await connection.query('UPDATE gm_server_stat SET rank = ? WHERE steam_id = ? AND server_id = ?', [
-      userGroup,
-      steamID64,
-      serverID,
-    ]);
+    const player = await gm_server_stat.findOne({
+      where: {
+        steam_id: steamID64,
+        server_id: serverID,
+      },
+    });
+    if (player) {
+      player.rank = userGroup;
+      await player.save();
+    }
   } catch (error) {
     console.error(error);
     throw error;
