@@ -313,19 +313,6 @@ create table if not exists gm_stat_discord
     id           int null
 );
 
-create table if not exists gm_sync_chat
-(
-    guild   char(255) not null,
-    channel char(255) not null,
-    server  char(255) not null,
-    id      text      null,
-    token   text      null,
-    primary key (guild, server),
-    constraint gm_sync_chat_gm_server_id_fk
-        foreign key (server) references gm_server (id)
-            on update cascade on delete cascade
-);
-
 create table if not exists gm_todo_task
 (
     id    int auto_increment

@@ -186,7 +186,7 @@ export async function createNewServer(req, res) {
 
 export async function getGuildLinks(req, res) {
   const guild = req.guild;
-  return res.send(await guild.getLinks());
+  return res.send((await guild.getLinks()) || []);
 }
 
 export async function postGuildLinks(req, res) {
@@ -259,7 +259,7 @@ export async function deleteGuildServer(req, res) {
 
 export async function getGuildAdmins(req, res) {
   const guild = req.guild;
-  return res.send(await guild.getAdmins());
+  return res.send((await guild.getAdmins()) || []);
 }
 
 export async function postGuildServerToken(req, res) {
@@ -276,7 +276,7 @@ export function getTodo(req, res) {
 
 export async function getGuildVerificationsRoles(req, res) {
   const guild = req.guild;
-  return res.send(await guild.getVerificationRoles());
+  return res.send((await guild.getVerificationRoles()) || []);
 }
 
 export async function putGuildVerificationsRoles(req, res) {
@@ -348,7 +348,7 @@ export async function deleteServerStatus(req, res) {
     return res.send(await server.deleteStatus());
   } catch (error) {
     return res.status(500).send({
-      error: error.message,
+      error: 'Internal Server Error',
     });
   }
 }
@@ -361,14 +361,14 @@ export async function postServerStatus(req, res) {
     return res.send(await server.createStatus(channelID));
   } catch (error) {
     return res.status(500).send({
-      error: error.message,
+      error: 'Internal Server Error',
     });
   }
 }
 
 export async function getServerStatusButtons(req, res) {
   const server = req.server;
-  return res.send(await server.findStatusButtons());
+  return res.send((await server.findStatusButtons()) || []);
 }
 
 export async function putServerStatusButtons(req, res) {
@@ -416,11 +416,11 @@ export async function deleteServerStatusButtons(req, res) {
 export async function findServerScreenshots(req, res) {
   try {
     const server = req.server;
-    return res.send(await server.getScreenshotsChannel());
+    return res.send((await server.getScreenshotsChannel()) || {});
   } catch (error) {
     console.error(error);
     return res.status(500).send({
-      error: error.message,
+      error: 'Internal Server Error',
     });
   }
 }
@@ -433,7 +433,7 @@ export async function postServerScreenshots(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(500).send({
-      error: error.message,
+      error: 'Internal Server Error',
     });
   }
 }
@@ -445,7 +445,44 @@ export async function deleteServerScreenshots(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(500).send({
-      error: error.message,
+      error: 'Internal Server Error',
+    });
+  }
+}
+
+export async function findServerSyncChat(req, res) {
+  try {
+    const server = req.server;
+    return res.send((await server.getSyncChat()) || {});
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      error: 'Internal Server Error',
+    });
+  }
+}
+
+export async function postServerSyncChat(req, res) {
+  try {
+    const server = req.server;
+    const { channelID } = req.body;
+    return res.send(await server.createSyncChat(channelID));
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      error: 'Internal Server Error',
+    });
+  }
+}
+
+export async function deleteServerSyncChat(req, res) {
+  try {
+    const server = req.server;
+    return res.send(await server.destroySyncChat());
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send({
+      error: 'Internal Server Error',
     });
   }
 }
@@ -457,7 +494,7 @@ export async function getServerPlayers(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(500).send({
-      error: error.message,
+      error: 'Internal Server Error',
     });
   }
 }
@@ -488,7 +525,7 @@ export async function putPlayerBypassMaintenance(req, res) {
   } catch (error) {
     console.error(error);
     return res.status(500).send({
-      error: error.message,
+      error: 'Internal Server Error',
     });
   }
 }

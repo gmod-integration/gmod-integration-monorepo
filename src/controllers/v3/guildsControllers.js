@@ -1,26 +1,29 @@
-import { getConnectionPromise } from '../../database/connection.js';
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { ActionRowBuilder } from 'discord.js';
 import { ButtonPremium } from '../../discord/utils/buttons.js';
 import { wsSendToServer } from '../../websockets/index.js';
+import gm_sync_chat from '../../database/schema/gm_sync_chat.js';
 
 export async function sendMessageToGmod(message) {
   if (message.author.bot || !message.guild) return;
   const lang = message.guild.preferredLocale;
 
-  const connection = await getConnectionPromise();
-  const [rows] = await connection.query('SELECT * FROM gm_sync_chat WHERE guild = ? AND channel = ?', [
-    message.guild.id,
-    message.channel.id,
-  ]);
+  const channels = await gm_sync_chat.findAll({
+    where: {
+      guild: message.guild.id,
+      channel: message.channel.id,
+    },
+  });
 
-  if (!rows || rows.length === 0) return;
+  if (!channels) {
+    return;
+  }
 
   let serversInfo = await getServersFromDiscordGuildID(message.guild.id);
 
-  for (const row of rows) {
+  for (const row of channels) {
     const server = serversInfo.find((server) => server.getID() === row.server);
     if (!server || !server.isValid()) {
       console.error(`Server ${row.server} not found`);
@@ -43,7 +46,7 @@ export async function sendMessageToGmod(message) {
       return message.reply({
         content: await getTranslate('premium_required', lang),
         ephemeral: true,
-        components: [new ActionRowBuilder().addComponents(ButtonPremium(lang))],
+        components: [new ActionRowBuilder().addComponents(await ButtonPremium(lang))],
       });
     }
 

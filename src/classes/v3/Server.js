@@ -13,6 +13,7 @@ import gm_server_status from '../../database/schema/gm_server_status.js';
 import { ChannelType } from 'discord.js';
 import gm_server_screenshot_channels from '../../database/schema/gm_server_screenshot_channels.js';
 import gm_server_stat from '../../database/schema/gm_server_stat.js';
+import gm_sync_chat from '../../database/schema/gm_sync_chat.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -239,11 +240,15 @@ export class Server extends BaseClass {
         return JSON.parse(redisData);
       }
 
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_sync_chat WHERE server = ?', [this.id]);
-      if (results && results[0]) {
-        await redis.set(redisKey, JSON.stringify(results[0]), 'EX', 60);
-        return results[0];
+      const results = await gm_sync_chat.findOne({
+        where: {
+          server: this.id,
+        },
+      });
+
+      if (results) {
+        await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
+        return results;
       }
 
       return null;
@@ -462,7 +467,23 @@ export class Server extends BaseClass {
       },
     });
 
-    if (screenshotChannel) await screenshotChannel.destroy();
+    if (screenshotChannel) {
+      try {
+        const guild = await this.getDiscordGuild();
+        if (!guild) throw new Error('Guild not found');
+
+        const channel = await guild.channels.cache.get(screenshotChannel.channelID);
+        if (!channel) throw new Error('Channel not found');
+
+        const webhook = await channel.fetchWebhooks();
+        const webhookToDelete = webhook.find((webhook) => webhook.id === screenshotChannel.webhook);
+        if (webhookToDelete) await webhookToDelete.delete();
+      } catch (error) {
+        // skip
+      }
+      await screenshotChannel.destroy();
+    }
+
     return screenshotChannel;
   }
 
@@ -501,6 +522,64 @@ export class Server extends BaseClass {
       server: this.id,
       channelID,
       webhook: webhook.id,
+      token: webhook.token,
+    });
+  }
+
+  async getSyncChat() {
+    return await gm_sync_chat.findOne({
+      where: {
+        server: this.id,
+      },
+    });
+  }
+
+  async destroySyncChat() {
+    const syncChat = await gm_sync_chat.findOne({
+      where: {
+        server: this.id,
+      },
+    });
+
+    if (syncChat) {
+      try {
+        const guild = await this.getDiscordGuild();
+        if (!guild) throw new Error('Guild not found');
+
+        const channel = await guild.channels.cache.get(syncChat.channel);
+        if (!channel) throw new Error('Channel not found');
+
+        const webhook = await channel.fetchWebhooks();
+        const webhookToDelete = webhook.find((webhook) => webhook.id === syncChat.id);
+        if (webhookToDelete) await webhookToDelete.delete();
+      } catch (error) {
+        // skip
+      }
+      await syncChat.destroy();
+    }
+    return syncChat;
+  }
+
+  async createSyncChat(channelID) {
+    await this.destroySyncChat();
+
+    const guild = await this.getDiscordGuild();
+    if (!guild) throw new Error('Guild not found');
+
+    const channel = await guild.channels.cache.get(channelID);
+    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found');
+
+    const webhook = await channel.createWebhook({
+      name: 'Server Chat',
+    });
+
+    if (!webhook) throw new Error('Webhook not created');
+
+    return await gm_sync_chat.create({
+      guild: this.guild,
+      server: this.id,
+      channel: channelID,
+      id: webhook.id,
       token: webhook.token,
     });
   }

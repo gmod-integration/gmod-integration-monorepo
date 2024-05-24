@@ -9,6 +9,7 @@ import {
   deleteServerScreenshots,
   deleteServerStatus,
   deleteServerStatusButtons,
+  deleteServerSyncChat,
   findCurrentUser,
   findGuild,
   findGuildChannels,
@@ -16,6 +17,7 @@ import {
   findGuildServers,
   findServerScreenshots,
   findServerStatus,
+  findServerSyncChat,
   getGuildAdmins,
   getGuildEmojis,
   getGuildLinks,
@@ -31,6 +33,7 @@ import {
   postGuildServerToken,
   postServerScreenshots,
   postServerStatus,
+  postServerSyncChat,
   putGuildLinks,
   putGuildServer,
   putGuildVerificationsRoles,
@@ -81,6 +84,10 @@ router.delete('/:discordID/guilds/:guildID/servers/:serverID', deleteGuildServer
 router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', findServerScreenshots);
 router.post('/:discordID/guilds/:guildID/servers/:serverID/screenshots', postServerScreenshots);
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/screenshots', deleteServerScreenshots);
+// Sync Chat
+router.get('/:discordID/guilds/:guildID/servers/:serverID/chats', findServerSyncChat);
+router.post('/:discordID/guilds/:guildID/servers/:serverID/chats', postServerSyncChat);
+router.delete('/:discordID/guilds/:guildID/servers/:serverID/chats', deleteServerSyncChat);
 // Status
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status', findServerStatus);
 router.post('/:discordID/guilds/:guildID/servers/:serverID/status', postServerStatus);

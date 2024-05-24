@@ -58,7 +58,7 @@ export class PanelUser {
       return await this.findGuilds();
     }
 
-    await redis.set(redisKey2, 'true', 'EX', 30);
+    await redis.set(redisKey2, 'true', 'EX', 120);
     const guildsResult = await fetch('https://discord.com/api/users/@me/guilds', {
       headers: {
         'Content-Type': 'application/json',
@@ -72,7 +72,7 @@ export class PanelUser {
     }
 
     const guilds = await guildsResult.json();
-    await redis.set(redisKey, JSON.stringify(guilds), 'EX', 30);
+    await redis.set(redisKey, JSON.stringify(guilds), 'EX', 120);
     await redis.del(redisKey2);
 
     return guilds;
