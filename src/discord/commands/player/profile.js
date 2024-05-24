@@ -102,8 +102,6 @@ export default {
       row.addComponents(open_steam);
     }
 
-    console.log('embed', embed);
-
     return interaction.reply({ embeds: [embed], components: [row] });
   },
 };
