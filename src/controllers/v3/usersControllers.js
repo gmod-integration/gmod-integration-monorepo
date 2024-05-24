@@ -7,6 +7,7 @@ import {
   getDiscordUserFromID,
   getUserFromToken,
   getUserTokenFromCode,
+  saveUser,
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
 import { badArgument } from '../../utils/tools.js';
@@ -79,6 +80,7 @@ export async function oauthLogin(req, res) {
     });
 
   const panelAccessToken = await saveUserPanel(discordUser.id, discordUserToken);
+  await saveUser(discordUser.id, discordUser.username, discordUser.email);
 
   return res.redirect(
     `${discordConfig.oauthPanelRedirect}?discordID=${discordUser.id}&accessToken=${panelAccessToken}&expirationDate=${discordUserToken.expirationDate.getTime()}`,
