@@ -28,6 +28,12 @@ gm_link.init(
     guild: {
       type: DataTypes.STRING,
       allowNull: false,
+      references: {
+        model: 'gm_guild',
+        key: 'guild',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
+      },
     },
     active: {
       type: DataTypes.BOOLEAN,

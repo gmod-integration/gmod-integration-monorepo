@@ -19,6 +19,8 @@ gm_guild_verify_role.init(
       references: {
         model: 'gm_guild',
         key: 'guild',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       },
     },
     roleID: {

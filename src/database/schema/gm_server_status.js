@@ -15,6 +15,8 @@ gm_server_status.init(
       references: {
         model: 'gm_server',
         key: 'id',
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       },
     },
     ip: {
