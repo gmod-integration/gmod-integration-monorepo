@@ -241,7 +241,7 @@ export async function playerConnect(req, res) {
 
   try {
     await saveConnectionGlobalInfo(steamID64, networkid, ip, name);
-    await saveConnectionSteamInfo(steamID64, networkid, ip);
+    await saveConnectionSteamInfo(steamID64, name, ip);
     await server.saveUserConnectionInfo(steamID64, name, ip);
     return res.status(200).json({ success: true });
   } catch (err) {
