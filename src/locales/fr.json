@@ -99,7 +99,7 @@
   "last_join": "Dernière connexion",
   "first_join": "Première connexion",
   "global_stat": "Statistiques globales",
-  "stat_of_server": "Statistiques de {1} sur {2}",
+  "stat_of_server": "Statistiques de {1}",
   "rank": "Rang",
   "money": "Argent",
   "user_not_found": "Utilisateur introuvable !",

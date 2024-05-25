@@ -109,7 +109,7 @@
   "last_join": "Last Join",
   "first_join": "First Join",
   "global_stat": "Global Statistics",
-  "stat_of_server": "Statistics of {1} on {2}",
+  "stat_of_server": "Statistics of {1}",
   "rank": "Rank",
   "money": "Money",
   "user_not_found": "User not found !",
