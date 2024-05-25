@@ -86,7 +86,6 @@ export default {
     }
   },
   async autocomplete(interaction) {
-    console.log('autocomplete');
     const focusedOption = interaction.options.getFocused(true);
     let choices = {};
     const filtered = await getServerList(interaction, focusedOption, choices);
