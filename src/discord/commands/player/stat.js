@@ -4,6 +4,7 @@ import { getServerList } from '../../../models/v3/serversModels.js';
 import gm_server_stat from '../../../database/schema/gm_server_stat.js';
 import { getUserFromDiscordID } from '../../../classes/v3/User.js';
 import gm_user_steam from '../../../database/schema/gm_user_steam.js';
+import gm_server from '../../../database/schema/gm_server.js';
 
 function secToTime(sec) {
   // convert seconds to ??w ??d ??h ??m ??s
@@ -192,6 +193,16 @@ export default {
 
       return interaction.reply({ embeds: [embed] });
     } else {
+      const serverDB = await gm_server.findOne({
+        where: {
+          id: server,
+        },
+      });
+
+      if (!serverDB) {
+        return interaction.reply({ content: await getTranslate('server_not_found', lang), ephemeral: true });
+      }
+
       const userData = await gm_server_stat.findOne({
         where: {
           steam_id: steamID64ToUse,
@@ -205,7 +216,7 @@ export default {
 
       const embed = {
         color: 0x2b2d31,
-        title: await getTranslate('stat_of_server', lang, [userData.username || userData.steam_id, server]),
+        title: await getTranslate('stat_of_server', lang, [userData.username || userData.steam_id, serverDB.name]),
         fields: [
           {
             name: '🪪⠀' + (await getTranslate('name', lang)),
