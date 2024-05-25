@@ -130,6 +130,8 @@ export default {
         return interaction.reply({ content: await getTranslate('user_not_linked', lang), ephemeral: true });
       }
       steamID64ToUse = dbUser.steamID64;
+    } else {
+      steamID64ToUse = steamid;
     }
 
     if (server === 'global') {
@@ -216,7 +218,7 @@ export default {
 
       const embed = {
         color: 0x2b2d31,
-        title: await getTranslate('stat_of_server', lang, [userData.username || userData.steam_id, serverDB.name]),
+        title: await getTranslate('stat_of_server', lang, [userData.name || userData.steam_id]),
         fields: [
           {
             name: '🪪⠀' + (await getTranslate('name', lang)),
@@ -290,7 +292,14 @@ export default {
             value: userData.total_connect ? userData.total_connect : '0',
             inline: true,
           },
+          {
+            name: '',
+            value: '',
+          },
         ],
+        footer: {
+          text: `SteamID: ${userData.steam_id} - Server: ${serverDB.name}`,
+        },
       };
 
       if (userData.custom_values) {
