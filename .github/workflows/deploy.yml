@@ -22,11 +22,11 @@ jobs:
         env:
           NODE_ENV: production
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ variables.SSH_USER }}@${{ variables.SSH_HOST }} << 'EOF'
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-            export PATH=$(nvm which current | xargs dirname):$PATH  # Add current Node.js bin to PATH
-            cd ${{ secrets.DEPLOY_PATH }}
+            export PATH=$(nvm which current | xargs dirname):$PATH 
+            cd ${{ variables.DEPLOY_PATH }}
             git pull origin main
             npm install
             pm2 restart gmod-integration-api
