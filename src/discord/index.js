@@ -100,7 +100,7 @@ export async function getClient() {
 }
 
 export function updateGuildUserPseudo(guildID, userID, pseudo) {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if (!guildID || !userID || !pseudo) {
       return reject({
         error: 'missing_arguments',
@@ -112,31 +112,33 @@ export function updateGuildUserPseudo(guildID, userID, pseudo) {
       });
     }
 
-    getClient()
-      .then(async (client) => {
-        const guild = client.guilds.cache.get(guildID);
-        if (!guild) {
-          return reject('Guild not found');
-        }
+    const client = await getClient();
 
-        if (guild.ownerId === userID) {
-          return resolve();
-        }
+    const guild = client.guilds.cache.get(guildID);
+    if (!guild) {
+      return reject('Guild not found');
+    }
 
-        guild.members
-          .fetch(userID)
-          .then((member) => {
-            if (!member) {
-              return reject('User not found');
-            }
-            member
-              .setNickname(pseudo)
-              .then((updatedMember) => {
-                return resolve(updatedMember);
-              })
-              .catch(reject);
-          })
-          .catch(reject);
+    // Get the member from the guild
+    const member = guild.members.cache.get(userID);
+    if (!member) {
+      return reject('User not found');
+    }
+
+    // Verify if the bot has the permission to change the nickname
+    if (member.nickname === pseudo) {
+      return resolve();
+    }
+
+    // Verify if the bot has the permission to change the nickname
+    if (!member.manageable) {
+      return reject('Bot does not have the permission to change the nickname');
+    }
+
+    member
+      .setNickname(pseudo)
+      .then((updatedMember) => {
+        return resolve(updatedMember);
       })
       .catch(reject);
   });

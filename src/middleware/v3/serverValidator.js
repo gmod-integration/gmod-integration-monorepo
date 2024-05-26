@@ -1,5 +1,6 @@
 import { badArgument } from '../../utils/tools.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
+import gm_guild from '../../database/schema/gm_guild.js';
 
 export default (req, res, next) => {
   const { serverID } = req.params;
@@ -17,9 +18,16 @@ export default (req, res, next) => {
 
   const token = authorization.split(' ')[1];
   getServerFromID(serverID)
-    .then((server) => {
+    .then(async (server) => {
       if (!server) return res.status(404).json({ error: 'server_not_found' });
       if (!server.isValidToken(token)) return res.status(401).json({ error: 'unauthorized' });
+
+      const guild = await gm_guild.findOne({
+        where: {
+          guild: server.guild,
+        },
+      });
+      if (!guild) return res.status(404).json({ error: 'guild_not_found' });
 
       req.headers.guild = server.guild;
       req.server = server;

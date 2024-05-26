@@ -3,6 +3,7 @@ import fs from 'fs';
 import { serverConfig } from '../../config/index.js';
 import { WebhookClient } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
+import { getClient } from '../../discord/index.js';
 
 export function saveScreenshot(screenshot, captureData, player) {
   return new Promise(async (resolve, reject) => {
@@ -35,10 +36,27 @@ export function sendScreenshotToDiscord(path, filename, player, server) {
       return reject('channel_not_found');
     }
 
-    const webhookClient = new WebhookClient({
-      id: channelInfo.webhook,
-      token: channelInfo.token,
-    });
+    // TODO Better code
+    const dscClient = await getClient();
+
+    const dscGuild = dscClient.guilds.cache.get(syncChatChannel.guild);
+    if (!dscGuild) {
+      return reject({ skip: true, message: 'Guild not found' });
+    }
+
+    const dscChannel = dscGuild.channels.cache.get(syncChatChannel.channel);
+    if (!dscChannel) {
+      return reject({ skip: true, message: 'Channel not found' });
+    }
+
+    // get channel webhook
+    const webhooks = await dscChannel.fetchWebhooks();
+    const webhook = webhooks.find((w) => w.id === syncChatChannel.webhook);
+    if (!webhook) {
+      return reject({ skip: true, message: 'Webhook not found' });
+    }
+
+    const webhookClient = new WebhookClient(webhook.id, webhook.token);
 
     webhookClient
       .send({

@@ -156,7 +156,6 @@ export function playerSay(req, res) {
 
 export async function playerChangeName(req, res) {
   const server = req.server;
-  const { steamID64 } = req.params;
 
   const { player, oldName, newName } = req.body;
   if (badArgument([player, oldName, newName])) {
@@ -179,11 +178,8 @@ export async function playerChangeName(req, res) {
       return res.status(200).json({ success: true });
     })
     .catch((err) => {
-      if (err.error === 'missing_arguments') {
-        return res.status(200).json({ success: false, error: 'user_not_found' });
-      }
       console.log(err);
-      return res.status(500).json({ error: 'internal_server_error' });
+      return res.status(500).json({ error: err.message });
     });
 }
 
@@ -275,6 +271,6 @@ export async function playerDisconnect(req, res) {
     return res.status(200).json({ success: true });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ error: 'internal_server_error' });
+    return res.status(500).json({ error: err.message });
   }
 }

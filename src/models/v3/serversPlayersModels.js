@@ -1,7 +1,8 @@
 import { getConnectionPromise } from '../../database/connection.js';
-import { WebhookClient } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
 import gm_user_steam from '../../database/schema/gm_user_steam.js';
+import { getClient } from '../../discord/index.js';
+import { WebhookClient } from 'discord.js';
 
 export async function getPlayerBan(steamID64) {
   return new Promise(async (resolve, reject) => {
@@ -129,7 +130,28 @@ export function sendPlayerSay(server, player, text, onlyTeam) {
       }
     }
 
-    const webhookClient = new WebhookClient({ id: syncChatChannel.id, token: syncChatChannel.token });
+    // TODO Better code
+    const dscClient = await getClient();
+
+    const dscGuild = dscClient.guilds.cache.get(syncChatChannel.guild);
+    if (!dscGuild) {
+      return reject({ skip: true, message: 'Guild not found' });
+    }
+
+    const dscChannel = dscGuild.channels.cache.get(syncChatChannel.channel);
+    if (!dscChannel) {
+      return reject({ skip: true, message: 'Channel not found' });
+    }
+
+    // get channel webhook
+    const webhooks = await dscChannel.fetchWebhooks();
+    const webhook = webhooks.find((w) => w.id === syncChatChannel.webhook);
+    if (!webhook) {
+      return reject({ skip: true, message: 'Webhook not found' });
+    }
+
+    const webhookClient = new WebhookClient(webhook.id, webhook.token);
+
     webhookClient
       .send({
         username: anonymous ? 'Anonymous' : player.name ? player.name : 'Unknown',
