@@ -306,13 +306,6 @@ create table if not exists gm_setting
     primary key (id, setting)
 );
 
-create table if not exists gm_stat_discord
-(
-    guild        int null,
-    guildMembers int null,
-    id           int null
-);
-
 create table if not exists gm_todo_task
 (
     id    int auto_increment
