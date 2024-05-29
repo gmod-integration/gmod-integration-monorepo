@@ -26,7 +26,36 @@ app.set('trust proxy', true);
 app.use(cors(corsMiddleware));
 
 // Helmet
-app.use(helmet());
+
+// Helmet
+const whiteList = [
+  'https://cdnjs.cloudflare.com/ajax/libs/socket.io/',
+  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/',
+];
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdnjs.cloudflare.com'],
+        connectSrc: [
+          "'self'",
+          'https://cdnjs.cloudflare.com',
+          'https://fonts.googleapis.com',
+          'https://fonts.gstatic.com',
+        ],
+        imgSrc: ["'self'", 'data:', 'https://cdn.discordapp.com', 'https://cdn.discordapp.com/attachments'],
+        frameSrc: ["'self'", ...whiteList],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+  }),
+);
 
 // Raw Body
 app.use(rawBodyMiddleware);
