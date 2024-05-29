@@ -316,17 +316,6 @@ create table if not exists gm_todo_task
     error text                         null
 );
 
-create table if not exists gm_token
-(
-    token char(255)            not null
-        primary key,
-    ip    text                 null,
-    port  text                 null,
-    name  text                 null,
-    rcon  text                 null,
-    `use` tinyint(1) default 0 null
-);
-
 create table if not exists gm_user
 (
     id         char(30)            not null
@@ -351,12 +340,6 @@ create table if not exists gm_server_bump
     constraint gm_server_bump_gm_user_id_fk
         foreign key (memberID) references gm_user (id)
             on update cascade on delete cascade
-);
-
-create table if not exists gm_user_invoices
-(
-    discordID text null,
-    invoiceID text null
 );
 
 create table if not exists gm_server_stat_session
