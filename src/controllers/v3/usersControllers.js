@@ -3,7 +3,6 @@ import { createServer, getServersFromDiscordGuildID } from '../../classes/v3/Ser
 import { discordConfig } from '../../config/index.js';
 import { ChannelType } from 'discord.js';
 import {
-  addUserToGuild,
   getDiscordUserFromID,
   getUserFromToken,
   getUserTokenFromCode,
@@ -71,16 +70,17 @@ export async function oauthLogin(req, res) {
     });
   }
 
-  await addUserToGuild(discordConfig.guildID, discordUser.id, discordUserToken.access_token)
-    .then(() => {
-      console.log('User added to guild');
-    })
-    .catch((error) => {
-      console.error(error);
-    });
+  // I remove the auto join guild feature if uncomment also update perm here: getUserTokenFromCode
+  // await addUserToGuild(discordConfig.guildID, discordUser.id, discordUserToken.access_token)
+  //   .then(() => {
+  //     console.log('User added to guild');
+  //   })
+  //   .catch((error) => {
+  //     console.error(error);
+  //   });
 
   const panelAccessToken = await saveUserPanel(discordUser.id, discordUserToken);
-  await saveUser(discordUser.id, discordUser.username, discordUser.email);
+  await saveUser(discordUser.id, discordUser.username);
 
   return res.redirect(
     `${discordConfig.oauthPanelRedirect}?discordID=${discordUser.id}&accessToken=${panelAccessToken}&expirationDate=${discordUserToken.expirationDate.getTime()}`,

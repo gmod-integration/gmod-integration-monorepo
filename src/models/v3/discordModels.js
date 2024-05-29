@@ -218,7 +218,8 @@ export async function getUserTokenFromCode(code, redirectURI) {
       grant_type: 'authorization_code',
       code,
       redirect_uri: redirectURI,
-      scope: 'identify guilds.join email guilds',
+      // scope: 'identify guilds.join email guilds',
+      scope: 'identify guilds role_connection.write',
     }).toString(),
   });
 
@@ -243,11 +244,10 @@ export async function getUserFromToken(token) {
   return await discordRequest.json();
 }
 
-export async function saveUser(id, username, email) {
+export async function saveUser(id, username) {
   const connection = await getConnectionPromise();
-  const query =
-    'INSERT INTO gm_user (id, username, email) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE username = ?, email = ?';
-  await connection.execute(query, [id, username, email, username, email]);
+  const query = 'INSERT INTO gm_user (id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = ?';
+  await connection.execute(query, [id, username, username]);
 
   return true;
 }
