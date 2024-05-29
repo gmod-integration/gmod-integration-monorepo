@@ -16,6 +16,10 @@ export class User {
   getSteamID64() {
     return this.steamID64;
   }
+
+  isDeveloper() {
+    return this.rank === 'developer';
+  }
 }
 
 export async function getUserFromSteamID64(steamID64) {

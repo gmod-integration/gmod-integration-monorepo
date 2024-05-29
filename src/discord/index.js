@@ -1,4 +1,4 @@
-import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, Partials } from 'discord.js';
 import { discordConfig } from '../config/index.js';
 import { readdirSync } from 'fs';
 import { gmLog } from '../utils/logger.js';
@@ -19,7 +19,9 @@ const client = new Client({
     GatewayIntentBits.GuildWebhooks,
     GatewayIntentBits.Guilds,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.DirectMessages,
   ],
+  partials: [Partials.Channel],
 });
 
 const eventFiles = readdirSync(join(process.cwd(), 'src/discord/events')).filter((file) => file.endsWith('.js'));
