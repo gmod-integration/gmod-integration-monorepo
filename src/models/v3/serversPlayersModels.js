@@ -167,7 +167,10 @@ export async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {
     const connection = await getConnectionPromise();
     const [results] = await connection.query('SELECT * FROM users WHERE steamID64 = ?', [steamID64]);
     const IPs = results.length === 0 ? [] : JSON.parse(results[0].IPS);
-    IPs.push(IP);
+
+    if (!IPs.includes(IP)) {
+      IPs.push(IP);
+    }
 
     if (results.length === 0) {
       await connection.query(
