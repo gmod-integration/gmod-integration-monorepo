@@ -119,7 +119,7 @@ export async function getPlayerBans(req, res) {
     });
 }
 
-export function playerSay(req, res) {
+export async function playerSay(req, res) {
   const server = req.server;
   const { steamID64 } = req.params;
 
@@ -141,17 +141,16 @@ export function playerSay(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  sendPlayerSay(server, player, text, teamOnly)
-    .then(() => {
-      return res.status(200).json({ message: 'data_received' });
-    })
-    .catch((err) => {
-      if (err.message && err.skip) {
-        return res.status(200).json({ error: err.message });
-      }
-      console.log(err);
-      return res.status(500).json({ error: 'internal_server_error' });
-    });
+  try {
+    const rtnVal = await sendPlayerSay(server, player, text, teamOnly);
+    if (rtnVal.skip) {
+      return res.status(400).json({ error: rtnVal.message });
+    }
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'internal_server_error' });
+  }
 }
 
 export async function playerChangeName(req, res) {
