@@ -141,16 +141,11 @@ export async function playerSay(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  try {
-    const rtnVal = await sendPlayerSay(server, player, text, teamOnly);
-    if (rtnVal.skip) {
-      return res.status(400).json({ error: rtnVal.message });
-    }
-    return res.status(200).json({ success: true });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'internal_server_error' });
+  const rtnVal = await sendPlayerSay(server, player, text, teamOnly);
+  if (rtnVal.skip) {
+    return res.status(400).json({ error: rtnVal.message });
   }
+  return res.status(200).json({ success: true });
 }
 
 export async function playerChangeName(req, res) {
