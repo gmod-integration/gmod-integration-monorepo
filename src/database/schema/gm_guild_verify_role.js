@@ -3,7 +3,7 @@ import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 
 class gm_guild_verify_role extends Model {
-  // Extend the class here
+  // Extend the class here //
 }
 
 gm_guild_verify_role.init(
@@ -19,9 +19,9 @@ gm_guild_verify_role.init(
       references: {
         model: 'gm_guild',
         key: 'guild',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     roleID: {
       type: DataTypes.STRING,

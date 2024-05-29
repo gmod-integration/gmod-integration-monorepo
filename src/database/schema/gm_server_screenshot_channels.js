@@ -14,10 +14,10 @@ gm_server_screenshot_channels.init(
       references: {
         model: 'gm_server',
         key: 'id',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       },
       primaryKey: true,
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     adminCmd: {
       type: DataTypes.BOOLEAN,

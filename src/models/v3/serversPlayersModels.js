@@ -19,155 +19,147 @@ export async function getPlayerBan(steamID64) {
   });
 }
 
-export function sendPlayerSay(server, player, text, onlyTeam) {
+export async function sendPlayerSay(server, player, text, onlyTeam) {
   let anonymous = false;
-  return new Promise(async (resolve, reject) => {
-    player.name.replace(/[^\x00-\x7F]/g, '');
-    text.replace(/[^\x00-\x7F]/g, '');
 
-    const syncChatChannel = await server.getSyncChatChannel();
-    if (!syncChatChannel) {
-      return reject({ skip: true, message: 'Sync chat channel not found or not set' });
-    }
+  player.name.replace(/[^\x00-\x7F]/g, '');
+  text.replace(/[^\x00-\x7F]/g, '');
 
-    const syncChatDirection = await server.getSetting('syncChatDirection');
-    if (syncChatDirection && syncChatDirection === 'discordToGmod') {
-      return reject({ skip: true, message: 'Sync chat direction is discord to gmod' });
-    }
+  const syncChatChannel = await server.getSyncChatChannel();
+  if (!syncChatChannel) {
+    return { skip: true, message: 'Sync chat channel not found or not set' };
+  }
 
-    const syncChatTriggerAll = await server.getSetting('syncChatTriggerAll');
-    if (!syncChatTriggerAll || syncChatTriggerAll === 'false') {
-      const possibleFields = ['steamID64', 'userGroup', 'teamName', 'message'];
-      const operator = ['equal', 'notEqual', 'contain', 'notContain', 'startWith', 'endWith'];
-      const action = ['relay', 'block', 'anonymize'];
+  const syncChatDirection = await server.getSetting('syncChatDirection');
+  if (syncChatDirection && syncChatDirection === 'discordToGmod') {
+    return { skip: true, message: 'Sync chat direction is discord to gmod' };
+  }
 
-      let relayMessage = false;
-      let blocked = false;
+  const syncChatTriggerAll = await server.getSetting('syncChatTriggerAll');
+  if (!syncChatTriggerAll || syncChatTriggerAll === 'false') {
+    const possibleFields = ['steamID64', 'userGroup', 'teamName', 'message'];
+    const operator = ['equal', 'notEqual', 'contain', 'notContain', 'startWith', 'endWith'];
+    const action = ['relay', 'block', 'anonymize'];
 
-      function executeAction(action) {
-        switch (action) {
-          case 'relay':
-            relayMessage = true;
-            break;
-          case 'block':
-            blocked = true;
-            break;
-          case 'anonymize':
-            player.name = 'Anonymous';
-            relayMessage = true;
-            anonymous = true;
-            break;
-        }
-      }
+    let relayMessage = false;
+    let blocked = false;
 
-      function getCorrectValue(field) {
-        switch (field) {
-          case 'steamID64':
-            return player.steamID64;
-          case 'userGroup':
-            return player.userGroup;
-          case 'teamName':
-            return player.team.name;
-          case 'message':
-            return text;
-        }
-      }
-
-      function verifyRule(rule) {
-        if (!rule.enable) return;
-        if (!possibleFields.includes(rule.field)) return;
-        if (!operator.includes(rule.operator)) return;
-        if (!action.includes(rule.action)) return;
-        switch (rule.operator) {
-          case 'equal':
-            if (getCorrectValue(rule.field) === rule.value) {
-              executeAction(rule.action);
-            }
-            break;
-          case 'notEqual':
-            if (getCorrectValue(rule.field) !== rule.value) {
-              executeAction(rule.action);
-            }
-            break;
-          case 'contain':
-            if (getCorrectValue(rule.field).includes(rule.value)) {
-              executeAction(rule.action);
-            }
-            break;
-          case 'notContain':
-            if (!getCorrectValue(rule.field).includes(rule.value)) {
-              executeAction(rule.action);
-            }
-            break;
-          case 'startWith':
-            if (getCorrectValue(rule.field).startsWith(rule.value)) {
-              text = text.substring(rule.value.length);
-              executeAction(rule.action);
-            }
-            break;
-          case 'endWith':
-            if (getCorrectValue(rule.field).endsWith(rule.value)) {
-              text = text.substring(0, text.length - rule.value.length);
-              executeAction(rule.action);
-            }
-            break;
-        }
-      }
-
-      const chatRules = await server.getChatRules();
-      chatRules.forEach((rule) => {
-        verifyRule(rule);
-      });
-
-      const globalChatRules = await server.getGlobalChatRules();
-      globalChatRules.forEach((rule) => {
-        rule.enable = true;
-        verifyRule(rule);
-      });
-
-      if (!relayMessage || blocked) {
-        return reject({ skip: true, message: 'Message blocked or not relayed' });
+    function executeAction(action) {
+      switch (action) {
+        case 'relay':
+          relayMessage = true;
+          break;
+        case 'block':
+          blocked = true;
+          break;
+        case 'anonymize':
+          player.name = 'Anonymous';
+          relayMessage = true;
+          anonymous = true;
+          break;
       }
     }
 
-    // TODO Better code
-    const dscClient = await getClient();
-
-    const dscGuild = dscClient.guilds.cache.get(syncChatChannel.guild);
-    if (!dscGuild) {
-      return reject({ skip: true, message: 'Guild not found' });
+    function getCorrectValue(field) {
+      switch (field) {
+        case 'steamID64':
+          return player.steamID64;
+        case 'userGroup':
+          return player.userGroup;
+        case 'teamName':
+          return player.team.name;
+        case 'message':
+          return text;
+      }
     }
 
-    const dscChannel = dscGuild.channels.cache.get(syncChatChannel.channel);
-    if (!dscChannel) {
-      return reject({ skip: true, message: 'Channel not found' });
+    function verifyRule(rule) {
+      if (!rule.enable) return;
+      if (!possibleFields.includes(rule.field)) return;
+      if (!operator.includes(rule.operator)) return;
+      if (!action.includes(rule.action)) return;
+      switch (rule.operator) {
+        case 'equal':
+          if (getCorrectValue(rule.field) === rule.value) {
+            executeAction(rule.action);
+          }
+          break;
+        case 'notEqual':
+          if (getCorrectValue(rule.field) !== rule.value) {
+            executeAction(rule.action);
+          }
+          break;
+        case 'contain':
+          if (getCorrectValue(rule.field).includes(rule.value)) {
+            executeAction(rule.action);
+          }
+          break;
+        case 'notContain':
+          if (!getCorrectValue(rule.field).includes(rule.value)) {
+            executeAction(rule.action);
+          }
+          break;
+        case 'startWith':
+          if (getCorrectValue(rule.field).startsWith(rule.value)) {
+            text = text.substring(rule.value.length);
+            executeAction(rule.action);
+          }
+          break;
+        case 'endWith':
+          if (getCorrectValue(rule.field).endsWith(rule.value)) {
+            text = text.substring(0, text.length - rule.value.length);
+            executeAction(rule.action);
+          }
+          break;
+      }
     }
 
-    // get channel webhook
-    const webhooks = await dscChannel.fetchWebhooks();
-    const webhook = webhooks.find((w) => w.id === syncChatChannel.webhook);
-    if (!webhook) {
-      return reject({ skip: true, message: 'Webhook not found' });
+    const chatRules = await server.getChatRules();
+    chatRules.forEach((rule) => {
+      verifyRule(rule);
+    });
+
+    const globalChatRules = await server.getGlobalChatRules();
+    globalChatRules.forEach((rule) => {
+      rule.enable = true;
+      verifyRule(rule);
+    });
+
+    if (!relayMessage || blocked) {
+      return { skip: true, message: 'Message blocked or not relayed' };
     }
+  }
 
-    const webhookClient = new WebhookClient(webhook.id, webhook.token);
+  // TODO Better code
+  const dscClient = await getClient();
 
-    webhookClient
-      .send({
-        username: anonymous ? 'Anonymous' : player.name ? player.name : 'Unknown',
-        avatarURL: anonymous
-          ? 'https://i.imgur.com/MfkZJfm.jpeg'
-          : await getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
-        content: text ? text : 'No message',
-      })
-      .then(() => {
-        return resolve();
-      })
-      .catch((err) => {
-        console.error(err);
-        return reject(err);
-      });
+  const dscGuild = dscClient.guilds.cache.get(syncChatChannel.guild);
+  if (!dscGuild) {
+    return { skip: true, message: 'Guild not found' };
+  }
+
+  const dscChannel = dscGuild.channels.cache.get(syncChatChannel.channel);
+  if (!dscChannel) {
+    return { skip: true, message: 'Channel not found' };
+  }
+
+  // get channel webhook
+  const webhooks = await dscChannel.fetchWebhooks();
+  const webhook = webhooks.find((w) => w.id === syncChatChannel.id);
+  if (!webhook) {
+    return { skip: true, message: 'Webhook not found' };
+  }
+
+  const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
+  await webhookClient.send({
+    username: anonymous ? 'Anonymous' : player.name ? player.name : 'Unknown',
+    avatarURL: anonymous
+      ? 'https://i.imgur.com/MfkZJfm.jpeg'
+      : await getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
+    content: text ? text : 'No message',
   });
+
+  return { success: true };
 }
 
 export async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {

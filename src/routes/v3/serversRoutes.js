@@ -12,22 +12,23 @@ import {
   playerSay,
   playerSpawn,
 } from '../../controllers/v3/serversPlayersController.js';
+import asyncHandler from '../../middleware/asyncHandler.js';
 
 const router = express.Router();
 
 router.use('/:serverID', serverValidator);
 
-router.get('/:serverID', getInfo);
-router.post('/:serverID/status', postStatus);
-router.get('/:serverID/public-token', getPublicToken);
-router.post('/:serverID/errors', reportError);
-router.get('/:serverID/players/:steamID64', getPlayer);
-router.post('/:serverID/players/:steamID64/say', playerSay);
-router.post('/:serverID/players/:steamID64/connect', playerConnect);
-router.post('/:serverID/players/:steamID64/disconnect', playerDisconnect);
-router.post('/:serverID/players/:steamID64/ready', playerReady);
-router.post('/:serverID/players/:steamID64/spawn', playerSpawn);
-router.post('/:serverID/players/:steamID64/name', playerChangeName);
-router.post('/:serverID/players/:steamID64/group', playerChangeGroup);
+router.get('/:serverID', asyncHandler(getInfo));
+router.post('/:serverID/status', asyncHandler(postStatus));
+router.get('/:serverID/public-token', asyncHandler(getPublicToken));
+router.post('/:serverID/errors', asyncHandler(reportError));
+router.get('/:serverID/players/:steamID64', asyncHandler(getPlayer));
+router.post('/:serverID/players/:steamID64/say', asyncHandler(playerSay));
+router.post('/:serverID/players/:steamID64/connect', asyncHandler(playerConnect));
+router.post('/:serverID/players/:steamID64/disconnect', asyncHandler(playerDisconnect));
+router.post('/:serverID/players/:steamID64/ready', asyncHandler(playerReady));
+router.post('/:serverID/players/:steamID64/spawn', asyncHandler(playerSpawn));
+router.post('/:serverID/players/:steamID64/name', asyncHandler(playerChangeName));
+router.post('/:serverID/players/:steamID64/group', asyncHandler(playerChangeGroup));
 
 export default router;

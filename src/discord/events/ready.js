@@ -33,34 +33,13 @@ export default {
 
     const botStatusList = [
       async function userCount(stat) {
-        return client.user.setPresence({
-          activities: [
-            {
-              name: `${stat.user.toLocaleString()} users`,
-              type: ActivityType.Watching,
-            },
-          ],
-        });
+        return `${stat.user.toLocaleString()} users`;
       },
       function serverCount(stat) {
-        return client.user.setPresence({
-          activities: [
-            {
-              name: `${stat.server.toLocaleString()} servers`,
-              type: ActivityType.Watching,
-            },
-          ],
-        });
+        return `${stat.server.toLocaleString()} servers`;
       },
       function version() {
-        return client.user.setPresence({
-          activities: [
-            {
-              name: 'v0.3.4',
-              type: ActivityType.Watching,
-            },
-          ],
-        });
+        return `v0.3.4`;
       },
     ];
 
@@ -70,9 +49,15 @@ export default {
       const stats = await getStats();
       const status = botStatusList[lastStatusID];
       lastStatusID = (lastStatusID + 1) % botStatusList.length;
-      const rtn = await status(stats);
-      console.log(`Status updated`);
-      console.log(rtn);
+
+      client.user.setPresence({
+        activities: [
+          {
+            name: await status(stats),
+            type: ActivityType.Watching,
+          },
+        ],
+      });
     }
 
     // every 30s update the bot status

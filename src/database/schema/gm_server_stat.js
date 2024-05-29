@@ -17,9 +17,9 @@ gm_server_stat.init(
       references: {
         model: 'gm_server',
         key: 'id',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     steam_id: {
       type: DataTypes.STRING,
@@ -28,9 +28,9 @@ gm_server_stat.init(
       references: {
         model: 'gm_user_steam',
         key: 'steam_id',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     name: {
       type: DataTypes.STRING,
