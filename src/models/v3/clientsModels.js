@@ -39,19 +39,19 @@ export function sendScreenshotToDiscord(path, filename, player, server) {
     // TODO Better code
     const dscClient = await getClient();
 
-    const dscGuild = dscClient.guilds.cache.get(syncChatChannel.guild);
+    const dscGuild = dscClient.guilds.cache.get(channelInfo.guild);
     if (!dscGuild) {
       return reject({ skip: true, message: 'Guild not found' });
     }
 
-    const dscChannel = dscGuild.channels.cache.get(syncChatChannel.channel);
+    const dscChannel = dscGuild.channels.cache.get(channelInfo.channel);
     if (!dscChannel) {
       return reject({ skip: true, message: 'Channel not found' });
     }
 
     // get channel webhook
     const webhooks = await dscChannel.fetchWebhooks();
-    const webhook = webhooks.find((w) => w.id === syncChatChannel.webhook);
+    const webhook = webhooks.find((w) => w.id === channelInfo.id);
     if (!webhook) {
       return reject({ skip: true, message: 'Webhook not found' });
     }

@@ -145,7 +145,7 @@ export function sendPlayerSay(server, player, text, onlyTeam) {
 
     // get channel webhook
     const webhooks = await dscChannel.fetchWebhooks();
-    const webhook = webhooks.find((w) => w.id === syncChatChannel.webhook);
+    const webhook = webhooks.find((w) => w.id === syncChatChannel.id);
     if (!webhook) {
       return reject({ skip: true, message: 'Webhook not found' });
     }
