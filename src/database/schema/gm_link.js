@@ -31,9 +31,9 @@ gm_link.init(
       references: {
         model: 'gm_guild',
         key: 'guild',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     active: {
       type: DataTypes.BOOLEAN,
