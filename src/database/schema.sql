@@ -87,13 +87,6 @@ create table if not exists gm_guild_member
     primary key (guild_id, user_id)
 );
 
-create table if not exists gm_guild_not_verify_role
-(
-    guildID char(255) not null
-        primary key,
-    roleID  text      null
-);
-
 create table if not exists gm_guild_settings
 (
     guildID char(255) not null,

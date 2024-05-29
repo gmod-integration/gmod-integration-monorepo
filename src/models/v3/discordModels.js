@@ -8,6 +8,8 @@ import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { discordConfig } from '../../config/index.js';
 import { generateToken } from '../../utils/tools.js';
 import gm_guild from '../../database/schema/gm_guild.js';
+import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';
+import gm_guild_not_verify_role from '../../database/schema/gm_guild_not_verify_role.js';
 
 let userUpdateRoleCurrent = {};
 
@@ -168,6 +170,97 @@ export async function updateGuildStat(guild) {
       await guildDB.save();
     }
   }
+}
+
+export async function addNotVerifiedRoleToUser(guild, member) {
+  const roles = await gm_guild_not_verify_role.findAll({
+    where: {
+      guildID: guild.id,
+    },
+  });
+
+  if (!roles) {
+    return;
+  }
+
+  for (const roleData of roles) {
+    const roleDiscord = guild.roles.cache.get(roleData.roleID);
+    if (!roleDiscord) {
+      await roleData.destroy();
+      continue;
+    }
+
+    if (member.roles.cache.has(roleData.roleID)) continue;
+    await member.roles.add(roleDiscord);
+  }
+}
+
+export async function removeNotVerifiedRoleToUser(guild, member) {
+  const roles = await gm_guild_not_verify_role.findAll({
+    where: {
+      guildID: guild.id,
+    },
+  });
+
+  if (!roles) {
+    return;
+  }
+
+  for (const roleData of roles) {
+    const roleDiscord = guild.roles.cache.get(roleData.roleID);
+    if (!roleDiscord) {
+      await roleData.destroy();
+      continue;
+    }
+
+    if (!member.roles.cache.has(roleData.roleID)) continue;
+    await member.roles.remove(roleDiscord);
+  }
+}
+
+export async function addVerifyRoleToUser(guild, member) {
+  const role = await gm_guild_verify_role.findAll({
+    where: {
+      guildID: guild.id,
+    },
+  });
+
+  if (!role) {
+    return;
+  }
+
+  for (const roleData of role) {
+    // if not exist role delete
+    const roleDiscord = guild.roles.cache.get(roleData.roleID);
+    if (!roleDiscord) {
+      await roleData.destroy();
+      continue;
+    }
+
+    // if not enabled skip
+    if (!roleData.enabled) continue;
+
+    // give or remove role
+    if (roleData.isGiveRole) {
+      if (await member.roles.cache.has(roleData.roleID)) continue;
+      await member.roles.add(roleDiscord);
+    } else {
+      if (!(await member.roles.cache.has(roleData.roleID))) continue;
+      await member.roles.remove(roleDiscord);
+    }
+  }
+}
+
+export async function verifyUser(guild, member) {
+  const user = await getUserFromDiscordID(member.id);
+  if (!user || !user.getSteamID64()) {
+    await addNotVerifiedRoleToUser(guild, member);
+    return false;
+  }
+
+  await removeNotVerifiedRoleToUser(guild, member);
+  await addVerifyRoleToUser(guild, member);
+  return true;
 }
 
 export async function getUserGuildsWithPermsForPanel(panelUser) {

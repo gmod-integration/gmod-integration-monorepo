@@ -131,6 +131,99 @@ export async function getStatusMessage(server, data, buttons, lang) {
   return { embeds: [embed], components: rows };
 }
 
+export async function getNotVerifiedMessage(guild, member) {
+  const lang = guild.preferredLocale;
+
+  const embed = {
+    color: 0x2b2d31,
+    title: await getTranslate('hello', lang, [member.globalName]),
+    fields: [
+      {
+        name: await getTranslate('join_msg_p1_name', lang),
+        value: await getTranslate('join_msg_p1_value', lang),
+        inline: false,
+      },
+      {
+        name: '',
+        value: '\n',
+        inline: false,
+      },
+      {
+        name: await getTranslate('join_msg_p2_name', lang),
+        value: await getTranslate('join_msg_p2_value', lang, [
+          `[Garry's Mod Integration](${discordConfig.oauthPanel})`,
+        ]),
+        inline: false,
+      },
+      {
+        name: '',
+        value: '\n',
+        inline: false,
+      },
+      {
+        name: await getTranslate('join_msg_p3_name', lang),
+        value: await getTranslate('join_msg_p3_value', lang),
+        inline: false,
+      },
+      {
+        name: '',
+        value: '\n',
+        inline: false,
+      },
+      {
+        name: await getTranslate('join_msg_p4_name', lang),
+        value: await getTranslate('join_msg_p4_value', lang),
+        inline: false,
+      },
+    ],
+  };
+
+  const open_verify = await ButtonVerificationWebsite(lang);
+  const manual_verify = await ButtonVerify(lang);
+  const our_discord = await ButtonDiscordSupport(lang);
+
+  const row = new ActionRowBuilder().addComponents(open_verify, manual_verify, our_discord);
+
+  return {
+    embeds: [embed],
+    components: [row],
+  };
+}
+
+export async function getVerifiedMessageAnswer(isVerified, guild, member, selfVerify) {
+  const lang = guild.preferredLocale;
+
+  const row = new ActionRowBuilder().addComponents(await ButtonVerificationWebsite(lang));
+
+  if (isVerified) {
+    if (selfVerify) {
+      return {
+        content: await getTranslate('user_verified_self', lang),
+        ephemeral: true,
+      };
+    } else {
+      return {
+        content: await getTranslate('user_verified', lang, [`<@${member.id}>`]),
+        ephemeral: true,
+      };
+    }
+  } else {
+    if (selfVerify) {
+      return {
+        content: (await getTranslate('user_not_verified_self', lang, ['/verify'])) + '\n_ _',
+        ephemeral: true,
+        components: [row],
+      };
+    } else {
+      return {
+        content: (await getTranslate('user_not_verified', lang, [`<@${member.id}>`, '/verify'])) + '\n_ _',
+        ephemeral: true,
+        components: [row],
+      };
+    }
+  }
+}
+
 export async function getProfileMessage(guild, user) {
   const lang = guild.preferredLocale;
   let gm_user = await getUserFromDiscordID(user.id);
