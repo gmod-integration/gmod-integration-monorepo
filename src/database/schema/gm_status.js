@@ -15,9 +15,9 @@ gm_status.init(
       references: {
         model: 'gm_server',
         key: 'id',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     message: {
       type: DataTypes.STRING,

@@ -14,9 +14,9 @@ gm_sync_chat.init(
       references: {
         model: 'gm_server',
         key: 'id',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
       primaryKey: true,
     },
     guild: {
@@ -25,9 +25,9 @@ gm_sync_chat.init(
       references: {
         model: 'gm_guild',
         key: 'guild',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     id: {
       type: DataTypes.STRING,

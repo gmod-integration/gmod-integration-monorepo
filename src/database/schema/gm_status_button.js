@@ -19,9 +19,9 @@ gm_status_button.init(
       references: {
         model: 'gm_server',
         key: 'id',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     name: {
       type: DataTypes.STRING,

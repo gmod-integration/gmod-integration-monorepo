@@ -27,9 +27,9 @@ gm_server.init(
       references: {
         model: 'gm_guild',
         key: 'guild',
-        onDelete: 'CASCADE',
-        onUpdate: 'CASCADE',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     ip: {
       type: DataTypes.STRING,

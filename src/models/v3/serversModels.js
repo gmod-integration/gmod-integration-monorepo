@@ -1,4 +1,5 @@
 import { getConnectionPromise } from '../../database/connection.js';
+import gm_server from '../../database/schema/gm_server.js';
 
 export async function getGuildID(id) {
   const connection = await getConnectionPromise();
@@ -29,18 +30,15 @@ export async function addServerLog(id, log) {
 }
 
 export async function getServerList(interaction, focusedOption, choices) {
-  const connection = await getConnectionPromise();
-  const [rows] = await connection.query(
-    `SELECT *
-     FROM gm_server
-     WHERE guild = ?`,
-    [interaction.guild.id],
-  );
-  if (rows && rows.length > 0) {
-    rows.forEach((row) => {
-      choices[row.name] = row.id;
-    });
-  }
+  const guildServers = await gm_server.findAll({
+    where: {
+      guild: interaction.guildId,
+    },
+  });
+
+  guildServers.forEach((server) => {
+    choices[server.name] = server.id;
+  });
 
   return Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value));
 }

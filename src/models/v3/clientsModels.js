@@ -29,57 +29,49 @@ export function saveScreenshot(screenshot, captureData, player) {
   });
 }
 
-export function sendScreenshotToDiscord(path, filename, player, server) {
-  return new Promise(async (resolve, reject) => {
-    const channelInfo = await server.getScreenshotsChannel();
-    if (!channelInfo) {
-      return reject('channel_not_found');
-    }
+export async function sendScreenshotToDiscord(path, filename, player, server) {
+  const channelInfo = await server.getScreenshotsChannel();
+  if (!channelInfo) {
+    return { skip: true, message: 'Channel not found' };
+  }
 
-    // TODO Better code
-    const dscClient = await getClient();
+  // TODO Better code
+  const dscClient = await getClient();
 
-    const dscGuild = dscClient.guilds.cache.get(syncChatChannel.guild);
-    if (!dscGuild) {
-      return reject({ skip: true, message: 'Guild not found' });
-    }
+  const dscGuild = dscClient.guilds.cache.get(channelInfo.guild);
+  if (!dscGuild) {
+    return { skip: true, message: 'Guild not found' };
+  }
 
-    const dscChannel = dscGuild.channels.cache.get(syncChatChannel.channel);
-    if (!dscChannel) {
-      return reject({ skip: true, message: 'Channel not found' });
-    }
+  const dscChannel = dscGuild.channels.cache.get(channelInfo.channel);
+  if (!dscChannel) {
+    return { skip: true, message: 'Channel not found' };
+  }
 
-    // get channel webhook
-    const webhooks = await dscChannel.fetchWebhooks();
-    const webhook = webhooks.find((w) => w.id === syncChatChannel.webhook);
-    if (!webhook) {
-      return reject({ skip: true, message: 'Webhook not found' });
-    }
+  // get channel webhook
+  const webhooks = await dscChannel.fetchWebhooks();
+  const webhook = webhooks.find((w) => w.id === channelInfo.id);
+  if (!webhook) {
+    return { skip: true, message: 'Webhook not found' };
+  }
 
-    const webhookClient = new WebhookClient(webhook.id, webhook.token);
-
-    webhookClient
-      .send({
-        username: player.name,
-        avatarURL: await getSteamUserAvatarLarge(player.steamID64),
-        embeds: [
-          {
-            image: {
-              url: `${serverConfig.domain}/screenshots/${filename}`,
-              proxy_url: `${serverConfig.domain}/screenshots/${filename}`,
-            },
-            content: `${serverConfig.domain}/screenshots/${filename}`,
-            footer: {
-              text: `SteamID64: ${player.steamID64} - Server: ${server.name}`,
-            },
-          },
-        ],
-      })
-      .then(() => {
-        resolve();
-      })
-      .catch((err) => {
-        reject(err);
-      });
+  const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
+  await webhookClient.send({
+    username: player.name,
+    avatarURL: await getSteamUserAvatarLarge(player.steamID64),
+    embeds: [
+      {
+        image: {
+          url: `${serverConfig.domain}/screenshots/${filename}`,
+          proxy_url: `${serverConfig.domain}/screenshots/${filename}`,
+        },
+        content: `${serverConfig.domain}/screenshots/${filename}`,
+        footer: {
+          text: `SteamID64: ${player.steamID64} - Server: ${server.name}`,
+        },
+      },
+    ],
   });
+  
+  return { success: true };
 }
