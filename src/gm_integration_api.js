@@ -11,6 +11,7 @@ import corsMiddleware from './middleware/corsMiddleware.js';
 import './websockets/index.js';
 import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
+import promBundle from 'express-prom-bundle';
 
 // Database
 executeSqlFile('./src/database/schema.sql').then(() => {
@@ -21,10 +22,17 @@ executeSqlFile('./src/database/schema.sql').then(() => {
 const app = express();
 app.set('trust proxy', true);
 
-// Middleware
-app.use(helmet());
+// CORS
 app.use(cors(corsMiddleware));
+
+// Helmet
+app.use(helmet());
+
+// Raw Body
 app.use(rawBodyMiddleware);
+
+// Prometheus
+app.use(promBundle({ includeMethod: true }));
 
 // Body Parser
 app.use(express.json({ limit: serverConfig.bodyLimit, type: 'application/json' }));
