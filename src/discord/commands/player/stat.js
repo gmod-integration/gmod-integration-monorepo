@@ -99,7 +99,7 @@ async function customValueFormatTitle(key, lang) {
 
 export default {
   data: new SlashCommandBuilder()
-    .setName('stat')
+    .setName('statistic')
     .setDescription("Show your stats or another user's stats for a specific server.")
     .setDMPermission(false)
     .addStringOption((option) =>
@@ -117,7 +117,6 @@ export default {
     ),
   category: 'player',
   async execute(interaction) {
-    console.log('stat command');
     const user = interaction.options.getUser('user') || interaction.user;
     const lang = interaction.guild.preferredLocale;
     const server = interaction.options.getString('server');

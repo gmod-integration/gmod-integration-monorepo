@@ -1,9 +1,12 @@
 import { getTranslate } from '../../utils/localizations.js';
 import { gmLog } from '../../utils/logger.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { ButtonConnect } from './buttons.js';
+import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
 import { getClient } from '../index.js';
 import { getEmojiVersion } from '../../utils/tools.js';
+import { discordConfig } from '../../config/index.js';
+import { getUserFromDiscordID } from '../../classes/v3/User.js';
+import { getTrustRank } from './index.js';
 
 export async function getStatusMessage(server, data, buttons, lang) {
   gmLog('status', 'refresh server status message for ' + server.getID());
@@ -126,4 +129,98 @@ export async function getStatusMessage(server, data, buttons, lang) {
   if (row5.components.length > 0) rows.push(row5);
 
   return { embeds: [embed], components: rows };
+}
+
+export async function getProfileMessage(guild, user) {
+  const lang = guild.preferredLocale;
+  let gm_user = await getUserFromDiscordID(user.id);
+  if (!gm_user) {
+    gm_user = {};
+    gm_user.rank = 'user';
+    gm_user.trustLevel = 50;
+  }
+
+  const embed = {
+    color: 0x2b2d31,
+    title: await getTranslate('profile_info', lang),
+    thumbnail: {
+      url: user.displayAvatarURL({ dynamic: true }),
+    },
+    fields: [
+      {
+        name: '🪪⠀' + (await getTranslate('username', lang)),
+        value: '<@' + user.id + '> / ' + user.username,
+        inline: true,
+      },
+      {
+        name: '',
+        value: '',
+        inline: true,
+      },
+      {
+        name: '🛠️⠀' + (await getTranslate('bot_rank', lang)),
+        value: await getTranslate(gm_user.rank, lang),
+        inline: true,
+      },
+      {
+        name: '',
+        value: '\n',
+      },
+      {
+        name: '🛡️⠀' + (await getTranslate('trust_rank', lang)),
+        value: await getTrustRank(gm_user.trustLevel, lang),
+        inline: true,
+      },
+      {
+        name: '',
+        value: '',
+        inline: true,
+      },
+      {
+        name: '⌚⠀' + (await getTranslate('last_verification', lang)),
+        value: gm_user.lastVerification
+          ? '<t:' + Math.floor(gm_user.lastVerification.getTime() / 1000) + ':R>'
+          : await getTranslate('never', lang),
+        inline: true,
+      },
+      {
+        name: '',
+        value: '\n',
+      },
+      {
+        name: '🪪⠀' + (await getTranslate('discord_id', lang)),
+        value: user.id,
+        inline: true,
+      },
+      {
+        name: '',
+        value: '',
+        inline: true,
+      },
+      {
+        name: '🪪⠀' + (await getTranslate('steam_id', lang)),
+        value: gm_user.steamID64 ? gm_user.steamID64 : await getTranslate('not_verified', lang),
+        inline: true,
+      },
+    ],
+  };
+
+  const open_verify = await ButtonVerificationWebsite(lang);
+  const open_steam = new ButtonBuilder()
+    .setStyle(ButtonStyle.Link)
+    .setLabel('⠀' + (await getTranslate('steam_profile', lang)))
+    .setEmoji('🔗')
+    .setURL(`https://steamcommunity.com/profiles/${gm_user.steam}`);
+
+  const row = new ActionRowBuilder();
+  row.addComponents(open_verify);
+
+  if (gm_user.steamID64) {
+    row.addComponents(open_steam);
+  }
+
+  return {
+    embeds: [embed],
+    components: [row],
+  };
 }
