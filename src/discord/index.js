@@ -58,12 +58,28 @@ for (const folder of commandFolders) {
         commands.set(command.default.data.name, command.default);
         gmLog('command', `Command ${filePath} loaded`);
       } else {
-        if (!command.default) {
-          gmLog('command', `Command ${filePath} is missing default export`);
-        }
-        if (!command.default.data) {
-          gmLog('command', `Command ${filePath} is missing data`);
-        }
+        gmLog('command', `Command ${filePath} is missing default or data`);
+      }
+    });
+  }
+}
+
+// Load Context Menu Commands
+let contextMenuCommands = new Collection();
+const contextMenuPath = join(process.cwd(), 'src/discord/contexts');
+const contextMenuFolders = readdirSync(contextMenuPath);
+
+for (const folder of contextMenuFolders) {
+  const contextMenuFiles = readdirSync(join(contextMenuPath, folder)).filter((file) => file.endsWith('.js'));
+
+  for (const file of contextMenuFiles) {
+    const filePath = join(contextMenuPath, folder, file);
+    import(filePath).then((contextMenu) => {
+      if (contextMenu.default && contextMenu.default.data) {
+        contextMenuCommands.set(contextMenu.default.data.name, contextMenu.default);
+        gmLog('contextMenu', `ContextMenu ${filePath} loaded`);
+      } else {
+        gmLog('contextMenu', `ContextMenu ${filePath} is missing default or data`);
       }
     });
   }
@@ -71,20 +87,19 @@ for (const folder of commandFolders) {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   const command = commands.get(interaction.commandName);
-  if (!command) return;
+  const contextMenuCommand = contextMenuCommands.get(interaction.commandName);
 
-  if (interaction.isChatInputCommand()) {
-    try {
+  try {
+    if (contextMenuCommand) {
+      await contextMenuCommand.execute(interaction);
+    } else if (command && interaction.isChatInputCommand()) {
       await command.execute(interaction);
-    } catch (error) {
-      console.error(error);
-    }
-  } else if (interaction.isAutocomplete()) {
-    try {
+    } else if (command && interaction.isAutocomplete()) {
       await command.autocomplete(interaction);
-    } catch (error) {
-      console.error(error);
     }
+  } catch (error) {
+    interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+    console.error(error);
   }
 });
 
