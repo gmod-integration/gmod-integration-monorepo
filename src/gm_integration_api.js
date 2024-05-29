@@ -1,18 +1,16 @@
 import './utils/update-log.js';
 import express from 'express';
-import statusMonitor from 'express-status-monitor';
 import { serverConfig } from './config/index.js';
 import { gmLog } from './utils/logger.js';
 import rawBodyMiddleware from './middleware/rawBodyMiddleware.js';
 import loggerMiddleware from './middleware/v3/loggers.js';
-import webhooksRoutes from './routes/webhooks/_webhooksRoutes.js';
-import v3Routes from './routes/v3/_v3Routes.js';
 import errorMiddleware from './middleware/errorMiddleware.js';
 import { executeSqlFile } from './database/connection.js';
 import cors from 'cors';
 import corsMiddleware from './middleware/corsMiddleware.js';
 import './websockets/index.js';
 import helmet from 'helmet';
+import mainRoutes from './routes/mainRoutes.js';
 
 // Database
 executeSqlFile('./src/database/schema.sql').then(() => {
@@ -36,10 +34,7 @@ app.use(express.urlencoded({ limit: serverConfig.bodyLimit, extended: true }));
 app.use(loggerMiddleware);
 
 // Routes
-app.use(statusMonitor());
-app.use('/screenshots', express.static('screenshots'));
-app.use('/webhooks', webhooksRoutes);
-app.use('/v3', v3Routes);
+app.use(mainRoutes);
 
 // 404
 app.all('*', (req, res) => {
