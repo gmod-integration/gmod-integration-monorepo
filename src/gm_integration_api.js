@@ -12,6 +12,7 @@ import './websockets/index.js';
 import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
 import promBundle from 'express-prom-bundle';
+import { rateLimit } from 'express-rate-limit';
 
 // Database
 executeSqlFile('./src/database/schema.sql').then(() => {
@@ -21,6 +22,18 @@ executeSqlFile('./src/database/schema.sql').then(() => {
 // Express
 const app = express();
 app.set('trust proxy', true);
+
+// Rate Limit
+app.use(
+  rateLimit({
+    windowMs: 60 * 1000,
+    max: 100,
+    handler: (req, res) => {
+      console.log('Rate limit exceeded for', req.ip);
+      return res.status(429).json({ error: 'Rate limit exceeded' });
+    },
+  }),
+);
 
 // CORS
 app.use(cors(corsMiddleware));
