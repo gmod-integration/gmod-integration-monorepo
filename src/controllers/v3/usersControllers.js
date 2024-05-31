@@ -50,9 +50,11 @@ export async function oauthLogin(req, res) {
   const { code } = req.query;
 
   if (!code) {
-    return res.redirect(discordConfig.oauthPanel);
+    const { redirect } = req.query;
+    return res.redirect(discordConfig.oauthPanel + (redirect ? `&state=redirect:${redirect}` : ''));
   }
 
+  const redirect = req.query.state ? req.query.state.split('redirect:')[1] : null;
   const discordUserToken = await getUserTokenFromCode(
     code,
     `${req.protocol}://${req.headers.host}${req.originalUrl.split('?')[0]}`,
@@ -86,7 +88,9 @@ export async function oauthLogin(req, res) {
   await saveUser(discordUser.id, discordUser.username);
 
   return res.redirect(
-    `${discordConfig.oauthPanelRedirect}?discordID=${discordUser.id}&accessToken=${panelAccessToken}&expirationDate=${discordUserToken.expirationDate.getTime()}`,
+    `${discordConfig.oauthPanelRedirect}?discordID=${discordUser.id}&accessToken=${panelAccessToken}&expirationDate=${discordUserToken.expirationDate.getTime()}${
+      redirect ? `&redirect=${redirect}` : ''
+    }`,
   );
 }
 
