@@ -39,7 +39,7 @@ export default {
         return `${stat.server.toLocaleString()} servers`;
       },
       function version() {
-        return `v0.3.4`;
+        return `v0.3.5`;
       },
     ];
 
