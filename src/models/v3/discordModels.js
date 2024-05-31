@@ -10,6 +10,7 @@ import { generateToken } from '../../utils/tools.js';
 import gm_guild from '../../database/schema/gm_guild.js';
 import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';
 import gm_guild_not_verify_role from '../../database/schema/gm_guild_not_verify_role.js';
+import gm_user from '../../database/schema/gm_user.js';
 
 let userUpdateRoleCurrent = {};
 
@@ -338,9 +339,21 @@ export async function getUserFromToken(token) {
 }
 
 export async function saveUser(id, username) {
-  const connection = await getConnectionPromise();
-  const query = 'INSERT INTO gm_user (id, username) VALUES (?, ?) ON DUPLICATE KEY UPDATE username = ?';
-  await connection.execute(query, [id, username, username]);
+  const user = await gm_user.findOne({
+    where: {
+      id,
+    },
+  });
+
+  if (!user) {
+    await gm_user.create({
+      id,
+      username,
+    });
+  } else {
+    user.username = username;
+    await user.save();
+  }
 
   return true;
 }

@@ -1,4 +1,4 @@
-import { getConnectionPromise } from '../../database/connection.js';
+import gm_user from '../../database/schema/gm_user.js';
 
 export class User {
   constructor(obj = {}) {
@@ -23,39 +23,41 @@ export class User {
 }
 
 export async function getUserFromSteamID64(steamID64) {
-  const connection = await getConnectionPromise();
-  const query = `SELECT *
-                 FROM gm_user
-                 WHERE steam = ?`;
-  const [rows] = await connection.execute(query, [steamID64]);
-  if (rows.length === 0) {
+  const user = await gm_user.findOne({
+    where: {
+      steam: steamID64,
+    },
+  });
+
+  if (!user) {
     return null;
   }
 
   return new User({
-    steamID64: rows[0].steam,
-    discordID: rows[0].id,
-    rank: rows[0].rank,
-    lastVerification: rows[0].last_oauth,
-    trustLevel: rows[0].trust,
+    steamID64: user.steam,
+    discordID: user.id,
+    rank: user.rank,
+    lastVerification: user.last_oauth,
+    trustLevel: user.trust,
   });
 }
 
 export async function getUserFromDiscordID(discordID) {
-  const connection = await getConnectionPromise();
-  const query = `SELECT *
-                 FROM gm_user
-                 WHERE id = ?`;
-  const [rows] = await connection.execute(query, [discordID]);
-  if (rows.length === 0) {
+  const user = await gm_user.findOne({
+    where: {
+      id: discordID,
+    },
+  });
+
+  if (!user) {
     return null;
   }
 
   return new User({
-    steamID64: rows[0].steam,
-    discordID: rows[0].id,
-    rank: rows[0].rank,
-    lastVerification: rows[0].last_oauth,
-    trustLevel: rows[0].trust,
+    steamID64: user.steam,
+    discordID: user.id,
+    rank: user.rank,
+    lastVerification: user.last_oauth,
+    trustLevel: user.trust,
   });
 }

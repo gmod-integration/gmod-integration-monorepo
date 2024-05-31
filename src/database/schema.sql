@@ -187,17 +187,6 @@ create table if not exists gm_role_auto
     primary key (guild, id)
 );
 
-create table if not exists gm_server_ban
-(
-    id       int auto_increment
-        primary key,
-    server   text null,
-    steamid  text null,
-    duration text null,
-    reason   text null,
-    `by`     text null
-);
-
 create table if not exists gm_server_customValues
 (
     serverID char(255) null,
@@ -232,16 +221,6 @@ create table if not exists gm_server_leaderboard_options
     primary key (messageID, serverID),
     constraint gm_server_leaderboard_options_gm_server_id_fk
         foreign key (serverID) references gm_server (id)
-);
-
-create table if not exists gm_server_link
-(
-    id     int auto_increment
-        primary key,
-    guild  text null,
-    server text null,
-    name   text null,
-    url    text null
 );
 
 create table if not exists gm_server_logs
@@ -299,42 +278,6 @@ create table if not exists gm_setting
     primary key (id, setting)
 );
 
-create table if not exists gm_todo_task
-(
-    id    int auto_increment
-        primary key,
-    task  text                         null,
-    data  longtext collate utf8mb4_bin null
-        check (json_valid(`data`)),
-    error text                         null
-);
-
-create table if not exists gm_user
-(
-    id         char(30)            not null
-        primary key,
-    `rank`     text default 'user' null,
-    steam      text                null,
-    email      text                null,
-    username   text                null,
-    last_oauth timestamp           null,
-    trust      int  default 50     null
-);
-
-create table if not exists gm_server_bump
-(
-    memberID char(255)                             not null,
-    serverID char(255)                             not null,
-    date     timestamp default current_timestamp() null,
-    primary key (serverID, memberID),
-    constraint gm_server_bump_gm_server_id_fk
-        foreign key (serverID) references gm_server (id)
-            on update cascade on delete cascade,
-    constraint gm_server_bump_gm_user_id_fk
-        foreign key (memberID) references gm_user (id)
-            on update cascade on delete cascade
-);
-
 create table if not exists gm_server_stat_session
 (
     serverID            char(255)                             null,
@@ -350,43 +293,6 @@ create table if not exists gm_server_stat_session
     constraint gm_server_stat_session_gm_user_steam_steam_id_fk
         foreign key (steamID64) references gm_user_steam (steam_id)
             on update cascade on delete cascade
-);
-
-create table if not exists gm_user_username
-(
-    discord_id char(255) not null,
-    guild_id   char(255) not null,
-    steam_id   text      null,
-    username   text      null,
-    primary key (discord_id, guild_id)
-);
-
-create table if not exists server_stat
-(
-    server_name text                                             null,
-    server_ip   char(32) charset utf8mb4                         not null
-        primary key,
-    nb_players  text charset utf8mb4                             null,
-    timestamp   text charset utf8mb4 default current_timestamp() null,
-    version     text charset utf8mb4                             null
-)
-    collate = utf8mb4_unicode_ci;
-
-create table if not exists server_warn
-(
-    steamid64   char(17) not null
-        primary key,
-    steamid     text     null,
-    reason      text     null,
-    server_name text     null,
-    gravity     int      null
-);
-
-create table if not exists shadowBanUsers
-(
-    steamID64 char(255) not null
-        primary key,
-    reason    text      null
 );
 
 create table if not exists users

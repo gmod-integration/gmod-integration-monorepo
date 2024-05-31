@@ -5,6 +5,7 @@ import { Team } from './Team.js';
 import { Position } from './Position.js';
 import { Angle } from './Angle.js';
 import gm_server_stat from '../../database/schema/gm_server_stat.js';
+import gm_user from '../../database/schema/gm_user.js';
 
 export class PlayerGmod extends BaseClass {
   constructor(obj = {}) {
@@ -23,19 +24,13 @@ export class PlayerGmod extends BaseClass {
   }
 
   async getDiscordID() {
-    try {
-      const connection = await getConnectionPromise(); // Assurez-vous que getConnection retourne une promesse
-      const [results] = await connection.query('SELECT * FROM gm_user WHERE steam = ?', [this.steamID64]);
+    const user = await gm_user.findOne({
+      where: {
+        steam: this.steamID64,
+      },
+    });
 
-      if (results.length > 0) {
-        return results[0].id;
-      }
-
-      return null;
-    } catch (error) {
-      console.error(error);
-      return null;
-    }
+    return user ? user.id : null;
   }
 
   async saveServerStat(serverID) {
@@ -97,21 +92,6 @@ export class PlayerGmod extends BaseClass {
   }
 }
 
-export function getPlayerServerInformations(serverID, steamID64) {
-  return new Promise(async (resolve, reject) => {
-    const player = await gm_server_stat.findOne({
-      where: {
-        steam_id: steamID64,
-        server_id: serverID,
-      },
-    });
-    if (player) {
-      return resolve(new PlayerGmod(player));
-    }
-    return reject('PlayerGmod not found');
-  });
-}
-
 export async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
   try {
     const player = await gm_server_stat.findOne({
@@ -128,13 +108,4 @@ export async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
     console.error(error);
     throw error;
   }
-}
-
-export async function getPlayerServerInformationsFromDiscordID(serverID, discordID) {
-  const connection = await getConnectionPromise();
-  const results = await connection.query('SELECT * FROM gm_user WHERE id = ?', [discordID]);
-  if (results.length > 0) {
-    return getPlayerServerInformations(serverID, results[0].steam);
-  }
-  return null;
 }
