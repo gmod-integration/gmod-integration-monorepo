@@ -313,7 +313,7 @@ export async function getUserTokenFromCode(code, redirectURI) {
       code,
       redirect_uri: redirectURI,
       // scope: 'identify guilds.join email guilds',
-      scope: 'identify guilds role_connection.write',
+      scope: 'identify guilds',
     }).toString(),
   });
 
