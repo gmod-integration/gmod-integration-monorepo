@@ -9,7 +9,10 @@ import {
   saveUser,
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
-import { badArgument } from '../../utils/tools.js';
+import { badArgument, generateToken } from '../../utils/tools.js';
+import gm_user from '../../database/schema/gm_user.js';
+// const passport = require('passport');
+// const SteamStrategy = require('passport-steam').Strategy;
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -530,4 +533,28 @@ export async function putPlayerBypassMaintenance(req, res) {
       error: 'Internal Server Error',
     });
   }
+}
+
+export async function postUserStartVerification(req, res) {
+  const { discordID } = req.params;
+  const user = await gm_user.findOne({
+    where: {
+      id: discordID,
+    },
+  });
+
+  if (!user) {
+    return res.status(404).send({
+      error: 'User not found',
+    });
+  }
+
+  user.token = generateToken(16);
+  user.token_expires = new Date(Date.now() + 1000 * 60 * 5);
+  await user.save();
+
+  return res.json({
+    token: user.token,
+    expires: user.token_expires,
+  });
 }
