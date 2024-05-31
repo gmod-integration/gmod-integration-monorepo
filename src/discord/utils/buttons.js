@@ -7,7 +7,7 @@ export async function ButtonVerificationWebsite(lang) {
     .setStyle(ButtonStyle.Link)
     .setLabel('⠀' + (await getTranslate('verify_yourself', lang)))
     .setEmoji('🛡️')
-    .setURL(discordConfig.oauthVerifyRedirect);
+    .setURL(discordConfig.oauthPanel + '&state=redirect:/account');
 }
 
 export async function ButtonWebsite(lang) {
