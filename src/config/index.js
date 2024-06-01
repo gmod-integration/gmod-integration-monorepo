@@ -16,6 +16,7 @@ export const databaseConfig = {
 export const serverConfig = {
   production: process.env.PRODUCTION,
   bodyLimit: '10mb',
+  sentryDSN: process.env.SENTRY_DSN,
   domain: process.env.DOMAIN_URL,
   internWebsocketToken: process.env.INTERN_WEBSOCKET_TOKEN,
   debug: process.env.DEBUG,

@@ -1,3 +1,4 @@
+import './utils/instrument.js';
 import './utils/update-log.js';
 import express from 'express';
 import { serverConfig } from './config/index.js';
