@@ -4,12 +4,14 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
 import { getClient } from '../index.js';
 import { getEmojiVersion } from '../../utils/tools.js';
-import { discordConfig } from '../../config/index.js';
+import { discordConfig, serverConfig } from '../../config/index.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { getTrustRank } from './index.js';
 
-export async function getStatusMessage(server, data, buttons, lang) {
+export async function getStatusMessage(server, data, lang) {
   gmLog('status', 'refresh server status message for ' + server.getID());
+
+  const buttons = await server.getServerStatusButtons();
 
   let { servOnline, hostname, map, gameMode, players, maxPlayers } = data || {};
   servOnline = !!hostname;
@@ -84,13 +86,13 @@ export async function getStatusMessage(server, data, buttons, lang) {
   const disClient = await getClient();
 
   function addButtons(button, theRow) {
-    let { label, emoji, url } = button;
+    let { name, emoji, url } = button;
 
-    if (!label || !emoji) {
+    if (!name || !emoji) {
       return;
     }
 
-    label = label.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+    name = name.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
 
     // check that emoji is a valid emoji (emoji-version="12.0") or remplace with ?
     const emojiVersion = getEmojiVersion(emoji);
@@ -100,9 +102,9 @@ export async function getStatusMessage(server, data, buttons, lang) {
 
     const theButton = new ButtonBuilder()
       .setStyle(ButtonStyle.Link)
-      .setLabel(`⠀${label}`)
+      .setLabel(`⠀${name}`)
       .setEmoji(emoji)
-      .setURL(`https://gmod-integration.com/open-link?link=${url}`);
+      .setURL(`${serverConfig.websiteUrl}/open?link=${encodeURIComponent(url)}`);
 
     // Ajouter le bouton à la ligne
     theRow.addComponents(theButton);

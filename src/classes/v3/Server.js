@@ -86,20 +86,12 @@ export class Server extends BaseClass {
   }
 
   async getServerStatusButtons() {
-    const connection = await getConnectionPromise();
-    const [results] = await connection.query('SELECT * FROM gm_status_button WHERE server = ? AND enable = 1', [
-      this.getID(),
-    ]);
-    if (results && results[0]) {
-      return results.map((result) => {
-        return {
-          label: result.name,
-          emoji: result.emoji,
-          link: result.ulr,
-        };
-      });
-    }
-    return [];
+    return await gm_status_button.findAll({
+      where: {
+        server: this.getID(),
+        enable: true,
+      },
+    });
   }
 
   async getDiscordGuild() {
@@ -152,7 +144,7 @@ export class Server extends BaseClass {
       },
     });
 
-    const embed = await getStatusMessage(this, msgData, await this.getServerStatusButtons(), guild.preferredLocale);
+    const embed = await getStatusMessage(this, msgData, guild.preferredLocale);
     const message = await channel.send(embed);
 
     return await gm_status.create({
@@ -189,7 +181,7 @@ export class Server extends BaseClass {
     }
 
     const lang = await guild.preferredLocale;
-    const newMsgContent = await getStatusMessage(this, msgData, await this.getServerStatusButtons(), lang);
+    const newMsgContent = await getStatusMessage(this, msgData, lang);
     await message.edit(newMsgContent);
   }
 

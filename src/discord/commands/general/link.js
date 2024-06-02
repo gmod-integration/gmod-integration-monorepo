@@ -1,6 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { getTranslate } from '../../../utils/localizations.js';
 import gm_link from '../../../database/schema/gm_link.js';
+import { serverConfig } from '../../../config/index.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -26,7 +27,9 @@ export default {
           content:
             (await getTranslate('the_link_to_not_set', lang, ['`' + linkID + '`'])) +
             '\n' +
-            (await getTranslate('how_to_set_the_link', lang, ['gmod-integration'])),
+            (await getTranslate('how_to_set_the_link', lang, [
+              `[Edit Guild Links](${serverConfig.websiteUrl}/dashboard/guilds/${interaction.guild.id}/config/links)`,
+            ])),
           ephemeral: true,
         });
       }
@@ -37,8 +40,11 @@ export default {
       });
     }
 
+    const urlEncoded = encodeURIComponent(linkInfo.url);
     return await interaction.reply({
-      content: await getTranslate('the_link_to', lang, ['[' + linkInfo.alias + '](' + linkInfo.url + ')']),
+      content: await getTranslate('the_link_to', lang, [
+        `[${linkInfo.alias}](${serverConfig.websiteUrl}/open?link=${urlEncoded})`,
+      ]),
     });
   },
   async autocomplete(interaction) {
@@ -52,10 +58,13 @@ export default {
     });
 
     guildLinks.forEach((link) => {
+      if (!link.alias) return;
+      if (choices[link.id]) return;
+      if (!link.active) return;
       choices[link.id] = link.alias;
     });
 
     const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value));
-    await interaction.respond(filtered.map((choice) => ({ name: choices[choice], value: choice })));
+    return await interaction.respond(filtered.map((choice) => ({ name: choices[choice], value: choice })));
   },
 };
