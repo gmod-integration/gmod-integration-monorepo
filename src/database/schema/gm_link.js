@@ -18,12 +18,12 @@ gm_link.init(
     url: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: '',
+      defaultValue: 'https://example.com',
     },
     alias: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: '',
+      defaultValue: 'Example',
     },
     guild: {
       type: DataTypes.STRING,
@@ -38,7 +38,7 @@ gm_link.init(
     active: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: false,
     },
   },
   {
