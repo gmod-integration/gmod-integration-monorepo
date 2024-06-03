@@ -39,16 +39,6 @@ create table if not exists devUsers
         primary key
 );
 
-create table if not exists gm_discordToken
-(
-    discordID      char(255) not null
-        primary key,
-    accessToken    text      null,
-    refreshToken   text      null,
-    creationDate   timestamp null,
-    expirationDate timestamp null
-);
-
 create table if not exists gm_emergency
 (
     guild char(255) not null
@@ -137,15 +127,6 @@ create table if not exists gm_log_api
     request   text       null,
     is_post   tinyint(1) null,
     body      text       null
-);
-
-create table if not exists gm_panelToken
-(
-    discordID      char(255) not null
-        primary key,
-    accessToken    text      null,
-    creationDate   text      null,
-    expirationDate text      null
 );
 
 create table if not exists gm_premium
