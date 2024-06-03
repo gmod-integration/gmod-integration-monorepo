@@ -18,6 +18,8 @@ export default {
     if (!user) return interaction.reply(await getTranslate('something_went_wrong', guild.preferredLocale));
 
     const isVerified = await verifyUser(guild, user);
-    await interaction.reply(await getVerifiedMessageAnswer(isVerified, guild, user, user.id === interaction.user.id));
+    await interaction.reply(
+      await getVerifiedMessageAnswer(isVerified, guild.preferredLocale, user, user.id === interaction.user.id),
+    );
   },
 };

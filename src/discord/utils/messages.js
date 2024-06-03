@@ -192,9 +192,7 @@ export async function getNotVerifiedMessage(guild, member) {
   };
 }
 
-export async function getVerifiedMessageAnswer(isVerified, guild, member, selfVerify) {
-  const lang = guild.preferredLocale;
-
+export async function getVerifiedMessageAnswer(isVerified, lang, member, selfVerify) {
   const row = new ActionRowBuilder().addComponents(await ButtonVerificationWebsite(lang));
 
   if (isVerified) {
