@@ -12,6 +12,8 @@ import {
 import { badArgument, generateToken } from '../../utils/tools.js';
 import gm_user from '../../database/schema/gm_user.js';
 import gm_guild_auto_roles from '../../database/schema/gm_guild_auto_roles.js';
+import { getVerificationGuildMessage } from '../../discord/utils/messages.js';
+import gm_guild_verify_msg from '../../database/schema/gm_guild_verify_msg.js';
 // const passport = require('passport');
 // const SteamStrategy = require('passport-steam').Strategy;
 
@@ -616,4 +618,99 @@ export async function getAutoRoles(req, res) {
   });
 
   return res.send(autoRoles);
+}
+
+export async function createVerificationMessage(req, res) {
+  const dscGuild = req.dscGuild;
+  const { channelID } = req.body;
+
+  if (badArgument([channelID])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  if (!dscGuild.channels.cache.has(channelID)) {
+    return res.status(404).send({
+      error: 'Channel not found',
+    });
+  }
+
+  const channel = dscGuild.channels.cache.get(channelID);
+  if (channel.type !== ChannelType.GuildText) {
+    return res.status(400).send({
+      error: 'Channel is not a text channel',
+    });
+  }
+
+  const oldMsg = await gm_guild_verify_msg.findOne({
+    where: {
+      guildID: dscGuild.id,
+    },
+  });
+
+  if (oldMsg) {
+    const oldChannel = await dscGuild.channels.cache.get(oldMsg.channelID);
+    if (oldChannel) {
+      const oldMessage = await oldChannel.messages.fetch(oldMsg.messageID);
+      await oldMessage.delete();
+    }
+    await oldMsg.destroy();
+  }
+
+  // send msg
+  const msg = await getVerificationGuildMessage(dscGuild.preferredLocale);
+  const sentMsg = await channel.send(msg);
+
+  // save msg
+  await gm_guild_verify_msg.create({
+    guildID: dscGuild.id,
+    messageID: sentMsg.id,
+    channelID: channelID,
+  });
+
+  return res.send({
+    messageID: sentMsg.id,
+  });
+}
+
+export async function getVerificationMessage(req, res) {
+  const dscGuild = req.dscGuild;
+  const msg = await gm_guild_verify_msg.findOne({
+    where: {
+      guildID: dscGuild.id,
+    },
+  });
+
+  if (!msg) {
+    return res.status(404).send({
+      error: 'Verification message not found',
+    });
+  }
+
+  return res.send(msg);
+}
+
+export async function deleteVerificationMessage(req, res) {
+  const dscGuild = req.dscGuild;
+  const msg = await gm_guild_verify_msg.findOne({
+    where: {
+      guildID: dscGuild.id,
+    },
+  });
+
+  if (!msg) {
+    return res.status(404).send({
+      error: 'Verification message not found',
+    });
+  }
+
+  const channel = await dscGuild.channels.cache.get(msg.channelID);
+  if (channel) {
+    const message = await channel.messages.fetch(msg.messageID);
+    await message.delete();
+  }
+
+  await msg.destroy();
+  return res.send(msg);
 }
