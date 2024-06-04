@@ -23,3 +23,35 @@ export async function getTrustRank(trust, lang) {
 
   return await getTranslate('unknown_rank', lang);
 }
+
+export function dateToDiscordTimestamp(date) {
+  return '<t:' + Math.floor(date.getTime() / 1000) + ':R>';
+}
+
+export function secToTime(sec) {
+  // convert seconds to ??w ??d ??h ??m ??s
+  let time = '';
+  const weeks = Math.floor(sec / 604800);
+  const days = Math.floor(sec / 86400) % 7;
+  const hours = Math.floor(sec / 3600) % 24;
+  const minutes = Math.floor(sec / 60) % 60;
+  const seconds = sec % 60;
+
+  if (weeks > 0) {
+    time += weeks + 'w ';
+  }
+  if (days > 0) {
+    time += days + 'd ';
+  }
+  if (hours > 0) {
+    time += hours + 'h ';
+  }
+  if (minutes > 0) {
+    time += minutes + 'm ';
+  }
+  if (seconds > 0) {
+    time += seconds + 's';
+  }
+
+  return time;
+}
