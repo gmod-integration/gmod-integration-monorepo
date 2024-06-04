@@ -7,6 +7,12 @@ import { ButtonVerificationWebsite } from '../utils/buttons.js';
 import { ActionRowBuilder } from 'discord.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import gm_guild from '../../database/schema/gm_guild.js';
+import {
+  getLeaderboardButtons,
+  getLeaderboardMessageEmbed,
+  getLeaderboardOptions,
+  saveLeaderboardOptions,
+} from '../../models/v3/leaderboardModels.js';
 
 export default {
   name: 'interactionCreate',
@@ -17,6 +23,50 @@ export default {
     if (interaction.customId === 'premium') {
       if (!interaction.guild) return;
       return replyNeedPremium(interaction);
+    }
+
+    if (interaction.customId.startsWith('leaderboard_')) {
+      const lang = interaction.guild.preferredLocale;
+
+      getLeaderboardOptions(interaction.message.id).then((options) => {
+        if (!options) {
+          interaction.reply({ content: getTranslate('error', lang) });
+          return;
+        }
+
+        let offset = options.offsetValue;
+        let limit = options.limitValue;
+        let messageID = options.messageID;
+
+        if (interaction.customId === 'leaderboard_previous') {
+          offset = offset - limit;
+          if (offset < 0) offset = 0;
+        } else if (interaction.customId === 'leaderboard_next') {
+          offset = offset + limit;
+        } else if (interaction.customId === 'leaderboard_first') {
+          offset = 0;
+        } else if (interaction.customId === 'leaderboard_last') {
+          offset = options.total - limit;
+          if (offset < 0) offset = 0;
+        }
+
+        getLeaderboardMessageEmbed(options.serverID, options.category, lang, limit, offset).then(
+          ({ embed, options }) => {
+            interaction.channel.messages.fetch(messageID).then((message) => {
+              message
+                .edit({
+                  embeds: [embed],
+                  components: [getLeaderboardButtons(options.page === 1, options.page === options.totalPages)],
+                })
+                .then(() => {
+                  saveLeaderboardOptions(messageID, options).then(() => {
+                    interaction.deferUpdate();
+                  });
+                });
+            });
+          },
+        );
+      });
     }
 
     if (interaction.customId === 'verify') {

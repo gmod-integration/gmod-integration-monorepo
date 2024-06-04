@@ -168,13 +168,6 @@ create table if not exists gm_role_auto
     primary key (guild, id)
 );
 
-create table if not exists gm_server_customValues
-(
-    serverID char(255) null,
-    value    char(255) null,
-    enable   tinyint   null
-);
-
 create table if not exists gm_server_generate
 (
     token         char(255)                              not null
@@ -184,24 +177,6 @@ create table if not exists gm_server_generate
     name          text                                   null,
     used          tinyint(1) default 0                   null,
     creation_time timestamp  default current_timestamp() null
-);
-
-create table if not exists gm_server_leaderboard_options
-(
-    serverID     char(17)                              not null,
-    messageID    char(255)                             not null,
-    category     text                                  null,
-    limitValue   int                                   null,
-    offsetValue  int                                   null,
-    orderValue   text                                  null,
-    page         int                                   null,
-    totalPages   int                                   null,
-    creationDate timestamp default current_timestamp() null,
-    updateDate   timestamp default current_timestamp() null on update current_timestamp(),
-    total        int                                   null,
-    primary key (messageID, serverID),
-    constraint gm_server_leaderboard_options_gm_server_id_fk
-        foreign key (serverID) references gm_server (id)
 );
 
 create table if not exists gm_server_logs
