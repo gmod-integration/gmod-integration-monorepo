@@ -227,6 +227,54 @@ export async function getVerifiedMessageAnswer(isVerified, lang, member, selfVer
   }
 }
 
+export async function getVerificationGuildMessage(lang) {
+  const embed = {
+    color: 0x2b2d31,
+    title: await getTranslate('welcome_on_our_server', lang),
+    fields: [
+      {
+        name: await getTranslate('setup_msg_p1_name', lang),
+        value: await getTranslate('setup_msg_p1_value', lang),
+      },
+      {
+        name: '',
+        value: '\n',
+      },
+      {
+        name: await getTranslate('setup_msg_p2_name', lang),
+        value: await getTranslate('setup_msg_p2_value', lang),
+      },
+      {
+        name: '',
+        value: '\n',
+      },
+      {
+        name: await getTranslate('setup_msg_p3_name', lang),
+        value: await getTranslate('setup_msg_p3_value', lang),
+      },
+      {
+        name: '',
+        value: '\n',
+      },
+      {
+        name: await getTranslate('setup_msg_p4_name', lang),
+        value: await getTranslate('setup_msg_p4_value', lang, ['https://gmod-integration.com/legal/privacy']),
+      },
+    ],
+  };
+
+  const open_verify = await ButtonVerificationWebsite(lang);
+  const manual_verify = await ButtonVerify(lang);
+  const our_discord = await ButtonDiscordSupport(lang);
+
+  const row = new ActionRowBuilder().addComponents(open_verify, manual_verify, our_discord);
+
+  return {
+    embeds: [embed],
+    components: [row],
+  };
+}
+
 export async function getProfileMessage(guild, user) {
   const lang = guild.preferredLocale;
   let gm_user = await getUserFromDiscordID(user.id);

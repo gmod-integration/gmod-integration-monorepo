@@ -35,6 +35,9 @@ export default {
       async function userCount(stat) {
         return `${stat.user.toLocaleString()} users`;
       },
+      function guildCount(stat) {
+        return `${stat.guild.toLocaleString()} guilds`;
+      },
       function serverCount(stat) {
         return `${stat.server.toLocaleString()} servers`;
       },
