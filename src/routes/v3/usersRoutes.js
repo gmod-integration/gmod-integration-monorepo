@@ -3,6 +3,7 @@ import {
   createGuildVerificationsRoles,
   createNewServer,
   createServerStatusButtons,
+  deleteAutoRoles,
   deleteGuildLinks,
   deleteGuildServer,
   deleteGuildVerificationsRoles,
@@ -18,6 +19,7 @@ import {
   findServerScreenshots,
   findServerStatus,
   findServerSyncChat,
+  getAutoRoles,
   getGuildAdmins,
   getGuildEmojis,
   getGuildLinks,
@@ -29,6 +31,7 @@ import {
   getTodo,
   getUserGuildsOwnOrAdmins,
   oauthLogin,
+  postAutoRoles,
   postGuildLinks,
   postGuildServerToken,
   postServerScreenshots,
@@ -68,6 +71,10 @@ router.get('/:discordID/guilds/:guildID/links', asyncHandler(getGuildLinks));
 router.post('/:discordID/guilds/:guildID/links', asyncHandler(postGuildLinks));
 router.put('/:discordID/guilds/:guildID/links/:linkID', asyncHandler(putGuildLinks));
 router.delete('/:discordID/guilds/:guildID/links/:linkID', asyncHandler(deleteGuildLinks));
+// Links
+router.get('/:discordID/guilds/:guildID/auto-roles', asyncHandler(getAutoRoles));
+router.post('/:discordID/guilds/:guildID/auto-roles/:roleID', asyncHandler(postAutoRoles));
+router.delete('/:discordID/guilds/:guildID/auto-roles/:roleID', asyncHandler(deleteAutoRoles));
 // Verifications
 router.get('/:discordID/guilds/:guildID/verifications', asyncHandler(getTodo));
 router.put('/:discordID/guilds/:guildID/verifications', asyncHandler(getTodo));

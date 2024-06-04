@@ -12,6 +12,7 @@ import gm_guild_not_verify_role from '../../database/schema/gm_guild_not_verify_
 import gm_user from '../../database/schema/gm_user.js';
 import gm_discordToken from '../../database/schema/gm_discordToken.js';
 import gm_panelToken from '../../database/schema/gm_panelToken.js';
+import gm_guild_auto_roles from '../../database/schema/gm_guild_auto_roles.js';
 
 let userUpdateRoleCurrent = {};
 
@@ -171,6 +172,29 @@ export async function updateGuildStat(guild) {
     if (oldGuildDB !== guildDB) {
       await guildDB.save();
     }
+  }
+}
+
+export async function addAutoRoleToUser(guild, member) {
+  const roles = await gm_guild_auto_roles.findAll({
+    where: {
+      guildID: guild.id,
+    },
+  });
+
+  if (!roles) {
+    return;
+  }
+
+  for (const roleData of roles) {
+    const roleDiscord = guild.roles.cache.get(roleData.roleID);
+    if (!roleDiscord) {
+      await roleData.destroy();
+      continue;
+    }
+
+    if (member.roles.cache.has(roleData.roleID)) continue;
+    await member.roles.add(roleDiscord);
   }
 }
 
