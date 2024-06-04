@@ -3,7 +3,6 @@ import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { wsSendToServer } from '../../websockets/index.js';
 import { getClient } from '../../discord/index.js';
-import { getConnectionPromise } from '../../database/connection.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { discordConfig } from '../../config/index.js';
 import { generateToken } from '../../utils/tools.js';
@@ -11,6 +10,8 @@ import gm_guild from '../../database/schema/gm_guild.js';
 import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';
 import gm_guild_not_verify_role from '../../database/schema/gm_guild_not_verify_role.js';
 import gm_user from '../../database/schema/gm_user.js';
+import gm_discordToken from '../../database/schema/gm_discordToken.js';
+import gm_panelToken from '../../database/schema/gm_panelToken.js';
 
 let userUpdateRoleCurrent = {};
 
@@ -359,34 +360,49 @@ export async function saveUser(id, username) {
 }
 
 export async function saveUserPanel(discordID, discordUserToken) {
-  const connection = await getConnectionPromise();
-  const query =
-    'INSERT INTO gm_discordToken (discordID, accessToken, refreshToken, creationDate, expirationDate) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE accessToken = ?, refreshToken = ?, creationDate = ?, expirationDate = ?';
-  await connection.execute(query, [
-    discordID,
-    discordUserToken.access_token,
-    discordUserToken.refresh_token,
-    discordUserToken.creationDate,
-    discordUserToken.expirationDate,
-    discordUserToken.access_token,
-    discordUserToken.refresh_token,
-    discordUserToken.creationDate,
-    discordUserToken.expirationDate,
-  ]);
+  const discordToken = await gm_discordToken.findOne({
+    where: {
+      discordID,
+    },
+  });
+
+  if (!discordToken) {
+    await gm_discordToken.create({
+      discordID,
+      accessToken: discordUserToken.access_token,
+      refreshToken: discordUserToken.refresh_token,
+      creationDate: discordUserToken.creationDate,
+      expirationDate: discordUserToken.expirationDate,
+    });
+  } else {
+    discordToken.accessToken = discordUserToken.access_token;
+    discordToken.refreshToken = discordUserToken.refresh_token;
+    discordToken.creationDate = discordUserToken.creationDate;
+    discordToken.expirationDate = discordUserToken.expirationDate;
+    await discordToken.save();
+  }
+
+  const panelToken = await gm_panelToken.findOne({
+    where: {
+      discordID,
+    },
+  });
 
   const panelAccessToken = generateToken(32);
 
-  const query2 =
-    'INSERT INTO gm_panelToken (discordID, accessToken, creationDate, expirationDate) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE accessToken = ?, creationDate = ?, expirationDate = ?';
-  await connection.execute(query2, [
-    discordID,
-    panelAccessToken,
-    discordUserToken.creationDate,
-    discordUserToken.expirationDate,
-    panelAccessToken,
-    discordUserToken.creationDate,
-    discordUserToken.expirationDate,
-  ]);
+  if (!panelToken) {
+    await gm_panelToken.create({
+      discordID,
+      accessToken: panelAccessToken,
+      creationDate: discordUserToken.creationDate,
+      expirationDate: discordUserToken.expirationDate,
+    });
+  } else {
+    panelToken.accessToken = panelAccessToken;
+    panelToken.creationDate = discordUserToken.creationDate;
+    panelToken.expirationDate = discordUserToken.expirationDate;
+    await panelToken.save();
+  }
 
   return panelAccessToken;
 }

@@ -162,5 +162,6 @@
   "ticket_not_found": "Ticket not found !",
   "rcon_command_error": "An error occured while sending the command !",
   "rcon_command_success": "Command successfully sent !",
-  "your_guild_is_premium": "Congratulations, your guild is premium !"
+  "your_guild_is_premium": "Congratulations, your guild is premium !",
+  "re_verify_yourself": "To perform this action, you must re-verify yourself !"
 }

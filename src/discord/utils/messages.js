@@ -6,7 +6,10 @@ import { getClient } from '../index.js';
 import { getEmojiVersion } from '../../utils/tools.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
-import { getTrustRank } from './index.js';
+import { dateToDiscordTimestamp, getTrustRank, secToTime } from './index.js';
+import gm_server from '../../database/schema/gm_server.js';
+import gm_server_stat from '../../database/schema/gm_server_stat.js';
+import gm_user_steam from '../../database/schema/gm_user_steam.js';
 
 export async function getStatusMessage(server, data, lang) {
   gmLog('status', 'refresh server status message for ' + server.getID());
@@ -192,9 +195,7 @@ export async function getNotVerifiedMessage(guild, member) {
   };
 }
 
-export async function getVerifiedMessageAnswer(isVerified, guild, member, selfVerify) {
-  const lang = guild.preferredLocale;
-
+export async function getVerifiedMessageAnswer(isVerified, lang, member, selfVerify) {
   const row = new ActionRowBuilder().addComponents(await ButtonVerificationWebsite(lang));
 
   if (isVerified) {
@@ -318,4 +319,255 @@ export async function getProfileMessage(guild, user) {
     embeds: [embed],
     components: [row],
   };
+}
+
+export async function getUserStatisticMessage(user, server, guild, steamid) {
+  const lang = guild.preferredLocale;
+
+  const customValueFormatList = {
+    money: {
+      format: (value) => {
+        return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      },
+      emoji: '💰',
+    },
+  };
+
+  function customValueFormat(key, value) {
+    if (customValueFormatList[key]) {
+      return customValueFormatList[key].format(value);
+    } else {
+      return value;
+    }
+  }
+
+  async function customValueFormatTitle(key, lang) {
+    if (customValueFormatList[key]) {
+      return customValueFormatList[key].emoji + '⠀' + (await getTranslate(key, lang));
+    } else {
+      return key;
+    }
+  }
+
+  let steamID64ToUse;
+  if (!steamid) {
+    const dbUser = await getUserFromDiscordID(user.id);
+    if (!dbUser) {
+      return { content: await getTranslate('user_not_linked', lang), ephemeral: true };
+    }
+    steamID64ToUse = dbUser.steamID64;
+  } else {
+    steamID64ToUse = steamid;
+  }
+
+  if (server === 'global') {
+    const userData = await gm_user_steam.findOne({
+      where: {
+        steam_id: steamID64ToUse,
+      },
+    });
+
+    if (!userData) {
+      return { content: await getTranslate('user_not_found', lang), ephemeral: true };
+    }
+
+    const embed = {
+      color: 0x2b2d31,
+      title: await getTranslate('stat_of_global', lang, [userData.username || userData.steam_id]),
+      fields: [
+        // steam_id, username, last_connect, total_time, total_death, total_kill, total_connect
+        {
+          name: '🪪⠀' + (await getTranslate('username', lang)),
+          value: userData.username ? userData.username : 'Unknown',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+        },
+        {
+          name: '🔪⠀' + (await getTranslate('total_kills', lang)),
+          value: userData.total_kill ? userData.total_kill : '0',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+          inline: true,
+        },
+        {
+          name: '💀⠀' + (await getTranslate('total_deaths', lang)),
+          value: userData.total_death ? userData.total_death : '0',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+        },
+        {
+          name: '⏳⠀' + (await getTranslate('total_time', lang)),
+          value: userData.total_time ? secToTime(userData.total_time) : '0',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+          inline: true,
+        },
+        {
+          name: '🗓️⠀' + (await getTranslate('total_join', lang)),
+          value: userData.total_connect ? userData.total_connect : '0',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+        },
+        {
+          name: '📅⠀' + (await getTranslate('last_join', lang)),
+          value: userData.last_connect ? dateToDiscordTimestamp(userData.last_connect) : 'Never',
+          inline: true,
+        },
+      ],
+    };
+
+    return { embeds: [embed] };
+  } else {
+    const serverDB = await gm_server.findOne({
+      where: {
+        id: server,
+      },
+    });
+
+    if (!serverDB) {
+      return { content: await getTranslate('server_not_found', lang), ephemeral: true };
+    }
+
+    const userData = await gm_server_stat.findOne({
+      where: {
+        steam_id: steamID64ToUse,
+        server_id: server,
+      },
+    });
+
+    if (!userData) {
+      return { content: await getTranslate('user_or_server_not_found', lang), ephemeral: true };
+    }
+
+    const embed = {
+      color: 0x2b2d31,
+      title: await getTranslate('stat_of_server', lang, [userData.name || userData.steam_id]),
+      fields: [
+        {
+          name: '🪪⠀' + (await getTranslate('name', lang)),
+          value: userData.name ? userData.name : 'Unknown',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+          inline: true,
+        },
+        {
+          name: '🛠️⠀' + (await getTranslate('rank', lang)),
+          value: userData.rank ? userData.rank : 'Unknown',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+        },
+        {
+          name: '📅⠀' + (await getTranslate('first_join', lang)),
+          value: userData.first_join ? dateToDiscordTimestamp(userData.first_join) : 'Never',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+          inline: true,
+        },
+        {
+          name: '📅⠀' + (await getTranslate('last_join', lang)),
+          value: userData.last_connect ? dateToDiscordTimestamp(userData.last_connect) : 'Never',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+        },
+        {
+          name: '🔪⠀' + (await getTranslate('total_kills', lang)),
+          value: userData.total_kill ? userData.total_kill : '0',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+          inline: true,
+        },
+        {
+          name: '💀⠀' + (await getTranslate('total_deaths', lang)),
+          value: userData.total_death ? userData.total_death : '0',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+        },
+        {
+          name: '⏳⠀' + (await getTranslate('total_time', lang)),
+          value: userData.total_time ? secToTime(userData.total_time) : '0',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+          inline: true,
+        },
+        {
+          name: '🗓️⠀' + (await getTranslate('total_join', lang)),
+          value: userData.total_connect ? userData.total_connect : '0',
+          inline: true,
+        },
+        {
+          name: '',
+          value: '',
+        },
+      ],
+      footer: {
+        text: `SteamID: ${userData.steam_id} - Server: ${serverDB.name}`,
+      },
+    };
+
+    if (userData.custom_values) {
+      let acID = 1;
+      for (const [key, value] of Object.entries(JSON.parse(userData.custom_values))) {
+        embed.push({
+          name: await customValueFormatTitle(key, lang),
+          value: await customValueFormat(key, value),
+          inline: true,
+        });
+
+        acID++;
+
+        if (acID % 2 === 0) {
+          embed.push({
+            name: '',
+            value: '',
+            inline: true,
+          });
+        }
+
+        if (acID % 3 === 0) {
+          embed.push({
+            name: '',
+            value: '',
+          });
+        }
+      }
+    }
+
+    return { embeds: [embed] };
+  }
 }

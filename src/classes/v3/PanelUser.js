@@ -1,7 +1,8 @@
-import { getConnectionPromise } from '../../database/connection.js';
 import { getUserFromDiscordID } from './User.js';
 import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels.js';
 import redis from '../../redis/index.js';
+import gm_panelToken from '../../database/schema/gm_panelToken.js';
+import gm_discordToken from '../../database/schema/gm_discordToken.js';
 
 export class PanelUser {
   constructor(obj = {}) {
@@ -109,41 +110,37 @@ export class PanelUser {
 }
 
 export async function getPanelUserFromDiscordID(discordID) {
-  const connection = await getConnectionPromise();
-  const queryPanelToken = `SELECT *
-                           FROM gm_panelToken
-                           WHERE discordID = ?`;
-  const [rowsPanelToken] = await connection.execute(queryPanelToken, [discordID]);
-  if (rowsPanelToken.length === 0) {
-    return null;
-  }
+  const panelInfo = await gm_panelToken.findOne({
+    where: {
+      discordID: discordID,
+    },
+  });
 
-  const queryDiscordToken = `SELECT *
-                             FROM gm_discordToken
-                             WHERE discordID = ?`;
-  const [rowsDiscordToken] = await connection.execute(queryDiscordToken, [discordID]);
-  if (rowsDiscordToken.length === 0) {
-    return null;
-  }
+  const discordInfo = await gm_discordToken.findOne({
+    where: {
+      discordID: discordID,
+    },
+  });
 
   const user = await getUserFromDiscordID(discordID);
-  if (!user) {
+
+  if (!panelInfo || !discordInfo || !user) {
     return null;
   }
 
   return new PanelUser({
     user: user,
-    discordID: rowsPanelToken[0].discordID,
+    discordID: panelInfo.discordID,
     panelToken: {
-      token: rowsPanelToken[0].accessToken,
-      creationDate: rowsPanelToken[0].creationDate,
-      expirationDate: rowsPanelToken[0].expirationDate,
+      token: panelInfo.accessToken,
+      creationDate: panelInfo.creationDate,
+      expirationDate: panelInfo.expirationDate,
     },
     discordToken: {
-      token: rowsDiscordToken[0].accessToken,
-      refreshToken: rowsDiscordToken[0].refreshToken,
-      creationDate: rowsDiscordToken[0].creationDate,
-      expirationDate: rowsDiscordToken[0].expirationDate,
+      token: discordInfo.accessToken,
+      refreshToken: discordInfo.refreshToken,
+      creationDate: discordInfo.creationDate,
+      expirationDate: discordInfo.expirationDate,
     },
   });
 }
