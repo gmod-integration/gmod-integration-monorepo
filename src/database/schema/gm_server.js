@@ -11,6 +11,8 @@ class gm_server extends Model {
       vote: this.vote,
       guild: this.guild,
       verified: this.verified,
+      ip: this.ip,
+      port: this.port,
     };
   }
 }
