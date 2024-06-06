@@ -407,6 +407,7 @@ export class Server extends BaseClass {
       serverToSave.isPublic = this.isPublic;
       serverToSave.verified = this.verified;
       serverToSave.publicTempToken = this.publicTempToken;
+      serverToSave.description = this.description;
       await serverToSave.save();
     }
   }
