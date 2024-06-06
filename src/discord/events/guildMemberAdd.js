@@ -10,16 +10,15 @@ export default {
       return;
     }
 
+    const guild = add_info.client.guilds.cache.get(add_info.guild.id);
+    const member = guild.members.cache.get(add_info.user.id);
+
     gmLog('event', `New member joined guild: ${add_info.guild.name}`);
-    await updateGuildStat(add_info.guild);
+    await updateGuildStat(guild);
+    await addAutoRoleToUser(guild, member).catch(() => {});
 
-    await addAutoRoleToUser.catch((error) => {
-      gmLog('error', 'Failed to add auto role to user');
-      console.error(error);
-    });
-
-    if (!(await verifyUser(add_info.guild, add_info.user))) {
-      await add_info.user.send(await getNotVerifiedMessage(add_info.guild, add_info.user)).catch(() => {});
+    if (!(await verifyUser(guild, member))) {
+      await member.send(await getNotVerifiedMessage(guild, member)).catch(() => {});
     }
   },
 };

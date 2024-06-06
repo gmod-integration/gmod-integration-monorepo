@@ -196,6 +196,8 @@ export async function addAutoRoleToUser(guild, member) {
     if (member.roles.cache.has(roleData.roleID)) continue;
     await member.roles.add(roleDiscord);
   }
+
+  return true;
 }
 
 export async function addNotVerifiedRoleToUser(guild, member) {
@@ -216,7 +218,7 @@ export async function addNotVerifiedRoleToUser(guild, member) {
       continue;
     }
 
-    if (member.roles.cache.has(roleData.roleID)) continue;
+    if (await member.roles.cache.has(roleData.roleID)) continue;
     await member.roles.add(roleDiscord);
   }
 }
@@ -239,7 +241,7 @@ export async function removeNotVerifiedRoleToUser(guild, member) {
       continue;
     }
 
-    if (!member.roles.cache.has(roleData.roleID)) continue;
+    if (!(await member.roles.cache.has(roleData.roleID))) continue;
     await member.roles.remove(roleDiscord);
   }
 }
