@@ -3,7 +3,16 @@ import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 
 class gm_server extends Model {
-  // Extend the class here
+  async getPublicInformations() {
+    return {
+      id: this.id,
+      name: this.name,
+      image: this.image,
+      vote: this.vote,
+      guild: this.guild,
+      verified: this.verified,
+    };
+  }
 }
 
 gm_server.init(
@@ -20,6 +29,11 @@ gm_server.init(
     publicTempToken: {
       type: DataTypes.STRING,
       defaultValue: '',
+    },
+    isPublic: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
     guild: {
       type: DataTypes.STRING,
@@ -46,11 +60,6 @@ gm_server.init(
     image: {
       type: DataTypes.STRING,
       defaultValue: '',
-    },
-    bump: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
     },
     verified: {
       type: DataTypes.BOOLEAN,

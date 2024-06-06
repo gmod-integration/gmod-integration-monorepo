@@ -27,7 +27,7 @@ export class Server extends BaseClass {
     this.image = obj.image;
     this.verified = obj.verified;
     this.publicTempToken = obj.publicTempToken;
-    this.bump = obj.bump;
+    this.isPublic = obj.isPublic;
   }
 
   async getStatusChannelAndMessage() {
@@ -403,7 +403,7 @@ export class Server extends BaseClass {
       serverToSave.ip = this.ip;
       serverToSave.port = this.port;
       serverToSave.image = this.image;
-      serverToSave.bump = this.bump;
+      serverToSave.isPublic = this.isPublic;
       serverToSave.verified = this.verified;
       serverToSave.publicTempToken = this.publicTempToken;
       await serverToSave.save();
