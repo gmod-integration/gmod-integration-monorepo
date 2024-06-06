@@ -14,6 +14,11 @@ import gm_user from '../../database/schema/gm_user.js';
 import gm_guild_auto_roles from '../../database/schema/gm_guild_auto_roles.js';
 import { getVerificationGuildMessage } from '../../discord/utils/messages.js';
 import gm_guild_verify_msg from '../../database/schema/gm_guild_verify_msg.js';
+import gm_server from '../../database/schema/gm_server.js';
+import gm_server_status from '../../database/schema/gm_server_status.js';
+import ServerVote from '../../database/schema/ServerVote.js';
+import moment from 'moment';
+import { Op } from 'sequelize';
 // const passport = require('passport');
 // const SteamStrategy = require('passport-steam').Strategy;
 
@@ -253,12 +258,14 @@ export async function deleteGuildLinks(req, res) {
 
 export async function putGuildServer(req, res) {
   const server = req.server;
-  const { name, image, ip, port } = req.body;
+  const { name, image, ip, port, isPublic, description } = req.body;
 
   server.name = name !== undefined ? name : server.name;
   server.image = image !== undefined ? image : server.image;
   server.ip = ip !== undefined ? ip : server.ip;
   server.port = port !== undefined ? port : server.port;
+  server.isPublic = isPublic !== undefined ? isPublic : server.isPublic;
+  server.description = description !== undefined ? description : server.description;
 
   await server.save();
   return res.send(server);
@@ -713,4 +720,47 @@ export async function deleteVerificationMessage(req, res) {
 
   await msg.destroy();
   return res.send(msg);
+}
+
+export async function getPublicServers(req, res) {
+  const servers = await gm_server.findAll({
+    where: {
+      isPublic: true,
+    },
+  });
+
+  let publicServers = [];
+
+  let thirtyDaysAgo = moment().subtract(30, 'days').toDate();
+  console.log(thirtyDaysAgo);
+  for (const server of servers) {
+    let publicInformations = await server.getPublicInformations();
+    publicInformations.vote = await ServerVote.count({
+      where: {
+        serverID: server.id,
+        createdAt: {
+          [Op.gte]: thirtyDaysAgo,
+        },
+      },
+    });
+    publicServers.push(publicInformations);
+  }
+
+  const serverStatus = await gm_server_status.findAll({
+    where: {
+      id: servers.map((server) => server.id),
+    },
+  });
+
+  for (const status of serverStatus) {
+    if (status.dataValues.updatedAt < new Date(Date.now() - 1000 * 60 * 5)) {
+      continue;
+    }
+    const server = publicServers.find((server) => server.id === status.dataValues.id);
+    if (server) {
+      server.status = status.dataValues;
+    }
+  }
+
+  return res.send(publicServers);
 }

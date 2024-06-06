@@ -28,6 +28,7 @@ import {
   getGuildRoles,
   getGuildVerificationsRoles,
   getProfile,
+  getPublicServers,
   getServerPlayers,
   getServerStatusButtons,
   getUserGuildsOwnOrAdmins,
@@ -58,6 +59,7 @@ router.use('/:discordID', userValidator);
 router.get('/:discordID', asyncHandler(findCurrentUser));
 router.get('/:discordID/guilds', asyncHandler(getUserGuildsOwnOrAdmins));
 router.get('/:discordID/verifications/token', asyncHandler(postUserStartVerification));
+router.get('/:discordID/servers', asyncHandler(getPublicServers));
 
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', asyncHandler(findGuild));
