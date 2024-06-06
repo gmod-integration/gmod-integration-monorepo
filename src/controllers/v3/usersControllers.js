@@ -258,13 +258,14 @@ export async function deleteGuildLinks(req, res) {
 
 export async function putGuildServer(req, res) {
   const server = req.server;
-  const { name, image, ip, port, isPublic } = req.body;
+  const { name, image, ip, port, isPublic, description } = req.body;
 
   server.name = name !== undefined ? name : server.name;
   server.image = image !== undefined ? image : server.image;
   server.ip = ip !== undefined ? ip : server.ip;
   server.port = port !== undefined ? port : server.port;
   server.isPublic = isPublic !== undefined ? isPublic : server.isPublic;
+  server.description = description !== undefined ? description : server.description;
 
   await server.save();
   return res.send(server);

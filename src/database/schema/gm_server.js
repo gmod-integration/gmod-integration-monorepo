@@ -11,6 +11,7 @@ class gm_server extends Model {
       vote: this.vote,
       guild: this.guild,
       verified: this.verified,
+      description: this.description,
       ip: this.ip,
       port: this.port,
     };
@@ -27,6 +28,10 @@ gm_server.init(
     token: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    description: {
+      type: DataTypes.STRING,
+      defaultValue: '',
     },
     publicTempToken: {
       type: DataTypes.STRING,

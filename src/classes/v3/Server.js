@@ -27,6 +27,7 @@ export class Server extends BaseClass {
     this.image = obj.image;
     this.verified = obj.verified;
     this.publicTempToken = obj.publicTempToken;
+    this.description = obj.description;
     this.isPublic = obj.isPublic;
   }
 
