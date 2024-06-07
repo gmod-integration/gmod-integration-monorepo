@@ -148,5 +148,9 @@
   "leaderboard_desc": "Buscar por {1}, página {2}/{3}",
   "rcon_command_error": "¡Se produjo un error al enviar el comando!",
   "rcon_command_success": "¡Comando enviado con éxito!",
-  "your_guild_is_premium": "¡Tu servidor es premium!"
+  "your_guild_is_premium": "¡Tu servidor es premium!",
+  "re_verify_yourself": "Para realizar esta acción, ¡debes volver a verificarte!",
+  "vote_webhook": "{1} acaba de votar por el servidor {2}!",
+  "vote_success": "¡Has votado con éxito por el servidor {1}!",
+  "vote_cooldown": "Ya has votado por este servidor, ¡puedes votar de nuevo en {1}!"
 }

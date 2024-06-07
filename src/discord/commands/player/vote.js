@@ -3,6 +3,7 @@ import { getTranslate } from '../../../utils/localizations.js';
 import { getServerList } from '../../../models/v3/serversModels.js';
 import ServerVote from '../../../database/schema/ServerVote.js';
 import { secToTime } from '../../utils/index.js';
+import { getServerFromID } from '../../../classes/v3/Server.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -45,9 +46,16 @@ export default {
       userID: user.id,
     });
 
+    const serverData = await getServerFromID(server);
+    const webhooks = await serverData.getVoteChannel();
+    if (webhooks && interaction.guild.channels.cache.get(webhooks.channelID)) {
+      interaction.guild.channels.cache.get(webhooks.channelID).send({
+        content: await getTranslate('vote_webhook', lang, [user.username, serverData.name]),
+      });
+    }
+
     return interaction.reply({
-      content: await getTranslate('vote_success', lang),
-      ephemeral: true,
+      content: await getTranslate('vote_success', lang, [serverData.name]),
     });
   },
   async autocomplete(interaction) {
