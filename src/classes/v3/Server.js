@@ -14,6 +14,7 @@ import { ChannelType } from 'discord.js';
 import gm_server_screenshot_channels from '../../database/schema/gm_server_screenshot_channels.js';
 import gm_server_stat from '../../database/schema/gm_server_stat.js';
 import gm_sync_chat from '../../database/schema/gm_sync_chat.js';
+import ServerVoteChannel from '../../database/schema/ServerVoteChannel.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -407,6 +408,7 @@ export class Server extends BaseClass {
       serverToSave.isPublic = this.isPublic;
       serverToSave.verified = this.verified;
       serverToSave.publicTempToken = this.publicTempToken;
+      serverToSave.description = this.description;
       await serverToSave.save();
     }
   }
@@ -454,11 +456,7 @@ export class Server extends BaseClass {
   }
 
   async destroyScreenshotChannel() {
-    const screenshotChannel = await gm_server_screenshot_channels.findOne({
-      where: {
-        server: this.id,
-      },
-    });
+    const screenshotChannel = await this.getScreenshotsChannel();
 
     if (screenshotChannel) {
       try {
@@ -478,6 +476,60 @@ export class Server extends BaseClass {
     }
 
     return screenshotChannel;
+  }
+
+  async getVoteChannel() {
+    return await ServerVoteChannel.findOne({
+      where: {
+        serverID: this.id,
+      },
+    });
+  }
+
+  async destroyVoteChannel() {
+    const voteChannel = await this.getVoteChannel();
+
+    if (voteChannel) {
+      try {
+        const guild = await this.getDiscordGuild();
+        if (!guild) throw new Error('Guild not found');
+
+        const channel = await guild.channels.cache.get(voteChannel.channelID);
+        if (!channel) throw new Error('Channel not found');
+
+        const webhook = await channel.fetchWebhooks();
+        const webhookToDelete = webhook.find((webhook) => webhook.id === voteChannel.webhook);
+        if (webhookToDelete) await webhookToDelete.delete();
+      } catch (error) {
+        // skip
+      }
+      await voteChannel.destroy();
+    }
+
+    return voteChannel;
+  }
+
+  async createVoteChannel(channelID) {
+    await this.destroyVoteChannel();
+
+    const guild = await this.getDiscordGuild();
+    if (!guild) throw new Error('Guild not found');
+
+    const channel = await guild.channels.cache.get(channelID);
+    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found');
+
+    const webhook = await channel.createWebhook({
+      name: 'Server Vote',
+    });
+
+    if (!webhook) throw new Error('Webhook not created');
+
+    return await ServerVoteChannel.create({
+      serverID: this.id,
+      channelID,
+      webhookID: webhook.id,
+      webhookToken: webhook.token,
+    });
   }
 
   async getDBPlayers() {

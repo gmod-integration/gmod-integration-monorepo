@@ -13,6 +13,7 @@ import {
   deleteServerStatusButtons,
   deleteServerSyncChat,
   deleteVerificationMessage,
+  deleteVoteChannels,
   findCurrentUser,
   findGuild,
   findGuildChannels,
@@ -33,6 +34,7 @@ import {
   getServerStatusButtons,
   getUserGuildsOwnOrAdmins,
   getVerificationMessage,
+  getVoteChannels,
   oauthLogin,
   postAutoRoles,
   postGuildLinks,
@@ -41,6 +43,7 @@ import {
   postServerStatus,
   postServerSyncChat,
   postUserStartVerification,
+  postVoteChannels,
   putGuildLinks,
   putGuildServer,
   putGuildVerificationsRoles,
@@ -99,6 +102,10 @@ router.delete('/:discordID/guilds/:guildID/servers/:serverID', asyncHandler(dele
 router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(findServerScreenshots));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(postServerScreenshots));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(deleteServerScreenshots));
+// Vote
+router.get('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(getVoteChannels));
+router.post('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(postVoteChannels));
+router.delete('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(deleteVoteChannels));
 // Sync Chat
 router.get('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(findServerSyncChat));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(postServerSyncChat));

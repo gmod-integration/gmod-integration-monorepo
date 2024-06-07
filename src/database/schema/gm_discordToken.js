@@ -10,6 +10,7 @@ gm_discordToken.init(
   {
     discordID: {
       type: DataTypes.STRING,
+      allowNull: false,
       primaryKey: true,
     },
     accessToken: {
@@ -28,7 +29,6 @@ gm_discordToken.init(
     expirationDate: {
       type: DataTypes.DATE,
       allowNull: false,
-      defaultValue: DataTypes.NOW + 1000 * 60 * 60 * 24 * 7,
     },
   },
   {
@@ -38,6 +38,11 @@ gm_discordToken.init(
     timestamps: true,
   },
 );
+
+gm_discordToken.beforeCreate((token, options) => {
+  const currentDate = new Date();
+  token.expirationDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
+});
 
 gm_discordToken
   .sync({ alter: true })

@@ -163,5 +163,8 @@
   "rcon_command_error": "An error occured while sending the command !",
   "rcon_command_success": "Command successfully sent !",
   "your_guild_is_premium": "Congratulations, your guild is premium !",
-  "re_verify_yourself": "To perform this action, you must re-verify yourself !"
+  "re_verify_yourself": "To perform this action, you must re-verify yourself !",
+  "vote_webhook": "{1} just voted for the server {2} !",
+  "vote_success": "You have successfully voted for the server {1} !",
+  "vote_cooldown": "You have already voted for this server, you can vote again in {1}"
 }

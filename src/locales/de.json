@@ -148,5 +148,9 @@
   "leaderboard_desc": "Suche nach {1}, Seite {2}/{3}",
   "rcon_command_error": "Ein Fehler ist aufgetreten beim Senden des Befehls!",
   "rcon_command_success": "Befehl erfolgreich gesendet!",
-  "your_guild_is_premium": "Herzlichen Glückwunsch, Ihr Server ist Premium!"
+  "your_guild_is_premium": "Herzlichen Glückwunsch, Ihr Server ist Premium!",
+  "re_verify_yourself": "Um diese Aktion auszuführen, müssen Sie sich erneut verifizieren!",
+  "vote_webhook": "{1} hat gerade für den Server {2} abgestimmt!",
+  "vote_success": "Sie haben erfolgreich für den Server {1} abgestimmt!",
+  "vote_cooldown": "Sie haben bereits für diesen Server gestimmt. Sie können erneut in {1} abstimmen"
 }

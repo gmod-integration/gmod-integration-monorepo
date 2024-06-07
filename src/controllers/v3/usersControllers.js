@@ -764,3 +764,27 @@ export async function getPublicServers(req, res) {
 
   return res.send(publicServers);
 }
+
+export async function getVoteChannels(req, res) {
+  const server = req.server;
+  return res.send(await server.getVoteChannel());
+}
+
+export async function postVoteChannels(req, res) {
+  const server = req.server;
+  const { channelID } = req.body;
+
+  if (badArgument([channelID])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+  
+  return res.send(await server.createVoteChannel(channelID));
+}
+
+export async function deleteVoteChannels(req, res) {
+  const { channelID } = req.params;
+  const server = req.server;
+  return res.send(await server.destroyVoteChannel(channelID));
+}
