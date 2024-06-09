@@ -409,7 +409,11 @@ export async function putServerStatusButtons(req, res) {
   button.enable = enable !== undefined ? enable : button.enable;
 
   await button.save();
-  await server.editStatusChannelAndMessage(await server.getStatusData());
+
+  if (button.enable) {
+    await server.editStatusChannelAndMessage(await server.getStatusData());
+  }
+
   return res.send(button);
 }
 
@@ -430,11 +434,12 @@ export async function deleteServerStatusButtons(req, res) {
     });
   }
 
+  await server.destroyStatusButton(buttonID);
+
   if (button.enable) {
     await server.editStatusChannelAndMessage(await server.getStatusData());
   }
 
-  await server.destroyStatusButton(buttonID);
   return res.send(button);
 }
 
