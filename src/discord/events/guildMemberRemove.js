@@ -11,6 +11,7 @@ export default {
 
     if (editedGuild) {
       editedGuild.member = remove_info.guild.memberCount;
+      editedGuild.changed('updatedAt', true);
       await editedGuild.save();
     }
   },

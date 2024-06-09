@@ -151,7 +151,7 @@ export async function updateRolesToGmod(newMember, roleID, add = true) {
 }
 
 export async function updateGuildStat(guild) {
-  const guildDB = await gm_guild.findOne({
+  let guildDB = await gm_guild.findOne({
     where: {
       guild: guild.id,
     },
@@ -165,13 +165,11 @@ export async function updateGuildStat(guild) {
       language: guild.preferredLocale,
     });
   } else {
-    const oldGuildDB = guildDB;
     guildDB.member = guild.memberCount;
     guildDB.language = guild.preferredLocale;
     guildDB.name = guild.name;
-    if (oldGuildDB !== guildDB) {
-      await guildDB.save();
-    }
+    guildDB.changed('updatedAt', true);
+    await guildDB.save();
   }
 }
 
@@ -379,6 +377,7 @@ export async function saveUser(id, username) {
     });
   } else {
     user.username = username;
+    user.changed('updatedAt', true);
     await user.save();
   }
 
@@ -405,6 +404,7 @@ export async function saveUserPanel(discordID, discordUserToken) {
     discordToken.refreshToken = discordUserToken.refresh_token;
     discordToken.creationDate = discordUserToken.creationDate;
     discordToken.expirationDate = discordUserToken.expirationDate;
+    discordToken.changed('updatedAt', true);
     await discordToken.save();
   }
 
@@ -427,6 +427,7 @@ export async function saveUserPanel(discordID, discordUserToken) {
     panelToken.accessToken = panelAccessToken;
     panelToken.creationDate = discordUserToken.creationDate;
     panelToken.expirationDate = discordUserToken.expirationDate;
+    panelToken.changed('updatedAt', true);
     await panelToken.save();
   }
 

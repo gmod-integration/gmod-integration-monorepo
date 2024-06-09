@@ -102,6 +102,7 @@ export async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
     });
     if (player) {
       player.rank = userGroup;
+      player.changed('updatedAt', true);
       await player.save();
     }
   } catch (error) {
