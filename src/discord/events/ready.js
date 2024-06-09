@@ -2,6 +2,7 @@ import { getClient } from '../index.js';
 import gm_guild from '../../database/schema/gm_guild.js';
 import { getStats } from '../../models/v3/mainModels.js';
 import { ActivityType } from 'discord.js';
+import { statusRoutine } from '../../controllers/v3/serversControllers.js';
 
 export default {
   name: 'ready',
@@ -66,5 +67,9 @@ export default {
     // every 30s update the bot status
     setInterval(updateStatus, 30000);
     await updateStatus();
+
+    // every 5 minutes execute the server status routine
+    setInterval(statusRoutine, 300000);
+    await statusRoutine();
   },
 };
