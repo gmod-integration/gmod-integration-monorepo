@@ -268,7 +268,6 @@ export async function putGuildServer(req, res) {
   server.isPublic = isPublic !== undefined ? isPublic : server.isPublic;
   server.description = description !== undefined ? description : server.description;
 
-  server.changed('updatedAt', true);
   await server.save();
   return res.send(server);
 }
