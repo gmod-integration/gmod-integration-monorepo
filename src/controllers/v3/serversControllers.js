@@ -47,11 +47,21 @@ export async function getPublicToken(req, res) {
 }
 
 export async function statusRoutine() {
+  // offline server = not in gm_server_status or gm_server_status.updatedAt < now - 5 minutes
   const offlineServers = await gm_status.findAll({
     where: {
-      server: {
-        [Op.notIn]: Sequelize.literal('(SELECT id FROM gm_server_status)'),
-      },
+      [Op.or]: [
+        {
+          updatedAt: {
+            [Op.lt]: Sequelize.literal('NOW() - INTERVAL 5 MINUTE'),
+          },
+        },
+        {
+          server: {
+            [Op.notIn]: Sequelize.literal('(SELECT id FROM gm_server)'),
+          },
+        },
+      ],
     },
   });
 
