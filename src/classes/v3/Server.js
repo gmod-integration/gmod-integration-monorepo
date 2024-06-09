@@ -15,6 +15,7 @@ import gm_server_screenshot_channels from '../../database/schema/gm_server_scree
 import gm_server_stat from '../../database/schema/gm_server_stat.js';
 import gm_sync_chat from '../../database/schema/gm_sync_chat.js';
 import ServerVoteChannel from '../../database/schema/ServerVoteChannel.js';
+import { Op } from 'sequelize';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -44,6 +45,9 @@ export class Server extends BaseClass {
     return await gm_server_status.findOne({
       where: {
         id: this.getID(),
+        updatedAt: {
+          [Op.gt]: new Date(new Date() - 5 * 60 * 1000),
+        },
       },
     });
   }
@@ -178,8 +182,13 @@ export class Server extends BaseClass {
   }
 
   async saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime) {
-    const serverStatus = await this.getStatusData();
+    const serverStatus = await gm_server_status.findOne({
+      where: {
+        id: this.getID(),
+      },
+    });
     if (serverStatus) {
+      // update
       serverStatus.ip = ip;
       serverStatus.port = port;
       serverStatus.hostname = hostname;
@@ -187,6 +196,11 @@ export class Server extends BaseClass {
       serverStatus.gameMode = gameMode;
       serverStatus.players = players;
       serverStatus.maxPlayers = maxPlayers;
+
+      // force the updatedAt to change even if the data is the same
+      serverStatus.changed('updatedAt', true);
+
+      // save
       await serverStatus.save();
     } else {
       await gm_server_status.create({
@@ -394,6 +408,7 @@ export class Server extends BaseClass {
       serverToSave.verified = this.verified;
       serverToSave.publicTempToken = this.publicTempToken;
       serverToSave.description = this.description;
+      serverToSave.changed('updatedAt', true);
       await serverToSave.save();
     }
   }

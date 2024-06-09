@@ -21,6 +21,7 @@ export default {
         dbGuild.member = guild.memberCount;
         dbGuild.language = guild.preferredLocale;
         dbGuild.name = guild.name;
+        dbGuild.changed('updatedAt', true);
         await dbGuild.save();
       } else {
         await gm_guild.create({

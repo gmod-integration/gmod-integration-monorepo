@@ -150,6 +150,7 @@ export async function saveLeaderboardOptions(messageID, options) {
     DBOptions.offsetValue = offset;
     DBOptions.orderValue = order;
     DBOptions.total = total;
+    DBOptions.changed('updatedAt', true);
     await DBOptions.save();
     return DBOptions;
   } else {

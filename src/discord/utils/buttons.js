@@ -47,7 +47,7 @@ export async function ButtonConnect(lang, ip, port) {
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('server-connect', lang)}`)
     .setEmoji('🔗')
-    .setURL(`${serverConfig.domain}/open?link=steam://connect/${ip}:${port}`);
+    .setURL(`${serverConfig.websiteUrl}/open?link=steam://connect/${ip}:${port}`);
 }
 
 export async function ButtonPremium(lang) {

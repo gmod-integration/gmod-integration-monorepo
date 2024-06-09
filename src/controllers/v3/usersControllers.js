@@ -237,6 +237,7 @@ export async function putGuildLinks(req, res) {
   link.alias = alias !== undefined ? alias : link.alias;
   link.active = active !== undefined ? active : link.active;
 
+  link.changed('updatedAt', true);
   await link.save();
   return res.send(link);
 }
@@ -267,6 +268,7 @@ export async function putGuildServer(req, res) {
   server.isPublic = isPublic !== undefined ? isPublic : server.isPublic;
   server.description = description !== undefined ? description : server.description;
 
+  server.changed('updatedAt', true);
   await server.save();
   return res.send(server);
 }
@@ -314,6 +316,7 @@ export async function putGuildVerificationsRoles(req, res) {
   verificationRole.isGiveRole = isGiveRole !== undefined ? isGiveRole : verificationRole.isGiveRole;
   verificationRole.enabled = enabled !== undefined ? enabled : verificationRole.enabled;
 
+  verificationRole.changed('updatedAt', true);
   await verificationRole.save();
   return res.send(verificationRole);
 }
@@ -408,8 +411,13 @@ export async function putServerStatusButtons(req, res) {
   button.url = url !== undefined ? url : button.url;
   button.enable = enable !== undefined ? enable : button.enable;
 
+  button.changed('updatedAt', true);
   await button.save();
-  await server.editStatusChannelAndMessage(await server.getStatusData());
+
+  if (button.enable) {
+    await server.editStatusChannelAndMessage(await server.getStatusData());
+  }
+
   return res.send(button);
 }
 
@@ -430,11 +438,12 @@ export async function deleteServerStatusButtons(req, res) {
     });
   }
 
+  await server.destroyStatusButton(buttonID);
+
   if (button.enable) {
     await server.editStatusChannelAndMessage(await server.getStatusData());
   }
 
-  await server.destroyStatusButton(buttonID);
   return res.send(button);
 }
 
@@ -545,6 +554,7 @@ export async function putPlayerBypassMaintenance(req, res) {
 
     player.bypassMaintenance = bypassMaintenance !== undefined ? bypassMaintenance : player.bypassMaintenance;
 
+    player.changed('updatedAt', true);
     await player.save();
     return res.send(player);
   } catch (error) {

@@ -71,6 +71,7 @@ export async function steamVerificationReturn(req, res) {
       for (const userWithSteam of usersWithSteam) {
         userWithSteam.steam = null;
         gmLog('steam', `STEAM MOVE FROM ${userWithSteam.id} TO ${user.id}`);
+        userWithSteam.changed('updatedAt', true);
         await userWithSteam.save();
       }
 
@@ -78,6 +79,7 @@ export async function steamVerificationReturn(req, res) {
       user.token_expires = null;
       user.last_oauth = new Date();
       user.steam = steamID64;
+      user.changed('updatedAt', true);
       await user.save();
 
       res.redirect(`${serverConfig.websiteUrl}/account`);
