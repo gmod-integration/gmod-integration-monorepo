@@ -33,24 +33,19 @@ export class Server extends BaseClass {
   }
 
   async getStatusChannelAndMessage() {
-    const redisKey = `server:${this.id}:statusChannel`;
-    const redisData = await redis.get(redisKey);
-    if (redisData) {
-      return JSON.parse(redisData);
-    }
-
-    const status = await gm_status.findOne({
+    return await gm_status.findOne({
       where: {
         server: this.id,
       },
     });
+  }
 
-    if (status) {
-      await redis.set(redisKey, JSON.stringify(status), 'EX', 60);
-      return status;
-    }
-
-    return null;
+  async getStatusData() {
+    return await gm_server_status.findOne({
+      where: {
+        id: this.getID(),
+      },
+    });
   }
 
   isValidToken(token) {
@@ -140,12 +135,7 @@ export class Server extends BaseClass {
       throw new Error('Channel not found');
     }
 
-    const msgData = await gm_server_status.findOne({
-      where: {
-        id: this.getID(),
-      },
-    });
-
+    const msgData = await this.getStatusData();
     const embed = await getStatusMessage(this, msgData, guild.preferredLocale);
     const message = await channel.send(embed);
 
@@ -188,12 +178,7 @@ export class Server extends BaseClass {
   }
 
   async saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime) {
-    const serverStatus = await gm_server_status.findOne({
-      where: {
-        id: this.getID(),
-      },
-    });
-
+    const serverStatus = await this.getStatusData();
     if (serverStatus) {
       serverStatus.ip = ip;
       serverStatus.port = port;

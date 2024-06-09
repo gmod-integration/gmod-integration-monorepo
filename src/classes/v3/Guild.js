@@ -4,6 +4,7 @@ import redis from '../../redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
 import gm_link from '../../database/schema/gm_link.js';
 import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';
+import PremiumGuild from '../../database/schema/PremiumGuild.js';
 
 export class Guild {
   constructor(guild) {
@@ -81,7 +82,13 @@ export class Guild {
 }
 
 export async function isGuildPremium(guildID) {
-  if (discordConfig.premiumGuilds.includes(guildID)) {
+  if (
+    await PremiumGuild.findOne({
+      where: {
+        guildID,
+      },
+    })
+  ) {
     return true;
   }
 

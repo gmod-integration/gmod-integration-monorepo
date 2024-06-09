@@ -31,11 +31,10 @@ export default {
       const lastVoteTime = new Date(lastVote.createdAt).getTime();
       const voteCooldown = 1000 * 60 * 60 * 3;
 
-      if (Date.now() - lastVoteTime < voteCooldown) {
+      if (lastVoteTime + voteCooldown > Date.now()) {
+        const timeLeft = Math.ceil((lastVoteTime + voteCooldown - Date.now()) / 1000);
         return interaction.reply({
-          content: await getTranslate('vote_cooldown', lang, [
-            secToTime((voteCooldown - (Date.now() - lastVoteTime)) / 1000),
-          ]),
+          content: await getTranslate('vote_cooldown', lang, [secToTime(timeLeft)]),
           ephemeral: true,
         });
       }

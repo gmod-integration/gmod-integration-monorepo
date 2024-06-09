@@ -129,28 +129,6 @@ create table if not exists gm_log_api
     body      text       null
 );
 
-create table if not exists gm_premium
-(
-    guild          char(255)                            not null
-        primary key,
-    expired        tinyint(1)                           null,
-    creationDate   datetime default current_timestamp() null,
-    expirationDate datetime default current_timestamp() null,
-    transaction    text                                 null,
-    buyer          text                                 null
-);
-
-create table if not exists gm_report
-(
-    id     int auto_increment
-        primary key,
-    guild  text null,
-    admin  text null,
-    user   text null,
-    reason text null,
-    proof  text null
-);
-
 create table if not exists gm_role
 (
     guild   char(255)            not null,

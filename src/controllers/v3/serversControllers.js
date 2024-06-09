@@ -1,5 +1,10 @@
 import { badArgument } from '../../utils/tools.js';
 import { gmLog } from '../../utils/logger.js';
+import gm_status from '../../database/schema/gm_status.js';
+import { Op, Sequelize } from 'sequelize';
+import { getClient } from '../../discord/index.js';
+import { getServerFromID } from '../../classes/v3/Server.js';
+import { getStatusMessage } from '../../discord/utils/messages.js';
 
 export async function postStatus(req, res) {
   const server = req.server;
@@ -39,4 +44,37 @@ export async function getPublicToken(req, res) {
   const server = req.server;
   await server.regeneratePublicTempToken();
   return res.status(200).json({ publicTempToken: server.getPublicToken() });
+}
+
+export async function statusRoutine() {
+  const offlineServers = await gm_status.findAll({
+    where: {
+      server: {
+        [Op.notIn]: Sequelize.literal('(SELECT id FROM gm_server_status)'),
+      },
+    },
+  });
+
+  const dscClient = await getClient();
+  for (const offlineServer of offlineServers) {
+    try {
+      const server = await getServerFromID(offlineServer.server);
+      if (!server) return await offlineServer.destroy();
+
+      const guild = dscClient.guilds.cache.get(server.getGuildID());
+      if (!guild) return await offlineServer.destroy();
+
+      const channel = guild.channels.cache.get(offlineServer.channel);
+      if (!channel) return await offlineServer.destroy();
+
+      const message = await channel.messages.fetch(offlineServer.message);
+      if (!message) return await offlineServer.destroy();
+
+      const lang = await guild.preferredLocale;
+      const newMsgContent = await getStatusMessage(server, {}, lang);
+      await message.edit(newMsgContent);
+    } catch (error) {
+      console.error(error);
+    }
+  }
 }
