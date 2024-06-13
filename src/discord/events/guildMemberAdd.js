@@ -26,7 +26,7 @@ export default {
         },
       });
 
-      if (dontMp && dontMp.value === 'true') {
+      if (dontMp) {
         return;
       }
 
