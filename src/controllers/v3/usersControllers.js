@@ -744,6 +744,8 @@ export async function getGuildSetting(req, res) {
   return res.send(guildSetting || {});
 }
 
+const allowedSettings = ['verification_dont_mp'];
+
 export async function putGuildSetting(req, res) {
   const { guildID, setting } = req.params;
   const { value } = req.body;
@@ -754,7 +756,6 @@ export async function putGuildSetting(req, res) {
     });
   }
 
-  const allowedSettings = ['verification_dont_mp'];
   if (!allowedSettings.includes(setting)) {
     return res.status(400).send({
       error: 'Setting not allowed',
@@ -764,6 +765,7 @@ export async function putGuildSetting(req, res) {
   let guildSetting = await GuildSettings.findOne({
     where: { guildID, setting },
   });
+
   if (!guildSetting) {
     guildSetting = await GuildSettings.create({ guildID, setting, value });
   } else {
@@ -772,6 +774,36 @@ export async function putGuildSetting(req, res) {
     await guildSetting.save();
   }
 
+  return res.send(guildSetting);
+}
+
+export async function postGuildSetting(req, res) {
+  const { guildID, setting } = req.params;
+  const { value } = req.body;
+
+  if (badArgument([value])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  if (!allowedSettings.includes(setting)) {
+    return res.status(400).send({
+      error: 'Setting not allowed',
+    });
+  }
+
+  let guildSetting = await GuildSettings.findOne({
+    where: { guildID, setting },
+  });
+
+  if (guildSetting) {
+    return res.status(409).send({
+      error: 'Setting already exists',
+    });
+  }
+
+  guildSetting = await GuildSettings.create({ guildID, setting, value });
   return res.send(guildSetting);
 }
 
