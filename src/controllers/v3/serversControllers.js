@@ -53,7 +53,7 @@ export async function statusRoutine() {
       [Op.or]: [
         {
           updatedAt: {
-            [Op.lt]: Sequelize.literal('NOW() - INTERVAL 5 MINUTE'),
+            [Op.lt]: Sequelize.literal('NOW() - INTERVAL 10 MINUTE'),
           },
         },
         {

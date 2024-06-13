@@ -2,6 +2,7 @@ import { discordConfig } from '../../config/index.js';
 import { addAutoRoleToUser, updateGuildStat, verifyUser } from '../../models/v3/discordModels.js';
 import { gmLog } from '../../utils/logger.js';
 import { getNotVerifiedMessage } from '../utils/messages.js';
+import GuildSettings from '../../database/schema/GuildSettings.js';
 
 export default {
   name: 'guildMemberAdd',
@@ -18,6 +19,17 @@ export default {
     await addAutoRoleToUser(guild, member).catch(() => {});
 
     if (!(await verifyUser(guild, member))) {
+      const dontMp = await GuildSettings.findOne({
+        where: {
+          guildID: guild.id,
+          setting: 'verification_dont_mp',
+        },
+      });
+
+      if (dontMp) {
+        return;
+      }
+
       await member.send(await getNotVerifiedMessage(guild, member)).catch(() => {});
     }
   },

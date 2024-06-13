@@ -7,6 +7,7 @@ import {
   deleteAutoRoles,
   deleteGuildLinks,
   deleteGuildServer,
+  deleteGuildSetting,
   deleteGuildVerificationsRoles,
   deleteServerScreenshots,
   deleteServerStatus,
@@ -27,6 +28,8 @@ import {
   getGuildEmojis,
   getGuildLinks,
   getGuildRoles,
+  getGuildSetting,
+  getGuildSettings,
   getGuildVerificationsRoles,
   getProfile,
   getPublicServers,
@@ -39,6 +42,7 @@ import {
   postAutoRoles,
   postGuildLinks,
   postGuildServerToken,
+  postGuildSetting,
   postServerScreenshots,
   postServerStatus,
   postServerSyncChat,
@@ -46,6 +50,7 @@ import {
   postVoteChannels,
   putGuildLinks,
   putGuildServer,
+  putGuildSetting,
   putGuildVerificationsRoles,
   putPlayerBypassMaintenance,
   putServerStatusButtons,
@@ -70,6 +75,12 @@ router.get('/:discordID/guilds/:guildID/channels', asyncHandler(findGuildChannel
 router.get('/:discordID/guilds/:guildID/roles', asyncHandler(getGuildRoles));
 router.get('/:discordID/guilds/:guildID/admins', asyncHandler(getGuildAdmins));
 router.get('/:discordID/guilds/:guildID/emojis', asyncHandler(getGuildEmojis));
+// Settings
+router.get('/:discordID/guilds/:guildID/settings', asyncHandler(getGuildSettings));
+router.get('/:discordID/guilds/:guildID/settings/:setting', asyncHandler(getGuildSetting));
+router.put('/:discordID/guilds/:guildID/settings/:setting', asyncHandler(putGuildSetting));
+router.delete('/:discordID/guilds/:guildID/settings/:setting', asyncHandler(deleteGuildSetting));
+router.post('/:discordID/guilds/:guildID/settings/:setting', asyncHandler(postGuildSetting));
 // Servers
 router.get('/:discordID/guilds/:guildID/servers', asyncHandler(findGuildServers));
 router.post('/:discordID/guilds/:guildID/servers', asyncHandler(createNewServer));

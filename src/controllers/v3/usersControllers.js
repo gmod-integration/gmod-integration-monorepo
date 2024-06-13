@@ -19,6 +19,7 @@ import gm_server_status from '../../database/schema/gm_server_status.js';
 import ServerVote from '../../database/schema/ServerVote.js';
 import moment from 'moment';
 import { Op } from 'sequelize';
+import GuildSettings from '../../database/schema/GuildSettings.js';
 // const passport = require('passport');
 // const SteamStrategy = require('passport-steam').Strategy;
 
@@ -51,7 +52,7 @@ export async function getProfile(req, res) {
 }
 
 export async function findCurrentUser(req, res) {
-  return res.send(await getDiscordUserFromID(req.params.discordID));
+  return res.send((await getDiscordUserFromID(req.params.discordID)) || {});
 }
 
 export async function oauthLogin(req, res) {
@@ -174,16 +175,9 @@ export async function findGuildServer(req, res) {
   return res.json(req.server);
 }
 
-export async function createGuildStatusServer(req, res) {
-  // TODO
-  return res.status(501).send({
-    error: 'Not implemented',
-  });
-}
-
 export async function findServerStatus(req, res) {
   const server = req.server;
-  return res.send(await server.getStatusChannelAndMessage());
+  return res.send((await server.getStatusChannelAndMessage()) || {});
 }
 
 export async function createNewServer(req, res) {
@@ -289,12 +283,6 @@ export async function postGuildServerToken(req, res) {
   return res.send(server);
 }
 
-export function getTodo(req, res) {
-  return res.status(501).send({
-    error: 'Not Implemented',
-  });
-}
-
 export async function getGuildVerificationsRoles(req, res) {
   const guild = req.guild;
   return res.send((await guild.getVerificationRoles()) || []);
@@ -365,27 +353,15 @@ export async function createGuildVerificationsRoles(req, res) {
 // Status Buttons
 
 export async function deleteServerStatus(req, res) {
-  try {
-    const server = req.server;
-    return res.send(await server.deleteStatus());
-  } catch (error) {
-    return res.status(500).send({
-      error: 'Internal Server Error',
-    });
-  }
+  const server = req.server;
+  return res.send(await server.deleteStatus());
 }
 
 export async function postServerStatus(req, res) {
-  try {
-    const server = req.server;
-    const { channelID } = req.body;
-    await server.deleteStatus();
-    return res.send(await server.createStatus(channelID));
-  } catch (error) {
-    return res.status(500).send({
-      error: 'Internal Server Error',
-    });
-  }
+  const server = req.server;
+  const { channelID } = req.body;
+  await server.deleteStatus();
+  return res.send(await server.createStatus(channelID));
 }
 
 export async function getServerStatusButtons(req, res) {
@@ -447,121 +423,65 @@ export async function deleteServerStatusButtons(req, res) {
 }
 
 export async function findServerScreenshots(req, res) {
-  try {
-    const server = req.server;
-    return res.send((await server.getScreenshotsChannel()) || {});
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({
-      error: 'Internal Server Error',
-    });
-  }
+  const server = req.server;
+  return res.send((await server.getScreenshotsChannel()) || {});
 }
 
 export async function postServerScreenshots(req, res) {
-  try {
-    const server = req.server;
-    const { channelID } = req.body;
-    return res.send(await server.createScreenshotChannel(channelID));
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({
-      error: 'Internal Server Error',
-    });
-  }
+  const server = req.server;
+  const { channelID } = req.body;
+  return res.send(await server.createScreenshotChannel(channelID));
 }
 
 export async function deleteServerScreenshots(req, res) {
-  try {
-    const server = req.server;
-    return res.send(await server.destroyScreenshotChannel());
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({
-      error: 'Internal Server Error',
-    });
-  }
+  const server = req.server;
+  return res.send(await server.destroyScreenshotChannel());
 }
 
 export async function findServerSyncChat(req, res) {
-  try {
-    const server = req.server;
-    return res.send((await server.getSyncChat()) || {});
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({
-      error: 'Internal Server Error',
-    });
-  }
+  const server = req.server;
+  return res.send((await server.getSyncChat()) || {});
 }
 
 export async function postServerSyncChat(req, res) {
-  try {
-    const server = req.server;
-    const { channelID } = req.body;
-    return res.send(await server.createSyncChat(channelID));
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({
-      error: 'Internal Server Error',
-    });
-  }
+  const server = req.server;
+  const { channelID } = req.body;
+  return res.send(await server.createSyncChat(channelID));
 }
 
 export async function deleteServerSyncChat(req, res) {
-  try {
-    const server = req.server;
-    return res.send(await server.destroySyncChat());
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({
-      error: 'Internal Server Error',
-    });
-  }
+  const server = req.server;
+  return res.send(await server.destroySyncChat());
 }
 
 export async function getServerPlayers(req, res) {
-  try {
-    const server = req.server;
-    return res.send(await server.getDBPlayers());
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({
-      error: 'Internal Server Error',
-    });
-  }
+  const server = req.server;
+  return res.send((await server.getDBPlayers()) || []);
 }
 
 export async function putPlayerBypassMaintenance(req, res) {
-  try {
-    const server = req.server;
-    const { playerID } = req.params;
-    const { bypassMaintenance } = req.body;
+  const server = req.server;
+  const { playerID } = req.params;
+  const { bypassMaintenance } = req.body;
 
-    if (badArgument([bypassMaintenance])) {
-      return res.status(400).send({
-        error: 'missing arguments',
-      });
-    }
-
-    const player = await server.getPlayerStats(playerID);
-    if (!player) {
-      return res.status(404).send({
-        error: 'player not found',
-      });
-    }
-
-    player.bypassMaintenance = bypassMaintenance !== undefined ? bypassMaintenance : player.bypassMaintenance;
-
-    player.changed('updatedAt', true);
-    await player.save();
-    return res.send(player);
-  } catch (error) {
-    console.error(error);
-    return res.status(500).send({
-      error: 'Internal Server Error',
+  if (badArgument([bypassMaintenance])) {
+    return res.status(400).send({
+      error: 'missing arguments',
     });
   }
+
+  const player = await server.getPlayerStats(playerID);
+  if (!player) {
+    return res.status(404).send({
+      error: 'player not found',
+    });
+  }
+
+  player.bypassMaintenance = bypassMaintenance !== undefined ? bypassMaintenance : player.bypassMaintenance;
+
+  player.changed('updatedAt', true);
+  await player.save();
+  return res.send(player);
 }
 
 export async function postUserStartVerification(req, res) {
@@ -638,7 +558,7 @@ export async function getAutoRoles(req, res) {
     },
   });
 
-  return res.send(autoRoles);
+  return res.send(autoRoles || []);
 }
 
 export async function createVerificationMessage(req, res) {
@@ -781,7 +701,7 @@ export async function getPublicServers(req, res) {
 
 export async function getVoteChannels(req, res) {
   const server = req.server;
-  return res.send(await server.getVoteChannel());
+  return res.send((await server.getVoteChannel()) || {});
 }
 
 export async function postVoteChannels(req, res) {
@@ -801,4 +721,104 @@ export async function deleteVoteChannels(req, res) {
   const { channelID } = req.params;
   const server = req.server;
   return res.send(await server.destroyVoteChannel(channelID));
+}
+
+export async function getGuildSettings(req, res) {
+  const { guildID } = req.params;
+  const settings = await GuildSettings.findAll({
+    where: {
+      guildID,
+    },
+  });
+  return res.send(settings || []);
+}
+
+export async function getGuildSetting(req, res) {
+  const { guildID, setting } = req.params;
+  const guildSetting = await GuildSettings.findOne({
+    where: {
+      guildID,
+      setting,
+    },
+  });
+  return res.send(guildSetting || {});
+}
+
+const allowedSettings = ['verification_dont_mp'];
+
+export async function putGuildSetting(req, res) {
+  const { guildID, setting } = req.params;
+  const { value } = req.body;
+
+  if (badArgument([value])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  if (!allowedSettings.includes(setting)) {
+    return res.status(400).send({
+      error: 'Setting not allowed',
+    });
+  }
+
+  let guildSetting = await GuildSettings.findOne({
+    where: { guildID, setting },
+  });
+
+  if (!guildSetting) {
+    guildSetting = await GuildSettings.create({ guildID, setting, value });
+  } else {
+    guildSetting.value = value;
+    guildSetting.changed('updatedAt', true);
+    await guildSetting.save();
+  }
+
+  return res.send(guildSetting);
+}
+
+export async function postGuildSetting(req, res) {
+  const { guildID, setting } = req.params;
+  const { value } = req.body;
+
+  if (badArgument([value])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  if (!allowedSettings.includes(setting)) {
+    return res.status(400).send({
+      error: 'Setting not allowed',
+    });
+  }
+
+  let guildSetting = await GuildSettings.findOne({
+    where: { guildID, setting },
+  });
+
+  if (guildSetting) {
+    return res.status(409).send({
+      error: 'Setting already exists',
+    });
+  }
+
+  guildSetting = await GuildSettings.create({ guildID, setting, value });
+  return res.send(guildSetting);
+}
+
+export async function deleteGuildSetting(req, res) {
+  const { guildID, setting } = req.params;
+  const guildSetting = await GuildSettings.findOne({
+    where: { guildID, setting },
+  });
+
+  if (!guildSetting) {
+    return res.status(404).send({
+      error: 'Setting not found',
+    });
+  }
+
+  await guildSetting.destroy();
+  return res.send(guildSetting);
 }

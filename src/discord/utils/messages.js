@@ -591,7 +591,7 @@ export async function getUserStatisticMessage(user, server, guild, steamid) {
     if (userData.custom_values) {
       let acID = 1;
       for (const [key, value] of Object.entries(JSON.parse(userData.custom_values))) {
-        embed.push({
+        embed.fields.push({
           name: await customValueFormatTitle(key, lang),
           value: await customValueFormat(key, value),
           inline: true,
@@ -600,7 +600,7 @@ export async function getUserStatisticMessage(user, server, guild, steamid) {
         acID++;
 
         if (acID % 2 === 0) {
-          embed.push({
+          embed.fields.push({
             name: '',
             value: '',
             inline: true,
@@ -608,7 +608,7 @@ export async function getUserStatisticMessage(user, server, guild, steamid) {
         }
 
         if (acID % 3 === 0) {
-          embed.push({
+          embed.fields.push({
             name: '',
             value: '',
           });
