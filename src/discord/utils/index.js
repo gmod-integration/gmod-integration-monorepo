@@ -11,6 +11,12 @@ const trust_ranks = {
   100: 'legendary',
 };
 
+export function todoControllers(req, res) {
+  return res.status(501).send({
+    error: 'Not Implemented',
+  });
+}
+
 export async function getTrustRank(trust, lang) {
   let lastKey = 0;
 
