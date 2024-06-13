@@ -19,6 +19,7 @@ import gm_server_status from '../../database/schema/gm_server_status.js';
 import ServerVote from '../../database/schema/ServerVote.js';
 import moment from 'moment';
 import { Op } from 'sequelize';
+import GuildSettings from '../../database/schema/GuildSettings.js';
 // const passport = require('passport');
 // const SteamStrategy = require('passport-steam').Strategy;
 
@@ -720,4 +721,72 @@ export async function deleteVoteChannels(req, res) {
   const { channelID } = req.params;
   const server = req.server;
   return res.send(await server.destroyVoteChannel(channelID));
+}
+
+export async function getGuildSettings(req, res) {
+  const { guildID } = req.params;
+  const settings = await GuildSettings.findAll({
+    where: {
+      guildID,
+    },
+  });
+  return res.send(settings || []);
+}
+
+export async function getGuildSetting(req, res) {
+  const { guildID, setting } = req.params;
+  const guildSetting = await GuildSettings.findOne({
+    where: {
+      guildID,
+      setting,
+    },
+  });
+  return res.send(guildSetting || {});
+}
+
+export async function putGuildSetting(req, res) {
+  const { guildID, setting } = req.params;
+  const { value } = req.body;
+
+  if (badArgument([value])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  const allowedSettings = ['verification_dont_mp'];
+  if (!allowedSettings.includes(setting)) {
+    return res.status(400).send({
+      error: 'Setting not allowed',
+    });
+  }
+
+  let guildSetting = await GuildSettings.findOne({
+    where: { guildID, setting },
+  });
+  if (!guildSetting) {
+    guildSetting = await GuildSettings.create({ guildID, setting, value });
+  } else {
+    guildSetting.value = value;
+    guildSetting.changed('updatedAt', true);
+    await guildSetting.save();
+  }
+
+  return res.send(guildSetting);
+}
+
+export async function deleteGuildSetting(req, res) {
+  const { guildID, setting } = req.params;
+  const guildSetting = await GuildSettings.findOne({
+    where: { guildID, setting },
+  });
+
+  if (!guildSetting) {
+    return res.status(404).send({
+      error: 'Setting not found',
+    });
+  }
+
+  await guildSetting.destroy();
+  return res.send(guildSetting);
 }
