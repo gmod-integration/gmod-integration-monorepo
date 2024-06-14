@@ -6,6 +6,7 @@ import {
   getPlayerBan,
   saveConnectionGlobalInfo,
   saveConnectionSteamInfo,
+  sendPlayerSay,
 } from '../../models/v3/serversPlayersModels.js';
 import { updateGuildUserPseudo } from '../../discord/index.js';
 import { getGuildID } from '../../models/v3/serversModels.js';
@@ -140,14 +141,11 @@ export async function playerSay(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  // const rtnVal = await sendPlayerSay(server, player, text, teamOnly);
-  // if (rtnVal.skip) {
-  //   return res.status(400).json({ error: rtnVal.message });
-  // }
-  // return res.status(200).json({ success: true });
-
-  // temporary disabled
-  return res.status(501).json({ error: 'disabled' });
+  const rtnVal = await sendPlayerSay(server, player, text, teamOnly);
+  if (rtnVal.skip) {
+    return res.status(400).json({ error: rtnVal.message });
+  }
+  return res.status(200).json({ success: true });
 }
 
 export async function playerChangeName(req, res) {

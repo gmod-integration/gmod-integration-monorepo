@@ -32,6 +32,11 @@ export function checkMissingArgs(requiredArgs, location) {
   };
 }
 
+export function getRandomDiscordRelay() {
+  const relays = ['https://1-dsc-relay.gmod-integration.com'];
+  return relays[Math.floor(Math.random() * relays.length)];
+}
+
 export function getEmojiVersion(emoji) {
   const emojis = getEmojis();
   const emojiData = emojis.find((e) => e.emoji === emoji);
