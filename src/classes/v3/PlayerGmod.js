@@ -1,11 +1,11 @@
 import { BaseClass } from './BaseClass.js';
-import { getConnectionPromise } from '../../database/connection.js';
 import { CustomValues } from './CustomValues.js';
 import { Team } from './Team.js';
 import { Position } from './Position.js';
 import { Angle } from './Angle.js';
 import gm_server_stat from '../../database/schema/gm_server_stat.js';
 import gm_user from '../../database/schema/gm_user.js';
+import ServerPlayerSession from '../../database/schema/gm_server_stat_session.js';
 
 export class PlayerGmod extends BaseClass {
   constructor(obj = {}) {
@@ -73,22 +73,16 @@ export class PlayerGmod extends BaseClass {
   }
 
   async saveServerStatSession(serverID) {
-    try {
-      const { connectTime, deaths, kills, customValues, steamID64 } = this;
-      const customValuesString = typeof customValues === 'string' ? customValues : JSON.stringify(customValues);
+    const { connectTime, deaths, kills, customValues, steamID64 } = this;
 
-      const connection = await getConnectionPromise();
-      await connection.query(
-        `
-            INSERT INTO gm_server_stat_session (serverID, steamID64, time, deaths, kills, customValues)
-            VALUES (?, ?, ?, ?, ?, ?)
-        `,
-        [serverID, steamID64, connectTime, deaths, kills, customValuesString],
-      );
-    } catch (error) {
-      console.error(error);
-      throw error;
-    }
+    await ServerPlayerSession.create({
+      serverID,
+      steamID64,
+      time: connectTime,
+      deaths,
+      kills,
+      customValues,
+    });
   }
 }
 

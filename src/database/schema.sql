@@ -204,23 +204,6 @@ create table if not exists gm_setting
     primary key (id, setting)
 );
 
-create table if not exists gm_server_stat_session
-(
-    serverID            char(255)                             null,
-    steamID64           char(255)                             null,
-    time                int                                   null,
-    deaths              int                                   null,
-    kills               int                                   null,
-    customValues        text                                  null,
-    sessionEndTimeStamp timestamp default current_timestamp() not null,
-    constraint gm_server_stat_session_1_gm_user_steam_steam_id_fk
-        foreign key (serverID) references gm_server (id)
-            on update cascade on delete cascade,
-    constraint gm_server_stat_session_gm_user_steam_steam_id_fk
-        foreign key (steamID64) references gm_user_steam (steam_id)
-            on update cascade on delete cascade
-);
-
 create table if not exists users
 (
     steamID64  char(255)                    not null

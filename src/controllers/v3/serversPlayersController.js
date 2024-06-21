@@ -231,13 +231,8 @@ export async function playerDisconnect(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  try {
-    await ply.saveServerStat(server.getID());
-    await ply.saveServerStatSession(server.getID());
-    updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), ply.name).catch(() => {});
-    return res.status(200).json({ success: true });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: err.message });
-  }
+  await ply.saveServerStat(server.getID());
+  await ply.saveServerStatSession(server.getID());
+  updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), ply.name).catch(() => {});
+  return res.status(200).json({ success: true });
 }
