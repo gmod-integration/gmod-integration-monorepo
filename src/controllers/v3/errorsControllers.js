@@ -1,7 +1,7 @@
 import { badArgument } from '../../utils/tools.js';
-import { saveError } from '../../models/v3/errorsModels.js';
+import LuaErrors from '../../database/schema/LuaErrors.js';
 
-export function reportError(req, res) {
+export async function reportError(req, res) {
   let { error, stack, id, name, realm, identifier, uptime } = req.body;
 
   if (badArgument([error, stack, id, name, realm, identifier, uptime])) {
@@ -21,12 +21,15 @@ export function reportError(req, res) {
 
   stack = JSON.stringify(stack);
 
-  saveError({ error, stack, id, name, realm, identifier, uptime })
-    .then(() => {
-      res.status(200).json({ success: true });
-    })
-    .catch((err) => {
-      console.error(err);
-      res.status(500).json({ error: 'internal server error' });
-    });
+  const luaError = await LuaErrors.create({
+    error,
+    stack,
+    id,
+    name,
+    realm,
+    identifier,
+    uptime,
+  });
+
+  return res.status(200).json(luaError);
 }
