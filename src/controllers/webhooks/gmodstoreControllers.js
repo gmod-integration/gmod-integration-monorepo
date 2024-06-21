@@ -1,55 +1,19 @@
 import { getUser, saveGmodStorePurchase } from '../../models/webhooks/gmodStoreModels.js';
 
-async function purchase(req, res) {
+async function productPurchase(req, res, event) {
   const userID = req.body.data.userId;
+  const revoke = event === 'product_purchase.revoked';
 
   if (!userID) return res.status(400).json({ error: 'missing_arguments' });
 
-  getUser(userID)
-    .then((user) => {
-      if (!user || !user.data) return res.status(400).json({ error: 'invalid_user' });
-
-      const steamID64 = user.data.steamId;
-
-      saveGmodStorePurchase(steamID64, false)
-        .then(() => {
-          return res.status(200).json({ status: 'ok' });
-        })
-        .catch((err) => {
-          console.log(err);
-          return res.status(500).json({ error: 'internal_server_error' });
-        });
-    })
-    .catch((err) => {
-      console.log(err);
-      return res.status(500).json({ error: 'internal_server_error' });
-    });
-}
-
-async function revoke(req, res) {
-  const userID = req.body.data.userId;
-
-  if (!userID) return res.status(400).json({ error: 'missing_arguments' });
-
-  getUser(userID)
-    .then((user) => {
-      if (!user || !user.data) return res.status(400).json({ error: 'invalid_user' });
-
-      const steamID64 = user.data.steamId;
-
-      saveGmodStorePurchase(steamID64, true)
-        .then(() => {
-          return res.status(200).json({ status: 'ok' });
-        })
-        .catch((err) => {
-          console.log(err);
-          return res.status(500).json({ error: 'internal_server_error' });
-        });
-    })
-    .catch((err) => {
-      console.log(err);
-      return res.status(500).json({ error: 'internal_server_error' });
-    });
+  try {
+    const user = await getUser(userID);
+    await saveGmodStorePurchase(user.steam_id, revoke);
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'internal_error' });
+  }
 }
 
 export default async (req, res) => {
@@ -57,10 +21,8 @@ export default async (req, res) => {
 
   if (!event) return res.status(400).json({ error: 'missing_arguments' });
 
-  if (event === 'product_purchase.created' || event === 'product_purchase.unrevoked') {
-    await purchase(req, res);
-  } else if (event === 'product_purchase.revoked') {
-    await revoke(req, res);
+  if (['product_purchase.created', 'product_purchase.unrevoked', 'product_purchase.revoked'].includes(event)) {
+    await productPurchase(req, res, event);
   } else {
     res.status(400).json({ error: 'invalid_event' });
   }

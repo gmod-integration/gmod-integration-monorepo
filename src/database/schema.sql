@@ -59,16 +59,6 @@ create table if not exists gm_errors
     uptime     int                                   null
 );
 
-create table if not exists gm_gmodstore_purchases
-(
-    steamID64 char(255)                             not null
-        primary key,
-    guild     text                                  null,
-    `revoke`  tinyint(1)                            null,
-    buyDate   timestamp default current_timestamp() null,
-    editDate  timestamp default current_timestamp() null on update current_timestamp()
-);
-
 create table if not exists gm_guild_member
 (
     guild_id char(255)                             not null,
