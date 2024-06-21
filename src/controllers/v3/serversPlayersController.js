@@ -3,13 +3,11 @@ import { updateGuildUserSyncRoles } from '../../models/v3/discordModels.js';
 import { PlayerGmod, updatePlayerUserGroup } from '../../classes/v3/PlayerGmod.js';
 import { getUserFromSteamID64 } from '../../classes/v3/User.js';
 import {
-  getPlayerBan,
   saveConnectionGlobalInfo,
   saveConnectionSteamInfo,
   sendPlayerSay,
 } from '../../models/v3/serversPlayersModels.js';
 import { updateGuildUserPseudo } from '../../discord/index.js';
-import { getGuildID } from '../../models/v3/serversModels.js';
 
 export async function getPlayer(req, res) {
   const { steamID64 } = req.params;
@@ -91,31 +89,6 @@ export async function playerReady(req, res) {
       }
       console.log(err);
       return res.status(500).json({ error: 'internal_server_error' });
-    });
-}
-
-export async function getPlayerBans(req, res) {
-  const { serverID, steamID64 } = req.params;
-
-  if (badArgument([steamID64])) {
-    return res.status(400).json({
-      error: 'missing_arguments',
-      args: {
-        steamID64: !!steamID64,
-      },
-    });
-  }
-  let bansList = [];
-
-  const guildID = await getGuildID(serverID);
-
-  getPlayerBan(steamID64)
-    .then((ban) => {
-      return res.status(200).json(ban);
-    })
-    .catch((err) => {
-      console.error(err);
-      return res.status(500).json({ error: 'internal_error' });
     });
 }
 
