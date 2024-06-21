@@ -55,8 +55,8 @@ ServerPlayerSession.init(
   },
   {
     sequelize,
-    modelName: 'ServerPlayerSession',
-    tableName: 'ServerPlayerSession',
+    modelName: 'gm_server_stat_session',
+    tableName: 'gm_server_stat_session',
     timestamps: true,
   },
 );
