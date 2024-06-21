@@ -26,8 +26,8 @@ GmodStorePurchases.init(
   },
   {
     sequelize,
-    modelName: 'GmodStorePurchases',
-    tableName: 'GmodStorePurchases',
+    modelName: 'gm_gmodstore_purchases',
+    tableName: 'gm_gmodstore_purchases',
     timestamps: true,
   },
 );
