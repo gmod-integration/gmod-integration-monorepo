@@ -45,20 +45,6 @@ create table if not exists gm_emergency
         primary key
 );
 
-create table if not exists gm_errors
-(
-    id         int auto_increment
-        primary key,
-    realm      text                                  null,
-    date       timestamp default current_timestamp() null,
-    error      text                                  null,
-    stack      text                                  null,
-    name       text                                  null,
-    identifier text                                  null,
-    workshopID text                                  null,
-    uptime     int                                   null
-);
-
 create table if not exists gm_guild_member
 (
     guild_id char(255)                             not null,
@@ -146,22 +132,6 @@ create table if not exists gm_server_logs
     data      text                                  not null,
     timeStamp timestamp default current_timestamp() not null,
     constraint gm_server_logs_gm_server_id_fk
-        foreign key (serverID) references gm_server (id)
-            on update cascade on delete cascade
-);
-
-create table if not exists gm_server_roles
-(
-    id            int auto_increment
-        primary key,
-    serverID      char(17)             null,
-    role          text                 null,
-    roleName      text                 null,
-    prefix        text                 null,
-    discordRoleID text                 null,
-    enablePrefix  tinyint(1) default 0 null,
-    enableSync    tinyint(1) default 0 null,
-    constraint gm_server_roles_gm_server_id_fk
         foreign key (serverID) references gm_server (id)
             on update cascade on delete cascade
 );
