@@ -16,6 +16,8 @@ ServerVoteChannel.init(
         model: 'gm_server',
         key: 'id',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     channelID: {
       type: DataTypes.STRING,

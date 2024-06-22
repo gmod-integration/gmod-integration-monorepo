@@ -15,6 +15,8 @@ ServerVote.init(
         model: 'gm_server',
         key: 'id',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     userID: {
       type: DataTypes.STRING,
