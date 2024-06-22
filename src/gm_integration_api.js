@@ -6,18 +6,12 @@ import { gmLog } from './utils/logger.js';
 import rawBodyMiddleware from './middleware/rawBodyMiddleware.js';
 import loggerMiddleware from './middleware/v3/loggers.js';
 import errorMiddleware from './middleware/errorMiddleware.js';
-import { executeSqlFile } from './database/connection.js';
 import cors from 'cors';
 import corsMiddleware from './middleware/corsMiddleware.js';
 import './websockets/index.js';
 import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
 import promBundle from 'express-prom-bundle';
-
-// Database
-executeSqlFile('./src/database/schema.sql').then(() => {
-  gmLog('mysql2', 'Database schema created');
-});
 
 // Express
 const app = express();

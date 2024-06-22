@@ -6,21 +6,6 @@ import { discordConfig, serverConfig } from '../../config/index.js';
 import { getClient } from '../../discord/index.js';
 import { WebhookClient } from 'discord.js';
 
-export async function getPlayerBan(steamID64) {
-  return new Promise(async (resolve, reject) => {
-    const connection = await getConnectionPromise();
-    connection.query('SELECT * FROM gm_ban WHERE steam_id = ?', [steamID64], (error, results) => {
-      if (error) return reject(error);
-
-      if (results.length > 0) {
-        return resolve(results[0]);
-      } else {
-        return resolve(null);
-      }
-    });
-  });
-}
-
 export async function sendPlayerSay(server, player, text, onlyTeam) {
   let anonymous = false;
 
