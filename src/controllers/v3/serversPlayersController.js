@@ -8,6 +8,7 @@ import {
   sendPlayerSay,
 } from '../../models/v3/serversPlayersModels.js';
 import { updateGuildUserPseudo } from '../../discord/index.js';
+import { logServer } from '../../database/schema/ServerLogs.js';
 
 export async function getPlayer(req, res) {
   const { steamID64 } = req.params;
@@ -56,7 +57,7 @@ export async function playerSpawn(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  // TODO
+  await logServer(server.getID(), 'player_spawn', { ply });
   res.status(200).json({ success: true });
 }
 
@@ -79,17 +80,9 @@ export async function playerReady(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  updateGuildUserSyncRoles(server, await getUserFromSteamID64(steamID64), player.userGroup)
-    .then(() => {
-      return res.status(200).json({ success: true });
-    })
-    .catch((err) => {
-      if (err.itsFine === true) {
-        return res.status(200).json({ success: false, error: err.error });
-      }
-      console.log(err);
-      return res.status(500).json({ error: 'internal_server_error' });
-    });
+  await logServer(server.getID(), 'player_ready', { ply });
+  await updateGuildUserSyncRoles(server, await getUserFromSteamID64(steamID64), player.userGroup);
+  return res.status(200).json({ success: true });
 }
 
 export async function playerSay(req, res) {
@@ -114,10 +107,8 @@ export async function playerSay(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  const rtnVal = await sendPlayerSay(server, player, text, teamOnly);
-  if (rtnVal.skip) {
-    return res.status(400).json({ error: rtnVal.message });
-  }
+  await logServer(server.getID(), 'player_say', { ply, text, teamOnly });
+  await sendPlayerSay(server, player, text, teamOnly);
   return res.status(200).json({ success: true });
 }
 
@@ -140,22 +131,17 @@ export async function playerChangeName(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), newName)
-    .then(() => {
-      return res.status(200).json({ success: true });
-    })
-    .catch((err) => {
-      console.log(err);
-      return res.status(500).json({ error: err.message });
-    });
+  await logServer(server.getID(), 'player_change_name', { ply, oldName, newName });
+  await updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), newName);
+  return res.status(200).json({ success: true });
 }
 
 export async function playerChangeGroup(req, res) {
   const server = req.server;
   const { steamID64 } = req.params;
 
-  const { oldGroup, newGroup } = req.body;
-  if (badArgument([oldGroup, newGroup])) {
+  const { oldGroup, newGroup, player } = req.body;
+  if (badArgument([oldGroup, newGroup, player])) {
     return res.status(400).json({
       error: 'missing_arguments',
       args: {
@@ -165,23 +151,19 @@ export async function playerChangeGroup(req, res) {
     });
   }
 
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server.getID(), 'player_change_group', { ply, oldGroup, newGroup });
+
   const user = await getUserFromSteamID64(steamID64);
   if (!user) {
     return res.status(404).json({ error: 'user_not_found' });
   }
-
-  updateGuildUserSyncRoles(server, user, newGroup, oldGroup)
-    .then(async () => {
-      await updatePlayerUserGroup(server.getID(), steamID64, newGroup);
-      return res.status(200).json({ success: true });
-    })
-    .catch((err) => {
-      if (err.itsFine === true) {
-        return res.status(200).json({ success: false, error: err.error });
-      }
-      console.log(err);
-      return res.status(500).json({ error: 'internal_server_error' });
-    });
+  await updatePlayerUserGroup(server.getID(), steamID64, newGroup);
+  return res.status(200).json({ success: true });
 }
 
 export async function playerConnect(req, res) {
@@ -202,15 +184,11 @@ export async function playerConnect(req, res) {
 
   const ip = ipGetIP(address);
 
-  try {
-    await saveConnectionGlobalInfo(steamID64, networkid, ip, name);
-    await saveConnectionSteamInfo(steamID64, name, ip);
-    await server.saveUserConnectionInfo(steamID64, name, ip);
-    return res.status(200).json({ success: true });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: 'internal_server_error' });
-  }
+  await logServer(server.getID(), 'player_connect', { steamID64, name, ip });
+  await saveConnectionGlobalInfo(steamID64, networkid, ip, name);
+  await saveConnectionSteamInfo(steamID64, name, ip);
+  await server.saveUserConnectionInfo(steamID64, name, ip);
+  return res.status(200).json({ success: true });
 }
 
 export async function playerDisconnect(req, res) {
@@ -231,8 +209,31 @@ export async function playerDisconnect(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
+  await logServer(server.getID(), 'player_disconnect', { ply });
   await ply.saveServerStat(server.getID());
   await ply.saveServerStatSession(server.getID());
   updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), ply.name).catch(() => {});
+  return res.status(200).json({ success: true });
+}
+
+export async function playerDeath(req, res) {
+  const server = req.server;
+  const { player } = req.body;
+
+  if (badArgument([player])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server.getID(), 'player_death', { ply });
   return res.status(200).json({ success: true });
 }

@@ -20,6 +20,7 @@ import ServerVote from '../../database/schema/ServerVote.js';
 import moment from 'moment';
 import { Op } from 'sequelize';
 import GuildSettings from '../../database/schema/GuildSettings.js';
+import ServerLogs from '../../database/schema/ServerLogs.js';
 // const passport = require('passport');
 // const SteamStrategy = require('passport-steam').Strategy;
 
@@ -723,6 +724,29 @@ export async function deleteVoteChannels(req, res) {
   return res.send(await server.destroyVoteChannel(channelID));
 }
 
+export async function getLogsChannel(req, res) {
+  const server = req.server;
+  return res.send((await server.getLogsChannel()) || {});
+}
+
+export async function postLogsChannel(req, res) {
+  const server = req.server;
+  const { channelID } = req.body;
+
+  if (badArgument([channelID])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  return res.send(await server.createLogsChannel(channelID));
+}
+
+export async function deleteLogsChannel(req, res) {
+  const server = req.server;
+  return res.send(await server.destroyLogsChannel());
+}
+
 export async function getGuildSettings(req, res) {
   const { guildID } = req.params;
   const settings = await GuildSettings.findAll({
@@ -821,4 +845,26 @@ export async function deleteGuildSetting(req, res) {
 
   await guildSetting.destroy();
   return res.send(guildSetting);
+}
+
+export async function getServerLogs(req, res) {
+  const { serverID } = req.params;
+  const { offset, limit } = req.query;
+
+  if (limit && limit > 100) {
+    return res.status(400).send({
+      error: 'limit too high',
+    });
+  }
+
+  const logs = await ServerLogs.findAll({
+    where: {
+      serverID,
+    },
+    order: [['createdAt', 'DESC']],
+    offset: offset || 0,
+    limit: limit || 500,
+  });
+
+  return res.send(logs || []);
 }

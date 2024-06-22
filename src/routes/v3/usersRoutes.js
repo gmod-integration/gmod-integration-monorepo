@@ -9,6 +9,7 @@ import {
   deleteGuildServer,
   deleteGuildSetting,
   deleteGuildVerificationsRoles,
+  deleteLogsChannel,
   deleteServerScreenshots,
   deleteServerStatus,
   deleteServerStatusButtons,
@@ -31,8 +32,10 @@ import {
   getGuildSetting,
   getGuildSettings,
   getGuildVerificationsRoles,
+  getLogsChannel,
   getProfile,
   getPublicServers,
+  getServerLogs,
   getServerPlayers,
   getServerStatusButtons,
   getUserGuildsOwnOrAdmins,
@@ -43,6 +46,7 @@ import {
   postGuildLinks,
   postGuildServerToken,
   postGuildSetting,
+  postLogsChannel,
   postServerScreenshots,
   postServerStatus,
   postServerSyncChat,
@@ -113,6 +117,11 @@ router.delete('/:discordID/guilds/:guildID/servers/:serverID', asyncHandler(dele
 router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(findServerScreenshots));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(postServerScreenshots));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(deleteServerScreenshots));
+// Logs
+router.get('/:discordID/guilds/:guildID/servers/:serverID/logs', asyncHandler(getServerLogs));
+router.get('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(getLogsChannel));
+router.post('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(postLogsChannel));
+router.delete('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(deleteLogsChannel));
 // Vote
 router.get('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(getVoteChannels));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(postVoteChannels));

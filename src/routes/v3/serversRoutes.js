@@ -7,6 +7,7 @@ import {
   playerChangeGroup,
   playerChangeName,
   playerConnect,
+  playerDeath,
   playerDisconnect,
   playerReady,
   playerSay,
@@ -24,6 +25,7 @@ router.get('/:serverID/public-token', asyncHandler(getPublicToken));
 router.post('/:serverID/errors', asyncHandler(reportError));
 router.get('/:serverID/players/:steamID64', asyncHandler(getPlayer));
 router.post('/:serverID/players/:steamID64/say', asyncHandler(playerSay));
+router.post('/:serverID/players/:steamID64/death', asyncHandler(playerDeath));
 router.post('/:serverID/players/:steamID64/connect', asyncHandler(playerConnect));
 router.post('/:serverID/players/:steamID64/disconnect', asyncHandler(playerDisconnect));
 router.post('/:serverID/players/:steamID64/ready', asyncHandler(playerReady));
