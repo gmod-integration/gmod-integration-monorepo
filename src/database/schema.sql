@@ -17,19 +17,6 @@ create table if not exists gm_server_generate
     creation_time timestamp  default current_timestamp() null
 );
 
-create table if not exists users
-(
-    steamID64  char(255)                    not null
-        primary key,
-    steamID    text                         null,
-    name       text                         null,
-    lastIP     text                         null,
-    IPS        longtext collate utf8mb4_bin null
-        check (json_valid(`IPS`)),
-    lastUpdate timestamp                    null
-);
-
-
 create table if not exists gm_server_sync_chat_rules_preset
 (
     id       int auto_increment
