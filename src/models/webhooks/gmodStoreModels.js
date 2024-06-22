@@ -1,7 +1,6 @@
-import axios from 'axios';
 import crypto from 'crypto';
 import { gmodStoreConfig } from '../../config/index.js';
-import { getConnectionPromise } from '../../database/connection.js';
+import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 
 export async function verifyWebhookSignature(headers, payload) {
   const webhookSignature = headers['webhook-signature'];
@@ -32,33 +31,35 @@ export async function verifyWebhookSignature(headers, payload) {
   return false;
 }
 
-export function getUser(userID) {
-  return new Promise(async (resolve, reject) => {
-    axios
-      .get(`https://www.gmodstore.com/api/v3/users/${userID}`, {
-        headers: {
-          Authorization: `Bearer ${gmodStoreConfig.apiKey}`,
-          Accept: 'application/json',
-        },
-      })
-      .then((response) => {
-        console.log(response.data);
-        resolve(response.data);
-      })
-      .catch((err) => {
-        console.log(err);
-        reject(err);
-      });
+export async function getUser(userID) {
+  const userData = await fetch(`https://www.gmodstore.com/api/v3/users/${userID}`, {
+    headers: {
+      Authorization: `Bearer ${gmodStoreConfig.apiKey}`,
+      Accept: 'application/json',
+    },
   });
+
+  if (!userData.ok) {
+    throw new Error('Failed to fetch user data');
+  } else {
+    return await userData.json();
+  }
 }
 
-export function saveGmodStorePurchase(steamID64, revoke) {
-  return new Promise(async (resolve, reject) => {
-    const connection = await getConnectionPromise();
-    await connection.execute(
-      'INSERT INTO gm_gmodstore_purchases (steamID64, `revoke`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `revoke` = ?',
-      [steamID64, revoke, revoke],
-    );
-    resolve();
+export async function saveGmodStorePurchase(steamID64, revoke) {
+  const gmGmodStorePurchases = await GmodStorePurchases.findOne({
+    where: {
+      steamID64,
+    },
   });
+
+  if (gmGmodStorePurchases) {
+    gmGmodStorePurchases.revoke = revoke;
+    await gmGmodStorePurchases.save();
+  } else {
+    await GmodStorePurchases.create({
+      steamID64,
+      revoke,
+    });
+  }
 }

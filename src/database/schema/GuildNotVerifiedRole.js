@@ -2,45 +2,43 @@ import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 
-class ServerVote extends Model {
-  // Extend Here
-}
+class GuildNotVerifiedRole extends Model {}
 
-ServerVote.init(
+GuildNotVerifiedRole.init(
   {
-    serverID: {
+    guild: {
       type: DataTypes.STRING,
-      allowNull: false,
+      primaryKey: true,
       references: {
-        model: 'gm_server',
-        key: 'id',
+        model: 'gm_guild',
+        key: 'guild',
       },
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
     },
-    userID: {
+    id: {
       type: DataTypes.STRING,
       allowNull: false,
-      references: {
-        model: 'gm_user',
-        key: 'id',
-      },
+    },
+    channel: {
+      type: DataTypes.STRING,
+      allowNull: false,
     },
   },
   {
     sequelize,
-    modelName: 'gm_server_vote',
-    tableName: 'gm_server_vote',
+    modelName: 'gm_role_auto',
+    tableName: 'gm_role_auto',
     timestamps: true,
   },
 );
 
-ServerVote.sync({ alter: true })
+GuildNotVerifiedRole.sync({ alter: true })
   .then(() => {
-    gmLog('sequelize', 'Table created: gm_server_vote');
+    gmLog('sequelize', 'Table created: GuildNotVerifiedRole');
   })
   .catch((error) => {
     console.error('Error creating link table:', error);
   });
 
-export default ServerVote;
+export default GuildNotVerifiedRole;

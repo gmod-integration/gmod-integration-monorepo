@@ -1,7 +1,5 @@
 import { BaseClass } from './BaseClass.js';
-import { Role } from './Role.js';
 import { generateToken } from '../../utils/tools.js';
-import { getConnectionPromise } from '../../database/connection.js';
 import redis from '../../redis/index.js';
 import { getClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
@@ -16,6 +14,9 @@ import gm_server_stat from '../../database/schema/gm_server_stat.js';
 import gm_sync_chat from '../../database/schema/gm_sync_chat.js';
 import ServerVoteChannel from '../../database/schema/ServerVoteChannel.js';
 import { Op } from 'sequelize';
+import { Role } from './Role.js';
+import ServerRole from '../../database/schema/ServerRole.js';
+import ServerSetting from '../../database/schema/ServerSettings.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -252,90 +253,80 @@ export class Server extends BaseClass {
   }
 
   async getSetting(setting) {
-    try {
-      const redisKey = `server:${this.id}:setting:${setting}`;
-      const redisData = await redis.get(redisKey);
-      if (redisData) {
-        return JSON.parse(redisData);
-      }
+    const redisKey = `server:${this.id}:setting:${setting}`;
+    const redisData = await redis.get(redisKey);
+    if (redisData) {
+      return JSON.parse(redisData);
+    }
 
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_settings WHERE serverID = ? AND setting = ?', [
-        this.id,
+    const result = await ServerSetting.findOne({
+      where: {
+        serverID: this.id,
         setting,
-      ]);
-      if (results && results[0]) {
-        await redis.set(redisKey, JSON.stringify(results[0].value), 'EX', 60);
-        return results[0].value;
-      }
+      },
+    });
 
-      return null;
-    } catch (error) {
-      console.error(error);
-      return null;
+    if (result) {
+      await redis.set(redisKey, JSON.stringify(result.value), 'EX', 10);
+      return result.value;
     }
+
+    return null;
   }
 
-  async getSettings() {
-    try {
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_settings WHERE serverID = ?', [this.id]);
-      return results ? results : [];
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
-  }
-
-  async getChatRules() {
-    try {
-      const redisKey = `server:${this.id}:chatRules`;
-      const redisData = await redis.get(redisKey);
-      if (redisData) {
-        return JSON.parse(redisData);
-      }
-
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules WHERE serverID = ?', [this.id]);
-      if (results && results[0]) {
-        await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
-        return results;
-      }
-
-      return [];
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
-  }
-
-  async getGlobalChatRules() {
-    try {
-      const redisKey = `server:${this.id}:chatRulesPreset`;
-      const redisData = await redis.get(redisKey);
-      if (redisData) {
-        return JSON.parse(redisData);
-      }
-
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules_preset');
-      if (results && results[0]) {
-        await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
-        return results;
-      }
-
-      return [];
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
-  }
+  // async getChatRules() {
+  //   try {
+  //     const redisKey = `server:${this.id}:chatRules`;
+  //     const redisData = await redis.get(redisKey);
+  //     if (redisData) {
+  //       return JSON.parse(redisData);
+  //     }
+  //
+  //     const connection = await getConnectionPromise();
+  //     const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules WHERE serverID = ?', [this.id]);
+  //     if (results && results[0]) {
+  //       await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
+  //       return results;
+  //     }
+  //
+  //     return [];
+  //   } catch (error) {
+  //     console.error(error);
+  //     return [];
+  //   }
+  // }
+  //
+  // async getGlobalChatRules() {
+  //   try {
+  //     const redisKey = `server:${this.id}:chatRulesPreset`;
+  //     const redisData = await redis.get(redisKey);
+  //     if (redisData) {
+  //       return JSON.parse(redisData);
+  //     }
+  //
+  //     const connection = await getConnectionPromise();
+  //     const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules_preset');
+  //     if (results && results[0]) {
+  //       await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
+  //       return results;
+  //     }
+  //
+  //     return [];
+  //   } catch (error) {
+  //     console.error(error);
+  //     return [];
+  //   }
+  // }
 
   async getRoles() {
     try {
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_roles WHERE serverID = ?', [this.id]);
-      return results.map((result) => new Role(result));
+      const roles = await ServerRole.findAll({
+        where: {
+          serverID: this.id,
+        },
+      });
+
+      return roles.map((role) => new Role(role));
     } catch (error) {
       console.error(error);
       return [];

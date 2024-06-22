@@ -1,4 +1,4 @@
-import { getConnectionPromise } from '../../database/connection.js';
+import ServerRole from '../../database/schema/ServerRole.js';
 
 export class Role {
   constructor(obj = {}) {
@@ -26,35 +26,31 @@ export class Role {
 }
 
 export async function getRoleFromDiscordRoleID(serverID, discordRoleID) {
-  try {
-    const connection = await getConnectionPromise();
-    const [results] = await connection.query('SELECT * FROM gm_server_roles WHERE serverID = ? AND discordRoleID = ?', [
+  const roleData = await ServerRole.findOne({
+    where: {
       serverID,
       discordRoleID,
-    ]);
-    if (results.length > 0) {
-      return new Role(results[0]);
-    }
-    return null;
-  } catch (error) {
-    console.error(error);
-    return null;
+    },
+  });
+
+  if (roleData) {
+    return new Role(roleData);
   }
+
+  return null;
 }
 
 export async function getRoleFromRole(serverID, role) {
-  try {
-    const connection = await getConnectionPromise();
-    const [results] = await connection.query('SELECT * FROM gm_server_roles WHERE serverID = ? AND role = ?', [
+  const roleData = await ServerRole.findOne({
+    where: {
       serverID,
       role,
-    ]);
-    if (results.length > 0) {
-      return new Role(results[0]);
-    }
-    return null;
-  } catch (error) {
-    console.error(error);
-    return null;
+    },
+  });
+
+  if (roleData) {
+    return new Role(roleData);
   }
+
+  return null;
 }

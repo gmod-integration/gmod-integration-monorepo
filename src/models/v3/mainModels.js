@@ -1,6 +1,9 @@
-import { getConnectionPromise } from '../../database/connection.js';
 import redis from '../../redis/index.js';
 import gm_guild from '../../database/schema/gm_guild.js';
+import Users from '../../database/schema/Users.js';
+import gm_server from '../../database/schema/gm_server.js';
+import { Op } from 'sequelize';
+import gm_user from '../../database/schema/gm_user.js';
 
 export async function getStats() {
   const redisKey = 'stats';
@@ -9,19 +12,23 @@ export async function getStats() {
     return JSON.parse(redisStat);
   }
 
-  const connection = await getConnectionPromise();
-  const [rows] = await connection.query('SELECT COUNT(*) FROM gm_user WHERE steam IS NOT NULL');
-  const [rows2] = await connection.query('SELECT COUNT(*) FROM users');
-  const [rows4] = await connection.query('SELECT COUNT(*) FROM gm_server');
-
+  const usersCount = await Users.count();
   const memberCount = await gm_guild.sum('member');
   const guildCount = await gm_guild.count();
+  const serverCount = await gm_server.count();
+  const verifiedUserCount = await gm_user.count({
+    where: {
+      steam: {
+        [Op.not]: null,
+      },
+    },
+  });
 
   const stats = {
-    verifyUser: rows[0]['COUNT(*)'],
-    user: memberCount + rows2[0]['COUNT(*)'],
+    verifyUser: verifiedUserCount,
+    user: memberCount + usersCount,
     guild: guildCount,
-    server: rows4[0]['COUNT(*)'],
+    server: serverCount,
   };
 
   await redis.set(redisKey, JSON.stringify(stats), 'EX', 120);

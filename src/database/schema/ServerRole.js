@@ -2,15 +2,17 @@ import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 
-class ServerVoteChannel extends Model {
-  // Extend Here
-}
+class ServerRole extends Model {}
 
-ServerVoteChannel.init(
+ServerRole.init(
   {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
     serverID: {
       type: DataTypes.STRING,
-      primaryKey: true,
       allowNull: false,
       references: {
         model: 'gm_server',
@@ -19,33 +21,47 @@ ServerVoteChannel.init(
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
     },
-    channelID: {
+    roleID: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    webhookID: {
+    roleName: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    webhookToken: {
+    prefix: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    discordRoleID: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    enablePrefix: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    enableSync: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
     },
   },
   {
     sequelize,
-    modelName: 'gm_server_vote_channels',
-    tableName: 'gm_server_vote_channels',
+    modelName: 'gm_server_roles',
+    tableName: 'gm_server_roles',
     timestamps: true,
   },
 );
 
-ServerVoteChannel.sync({ alter: true })
+ServerRole.sync({ alter: true })
   .then(() => {
-    gmLog('sequelize', 'Table created: gm_server_vote_channels');
+    gmLog('sequelize', 'Table created: ServerRole');
   })
   .catch((error) => {
     console.error('Error creating link table:', error);
   });
 
-export default ServerVoteChannel;
+export default ServerRole;

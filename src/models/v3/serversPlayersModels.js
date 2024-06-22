@@ -1,25 +1,10 @@
-import { getConnectionPromise } from '../../database/connection.js';
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
 import gm_user_steam from '../../database/schema/gm_user_steam.js';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { getClient } from '../../discord/index.js';
 import { WebhookClient } from 'discord.js';
-
-export async function getPlayerBan(steamID64) {
-  return new Promise(async (resolve, reject) => {
-    const connection = await getConnectionPromise();
-    connection.query('SELECT * FROM gm_ban WHERE steam_id = ?', [steamID64], (error, results) => {
-      if (error) return reject(error);
-
-      if (results.length > 0) {
-        return resolve(results[0]);
-      } else {
-        return resolve(null);
-      }
-    });
-  });
-}
+import Users from '../../database/schema/Users.js';
 
 export async function sendPlayerSay(server, player, text, onlyTeam) {
   let anonymous = false;
@@ -178,30 +163,26 @@ export async function sendPlayerSay(server, player, text, onlyTeam) {
 }
 
 export async function saveConnectionGlobalInfo(steamID64, steamID, IP, name) {
-  try {
-    const connection = await getConnectionPromise();
-    const [results] = await connection.query('SELECT * FROM users WHERE steamID64 = ?', [steamID64]);
-    const IPs = results.length === 0 ? [] : JSON.parse(results[0].IPS);
+  const user = await Users.findOne({
+    where: {
+      steamID64: steamID64,
+    },
+  });
 
-    if (!IPs.includes(IP)) {
-      IPs.push(IP);
-    }
-
-    if (results.length === 0) {
-      await connection.query(
-        'INSERT INTO users (steamID64, steamID, name, lastIP, IPS, lastUpdate) VALUES (?, ?, ?, ?, ?, NOW())',
-        [steamID64, steamID, name, IP, JSON.stringify(IPs)],
-      );
-    } else {
-      await connection.query('UPDATE users SET lastIP = ?, IPS = ?, lastUpdate = NOW() WHERE steamID64 = ?', [
-        IP,
-        JSON.stringify(IPs),
-        steamID64,
-      ]);
-    }
-  } catch (err) {
-    console.error(err);
-    throw err;
+  if (user) {
+    user.name = name;
+    user.lastIP = IP;
+    user.IPS = user.IPS.includes(IP) ? user.IPS : [...user.IPS, IP];
+    user.changed('updatedAt', true);
+    await user.save();
+  } else {
+    await Users.create({
+      steamID64: steamID64,
+      steamID: steamID,
+      name: name,
+      lastIP: IP,
+      IPS: [IP],
+    });
   }
 }
 
