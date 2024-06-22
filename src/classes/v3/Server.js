@@ -274,49 +274,49 @@ export class Server extends BaseClass {
     return null;
   }
 
-  async getChatRules() {
-    try {
-      const redisKey = `server:${this.id}:chatRules`;
-      const redisData = await redis.get(redisKey);
-      if (redisData) {
-        return JSON.parse(redisData);
-      }
-
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules WHERE serverID = ?', [this.id]);
-      if (results && results[0]) {
-        await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
-        return results;
-      }
-
-      return [];
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
-  }
-
-  async getGlobalChatRules() {
-    try {
-      const redisKey = `server:${this.id}:chatRulesPreset`;
-      const redisData = await redis.get(redisKey);
-      if (redisData) {
-        return JSON.parse(redisData);
-      }
-
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules_preset');
-      if (results && results[0]) {
-        await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
-        return results;
-      }
-
-      return [];
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
-  }
+  // async getChatRules() {
+  //   try {
+  //     const redisKey = `server:${this.id}:chatRules`;
+  //     const redisData = await redis.get(redisKey);
+  //     if (redisData) {
+  //       return JSON.parse(redisData);
+  //     }
+  //
+  //     const connection = await getConnectionPromise();
+  //     const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules WHERE serverID = ?', [this.id]);
+  //     if (results && results[0]) {
+  //       await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
+  //       return results;
+  //     }
+  //
+  //     return [];
+  //   } catch (error) {
+  //     console.error(error);
+  //     return [];
+  //   }
+  // }
+  //
+  // async getGlobalChatRules() {
+  //   try {
+  //     const redisKey = `server:${this.id}:chatRulesPreset`;
+  //     const redisData = await redis.get(redisKey);
+  //     if (redisData) {
+  //       return JSON.parse(redisData);
+  //     }
+  //
+  //     const connection = await getConnectionPromise();
+  //     const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules_preset');
+  //     if (results && results[0]) {
+  //       await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
+  //       return results;
+  //     }
+  //
+  //     return [];
+  //   } catch (error) {
+  //     console.error(error);
+  //     return [];
+  //   }
+  // }
 
   async getRoles() {
     try {
