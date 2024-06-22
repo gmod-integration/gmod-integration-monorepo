@@ -1,6 +1,5 @@
 import { BaseClass } from './BaseClass.js';
 import { generateToken } from '../../utils/tools.js';
-import { getConnectionPromise } from '../../database/connection.js';
 import redis from '../../redis/index.js';
 import { getClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
@@ -17,6 +16,7 @@ import ServerVoteChannel from '../../database/schema/ServerVoteChannel.js';
 import { Op } from 'sequelize';
 import { Role } from './Role.js';
 import ServerRole from '../../database/schema/ServerRole.js';
+import ServerSetting from '../../database/schema/ServerSettings.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -253,39 +253,25 @@ export class Server extends BaseClass {
   }
 
   async getSetting(setting) {
-    try {
-      const redisKey = `server:${this.id}:setting:${setting}`;
-      const redisData = await redis.get(redisKey);
-      if (redisData) {
-        return JSON.parse(redisData);
-      }
+    const redisKey = `server:${this.id}:setting:${setting}`;
+    const redisData = await redis.get(redisKey);
+    if (redisData) {
+      return JSON.parse(redisData);
+    }
 
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_settings WHERE serverID = ? AND setting = ?', [
-        this.id,
+    const result = await ServerSetting.findOne({
+      where: {
+        serverID: this.id,
         setting,
-      ]);
-      if (results && results[0]) {
-        await redis.set(redisKey, JSON.stringify(results[0].value), 'EX', 60);
-        return results[0].value;
-      }
+      },
+    });
 
-      return null;
-    } catch (error) {
-      console.error(error);
-      return null;
+    if (result) {
+      await redis.set(redisKey, JSON.stringify(result.value), 'EX', 10);
+      return result.value;
     }
-  }
 
-  async getSettings() {
-    try {
-      const connection = await getConnectionPromise();
-      const [results] = await connection.query('SELECT * FROM gm_server_settings WHERE serverID = ?', [this.id]);
-      return results ? results : [];
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
+    return null;
   }
 
   async getChatRules() {
