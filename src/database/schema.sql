@@ -1,111 +1,3 @@
-create table if not exists banIPs
-(
-    ip        char(255)                             not null
-        primary key,
-    steamID64 text                                  null,
-    discordID text                                  null,
-    name      text                                  null,
-    banDate   timestamp default current_timestamp() not null,
-    banTime   int       default 0                   not null,
-    admin     text                                  null,
-    reason    text                                  null
-);
-
-create table if not exists banUsers
-(
-    steamID64 char(255)                             null,
-    discordID text                                  null,
-    ip        text                                  null,
-    name      text                                  null,
-    banDate   timestamp default current_timestamp() not null,
-    banTime   int       default 0                   not null,
-    admin     text                                  null,
-    reason    text                                  null,
-    permanent tinyint(1)                            null,
-    unbanDate timestamp                             null
-);
-
-create table if not exists ban_list
-(
-    steamid   text null,
-    steamid64 text null,
-    discordid text null,
-    ip        text null
-);
-
-create table if not exists devUsers
-(
-    steamID64 char(255) not null
-        primary key
-);
-
-create table if not exists gm_emergency
-(
-    guild char(255) not null
-        primary key
-);
-
-create table if not exists gm_guild_member
-(
-    guild_id char(255)                             not null,
-    user_id  char(255)                             not null,
-    date     timestamp default current_timestamp() null,
-    primary key (guild_id, user_id)
-);
-
-create table if not exists gm_guild_suggest
-(
-    id              int auto_increment
-        primary key,
-    userSuggestorID int                                    not null,
-    suggest         text                                   null,
-    creationTime    timestamp  default current_timestamp() null,
-    finalState      tinyint(1)                             null,
-    category        char(255)                              null,
-    enable          tinyint(1) default 0                   not null
-);
-
-create table if not exists gm_guild_suggest_category
-(
-    id      int auto_increment
-        primary key,
-    guildID text                 null,
-    name    text                 null,
-    enable  tinyint(1) default 0 null
-);
-
-create table if not exists gm_guild_tickets
-(
-    guildID        char(255)                                                not null,
-    threadID       char(255)                                                not null,
-    userID         text                                                     not null,
-    adminsIDS      longtext collate utf8mb4_bin default '[]'                null,
-    title          text                                                     null,
-    description    text                                                     null,
-    adminMessageID text                                                     null,
-    userMessageID  text                                                     null,
-    creationDate   timestamp                    default current_timestamp() null,
-    adminChannelID text                                                     null,
-    primary key (guildID, threadID)
-);
-
-create table if not exists gm_log_api
-(
-    server_id char(255)  null,
-    request   text       null,
-    is_post   tinyint(1) null,
-    body      text       null
-);
-
-create table if not exists gm_role
-(
-    guild   char(255)            not null,
-    id      char(255)            not null,
-    is_give int        default 1 null,
-    enable  tinyint(1) default 0 null,
-    primary key (guild, id)
-);
-
 create table if not exists gm_role_auto
 (
     guild   char(255) not null,
@@ -125,17 +17,6 @@ create table if not exists gm_server_generate
     creation_time timestamp  default current_timestamp() null
 );
 
-create table if not exists gm_server_logs
-(
-    serverID  char(255)                             null,
-    type      text                                  not null,
-    data      text                                  not null,
-    timeStamp timestamp default current_timestamp() not null,
-    constraint gm_server_logs_gm_server_id_fk
-        foreign key (serverID) references gm_server (id)
-            on update cascade on delete cascade
-);
-
 create table if not exists gm_server_settings
 (
     serverID char(255) not null,
@@ -145,23 +26,6 @@ create table if not exists gm_server_settings
     constraint gm_server_settings_gm_server_id_fk
         foreign key (serverID) references gm_server (id)
             on update cascade on delete cascade
-);
-
-create table if not exists gm_server_subscription
-(
-    serverID     char(255)                             null,
-    discordID    char(255)                             null,
-    subscription text                                  null,
-    createDate   timestamp default current_timestamp() null,
-    lastRenew    timestamp                             null
-);
-
-create table if not exists gm_setting
-(
-    id      char(255) not null,
-    setting char(255) not null,
-    value   text      null,
-    primary key (id, setting)
 );
 
 create table if not exists users
