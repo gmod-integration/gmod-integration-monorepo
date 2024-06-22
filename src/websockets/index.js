@@ -2,69 +2,116 @@ import { WebSocketServer } from 'ws';
 import { serverConfig } from '../config/index.js';
 import { gmLog } from '../utils/logger.js';
 import { getServerFromID } from '../classes/v3/Server.js';
+import { getPanelUserFromDiscordID } from '../classes/v3/PanelUser.js';
+
+let clients = {
+  server: [],
+  client: [],
+};
 
 const wss = new WebSocketServer({
   port: serverConfig.ports.websocket,
   clientTracking: true,
   verifyClient: async (info, cb) => {
+    // Server Connection
     const { id, token } = info.req.headers;
 
-    if (!id || !token) {
-      gmLog('websocket', 'Missing id or token');
-      return cb(false, 401, 'Unauthorized');
+    if (id && token) {
+      const server = await getServerFromID(id);
+      if (server && server.isValidToken(token)) {
+        gmLog('websocket', 'Authorized server ' + id);
+        return cb(true);
+      }
     }
 
-    const server = await getServerFromID(id);
-    if (!server) {
-      gmLog('websocket', 'Server not found ' + id);
-      return cb(false, 401, 'Unauthorized');
+    // Client Connection
+    const args = new URLSearchParams(info.req.url.split('?')[1].split('/').join('&'));
+    const authToken = args.get('token');
+    const discordID = args.get('discordID');
+    const guildID = args.get('guildID');
+    const serverID = args.get('serverID');
+    const action = args.get('action');
+
+    if (discordID && authToken && guildID && serverID && action) {
+      const user = await getPanelUserFromDiscordID(discordID);
+      if (user && user.authAllowed(authToken) && (await user.isAdminOfGuild(guildID))) {
+        const server = await getServerFromID(serverID);
+        if (server && server.getGuildID() !== serverID) {
+          gmLog('websocket', 'Authorized client ' + discordID);
+          return cb(true);
+        }
+      }
     }
 
-    if (!server.isValidToken(token)) {
-      gmLog('websocket', 'Invalid token for server ' + id);
-      return cb(false, 401, 'Unauthorized');
-    }
-
-    gmLog('websocket', 'Authorized client ' + id);
-    return cb(true);
+    gmLog('websocket', 'Unauthorized connection');
+    return cb(false, 401, 'Unauthorized');
   },
 });
 
 gmLog('websocket', 'Listening on port ' + serverConfig.ports.websocket);
 
-let clients = [];
-
 wss.on('connection', function connection(ws, req) {
   const { id, token } = req.headers;
 
-  gmLog('websocket', 'Client connected ' + id);
-  clients = clients.filter((client) => client.id !== id);
-  clients.push({ id: id, ws: ws });
+  if (id && token) {
+    clients.server = clients.server.filter((client) => client.id !== id);
+    clients.server.push({ id, ws });
+    gmLog('websocket', 'Server connected: ' + id);
+    ws.on('close', () => {
+      clients.server = clients.server.filter((client) => client.id !== id);
+      gmLog('websocket', 'Server disconnected: ' + id);
+    });
+  }
 
-  ws.on('close', () => {
-    gmLog('websocket', 'Client disconnected ' + id);
-    clients = clients.filter((client) => client.id !== id);
-  });
+  const args = new URLSearchParams(req.url.split('?')[1].split('/').join('&'));
+  const discordID = args.get('discordID');
+  const barerToken = args.get('token');
+  const guildID = args.get('guildID');
+  const serverID = args.get('serverID');
+  const action = args.get('action');
 
-  // stay alive
+  if (discordID && barerToken && guildID && serverID && action) {
+    clients.client = clients.client.filter((client) => client.discordID !== discordID);
+    clients.client.push({ discordID, ws, guildID, serverID, action });
+    gmLog('websocket', 'Client connected: ' + discordID);
+    ws.on('close', () => {
+      clients.client = clients.client.filter((client) => client.discordID !== discordID);
+      gmLog('websocket', 'Client disconnected: ' + discordID);
+    });
+  }
+
   setInterval(() => {
     ws.ping();
-  }, 10000);
+  }, 1000);
 });
 
 export function wsSendToServer(id, data) {
-  let success = false;
-  clients.forEach((client) => {
-    if (client.id === id) {
-      client.ws.send(JSON.stringify(data));
-      success = true;
-    }
-  });
+  const client = clients.server.find((client) => client.id === id);
 
-  if (!success) {
-    gmLog('websocket', 'Client ' + id + ' not found');
-  } else {
-    gmLog('websocket', 'Sent to client ' + id + ': ' + JSON.stringify(data));
+  if (!client) {
+    return;
   }
-  return success;
+
+  client.ws.send(JSON.stringify(data));
+}
+
+export function wsSendToClient(discordID, data, action) {
+  const client = clients.client.find((client) => client.discordID === discordID && client.action === action);
+
+  if (!client) {
+    return;
+  }
+
+  client.ws.send(JSON.stringify(data));
+}
+
+export function wsSendToAllClientsOfServer(serverID, action, data) {
+  console.log('Sending to all clients of server', serverID);
+  console.log('Clients:', clients.client);
+  const clientsToSend = clients.client.filter((client) => client.serverID === serverID && client.action === action);
+  console.log('Sending to', clientsToSend.length, 'clients', clientsToSend.join(', '));
+  for (const client of clientsToSend) {
+    console.log('Sending to client', client.discordID);
+    client.ws.send(JSON.stringify(data));
+  }
 }

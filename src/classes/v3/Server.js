@@ -17,6 +17,7 @@ import { Op } from 'sequelize';
 import { Role } from './Role.js';
 import ServerRole from '../../database/schema/ServerRole.js';
 import ServerSetting from '../../database/schema/ServerSettings.js';
+import ServerLogsChannel from '../../database/schema/ServerLogsChannel.js';
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -467,6 +468,60 @@ export class Server extends BaseClass {
     }
 
     return screenshotChannel;
+  }
+
+  async getLogsChannel() {
+    return await ServerLogsChannel.findOne({
+      where: {
+        serverID: this.id,
+      },
+    });
+  }
+
+  async destroyLogsChannel() {
+    const logsChannel = await this.getLogsChannel();
+
+    if (logsChannel) {
+      try {
+        const guild = await this.getDiscordGuild();
+        if (!guild) throw new Error('Guild not found');
+
+        const channel = await guild.channels.cache.get(logsChannel.channelID);
+        if (!channel) throw new Error('Channel not found');
+
+        const webhook = await channel.fetchWebhooks();
+        const webhookToDelete = webhook.find((webhook) => webhook.id === logsChannel.webhookID);
+        if (webhookToDelete) await webhookToDelete.delete();
+      } catch (error) {
+        // skip
+      }
+      await logsChannel.destroy();
+    }
+
+    return logsChannel;
+  }
+
+  async createLogsChannel(channelID) {
+    await this.destroyLogsChannel();
+
+    const guild = await this.getDiscordGuild();
+    if (!guild) throw new Error('Guild not found');
+
+    const channel = await guild.channels.cache.get(channelID);
+    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found');
+
+    const webhook = await channel.createWebhook({
+      name: 'Server Logs',
+    });
+
+    if (!webhook) throw new Error('Webhook not created');
+
+    return await ServerLogsChannel.create({
+      serverID: this.id,
+      channelID,
+      webhookID: webhook.id,
+      webhookToken: webhook.token,
+    });
   }
 
   async getVoteChannel() {
