@@ -16,7 +16,7 @@ export default {
     if (notVerifiedRole) {
       const role = guild.roles.cache.get(notVerifiedRole.id);
       if (!role) return;
-      channel.permissionOverwrites.edit(role, { ViewChannel: false });
+      await channel.permissionOverwrites.edit(role, { ViewChannel: false });
     }
   },
 };
