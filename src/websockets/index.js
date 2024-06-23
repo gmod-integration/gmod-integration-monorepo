@@ -106,12 +106,12 @@ export function wsSendToClient(discordID, data, action) {
 }
 
 export function wsSendToAllClientsOfServer(serverID, action, data) {
-  console.log('Sending to all clients of server', serverID);
-  console.log('Clients:', clients.client);
+  // console.log('Sending to all clients of server', serverID);
+  // console.log('Clients:', clients.client);
   const clientsToSend = clients.client.filter((client) => client.serverID === serverID && client.action === action);
-  console.log('Sending to', clientsToSend.length, 'clients', clientsToSend.join(', '));
+  // console.log('Sending to', clientsToSend.length, 'clients', clientsToSend.join(', '));
   for (const client of clientsToSend) {
-    console.log('Sending to client', client.discordID);
+    // console.log('Sending to client', client.discordID);
     client.ws.send(JSON.stringify(data));
   }
 }

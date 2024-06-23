@@ -478,6 +478,21 @@ export class Server extends BaseClass {
     });
   }
 
+  async getCachedLogsChannel() {
+    const redisKey = `server:${this.id}:logsChannel`;
+    const redisData = await redis.get(redisKey);
+    if (redisData) {
+      return JSON.parse(redisData);
+    }
+
+    const logsChannel = await this.getLogsChannel();
+    if (logsChannel) {
+      await redis.set(redisKey, JSON.stringify(logsChannel), 'EX', 60);
+    }
+
+    return logsChannel;
+  }
+
   async destroyLogsChannel() {
     const logsChannel = await this.getLogsChannel();
 
@@ -495,6 +510,7 @@ export class Server extends BaseClass {
       } catch (error) {
         // skip
       }
+      await redis.del(`server:${this.id}:logsChannel`);
       await logsChannel.destroy();
     }
 
@@ -516,6 +532,7 @@ export class Server extends BaseClass {
 
     if (!webhook) throw new Error('Webhook not created');
 
+    await redis.del(`server:${this.id}:logsChannel`);
     return await ServerLogsChannel.create({
       serverID: this.id,
       channelID,

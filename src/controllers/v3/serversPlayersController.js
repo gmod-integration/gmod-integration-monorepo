@@ -57,7 +57,7 @@ export async function playerSpawn(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await logServer(server.getID(), 'player_spawn', { ply });
+  await logServer(server, 'player_spawn', { ply });
   res.status(200).json({ success: true });
 }
 
@@ -80,7 +80,7 @@ export async function playerReady(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await logServer(server.getID(), 'player_ready', { ply });
+  await logServer(server, 'player_ready', { ply });
   await updateGuildUserSyncRoles(server, await getUserFromSteamID64(steamID64), player.userGroup);
   return res.status(200).json({ success: true });
 }
@@ -107,7 +107,7 @@ export async function playerSay(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await logServer(server.getID(), 'player_say', { ply, text, teamOnly });
+  await logServer(server, 'player_say', { ply, text, teamOnly });
   await sendPlayerSay(server, player, text, teamOnly);
   return res.status(200).json({ success: true });
 }
@@ -131,7 +131,7 @@ export async function playerChangeName(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await logServer(server.getID(), 'player_change_name', { ply, oldName, newName });
+  await logServer(server, 'player_change_name', { ply, oldName, newName });
   await updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), newName);
   return res.status(200).json({ success: true });
 }
@@ -156,7 +156,7 @@ export async function playerChangeGroup(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await logServer(server.getID(), 'player_change_group', { ply, oldGroup, newGroup });
+  await logServer(server, 'player_change_group', { ply, oldGroup, newGroup });
 
   const user = await getUserFromSteamID64(steamID64);
   if (!user) {
@@ -184,7 +184,7 @@ export async function playerConnect(req, res) {
 
   const ip = ipGetIP(address);
 
-  await logServer(server.getID(), 'player_connect', { steamID64, name, ip });
+  await logServer(server, 'player_connect', { steamID64, name, ip });
   await saveConnectionGlobalInfo(steamID64, networkid, ip, name);
   await saveConnectionSteamInfo(steamID64, name, ip);
   await server.saveUserConnectionInfo(steamID64, name, ip);
@@ -209,7 +209,7 @@ export async function playerDisconnect(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await logServer(server.getID(), 'player_disconnect', { ply });
+  await logServer(server, 'player_disconnect', { ply });
   await ply.saveServerStat(server.getID());
   await ply.saveServerStatSession(server.getID());
   updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), ply.name).catch(() => {});
@@ -234,6 +234,6 @@ export async function playerDeath(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await logServer(server.getID(), 'player_death', { ply });
+  await logServer(server, 'player_death', { ply });
   return res.status(200).json({ success: true });
 }
