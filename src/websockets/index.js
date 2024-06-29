@@ -13,38 +13,44 @@ const wss = new WebSocketServer({
   port: serverConfig.ports.websocket,
   clientTracking: true,
   verifyClient: async (info, cb) => {
-    // Server Connection
-    const { id, token } = info.req.headers;
+    try {
+      // Server Connection
+      const { id, token } = info.req.headers;
 
-    if (id && token) {
-      const server = await getServerFromID(id);
-      if (server && server.isValidToken(token)) {
-        gmLog('websocket', 'Authorized server ' + id);
-        return cb(true);
-      }
-    }
-
-    // Client Connection
-    const args = new URLSearchParams(info.req.url.split('?')[1].split('/').join('&'));
-    const authToken = args.get('token');
-    const discordID = args.get('discordID');
-    const guildID = args.get('guildID');
-    const serverID = args.get('serverID');
-    const action = args.get('action');
-
-    if (discordID && authToken && guildID && serverID && action) {
-      const user = await getPanelUserFromDiscordID(discordID);
-      if (user && user.authAllowed(authToken) && (await user.isAdminOfGuild(guildID))) {
-        const server = await getServerFromID(serverID);
-        if (server && server.getGuildID() !== serverID) {
-          gmLog('websocket', 'Authorized client ' + discordID);
+      if (id && token) {
+        const server = await getServerFromID(id);
+        if (server && server.isValidToken(token)) {
+          gmLog('websocket', 'Authorized server ' + id);
           return cb(true);
         }
       }
-    }
 
-    gmLog('websocket', 'Unauthorized connection');
-    return cb(false, 401, 'Unauthorized');
+      // Client Connection
+      const args = new URLSearchParams(info.req.url.split('?')[1].split('/').join('&'));
+      const authToken = args.get('token');
+      const discordID = args.get('discordID');
+      const guildID = args.get('guildID');
+      const serverID = args.get('serverID');
+      const action = args.get('action');
+
+      if (discordID && authToken && guildID && serverID && action) {
+        const user = await getPanelUserFromDiscordID(discordID);
+        if (user && user.authAllowed(authToken) && (await user.isAdminOfGuild(guildID))) {
+          const server = await getServerFromID(serverID);
+          if (server && server.getGuildID() !== serverID) {
+            gmLog('websocket', 'Authorized client ' + discordID);
+            return cb(true);
+          }
+        }
+      }
+
+      gmLog('websocket', 'Unauthorized connection');
+      return cb(false, 401, 'Unauthorized');
+    } catch (error) {
+      gmLog('websocket', 'Error during connection verification');
+      console.error(error);
+      return cb(false, 500, 'Internal Server Error');
+    }
   },
 });
 
