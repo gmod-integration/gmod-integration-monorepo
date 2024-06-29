@@ -21,6 +21,7 @@ import moment from 'moment';
 import { Op } from 'sequelize';
 import GuildSettings from '../../database/schema/GuildSettings.js';
 import ServerLogs from '../../database/schema/ServerLogs.js';
+import ServerSettings from '../../database/schema/ServerSettings.js';
 // const passport = require('passport');
 // const SteamStrategy = require('passport-steam').Strategy;
 
@@ -758,17 +759,12 @@ export async function getGuildSettings(req, res) {
 }
 
 export async function getGuildSetting(req, res) {
-  const { guildID, setting } = req.params;
-  const guildSetting = await GuildSettings.findOne({
-    where: {
-      guildID,
-      setting,
-    },
-  });
-  return res.send(guildSetting || {});
+  const { setting } = req.params;
+  const server = req.server;
+  return res.send((await server.getSetting(setting)) || {});
 }
 
-const allowedSettings = ['verification_dont_mp'];
+const allowedGuildSettings = ['verification_dont_mp'];
 
 export async function putGuildSetting(req, res) {
   const { guildID, setting } = req.params;
@@ -780,7 +776,7 @@ export async function putGuildSetting(req, res) {
     });
   }
 
-  if (!allowedSettings.includes(setting)) {
+  if (!allowedGuildSettings.includes(setting)) {
     return res.status(400).send({
       error: 'Setting not allowed',
     });
@@ -811,7 +807,7 @@ export async function postGuildSetting(req, res) {
     });
   }
 
-  if (!allowedSettings.includes(setting)) {
+  if (!allowedGuildSettings.includes(setting)) {
     return res.status(400).send({
       error: 'Setting not allowed',
     });
@@ -845,6 +841,107 @@ export async function deleteGuildSetting(req, res) {
 
   await guildSetting.destroy();
   return res.send(guildSetting);
+}
+
+export async function getServerSettings(req, res) {
+  const { serverID } = req.params;
+  const settings = await ServerSettings.findAll({
+    where: {
+      serverID,
+    },
+  });
+
+  return res.send(settings || []);
+}
+
+export async function getServerSetting(req, res) {
+  const { serverID, setting } = req.params;
+  const serverSetting = await ServerSettings.findOne({
+    where: {
+      serverID,
+      setting,
+    },
+  });
+  return res.send(serverSetting || {});
+}
+
+const allowedServerSettings = ['log_hide_ip', 'log_include_file'];
+
+export async function putServerSetting(req, res) {
+  const { serverID, setting } = req.params;
+  const { value } = req.body;
+
+  if (badArgument([value])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  if (!allowedServerSettings.includes(setting)) {
+    return res.status(400).send({
+      error: 'Setting not allowed',
+    });
+  }
+
+  let serverSetting = await ServerSettings.findOne({
+    where: { serverID, setting },
+  });
+
+  if (!serverSetting) {
+    serverSetting = await ServerSettings.create({ serverID, setting, value });
+  } else {
+    serverSetting.value = value;
+    serverSetting.changed('updatedAt', true);
+    await serverSetting.save();
+  }
+
+  return res.send(serverSetting);
+}
+
+export async function postServerSetting(req, res) {
+  const { serverID, setting } = req.params;
+  const { value } = req.body;
+
+  if (badArgument([value])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  if (!allowedServerSettings.includes(setting)) {
+    return res.status(400).send({
+      error: 'Setting not allowed',
+    });
+  }
+
+  let serverSetting = await ServerSettings.findOne({
+    where: { serverID, setting },
+  });
+
+  if (serverSetting) {
+    return res.status(409).send({
+      error: 'Setting already exists',
+    });
+  }
+
+  serverSetting = await ServerSettings.create({ serverID, setting, value });
+  return res.send(serverSetting);
+}
+
+export async function deleteServerSetting(req, res) {
+  const { serverID, setting } = req.params;
+  const serverSetting = await ServerSettings.findOne({
+    where: { serverID, setting },
+  });
+
+  if (!serverSetting) {
+    return res.status(404).send({
+      error: 'Setting not found',
+    });
+  }
+
+  await serverSetting.destroy();
+  return res.send(serverSetting);
 }
 
 export async function getServerLogs(req, res) {

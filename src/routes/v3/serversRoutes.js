@@ -9,9 +9,13 @@ import {
   playerConnect,
   playerDeath,
   playerDisconnect,
+  playerGive,
+  playerHurt,
+  playerInitialSpawn,
   playerReady,
   playerSay,
   playerSpawn,
+  playerSpawnObject,
 } from '../../controllers/v3/serversPlayersController.js';
 import asyncHandler from '../../middleware/asyncHandler.js';
 
@@ -26,6 +30,10 @@ router.post('/:serverID/errors', asyncHandler(reportError));
 router.get('/:serverID/players/:steamID64', asyncHandler(getPlayer));
 router.post('/:serverID/players/:steamID64/say', asyncHandler(playerSay));
 router.post('/:serverID/players/:steamID64/death', asyncHandler(playerDeath));
+router.post('/:serverID/players/:steamID64/initial-spawn', asyncHandler(playerInitialSpawn));
+router.post('/:serverID/players/:steamID64/hurt', asyncHandler(playerHurt));
+router.post('/:serverID/players/:steamID64/give', asyncHandler(playerGive));
+router.post('/:serverID/players/:steamID64/spawn/:object', asyncHandler(playerSpawnObject));
 router.post('/:serverID/players/:steamID64/connect', asyncHandler(playerConnect));
 router.post('/:serverID/players/:steamID64/disconnect', asyncHandler(playerDisconnect));
 router.post('/:serverID/players/:steamID64/ready', asyncHandler(playerReady));

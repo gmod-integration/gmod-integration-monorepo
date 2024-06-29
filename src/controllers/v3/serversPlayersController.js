@@ -183,8 +183,9 @@ export async function playerConnect(req, res) {
   }
 
   const ip = ipGetIP(address);
-
-  await logServer(server, 'player_connect', { steamID64, name, ip });
+  const hideIP = await server.getSetting('log_hide_ip');
+  console.log(hideIP);
+  await logServer(server, 'player_connect', { steamID64, name, ip: hideIP ? 'xx.xx.xx.xx' : ip });
   await saveConnectionGlobalInfo(steamID64, networkid, ip, name);
   await saveConnectionSteamInfo(steamID64, name, ip);
   await server.saveUserConnectionInfo(steamID64, name, ip);
@@ -218,6 +219,93 @@ export async function playerDisconnect(req, res) {
 
 export async function playerDeath(req, res) {
   const server = req.server;
+  const { player, inflictor, attacker } = req.body;
+
+  if (badArgument([player, inflictor, attacker])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+      },
+    });
+  }
+
+  const plyTarget = new PlayerGmod(player);
+  const plyAttacker = new PlayerGmod(attacker);
+
+  if (!plyTarget.isValid() || !plyAttacker.isValid()) {
+    return res.status(400).json({
+      error: 'player_bad_format',
+      arguments: {
+        player: plyTarget.isValidGetInformations(),
+        attacker: plyAttacker.isValidGetInformations(),
+      },
+    });
+  }
+
+  await logServer(server, 'player_death', { plyTarget, inflictor, plyAttacker });
+  return res.status(200).json({ success: true });
+}
+
+export async function playerHurt(req, res) {
+  const server = req.server;
+  const { victim, attacker, healthRemaining, damageTaken } = req.body;
+
+  if (badArgument([victim, attacker, healthRemaining, damageTaken])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        victim: !!victim,
+        attacker: !!attacker,
+        healthRemaining: !!healthRemaining,
+        damageTaken: !!damageTaken,
+      },
+    });
+  }
+
+  const plyVictim = new PlayerGmod(victim);
+  const plyAttacker = new PlayerGmod(attacker);
+  if (!plyVictim.isValid() || !plyAttacker.isValid()) {
+    return res.status(400).json({
+      error: 'player_bad_format',
+      arguments: {
+        victim: plyVictim.isValidGetInformations(),
+        attacker: plyAttacker.isValidGetInformations(),
+      },
+    });
+  }
+
+  await logServer(server, 'player_hurt', { plyVictim, plyAttacker, healthRemaining, damageTaken });
+  return res.status(200).json({ success: true });
+}
+
+export async function playerGive(req, res) {
+  const server = req.server;
+  const { player, swep } = req.body;
+  const wep_class = req.body.class;
+
+  if (badArgument([player, swep, wep_class])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+        swep: !!swep,
+        class: !!wep_class,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server, 'player_give', { ply, swep, wep_class });
+  return res.status(200).json({ success: true });
+}
+
+export async function playerInitialSpawn(req, res) {
+  const server = req.server;
   const { player } = req.body;
 
   if (badArgument([player])) {
@@ -234,6 +322,31 @@ export async function playerDeath(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await logServer(server, 'player_death', { ply });
+  await logServer(server, 'player_initial_spawn', { ply });
+  return res.status(200).json({ success: true });
+}
+
+export async function playerSpawnObject(req, res) {
+  const server = req.server;
+  const { player, entity, model } = req.body;
+  const { object } = req.params;
+
+  if (badArgument([player, entity, model])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+        entity: !!entity,
+        model: !!model,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server, 'player_spawn_object', { ply, entity, model, object });
   return res.status(200).json({ success: true });
 }

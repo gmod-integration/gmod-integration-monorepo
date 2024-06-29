@@ -41,7 +41,7 @@ export default {
       return interaction.reply({
         content: await getTranslate('rcon_steam_link', lang),
         ephemeral: true,
-        components: [new ActionRowBuilder().addComponents(ButtonVerificationWebsite(lang))],
+        components: [new ActionRowBuilder().addComponents(await ButtonVerificationWebsite(lang))],
       });
     }
 
@@ -60,30 +60,19 @@ export default {
     }
 
     if ((await isGuildPremium(interaction.guild.id)) === false) {
-      // return interaction.reply({
-      //     content: await getTranslate('premium_feature', lang, [' [Gmod Integration - Premium](https://gmod-integration.com/premium)']),
-      //     ephemeral: true
-      // });
       return replyNeedPremium(interaction);
     }
 
-    if (
-      wsSendToServer(serverID, {
-        method: 'wsRcon',
-        steamID: user.getSteamID64(),
-        command: interaction.options.getString('command'),
-      })
-    ) {
-      return interaction.reply({
-        content: await getTranslate('rcon_command_success', lang),
-        ephemeral: true,
-      });
-    } else {
-      return interaction.reply({
-        content: await getTranslate('rcon_command_error', lang),
-        ephemeral: true,
-      });
-    }
+    const wsSend = wsSendToServer(serverID, {
+      method: 'wsRcon',
+      steamID: user.getSteamID64(),
+      command: interaction.options.getString('command'),
+    });
+
+    return interaction.reply({
+      content: await getTranslate(wsSend ? 'rcon_command_success' : 'rcon_command_error', lang),
+      ephemeral: true,
+    });
   },
   async autocomplete(interaction) {
     const focusedOption = interaction.options.getFocused(true);

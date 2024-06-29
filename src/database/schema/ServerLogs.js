@@ -5,7 +5,8 @@ import { wsSendToAllClientsOfServer } from '../../websockets/index.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
 import { getClient } from '../../discord/index.js';
-import { WebhookClient } from 'discord.js';
+import { AttachmentBuilder, EmbedBuilder, WebhookClient } from 'discord.js';
+import { getTranslate } from '../../utils/localizations.js';
 
 class ServerLogs extends Model {}
 
@@ -48,6 +49,22 @@ ServerLogs.sync({ alter: true })
 
 export default ServerLogs;
 
+const logEmbedColors = {
+  player_connect: '#cd8f51',
+  player_disconnect: '#cd8f51',
+  player_death: '#cd5151',
+  player_spawn: '#51cd51',
+  player_ready: '#51cd51',
+  player_change_group: '#cd51bc',
+  player_change_name: '#cd51bc',
+  player_give: '#cdc751',
+  player_spawn_object: '#68c13c',
+  player_hurt: '#cd5151',
+  player_initial_spawn: '#51cd51',
+  player_say: '#51c3cd',
+  default: '#2B2D31',
+};
+
 export async function logServer(server, type, data) {
   try {
     await ServerLogs.create({
@@ -55,32 +72,119 @@ export async function logServer(server, type, data) {
       type,
       data,
     });
+    const lang = await server.getDiscordGuild().preferredLocale;
     await wsSendToAllClientsOfServer(server.getID(), 'server_logs', { type, data });
     const relayChannelInfo = await server.getCachedLogsChannel();
     if (relayChannelInfo) {
-      const { channelID, webhookID, webhookToken } = relayChannelInfo;
-      const contentTbl = [
-        '   _ _   ',
-        `Server: [${server.getName()}](${serverConfig.websiteUrl}/dashboard/guilds/${server.getGuildID()}/config/servers/${server.getID()})`,
-        `Event: \`${type}\``,
-        `Time: <t:${Math.floor(Date.now() / 1000)}:R>`,
-        'Data:',
-        '```json',
-        JSON.stringify(data, null, 2),
-        '```',
-      ];
-      // const content = `Server: [${server.getName()}](${serverConfig.websiteUrl}/dashboard/guilds/${server.getGuildID()}/config/servers/${server.getID()})\nEvent: ${type}\n\nData:\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``;
-      // const logData = {
-      //   server: `${server.getName()} (${server.getID()})`,
-      //   event: type,
-      //   date: new Date()
-      //     .toISOString()
-      //     .replace('T', ' ')
-      //     .replace(/\.\d{3}Z/, ''),
-      //   data,
-      // };
-      // const content = `\`\`\`json\n${JSON.stringify(logData, null, 2)}\n\`\`\``;
-      const content = contentTbl.join('\n');
+      const { webhookID, webhookToken } = relayChannelInfo;
+
+      const dscList = [];
+      switch (type) {
+        case 'player_connect':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.name + '`');
+          dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`');
+          break;
+        case 'player_disconnect':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('connectTime', lang)) + ': `' + data.ply.connectTime + '`');
+          break;
+        case 'player_say':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('text', lang)) + ': `' + data.text + '`');
+          dscList.push((await getTranslate('teamOnly', lang)) + ': `' + data.teamOnly + '`');
+          break;
+        case 'player_spawn':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
+          break;
+        case 'player_change_name':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('oldName', lang)) + ': `' + data.oldName + '`');
+          dscList.push((await getTranslate('newName', lang)) + ': `' + data.newName + '`');
+          break;
+        case 'player_change_group':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('oldGroup', lang)) + ': `' + data.oldGroup + '`');
+          dscList.push((await getTranslate('newGroup', lang)) + ': `' + data.newGroup + '`');
+          break;
+        case 'player_spawn_object':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('object', lang)) + ': `' + data.object + '`');
+          dscList.push((await getTranslate('model', lang)) + ': `' + data.model + '`');
+          break;
+        case 'player_give':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('weapon', lang)) + ': `' + (data.swep ? data.swep.PrintName : '') + '`');
+          dscList.push(
+            (await getTranslate('weaponClass', lang)) + ': `' + (data.swep ? data.swep.ClassName : '') + '`',
+          );
+          break;
+        case 'player_death':
+          dscList.push(await getTranslate('attacker', lang));
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyAttacker.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyAttacker.name + '`');
+          dscList.push('\n');
+          dscList.push(await getTranslate('victim', lang));
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyTarget.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyTarget.name + '`');
+          break;
+        case 'player_hurt':
+          dscList.push((await getTranslate('attacker', lang)) + ':');
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyAttacker.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyAttacker.name + '`');
+
+          dscList.push((await getTranslate('victim', lang)) + ':');
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyTarget.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyTarget.name + '`');
+
+          dscList.push((await getTranslate('damage', lang)) + ': `' + data.damage + '`');
+          dscList.push((await getTranslate('health', lang)) + ': `' + data.health + '`');
+          break;
+        case 'player_initial_spawn':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          break;
+        default:
+          if (data.steamID64) dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
+          if (data.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.name + '`');
+          if (data.team && data.team.name)
+            dscList.push((await getTranslate('team', lang)) + ': `' + data.team.name + '`');
+          if (data.ply) {
+            if (data.ply.steamID64)
+              dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+            if (data.ply.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+            if (data.ply.team && data.ply.team.name)
+              dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
+          }
+          if (data.ip) dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`');
+          break;
+      }
+
+      const embed = new EmbedBuilder()
+        .setAuthor({
+          name: await getTranslate(type, lang),
+          ulr: `${serverConfig.websiteUrl}/dashboard/guilds/${server.getGuildID()}/config/servers/${server.getID()}/logs`,
+        })
+        .setDescription(dscList.length > 0 ? dscList.join('\n') : null)
+        .setColor(logEmbedColors[type] || logEmbedColors.default)
+        .setFooter({
+          text: server.getName(),
+        })
+        .setTimestamp();
+
+      const file = new AttachmentBuilder(Buffer.from(JSON.stringify(data, null, 2), 'utf-8'), {
+        name: `${server.getID()}-${new Date().toISOString().replace(/T/g, '-').replace(/\..+/, '').replace(/:/g, '-')}-${type}.json`,
+      });
+
+      const includeFile = await server.getSetting('log_include_file');
+
       if (serverConfig.production === 'true') {
         const webhookRelay = await fetch(getRandomDiscordRelay(), {
           method: 'POST',
@@ -94,7 +198,8 @@ export async function logServer(server, type, data) {
             data: {
               username: 'Gmod Integration - Server Logs',
               avatarURL: 'https://cdn.discordapp.com/avatars/1110121451501129758/cb1253ac05209638f77480643bf58b37.webp',
-              content,
+              embeds: [embed],
+              files: includeFile ? [file] : [],
             },
           }),
         });
@@ -111,7 +216,8 @@ export async function logServer(server, type, data) {
           await webhookClient.send({
             username: 'Gmod Integration - Server Logs',
             avatarURL: 'https://cdn.discordapp.com/avatars/1110121451501129758/cb1253ac05209638f77480643bf58b37.webp',
-            content,
+            embeds: [embed],
+            files: includeFile ? [file] : [],
           });
         } catch (err) {
           console.error(err);
