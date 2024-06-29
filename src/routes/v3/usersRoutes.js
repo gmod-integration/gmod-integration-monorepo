@@ -11,6 +11,7 @@ import {
   deleteGuildVerificationsRoles,
   deleteLogsChannel,
   deleteServerScreenshots,
+  deleteServerSetting,
   deleteServerStatus,
   deleteServerStatusButtons,
   deleteServerSyncChat,
@@ -37,6 +38,8 @@ import {
   getPublicServers,
   getServerLogs,
   getServerPlayers,
+  getServerSetting,
+  getServerSettings,
   getServerStatusButtons,
   getUserGuildsOwnOrAdmins,
   getVerificationMessage,
@@ -48,6 +51,7 @@ import {
   postGuildSetting,
   postLogsChannel,
   postServerScreenshots,
+  postServerSetting,
   postServerStatus,
   postServerSyncChat,
   postUserStartVerification,
@@ -57,6 +61,7 @@ import {
   putGuildSetting,
   putGuildVerificationsRoles,
   putPlayerBypassMaintenance,
+  putServerSetting,
   putServerStatusButtons,
 } from '../../controllers/v3/usersControllers.js';
 import { userAdminGuildValidator, userServerValidator, userValidator } from '../../middleware/v3/userValidator.js';
@@ -113,6 +118,12 @@ router.post('/:discordID/guilds/:guildID/servers/:serverID/token', asyncHandler(
 router.get('/:discordID/guilds/:guildID/servers/:serverID/players', asyncHandler(getServerPlayers));
 router.put('/:discordID/guilds/:guildID/servers/:serverID/players/:playerID', asyncHandler(putPlayerBypassMaintenance));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID', asyncHandler(deleteGuildServer));
+// Settings
+router.get('/:discordID/guilds/:guildID/servers/:serverID/settings', asyncHandler(getServerSettings));
+router.get('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(getServerSetting));
+router.put('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(putServerSetting));
+router.delete('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(deleteServerSetting));
+router.post('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(postServerSetting));
 // Screenshots
 router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(findServerScreenshots));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(postServerScreenshots));
