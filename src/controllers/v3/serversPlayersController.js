@@ -9,7 +9,6 @@ import {
 } from '../../models/v3/serversPlayersModels.js';
 import { updateGuildUserPseudo } from '../../discord/index.js';
 import { logServer } from '../../database/schema/ServerLogs.js';
-import ServerSettings from '../../database/schema/ServerSettings.js';
 
 export async function getPlayer(req, res) {
   const { steamID64 } = req.params;
@@ -184,12 +183,7 @@ export async function playerConnect(req, res) {
   }
 
   const ip = ipGetIP(address);
-  const hideIP = await ServerSettings.findOne({
-    where: {
-      serverID: server.getID(),
-      setting: 'log_hide_ip',
-    },
-  });
+  const hideIP = await server.getSetting('log_hide_ip');
   console.log(hideIP);
   await logServer(server, 'player_connect', { steamID64, name, ip: hideIP ? 'xx.xx.xx.xx' : ip });
   await saveConnectionGlobalInfo(steamID64, networkid, ip, name);

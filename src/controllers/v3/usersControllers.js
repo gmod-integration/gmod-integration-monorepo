@@ -759,14 +759,9 @@ export async function getGuildSettings(req, res) {
 }
 
 export async function getGuildSetting(req, res) {
-  const { guildID, setting } = req.params;
-  const guildSetting = await GuildSettings.findOne({
-    where: {
-      guildID,
-      setting,
-    },
-  });
-  return res.send(guildSetting || {});
+  const { setting } = req.params;
+  const server = req.server;
+  return res.send((await server.getSetting(setting)) || {});
 }
 
 const allowedGuildSettings = ['verification_dont_mp'];
@@ -870,7 +865,7 @@ export async function getServerSetting(req, res) {
   return res.send(serverSetting || {});
 }
 
-const allowedServerSettings = ['log_hide_ip'];
+const allowedServerSettings = ['log_hide_ip', 'log_include_file'];
 
 export async function putServerSetting(req, res) {
   const { serverID, setting } = req.params;

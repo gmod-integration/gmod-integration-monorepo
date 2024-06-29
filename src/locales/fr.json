@@ -115,5 +115,14 @@
   "re_verify_yourself": "Pour effectuer cette action, vous devez vous re-vérifier !",
   "vote_webhook": "{1} vient de voter pour le serveur {2} !",
   "vote_success": "Vous avez voté avec succès pour le serveur {1} !",
-  "vote_cooldown": "Vous avez déjà voté pour ce serveur, vous pouvez voter à nouveau dans {1}"
+  "vote_cooldown": "Vous avez déjà voté pour ce serveur, vous pouvez voter à nouveau dans {1}",
+  "player_connect": "Connexion du Joueur",
+  "player_disconnect": "Déconnexion du Joueur",
+  "player_death": "Mort du Joueur",
+  "player_spawn": "Apparition du Joueur",
+  "player_ready": "Joueur Prêt",
+  "player_change_group": "Changement de Groupe du Joueur",
+  "player_change_name": "Changement de Nom du Joueur",
+  "player_say": "Message du Joueur",
+  "default": "Défaut"
 }
