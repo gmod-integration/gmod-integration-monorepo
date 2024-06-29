@@ -58,7 +58,7 @@ export async function statusRoutine() {
   const dscClient = await getClient();
   for (const offlineServer of offlineServers) {
     try {
-      const server = await getServerFromID(offlineServer.server);
+      const server = await getServerFromID(offlineServer.id);
       if (!server) return await offlineServer.destroy();
 
       const guild = dscClient.guilds.cache.get(server.getGuildID());
