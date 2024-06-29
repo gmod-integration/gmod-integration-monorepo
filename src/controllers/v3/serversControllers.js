@@ -5,6 +5,7 @@ import { getClient } from '../../discord/index.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import gm_server_status from '../../database/schema/gm_server_status.js';
+import gm_status from '../../database/schema/gm_status.js';
 
 export async function postStatus(req, res) {
   const server = req.server;
@@ -47,34 +48,39 @@ export async function getPublicToken(req, res) {
 }
 
 export async function statusRoutine() {
-  const offlineServers = await gm_server_status.findAll({
-    where: {
-      updatedAt: {
-        [Op.lt]: new Date(new Date() - 10 * 60 * 1000),
-      },
-    },
-  });
-
+  const serverStatus = await gm_status.findAll();
   const dscClient = await getClient();
-  for (const offlineServer of offlineServers) {
-    try {
-      const server = await getServerFromID(offlineServer.id);
-      if (!server) return await offlineServer.destroy();
+
+  for (const status of serverStatus) {
+    const server = await getServerFromID(status.server);
+    if (!server) return await status.destroy();
+
+    if (status.updatedAt < new Date(new Date() - 10 * 60 * 1000)) {
+      await status.update({ status: 'offline' });
+
+      const statusChannel = await gm_server_status.findOne({
+        where: {
+          server: status.server,
+          updatedAt: {
+            [Op.gt]: new Date(new Date() - 10 * 60 * 1000),
+          },
+        },
+      });
+
+      if (statusChannel) return; // if the server is already online, don't update the message
 
       const guild = dscClient.guilds.cache.get(server.getGuildID());
-      if (!guild) return await offlineServer.destroy();
+      if (!guild) return await status.destroy();
 
-      const channel = guild.channels.cache.get(offlineServer.channel);
-      if (!channel) return await offlineServer.destroy();
+      const channel = guild.channels.cache.get(statusChannel.channel);
+      if (!channel) return await status.destroy();
 
-      const message = await channel.messages.fetch(offlineServer.message);
-      if (!message) return await offlineServer.destroy();
+      const message = await channel.messages.fetch(statusChannel.message);
+      if (!message) return await status.destroy();
 
       const lang = await guild.preferredLocale;
-      const newMsgContent = await getStatusMessage(server, offlineServer, lang);
+      const newMsgContent = await getStatusMessage(server, {}, lang);
       await message.edit(newMsgContent);
-    } catch (error) {
-      console.error(error);
     }
   }
 }
