@@ -89,20 +89,24 @@ export function wsSendToServer(id, data) {
   const client = clients.server.find((client) => client.id === id);
 
   if (!client) {
-    return;
+    return false;
   }
 
+  console.log('Sending to server', id);
   client.ws.send(JSON.stringify(data));
+  return true;
 }
 
 export function wsSendToClient(discordID, data, action) {
   const client = clients.client.find((client) => client.discordID === discordID && client.action === action);
 
   if (!client) {
-    return;
+    return false;
   }
 
+  console.log('Sending to client', discordID);
   client.ws.send(JSON.stringify(data));
+  return true;
 }
 
 export function wsSendToAllClientsOfServer(serverID, action, data) {
@@ -111,7 +115,9 @@ export function wsSendToAllClientsOfServer(serverID, action, data) {
   const clientsToSend = clients.client.filter((client) => client.serverID === serverID && client.action === action);
   // console.log('Sending to', clientsToSend.length, 'clients', clientsToSend.join(', '));
   for (const client of clientsToSend) {
-    // console.log('Sending to client', client.discordID);
+    console.log('Sending to client', client.discordID);
     client.ws.send(JSON.stringify(data));
   }
+
+  return true;
 }
