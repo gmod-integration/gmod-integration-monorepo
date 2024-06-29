@@ -83,7 +83,12 @@ export async function logServer(server, type, data) {
         case 'player_connect':
           dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
           dscList.push((await getTranslate('name', lang)) + ': `' + data.name + '`');
-          dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`');
+          dscList.push(
+            (await getTranslate('ip', lang)) +
+              ': `' +
+              ((await server.getSetting('log_hide_ip')) ? 'xx.xx.xx.xx' : data.ip) +
+              '`',
+          );
           break;
         case 'player_disconnect':
           dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');

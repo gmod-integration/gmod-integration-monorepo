@@ -183,9 +183,7 @@ export async function playerConnect(req, res) {
   }
 
   const ip = ipGetIP(address);
-  const hideIP = await server.getSetting('log_hide_ip');
-  console.log(hideIP);
-  await logServer(server, 'player_connect', { steamID64, name, ip: hideIP ? 'xx.xx.xx.xx' : ip });
+  await logServer(server, 'player_connect', { steamID64, name, ip });
   await saveConnectionGlobalInfo(steamID64, networkid, ip, name);
   await saveConnectionSteamInfo(steamID64, name, ip);
   await server.saveUserConnectionInfo(steamID64, name, ip);
