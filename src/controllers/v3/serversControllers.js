@@ -1,10 +1,10 @@
 import { badArgument } from '../../utils/tools.js';
 import { gmLog } from '../../utils/logger.js';
-import gm_status from '../../database/schema/gm_status.js';
-import { Op, Sequelize } from 'sequelize';
+import { Op } from 'sequelize';
 import { getClient } from '../../discord/index.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
+import gm_server_status from '../../database/schema/gm_server_status.js';
 
 export async function postStatus(req, res) {
   const server = req.server;
@@ -47,21 +47,11 @@ export async function getPublicToken(req, res) {
 }
 
 export async function statusRoutine() {
-  // offline server = not in gm_server_status or gm_server_status.updatedAt < now - 5 minutes
-  const offlineServers = await gm_status.findAll({
+  const offlineServers = await gm_server_status.findAll({
     where: {
-      [Op.or]: [
-        {
-          updatedAt: {
-            [Op.lt]: Sequelize.literal('NOW() - INTERVAL 10 MINUTE'),
-          },
-        },
-        {
-          server: {
-            [Op.notIn]: Sequelize.literal('(SELECT id FROM gm_server)'),
-          },
-        },
-      ],
+      updatedAt: {
+        [Op.lt]: new Date(new Date() - 10 * 60 * 1000),
+      },
     },
   });
 
@@ -81,7 +71,7 @@ export async function statusRoutine() {
       if (!message) return await offlineServer.destroy();
 
       const lang = await guild.preferredLocale;
-      const newMsgContent = await getStatusMessage(server, {}, lang);
+      const newMsgContent = await getStatusMessage(server, offlineServer, lang);
       await message.edit(newMsgContent);
     } catch (error) {
       console.error(error);

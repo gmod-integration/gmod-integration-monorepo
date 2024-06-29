@@ -48,7 +48,7 @@ export class Server extends BaseClass {
       where: {
         id: this.getID(),
         updatedAt: {
-          [Op.gt]: new Date(new Date() - 5 * 60 * 1000),
+          [Op.gt]: new Date(new Date() - 6 * 60 * 1000),
         },
       },
     });
