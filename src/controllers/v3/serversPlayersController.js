@@ -219,9 +219,9 @@ export async function playerDisconnect(req, res) {
 
 export async function playerDeath(req, res) {
   const server = req.server;
-  const { player } = req.body;
+  const { player, inflictor, attacker } = req.body;
 
-  if (badArgument([player])) {
+  if (badArgument([player, inflictor, attacker])) {
     return res.status(400).json({
       error: 'missing_arguments',
       args: {
@@ -230,12 +230,20 @@ export async function playerDeath(req, res) {
     });
   }
 
-  const ply = new PlayerGmod(player);
-  if (!ply.isValid()) {
-    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  const plyTarget = new PlayerGmod(player);
+  const plyAttacker = new PlayerGmod(attacker);
+
+  if (!plyTarget.isValid() || !plyAttacker.isValid()) {
+    return res.status(400).json({
+      error: 'player_bad_format',
+      arguments: {
+        player: plyTarget.isValidGetInformations(),
+        attacker: plyAttacker.isValidGetInformations(),
+      },
+    });
   }
 
-  await logServer(server, 'player_death', { ply });
+  await logServer(server, 'player_death', { plyTarget, inflictor, plyAttacker });
   return res.status(200).json({ success: true });
 }
 
@@ -321,6 +329,7 @@ export async function playerInitialSpawn(req, res) {
 export async function playerSpawnObject(req, res) {
   const server = req.server;
   const { player, entity, model } = req.body;
+  const { object } = req.params;
 
   if (badArgument([player, entity, model])) {
     return res.status(400).json({
@@ -338,6 +347,6 @@ export async function playerSpawnObject(req, res) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await logServer(server, 'player_spawn_object', { ply, entity, model });
+  await logServer(server, 'player_spawn_object', { ply, entity, model, object });
   return res.status(200).json({ success: true });
 }

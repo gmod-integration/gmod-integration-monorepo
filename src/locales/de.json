@@ -171,5 +171,17 @@
   "teamOnly": "Nur Team",
   "team": "Team",
   "oldName": "Alter Name",
-  "newName": "Neuer Name"
+  "newName": "Neuer Name",
+  "weapon": "Waffe",
+  "weaponClass": "Waffenklasse",
+  "player_give": "Spieler geben",
+  "player_spawn_object": "Spielerobjekt spawnen",
+  "object": "Objekt",
+  "model": "Modell",
+  "player_hurt": "Spieler verletzen",
+  "player_initial_spawn": "Spielerinitialspawn",
+  "victim": "Opfer",
+  "attacker": "Angreifer",
+  "damage": "Schaden",
+  "health": "Gesundheit"
 }

@@ -171,5 +171,17 @@
   "teamOnly": "Solo Equipo",
   "team": "Equipo",
   "oldName": "Nombre Antiguo",
-  "newName": "Nuevo Nombre"
+  "newName": "Nuevo Nombre",
+  "weapon": "Arma",
+  "weaponClass": "Clase de Arma",
+  "player_give": "Jugador Dar",
+  "player_spawn_object": "Spawn de Objeto de Jugador",
+  "object": "Objeto",
+  "model": "Modelo",
+  "player_hurt": "Daño de Jugador",
+  "player_initial_spawn": "Spawn Inicial de Jugador",
+  "victim": "Víctima",
+  "attacker": "Atacante",
+  "damage": "Daño",
+  "health": "Salud"
 }

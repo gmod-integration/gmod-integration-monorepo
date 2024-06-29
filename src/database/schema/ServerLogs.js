@@ -57,6 +57,10 @@ const logEmbedColors = {
   player_ready: '#51cd51',
   player_change_group: '#cd51bc',
   player_change_name: '#cd51bc',
+  player_give: '#cdc751',
+  player_spawn_object: '#68c13c',
+  player_hurt: '#cd5151',
+  player_initial_spawn: '#51cd51',
   player_say: '#51c3cd',
   default: '#2B2D31',
 };
@@ -108,19 +112,58 @@ export async function logServer(server, type, data) {
           dscList.push((await getTranslate('oldGroup', lang)) + ': `' + data.oldGroup + '`');
           dscList.push((await getTranslate('newGroup', lang)) + ': `' + data.newGroup + '`');
           break;
+        case 'player_spawn_object':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('object', lang)) + ': `' + data.object + '`');
+          dscList.push((await getTranslate('model', lang)) + ': `' + data.model + '`');
+          break;
+        case 'player_give':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('weapon', lang)) + ': `' + (data.swep ? data.swep.PrintName : '') + '`');
+          dscList.push(
+            (await getTranslate('weaponClass', lang)) + ': `' + (data.swep ? data.swep.ClassName : '') + '`',
+          );
+          break;
+        case 'player_death':
+          dscList.push(await getTranslate('attacker', lang));
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyAttacker.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyAttacker.name + '`');
+          dscList.push('\n');
+          dscList.push(await getTranslate('victim', lang));
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyTarget.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyTarget.name + '`');
+          break;
+        case 'player_hurt':
+          dscList.push((await getTranslate('attacker', lang)) + ':');
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyAttacker.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyAttacker.name + '`');
+
+          dscList.push((await getTranslate('victim', lang)) + ':');
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyTarget.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyTarget.name + '`');
+
+          dscList.push((await getTranslate('damage', lang)) + ': `' + data.damage + '`');
+          dscList.push((await getTranslate('health', lang)) + ': `' + data.health + '`');
+          break;
+        case 'player_initial_spawn':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          break;
         default:
-          if (data.steamID64) dscList.push((await getTranslate('log_steamID64', lang)) + ': `' + data.steamID64 + '`');
-          if (data.name) dscList.push((await getTranslate('log_name', lang)) + ': `' + data.name + '`');
+          if (data.steamID64) dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
+          if (data.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.name + '`');
           if (data.team && data.team.name)
-            dscList.push((await getTranslate('log_team', lang)) + ': `' + data.team.name + '`');
+            dscList.push((await getTranslate('team', lang)) + ': `' + data.team.name + '`');
           if (data.ply) {
             if (data.ply.steamID64)
-              dscList.push((await getTranslate('log_steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-            if (data.ply.name) dscList.push((await getTranslate('log_name', lang)) + ': `' + data.ply.name + '`');
+              dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+            if (data.ply.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
             if (data.ply.team && data.ply.team.name)
-              dscList.push((await getTranslate('log_team', lang)) + ': `' + data.ply.team.name + '`');
+              dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
           }
-          if (data.ip) dscList.push((await getTranslate('log_ip', lang)) + ': `' + data.ip + '`');
+          if (data.ip) dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`');
           break;
       }
 

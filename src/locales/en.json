@@ -185,5 +185,17 @@
   "teamOnly": "Team Only",
   "team": "Team",
   "oldName": "Old Name",
-  "newName": "New Name"
+  "newName": "New Name",
+  "weapon": "Weapon",
+  "weaponClass": "Weapon Class",
+  "player_give": "Player Give",
+  "player_spawn_object": "Player Spawn Object",
+  "object": "Object",
+  "model": "Model",
+  "player_hurt": "Player Hurt",
+  "player_initial_spawn": "Player Initial Spawn",
+  "victim": "Victim",
+  "attacker": "Attacker",
+  "damage": "Damage",
+  "health": "Health"
 }

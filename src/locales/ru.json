@@ -171,5 +171,17 @@
   "teamOnly": "Только для команды",
   "team": "Команда",
   "oldName": "Старое имя",
-  "newName": "Новое имя"
+  "newName": "Новое имя",
+  "weapon": "Оружие",
+  "weaponClass": "Класс оружия",
+  "player_give": "Игрок дал",
+  "player_spawn_object": "Игрок создал объект",
+  "object": "Объект",
+  "model": "Модель",
+  "player_hurt": "Игрок рани",
+  "player_initial_spawn": "Игрок начальный спавн",
+  "victim": "Жертва",
+  "attacker": "Атакующий",
+  "damage": "Урон",
+  "health": "Здоровье"
 }
