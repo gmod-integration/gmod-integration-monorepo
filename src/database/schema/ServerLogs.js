@@ -61,20 +61,6 @@ const logEmbedColors = {
   default: '#2B2D31',
 };
 
-const logInfo = {
-  steamID64: 'SteamID64',
-  name: 'Name',
-  ip: 'IP',
-  connectTime: 'Connect Time',
-  oldGroup: 'Old Group',
-  newGroup: 'New Group',
-  ply: 'Player',
-};
-
-function getStringFromType(id, value) {
-  return logInfo[id] ? `${logInfo[id]}: \`${value}\`` : `${id}: \`${value}\``;
-}
-
 export async function logServer(server, type, data) {
   try {
     await ServerLogs.create({
@@ -82,6 +68,7 @@ export async function logServer(server, type, data) {
       type,
       data,
     });
+    const lang = await server.getDiscordGuild().preferredLocale;
     await wsSendToAllClientsOfServer(server.getID(), 'server_logs', { type, data });
     const relayChannelInfo = await server.getCachedLogsChannel();
     if (relayChannelInfo) {
@@ -90,29 +77,44 @@ export async function logServer(server, type, data) {
       const dscList = [];
       switch (type) {
         case 'player_connect':
-          dscList.push(getStringFromType('steamID64', data.steamID64));
-          dscList.push(getStringFromType('name', data.name));
-          dscList.push(getStringFromType('ip', data.ip));
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.name + '`');
+          dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`');
           break;
         case 'player_disconnect':
-          dscList.push(getStringFromType('steamID64', data.ply.steamID64));
-          dscList.push(getStringFromType('name', data.ply.name));
-          dscList.push(getStringFromType('connectTime', data.ply.connectTime));
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('connectTime', lang)) + ': `' + data.ply.connectTime + '`');
+          break;
+        case 'player_say':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('text', lang)) + ': `' + data.text + '`');
+          dscList.push((await getTranslate('teamOnly', lang)) + ': `' + data.teamOnly + '`');
+          break;
+        case 'player_spawn':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
           break;
         default:
-          if (data.steamID64) dscList.push(`SteamID64: \`${data.steamID64}\``);
-          if (data.name) dscList.push(`Name: \`${data.name}\``);
+          if (data.steamID64) dscList.push((await getTranslate('log_steamID64', lang)) + ': `' + data.steamID64 + '`');
+          if (data.name) dscList.push((await getTranslate('log_name', lang)) + ': `' + data.name + '`');
+          if (data.team.name) dscList.push((await getTranslate('log_team', lang)) + ': `' + data.team.name + '`');
           if (data.ply) {
-            if (data.ply.steamID64) dscList.push(`SteamID64: \`${data.ply.steamID64}\``);
-            if (data.ply.name) dscList.push(`Name: \`${data.ply.name}\``);
+            if (data.ply.steamID64)
+              dscList.push((await getTranslate('log_steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+            if (data.ply.name) dscList.push((await getTranslate('log_name', lang)) + ': `' + data.ply.name + '`');
+            if (data.ply.team.name)
+              dscList.push((await getTranslate('log_team', lang)) + ': `' + data.ply.team.name + '`');
           }
-          if (data.ip) dscList.push(`IP: \`${data.ip}\``);
+          if (data.ip) dscList.push((await getTranslate('log_ip', lang)) + ': `' + data.ip + '`');
           break;
       }
 
       const embed = new EmbedBuilder()
         .setAuthor({
-          name: await getTranslate(type, server.getDiscordGuild().preferredLocale),
+          name: await getTranslate(type, lang),
           ulr: `${serverConfig.websiteUrl}/dashboard/guilds/${server.getGuildID()}/config/servers/${server.getID()}/logs`,
         })
         .setDescription(dscList.length > 0 ? dscList.join('\n') : null)
@@ -123,7 +125,7 @@ export async function logServer(server, type, data) {
         .setTimestamp();
 
       const file = new AttachmentBuilder(Buffer.from(JSON.stringify(data, null, 2), 'utf-8'), {
-        name: `${server.getID()}-${new Date().toISOString()}-{type}.json`,
+        name: `${server.getID()}-${new Date().toISOString().replace(/T/g, '-').replace(/\..+/, '').replace(/:/g, '-')}-${type}.json`,
       });
 
       const includeFile = await server.getSetting('log_include_file');

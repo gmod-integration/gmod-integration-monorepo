@@ -124,5 +124,13 @@
   "player_change_group": "Changement de Groupe du Joueur",
   "player_change_name": "Changement de Nom du Joueur",
   "player_say": "Message du Joueur",
-  "default": "Défaut"
+  "default": "Défaut",
+  "steamID64": "SteamID64",
+  "connectTime": "Temps de Connexion",
+  "oldGroup": "Ancien Groupe",
+  "newGroup": "Nouveau Groupe",
+  "ply": "Joueur",
+  "text": "Texte",
+  "teamOnly": "Équipe Seulement",
+  "team": "Équipe"
 }

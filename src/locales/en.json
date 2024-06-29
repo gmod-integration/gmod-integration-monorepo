@@ -175,5 +175,13 @@
   "player_change_group": "Player Change Group",
   "player_change_name": "Player Change Name",
   "player_say": "Player Say",
-  "default": "Default"
+  "default": "Default",
+  "steamID64": "SteamID64",
+  "connectTime": "Connect Time",
+  "oldGroup": "Old Group",
+  "newGroup": "New Group",
+  "ply": "Player",
+  "text": "Text",
+  "teamOnly": "Team Only",
+  "team": "Team"
 }
