@@ -169,5 +169,7 @@
   "ply": "Jugador",
   "text": "Texto",
   "teamOnly": "Solo Equipo",
-  "team": "Equipo"
+  "team": "Equipo",
+  "oldName": "Nombre Antiguo",
+  "newName": "Nuevo Nombre"
 }

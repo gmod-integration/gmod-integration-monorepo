@@ -183,5 +183,7 @@
   "ply": "Player",
   "text": "Text",
   "teamOnly": "Team Only",
-  "team": "Team"
+  "team": "Team",
+  "oldName": "Old Name",
+  "newName": "New Name"
 }

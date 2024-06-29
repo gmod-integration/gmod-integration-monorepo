@@ -97,15 +97,27 @@ export async function logServer(server, type, data) {
           dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
           dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
           break;
+        case 'player_change_name':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('oldName', lang)) + ': `' + data.oldName + '`');
+          dscList.push((await getTranslate('newName', lang)) + ': `' + data.newName + '`');
+          break;
+        case 'player_change_group':
+          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          dscList.push((await getTranslate('oldGroup', lang)) + ': `' + data.oldGroup + '`');
+          dscList.push((await getTranslate('newGroup', lang)) + ': `' + data.newGroup + '`');
+          break;
         default:
           if (data.steamID64) dscList.push((await getTranslate('log_steamID64', lang)) + ': `' + data.steamID64 + '`');
           if (data.name) dscList.push((await getTranslate('log_name', lang)) + ': `' + data.name + '`');
-          if (data.team.name) dscList.push((await getTranslate('log_team', lang)) + ': `' + data.team.name + '`');
+          if (data.team && data.team.name)
+            dscList.push((await getTranslate('log_team', lang)) + ': `' + data.team.name + '`');
           if (data.ply) {
             if (data.ply.steamID64)
               dscList.push((await getTranslate('log_steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
             if (data.ply.name) dscList.push((await getTranslate('log_name', lang)) + ': `' + data.ply.name + '`');
-            if (data.ply.team.name)
+            if (data.ply.team && data.ply.team.name)
               dscList.push((await getTranslate('log_team', lang)) + ': `' + data.ply.team.name + '`');
           }
           if (data.ip) dscList.push((await getTranslate('log_ip', lang)) + ': `' + data.ip + '`');
