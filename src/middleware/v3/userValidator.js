@@ -17,6 +17,12 @@ export async function userValidator(req, res, next) {
     });
   }
 
+  if (!authorization || !authorization.startsWith('Bearer ')) {
+    return res.status(401).json({
+      error: 'unauthorized',
+    });
+  }
+
   const token = authorization.split(' ')[1];
 
   const panelUser = await getPanelUserFromDiscordID(discordID);
