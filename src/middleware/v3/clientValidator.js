@@ -17,6 +17,8 @@ export default (req, res, next) => {
     });
   }
 
+  if (!authorization.startsWith('Bearer ')) return res.status(400).json({ error: 'invalid_authorization' });
+  
   const token = authorization.split(' ')[1];
   const userID = authorization.split(' ')[2];
 
