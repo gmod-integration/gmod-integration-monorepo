@@ -68,21 +68,29 @@ wss.on('connection', function connection(ws, req) {
     });
   }
 
-  const args = new URLSearchParams(req.url.split('?')[1].split('/').join('&'));
-  const discordID = args.get('discordID');
-  const barerToken = args.get('token');
-  const guildID = args.get('guildID');
-  const serverID = args.get('serverID');
-  const action = args.get('action');
+  if (
+    req.url.includes('discordID') &&
+    req.url.includes('token') &&
+    req.url.includes('guildID') &&
+    req.url.includes('serverID') &&
+    req.url.includes('action')
+  ) {
+    const args = new URLSearchParams(req.url.split('?')[1].split('/').join('&'));
+    const discordID = args.get('discordID');
+    const barerToken = args.get('token');
+    const guildID = args.get('guildID');
+    const serverID = args.get('serverID');
+    const action = args.get('action');
 
-  if (discordID && barerToken && guildID && serverID && action) {
-    clients.client = clients.client.filter((client) => client.discordID !== discordID);
-    clients.client.push({ discordID, ws, guildID, serverID, action });
-    gmLog('websocket', 'Client connected: ' + discordID);
-    ws.on('close', () => {
+    if (discordID && barerToken && guildID && serverID && action) {
       clients.client = clients.client.filter((client) => client.discordID !== discordID);
-      gmLog('websocket', 'Client disconnected: ' + discordID);
-    });
+      clients.client.push({ discordID, ws, guildID, serverID, action });
+      gmLog('websocket', 'Client connected: ' + discordID);
+      ws.on('close', () => {
+        clients.client = clients.client.filter((client) => client.discordID !== discordID);
+        gmLog('websocket', 'Client disconnected: ' + discordID);
+      });
+    }
   }
 
   setInterval(() => {
