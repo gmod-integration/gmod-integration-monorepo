@@ -60,14 +60,14 @@ export async function statusRoutine() {
 
       const statusChannel = await gm_server_status.findOne({
         where: {
-          server: status.server,
+          id: status.server,
           updatedAt: {
             [Op.gt]: new Date(new Date() - 10 * 60 * 1000),
           },
         },
       });
 
-      if (statusChannel) return; // if the server is already online, don't update the message
+      if (!statusChannel) return;
 
       const guild = dscClient.guilds.cache.get(server.getGuildID());
       if (!guild) return await status.destroy();
