@@ -1,10 +1,12 @@
 import { badArgument } from '../../utils/tools.js';
-import LuaErrors from '../../database/schema/LuaErrors.js';
+import ServerLuaError from '../../database/schema/ServerLuaError.js';
 
 export async function reportError(req, res) {
-  let { error, stack, id, name, realm, identifier, uptime } = req.body;
+  let { error, stack, id, name, realm, uptime, count } = req.body;
 
-  if (badArgument([error, stack, id, name, realm, identifier, uptime])) {
+  const { serverID, steamID64 } = req.params;
+
+  if (badArgument([error, stack, id, name, realm, uptime, count])) {
     return res.status(400).json({
       error: 'bad argument',
       arguments: [
@@ -13,22 +15,24 @@ export async function reportError(req, res) {
         'id: ' + !!id,
         'name: ' + !!name,
         'real: ' + !!realm,
-        'identifier: ' + !!identifier,
         'uptime: ' + !!uptime,
+        'count: ' + !!count,
       ],
     });
   }
 
   stack = JSON.stringify(stack);
 
-  const luaError = await LuaErrors.create({
+  const luaError = await ServerLuaError.create({
     error,
     stack,
-    id,
+    workshopID: id || '',
+    serverID,
     name,
     realm,
-    identifier,
+    steamID64: steamID64 || '',
     uptime,
+    count,
   });
 
   return res.status(200).json(luaError);

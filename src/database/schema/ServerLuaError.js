@@ -2,16 +2,30 @@ import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 
-class LuaErrors extends Model {
+class ServerLuaError extends Model {
   // Extend the class here
 }
 
-LuaErrors.init(
+ServerLuaError.init(
   {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true,
+    },
+    serverID: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      references: {
+        model: 'gm_server',
+        key: 'id',
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
+    },
+    count: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
     },
     realm: {
       type: DataTypes.STRING,
@@ -29,12 +43,14 @@ LuaErrors.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
-    identifier: {
+    steamID64: {
       type: DataTypes.STRING,
+      defaultValue: '',
       allowNull: false,
     },
     workshopID: {
       type: DataTypes.STRING,
+      defaultValue: '',
       allowNull: false,
     },
     uptime: {
@@ -44,23 +60,18 @@ LuaErrors.init(
   },
   {
     sequelize,
-    modelName: 'gm_errors',
-    tableName: 'gm_errors',
+    modelName: 'gm_server_errors',
+    tableName: 'gm_server_errors',
     timestamps: true,
   },
 );
 
-LuaErrors.beforeCreate((token, options) => {
-  const currentDate = new Date();
-  token.expirationDate = new Date(currentDate.setDate(currentDate.getDate() + 7));
-});
-
-LuaErrors.sync({ alter: true })
+ServerLuaError.sync({ alter: true })
   .then(() => {
-    gmLog('sequelize', 'Table created: LuaErrors');
+    gmLog('sequelize', 'Table created: ServerLuaError');
   })
   .catch((error) => {
-    console.error('Error creating LuaErrors table:', error);
+    console.error('Error creating ServerLuaError table:', error);
   });
 
-export default LuaErrors;
+export default ServerLuaError;
