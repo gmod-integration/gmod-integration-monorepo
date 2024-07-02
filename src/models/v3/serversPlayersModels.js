@@ -1,9 +1,7 @@
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
 import gm_user_steam from '../../database/schema/gm_user_steam.js';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
-import { discordConfig, serverConfig } from '../../config/index.js';
-import { getClient } from '../../discord/index.js';
-import { WebhookClient } from 'discord.js';
+import { discordConfig } from '../../config/index.js';
 import Users from '../../database/schema/Users.js';
 
 export async function sendPlayerSay(server, player, text, onlyTeam) {
@@ -117,46 +115,27 @@ export async function sendPlayerSay(server, player, text, onlyTeam) {
   //   }
   // }
 
-  if (serverConfig.production === 'true') {
-    const webhookRelay = await fetch(getRandomDiscordRelay(), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + discordConfig.barerTokenRelay,
-      },
-      body: JSON.stringify({
-        webhookID: syncChatChannel.id,
-        webhookToken: syncChatChannel.token,
-        data: {
-          username: anonymous ? 'Anonymous' : player.name ? player.name : 'Unknown',
-          avatarURL: anonymous
-            ? 'https://i.imgur.com/MfkZJfm.jpeg'
-            : await getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
-          content: text ? text : 'No message',
-        },
-      }),
-    });
-
-    if (!webhookRelay.ok) {
-      return { skip: true, message: 'Webhook not found' };
-    }
-  } else {
-    const dscClient = await getClient();
-
-    try {
-      const webhook = await dscClient.fetchWebhook(syncChatChannel.id, syncChatChannel.token);
-      const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
-      await webhookClient.send({
+  const webhookRelay = await fetch(getRandomDiscordRelay(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + discordConfig.barerTokenRelay,
+    },
+    body: JSON.stringify({
+      webhookID: syncChatChannel.id,
+      webhookToken: syncChatChannel.token,
+      data: {
         username: anonymous ? 'Anonymous' : player.name ? player.name : 'Unknown',
         avatarURL: anonymous
           ? 'https://i.imgur.com/MfkZJfm.jpeg'
           : await getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
         content: text ? text : 'No message',
-      });
-    } catch (err) {
-      console.error(err);
-      return { skip: true, message: 'Webhook not found' };
-    }
+      },
+    }),
+  });
+
+  if (!webhookRelay.ok) {
+    return { skip: true, message: 'Webhook not found' };
   }
 
   return { success: true };
