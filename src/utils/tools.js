@@ -1,4 +1,5 @@
 import { getEmojis } from 'unicode-emoji';
+import { serverConfig } from '../config/index.js';
 
 export function checkMissingArgs(requiredArgs, location) {
   return function (req, res, next) {
@@ -33,7 +34,12 @@ export function checkMissingArgs(requiredArgs, location) {
 }
 
 export function getRandomDiscordRelay() {
-  const relays = ['https://1-dsc-relay.gmod-integration.com'];
+  let relays = [];
+  if (serverConfig.production === 'true') {
+    relays.push('https://1-dsc-relay.gmod-integration.com');
+  } else {
+    relays.push('http://localhost:3001');
+  }
   return relays[Math.floor(Math.random() * relays.length)];
 }
 
