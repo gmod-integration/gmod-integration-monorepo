@@ -4,8 +4,7 @@ import { gmLog } from '../../utils/logger.js';
 import { wsSendToAllClientsOfServer } from '../../websockets/index.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
-import { getClient } from '../../discord/index.js';
-import { AttachmentBuilder, EmbedBuilder, WebhookClient } from 'discord.js';
+import { EmbedBuilder } from 'discord.js';
 import { getTranslate } from '../../utils/localizations.js';
 
 class ServerLogs extends Model {}
@@ -184,50 +183,33 @@ export async function logServer(server, type, data) {
         })
         .setTimestamp();
 
-      const file = new AttachmentBuilder(Buffer.from(JSON.stringify(data, null, 2), 'utf-8'), {
+      const file = {
         name: `${server.getID()}-${new Date().toISOString().replace(/T/g, '-').replace(/\..+/, '').replace(/:/g, '-')}-${type}.json`,
-      });
+        content: JSON.stringify(data, null, 2),
+      };
 
       const includeFile = await server.getSetting('log_include_file');
 
-      if (serverConfig.production === 'true') {
-        const webhookRelay = await fetch(getRandomDiscordRelay(), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer ' + discordConfig.barerTokenRelay,
-          },
-          body: JSON.stringify({
-            webhookID,
-            webhookToken,
-            data: {
-              username: 'Gmod Integration - Server Logs',
-              avatarURL: 'https://cdn.discordapp.com/avatars/1110121451501129758/cb1253ac05209638f77480643bf58b37.webp',
-              embeds: [embed],
-              files: includeFile ? [file] : [],
-            },
-          }),
-        });
-
-        if (!webhookRelay.ok) {
-          return { skip: true, message: 'Webhook not found' };
-        }
-      } else {
-        const dscClient = await getClient();
-
-        try {
-          const webhook = await dscClient.fetchWebhook(webhookID, webhookToken);
-          const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
-          await webhookClient.send({
+      const webhookRelay = await fetch(getRandomDiscordRelay(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + discordConfig.barerTokenRelay,
+        },
+        body: JSON.stringify({
+          webhookID,
+          webhookToken,
+          data: {
             username: 'Gmod Integration - Server Logs',
             avatarURL: 'https://cdn.discordapp.com/avatars/1110121451501129758/cb1253ac05209638f77480643bf58b37.webp',
             embeds: [embed],
-            files: includeFile ? [file] : [],
-          });
-        } catch (err) {
-          console.error(err);
-          return { skip: true, message: 'Webhook not found' };
-        }
+            filesToAdd: includeFile ? [file] : [],
+          },
+        }),
+      });
+
+      if (!webhookRelay.ok) {
+        return { skip: true, message: 'Webhook not found' };
       }
     }
   } catch (error) {
