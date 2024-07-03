@@ -22,6 +22,7 @@ import { Op } from 'sequelize';
 import GuildSettings from '../../database/schema/GuildSettings.js';
 import ServerLogs from '../../database/schema/ServerLogs.js';
 import ServerSettings from '../../database/schema/ServerSettings.js';
+import ServerLuaError from '../../database/schema/ServerLuaError.js';
 // const passport = require('passport');
 // const SteamStrategy = require('passport-steam').Strategy;
 
@@ -964,4 +965,26 @@ export async function getServerLogs(req, res) {
   });
 
   return res.send(logs || []);
+}
+
+export async function getServerErrors(req, res) {
+  const { serverID } = req.params;
+  const { offset, limit } = req.query;
+
+  if (limit && limit > 100) {
+    return res.status(400).send({
+      error: 'limit too high',
+    });
+  }
+
+  const errors = await ServerLuaError.findAll({
+    where: {
+      serverID,
+    },
+    order: [['createdAt', 'DESC']],
+    offset: offset || 0,
+    limit: limit || 500,
+  });
+
+  return res.send(errors || []);
 }

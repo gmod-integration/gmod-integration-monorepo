@@ -36,6 +36,7 @@ import {
   getLogsChannel,
   getProfile,
   getPublicServers,
+  getServerErrors,
   getServerLogs,
   getServerPlayers,
   getServerSetting,
@@ -133,6 +134,11 @@ router.get('/:discordID/guilds/:guildID/servers/:serverID/logs', asyncHandler(ge
 router.get('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(getLogsChannel));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(postLogsChannel));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(deleteLogsChannel));
+// Errors
+router.get('/:discordID/guilds/:guildID/servers/:serverID/errors', asyncHandler(getServerErrors));
+// router.get('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(getServerErrorsChannel));
+// router.post('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(postServerErrorsChannel));
+// router.delete('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(deleteServerErrorsChannel));
 // Vote
 router.get('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(getVoteChannels));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(postVoteChannels));
