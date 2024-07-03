@@ -23,6 +23,7 @@ import GuildSettings from '../../database/schema/GuildSettings.js';
 import ServerLogs from '../../database/schema/ServerLogs.js';
 import ServerSettings from '../../database/schema/ServerSettings.js';
 import ServerLuaError from '../../database/schema/ServerLuaError.js';
+import gm_guild from '../../database/schema/gm_guild.js';
 // const passport = require('passport');
 // const SteamStrategy = require('passport-steam').Strategy;
 
@@ -987,4 +988,8 @@ export async function getServerErrors(req, res) {
   });
 
   return res.send(errors || []);
+}
+
+export async function getAdminGuilds(req, res) {
+  return res.send((await gm_guild.findAll()) || []);
 }

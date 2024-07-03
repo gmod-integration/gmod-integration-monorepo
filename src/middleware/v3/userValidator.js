@@ -3,6 +3,7 @@ import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
 import { getClient } from '../../discord/index.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
 import { Guild } from '../../classes/v3/Guild.js';
+import { getUserFromDiscordID } from '../../classes/v3/User.js';
 
 export async function userValidator(req, res, next) {
   const { discordID } = req.params;
@@ -89,5 +90,24 @@ export async function userServerValidator(req, res, next) {
   }
 
   req.server = server;
+  next();
+}
+
+export async function userAdminValidator(req, res, next) {
+  const panelUser = req.panelUser;
+
+  const user = await getUserFromDiscordID(panelUser.discordID);
+  if (!user) {
+    return res.status(404).json({
+      error: 'user_not_found',
+    });
+  }
+
+  if (!user.isDeveloper()) {
+    return res.status(403).json({
+      error: 'not_developer',
+    });
+  }
+
   next();
 }

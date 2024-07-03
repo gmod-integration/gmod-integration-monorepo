@@ -25,6 +25,7 @@ import {
   findServerScreenshots,
   findServerStatus,
   findServerSyncChat,
+  getAdminGuilds,
   getAutoRoles,
   getGuildAdmins,
   getGuildEmojis,
@@ -65,7 +66,12 @@ import {
   putServerSetting,
   putServerStatusButtons,
 } from '../../controllers/v3/usersControllers.js';
-import { userAdminGuildValidator, userServerValidator, userValidator } from '../../middleware/v3/userValidator.js';
+import {
+  userAdminGuildValidator,
+  userAdminValidator,
+  userServerValidator,
+  userValidator,
+} from '../../middleware/v3/userValidator.js';
 import asyncHandler from '../../middleware/asyncHandler.js';
 
 const router = express.Router();
@@ -78,6 +84,9 @@ router.get('/:discordID', asyncHandler(findCurrentUser));
 router.get('/:discordID/guilds', asyncHandler(getUserGuildsOwnOrAdmins));
 router.get('/:discordID/verifications/token', asyncHandler(postUserStartVerification));
 router.get('/:discordID/servers', asyncHandler(getPublicServers));
+
+router.use('/:discordID/admins', userAdminValidator);
+router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds));
 
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', asyncHandler(findGuild));
