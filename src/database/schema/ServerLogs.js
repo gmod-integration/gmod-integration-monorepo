@@ -209,6 +209,7 @@ export async function logServer(server, type, data) {
       });
 
       if (!webhookRelay.ok) {
+        await server.destroyLogsChannel();
         return { skip: true, message: 'Webhook not found' };
       }
     }
