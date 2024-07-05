@@ -762,11 +762,16 @@ export async function getGuildSettings(req, res) {
 
 export async function getGuildSetting(req, res) {
   const { setting } = req.params;
-  const server = req.server;
-  return res.send((await server.getSetting(setting)) || {});
+  return res.send(
+    (await GuildSettings.findOne({
+      where: {
+        setting,
+      },
+    })) || {},
+  );
 }
 
-const allowedGuildSettings = ['verification_dont_mp'];
+const allowedGuildSettings = ['verification_dont_mp', 'show_player_list_status'];
 
 export async function putGuildSetting(req, res) {
   const { guildID, setting } = req.params;
