@@ -28,6 +28,7 @@ ServerLogs.init(
     data: {
       type: DataTypes.JSON,
       allowNull: false,
+      defaultValue: {},
     },
   },
   {
