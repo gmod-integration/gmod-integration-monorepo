@@ -348,3 +348,17 @@ export async function playerSpawnObject(req, res) {
   await logServer(server, 'player_spawn_object', { ply, entity, model, object });
   return res.status(200).json({ success: true });
 }
+
+export async function serverStart(req, res) {
+  const server = req.server;
+
+  await logServer(server, 'server_start');
+  return res.status(200).json({ success: true });
+}
+
+export async function serverStop(req, res) {
+  const server = req.server;
+
+  await logServer(server, 'server_stop');
+  return res.status(200).json({ success: true });
+}
