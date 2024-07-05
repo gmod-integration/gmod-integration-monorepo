@@ -74,7 +74,7 @@ export async function statusRoutine() {
       if (!message) return await status.destroy();
 
       const lang = await guild.preferredLocale;
-      const newMsgContent = await getStatusMessage(server, status, lang);
+      const newMsgContent = await getStatusMessage(server, {}, lang);
       await message.edit(newMsgContent);
     }
   }
