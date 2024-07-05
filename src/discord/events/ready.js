@@ -70,7 +70,7 @@ export default {
     await updateStatus();
 
     // every 5 minutes execute the server status routine
-    setInterval(statusRoutine, 300000);
+    setInterval(statusRoutine, 30000);
     await statusRoutine();
   },
 };

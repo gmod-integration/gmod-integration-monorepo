@@ -43,39 +43,36 @@ export async function getPublicToken(req, res) {
 }
 
 export async function statusRoutine() {
-  const serverStatus = await gm_status.findAll();
-  const dscClient = await getClient();
+  const serversStatusChannel = await gm_status.findAll(); // statusChannel
+  const dscClient = await getClient(); // client
 
-  for (const status of serverStatus) {
-    const server = await getServerFromID(status.server);
-    if (!server) return await status.destroy();
+  for (const statusChannel of serversStatusChannel) {
+    const server = await getServerFromID(statusChannel.server);
+    if (!server) return await statusChannel.destroy();
 
-    if (status.updatedAt < new Date(new Date() - 10 * 60 * 1000)) {
-      await status.update({ status: 'offline' });
-
-      const statusChannel = await gm_server_status.findOne({
-        where: {
-          id: status.server,
-          updatedAt: {
-            [Op.gt]: new Date(new Date() - 10 * 60 * 1000),
-          },
+    const statusInfo = await gm_server_status.findOne({
+      where: {
+        id: server.getID(),
+        updatedAt: {
+          [Op.gte]: new Date(new Date() - 10 * 60 * 1000),
         },
-      });
+      },
+    });
 
-      if (!statusChannel) return;
+    // if server updated in the last 10 minutes, don't update status it already has been updated
+    if (statusInfo) return;
 
-      const guild = dscClient.guilds.cache.get(server.getGuildID());
-      if (!guild) return await status.destroy();
+    const guild = dscClient.guilds.cache.get(server.getGuildID());
+    if (!guild) return await statusChannel.destroy();
 
-      const channel = guild.channels.cache.get(statusChannel.channel);
-      if (!channel) return await status.destroy();
+    const channel = guild.channels.cache.get(statusChannel.channel);
+    if (!channel) return await statusChannel.destroy();
 
-      const message = await channel.messages.fetch(statusChannel.message);
-      if (!message) return await status.destroy();
+    const message = await channel.messages.fetch(statusChannel.message);
+    if (!message) return await statusChannel.destroy();
 
-      const lang = await guild.preferredLocale;
-      const newMsgContent = await getStatusMessage(server, {}, lang);
-      await message.edit(newMsgContent);
-    }
+    const lang = await guild.preferredLocale;
+    const newMsgContent = await getStatusMessage(server, {}, lang);
+    await message.edit(newMsgContent);
   }
 }
