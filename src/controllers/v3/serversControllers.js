@@ -27,14 +27,9 @@ export async function postStatus(req, res) {
     });
   }
 
-  try {
-    await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime);
-    gmLog('server', `Status of ${server.getID()} updated`, true);
-    return res.status(200).json({ success: true });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({ error: 'internal_error' });
-  }
+  await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime);
+  gmLog('server', `Status of ${server.getID()} updated`, true);
+  return res.status(200).json({ success: true });
 }
 
 export async function getInfo(req, res) {
@@ -79,7 +74,7 @@ export async function statusRoutine() {
       if (!message) return await status.destroy();
 
       const lang = await guild.preferredLocale;
-      const newMsgContent = await getStatusMessage(server, {}, lang);
+      const newMsgContent = await getStatusMessage(server, status, lang);
       await message.edit(newMsgContent);
     }
   }

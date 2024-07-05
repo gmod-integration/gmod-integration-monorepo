@@ -218,6 +218,8 @@ export class Server extends BaseClass {
     }
 
     await this.editStatusChannelAndMessage({
+      ip,
+      port,
       hostname,
       map,
       gameMode,

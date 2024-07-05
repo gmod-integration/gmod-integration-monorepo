@@ -16,13 +16,15 @@ export async function getStatusMessage(server, data, lang) {
 
   const buttons = await server.getServerStatusButtons();
 
-  let { servOnline, hostname, map, gameMode, players, maxPlayers } = data || {};
+  let { servOnline, hostname, map, gameMode, players, maxPlayers, ip, port } = data || {};
   servOnline = !!hostname;
   hostname = hostname === undefined ? await getTranslate('offline', lang) : hostname;
   map = map === undefined ? await getTranslate('offline', lang) : map;
   gameMode = gameMode === undefined ? await getTranslate('offline', lang) : gameMode;
   players = players === undefined ? 0 : players;
   maxPlayers = maxPlayers === undefined ? 0 : maxPlayers;
+  ip = ip === undefined ? '' : ip;
+  port = port === undefined ? '' : port;
 
   const embed = {
     color: 0x2b2d31,
@@ -83,7 +85,7 @@ export async function getStatusMessage(server, data, lang) {
   let row5 = new ActionRowBuilder();
 
   if (servOnline) {
-    row1.addComponents(await ButtonConnect(lang, data.ip, data.port));
+    row1.addComponents(await ButtonConnect(lang, ip, port));
   }
 
   const disClient = await getClient();
