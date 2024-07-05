@@ -183,5 +183,6 @@
   "victim": "Víctima",
   "attacker": "Atacante",
   "damage": "Daño",
-  "health": "Salud"
+  "health": "Salud",
+  "player_list": "Jugadores Conectados"
 }

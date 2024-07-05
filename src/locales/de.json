@@ -183,5 +183,6 @@
   "victim": "Opfer",
   "attacker": "Angreifer",
   "damage": "Schaden",
-  "health": "Gesundheit"
+  "health": "Gesundheit",
+  "player_list": "Verbundene Spieler"
 }

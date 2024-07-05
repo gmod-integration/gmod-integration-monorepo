@@ -146,5 +146,6 @@
   "victim": "Victime",
   "attacker": "Attaquant",
   "damage": "Dégâts",
-  "health": "Santé"
+  "health": "Santé",
+  "player_list": "Joueurs Connectés"
 }

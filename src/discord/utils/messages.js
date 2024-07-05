@@ -16,7 +16,7 @@ export async function getStatusMessage(server, data, lang) {
 
   const buttons = await server.getServerStatusButtons();
 
-  let { servOnline, hostname, map, gameMode, players, maxPlayers, ip, port } = data || {};
+  let { servOnline, hostname, map, gameMode, players, maxPlayers, ip, port, playersList } = data || {};
   servOnline = !!hostname;
   hostname = hostname === undefined ? await getTranslate('offline', lang) : hostname;
   map = map === undefined ? await getTranslate('offline', lang) : map;
@@ -25,6 +25,7 @@ export async function getStatusMessage(server, data, lang) {
   maxPlayers = maxPlayers === undefined ? 0 : maxPlayers;
   ip = ip === undefined ? '' : ip;
   port = port === undefined ? '' : port;
+  playersList = playersList === undefined ? [] : playersList;
 
   const embed = {
     color: 0x2b2d31,
@@ -76,6 +77,28 @@ export async function getStatusMessage(server, data, lang) {
     ],
     timestamp: new Date(),
   };
+
+  if (servOnline && playersList.length > 0 && (await server.getSetting('show_player_list_status'))) {
+    playersList.sort((a, b) => {
+      return b.connectTime - a.connectTime;
+    });
+
+    const playersListString = playersList.map((player) => {
+      // return `${dateToDiscordTimestamp(new Date(new Date() - player.connectTime * 1000))} - ${player.userGroup} - ${player.name}`;
+      return `${secToTime(player.connectTime)} - ${player.name}`;
+    });
+
+    embed.fields.push(
+      {
+        name: '',
+        value: '\n',
+      },
+      {
+        name: '👤⠀' + (await getTranslate('player_list', lang)),
+        value: playersListString.join('\n'),
+      },
+    );
+  }
 
   let rows = [];
   let row1 = new ActionRowBuilder();

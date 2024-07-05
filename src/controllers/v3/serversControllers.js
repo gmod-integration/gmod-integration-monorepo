@@ -9,7 +9,7 @@ import gm_status from '../../database/schema/gm_status.js';
 
 export async function postStatus(req, res) {
   const server = req.server;
-  const { players, maxPlayers, map, hostname, gameMode, port, ip, uptime } = req.body;
+  const { players, playersList, maxPlayers, map, hostname, gameMode, port, ip, uptime } = req.body;
 
   if (badArgument([players, maxPlayers, map, hostname, gameMode, port, ip, uptime])) {
     return res.status(400).json({
@@ -27,7 +27,7 @@ export async function postStatus(req, res) {
     });
   }
 
-  await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime);
+  await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime, playersList);
   gmLog('server', `Status of ${server.getID()} updated`, true);
   return res.status(200).json({ success: true });
 }

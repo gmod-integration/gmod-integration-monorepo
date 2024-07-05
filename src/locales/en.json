@@ -197,5 +197,6 @@
   "victim": "Victim",
   "attacker": "Attacker",
   "damage": "Damage",
-  "health": "Health"
+  "health": "Health",
+  "player_list": "Connected Players"
 }

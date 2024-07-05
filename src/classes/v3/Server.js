@@ -183,7 +183,7 @@ export class Server extends BaseClass {
     await message.edit(newMsgContent);
   }
 
-  async saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime) {
+  async saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime, playersList) {
     const serverStatus = await gm_server_status.findOne({
       where: {
         id: this.getID(),
@@ -226,6 +226,7 @@ export class Server extends BaseClass {
       players,
       maxPlayers,
       uptime,
+      playersList,
     });
   }
 
