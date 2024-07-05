@@ -66,6 +66,7 @@ const logEmbedColors = {
 };
 
 export async function logServer(server, type, data) {
+  data = data || {};
   try {
     await ServerLogs.create({
       serverID: server.getID(),
