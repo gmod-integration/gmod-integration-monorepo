@@ -771,7 +771,7 @@ export async function getGuildSetting(req, res) {
   );
 }
 
-const allowedGuildSettings = ['verification_dont_mp', 'show_player_list_status'];
+const allowedGuildSettings = ['verification_dont_mp'];
 
 export async function putGuildSetting(req, res) {
   const { guildID, setting } = req.params;
@@ -872,7 +872,7 @@ export async function getServerSetting(req, res) {
   return res.send(serverSetting || {});
 }
 
-const allowedServerSettings = ['log_hide_ip', 'log_include_file'];
+const allowedServerSettings = ['log_hide_ip', 'log_include_file', 'show_player_list_status'];
 
 export async function putServerSetting(req, res) {
   const { serverID, setting } = req.params;
