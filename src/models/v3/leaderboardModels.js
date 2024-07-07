@@ -169,16 +169,19 @@ export async function saveLeaderboardOptions(messageID, options) {
 }
 
 export async function getLeaderboardMessageEmbed(server, category, lang, limit = 15, offset = 0, order = 'DESC') {
+  server = await getServerFromID(server);
+  if (!server) return;
+
   let embed = {
     color: 0x2b2d31,
-    title: await getTranslate('leaderboard', lang, [(await getServerFromID(server)).getName()]),
+    title: await getTranslate('leaderboard', lang, [server.getName()]),
     fields: [],
   };
 
   let actualPage = 1;
   let totalPages = 1;
 
-  const leaderboardStat = await getServerLeaderboard(server, category, limit, offset, order);
+  const leaderboardStat = await getServerLeaderboard(server.getID(), category, limit, offset, order);
 
   if (leaderboardStat) {
     for (const data of leaderboardStat.rows) {
@@ -233,7 +236,7 @@ export async function getLeaderboardMessageEmbed(server, category, lang, limit =
   }
 
   const options = {
-    serverID: server,
+    serverID: server.getID(),
     category: category,
     limit: limit,
     offset: offset,
