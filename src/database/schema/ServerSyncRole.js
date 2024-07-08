@@ -2,18 +2,14 @@ import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 
-class ServerRole extends Model {}
+class ServerSyncRole extends Model {}
 
-ServerRole.init(
+ServerSyncRole.init(
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
     serverID: {
       type: DataTypes.STRING,
       allowNull: false,
+      primaryKey: true,
       references: {
         model: 'gm_server',
         key: 'id',
@@ -21,28 +17,17 @@ ServerRole.init(
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
     },
-    role: {
+    roleID: {
       type: DataTypes.STRING,
+      allowNull: false,
+      primaryKey: true,
     },
-    roleName: {
+    userGroup: {
       type: DataTypes.STRING,
       allowNull: false,
       defaultValue: '',
     },
-    prefix: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: '',
-    },
-    discordRoleID: {
-      type: DataTypes.STRING,
-    },
-    enablePrefix: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-    },
-    enableSync: {
+    enable: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
       defaultValue: false,
@@ -50,18 +35,18 @@ ServerRole.init(
   },
   {
     sequelize,
-    modelName: 'gm_server_roles',
-    tableName: 'gm_server_roles',
+    modelName: 'gm_server_sync_roles',
+    tableName: 'gm_server_sync_roles',
     timestamps: true,
   },
 );
 
-ServerRole.sync({ alter: true })
+ServerSyncRole.sync({ alter: true })
   .then(() => {
-    gmLog('sequelize', 'Table created: ServerRole');
+    gmLog('sequelize', 'Table created: ServerSyncRole');
   })
   .catch((error) => {
     console.error('Error creating link table:', error);
   });
 
-export default ServerRole;
+export default ServerSyncRole;

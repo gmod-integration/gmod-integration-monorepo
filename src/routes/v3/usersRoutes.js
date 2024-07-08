@@ -10,6 +10,7 @@ import {
   deleteGuildSetting,
   deleteGuildVerificationsRoles,
   deleteLogsChannel,
+  deleteServerRoles,
   deleteServerScreenshots,
   deleteServerSetting,
   deleteServerStatus,
@@ -40,6 +41,7 @@ import {
   getServerErrors,
   getServerLogs,
   getServerPlayers,
+  getServerRoles,
   getServerSetting,
   getServerSettings,
   getServerStatusButtons,
@@ -52,6 +54,7 @@ import {
   postGuildServerToken,
   postGuildSetting,
   postLogsChannel,
+  postServerRoles,
   postServerScreenshots,
   postServerSetting,
   postServerStatus,
@@ -63,6 +66,7 @@ import {
   putGuildSetting,
   putGuildVerificationsRoles,
   putPlayerBypassMaintenance,
+  putServerRoles,
   putServerSetting,
   putServerStatusButtons,
 } from '../../controllers/v3/usersControllers.js';
@@ -134,6 +138,11 @@ router.get('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', as
 router.put('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(putServerSetting));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(deleteServerSetting));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(postServerSetting));
+// Roles
+router.get('/:discordID/guilds/:guildID/servers/:serverID/roles', asyncHandler(getServerRoles));
+router.post('/:discordID/guilds/:guildID/servers/:serverID/roles/:roleID', asyncHandler(postServerRoles));
+router.put('/:discordID/guilds/:guildID/servers/:serverID/roles/:roleID', asyncHandler(putServerRoles));
+router.delete('/:discordID/guilds/:guildID/servers/:serverID/roles/:roleID', asyncHandler(deleteServerRoles));
 // Screenshots
 router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(findServerScreenshots));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(postServerScreenshots));

@@ -24,6 +24,7 @@ import ServerLogs from '../../database/schema/ServerLogs.js';
 import ServerSettings from '../../database/schema/ServerSettings.js';
 import ServerLuaError from '../../database/schema/ServerLuaError.js';
 import gm_guild from '../../database/schema/gm_guild.js';
+import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
 // const passport = require('passport');
 // const SteamStrategy = require('passport-steam').Strategy;
 
@@ -872,7 +873,7 @@ export async function getServerSetting(req, res) {
   return res.send(serverSetting || {});
 }
 
-const allowedServerSettings = ['log_hide_ip', 'log_include_file', 'show_player_list_status'];
+const allowedServerSettings = ['log_hide_ip', 'log_include_file', 'show_player_list_status', 'sync_pseudo_direction'];
 
 export async function putServerSetting(req, res) {
   const { serverID, setting } = req.params;
@@ -997,4 +998,74 @@ export async function getServerErrors(req, res) {
 
 export async function getAdminGuilds(req, res) {
   return res.send((await gm_guild.findAll()) || []);
+}
+
+export async function getServerRoles(req, res) {
+  const { serverID } = req.params;
+
+  const roles = await ServerSyncRole.findAll({
+    where: {
+      serverID,
+    },
+  });
+
+  return res.send(roles || []);
+}
+
+export async function postServerRoles(req, res) {
+  const { serverID, roleID } = req.params;
+
+  const role = await ServerSyncRole.create({
+    serverID,
+    roleID,
+  });
+
+  return res.send(role);
+}
+
+export async function putServerRoles(req, res) {
+  const { serverID, roleID } = req.params;
+
+  const role = await ServerSyncRole.findOne({
+    where: {
+      serverID,
+      roleID,
+    },
+  });
+
+  if (!role) {
+    return res.status(404).send({
+      error: 'Role not found',
+    });
+  }
+
+  const { userGroup, enable } = req.body;
+
+  role.userGroup = userGroup !== undefined ? userGroup : role.userGroup;
+  role.enable = enable !== undefined ? enable : role.enable;
+
+  role.changed('updatedAt', true);
+  await role.save();
+
+  return res.send(role);
+}
+
+export async function deleteServerRoles(req, res) {
+  const { serverID, roleID } = req.params;
+
+  const role = await ServerSyncRole.findOne({
+    where: {
+      serverID,
+      roleID,
+    },
+  });
+
+  if (!role) {
+    return res.status(404).send({
+      error: 'Role not found',
+    });
+  }
+
+  await role.destroy();
+  return res.send(role);
 }
