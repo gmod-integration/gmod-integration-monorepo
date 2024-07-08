@@ -39,44 +39,49 @@ export class PanelUser {
 
   async findGuilds() {
     const redisKey = `user:${this.discordID}:guilds`;
+    const redisKey2 = `user:${this.discordID}:isWaitingGuilds`;
+
     const cachedUserGuilds = await redis.get(redisKey);
     if (cachedUserGuilds !== null) {
       return JSON.parse(cachedUserGuilds);
     }
 
-    const redisKey2 = `user:${this.discordID}:isWaitingGuilds`;
-    const isWaitingGuilds = await redis.get(redisKey2);
+    // Utiliser un verrou Redis pour assurer une seule exécution à la fois
+    let lockAcquired = false;
+    while (!lockAcquired) {
+      lockAcquired = await redis.set(redisKey2, 'true', 'NX', 'EX', 120);
+      if (!lockAcquired) {
+        // Attendre avant de réessayer d'acquérir le verrou
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    }
 
-    if (isWaitingGuilds) {
-      await new Promise((resolve) => {
-        const interval = setInterval(async () => {
-          if (!(await redis.get(redisKey2))) {
-            clearInterval(interval);
-            resolve();
-          }
-        }, 100);
+    try {
+      // Re-vérifie si les données ont été mises en cache pendant l'attente.
+      const cachedUserGuildsAgain = await redis.get(redisKey);
+      if (cachedUserGuildsAgain !== null) {
+        return JSON.parse(cachedUserGuildsAgain);
+      }
+
+      const guildsResult = await fetch('https://discord.com/api/users/@me/guilds', {
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${this.getDiscordToken()}`,
+        },
       });
-      return await this.findGuilds();
+
+      if (!guildsResult.ok) {
+        console.error('Error fetching guilds:', guildsResult.statusText);
+        return [];
+      }
+
+      const guilds = await guildsResult.json();
+      await redis.set(redisKey, JSON.stringify(guilds), 'EX', 120);
+      return guilds;
+    } finally {
+      // Assure que le flag `isWaitingGuilds` est toujours supprimé même si la requête échoue.
+      await redis.del(redisKey2);
     }
-
-    await redis.set(redisKey2, 'true', 'EX', 120);
-    const guildsResult = await fetch('https://discord.com/api/users/@me/guilds', {
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.getDiscordToken()}`,
-      },
-    });
-
-    if (!guildsResult.ok) {
-      console.error('Error fetching guilds:', guildsResult.statusText);
-      return [];
-    }
-
-    const guilds = await guildsResult.json();
-    await redis.set(redisKey, JSON.stringify(guilds), 'EX', 120);
-    await redis.del(redisKey2);
-
-    return guilds;
   }
 
   async findGuildsWithPerms() {
