@@ -1,10 +1,55 @@
 import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
+import gm_user from './gm_user.js';
+import { getServerFromID } from '../../classes/v3/Server.js';
 
 class gm_server_stat extends Model {
   isSuperAdmin() {
     return this.rank === 'superadmin';
+  }
+
+  async updateDiscordRole() {
+    const user = await gm_user.findOne({
+      where: {
+        steam: this.steam_id,
+      },
+    });
+    if (!user) return;
+
+    const server = await getServerFromID(this.server_id);
+    if (!server) return;
+
+    const syncDirection = await server.getSetting('sync_role_direction');
+    if (syncDirection !== 'both' && syncDirection !== 'gmod-to-discord') {
+      return;
+    }
+
+    const dscClient = await server.getDscClient();
+    if (!dscClient) return;
+
+    const guild = await server.getDiscordGuild();
+    if (!guild) return;
+
+    const member = await guild.members.fetch(user.id);
+    if (!member) return;
+
+    const syncRoles = await server.getSyncRoles();
+
+    const rankRole = syncRoles.find((role) => role.userGroup === this.rank) || null;
+
+    const userRoles = member.roles.cache;
+    const rolesToRemove = userRoles.filter(
+      (role) => syncRoles.some((syncRole) => syncRole.roleID === role.id) && role.id !== rankRole?.roleID,
+    );
+    if (rolesToRemove.size > 0) {
+      await member.roles.remove(rolesToRemove);
+    }
+
+    // if user doesn't have the rank role then add it
+    if (rankRole && !member.roles.cache.has(rankRole.roleID)) {
+      await member.roles.add(rankRole.roleID);
+    }
   }
 }
 

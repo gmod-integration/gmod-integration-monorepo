@@ -98,6 +98,7 @@ export async function updatePlayerUserGroup(serverID, steamID64, userGroup) {
       player.rank = userGroup;
       player.changed('updatedAt', true);
       await player.save();
+      await player.updateDiscordRole();
     }
   } catch (error) {
     console.error(error);
