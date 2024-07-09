@@ -14,9 +14,6 @@ import gm_server_stat from '../../database/schema/gm_server_stat.js';
 import gm_sync_chat from '../../database/schema/gm_sync_chat.js';
 import ServerVoteChannel from '../../database/schema/ServerVoteChannel.js';
 import { Op } from 'sequelize';
-import { Role } from './Role.js';
-import ServerRole from '../../database/schema/ServerRole.js';
-import ServerSetting from '../../database/schema/ServerSettings.js';
 import ServerLogsChannel from '../../database/schema/ServerLogsChannel.js';
 
 export class Server extends BaseClass {
@@ -95,6 +92,10 @@ export class Server extends BaseClass {
         enable: true,
       },
     });
+  }
+
+  async getDscClient() {
+    return await getClient();
   }
 
   async getDiscordGuild() {
@@ -256,28 +257,6 @@ export class Server extends BaseClass {
     }
   }
 
-  async getSetting(setting) {
-    const redisKey = `server:${this.id}:setting:${setting}`;
-    const redisData = await redis.get(redisKey);
-    if (redisData) {
-      return JSON.parse(redisData);
-    }
-
-    const result = await ServerSetting.findOne({
-      where: {
-        serverID: this.id,
-        setting,
-      },
-    });
-
-    if (result) {
-      await redis.set(redisKey, JSON.stringify(result.value), 'EX', 10);
-      return result.value;
-    }
-
-    return null;
-  }
-
   // async getChatRules() {
   //   try {
   //     const redisKey = `server:${this.id}:chatRules`;
@@ -322,19 +301,14 @@ export class Server extends BaseClass {
   //   }
   // }
 
-  async getRoles() {
-    try {
-      const roles = await ServerRole.findAll({
+  async getSyncRoles() {
+    return (
+      (await ServerSyncRole.findAll({
         where: {
           serverID: this.id,
         },
-      });
-
-      return roles.map((role) => new Role(role));
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
+      })) || []
+    );
   }
 
   async saveUserConnectionInfo(steamID64, name) {
