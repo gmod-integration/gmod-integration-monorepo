@@ -116,8 +116,8 @@ export async function playerChangeGroup(req, res) {
   const server = req.server;
   const { steamID64 } = req.params;
 
-  const { oldGroup, newGroup, player } = req.body;
-  if (badArgument([oldGroup, newGroup, player])) {
+  const { oldGroup, newGroup } = req.body;
+  if (badArgument([oldGroup, newGroup])) {
     return res.status(400).json({
       error: 'missing_arguments',
       args: {
@@ -127,12 +127,7 @@ export async function playerChangeGroup(req, res) {
     });
   }
 
-  const ply = new PlayerGmod(player);
-  if (!ply.isValid()) {
-    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
-  }
-
-  await logServer(server, 'player_change_group', { ply, oldGroup, newGroup });
+  await logServer(server, 'player_change_group', { steamID64, oldGroup, newGroup });
   await updatePlayerUserGroup(server.getID(), steamID64, newGroup);
   return res.status(200).json({ success: true });
 }
@@ -182,6 +177,7 @@ export async function playerDisconnect(req, res) {
   await logServer(server, 'player_disconnect', { ply });
   await ply.saveServerStat(server.getID());
   await ply.saveServerStatSession(server.getID());
+  await updatePlayerUserGroup(server.getID(), ply.steamID64, ply.userGroup);
   updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), ply.name).catch(() => {});
   return res.status(200).json({ success: true });
 }
