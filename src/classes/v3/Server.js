@@ -14,7 +14,28 @@ import gm_server_stat from '../../database/schema/gm_server_stat.js';
 import gm_sync_chat from '../../database/schema/gm_sync_chat.js';
 import ServerVoteChannel from '../../database/schema/ServerVoteChannel.js';
 import { Op } from 'sequelize';
+import ServerSetting from '../../database/schema/ServerSettings.js';
 import ServerLogsChannel from '../../database/schema/ServerLogsChannel.js';
+import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
+
+const serverSettings = {
+  sync_role_direction: {
+    defaultValue: 'both',
+    acceptedValues: ['both', 'gmod-to-discord', 'discord-to-gmod'],
+  },
+  log_hide_ip: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  log_include_file: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  show_player_list_status: {
+    defaultValue: true,
+    acceptedValues: [true, false],
+  },
+};
 
 export class Server extends BaseClass {
   constructor(obj = {}) {
@@ -30,6 +51,88 @@ export class Server extends BaseClass {
     this.publicTempToken = obj.publicTempToken;
     this.description = obj.description;
     this.isPublic = obj.isPublic;
+  }
+
+  async getAllSettings() {
+    const settings = await ServerSetting.findAll({
+      where: {
+        serverID: this.id,
+      },
+    });
+
+    const data = {};
+    for (const setting of settings) {
+      data[setting.setting] = setting.value;
+    }
+
+    return data;
+  }
+
+  async getSetting(setting) {
+    if (!serverSettings[setting]) {
+      throw new Error('Setting not found');
+    }
+
+    const redisKey = `server:${this.id}:setting:${setting}`;
+    const redisData = await redis.get(redisKey);
+    if (redisData) {
+      return JSON.parse(redisData);
+    }
+
+    const result = await ServerSetting.findOne({
+      where: {
+        serverID: this.id,
+        setting,
+      },
+    });
+
+    if (result) {
+      if (result.value === '0') result.value = false;
+      if (result.value === '1') result.value = true;
+
+      await redis.set(redisKey, JSON.stringify(result.value), 'EX', 10);
+      return {
+        value: result.value,
+      };
+    }
+
+    return {
+      value: serverSettings[setting].defaultValue,
+    };
+  }
+
+  async setSetting(setting, value) {
+    if (!serverSettings[setting]) {
+      throw new Error('Setting not found');
+    }
+
+    if (!serverSettings[setting].acceptedValues.includes(value)) {
+      throw new Error('Invalid value');
+    }
+
+    const result = await ServerSetting.findOne({
+      where: {
+        serverID: this.id,
+        setting,
+      },
+    });
+
+    if (result) {
+      result.value = value;
+      await result.save();
+    } else {
+      await ServerSetting.create({
+        serverID: this.id,
+        setting,
+        value,
+      });
+    }
+
+    await redis.del(`server:${this.id}:setting:${setting}`);
+
+    return {
+      value,
+    };
   }
 
   async getStatusChannelAndMessage() {

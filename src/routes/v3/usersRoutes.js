@@ -12,7 +12,6 @@ import {
   deleteLogsChannel,
   deleteServerRoles,
   deleteServerScreenshots,
-  deleteServerSetting,
   deleteServerStatus,
   deleteServerStatusButtons,
   deleteServerSyncChat,
@@ -56,7 +55,6 @@ import {
   postLogsChannel,
   postServerRoles,
   postServerScreenshots,
-  postServerSetting,
   postServerStatus,
   postServerSyncChat,
   postUserStartVerification,
@@ -136,8 +134,6 @@ router.delete('/:discordID/guilds/:guildID/servers/:serverID', asyncHandler(dele
 router.get('/:discordID/guilds/:guildID/servers/:serverID/settings', asyncHandler(getServerSettings));
 router.get('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(getServerSetting));
 router.put('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(putServerSetting));
-router.delete('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(deleteServerSetting));
-router.post('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(postServerSetting));
 // Roles
 router.get('/:discordID/guilds/:guildID/servers/:serverID/roles', asyncHandler(getServerRoles));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/roles/:roleID', asyncHandler(postServerRoles));

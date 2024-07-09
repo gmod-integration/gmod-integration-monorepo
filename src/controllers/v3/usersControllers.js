@@ -21,12 +21,9 @@ import moment from 'moment';
 import { Op } from 'sequelize';
 import GuildSettings from '../../database/schema/GuildSettings.js';
 import ServerLogs from '../../database/schema/ServerLogs.js';
-import ServerSettings from '../../database/schema/ServerSettings.js';
 import ServerLuaError from '../../database/schema/ServerLuaError.js';
 import gm_guild from '../../database/schema/gm_guild.js';
 import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
-// const passport = require('passport');
-// const SteamStrategy = require('passport-steam').Strategy;
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -852,104 +849,41 @@ export async function deleteGuildSetting(req, res) {
 }
 
 export async function getServerSettings(req, res) {
-  const { serverID } = req.params;
-  const settings = await ServerSettings.findAll({
-    where: {
-      serverID,
-    },
-  });
-
-  return res.send(settings || []);
+  const server = req.server;
+  return res.send((await server.getAllSettings()) || []);
 }
 
 export async function getServerSetting(req, res) {
-  const { serverID, setting } = req.params;
-  const serverSetting = await ServerSettings.findOne({
-    where: {
-      serverID,
-      setting,
-    },
-  });
-  return res.send(serverSetting || {});
-}
+  const { setting } = req.params;
+  const server = req.server;
 
-const allowedServerSettings = ['log_hide_ip', 'log_include_file', 'show_player_list_status', 'sync_role_direction'];
-
-export async function putServerSetting(req, res) {
-  const { serverID, setting } = req.params;
-  const { value } = req.body;
-
-  if (badArgument([value])) {
-    return res.status(400).send({
-      error: 'Missing required arguments',
-    });
-  }
-
-  if (!allowedServerSettings.includes(setting)) {
-    return res.status(400).send({
-      error: 'Setting not allowed',
-    });
-  }
-
-  let serverSetting = await ServerSettings.findOne({
-    where: { serverID, setting },
-  });
-
-  if (!serverSetting) {
-    serverSetting = await ServerSettings.create({ serverID, setting, value });
-  } else {
-    serverSetting.value = value;
-    serverSetting.changed('updatedAt', true);
-    await serverSetting.save();
-  }
-
-  return res.send(serverSetting);
-}
-
-export async function postServerSetting(req, res) {
-  const { serverID, setting } = req.params;
-  const { value } = req.body;
-
-  if (badArgument([value])) {
-    return res.status(400).send({
-      error: 'Missing required arguments',
-    });
-  }
-
-  if (!allowedServerSettings.includes(setting)) {
-    return res.status(400).send({
-      error: 'Setting not allowed',
-    });
-  }
-
-  let serverSetting = await ServerSettings.findOne({
-    where: { serverID, setting },
-  });
-
-  if (serverSetting) {
-    return res.status(409).send({
-      error: 'Setting already exists',
-    });
-  }
-
-  serverSetting = await ServerSettings.create({ serverID, setting, value });
-  return res.send(serverSetting);
-}
-
-export async function deleteServerSetting(req, res) {
-  const { serverID, setting } = req.params;
-  const serverSetting = await ServerSettings.findOne({
-    where: { serverID, setting },
-  });
-
-  if (!serverSetting) {
+  try {
+    return res.send(await server.getSetting(setting));
+  } catch (error) {
     return res.status(404).send({
       error: 'Setting not found',
     });
   }
+}
 
-  await serverSetting.destroy();
-  return res.send(serverSetting);
+export async function putServerSetting(req, res) {
+  const { setting } = req.params;
+  const server = req.server;
+  const { value } = req.body;
+
+  if (badArgument([value])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  try {
+    return res.send(await server.setSetting(setting, value));
+  } catch (error) {
+    return res.status(404).send({
+      error: 'Setting not found or not allowed',
+    });
+  }
 }
 
 export async function getServerLogs(req, res) {
