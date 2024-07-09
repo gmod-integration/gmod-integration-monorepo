@@ -1,7 +1,5 @@
 import { badArgument, ipGetIP } from '../../utils/tools.js';
-import { updateGuildUserSyncRoles } from '../../models/v3/discordModels.js';
 import { PlayerGmod, updatePlayerUserGroup } from '../../classes/v3/PlayerGmod.js';
-import { getUserFromSteamID64 } from '../../classes/v3/User.js';
 import {
   saveConnectionGlobalInfo,
   saveConnectionSteamInfo,
@@ -13,29 +11,7 @@ import { logServer } from '../../database/schema/ServerLogs.js';
 export async function getPlayer(req, res) {
   const { steamID64 } = req.params;
   const server = req.server;
-
-  if (badArgument([steamID64])) {
-    return res.status(400).json({
-      error: 'missing_arguments',
-      args: {
-        steamID64: !!steamID64,
-      },
-    });
-  }
-
-  server
-    .getPlayerStats(steamID64)
-    .then((player) => {
-      return res.status(200).json(player);
-    })
-    .catch((err) => {
-      if (err.error === 'player_not_found') {
-        return res.status(404).json({ error: 'player_not_found' });
-      } else {
-        console.error(err);
-        return res.status(500).json({ error: 'internal_error' });
-      }
-    });
+  return res.send((await server.getPlayerStats(steamID64)) || {});
 }
 
 export async function playerSpawn(req, res) {
@@ -81,7 +57,7 @@ export async function playerReady(req, res) {
   }
 
   await logServer(server, 'player_ready', { ply });
-  await updateGuildUserSyncRoles(server, await getUserFromSteamID64(steamID64), player.userGroup);
+  // await updateGuildUserSyncRoles(server, await getUserFromSteamID64(steamID64), player.userGroup);
   return res.status(200).json({ success: true });
 }
 
@@ -157,11 +133,6 @@ export async function playerChangeGroup(req, res) {
   }
 
   await logServer(server, 'player_change_group', { ply, oldGroup, newGroup });
-
-  const user = await getUserFromSteamID64(steamID64);
-  if (!user) {
-    return res.status(404).json({ error: 'user_not_found' });
-  }
   await updatePlayerUserGroup(server.getID(), steamID64, newGroup);
   return res.status(200).json({ success: true });
 }
