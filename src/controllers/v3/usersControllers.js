@@ -873,7 +873,7 @@ export async function getServerSetting(req, res) {
   return res.send(serverSetting || {});
 }
 
-const allowedServerSettings = ['log_hide_ip', 'log_include_file', 'show_player_list_status', 'sync_pseudo_direction'];
+const allowedServerSettings = ['log_hide_ip', 'log_include_file', 'show_player_list_status', 'sync_role_direction'];
 
 export async function putServerSetting(req, res) {
   const { serverID, setting } = req.params;
