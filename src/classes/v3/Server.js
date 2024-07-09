@@ -91,14 +91,10 @@ export class Server extends BaseClass {
       if (result.value === '1') result.value = true;
 
       await redis.set(redisKey, JSON.stringify(result.value), 'EX', 10);
-      return {
-        value: result.value,
-      };
+      return result.value;
     }
 
-    return {
-      value: serverSettings[setting].defaultValue,
-    };
+    return serverSettings[setting].defaultValue;
   }
 
   async setSetting(setting, value) {

@@ -858,7 +858,9 @@ export async function getServerSetting(req, res) {
   const server = req.server;
 
   try {
-    return res.send(await server.getSetting(setting));
+    return res.send({
+      value: await server.getSetting(setting),
+    });
   } catch (error) {
     return res.status(404).send({
       error: 'Setting not found',
