@@ -13,7 +13,6 @@ ServerPlayerSession.init(
     serverID: {
       type: DataTypes.STRING,
       allowNull: false,
-      primaryKey: true,
       references: {
         model: 'gm_server',
         key: 'id',
@@ -24,7 +23,6 @@ ServerPlayerSession.init(
     steamID64: {
       type: DataTypes.STRING,
       allowNull: false,
-      primaryKey: true,
       references: {
         model: 'gm_user_steam',
         key: 'steam_id',
