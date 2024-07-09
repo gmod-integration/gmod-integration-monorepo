@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { discordConfig } from '../../config/index.js';
+import { discordConfig, serverConfig } from '../../config/index.js';
 import redis from '../../redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
 import gm_link from '../../database/schema/gm_link.js';
@@ -102,19 +102,23 @@ export async function isGuildPremium(guildID) {
     }
 
     let entitlementGuilds = await redis.get(redisKey2);
-    if (entitlementGuilds === null) {
-      const response = await axios.get(
-        `https://discord.com/api/v10/applications/${discordConfig.clientID}/entitlements`,
-        {
-          headers: {
-            Authorization: `Bot ${discordConfig.botToken}`,
+    if (serverConfig.production !== 'false') {
+      if (entitlementGuilds === null) {
+        const response = await axios.get(
+          `https://discord.com/api/v10/applications/${discordConfig.clientID}/entitlements`,
+          {
+            headers: {
+              Authorization: `Bot ${discordConfig.botToken}`,
+            },
           },
-        },
-      );
-      entitlementGuilds = response.data;
-      await redis.set(redisKey2, JSON.stringify(entitlementGuilds), 'EX', 60);
+        );
+        entitlementGuilds = response.data;
+        await redis.set(redisKey2, JSON.stringify(entitlementGuilds), 'EX', 60);
+      } else {
+        entitlementGuilds = JSON.parse(entitlementGuilds);
+      }
     } else {
-      entitlementGuilds = JSON.parse(entitlementGuilds);
+      entitlementGuilds = [];
     }
 
     let isPremium = entitlementGuilds.some((entitlement) => entitlement.guild_id === guildID);
@@ -128,6 +132,13 @@ export async function isGuildPremium(guildID) {
 }
 
 export async function replyNeedPremium(interaction) {
+  if (serverConfig.production === 'false') {
+    return interaction.reply({
+      content: 'This feature is only available to premium servers.',
+      ephemeral: true,
+    });
+  }
+
   const url = `https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`;
   const json = {
     type: 10,
