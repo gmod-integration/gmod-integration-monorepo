@@ -3,6 +3,7 @@ import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 import gm_user from './gm_user.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
+import redis from '../../redis/index.js';
 
 class gm_server_stat extends Model {
   isSuperAdmin() {
@@ -38,6 +39,13 @@ class gm_server_stat extends Model {
 
     const rankRole = syncRoles.find((role) => role.userGroup === this.rank) || null;
 
+    // // redis the update to avoid gmod |-> dsc sursync
+    // const redisKey2 = `sync-role:discord:server:${server.id}:user:${user.steam_id}`;
+    // if (await redis.exists(redisKey2)) {
+    //   const data = JSON.parse(await redis.get(redisKey2));
+    //
+    // }
+
     const userRoles = member.roles.cache;
     const rolesToRemove = userRoles.filter(
       (role) => syncRoles.some((syncRole) => syncRole.roleID === role.id) && role.id !== rankRole?.roleID,
@@ -50,6 +58,18 @@ class gm_server_stat extends Model {
     if (rankRole && !member.roles.cache.has(rankRole.roleID)) {
       await member.roles.add(rankRole.roleID);
     }
+
+    // redis the update to avoid dsc |-> gmod sursync
+    const redisKey = `sync-role:gmod:server:${server.id}:user:${user.steam_id}`;
+    await redis.set(
+      redisKey,
+      JSON.stringify({
+        removeIDs: rolesToRemove.map((role) => role.id),
+        addIDs: rankRole ? [rankRole.roleID] : [],
+      }),
+      'EX',
+      120,
+    );
   }
 }
 

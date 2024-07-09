@@ -1,7 +1,6 @@
-import { getRoleFromDiscordRoleID, getRoleFromRole } from '../../classes/v3/Role.js';
+import { getRoleFromRole } from '../../classes/v3/Role.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
-import { wsSendToServer } from '../../websockets/index.js';
 import { getClient } from '../../discord/index.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { discordConfig } from '../../config/index.js';
@@ -13,6 +12,8 @@ import gm_user from '../../database/schema/gm_user.js';
 import gm_discordToken from '../../database/schema/gm_discordToken.js';
 import gm_panelToken from '../../database/schema/gm_panelToken.js';
 import gm_guild_auto_roles from '../../database/schema/gm_guild_auto_roles.js';
+import { wsSendToServer } from '../../websockets/index.js';
+import redis from '../../redis/index.js';
 
 let userUpdateRoleCurrent = {};
 
@@ -77,77 +78,209 @@ export function updateGuildUserSyncRoles(server, user, newGroup, oldGroup = null
   });
 }
 
-export async function updateRolesToGmod(newMember, roleID, add = true) {
-  const guildID = newMember.guild.id;
-  const memberID = newMember.id;
+// export async function updateRolesToGmod(newMember, roleID, add = true) {
+//   const guildID = newMember.guild.id;
+//   const memberID = newMember.id;
+//
+//   if (userUpdateRoleCurrent[roleID] !== null && userUpdateRoleCurrent[roleID] === add) {
+//     return;
+//   } else {
+//     userUpdateRoleCurrent[roleID] = add;
+//   }
+//
+//   console.log(userUpdateRoleCurrent[roleID] === add);
+//
+//   return new Promise(async (resolve, reject) => {
+//     console.log('updateRolesToGmod', guildID, memberID, roleID, add);
+//
+//     const userInfo = await getUserFromDiscordID(memberID).catch(reject);
+//     if (!userInfo) {
+//       return reject('User not found');
+//     }
+//     if (!userInfo.getSteamID64()) {
+//       return reject('User not linked');
+//     }
+//
+//     const serversInfo = await getServersFromDiscordGuildID(guildID).catch(reject);
+//     if (!serversInfo || serversInfo.length === 0) {
+//       return reject('No servers found');
+//     }
+//
+//     for (const servInfo of serversInfo) {
+//       if (!servInfo.isValid()) {
+//         continue;
+//       }
+//
+//       const roleInfo = await getRoleFromDiscordRoleID(servInfo.getID(), roleID);
+//       if (!roleInfo || !roleInfo.isValid()) {
+//         continue;
+//       }
+//       if (!roleInfo.isSyncEnabled()) {
+//         continue;
+//       }
+//       if (!roleInfo.getDiscordRoleID()) {
+//         continue;
+//       }
+//
+//       if (add === true) {
+//         await servInfo
+//           .getRoles()
+//           .then(async (roles) => {
+//             let rolesToRemove = [];
+//             for (let i = 0; i < roles.length; i++) {
+//               if (roles[i].getDiscordRoleID() && roles[i].getDiscordRoleID() !== roleInfo.getDiscordRoleID()) {
+//                 userUpdateRoleCurrent[roles[i].getDiscordRoleID()] = false;
+//                 rolesToRemove.push(roles[i].getDiscordRoleID());
+//               }
+//             }
+//
+//             await newMember.roles.remove(rolesToRemove).catch(reject);
+//           })
+//           .catch(reject);
+//       }
+//
+//
 
-  if (userUpdateRoleCurrent[roleID] !== null && userUpdateRoleCurrent[roleID] === add) {
+//
+//     resolve();
+//   });
+// }
+export async function updateRolesToGmod(member, addedRoles, removedRoles) {
+  const servers = await getServersFromDiscordGuildID(member.guild.id);
+  if (!servers || servers.length === 0) {
     return;
-  } else {
-    userUpdateRoleCurrent[roleID] = add;
   }
 
-  console.log(userUpdateRoleCurrent[roleID] === add);
+  const user = await getUserFromDiscordID(member.id);
+  if (!user || !user.getSteamID64()) {
+    return;
+  }
 
-  return new Promise(async (resolve, reject) => {
-    console.log('updateRolesToGmod', guildID, memberID, roleID, add);
-
-    const userInfo = await getUserFromDiscordID(memberID).catch(reject);
-    if (!userInfo) {
-      return reject('User not found');
-    }
-    if (!userInfo.getSteamID64()) {
-      return reject('User not linked');
+  for (const server of servers) {
+    const syncDirection = await server.getSetting('sync_role_direction');
+    if (syncDirection !== 'both' && syncDirection !== 'discord-to-gmod') {
+      continue;
     }
 
-    const serversInfo = await getServersFromDiscordGuildID(guildID).catch(reject);
-    if (!serversInfo || serversInfo.length === 0) {
-      return reject('No servers found');
+    const syncRoles = await server.getSyncRoles();
+    if (!syncRoles || syncRoles.length === 0) {
+      continue;
     }
 
-    for (const servInfo of serversInfo) {
-      if (!servInfo.isValid()) {
+    // skip for now
+    const redisKey = `sync-role:gmod:server:${server.id}:user:${user.getSteamID64()}`;
+    const redisData = await redis.get(redisKey);
+    const data = redisData ? JSON.parse(redisData) : { removeIDs: [], addIDs: [] };
+
+    // add roles
+    for (const roleCollection of addedRoles) {
+      const role = roleCollection[1];
+      if (data && data.addIDs.includes(role.id)) {
         continue;
       }
 
-      const roleInfo = await getRoleFromDiscordRoleID(servInfo.getID(), roleID);
-      if (!roleInfo || !roleInfo.isValid()) {
-        continue;
-      }
-      if (!roleInfo.isSyncEnabled()) {
-        continue;
-      }
-      if (!roleInfo.getDiscordRoleID()) {
+      const roleData = syncRoles.find((syncRole) => syncRole.roleID === role.id);
+      if (!roleData) {
         continue;
       }
 
-      if (add === true) {
-        await servInfo
-          .getRoles()
-          .then(async (roles) => {
-            let rolesToRemove = [];
-            for (let i = 0; i < roles.length; i++) {
-              if (roles[i].getDiscordRoleID() && roles[i].getDiscordRoleID() !== roleInfo.getDiscordRoleID()) {
-                userUpdateRoleCurrent[roles[i].getDiscordRoleID()] = false;
-                rolesToRemove.push(roles[i].getDiscordRoleID());
-              }
-            }
-
-            await newMember.roles.remove(rolesToRemove).catch(reject);
-          })
-          .catch(reject);
+      // remove all roles except the one we are adding
+      const userRoles = member.roles.cache;
+      const rolesToRemove = userRoles.filter(
+        (role) => syncRoles.some((syncRole) => syncRole.roleID === role.id) && role.id !== roleData?.roleID,
+      );
+      if (rolesToRemove.size > 0) {
+        data.removeIDs.push(...rolesToRemove.map((role) => role.id));
+        await redis.set(redisKey, JSON.stringify(data), 'EX', 120);
+        await member.roles.remove(rolesToRemove);
       }
 
-      wsSendToServer(servInfo.getID(), {
+      wsSendToServer(server.getID(), {
         method: 'wsPlayerUpdateGroup',
-        steamID64: userInfo.getSteamID64(),
-        group: roleInfo.role,
-        add: add,
+        steamID64: user.getSteamID64(),
+        group: roleData.userGroup,
+        add: true,
       });
     }
 
-    resolve();
-  });
+    for (const roleCollection of removedRoles) {
+      const role = roleCollection[1];
+      if (data && data.removeIDs.includes(role.id)) {
+        continue;
+      }
+
+      const roleData = syncRoles.find((syncRole) => syncRole.roleID === role.id);
+      if (!roleData) {
+        continue;
+      }
+
+      wsSendToServer(server.getID(), {
+        method: 'wsPlayerUpdateGroup',
+        steamID64: user.getSteamID64(),
+        group: roleData.userGroup,
+        add: false,
+      });
+    }
+  }
+  // const user = await gm_user.findOne({
+  //   where: {
+  //     steam: this.steam_id,
+  //   },
+  // });
+  // if (!user) return;
+  //
+  // const server = await getServerFromID(this.server_id);
+  // if (!server) return;
+  //
+  // const syncDirection = await server.getSetting('sync_role_direction');
+  // if (syncDirection !== 'both' && syncDirection !== 'gmod-to-discord') {
+  //   return;
+  // }
+  //
+  // const dscClient = await server.getDscClient();
+  // if (!dscClient) return;
+  //
+  // const guild = await server.getDiscordGuild();
+  // if (!guild) return;
+  //
+  // const member = await guild.members.fetch(user.id);
+  // if (!member) return;
+  //
+  // const syncRoles = await server.getSyncRoles();
+  //
+  // const rankRole = syncRoles.find((role) => role.userGroup === this.rank) || null;
+  //
+  // // // redis the update to avoid gmod |-> dsc sursync
+  // // const redisKey2 = `sync-role:discord:server:${server.id}:user:${user.steam_id}`;
+  // // if (await redis.exists(redisKey2)) {
+  // //   const data = JSON.parse(await redis.get(redisKey2));
+  // //
+  // // }
+  //
+  // const userRoles = member.roles.cache;
+  // const rolesToRemove = userRoles.filter(
+  //   (role) => syncRoles.some((syncRole) => syncRole.roleID === role.id) && role.id !== rankRole?.roleID,
+  // );
+  // if (rolesToRemove.size > 0) {
+  //   await member.roles.remove(rolesToRemove);
+  // }
+  //
+  // // if user doesn't have the rank role then add it
+  // if (rankRole && !member.roles.cache.has(rankRole.roleID)) {
+  //   await member.roles.add(rankRole.roleID);
+  // }
+  //
+  // // redis the update to avoid dsc |-> gmod sursync
+  // const redisKey = `sync-role:gmod:server:${server.id}:user:${user.steam_id}`;
+  // await redis.set(
+  //   redisKey,
+  //   JSON.stringify({
+  //     removeIDs: rolesToRemove.map((role) => role.id),
+  //     addIDs: rankRole ? [rankRole.roleID] : [],
+  //   }),
+  //   'EX',
+  //   120,
+  // );
 }
 
 export async function updateGuildStat(guild) {
