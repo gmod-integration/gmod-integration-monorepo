@@ -18,6 +18,11 @@ GmodStorePurchases.init(
       allowNull: false,
       defaultValue: '',
     },
+    token: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: '',
+    },
     revoke: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
