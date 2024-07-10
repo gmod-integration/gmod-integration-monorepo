@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { gmodStoreConfig } from '../../config/index.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
+import { gmLog } from '../../utils/logger.js';
 
 export async function verifyWebhookSignature(headers, payload) {
   const webhookSignature = headers['webhook-signature'];
@@ -52,6 +53,8 @@ export async function saveGmodStorePurchase(steamID64, revoke) {
       steamID64,
     },
   });
+
+  gmLog('gmodStore', `Saving purchase for ${steamID64} with revoke: ${revoke}`);
 
   if (gmGmodStorePurchases) {
     gmGmodStorePurchases.revoke = revoke;
