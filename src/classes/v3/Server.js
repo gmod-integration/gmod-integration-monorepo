@@ -1,7 +1,7 @@
 import { BaseClass } from './BaseClass.js';
 import { generateToken } from '../../utils/tools.js';
 import redis from '../../redis/index.js';
-import { getClient } from '../../discord/index.js';
+import { getMainClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import { gmLog } from '../../utils/logger.js';
 import gm_server from '../../database/schema/gm_server.js';
@@ -193,12 +193,12 @@ export class Server extends BaseClass {
     });
   }
 
-  async getDscClient() {
-    return await getClient();
+  async getBotInstance() {
+    return await getMainClient();
   }
 
   async getDiscordGuild() {
-    const dscClient = await getClient();
+    const dscClient = await getMainClient();
     const guild = await dscClient.guilds.fetch(this.guild);
     if (!guild) {
       throw new Error('Guild not found');
@@ -253,7 +253,7 @@ export class Server extends BaseClass {
   }
 
   async editStatusChannelAndMessage(msgData) {
-    const dscClient = await getClient();
+    const dscClient = await getMainClient();
     const serverStatusInfo = await this.getStatusChannelAndMessage();
     if (!serverStatusInfo) {
       gmLog('status', `Status channel not found for server ${this.getID()}`, true);

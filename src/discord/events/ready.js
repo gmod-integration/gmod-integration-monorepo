@@ -1,4 +1,4 @@
-import { getClient } from '../index.js';
+import { getMainClient } from '../index.js';
 import gm_guild from '../../database/schema/gm_guild.js';
 import { getStats } from '../../models/v3/mainModels.js';
 import { ActivityType } from 'discord.js';
@@ -7,7 +7,7 @@ import { statusRoutine } from '../../controllers/v3/serversControllers.js';
 export default {
   name: 'ready',
   async execute() {
-    const client = await getClient();
+    const client = await getMainClient();
 
     const guilds = client.guilds.cache;
     for (const [id, guild] of guilds) {

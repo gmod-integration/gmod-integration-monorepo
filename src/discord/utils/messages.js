@@ -2,7 +2,7 @@ import { getTranslate } from '../../utils/localizations.js';
 import { gmLog } from '../../utils/logger.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
-import { getClient } from '../index.js';
+import { getMainClient } from '../index.js';
 import { getEmojiVersion } from '../../utils/tools.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
@@ -111,7 +111,7 @@ export async function getStatusMessage(server, data, lang) {
     row1.addComponents(await ButtonConnect(lang, ip, port));
   }
 
-  const disClient = await getClient();
+  const disClient = await getMainClient();
 
   function addButtons(button, theRow) {
     let { name, emoji, url } = button;

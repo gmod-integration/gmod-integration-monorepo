@@ -1,7 +1,7 @@
 import { badArgument } from '../../utils/tools.js';
 import { gmLog } from '../../utils/logger.js';
 import { Op } from 'sequelize';
-import { getClient } from '../../discord/index.js';
+import { getMainClient } from '../../discord/index.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import gm_server_status from '../../database/schema/gm_server_status.js';
@@ -44,7 +44,7 @@ export async function getPublicToken(req, res) {
 
 export async function statusRoutine() {
   const serversStatusChannel = await gm_status.findAll();
-  const dscClient = await getClient();
+  const dscClient = await getMainClient();
 
   for (const statusChannel of serversStatusChannel) {
     try {

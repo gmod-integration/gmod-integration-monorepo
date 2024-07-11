@@ -3,7 +3,7 @@ import fs from 'fs';
 import { serverConfig } from '../../config/index.js';
 import { WebhookClient } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
-import { getClient } from '../../discord/index.js';
+import { getMainClient } from '../../discord/index.js';
 
 export function saveScreenshot(screenshot, captureData, player) {
   return new Promise(async (resolve, reject) => {
@@ -36,7 +36,7 @@ export async function sendScreenshotToDiscord(path, filename, player, server) {
   }
 
   // TODO Better code
-  const dscClient = await getClient();
+  const dscClient = await getMainClient();
 
   const dscGuild = dscClient.guilds.cache.get(channelInfo.guild);
   if (!dscGuild) {
@@ -72,6 +72,6 @@ export async function sendScreenshotToDiscord(path, filename, player, server) {
       },
     ],
   });
-  
+
   return { success: true };
 }

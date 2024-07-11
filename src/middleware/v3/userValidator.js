@@ -1,6 +1,6 @@
 import { badArgument } from '../../utils/tools.js';
 import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
-import { getClient } from '../../discord/index.js';
+import { getMainClient } from '../../discord/index.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
 import { Guild } from '../../classes/v3/Guild.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
@@ -53,7 +53,7 @@ export async function userAdminGuildValidator(req, res, next) {
     });
   }
 
-  const dscClient = await getClient();
+  const dscClient = await getMainClient();
   const dscGuild = dscClient.guilds.cache.get(guildID);
   if (!dscGuild) {
     return res.status(404).json({
