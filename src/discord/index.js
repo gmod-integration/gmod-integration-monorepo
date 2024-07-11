@@ -6,6 +6,7 @@ import { fork } from 'child_process';
 
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { routineStatusRefresh, routineUpdateStatus, updateGuildsInDB } from '../models/v3/mainModels.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -142,8 +143,13 @@ async function addNewClient(guildInstance, token) {
   //   }
   // });
 
-  client.on('ready', () => {
+  client.on('ready', async () => {
     gmLog('discord', `Ready on ${guildInstance} with ${client.user.tag}`);
+    if (client.user.id === discordConfig.clientID) {
+      await routineUpdateStatus();
+      await routineStatusRefresh();
+    }
+    await updateGuildsInDB(client);
   });
 
   client.on('warn', (msg) => {
