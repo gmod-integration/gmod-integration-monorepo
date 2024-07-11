@@ -1,7 +1,7 @@
 import { BaseClass } from './BaseClass.js';
 import { generateToken } from '../../utils/tools.js';
 import redis from '../../redis/index.js';
-import { getMainClient } from '../../discord/index.js';
+import { getGuildClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import { gmLog } from '../../utils/logger.js';
 import gm_server from '../../database/schema/gm_server.js';
@@ -194,11 +194,11 @@ export class Server extends BaseClass {
   }
 
   async getBotInstance() {
-    return await getMainClient();
+    return await getGuildClient(this.guild);
   }
 
   async getDiscordGuild() {
-    const dscClient = await getMainClient();
+    const dscClient = await this.getBotInstance();
     const guild = await dscClient.guilds.fetch(this.guild);
     if (!guild) {
       throw new Error('Guild not found');
@@ -253,7 +253,7 @@ export class Server extends BaseClass {
   }
 
   async editStatusChannelAndMessage(msgData) {
-    const dscClient = await getMainClient();
+    const dscClient = await this.getBotInstance();
     const serverStatusInfo = await this.getStatusChannelAndMessage();
     if (!serverStatusInfo) {
       gmLog('status', `Status channel not found for server ${this.getID()}`, true);
@@ -808,4 +808,43 @@ export async function createServer(guildID) {
     guild: guildID,
   });
   return new Server(server);
+}
+
+export async function statusRoutine() {
+  const serversStatusChannel = await gm_status.findAll();
+
+  for (const statusChannel of serversStatusChannel) {
+    try {
+      const server = await getServerFromID(statusChannel.server);
+      if (!server) return await statusChannel.destroy();
+
+      const statusInfo = await gm_server_status.findOne({
+        where: {
+          id: server.getID(),
+          updatedAt: {
+            [Op.gte]: new Date(new Date() - 10 * 60 * 1000),
+          },
+        },
+      });
+
+      if (statusInfo) return;
+
+      const dscClient = await server.getBotInstance();
+      const guild = dscClient.guilds.cache.get(server.getGuildID());
+      if (!guild) return new Error('Guild not found');
+
+      const channel = guild.channels.cache.get(statusChannel.channel);
+      if (!channel) return new Error('Channel not found');
+
+      const message = await channel.messages.fetch(statusChannel.message);
+      if (!message) return new Error('Message not found');
+
+      const lang = await guild.preferredLocale;
+      const newMsgContent = await getStatusMessage(server, {}, lang);
+      await message.edit(newMsgContent);
+    } catch (error) {
+      console.error(error);
+      await statusChannel.destroy();
+    }
+  }
 }
