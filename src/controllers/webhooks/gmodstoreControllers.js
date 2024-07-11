@@ -8,7 +8,7 @@ async function productPurchase(req, res, event) {
 
   try {
     const user = await getUser(userID);
-    await saveGmodStorePurchase(user.steam_id, revoke);
+    await saveGmodStorePurchase(user.data.steamId, revoke);
     res.status(200).json({ success: true });
   } catch (error) {
     console.error(error);
