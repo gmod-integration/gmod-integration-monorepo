@@ -24,6 +24,7 @@ import ServerLogs from '../../database/schema/ServerLogs.js';
 import ServerLuaError from '../../database/schema/ServerLuaError.js';
 import gm_guild from '../../database/schema/gm_guild.js';
 import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
+import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -1004,4 +1005,67 @@ export async function deleteServerRoles(req, res) {
 
   await role.destroy();
   return res.send(role);
+}
+
+export async function getGuildBotInstance(req, res) {
+  const guild = req.guild;
+  return res.send((await guild.getBotClientInfo(req.panelUser.user)) || {});
+}
+
+export async function patchGuildBotInstance(req, res) {
+  const { token } = req.body;
+  if (badArgument([token])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  const guild = req.guild;
+  await guild.updateBotInstanceToken(token).catch((error) => {
+    return res.status(400).send({
+      error: error.message,
+    });
+  });
+  return res.send((await guild.getBotClientInfo(req.panelUser.user)) || {});
+}
+
+export async function postGmodPurchase(req, res) {
+  const { guildID, discordID } = req.params;
+  const user = await getUserFromDiscordID(discordID);
+  if (!user || !user.getSteamID64()) {
+    return res.status(404).send({
+      error: 'User not found or not linked',
+    });
+  }
+
+  const guild = req.guild;
+  const purchase = await GmodStorePurchases.findOne({
+    where: {
+      steamID64: user.getSteamID64(),
+    },
+  });
+
+  if (!purchase) {
+    return res.status(404).send({
+      error: 'Purchase not found',
+    });
+  }
+
+  purchase.guild = guildID;
+  await purchase.save();
+  return res.send((await guild.getBotClientInfo(req.panelUser.user)) || {});
+}
+
+export async function putGuildBotInstance(req, res) {
+  const { username, avatar, token } = req.body;
+  const guild = req.guild;
+
+  if (badArgument([username, avatar, token])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  await guild.updateBotInstanceInfo({ username, avatar, token });
+  return res.send((await guild.getBotClientInfo(req.panelUser.user)) || {});
 }

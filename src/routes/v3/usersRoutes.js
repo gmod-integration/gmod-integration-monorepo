@@ -28,6 +28,7 @@ import {
   getAdminGuilds,
   getAutoRoles,
   getGuildAdmins,
+  getGuildBotInstance,
   getGuildEmojis,
   getGuildLinks,
   getGuildRoles,
@@ -48,7 +49,9 @@ import {
   getVerificationMessage,
   getVoteChannels,
   oauthLogin,
+  patchGuildBotInstance,
   postAutoRoles,
+  postGmodPurchase,
   postGuildLinks,
   postGuildServerToken,
   postGuildSetting,
@@ -59,6 +62,7 @@ import {
   postServerSyncChat,
   postUserStartVerification,
   postVoteChannels,
+  putGuildBotInstance,
   putGuildLinks,
   putGuildServer,
   putGuildSetting,
@@ -92,6 +96,10 @@ router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds));
 
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', asyncHandler(findGuild));
+router.get('/:discordID/guilds/:guildID/bot', asyncHandler(getGuildBotInstance));
+router.put('/:discordID/guilds/:guildID/bot', asyncHandler(putGuildBotInstance));
+router.post('/:discordID/guilds/:guildID/bot', asyncHandler(postGmodPurchase));
+router.patch('/:discordID/guilds/:guildID/bot', asyncHandler(patchGuildBotInstance));
 router.get('/:discordID/guilds/:guildID/channels', asyncHandler(findGuildChannels));
 router.get('/:discordID/guilds/:guildID/roles', asyncHandler(getGuildRoles));
 router.get('/:discordID/guilds/:guildID/admins', asyncHandler(getGuildAdmins));

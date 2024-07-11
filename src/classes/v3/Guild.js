@@ -4,7 +4,10 @@ import redis from '../../redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
 import gm_link from '../../database/schema/gm_link.js';
 import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';
+import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 import PremiumGuild from '../../database/schema/PremiumGuild.js';
+import { getGuildClient, loadGuildBotInstance } from '../../discord/index.js';
+import { ActivityType } from 'discord.js';
 
 export class Guild {
   constructor(guild) {
@@ -18,6 +21,82 @@ export class Guild {
 
   async getServers() {
     return await getServersFromDiscordGuildID(this.id);
+  }
+
+  async getCustomBotClient() {
+    const botCustomClient = await getGuildClient(this.id);
+    if (botCustomClient.user.id === discordConfig.clientID) {
+      return new Error('Blocked access to main client');
+    }
+
+    return botCustomClient;
+  }
+
+  async getBotClientInfo(user) {
+    const botInstance = await getGuildClient(this.id);
+    const isCustom = botInstance.user.id !== discordConfig.clientID;
+
+    const activeGuild = await GmodStorePurchases.findOne({
+      where: {
+        guild: this.id,
+        revoke: false,
+      },
+    });
+
+    const purchased = await GmodStorePurchases.findOne({
+      where: {
+        steamID64: user.steamID64,
+      },
+    });
+
+    let onGuild = false;
+    if (isCustom) {
+      onGuild = botInstance.guilds.cache.has(this.id);
+    }
+
+    return {
+      id: botInstance.user.id,
+      username: botInstance.user.username,
+      avatar: botInstance.user.avatarURL(),
+      custom: isCustom,
+      token: activeGuild ? activeGuild.token : null,
+      active: !!activeGuild,
+      purchased: !!purchased,
+      onGuild,
+    };
+  }
+
+  async reloadBotInstance() {
+    await loadGuildBotInstance(this.id);
+  }
+
+  async updateBotInstanceToken(newToken) {
+    const botInstanceData = await GmodStorePurchases.findOne({
+      where: {
+        guild: this.id,
+        revoke: false,
+      },
+    });
+
+    if (!botInstanceData) new Error('Bot client not found');
+
+    botInstanceData.token = newToken;
+    await botInstanceData.save();
+    await this.reloadBotInstance();
+  }
+
+  async updateBotInstanceInfo(data) {
+    const customBotInstance = await this.getCustomBotClient();
+
+    const { username, avatar } = data;
+
+    if (username && username !== customBotInstance.user.username) {
+      await customBotInstance.user.setUsername(username);
+    }
+
+    if (avatar && avatar !== customBotInstance.user.avatarURL()) {
+      await customBotInstance.user.setAvatar(avatar);
+    }
   }
 
   async getAdmins() {
@@ -83,11 +162,17 @@ export class Guild {
 
 export async function isGuildPremium(guildID) {
   if (
-    await PremiumGuild.findOne({
+    (await PremiumGuild.findOne({
       where: {
         guildID,
       },
-    })
+    })) ||
+    (await GmodStorePurchases.findOne({
+      where: {
+        guild: guildID,
+        revoke: false,
+      },
+    }))
   ) {
     return true;
   }
