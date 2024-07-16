@@ -71,8 +71,7 @@ async function addNewClient(guildInstance, token) {
 
   const hasValidIntents = await checkTokenAndIntents(token);
   if (!hasValidIntents) {
-    console.error(`The bot with token ${token} is missing required intents or has an invalid token.`);
-    return;
+    throw new Error('The given token is invalid or missing required intents');
   }
 
   // Create a new client
@@ -246,9 +245,7 @@ export async function loadGuildBotInstance(guildID) {
     },
   });
   if (!instanceInfo) return;
-  await addNewClient(guildID, instanceInfo.token).catch(() => {
-    console.error(`Error starting bot instance for guild ${guildID}`);
-  });
+  await addNewClient(guildID, instanceInfo.token);
 }
 
 // load all guilds custom intance of the bot select all GmodBotInstance how have a valid GmodStorePurchases

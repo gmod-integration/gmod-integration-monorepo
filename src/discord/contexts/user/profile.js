@@ -5,6 +5,7 @@ export default {
   data: new ContextMenuCommandBuilder().setName('Profile').setType(ApplicationCommandType.User).setDMPermission(false),
   category: 'user',
   async execute(interaction) {
-    return interaction.reply(await getProfileMessage(interaction.guild, interaction.user));
+    const user = interaction.options.getUser('user') || interaction.user;
+    return interaction.reply(await getProfileMessage(interaction.guild, user));
   },
 };

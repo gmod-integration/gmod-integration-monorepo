@@ -1021,12 +1021,14 @@ export async function patchGuildBotInstance(req, res) {
   }
 
   const guild = req.guild;
-  await guild.updateBotInstanceToken(token).catch((error) => {
+  try {
+    await guild.updateBotInstanceToken(token);
+    return res.send((await guild.getBotClientInfo(req.panelUser.user)) || {});
+  } catch (error) {
     return res.status(400).send({
       error: error.message,
     });
-  });
-  return res.send((await guild.getBotClientInfo(req.panelUser.user)) || {});
+  }
 }
 
 export async function postGmodPurchase(req, res) {
