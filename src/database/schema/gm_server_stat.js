@@ -22,7 +22,7 @@ class gm_server_stat extends Model {
       return;
     }
 
-    const dscClient = await server.getDscClient();
+    const dscClient = await server.getBotInstance();
     if (!dscClient) return;
 
     const guild = await server.getDiscordGuild();

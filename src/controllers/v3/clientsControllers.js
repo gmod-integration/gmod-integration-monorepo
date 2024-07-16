@@ -17,12 +17,7 @@ export async function uploadScreenshot(req, res) {
     });
   }
 
-  try {
-    const { path, filename } = await saveScreenshot(screenshot, captureData, player);
-    await sendScreenshotToDiscord(path, filename, player, server);
-    res.status(200).json({ success: true });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'internal_error' });
-  }
+  const { path, filename } = await saveScreenshot(screenshot, captureData, player);
+  await sendScreenshotToDiscord(path, filename, player, server);
+  res.status(200).json({ success: true });
 }

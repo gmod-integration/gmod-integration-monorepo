@@ -25,6 +25,8 @@ ServerVote.init(
         model: 'gm_user',
         key: 'id',
       },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
   },
   {

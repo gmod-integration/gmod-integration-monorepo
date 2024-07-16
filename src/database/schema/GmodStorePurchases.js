@@ -15,8 +15,9 @@ GmodStorePurchases.init(
     },
     guild: {
       type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: '',
+    },
+    token: {
+      type: DataTypes.STRING,
     },
     revoke: {
       type: DataTypes.BOOLEAN,

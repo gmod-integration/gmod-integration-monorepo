@@ -1,6 +1,6 @@
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
-import { getClient } from '../../discord/index.js';
+import { getMainClient } from '../../discord/index.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { discordConfig } from '../../config/index.js';
 import { generateToken } from '../../utils/tools.js';
@@ -405,6 +405,6 @@ export async function addUserToGuild(guildID, userID, userToken) {
 }
 
 export async function getDiscordUserFromID(discordID) {
-  const client = await getClient();
+  const client = await getMainClient();
   return client.users.fetch(discordID);
 }
