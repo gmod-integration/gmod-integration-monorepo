@@ -1,12 +1,14 @@
-import { Client, Collection, GatewayIntentBits, Partials } from 'discord.js';
+import { Client, Collection, Events, GatewayIntentBits, Partials, REST, Routes } from 'discord.js';
 import { gmLog } from '../utils/logger.js';
 import { discordConfig } from '../config/index.js';
 import GmodStorePurchases from '../database/schema/GmodStorePurchases.js';
 import { fork } from 'child_process';
 
 import { fileURLToPath } from 'url';
-import path from 'path';
+import path, { join } from 'path';
+import { readdirSync } from 'fs';
 import { routineStatusRefresh, routineUpdateStatus, updateGuildsInDB } from '../models/v3/mainModels.js';
+import { readdir } from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +33,37 @@ async function checkTokenAndIntents(token) {
 
     child.send(token);
   });
+}
+
+const commandsData = [];
+
+async function loadCommands(dirPath, type) {
+  try {
+    const foldersPath = join(process.cwd(), dirPath);
+    const folders = await readdir(foldersPath);
+
+    for (const folder of folders) {
+      const commandsPath = join(foldersPath, folder);
+      const commandFiles = (await readdir(commandsPath)).filter((file) => file.endsWith('.js'));
+
+      for (const file of commandFiles) {
+        try {
+          const filePath = join(commandsPath, file);
+          const command = await import(filePath);
+          if (command.default && command.default.data) {
+            commandsData.push(command.default.data.toJSON());
+            console.log(`[INFO] Pushed ${type} ${command.default.data.name} from ${filePath}`);
+          } else {
+            console.log(`[WARNING] The ${type} at ${filePath} is missing a required "data" or "execute" property.`);
+          }
+        } catch (error) {
+          console.error(`[ERROR] Failed to load ${type} from ${file}: ${error}`);
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`[ERROR] Failed to read directory ${dirPath}: ${error}`);
+  }
 }
 
 async function addNewClient(guildInstance, token) {
@@ -63,85 +96,86 @@ async function addNewClient(guildInstance, token) {
     partials: [Partials.Channel],
   });
 
-  // // Load Events
-  // const eventFiles = readdirSync(join(process.cwd(), 'src/discord/events')).filter((file) => file.endsWith('.js'));
-  // for (const file of eventFiles) {
-  //   const filePath = join(process.cwd(), 'src/discord/events', file);
-  //   import(filePath).then((event) => {
-  //     if (event.default && event.default.name) {
-  //       client.on(event.default.name, event.default.execute);
-  //       gmLog('event', `Event ${filePath} loaded`);
-  //     } else {
-  //       if (!event.default) {
-  //         gmLog('event', `Event ${filePath} is missing default export`);
-  //       }
-  //       if (!event.default.name) {
-  //         gmLog('event', `Event ${filePath} is missing name`);
-  //       }
-  //     }
-  //   });
-  // }
-  //
-  // // Load Slash Commands
-  // let commands = new Collection();
-  // const foldersPath = join(process.cwd(), 'src/discord/commands');
-  // const commandFolders = readdirSync(foldersPath);
-  //
-  // for (const folder of commandFolders) {
-  //   const commandsPath = join(foldersPath, folder);
-  //   const commandFiles = readdirSync(commandsPath).filter((file) => file.endsWith('.js'));
-  //
-  //   for (const file of commandFiles) {
-  //     const filePath = join(commandsPath, file);
-  //     import(filePath).then((command) => {
-  //       if (command.default && command.default.data) {
-  //         commands.set(command.default.data.name, command.default);
-  //         gmLog('command', `Command ${filePath} loaded`);
-  //       } else {
-  //         gmLog('command', `Command ${filePath} is missing default or data`);
-  //       }
-  //     });
-  //   }
-  // }
-  //
-  // // Load Context Menu Commands
-  // let contextMenuCommands = new Collection();
-  // const contextMenuPath = join(process.cwd(), 'src/discord/contexts');
-  // const contextMenuFolders = readdirSync(contextMenuPath);
-  //
-  // for (const folder of contextMenuFolders) {
-  //   const contextMenuFiles = readdirSync(join(contextMenuPath, folder)).filter((file) => file.endsWith('.js'));
-  //
-  //   for (const file of contextMenuFiles) {
-  //     const filePath = join(contextMenuPath, folder, file);
-  //     import(filePath).then((contextMenu) => {
-  //       if (contextMenu.default && contextMenu.default.data) {
-  //         contextMenuCommands.set(contextMenu.default.data.name, contextMenu.default);
-  //         gmLog('contextMenu', `ContextMenu ${filePath} loaded`);
-  //       } else {
-  //         gmLog('contextMenu', `ContextMenu ${filePath} is missing default or data`);
-  //       }
-  //     });
-  //   }
-  // }
-  //
-  // client.on(Events.InteractionCreate, async (interaction) => {
-  //   const command = commands.get(interaction.commandName);
-  //   const contextMenuCommand = contextMenuCommands.get(interaction.commandName);
-  //
-  //   try {
-  //     if (contextMenuCommand) {
-  //       await contextMenuCommand.execute(interaction);
-  //     } else if (command && interaction.isChatInputCommand()) {
-  //       await command.execute(interaction);
-  //     } else if (command && interaction.isAutocomplete()) {
-  //       await command.autocomplete(interaction);
-  //     }
-  //   } catch (error) {
-  //     interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
-  //     console.error(error);
-  //   }
-  // });
+  // Handle Events
+  const eventFiles = readdirSync(join(process.cwd(), 'src/discord/events')).filter((file) => file.endsWith('.js'));
+  for (const file of eventFiles) {
+    const filePath = join(process.cwd(), 'src/discord/events', file);
+    import(filePath).then((event) => {
+      if (event.default && event.default.name) {
+        client.on(event.default.name, event.default.execute);
+        gmLog('event', `Event ${filePath} loaded`);
+      } else {
+        if (!event.default) {
+          gmLog('event', `Event ${filePath} is missing default export`);
+        }
+        if (!event.default.name) {
+          gmLog('event', `Event ${filePath} is missing name`);
+        }
+      }
+    });
+  }
+
+  // Handle Commands
+  let commands = new Collection();
+  const foldersPath = join(process.cwd(), 'src/discord/commands');
+  const commandFolders = readdirSync(foldersPath);
+
+  for (const folder of commandFolders) {
+    const commandsPath = join(foldersPath, folder);
+    const commandFiles = readdirSync(commandsPath).filter((file) => file.endsWith('.js'));
+
+    for (const file of commandFiles) {
+      const filePath = join(commandsPath, file);
+      import(filePath).then((command) => {
+        if (command.default && command.default.data) {
+          commands.set(command.default.data.name, command.default);
+          gmLog('command', `Command ${filePath} loaded`);
+        } else {
+          gmLog('command', `Command ${filePath} is missing default or data`);
+        }
+      });
+    }
+  }
+
+  // Handle Context Menu Commands
+  let contextMenuCommands = new Collection();
+  const contextMenuPath = join(process.cwd(), 'src/discord/contexts');
+  const contextMenuFolders = readdirSync(contextMenuPath);
+
+  for (const folder of contextMenuFolders) {
+    const contextMenuFiles = readdirSync(join(contextMenuPath, folder)).filter((file) => file.endsWith('.js'));
+
+    for (const file of contextMenuFiles) {
+      const filePath = join(contextMenuPath, folder, file);
+      import(filePath).then((contextMenu) => {
+        if (contextMenu.default && contextMenu.default.data) {
+          contextMenuCommands.set(contextMenu.default.data.name, contextMenu.default);
+          gmLog('contextMenu', `ContextMenu ${filePath} loaded`);
+        } else {
+          gmLog('contextMenu', `ContextMenu ${filePath} is missing default or data`);
+        }
+      });
+    }
+  }
+
+  // Handle Interactions
+  client.on(Events.InteractionCreate, async (interaction) => {
+    const command = commands.get(interaction.commandName);
+    const contextMenuCommand = contextMenuCommands.get(interaction.commandName);
+
+    try {
+      if (contextMenuCommand) {
+        await contextMenuCommand.execute(interaction);
+      } else if (command && interaction.isChatInputCommand()) {
+        await command.execute(interaction);
+      } else if (command && interaction.isAutocomplete()) {
+        await command.autocomplete(interaction);
+      }
+    } catch (error) {
+      interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+      console.error(error);
+    }
+  });
 
   client.on('ready', async () => {
     gmLog('discord', `Ready on ${guildInstance} with ${client.user.tag}`);
@@ -150,6 +184,25 @@ async function addNewClient(guildInstance, token) {
       await routineStatusRefresh();
     }
     await updateGuildsInDB(client);
+
+    if (guildInstance === 'main') {
+      await loadCommands('src/discord/contexts', 'Context');
+      await loadCommands('src/discord/commands', 'Command');
+      console.log(`[INFO] Loaded ${commandsData.length} commands and context menu commands`);
+    }
+    // Load commands and context menu commands
+    const rest = new REST().setToken(token);
+    try {
+      console.log('[INFO] Started reloading application: ', guildInstance);
+      await rest.put(Routes.applicationCommands(client.user.id), {
+        body: commandsData,
+      });
+
+      console.log('[INFO] Successfully reloaded application: ', guildInstance);
+    } catch (error) {
+      console.error('[ERROR] Failed to reload application: ', guildInstance);
+      console.error(error);
+    }
   });
 
   client.on('warn', (msg) => {
