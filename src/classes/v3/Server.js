@@ -23,6 +23,10 @@ const serverSettings = {
     defaultValue: 'both',
     acceptedValues: ['both', 'gmod-to-discord', 'discord-to-gmod'],
   },
+  syncChatDirection: {
+    defaultValue: 'both',
+    acceptedValues: ['both', 'gmodToDiscord', 'discordToGmod'],
+  },
   log_hide_ip: {
     defaultValue: false,
     acceptedValues: [true, false],
