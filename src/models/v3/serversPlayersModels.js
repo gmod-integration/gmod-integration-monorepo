@@ -15,11 +15,10 @@ export async function sendPlayerSay(server, player, text, onlyTeam) {
     return { skip: true, message: 'Sync chat channel not found or not set' };
   }
 
-  // const syncChatDirection = await server.getSetting('syncChatDirection');
-  // if (syncChatDirection && syncChatDirection === 'discordToGmod') {
-  //   return { skip: true, message: 'Sync chat direction is discord to gmod' };
-  // }
-  //
+  const syncChatDirection = await server.getSetting('syncChatDirection');
+  if (syncChatDirection !== 'both' && syncChatDirection !== 'gmodToDiscord') {
+    return { skip: true, message: 'Sync chat direction is discord to gmod' };
+  }
   // const syncChatTriggerAll = await server.getSetting('syncChatTriggerAll');
   // if (!syncChatTriggerAll || syncChatTriggerAll === 'false') {
   //   const possibleFields = ['steamID64', 'userGroup', 'teamName', 'message'];
