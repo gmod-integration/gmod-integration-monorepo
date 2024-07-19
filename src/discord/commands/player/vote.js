@@ -50,11 +50,13 @@ export default {
     if (webhooks && interaction.guild.channels.cache.get(webhooks.channelID)) {
       interaction.guild.channels.cache.get(webhooks.channelID).send({
         content: await getTranslate('vote_webhook', lang, [user.username, serverData.name]),
+        ephemeral: true,
       });
     }
 
     return interaction.reply({
       content: await getTranslate('vote_success', lang, [serverData.name]),
+      ephemeral: true,
     });
   },
   async autocomplete(interaction) {
