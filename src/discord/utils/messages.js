@@ -376,7 +376,7 @@ export async function getProfileMessage(guild, user) {
     .setStyle(ButtonStyle.Link)
     .setLabel('⠀' + (await getTranslate('steam_profile', lang)))
     .setEmoji('🔗')
-    .setURL(`https://steamcommunity.com/profiles/${gm_user.steam}`);
+    .setURL(`https://steamcommunity.com/profiles/${gm_user.steamID64}`);
 
   const row = new ActionRowBuilder();
   row.addComponents(open_verify);
