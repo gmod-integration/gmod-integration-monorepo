@@ -132,6 +132,10 @@ export async function logServer(server, type, data) {
             (await getTranslate('weaponClass', lang)) + ': `' + (data.swep ? data.swep.ClassName : '') + '`',
           );
           break;
+        case 'server_start':
+          break;
+        case 'server_stop':
+          break;
         case 'player_death':
           dscList.push(await getTranslate('attacker', lang));
           dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyAttacker.steamID64 + '`');
