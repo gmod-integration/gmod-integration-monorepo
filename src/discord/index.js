@@ -1,4 +1,4 @@
-import { Client, Collection, Events, GatewayIntentBits, Partials, REST, Routes } from 'discord.js';
+import { ActivityType, Client, Collection, Events, GatewayIntentBits, Partials, REST, Routes } from 'discord.js';
 import { gmLog } from '../utils/logger.js';
 import { discordConfig } from '../config/index.js';
 import GmodStorePurchases from '../database/schema/GmodStorePurchases.js';
@@ -188,6 +188,15 @@ async function addNewClient(guildInstance, token) {
       await loadCommands('src/discord/contexts', 'Context');
       await loadCommands('src/discord/commands', 'Command');
       console.log(`[INFO] Loaded ${commandsData.length} commands and context menu commands`);
+    } else {
+      // client.user.setPresence({
+      //   activities: [
+      //     {
+      //       name: `${serverConfig.version} - gmi.linv.dev`,
+      //       type: ActivityType.Watching,
+      //     },
+      //   ],
+      // });
     }
     // Load commands and context menu commands
     const rest = new REST().setToken(token);
