@@ -35,8 +35,15 @@ class gm_server_stat extends Model {
 
     const rankRole = syncRoles.find((role) => role.userGroup === this.rank) || null;
 
-    // check bot permissions && if bot role is higher than the roles to remove
-    if (member.guild.me.roles.highest.comparePositionTo(rankRole) <= 0) {
+    // get the bot role
+    const botMember = guild.members.cache.get(dscClient.user.id);
+    if (!botMember) return;
+
+    const botRole = botMember.roles.highest;
+    if (!botRole) return;
+
+    // check if the bot role is higher than the rank role
+    if (rankRole && botRole.comparePositionTo(guild.roles.cache.get(rankRole.roleID)) <= 0) {
       return;
     }
 
