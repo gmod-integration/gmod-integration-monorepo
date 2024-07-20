@@ -36,7 +36,7 @@ const serverSettings = {
     acceptedValues: [true, false],
   },
   show_player_list_status: {
-    defaultValue: true,
+    defaultValue: false,
     acceptedValues: [true, false],
   },
 };
