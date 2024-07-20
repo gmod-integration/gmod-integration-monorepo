@@ -58,6 +58,7 @@ export async function updateRolesToGmod(member, addedRoles, removedRoles) {
       const rolesToRemove = userRoles.filter(
         (role) => syncRoles.some((syncRole) => syncRole.roleID === role.id) && role.id !== roleData?.roleID,
       );
+
       if (rolesToRemove.size > 0) {
         data.removeIDs.push(...rolesToRemove.map((role) => role.id));
         await redis.set(redisKey, JSON.stringify(data), 'EX', 120);
@@ -83,6 +84,11 @@ export async function updateRolesToGmod(member, addedRoles, removedRoles) {
         continue;
       }
 
+      if (data.addIDs.includes(roleData.roleID)) {
+        data.addIDs = data.addIDs.filter((id) => id !== roleData.roleID);
+        await redis.set(redisKey, JSON.stringify(data), 'EX', 120);
+      }
+
       wsSendToServer(server.getID(), {
         method: 'wsPlayerUpdateGroup',
         steamID64: user.getSteamID64(),
@@ -94,11 +100,11 @@ export async function updateRolesToGmod(member, addedRoles, removedRoles) {
     // if no sync role anymore check id a 'user' role is present in sync and add it
     const userRoles = member.roles.cache;
     const syncedRole = userRoles.filter((role) => syncRoles.some((syncRole) => syncRole.roleID === role.id));
-    if (syncedRole.size === 0) {
+    if (syncedRole.size === 0 && data.addIDs.length === 0) {
       const userRole = syncRoles.find((syncRole) => syncRole.userGroup === 'user');
       if (userRole) {
         data.addIDs.push(userRole.roleID);
-        await redis.set(redisKey, JSON.stringify(data), 'EX', 120);
+        await redis.set(redisKey, JSON.stringify(data), 'EX', 2);
         await member.roles.add(userRole.roleID);
       }
     }
