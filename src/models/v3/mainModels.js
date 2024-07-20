@@ -7,6 +7,7 @@ import gm_user from '../../database/schema/gm_user.js';
 import { ActivityType } from 'discord.js';
 import { statusRoutine } from '../../classes/v3/Server.js';
 import { getMainClient } from '../../discord/index.js';
+import { serverConfig } from '../../config/index.js';
 
 export async function getStats() {
   const redisKey = 'stats';
@@ -78,7 +79,7 @@ export async function routineUpdateStatus() {
       return `${stat.server.toLocaleString()} servers`;
     },
     function version() {
-      return `v0.3.8`;
+      return serverConfig.version;
     },
   ];
 
