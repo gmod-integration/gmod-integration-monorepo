@@ -78,7 +78,7 @@ export async function routineUpdateStatus() {
       return `${stat.server.toLocaleString()} servers`;
     },
     function version() {
-      return `v0.3.7`;
+      return `v0.3.8`;
     },
   ];
 
