@@ -246,7 +246,18 @@ export async function getMainClient() {
   }
 }
 
+export async function killGuildClient(guildID) {
+  if (!guildID) return;
+  if (guildID === 'main') return;
+
+  if (clientList.has(guildID)) {
+    await clientList.get(guildID).destroy();
+    clientList.delete(guildID);
+  }
+}
+
 export async function loadGuildBotInstance(guildID) {
+  await killGuildClient(guildID);
   const instanceInfo = await GmodStorePurchases.findOne({
     where: {
       guild: guildID,
@@ -271,11 +282,15 @@ await GmodStorePurchases.findAll({
   }
 });
 
-export async function getGuildClient(guildID) {
+export async function getGuildClient(guildID, forcePresenceOnGuild = true) {
   if (!guildID) return getMainClient();
   const guildClient = clientList.get(guildID);
   if (!guildClient) return getMainClient();
   if (guildClient.readyAt) {
+    if (forcePresenceOnGuild) {
+      const guild = guildClient.guilds.cache.get(guildID);
+      if (!guild) return getMainClient();
+    }
     return guildClient;
   } else {
     await new Promise((resolve) => {
@@ -283,6 +298,10 @@ export async function getGuildClient(guildID) {
         resolve();
       });
     });
+    if (forcePresenceOnGuild) {
+      const guild = guildClient.guilds.cache.get(guildID);
+      if (!guild) return getMainClient();
+    }
     return guildClient;
   }
 }

@@ -5,6 +5,7 @@ import {
   createServerStatusButtons,
   createVerificationMessage,
   deleteAutoRoles,
+  deleteGuildBotInstance,
   deleteGuildLinks,
   deleteGuildServer,
   deleteGuildSetting,
@@ -45,6 +46,7 @@ import {
   getServerSetting,
   getServerSettings,
   getServerStatusButtons,
+  getUserGmodStorePurchases,
   getUserGuildsOwnOrAdmins,
   getVerificationMessage,
   getVoteChannels,
@@ -88,6 +90,7 @@ router.get('/login', asyncHandler(oauthLogin));
 router.use('/:discordID', userValidator);
 router.get('/:discordID', asyncHandler(findCurrentUser));
 router.get('/:discordID/guilds', asyncHandler(getUserGuildsOwnOrAdmins));
+router.get('/:discordID/gmod-store', asyncHandler(getUserGmodStorePurchases));
 router.get('/:discordID/verifications/token', asyncHandler(postUserStartVerification));
 router.get('/:discordID/servers', asyncHandler(getPublicServers));
 
@@ -100,6 +103,7 @@ router.get('/:discordID/guilds/:guildID/bot', asyncHandler(getGuildBotInstance))
 router.put('/:discordID/guilds/:guildID/bot', asyncHandler(putGuildBotInstance));
 router.post('/:discordID/guilds/:guildID/bot', asyncHandler(postGmodPurchase));
 router.patch('/:discordID/guilds/:guildID/bot', asyncHandler(patchGuildBotInstance));
+router.delete('/:discordID/guilds/:guildID/bot', asyncHandler(deleteGuildBotInstance));
 router.get('/:discordID/guilds/:guildID/channels', asyncHandler(findGuildChannels));
 router.get('/:discordID/guilds/:guildID/roles', asyncHandler(getGuildRoles));
 router.get('/:discordID/guilds/:guildID/admins', asyncHandler(getGuildAdmins));

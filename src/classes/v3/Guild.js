@@ -24,7 +24,7 @@ export class Guild {
   }
 
   async getCustomBotClient() {
-    const botCustomClient = await getGuildClient(this.id);
+    const botCustomClient = await getGuildClient(this.id, false);
     if (botCustomClient.user.id === discordConfig.clientID) {
       return new Error('Blocked access to main client');
     }
@@ -33,7 +33,7 @@ export class Guild {
   }
 
   async getBotClientInfo(user) {
-    const botInstance = await getGuildClient(this.id);
+    const botInstance = await getGuildClient(this.id, false);
     const isCustom = botInstance.user.id !== discordConfig.clientID;
 
     const activeGuild = await GmodStorePurchases.findOne({

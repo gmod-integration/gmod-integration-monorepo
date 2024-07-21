@@ -1,15 +1,24 @@
 import { gmLog } from '../../utils/logger.js';
 import gm_guild from '../../database/schema/gm_guild.js';
-import { getGuildBotInstance } from '../../controllers/v3/usersControllers.js';
+import { discordConfig } from '../../config/index.js';
+import { getGuildClient, killGuildClient } from '../index.js';
 
 export default {
   name: 'guildDelete',
   async execute(guild) {
     gmLog('event', `Bot left guild: ${guild.name}`);
 
-    const guildBotInstance = await getGuildBotInstance(guild.id);
-    if (guildBotInstance !== guild.client.user.id) {
+    const guildBotInstance = await getGuildClient(guild.id, false);
+    if (guildBotInstance.user.id !== guild.client.user.id) {
       return;
+    }
+
+    if (guild.client.user.id !== discordConfig.clientID) {
+      const member = await guild.members.fetch(discordConfig.clientID).catch(() => null);
+      await killGuildClient(guild.id);
+      if (member) {
+        return;
+      }
     }
 
     const oldGuild = await gm_guild.findOne({

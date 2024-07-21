@@ -25,6 +25,7 @@ import ServerLuaError from '../../database/schema/ServerLuaError.js';
 import gm_guild from '../../database/schema/gm_guild.js';
 import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
+import { todoControllers } from '../../discord/utils/index.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -1070,4 +1071,29 @@ export async function putGuildBotInstance(req, res) {
 
   await guild.updateBotInstanceInfo({ username, avatar, token });
   return res.send((await guild.getBotClientInfo(req.panelUser.user)) || {});
+}
+
+export async function deleteGuildBotInstance(req, res) {
+  return todoControllers(req, res);
+  // const guild = req.guild;
+  // await guild.deleteBotInstance();
+  // return res.send((await guild.getBotClientInfo(req.panelUser.user)) || {});
+}
+
+export async function getUserGmodStorePurchases(req, res) {
+  const { discordID } = req.params;
+  const user = await getUserFromDiscordID(discordID);
+  if (!user || !user.getSteamID64()) {
+    return res.status(404).send({
+      error: 'User not found or not linked',
+    });
+  }
+
+  const purchases = await GmodStorePurchases.findOne({
+    where: {
+      steamID64: user.getSteamID64(),
+    },
+  });
+
+  return res.send(purchases || {});
 }
