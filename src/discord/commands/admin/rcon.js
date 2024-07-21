@@ -46,13 +46,7 @@ export default {
     }
 
     const player = await server.getServerPlayer(user.getSteamID64());
-    if (!player) {
-      return interaction.reply({
-        content: await getTranslate('rcon_steam_link', lang),
-        ephemeral: true,
-      });
-    }
-    if (!player.isSuperAdmin()) {
+    if (!player || !player.isSuperAdmin()) {
       return interaction.reply({
         content: await getTranslate('rcon_superadmin', lang),
         ephemeral: true,
