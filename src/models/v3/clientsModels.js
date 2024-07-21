@@ -1,7 +1,7 @@
-import { generateToken } from '../../utils/tools.js';
+import { generateToken, getRandomDiscordRelay } from '../../utils/tools.js';
 import fs from 'fs';
-import { serverConfig } from '../../config/index.js';
-import { WebhookClient } from 'discord.js';
+import { discordConfig, serverConfig } from '../../config/index.js';
+import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
 
 export function saveScreenshot(screenshot, captureData, player) {
@@ -34,43 +34,36 @@ export async function sendScreenshotToDiscord(path, filename, player, server) {
     return { skip: true, message: 'Channel not found' };
   }
 
-  // TODO Better code
-  const dscClient = await server.getBotInstance();
+  const embed = new EmbedBuilder()
+    .setImage(`${serverConfig.domain}/screenshots/${filename}`)
+    .setColor('#2b2d31')
+    .setFooter({
+      text: `${player.steamID64} - ${server.getName()}`,
+    })
+    .setTimestamp();
+  console.log('sendScreenshotToDiscord -> embed', embed);
 
-  const dscGuild = dscClient.guilds.cache.get(channelInfo.guild);
-  if (!dscGuild) {
-    return { skip: true, message: 'Guild not found' };
-  }
+  const webhookRelay = await fetch(getRandomDiscordRelay(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + discordConfig.barerTokenRelay,
+    },
+    body: JSON.stringify({
+      webhookID: channelInfo.webhook,
+      webhookToken: channelInfo.token,
+      data: {
+        username: player.name,
+        avatarURL: await getSteamUserAvatarLarge(player.steamID64),
+        embeds: [embed],
+      },
+    }),
+  });
 
-  const dscChannel = dscGuild.channels.cache.get(channelInfo.channel);
-  if (!dscChannel) {
-    return { skip: true, message: 'Channel not found' };
-  }
-
-  // get channel webhook
-  const webhooks = await dscChannel.fetchWebhooks();
-  const webhook = webhooks.find((w) => w.id === channelInfo.id);
-  if (!webhook) {
+  if (!webhookRelay.ok) {
+    await channelInfo.destroy();
     return { skip: true, message: 'Webhook not found' };
   }
-
-  const webhookClient = new WebhookClient({ id: webhook.id, token: webhook.token });
-  await webhookClient.send({
-    username: player.name,
-    avatarURL: await getSteamUserAvatarLarge(player.steamID64),
-    embeds: [
-      {
-        image: {
-          url: `${serverConfig.domain}/screenshots/${filename}`,
-          proxy_url: `${serverConfig.domain}/screenshots/${filename}`,
-        },
-        content: `${serverConfig.domain}/screenshots/${filename}`,
-        footer: {
-          text: `SteamID64: ${player.steamID64} - Server: ${server.name}`,
-        },
-      },
-    ],
-  });
 
   return { success: true };
 }
