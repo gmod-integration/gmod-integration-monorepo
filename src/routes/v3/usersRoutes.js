@@ -11,6 +11,7 @@ import {
   deleteGuildSetting,
   deleteGuildVerificationsRoles,
   deleteLogsChannel,
+  deleteServerPseudo,
   deleteServerRoles,
   deleteServerScreenshots,
   deleteServerStatus,
@@ -42,6 +43,7 @@ import {
   getServerErrors,
   getServerLogs,
   getServerPlayers,
+  getServerPseudo,
   getServerRoles,
   getServerSetting,
   getServerSettings,
@@ -58,6 +60,7 @@ import {
   postGuildServerToken,
   postGuildSetting,
   postLogsChannel,
+  postServerPseudo,
   postServerRoles,
   postServerScreenshots,
   postServerStatus,
@@ -70,6 +73,7 @@ import {
   putGuildSetting,
   putGuildVerificationsRoles,
   putPlayerBypassMaintenance,
+  putServerPseudo,
   putServerRoles,
   putServerSetting,
   putServerStatusButtons,
@@ -169,6 +173,11 @@ router.get('/:discordID/guilds/:guildID/servers/:serverID/errors', asyncHandler(
 router.get('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(getVoteChannels));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(postVoteChannels));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(deleteVoteChannels));
+// Pseudo
+router.get('/:discordID/guilds/:guildID/servers/:serverID/pseudo', asyncHandler(getServerPseudo));
+router.post('/:discordID/guilds/:guildID/servers/:serverID/pseudo', asyncHandler(postServerPseudo));
+router.put('/:discordID/guilds/:guildID/servers/:serverID/pseudo/:roleID', asyncHandler(putServerPseudo));
+router.delete('/:discordID/guilds/:guildID/servers/:serverID/pseudo/:roleID', asyncHandler(deleteServerPseudo));
 // Sync Chat
 router.get('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(findServerSyncChat));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(postServerSyncChat));

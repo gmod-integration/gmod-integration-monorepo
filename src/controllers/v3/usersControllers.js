@@ -26,6 +26,7 @@ import gm_guild from '../../database/schema/gm_guild.js';
 import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 import { todoControllers } from '../../discord/utils/index.js';
+import ServerPseudo from '../../database/schema/ServerPseudo.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -1096,4 +1097,68 @@ export async function getUserGmodStorePurchases(req, res) {
   });
 
   return res.send(purchases || {});
+}
+
+export async function getServerPseudo(req, res) {
+  const server = req.server;
+  return res.send((await ServerPseudo.findAll({ where: { serverID: server.id } })) || []);
+}
+
+export async function postServerPseudo(req, res) {
+  const { serverID } = req.params;
+
+  const pseudo = await ServerPseudo.create({
+    serverID,
+  });
+
+  return res.send(pseudo);
+}
+
+export async function putServerPseudo(req, res) {
+  const { serverID, roleID } = req.params;
+
+  const pseudo = await ServerPseudo.findOne({
+    where: {
+      serverID,
+      id: roleID,
+    },
+  });
+
+  if (!pseudo) {
+    return res.status(404).send({
+      error: 'Pseudo not found',
+    });
+  }
+
+  const { role, name, prefix, enabled } = req.body;
+
+  pseudo.name = name !== undefined ? name : pseudo.name;
+  pseudo.prefix = prefix !== undefined ? prefix : pseudo.prefix;
+  pseudo.role = role !== undefined ? role : pseudo.role;
+  pseudo.enabled = enabled !== undefined ? enabled : pseudo.enabled;
+
+  pseudo.changed('updatedAt', true);
+  await pseudo.save();
+
+  return res.send(pseudo);
+}
+
+export async function deleteServerPseudo(req, res) {
+  const { serverID, roleID } = req.params;
+
+  const pseudo = await ServerPseudo.findOne({
+    where: {
+      serverID,
+      id: roleID,
+    },
+  });
+
+  if (!pseudo) {
+    return res.status(404).send({
+      error: 'Pseudo not found',
+    });
+  }
+
+  await pseudo.destroy();
+  return res.send(pseudo);
 }

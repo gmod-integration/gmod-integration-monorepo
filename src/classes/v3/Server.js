@@ -35,6 +35,14 @@ const serverSettings = {
     defaultValue: false,
     acceptedValues: [true, false],
   },
+  sync_pseudo_direction: {
+    defaultValue: 'gmod-to-discord',
+    acceptedValues: ['disable', 'both', 'gmod-to-discord', 'discord-to-gmod'],
+  },
+  pseudoFormat: {
+    defaultValue: '{rolePrefix} - {plyName}',
+    freeValues: true,
+  },
   show_player_list_status: {
     defaultValue: false,
     acceptedValues: [true, false],
@@ -106,7 +114,7 @@ export class Server extends BaseClass {
       throw new Error('Setting not found');
     }
 
-    if (!serverSettings[setting].acceptedValues.includes(value)) {
+    if (!serverSettings.freeValues && !serverSettings[setting].acceptedValues.includes(value)) {
       throw new Error('Invalid value');
     }
 

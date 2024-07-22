@@ -1,4 +1,14 @@
-import { ActivityType, Client, Collection, Events, GatewayIntentBits, Partials, REST, Routes } from 'discord.js';
+import {
+  ActivityType,
+  Client,
+  Collection,
+  Events,
+  GatewayIntentBits,
+  Partials,
+  PermissionsBitField,
+  REST,
+  Routes,
+} from 'discord.js';
 import { gmLog } from '../utils/logger.js';
 import { discordConfig } from '../config/index.js';
 import GmodStorePurchases from '../database/schema/GmodStorePurchases.js';
@@ -9,6 +19,9 @@ import path, { join } from 'path';
 import { readdirSync } from 'fs';
 import { routineStatusRefresh, routineUpdateStatus, updateGuildsInDB } from '../models/v3/mainModels.js';
 import { readdir } from 'fs/promises';
+import { getUserFromSteamID64 } from '../classes/v3/User.js';
+import ServerPseudo from '../database/schema/ServerPseudo.js';
+import redis from '../redis/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -306,35 +319,52 @@ export async function getGuildClient(guildID, forcePresenceOnGuild = true) {
   }
 }
 
-export function updateGuildUserPseudo(guildID, userID, pseudo) {
-  return new Promise(async (resolve, reject) => {
-    if (!guildID || !userID || !pseudo) {
-      return reject({
-        error: 'missing_arguments',
-        args: {
-          guildID: !!guildID,
-          userID: !!userID,
-          pseudo: !!pseudo,
-        },
-      });
-    }
+export async function updateGuildUserPseudo(server, player) {
+  try {
+    const pseudoDirection = await server.getSetting('sync_pseudo_direction');
+    if (pseudoDirection !== 'both' && pseudoDirection !== 'gmod-to-discord') return;
 
-    const client = await getMainClient();
+    const pseudoFormat = await server.getSetting('pseudoFormat');
+    if (!pseudoFormat) return;
 
-    const guild = client.guilds.cache.get(guildID);
-    if (!guild) {
-      return reject('Guild not found');
-    }
+    const rolesFormat = await ServerPseudo.findOne({
+      where: {
+        serverID: server.getID(),
+        role: player.userGroup,
+        enabled: true,
+      },
+    });
 
-    // Get the member from the guild
-    const member = guild.members.cache.get(userID);
-    if (!member) {
-      return reject('User not found');
-    }
+    let newPseudo = pseudoFormat
+      .replace(/{plyName}/g, player.name)
+      .replace(/{plySteamID64}/g, player.steamID64)
+      .replace(/{rolePrefix}/g, rolesFormat ? rolesFormat.prefix : '')
+      .replace(/{roleName}/g, rolesFormat ? rolesFormat.name : '');
 
-    // Verify if the bot has the permission to change the nickname
-    if (member.nickname === pseudo) {
-      return resolve();
-    }
-  });
+    const user = await getUserFromSteamID64(player.steamID64);
+    if (!user || !user.getDiscordID()) return;
+
+    const dscClient = await getGuildClient(server.getGuildID());
+
+    const guild = dscClient.guilds.cache.get(server.getGuildID());
+    if (!guild) return;
+
+    if (guild.ownerId === user.getDiscordID()) return;
+
+    const member = await guild.members.fetch(user.getDiscordID());
+    if (!member) return;
+
+    // check if the bot has the permission to change the nickname
+    const botMember = await guild.members.fetch(dscClient.user.id);
+    if (!botMember) return;
+    if (!botMember.permissions.has(PermissionsBitField.ManageNickname)) return;
+    if (botMember.roles.highest.comparePositionTo(member.roles.highest) <= 0) return;
+
+    await member.setNickname(newPseudo);
+
+    const redisKey = `sync-pseudo:gmod:server:${server.id}:user:${user.getSteamID64()}`;
+    await redis.set(redisKey, newPseudo, 'EX', 120);
+  } catch (error) {
+    console.error(error);
+  }
 }

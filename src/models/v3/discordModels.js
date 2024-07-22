@@ -14,7 +14,10 @@ import gm_guild_auto_roles from '../../database/schema/gm_guild_auto_roles.js';
 import { wsSendToServer } from '../../websockets/index.js';
 import redis from '../../redis/index.js';
 
-export async function updateRolesToGmod(member, addedRoles, removedRoles) {
+export async function updateRolesToGmod(member, oldMember, newMember) {
+  const addedRoles = newMember.roles.cache.filter((role) => !oldMember.roles.cache.has(role.id));
+  const removedRoles = oldMember.roles.cache.filter((role) => !newMember.roles.cache.has(role.id));
+
   const servers = await getServersFromDiscordGuildID(member.guild.id);
   if (!servers || servers.length === 0) {
     return;
@@ -413,4 +416,28 @@ export async function addUserToGuild(guildID, userID, userToken) {
 export async function getDiscordUserFromID(discordID) {
   const client = await getMainClient();
   return client.users.fetch(discordID);
+}
+
+export async function updatePseudoToGmod(member, oldMember, newMember) {
+  const servers = await getServersFromDiscordGuildID(member.guild.id);
+  if (!servers || servers.length === 0) return;
+
+  const user = await getUserFromDiscordID(member.id);
+  if (!user || !user.getSteamID64()) return;
+
+  for (const server of servers) {
+    const pseudoDirection = await server.getSetting('sync_pseudo_direction');
+    if (pseudoDirection !== 'both' && pseudoDirection !== 'discord-to-gmod') return;
+
+    const redisKey = `sync-pseudo:gmod:server:${server.id}:user:${user.getSteamID64()}`;
+    const redisData = await redis.get(redisKey);
+    if (redisData === newMember.nickname || redisData === newMember.user.username) return;
+
+    const pseudo = newMember.nickname || newMember.user.username;
+    wsSendToServer(server.getID(), {
+      method: 'wsSyncName',
+      steamID64: user.getSteamID64(),
+      name: pseudo,
+    });
+  }
 }

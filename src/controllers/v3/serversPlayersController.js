@@ -108,7 +108,7 @@ export async function playerChangeName(req, res) {
   }
 
   await logServer(server, 'player_change_name', { ply, oldName, newName });
-  await updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), newName);
+  await updateGuildUserPseudo(server, ply);
   return res.status(200).json({ success: true });
 }
 
@@ -178,7 +178,7 @@ export async function playerDisconnect(req, res) {
   await ply.saveServerStat(server.getID());
   await ply.saveServerStatSession(server.getID());
   await updatePlayerUserGroup(server.getID(), ply.steamID64, ply.userGroup);
-  updateGuildUserPseudo(server.getGuildID(), await ply.getDiscordID(), ply.name).catch(() => {});
+  await updateGuildUserPseudo(server, ply);
   return res.status(200).json({ success: true });
 }
 
