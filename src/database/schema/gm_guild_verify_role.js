@@ -35,7 +35,7 @@ gm_guild_verify_role.init(
     enabled: {
       type: DataTypes.BOOLEAN,
       allowNull: false,
-      defaultValue: true,
+      defaultValue: false,
     },
   },
   {
