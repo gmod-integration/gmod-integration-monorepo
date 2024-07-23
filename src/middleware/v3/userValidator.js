@@ -4,10 +4,22 @@ import { getGuildClient } from '../../discord/index.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
 import { Guild } from '../../classes/v3/Guild.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
+import redis from '../../redis/index.js';
 
 export async function userValidator(req, res, next) {
   const { discordID } = req.params;
   const { authorization } = req.headers;
+
+  const redisKey = `user:rate_limit:${discordID}`;
+  const stats = await redis.get(redisKey);
+  if (stats) {
+    if (stats >= 20) {
+      console.log('Rate limit exceeded for clientID64:', discordID);
+      return res.status(429).json({ error: 'rate_limit_exceeded' });
+    }
+    await redis.incr(redisKey);
+  }
+  await redis.set(redisKey, stats, 'EX', 3);
 
   if (badArgument([discordID])) {
     return res.status(400).json({

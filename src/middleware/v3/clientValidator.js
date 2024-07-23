@@ -1,10 +1,22 @@
 import { badArgument } from '../../utils/tools.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
 import crypto from 'crypto';
+import redis from '../../redis/index.js';
 
-export default (req, res, next) => {
+export default async (req, res, next) => {
   const { serverID, clientID64 } = req.params;
   const { authorization } = req.headers;
+
+  const redisKey = `client:rate_limit:${clientID64}`;
+  const stats = await redis.get(redisKey);
+  if (stats) {
+    if (stats >= 2) {
+      console.log('Rate limit exceeded for clientID64:', clientID64);
+      return res.status(429).json({ error: 'rate_limit_exceeded' });
+    }
+    await redis.incr(redisKey);
+  }
+  await redis.set(redisKey, stats, 'EX', 3);
 
   if (badArgument([serverID, authorization, clientID64])) {
     return res.status(400).json({
@@ -18,7 +30,7 @@ export default (req, res, next) => {
   }
 
   if (!authorization.startsWith('Bearer ')) return res.status(400).json({ error: 'invalid_authorization' });
-  
+
   const token = authorization.split(' ')[1];
   const userID = authorization.split(' ')[2];
 
