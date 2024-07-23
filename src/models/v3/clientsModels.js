@@ -5,7 +5,7 @@ import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
 import { getMainClient } from '../../discord/index.js';
 
-export function saveScreenshot(screenshot, captureData, player) {
+export function saveScreenshot(screenshot, captureData, player, server) {
   return new Promise(async (resolve, reject) => {
     const format = captureData.format || 'jpeg';
     const dateFormatted = new Date().toISOString().replace(/T/g, '_').replace(/\..+/, '').replace(/:/g, '-');
@@ -33,7 +33,7 @@ export function saveScreenshot(screenshot, captureData, player) {
     } else {
       const message = await channel.send({
         files: [buffer],
-        content: `Server: ${player.serverName} - Player: ${player.name} - SteamID64: ${player.steamID64}`,
+        content: `Server: ${server.getName()} - Player: ${player.name} - SteamID64: ${player.steamID64}`,
       });
       url = message.attachments.first().url;
     }
