@@ -14,7 +14,7 @@ export async function userValidator(req, res, next) {
   const stats = await redis.get(redisKey);
   if (stats) {
     if (stats >= 20) {
-      console.log('Rate limit exceeded for clientID64:', discordID);
+      console.log('Rate limit exceeded for user:', discordID);
       return res.status(429).json({ error: 'rate_limit_exceeded' });
     }
     await redis.incr(redisKey);
