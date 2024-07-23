@@ -16,7 +16,7 @@ gm_link.init(
       primaryKey: true,
     },
     url: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT,
       allowNull: false,
       defaultValue: 'https://example.com',
     },

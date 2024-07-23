@@ -16,6 +16,7 @@ Users.init(
     steamID: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: '',
     },
     name: {
       type: DataTypes.STRING,
