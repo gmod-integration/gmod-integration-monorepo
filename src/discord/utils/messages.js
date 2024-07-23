@@ -549,7 +549,7 @@ export async function getUserStatisticMessage(user, server, guild, steamid) {
         },
         {
           name: '📅⠀' + (await getTranslate('first_join', lang)),
-          value: userData.first_join ? dateToDiscordTimestamp(userData.first_join) : 'Never',
+          value: userData.createdAt ? dateToDiscordTimestamp(userData.createdAt) : 'Never',
           inline: true,
         },
         {
@@ -559,7 +559,7 @@ export async function getUserStatisticMessage(user, server, guild, steamid) {
         },
         {
           name: '📅⠀' + (await getTranslate('last_join', lang)),
-          value: userData.last_connect ? dateToDiscordTimestamp(userData.last_connect) : 'Never',
+          value: userData.updatedAt ? dateToDiscordTimestamp(userData.updatedAt) : 'Never',
           inline: true,
         },
         {
