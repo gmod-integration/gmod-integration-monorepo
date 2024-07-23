@@ -15,16 +15,13 @@ GmodStorePurchases.init(
     },
     guild: {
       type: DataTypes.STRING,
-      references: {
-        model: 'gm_guild',
-        key: 'guild',
-      },
-      onUpdate: 'CASCADE',
-      onDelete: 'SET NULL',
+      allowNull: false,
+      defaultValue: '',
     },
     token: {
       type: DataTypes.STRING,
       allowNull: false,
+      defaultValue: '',
     },
     revoke: {
       type: DataTypes.BOOLEAN,
