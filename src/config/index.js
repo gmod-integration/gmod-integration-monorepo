@@ -18,6 +18,7 @@ export const serverConfig = {
   bodyLimit: '10mb',
   sentryDSN: process.env.SENTRY_DSN,
   domain: process.env.DOMAIN_URL,
+  screenshotChannel: process.env.SCREENSHOTS_CHANNEL_ID,
   internWebsocketToken: process.env.INTERN_WEBSOCKET_TOKEN,
   debug: process.env.DEBUG,
   websiteUrl: process.env.WEBSITE_URL,

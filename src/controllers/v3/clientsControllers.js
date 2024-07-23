@@ -17,7 +17,7 @@ export async function uploadScreenshot(req, res) {
     });
   }
 
-  const { path, filename } = await saveScreenshot(screenshot, captureData, player);
-  await sendScreenshotToDiscord(path, filename, player, server);
+  const { url, filename } = await saveScreenshot(screenshot, captureData, player);
+  await sendScreenshotToDiscord(url, filename, player, server);
   res.status(200).json({ success: true });
 }

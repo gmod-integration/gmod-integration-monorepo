@@ -3,6 +3,7 @@ import fs from 'fs';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
+import { getMainClient } from '../../discord/index.js';
 
 export function saveScreenshot(screenshot, captureData, player) {
   return new Promise(async (resolve, reject) => {
@@ -10,38 +11,53 @@ export function saveScreenshot(screenshot, captureData, player) {
     const dateFormatted = new Date().toISOString().replace(/T/g, '_').replace(/\..+/, '').replace(/:/g, '-');
     const filename = `${dateFormatted}_${player.steamID64}_${generateToken(8)}.${format}`;
 
-    const path = `./screenshots/${filename}`;
+    // because of a bug I need to first send the screenshot to the discord
+    const dscClient = await getMainClient();
+    const channel = await dscClient.channels.fetch(serverConfig.screenshotChannel);
 
     const base64Data = screenshot.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
 
-    fs.writeFile(path, buffer, (err) => {
-      if (err) {
-        reject(err);
-      }
+    let url;
 
-      resolve({
-        path,
-        filename,
+    if (!channel) {
+      const path = `./screenshots/${filename}`;
+
+      fs.writeFile(path, buffer, (err) => {
+        if (err) {
+          reject(err);
+        }
       });
+
+      url = `${serverConfig.domain}/screenshots/${filename}`;
+    } else {
+      const message = await channel.send({
+        files: [buffer],
+        content: `Server: ${player.serverName} - Player: ${player.name} - SteamID64: ${player.steamID64}`,
+      });
+      url = message.attachments.first().url;
+    }
+
+    resolve({
+      url,
+      filename,
     });
   });
 }
 
-export async function sendScreenshotToDiscord(path, filename, player, server) {
+export async function sendScreenshotToDiscord(url, filename, player, server) {
   const channelInfo = await server.getScreenshotsChannel();
   if (!channelInfo) {
     return { skip: true, message: 'Channel not found' };
   }
 
   const embed = new EmbedBuilder()
-    .setImage(`${serverConfig.domain}/screenshots/${filename}`)
+    .setImage(url)
     .setColor('#2b2d31')
     .setFooter({
       text: `${player.steamID64} - ${server.getName()}`,
     })
     .setTimestamp();
-  console.log('sendScreenshotToDiscord -> embed', embed);
 
   const webhookRelay = await fetch(getRandomDiscordRelay(), {
     method: 'POST',
