@@ -7,6 +7,7 @@ import {
 } from '../../models/v3/serversPlayersModels.js';
 import { updateGuildUserPseudo } from '../../discord/index.js';
 import { logServer } from '../../database/schema/ServerLogs.js';
+import ServerWarn from '../../database/schema/ServerWarn.js';
 
 export async function getPlayer(req, res) {
   const { steamID64 } = req.params;
@@ -327,5 +328,29 @@ export async function serverStop(req, res) {
   const server = req.server;
 
   await logServer(server, 'server_stop');
+  return res.status(200).json({ success: true });
+}
+
+export async function serverPlayerWarned(req, res) {
+  const server = req.server;
+  const { player, reason } = req.body;
+
+  if (badArgument([player, reason])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+        reason: !!reason,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server, 'player_warned', { ply, reason });
+  await ServerWarn.create({ serverID: server.getID(), steamID64: ply.steamID64, reason });
   return res.status(200).json({ success: true });
 }

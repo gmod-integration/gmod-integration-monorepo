@@ -13,10 +13,12 @@ import {
   getLeaderboardOptions,
   saveLeaderboardOptions,
 } from '../../models/v3/leaderboardModels.js';
+import { handleWarnButton } from '../../models/v3/warnModels.js';
 
 export default {
   name: 'interactionCreate',
   async execute(interaction) {
+    await handleWarnButton(interaction);
     if (!interaction.isButton()) return;
     if (interaction.user.bot) return;
 
