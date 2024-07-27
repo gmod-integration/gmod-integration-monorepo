@@ -198,5 +198,11 @@
   "attacker": "Attacker",
   "damage": "Damage",
   "health": "Health",
-  "player_list": "Connected Players"
+  "player_list": "Connected Players",
+  "warn_for_user": "Warn of {1} on {2}",
+  "total_warns": "Total Warns",
+  "pages": "Pages",
+  "date": "Date",
+  "reason": "Reason",
+  "no_reason": "No Reason"
 }

@@ -184,5 +184,11 @@
   "attacker": "Angreifer",
   "damage": "Schaden",
   "health": "Gesundheit",
-  "player_list": "Verbundene Spieler"
+  "player_list": "Verbundene Spieler",
+  "total_warns": "Gesamtwarnungen",
+  "pages": "Seiten",
+  "date": "Datum",
+  "reason": "Grund",
+  "no_reason": "Kein Grund",
+  "warn_for_user": "Warnung von {1} auf {2}"
 }
