@@ -17,6 +17,7 @@ import {
   playerSpawn,
   playerSpawnObject,
   playerWarn,
+  serverImportWarns,
   serverStart,
   serverStop,
 } from '../../controllers/v3/serversPlayersController.js';
@@ -32,9 +33,10 @@ router.get('/:serverID/public-token', asyncHandler(getPublicToken));
 router.post('/:serverID/errors', asyncHandler(reportError));
 router.post('/:serverID/start', asyncHandler(serverStart));
 router.post('/:serverID/stop', asyncHandler(serverStop));
+router.post('/:serverID/warns', asyncHandler(serverImportWarns));
 router.get('/:serverID/players/:steamID64', asyncHandler(getPlayer));
 router.post('/:serverID/players/:steamID64/say', asyncHandler(playerSay));
-router.post('/:serverID/players/:steamID64/warn', asyncHandler(playerWarn));
+router.post('/:serverID/players/:steamID64/warns', asyncHandler(playerWarn));
 router.post('/:serverID/players/:steamID64/death', asyncHandler(playerDeath));
 router.post('/:serverID/players/:steamID64/initial-spawn', asyncHandler(playerInitialSpawn));
 router.post('/:serverID/players/:steamID64/hurt', asyncHandler(playerHurt));
