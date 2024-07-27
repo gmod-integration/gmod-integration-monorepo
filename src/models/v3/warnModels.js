@@ -4,7 +4,14 @@ import ServerWarn from '../../database/schema/ServerWarn.js';
 import ServerWarnOptions from '../../database/schema/ServerWarnOptions.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
 
-export async function getServerUserWarn(serverID, steamID64, limit = 10, offset = 0, order = 'DESC') {
+export async function getServerUserWarn(serverID, steamID64, limit = 5, offset = 0, order = 'DESC') {
+  const total = await ServerWarn.count({
+    where: {
+      serverID: serverID,
+      userSteamID64: steamID64,
+    },
+  });
+
   const warnStat = await ServerWarn.findAll({
     where: {
       serverID: serverID,
@@ -22,7 +29,7 @@ export async function getServerUserWarn(serverID, steamID64, limit = 10, offset 
       offset: offset,
       order: order,
     },
-    total: warnStat.length,
+    total,
   };
 }
 
@@ -59,10 +66,7 @@ export async function saveWarnListOptions(msgID, serverID, steamID64, options) {
 export async function getWarnMessageEmbed(server, steamID64, lang, limit, offset, order) {
   const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
-    .setTitle(await getTranslate('warn_for_user', lang, [server.getName()]))
-    .setFooter({
-      text: steamID64 + ' - ' + server.getName(),
-    })
+    .setTitle(await getTranslate('warn_for_user', lang, [steamID64, server.getName()]))
     .setTimestamp();
 
   const warnList = await getServerUserWarn(server.getID(), steamID64, limit, offset, order);
@@ -76,7 +80,9 @@ export async function getWarnMessageEmbed(server, steamID64, lang, limit, offset
   totalPages = totalPages < 1 ? 1 : totalPages;
 
   if (warnList) {
-    embed.setDescription(await getTranslate('pages', lang, [actualPage + '/' + totalPages]));
+    embed.setDescription(
+      `${await getTranslate('total_warns', lang)}: **${warnList.total}** , ${await getTranslate('pages', lang)}: **${actualPage} / ${totalPages}**`,
+    );
     embed.addFields(
       {
         name: await getTranslate('date', lang),

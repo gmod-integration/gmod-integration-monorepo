@@ -331,26 +331,27 @@ export async function serverStop(req, res) {
   return res.status(200).json({ success: true });
 }
 
-export async function serverPlayerWarned(req, res) {
+export async function playerWarn(req, res) {
   const server = req.server;
-  const { player, reason } = req.body;
+  const { steamID64 } = req.params;
+  const { admin, player, adminSteamID64, reason } = req.body;
 
-  if (badArgument([player, reason])) {
+  if (!admin && !adminSteamID64) {
     return res.status(400).json({
       error: 'missing_arguments',
-      args: {
-        player: !!player,
-        reason: !!reason,
-      },
+      args: { admin: !!admin, adminSteamID64: !!adminSteamID64 },
     });
   }
 
-  const ply = new PlayerGmod(player);
-  if (!ply.isValid()) {
-    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
-  }
+  const plyAdmin = new PlayerGmod(admin);
+  const plyUser = new PlayerGmod(player);
 
-  await logServer(server, 'player_warned', { ply, reason });
-  await ServerWarn.create({ serverID: server.getID(), steamID64: ply.steamID64, reason });
-  return res.status(200).json({ success: true });
+  await logServer(server, 'player_warned', { plyAdmin, plyUser, steamID64, adminSteamID64, reason });
+  const warn = await ServerWarn.create({
+    serverID: server.getID(),
+    userSteamID64: plyUser ? plyUser.steamID64 : steamID64,
+    adminSteamID64: plyAdmin ? plyAdmin.steamID64 : adminSteamID64,
+    reason,
+  });
+  return res.status(200).json(warn);
 }
