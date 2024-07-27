@@ -143,8 +143,7 @@ export async function getWarnMessageEmbed(server, steamID64, lang, limit, offset
   };
 }
 
-// handle warn_*,
-export async function handleWarnButton(interaction) {
+export async function handleWarnInteraction(interaction) {
   if (!interaction.isButton()) return;
   if (interaction.user.bot) return;
   if (!interaction.guild) return;
