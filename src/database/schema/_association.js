@@ -1,3 +1,5 @@
+// Base
+import './gm_user.js';
 // Steam
 import gm_user_steam from './gm_user_steam.js';
 // Guild
