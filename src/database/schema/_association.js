@@ -170,11 +170,11 @@ gm_server_status.belongsTo(gm_server, {
 
 // gm_status_button
 gm_server.hasMany(gm_status_button, {
-  foreignKey: 'serverID',
+  foreignKey: 'server',
   as: 'serverStatusButtons',
 });
 gm_status_button.belongsTo(gm_server, {
-  foreignKey: 'serverID',
+  foreignKey: 'server',
   as: 'statusButtonServer',
 });
 
