@@ -241,3 +241,11 @@ export async function replyNeedPremium(interaction) {
       console.error(err);
     });
 }
+
+export async function handlePremiumInteraction(interaction) {
+  if (!interaction.isButton()) return;
+  if (interaction.user.bot) return;
+  if (!interaction.guild) return;
+  if (interaction.customId !== 'premium') return;
+  return replyNeedPremium(interaction);
+}

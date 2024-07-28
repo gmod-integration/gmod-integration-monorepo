@@ -12,6 +12,18 @@ import './websockets/index.js';
 import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
 import promBundle from 'express-prom-bundle';
+import './database/schema/_association.js';
+import sequelize from './database/sequelize.js';
+
+// Database
+await sequelize
+  .sync({ alter: true })
+  .then(() => {
+    gmLog('sequelize', 'Tables created or updated');
+  })
+  .catch((error) => {
+    console.error('Error synchronizing tables:', error);
+  });
 
 // Express
 const app = express();
@@ -19,8 +31,6 @@ app.set('trust proxy', true);
 
 // CORS
 app.use(cors(corsMiddleware));
-
-// Helmet
 
 // Helmet
 const whiteList = [

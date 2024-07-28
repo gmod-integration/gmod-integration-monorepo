@@ -11,6 +11,12 @@ PremiumGuild.init(
     guildID: {
       type: DataTypes.STRING,
       primaryKey: true,
+      references: {
+        model: 'gm_guild',
+        key: 'guild',
+      },
+      onUpdate: 'CASCADE',
+      onDelete: 'CASCADE',
     },
     transaction: {
       type: DataTypes.TEXT,

@@ -147,5 +147,11 @@
   "attacker": "Attaquant",
   "damage": "Dégâts",
   "health": "Santé",
-  "player_list": "Joueurs Connectés"
+  "player_list": "Joueurs Connectés",
+  "total_warns": "Avertissements totaux",
+  "pages": "Pages",
+  "date": "Date",
+  "reason": "Raison",
+  "no_reason": "Pas de raison",
+  "warn_for_user": "Avertissement de {1} sur {2}"
 }

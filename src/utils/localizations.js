@@ -23,11 +23,11 @@ function getDefaultTrad(key, options) {
       console.error(
         `Missing key ${key} in default language` + (options ? ` with the options ${options.join(', ')}` : ''),
       );
-      return key;
+      return key + (options ? ` - ${options.join(', ')}` : '');
     }
   } catch (error) {
     console.error(`Error in getDefaultTrad: ${error.message}`);
-    return key;
+    return key + (options ? ` - ${options.join(', ')}` : '');
   }
 }
 

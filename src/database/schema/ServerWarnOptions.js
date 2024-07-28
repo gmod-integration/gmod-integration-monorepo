@@ -2,10 +2,15 @@ import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 
-class ServerPlayerSession extends Model {}
+class ServerWarnOptions extends Model {}
 
-ServerPlayerSession.init(
+ServerWarnOptions.init(
   {
+    msgID: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      primaryKey: true,
+    },
     serverID: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -19,48 +24,39 @@ ServerPlayerSession.init(
     steamID64: {
       type: DataTypes.STRING,
       allowNull: false,
-      references: {
-        model: 'gm_user_steam',
-        key: 'steam_id',
-      },
-      onUpdate: 'CASCADE',
-      onDelete: 'CASCADE',
+      primaryKey: true,
     },
-    time: {
+    total: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 0,
     },
-    kills: {
+    limit: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 0,
     },
-    deaths: {
+    offset: {
       type: DataTypes.INTEGER,
       allowNull: false,
-      defaultValue: 0,
     },
-    customValues: {
-      type: DataTypes.JSON,
+    order: {
+      type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: {},
     },
   },
   {
     sequelize,
-    modelName: 'gm_server_stat_session',
-    tableName: 'gm_server_stat_session',
+    modelName: 'gm_server_warn_options',
+    tableName: 'gm_server_warn_options',
     timestamps: true,
   },
 );
 
-ServerPlayerSession.sync({ alter: true })
+ServerWarnOptions.sync({ alter: true })
   .then(() => {
-    gmLog('sequelize', 'Table created: ServerPlayerSession');
+    gmLog('sequelize', 'Table created: ServerWarnOptions');
   })
   .catch((error) => {
-    console.error('Error creating ServerPlayerSession table:', error);
+    console.error('Error creating link table:', error);
   });
 
-export default ServerPlayerSession;
+export default ServerWarnOptions;

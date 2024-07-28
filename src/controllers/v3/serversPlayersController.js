@@ -7,6 +7,7 @@ import {
 } from '../../models/v3/serversPlayersModels.js';
 import { updateGuildUserPseudo } from '../../discord/index.js';
 import { logServer } from '../../database/schema/ServerLogs.js';
+import ServerWarn from '../../database/schema/ServerWarn.js';
 
 export async function getPlayer(req, res) {
   const { steamID64 } = req.params;
@@ -327,5 +328,88 @@ export async function serverStop(req, res) {
   const server = req.server;
 
   await logServer(server, 'server_stop');
+  return res.status(200).json({ success: true });
+}
+
+export async function playerWarn(req, res) {
+  const server = req.server;
+  const { steamID64 } = req.params;
+  const { admin, player, adminSteamID64, reason, date } = req.body;
+
+  if (!admin && !adminSteamID64) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: { admin: !!admin, adminSteamID64: !!adminSteamID64 },
+    });
+  }
+
+  let validDate = date;
+  if (typeof date === 'string' && !isNaN(date)) {
+    validDate = new Date(date * 1000);
+  } else {
+    validDate = new Date(date * 1000);
+  }
+
+  const plyAdmin = new PlayerGmod(admin);
+  const plyUser = new PlayerGmod(player);
+
+  await logServer(server, 'player_warned', { plyAdmin, plyUser, steamID64, adminSteamID64, reason });
+  const warn = await ServerWarn.create({
+    serverID: server.getID(),
+    userSteamID64: (plyUser && plyUser.steamID64) || steamID64,
+    adminSteamID64: (plyAdmin && plyAdmin.steamID64) || adminSteamID64,
+    reason,
+    createdAt: validDate,
+  });
+  return res.status(200).json(warn);
+}
+
+export async function serverImportWarns(req, res) {
+  const server = req.server;
+  const { warns } = req.body;
+
+  if (!warns) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: { warns: !!warns },
+    });
+  }
+
+  for (const warn of warns) {
+    let { adminSteamID64, playerSteamID64, date, reason } = warn;
+    if (!adminSteamID64 || !playerSteamID64 || !date) {
+      continue;
+    }
+
+    if (typeof date === 'string' && !isNaN(date)) {
+      date = new Date(date * 1000);
+    } else {
+      date = new Date(date * 1000);
+    }
+    reason = reason || 'No reason provided';
+
+    // only add if not already in the database (based on date + steamID64)
+    const warnExists = await ServerWarn.findOne({
+      where: {
+        userSteamID64: playerSteamID64,
+        adminSteamID64,
+        reason,
+        createdAt: date,
+      },
+    });
+
+    if (warnExists) {
+      continue;
+    }
+
+    await ServerWarn.create({
+      serverID: server.getID(),
+      userSteamID64: playerSteamID64,
+      adminSteamID64,
+      reason,
+      createdAt: date,
+    });
+  }
+
   return res.status(200).json({ success: true });
 }
