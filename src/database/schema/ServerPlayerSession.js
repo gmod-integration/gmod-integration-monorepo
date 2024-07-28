@@ -2,11 +2,7 @@ import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 
-class ServerPlayerSession extends Model {
-  isSuperAdmin() {
-    return this.rank === 'superadmin';
-  }
-}
+class ServerPlayerSession extends Model {}
 
 ServerPlayerSession.init(
   {
