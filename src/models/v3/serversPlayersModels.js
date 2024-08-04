@@ -10,6 +10,10 @@ export async function sendPlayerSay(server, player, text, onlyTeam) {
   player.name.replace(/[^\x00-\x7F]/g, '');
   text.replace(/[^\x00-\x7F]/g, '');
 
+  if (!(await server.guild.isPremium())) {
+    return { skip: true, message: 'Server is not premium' };
+  }
+
   const syncChatChannel = await server.getSyncChatChannel();
   if (!syncChatChannel) {
     return { skip: true, message: 'Sync chat channel not found or not set' };
