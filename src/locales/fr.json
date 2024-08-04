@@ -153,5 +153,6 @@
   "date": "Date",
   "reason": "Raison",
   "no_reason": "Pas de raison",
-  "warn_for_user": "Avertissement de {1} sur {2}"
+  "warn_for_user": "Avertissement de {1} sur {2}",
+  "premium_required": "Cette fonctionnalité nécessite le premium !"
 }

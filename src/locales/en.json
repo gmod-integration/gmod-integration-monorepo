@@ -204,5 +204,6 @@
   "pages": "Pages",
   "date": "Date",
   "reason": "Reason",
-  "no_reason": "No Reason"
+  "no_reason": "No Reason",
+  "premium_required": "This action require the premium version of the bot !"
 }

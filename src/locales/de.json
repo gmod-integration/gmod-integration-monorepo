@@ -190,5 +190,6 @@
   "date": "Datum",
   "reason": "Grund",
   "no_reason": "Kein Grund",
-  "warn_for_user": "Warnung von {1} auf {2}"
+  "warn_for_user": "Warnung von {1} auf {2}",
+  "premium_required": "Diese Funktion erfordert Premium!"
 }
