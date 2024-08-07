@@ -4,3 +4,4 @@ node_modules
 .idea
 qodana.yaml
 .env
+gdpr-request/*
