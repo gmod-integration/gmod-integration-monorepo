@@ -1,5 +1,7 @@
-// Base
-import './gm_user.js';
+// Users
+import gm_user from './gm_user.js';
+import UsersDataRequest from './UsersDataRequest.js';
+import UsersNotifications from './UsersNotifications.js';
 // Steam
 import gm_user_steam from './gm_user_steam.js';
 // Guild
@@ -48,6 +50,26 @@ fs.readdirSync(directoryPath).forEach((file) => {
   if (file.endsWith('.js') && file !== currentFile) {
     import(`./${file}`);
   }
+});
+
+// UserDataRequest
+gm_user.hasMany(UsersDataRequest, {
+  foreignKey: 'discordID',
+  as: 'userDataRequests',
+});
+UsersDataRequest.belongsTo(gm_user, {
+  foreignKey: 'discordID',
+  as: 'dataRequestUser',
+});
+
+// UsersNotifications
+gm_user.hasMany(UsersNotifications, {
+  foreignKey: 'discordID',
+  as: 'userNotifications',
+});
+UsersNotifications.belongsTo(gm_user, {
+  foreignKey: 'discordID',
+  as: 'notificationUser',
 });
 
 // gm_guild

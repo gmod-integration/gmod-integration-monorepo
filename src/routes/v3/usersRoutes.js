@@ -50,10 +50,12 @@ import {
   getServerStatusButtons,
   getUserGmodStorePurchases,
   getUserGuildsOwnOrAdmins,
+  getUserNotifications,
   getVerificationMessage,
   getVoteChannels,
   oauthLogin,
   patchGuildBotInstance,
+  patchUserNotifications,
   postAutoRoles,
   postGmodPurchase,
   postGuildLinks,
@@ -97,6 +99,8 @@ router.get('/:discordID/guilds', asyncHandler(getUserGuildsOwnOrAdmins));
 router.get('/:discordID/gmod-store', asyncHandler(getUserGmodStorePurchases));
 router.get('/:discordID/verifications/token', asyncHandler(postUserStartVerification));
 router.get('/:discordID/servers', asyncHandler(getPublicServers));
+router.get('/:discordID/notifications', asyncHandler(getUserNotifications));
+router.patch('/:discordID/notifications/:notificationID', asyncHandler(patchUserNotifications));
 
 router.use('/:discordID/admins', userAdminValidator);
 router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds));

@@ -27,6 +27,7 @@ import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 import { todoControllers } from '../../discord/utils/index.js';
 import ServerPseudo from '../../database/schema/ServerPseudo.js';
+import UsersNotifications from '../../database/schema/UsersNotifications.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -1161,4 +1162,25 @@ export async function deleteServerPseudo(req, res) {
 
   await pseudo.destroy();
   return res.send(pseudo);
+}
+
+export async function getUserNotifications(req, res) {
+  const { discordID } = req.params;
+  return res.json(await UsersNotifications.findAll({ where: { discordID } }));
+}
+
+export async function patchUserNotifications(req, res) {
+  const { discordID, notificationID } = req.params;
+  const notification = await UsersNotifications.findOne({
+    where: {
+      discordID,
+      id: notificationID,
+    },
+  });
+  if (!notification) {
+    return res.status(404).send({ error: 'Notification not found' });
+  }
+  notification.read = true;
+  await notification.save();
+  return res.send(notification);
 }

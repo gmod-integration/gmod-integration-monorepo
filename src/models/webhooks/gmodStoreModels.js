@@ -2,6 +2,8 @@ import crypto from 'crypto';
 import { gmodStoreConfig } from '../../config/index.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 import { gmLog } from '../../utils/logger.js';
+import { getUserFromSteamID64 } from '../../classes/v3/User.js';
+import UsersNotifications from '../../database/schema/UsersNotifications.js';
 
 export async function verifyWebhookSignature(headers, payload) {
   const webhookSignature = headers['webhook-signature'];
@@ -55,6 +57,20 @@ export async function saveGmodStorePurchase(steamID64, revoke) {
   });
 
   gmLog('gmodStore', `Saving purchase for ${steamID64} with revoke: ${revoke}`);
+
+  const user = await getUserFromSteamID64(steamID64);
+  if (user) {
+    const discordID = user.getDiscordID();
+    if (discordID) {
+      await UsersNotifications.create({
+        discordID,
+        type: 'premium',
+        message: revoke
+          ? 'Your GmodStore lifetime purchase has been revoked.'
+          : 'You have received a GmodStore lifetime purchase.',
+      });
+    }
+  }
 
   if (gmGmodStorePurchases) {
     gmGmodStorePurchases.revoke = revoke;
