@@ -1207,10 +1207,6 @@ export async function postUserDataRequest(req, res) {
     });
   }
 
-  const request = await UsersDataRequest.create({
-    discordID,
-  });
-
   const user = await getUserFromDiscordID(discordID);
   if (!user) {
     return res.status(404).send({
