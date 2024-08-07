@@ -48,6 +48,7 @@ import {
   getServerSetting,
   getServerSettings,
   getServerStatusButtons,
+  getUserDataRequest,
   getUserGmodStorePurchases,
   getUserGuildsOwnOrAdmins,
   getUserNotifications,
@@ -67,6 +68,7 @@ import {
   postServerScreenshots,
   postServerStatus,
   postServerSyncChat,
+  postUserDataRequest,
   postUserStartVerification,
   postVoteChannels,
   putGuildBotInstance,
@@ -101,6 +103,8 @@ router.get('/:discordID/verifications/token', asyncHandler(postUserStartVerifica
 router.get('/:discordID/servers', asyncHandler(getPublicServers));
 router.get('/:discordID/notifications', asyncHandler(getUserNotifications));
 router.patch('/:discordID/notifications/:notificationID', asyncHandler(patchUserNotifications));
+router.get('/:discordID/data-requests', asyncHandler(getUserDataRequest));
+router.post('/:discordID/data-requests', asyncHandler(postUserDataRequest));
 
 router.use('/:discordID/admins', userAdminValidator);
 router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds));

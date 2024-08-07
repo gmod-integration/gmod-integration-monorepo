@@ -28,6 +28,8 @@ import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 import { todoControllers } from '../../discord/utils/index.js';
 import ServerPseudo from '../../database/schema/ServerPseudo.js';
 import UsersNotifications from '../../database/schema/UsersNotifications.js';
+import UsersDataRequest from '../../database/schema/UsersDataRequest.js';
+import { getUserDataGRPD } from '../../models/v3/gdrp.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -1182,5 +1184,39 @@ export async function patchUserNotifications(req, res) {
   }
   notification.read = true;
   await notification.save();
-  return res.send(notification);
+  return res.json(notification);
+}
+
+export async function getUserDataRequest(req, res) {
+  const { discordID } = req.params;
+  return res.json(await UsersDataRequest.findAll({ where: { discordID } }));
+}
+
+export async function postUserDataRequest(req, res) {
+  const { discordID } = req.params;
+  const lastRequest = await UsersDataRequest.findOne({
+    where: {
+      discordID,
+    },
+    order: [['createdAt', 'DESC']],
+  });
+
+  if (lastRequest && new Date(lastRequest.expirationDate) > new Date()) {
+    return res.status(409).send({
+      error: 'A request is already pending',
+    });
+  }
+
+  const request = await UsersDataRequest.create({
+    discordID,
+  });
+
+  const user = await getUserFromDiscordID(discordID);
+  if (!user) {
+    return res.status(404).send({
+      error: 'User not found',
+    });
+  }
+
+  return res.json(await getUserDataGRPD(user));
 }
