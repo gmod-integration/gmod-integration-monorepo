@@ -28,7 +28,7 @@ export async function getUserDataGRPD(user) {
   const request = await UsersDataRequest.create({
     discordID,
     status: 'pending',
-    expirationDate: new Date(new Date().setDate(new Date().getDate() + 2)),
+    expirationDate: new Date(new Date().setDate(new Date().getDate() + 4)),
     code: Math.random().toString(36).substring(2, 18),
   });
 
@@ -205,6 +205,13 @@ export async function getUserDataGRPD(user) {
   request.downloadLink = `${serverConfig.domain}/gdpr-request/${request.id}`;
   request.status = 'ready';
   await request.save();
+
+  if (discordID) {
+    await UsersNotifications.create({
+      discordID,
+      message: `Your GDPR request has been processed. You can download the data from ${serverConfig.websiteUrl}/account`,
+    });
+  }
 
   return request;
 }

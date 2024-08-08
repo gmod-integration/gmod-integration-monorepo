@@ -1203,7 +1203,7 @@ export async function postUserDataRequest(req, res) {
 
   if (lastRequest && new Date(lastRequest.expirationDate) > new Date()) {
     return res.status(409).send({
-      error: 'A request is already pending',
+      error: 'A recent request has already been made and is still valid.',
     });
   }
 
