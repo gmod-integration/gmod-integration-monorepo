@@ -37,33 +37,35 @@ export async function getUserDataGRPD(user) {
 
   if (discordID) {
     // for every table with user data create a file with data
-    const userData = await gm_user.findOne({
-      where: {
-        id: discordID,
-      },
-      include: [
-        {
-          model: UsersDataRequest,
-          as: 'userDataRequests',
-          where: {
-            discordID,
-          },
+    const userData =
+      (await gm_user.findOne({
+        where: {
+          id: discordID,
         },
-        {
-          model: UsersNotifications,
-          as: 'userNotifications',
-          where: {
-            discordID,
+        include: [
+          {
+            model: UsersDataRequest,
+            as: 'userDataRequests',
+            where: {
+              discordID,
+            },
           },
-        },
-      ],
-    });
+          {
+            model: UsersNotifications,
+            as: 'userNotifications',
+            where: {
+              discordID,
+            },
+          },
+        ],
+      })) || {};
 
-    userData.vote = await ServerVote.findAll({
-      where: {
-        userID: discordID,
-      },
-    });
+    userData.vote =
+      (await ServerVote.findAll({
+        where: {
+          userID: discordID,
+        },
+      })) || {};
 
     userData.ban = await Ban.findAll({
       where: {
@@ -75,27 +77,28 @@ export async function getUserDataGRPD(user) {
   }
 
   if (steamID64) {
-    const user = await gm_user_steam.findOne({
-      where: {
-        steam_id: steamID64,
-      },
-      include: [
-        {
-          model: gm_server_stat,
-          as: 'userStats',
-          where: {
-            steam_id: steamID64,
-          },
+    const user =
+      (await gm_user_steam.findOne({
+        where: {
+          steam_id: steamID64,
         },
-        {
-          model: ServerPlayerSession,
-          as: 'playerSessions',
-          where: {
-            steamID64,
+        include: [
+          {
+            model: gm_server_stat,
+            as: 'userStats',
+            where: {
+              steam_id: steamID64,
+            },
           },
-        },
-      ],
-    });
+          {
+            model: ServerPlayerSession,
+            as: 'playerSessions',
+            where: {
+              steamID64,
+            },
+          },
+        ],
+      })) || {};
 
     user.userWarn = await ServerWarn.findAll({
       where: {
