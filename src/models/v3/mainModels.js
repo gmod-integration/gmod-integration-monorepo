@@ -42,28 +42,37 @@ export async function getStats() {
 
 export async function updateGuildsInDB(client) {
   const guilds = client.guilds.cache;
-  for (const [id, guild] of guilds) {
-    const dbGuild = await gm_guild.findOne({
-      where: {
-        guild: id,
-      },
-    });
+  const updatePromises = [];
 
-    if (dbGuild) {
-      dbGuild.member = guild.memberCount;
-      dbGuild.language = guild.preferredLocale;
-      dbGuild.name = guild.name;
-      dbGuild.changed('updatedAt', true);
-      await dbGuild.save();
-    } else {
-      await gm_guild.create({
-        guild: id,
-        name: guild.name,
-        member: guild.memberCount,
-        language: guild.preferredLocale,
+  for (const [id, guild] of guilds) {
+    const updatePromise = (async () => {
+      const dbGuild = await gm_guild.findOne({
+        where: {
+          guild: id,
+        },
       });
-    }
+
+      if (dbGuild) {
+        dbGuild.member = guild.memberCount;
+        dbGuild.language = guild.preferredLocale;
+        dbGuild.name = guild.name;
+        dbGuild.changed('updatedAt', true);
+        await dbGuild.save();
+      } else {
+        await gm_guild.create({
+          guild: id,
+          name: guild.name,
+          member: guild.memberCount,
+          language: guild.preferredLocale,
+        });
+      }
+    })();
+
+    updatePromises.push(updatePromise);
   }
+
+  // Execute all update operations concurrently
+  await Promise.all(updatePromises);
 }
 
 export async function routineUpdateStatus() {
