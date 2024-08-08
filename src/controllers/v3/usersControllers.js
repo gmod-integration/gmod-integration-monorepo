@@ -1194,18 +1194,18 @@ export async function getUserDataRequest(req, res) {
 
 export async function postUserDataRequest(req, res) {
   const { discordID } = req.params;
-  // const lastRequest = await UsersDataRequest.findOne({
-  //   where: {
-  //     discordID,
-  //   },
-  //   order: [['createdAt', 'DESC']],
-  // });
-  //
-  // if (lastRequest && new Date(lastRequest.expirationDate) > new Date()) {
-  //   return res.status(409).send({
-  //     error: 'A request is already pending',
-  //   });
-  // }
+  const lastRequest = await UsersDataRequest.findOne({
+    where: {
+      discordID,
+    },
+    order: [['createdAt', 'DESC']],
+  });
+
+  if (lastRequest && new Date(lastRequest.expirationDate) > new Date()) {
+    return res.status(409).send({
+      error: 'A request is already pending',
+    });
+  }
 
   const user = await getUserFromDiscordID(discordID);
   if (!user) {
