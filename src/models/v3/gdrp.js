@@ -133,8 +133,8 @@ export async function getUserDataGRPD(user) {
 
     user.serverLog = await ServerLogs.findAll({
       where: {
-        data: {
-          [Op.contains]: steamID64,
+        playerInvolvedSteamID64: {
+          [Op.contains]: [steamID64],
         },
       },
     });
