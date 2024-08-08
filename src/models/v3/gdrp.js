@@ -210,7 +210,7 @@ export async function getUserDataGRPD(user) {
     await createNotification(
       discordID,
       'gdpr',
-      `Your GDPR request has been processed. You can download the data from ${request.downloadLink}`,
+      `Your GDPR request has been processed. You can download the data from ${serverConfig.websiteUrl}/account`,
     );
   }
 
