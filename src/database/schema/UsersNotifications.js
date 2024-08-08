@@ -49,3 +49,15 @@ UsersNotifications.sync({ alter: true })
   });
 
 export default UsersNotifications;
+
+export async function createNotification(discordID, type, message) {
+  try {
+    await UsersNotifications.create({
+      discordID,
+      type,
+      message,
+    });
+  } catch (error) {
+    console.error('Error creating notification:', error);
+  }
+}

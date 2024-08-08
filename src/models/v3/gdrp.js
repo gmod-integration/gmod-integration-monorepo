@@ -1,7 +1,7 @@
 import fs from 'fs';
 import UsersDataRequest from '../../database/schema/UsersDataRequest.js';
 import gm_user from '../../database/schema/gm_user.js';
-import UsersNotifications from '../../database/schema/UsersNotifications.js';
+import UsersNotifications, { createNotification } from '../../database/schema/UsersNotifications.js';
 import gm_user_steam from '../../database/schema/gm_user_steam.js';
 import gm_server_stat from '../../database/schema/gm_server_stat.js';
 import ServerPlayerSession from '../../database/schema/ServerPlayerSession.js';
@@ -207,10 +207,11 @@ export async function getUserDataGRPD(user) {
   await request.save();
 
   if (discordID) {
-    await UsersNotifications.create({
+    await createNotification(
       discordID,
-      message: `Your GDPR request has been processed. You can download the data from ${serverConfig.websiteUrl}/account`,
-    });
+      'gdpr',
+      `Your GDPR request has been processed. You can download the data from ${request.downloadLink}`,
+    );
   }
 
   return request;
