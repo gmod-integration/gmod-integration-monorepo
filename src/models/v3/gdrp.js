@@ -15,6 +15,7 @@ import ServerVote from '../../database/schema/ServerVote.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 import Ban from '../../database/schema/Ban.js';
 import ServerLogs from '../../database/schema/ServerLogs.js';
+import sequelize from '../../database/sequelize.js';
 
 export async function getUserDataGRPD(user) {
   const discordID = user.getDiscordID();
@@ -132,11 +133,10 @@ export async function getUserDataGRPD(user) {
     });
 
     user.serverLog = await ServerLogs.findAll({
-      where: {
-        data: {
-          [Op.contains]: steamID64,
-        },
-      },
+      where: sequelize.where(
+        sequelize.fn('JSON_CONTAINS', sequelize.col('playerInvolvedSteamID64'), sequelize.literal(`'${steamID64}'`)),
+        1,
+      ),
     });
 
     fs.writeFileSync(`./gdpr-request/${request.id}/steam.json`, JSON.stringify(user, null, 2));
