@@ -8,6 +8,13 @@ import ServerPlayerSession from '../../database/schema/ServerPlayerSession.js';
 import { serverConfig } from '../../config/index.js';
 import archiver from 'archiver';
 import { gmLog } from '../../utils/logger.js';
+import Users from '../../database/schema/Users.js';
+import ServerWarn from '../../database/schema/ServerWarn.js';
+import { Op } from 'sequelize';
+import ServerVote from '../../database/schema/ServerVote.js';
+import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
+import Ban from '../../database/schema/Ban.js';
+import ServerLogs from '../../database/schema/ServerLogs.js';
 
 export async function getUserDataGRPD(user) {
   const discordID = user.getDiscordID();
@@ -51,6 +58,19 @@ export async function getUserDataGRPD(user) {
         },
       ],
     });
+
+    userData.vote = await ServerVote.findAll({
+      where: {
+        userID: discordID,
+      },
+    });
+
+    userData.ban = await Ban.findAll({
+      where: {
+        discordID,
+      },
+    });
+
     fs.writeFileSync(`./gdpr-request/${request.id}/discord.json`, JSON.stringify(userData, null, 2));
   }
 
@@ -76,6 +96,46 @@ export async function getUserDataGRPD(user) {
         },
       ],
     });
+
+    user.userWarn = await ServerWarn.findAll({
+      where: {
+        [Op.or]: [
+          {
+            userSteamID64: steamID64,
+          },
+          {
+            adminSteamID64: steamID64,
+          },
+        ],
+      },
+    });
+
+    user.user = await Users.findOne({
+      where: {
+        steamID64,
+      },
+    });
+
+    user.gmodStore = await GmodStorePurchases.findAll({
+      where: {
+        steamID64,
+      },
+    });
+
+    user.ban = await Ban.findAll({
+      where: {
+        steamID64,
+      },
+    });
+
+    user.serverLog = await ServerLogs.findAll({
+      where: {
+        data: {
+          [Op.contains]: steamID64,
+        },
+      },
+    });
+
     fs.writeFileSync(`./gdpr-request/${request.id}/steam.json`, JSON.stringify(user, null, 2));
   }
 
