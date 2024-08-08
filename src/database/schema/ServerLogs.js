@@ -73,11 +73,22 @@ const logEmbedColors = {
 export async function logServer(server, type, data) {
   data = data || {};
   try {
+    const playerInvolvedSteamID64 = [];
+    // parse the data to get every steamID64 (start with 7656119 and have 17 characters)
+    const dataString = JSON.stringify(data);
+    const regex = /7656119\d{10}/g;
+    let match;
+    while ((match = regex.exec(dataString))) {
+      if (!playerInvolvedSteamID64.includes(match[0])) playerInvolvedSteamID64.push(match[0]);
+    }
+
     await ServerLogs.create({
       serverID: server.getID(),
       type,
       data,
+      playerInvolvedSteamID64,
     });
+
     const lang = await server.getDiscordGuild().preferredLocale;
     await wsSendToAllClientsOfServer(server.getID(), 'server_logs', { type, data });
     const relayChannelInfo = await server.getCachedLogsChannel();
