@@ -1,5 +1,4 @@
-import fs from 'fs/promises';
-import { createWriteStream } from 'fs';
+import fs from 'fs';
 import UsersDataRequest from '../../database/schema/UsersDataRequest.js';
 import gm_user from '../../database/schema/gm_user.js';
 import UsersNotifications from '../../database/schema/UsersNotifications.js';
@@ -21,7 +20,10 @@ export async function getUserDataGRPD(user) {
   const discordID = user.getDiscordID();
   const steamID64 = user.getSteamID64();
 
-  await fs.mkdir('./gdpr-request', { recursive: true });
+  // first if not exist create folder gdpr-request
+  if (!fs.existsSync('./gdpr-request')) {
+    fs.mkdirSync('./gdpr-request');
+  }
 
   const request = await UsersDataRequest.create({
     discordID,
@@ -30,129 +32,119 @@ export async function getUserDataGRPD(user) {
     code: Math.random().toString(36).substring(2, 18),
   });
 
-  const requestFolderPath = `./gdpr-request/${request.id}`;
-  await fs.mkdir(requestFolderPath);
-
-  const tasks = [];
+  // create folder with id
+  fs.mkdirSync(`./gdpr-request/${request.id}`);
 
   if (discordID) {
-    tasks.push(
-      (async () => {
-        const userData =
-          (await gm_user.findOne({
+    // for every table with user data create a file with data
+    const userData =
+      (await gm_user.findOne({
+        where: {
+          id: discordID,
+        },
+        include: [
+          {
+            model: UsersDataRequest,
+            as: 'userDataRequests',
             where: {
-              id: discordID,
+              discordID,
             },
-            include: [
-              {
-                model: UsersDataRequest,
-                as: 'userDataRequests',
-                where: {
-                  discordID,
-                },
-              },
-              {
-                model: UsersNotifications,
-                as: 'userNotifications',
-                where: {
-                  discordID,
-                },
-              },
-            ],
-          })) || {};
-
-        userData.vote =
-          (await ServerVote.findAll({
-            where: {
-              userID: discordID,
-            },
-          })) || {};
-
-        userData.ban = await Ban.findAll({
-          where: {
-            discordID,
           },
-        });
+          {
+            model: UsersNotifications,
+            as: 'userNotifications',
+            where: {
+              discordID,
+            },
+          },
+        ],
+      })) || {};
 
-        await fs.writeFile(`${requestFolderPath}/discord.json`, JSON.stringify(userData, null, 2));
-      })(),
-    );
+    userData.vote =
+      (await ServerVote.findAll({
+        where: {
+          userID: discordID,
+        },
+      })) || {};
+
+    userData.ban = await Ban.findAll({
+      where: {
+        discordID,
+      },
+    });
+
+    fs.writeFileSync(`./gdpr-request/${request.id}/discord.json`, JSON.stringify(userData, null, 2));
   }
 
   if (steamID64) {
-    tasks.push(
-      (async () => {
-        const user =
-          (await gm_user_steam.findOne({
+    const user =
+      (await gm_user_steam.findOne({
+        where: {
+          steam_id: steamID64,
+        },
+        include: [
+          {
+            model: gm_server_stat,
+            as: 'userStats',
             where: {
               steam_id: steamID64,
             },
-            include: [
-              {
-                model: gm_server_stat,
-                as: 'userStats',
-                where: {
-                  steam_id: steamID64,
-                },
-              },
-              {
-                model: ServerPlayerSession,
-                as: 'playerSessions',
-                where: {
-                  steamID64,
-                },
-              },
-            ],
-          })) || {};
-
-        user.userWarn = await ServerWarn.findAll({
-          where: {
-            [Op.or]: [
-              {
-                userSteamID64: steamID64,
-              },
-              {
-                adminSteamID64: steamID64,
-              },
-            ],
           },
-        });
-
-        user.user = await Users.findOne({
-          where: {
-            steamID64,
-          },
-        });
-
-        user.gmodStore = await GmodStorePurchases.findAll({
-          where: {
-            steamID64,
-          },
-        });
-
-        user.ban = await Ban.findAll({
-          where: {
-            steamID64,
-          },
-        });
-
-        user.serverLog = await ServerLogs.findAll({
-          where: {
-            playerInvolvedSteamID64: {
-              [Op.contains]: [steamID64],
+          {
+            model: ServerPlayerSession,
+            as: 'playerSessions',
+            where: {
+              steamID64,
             },
           },
-        });
+        ],
+      })) || {};
 
-        await fs.writeFile(`${requestFolderPath}/steam.json`, JSON.stringify(user, null, 2));
-      })(),
-    );
+    user.userWarn = await ServerWarn.findAll({
+      where: {
+        [Op.or]: [
+          {
+            userSteamID64: steamID64,
+          },
+          {
+            adminSteamID64: steamID64,
+          },
+        ],
+      },
+    });
+
+    user.user = await Users.findOne({
+      where: {
+        steamID64,
+      },
+    });
+
+    user.gmodStore = await GmodStorePurchases.findAll({
+      where: {
+        steamID64,
+      },
+    });
+
+    user.ban = await Ban.findAll({
+      where: {
+        steamID64,
+      },
+    });
+
+    user.serverLog = await ServerLogs.findAll({
+      where: {
+        data: {
+          [Op.contains]: steamID64,
+        },
+      },
+    });
+
+    fs.writeFileSync(`./gdpr-request/${request.id}/steam.json`, JSON.stringify(user, null, 2));
   }
 
-  await Promise.all(tasks);
-
+  // to zip the folder
   const zipFilePath = `./gdpr-request/${request.id}.zip`;
-  const output = createWriteStream(zipFilePath);
+  const output = fs.createWriteStream(zipFilePath);
   const archive = archiver('zip', {
     zlib: { level: 9 },
   });
@@ -170,17 +162,22 @@ export async function getUserDataGRPD(user) {
   archive.pipe(output);
 
   if (discordID) {
-    archive.file(`${requestFolderPath}/discord.json`, { name: 'discord.json' });
+    archive.file(`./gdpr-request/${request.id}/discord.json`, { name: 'discord.json' });
   }
   if (steamID64) {
-    archive.file(`${requestFolderPath}/steam.json`, { name: 'steam.json' });
+    archive.file(`./gdpr-request/${request.id}/steam.json`, { name: 'steam.json' });
   }
 
+  // delete the folder
   await archive.finalize();
 
-  await fs.rm(requestFolderPath, { recursive: true, force: true });
+  fs.rm(`./gdpr-request/${request.id}`, { recursive: true }, (err) => {
+    if (err) {
+      gmLog(`Error while deleting folder ${request.id}`, err);
+    }
+  });
 
-  request.downloadLink = `${serverConfig.domain}/gdpr-request/${request.id}.zip`;
+  request.downloadLink = `${serverConfig.domain}/gdpr-request/${request.id}`;
   request.status = 'ready';
   await request.save();
 
