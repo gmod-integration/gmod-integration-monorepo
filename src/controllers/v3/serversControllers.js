@@ -136,6 +136,10 @@ export async function postMultiLog(req, res) {
     const logID = matchEndpoint(endpoint);
     if (!logID) continue;
 
+    if (logID === 'player_spawn_object') {
+      data.object = endpoint.split('/').pop();
+    }
+
     await logServer(server, logID, data);
   }
 

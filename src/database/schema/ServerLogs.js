@@ -149,10 +149,16 @@ export async function logServer(server, type, data) {
         dataToSave.model = model;
         const object = data.object || 'Unknown';
         dataToSave.object = object;
+        const entity = data.entity || 'Unknown';
+        dataToSave.entity = entity;
         dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
         dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
         dscList.push((await getTranslate('object', lang)) + ': `' + object + '`');
-        dscList.push((await getTranslate('model', lang)) + ': `' + model + '`');
+        if (object === 'object') {
+          dscList.push((await getTranslate('model', lang)) + ': `' + model + '`');
+        } else {
+          dscList.push((await getTranslate('entity', lang)) + ': `' + entity.class + '`');
+        }
       } else if (type === 'player_warned') {
         const admin = new PlayerGmod(data.admin);
         dataToSave.admin = admin;

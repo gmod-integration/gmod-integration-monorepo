@@ -176,7 +176,8 @@ export async function playerInitialSpawn(req, res) {
 
 export async function playerSpawnObject(req, res) {
   const server = req.server;
-  await logServer(server, 'player_spawn_object', req.body);
+  const { object } = req.params;
+  await logServer(server, 'player_spawn_object', { object, ...req.body });
   return res.status(200).json({ success: true });
 }
 
