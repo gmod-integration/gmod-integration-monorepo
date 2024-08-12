@@ -3,9 +3,10 @@ import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 import { wsSendToAllClientsOfServer } from '../../websockets/index.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
-import { getRandomDiscordRelay } from '../../utils/tools.js';
+import { getRandomDiscordRelay, ipGetIP } from '../../utils/tools.js';
 import { EmbedBuilder } from 'discord.js';
 import { getTranslate } from '../../utils/localizations.js';
+import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 
 class ServerLogs extends Model {}
 
@@ -73,6 +74,11 @@ const logEmbedColors = {
 export async function logServer(server, type, data) {
   data = data || {};
   try {
+    if (data.player) data.ply = new PlayerGmod(data.player);
+  } catch (error) {
+    //
+  }
+  try {
     const playerInvolvedSteamID64 = [];
     // parse the data to get every steamID64 (start with 7656119 and have 17 characters)
     const dataString = JSON.stringify(data);
@@ -96,101 +102,109 @@ export async function logServer(server, type, data) {
       const { webhookID, webhookToken } = relayChannelInfo;
 
       const dscList = [];
-      switch (type) {
-        case 'player_connect':
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.name + '`');
-          dscList.push(
-            (await getTranslate('ip', lang)) +
-              ': `' +
-              ((await server.getSetting('log_hide_ip')) ? 'xx.xx.xx.xx' : data.ip) +
-              '`',
-          );
-          break;
-        case 'player_disconnect':
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-          dscList.push((await getTranslate('connectTime', lang)) + ': `' + data.ply.connectTime + '`');
-          break;
-        case 'player_say':
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-          dscList.push((await getTranslate('text', lang)) + ': `' + data.text + '`');
-          dscList.push((await getTranslate('teamOnly', lang)) + ': `' + data.teamOnly + '`');
-          break;
-        case 'player_spawn':
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-          dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
-          break;
-        case 'player_change_name':
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-          dscList.push((await getTranslate('oldName', lang)) + ': `' + data.oldName + '`');
-          dscList.push((await getTranslate('newName', lang)) + ': `' + data.newName + '`');
-          break;
-        case 'player_change_group':
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-          dscList.push((await getTranslate('oldGroup', lang)) + ': `' + data.oldGroup + '`');
-          dscList.push((await getTranslate('newGroup', lang)) + ': `' + data.newGroup + '`');
-          break;
-        case 'player_spawn_object':
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-          dscList.push((await getTranslate('object', lang)) + ': `' + data.object + '`');
-          dscList.push((await getTranslate('model', lang)) + ': `' + data.model + '`');
-          break;
-        case 'player_give':
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-          dscList.push((await getTranslate('weapon', lang)) + ': `' + (data.swep ? data.swep.PrintName : '') + '`');
-          dscList.push(
-            (await getTranslate('weaponClass', lang)) + ': `' + (data.swep ? data.swep.ClassName : '') + '`',
-          );
-          break;
-        case 'server_start':
-          break;
-        case 'server_stop':
-          break;
-        case 'player_death':
-          dscList.push(await getTranslate('attacker', lang));
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyAttacker.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyAttacker.name + '`');
-          dscList.push('\n');
-          dscList.push(await getTranslate('victim', lang));
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyTarget.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyTarget.name + '`');
-          break;
-        case 'player_hurt':
-          dscList.push((await getTranslate('attacker', lang)) + ':');
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyAttacker.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyAttacker.name + '`');
+      if (type === 'player_connect') {
+        const name = data.name || 'Unknown';
+        const address = ipGetIP(data.address || 'Unknown');
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + name + '`');
+        dscList.push(
+          (await getTranslate('ip', lang)) +
+            ': `' +
+            ((await server.getSetting('log_hide_ip')) ? 'xx.xx.xx.xx' : address) +
+            '`',
+        );
+      } else if (type === 'player_disconnect') {
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dscList.push((await getTranslate('connectTime', lang)) + ': `' + data.ply.connectTime + '`');
+      } else if (type === 'player_say') {
+        const text = data.text || 'Unknown';
+        const teamOnly = data.teamOnly || false;
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dscList.push((await getTranslate('text', lang)) + ': `' + text + '`');
+        dscList.push((await getTranslate('teamOnly', lang)) + ': `' + teamOnly + '`');
+      } else if (type === 'player_spawn') {
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
+      } else if (type === 'player_change_name') {
+        const oldName = data.oldName || 'Unknown';
+        const newName = data.newName || 'Unknown';
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dscList.push((await getTranslate('oldName', lang)) + ': `' + oldName + '`');
+        dscList.push((await getTranslate('newName', lang)) + ': `' + newName + '`');
+      } else if (type === 'player_change_group') {
+        const oldGroup = data.oldGroup || 'Unknown';
+        const newGroup = data.newGroup || 'Unknown';
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dscList.push((await getTranslate('oldGroup', lang)) + ': `' + oldGroup + '`');
+        dscList.push((await getTranslate('newGroup', lang)) + ': `' + newGroup + '`');
+      } else if (type === 'player_spawn_object') {
+        const model = data.model || 'Unknown';
+        const object = data.object || 'Unknown';
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dscList.push((await getTranslate('object', lang)) + ': `' + object + '`');
+        dscList.push((await getTranslate('model', lang)) + ': `' + model + '`');
+      } else if (type === 'player_warned') {
+        const admin = new PlayerGmod(data.admin);
+        const reason = data.reason || 'Unknown';
+        dscList.push((await getTranslate('admin', lang)) + ':');
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + admin.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + admin.name + '`');
+        dscList.push((await getTranslate('reason', lang)) + ': `' + reason + '`');
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+      } else if (type === 'player_give') {
+        const swep = data.swep || {};
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dscList.push((await getTranslate('weapon', lang)) + ': `' + (swep.PrintName || '') + '`');
+        dscList.push((await getTranslate('weaponClass', lang)) + ': `' + (swep.ClassName || '') + '`');
+      } else if (type === 'server_start' || type === 'server_stop') {
+        //
+      } else if (type === 'player_death') {
+        const attacker = new PlayerGmod(data.attacker);
+        dscList.push(await getTranslate('attacker', lang));
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + attacker.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + attacker.name + '`');
+        dscList.push('\n');
+        dscList.push(await getTranslate('victim', lang));
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+      } else if (type === 'player_hurt') {
+        const victim = new PlayerGmod(data.victim);
+        const attacker = new PlayerGmod(data.attacker);
+        const healthRemaining = data.healthRemaining || 0;
+        const damageTaken = data.damageTaken || 0;
+        dscList.push(await getTranslate('attacker', lang));
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + attacker.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + attacker.name + '`');
+        dscList.push('\n');
+        dscList.push(await getTranslate('victim', lang));
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + victim.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + victim.name + '`');
 
-          dscList.push((await getTranslate('victim', lang)) + ':');
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.plyTarget.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.plyTarget.name + '`');
-
-          dscList.push((await getTranslate('damage', lang)) + ': `' + data.damage + '`');
-          dscList.push((await getTranslate('health', lang)) + ': `' + data.health + '`');
-          break;
-        case 'player_initial_spawn':
-          dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-          dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-          break;
-        default:
-          if (data.steamID64) dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
-          if (data.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.name + '`');
-          if (data.team && data.team.name)
-            dscList.push((await getTranslate('team', lang)) + ': `' + data.team.name + '`');
-          if (data.ply) {
-            if (data.ply.steamID64)
-              dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-            if (data.ply.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-            if (data.ply.team && data.ply.team.name)
-              dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
-          }
-          if (data.ip) dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`');
-          break;
+        dscList.push((await getTranslate('damage', lang)) + ': `' + damageTaken + '`');
+        dscList.push((await getTranslate('health', lang)) + ': `' + healthRemaining + '`');
+      } else if (type === 'player_initial_spawn') {
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+      } else {
+        if (data.steamID64) dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
+        if (data.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.name + '`');
+        if (data.team && data.team.name)
+          dscList.push((await getTranslate('team', lang)) + ': `' + data.team.name + '`');
+        if (data.ply) {
+          if (data.ply.steamID64)
+            dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+          if (data.ply.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+          if (data.ply.team && data.ply.team.name)
+            dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
+        }
+        if (data.ip) dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`');
       }
 
       const embed = new EmbedBuilder()

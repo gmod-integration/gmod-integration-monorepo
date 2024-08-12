@@ -1,6 +1,14 @@
 import express from 'express';
 import serverValidator from '../../middleware/v3/serverValidator.js';
-import { getInfo, getPublicToken, postStatus } from '../../controllers/v3/serversControllers.js';
+import {
+  getInfo,
+  getPublicToken,
+  postMultiLog,
+  postStatus,
+  serverImportWarns,
+  serverStart,
+  serverStop,
+} from '../../controllers/v3/serversControllers.js';
 import { reportError } from '../../controllers/v3/errorsControllers.js';
 import {
   getPlayer,
@@ -17,9 +25,6 @@ import {
   playerSpawn,
   playerSpawnObject,
   playerWarn,
-  serverImportWarns,
-  serverStart,
-  serverStop,
 } from '../../controllers/v3/serversPlayersController.js';
 import asyncHandler from '../../middleware/asyncHandler.js';
 
@@ -34,6 +39,7 @@ router.post('/:serverID/errors', asyncHandler(reportError));
 router.post('/:serverID/start', asyncHandler(serverStart));
 router.post('/:serverID/stop', asyncHandler(serverStop));
 router.post('/:serverID/warns', asyncHandler(serverImportWarns));
+router.post('/:serverID/logs', asyncHandler(postMultiLog));
 router.get('/:serverID/players/:steamID64', asyncHandler(getPlayer));
 router.post('/:serverID/players/:steamID64/say', asyncHandler(playerSay));
 router.post('/:serverID/players/:steamID64/warns', asyncHandler(playerWarn));
