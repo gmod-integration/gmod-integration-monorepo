@@ -74,7 +74,7 @@ const logEmbedColors = {
 export async function logServer(server, type, data) {
   data = data || {};
   try {
-    if (data.player) data.ply = new PlayerGmod(data.player);
+    if (data.player) data.player = new PlayerGmod(data.player);
   } catch (error) {
     //
   }
@@ -88,15 +88,10 @@ export async function logServer(server, type, data) {
       if (!playerInvolvedSteamID64.includes(match[0])) playerInvolvedSteamID64.push(match[0]);
     }
 
-    await ServerLogs.create({
-      serverID: server.getID(),
-      type,
-      data,
-      playerInvolvedSteamID64,
-    });
+    let dataToSave = {};
+    if (data.player) dataToSave.ply = data.player;
 
     const lang = await server.getDiscordGuild().preferredLocale;
-    await wsSendToAllClientsOfServer(server.getID(), 'server_logs', { type, data });
     const relayChannelInfo = await server.getCachedLogsChannel();
     if (relayChannelInfo) {
       const { webhookID, webhookToken } = relayChannelInfo;
@@ -104,7 +99,9 @@ export async function logServer(server, type, data) {
       const dscList = [];
       if (type === 'player_connect') {
         const name = data.name || 'Unknown';
+        dataToSave.name = name;
         const address = ipGetIP(data.address || 'Unknown');
+        dataToSave.ip = address;
         dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
         dscList.push((await getTranslate('name', lang)) + ': `' + name + '`');
         dscList.push(
@@ -114,71 +111,89 @@ export async function logServer(server, type, data) {
             '`',
         );
       } else if (type === 'player_disconnect') {
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-        dscList.push((await getTranslate('connectTime', lang)) + ': `' + data.ply.connectTime + '`');
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+        dscList.push((await getTranslate('connectTime', lang)) + ': `' + data.player.connectTime + '`');
       } else if (type === 'player_say') {
         const text = data.text || 'Unknown';
+        dataToSave.text = text;
         const teamOnly = data.teamOnly || false;
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dataToSave.teamOnly = teamOnly;
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
         dscList.push((await getTranslate('text', lang)) + ': `' + text + '`');
         dscList.push((await getTranslate('teamOnly', lang)) + ': `' + teamOnly + '`');
       } else if (type === 'player_spawn') {
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-        dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+        dscList.push((await getTranslate('team', lang)) + ': `' + data.player.team.name + '`');
       } else if (type === 'player_change_name') {
         const oldName = data.oldName || 'Unknown';
+        dataToSave.oldName = oldName;
         const newName = data.newName || 'Unknown';
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
+        dataToSave.newName = newName;
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
         dscList.push((await getTranslate('oldName', lang)) + ': `' + oldName + '`');
         dscList.push((await getTranslate('newName', lang)) + ': `' + newName + '`');
       } else if (type === 'player_change_group') {
         const oldGroup = data.oldGroup || 'Unknown';
+        dataToSave.oldGroup = oldGroup;
         const newGroup = data.newGroup || 'Unknown';
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dataToSave.newGroup = newGroup;
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
         dscList.push((await getTranslate('oldGroup', lang)) + ': `' + oldGroup + '`');
         dscList.push((await getTranslate('newGroup', lang)) + ': `' + newGroup + '`');
       } else if (type === 'player_spawn_object') {
         const model = data.model || 'Unknown';
+        dataToSave.model = model;
         const object = data.object || 'Unknown';
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dataToSave.object = object;
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
         dscList.push((await getTranslate('object', lang)) + ': `' + object + '`');
         dscList.push((await getTranslate('model', lang)) + ': `' + model + '`');
       } else if (type === 'player_warned') {
         const admin = new PlayerGmod(data.admin);
+        dataToSave.admin = admin;
         const reason = data.reason || 'Unknown';
+        dataToSave.reason = reason;
         dscList.push((await getTranslate('admin', lang)) + ':');
         dscList.push((await getTranslate('steamID64', lang)) + ': `' + admin.steamID64 + '`');
         dscList.push((await getTranslate('name', lang)) + ': `' + admin.name + '`');
         dscList.push((await getTranslate('reason', lang)) + ': `' + reason + '`');
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
       } else if (type === 'player_give') {
         const swep = data.swep || {};
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dataToSave.wep_class = swep.ClassName || '';
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
         dscList.push((await getTranslate('weapon', lang)) + ': `' + (swep.PrintName || '') + '`');
         dscList.push((await getTranslate('weaponClass', lang)) + ': `' + (swep.ClassName || '') + '`');
       } else if (type === 'server_start' || type === 'server_stop') {
         //
       } else if (type === 'player_death') {
         const attacker = new PlayerGmod(data.attacker);
+        dataToSave = {};
+        dataToSave.plyTarget = data.player;
+        dataToSave.plyAttacker = attacker;
         dscList.push(await getTranslate('attacker', lang));
         dscList.push((await getTranslate('steamID64', lang)) + ': `' + attacker.steamID64 + '`');
         dscList.push((await getTranslate('name', lang)) + ': `' + attacker.name + '`');
         dscList.push('\n');
         dscList.push(await getTranslate('victim', lang));
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
       } else if (type === 'player_hurt') {
         const victim = new PlayerGmod(data.victim);
+        dataToSave.ply = victim;
         const attacker = new PlayerGmod(data.attacker);
+        dataToSave.attacker = attacker;
         const healthRemaining = data.healthRemaining || 0;
+        dataToSave.healthRemaining = healthRemaining;
         const damageTaken = data.damageTaken || 0;
+        dataToSave.damage = damageTaken;
         dscList.push(await getTranslate('attacker', lang));
         dscList.push((await getTranslate('steamID64', lang)) + ': `' + attacker.steamID64 + '`');
         dscList.push((await getTranslate('name', lang)) + ': `' + attacker.name + '`');
@@ -190,22 +205,31 @@ export async function logServer(server, type, data) {
         dscList.push((await getTranslate('damage', lang)) + ': `' + damageTaken + '`');
         dscList.push((await getTranslate('health', lang)) + ': `' + healthRemaining + '`');
       } else if (type === 'player_initial_spawn') {
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
       } else {
         if (data.steamID64) dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
         if (data.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.name + '`');
         if (data.team && data.team.name)
           dscList.push((await getTranslate('team', lang)) + ': `' + data.team.name + '`');
-        if (data.ply) {
-          if (data.ply.steamID64)
-            dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.ply.steamID64 + '`');
-          if (data.ply.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.ply.name + '`');
-          if (data.ply.team && data.ply.team.name)
-            dscList.push((await getTranslate('team', lang)) + ': `' + data.ply.team.name + '`');
+        if (data.player) {
+          if (data.player.steamID64)
+            dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+          if (data.player.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+          if (data.player.team && data.player.team.name)
+            dscList.push((await getTranslate('team', lang)) + ': `' + data.player.team.name + '`');
         }
         if (data.ip) dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`');
+        dataToSave = data;
       }
+
+      await ServerLogs.create({
+        serverID: server.getID(),
+        type,
+        data: dataToSave,
+        playerInvolvedSteamID64,
+      });
+      await wsSendToAllClientsOfServer(server.getID(), 'server_logs', { type, data: dataToSave });
 
       const embed = new EmbedBuilder()
         .setAuthor({
