@@ -3,6 +3,7 @@ import gm_user_steam from '../../database/schema/gm_user_steam.js';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
 import { discordConfig } from '../../config/index.js';
 import Users from '../../database/schema/Users.js';
+import { isGuildPremium } from '../../classes/v3/Guild.js';
 
 export async function sendPlayerSay(server, player, text, onlyTeam) {
   let anonymous = false;
@@ -10,7 +11,7 @@ export async function sendPlayerSay(server, player, text, onlyTeam) {
   player.name.replace(/[^\x00-\x7F]/g, '');
   text.replace(/[^\x00-\x7F]/g, '');
 
-  if (!(await server.guild.isPremium())) {
+  if (!(await isGuildPremium(server.getGuildID()))) {
     return { skip: true, message: 'Server is not premium' };
   }
 
