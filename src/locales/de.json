@@ -191,5 +191,7 @@
   "reason": "Grund",
   "no_reason": "Kein Grund",
   "warn_for_user": "Warnung von {1} auf {2}",
-  "premium_required": "Diese Funktion erfordert Premium!"
+  "premium_required": "Diese Funktion erfordert Premium!",
+  "server_stop": "Server gestoppt",
+  "server_start": "Server gestartet"
 }

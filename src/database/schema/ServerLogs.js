@@ -69,6 +69,8 @@ const logEmbedColors = {
   player_initial_spawn: '#51cd51',
   player_say: '#51c3cd',
   default: '#2B2D31',
+  server_start: '#7c15d5',
+  server_stop: '#7c15d5',
 };
 
 export async function logServer(server, type, data) {

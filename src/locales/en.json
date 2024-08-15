@@ -205,5 +205,7 @@
   "date": "Date",
   "reason": "Reason",
   "no_reason": "No Reason",
-  "premium_required": "This action require the premium version of the bot !"
+  "premium_required": "This action require the premium version of the bot !",
+  "server_stop": "Server Stop",
+  "server_start": "Server Start"
 }
