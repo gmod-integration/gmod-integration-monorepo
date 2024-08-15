@@ -50,4 +50,5 @@ export const steamConfig = {
 export const gmodStoreConfig = {
   apiKey: process.env.GMODSTORE_API_KEY,
   signingSecretKey: process.env.SIGNING_SECRET_WEBHOOK,
+  secretWebhook: process.env.GMODSTORE_SECRET_WEBHOOK,
 };

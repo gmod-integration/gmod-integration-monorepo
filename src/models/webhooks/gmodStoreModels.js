@@ -49,7 +49,7 @@ export async function getUser(userID) {
   }
 }
 
-export async function saveGmodStorePurchase(steamID64, revoke) {
+export async function saveGmodStorePurchase(steamID64, userID, revoke) {
   const gmGmodStorePurchases = await GmodStorePurchases.findOne({
     where: {
       steamID64,
@@ -74,11 +74,13 @@ export async function saveGmodStorePurchase(steamID64, revoke) {
 
   if (gmGmodStorePurchases) {
     gmGmodStorePurchases.revoke = revoke;
+    gmGmodStorePurchases.userID = userID;
     await gmGmodStorePurchases.save();
   } else {
     await GmodStorePurchases.create({
       steamID64,
       revoke,
+      userID,
     });
   }
 }

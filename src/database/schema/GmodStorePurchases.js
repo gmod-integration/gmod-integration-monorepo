@@ -13,6 +13,11 @@ GmodStorePurchases.init(
       allowNull: false,
       primaryKey: true,
     },
+    userID: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: '',
+    },
     guild: {
       type: DataTypes.STRING,
       allowNull: false,
