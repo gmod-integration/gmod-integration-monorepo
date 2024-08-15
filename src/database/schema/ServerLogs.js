@@ -211,6 +211,8 @@ export async function logServer(server, type, data) {
         dscList.push((await getTranslate('damage', lang)) + ': `' + damageTaken + '`');
         dscList.push((await getTranslate('health', lang)) + ': `' + healthRemaining + '`');
       } else if (type === 'player_initial_spawn') {
+        dataToSave = {};
+        dataToSave.ply = data.player;
         dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
         dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
       } else {
