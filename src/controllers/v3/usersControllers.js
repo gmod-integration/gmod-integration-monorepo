@@ -30,6 +30,7 @@ import ServerPseudo from '../../database/schema/ServerPseudo.js';
 import UsersNotifications from '../../database/schema/UsersNotifications.js';
 import UsersDataRequest from '../../database/schema/UsersDataRequest.js';
 import { getUserDataGRPD } from '../../models/v3/gdrp.js';
+import ServerReportBugs from '../../database/schema/ServerReportBugs.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -1215,4 +1216,9 @@ export async function postUserDataRequest(req, res) {
   }
 
   return res.json(await getUserDataGRPD(user));
+}
+
+export async function getServerReportBugs(req, res) {
+  const { serverID } = req.params;
+  return res.json(await ServerReportBugs.findAll({ where: { serverID } }));
 }

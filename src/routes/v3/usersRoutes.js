@@ -44,6 +44,7 @@ import {
   getServerLogs,
   getServerPlayers,
   getServerPseudo,
+  getServerReportBugs,
   getServerRoles,
   getServerSetting,
   getServerSettings,
@@ -190,6 +191,8 @@ router.delete('/:discordID/guilds/:guildID/servers/:serverID/pseudo/:roleID', as
 router.get('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(findServerSyncChat));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(postServerSyncChat));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(deleteServerSyncChat));
+// Report Bug
+router.get('/:discordID/guilds/:guildID/servers/:serverID/bugs', asyncHandler(getServerReportBugs));
 // Status
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(findServerStatus));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(postServerStatus));
