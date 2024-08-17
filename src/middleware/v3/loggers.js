@@ -7,12 +7,18 @@ export default (req, res, next) => {
   const id = url.split('/')[2];
   const query = JSON.stringify(req.query);
 
-  let body = JSON.stringify(req.body);
-  if (url.includes('screenshots') || url.includes('streams')) {
-    body = 'HIDDEN';
+  const cpBody = structuredClone(req.body);
+
+  if (url.endsWith('/bugs') && cpBody.screenshot && cpBody.screenshot.screenshot) {
+    cpBody.screenshot.screenshot = '[IMAGE]';
+  } else if (url.endsWith('/screenshot') && cpBody.screenshot) {
+    cpBody.screenshot = '[IMAGE]';
   }
 
-  gmLog('api', `Method: ${method} URL: ${url} IP: ${ip} Server ID: ${id} Body: ${body} Query: ${query}`);
+  gmLog(
+    'api',
+    `Method: ${method} URL: ${url} IP: ${ip} Server ID: ${id} Body: ${JSON.stringify(cpBody)} Query: ${query}`,
+  );
 
   next();
 };
