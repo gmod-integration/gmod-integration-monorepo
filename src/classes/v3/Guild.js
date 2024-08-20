@@ -2,7 +2,7 @@ import axios from 'axios';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import redis from '../../redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
-import gm_link from '../../database/schema/gm_link.js';
+import ServerLinks from '../../database/schema/ServerLinks.js';
 import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 import PremiumGuild from '../../database/schema/PremiumGuild.js';
@@ -113,7 +113,7 @@ export class Guild {
   }
 
   async getLinks() {
-    return await gm_link.findAll({
+    return await ServerLinks.findAll({
       where: {
         guild: this.id,
       },
@@ -121,7 +121,7 @@ export class Guild {
   }
 
   async getLink(linkID) {
-    return await gm_link.findOne({
+    return await ServerLinks.findOne({
       where: {
         guild: this.id,
         id: linkID,
@@ -130,7 +130,7 @@ export class Guild {
   }
 
   async createNewLink() {
-    return await gm_link.create({
+    return await ServerLinks.create({
       guild: this.id,
     });
   }

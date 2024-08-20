@@ -10,7 +10,7 @@ import gm_guild_auto_roles from './gm_guild_auto_roles.js';
 import gm_guild_not_verify_role from './gm_guild_not_verify_role.js';
 import gm_guild_verify_msg from './gm_guild_verify_msg.js';
 import gm_guild_verify_role from './gm_guild_verify_role.js';
-import gm_link from './gm_link.js';
+import ServerLinks from './ServerLinks.js';
 import GuildNotVerifiedRole from './GuildNotVerifiedRole.js';
 import GuildSettings from './GuildSettings.js';
 import PremiumGuild from './PremiumGuild.js';
@@ -122,12 +122,12 @@ gm_guild_verify_role.belongsTo(gm_guild, {
   as: 'verifyRolesGuild',
 });
 
-// gm_link
-gm_guild.hasMany(gm_link, {
+// ServerLinks
+gm_guild.hasMany(ServerLinks, {
   foreignKey: 'guild',
   as: 'guildLinks',
 });
-gm_link.belongsTo(gm_guild, {
+ServerLinks.belongsTo(gm_guild, {
   foreignKey: 'guild',
   as: 'linkGuild',
 });

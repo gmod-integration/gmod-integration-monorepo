@@ -2,13 +2,13 @@ import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.js';
 
-class gm_link extends Model {
+class ServerLinks extends Model {
   getUrlBase64() {
     return Buffer.from(this.url).toString('base64');
   }
 }
 
-gm_link.init(
+ServerLinks.init(
   {
     id: {
       type: DataTypes.INTEGER,
@@ -43,19 +43,18 @@ gm_link.init(
   },
   {
     sequelize,
-    modelName: 'gm_link',
-    tableName: 'gm_link',
+    modelName: 'gm_server_links',
+    tableName: 'gm_server_links',
     timestamps: true,
   },
 );
 
-gm_link
-  .sync({ alter: true })
+ServerLinks.sync({ alter: true })
   .then(() => {
-    gmLog('sequelize', 'Table created: gm_link');
+    gmLog('sequelize', 'Table created: gm_server_links');
   })
   .catch((error) => {
-    console.error('Error creating link table:', error);
+    console.error('Error creating table: gm_server_links', error);
   });
 
-export default gm_link;
+export default ServerLinks;

@@ -1,6 +1,6 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { getTranslate } from '../../../utils/localizations.js';
-import gm_link from '../../../database/schema/gm_link.js';
+import ServerLinks from '../../../database/schema/ServerLinks.js';
 import { serverConfig } from '../../../config/index.js';
 
 export default {
@@ -15,7 +15,7 @@ export default {
   async execute(interaction) {
     const lang = interaction.guild.preferredLocale;
     const linkID = interaction.options.getString('link');
-    const linkInfo = await gm_link.findOne({
+    const linkInfo = await ServerLinks.findOne({
       where: {
         id: linkID,
       },
@@ -51,7 +51,7 @@ export default {
     const focusedOption = interaction.options.getFocused(true);
     const choices = {};
 
-    const guildLinks = await gm_link.findAll({
+    const guildLinks = await ServerLinks.findAll({
       where: {
         guild: interaction.guild.id,
       },
