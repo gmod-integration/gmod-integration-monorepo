@@ -38,7 +38,7 @@ export function getRandomDiscordRelay() {
   if (serverConfig.production === 'true') {
     relays.push('https://1-dsc-relay.gmod-integration.com');
   } else {
-    relays.push('http://localhost:3001');
+    relays.push('https://relay-dev.gmod-integration.com');
   }
   return relays[Math.floor(Math.random() * relays.length)];
 }
