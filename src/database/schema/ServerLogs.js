@@ -239,10 +239,10 @@ export async function logServer(server, type, data) {
       playerInvolvedSteamID64,
     });
 
+    await wsSendToAllClientsOfServer(server.getID(), 'server_logs', { type, data: dataToSave });
+
     if (relayChannelInfo) {
       const { webhookID, webhookToken } = relayChannelInfo;
-
-      await wsSendToAllClientsOfServer(server.getID(), 'server_logs', { type, data: dataToSave });
 
       const embed = new EmbedBuilder()
         .setAuthor({
