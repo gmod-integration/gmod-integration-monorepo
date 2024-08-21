@@ -18,8 +18,8 @@ export async function uploadScreenshot(req, res) {
     });
   }
 
-  const { url, filename } = await saveScreenshot(screenshot, captureData, player, server);
-  await sendScreenshotToDiscord(url, filename, player, server);
+  const { discordUrl, filename } = await saveScreenshot(screenshot, captureData, player, server);
+  await sendScreenshotToDiscord(discordUrl, filename, player, server);
   res.status(200).json({ success: true });
 }
 
@@ -41,15 +41,15 @@ export async function reportBugs(req, res) {
     });
   }
 
-  let urlToSave = '';
+  let screenshotName = '';
   if (screenshot) {
     const { screenshot: screenshot2, captureData, size } = screenshot;
     if (screenshot2 && captureData && size) {
-      const { url, filename } = await saveScreenshot(screenshot2, captureData, player, server).catch((err) => {
+      const { internUrl, filename } = await saveScreenshot(screenshot2, captureData, player, server).catch((err) => {
         console.error(err);
-        return { url: '', filename: '' };
+        return { internUrl: '', filename: '' };
       });
-      urlToSave = url;
+      screenshotName = filename;
     }
   }
 
@@ -63,7 +63,7 @@ export async function reportBugs(req, res) {
       expected,
       actual,
       importance,
-      screenshot: urlToSave,
+      screenshot: screenshotName,
     }),
   );
 }

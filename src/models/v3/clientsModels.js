@@ -1,45 +1,48 @@
-import { generateToken, getRandomDiscordRelay } from '../../utils/tools.js';
+import { getRandomDiscordRelay } from '../../utils/tools.js';
 import fs from 'fs';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
 import { getMainClient } from '../../discord/index.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export function saveScreenshot(screenshot, captureData, player, server) {
   return new Promise(async (resolve, reject) => {
     const format = captureData.format || 'jpeg';
     const dateFormatted = new Date().toISOString().replace(/T/g, '_').replace(/\..+/, '').replace(/:/g, '-');
-    const filename = `${dateFormatted}_${player.steamID64}_${generateToken(8)}.${format}`;
+    const filename = `${dateFormatted}_${player.steamID64}_${uuidv4()}.${format}`;
 
-    // because of a bug I need to first send the screenshot to the discord
-    const dscClient = await getMainClient();
-    const channel = await dscClient.channels.fetch(serverConfig.screenshotChannel);
-
+    // Save screenshot to be usable in the website
     const base64Data = screenshot.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
 
-    let url;
+    const path = `./screenshots/${filename}`;
+    const internUrl = `${serverConfig.domain}/screenshots/${filename}`;
+    fs.writeFile(path, buffer, (err) => {
+      if (err) {
+        reject(err);
+      }
+    });
 
-    if (!channel) {
-      const path = `./screenshots/${filename}`;
-
-      fs.writeFile(path, buffer, (err) => {
-        if (err) {
-          reject(err);
-        }
-      });
-
-      url = `${serverConfig.domain}/screenshots/${filename}`;
-    } else {
-      const message = await channel.send({
-        files: [buffer],
-        content: `Server: ${server.getName()} - Player: ${player.name} - SteamID64: ${player.steamID64}`,
-      });
-      url = message.attachments.first().url;
+    // Send screenshot to discord to be usable in discord
+    let discordUrl = '';
+    const dscClient = await getMainClient();
+    const channel = await dscClient.channels.fetch(serverConfig.screenshotChannel);
+    try {
+      if (channel) {
+        const message = await channel.send({
+          files: [buffer],
+          content: `Server: ${server.getName()} - Player: ${player.name} - SteamID64: ${player.steamID64}`,
+        });
+        discordUrl = message.attachments.first().url;
+      }
+    } catch (e) {
+      // do nothing
     }
 
     resolve({
-      url,
+      discordUrl,
+      internUrl,
       filename,
     });
   });
