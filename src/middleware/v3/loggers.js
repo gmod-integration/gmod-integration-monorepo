@@ -11,7 +11,7 @@ export default (req, res, next) => {
 
   if (url.endsWith('/bugs') && cpBody.screenshot && cpBody.screenshot.screenshot) {
     cpBody.screenshot.screenshot = '[IMAGE]';
-  } else if (url.endsWith('/screenshot') && cpBody.screenshot) {
+  } else if (url.endsWith('/screenshots') && cpBody.screenshot) {
     cpBody.screenshot = '[IMAGE]';
   }
 

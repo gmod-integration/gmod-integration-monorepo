@@ -5,6 +5,7 @@ import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
 import { getMainClient } from '../../discord/index.js';
 import { v4 as uuidv4 } from 'uuid';
+import ServerScreenshots from '../../database/schema/ServerScreenshots.js';
 
 export function saveScreenshot(screenshot, captureData, player, server) {
   return new Promise(async (resolve, reject) => {
@@ -39,6 +40,13 @@ export function saveScreenshot(screenshot, captureData, player, server) {
     } catch (e) {
       // do nothing
     }
+
+    await ServerScreenshots.create({
+      serverID: server.id,
+      title: captureData.title,
+      player,
+      url: internUrl,
+    });
 
     resolve({
       discordUrl,
