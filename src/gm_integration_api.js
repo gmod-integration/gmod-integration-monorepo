@@ -32,33 +32,54 @@ app.set('trust proxy', true);
 // CORS
 app.use(cors(corsMiddleware));
 
-// Helmet
-const whiteList = [
-  'https://cdnjs.cloudflare.com/ajax/libs/socket.io/',
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/',
-];
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && /\.gmod-integration\.com$/.test(origin)) {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  }
+  next();
+});
 
+// Helmet
 app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdnjs.cloudflare.com'],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          'https://fonts.googleapis.com',
+          'https://cdnjs.cloudflare.com',
+          '*.gmod-integration.com',
+        ],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdnjs.cloudflare.com'],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "'unsafe-eval'",
+          'https://cdnjs.cloudflare.com',
+          '*.gmod-integration.com',
+        ],
         connectSrc: [
           "'self'",
           'https://cdnjs.cloudflare.com',
           'https://fonts.googleapis.com',
           'https://fonts.gstatic.com',
+          '*.gmod-integration.com',
         ],
-        imgSrc: ["'self'", 'data:', 'https://cdn.discordapp.com', 'https://cdn.discordapp.com/attachments'],
-        frameSrc: ["'self'", ...whiteList],
+        imgSrc: ["'self'", 'data:', 'https://cdn.discordapp.com', '*.gmod-integration.com'],
+        frameSrc: ["'self'", '*.gmod-integration.com', 'https://cdnjs.cloudflare.com'],
         objectSrc: ["'none'"],
         mediaSrc: ["'none'"],
         frameAncestors: ["'none'"],
       },
     },
+    crossOriginResourcePolicy: false,
+    frameguard: true,
+    hsts: true,
+    xssFilter: true,
+    noSniff: true,
   }),
 );
 

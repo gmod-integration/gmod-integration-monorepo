@@ -1,8 +1,6 @@
-const whitelist = ['https://dev.gmod-integration.com', 'https://gmod-integration.com'];
-
 export default {
   origin: function (origin, callback) {
-    if (!origin || whitelist.indexOf(origin) !== -1) {
+    if (!origin || origin.includes('gmod-integration.com')) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
