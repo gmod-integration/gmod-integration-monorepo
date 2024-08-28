@@ -140,8 +140,7 @@ export async function logServer(server, type, data) {
       dataToSave.oldGroup = oldGroup;
       const newGroup = data.newGroup || 'Unknown';
       dataToSave.newGroup = newGroup;
-      dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
-      dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+      dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
       dscList.push((await getTranslate('oldGroup', lang)) + ': `' + oldGroup + '`');
       dscList.push((await getTranslate('newGroup', lang)) + ': `' + newGroup + '`');
     } else if (type === 'player_spawn_object') {
