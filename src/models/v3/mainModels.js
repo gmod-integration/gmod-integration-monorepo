@@ -8,6 +8,7 @@ import { ActivityType } from 'discord.js';
 import { statusRoutine } from '../../classes/v3/Server.js';
 import { getMainClient } from '../../discord/index.js';
 import { serverConfig } from '../../config/index.js';
+import { givePremiumRoleOfMainGuild } from './discordModels.js';
 
 export async function getStats() {
   const redisKey = 'stats';
@@ -117,4 +118,19 @@ export async function routineUpdateStatus() {
 export async function routineStatusRefresh() {
   setInterval(statusRoutine, 30000);
   await statusRoutine();
+}
+
+function routPremiumRoleOfMainGuild() {
+  givePremiumRoleOfMainGuild().then((err) => {
+    if (err) {
+      console.error('Error checking premium:', err);
+    } else {
+      console.log('Premium checked');
+    }
+  });
+}
+
+export async function routinePremiumRoleOfMainGuild() {
+  setInterval(routPremiumRoleOfMainGuild, 60000);
+  await routPremiumRoleOfMainGuild();
 }

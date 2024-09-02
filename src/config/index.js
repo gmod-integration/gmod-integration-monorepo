@@ -41,6 +41,9 @@ export const discordConfig = {
   oauthPanelRedirect: process.env.OAUTH_REDIRECT_URL,
   invite: process.env.DISCORD_BOT_INVITE_URL,
   barerTokenRelay: process.env.BARER_DISCORD_RELAY,
+  premiumRoleID: process.env.DISCORD_GUILD_PREMIUM_ROLE_ID,
+  gmodStorePremiumRoleID: process.env.DISCORD_GUILD_GMODSTORE_PREMIUM_ROLE_ID,
+  discordPremiumRoleID: process.env.DISCORD_GUILD_DISCORD_PREMIUM_ROLE_ID,
 };
 
 export const steamConfig = {

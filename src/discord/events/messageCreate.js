@@ -1,13 +1,13 @@
 import { sendMessageToGmod } from '../../controllers/v3/guildsControllers.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { wsSendToServer } from '../../websockets/index.js';
+import { givePremiumRoleOfMainGuild } from '../../models/v3/discordModels.js';
 
 export default {
   name: 'messageCreate',
   async execute(message) {
     await sendMessageToGmod(message);
 
-    if (message.guildId) return;
     const user = await getUserFromDiscordID(message.author.id);
     if (!user) return;
     if (!user.isDeveloper()) return;
@@ -18,6 +18,14 @@ export default {
       } else {
         message.reply('Server not found');
       }
+    } else if (message.content.startsWith('!checkPremium')) {
+      await givePremiumRoleOfMainGuild().then((err) => {
+        if (err) {
+          message.reply('Error checking premium');
+        } else {
+          message.reply('Premium checked');
+        }
+      });
     }
   },
 };

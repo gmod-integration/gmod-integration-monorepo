@@ -17,7 +17,12 @@ import { fork } from 'child_process';
 import { fileURLToPath } from 'url';
 import path, { join } from 'path';
 import { readdirSync } from 'fs';
-import { routineStatusRefresh, routineUpdateStatus, updateGuildsInDB } from '../models/v3/mainModels.js';
+import {
+  routinePremiumRoleOfMainGuild,
+  routineStatusRefresh,
+  routineUpdateStatus,
+  updateGuildsInDB,
+} from '../models/v3/mainModels.js';
 import { readdir } from 'fs/promises';
 import { getUserFromSteamID64 } from '../classes/v3/User.js';
 import ServerPseudo from '../database/schema/ServerPseudo.js';
@@ -194,6 +199,7 @@ async function addNewClient(guildInstance, token) {
     if (client.user.id === discordConfig.clientID) {
       await routineUpdateStatus();
       await routineStatusRefresh();
+      await routinePremiumRoleOfMainGuild();
     }
     await updateGuildsInDB(client);
 
