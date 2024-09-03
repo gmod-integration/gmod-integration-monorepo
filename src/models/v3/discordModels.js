@@ -499,7 +499,7 @@ export async function givePremiumRoleOfMainGuild() {
       const user = await getUserFromSteamID64(buyer.steamID64);
       if (!user) continue;
 
-      const member = await guild.members.fetch(user.getDiscordID());
+      const member = await guild.members.fetch(user.getDiscordID()).catch(() => null);
       if (!member) continue;
 
       if (!member.roles.cache.has(discordConfig.premiumRoleID)) {
@@ -512,7 +512,7 @@ export async function givePremiumRoleOfMainGuild() {
     }
 
     for (const buyer of subscriptionBuyers) {
-      const member = await guild.members.fetch(buyer);
+      const member = await guild.members.fetch(buyer).catch(() => null);
       if (!member) continue;
 
       if (!member.roles.cache.has(discordConfig.premiumRoleID)) {
