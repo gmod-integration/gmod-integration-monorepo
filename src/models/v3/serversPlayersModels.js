@@ -24,100 +24,101 @@ export async function sendPlayerSay(server, player, text, onlyTeam) {
   if (syncChatDirection !== 'both' && syncChatDirection !== 'gmodToDiscord') {
     return { skip: true, message: 'Sync chat direction is discord to gmod' };
   }
-  // const syncChatTriggerAll = await server.getSetting('syncChatTriggerAll');
-  // if (!syncChatTriggerAll || syncChatTriggerAll === 'false') {
-  //   const possibleFields = ['steamID64', 'userGroup', 'teamName', 'message'];
-  //   const operator = ['equal', 'notEqual', 'contain', 'notContain', 'startWith', 'endWith'];
-  //   const action = ['relay', 'block', 'anonymize'];
-  //
-  //   let relayMessage = false;
-  //   let blocked = false;
-  //
-  //   function executeAction(action) {
-  //     switch (action) {
-  //       case 'relay':
-  //         relayMessage = true;
-  //         break;
-  //       case 'block':
-  //         blocked = true;
-  //         break;
-  //       case 'anonymize':
-  //         player.name = 'Anonymous';
-  //         relayMessage = true;
-  //         anonymous = true;
-  //         break;
-  //     }
-  //   }
-  //
-  //   function getCorrectValue(field) {
-  //     switch (field) {
-  //       case 'steamID64':
-  //         return player.steamID64;
-  //       case 'userGroup':
-  //         return player.userGroup;
-  //       case 'teamName':
-  //         return player.team.name;
-  //       case 'message':
-  //         return text;
-  //     }
-  //   }
-  //
-  //   function verifyRule(rule) {
-  //     if (!rule.enable) return;
-  //     if (!possibleFields.includes(rule.field)) return;
-  //     if (!operator.includes(rule.operator)) return;
-  //     if (!action.includes(rule.action)) return;
-  //     switch (rule.operator) {
-  //       case 'equal':
-  //         if (getCorrectValue(rule.field) === rule.value) {
-  //           executeAction(rule.action);
-  //         }
-  //         break;
-  //       case 'notEqual':
-  //         if (getCorrectValue(rule.field) !== rule.value) {
-  //           executeAction(rule.action);
-  //         }
-  //         break;
-  //       case 'contain':
-  //         if (getCorrectValue(rule.field).includes(rule.value)) {
-  //           executeAction(rule.action);
-  //         }
-  //         break;
-  //       case 'notContain':
-  //         if (!getCorrectValue(rule.field).includes(rule.value)) {
-  //           executeAction(rule.action);
-  //         }
-  //         break;
-  //       case 'startWith':
-  //         if (getCorrectValue(rule.field).startsWith(rule.value)) {
-  //           text = text.substring(rule.value.length);
-  //           executeAction(rule.action);
-  //         }
-  //         break;
-  //       case 'endWith':
-  //         if (getCorrectValue(rule.field).endsWith(rule.value)) {
-  //           text = text.substring(0, text.length - rule.value.length);
-  //           executeAction(rule.action);
-  //         }
-  //         break;
-  //     }
-  //   }
-  //
-  //   const chatRules = await server.getChatRules();
-  //   chatRules.forEach((rule) => {
-  //     verifyRule(rule);
-  //   });
-  //
-  //   const globalChatRules = await server.getGlobalChatRules();
-  //   globalChatRules.forEach((rule) => {
-  //     rule.enable = true;
-  //     verifyRule(rule);
-  //   });
-  //
-  //   if (!relayMessage || blocked) {
-  //     return { skip: true, message: 'Message blocked or not relayed' };
-  //   }
-  // }
+
+  if (!text || text === '') {
+    return { skip: true, message: 'No message' };
+  }
+
+  const possibleFields = ['steamID64', 'userGroup', 'teamName', 'message'];
+  const operator = ['equal', 'notEqual', 'contain', 'notContain', 'startWith', 'endWith'];
+  const action = ['relay', 'block', 'anonymize'];
+
+  let relayMessage = await server.getSetting('chat_sync_relay_all');
+  let outputStr = '';
+
+  function executeAction(action) {
+    switch (action) {
+      case 'relay':
+        relayMessage = true;
+        break;
+      case 'block':
+        relayMessage = false;
+        break;
+      case 'anonymize':
+        player.name = 'Anonymous';
+        relayMessage = true;
+        anonymous = true;
+        break;
+    }
+  }
+
+  function getCorrectValue(element) {
+    switch (element) {
+      case 'steamID64':
+        return player.steamID64;
+      case 'userGroup':
+        return player.userGroup;
+      case 'teamName':
+        return player.team.name;
+      case 'message':
+        return text;
+    }
+  }
+
+  function verifyRule(rule) {
+    if (!rule.active) return;
+    if (!possibleFields.includes(rule.element)) return;
+    if (!operator.includes(rule.operator)) return;
+    if (!action.includes(rule.action)) return;
+    if (rule.trigger === '') return;
+    switch (rule.operator) {
+      case 'equal':
+        if (getCorrectValue(rule.element) === rule.trigger) {
+          executeAction(rule.action);
+        }
+        break;
+      case 'notEqual':
+        if (getCorrectValue(rule.element) !== rule.trigger) {
+          executeAction(rule.action);
+        }
+        break;
+      case 'contain':
+        if (getCorrectValue(rule.element).includes(rule.trigger)) {
+          executeAction(rule.action);
+        }
+        break;
+      case 'notContain':
+        if (!getCorrectValue(rule.element).includes(rule.trigger)) {
+          executeAction(rule.action);
+        }
+        break;
+      case 'startWith':
+        if (getCorrectValue(rule.element).startsWith(rule.trigger)) {
+          outputStr = text.substring(rule.trigger.length);
+          executeAction(rule.action);
+        }
+        break;
+      case 'endWith':
+        if (getCorrectValue(rule.element).endsWith(rule.trigger)) {
+          outputStr = text.substring(0, text.length - rule.trigger.length);
+          executeAction(rule.action);
+        }
+        break;
+    }
+  }
+
+  const chatRules = await server.getGmodToDiscordFilter();
+  chatRules.forEach((rule) => {
+    verifyRule(rule);
+  });
+
+  if (!relayMessage) {
+    return { skip: true, message: 'Message blocked' };
+  }
+
+  if (outputStr === '') {
+    return { skip: true, message: 'Final message is empty' };
+  }
 
   const webhookRelay = await fetch(getRandomDiscordRelay(), {
     method: 'POST',
@@ -133,7 +134,7 @@ export async function sendPlayerSay(server, player, text, onlyTeam) {
         avatarURL: anonymous
           ? 'https://i.imgur.com/MfkZJfm.jpeg'
           : await getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
-        content: text ? text : 'No message',
+        content: outputStr ? outputStr : 'No message',
       },
     }),
   });

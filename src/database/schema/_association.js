@@ -35,6 +35,7 @@ import ServerVote from './ServerVote.js';
 import ServerVoteChannel from './ServerVoteChannel.js';
 import ServerWarn from './ServerWarn.js';
 import ServerWarnOptions from './ServerWarnOptions.js';
+import ServerSyncChatFilter from './ServerSyncChatFilter.js';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -374,4 +375,14 @@ gm_server.hasMany(ServerWarnOptions, {
 ServerWarnOptions.belongsTo(gm_server, {
   foreignKey: 'serverID',
   as: 'warnOptionsServer',
+});
+
+// ServerSyncChatFilter
+gm_server.hasMany(ServerSyncChatFilter, {
+  foreignKey: 'serverID',
+  as: 'serverSyncChatFilters',
+});
+ServerSyncChatFilter.belongsTo(gm_server, {
+  foreignKey: 'serverID',
+  as: 'syncChatFilterServer',
 });

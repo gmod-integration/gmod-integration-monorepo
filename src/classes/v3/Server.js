@@ -17,6 +17,7 @@ import { Op } from 'sequelize';
 import ServerSetting from '../../database/schema/ServerSettings.js';
 import ServerLogsChannel from '../../database/schema/ServerLogsChannel.js';
 import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
+import ServerSyncChatFilter from '../../database/schema/ServerSyncChatFilter.js';
 
 const serverSettings = {
   sync_role_direction: {
@@ -45,6 +46,10 @@ const serverSettings = {
   },
   show_player_list_status: {
     defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  chat_sync_relay_all: {
+    defaultValue: true,
     acceptedValues: [true, false],
   },
 };
@@ -141,6 +146,28 @@ export class Server extends BaseClass {
     return {
       value,
     };
+  }
+
+  async getGmodToDiscordFilter() {
+    const redisKey = `server:${this.id}:gmodToDiscordFilter`;
+    const redisData = await redis.get(redisKey);
+
+    if (redisData) {
+      return JSON.parse(redisData);
+    }
+
+    const result = await ServerSyncChatFilter.findAll({
+      where: {
+        serverID: this.id,
+      },
+    });
+
+    if (result) {
+      await redis.set(redisKey, JSON.stringify(result), 'EX', 60);
+      return result;
+    }
+
+    return [];
   }
 
   async getStatusChannelAndMessage() {

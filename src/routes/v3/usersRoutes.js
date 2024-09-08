@@ -6,6 +6,7 @@ import {
   createVerificationMessage,
   deleteAutoRoles,
   deleteGmodPurchase,
+  deleteGmodToDiscordFilter,
   deleteGuildBotInstance,
   deleteGuildLinks,
   deleteGuildServer,
@@ -30,6 +31,7 @@ import {
   findServerSyncChat,
   getAdminGuilds,
   getAutoRoles,
+  getGmodToDiscordFilter,
   getGuildAdmins,
   getGuildBotInstance,
   getGuildEmojis,
@@ -61,6 +63,7 @@ import {
   patchUserNotifications,
   postAutoRoles,
   postGmodPurchase,
+  postGmodToDiscordFilter,
   postGuildLinks,
   postGuildServerToken,
   postGuildSetting,
@@ -73,6 +76,7 @@ import {
   postUserDataRequest,
   postUserStartVerification,
   postVoteChannels,
+  putGmodToDiscordFilter,
   putGuildBotInstance,
   putGuildLinks,
   putGuildServer,
@@ -193,6 +197,16 @@ router.delete('/:discordID/guilds/:guildID/servers/:serverID/pseudo/:roleID', as
 router.get('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(findServerSyncChat));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(postServerSyncChat));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(deleteServerSyncChat));
+router.get('/:discordID/guilds/:guildID/servers/:serverID/chats/filters', asyncHandler(getGmodToDiscordFilter));
+router.post('/:discordID/guilds/:guildID/servers/:serverID/chats/filters', asyncHandler(postGmodToDiscordFilter));
+router.put(
+  '/:discordID/guilds/:guildID/servers/:serverID/chats/filters/:filterID',
+  asyncHandler(putGmodToDiscordFilter),
+);
+router.delete(
+  '/:discordID/guilds/:guildID/servers/:serverID/chats/filters/:filterID',
+  asyncHandler(deleteGmodToDiscordFilter),
+);
 // Report Bug
 router.get('/:discordID/guilds/:guildID/servers/:serverID/bugs', asyncHandler(getServerReportBugs));
 // Status

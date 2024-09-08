@@ -32,6 +32,8 @@ import UsersDataRequest from '../../database/schema/UsersDataRequest.js';
 import { getUserDataGRPD } from '../../models/v3/gdrp.js';
 import ServerReportBugs from '../../database/schema/ServerReportBugs.js';
 import { getMainClient } from '../../discord/index.js';
+import ServerSyncChatFilter from '../../database/schema/ServerSyncChatFilter.js';
+import redis from '../../redis/index.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -462,6 +464,85 @@ export async function postServerSyncChat(req, res) {
 export async function deleteServerSyncChat(req, res) {
   const server = req.server;
   return res.send(await server.destroySyncChat());
+}
+
+export async function getGmodToDiscordFilter(req, res) {
+  const server = req.server;
+  return res.send(
+    (await ServerSyncChatFilter.findAll({
+      where: {
+        serverID: server.id,
+      },
+    })) || [],
+  );
+}
+
+export async function postGmodToDiscordFilter(req, res) {
+  const server = req.server;
+
+  const filter = await ServerSyncChatFilter.create({
+    serverID: server.id,
+  });
+
+  await redis.del(`server:${server.id}:gmodToDiscordFilter`);
+  return res.send(filter);
+}
+
+export async function putGmodToDiscordFilter(req, res) {
+  const { filterID } = req.params;
+  const server = req.server;
+  const { element, operator, trigger, action, active } = req.body;
+
+  if (badArgument([element, operator, trigger, action, active])) {
+    return res.status(400).send({
+      error: 'missing arguments',
+    });
+  }
+
+  const filter = await ServerSyncChatFilter.findOne({
+    where: {
+      id: filterID,
+      serverID: server.id,
+    },
+  });
+
+  if (!filter) {
+    return res.status(404).send({
+      error: 'filter not found',
+    });
+  }
+
+  filter.element = element !== undefined ? element : filter.element;
+  filter.operator = operator !== undefined ? operator : filter.operator;
+  filter.trigger = trigger !== undefined ? trigger : filter.trigger;
+  filter.action = action !== undefined ? action : filter.action;
+  filter.active = active !== undefined ? active : filter.active;
+
+  filter.changed('updatedAt', true);
+  await filter.save();
+  await redis.del(`server:${server.id}:gmodToDiscordFilter`);
+  return res.send(filter);
+}
+
+export async function deleteGmodToDiscordFilter(req, res) {
+  const { filterID } = req.params;
+  const server = req.server;
+  const filter = await ServerSyncChatFilter.findOne({
+    where: {
+      id: filterID,
+      serverID: server.id,
+    },
+  });
+
+  if (!filter) {
+    return res.status(404).send({
+      error: 'filter not found',
+    });
+  }
+
+  await redis.del(`server:${server.id}:gmodToDiscordFilter`);
+  await filter.destroy();
+  return res.send(filter);
 }
 
 export async function getServerPlayers(req, res) {
