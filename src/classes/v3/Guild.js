@@ -6,7 +6,7 @@ import ServerLinks from '../../database/schema/ServerLinks.js';
 import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 import PremiumGuild from '../../database/schema/PremiumGuild.js';
-import { getGuildClient, loadGuildBotInstance } from '../../discord/index.js';
+import { getGuildClient, getMainClient, loadGuildBotInstance } from '../../discord/index.js';
 import { ActivityType } from 'discord.js';
 
 export class Guild {
@@ -30,6 +30,11 @@ export class Guild {
     }
 
     return botCustomClient;
+  }
+
+  async mainBotOnGuild() {
+    const mainClient = await getMainClient();
+    return mainClient.guilds.cache.has(this.id);
   }
 
   async getBotClientInfo(user) {

@@ -31,6 +31,7 @@ import UsersNotifications from '../../database/schema/UsersNotifications.js';
 import UsersDataRequest from '../../database/schema/UsersDataRequest.js';
 import { getUserDataGRPD } from '../../models/v3/gdrp.js';
 import ServerReportBugs from '../../database/schema/ServerReportBugs.js';
+import { getMainClient } from '../../discord/index.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -1067,6 +1068,12 @@ export async function postGmodPurchase(req, res) {
 export async function deleteGmodPurchase(req, res) {
   const { discordID } = req.params;
   const guild = req.guild;
+  if (!(await guild.mainBotOnGuild())) {
+    return res.status(400).send({
+      error: 'Main bot not on guild',
+    });
+  }
+
   const user = await getUserFromDiscordID(discordID);
   if (!user || !user.getSteamID64()) {
     return res.status(404).send({
@@ -1124,11 +1131,16 @@ export async function getUserGmodStorePurchases(req, res) {
     });
   }
 
-  const purchases = await GmodStorePurchases.findOne({
+  let purchases = await GmodStorePurchases.findOne({
     where: {
       steamID64: user.getSteamID64(),
     },
   });
+
+  if (purchases && purchases.guild) {
+    const mainClient = await getMainClient();
+    purchases.dataValues.hasMainBot = mainClient.guilds.cache.has(purchases.guild);
+  }
 
   return res.send(purchases || {});
 }
