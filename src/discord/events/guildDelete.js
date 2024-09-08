@@ -2,6 +2,7 @@ import { gmLog } from '../../utils/logger.js';
 import gm_guild from '../../database/schema/gm_guild.js';
 import { discordConfig } from '../../config/index.js';
 import { getGuildClient, killGuildClient } from '../index.js';
+import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 
 export default {
   name: 'guildDelete',
@@ -29,6 +30,19 @@ export default {
 
     if (oldGuild) {
       await oldGuild.destroy();
+    }
+
+    const purchase = await GmodStorePurchases.findOne({
+      where: {
+        guild: guild.id,
+      },
+    });
+
+    if (purchase) {
+      purchase.guild = '';
+      purchase.token = '';
+      purchase.changed('updatedAt', true);
+      await purchase.save();
     }
   },
 };
