@@ -5,6 +5,7 @@ import {
   createServerStatusButtons,
   createVerificationMessage,
   deleteAutoRoles,
+  deleteGmodPurchase,
   deleteGuildBotInstance,
   deleteGuildLinks,
   deleteGuildServer,
@@ -114,9 +115,10 @@ router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', asyncHandler(findGuild));
 router.get('/:discordID/guilds/:guildID/bot', asyncHandler(getGuildBotInstance));
 router.put('/:discordID/guilds/:guildID/bot', asyncHandler(putGuildBotInstance));
-router.post('/:discordID/guilds/:guildID/bot', asyncHandler(postGmodPurchase));
 router.patch('/:discordID/guilds/:guildID/bot', asyncHandler(patchGuildBotInstance));
 router.delete('/:discordID/guilds/:guildID/bot', asyncHandler(deleteGuildBotInstance));
+router.post('/:discordID/guilds/:guildID/gmod-store', asyncHandler(postGmodPurchase));
+router.delete('/:discordID/guilds/:guildID/gmod-store', asyncHandler(deleteGmodPurchase));
 router.get('/:discordID/guilds/:guildID/channels', asyncHandler(findGuildChannels));
 router.get('/:discordID/guilds/:guildID/roles', asyncHandler(getGuildRoles));
 router.get('/:discordID/guilds/:guildID/admins', asyncHandler(getGuildAdmins));

@@ -1064,6 +1064,36 @@ export async function postGmodPurchase(req, res) {
   return res.send((await guild.getBotClientInfo(req.panelUser.user)) || {});
 }
 
+export async function deleteGmodPurchase(req, res) {
+  const { discordID } = req.params;
+  const guild = req.guild;
+  const user = await getUserFromDiscordID(discordID);
+  if (!user || !user.getSteamID64()) {
+    return res.status(404).send({
+      error: 'User not found or not linked',
+    });
+  }
+
+  const purchase = await GmodStorePurchases.findOne({
+    where: {
+      steamID64: user.getSteamID64(),
+    },
+  });
+
+  if (!purchase) {
+    return res.status(404).send({
+      error: 'Purchase not found',
+    });
+  }
+
+  purchase.guild = '';
+  purchase.token = '';
+  purchase.changed('updatedAt', true);
+  await purchase.save();
+  await guild.reloadBotInstance();
+  return res.send(purchase);
+}
+
 export async function putGuildBotInstance(req, res) {
   const { username, avatar, token } = req.body;
   const guild = req.guild;
