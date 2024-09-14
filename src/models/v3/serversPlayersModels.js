@@ -11,6 +11,10 @@ export async function sendPlayerSay(server, player, text, onlyTeam) {
   player.name.replace(/[^\x00-\x7F]/g, '');
   text.replace(/[^\x00-\x7F]/g, '');
 
+  if (!text || text === '') {
+    return { skip: true, message: 'No message' };
+  }
+
   if (!(await isGuildPremium(server.getGuildID()))) {
     return { skip: true, message: 'Server is not premium' };
   }
@@ -25,16 +29,13 @@ export async function sendPlayerSay(server, player, text, onlyTeam) {
     return { skip: true, message: 'Sync chat direction is discord to gmod' };
   }
 
-  if (!text || text === '') {
-    return { skip: true, message: 'No message' };
-  }
-
   const possibleFields = ['steamID64', 'userGroup', 'teamName', 'message'];
   const operator = ['equal', 'notEqual', 'contain', 'notContain', 'startWith', 'endWith'];
   const action = ['relay', 'block', 'anonymize'];
 
   let relayMessage = await server.getSetting('chat_sync_relay_all');
-  let outputStr = '';
+  console.log('relayMessage', relayMessage);
+  let outputStr = text;
 
   function executeAction(action) {
     switch (action) {
@@ -134,7 +135,7 @@ export async function sendPlayerSay(server, player, text, onlyTeam) {
         avatarURL: anonymous
           ? 'https://i.imgur.com/MfkZJfm.jpeg'
           : await getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
-        content: outputStr ? outputStr : 'No message',
+        content: outputStr,
       },
     }),
   });
