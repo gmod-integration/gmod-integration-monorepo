@@ -43,7 +43,7 @@ export default {
     const urlEncoded = encodeURIComponent(linkInfo.url);
     return await interaction.reply({
       content: await getTranslate('the_link_to', lang, [
-        `[${linkInfo.alias}](${serverConfig.websiteUrl}/open?link=${urlEncoded})`,
+        `[${linkInfo.alias}](<${serverConfig.websiteUrl}/open?link=${urlEncoded}>)`,
       ]),
     });
   },
