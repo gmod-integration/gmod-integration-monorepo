@@ -27,7 +27,9 @@ jobs:
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
             export PATH=$(nvm which current | xargs dirname):$PATH 
             cd ${{ vars.DEPLOY_PATH }}
-            git pull origin main
+            git fetch --all
+            git reset --hard origin/main
+            git pull
             npm install
             pm2 restart gmod-integration-api
           EOF
