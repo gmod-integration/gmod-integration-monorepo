@@ -1,6 +1,6 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
-import { getMainClient } from '../../discord/index.js';
+import { getGuildClient, getMainClient } from '../../discord/index.js';
 import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.js';
 import { discordConfig } from '../../config/index.js';
 import { generateToken } from '../../utils/tools.js';
@@ -16,6 +16,11 @@ import redis from '../../redis/index.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 
 export async function updateRolesToGmod(member, oldMember, newMember) {
+  const guildBotInstance = await getGuildClient(member.guild.id, false);
+  if (guildBotInstance.user.id !== member.guild.client.user.id) {
+    return;
+  }
+
   const addedRoles = newMember.roles.cache.filter((role) => !oldMember.roles.cache.has(role.id));
   const removedRoles = oldMember.roles.cache.filter((role) => !newMember.roles.cache.has(role.id));
 
@@ -420,6 +425,11 @@ export async function getDiscordUserFromID(discordID) {
 }
 
 export async function updatePseudoToGmod(member, oldMember, newMember) {
+  const guildBotInstance = await getGuildClient(member.guild.id, false);
+  if (guildBotInstance.user.id !== member.guild.client.user.id) {
+    return;
+  }
+
   const servers = await getServersFromDiscordGuildID(member.guild.id);
   if (!servers || servers.length === 0) return;
 

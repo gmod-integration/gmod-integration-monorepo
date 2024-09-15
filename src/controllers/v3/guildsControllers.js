@@ -5,10 +5,16 @@ import { ActionRowBuilder } from 'discord.js';
 import { ButtonPremium } from '../../discord/utils/buttons.js';
 import { wsSendToServer } from '../../websockets/index.js';
 import gm_sync_chat from '../../database/schema/gm_sync_chat.js';
+import { getGuildClient } from '../../discord/index.js';
 
 export async function sendMessageToGmod(message) {
   if (message.author.bot || !message.guild) return;
   const lang = message.guild.preferredLocale;
+
+  const guildBotInstance = await getGuildClient(message.guild.id, false);
+  if (guildBotInstance.user.id !== message.guild.client.user.id) {
+    return;
+  }
 
   const channels = await gm_sync_chat.findAll({
     where: {
