@@ -65,17 +65,17 @@ async function loadCommands(dirPath, type) {
           const command = await import(filePath);
           if (command.default && command.default.data) {
             commandsData.push(command.default.data.toJSON());
-            console.log(`[INFO] Pushed ${type} ${command.default.data.name} from ${filePath}`);
+            gmLog('info', `Pushed ${type} ${command.default.data.name} from ${filePath}`);
           } else {
-            console.log(`[WARNING] The ${type} at ${filePath} is missing a required "data" or "execute" property.`);
+            gmLog('warning', `The ${type} at ${filePath} is missing a required "data" or "execute" property.`);
           }
         } catch (error) {
-          console.error(`[ERROR] Failed to load ${type} from ${file}: ${error}`);
+          gmLog('error', `Failed to load ${type} from ${file}: ${error}`);
         }
       }
     }
   } catch (error) {
-    console.error(`[ERROR] Failed to read directory ${dirPath}: ${error}`);
+    gmLog('error', `Failed to read directory ${dirPath}: ${error}`);
   }
 }
 
@@ -201,7 +201,7 @@ async function addNewClient(guildInstance, token) {
     if (guildInstance === 'main') {
       await loadCommands('src/discord/contexts', 'Context');
       await loadCommands('src/discord/commands', 'Command');
-      console.log(`[INFO] Loaded ${commandsData.length} commands and context menu commands`);
+      gmLog('discord', `Loaded ${commandsData.length} commands and context menu commands`);
     } else {
       // client.user.setPresence({
       //   activities: [
@@ -215,14 +215,22 @@ async function addNewClient(guildInstance, token) {
     // Load commands and context menu commands
     const rest = new REST().setToken(token);
     try {
-      console.log('[INFO] Started reloading application: ', guildInstance);
+      gmLog('discord', `Started reloading application: ${guildInstance}`);
+      console.log(commandsData);
       await rest.put(Routes.applicationCommands(client.user.id), {
         body: commandsData,
       });
 
-      console.log('[INFO] Successfully reloaded application: ', guildInstance);
+      // force push for every guild instance
+      if (guildInstance !== 'main') {
+        await rest.put(Routes.applicationGuildCommands(client.user.id, guildInstance), {
+          body: commandsData,
+        });
+      }
+
+      gmLog('discord', `Successfully reloaded application: ${guildInstance}`);
     } catch (error) {
-      console.error('[ERROR] Failed to reload application: ', guildInstance);
+      gmLog('discord', `Failed to reload application: ${guildInstance}`);
       console.error(error);
     }
   });
