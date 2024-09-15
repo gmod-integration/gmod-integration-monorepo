@@ -105,8 +105,10 @@ export function wsSendToServer(id, data) {
     return false;
   }
 
-  console.log('Sending to server', id);
-  client.ws.send(JSON.stringify(data));
+  const stringData = JSON.stringify(data);
+
+  console.log('Sending to server', id, stringData);
+  client.ws.send(stringData);
   return true;
 }
 
