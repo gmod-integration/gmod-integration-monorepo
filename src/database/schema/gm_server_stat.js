@@ -65,11 +65,16 @@ class gm_server_stat extends Model {
     );
 
     if (rolesToRemove.size > 0) {
+      gmLog(
+        'sync-ranking',
+        `Removing roles from ${member.user.tag}: ${rolesToRemove.map((role) => role.name).join(', ')}`,
+      );
       await member.roles.remove(rolesToRemove);
     }
 
     // if user doesn't have the rank role then add it
     if (rankRole && !member.roles.cache.has(rankRole.roleID)) {
+      gmLog('sync-ranking', `Adding role to ${member.user.tag}: ${rankRole.roleName}`);
       await member.roles.add(rankRole.roleID);
     }
   }
