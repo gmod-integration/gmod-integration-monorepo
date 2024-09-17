@@ -34,24 +34,19 @@ export default async (req, res, next) => {
   const token = authorization.split(' ')[1];
   const userID = authorization.split(' ')[2];
 
-  getServerFromID(serverID)
-    .then((server) => {
-      if (!server) return res.status(404).json({ error: 'server_not_found' });
+  const server = await getServerFromID(serverID);
+  if (!server) return res.status(404).json({ error: 'server_not_found' });
 
-      const hash = crypto.createHash('sha256');
-      hash.update(`${clientID64}-${server.getPublicToken()}-${server.getToken()}-${userID}`);
-      const tokenHash = hash.digest('hex');
-      if (tokenHash !== token) {
-        console.error('Unauthorized', tokenHash, token);
-        return res.status(401).json({ error: 'unauthorized' });
-      }
+  const hash = crypto.createHash('sha256');
+  hash.update(`${clientID64}-${server.getPublicToken()}-${server.getToken()}-${userID}`);
 
-      req.headers.guild = server.guild;
-      req.server = server;
-      return next();
-    })
-    .catch((err) => {
-      console.error(err);
-      return res.status(500).json({ error: 'internal_server_error' });
-    });
+  const tokenHash = hash.digest('hex');
+  if (tokenHash !== token) {
+    console.error('Unauthorized', tokenHash, token);
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+
+  req.headers.guild = server.guild;
+  req.server = server;
+  return next();
 };
