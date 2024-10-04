@@ -1,5 +1,4 @@
 import express from 'express';
-import statusMonitor from 'express-status-monitor';
 import webhooksRoutes from './webhooks/_webhooksRoutes.js';
 import v3Routes from './v3/_v3Routes.js';
 import steamRoutes from './steamRoutes.js';
@@ -10,7 +9,6 @@ import { Op } from 'sequelize';
 
 const router = express.Router();
 
-router.use(statusMonitor());
 router.use('/screenshots', express.static('screenshots'));
 router.use(
   '/gdpr-request/:uuid',
