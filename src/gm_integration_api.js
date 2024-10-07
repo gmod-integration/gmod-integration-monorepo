@@ -11,7 +11,6 @@ import corsMiddleware from './middleware/corsMiddleware.js';
 import './websockets/index.js';
 import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
-import promBundle from 'express-prom-bundle';
 import './database/schema/_association.js';
 import sequelize from './database/sequelize.js';
 
@@ -85,9 +84,6 @@ app.use(
 
 // Raw Body
 app.use(rawBodyMiddleware);
-
-// Prometheus
-app.use(promBundle({ includeMethod: true }));
 
 // Body Parser
 app.use(express.json({ limit: serverConfig.bodyLimit, type: 'application/json' }));
