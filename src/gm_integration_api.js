@@ -13,6 +13,7 @@ import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
 import './database/schema/_association.js';
 import sequelize from './database/sequelize.js';
+const Sentry = require("@sentry/node");
 
 // Database
 await sequelize
@@ -99,6 +100,9 @@ app.use(mainRoutes);
 app.all('*', (req, res) => {
   return res.status(404).json({ error: '404 Not Found' });
 });
+
+// Sentry
+Sentry.setupExpressErrorHandler(app);
 
 // Errors
 app.use(errorMiddleware);

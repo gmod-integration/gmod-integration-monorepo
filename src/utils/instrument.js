@@ -1,13 +1,12 @@
-import * as Sentry from '@sentry/node';
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
-import { serverConfig } from '../config/index.js';
+const Sentry = require("@sentry/node");
+const { nodeProfilingIntegration } = require("@sentry/profiling-node");
+const { serverConfig } = require('../config/index.js');
 
 Sentry.init({
   dsn: serverConfig.sentryDSN,
-  integrations: [nodeProfilingIntegration()],
-  // Performance Monitoring
-  tracesSampleRate: 1.0, //  Capture 100% of the transactions
-
-  // Set sampling rate for profiling - this is relative to tracesSampleRate
+  integrations: [
+    nodeProfilingIntegration(),
+  ],
+  tracesSampleRate: 1.0,
   profilesSampleRate: 1.0,
 });
