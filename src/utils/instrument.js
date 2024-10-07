@@ -1,6 +1,6 @@
-const Sentry = require("@sentry/node");
-const { nodeProfilingIntegration } = require("@sentry/profiling-node");
-const { serverConfig } = require('../config/index.js');
+import { nodeProfilingIntegration } from '@sentry/profiling-node';
+import { serverConfig } from '../config/index.js';
+import * as Sentry from '@sentry/node';
 
 Sentry.init({
   dsn: serverConfig.sentryDSN,
