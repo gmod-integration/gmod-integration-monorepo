@@ -34,6 +34,7 @@ import ServerReportBugs from '../../database/schema/ServerReportBugs.js';
 import { getMainClient } from '../../discord/index.js';
 import ServerSyncChatFilter from '../../database/schema/ServerSyncChatFilter.js';
 import redis from '../../redis/index.js';
+import gm_panelToken from '../../database/schema/gm_panelToken.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -61,6 +62,52 @@ export async function getProfile(req, res) {
   return res.status(400).send({
     error: 'Missing required query parameter',
   });
+}
+
+export async function getUserSessions(req, res) {
+  const { discordID } = req.params;
+  const sessions = await gm_panelToken.findAll({
+    where: {
+      discordID,
+    },
+  });
+
+  return res.send(sessions || []);
+}
+
+export async function deleteUserSession(req, res) {
+  const { discordID, sessionID } = req.params;
+  const session = await gm_panelToken.findOne({
+    where: {
+      discordID,
+      id: sessionID,
+    },
+  });
+
+  if (!session) {
+    return res.status(404).send({
+      error: 'Session not found',
+    });
+  }
+
+  await session.destroy();
+  return res.send(session || {});
+}
+
+export async function logOut(req, res) {
+  const panelUser = req.panelUser;
+  const sessionToken = await gm_panelToken.findOne({
+    where: {
+      discordID: panelUser.discordID,
+      accessToken: panelUser.panelToken.token,
+    },
+  });
+
+  if (sessionToken) {
+    await sessionToken.destroy();
+  }
+
+  return res.status(200).json(sessionToken || {});
 }
 
 export async function findCurrentUser(req, res) {
@@ -105,7 +152,16 @@ export async function oauthLogin(req, res) {
   //     console.error(error);
   //   });
 
-  const panelAccessToken = await saveUserPanel(discordUser.id, discordUserToken);
+  const userIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+  const userCountry = req.headers['cf-ipcountry'] || 'XX';
+  const userUA = req.useragent;
+
+  const panelAccessToken = await saveUserPanel(discordUser.id, discordUserToken, {
+    os: userUA.os,
+    browser: userUA.browser,
+    ip: userIP,
+    country: userCountry,
+  });
   await saveUser(discordUser.id, discordUser.username);
 
   return res.redirect(

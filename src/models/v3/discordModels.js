@@ -354,7 +354,7 @@ export async function saveUser(id, username) {
   return true;
 }
 
-export async function saveUserPanel(discordID, discordUserToken) {
+export async function saveUserPanel(discordID, discordUserToken, sessionData) {
   const discordToken = await gm_discordToken.findOne({
     where: {
       discordID,
@@ -378,28 +378,18 @@ export async function saveUserPanel(discordID, discordUserToken) {
     await discordToken.save();
   }
 
-  const panelToken = await gm_panelToken.findOne({
-    where: {
-      discordID,
-    },
-  });
-
   const panelAccessToken = generateToken(32);
 
-  if (!panelToken) {
-    await gm_panelToken.create({
-      discordID,
-      accessToken: panelAccessToken,
-      creationDate: discordUserToken.creationDate,
-      expirationDate: discordUserToken.expirationDate,
-    });
-  } else {
-    panelToken.accessToken = panelAccessToken;
-    panelToken.creationDate = discordUserToken.creationDate;
-    panelToken.expirationDate = discordUserToken.expirationDate;
-    panelToken.changed('updatedAt', true);
-    await panelToken.save();
-  }
+  await gm_panelToken.create({
+    discordID,
+    accessToken: panelAccessToken,
+    creationDate: discordUserToken.creationDate,
+    expirationDate: discordUserToken.expirationDate,
+    os: sessionData.os,
+    ip: sessionData.ip,
+    browser: sessionData.browser,
+    country: sessionData.country,
+  });
 
   return panelAccessToken;
 }

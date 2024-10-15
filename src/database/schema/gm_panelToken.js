@@ -8,14 +8,34 @@ class gm_panelToken extends Model {
 
 gm_panelToken.init(
   {
+    id: {
+      type: DataTypes.UUID,
+      defaultValue: DataTypes.UUIDV4,
+      primaryKey: true,
+    },
     discordID: {
       type: DataTypes.STRING,
       allowNull: false,
-      primaryKey: true,
     },
     accessToken: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    os: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    ip: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    country: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    browser: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     creationDate: {
       type: DataTypes.DATE,

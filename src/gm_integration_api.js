@@ -13,7 +13,9 @@ import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
 import './database/schema/_association.js';
 import sequelize from './database/sequelize.js';
-const Sentry = require("@sentry/node");
+import useragent from 'express-useragent';
+
+const Sentry = require('@sentry/node');
 
 // Database
 await sequelize
@@ -28,6 +30,9 @@ await sequelize
 // Express
 const app = express();
 app.set('trust proxy', true);
+
+// User Agent
+app.use(useragent.express());
 
 // CORS
 app.use(cors(corsMiddleware));

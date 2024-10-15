@@ -38,7 +38,7 @@ const wss = new WebSocketServer({
 
       if (discordID && authToken && guildID && serverID && action) {
         const user = await getPanelUserFromDiscordID(discordID);
-        if (user && user.authAllowed(authToken) && (await user.isAdminOfGuild(guildID))) {
+        if (user && (await user.authAllowed(authToken)) && (await user.isAdminOfGuild(guildID))) {
           const server = await getServerFromID(serverID);
           if (server && server.getGuildID() !== serverID) {
             gmLog('websocket', 'Authorized client ' + discordID);

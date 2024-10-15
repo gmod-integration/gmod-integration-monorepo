@@ -3,6 +3,7 @@ import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels.js
 import redis from '../../redis/index.js';
 import gm_panelToken from '../../database/schema/gm_panelToken.js';
 import gm_discordToken from '../../database/schema/gm_discordToken.js';
+import { Op } from 'sequelize';
 
 export class PanelUser {
   constructor(obj = {}) {
@@ -21,20 +22,30 @@ export class PanelUser {
     };
   }
 
-  hasExpired() {
-    return this.discordToken.expirationDate < Date.now() && this.panelToken.expirationDate < Date.now();
+  isValidDiscordToken() {
+    return new Date() < new Date(this.discordToken.expirationDate);
   }
 
   getDiscordToken() {
     return this.discordToken.token;
   }
 
-  isValidPanelToken(token) {
-    return token === this.panelToken.token;
+  async isValidPanelToken(token) {
+    const tokens = await gm_panelToken.findAll({
+      where: {
+        discordID: this.discordID,
+        accessToken: token,
+        expirationDate: {
+          [Op.gt]: new Date(),
+        },
+      },
+    });
+
+    return tokens.length > 0;
   }
 
-  authAllowed(token) {
-    return this.isValidPanelToken(token) && !this.hasExpired();
+  async authAllowed(token) {
+    return (await this.isValidPanelToken(token)) && this.isValidDiscordToken();
   }
 
   async findGuilds() {
@@ -119,6 +130,7 @@ export async function getPanelUserFromDiscordID(discordID) {
     where: {
       discordID: discordID,
     },
+    order: [['createdAt', 'DESC']],
   });
 
   const discordInfo = await gm_discordToken.findOne({

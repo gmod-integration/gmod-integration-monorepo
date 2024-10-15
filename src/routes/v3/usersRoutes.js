@@ -19,6 +19,7 @@ import {
   deleteServerStatus,
   deleteServerStatusButtons,
   deleteServerSyncChat,
+  deleteUserSession,
   deleteVerificationMessage,
   deleteVoteChannels,
   findCurrentUser,
@@ -56,8 +57,10 @@ import {
   getUserGmodStorePurchases,
   getUserGuildsOwnOrAdmins,
   getUserNotifications,
+  getUserSessions,
   getVerificationMessage,
   getVoteChannels,
+  logOut,
   oauthLogin,
   patchGuildBotInstance,
   patchUserNotifications,
@@ -103,6 +106,9 @@ router.get('/login', asyncHandler(oauthLogin));
 
 router.use('/:discordID', userValidator);
 router.get('/:discordID', asyncHandler(findCurrentUser));
+router.post('/:discordID/logout', asyncHandler(logOut));
+router.get('/:discordID/sessions', asyncHandler(getUserSessions));
+router.delete('/:discordID/sessions/:sessionID', asyncHandler(deleteUserSession));
 router.get('/:discordID/guilds', asyncHandler(getUserGuildsOwnOrAdmins));
 router.get('/:discordID/gmod-store', asyncHandler(getUserGmodStorePurchases));
 router.get('/:discordID/verifications/token', asyncHandler(postUserStartVerification));

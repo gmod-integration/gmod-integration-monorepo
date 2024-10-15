@@ -45,7 +45,7 @@ export async function userValidator(req, res, next) {
     });
   }
 
-  if (!panelUser.authAllowed(token)) {
+  if (!(await panelUser.authAllowed(token))) {
     return res.status(401).json({
       error: 'unauthorized',
     });
