@@ -119,7 +119,9 @@ app.use(errorMiddleware);
 
 // Listen
 app.listen(serverConfig.ports.api, () => {
-  gmLog('express', `API listening on port ${serverConfig.ports.api}`);
+  gmLog('express', '- - - - - - - - - - - - - - - - - - -');
+  gmLog('express', `Server started and listening on port ${serverConfig.ports.api}`);
+  gmLog('express', '- - - - - - - - - - - - - - - - - - -');
 });
 
 // Unhandled Errors
