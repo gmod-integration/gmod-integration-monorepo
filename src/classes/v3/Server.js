@@ -299,27 +299,33 @@ export class Server extends BaseClass {
       return;
     }
 
-    const guild = await dscClient.guilds.fetch(this.getGuildID());
-    if (!guild) {
-      gmLog('status', `Guild not found for server ${this.getID()}`, true);
-      return;
-    }
+    try {
+      const guild = await dscClient.guilds.fetch(this.getGuildID());
+      if (!guild) {
+        gmLog('status', `Guild not found for server ${this.getID()}`, true);
+        return;
+      }
 
-    const channel = await dscClient.channels.fetch(serverStatusInfo.channel);
-    if (!channel) {
-      gmLog('status', `Channel not found for server ${this.getID()}`, true);
-      return;
-    }
+      const channel = await dscClient.channels.fetch(serverStatusInfo.channel);
+      if (!channel) {
+        gmLog('status', `Channel not found for server ${this.getID()}`, true);
+        return;
+      }
 
-    const message = await channel.messages.fetch(serverStatusInfo.message);
-    if (!message) {
-      gmLog('status', `Message not found for server ${this.getID()}`, true);
-      return;
-    }
+      const message = await channel.messages.fetch(serverStatusInfo.message);
+      if (!message) {
+        gmLog('status', `Message not found for server ${this.getID()}`, true);
+        return;
+      }
 
-    const lang = await guild.preferredLocale;
-    const newMsgContent = await getStatusMessage(this, msgData, lang);
-    await message.edit(newMsgContent);
+      const lang = await guild.preferredLocale;
+      const newMsgContent = await getStatusMessage(this, msgData, lang);
+      await message.edit(newMsgContent);
+    } catch (error) {
+      gmLog('status', `Error updating status message for server ${this.getID()}: ${error.message}`, true);
+      console.error(error);
+      await serverStatusInfo.destroy();
+    }
   }
 
   async saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime, playersList) {
@@ -394,50 +400,6 @@ export class Server extends BaseClass {
       return null;
     }
   }
-
-  // async getChatRules() {
-  //   try {
-  //     const redisKey = `server:${this.id}:chatRules`;
-  //     const redisData = await redis.get(redisKey);
-  //     if (redisData) {
-  //       return JSON.parse(redisData);
-  //     }
-  //
-  //     const connection = await getConnectionPromise();
-  //     const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules WHERE serverID = ?', [this.id]);
-  //     if (results && results[0]) {
-  //       await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
-  //       return results;
-  //     }
-  //
-  //     return [];
-  //   } catch (error) {
-  //     console.error(error);
-  //     return [];
-  //   }
-  // }
-  //
-  // async getGlobalChatRules() {
-  //   try {
-  //     const redisKey = `server:${this.id}:chatRulesPreset`;
-  //     const redisData = await redis.get(redisKey);
-  //     if (redisData) {
-  //       return JSON.parse(redisData);
-  //     }
-  //
-  //     const connection = await getConnectionPromise();
-  //     const [results] = await connection.query('SELECT * FROM gm_server_sync_chat_rules_preset');
-  //     if (results && results[0]) {
-  //       await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
-  //       return results;
-  //     }
-  //
-  //     return [];
-  //   } catch (error) {
-  //     console.error(error);
-  //     return [];
-  //   }
-  // }
 
   async getSyncRoles() {
     return (
@@ -853,37 +815,23 @@ export async function statusRoutine() {
   const serversStatusChannel = await gm_status.findAll();
 
   for (const statusChannel of serversStatusChannel) {
-    try {
-      const server = await getServerFromID(statusChannel.server);
-      if (!server) return await statusChannel.destroy();
-
-      const statusInfo = await gm_server_status.findOne({
-        where: {
-          id: server.getID(),
-          updatedAt: {
-            [Op.gte]: new Date(new Date() - 10 * 60 * 1000),
-          },
-        },
-      });
-
-      if (statusInfo) return;
-
-      const dscClient = await server.getBotInstance();
-      const guild = dscClient.guilds.cache.get(server.getGuildID());
-      if (!guild) return new Error('Guild not found');
-
-      const channel = guild.channels.cache.get(statusChannel.channel);
-      if (!channel) return new Error('Channel not found');
-
-      const message = await channel.messages.fetch(statusChannel.message);
-      if (!message) return new Error('Message not found');
-
-      const lang = await guild.preferredLocale;
-      const newMsgContent = await getStatusMessage(server, {}, lang);
-      await message.edit(newMsgContent);
-    } catch (error) {
-      console.error(error);
+    const server = await getServerFromID(statusChannel.server);
+    if (!server) {
       await statusChannel.destroy();
+      continue;
     }
+
+    const statusInfo = await gm_server_status.findOne({
+      where: {
+        id: server.getID(),
+        updatedAt: {
+          [Op.gte]: new Date(new Date() - 60 * 1000),
+        },
+      },
+    });
+
+    if (statusInfo) return;
+
+    await server.editStatusChannelAndMessage(await server.getStatusData());
   }
 }
