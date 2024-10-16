@@ -8,6 +8,7 @@ const sequelize = new Sequelize({
   username: databaseConfig.user,
   password: databaseConfig.password,
   database: databaseConfig.database,
+  logging: false,
 });
 
 try {
