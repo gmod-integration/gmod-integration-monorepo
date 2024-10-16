@@ -17,7 +17,11 @@ import { fork } from 'child_process';
 import { fileURLToPath } from 'url';
 import path, { join } from 'path';
 import { readdirSync } from 'fs';
-import { routinePremiumRoleOfMainGuild, routineStatusRefresh, routineUpdateStatus } from '../models/v3/mainModels.js';
+import {
+  routinePremiumRoleOfMainGuild,
+  routineServerStatusRefresh,
+  routineUpdateStatus,
+} from '../models/v3/mainModels.js';
 import { readdir } from 'fs/promises';
 import { getUserFromSteamID64 } from '../classes/v3/User.js';
 import ServerPseudo from '../database/schema/ServerPseudo.js';
@@ -50,7 +54,7 @@ async function checkTokenAndIntents(token) {
 
 const commandsData = [];
 
-async function loadCommands(dirPath, type) {
+async function indexCommandsAndContext(dirPath, type) {
   try {
     const foldersPath = join(process.cwd(), dirPath);
     const folders = await readdir(foldersPath);
@@ -184,48 +188,27 @@ async function addNewClient(guildInstance, token) {
         await command.autocomplete(interaction);
       }
     } catch (error) {
-      interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
       console.error(error);
     }
   });
 
   client.on('ready', async () => {
     gmLog('discord', `Ready on ${guildInstance} with ${client.user.tag}`);
-    if (client.user.id === discordConfig.clientID) {
-      await routineUpdateStatus();
-      await routineStatusRefresh();
-      await routinePremiumRoleOfMainGuild();
-    }
-    // await updateGuildsInDB(client);
 
-    if (guildInstance === 'main') {
-      await loadCommands('src/discord/contexts', 'Context');
-      await loadCommands('src/discord/commands', 'Command');
-      gmLog('discord', `Loaded ${commandsData.length} commands and context menu commands`);
-    } else {
-      // client.user.setPresence({
-      //   activities: [
-      //     {
-      //       name: `${serverConfig.version} - gmi.linv.dev`,
-      //       type: ActivityType.Watching,
-      //     },
-      //   ],
-      // });
-    }
     // Load commands and context menu commands
     const rest = new REST().setToken(token);
     try {
       gmLog('discord', `Started reloading application: ${guildInstance}`);
-      console.log(commandsData);
       await rest.put(Routes.applicationCommands(client.user.id), {
         body: commandsData,
       });
 
-      // force push for every guild instance
       if (guildInstance !== 'main') {
-        await rest.put(Routes.applicationGuildCommands(client.user.id, guildInstance), {
-          body: commandsData,
-        });
+        // remove all other guild commands if not main
+        const guildCommands = await rest.get(Routes.applicationGuildCommands(client.user.id, guildInstance));
+        for (const command of guildCommands) {
+          await rest.delete(Routes.applicationGuildCommand(client.user.id, guildInstance, command.id));
+        }
       }
 
       gmLog('discord', `Successfully reloaded application: ${guildInstance}`);
@@ -235,24 +218,22 @@ async function addNewClient(guildInstance, token) {
     }
   });
 
-  client.on('warn', (msg) => {
-    gmLog('discord', `Warn: ${msg}`);
+  client.on('warn', (info) => {
+    gmLog('discord', `Warn: ${info}`);
+    console.warn(info);
   });
 
-  client.on('error', (msg) => {
-    gmLog('discord', `Error: ${msg}`);
+  client.on('error', (error) => {
+    gmLog('discord', `Error: ${error}`);
+    console.error(error);
   });
 
   await client.login(token).then(() => {
     gmLog('discord', `Logged in as ${client.user.tag}`);
   });
+
   clientList.set(guildInstance, client);
 }
-
-// main client
-await addNewClient('main', discordConfig.botToken).catch((error) => {
-  console.error('Error adding main client:', error);
-});
 
 export async function getMainClient() {
   const mainClient = clientList.get('main');
@@ -289,20 +270,6 @@ export async function loadGuildBotInstance(guildID) {
   if (!instanceInfo) return;
   await addNewClient(guildID, instanceInfo.token);
 }
-
-// load all guilds custom intance of the bot select all GmodBotInstance how have a valid GmodStorePurchases
-await GmodStorePurchases.findAll({
-  where: {
-    revoke: false,
-  },
-}).then(async (gmodStorePurchases) => {
-  for (const instanceInfo of gmodStorePurchases) {
-    if (!instanceInfo.guild || !instanceInfo.token) continue;
-    await addNewClient(instanceInfo.guild, instanceInfo.token).catch(() => {
-      console.error(`Error starting bot instance for guild ${instanceInfo.guild}`);
-    });
-  }
-});
 
 export async function getGuildClient(guildID, forcePresenceOnGuild = true) {
   if (!guildID) return getMainClient();
@@ -376,4 +343,47 @@ export async function updateGuildUserPseudo(server, player) {
   } catch (error) {
     console.error(error);
   }
+}
+
+/*
+ * Load the main discord instance
+ */
+export async function loadDiscordMain() {
+  // Load
+  gmLog('discord', 'Loading Contexts');
+  await indexCommandsAndContext('src/discord/contexts', 'Context');
+
+  gmLog('discord', 'Loading Commands');
+  await indexCommandsAndContext('src/discord/commands', 'Command');
+
+  gmLog('discord', `Loaded ${commandsData.length} commands and context menu commands`);
+  await addNewClient('main', discordConfig.botToken).catch((error) => {
+    console.error('Error adding main client:', error);
+  });
+
+  // Routine Main
+  await routineUpdateStatus();
+  await routinePremiumRoleOfMainGuild();
+}
+
+/*
+ * Load all discord instances
+ */
+export async function loadDiscordSlave() {
+  const gmodStorePurchases = await GmodStorePurchases.findAll({
+    where: {
+      revoke: false,
+    },
+  });
+
+  for (const instanceInfo of gmodStorePurchases) {
+    if (!instanceInfo.guild || !instanceInfo.token) continue;
+
+    await addNewClient(instanceInfo.guild, instanceInfo.token).catch(() => {
+      console.error(`Error starting bot instance for guild ${instanceInfo.guild}`);
+    });
+  }
+
+  // Routine Server
+  await routineServerStatusRefresh();
 }

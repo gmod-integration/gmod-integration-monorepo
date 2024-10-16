@@ -14,6 +14,7 @@ import mainRoutes from './routes/mainRoutes.js';
 import './database/schema/_association.js';
 import sequelize from './database/sequelize.js';
 import useragent from 'express-useragent';
+import { loadDiscordMain, loadDiscordSlave } from './discord/index.js';
 
 const Sentry = require('@sentry/node');
 
@@ -26,6 +27,10 @@ await sequelize
   .catch((error) => {
     console.error('Error synchronizing tables:', error);
   });
+
+// Discord
+await loadDiscordMain();
+await loadDiscordSlave();
 
 // Express
 const app = express();
@@ -114,7 +119,9 @@ app.use(errorMiddleware);
 
 // Listen
 app.listen(serverConfig.ports.api, () => {
-  gmLog('express', `API listening on port ${serverConfig.ports.api}`);
+  gmLog('express', '- - - - - - - - - - - - - - - - - - -');
+  gmLog('express', `Server started and listening on port ${serverConfig.ports.api}`);
+  gmLog('express', '- - - - - - - - - - - - - - - - - - -');
 });
 
 // Unhandled Errors

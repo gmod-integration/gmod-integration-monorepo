@@ -115,7 +115,7 @@ export async function routineUpdateStatus() {
   await updateStatus();
 }
 
-export async function routineStatusRefresh() {
+export async function routineServerStatusRefresh() {
   setInterval(statusRoutine, 30000);
   await statusRoutine();
 }
