@@ -1,7 +1,7 @@
 import './utils/instrument.js';
 import './utils/update-log.js';
-import express from 'express';
-import { serverConfig } from './config/index.js';
+import express, { NextFunction, Request, Response } from 'express';
+import { serverConfig } from './config';
 import { gmLog } from './utils/logger.js';
 import rawBodyMiddleware from './middleware/rawBodyMiddleware.js';
 import loggerMiddleware from './middleware/v3/loggers.js';
@@ -14,9 +14,9 @@ import mainRoutes from './routes/mainRoutes.js';
 import './database/schema/_association.js';
 import sequelize from './database/sequelize.js';
 import useragent from 'express-useragent';
-import { loadDiscordMain, loadDiscordSlave } from './discord/index.js';
+import { loadDiscordMain, loadDiscordSlave } from './discord';
 
-const Sentry = require('@sentry/node');
+import * as Sentry from '@sentry/node';
 
 // Database
 await sequelize
@@ -42,7 +42,7 @@ app.use(useragent.express());
 // CORS
 app.use(cors(corsMiddleware));
 
-app.use((req, res, next) => {
+app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
   if (origin && /\.gmod-integration\.com$/.test(origin)) {
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
@@ -107,8 +107,8 @@ app.use(loggerMiddleware);
 app.use(mainRoutes);
 
 // 404
-app.all('*', (req, res) => {
-  return res.status(404).json({ error: '404 Not Found' });
+app.all('*', (req: Request, res: Response, next: NextFunction) => {
+  res.status(404).json({ error: '404 Not Found' });
 });
 
 // Sentry

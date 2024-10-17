@@ -31,5 +31,6 @@ jobs:
             git reset --hard origin/main
             git pull
             npm install
+            npm run build
             pm2 restart gmod-integration-api
           EOF

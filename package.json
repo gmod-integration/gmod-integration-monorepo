@@ -2,13 +2,16 @@
   "name": "api",
   "version": "2.0.0",
   "description": "",
-  "main": "src/gm_integration_api.js",
+  "main": "dist/gm_integration_api.js",
   "scripts": {
-    "start": "pm2 start src/gm_integration_api.js --log logs/current.log --name gmod-integration-api",
-    "dev": "node --watch --trace-warnings --trace-deprecation .",
+    "js:start": "pm2 start src/gm_integration_api.ts --log logs/current.log --name gmod-integration-api",
+    "js:dev": "node --watch --trace-warnings --trace-deprecation .",
     "discord:push:context": "node src/discord/discord_push_context.js",
     "discord:remove:cmd": "node --watch --trace-warnings --trace-deprecation src/discord/discord_remove_cmd.js",
-    "test": "node --experimental-vm-modules --recursive src/test/*.js"
+    "test": "node --experimental-vm-modules --recursive src/test/*.js",
+    "build": "tsc",
+    "dev": "tsx watch src/gm_integration_api.ts",
+    "start": "pm2 start dist/gm_integration_api.js --log logs/current.log --name gmod-integration-api"
   },
   "repository": {
     "type": "git",
@@ -22,7 +25,12 @@
   },
   "homepage": "https://github.com/gmod-integration/api#readme",
   "devDependencies": {
-    "prettier": "^3.2.5"
+    "@types/cors": "^2.8.17",
+    "@types/express-useragent": "^1.0.5",
+    "prettier": "^3.2.5",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
   },
   "dependencies": {
     "@sentry/core": "^8.7.0",
@@ -32,7 +40,7 @@
     "axios": "^1.6.0",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
-    "discord.js": "^14.15.3",
+    "discord.js": "^14.16.3",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-useragent": "^1.0.15",
@@ -45,7 +53,6 @@
     "pm2": "^5.3.1",
     "sequelize": "^6.37.3",
     "steamapi": "^2.4.2",
-    "stripe": "^14.16.0",
     "unicode-emoji": "^2.5.0",
     "uuid": "^9.0.1",
     "ws": "^8.16.0"
