@@ -1,6 +1,6 @@
 import { BaseClass } from './BaseClass.js';
 import { generateToken } from '../../utils/tools.ts';
-import redis from '../../redis/index.js';
+import redis from '../../redis/index.ts';
 import { getGuildClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import { gmLog } from '../../utils/logger.ts';

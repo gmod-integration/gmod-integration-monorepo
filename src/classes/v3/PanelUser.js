@@ -1,6 +1,6 @@
 import { getUserFromDiscordID } from './User.js';
 import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels.js';
-import redis from '../../redis/index.js';
+import redis from '../../redis/index.ts';
 import gm_panelToken from '../../database/schema/gm_panelToken.js';
 import gm_discordToken from '../../database/schema/gm_discordToken.js';
 import { Op } from 'sequelize';

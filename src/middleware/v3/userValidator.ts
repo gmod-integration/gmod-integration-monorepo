@@ -1,18 +1,19 @@
-import { badArgument } from '../../utils/tools.ts';
+import { badArgument } from '../../utils/tools';
 import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
 import { getGuildClient } from '../../discord/index.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
 import { Guild } from '../../classes/v3/Guild.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
-import redis from '../../redis/index.js';
+import redis from '../../redis';
+import { NextFunction, Request, Response } from 'express';
 
-export async function userValidator(req, res, next) {
+export async function userValidator(req: Request, res: Response, next: NextFunction) {
   const { discordID } = req.params;
   const { authorization } = req.headers;
 
   const redisKey = `user:rate_limit:${discordID}`;
-  const stats = await redis.get(redisKey);
-  if (stats) {
+  const stats = Number(await redis.get(redisKey));
+  if (stats !== 0) {
     if (stats >= 20) {
       console.log('Rate limit exceeded for user:', discordID);
       return res.status(429).json({ error: 'rate_limit_exceeded' });
@@ -55,8 +56,8 @@ export async function userValidator(req, res, next) {
   next();
 }
 
-export async function userAdminGuildValidator(req, res, next) {
-  const panelUser = req.panelUser;
+export async function userAdminGuildValidator(req: Request, res: Response, next: NextFunction) {
+  const panelUser = req.panelUser!;
   const { guildID } = req.params;
 
   if (!(await panelUser.isAdminOfGuild(guildID))) {
@@ -85,7 +86,7 @@ export async function userAdminGuildValidator(req, res, next) {
   next();
 }
 
-export async function userServerValidator(req, res, next) {
+export async function userServerValidator(req: Request, res: Response, next: NextFunction) {
   const { serverID } = req.params;
 
   const server = await getServerFromID(serverID);
@@ -105,8 +106,8 @@ export async function userServerValidator(req, res, next) {
   next();
 }
 
-export async function userAdminValidator(req, res, next) {
-  const panelUser = req.panelUser;
+export async function userAdminValidator(req: Request, res: Response, next: NextFunction) {
+  const panelUser = req.panelUser!;
 
   const user = await getUserFromDiscordID(panelUser.discordID);
   if (!user) {

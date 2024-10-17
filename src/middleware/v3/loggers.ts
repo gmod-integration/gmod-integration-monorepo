@@ -1,6 +1,7 @@
-import { gmLog } from '../../utils/logger.ts';
+import { NextFunction, Request, Response } from 'express';
+import { gmLog } from '../../utils/logger';
 
-export default (req, res, next) => {
+export default (req: Request, res: Response, next: NextFunction) => {
   const method = req.method;
   const url = req.url;
   const ip = req.headers['cf-connecting-ip'] || req.ip;

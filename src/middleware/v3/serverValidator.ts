@@ -1,13 +1,14 @@
 import { getServerFromID } from '../../classes/v3/Server.js';
-import redis from '../../redis/index.js';
+import redis from '../../redis';
+import { NextFunction, Request, Response } from 'express';
 
-export default async (req, res, next) => {
+export default async (req: Request, res: Response, next: NextFunction) => {
   const { serverID } = req.params;
   const { authorization } = req.headers;
 
   const redisKey = `server:rate_limit:${serverID}`;
-  const stats = await redis.get(redisKey);
-  if (stats) {
+  const stats = Number(await redis.get(redisKey));
+  if (stats !== 0) {
     if (stats >= 20) {
       console.log('Rate limit exceeded for serverID:', serverID);
       return res.status(429).json({ error: 'rate_limit_exceeded' });

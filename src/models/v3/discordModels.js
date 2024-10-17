@@ -12,7 +12,7 @@ import gm_discordToken from '../../database/schema/gm_discordToken.js';
 import gm_panelToken from '../../database/schema/gm_panelToken.js';
 import gm_guild_auto_roles from '../../database/schema/gm_guild_auto_roles.js';
 import { wsSendToServer } from '../../websockets/index.js';
-import redis from '../../redis/index.js';
+import redis from '../../redis/index.ts';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 
 export async function updateRolesToGmod(member, oldMember, newMember) {

@@ -2,7 +2,7 @@ import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.ts';
 import { getServerFromID } from '../../classes/v3/Server.js';
-import redis from '../../redis/index.js';
+import redis from '../../redis/index.ts';
 import { getUserFromSteamID64 } from '../../classes/v3/User.js';
 
 class gm_server_stat extends Model {

@@ -33,7 +33,7 @@ import { getUserDataGRPD } from '../../models/v3/gdrp.js';
 import ServerReportBugs from '../../database/schema/ServerReportBugs.js';
 import { getMainClient } from '../../discord/index.js';
 import ServerSyncChatFilter from '../../database/schema/ServerSyncChatFilter.js';
-import redis from '../../redis/index.js';
+import redis from '../../redis/index.ts';
 import gm_panelToken from '../../database/schema/gm_panelToken.js';
 
 export async function getProfile(req, res) {

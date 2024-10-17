@@ -1,4 +1,4 @@
-import redis from '../../redis/index.js';
+import redis from '../../redis/index.ts';
 import gm_guild from '../../database/schema/gm_guild.js';
 import Users from '../../database/schema/Users.js';
 import gm_server from '../../database/schema/gm_server.js';

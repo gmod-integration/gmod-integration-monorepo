@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { discordConfig, serverConfig } from '../../config/index.js';
-import redis from '../../redis/index.js';
+import redis from '../../redis/index.ts';
 import { getServersFromDiscordGuildID } from './Server.js';
 import ServerLinks from '../../database/schema/ServerLinks.js';
 import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';

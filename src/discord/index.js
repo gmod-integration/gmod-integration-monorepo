@@ -25,7 +25,7 @@ import {
 import { readdir } from 'fs/promises';
 import { getUserFromSteamID64 } from '../classes/v3/User.js';
 import ServerPseudo from '../database/schema/ServerPseudo.js';
-import redis from '../redis/index.js';
+import redis from '../redis/index.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

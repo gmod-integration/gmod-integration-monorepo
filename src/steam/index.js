@@ -1,6 +1,6 @@
 import steamApi from 'steamapi';
 import { steamConfig } from '../config/index.js';
-import redis from '../redis/index.js';
+import redis from '../redis/index.ts';
 
 const steam = new steamApi(steamConfig.apiKey);
 
