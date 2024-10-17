@@ -1,6 +1,6 @@
-import { serverConfig } from '../config/index.js';
+import { serverConfig } from '../config';
 
-export function gmLog(type, message, debug) {
+export function gmLog(type: string, message: string, debug: boolean = false) {
   if (!serverConfig.debug && debug) {
     return;
   }

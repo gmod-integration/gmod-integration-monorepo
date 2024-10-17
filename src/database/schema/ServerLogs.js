@@ -1,11 +1,11 @@
 import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 import { wsSendToAllClientsOfServer } from '../../websockets/index.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
-import { getRandomDiscordRelay, ipGetIP } from '../../utils/tools.js';
+import { getRandomDiscordRelay, ipGetIP } from '../../utils/tools.ts';
 import { EmbedBuilder } from 'discord.js';
-import { getTranslate } from '../../utils/localizations.js';
+import { getTranslate } from '../../utils/localizations.ts';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 
 class ServerLogs extends Model {}

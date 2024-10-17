@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import webhooksRoutes from './webhooks/_webhooksRoutes.js';
 import v3Routes from './v3/_v3Routes.js';
 import steamRoutes from './steamRoutes.js';
@@ -12,7 +12,7 @@ const router = express.Router();
 router.use('/screenshots', express.static('screenshots'));
 router.use(
   '/gdpr-request/:uuid',
-  asyncHandler(async (req, res) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { code } = req.query;
     let { uuid } = req.params;
     if (!code) return res.status(400).json({ error: 'missing_code' });

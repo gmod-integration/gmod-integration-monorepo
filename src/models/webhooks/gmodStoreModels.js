@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { gmodStoreConfig } from '../../config/index.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 import { getUserFromSteamID64 } from '../../classes/v3/User.js';
 import UsersNotifications from '../../database/schema/UsersNotifications.js';
 

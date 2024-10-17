@@ -1,7 +1,7 @@
 import { ButtonStyle, SlashCommandBuilder } from 'discord.js';
 import { getServerList } from '../../../models/v3/serversModels.js';
 import { getUserStatisticMessage } from '../../utils/messages.js';
-import { getTranslate } from '../../../utils/localizations.js';
+import { getTranslate } from '../../../utils/localizations.ts';
 
 export default {
   data: new SlashCommandBuilder()

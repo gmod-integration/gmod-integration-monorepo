@@ -1,4 +1,4 @@
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 import { updateGuildStat } from '../../models/v3/discordModels.js';
 
 export default {

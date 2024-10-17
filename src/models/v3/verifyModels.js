@@ -1,5 +1,5 @@
 import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
-import { getTranslate } from '../../utils/localizations.js';
+import { getTranslate } from '../../utils/localizations.ts';
 import { ActionRowBuilder } from 'discord.js';
 import { ButtonVerificationWebsite } from '../../discord/utils/buttons.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';

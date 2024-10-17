@@ -1,4 +1,4 @@
-import { badArgument } from '../../utils/tools.js';
+import { badArgument } from '../../utils/tools.ts';
 import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
 import { getGuildClient } from '../../discord/index.js';
 import { getServerFromID } from '../../classes/v3/Server.js';

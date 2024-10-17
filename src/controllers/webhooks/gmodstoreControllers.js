@@ -1,5 +1,5 @@
 import { saveGmodStorePurchase } from '../../models/webhooks/gmodStoreModels.js';
-import { badArgument } from '../../utils/tools.js';
+import { badArgument } from '../../utils/tools.ts';
 
 export default async (req, res) => {
   const { steamid, user_id } = req.body;

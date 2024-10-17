@@ -1,4 +1,4 @@
-import { badArgument } from '../../utils/tools.js';
+import { badArgument } from '../../utils/tools.ts';
 import { logServer } from '../../database/schema/ServerLogs.js';
 import ServerWarn from '../../database/schema/ServerWarn.js';
 

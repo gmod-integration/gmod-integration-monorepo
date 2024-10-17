@@ -5,7 +5,7 @@ import { ButtonVerificationWebsite } from '../../utils/buttons.js';
 import { getServerFromID } from '../../../classes/v3/Server.js';
 import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild.js';
 import { wsSendToServer } from '../../../websockets/index.js';
-import { getTranslate } from '../../../utils/localizations.js';
+import { getTranslate } from '../../../utils/localizations.ts';
 
 export default {
   data: new SlashCommandBuilder()

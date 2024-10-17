@@ -1,5 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } from 'discord.js';
-import { getTranslate } from '../../utils/localizations.js';
+import { getTranslate } from '../../utils/localizations.ts';
 import ServerWarn from '../../database/schema/ServerWarn.js';
 import ServerWarnOptions from '../../database/schema/ServerWarnOptions.js';
 import { getServerFromID } from '../../classes/v3/Server.js';

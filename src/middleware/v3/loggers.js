@@ -1,4 +1,4 @@
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 
 export default (req, res, next) => {
   const method = req.method;

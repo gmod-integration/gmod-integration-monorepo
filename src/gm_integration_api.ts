@@ -125,6 +125,7 @@ app.listen(serverConfig.ports.api, () => {
 });
 
 // Unhandled Errors
-process.on('unhandledRejection', (error) => {
-  gmLog('UNHANDLED REJECTION', error);
+process.on('unhandledRejection', (error: Error) => {
+  gmLog('unhandledRejection', error.message, true);
+  console.error(error);
 });

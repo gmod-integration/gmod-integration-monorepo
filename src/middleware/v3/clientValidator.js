@@ -1,4 +1,4 @@
-import { badArgument } from '../../utils/tools.js';
+import { badArgument } from '../../utils/tools.ts';
 import { getServerFromID } from '../../classes/v3/Server.js';
 import crypto from 'crypto';
 import redis from '../../redis/index.js';

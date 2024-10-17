@@ -9,7 +9,7 @@ import {
   saveUser,
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
-import { badArgument, generateToken } from '../../utils/tools.js';
+import { badArgument, generateToken } from '../../utils/tools.ts';
 import gm_user from '../../database/schema/gm_user.js';
 import gm_guild_auto_roles from '../../database/schema/gm_guild_auto_roles.js';
 import { getVerificationGuildMessage } from '../../discord/utils/messages.js';

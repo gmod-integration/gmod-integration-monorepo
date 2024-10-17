@@ -1,8 +1,8 @@
-import { getTranslate } from '../../utils/localizations.js';
-import { gmLog } from '../../utils/logger.js';
+import { getTranslate } from '../../utils/localizations.ts';
+import { gmLog } from '../../utils/logger.ts';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
-import { getEmojiVersion } from '../../utils/tools.js';
+import { getEmojiVersion } from '../../utils/tools.ts';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { dateToDiscordTimestamp, getTrustRank, secToTime } from './index.js';

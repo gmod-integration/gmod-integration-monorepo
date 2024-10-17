@@ -1,6 +1,6 @@
 import { ButtonBuilder, ButtonStyle } from 'discord.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
-import { getTranslate } from '../../utils/localizations.js';
+import { getTranslate } from '../../utils/localizations.ts';
 
 export async function ButtonVerificationWebsite(lang) {
   return new ButtonBuilder()

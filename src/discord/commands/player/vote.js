@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { getTranslate } from '../../../utils/localizations.js';
+import { getTranslate } from '../../../utils/localizations.ts';
 import { getServerList } from '../../../models/v3/serversModels.js';
 import ServerVote from '../../../database/schema/ServerVote.js';
 import { secToTime } from '../../utils/index.js';

@@ -1,4 +1,4 @@
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 import GuildNotVerifiedRole from '../../database/schema/GuildNotVerifiedRole.js';
 
 export default {

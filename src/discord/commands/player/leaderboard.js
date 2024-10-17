@@ -6,7 +6,7 @@ import {
   saveLeaderboardOptions,
 } from '../../../models/v3/leaderboardModels.js';
 import { getServersFromDiscordGuildID } from '../../../classes/v3/Server.js';
-import { getTranslate } from '../../../utils/localizations.js';
+import { getTranslate } from '../../../utils/localizations.ts';
 
 export default {
   data: new SlashCommandBuilder()

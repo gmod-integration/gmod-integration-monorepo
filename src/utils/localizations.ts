@@ -1,9 +1,9 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
-import { gmLog } from './logger.js';
 import redis from '../redis/index.js';
+import { gmLog } from './logger';
 
-function insertOptions(str, options) {
+function insertOptions(str: string, options: string[]): string {
   if (!options) return str;
 
   for (let i = 0; i < options.length; i++) {
@@ -13,7 +13,7 @@ function insertOptions(str, options) {
   return str;
 }
 
-function getDefaultTrad(key, options) {
+function getDefaultTrad(key: string, options: string[]): string {
   try {
     const defaultLanguage = JSON.parse(readFileSync(join(process.cwd(), 'src/locales/en.json'), 'utf8'));
 
@@ -25,13 +25,13 @@ function getDefaultTrad(key, options) {
       );
       return key + (options ? ` - ${options.join(', ')}` : '');
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Error in getDefaultTrad: ${error.message}`);
     return key + (options ? ` - ${options.join(', ')}` : '');
   }
 }
 
-export async function getTranslate(key, language, options) {
+export async function getTranslate(key: string, language: string, options: string[]) {
   language = language ? language.substring(0, 2) : 'en';
 
   const redisKey = `language:${language}:${key}`;
@@ -54,7 +54,7 @@ export async function getTranslate(key, language, options) {
     } else {
       return getDefaultTrad(key, options);
     }
-  } catch (error) {
+  } catch (error: any) {
     gmLog('localization', `Error in await getTranslate: ${error.message}`);
     return getDefaultTrad(key, options);
   }

@@ -1,4 +1,4 @@
-import { badArgument } from '../../utils/tools.js';
+import { badArgument } from '../../utils/tools.ts';
 import ServerLuaError from '../../database/schema/ServerLuaError.js';
 
 export async function reportError(req, res) {

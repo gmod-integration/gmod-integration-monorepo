@@ -1,9 +1,9 @@
 import { BaseClass } from './BaseClass.js';
-import { generateToken } from '../../utils/tools.js';
+import { generateToken } from '../../utils/tools.ts';
 import redis from '../../redis/index.js';
 import { getGuildClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 import gm_server from '../../database/schema/gm_server.js';
 import gm_status_button from '../../database/schema/gm_status_button.js';
 import gm_status from '../../database/schema/gm_status.js';

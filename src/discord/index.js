@@ -9,7 +9,7 @@ import {
   REST,
   Routes,
 } from 'discord.js';
-import { gmLog } from '../utils/logger.js';
+import { gmLog } from '../utils/logger.ts';
 import { discordConfig } from '../config/index.js';
 import GmodStorePurchases from '../database/schema/GmodStorePurchases.js';
 import { fork } from 'child_process';

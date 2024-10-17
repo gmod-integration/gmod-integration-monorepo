@@ -1,6 +1,6 @@
 import { Sequelize } from 'sequelize';
 import { databaseConfig } from '../config/index.js';
-import { gmLog } from '../utils/logger.js';
+import { gmLog } from '../utils/logger.ts';
 
 const sequelize = new Sequelize({
   dialect: 'mariadb',

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { gmLog } from '../utils/logger.js';
+import { gmLog } from '../utils/logger.ts';
 
 export default async (err, req, res, next) => {
   const error_uuid = uuidv4();

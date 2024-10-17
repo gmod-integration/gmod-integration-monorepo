@@ -1,4 +1,4 @@
-import { badArgument } from '../../utils/tools.js';
+import { badArgument } from '../../utils/tools.ts';
 import { saveScreenshot, sendScreenshotToDiscord } from '../../models/v3/clientsModels.js';
 import ServerReportBugs from '../../database/schema/ServerReportBugs.js';
 

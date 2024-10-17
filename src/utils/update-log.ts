@@ -3,8 +3,6 @@ import cron from 'node-cron';
 import { join } from 'path';
 
 function copyLog(date = new Date()) {
-  date = date.toISOString().split('T')[0];
-
   const logFolder = join(process.cwd(), 'logs');
   if (!fs.existsSync(logFolder)) {
     fs.mkdirSync(logFolder);
@@ -15,7 +13,7 @@ function copyLog(date = new Date()) {
     fs.writeFileSync(logPath, '');
   }
 
-  const logDatePath = join(process.cwd(), 'logs', `${date}.log`);
+  const logDatePath = join(process.cwd(), 'logs', `${date.toISOString().split('T')[0]}.log`);
   if (!fs.existsSync(logDatePath)) {
     fs.writeFileSync(logDatePath, '');
   }
@@ -29,7 +27,6 @@ function copyLog(date = new Date()) {
 copyLog();
 
 cron.schedule('0 0 * * *', () => {
-  // date - 1 day
   const date = new Date();
   date.setDate(date.getDate() - 1);
   copyLog(date);

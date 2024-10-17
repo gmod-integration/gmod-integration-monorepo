@@ -1,6 +1,6 @@
 import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 
 class gm_guild_not_verify_role extends Model {
   // Extend the class here //

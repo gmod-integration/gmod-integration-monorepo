@@ -1,4 +1,4 @@
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 import gm_guild from '../../database/schema/gm_guild.js';
 import { discordConfig } from '../../config/index.js';
 import { getGuildClient, killGuildClient } from '../index.js';

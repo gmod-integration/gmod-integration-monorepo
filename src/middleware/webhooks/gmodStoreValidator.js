@@ -1,4 +1,4 @@
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 import { gmodStoreConfig } from '../../config/index.js';
 
 export default async (req, res, next) => {

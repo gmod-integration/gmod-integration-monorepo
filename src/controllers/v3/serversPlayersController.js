@@ -1,4 +1,4 @@
-import { badArgument, ipGetIP } from '../../utils/tools.js';
+import { badArgument, ipGetIP } from '../../utils/tools.ts';
 import { PlayerGmod, updatePlayerUserGroup } from '../../classes/v3/PlayerGmod.js';
 import {
   saveConnectionGlobalInfo,

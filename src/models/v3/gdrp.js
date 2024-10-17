@@ -7,7 +7,7 @@ import gm_server_stat from '../../database/schema/gm_server_stat.js';
 import ServerPlayerSession from '../../database/schema/ServerPlayerSession.js';
 import { serverConfig } from '../../config/index.js';
 import archiver from 'archiver';
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 import Users from '../../database/schema/Users.js';
 import ServerWarn from '../../database/schema/ServerWarn.js';
 import { Op, QueryTypes } from 'sequelize';
@@ -149,7 +149,8 @@ export async function getUserDataGRPD(user) {
           const logsQuery = `SELECT *
                              FROM gm_server_logs
                              WHERE JSON_CONTAINS(playerInvolvedSteamID64, '"${steamID64}"', '$')
-                             LIMIT ${limit} OFFSET ${offset}`;
+                                 LIMIT ${limit}
+                             OFFSET ${offset}`;
           const serverLogs = await sequelize.query(logsQuery, { type: QueryTypes.SELECT });
 
           const currentFile = Math.floor(offset / limit) + 1;

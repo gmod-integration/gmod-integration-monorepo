@@ -1,6 +1,6 @@
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
-import { getTranslate } from '../../utils/localizations.js';
+import { getTranslate } from '../../utils/localizations.ts';
 import { ActionRowBuilder } from 'discord.js';
 import { ButtonPremium } from '../../discord/utils/buttons.js';
 import { wsSendToServer } from '../../websockets/index.js';

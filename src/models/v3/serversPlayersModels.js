@@ -1,6 +1,6 @@
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
 import gm_user_steam from '../../database/schema/gm_user_steam.js';
-import { getRandomDiscordRelay } from '../../utils/tools.js';
+import { getRandomDiscordRelay } from '../../utils/tools.ts';
 import { discordConfig } from '../../config/index.js';
 import Users from '../../database/schema/Users.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';

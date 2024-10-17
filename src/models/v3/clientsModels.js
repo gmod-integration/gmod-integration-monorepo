@@ -1,4 +1,4 @@
-import { getRandomDiscordRelay } from '../../utils/tools.js';
+import { getRandomDiscordRelay } from '../../utils/tools.ts';
 import fs from 'fs';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { EmbedBuilder } from 'discord.js';

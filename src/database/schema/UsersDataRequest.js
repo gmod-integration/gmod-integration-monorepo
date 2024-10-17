@@ -1,6 +1,6 @@
 import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '../../utils/logger.ts';
 
 class UsersDataRequest extends Model {
   // Extend the class here
