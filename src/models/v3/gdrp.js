@@ -1,6 +1,6 @@
 import fs from 'fs';
 import UsersDataRequest from '../../database/schema/UsersDataRequest.js';
-import gm_user from '../../database/schema/gm_user.ts';
+import gm_user from '../../database/schema/gm_user.js';
 import UsersNotifications, { createNotification } from '../../database/schema/UsersNotifications.js';
 import gm_user_steam from '../../database/schema/gm_user_steam.js';
 import gm_server_stat from '../../database/schema/gm_server_stat.js';

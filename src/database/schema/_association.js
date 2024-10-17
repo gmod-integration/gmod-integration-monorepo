@@ -1,5 +1,5 @@
 // Users
-import gm_user from './gm_user.ts';
+import gm_user from './gm_user.js';
 import UsersDataRequest from './UsersDataRequest.js';
 import UsersNotifications from './UsersNotifications.js';
 // Steam

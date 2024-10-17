@@ -4,7 +4,7 @@ import { Team } from './Team.js';
 import { Position } from './Position.js';
 import { Angle } from './Angle.ts';
 import gm_server_stat from '../../database/schema/gm_server_stat.js';
-import gm_user from '../../database/schema/gm_user.ts';
+import gm_user from '../../database/schema/gm_user.js';
 import ServerPlayerSession from '../../database/schema/ServerPlayerSession.js';
 
 export class PlayerGmod extends BaseClass {

@@ -3,7 +3,7 @@ import gm_guild from '../../database/schema/gm_guild.js';
 import Users from '../../database/schema/Users.js';
 import gm_server from '../../database/schema/gm_server.js';
 import { Op } from 'sequelize';
-import gm_user from '../../database/schema/gm_user.ts';
+import gm_user from '../../database/schema/gm_user.js';
 import { ActivityType } from 'discord.js';
 import { statusRoutine } from '../../classes/v3/Server.js';
 import { getMainClient } from '../../discord/index.js';

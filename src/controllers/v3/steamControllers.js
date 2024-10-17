@@ -1,6 +1,6 @@
 import { serverConfig } from '../../config/index.ts';
 import axios from 'axios';
-import gm_user from '../../database/schema/gm_user.ts';
+import gm_user from '../../database/schema/gm_user.js';
 import { gmLog } from '../../utils/logger.ts';
 
 const steamAuthUrl = 'https://steamcommunity.com/openid/login';
