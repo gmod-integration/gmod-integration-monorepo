@@ -5,7 +5,7 @@ import UsersNotifications, { createNotification } from '../../database/schema/Us
 import gm_user_steam from '../../database/schema/gm_user_steam.js';
 import gm_server_stat from '../../database/schema/gm_server_stat.js';
 import ServerPlayerSession from '../../database/schema/ServerPlayerSession.js';
-import { serverConfig } from '../../config/index.js';
+import { serverConfig } from '../../config/index.ts';
 import archiver from 'archiver';
 import { gmLog } from '../../utils/logger.ts';
 import Users from '../../database/schema/Users.js';

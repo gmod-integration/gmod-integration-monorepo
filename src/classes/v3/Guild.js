@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { discordConfig, serverConfig } from '../../config/index.js';
+import { discordConfig, serverConfig } from '../../config/index.ts';
 import redis from '../../redis/index.ts';
 import { getServersFromDiscordGuildID } from './Server.js';
 import ServerLinks from '../../database/schema/ServerLinks.js';

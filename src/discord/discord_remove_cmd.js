@@ -1,5 +1,5 @@
 import { REST } from 'discord.js';
-import { discordConfig } from '../config/index.js';
+import { discordConfig } from '../config/index.ts';
 
 const cmdToRemove = ['1230296259160444971'];
 

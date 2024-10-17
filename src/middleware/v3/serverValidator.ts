@@ -1,31 +1,31 @@
 import { getServerFromID } from '../../classes/v3/Server.js';
-import redis from '../../redis';
 import { NextFunction, Request, Response } from 'express';
 
-export default async (req: Request, res: Response, next: NextFunction) => {
-  const { serverID } = req.params;
-  const { authorization } = req.headers;
+export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { serverID } = req.params;
+    const { authorization } = req.headers;
 
-  const redisKey = `server:rate_limit:${serverID}`;
-  const stats = Number(await redis.get(redisKey));
-  if (stats !== 0) {
-    if (stats >= 20) {
-      console.log('Rate limit exceeded for serverID:', serverID);
-      return res.status(429).json({ error: 'rate_limit_exceeded' });
+    if (!authorization || !authorization.startsWith('Bearer ')) {
+      res.status(400).json({ error: 'invalid_authorization' });
+      return;
+    }
+    const token = authorization.split(' ')[1];
+
+    const server = await getServerFromID(serverID);
+    if (!server) {
+      res.status(404).json({ error: 'server_not_found' });
+      return;
     }
 
-    await redis.incr(redisKey);
+    if (!server.isValidToken(token)) {
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+
+    req.server = server;
+    return next();
+  } catch (error) {
+    return next(error);
   }
-  await redis.set(redisKey, stats, 'EX', 3);
-
-  if (!authorization || !authorization.startsWith('Bearer '))
-    return res.status(400).json({ error: 'invalid_authorization' });
-  const token = authorization.split(' ')[1];
-
-  const server = await getServerFromID(serverID);
-  if (!server) return res.status(404).json({ error: 'server_not_found' });
-  if (!server.isValidToken(token)) return res.status(401).json({ error: 'unauthorized' });
-
-  req.server = server;
-  return next();
 };

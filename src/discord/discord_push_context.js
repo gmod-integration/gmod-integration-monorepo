@@ -1,5 +1,5 @@
 import { ApplicationCommandType, REST, Routes } from 'discord.js';
-import { discordConfig } from '../config/index.js';
+import { discordConfig } from '../config/index.ts';
 import { join } from 'path';
 import { readdir } from 'fs/promises';
 

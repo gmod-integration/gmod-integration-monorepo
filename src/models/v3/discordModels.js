@@ -2,7 +2,7 @@ import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/Use
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { getGuildClient, getMainClient } from '../../discord/index.js';
 import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.js';
-import { discordConfig } from '../../config/index.js';
+import { discordConfig } from '../../config/index.ts';
 import { generateToken } from '../../utils/tools.ts';
 import gm_guild from '../../database/schema/gm_guild.js';
 import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';

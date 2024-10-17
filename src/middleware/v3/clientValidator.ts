@@ -1,55 +1,54 @@
 import { getServerFromID } from '../../classes/v3/Server.js';
 import crypto from 'crypto';
 import { NextFunction, Request, Response } from 'express';
-import redis from '../../redis';
 import { badArgument } from '../../utils/tools';
 
-export default async (req: Request, res: Response, next: NextFunction) => {
-  const { serverID, clientID64 } = req.params;
-  const { authorization } = req.headers;
+export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { serverID, clientID64 } = req.params;
+    const { authorization } = req.headers;
 
-  const redisKey = `client:rate_limit:${clientID64}`;
-  const stats = Number(await redis.get(redisKey));
-
-  if (stats !== 0) {
-    if (stats >= 2) {
-      console.log('Rate limit exceeded for clientID64:', clientID64);
-      return res.status(429).json({ error: 'rate_limit_exceeded' });
+    if (badArgument([serverID, authorization, clientID64])) {
+      res.status(400).json({
+        error: 'missing_arguments',
+        args: {
+          serverID: !!serverID,
+          authorization: !!authorization,
+          clientID64: !!clientID64,
+        },
+      });
+      return;
     }
-    await redis.incr(redisKey);
+
+    if (!authorization || !authorization.startsWith('Bearer ')) {
+      res.status(400).json({ error: 'invalid_authorization' });
+      return;
+    }
+
+    const token = authorization.split(' ')[1];
+    const userID = authorization.split(' ')[2];
+
+    const server = await getServerFromID(serverID);
+    if (!server) {
+      res.status(404).json({ error: 'server_not_found' });
+      return;
+    }
+
+    const hash = crypto.createHash('sha256');
+    hash.update(`${clientID64}-${server.getPublicToken()}-${server.getToken()}-${userID}`);
+
+    const tokenHash = hash.digest('hex');
+    if (tokenHash !== token) {
+      console.error('Unauthorized', tokenHash, token);
+      res.status(401).json({ error: 'unauthorized' });
+      return;
+    }
+
+    req.headers.guild = server.guild;
+    req.server = server;
+
+    return next();
+  } catch (error) {
+    return next(error);
   }
-  await redis.set(redisKey, stats, 'EX', 3);
-
-  if (badArgument([serverID, authorization, clientID64])) {
-    return res.status(400).json({
-      error: 'missing_arguments',
-      args: {
-        serverID: !!serverID,
-        authorization: !!authorization,
-        clientID64: !!clientID64,
-      },
-    });
-  }
-
-  if (!authorization || !authorization.startsWith('Bearer '))
-    return res.status(400).json({ error: 'invalid_authorization' });
-
-  const token = authorization.split(' ')[1];
-  const userID = authorization.split(' ')[2];
-
-  const server = await getServerFromID(serverID);
-  if (!server) return res.status(404).json({ error: 'server_not_found' });
-
-  const hash = crypto.createHash('sha256');
-  hash.update(`${clientID64}-${server.getPublicToken()}-${server.getToken()}-${userID}`);
-
-  const tokenHash = hash.digest('hex');
-  if (tokenHash !== token) {
-    console.error('Unauthorized', tokenHash, token);
-    return res.status(401).json({ error: 'unauthorized' });
-  }
-
-  req.headers.guild = server.guild;
-  req.server = server;
-  return next();
 };

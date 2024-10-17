@@ -15,8 +15,6 @@ import './database/schema/_association.js';
 import sequelize from './database/sequelize.js';
 import useragent from 'express-useragent';
 import { loadDiscordMain, loadDiscordSlave } from './discord';
-import './types/express';
-
 import * as Sentry from '@sentry/node';
 
 // Database

@@ -1,7 +1,7 @@
 import { SlashCommandBuilder } from 'discord.js';
 import { getTranslate } from '../../../utils/localizations.ts';
 import ServerLinks from '../../../database/schema/ServerLinks.js';
-import { serverConfig } from '../../../config/index.js';
+import { serverConfig } from '../../../config/index.ts';
 
 export default {
   data: new SlashCommandBuilder()

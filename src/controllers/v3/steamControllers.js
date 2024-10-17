@@ -1,4 +1,4 @@
-import { serverConfig } from '../../config/index.js';
+import { serverConfig } from '../../config/index.ts';
 import axios from 'axios';
 import gm_user from '../../database/schema/gm_user.js';
 import { gmLog } from '../../utils/logger.ts';

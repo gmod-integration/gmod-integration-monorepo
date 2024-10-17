@@ -1,4 +1,4 @@
-import { discordConfig } from '../../config/index.js';
+import { discordConfig } from '../../config/index.ts';
 import { addAutoRoleToUser, updateGuildStat, verifyUser } from '../../models/v3/discordModels.js';
 import { gmLog } from '../../utils/logger.ts';
 import { getNotVerifiedMessage } from '../utils/messages.js';

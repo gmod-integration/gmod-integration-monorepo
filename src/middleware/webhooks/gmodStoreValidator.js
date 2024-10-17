@@ -1,5 +1,5 @@
 import { gmLog } from '../../utils/logger.ts';
-import { gmodStoreConfig } from '../../config/index.js';
+import { gmodStoreConfig } from '../../config/index.ts';
 
 export default async (req, res, next) => {
   const payload = req.body;

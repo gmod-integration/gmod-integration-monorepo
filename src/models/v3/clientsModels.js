@@ -1,8 +1,8 @@
 import { getRandomDiscordRelay } from '../../utils/tools.ts';
 import fs from 'fs';
-import { discordConfig, serverConfig } from '../../config/index.js';
+import { discordConfig, serverConfig } from '../../config/index.ts';
 import { EmbedBuilder } from 'discord.js';
-import { getSteamUserAvatarLarge } from '../../steam/index.js';
+import { getSteamUserAvatarLarge } from '../../steam/index.ts';
 import { getMainClient } from '../../discord/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import ServerScreenshots from '../../database/schema/ServerScreenshots.js';

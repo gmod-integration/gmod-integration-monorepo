@@ -1,6 +1,6 @@
 import { gmLog } from '../../utils/logger.ts';
 import gm_guild from '../../database/schema/gm_guild.js';
-import { discordConfig } from '../../config/index.js';
+import { discordConfig } from '../../config/index.ts';
 import { getGuildClient, killGuildClient } from '../index.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 

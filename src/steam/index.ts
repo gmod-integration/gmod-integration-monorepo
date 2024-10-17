@@ -1,28 +1,28 @@
 import steamApi from 'steamapi';
-import { steamConfig } from '../config/index.js';
-import redis from '../redis/index.ts';
+import { steamConfig } from '../config';
+import redis from '../redis';
 
-const steam = new steamApi(steamConfig.apiKey);
+const steam = new steamApi(steamConfig.apiKey!);
 
 export function getSteamApi() {
   return steam;
 }
 
-export function getSteamUserSummary(steamID64) {
+export function getSteamUserSummary(steamID64: string) {
   return new Promise(async (resolve, reject) => {
     const summary = await steam.getUserSummary(steamID64);
     resolve(summary);
   });
 }
 
-export function getSteamUserAvatars(steamID64) {
+export function getSteamUserAvatars(steamID64: string) {
   return new Promise(async (resolve, reject) => {
     const summary = await steam.getUserSummary(steamID64);
     resolve(summary.avatar);
   });
 }
 
-export function getSteamUserAvatarLarge(steamID64) {
+export function getSteamUserAvatarLarge(steamID64: string) {
   return new Promise(async (resolve, reject) => {
     const redisKey = `steam:${steamID64}:avatar`;
     const redisValue = await redis.get(redisKey);

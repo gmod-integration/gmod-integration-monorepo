@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import { serverConfig } from '../config/index.js';
+import { serverConfig } from '../config/index.ts';
 import { gmLog } from '../utils/logger.ts';
 import { getServerFromID } from '../classes/v3/Server.js';
 import { getPanelUserFromDiscordID } from '../classes/v3/PanelUser.js';

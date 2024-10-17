@@ -7,7 +7,7 @@ import gm_user from '../../database/schema/gm_user.js';
 import { ActivityType } from 'discord.js';
 import { statusRoutine } from '../../classes/v3/Server.js';
 import { getMainClient } from '../../discord/index.js';
-import { serverConfig } from '../../config/index.js';
+import { serverConfig } from '../../config/index.ts';
 import { givePremiumRoleOfMainGuild } from './discordModels.js';
 
 export async function getStats() {
