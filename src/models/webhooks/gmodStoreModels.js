@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { gmodStoreConfig } from '../../config/index.ts';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 import { gmLog } from '../../utils/logger.ts';
-import { getUserFromSteamID64 } from '../../classes/v3/User.js';
+import { getUserFromSteamID64 } from '../../classes/v3/User.ts';
 import UsersNotifications from '../../database/schema/UsersNotifications.js';
 
 export async function verifyWebhookSignature(headers, payload) {

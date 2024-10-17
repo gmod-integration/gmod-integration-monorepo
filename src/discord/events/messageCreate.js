@@ -1,5 +1,5 @@
 import { sendMessageToGmod } from '../../controllers/v3/guildsControllers.js';
-import { getUserFromDiscordID } from '../../classes/v3/User.js';
+import { getUserFromDiscordID } from '../../classes/v3/User.ts';
 import { wsSendToServer } from '../../websockets/index.js';
 import { givePremiumRoleOfMainGuild } from '../../models/v3/discordModels.js';
 

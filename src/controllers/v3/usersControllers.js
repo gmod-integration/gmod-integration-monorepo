@@ -1,4 +1,4 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
+import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.ts';
 import { createServer, getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { discordConfig } from '../../config/index.ts';
 import { ChannelType } from 'discord.js';
@@ -10,7 +10,7 @@ import {
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
 import { badArgument, generateToken } from '../../utils/tools.ts';
-import gm_user from '../../database/schema/gm_user.js';
+import gm_user from '../../database/schema/gm_user.ts';
 import gm_guild_auto_roles from '../../database/schema/gm_guild_auto_roles.js';
 import { getVerificationGuildMessage } from '../../discord/utils/messages.js';
 import gm_guild_verify_msg from '../../database/schema/gm_guild_verify_msg.js';

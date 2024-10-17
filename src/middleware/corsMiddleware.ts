@@ -1,5 +1,5 @@
 export default {
-  origin: function (origin, callback) {
+  origin: function (origin: string, callback: any) {
     if (!origin || origin.includes('gmod-integration.com')) {
       callback(null, true);
     } else {

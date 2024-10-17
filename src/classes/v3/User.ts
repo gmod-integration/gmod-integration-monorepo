@@ -1,9 +1,21 @@
 import gm_user from '../../database/schema/gm_user.js';
 
 export class User {
-  constructor(obj = {}) {
-    this.steamID64 = obj.steamID64 || null;
-    this.discordID = obj.discordID || null;
+  steamID64: string | null | undefined;
+  discordID: string | null | undefined;
+  rank: string;
+  lastVerification: Date;
+  trustLevel: number;
+
+  constructor(obj: {
+    steamID64: string | null | undefined;
+    discordID: string | null | undefined;
+    rank: string;
+    lastVerification: Date;
+    trustLevel: number | null;
+  }) {
+    this.steamID64 = obj.steamID64;
+    this.discordID = obj.discordID;
     this.rank = obj.rank;
     this.lastVerification = obj.lastVerification;
     this.trustLevel = obj.trustLevel || 50;
@@ -22,7 +34,7 @@ export class User {
   }
 }
 
-export async function getUserFromSteamID64(steamID64) {
+export async function getUserFromSteamID64(steamID64: string) {
   const user = await gm_user.findOne({
     where: {
       steam: steamID64,
@@ -42,7 +54,7 @@ export async function getUserFromSteamID64(steamID64) {
   });
 }
 
-export async function getUserFromDiscordID(discordID) {
+export async function getUserFromDiscordID(discordID: string) {
   const user = await gm_user.findOne({
     where: {
       id: discordID,

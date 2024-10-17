@@ -2,9 +2,9 @@ import { BaseClass } from './BaseClass.js';
 import { CustomValues } from './CustomValues.js';
 import { Team } from './Team.js';
 import { Position } from './Position.js';
-import { Angle } from './Angle.js';
+import { Angle } from './Angle.ts';
 import gm_server_stat from '../../database/schema/gm_server_stat.js';
-import gm_user from '../../database/schema/gm_user.js';
+import gm_user from '../../database/schema/gm_user.ts';
 import ServerPlayerSession from '../../database/schema/ServerPlayerSession.js';
 
 export class PlayerGmod extends BaseClass {

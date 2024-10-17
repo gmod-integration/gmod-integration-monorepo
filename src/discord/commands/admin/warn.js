@@ -2,7 +2,7 @@ import { ActionRowBuilder, SlashCommandBuilder } from 'discord.js';
 import { getServerList } from '../../../models/v3/serversModels.js';
 import { getServerFromID } from '../../../classes/v3/Server.js';
 import { getTranslate } from '../../../utils/localizations.ts';
-import { getUserFromDiscordID } from '../../../classes/v3/User.js';
+import { getUserFromDiscordID } from '../../../classes/v3/User.ts';
 import { ButtonVerificationWebsite } from '../../utils/buttons.js';
 import { getWarnMessageEmbed, saveWarnListOptions } from '../../../models/v3/warnModels.js';
 

@@ -1,4 +1,4 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
+import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.ts';
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { getGuildClient, getMainClient } from '../../discord/index.js';
 import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.js';
@@ -7,7 +7,7 @@ import { generateToken } from '../../utils/tools.ts';
 import gm_guild from '../../database/schema/gm_guild.js';
 import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';
 import gm_guild_not_verify_role from '../../database/schema/gm_guild_not_verify_role.js';
-import gm_user from '../../database/schema/gm_user.js';
+import gm_user from '../../database/schema/gm_user.ts';
 import gm_discordToken from '../../database/schema/gm_discordToken.js';
 import gm_panelToken from '../../database/schema/gm_panelToken.js';
 import gm_guild_auto_roles from '../../database/schema/gm_guild_auto_roles.js';

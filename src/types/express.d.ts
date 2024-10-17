@@ -10,6 +10,7 @@ declare global {
       panelUser?: PanelUser;
       guild?: Guild;
       dscGuild?: DiscordGuild;
+      rawBody?: string;
     }
   }
 }
