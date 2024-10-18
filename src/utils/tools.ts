@@ -1,6 +1,7 @@
 import { getEmojis } from 'unicode-emoji';
 import { serverConfig } from '../config';
 import prisma from '../prisma';
+import { Request, Response } from 'express';
 
 export function getRandomDiscordRelay() {
   let relays = [];
@@ -64,5 +65,11 @@ export async function addNotification(discordID: string, type: string, message: 
       type,
       message,
     },
+  });
+}
+
+export function todoControllers(req: Request, res: Response) {
+  return res.status(501).send({
+    error: 'Not Implemented',
   });
 }

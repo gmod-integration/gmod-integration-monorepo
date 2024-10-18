@@ -1,11 +1,11 @@
 import { getTranslate } from '../../utils/localizations.ts';
 import { gmLog } from '../../utils/logger.ts';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
+import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.ts';
 import { getEmojiVersion } from '../../utils/tools.ts';
 import { discordConfig, serverConfig } from '../../config/index.ts';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
-import { dateToDiscordTimestamp, getTrustRank, secToTime } from './index.js';
+import { dateToDiscordTimestamp, getTrustRank, secToTime } from './index.ts';
 import gm_server from '../../database/schema/gm_server.js';
 import gm_server_stat from '../../database/schema/gm_server_stat.js';
 import gm_user_steam from '../../database/schema/gm_user_steam.js';

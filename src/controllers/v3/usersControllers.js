@@ -9,7 +9,7 @@ import {
   saveUser,
   saveUserPanel,
 } from '../../models/v3/discordModels.js';
-import { badArgument, generateToken } from '../../utils/tools.ts';
+import { badArgument, generateToken, todoControllers } from '../../utils/tools.ts';
 import gm_user from '../../database/schema/gm_user.js';
 import gm_guild_auto_roles from '../../database/schema/gm_guild_auto_roles.js';
 import { getVerificationGuildMessage } from '../../discord/utils/messages.js';
@@ -24,7 +24,6 @@ import ServerLogs from '../../database/schema/ServerLogs.js';
 import gm_guild from '../../database/schema/gm_guild.js';
 import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
-import { todoControllers } from '../../discord/utils/index.js';
 import ServerPseudo from '../../database/schema/ServerPseudo.js';
 import UsersNotifications from '../../database/schema/UsersNotifications.js';
 import UsersDataRequest from '../../database/schema/UsersDataRequest.js';

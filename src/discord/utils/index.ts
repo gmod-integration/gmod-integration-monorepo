@@ -1,6 +1,6 @@
-import { getTranslate } from '../../utils/localizations.ts';
+import { getTranslate } from '../../utils/localizations';
 
-const trust_ranks = {
+const trust_ranks: Record<number, string> = {
   0: 'dangerous',
   15: 'untrusted',
   30: 'semi-untrusted',
@@ -11,16 +11,10 @@ const trust_ranks = {
   100: 'legendary',
 };
 
-export function todoControllers(req, res) {
-  return res.status(501).send({
-    error: 'Not Implemented',
-  });
-}
-
-export async function getTrustRank(trust, lang) {
+export async function getTrustRank(trust: number, lang: string) {
   let lastKey = 0;
 
-  for (let key in trust_ranks) {
+  for (let key of Object.keys(trust_ranks).map(Number)) {
     if (trust <= key) {
       return await getTranslate(trust_ranks[lastKey], lang);
     }
@@ -30,11 +24,11 @@ export async function getTrustRank(trust, lang) {
   return await getTranslate('unknown_rank', lang);
 }
 
-export function dateToDiscordTimestamp(date) {
+export function dateToDiscordTimestamp(date: Date) {
   return '<t:' + Math.floor(date.getTime() / 1000) + ':R>';
 }
 
-export function secToTime(sec) {
+export function secToTime(sec: number) {
   // convert seconds to ??w ??d ??h ??m ??s
   let time = '';
   const weeks = Math.floor(sec / 604800);

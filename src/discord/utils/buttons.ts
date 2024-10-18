@@ -1,8 +1,8 @@
 import { ButtonBuilder, ButtonStyle } from 'discord.js';
-import { discordConfig, serverConfig } from '../../config/index.ts';
-import { getTranslate } from '../../utils/localizations.ts';
+import { discordConfig, serverConfig } from '../../config';
+import { getTranslate } from '../../utils/localizations';
 
-export async function ButtonVerificationWebsite(lang) {
+export async function ButtonVerificationWebsite(lang: string) {
   return new ButtonBuilder()
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('verify_yourself', lang)}`)
@@ -10,15 +10,15 @@ export async function ButtonVerificationWebsite(lang) {
     .setURL(discordConfig.oauthPanel + '&state=redirect:/account');
 }
 
-export async function ButtonWebsite(lang) {
+export async function ButtonWebsite(lang: string) {
   return new ButtonBuilder()
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('website', lang)}`)
     .setEmoji('🌐')
-    .setURL(serverConfig.websiteUrl);
+    .setURL(serverConfig.websiteUrl!);
 }
 
-export async function ButtonDiscordSupport(lang) {
+export async function ButtonDiscordSupport(lang: string) {
   return new ButtonBuilder()
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('discord_support', lang)}`)
@@ -26,15 +26,15 @@ export async function ButtonDiscordSupport(lang) {
     .setURL('https://discord.gg/AexDDx5RaU');
 }
 
-export async function ButtonInviteBot(lang) {
+export async function ButtonInviteBot(lang: string) {
   return new ButtonBuilder()
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('invite_bot', lang)}`)
     .setEmoji('🔗')
-    .setURL(discordConfig.invite);
+    .setURL(discordConfig.invite!);
 }
 
-export async function ButtonVerify(lang) {
+export async function ButtonVerify(lang: string) {
   return new ButtonBuilder()
     .setStyle(ButtonStyle.Secondary)
     .setLabel(`⠀${await getTranslate('check_verification', lang)}`)
@@ -42,7 +42,7 @@ export async function ButtonVerify(lang) {
     .setCustomId('verify');
 }
 
-export async function ButtonConnect(lang, ip, port) {
+export async function ButtonConnect(lang: string, ip: string, port: string) {
   return new ButtonBuilder()
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('server-connect', lang)}`)
@@ -50,7 +50,7 @@ export async function ButtonConnect(lang, ip, port) {
     .setURL(`${serverConfig.websiteUrl}/open?link=steam://connect/${ip}:${port}`);
 }
 
-export async function ButtonPremium(lang) {
+export async function ButtonPremium(lang: string) {
   return new ButtonBuilder()
     .setStyle(ButtonStyle.Primary)
     .setLabel(`⠀${await getTranslate('premium', lang)}`)

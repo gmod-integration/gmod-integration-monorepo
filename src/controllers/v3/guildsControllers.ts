@@ -1,13 +1,13 @@
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
-import { getTranslate } from '../../utils/localizations.ts';
-import { ActionRowBuilder } from 'discord.js';
+import { getTranslate } from '../../utils/localizations';
+import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'discord.js';
 import { ButtonPremium } from '../../discord/utils/buttons.js';
-import { wsSendToServer } from '../../websockets/index.ts';
-import gm_sync_chat from '../../database/schema/gm_sync_chat.js';
-import { getGuildClient } from '../../discord/index.js';
+import { wsSendToServer } from '../../websockets';
+import { getGuildClient } from '../../discord';
+import prisma from '../../prisma';
 
-export async function sendMessageToGmod(message) {
+export async function sendMessageToGmod(message: Message) {
   if (message.author.bot || !message.guild) return;
   const lang = message.guild.preferredLocale;
 
@@ -16,7 +16,7 @@ export async function sendMessageToGmod(message) {
     return;
   }
 
-  const channels = await gm_sync_chat.findAll({
+  const channels = await prisma.gm_sync_chat.findMany({
     where: {
       guild: message.guild.id,
       channel: message.channel.id,
@@ -51,8 +51,7 @@ export async function sendMessageToGmod(message) {
     if (!(await isGuildPremium(message.guild.id))) {
       return message.reply({
         content: await getTranslate('premium_required', lang),
-        ephemeral: true,
-        components: [new ActionRowBuilder().addComponents(await ButtonPremium(lang))],
+        components: [new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(await ButtonPremium(lang))],
       });
     }
 
@@ -60,7 +59,7 @@ export async function sendMessageToGmod(message) {
       method: 'wsPlayerSay',
       name: message.author.username,
       content: message.content,
-      avatar: message.author.displayAvatarURL({ format: 'png', dynamic: true }),
+      avatar: message.author.displayAvatarURL({ extension: 'png' }),
     });
   }
 }

@@ -1,9 +1,10 @@
-import { badArgument } from '../../utils/tools.ts';
+import { badArgument } from '../../utils/tools';
 import { saveScreenshot, sendScreenshotToDiscord } from '../../models/v3/clientsModels.js';
-import ServerReportBugs from '../../database/schema/ServerReportBugs.js';
+import { Request, Response } from 'express';
+import prisma from '../../prisma';
 
-export async function uploadScreenshot(req, res) {
-  const server = req.server;
+export async function uploadScreenshot(req: Request, res: Response) {
+  const server = req.server!;
   const { player, screenshot, captureData, size } = req.body;
 
   if (badArgument([player, screenshot, captureData, size])) {
@@ -23,8 +24,8 @@ export async function uploadScreenshot(req, res) {
   res.status(200).json({ success: true });
 }
 
-export async function reportBugs(req, res) {
-  const server = req.server;
+export async function reportBugs(req: Request, res: Response) {
+  const server = req.server!;
   const { player, screenshot, description, importance, steps, expected, actual } = req.body;
 
   if (badArgument([player, description, importance, steps, expected, actual])) {
@@ -54,16 +55,18 @@ export async function reportBugs(req, res) {
   }
 
   res.status(200).json(
-    await ServerReportBugs.create({
-      serverID: server.id,
-      steamID64: player.steamID64,
-      description,
-      status: 'open',
-      steps,
-      expected,
-      actual,
-      importance,
-      screenshot: screenshotName,
+    await prisma.gm_server_report_bugs.create({
+      data: {
+        serverID: server.id,
+        steamID64: player.steamID64,
+        description,
+        status: 'open',
+        steps,
+        expected,
+        actual,
+        importance,
+        screenshot: screenshotName,
+      },
     }),
   );
 }

@@ -1,5 +1,5 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
-import { dateToDiscordTimestamp, secToTime } from '../../discord/utils/index.js';
+import { dateToDiscordTimestamp, secToTime } from '../../discord/utils/index.ts';
 import { getTranslate } from '../../utils/localizations.ts';
 import gm_server_leaderboard_options from '../../database/schema/gm_server_leaderboard_options.js';
 import { getServerFromID } from '../../classes/v3/Server.js';

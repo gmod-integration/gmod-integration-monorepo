@@ -2,7 +2,7 @@ import { SlashCommandBuilder } from 'discord.js';
 import { getTranslate } from '../../../utils/localizations.ts';
 import { getServerList } from '../../../models/v3/serversModels.js';
 import ServerVote from '../../../database/schema/ServerVote.js';
-import { secToTime } from '../../utils/index.js';
+import { secToTime } from '../../utils/index.ts';
 import { getServerFromID } from '../../../classes/v3/Server.js';
 
 export default {

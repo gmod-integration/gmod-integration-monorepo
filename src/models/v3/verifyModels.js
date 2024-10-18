@@ -1,7 +1,7 @@
 import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
 import { getTranslate } from '../../utils/localizations.ts';
 import { ActionRowBuilder } from 'discord.js';
-import { ButtonVerificationWebsite } from '../../discord/utils/buttons.js';
+import { ButtonVerificationWebsite } from '../../discord/utils/buttons.ts';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { getVerifiedMessageAnswer } from '../../discord/utils/messages.js';
 import gm_guild from '../../database/schema/gm_guild.js';
