@@ -3,7 +3,7 @@ import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { getTranslate } from '../../utils/localizations.ts';
 import { ActionRowBuilder } from 'discord.js';
 import { ButtonPremium } from '../../discord/utils/buttons.js';
-import { wsSendToServer } from '../../websockets/index.js';
+import { wsSendToServer } from '../../websockets/index.ts';
 import gm_sync_chat from '../../database/schema/gm_sync_chat.js';
 import { getGuildClient } from '../../discord/index.js';
 

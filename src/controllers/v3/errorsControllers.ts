@@ -1,7 +1,8 @@
-import { badArgument } from '../../utils/tools.ts';
-import ServerLuaError from '../../database/schema/ServerLuaError.js';
+import { badArgument } from '../../utils/tools';
+import { Request, Response } from 'express';
+import prisma from '../../prisma';
 
-export async function reportError(req, res) {
+export async function reportError(req: Request, res: Response) {
   let { error, stack, id, name, realm, uptime, count } = req.body;
 
   const { serverID, steamID64 } = req.params;
@@ -23,16 +24,18 @@ export async function reportError(req, res) {
 
   stack = JSON.stringify(stack);
 
-  const luaError = await ServerLuaError.create({
-    error,
-    stack,
-    workshopID: id || '',
-    serverID,
-    name,
-    realm,
-    steamID64: steamID64 || '',
-    uptime,
-    count,
+  const luaError = await prisma.gm_server_errors.create({
+    data: {
+      error,
+      stack,
+      workshopID: id || '',
+      serverID,
+      name,
+      realm,
+      steamID64: steamID64 || '',
+      uptime,
+      count,
+    },
   });
 
   return res.status(200).json(luaError);

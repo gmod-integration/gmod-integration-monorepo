@@ -4,7 +4,7 @@ import { getUserFromDiscordID } from '../../../classes/v3/User.ts';
 import { ButtonVerificationWebsite } from '../../utils/buttons.js';
 import { getServerFromID } from '../../../classes/v3/Server.js';
 import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild.js';
-import { wsSendToServer } from '../../../websockets/index.js';
+import { wsSendToServer } from '../../../websockets/index.ts';
 import { getTranslate } from '../../../utils/localizations.ts';
 
 export default {

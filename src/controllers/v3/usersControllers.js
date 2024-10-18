@@ -21,7 +21,6 @@ import moment from 'moment';
 import { Op } from 'sequelize';
 import GuildSettings from '../../database/schema/GuildSettings.js';
 import ServerLogs from '../../database/schema/ServerLogs.js';
-import ServerLuaError from '../../database/schema/ServerLuaError.js';
 import gm_guild from '../../database/schema/gm_guild.js';
 import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
@@ -35,6 +34,7 @@ import { getMainClient } from '../../discord/index.js';
 import ServerSyncChatFilter from '../../database/schema/ServerSyncChatFilter.js';
 import redis from '../../redis/index.ts';
 import gm_panelToken from '../../database/schema/gm_panelToken.js';
+import prisma from '../../prisma.js';
 
 export async function getProfile(req, res) {
   const { steamID64, discordID } = req.query;
@@ -1065,13 +1065,15 @@ export async function getServerErrors(req, res) {
     });
   }
 
-  const errors = await ServerLuaError.findAll({
+  const errors = await prisma.gm_server_errors.findMany({
     where: {
       serverID,
     },
-    order: [['createdAt', 'DESC']],
-    offset: offset || 0,
-    limit: limit || 500,
+    orderBy: {
+      createdAt: 'desc',
+    },
+    skip: offset || 0,
+    take: limit || 500,
   });
 
   return res.send(errors || []);

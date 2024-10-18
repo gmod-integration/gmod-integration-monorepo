@@ -1,12 +1,12 @@
 import { WebSocketServer } from 'ws';
-import { serverConfig } from '../config/index.ts';
-import { gmLog } from '../utils/logger.ts';
+import { serverConfig } from '../config/';
+import { gmLog } from '../utils/logger';
 import { getServerFromID } from '../classes/v3/Server.js';
 import { getPanelUserFromDiscordID } from '../classes/v3/PanelUser.js';
 
 let clients = {
-  server: [],
-  client: [],
+  server: [] as any[],
+  client: [] as any[],
 };
 
 const wss = new WebSocketServer({
@@ -14,6 +14,7 @@ const wss = new WebSocketServer({
   clientTracking: true,
   verifyClient: async (info, cb) => {
     const { id, token } = info.req.headers;
+
     if (id && token) {
       const server = await getServerFromID(id);
       if (server && server.isValidToken(token)) {
@@ -23,6 +24,7 @@ const wss = new WebSocketServer({
     }
 
     if (
+      info.req.url &&
       info.req.url.includes('discordID') &&
       info.req.url.includes('token') &&
       info.req.url.includes('guildID') &&
@@ -49,11 +51,10 @@ const wss = new WebSocketServer({
     }
 
     gmLog('websocket', 'Unauthorized connection');
+
     return cb(false, 401, 'Unauthorized');
   },
 });
-
-gmLog('websocket', 'Listening on port ' + serverConfig.ports.websocket);
 
 wss.on('connection', function connection(ws, req) {
   const { id, token } = req.headers;
@@ -69,6 +70,7 @@ wss.on('connection', function connection(ws, req) {
   }
 
   if (
+    req.url &&
     req.url.includes('discordID') &&
     req.url.includes('token') &&
     req.url.includes('guildID') &&
@@ -98,7 +100,7 @@ wss.on('connection', function connection(ws, req) {
   }, 1000);
 });
 
-export function wsSendToServer(id, data) {
+export function wsSendToServer(id: string, data: any) {
   const client = clients.server.find((client) => client.id === id);
 
   if (!client) {
@@ -107,32 +109,34 @@ export function wsSendToServer(id, data) {
 
   const stringData = JSON.stringify(data);
 
-  console.log('Sending to server', id, stringData);
+  gmLog('websocket', 'Sending to server ' + id + ' ' + stringData);
   client.ws.send(stringData);
+
   return true;
 }
 
-export function wsSendToClient(discordID, data, action) {
+export function wsSendToClient(discordID: string, data: any, action: string) {
   const client = clients.client.find((client) => client.discordID === discordID && client.action === action);
 
   if (!client) {
     return false;
   }
 
-  console.log('Sending to client', discordID);
+  gmLog('websocket', 'Sending to client ' + discordID + ' ' + JSON.stringify(data));
   client.ws.send(JSON.stringify(data));
+
   return true;
 }
 
-export function wsSendToAllClientsOfServer(serverID, action, data) {
-  // console.log('Sending to all clients of server', serverID);
-  // console.log('Clients:', clients.client);
+export function wsSendToAllClientsOfServer(serverID: string, action: string, data: any) {
   const clientsToSend = clients.client.filter((client) => client.serverID === serverID && client.action === action);
-  // console.log('Sending to', clientsToSend.length, 'clients', clientsToSend.join(', '));
+
   for (const client of clientsToSend) {
-    console.log('Sending to client', client.discordID);
+    gmLog('websocket', 'Sending to client ' + client.discordID + ' ' + JSON.stringify(data));
     client.ws.send(JSON.stringify(data));
   }
 
   return true;
 }
+
+gmLog('websocket', 'Listening on port ' + serverConfig.ports.websocket);

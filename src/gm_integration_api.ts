@@ -8,7 +8,7 @@ import loggerMiddleware from './middleware/v3/loggers.js';
 import errorMiddleware from './middleware/errorMiddleware.js';
 import cors from 'cors';
 import corsMiddleware from './middleware/corsMiddleware.js';
-import './websockets/index.js';
+import './websockets';
 import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
 import './database/schema/_association.js';

@@ -1,7 +1,7 @@
 import sequelize from '../sequelize.js';
 import { DataTypes, Model } from 'sequelize';
 import { gmLog } from '../../utils/logger.ts';
-import { wsSendToAllClientsOfServer } from '../../websockets/index.js';
+import { wsSendToAllClientsOfServer } from '../../websockets/index.ts';
 import { discordConfig, serverConfig } from '../../config/index.ts';
 import { getRandomDiscordRelay, ipGetIP } from '../../utils/tools.ts';
 import { EmbedBuilder } from 'discord.js';
