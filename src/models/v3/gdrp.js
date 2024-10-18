@@ -13,8 +13,8 @@ import ServerWarn from '../../database/schema/ServerWarn.js';
 import { Op, QueryTypes } from 'sequelize';
 import ServerVote from '../../database/schema/ServerVote.js';
 import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
-import Ban from '../../database/schema/Ban.js';
 import sequelize from '../../database/sequelize.js';
+import prisma from '../../prisma';
 
 export async function getUserDataGRPD(user) {
   const discordID = user.getDiscordID();
@@ -67,7 +67,7 @@ export async function getUserDataGRPD(user) {
         },
       })) || {};
 
-    userData.ban = await Ban.findAll({
+    userData.ban = await prisma.banUsers.findMany({
       where: {
         discordID,
       },
@@ -126,7 +126,7 @@ export async function getUserDataGRPD(user) {
       },
     });
 
-    userData.ban = await Ban.findAll({
+    userData.ban = await prisma.banUsers.findMany({
       where: {
         steamID64,
       },
