@@ -21,7 +21,7 @@ import {
   routinePremiumRoleOfMainGuild,
   routineServerStatusRefresh,
   routineUpdateStatus,
-} from '../models/v3/mainModels.js';
+} from '../models/v3/mainModels.ts';
 import { readdir } from 'fs/promises';
 import { getUserFromSteamID64 } from '../classes/v3/User.js';
 import ServerPseudo from '../database/schema/ServerPseudo.js';
