@@ -1,7 +1,8 @@
 import { saveGmodStorePurchase } from '../../models/webhooks/gmodStoreModels.js';
-import { badArgument } from '../../utils/tools.ts';
+import { badArgument } from '../../utils/tools';
+import { Request, Response } from 'express';
 
-export default async (req, res) => {
+export default async (req: Request, res: Response) => {
   const { steamid, user_id } = req.body;
 
   if (badArgument([steamid, user_id])) {
@@ -14,6 +15,6 @@ export default async (req, res) => {
     });
   }
 
-  await saveGmodStorePurchase(req.body.steamid, req.body.user_id, false);
+  await saveGmodStorePurchase(steamid, user_id, false);
   return res.status(200).send('');
 };

@@ -1,16 +1,16 @@
 import crypto from 'crypto';
-import { gmodStoreConfig } from '../../config/index.ts';
-import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
-import { gmLog } from '../../utils/logger.ts';
+import { gmodStoreConfig } from '../../config';
+import { gmLog } from '../../utils/logger';
 import { getUserFromSteamID64 } from '../../classes/v3/User.js';
-import UsersNotifications from '../../database/schema/UsersNotifications.js';
+import prisma from '../../prisma';
+import { addNotification } from '../../utils/tools';
 
-export async function verifyWebhookSignature(headers, payload) {
+export async function verifyWebhookSignature(headers: any, payload: any) {
   const webhookSignature = headers['webhook-signature'];
   const webhookTimestamp = headers['webhook-timestamp'];
   const webhookId = headers['webhook-id'];
 
-  const signingSecret = gmodStoreConfig.signingSecretKey.replace('whsec_', '');
+  const signingSecret = gmodStoreConfig.signingSecretKey!.replace('whsec_', '');
 
   const expectedSignature = crypto
     .createHmac('sha256', Buffer.from(signingSecret, 'base64'))
@@ -34,7 +34,7 @@ export async function verifyWebhookSignature(headers, payload) {
   return false;
 }
 
-export async function getUser(userID) {
+export async function getUser(userID: string) {
   const userData = await fetch(`https://www.gmodstore.com/api/v3/users/${userID}`, {
     headers: {
       Authorization: `Bearer ${gmodStoreConfig.apiKey}`,
@@ -49,8 +49,8 @@ export async function getUser(userID) {
   }
 }
 
-export async function saveGmodStorePurchase(steamID64, userID, revoke) {
-  const gmGmodStorePurchases = await GmodStorePurchases.findOne({
+export async function saveGmodStorePurchase(steamID64: string, userID: string, revoke: boolean) {
+  const gmGmodStorePurchases = await prisma.gm_gmodstore_purchases.findUnique({
     where: {
       steamID64,
     },
@@ -62,25 +62,33 @@ export async function saveGmodStorePurchase(steamID64, userID, revoke) {
   if (user) {
     const discordID = user.getDiscordID();
     if (discordID) {
-      await UsersNotifications.create({
+      await addNotification(
         discordID,
-        type: 'premium',
-        message: revoke
+        'premium',
+        revoke
           ? 'Your GmodStore lifetime purchase has been revoked.'
           : 'You have received a GmodStore lifetime purchase.',
-      });
+      );
     }
   }
 
   if (gmGmodStorePurchases) {
-    gmGmodStorePurchases.revoke = revoke;
-    gmGmodStorePurchases.userID = userID;
-    await gmGmodStorePurchases.save();
+    await prisma.gm_gmodstore_purchases.update({
+      where: {
+        steamID64,
+      },
+      data: {
+        revoke,
+        userID,
+      },
+    });
   } else {
-    await GmodStorePurchases.create({
-      steamID64,
-      revoke,
-      userID,
+    await prisma.gm_gmodstore_purchases.create({
+      data: {
+        steamID64,
+        revoke,
+        userID,
+      },
     });
   }
 }
