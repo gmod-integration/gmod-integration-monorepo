@@ -23,7 +23,7 @@ import {
   routineUpdateStatus,
 } from '../models/v3/mainModels.js';
 import { readdir } from 'fs/promises';
-import { getUserFromSteamID64 } from '../classes/v3/User.ts';
+import { getUserFromSteamID64 } from '../classes/v3/User.js';
 import ServerPseudo from '../database/schema/ServerPseudo.js';
 import redis from '../redis/index.ts';
 

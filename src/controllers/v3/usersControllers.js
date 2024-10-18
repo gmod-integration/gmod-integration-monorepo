@@ -1,4 +1,4 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.ts';
+import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
 import { createServer, getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { discordConfig } from '../../config/index.ts';
 import { ChannelType } from 'discord.js';

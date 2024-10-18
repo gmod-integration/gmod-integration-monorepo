@@ -6,5 +6,5 @@ export default async (err: Error, req: Request, res: Response, next: NextFunctio
   const error_uuid = uuidv4();
   gmLog('error', `Error UUID: ${error_uuid}`);
   console.error(err);
-  return res.status(500).json({ error: 'internal_server_error', error_uuid });
+  res.status(500).json({ error: 'internal_server_error', error_uuid });
 };

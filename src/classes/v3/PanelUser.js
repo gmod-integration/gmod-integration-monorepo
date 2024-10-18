@@ -1,4 +1,4 @@
-import { getUserFromDiscordID } from './User.ts';
+import { getUserFromDiscordID } from './User.js';
 import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels.js';
 import redis from '../../redis/index.ts';
 import gm_panelToken from '../../database/schema/gm_panelToken.js';

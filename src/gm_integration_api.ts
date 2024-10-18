@@ -5,9 +5,7 @@ import { serverConfig } from './config';
 import { gmLog } from './utils/logger.js';
 import rawBodyMiddleware from './middleware/rawBodyMiddleware.js';
 import loggerMiddleware from './middleware/v3/loggers.js';
-import errorMiddleware from './middleware/errorMiddleware.js';
 import cors from 'cors';
-import corsMiddleware from './middleware/corsMiddleware.js';
 import './websockets';
 import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
@@ -16,6 +14,7 @@ import sequelize from './database/sequelize.js';
 import useragent from 'express-useragent';
 import { loadDiscordMain, loadDiscordSlave } from './discord';
 import * as Sentry from '@sentry/node';
+import errorMiddleware from './middleware/errorMiddleware';
 
 // Database
 await sequelize
@@ -39,7 +38,16 @@ app.set('trust proxy', true);
 app.use(useragent.express());
 
 // CORS
-app.use(cors(corsMiddleware));
+app.use(
+  cors((req: Request, callback: any) => {
+    const origin = req.headers.origin;
+    if (!origin || origin.includes('gmod-integration.com')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  }),
+);
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;

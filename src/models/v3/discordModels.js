@@ -1,4 +1,4 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.ts';
+import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { getGuildClient, getMainClient } from '../../discord/index.js';
 import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.js';
