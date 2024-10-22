@@ -1,14 +1,10 @@
 import fs from 'fs';
-import UsersDataRequest from '../../database/schema/UsersDataRequest.js';
-import gm_user from '../../database/schema/gm_user.js';
-import UsersNotifications, { createNotification } from '../../database/schema/UsersNotifications.js';
 import { serverConfig } from '../../config';
 import archiver from 'archiver';
 import { gmLog } from '../../utils/logger';
-import { QueryTypes } from 'sequelize';
-import sequelize from '../../database/sequelize.js';
 import prisma from '../../prisma';
 import { User } from '../../classes/v3/User';
+import { addNotification } from '../../utils/tools';
 
 export async function getUserDataGRPD(user: User) {
   const discordID = user.getDiscordID();
@@ -34,26 +30,22 @@ export async function getUserDataGRPD(user: User) {
   if (discordID) {
     let userData: any = {};
     userData.discordUser =
-      (await gm_user.findOne({
+      (await prisma.gm_user.findUnique({
         where: {
           id: discordID,
         },
-        include: [
-          {
-            model: UsersDataRequest,
-            as: 'userDataRequests',
+        include: {
+          gm_users_data_request: {
             where: {
               discordID,
             },
           },
-          {
-            model: UsersNotifications,
-            as: 'userNotifications',
+          gm_users_notifications: {
             where: {
               discordID,
             },
           },
-        ],
+        },
       })) || {};
 
     userData.vote =
@@ -126,40 +118,42 @@ export async function getUserDataGRPD(user: User) {
 
     fs.writeFileSync(`./gdpr-request/${request.id}/steam.json`, JSON.stringify(userData, null, 2));
 
-    async function findServerLogsByPlayerId() {
-      try {
-        // Count the number of logs
-        const countQuery = `SELECT COUNT(*) AS count
-                            FROM gm_server_logs
-                            WHERE JSON_CONTAINS(playerInvolvedSteamID64, '"${steamID64}"', '$')`;
-        const countResult = await sequelize.query(countQuery, { type: QueryTypes.SELECT });
-        const serverLogCount = countResult[0].count;
+    try {
+      // Count the number of logs
+      const serverLogCount = await prisma.gm_server_logs.count({
+        where: {
+          playerInvolvedSteamID64: {
+            array_contains: [steamID64],
+          },
+        },
+      });
 
-        let offset = 0;
-        const limit = 1000;
-        while (offset < serverLogCount) {
-          const logsQuery = `SELECT *
-                             FROM gm_server_logs
-                             WHERE JSON_CONTAINS(playerInvolvedSteamID64, '"${steamID64}"', '$')
-                                 LIMIT ${limit}
-                             OFFSET ${offset}`;
-          const serverLogs = await sequelize.query(logsQuery, { type: QueryTypes.SELECT });
+      const limit = 1000;
+      let offset = 0;
 
-          const currentFile = Math.floor(offset / limit) + 1;
-          const currentFileCount = Math.floor(serverLogCount / limit + 1);
-          fs.appendFileSync(
-            `./gdpr-request/${request.id}/steam-server-logs-${currentFile}-${currentFileCount}.json`,
-            JSON.stringify(serverLogs, null, 2),
-          );
+      while (offset < serverLogCount) {
+        const serverLogs = await prisma.gm_server_logs.findMany({
+          where: {
+            playerInvolvedSteamID64: {
+              array_contains: [steamID64],
+            },
+          },
+          skip: offset,
+          take: limit,
+        });
 
-          offset += limit;
-        }
-      } catch (error) {
-        console.error('Error fetching server logs:', error);
+        const currentFile = Math.floor(offset / limit) + 1;
+        const currentFileCount = Math.floor(serverLogCount / limit + 1);
+        fs.appendFileSync(
+          `./gdpr-request/${request.id}/steam-server-logs-${currentFile}-${currentFileCount}.json`,
+          JSON.stringify(serverLogs, null, 2),
+        );
+
+        offset += limit;
       }
+    } catch (error) {
+      console.error('Error fetching server logs:', error);
     }
-
-    await findServerLogsByPlayerId();
   }
 
   // to zip the folder
@@ -199,10 +193,18 @@ export async function getUserDataGRPD(user: User) {
 
   request.downloadLink = `${serverConfig.domain}/gdpr-request/${request.id}`;
   request.status = 'ready';
-  await request.save();
+  await prisma.gm_users_data_request.update({
+    where: {
+      id: request.id,
+    },
+    data: {
+      downloadLink: request.downloadLink,
+      status: request.status,
+    },
+  });
 
   if (discordID) {
-    await createNotification(
+    await addNotification(
       discordID,
       'gdpr',
       `Your GDPR request has been processed. You can download the data from ${serverConfig.websiteUrl}/account`,

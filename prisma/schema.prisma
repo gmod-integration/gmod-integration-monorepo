@@ -262,8 +262,8 @@ model gm_server_logs {
   id                      Int       @id @default(autoincrement())
   serverID                String    @db.VarChar(255)
   type                    String    @db.VarChar(255)
-  data                    String    @db.LongText
-  playerInvolvedSteamID64 String?   @db.LongText
+  data                    Json      @default("{}")
+  playerInvolvedSteamID64 Json      @default("[]")
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
   gm_server               gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_logs_ibfk_1")

@@ -27,6 +27,7 @@
   },
   "homepage": "https://github.com/gmod-integration/api#readme",
   "devDependencies": {
+    "@types/archiver": "^6.0.2",
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.0",
     "@types/express-useragent": "^1.0.5",
