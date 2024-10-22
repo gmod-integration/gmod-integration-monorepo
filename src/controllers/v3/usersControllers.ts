@@ -833,8 +833,12 @@ export async function deleteVerificationMessage(req: Request, res: Response) {
 
   const channel = await dscGuild.channels.cache.get(msg.channelID);
   if (channel) {
-    const message = await channel.messages.fetch(msg.messageID);
-    await message.delete();
+    try {
+      const message = await channel.messages.fetch(msg.messageID);
+      await message.delete();
+    } catch (error) {
+      //skip
+    }
   }
 
   await prisma.gm_guild_verify_msg.delete({
