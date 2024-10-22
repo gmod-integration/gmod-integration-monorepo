@@ -21,7 +21,7 @@ export default {
 
     const isVerified = await verifyUser(guild, user);
     await interaction.reply(
-      await getVerifiedMessageAnswer(isVerified, guild.preferredLocale, user, user.id === interaction.user.id),
+      await getVerifiedMessageAnswer(isVerified, guild.preferredLocale, user.user, user.id === interaction.user.id),
     );
   },
 };

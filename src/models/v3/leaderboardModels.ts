@@ -1,4 +1,11 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Interaction } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  Interaction,
+  MessageActionRowComponentBuilder,
+} from 'discord.js';
 import { dateToDiscordTimestamp, secToTime } from '../../discord/utils';
 import { getTranslate } from '../../utils/localizations';
 import { getServerFromID } from '../../classes/v3/Server';
@@ -62,7 +69,7 @@ export async function getServerLeaderboardCategories(serverID: string) {
 }
 
 export function getLeaderboardButtons(disabledPrevious: boolean, disabledNext: boolean) {
-  return new ActionRowBuilder().addComponents(
+  return new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
     ButtonLeaderboardFirst(disabledPrevious),
     ButtonLeaderboardPrevious(disabledPrevious),
     ButtonLeaderboardRefresh(),

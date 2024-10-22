@@ -1,8 +1,8 @@
 import { BaseClass } from './BaseClass.js';
 
 export class Team extends BaseClass {
-  private id: any;
-  private name: any;
+  public id: any;
+  public name: any;
 
   constructor(obj: any) {
     super();

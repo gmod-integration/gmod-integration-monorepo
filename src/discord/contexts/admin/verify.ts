@@ -28,7 +28,7 @@ export default {
       await getVerifiedMessageAnswer(
         isVerified,
         interaction.guild.preferredLocale,
-        user,
+        user.user,
         user.id === interaction.user.id,
       ),
     );

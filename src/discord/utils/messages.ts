@@ -223,12 +223,7 @@ export async function getNotVerifiedMessage(guild: Guild, member: GuildMember) {
   };
 }
 
-export async function getVerifiedMessageAnswer(
-  isVerified: boolean,
-  lang: string,
-  member: GuildMember,
-  selfVerify: boolean,
-) {
+export async function getVerifiedMessageAnswer(isVerified: boolean, lang: string, member: User, selfVerify: boolean) {
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(await ButtonVerificationWebsite(lang));
 
   if (isVerified) {

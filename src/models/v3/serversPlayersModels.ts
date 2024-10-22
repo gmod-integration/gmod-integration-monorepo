@@ -5,6 +5,7 @@ import { isGuildPremium } from '../../classes/v3/Guild';
 import { Server } from '../../classes/v3/Server';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod';
 import prisma from '../../prisma';
+import { gm_server_sync_chat_filter } from '@prisma/client';
 
 export async function sendPlayerSay(server: Server, player: PlayerGmod, text: string, onlyTeam: boolean) {
   let anonymous = false;
@@ -38,7 +39,7 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
   console.log('relayMessage', relayMessage);
   let outputStr = text;
 
-  function executeAction(action) {
+  function executeAction(action: string) {
     switch (action) {
       case 'relay':
         relayMessage = true;
@@ -54,7 +55,7 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
     }
   }
 
-  function getCorrectValue(element) {
+  function getCorrectValue(element: string) {
     switch (element) {
       case 'steamID64':
         return player.steamID64;
@@ -67,7 +68,7 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
     }
   }
 
-  function verifyRule(rule) {
+  function verifyRule(rule: gm_server_sync_chat_filter) {
     if (!rule.active) return;
     if (!possibleFields.includes(rule.element)) return;
     if (!operator.includes(rule.operator)) return;
@@ -110,9 +111,11 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
   }
 
   const chatRules = await server.getGmodToDiscordFilter();
-  chatRules.forEach((rule) => {
-    verifyRule(rule);
-  });
+  if (chatRules) {
+    chatRules.forEach((rule) => {
+      verifyRule(rule);
+    });
+  }
 
   if (!relayMessage) {
     return { skip: true, message: 'Message blocked' };

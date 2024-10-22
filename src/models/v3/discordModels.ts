@@ -4,18 +4,15 @@ import { getGuildClient, getMainClient } from '../../discord';
 import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild';
 import { discordConfig } from '../../config';
 import { generateToken } from '../../utils/tools';
-import gm_guild from '../../database/schema/gm_guild.js';
-import gm_guild_verify_role from '../../database/schema/gm_guild_verify_role.js';
-import gm_guild_not_verify_role from '../../database/schema/gm_guild_not_verify_role.js';
 import { wsSendToServer } from '../../websockets';
 import redis from '../../redis';
-import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
 import prisma from '../../prisma';
 import { Guild, GuildMember } from 'discord.js';
 import { PanelUser } from '../../classes/v3/PanelUser';
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
   const guildBotInstance = await getGuildClient(member.guild.id, false);
+  if (!guildBotInstance.user) throw new Error('Bot not found');
   if (guildBotInstance.user.id !== member.guild.client.user.id) {
     return;
   }
@@ -93,7 +90,7 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
       }
 
       if (data.addIDs.includes(roleData.roleID)) {
-        data.addIDs = data.addIDs.filter((id) => id !== roleData.roleID);
+        data.addIDs = data.addIDs.filter((id: string) => id !== roleData.roleID);
         await redis.set(redisKey, JSON.stringify(data), 'EX', 120);
       }
 
@@ -166,7 +163,8 @@ export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
     if (!roleDiscord) {
       await prisma.gm_guild_auto_roles.delete({
         where: {
-          id: roleData.id,
+          roleID: roleData.roleID,
+          guildID: guild.id,
         },
       });
       continue;
@@ -180,7 +178,7 @@ export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
 }
 
 export async function addNotVerifiedRoleToUser(guild: Guild, member: GuildMember) {
-  const roles = await gm_guild_not_verify_role.findAll({
+  const roles = await prisma.gm_guild_not_verify_role.findMany({
     where: {
       guildID: guild.id,
     },
@@ -193,17 +191,22 @@ export async function addNotVerifiedRoleToUser(guild: Guild, member: GuildMember
   for (const roleData of roles) {
     const roleDiscord = guild.roles.cache.get(roleData.roleID);
     if (!roleDiscord) {
-      await roleData.destroy();
+      await prisma.gm_guild_not_verify_role.delete({
+        where: {
+          roleID: roleData.roleID,
+          guildID: guild.id,
+        },
+      });
       continue;
     }
 
-    if (await member.roles.cache.has(roleData.roleID)) continue;
+    if (member.roles.cache.has(roleData.roleID)) continue;
     await member.roles.add(roleDiscord);
   }
 }
 
 export async function removeNotVerifiedRoleToUser(guild: Guild, member: GuildMember) {
-  const roles = await gm_guild_not_verify_role.findAll({
+  const roles = await prisma.gm_guild_not_verify_role.findMany({
     where: {
       guildID: guild.id,
     },
@@ -216,17 +219,22 @@ export async function removeNotVerifiedRoleToUser(guild: Guild, member: GuildMem
   for (const roleData of roles) {
     const roleDiscord = guild.roles.cache.get(roleData.roleID);
     if (!roleDiscord) {
-      await roleData.destroy();
+      await prisma.gm_guild_not_verify_role.delete({
+        where: {
+          roleID: roleData.roleID,
+          guildID: guild.id,
+        },
+      });
       continue;
     }
 
-    if (!(await member.roles.cache.has(roleData.roleID))) continue;
+    if (!member.roles.cache.has(roleData.roleID)) continue;
     await member.roles.remove(roleDiscord);
   }
 }
 
 export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
-  const role = await gm_guild_verify_role.findAll({
+  const role = await prisma.gm_guild_verify_role.findMany({
     where: {
       guildID: guild.id,
     },
@@ -237,10 +245,13 @@ export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
   }
 
   for (const roleData of role) {
-    // if not exist role delete
     const roleDiscord = guild.roles.cache.get(roleData.roleID);
     if (!roleDiscord) {
-      await roleData.destroy();
+      await prisma.gm_guild_verify_role.delete({
+        where: {
+          id: roleData.id,
+        },
+      });
       continue;
     }
 
@@ -249,10 +260,10 @@ export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
 
     // give or remove role
     if (roleData.isGiveRole) {
-      if (await member.roles.cache.has(roleData.roleID)) continue;
+      if (member.roles.cache.has(roleData.roleID)) continue;
       await member.roles.add(roleDiscord);
     } else {
-      if (!(await member.roles.cache.has(roleData.roleID))) continue;
+      if (!member.roles.cache.has(roleData.roleID)) continue;
       await member.roles.remove(roleDiscord);
     }
   }
@@ -275,9 +286,11 @@ export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
   const permGuilds = await panelUser.findGuildsWithPerms();
   const permGuildsID = permGuilds.map((guild) => guild.id);
 
-  const rows = await gm_guild.findAll({
+  const rows = await prisma.gm_guild.findMany({
     where: {
-      guild: permGuildsID,
+      guild: {
+        in: permGuildsID,
+      },
     },
   });
 
@@ -313,8 +326,8 @@ export async function getUserTokenFromCode(code: string, redirectURI: string) {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: new URLSearchParams({
-      client_id: discordConfig.clientID,
-      client_secret: discordConfig.clientSecret,
+      client_id: discordConfig.clientID!,
+      client_secret: discordConfig.clientSecret!,
       grant_type: 'authorization_code',
       code,
       redirect_uri: redirectURI,
@@ -478,10 +491,10 @@ export async function givePremiumRoleOfMainGuild() {
     const guild = mainClient.guilds.cache.get(discordConfig.guildID!);
     if (!guild) return;
 
-    const gmodStoreBuyers = await GmodStorePurchases.findAll();
+    const gmodStoreBuyers = await prisma.gm_gmodstore_purchases.findMany();
     if (!gmodStoreBuyers) return;
 
-    let subscriptionBuyers = [];
+    let subscriptionBuyers: any = [];
     const dscEntitlements = await getDiscordEntitlements();
     if (dscEntitlements) {
       for (const entitlement of dscEntitlements) {
@@ -498,7 +511,7 @@ export async function givePremiumRoleOfMainGuild() {
     const discordPremiumRole = guild.roles.cache.get(discordConfig.discordPremiumRoleID);
     if (!premiumRole || !gmodStorePremiumRole || !discordPremiumRole) return;
 
-    guild.roles.cache.get(discordConfig.premiumRoleID).members.map(async (member) => {
+    premiumRole.members.map(async (member) => {
       const user = await getUserFromDiscordID(member.id);
       if (
         !user ||
@@ -509,14 +522,14 @@ export async function givePremiumRoleOfMainGuild() {
       }
     });
 
-    guild.roles.cache.get(discordConfig.gmodStorePremiumRoleID).members.map(async (member) => {
+    gmodStorePremiumRole.members.map(async (member) => {
       const user = await getUserFromDiscordID(member.id);
       if (!user || !gmodStoreBuyers.find((buyer) => buyer.steamID64 === user.getSteamID64())) {
         await member.roles.remove(gmodStorePremiumRole);
       }
     });
 
-    guild.roles.cache.get(discordConfig.discordPremiumRoleID).members.map(async (member) => {
+    discordPremiumRole.members.map(async (member) => {
       if (!subscriptionBuyers.includes(member.id)) {
         await member.roles.remove(discordPremiumRole);
       }

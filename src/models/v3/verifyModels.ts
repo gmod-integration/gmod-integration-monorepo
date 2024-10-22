@@ -1,6 +1,6 @@
 import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser';
 import { getTranslate } from '../../utils/localizations';
-import { ActionRowBuilder, ButtonInteraction } from 'discord.js';
+import { ActionRowBuilder, ButtonInteraction, MessageActionRowComponentBuilder } from 'discord.js';
 import { ButtonVerificationWebsite } from '../../discord/utils/buttons';
 import { getUserFromDiscordID } from '../../classes/v3/User';
 import { getVerifiedMessageAnswer } from '../../discord/utils/messages';
@@ -22,7 +22,9 @@ export async function handleVerifyInteraction(interaction: ButtonInteraction) {
     ) {
       return await interaction.reply({
         content: (await getTranslate('re_verify_yourself')) + '\n _ _',
-        components: [new ActionRowBuilder().addComponents(await ButtonVerificationWebsite(lang))],
+        components: [
+          new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(await ButtonVerificationWebsite(lang)),
+        ],
         ephemeral: true,
       });
     }
@@ -53,11 +55,9 @@ export async function handleVerifyInteraction(interaction: ButtonInteraction) {
     }
     return await interaction.reply(`You have been verified in the following guilds: ${verifiedOf.join(', ')}`);
   } else {
-    const guild = await interaction.client.guilds.fetch(interaction.guildId);
-    const user = await guild.members.fetch(interaction.user.id).catch(() => null);
-    const isVerified = await verifyUser(guild, user);
+    const isVerified = !!(await getUserFromDiscordID(interaction.user.id));
     return await interaction.reply(
-      await getVerifiedMessageAnswer(isVerified, guild.preferredLocale, user, user.id === interaction.user.id),
+      await getVerifiedMessageAnswer(isVerified, interaction.guild.preferredLocale, interaction.user, true),
     );
   }
 }

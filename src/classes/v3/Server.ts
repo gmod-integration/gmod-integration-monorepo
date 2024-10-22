@@ -6,6 +6,7 @@ import { getStatusMessage } from '../../discord/utils/messages';
 import { gmLog } from '../../utils/logger';
 import { ChannelType } from 'discord.js';
 import prisma from '../../prisma';
+import { gm_server_sync_chat_filter } from '@prisma/client';
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
@@ -160,7 +161,7 @@ export class Server extends BaseClass {
     };
   }
 
-  async getGmodToDiscordFilter() {
+  async getGmodToDiscordFilter(): Promise<gm_server_sync_chat_filter[] | null> {
     const redisKey = `server:${this.id}:gmodToDiscordFilter`;
     const redisData = await redis.get(redisKey);
 
@@ -179,7 +180,7 @@ export class Server extends BaseClass {
       return result;
     }
 
-    return [];
+    return null;
   }
 
   async getStatusChannelAndMessage() {
