@@ -6,7 +6,7 @@ import { discordConfig, serverConfig } from '../../config/index.ts';
 import { getRandomDiscordRelay, ipGetIP } from '../../utils/tools.ts';
 import { EmbedBuilder } from 'discord.js';
 import { getTranslate } from '../../utils/localizations.ts';
-import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
+import { PlayerGmod } from '../../classes/v3/PlayerGmod.ts';
 
 class ServerLogs extends Model {}
 

@@ -6,12 +6,14 @@
   "scripts": {
     "js:start": "pm2 start src/gm_integration_api.ts --log logs/current.log --name gmod-integration-api",
     "js:dev": "node --watch --trace-warnings --trace-deprecation .",
-    "discord:push:context": "node src/discord/discord_push_context.js",
-    "discord:remove:cmd": "node --watch --trace-warnings --trace-deprecation src/discord/discord_remove_cmd.js",
+    "discord:push:context": "node src/discord/discord_push_context.ts",
+    "discord:remove:cmd": "node --watch --trace-warnings --trace-deprecation src/discord/discord_remove_cmd.ts",
     "test": "node --experimental-vm-modules --recursive src/test/*.js",
     "build": "tsc",
     "dev": "tsx watch src/gm_integration_api.ts",
-    "start": "pm2 start dist/gm_integration_api.js --log logs/current.log --name gmod-integration-api"
+    "start": "pm2 start dist/gm_integration_api.js --log logs/current.log --name gmod-integration-api",
+    "prisma:generate": "npx prisma generate",
+    "prisma:push": "npx prisma db push"
   },
   "repository": {
     "type": "git",
@@ -38,6 +40,7 @@
     "typescript": "^5.6.3"
   },
   "dependencies": {
+    "@discordjs/builders": "^1.9.0",
     "@prisma/client": "^5.21.1",
     "@sentry/core": "^8.7.0",
     "@sentry/node": "^8.33.1",
@@ -58,6 +61,7 @@
     "mysql2": "^3.6.3",
     "node-cron": "^3.0.3",
     "pm2": "^5.3.1",
+    "redis": "^4.7.0",
     "sequelize": "^6.37.3",
     "steamapi": "^2.4.2",
     "unicode-emoji": "^2.5.0",

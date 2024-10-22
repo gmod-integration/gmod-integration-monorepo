@@ -134,7 +134,7 @@ model gm_guild_verify_role {
 }
 
 model gm_panelToken {
-  id             String   @id @db.Char(36)
+  id             String   @id @default(uuid()) @db.Char(36)
   discordID      String   @db.VarChar(255)
   accessToken    String   @db.VarChar(255)
   creationDate   DateTime @default(now())
@@ -165,7 +165,7 @@ model gm_server {
   guild                         String                          @db.VarChar(255)
   ip                            String?                         @default("127.0.0.1") @db.VarChar(255)
   port                          String?                         @default("27015") @db.VarChar(255)
-  name                          String?                         @default("New Gmod Server") @db.VarChar(255)
+  name                          String                          @default("New Gmod Server") @db.VarChar(255)
   image                         String?                         @default("") @db.VarChar(255)
   verified                      Boolean                         @default(false)
   createdAt                     DateTime                        @default(now())
@@ -247,7 +247,7 @@ model gm_server_leaderboard_options {
 
 model gm_server_links {
   id        Int      @id @default(autoincrement())
-  url       String   @db.Text
+  url       String   @default("https://example.com") @db.TinyText
   alias     String   @default("Example") @db.VarChar(255)
   guild     String   @db.VarChar(255)
   active    Boolean  @default(false)
@@ -331,7 +331,6 @@ model gm_server_roles {
 
 model gm_server_screenshot_channels {
   server    String    @db.VarChar(255)
-  adminCmd  Boolean   @default(false)
   channelID String    @default("") @db.VarChar(255)
   webhook   String    @default("") @db.VarChar(255)
   token     String    @default("") @db.VarChar(255)
@@ -339,7 +338,7 @@ model gm_server_screenshot_channels {
   updatedAt DateTime  @updatedAt
   gm_server gm_server @relation(fields: [server], references: [id], onDelete: Cascade, map: "gm_server_screenshot_channels_ibfk_1")
 
-  @@id([server, adminCmd])
+  @@id([server])
 }
 
 model gm_server_screenshots {
@@ -369,7 +368,7 @@ model gm_server_settings {
 model gm_server_stat {
   server_id         String        @db.VarChar(255)
   steam_id          String        @db.VarChar(255)
-  name              String        @default("") @db.VarChar(255)
+  name              String        @db.VarChar(255)
   rank              String        @default("user") @db.VarChar(255)
   total_time        Int           @default(0)
   total_death       Int           @default(0)
@@ -378,7 +377,7 @@ model gm_server_stat {
   total_connect     Int           @default(1)
   last_connect      DateTime      @updatedAt
   first_join        DateTime      @default(now())
-  custom_values     String        @db.LongText
+  custom_values     Json          @default("{}")
   bypassMaintenance Boolean       @default(false)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -512,7 +511,7 @@ model gm_status_button {
   id        Int       @id @default(autoincrement())
   server    String    @db.VarChar(255)
   name      String    @default("Example") @db.VarChar(255)
-  url       String    @db.Text
+  url       String    @default("https://example.com") @db.TinyText
   emoji     String    @default("?") @db.VarChar(255)
   enable    Boolean   @default(false)
   createdAt DateTime  @default(now())
@@ -568,7 +567,7 @@ model gm_user_steam {
 }
 
 model gm_users_data_request {
-  id             String   @id @db.Char(36)
+  id             String   @id @default(uuid()) @db.Char(36)
   discordID      String   @db.VarChar(255)
   status         String   @default("pending") @db.VarChar(255)
   expirationDate DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 1 DAY)"))

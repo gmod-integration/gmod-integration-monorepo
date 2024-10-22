@@ -16,8 +16,8 @@ const wss = new WebSocketServer({
     const { id, token } = info.req.headers;
 
     if (id && token) {
-      const server = await getServerFromID(id);
-      if (server && server.isValidToken(token)) {
+      const server = await getServerFromID(id as string);
+      if (server && server.isValidToken(token as string)) {
         gmLog('websocket', 'Authorized server ' + id);
         return cb(true);
       }

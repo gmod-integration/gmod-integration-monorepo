@@ -1,4 +1,4 @@
-import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
+import { getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { getTranslate } from '../../utils/localizations';
 import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'discord.js';
@@ -12,7 +12,7 @@ export async function sendMessageToGmod(message: Message) {
   const lang = message.guild.preferredLocale;
 
   const guildBotInstance = await getGuildClient(message.guild.id, false);
-  if (guildBotInstance.user.id !== message.guild.client.user.id) {
+  if (guildBotInstance.user!.id !== message.guild.client.user.id) {
     return;
   }
 
@@ -30,7 +30,7 @@ export async function sendMessageToGmod(message: Message) {
   let serversInfo = await getServersFromDiscordGuildID(message.guild.id);
 
   for (const row of channels) {
-    const server = serversInfo.find((server) => server.getID() === row.server);
+    const server = serversInfo.find((server: Server) => server.getID() === row.server);
     if (!server || !server.isValid()) {
       console.error(`Server ${row.server} not found`);
       continue;

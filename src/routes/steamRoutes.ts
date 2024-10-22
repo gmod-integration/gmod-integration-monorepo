@@ -1,5 +1,5 @@
 import express from 'express';
-import { steamVerification, steamVerificationReturn } from '../controllers/v3/steamControllers.js';
+import { steamVerification, steamVerificationReturn } from '../controllers/v3/steamControllers';
 
 const router = express.Router();
 

@@ -3,9 +3,8 @@ import webhooksRoutes from './webhooks/_webhooksRoutes.js';
 import v3Routes from './v3/_v3Routes.js';
 import steamRoutes from './steamRoutes.js';
 import fs from 'fs';
-import UsersDataRequest from '../database/schema/UsersDataRequest.js';
 import asyncHandler from '../middleware/asyncHandler.js';
-import { Op } from 'sequelize';
+import prisma from '../prisma';
 
 const router = express.Router();
 
@@ -17,12 +16,12 @@ router.use(
     let { uuid } = req.params;
     if (!code) return res.status(400).json({ error: 'missing_code' });
 
-    const request = await UsersDataRequest.findOne({
+    const request = await prisma.gm_users_data_request.findFirst({
       where: {
-        code,
+        code: code as string,
         id: uuid,
         expirationDate: {
-          [Op.gte]: new Date(),
+          gt: new Date(),
         },
       },
     });

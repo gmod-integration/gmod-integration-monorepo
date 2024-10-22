@@ -31,7 +31,7 @@ function getDefaultTrad(key: string, options?: string[]): string {
   }
 }
 
-export async function getTranslate(key: string, language: string, options?: string[]) {
+export async function getTranslate(key: string, language?: string, options?: string[]) {
   language = language ? language.substring(0, 2) : 'en';
 
   const redisKey = `language:${language}:${key}`;

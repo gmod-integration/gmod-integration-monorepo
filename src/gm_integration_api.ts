@@ -1,34 +1,19 @@
 import './utils/instrument.js';
 import './utils/update-log.js';
+import './discord';
 import express, { NextFunction, Request, Response } from 'express';
 import { serverConfig } from './config';
 import { gmLog } from './utils/logger.js';
 import rawBodyMiddleware from './middleware/rawBodyMiddleware.js';
 import loggerMiddleware from './middleware/v3/loggers.js';
 import cors from 'cors';
-import './websockets';
 import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
 import './database/schema/_association.js';
-import sequelize from './database/sequelize.js';
 import useragent from 'express-useragent';
-import { loadDiscordMain, loadDiscordSlave } from './discord';
 import * as Sentry from '@sentry/node';
 import errorMiddleware from './middleware/errorMiddleware';
-
-// Database
-await sequelize
-  .sync({ alter: true })
-  .then(() => {
-    gmLog('sequelize', 'Tables created or updated');
-  })
-  .catch((error) => {
-    console.error('Error synchronizing tables:', error);
-  });
-
-// Discord
-await loadDiscordMain();
-await loadDiscordSlave();
+import './websockets';
 
 // Express
 const app = express();

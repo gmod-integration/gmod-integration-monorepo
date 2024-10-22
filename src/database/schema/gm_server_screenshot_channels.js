@@ -19,12 +19,6 @@ gm_server_screenshot_channels.init(
       onUpdate: 'CASCADE',
       onDelete: 'CASCADE',
     },
-    adminCmd: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-      primaryKey: true,
-    },
     channelID: {
       type: DataTypes.STRING,
       allowNull: false,

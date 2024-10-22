@@ -12,18 +12,7 @@ export async function getStats() {
   if (redisStat !== null) {
     return JSON.parse(redisStat);
   }
-  //
-  // const usersCount = await Users.count();
-  // const memberCount = await gm_guild.sum('member');
-  // const guildCount = await gm_guild.count();
-  // const serverCount = await gm_server.count();
-  // const verifiedUserCount = await gm_user.count({
-  //   where: {
-  //     steam: {
-  //       [Op.not]: null,
-  //     },
-  //   },
-  // });
+
   const usersCount = await prisma.users.count();
   const memberCountResult = await prisma.gm_guild.aggregate({
     _sum: {
@@ -77,7 +66,7 @@ export async function routineUpdateStatus() {
     const status = botStatusList[lastStatusID];
     lastStatusID = (lastStatusID + 1) % botStatusList.length;
 
-    client.user.setPresence({
+    client.user!.setPresence({
       activities: [
         {
           name: await status(stats),
