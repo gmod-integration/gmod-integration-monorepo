@@ -9,7 +9,6 @@ import loggerMiddleware from './middleware/v3/loggers.js';
 import cors from 'cors';
 import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
-import './database/schema/_association.js';
 import useragent from 'express-useragent';
 import * as Sentry from '@sentry/node';
 import errorMiddleware from './middleware/errorMiddleware';
