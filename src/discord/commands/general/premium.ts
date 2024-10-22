@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, InteractionContextType, SlashCommandBuilder } from 'discord.js';
 import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild';
 import { getTranslate } from '../../../utils/localizations';
 
@@ -6,7 +6,7 @@ export default {
   data: new SlashCommandBuilder()
     .setName('premium')
     .setDescription('Check if your guild is premium.')
-    .setDMPermission(false),
+    .setContexts([InteractionContextType.Guild]),
   category: 'other',
   async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.guild) return;

@@ -2,6 +2,7 @@ import {
   ActionRowBuilder,
   AutocompleteInteraction,
   ChatInputCommandInteraction,
+  InteractionContextType,
   MessageActionRowComponentBuilder,
   SlashCommandBuilder,
 } from 'discord.js';
@@ -27,7 +28,7 @@ export default {
     .addStringOption((option) =>
       option.setName('command').setDescription('The command you want to execute').setRequired(true),
     )
-    .setDMPermission(false)
+    .setContexts([InteractionContextType.Guild])
     .setDefaultMemberPermissions(0),
   category: 'admin',
   async execute(interaction: ChatInputCommandInteraction) {

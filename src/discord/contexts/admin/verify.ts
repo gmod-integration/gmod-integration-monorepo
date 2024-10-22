@@ -1,4 +1,10 @@
-import { ApplicationCommandType, ContextMenuCommandBuilder, ContextMenuCommandInteraction } from 'discord.js';
+import {
+  ApplicationCommandType,
+  ContextMenuCommandBuilder,
+  ContextMenuCommandInteraction,
+  ContextMenuCommandType,
+  InteractionContextType,
+} from 'discord.js';
 import { verifyUser } from '../../../models/v3/discordModels.js';
 import { getVerifiedMessageAnswer } from '../../utils/messages.js';
 import { getTranslate } from '../../../utils/localizations';
@@ -6,19 +12,25 @@ import { getTranslate } from '../../../utils/localizations';
 export default {
   data: new ContextMenuCommandBuilder()
     .setName('Verify')
-    .setType(ApplicationCommandType.User)
-    .setDMPermission(false)
+    .setContexts([InteractionContextType.Guild])
+    .setType(ApplicationCommandType.User as ContextMenuCommandType)
     .setDefaultMemberPermissions(0),
   category: 'admin',
   async execute(interaction: ContextMenuCommandInteraction) {
-    const guild = await interaction.client.guilds.fetch(interaction.guildId);
-    const user = await guild.members.fetch(interaction.targetId).catch(() => null);
+    if (!interaction.guild) return interaction.reply('Something went wrong!');
 
-    if (!user) return interaction.reply(await getTranslate('something_went_wrong', guild.preferredLocale));
+    const user = await interaction.guild.members.fetch(interaction.targetId).catch(() => null);
 
-    const isVerified = await verifyUser(guild, user);
+    if (!user) return interaction.reply(await getTranslate('something_went_wrong', interaction.guild.preferredLocale));
+
+    const isVerified = await verifyUser(interaction.guild, user);
     await interaction.reply(
-      await getVerifiedMessageAnswer(isVerified, guild.preferredLocale, user, user.id === interaction.user.id),
+      await getVerifiedMessageAnswer(
+        isVerified,
+        interaction.guild.preferredLocale,
+        user,
+        user.id === interaction.user.id,
+      ),
     );
   },
 };

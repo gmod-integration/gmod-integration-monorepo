@@ -2,6 +2,7 @@ import {
   ActionRowBuilder,
   AutocompleteInteraction,
   ChatInputCommandInteraction,
+  InteractionContextType,
   SlashCommandBuilder,
 } from 'discord.js';
 import { getServerList } from '../../../models/v3/serversModels';
@@ -28,7 +29,7 @@ export default {
     .addStringOption((option) =>
       option.setName('steam').setDescription('The steamID64 of the user you want to show the warn').setRequired(false),
     )
-    .setDMPermission(false)
+    .setContexts([InteractionContextType.Guild])
     .setDefaultMemberPermissions(0),
   category: 'admin',
   async execute(interaction: ChatInputCommandInteraction) {

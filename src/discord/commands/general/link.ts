@@ -2,6 +2,7 @@ import {
   AutocompleteInteraction,
   ChatInputCommandInteraction,
   GuildMember,
+  InteractionContextType,
   PermissionsBitField,
   SlashCommandBuilder,
 } from 'discord.js';
@@ -16,7 +17,7 @@ export default {
     .addStringOption((option) =>
       option.setName('link').setDescription('The link to get.').setRequired(true).setAutocomplete(true),
     )
-    .setDMPermission(false),
+    .setContexts([InteractionContextType.Guild]),
   category: 'general',
   async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.guild || !interaction.member) return;

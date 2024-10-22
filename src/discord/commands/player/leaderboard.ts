@@ -1,18 +1,23 @@
-import { AutocompleteInteraction, ButtonStyle, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import {
+  AutocompleteInteraction,
+  ChatInputCommandInteraction,
+  InteractionContextType,
+  SlashCommandBuilder,
+} from 'discord.js';
 import {
   getLeaderboardButtons,
   getLeaderboardMessageEmbed,
   getServerLeaderboardCategories,
   saveLeaderboardOptions,
-} from '../../../models/v3/leaderboardModels.js';
-import { getServersFromDiscordGuildID } from '../../../classes/v3/Server.js';
+} from '../../../models/v3/leaderboardModels';
+import { getServersFromDiscordGuildID } from '../../../classes/v3/Server';
 import { getTranslate } from '../../../utils/localizations';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('leaderboard')
     .setDescription('Get an Server leaderboard for specific category')
-    .setDMPermission(false)
+    .setContexts([InteractionContextType.Guild])
     .addStringOption((option) =>
       option.setName('server').setDescription('Server to get leaderboard from').setRequired(true).setAutocomplete(true),
     )

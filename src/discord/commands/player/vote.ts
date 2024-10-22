@@ -1,15 +1,20 @@
-import { AutocompleteInteraction, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import {
+  AutocompleteInteraction,
+  ChatInputCommandInteraction,
+  InteractionContextType,
+  SlashCommandBuilder,
+} from 'discord.js';
 import { getTranslate } from '../../../utils/localizations';
 import { getServerList } from '../../../models/v3/serversModels';
 import { secToTime } from '../../utils';
-import { getServerFromID } from '../../../classes/v3/Server.js';
+import { getServerFromID } from '../../../classes/v3/Server';
 import prisma from '../../../prisma';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('vote')
     .setDescription('Upvote the visibility of a server in the server list.')
-    .setDMPermission(false)
+    .setContexts([InteractionContextType.Guild])
     .addStringOption((option) =>
       option.setName('server').setDescription('Server to get leaderboard from').setRequired(true).setAutocomplete(true),
     ),

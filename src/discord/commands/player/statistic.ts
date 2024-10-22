@@ -1,13 +1,18 @@
-import { AutocompleteInteraction, ButtonStyle, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import {
+  AutocompleteInteraction,
+  ChatInputCommandInteraction,
+  InteractionContextType,
+  SlashCommandBuilder,
+} from 'discord.js';
 import { getServerList } from '../../../models/v3/serversModels';
-import { getUserStatisticMessage } from '../../utils/messages.js';
+import { getUserStatisticMessage } from '../../utils/messages';
 import { getTranslate } from '../../../utils/localizations';
 
 export default {
   data: new SlashCommandBuilder()
     .setName('statistic')
     .setDescription("Show your stats or another user's stats for a specific server.")
-    .setDMPermission(false)
+    .setContexts([InteractionContextType.Guild])
     .addStringOption((option) =>
       option
         .setName('server')

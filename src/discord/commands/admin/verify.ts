@@ -1,6 +1,6 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
-import { verifyUser } from '../../../models/v3/discordModels.js';
-import { getVerifiedMessageAnswer } from '../../utils/messages.js';
+import { ChatInputCommandInteraction, InteractionContextType, SlashCommandBuilder } from 'discord.js';
+import { verifyUser } from '../../../models/v3/discordModels';
+import { getVerifiedMessageAnswer } from '../../utils/messages';
 import { getTranslate } from '../../../utils/localizations';
 
 export default {
@@ -8,7 +8,7 @@ export default {
     .setName('verify')
     .setDescription('Start the verification process for a user.')
     .addUserOption((option) => option.setName('user').setDescription('The user you want to verify').setRequired(false))
-    .setDMPermission(false),
+    .setContexts([InteractionContextType.Guild]),
   category: 'admin',
   async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.guild) return;

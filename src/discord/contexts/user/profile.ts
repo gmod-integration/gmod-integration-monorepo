@@ -1,11 +1,21 @@
-import { ApplicationCommandType, ContextMenuCommandBuilder, ContextMenuCommandInteraction } from 'discord.js';
-import { getProfileMessage } from '../../utils/messages.js';
+import {
+  ApplicationCommandType,
+  ContextMenuCommandBuilder,
+  ContextMenuCommandType,
+  InteractionContextType,
+  UserContextMenuCommandInteraction,
+} from 'discord.js';
+import { getProfileMessage } from '../../utils/messages';
 
 export default {
-  data: new ContextMenuCommandBuilder().setName('Profile').setType(ApplicationCommandType.User).setDMPermission(false),
+  data: new ContextMenuCommandBuilder()
+    .setName('Profile')
+    .setContexts([InteractionContextType.Guild])
+    .setType(ApplicationCommandType.User as ContextMenuCommandType),
   category: 'user',
-  async execute(interaction: ContextMenuCommandInteraction) {
-    const user = interaction.options.getUser('user') || interaction.user;
+  async execute(interaction: UserContextMenuCommandInteraction) {
+    const user = interaction.options.getUser('user');
+    if (!interaction.guild || !user) return interaction.reply('Something went wrong!');
     return interaction.reply(await getProfileMessage(interaction.guild, user));
   },
 };

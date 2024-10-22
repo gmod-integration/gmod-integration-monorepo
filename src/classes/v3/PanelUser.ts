@@ -1,5 +1,5 @@
 import { getUserFromDiscordID } from './User';
-import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels.js';
+import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels';
 import redis from '../../redis';
 import prisma from '../../prisma';
 
