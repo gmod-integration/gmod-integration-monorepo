@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Interaction } from 'discord.js';
+import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getTranslate } from '../../utils/localizations';
 import { getServerFromID, Server } from '../../classes/v3/Server.js';
 import prisma from '../../prisma';
@@ -183,7 +183,7 @@ export async function getWarnMessageEmbed(
   };
 }
 
-export async function handleWarnInteraction(interaction: Interaction) {
+export async function handleWarnInteraction(interaction: ButtonInteraction) {
   if (!interaction.isButton()) return;
   if (interaction.user.bot) return;
   if (!interaction.guild) return;

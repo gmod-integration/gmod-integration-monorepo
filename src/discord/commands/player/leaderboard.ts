@@ -49,11 +49,16 @@ export default {
     // const user = interaction.options.getUser('user'); // TODO
     // const steamID64 = interaction.options.getString('steam'); // TODO
 
-    const { embed, options } = await getLeaderboardMessageEmbed(server!, category, lang);
+    const leaderboardData = await getLeaderboardMessageEmbed(server!, category, lang);
+    if (!leaderboardData) {
+      return interaction.reply({ content: 'Failed to retrieve leaderboard data.', ephemeral: true });
+    }
+
+    const { embed, options } = leaderboardData;
     interaction
       .reply({
         embeds: [embed],
-        components: [getLeaderboardButtons(options.page === 1, options.page === options.totalPages)],
+        components: [getLeaderboardButtons(options.page === 1, options.totalPages === options.page)],
         fetchReply: true,
       })
       .then((embedMessage) => {

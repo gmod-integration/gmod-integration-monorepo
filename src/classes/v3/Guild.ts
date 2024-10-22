@@ -3,7 +3,7 @@ import { discordConfig, serverConfig } from '../../config';
 import redis from '../../redis';
 import { getServersFromDiscordGuildID } from './Server';
 import { getGuildClient, getMainClient, loadGuildBotInstance } from '../../discord';
-import { BaseInteraction, ButtonInteraction, ChatInputCommandInteraction, Guild as DiscordGuild } from 'discord.js';
+import { ButtonInteraction, ChatInputCommandInteraction, Guild as DiscordGuild } from 'discord.js';
 import prisma from '../../prisma';
 import { User } from './User';
 
@@ -278,7 +278,7 @@ export async function replyNeedPremium(interaction: ChatInputCommandInteraction 
     });
 }
 
-export async function handlePremiumInteraction(interaction: BaseInteraction) {
+export async function handlePremiumInteraction(interaction: ButtonInteraction) {
   if (!interaction.isButton()) return;
   if (interaction.user.bot) return;
   if (!interaction.guild) return;

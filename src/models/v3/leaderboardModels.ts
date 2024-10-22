@@ -1,9 +1,9 @@
 import {
   ActionRowBuilder,
   ButtonBuilder,
+  ButtonInteraction,
   ButtonStyle,
   EmbedBuilder,
-  Interaction,
   MessageActionRowComponentBuilder,
 } from 'discord.js';
 import { dateToDiscordTimestamp, secToTime } from '../../discord/utils';
@@ -270,7 +270,7 @@ export async function getLeaderboardMessageEmbed(
   }
 }
 
-export async function handleLeaderboardInteraction(interaction: Interaction) {
+export async function handleLeaderboardInteraction(interaction: ButtonInteraction) {
   if (!interaction.isButton()) return;
   if (interaction.user.bot) return;
   if (!interaction.guild) return;
