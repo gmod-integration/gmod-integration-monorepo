@@ -1,7 +1,6 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
-import { createServer, getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
+import { createServer, getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
 import { discordConfig } from '../../config';
-import { ChannelType } from 'discord.js';
 import {
   getDiscordUserFromID,
   getUserFromToken,
@@ -11,23 +10,9 @@ import {
 } from '../../models/v3/discordModels.js';
 import { badArgument, generateToken, todoControllers } from '../../utils/tools';
 import { getVerificationGuildMessage } from '../../discord/utils/messages';
-import gm_server from '../../database/schema/gm_server.js';
-import gm_server_status from '../../database/schema/gm_server_status.js';
-import ServerVote from '../../database/schema/ServerVote.js';
 import moment from 'moment';
-import { Op } from 'sequelize';
-import GuildSettings from '../../database/schema/GuildSettings.js';
-import ServerLogs from '../../database/schema/ServerLogs.js';
-import gm_guild from '../../database/schema/gm_guild.js';
-import ServerSyncRole from '../../database/schema/ServerSyncRole.js';
-import GmodStorePurchases from '../../database/schema/GmodStorePurchases.js';
-import ServerPseudo from '../../database/schema/ServerPseudo.js';
-import UsersNotifications from '../../database/schema/UsersNotifications.js';
-import UsersDataRequest from '../../database/schema/UsersDataRequest.js';
 import { getUserDataGRPD } from '../../models/v3/gdrp';
-import ServerReportBugs from '../../database/schema/ServerReportBugs.js';
 import { getMainClient } from '../../discord';
-import ServerSyncChatFilter from '../../database/schema/ServerSyncChatFilter.js';
 import redis from '../../redis';
 import prisma from '../../prisma.js';
 import { NextFunction, Request, Response } from 'express';
@@ -127,9 +112,10 @@ export async function oauthLogin(req: Request, res: Response) {
     return res.redirect(discordConfig.oauthPanel + (redirect ? `&state=redirect:${redirect}` : ''));
   }
 
-  const redirect = req.query.state ? req.query.state.split('redirect:')[1] : null;
+  const redirect = typeof req.query.state === 'string' ? req.query.state.split('redirect:')[1] : null;
+  const codeString = typeof code === 'string' ? code : '';
   const discordUserToken = await getUserTokenFromCode(
-    code,
+    codeString,
     `${req.protocol}://${req.headers.host}${req.originalUrl.split('?')[0]}`,
   );
   if (!discordUserToken) {
@@ -177,7 +163,7 @@ export async function oauthLogin(req: Request, res: Response) {
 }
 
 export async function getUserGuildsOwnOrAdmins(req: Request, res: Response) {
-  const panelUser = req.panelUser;
+  const panelUser = req.panelUser!;
 
   return res.send(await panelUser.findGuildsWithPermsForPanel());
 }
@@ -189,7 +175,7 @@ export async function findGuild(req: Request, res: Response) {
     id: dscGuild.id,
     name: dscGuild.name,
     icon: dscGuild.icon,
-    ownerID: dscGuild.ownerID,
+    ownerID: dscGuild.ownerId,
   });
 }
 
@@ -201,7 +187,7 @@ export async function findGuildChannels(req: Request, res: Response, next: NextF
       id: channel.id,
       name: channel.name,
       type: channel.type,
-      position: channel.position,
+      position: 'position' in channel ? channel.position : null,
       parentID: channel.parent ? channel.parent.id : null,
     })),
   );
@@ -209,7 +195,7 @@ export async function findGuildChannels(req: Request, res: Response, next: NextF
 
 export async function getGuildEmojis(req: Request, res: Response) {
   const dscGuild = req.dscGuild!;
-  const totalEmojis = [];
+  const totalEmojis: any = [];
 
   dscGuild.emojis.cache.forEach((emoji) => {
     totalEmojis.push({
@@ -300,13 +286,19 @@ export async function putGuildLinks(req: Request, res: Response) {
     });
   }
 
-  link.url = url !== undefined ? url : link.url;
-  link.alias = alias !== undefined ? alias : link.alias;
-  link.active = active !== undefined ? active : link.active;
-
-  link.changed('updatedAt', true);
-  await link.save();
-  return res.send(link);
+  return res.send(
+    await prisma.gm_server_links.update({
+      where: {
+        id: link.id,
+        guild: guild.id,
+      },
+      data: {
+        url: url !== undefined ? url : link.url,
+        alias: alias !== undefined ? alias : link.alias,
+        active: active !== undefined ? active : link.active,
+      },
+    }),
+  );
 }
 
 export async function deleteGuildLinks(req: Request, res: Response) {
@@ -397,7 +389,11 @@ export async function deleteGuildVerificationsRoles(req: Request, res: Response)
     });
   }
 
-  await verificationRole.destroy();
+  await prisma.gm_guild_verify_role.delete({
+    where: {
+      id: verificationRole.id,
+    },
+  });
   return res.send(verificationRole);
 }
 
@@ -452,20 +448,25 @@ export async function putServerStatusButtons(req: Request, res: Response) {
   const { buttonID } = req.params;
   const { name, emoji, url, enable } = req.body;
 
-  const button = await server.findStatusButton(buttonID);
+  const button = await server.findStatusButton(Number(buttonID));
   if (!button) {
     return res.status(404).send({
       error: 'button not found',
     });
   }
 
-  button.name = name !== undefined ? name : button.name;
-  button.emoji = emoji !== undefined ? emoji : button.emoji;
-  button.url = url !== undefined ? url : button.url;
-  button.enable = enable !== undefined ? enable : button.enable;
-
-  button.changed('updatedAt', true);
-  await button.save();
+  await prisma.gm_status_button.update({
+    where: {
+      id: button.id,
+      server: server.id,
+    },
+    data: {
+      name: name !== undefined ? name : button.name,
+      emoji: emoji !== undefined ? emoji : button.emoji,
+      url: url !== undefined ? url : button.url,
+      enable: enable !== undefined ? enable : button.enable,
+    },
+  });
 
   if (button.enable) {
     await server.editStatusChannelAndMessage(await server.getStatusData());
@@ -484,14 +485,14 @@ export async function deleteServerStatusButtons(req: Request, res: Response) {
   const server = req.server!;
   const { buttonID } = req.params;
 
-  const button = await server.findStatusButton(buttonID);
+  const button = await server.findStatusButton(Number(buttonID));
   if (!button) {
     return res.status(404).send({
       error: 'button not found',
     });
   }
 
-  await server.destroyStatusButton(buttonID);
+  await server.destroyStatusButton(Number(buttonID));
 
   if (button.enable) {
     await server.editStatusChannelAndMessage(await server.getStatusData());
@@ -535,7 +536,7 @@ export async function deleteServerSyncChat(req: Request, res: Response) {
 export async function getGmodToDiscordFilter(req: Request, res: Response) {
   const server = req.server!;
   return res.send(
-    (await ServerSyncChatFilter.findAll({
+    (await prisma.gm_server_sync_chat_filter.findMany({
       where: {
         serverID: server.id,
       },
@@ -546,8 +547,10 @@ export async function getGmodToDiscordFilter(req: Request, res: Response) {
 export async function postGmodToDiscordFilter(req: Request, res: Response) {
   const server = req.server!;
 
-  const filter = await ServerSyncChatFilter.create({
-    serverID: server.id,
+  const filter = await prisma.gm_server_sync_chat_filter.create({
+    data: {
+      serverID: server.id,
+    },
   });
 
   await redis.del(`server:${server.id}:gmodToDiscordFilter`);
@@ -565,9 +568,9 @@ export async function putGmodToDiscordFilter(req: Request, res: Response) {
     });
   }
 
-  const filter = await ServerSyncChatFilter.findOne({
+  const filter = await prisma.gm_server_sync_chat_filter.findFirst({
     where: {
-      id: filterID,
+      id: Number(filterID),
       serverID: server.id,
     },
   });
@@ -578,24 +581,29 @@ export async function putGmodToDiscordFilter(req: Request, res: Response) {
     });
   }
 
-  filter.element = element !== undefined ? element : filter.element;
-  filter.operator = operator !== undefined ? operator : filter.operator;
-  filter.trigger = trigger !== undefined ? trigger : filter.trigger;
-  filter.action = action !== undefined ? action : filter.action;
-  filter.active = active !== undefined ? active : filter.active;
+  const updatedFilter = await prisma.gm_server_sync_chat_filter.update({
+    where: {
+      id: Number(filterID),
+    },
+    data: {
+      element: element !== undefined ? element : filter.element,
+      operator: operator !== undefined ? operator : filter.operator,
+      trigger: trigger !== undefined ? trigger : filter.trigger,
+      action: action !== undefined ? action : filter.action,
+      active: active !== undefined ? active : filter.active,
+    },
+  });
 
-  filter.changed('updatedAt', true);
-  await filter.save();
   await redis.del(`server:${server.id}:gmodToDiscordFilter`);
-  return res.send(filter);
+  return res.send(updatedFilter);
 }
 
 export async function deleteGmodToDiscordFilter(req: Request, res: Response) {
   const { filterID } = req.params;
   const server = req.server!;
-  const filter = await ServerSyncChatFilter.findOne({
+  const filter = await prisma.gm_server_sync_chat_filter.findFirst({
     where: {
-      id: filterID,
+      id: Number(filterID),
       serverID: server.id,
     },
   });
@@ -607,7 +615,12 @@ export async function deleteGmodToDiscordFilter(req: Request, res: Response) {
   }
 
   await redis.del(`server:${server.id}:gmodToDiscordFilter`);
-  await filter.destroy();
+  // await filter.destroy();
+  await prisma.gm_server_sync_chat_filter.delete({
+    where: {
+      id: Number(filterID),
+    },
+  });
   return res.send(filter);
 }
 
@@ -757,7 +770,7 @@ export async function createVerificationMessage(req: Request, res: Response) {
   }
 
   const channel = dscGuild.channels.cache.get(channelID);
-  if (channel.type !== ChannelType.GuildText) {
+  if (!channel || !channel.isSendable()) {
     return res.status(400).send({
       error: 'Channel is not a text channel',
     });
@@ -771,7 +784,7 @@ export async function createVerificationMessage(req: Request, res: Response) {
 
   if (oldMsg) {
     const oldChannel = dscGuild.channels.cache.get(oldMsg.channelID);
-    if (oldChannel) {
+    if (oldChannel && oldChannel.isTextBased()) {
       try {
         const oldMessage = await oldChannel.messages.fetch(oldMsg.messageID);
         await oldMessage.delete();
@@ -836,7 +849,7 @@ export async function deleteVerificationMessage(req: Request, res: Response) {
   }
 
   const channel = dscGuild.channels.cache.get(msg.channelID);
-  if (channel) {
+  if (channel && channel.isTextBased()) {
     try {
       const message = await channel.messages.fetch(msg.messageID);
       await message.delete();
@@ -854,43 +867,44 @@ export async function deleteVerificationMessage(req: Request, res: Response) {
 }
 
 export async function getPublicServers(req: Request, res: Response) {
-  const servers = await gm_server.findAll({
+  const serversData = await prisma.gm_server.findMany({
     where: {
       isPublic: true,
     },
   });
 
-  let publicServers = [];
+  let publicServers: any = [];
 
   let thirtyDaysAgo = moment().subtract(30, 'days').toDate();
   console.log(thirtyDaysAgo);
-  for (const server of servers) {
+  for (const serverData of serversData) {
+    const server = new Server(serverData);
     let publicInformations = await server.getPublicInformations();
-    publicInformations.vote = await ServerVote.count({
+    publicInformations.vote = await prisma.gm_server_vote.count({
       where: {
         serverID: server.id,
         createdAt: {
-          [Op.gte]: thirtyDaysAgo,
+          gt: thirtyDaysAgo,
         },
       },
     });
     publicServers.push(publicInformations);
   }
 
-  const serverStatus = await gm_server_status.findAll({
+  const serverStatus = await prisma.gm_server_status.findMany({
     where: {
-      id: servers.map((server) => server.id),
+      id: {
+        in: serversData.map((server: any) => server.id),
+      },
     },
   });
 
   for (const status of serverStatus) {
-    if (status.dataValues.updatedAt < new Date(Date.now() - 1000 * 60 * 5)) {
+    if (status.updatedAt < new Date(Date.now() - 1000 * 60 * 5)) {
       continue;
     }
-    const server = publicServers.find((server) => server.id === status.dataValues.id);
-    if (server) {
-      server.status = status.dataValues;
-    }
+    const server = publicServers.find((server: any) => server.id === status.id);
+    if (server) server.status = status;
   }
 
   return res.send(publicServers);
@@ -944,7 +958,7 @@ export async function deleteLogsChannel(req: Request, res: Response) {
 
 export async function getGuildSettings(req: Request, res: Response) {
   const { guildID } = req.params;
-  const settings = await GuildSettings.findAll({
+  const settings = await prisma.gm_guild_settings.findMany({
     where: {
       guildID,
     },
@@ -955,11 +969,11 @@ export async function getGuildSettings(req: Request, res: Response) {
 export async function getGuildSetting(req: Request, res: Response) {
   const { setting } = req.params;
   return res.send(
-    (await GuildSettings.findOne({
+    prisma.gm_guild_settings.findFirst({
       where: {
         setting,
       },
-    })) || {},
+    }) || {},
   );
 }
 
@@ -981,16 +995,33 @@ export async function putGuildSetting(req: Request, res: Response) {
     });
   }
 
-  let guildSetting = await GuildSettings.findOne({
-    where: { guildID, setting },
+  let guildSetting: any = prisma.gm_guild_settings.findFirst({
+    where: {
+      guildID,
+      setting,
+    },
   });
 
   if (!guildSetting) {
-    guildSetting = await GuildSettings.create({ guildID, setting, value });
+    guildSetting = prisma.gm_guild_settings.create({
+      data: {
+        guildID,
+        setting,
+        value,
+      },
+    });
   } else {
-    guildSetting.value = value;
-    guildSetting.changed('updatedAt', true);
-    await guildSetting.save();
+    guildSetting = await prisma.gm_guild_settings.update({
+      where: {
+        guildID_setting: {
+          guildID,
+          setting,
+        },
+      },
+      data: {
+        value,
+      },
+    });
   }
 
   return res.send(guildSetting);
@@ -1012,8 +1043,11 @@ export async function postGuildSetting(req: Request, res: Response) {
     });
   }
 
-  let guildSetting = await GuildSettings.findOne({
-    where: { guildID, setting },
+  let guildSetting: any = await prisma.gm_guild_settings.findFirst({
+    where: {
+      guildID,
+      setting,
+    },
   });
 
   if (guildSetting) {
@@ -1022,14 +1056,23 @@ export async function postGuildSetting(req: Request, res: Response) {
     });
   }
 
-  guildSetting = await GuildSettings.create({ guildID, setting, value });
+  guildSetting = await prisma.gm_guild_settings.create({
+    data: {
+      guildID,
+      setting,
+      value,
+    },
+  });
   return res.send(guildSetting);
 }
 
 export async function deleteGuildSetting(req: Request, res: Response) {
   const { guildID, setting } = req.params;
-  const guildSetting = await GuildSettings.findOne({
-    where: { guildID, setting },
+  const guildSetting = prisma.gm_guild_settings.findFirst({
+    where: {
+      guildID,
+      setting,
+    },
   });
 
   if (!guildSetting) {
@@ -1038,7 +1081,14 @@ export async function deleteGuildSetting(req: Request, res: Response) {
     });
   }
 
-  await guildSetting.destroy();
+  await prisma.gm_guild_settings.delete({
+    where: {
+      guildID_setting: {
+        guildID,
+        setting,
+      },
+    },
+  });
   return res.send(guildSetting);
 }
 
@@ -1093,13 +1143,15 @@ export async function getServerLogs(req: Request, res: Response) {
     });
   }
 
-  const logs = await ServerLogs.findAll({
+  const logs = await prisma.gm_server_logs.findMany({
     where: {
       serverID,
     },
-    order: [['createdAt', 'DESC']],
-    offset: offset || 0,
-    limit: limit || 500,
+    orderBy: {
+      createdAt: 'desc',
+    },
+    skip: Number(offset) || 0,
+    take: limit,
   });
 
   return res.send(logs || []);
@@ -1123,7 +1175,7 @@ export async function getServerErrors(req: Request, res: Response) {
     orderBy: {
       createdAt: 'desc',
     },
-    skip: offset || 0,
+    skip: Number(offset) || 0,
     take: limit || 500,
   });
 
@@ -1131,13 +1183,13 @@ export async function getServerErrors(req: Request, res: Response) {
 }
 
 export async function getAdminGuilds(req: Request, res: Response) {
-  return res.send((await gm_guild.findAll()) || []);
+  return res.send((await prisma.gm_guild.findMany()) || []);
 }
 
 export async function getServerRoles(req: Request, res: Response) {
   const { serverID } = req.params;
 
-  const roles = await ServerSyncRole.findAll({
+  const roles = await prisma.gm_server_sync_roles.findMany({
     where: {
       serverID,
     },
@@ -1149,9 +1201,11 @@ export async function getServerRoles(req: Request, res: Response) {
 export async function postServerRoles(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const role = await ServerSyncRole.create({
-    serverID,
-    roleID,
+  const role = await prisma.gm_server_sync_roles.create({
+    data: {
+      serverID,
+      roleID,
+    },
   });
 
   return res.send(role);
@@ -1160,7 +1214,7 @@ export async function postServerRoles(req: Request, res: Response) {
 export async function putServerRoles(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const role = await ServerSyncRole.findOne({
+  const role = await prisma.gm_server_sync_roles.findFirst({
     where: {
       serverID,
       roleID,
@@ -1175,19 +1229,26 @@ export async function putServerRoles(req: Request, res: Response) {
 
   const { userGroup, enable } = req.body;
 
-  role.userGroup = userGroup !== undefined ? userGroup : role.userGroup;
-  role.enable = enable !== undefined ? enable : role.enable;
-
-  role.changed('updatedAt', true);
-  await role.save();
-
-  return res.send(role);
+  return res.send(
+    await prisma.gm_server_sync_roles.update({
+      where: {
+        serverID_roleID: {
+          serverID,
+          roleID,
+        },
+      },
+      data: {
+        userGroup: userGroup !== undefined ? userGroup : role.userGroup,
+        enable: enable !== undefined ? enable : role.enable,
+      },
+    }),
+  );
 }
 
 export async function deleteServerRoles(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const role = await ServerSyncRole.findOne({
+  const role = await prisma.gm_server_sync_roles.findFirst({
     where: {
       serverID,
       roleID,
@@ -1200,7 +1261,14 @@ export async function deleteServerRoles(req: Request, res: Response) {
     });
   }
 
-  await role.destroy();
+  await prisma.gm_server_sync_roles.delete({
+    where: {
+      serverID_roleID: {
+        serverID,
+        roleID,
+      },
+    },
+  });
   return res.send(role);
 }
 
@@ -1238,9 +1306,9 @@ export async function postGmodPurchase(req: Request, res: Response) {
   }
 
   const guild = req.guild!;
-  const purchase = await GmodStorePurchases.findOne({
+  const purchase = await prisma.gm_gmodstore_purchases.findFirst({
     where: {
-      steamID64: user.getSteamID64(),
+      steamID64: user.getSteamID64()!,
     },
   });
 
@@ -1250,8 +1318,14 @@ export async function postGmodPurchase(req: Request, res: Response) {
     });
   }
 
-  purchase.guild = guildID;
-  await purchase.save();
+  await prisma.gm_gmodstore_purchases.update({
+    where: {
+      steamID64: user.getSteamID64()!,
+    },
+    data: {
+      guild: guildID,
+    },
+  });
   return res.send((await guild.getBotClientInfo(req.panelUser!.user)) || {});
 }
 
@@ -1271,9 +1345,9 @@ export async function deleteGmodPurchase(req: Request, res: Response) {
     });
   }
 
-  const purchase = await GmodStorePurchases.findOne({
+  const purchase = await prisma.gm_gmodstore_purchases.findFirst({
     where: {
-      steamID64: user.getSteamID64(),
+      steamID64: user.getSteamID64()!,
     },
   });
 
@@ -1283,12 +1357,17 @@ export async function deleteGmodPurchase(req: Request, res: Response) {
     });
   }
 
-  purchase.guild = '';
-  purchase.token = '';
-  purchase.changed('updatedAt', true);
-  await purchase.save();
+  const savedPurchase = await prisma.gm_gmodstore_purchases.update({
+    where: {
+      steamID64: user.getSteamID64()!,
+    },
+    data: {
+      guild: '',
+      token: '',
+    },
+  });
   await guild.reloadBotInstance();
-  return res.send(purchase);
+  return res.send(savedPurchase);
 }
 
 export async function putGuildBotInstance(req: Request, res: Response) {
@@ -1321,15 +1400,15 @@ export async function getUserGmodStorePurchases(req: Request, res: Response) {
     });
   }
 
-  let purchases = await GmodStorePurchases.findOne({
+  let purchases: any = await prisma.gm_gmodstore_purchases.findFirst({
     where: {
-      steamID64: user.getSteamID64(),
+      steamID64: user.getSteamID64()!,
     },
   });
 
   if (purchases && purchases.guild) {
     const mainClient = await getMainClient();
-    purchases.dataValues.hasMainBot = mainClient.guilds.cache.has(purchases.guild);
+    purchases.hasMainBot = mainClient.guilds.cache.has(purchases.guild);
   }
 
   return res.send(purchases || {});
@@ -1337,14 +1416,22 @@ export async function getUserGmodStorePurchases(req: Request, res: Response) {
 
 export async function getServerPseudo(req: Request, res: Response) {
   const server = req.server!;
-  return res.send((await ServerPseudo.findAll({ where: { serverID: server.id } })) || []);
+  return res.send(
+    (await prisma.gm_server_pseudo.findMany({
+      where: {
+        serverID: server.id,
+      },
+    })) || [],
+  );
 }
 
 export async function postServerPseudo(req: Request, res: Response) {
   const { serverID } = req.params;
 
-  const pseudo = await ServerPseudo.create({
-    serverID,
+  const pseudo = await prisma.gm_server_pseudo.create({
+    data: {
+      serverID,
+    },
   });
 
   return res.send(pseudo);
@@ -1353,10 +1440,10 @@ export async function postServerPseudo(req: Request, res: Response) {
 export async function putServerPseudo(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const pseudo = await ServerPseudo.findOne({
+  const pseudo = await prisma.gm_server_pseudo.findFirst({
     where: {
       serverID,
-      id: roleID,
+      id: Number(roleID),
     },
   });
 
@@ -1368,24 +1455,29 @@ export async function putServerPseudo(req: Request, res: Response) {
 
   const { role, name, prefix, enabled } = req.body;
 
-  pseudo.name = name !== undefined ? name : pseudo.name;
-  pseudo.prefix = prefix !== undefined ? prefix : pseudo.prefix;
-  pseudo.role = role !== undefined ? role : pseudo.role;
-  pseudo.enabled = enabled !== undefined ? enabled : pseudo.enabled;
+  const updatePseudo = await prisma.gm_server_pseudo.update({
+    where: {
+      id: pseudo.id,
+      serverID,
+    },
+    data: {
+      name: name !== undefined ? name : pseudo.name,
+      prefix: prefix !== undefined ? prefix : pseudo.prefix,
+      role: role !== undefined ? role : pseudo.role,
+      enabled: enabled !== undefined ? enabled : pseudo.enabled,
+    },
+  });
 
-  pseudo.changed('updatedAt', true);
-  await pseudo.save();
-
-  return res.send(pseudo);
+  return res.send(updatePseudo);
 }
 
 export async function deleteServerPseudo(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const pseudo = await ServerPseudo.findOne({
+  const pseudo = await prisma.gm_server_pseudo.findFirst({
     where: {
       serverID,
-      id: roleID,
+      id: Number(roleID),
     },
   });
 
@@ -1395,43 +1487,69 @@ export async function deleteServerPseudo(req: Request, res: Response) {
     });
   }
 
-  await pseudo.destroy();
+  await prisma.gm_server_pseudo.delete({
+    where: {
+      id: pseudo.id,
+      serverID,
+    },
+  });
   return res.send(pseudo);
 }
 
 export async function getUserNotifications(req: Request, res: Response) {
   const { discordID } = req.params;
-  return res.json(await UsersNotifications.findAll({ where: { discordID } }));
+  return res.json(
+    await prisma.gm_users_notifications.findMany({
+      where: { discordID },
+    }),
+  );
 }
 
 export async function patchUserNotifications(req: Request, res: Response) {
   const { discordID, notificationID } = req.params;
-  const notification = await UsersNotifications.findOne({
+  const notification = await prisma.gm_users_notifications.findFirst({
     where: {
+      id: Number(notificationID),
       discordID,
-      id: notificationID,
     },
   });
+
   if (!notification) {
     return res.status(404).send({ error: 'Notification not found' });
   }
-  notification.read = true;
-  await notification.save();
+
+  // notification.read = true;
+  // await notification.save();
+  await prisma.gm_users_notifications.update({
+    where: {
+      id: notification.id,
+      discordID,
+    },
+    data: {
+      read: true,
+    },
+  });
   return res.json(notification);
 }
 
 export async function getUserDataRequest(req: Request, res: Response) {
   const { discordID } = req.params;
-  return res.json(await UsersDataRequest.findAll({ where: { discordID } }));
+  return res.json(
+    await prisma.gm_users_data_request.findMany({
+      where: { discordID },
+    }),
+  );
 }
 
 export async function postUserDataRequest(req: Request, res: Response) {
   const { discordID } = req.params;
-  const lastRequest = await UsersDataRequest.findOne({
+  const lastRequest = await prisma.gm_users_data_request.findFirst({
     where: {
       discordID,
     },
-    order: [['createdAt', 'DESC']],
+    orderBy: {
+      createdAt: 'desc',
+    },
   });
 
   if (lastRequest && new Date(lastRequest.expirationDate) > new Date()) {
@@ -1452,5 +1570,9 @@ export async function postUserDataRequest(req: Request, res: Response) {
 
 export async function getServerReportBugs(req: Request, res: Response) {
   const { serverID } = req.params;
-  return res.json(await ServerReportBugs.findAll({ where: { serverID } }));
+  return res.json(
+    await prisma.gm_server_report_bugs.findMany({
+      where: { serverID },
+    }),
+  );
 }

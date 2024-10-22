@@ -568,17 +568,19 @@ export class Server extends BaseClass {
     });
   }
 
-  async destroyStatusButton() {
+  async destroyStatusButton(id: number) {
     const statusButton = await prisma.gm_status_button.findFirst({
       where: {
         server: this.id,
+        id,
       },
     });
 
     if (statusButton) {
       await prisma.gm_status_button.delete({
         where: {
-          id: statusButton.id,
+          id,
+          server: this.id,
         },
       });
     }
@@ -700,6 +702,20 @@ export class Server extends BaseClass {
         serverID: this.id,
       },
     });
+  }
+
+  async getPublicInformations() {
+    return {
+      id: this.id,
+      name: this.name,
+      image: this.image,
+      vote: this.vote,
+      guild: this.guild,
+      verified: this.verified,
+      description: this.description,
+      ip: this.ip,
+      port: this.port,
+    };
   }
 
   async destroyVoteChannel() {

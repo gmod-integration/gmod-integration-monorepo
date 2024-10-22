@@ -234,7 +234,7 @@ export async function getLeaderboardMessageEmbed(
         name: '**' + rank + '**' + ' - ' + stat.name,
         value: await getCatFormat(
           category,
-          stat[category] || (stat.custom_values && stat.custom_values[category]) || 'total_time',
+          (stat as any)[category] || (stat.custom_values && (stat.custom_values as any)[category]) || 'total_time',
           lang,
         ),
         inline: true,
@@ -284,8 +284,7 @@ export async function handleLeaderboardInteraction(interaction: ButtonInteractio
   });
 
   if (!options) {
-    interaction.reply({ content: getTranslate('error', lang) });
-    return;
+    return interaction.reply({ content: await getTranslate('error', lang) });
   }
 
   let offset = options.offsetValue;
@@ -304,17 +303,24 @@ export async function handleLeaderboardInteraction(interaction: ButtonInteractio
     if (offset < 0) offset = 0;
   }
 
-  const { embed, options } = await getLeaderboardMessageEmbed(options.serverID, options.category, lang, limit, offset);
-  interaction.channel.messages.fetch(messageID).then((message) => {
-    message
-      .edit({
-        embeds: [embed],
-        components: [getLeaderboardButtons(options.page === 1, options.page === options.totalPages)],
-      })
-      .then(() => {
-        saveLeaderboardOptions(messageID, options).then(() => {
-          interaction.deferUpdate();
+  const leaderboardMessage = await getLeaderboardMessageEmbed(options.serverID, options.category, lang, limit, offset);
+  if (!leaderboardMessage) {
+    return interaction.reply({ content: 'Failed to retrieve leaderboard data.', ephemeral: true });
+  }
+
+  const { embed, options: options2nd } = leaderboardMessage;
+  if (interaction.channel) {
+    interaction.channel.messages.fetch(messageID).then((message) => {
+      message
+        .edit({
+          embeds: [embed],
+          components: [getLeaderboardButtons(options2nd.page === 1, options2nd.page === options2nd.totalPages)],
+        })
+        .then(() => {
+          saveLeaderboardOptions(messageID, options2nd).then(() => {
+            interaction.deferUpdate();
+          });
         });
-      });
-  });
+    });
+  }
 }
