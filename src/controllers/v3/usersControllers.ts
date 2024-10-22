@@ -770,10 +770,14 @@ export async function createVerificationMessage(req: Request, res: Response) {
   });
 
   if (oldMsg) {
-    const oldChannel = await dscGuild.channels.cache.get(oldMsg.channelID);
+    const oldChannel = dscGuild.channels.cache.get(oldMsg.channelID);
     if (oldChannel) {
-      const oldMessage = await oldChannel.messages.fetch(oldMsg.messageID);
-      await oldMessage.delete();
+      try {
+        const oldMessage = await oldChannel.messages.fetch(oldMsg.messageID);
+        await oldMessage.delete();
+      } catch (error) {
+        //skip
+      }
     }
     await prisma.gm_guild_verify_msg.delete({
       where: {
@@ -831,7 +835,7 @@ export async function deleteVerificationMessage(req: Request, res: Response) {
     });
   }
 
-  const channel = await dscGuild.channels.cache.get(msg.channelID);
+  const channel = dscGuild.channels.cache.get(msg.channelID);
   if (channel) {
     try {
       const message = await channel.messages.fetch(msg.messageID);
