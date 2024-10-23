@@ -6,11 +6,11 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { getServerList } from '../../../models/v3/serversModels';
-import { getServerFromID } from '../../../classes/v3/Server.js';
+import { getServerFromID } from '../../../classes/v3/Server';
 import { getTranslate } from '../../../utils/localizations';
-import { getUserFromDiscordID } from '../../../classes/v3/User.js';
+import { getUserFromDiscordID } from '../../../classes/v3/User';
 import { ButtonVerificationWebsite } from '../../utils/buttons';
-import { getWarnMessageEmbed, saveWarnListOptions } from '../../../models/v3/warnModels.js';
+import { getWarnMessageEmbed, saveWarnListOptions } from '../../../models/v3/warnModels';
 
 export default {
   data: new SlashCommandBuilder()

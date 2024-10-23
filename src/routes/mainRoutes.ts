@@ -1,9 +1,9 @@
 import express, { Request, Response } from 'express';
-import webhooksRoutes from './webhooks/_webhooksRoutes.js';
-import v3Routes from './v3/_v3Routes.js';
-import steamRoutes from './steamRoutes.js';
+import webhooksRoutes from './webhooks/_webhooksRoutes';
+import v3Routes from './v3/_v3Routes';
+import steamRoutes from './steamRoutes';
 import fs from 'fs';
-import asyncHandler from '../middleware/asyncHandler.js';
+import asyncHandler from '../middleware/asyncHandler';
 import prisma from '../prisma';
 
 const router = express.Router();

@@ -1,9 +1,9 @@
 import express, { Request, Response } from 'express';
-import serversRoutes from './serversRoutes.js';
-import bansRoutes from './bansRoutes.js';
-import clientsRoutes from './clientsRoutes.js';
-import usersRoutes from './usersRoutes.js';
-import mainRoutes from './mainRoutes.js';
+import serversRoutes from './serversRoutes';
+import bansRoutes from './bansRoutes';
+import clientsRoutes from './clientsRoutes';
+import usersRoutes from './usersRoutes';
+import mainRoutes from './mainRoutes';
 
 const router = express.Router();
 

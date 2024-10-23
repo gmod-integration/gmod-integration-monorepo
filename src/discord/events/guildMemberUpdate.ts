@@ -1,4 +1,4 @@
-import { updatePseudoToGmod, updateRolesToGmod } from '../../models/v3/discordModels.js';
+import { updatePseudoToGmod, updateRolesToGmod } from '../../models/v3/discordModels';
 import { GuildMember } from 'discord.js';
 
 export default {

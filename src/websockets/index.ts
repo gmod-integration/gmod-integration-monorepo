@@ -1,8 +1,8 @@
 import { WebSocketServer } from 'ws';
 import { serverConfig } from '../config/';
 import { gmLog } from '../utils/logger';
-import { getServerFromID } from '../classes/v3/Server.js';
-import { getPanelUserFromDiscordID } from '../classes/v3/PanelUser.js';
+import { getServerFromID } from '../classes/v3/Server';
+import { getPanelUserFromDiscordID } from '../classes/v3/PanelUser';
 
 let clients = {
   server: [] as any[],

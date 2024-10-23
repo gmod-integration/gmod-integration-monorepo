@@ -1,13 +1,13 @@
-import './utils/instrument.js';
-import './utils/update-log.js';
+import './utils/instrument';
+import './utils/update-log';
 import express, { NextFunction, Request, Response } from 'express';
 import { serverConfig } from './config';
-import { gmLog } from './utils/logger.js';
-import rawBodyMiddleware from './middleware/rawBodyMiddleware.js';
-import loggerMiddleware from './middleware/v3/loggers.js';
+import { gmLog } from './utils/logger';
+import rawBodyMiddleware from './middleware/rawBodyMiddleware';
+import loggerMiddleware from './middleware/v3/loggers';
 import cors from 'cors';
 import helmet from 'helmet';
-import mainRoutes from './routes/mainRoutes.js';
+import mainRoutes from './routes/mainRoutes';
 import useragent from 'express-useragent';
 import * as Sentry from '@sentry/node';
 import errorMiddleware from './middleware/errorMiddleware';
@@ -15,8 +15,12 @@ import './websockets';
 import { loadDiscordMain, loadDiscordSlave } from './discord';
 
 // Load the main discord instance
-await loadDiscordMain();
-await loadDiscordSlave();
+async function runDiscord() {
+  await loadDiscordMain();
+  await loadDiscordSlave();
+}
+
+runDiscord().then(() => gmLog('discord', 'Discord loaded'));
 
 // Express
 const app = express();
@@ -124,3 +128,5 @@ process.on('unhandledRejection', (error: Error) => {
   gmLog('unhandledRejection', error.message, true);
   console.error(error);
 });
+
+export default app;

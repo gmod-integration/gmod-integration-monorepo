@@ -1,5 +1,5 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
-import { createServer, getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
+import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User';
+import { createServer, getServersFromDiscordGuildID, Server } from '../../classes/v3/Server';
 import { discordConfig } from '../../config';
 import {
   getDiscordUserFromID,
@@ -7,14 +7,14 @@ import {
   getUserTokenFromCode,
   saveUser,
   saveUserPanel,
-} from '../../models/v3/discordModels.js';
+} from '../../models/v3/discordModels';
 import { badArgument, generateToken, todoControllers } from '../../utils/tools';
 import { getVerificationGuildMessage } from '../../discord/utils/messages';
 import moment from 'moment';
 import { getUserDataGRPD } from '../../models/v3/gdrp';
 import { getMainClient } from '../../discord';
 import redis from '../../redis';
-import prisma from '../../prisma.js';
+import prisma from '../../prisma';
 import { NextFunction, Request, Response } from 'express';
 
 export async function getProfile(req: Request, res: Response) {

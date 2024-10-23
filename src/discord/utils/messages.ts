@@ -4,7 +4,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Guild, Guil
 import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons';
 import { getEmojiVersion } from '../../utils/tools';
 import { discordConfig, serverConfig } from '../../config';
-import { getUserFromDiscordID } from '../../classes/v3/User.js';
+import { getUserFromDiscordID } from '../../classes/v3/User';
 import { dateToDiscordTimestamp, getTrustRank, secToTime } from './';
 import { Server } from '../../classes/v3/Server';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod';

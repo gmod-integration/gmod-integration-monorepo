@@ -1,5 +1,5 @@
 import { discordConfig } from '../../config';
-import { addAutoRoleToUser, updateGuildStat, verifyUser } from '../../models/v3/discordModels.js';
+import { addAutoRoleToUser, updateGuildStat, verifyUser } from '../../models/v3/discordModels';
 import { gmLog } from '../../utils/logger';
 import { getNotVerifiedMessage } from '../utils/messages';
 import { GuildMember } from 'discord.js';

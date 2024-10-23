@@ -1,4 +1,4 @@
-import { getServerFromID } from '../../classes/v3/Server.js';
+import { getServerFromID } from '../../classes/v3/Server';
 import { NextFunction, Request, Response } from 'express';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {

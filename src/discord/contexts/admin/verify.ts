@@ -5,8 +5,8 @@ import {
   ContextMenuCommandType,
   InteractionContextType,
 } from 'discord.js';
-import { verifyUser } from '../../../models/v3/discordModels.js';
-import { getVerifiedMessageAnswer } from '../../utils/messages.js';
+import { verifyUser } from '../../../models/v3/discordModels';
+import { getVerifiedMessageAnswer } from '../../utils/messages';
 import { getTranslate } from '../../../utils/localizations';
 
 export default {

@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { gmodStoreConfig } from '../../config';
 import { gmLog } from '../../utils/logger';
-import { getUserFromSteamID64 } from '../../classes/v3/User.js';
+import { getUserFromSteamID64 } from '../../classes/v3/User';
 import prisma from '../../prisma';
 import { addNotification } from '../../utils/tools';
 

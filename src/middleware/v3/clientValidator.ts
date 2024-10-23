@@ -1,4 +1,4 @@
-import { getServerFromID } from '../../classes/v3/Server.js';
+import { getServerFromID } from '../../classes/v3/Server';
 import crypto from 'crypto';
 import { NextFunction, Request, Response } from 'express';
 import { badArgument } from '../../utils/tools';

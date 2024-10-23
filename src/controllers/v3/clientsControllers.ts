@@ -1,5 +1,5 @@
 import { badArgument } from '../../utils/tools';
-import { saveScreenshot, sendScreenshotToDiscord } from '../../models/v3/clientsModels.js';
+import { saveScreenshot, sendScreenshotToDiscord } from '../../models/v3/clientsModels';
 import { Request, Response } from 'express';
 import prisma from '../../prisma';
 

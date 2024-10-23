@@ -1,5 +1,5 @@
-import { BaseClass } from './BaseClass.js';
-import { CustomValues } from './CustomValues.js';
+import { BaseClass } from './BaseClass';
+import { CustomValues } from './CustomValues';
 import { Team } from './Team';
 import { Position } from './Position';
 import { Angle } from './Angle';

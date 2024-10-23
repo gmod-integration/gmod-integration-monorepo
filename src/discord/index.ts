@@ -23,7 +23,7 @@ import {
   routineUpdateStatus,
 } from '../models/v3/mainModels';
 import { readdir } from 'fs/promises';
-import { getUserFromSteamID64 } from '../classes/v3/User.js';
+import { getUserFromSteamID64 } from '../classes/v3/User';
 import redis from '../redis';
 import prisma from '../prisma';
 import { Server } from '../classes/v3/Server';

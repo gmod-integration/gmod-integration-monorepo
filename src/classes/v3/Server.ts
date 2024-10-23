@@ -1,4 +1,4 @@
-import { BaseClass } from './BaseClass.js';
+import { BaseClass } from './BaseClass';
 import { generateToken } from '../../utils/tools';
 import redis from '../../redis';
 import { getGuildClient } from '../../discord';

@@ -1,4 +1,4 @@
-import { saveGmodStorePurchase } from '../../models/webhooks/gmodStoreModels.js';
+import { saveGmodStorePurchase } from '../../models/webhooks/gmodStoreModels';
 import { badArgument } from '../../utils/tools';
 import { Request, Response } from 'express';
 

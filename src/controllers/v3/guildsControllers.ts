@@ -1,8 +1,8 @@
-import { getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
-import { isGuildPremium } from '../../classes/v3/Guild.js';
+import { getServersFromDiscordGuildID, Server } from '../../classes/v3/Server';
+import { isGuildPremium } from '../../classes/v3/Guild';
 import { getTranslate } from '../../utils/localizations';
 import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'discord.js';
-import { ButtonPremium } from '../../discord/utils/buttons.js';
+import { ButtonPremium } from '../../discord/utils/buttons';
 import { wsSendToServer } from '../../websockets';
 import { getGuildClient } from '../../discord';
 import prisma from '../../prisma';

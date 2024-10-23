@@ -1,9 +1,9 @@
 import redis from '../../redis';
 import { ActivityType } from 'discord.js';
-import { statusRoutine } from '../../classes/v3/Server.js';
+import { statusRoutine } from '../../classes/v3/Server';
 import { getMainClient } from '../../discord';
 import { serverConfig } from '../../config';
-import { givePremiumRoleOfMainGuild } from './discordModels.js';
+import { givePremiumRoleOfMainGuild } from './discordModels';
 import prisma from '../../prisma';
 
 export async function getStats() {

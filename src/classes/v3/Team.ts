@@ -1,4 +1,4 @@
-import { BaseClass } from './BaseClass.js';
+import { BaseClass } from './BaseClass';
 
 export class Team extends BaseClass {
   public id: any;

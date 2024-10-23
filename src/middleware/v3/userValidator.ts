@@ -1,9 +1,9 @@
 import { badArgument } from '../../utils/tools';
-import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
+import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser';
 import { getGuildClient } from '../../discord';
-import { getServerFromID } from '../../classes/v3/Server.js';
-import { Guild } from '../../classes/v3/Guild.js';
-import { getUserFromDiscordID } from '../../classes/v3/User.js';
+import { getServerFromID } from '../../classes/v3/Server';
+import { Guild } from '../../classes/v3/Guild';
+import { getUserFromDiscordID } from '../../classes/v3/User';
 import { NextFunction, Request, Response } from 'express';
 
 export async function userValidator(req: Request, res: Response, next: NextFunction): Promise<void> {

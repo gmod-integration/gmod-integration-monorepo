@@ -1,4 +1,4 @@
-import { ApplicationCommandType, REST, Routes } from 'discord.js';
+import { REST, Routes } from 'discord.js';
 import { discordConfig } from '../config';
 import { join } from 'path';
 import { readdir } from 'fs/promises';
