@@ -1,6 +1,5 @@
 import './utils/instrument.js';
 import './utils/update-log.js';
-import './discord';
 import express, { NextFunction, Request, Response } from 'express';
 import { serverConfig } from './config';
 import { gmLog } from './utils/logger.js';
@@ -13,6 +12,11 @@ import useragent from 'express-useragent';
 import * as Sentry from '@sentry/node';
 import errorMiddleware from './middleware/errorMiddleware';
 import './websockets';
+import { loadDiscordMain, loadDiscordSlave } from './discord';
+
+// Load the main discord instance
+await loadDiscordMain();
+await loadDiscordSlave();
 
 // Express
 const app = express();

@@ -1,5 +1,4 @@
 import {
-  ActivityType,
   Client,
   ClientUser,
   Collection,
@@ -61,6 +60,9 @@ async function indexCommandsAndContext(dirPath: string, type: string) {
       for (const file of commandFiles) {
         try {
           const filePath = join(commandsPath, file);
+          if (file.endsWith('.ts')) {
+            const { default: module } = await import(filePath);
+          }
           const command = await import(filePath);
           if (command.default && command.default.data) {
             commandsData.push(command.default.data.toJSON());
@@ -70,6 +72,7 @@ async function indexCommandsAndContext(dirPath: string, type: string) {
           }
         } catch (error) {
           gmLog('error', `Failed to load ${type} from ${file}: ${error}`);
+          console.error(error);
         }
       }
     }
@@ -134,6 +137,7 @@ async function addNewClient(guildInstance: string, token: string) {
 
   for (const folder of commandFolders) {
     const commandsPath = join(foldersPath, folder);
+
     const commandFiles = (await readdir(commandsPath)).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
 
     for (const file of commandFiles) {
@@ -240,6 +244,24 @@ async function addNewClient(guildInstance: string, token: string) {
  * Load the main discord instance
  */
 export async function loadDiscordMain() {
+  // Display all files and folders in the directory recursively
+  function displayFilesAndFolders(dirPath: string) {
+    readdir(dirPath, { withFileTypes: true })
+      .then((files) => {
+        files.forEach((file) => {
+          if (file.isDirectory()) {
+            displayFilesAndFolders(join(dirPath, file.name));
+          } else {
+            gmLog('info', join(dirPath, file.name));
+          }
+        });
+      })
+      .catch((error) => {
+        gmLog('error', error);
+      });
+  }
+
+  displayFilesAndFolders(join(process.cwd(), 'src/discord/commands'));
   // Load
   gmLog('discord', 'Loading Contexts');
   await indexCommandsAndContext('src/discord/contexts', 'Context');
@@ -278,10 +300,6 @@ export async function loadDiscordSlave() {
   // Routine Server
   await routineServerStatusRefresh();
 }
-
-// Load the main discord instance
-await loadDiscordMain();
-await loadDiscordSlave();
 
 export async function getMainClient() {
   const mainClient = clientList.get('main');
