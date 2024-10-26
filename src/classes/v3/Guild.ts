@@ -222,7 +222,7 @@ export async function getDiscordEntitlements() {
   }
 }
 
-export async function isGuildPremium(guildID: string) {
+export async function isGuildPremium(guildID: string): Promise<boolean> {
   if (
     (await prisma.gm_guild_premium.findFirst({
       where: {
