@@ -5,12 +5,12 @@ import {
   InteractionContextType,
   SlashCommandBuilder,
 } from 'discord.js';
-import { getServerList } from '../../../models/v3/serversModels';
-import { getServerFromID } from '../../../classes/v3/Server';
-import { getTranslate } from '../../../utils/localizations';
-import { getUserFromDiscordID } from '../../../classes/v3/User';
-import { ButtonVerificationWebsite } from '../../utils/buttons';
-import { getWarnMessageEmbed, saveWarnListOptions } from '../../../models/v3/warnModels';
+import { getServerList } from '../../../models/v3/serversModels.js';
+import { getServerFromID } from '../../../classes/v3/Server.js';
+import { getTranslate } from '../../../utils/localizations.js';
+import { getUserFromDiscordID } from '../../../classes/v3/User.js';
+import { ButtonVerificationWebsite } from '../../utils/buttons.js';
+import { getWarnMessageEmbed, saveWarnListOptions } from '../../../models/v3/warnModels.js';
 
 export default {
   data: new SlashCommandBuilder()

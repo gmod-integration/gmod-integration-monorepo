@@ -1,14 +1,14 @@
-import { getTranslate } from '../../utils/localizations';
-import { gmLog } from '../../utils/logger';
+import { getTranslate } from '../../utils/localizations.js';
+import { gmLog } from '../../utils/logger.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Guild, GuildMember, User } from 'discord.js';
-import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons';
-import { getEmojiVersion } from '../../utils/tools';
-import { discordConfig, serverConfig } from '../../config';
-import { getUserFromDiscordID } from '../../classes/v3/User';
-import { dateToDiscordTimestamp, getTrustRank, secToTime } from './';
-import { Server } from '../../classes/v3/Server';
-import { PlayerGmod } from '../../classes/v3/PlayerGmod';
-import prisma from '../../prisma';
+import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
+import { getEmojiVersion } from '../../utils/tools.js';
+import { discordConfig, serverConfig } from '../../config/index.js';
+import { getUserFromDiscordID } from '../../classes/v3/User.js';
+import { dateToDiscordTimestamp, getTrustRank, secToTime } from './index.js';
+import { Server } from '../../classes/v3/Server.js';
+import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
+import prisma from '../../prisma.js';
 
 export async function getStatusMessage(server: Server, data: any, lang: string) {
   gmLog('status', 'refresh server status message for ' + server.getID());

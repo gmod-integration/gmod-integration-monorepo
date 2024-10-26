@@ -1,10 +1,10 @@
-import { getSteamUserAvatarLarge } from '../../steam';
-import { getRandomDiscordRelay } from '../../utils/tools';
-import { discordConfig } from '../../config';
-import { isGuildPremium } from '../../classes/v3/Guild';
-import { Server } from '../../classes/v3/Server';
-import { PlayerGmod } from '../../classes/v3/PlayerGmod';
-import prisma from '../../prisma';
+import { getSteamUserAvatarLarge } from '../../steam/index.js';
+import { getRandomDiscordRelay } from '../../utils/tools.js';
+import { discordConfig } from '../../config/index.js';
+import { isGuildPremium } from '../../classes/v3/Guild.js';
+import { Server } from '../../classes/v3/Server.js';
+import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
+import prisma from '../../prisma.js';
 import { gm_server_sync_chat_filter } from '@prisma/client';
 
 export async function sendPlayerSay(server: Server, player: PlayerGmod, text: string, onlyTeam: boolean) {

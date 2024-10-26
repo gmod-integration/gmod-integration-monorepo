@@ -9,9 +9,9 @@ import {
   getLeaderboardMessageEmbed,
   getServerLeaderboardCategories,
   saveLeaderboardOptions,
-} from '../../../models/v3/leaderboardModels';
-import { getServersFromDiscordGuildID } from '../../../classes/v3/Server';
-import { getTranslate } from '../../../utils/localizations';
+} from '../../../models/v3/leaderboardModels.js';
+import { getServersFromDiscordGuildID } from '../../../classes/v3/Server.js';
+import { getTranslate } from '../../../utils/localizations.js';
 
 export default {
   data: new SlashCommandBuilder()

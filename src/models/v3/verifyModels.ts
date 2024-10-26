@@ -1,11 +1,11 @@
-import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser';
-import { getTranslate } from '../../utils/localizations';
+import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
+import { getTranslate } from '../../utils/localizations.js';
 import { ActionRowBuilder, ButtonInteraction, MessageActionRowComponentBuilder } from 'discord.js';
-import { ButtonVerificationWebsite } from '../../discord/utils/buttons';
-import { getUserFromDiscordID } from '../../classes/v3/User';
-import { getVerifiedMessageAnswer } from '../../discord/utils/messages';
-import { verifyUser } from './discordModels';
-import prisma from '../../prisma';
+import { ButtonVerificationWebsite } from '../../discord/utils/buttons.js';
+import { getUserFromDiscordID } from '../../classes/v3/User.js';
+import { getVerifiedMessageAnswer } from '../../discord/utils/messages.js';
+import { verifyUser } from './discordModels.js';
+import prisma from '../../prisma.js';
 
 export async function handleVerifyInteraction(interaction: ButtonInteraction) {
   if (!interaction.isButton()) return;

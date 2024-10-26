@@ -1,14 +1,14 @@
-import { discordConfig, serverConfig } from '../config';
-import { PlayerGmod } from '../classes/v3/PlayerGmod';
-import { getRandomDiscordRelay, ipGetIP } from './tools';
-import { getTranslate } from './localizations';
-import { wsSendToAllClientsOfServer } from '../websockets';
+import { discordConfig, serverConfig } from '../config/index.js';
+import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
+import { getRandomDiscordRelay, ipGetIP } from './tools.js';
+import { getTranslate } from './localizations.js';
+import { wsSendToAllClientsOfServer } from '../websockets/index.js';
 import { ColorResolvable, EmbedBuilder } from 'discord.js';
-import { Server } from '../classes/v3/Server';
-import prisma from '../prisma';
+import { Server } from '../classes/v3/Server.js';
+import prisma from '../prisma.js';
 
 export function gmLog(type: string, message: string, debug: boolean = false) {
-  if (!serverConfig.debug && debug) {
+  if (!serverConfig.dev && debug) {
     return;
   }
   console.log(`[${new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')}] [${type.toUpperCase()}] ${message}`);

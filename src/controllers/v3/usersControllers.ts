@@ -1,20 +1,20 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User';
-import { createServer, getServersFromDiscordGuildID, Server } from '../../classes/v3/Server';
-import { discordConfig } from '../../config';
+import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
+import { createServer, getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
+import { discordConfig } from '../../config/index.js';
 import {
   getDiscordUserFromID,
   getUserFromToken,
   getUserTokenFromCode,
   saveUser,
   saveUserPanel,
-} from '../../models/v3/discordModels';
-import { badArgument, generateToken, todoControllers } from '../../utils/tools';
-import { getVerificationGuildMessage } from '../../discord/utils/messages';
+} from '../../models/v3/discordModels.js';
+import { badArgument, generateToken, todoControllers } from '../../utils/tools.js';
+import { getVerificationGuildMessage } from '../../discord/utils/messages.js';
 import moment from 'moment';
-import { getUserDataGRPD } from '../../models/v3/gdrp';
-import { getMainClient } from '../../discord';
-import redis from '../../redis';
-import prisma from '../../prisma';
+import { getUserDataGRPD } from '../../models/v3/gdrp.js';
+import { getMainClient } from '../../discord/index.js';
+import redis from '../../redis/index.js';
+import prisma from '../../prisma.js';
 import { NextFunction, Request, Response } from 'express';
 
 export async function getProfile(req: Request, res: Response) {

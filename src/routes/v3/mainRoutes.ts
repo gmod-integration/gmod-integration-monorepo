@@ -1,6 +1,6 @@
 import express from 'express';
-import { getActualStats } from '../../controllers/v3/mainControllers';
-import asyncHandler from '../../middleware/asyncHandler';
+import { getActualStats } from '../../controllers/v3/mainControllers.js';
+import asyncHandler from '../../middleware/asyncHandler.js';
 
 const router = express.Router();
 

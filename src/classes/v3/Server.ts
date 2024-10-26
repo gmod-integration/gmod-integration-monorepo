@@ -1,11 +1,11 @@
-import { BaseClass } from './BaseClass';
-import { generateToken } from '../../utils/tools';
-import redis from '../../redis';
-import { getGuildClient } from '../../discord';
-import { getStatusMessage } from '../../discord/utils/messages';
-import { gmLog } from '../../utils/logger';
+import { BaseClass } from './BaseClass.js';
+import { generateToken } from '../../utils/tools.js';
+import redis from '../../redis/index.js';
+import { getGuildClient } from '../../discord/index.js';
+import { getStatusMessage } from '../../discord/utils/messages.js';
+import { gmLog } from '../../utils/logger.js';
 import { ChannelType } from 'discord.js';
-import prisma from '../../prisma';
+import prisma from '../../prisma.js';
 import { gm_server_sync_chat_filter } from '@prisma/client';
 
 const serverSettings: Record<string, any> = {

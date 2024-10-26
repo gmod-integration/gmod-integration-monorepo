@@ -1,8 +1,8 @@
-import { gmLog } from '../../utils/logger';
-import { discordConfig } from '../../config';
-import { getGuildClient, killGuildClient } from '../';
+import { gmLog } from '../../utils/logger.js';
+import { discordConfig } from '../../config/index.js';
+import { getGuildClient, killGuildClient } from '../index.js';
 import { Guild } from 'discord.js';
-import prisma from '../../prisma';
+import prisma from '../../prisma.js';
 
 export default {
   name: 'guildDelete',

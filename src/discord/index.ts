@@ -10,8 +10,8 @@ import {
   REST,
   Routes,
 } from 'discord.js';
-import { gmLog } from '../utils/logger';
-import { discordConfig, serverConfig } from '../config';
+import { gmLog } from '../utils/logger.js';
+import { discordConfig, serverConfig } from '../config/index.js';
 import { fork } from 'child_process';
 
 import { fileURLToPath } from 'url';
@@ -21,13 +21,16 @@ import {
   routinePremiumRoleOfMainGuild,
   routineServerStatusRefresh,
   routineUpdateStatus,
-} from '../models/v3/mainModels';
+} from '../models/v3/mainModels.js';
 import { readdir } from 'fs/promises';
-import { getUserFromSteamID64 } from '../classes/v3/User';
-import redis from '../redis';
-import prisma from '../prisma';
-import { Server } from '../classes/v3/Server';
-import { PlayerGmod } from '../classes/v3/PlayerGmod';
+import { getUserFromSteamID64 } from '../classes/v3/User.js';
+import redis from '../redis/index.js';
+import prisma from '../prisma.js';
+import { Server } from '../classes/v3/Server.js';
+import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
+
+const envPath = serverConfig.dev ? 'src' : 'dist';
+const envExtension = serverConfig.dev ? '.ts' : '.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,7 +39,7 @@ const clientList = new Collection<string, Client>();
 
 async function checkTokenAndIntents(token: string) {
   return new Promise((resolve, reject) => {
-    const child = fork(path.join(__dirname, 'testLogin.ts'));
+    const child = fork(path.join(__dirname, 'testLogin.js'));
 
     child.on('exit', (code) => {
       resolve(code === 0); // 0 = valid, 1 = invalid
@@ -55,12 +58,12 @@ async function indexCommandsAndContext(dirPath: string, type: string) {
 
     for (const folder of folders) {
       const commandsPath = join(foldersPath, folder);
-      const commandFiles = (await readdir(commandsPath)).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
+      const commandFiles = (await readdir(commandsPath)).filter((file) => file.endsWith(envExtension));
 
       for (const file of commandFiles) {
         try {
           const filePath = join(commandsPath, file);
-          if (file.endsWith('.ts')) {
+          if (file.endsWith(envExtension)) {
             const { default: module } = await import(filePath);
           }
           const command = await import(filePath);
@@ -110,11 +113,11 @@ async function addNewClient(guildInstance: string, token: string) {
   });
 
   // Handle Events
-  const eventFiles = readdirSync(join(process.cwd(), 'src/discord/events')).filter(
-    (file) => file.endsWith('.ts') || file.endsWith('.js'),
+  const eventFiles = readdirSync(join(process.cwd(), `${envPath}/discord/events`)).filter((file) =>
+    file.endsWith(envExtension),
   );
   for (const file of eventFiles) {
-    const filePath = join(process.cwd(), 'src/discord/events', file);
+    const filePath = join(process.cwd(), `${envPath}/discord/events`, file);
     import(filePath).then((event) => {
       if (event.default && event.default.name) {
         client.on(event.default.name, event.default.execute);
@@ -132,13 +135,13 @@ async function addNewClient(guildInstance: string, token: string) {
 
   // Handle Commands
   let commands: Collection<string, { execute: Function; autocomplete?: Function }> = new Collection();
-  const foldersPath = join(process.cwd(), 'src/discord/commands');
+  const foldersPath = join(process.cwd(), `${envPath}/discord/commands`);
   const commandFolders = readdirSync(foldersPath);
 
   for (const folder of commandFolders) {
     const commandsPath = join(foldersPath, folder);
 
-    const commandFiles = (await readdir(commandsPath)).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
+    const commandFiles = (await readdir(commandsPath)).filter((file) => file.endsWith(envExtension));
 
     for (const file of commandFiles) {
       const filePath = join(commandsPath, file);
@@ -155,13 +158,11 @@ async function addNewClient(guildInstance: string, token: string) {
 
   // Handle Context Menu Commands
   let contextMenuCommands: Collection<string, { execute: Function }> = new Collection();
-  const contextMenuPath = join(process.cwd(), 'src/discord/contexts');
+  const contextMenuPath = join(process.cwd(), `${envPath}/discord/contexts`);
   const contextMenuFolders = readdirSync(contextMenuPath);
 
   for (const folder of contextMenuFolders) {
-    const contextMenuFiles = readdirSync(join(contextMenuPath, folder)).filter(
-      (file) => file.endsWith('.ts') || file.endsWith('.js'),
-    );
+    const contextMenuFiles = readdirSync(join(contextMenuPath, folder)).filter((file) => file.endsWith(envExtension));
 
     for (const file of contextMenuFiles) {
       const filePath = join(contextMenuPath, folder, file);
@@ -201,7 +202,7 @@ async function addNewClient(guildInstance: string, token: string) {
     gmLog('discord', `Ready on ${guildInstance} with ${user.tag}`);
 
     // Load commands and context menu commands
-    if (serverConfig.runTests) {
+    if (serverConfig.dev) {
       gmLog('discord', 'Skipping command push due to test mode');
       return;
     }
@@ -266,13 +267,13 @@ export async function loadDiscordMain() {
       });
   }
 
-  displayFilesAndFolders(join(process.cwd(), 'src/discord/commands'));
+  displayFilesAndFolders(join(process.cwd(), `${envPath}/discord/commands`));
   // Load
   gmLog('discord', 'Loading Contexts');
-  await indexCommandsAndContext('src/discord/contexts', 'Context');
+  await indexCommandsAndContext(`${envPath}/discord/contexts`, 'Context');
 
   gmLog('discord', 'Loading Commands');
-  await indexCommandsAndContext('src/discord/commands', 'Command');
+  await indexCommandsAndContext(`${envPath}/discord/commands`, 'Command');
 
   gmLog('discord', `Loaded ${commandsData.length} commands and context menu commands`);
   await addNewClient('main', discordConfig.botToken!).catch((error) => {

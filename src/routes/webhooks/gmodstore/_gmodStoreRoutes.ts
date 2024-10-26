@@ -1,6 +1,6 @@
 import express from 'express';
-import gmodStoreControllers from '../../../controllers/webhooks/gmodstoreControllers';
-import asyncHandler from '../../../middleware/asyncHandler';
+import gmodStoreControllers from '../../../controllers/webhooks/gmodstoreControllers.js';
+import asyncHandler from '../../../middleware/asyncHandler.js';
 
 const router = express.Router();
 

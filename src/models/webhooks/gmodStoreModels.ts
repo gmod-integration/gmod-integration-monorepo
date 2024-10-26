@@ -1,9 +1,9 @@
 import crypto from 'crypto';
-import { gmodStoreConfig } from '../../config';
-import { gmLog } from '../../utils/logger';
-import { getUserFromSteamID64 } from '../../classes/v3/User';
-import prisma from '../../prisma';
-import { addNotification } from '../../utils/tools';
+import { gmodStoreConfig } from '../../config/index.js';
+import { gmLog } from '../../utils/logger.js';
+import { getUserFromSteamID64 } from '../../classes/v3/User.js';
+import prisma from '../../prisma.js';
+import { addNotification } from '../../utils/tools.js';
 
 export async function verifyWebhookSignature(headers: any, payload: any) {
   const webhookSignature = headers['webhook-signature'];

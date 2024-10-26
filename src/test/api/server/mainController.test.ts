@@ -1,7 +1,7 @@
 import { test } from 'node:test';
-import { serverConfig } from '../../../config';
+import { serverConfig } from '../../../config/index.js';
 import assert from 'assert';
-import testConfig from '../../config.test';
+import testConfig from '../../config.test.js';
 
 const port = serverConfig.ports.api;
 
@@ -19,8 +19,6 @@ function getUri(path: string): string {
 // Test pour GET /ping
 test('GET /v3', async (t) => {
   const response = await fetch(getUri('/v3'));
-  const data = await response.json();
-  console.log(data);
   assert.strictEqual(response.status, 200);
 });
 
@@ -33,22 +31,5 @@ test('GET /v3/users/:discordID', async (t) => {
       Authorization: 'Bearer ' + testConfig.user.token,
     },
   });
-  const data = await response.json();
-  console.log(data);
   assert.strictEqual(response.status, 200);
 });
-
-// // Create new Server
-// test('POST /v3/server', async (t) => {
-//   const response = await fetch(getUri('/v3/server'), {
-//     method: 'POST',
-//     headers: {
-//       'Content-Type': 'application/json',
-//       'Authorization': 'Bearer ' + testConfig.user.token
-//     },
-//     body: JSON.stringify({})
-//   });
-//   const data = await response.json();
-//   console.log(data);
-//   assert.strictEqual(response.status, 200);
-// };

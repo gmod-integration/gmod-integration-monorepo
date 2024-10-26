@@ -1,8 +1,8 @@
-import { serverConfig } from '../../config';
+import { serverConfig } from '../../config/index.js';
 import axios from 'axios';
-import { gmLog } from '../../utils/logger';
+import { gmLog } from '../../utils/logger.js';
 import { NextFunction, Request, Response } from 'express';
-import prisma from '../../prisma';
+import prisma from '../../prisma.js';
 
 const steamAuthUrl = 'https://steamcommunity.com/openid/login';
 

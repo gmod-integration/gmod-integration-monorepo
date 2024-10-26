@@ -1,10 +1,10 @@
-import redis from '../../redis';
+import redis from '../../redis/index.js';
 import { ActivityType } from 'discord.js';
-import { statusRoutine } from '../../classes/v3/Server';
-import { getMainClient } from '../../discord';
-import { serverConfig } from '../../config';
-import { givePremiumRoleOfMainGuild } from './discordModels';
-import prisma from '../../prisma';
+import { statusRoutine } from '../../classes/v3/Server.js';
+import { getMainClient } from '../../discord/index.js';
+import { serverConfig } from '../../config/index.js';
+import { givePremiumRoleOfMainGuild } from './discordModels.js';
+import prisma from '../../prisma.js';
 
 export async function getStats() {
   const redisKey = 'stats';

@@ -1,7 +1,7 @@
-import { getUserFromDiscordID } from './User';
-import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels';
-import redis from '../../redis';
-import prisma from '../../prisma';
+import { getUserFromDiscordID } from './User.js';
+import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels.js';
+import redis from '../../redis/index.js';
+import prisma from '../../prisma.js';
 
 export class PanelUser {
   public user: any;

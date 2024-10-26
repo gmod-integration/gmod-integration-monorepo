@@ -1,10 +1,10 @@
 import fs from 'fs';
-import { serverConfig } from '../../config';
+import { serverConfig } from '../../config/index.js';
 import archiver from 'archiver';
-import { gmLog } from '../../utils/logger';
-import prisma from '../../prisma';
-import { User } from '../../classes/v3/User';
-import { addNotification } from '../../utils/tools';
+import { gmLog } from '../../utils/logger.js';
+import prisma from '../../prisma.js';
+import { User } from '../../classes/v3/User.js';
+import { addNotification } from '../../utils/tools.js';
 
 export async function getUserDataGRPD(user: User) {
   const discordID = user.getDiscordID();

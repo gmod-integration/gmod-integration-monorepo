@@ -1,10 +1,14 @@
-import { badArgument, ipGetIP } from '../../utils/tools';
-import { PlayerGmod, updatePlayerUserGroup } from '../../classes/v3/PlayerGmod';
-import { saveConnectionGlobalInfo, saveConnectionSteamInfo, sendPlayerSay } from '../../models/v3/serversPlayersModels';
-import { updateGuildUserPseudo } from '../../discord';
+import { badArgument, ipGetIP } from '../../utils/tools.js';
+import { PlayerGmod, updatePlayerUserGroup } from '../../classes/v3/PlayerGmod.js';
+import {
+  saveConnectionGlobalInfo,
+  saveConnectionSteamInfo,
+  sendPlayerSay,
+} from '../../models/v3/serversPlayersModels.js';
+import { updateGuildUserPseudo } from '../../discord/index.js';
 import { Request, Response } from 'express';
-import prisma from '../../prisma';
-import { logServer } from '../../utils/logger';
+import prisma from '../../prisma.js';
+import { logServer } from '../../utils/logger.js';
 
 export async function getPlayer(req: Request, res: Response) {
   const { steamID64 } = req.params;

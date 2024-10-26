@@ -1,7 +1,7 @@
-import { getServerFromID } from '../../classes/v3/Server';
+import { getServerFromID } from '../../classes/v3/Server.js';
 import crypto from 'crypto';
 import { NextFunction, Request, Response } from 'express';
-import { badArgument } from '../../utils/tools';
+import { badArgument } from '../../utils/tools.js';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

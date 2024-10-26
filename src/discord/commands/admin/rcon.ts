@@ -6,13 +6,13 @@ import {
   MessageActionRowComponentBuilder,
   SlashCommandBuilder,
 } from 'discord.js';
-import { getServerList } from '../../../models/v3/serversModels';
-import { getUserFromDiscordID } from '../../../classes/v3/User';
-import { ButtonVerificationWebsite } from '../../utils/buttons';
-import { getServerFromID } from '../../../classes/v3/Server';
-import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild';
-import { wsSendToServer } from '../../../websockets';
-import { getTranslate } from '../../../utils/localizations';
+import { getServerList } from '../../../models/v3/serversModels.js';
+import { getUserFromDiscordID } from '../../../classes/v3/User.js';
+import { ButtonVerificationWebsite } from '../../utils/buttons.js';
+import { getServerFromID } from '../../../classes/v3/Server.js';
+import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild.js';
+import { wsSendToServer } from '../../../websockets/index.js';
+import { getTranslate } from '../../../utils/localizations.js';
 
 export default {
   data: new SlashCommandBuilder()

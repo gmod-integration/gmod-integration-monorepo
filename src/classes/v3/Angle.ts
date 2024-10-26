@@ -1,4 +1,4 @@
-import { BaseClass } from './BaseClass';
+import { BaseClass } from './BaseClass.js';
 
 export class Angle extends BaseClass {
   private p: number;

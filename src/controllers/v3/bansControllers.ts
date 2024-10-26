@@ -1,5 +1,5 @@
-import { isGlobalBan } from '../../models/v3/bansModels';
-import { ipGetIP } from '../../utils/tools';
+import { isGlobalBan } from '../../models/v3/bansModels.js';
+import { ipGetIP } from '../../utils/tools.js';
 import { Request, Response } from 'express';
 
 export async function isGlobalBanSomewhere(req: Request, res: Response) {

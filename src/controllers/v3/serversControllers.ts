@@ -1,7 +1,7 @@
-import { badArgument } from '../../utils/tools';
-import { logServer } from '../../utils/logger';
+import { badArgument } from '../../utils/tools.js';
+import { logServer } from '../../utils/logger.js';
 import { Request, Response } from 'express';
-import prisma from '../../prisma';
+import prisma from '../../prisma.js';
 
 export async function postStatus(req: Request, res: Response) {
   const server = req.server!;

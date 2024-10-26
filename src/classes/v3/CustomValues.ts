@@ -1,4 +1,4 @@
-import { BaseClass } from './BaseClass';
+import { BaseClass } from './BaseClass.js';
 
 export class CustomValues extends BaseClass {
   [key: string]: any;

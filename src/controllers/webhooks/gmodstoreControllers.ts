@@ -1,5 +1,5 @@
-import { saveGmodStorePurchase } from '../../models/webhooks/gmodStoreModels';
-import { badArgument } from '../../utils/tools';
+import { saveGmodStorePurchase } from '../../models/webhooks/gmodStoreModels.js';
+import { badArgument } from '../../utils/tools.js';
 import { Request, Response } from 'express';
 
 export default async (req: Request, res: Response) => {

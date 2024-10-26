@@ -3,13 +3,14 @@
     "target": "esnext",
     "module": "esnext",
     "outDir": "./dist",
+    "rootDir": "./src",
+    "baseUrl": "./",
     "moduleResolution": "node",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "baseUrl": "./",
     "typeRoots": [
       "./node_modules/@types",
       "./src/types"

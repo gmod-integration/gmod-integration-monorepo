@@ -1,5 +1,5 @@
 import { AutocompleteFocusedOption, AutocompleteInteraction } from 'discord.js';
-import prisma from '../../prisma';
+import prisma from '../../prisma.js';
 
 export async function getServerList(
   interaction: AutocompleteInteraction,

@@ -1,4 +1,4 @@
-import prisma from '../prisma';
+import prisma from '../prisma.js';
 
 const testConfig = {
   server: {
@@ -24,6 +24,6 @@ const userToken = await prisma.gm_panelToken.findFirst({
   },
 });
 
-testConfig.user.token = 'Bearer ' + userToken?.accessToken || '';
+testConfig.user.token = userToken?.accessToken || '';
 
 export default testConfig;

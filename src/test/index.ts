@@ -1,1 +1,1 @@
-import './api/server/mainController.test';
+import './api/server/mainController.test.js';

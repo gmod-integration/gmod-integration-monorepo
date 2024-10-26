@@ -1,13 +1,13 @@
-import { getRandomDiscordRelay } from '../../utils/tools';
+import { getRandomDiscordRelay } from '../../utils/tools.js';
 import fs from 'fs';
-import { discordConfig, serverConfig } from '../../config';
+import { discordConfig, serverConfig } from '../../config/index.js';
 import { EmbedBuilder } from 'discord.js';
-import { getSteamUserAvatarLarge } from '../../steam';
-import { getMainClient } from '../../discord';
+import { getSteamUserAvatarLarge } from '../../steam/index.js';
+import { getMainClient } from '../../discord/index.js';
 import { v4 as uuidv4 } from 'uuid';
-import { Server } from '../../classes/v3/Server';
-import prisma from '../../prisma';
-import { PlayerGmod } from '../../classes/v3/PlayerGmod';
+import { Server } from '../../classes/v3/Server.js';
+import prisma from '../../prisma.js';
+import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 
 export async function saveScreenshot(screenshot: string, captureData: any, player: PlayerGmod, server: Server) {
   const format = captureData.format || 'jpeg';

@@ -6,10 +6,10 @@ import {
   EmbedBuilder,
   MessageActionRowComponentBuilder,
 } from 'discord.js';
-import { dateToDiscordTimestamp, secToTime } from '../../discord/utils';
-import { getTranslate } from '../../utils/localizations';
-import { getServerFromID } from '../../classes/v3/Server';
-import prisma from '../../prisma';
+import { dateToDiscordTimestamp, secToTime } from '../../discord/utils/index.js';
+import { getTranslate } from '../../utils/localizations.js';
+import { getServerFromID } from '../../classes/v3/Server.js';
+import prisma from '../../prisma.js';
 
 function ButtonLeaderboardFirst(disabled: boolean) {
   return new ButtonBuilder()

@@ -1,7 +1,7 @@
-import { sendMessageToGmod } from '../../controllers/v3/guildsControllers';
-import { getUserFromDiscordID } from '../../classes/v3/User';
-import { wsSendToServer } from '../../websockets';
-import { givePremiumRoleOfMainGuild } from '../../models/v3/discordModels';
+import { sendMessageToGmod } from '../../controllers/v3/guildsControllers.js';
+import { getUserFromDiscordID } from '../../classes/v3/User.js';
+import { wsSendToServer } from '../../websockets/index.js';
+import { givePremiumRoleOfMainGuild } from '../../models/v3/discordModels.js';
 import { Message } from 'discord.js';
 
 export default {

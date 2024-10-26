@@ -1,4 +1,4 @@
-import { getTranslate } from '../../utils/localizations';
+import { getTranslate } from '../../utils/localizations.js';
 
 const trust_ranks: Record<number, string> = {
   0: 'dangerous',

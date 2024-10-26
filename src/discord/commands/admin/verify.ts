@@ -1,7 +1,7 @@
 import { ChatInputCommandInteraction, InteractionContextType, SlashCommandBuilder } from 'discord.js';
-import { verifyUser } from '../../../models/v3/discordModels';
-import { getVerifiedMessageAnswer } from '../../utils/messages';
-import { getTranslate } from '../../../utils/localizations';
+import { verifyUser } from '../../../models/v3/discordModels.js';
+import { getVerifiedMessageAnswer } from '../../utils/messages.js';
+import { getTranslate } from '../../../utils/localizations.js';
 
 export default {
   data: new SlashCommandBuilder()

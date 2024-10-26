@@ -1,14 +1,14 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User';
-import { getServersFromDiscordGuildID } from '../../classes/v3/Server';
-import { getGuildClient, getMainClient } from '../../discord';
-import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild';
-import { discordConfig } from '../../config';
-import { generateToken } from '../../utils/tools';
-import { wsSendToServer } from '../../websockets';
-import redis from '../../redis';
-import prisma from '../../prisma';
+import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
+import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
+import { getGuildClient, getMainClient } from '../../discord/index.js';
+import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.js';
+import { discordConfig } from '../../config/index.js';
+import { generateToken } from '../../utils/tools.js';
+import { wsSendToServer } from '../../websockets/index.js';
+import redis from '../../redis/index.js';
+import prisma from '../../prisma.js';
 import { Guild, GuildMember } from 'discord.js';
-import { PanelUser } from '../../classes/v3/PanelUser';
+import { PanelUser } from '../../classes/v3/PanelUser.js';
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
   const guildBotInstance = await getGuildClient(member.guild.id, false);

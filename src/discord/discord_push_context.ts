@@ -1,5 +1,5 @@
 import { REST, Routes } from 'discord.js';
-import { discordConfig } from '../config';
+import { discordConfig } from '../config/index.js';
 import { join } from 'path';
 import { readdir } from 'fs/promises';
 

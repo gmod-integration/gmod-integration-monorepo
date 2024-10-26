@@ -1,5 +1,5 @@
-import { gmLog } from '../../utils/logger';
-import { gmodStoreConfig } from '../../config';
+import { gmLog } from '../../utils/logger.js';
+import { gmodStoreConfig } from '../../config/index.js';
 import { NextFunction, Request, Response } from 'express';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {

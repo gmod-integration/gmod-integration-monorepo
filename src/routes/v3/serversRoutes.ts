@@ -1,5 +1,5 @@
 import express from 'express';
-import serverValidator from '../../middleware/v3/serverValidator';
+import serverValidator from '../../middleware/v3/serverValidator.js';
 import {
   getInfo,
   getPublicToken,
@@ -8,8 +8,8 @@ import {
   serverImportWarns,
   serverStart,
   serverStop,
-} from '../../controllers/v3/serversControllers';
-import { reportError } from '../../controllers/v3/errorsControllers';
+} from '../../controllers/v3/serversControllers.js';
+import { reportError } from '../../controllers/v3/errorsControllers.js';
 import {
   getPlayer,
   playerChangeGroup,
@@ -25,8 +25,8 @@ import {
   playerSpawn,
   playerSpawnObject,
   playerWarn,
-} from '../../controllers/v3/serversPlayersController';
-import asyncHandler from '../../middleware/asyncHandler';
+} from '../../controllers/v3/serversPlayersController.js';
+import asyncHandler from '../../middleware/asyncHandler.js';
 
 const router = express.Router();
 

@@ -1,11 +1,11 @@
 import axios from 'axios';
-import { discordConfig, serverConfig } from '../../config';
-import redis from '../../redis';
-import { getServersFromDiscordGuildID } from './Server';
-import { getGuildClient, getMainClient, loadGuildBotInstance } from '../../discord';
+import { discordConfig, serverConfig } from '../../config/index.js';
+import redis from '../../redis/index.js';
+import { getServersFromDiscordGuildID } from './Server.js';
+import { getGuildClient, getMainClient, loadGuildBotInstance } from '../../discord/index.js';
 import { ButtonInteraction, ChatInputCommandInteraction, Guild as DiscordGuild } from 'discord.js';
-import prisma from '../../prisma';
-import { User } from './User';
+import prisma from '../../prisma.js';
+import { User } from './User.js';
 
 export class Guild {
   public dscGuild: DiscordGuild;
@@ -196,7 +196,7 @@ export async function getDiscordEntitlements() {
 
   try {
     let entitlementGuilds: any = await redis.get(redisKey);
-    if (serverConfig.production !== 'false') {
+    if (serverConfig.dev) {
       if (entitlementGuilds === null) {
         const response = await axios.get(
           `https://discord.com/api/v10/applications/${discordConfig.clientID}/entitlements`,
@@ -253,7 +253,7 @@ export async function isGuildPremium(guildID: string): Promise<boolean> {
 }
 
 export async function replyNeedPremium(interaction: ChatInputCommandInteraction | ButtonInteraction) {
-  if (serverConfig.production === 'false') {
+  if (!serverConfig.dev) {
     return interaction.reply({
       content: 'This feature is only available to premium servers.',
       ephemeral: true,

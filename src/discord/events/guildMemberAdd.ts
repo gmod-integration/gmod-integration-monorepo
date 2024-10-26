@@ -1,9 +1,9 @@
-import { discordConfig } from '../../config';
-import { addAutoRoleToUser, updateGuildStat, verifyUser } from '../../models/v3/discordModels';
-import { gmLog } from '../../utils/logger';
-import { getNotVerifiedMessage } from '../utils/messages';
+import { discordConfig } from '../../config/index.js';
+import { addAutoRoleToUser, updateGuildStat, verifyUser } from '../../models/v3/discordModels.js';
+import { gmLog } from '../../utils/logger.js';
+import { getNotVerifiedMessage } from '../utils/messages.js';
 import { GuildMember } from 'discord.js';
-import prisma from '../../prisma';
+import prisma from '../../prisma.js';
 
 export default {
   name: 'guildMemberAdd',

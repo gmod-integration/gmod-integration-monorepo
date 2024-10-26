@@ -1,13 +1,13 @@
-import { BaseClass } from './BaseClass';
-import { CustomValues } from './CustomValues';
-import { Team } from './Team';
-import { Position } from './Position';
-import { Angle } from './Angle';
-import prisma from '../../prisma';
-import { getUserFromSteamID64 } from './User';
-import { Server } from './Server';
-import redis from '../../redis';
-import { gmLog } from '../../utils/logger';
+import { BaseClass } from './BaseClass.js';
+import { CustomValues } from './CustomValues.js';
+import { Team } from './Team.js';
+import { Position } from './Position.js';
+import { Angle } from './Angle.js';
+import prisma from '../../prisma.js';
+import { getUserFromSteamID64 } from './User.js';
+import { Server } from './Server.js';
+import redis from '../../redis/index.js';
+import { gmLog } from '../../utils/logger.js';
 
 export class PlayerGmod extends BaseClass {
   public readonly steamID: string;

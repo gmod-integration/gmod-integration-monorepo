@@ -1,11 +1,11 @@
-import { getServersFromDiscordGuildID, Server } from '../../classes/v3/Server';
-import { isGuildPremium } from '../../classes/v3/Guild';
-import { getTranslate } from '../../utils/localizations';
+import { getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
+import { isGuildPremium } from '../../classes/v3/Guild.js';
+import { getTranslate } from '../../utils/localizations.js';
 import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'discord.js';
-import { ButtonPremium } from '../../discord/utils/buttons';
-import { wsSendToServer } from '../../websockets';
-import { getGuildClient } from '../../discord';
-import prisma from '../../prisma';
+import { ButtonPremium } from '../../discord/utils/buttons.js';
+import { wsSendToServer } from '../../websockets/index.js';
+import { getGuildClient } from '../../discord/index.js';
+import prisma from '../../prisma.js';
 
 export async function sendMessageToGmod(message: Message) {
   if (message.author.bot || !message.guild) return;

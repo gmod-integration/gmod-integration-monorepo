@@ -90,14 +90,14 @@ import {
   putServerRoles,
   putServerSetting,
   putServerStatusButtons,
-} from '../../controllers/v3/usersControllers';
+} from '../../controllers/v3/usersControllers.js';
 import {
   userAdminGuildValidator,
   userAdminValidator,
   userServerValidator,
   userValidator,
-} from '../../middleware/v3/userValidator';
-import asyncHandler from '../../middleware/asyncHandler';
+} from '../../middleware/v3/userValidator.js';
+import asyncHandler from '../../middleware/asyncHandler.js';
 
 const router = express.Router();
 

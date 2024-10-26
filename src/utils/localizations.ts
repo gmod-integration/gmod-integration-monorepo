@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
-import redis from '../redis';
-import { gmLog } from './logger';
+import redis from '../redis/index.js';
+import { gmLog } from './logger.js';
 
 function insertOptions(str: string, options?: string[]): string {
   if (!options) return str;

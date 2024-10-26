@@ -3,14 +3,12 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 export const serverConfig = {
-  runTests: process.env.RUN_TESTS,
-  production: process.env.PRODUCTION,
+  dev: process.env.DEV,
   bodyLimit: '10mb',
   sentryDSN: process.env.SENTRY_DSN,
   domain: process.env.DOMAIN_URL,
   screenshotChannel: process.env.SCREENSHOTS_CHANNEL_ID,
   internWebsocketToken: process.env.INTERN_WEBSOCKET_TOKEN,
-  debug: process.env.DEBUG,
   websiteUrl: process.env.WEBSITE_URL,
   ports: {
     website: 53134,

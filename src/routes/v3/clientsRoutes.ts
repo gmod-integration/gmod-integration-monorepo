@@ -1,8 +1,8 @@
 import express from 'express';
-import { reportBugs, uploadScreenshot } from '../../controllers/v3/clientsControllers';
-import { reportError } from '../../controllers/v3/errorsControllers';
-import asyncHandler from '../../middleware/asyncHandler';
-import clientValidator from '../../middleware/v3/clientValidator';
+import { reportBugs, uploadScreenshot } from '../../controllers/v3/clientsControllers.js';
+import { reportError } from '../../controllers/v3/errorsControllers.js';
+import asyncHandler from '../../middleware/asyncHandler.js';
+import clientValidator from '../../middleware/v3/clientValidator.js';
 
 const router = express.Router();
 

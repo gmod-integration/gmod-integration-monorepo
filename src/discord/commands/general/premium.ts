@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, InteractionContextType, SlashCommandBuilder } from 'discord.js';
-import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild';
-import { getTranslate } from '../../../utils/localizations';
+import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild.js';
+import { getTranslate } from '../../../utils/localizations.js';
 
 export default {
   data: new SlashCommandBuilder()

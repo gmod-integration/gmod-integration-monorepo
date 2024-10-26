@@ -6,9 +6,9 @@ import {
   PermissionsBitField,
   SlashCommandBuilder,
 } from 'discord.js';
-import { getTranslate } from '../../../utils/localizations';
-import { serverConfig } from '../../../config';
-import prisma from '../../../prisma';
+import { getTranslate } from '../../../utils/localizations.js';
+import { serverConfig } from '../../../config/index.js';
+import prisma from '../../../prisma.js';
 
 export default {
   data: new SlashCommandBuilder()

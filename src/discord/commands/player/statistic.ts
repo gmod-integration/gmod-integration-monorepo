@@ -4,9 +4,9 @@ import {
   InteractionContextType,
   SlashCommandBuilder,
 } from 'discord.js';
-import { getServerList } from '../../../models/v3/serversModels';
-import { getUserStatisticMessage } from '../../utils/messages';
-import { getTranslate } from '../../../utils/localizations';
+import { getServerList } from '../../../models/v3/serversModels.js';
+import { getUserStatisticMessage } from '../../utils/messages.js';
+import { getTranslate } from '../../../utils/localizations.js';
 
 export default {
   data: new SlashCommandBuilder()

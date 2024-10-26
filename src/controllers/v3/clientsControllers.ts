@@ -1,7 +1,7 @@
-import { badArgument } from '../../utils/tools';
-import { saveScreenshot, sendScreenshotToDiscord } from '../../models/v3/clientsModels';
+import { badArgument } from '../../utils/tools.js';
+import { saveScreenshot, sendScreenshotToDiscord } from '../../models/v3/clientsModels.js';
 import { Request, Response } from 'express';
-import prisma from '../../prisma';
+import prisma from '../../prisma.js';
 
 export async function uploadScreenshot(req: Request, res: Response) {
   const server = req.server!;

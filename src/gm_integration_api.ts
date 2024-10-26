@@ -1,18 +1,18 @@
-import './utils/instrument';
-import './utils/update-log';
+import './utils/instrument.js';
+import './utils/update-log.js';
 import express, { NextFunction, Request, Response } from 'express';
-import { serverConfig } from './config';
-import { gmLog } from './utils/logger';
-import rawBodyMiddleware from './middleware/rawBodyMiddleware';
-import loggerMiddleware from './middleware/v3/loggers';
+import { serverConfig } from './config/index.js';
+import { gmLog } from './utils/logger.js';
+import rawBodyMiddleware from './middleware/rawBodyMiddleware.js';
+import loggerMiddleware from './middleware/v3/loggers.js';
 import cors from 'cors';
 import helmet from 'helmet';
-import mainRoutes from './routes/mainRoutes';
+import mainRoutes from './routes/mainRoutes.js';
 import useragent from 'express-useragent';
 import * as Sentry from '@sentry/node';
-import errorMiddleware from './middleware/errorMiddleware';
-import './websockets';
-import { loadDiscordMain, loadDiscordSlave } from './discord';
+import errorMiddleware from './middleware/errorMiddleware.js';
+import './websockets/index.js';
+import { loadDiscordMain, loadDiscordSlave } from './discord/index.js';
 
 // Load the main discord instance
 async function runDiscord() {
@@ -130,6 +130,6 @@ process.on('unhandledRejection', (error: Error) => {
 });
 
 // Run Tests
-if (serverConfig.runTests) {
-  import('./test/index');
+if (serverConfig.dev) {
+  import('./test');
 }
