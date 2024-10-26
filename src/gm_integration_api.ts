@@ -20,7 +20,7 @@ async function runDiscord() {
   await loadDiscordSlave();
 }
 
-runDiscord().then(() => gmLog('discord', 'Discord loaded'));
+await runDiscord();
 
 // Express
 const app = express();
