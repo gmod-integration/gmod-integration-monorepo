@@ -129,4 +129,7 @@ process.on('unhandledRejection', (error: Error) => {
   console.error(error);
 });
 
-export default app;
+// Run Tests
+if (serverConfig.runTests) {
+  import('./test/index');
+}

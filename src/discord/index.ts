@@ -11,7 +11,7 @@ import {
   Routes,
 } from 'discord.js';
 import { gmLog } from '../utils/logger';
-import { discordConfig } from '../config';
+import { discordConfig, serverConfig } from '../config';
 import { fork } from 'child_process';
 
 import { fileURLToPath } from 'url';
@@ -201,6 +201,11 @@ async function addNewClient(guildInstance: string, token: string) {
     gmLog('discord', `Ready on ${guildInstance} with ${user.tag}`);
 
     // Load commands and context menu commands
+    if (serverConfig.runTests) {
+      gmLog('discord', 'Skipping command push due to test mode');
+      return;
+    }
+
     const rest = new REST().setToken(token);
     try {
       gmLog('discord', `Started reloading application: ${guildInstance}`);

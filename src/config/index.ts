@@ -2,18 +2,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-export const databaseConfig = {
-  host: process.env.DATABASE_HOST,
-  user: process.env.DATABASE_USER,
-  password: process.env.DATABASE_PASSWORD,
-  database: process.env.DATABASE_NAME,
-  port: process.env.DATABASE_PORT,
-  connectTimeout: 60000,
-  charset: 'utf8mb4_unicode_ci',
-  multipleStatements: true,
-};
-
 export const serverConfig = {
+  runTests: process.env.RUN_TESTS,
   production: process.env.PRODUCTION,
   bodyLimit: '10mb',
   sentryDSN: process.env.SENTRY_DSN,
