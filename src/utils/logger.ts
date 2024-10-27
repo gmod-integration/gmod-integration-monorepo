@@ -208,7 +208,7 @@ export async function logServer(server: Server, type: string, data?: any) {
       const embed = new EmbedBuilder()
         .setAuthor({
           name: await getTranslate(type, lang),
-          iconURL: `${serverConfig.websiteUrl}/dashboard/guilds/${server.getGuildID()}/config/servers/${server.getID()}/logs`,
+          // url: `${serverConfig.websiteUrl}/dashboard/guilds/${server.getGuildID()}/config/servers/${server.getID()}/logs`,
         })
         .setDescription(dscList.length > 0 ? dscList.join('\n') : null)
         .setColor(logEmbedColors[type] || logEmbedColors.default)
@@ -243,7 +243,7 @@ export async function logServer(server: Server, type: string, data?: any) {
       });
 
       if (!webhookRelay.ok) {
-        await server.destroyLogsChannel();
+        // await server.destroyLogsChannel(); TODO better handling of this
         return { skip: true, message: 'Webhook not found' };
       }
     }
