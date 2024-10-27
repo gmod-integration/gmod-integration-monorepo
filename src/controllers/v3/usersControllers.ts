@@ -1153,7 +1153,7 @@ export async function getServerLogs(req: Request, res: Response) {
       createdAt: 'desc',
     },
     skip: Number(offset) || 0,
-    take: limit,
+    take: limit || 500,
   });
 
   return res.send(logs || []);
