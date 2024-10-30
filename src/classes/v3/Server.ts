@@ -105,9 +105,7 @@ export class Server extends BaseClass {
     });
 
     if (result) {
-      let rtnValue: any = result.value;
-      if (rtnValue === '0') rtnValue = false;
-      if (rtnValue === '1') rtnValue = true;
+      let rtnValue: any = JSON.parse(result.value);
 
       await redis.set(redisKey, JSON.stringify(rtnValue), 'EX', 10);
       return rtnValue;
@@ -131,6 +129,10 @@ export class Server extends BaseClass {
         setting,
       },
     });
+
+    if (typeof value !== 'string') {
+      value = JSON.stringify(value);
+    }
 
     if (result) {
       await prisma.gm_server_settings.update({
