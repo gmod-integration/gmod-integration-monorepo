@@ -10,11 +10,11 @@ import { gm_server_sync_chat_filter } from '@prisma/client';
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
-    defaultValue: 'both',
+    defaultValue: 'gmodToDiscord',
     acceptedValues: ['both', 'gmod-to-discord', 'discord-to-gmod'],
   },
   syncChatDirection: {
-    defaultValue: 'both',
+    defaultValue: 'gmodToDiscord',
     acceptedValues: ['both', 'gmodToDiscord', 'discordToGmod'],
   },
   log_hide_ip: {
@@ -105,7 +105,9 @@ export class Server extends BaseClass {
     });
 
     if (result) {
-      let rtnValue: any = JSON.parse(result.value);
+      let rtnValue: any = JSON.parse(JSON.stringify(result.value));
+      if (rtnValue === '0') rtnValue = false;
+      if (rtnValue === '1') rtnValue = true;
 
       await redis.set(redisKey, JSON.stringify(rtnValue), 'EX', 10);
       return rtnValue;
