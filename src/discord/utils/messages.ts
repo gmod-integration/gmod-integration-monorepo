@@ -44,6 +44,12 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
       {
         name: '\u200b',
         value: getEmptyEmbedBuilderField(2),
+        inline: true,
+      },
+      {
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
+        inline: true,
       },
       {
         name: '📡⠀' + (await getTranslate('status', lang)),
@@ -58,6 +64,7 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
       {
         name: '\u200b',
         value: getEmptyEmbedBuilderField(2),
+        inline: true,
       },
       {
         name: '🗺️⠀' + (await getTranslate('map', lang)),
