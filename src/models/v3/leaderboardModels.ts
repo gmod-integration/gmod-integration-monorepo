@@ -96,10 +96,10 @@ export async function getServerLeaderboard(
       server_id: serverID,
     },
     orderBy: {
-      [category]: order,
+      [category]: order === 'ASC' ? 'asc' : 'desc',
     },
-    take: limit,
-    skip: offset,
+    take: limit || 10,
+    skip: offset || 0,
   });
 
   return {
@@ -206,12 +206,12 @@ export async function getLeaderboardMessageEmbed(
       let rank: any = index + 1 + offset;
 
       if (offset === 0) {
-        if (rank === 1 || rank === 4) {
-          embed.addFields({
-            name: '\n',
-            value: '',
-          });
-        }
+        // if (rank === 1 || rank === 4) {
+        //   embed.addFields({
+        //     name: '\n',
+        //     value: '',
+        //   });
+        // }
 
         let inTop = false;
         switch (rank) {
@@ -232,11 +232,12 @@ export async function getLeaderboardMessageEmbed(
 
       embed.addFields({
         name: '**' + rank + '**' + ' - ' + stat.name,
-        value: await getCatFormat(
-          category,
-          (stat as any)[category] || (stat.custom_values && (stat.custom_values as any)[category]) || 'total_time',
-          lang,
-        ),
+        value:
+          (await getCatFormat(
+            category,
+            (stat as any)[category] || (stat.custom_values && (stat.custom_values as any)[category]) || 'total_time',
+            lang,
+          )) + (rank < 4 ? '\n \u200b' : ''),
         inline: true,
       });
 

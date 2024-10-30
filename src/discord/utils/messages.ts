@@ -10,6 +10,14 @@ import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import prisma from '../../prisma.js';
 
+export function getEmptyEmbedBuilderField(lineBreak: number = 1) {
+  let emptyField = '';
+  for (let i = 0; i < lineBreak; i++) {
+    emptyField += '\n \u200b';
+  }
+  return emptyField;
+}
+
 export async function getStatusMessage(server: Server, data: any, lang: string) {
   gmLog('status', 'refresh server status message for ' + server.getID());
 
@@ -34,17 +42,12 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
         inline: true,
       },
       {
-        name: '',
-        value: '\n',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
       },
       {
         name: '📡⠀' + (await getTranslate('status', lang)),
         value: servOnline ? await getTranslate('online', lang) : await getTranslate('offline', lang),
-        inline: true,
-      },
-      {
-        name: '',
-        value: '',
         inline: true,
       },
       {
@@ -53,17 +56,12 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
         inline: true,
       },
       {
-        name: '',
-        value: '\n',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
       },
       {
         name: '🗺️⠀' + (await getTranslate('map', lang)),
         value: map,
-        inline: true,
-      },
-      {
-        name: '',
-        value: '',
         inline: true,
       },
       {
@@ -85,8 +83,8 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
 
     embed.addFields(
       {
-        name: '',
-        value: '\n',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
       },
       {
         name: '👤⠀' + (await getTranslate('player_list', lang)),
@@ -178,8 +176,8 @@ export async function getNotVerifiedMessage(guild: Guild, member: GuildMember) {
         inline: false,
       },
       {
-        name: '',
-        value: '\n',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
         inline: false,
       },
       {
@@ -190,8 +188,8 @@ export async function getNotVerifiedMessage(guild: Guild, member: GuildMember) {
         inline: false,
       },
       {
-        name: '',
-        value: '\n',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
         inline: false,
       },
       {
@@ -200,8 +198,8 @@ export async function getNotVerifiedMessage(guild: Guild, member: GuildMember) {
         inline: false,
       },
       {
-        name: '',
-        value: '\n',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
         inline: false,
       },
       {
@@ -265,24 +263,24 @@ export async function getVerificationGuildMessage(lang: string) {
         value: await getTranslate('setup_msg_p1_value', lang),
       },
       {
-        name: '',
-        value: '\n',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
       },
       {
         name: await getTranslate('setup_msg_p2_name', lang),
         value: await getTranslate('setup_msg_p2_value', lang),
       },
       {
-        name: '',
-        value: '\n',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
       },
       {
         name: await getTranslate('setup_msg_p3_name', lang),
         value: await getTranslate('setup_msg_p3_value', lang),
       },
       {
-        name: '',
-        value: '\n',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
       },
       {
         name: await getTranslate('setup_msg_p4_name', lang),
@@ -326,8 +324,8 @@ export async function getProfileMessage(guild: Guild, user: User) {
         inline: true,
       },
       {
-        name: '',
-        value: '',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
         inline: true,
       },
       {
@@ -336,17 +334,13 @@ export async function getProfileMessage(guild: Guild, user: User) {
         inline: true,
       },
       {
-        name: '',
-        value: '\n',
-      },
-      {
         name: '🛡️⠀' + (await getTranslate('trust_rank', lang)),
         value: await getTrustRank(gm_user.trustLevel, lang),
         inline: true,
       },
       {
-        name: '',
-        value: '',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
         inline: true,
       },
       {
@@ -357,17 +351,13 @@ export async function getProfileMessage(guild: Guild, user: User) {
         inline: true,
       },
       {
-        name: '',
-        value: '\n',
-      },
-      {
         name: '🪪⠀' + (await getTranslate('discord_id', lang)),
         value: user.id,
         inline: true,
       },
       {
-        name: '',
-        value: '',
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(),
         inline: true,
       },
       {
@@ -462,17 +452,18 @@ export async function getUserStatisticMessage(
           inline: true,
         },
         {
-          name: '',
-          value: '',
+          name: '\u200b',
+          value: getEmptyEmbedBuilderField(2),
+          inline: true,
+        },
+        {
+          name: '\u200b',
+          value: getEmptyEmbedBuilderField(2),
+          inline: true,
         },
         {
           name: '🔪⠀' + (await getTranslate('total_kills', lang)),
           value: userData.total_kill ? userData.total_kill.toString() : '0',
-          inline: true,
-        },
-        {
-          name: '',
-          value: '',
           inline: true,
         },
         {
@@ -481,17 +472,13 @@ export async function getUserStatisticMessage(
           inline: true,
         },
         {
-          name: '',
-          value: '',
+          name: '\u200b',
+          value: getEmptyEmbedBuilderField(2),
+          inline: true,
         },
         {
           name: '⏳⠀' + (await getTranslate('total_time', lang)),
           value: userData.total_time ? secToTime(userData.total_time) : '0',
-          inline: true,
-        },
-        {
-          name: '',
-          value: '',
           inline: true,
         },
         {
@@ -500,8 +487,9 @@ export async function getUserStatisticMessage(
           inline: true,
         },
         {
-          name: '',
-          value: '',
+          name: '\u200b',
+          value: getEmptyEmbedBuilderField(2),
+          inline: true,
         },
         {
           name: '📅⠀' + (await getTranslate('last_join', lang)),
@@ -545,8 +533,8 @@ export async function getUserStatisticMessage(
           inline: true,
         },
         {
-          name: '',
-          value: '',
+          name: '\u200b',
+          value: getEmptyEmbedBuilderField(2),
           inline: true,
         },
         {
@@ -555,17 +543,13 @@ export async function getUserStatisticMessage(
           inline: true,
         },
         {
-          name: '',
-          value: '',
-        },
-        {
           name: '📅⠀' + (await getTranslate('first_join', lang)),
           value: userData.createdAt ? dateToDiscordTimestamp(userData.createdAt) : 'Never',
           inline: true,
         },
         {
-          name: '',
-          value: '',
+          name: '\u200b',
+          value: getEmptyEmbedBuilderField(2),
           inline: true,
         },
         {
@@ -574,17 +558,13 @@ export async function getUserStatisticMessage(
           inline: true,
         },
         {
-          name: '',
-          value: '',
-        },
-        {
           name: '🔪⠀' + (await getTranslate('total_kills', lang)),
           value: userData.total_kill ? userData.total_kill.toString() : '0',
           inline: true,
         },
         {
-          name: '',
-          value: '',
+          name: '\u200b',
+          value: getEmptyEmbedBuilderField(2),
           inline: true,
         },
         {
@@ -593,27 +573,19 @@ export async function getUserStatisticMessage(
           inline: true,
         },
         {
-          name: '',
-          value: '',
-        },
-        {
           name: '⏳⠀' + (await getTranslate('total_time', lang)),
           value: userData.total_time ? secToTime(userData.total_time).toString() : '0',
           inline: true,
         },
         {
-          name: '',
-          value: '',
+          name: '\u200b',
+          value: getEmptyEmbedBuilderField(2),
           inline: true,
         },
         {
           name: '🗓️⠀' + (await getTranslate('total_join', lang)),
           value: userData.total_connect ? userData.total_connect.toString() : '0',
           inline: true,
-        },
-        {
-          name: '',
-          value: '',
         },
       )
       .setFooter({ text: `SteamID: ${userData.steam_id} - Server: ${serverDB.name}` });
@@ -631,16 +603,9 @@ export async function getUserStatisticMessage(
 
         if (acID % 2 === 0) {
           embed.addFields({
-            name: '',
-            value: '',
+            name: '\u200b',
+            value: getEmptyEmbedBuilderField(2),
             inline: true,
-          });
-        }
-
-        if (acID % 3 === 0) {
-          embed.addFields({
-            name: '',
-            value: '',
           });
         }
       }
