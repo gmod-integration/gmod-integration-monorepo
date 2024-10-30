@@ -196,23 +196,19 @@ export async function getDiscordEntitlements() {
 
   try {
     let entitlementGuilds: any = await redis.get(redisKey);
-    if (serverConfig.dev) {
-      if (entitlementGuilds === null) {
-        const response = await axios.get(
-          `https://discord.com/api/v10/applications/${discordConfig.clientID}/entitlements`,
-          {
-            headers: {
-              Authorization: `Bot ${discordConfig.botToken}`,
-            },
+    if (entitlementGuilds === null) {
+      const response = await axios.get(
+        `https://discord.com/api/v10/applications/${discordConfig.clientID}/entitlements`,
+        {
+          headers: {
+            Authorization: `Bot ${discordConfig.botToken}`,
           },
-        );
-        entitlementGuilds = response.data;
-        await redis.set(redisKey, JSON.stringify(entitlementGuilds), 'EX', 60);
-      } else {
-        entitlementGuilds = JSON.parse(entitlementGuilds);
-      }
+        },
+      );
+      entitlementGuilds = response.data;
+      await redis.set(redisKey, JSON.stringify(entitlementGuilds), 'EX', 60);
     } else {
-      entitlementGuilds = [];
+      entitlementGuilds = JSON.parse(entitlementGuilds);
     }
 
     return entitlementGuilds;
