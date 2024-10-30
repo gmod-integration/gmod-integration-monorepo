@@ -52,7 +52,7 @@ export default {
     }
 
     const user = await getUserFromDiscordID(interaction.user.id);
-    if (!user || !user.rank) {
+    if (!user || !user.steamID64) {
       return interaction.reply({
         content: await getTranslate('rcon_steam_link', lang),
         ephemeral: true,
@@ -62,7 +62,7 @@ export default {
       });
     }
 
-    const player = await server.getServerPlayer(user.rank);
+    const player = await server.getServerPlayer(user.steamID64);
     if (!player || player.rank !== 'superadmin') {
       return interaction.reply({
         content: await getTranslate('rcon_superadmin', lang),
@@ -70,7 +70,7 @@ export default {
       });
     }
 
-    if ((await isGuildPremium(interaction.guild.id)) === false) {
+    if (!(await isGuildPremium(interaction.guild.id))) {
       return replyNeedPremium(interaction);
     }
 
