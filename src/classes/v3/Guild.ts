@@ -262,7 +262,7 @@ export async function replyNeedPremium(interaction: ChatInputCommandInteraction 
   );
   await interaction.reply({
     components: [components],
-    content: 'This command requires Gmod Integration Premium! Upgrade now to get access to these features !',
+    content: 'This interaction requires Gmod Integration Premium! Upgrade now to get access to these features !',
     ephemeral: true,
   });
 }
