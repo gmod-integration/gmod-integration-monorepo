@@ -105,7 +105,7 @@ export class Server extends BaseClass {
     });
 
     if (result) {
-      let rtnValue: any = JSON.parse(JSON.stringify(result.value));
+      let rtnValue: any = result.value;
       if (rtnValue === '0') rtnValue = false;
       if (rtnValue === '1') rtnValue = true;
 
@@ -121,7 +121,11 @@ export class Server extends BaseClass {
       throw new Error('Setting not found');
     }
 
-    if (!serverSettings.freeValues && !serverSettings[setting].acceptedValues.includes(value)) {
+    if (
+      !serverSettings.freeValues &&
+      serverSettings[setting].acceptedValues &&
+      !serverSettings[setting].acceptedValues.includes(value)
+    ) {
       throw new Error('Invalid value');
     }
 
@@ -132,9 +136,9 @@ export class Server extends BaseClass {
       },
     });
 
-    if (typeof value !== 'string') {
-      value = JSON.stringify(value);
-    }
+    if (value === true || value === 'true') value = '1';
+    if (value === false || value === 'false') value = '0';
+    value = value.toString();
 
     if (result) {
       await prisma.gm_server_settings.update({
