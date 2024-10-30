@@ -1,9 +1,17 @@
 import axios from 'axios';
-import { discordConfig, serverConfig } from '../../config/index.js';
+import { discordConfig } from '../../config/index.js';
 import redis from '../../redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
 import { getGuildClient, getMainClient, loadGuildBotInstance } from '../../discord/index.js';
-import { ButtonInteraction, ChatInputCommandInteraction, Guild as DiscordGuild } from 'discord.js';
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonInteraction,
+  ButtonStyle,
+  ChatInputCommandInteraction,
+  Guild as DiscordGuild,
+  MessageActionRowComponentBuilder,
+} from 'discord.js';
 import prisma from '../../prisma.js';
 import { User } from './User.js';
 
@@ -249,29 +257,14 @@ export async function isGuildPremium(guildID: string): Promise<boolean> {
 }
 
 export async function replyNeedPremium(interaction: ChatInputCommandInteraction | ButtonInteraction) {
-  if (!serverConfig.dev) {
-    return interaction.reply({
-      content: 'This feature is only available to premium servers.',
-      ephemeral: true,
-    });
-  }
-
-  const url = `https://discord.com/api/v10/interactions/${interaction.id}/${interaction.token}/callback`;
-  const json = {
-    type: 10,
-    data: {},
-  };
-
-  await axios
-    .post(url, json, {
-      headers: {
-        Authorization: `Bot ${discordConfig.botToken}`,
-        'Content-Type': 'application/json',
-      },
-    })
-    .catch((err) => {
-      console.error(err);
-    });
+  const components = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+    new ButtonBuilder().setStyle(ButtonStyle.Premium).setSKUId('1301193970021302403'),
+  );
+  await interaction.reply({
+    components: [components],
+    content: 'This command requires Gmod Integration Premium! Upgrade now to get access to these features !',
+    ephemeral: true,
+  });
 }
 
 export async function handlePremiumInteraction(interaction: ButtonInteraction) {
