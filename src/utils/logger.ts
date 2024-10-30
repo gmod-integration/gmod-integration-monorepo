@@ -215,6 +215,7 @@ export async function logServer(server: Server, type: string, data?: any) {
         })
         .setTimestamp();
 
+      if (data.address && (await server.getSetting('log_hide_ip'))) data.address = 'xx.xx.xx.xx';
       const file = {
         name: `${server.getID()}-${new Date().toISOString().replace(/T/g, '-').replace(/\..+/, '').replace(/:/g, '-')}-${type}.json`,
         content: JSON.stringify(data, null, 2),
