@@ -5,10 +5,10 @@ import { Request, Response } from 'express';
 
 export function getRandomDiscordRelay() {
   let relays = [];
-  if (!serverConfig.dev) {
-    relays.push('https://1-dsc-relay.gmod-integration.com');
-  } else {
+  if (serverConfig.dev) {
     relays.push('https://dsc-relay-dev.gmod-integration.com');
+  } else {
+    relays.push('https://1-dsc-relay.gmod-integration.com');
   }
   return relays[Math.floor(Math.random() * relays.length)];
 }

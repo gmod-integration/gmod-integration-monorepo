@@ -8,9 +8,7 @@ import { Server } from '../classes/v3/Server.js';
 import prisma from '../prisma.js';
 
 export function gmLog(type: string, message: string, debug: boolean = false) {
-  if (!serverConfig.dev && debug) {
-    return;
-  }
+  if (debug && !serverConfig.dev) return;
   console.log(`[${new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')}] [${type.toUpperCase()}] ${message}`);
 }
 
