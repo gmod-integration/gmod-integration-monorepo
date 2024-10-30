@@ -258,7 +258,7 @@ export async function isGuildPremium(guildID: string): Promise<boolean> {
 
 export async function replyNeedPremium(interaction: ChatInputCommandInteraction | ButtonInteraction) {
   const components = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-    new ButtonBuilder().setStyle(ButtonStyle.Premium).setSKUId('1301193970021302403'),
+    new ButtonBuilder().setStyle(ButtonStyle.Premium).setSKUId(discordConfig.subscriptionSKUID!),
   );
   await interaction.reply({
     components: [components],

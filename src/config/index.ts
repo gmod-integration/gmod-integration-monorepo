@@ -32,6 +32,7 @@ export const discordConfig = {
   premiumRoleID: process.env.DISCORD_GUILD_PREMIUM_ROLE_ID,
   gmodStorePremiumRoleID: process.env.DISCORD_GUILD_GMODSTORE_PREMIUM_ROLE_ID,
   discordPremiumRoleID: process.env.DISCORD_GUILD_DISCORD_PREMIUM_ROLE_ID,
+  subscriptionSKUID: process.env.DISCORD_SUBSCRIPTION_SKU_ID,
 };
 
 export const steamConfig = {
