@@ -14,7 +14,7 @@ export default {
     if (!user.isDeveloper()) return;
 
     try {
-      if (message.content.startsWith('!runWS ')) {
+      if (message.content.startsWith('§run websocket ')) {
         const [, serverID, msg] = message.content.split(' ');
         wsSendToServer(serverID, { message: msg });
       } else if (message.content.startsWith('!checkPremium')) {
@@ -23,6 +23,7 @@ export default {
 
       return message.reply('Command executed');
     } catch (err) {
+      console.error(err);
       return message.reply('Error executing command');
     }
   },
