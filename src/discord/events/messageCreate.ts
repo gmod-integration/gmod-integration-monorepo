@@ -4,6 +4,18 @@ import { wsSendToServer } from '../../websockets/index.js';
 import { givePremiumRoleOfMainGuild } from '../../models/v3/discordModels.js';
 import { Message } from 'discord.js';
 
+const devActions: Record<string, (...args: string[]) => void> = {
+  async runWS(serverID: string, msg: string) {
+    wsSendToServer(serverID, { message: msg });
+  },
+  async checkPremium() {
+    await givePremiumRoleOfMainGuild();
+  },
+  async test() {
+    console.log('test');
+  },
+};
+
 export default {
   name: 'messageCreate',
   async execute(message: Message) {
@@ -12,15 +24,14 @@ export default {
     const user = await getUserFromDiscordID(message.author.id);
     if (!user) return;
     if (!user.isDeveloper()) return;
+    if (!message.content.startsWith('§')) return;
+
+    const action = message.content.slice(1).split(' ')[0];
+    const args = message.content.slice(1).split(' ').slice(1);
+    if (!devActions[action]) return;
 
     try {
-      if (message.content.startsWith('§run websocket ')) {
-        const [, serverID, msg] = message.content.split(' ');
-        wsSendToServer(serverID, { message: msg });
-      } else if (message.content.startsWith('!checkPremium')) {
-        await givePremiumRoleOfMainGuild();
-      }
-
+      devActions[action](...args);
       return message.reply('Command executed');
     } catch (err) {
       console.error(err);
