@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'assert';
-import testConfig, { getTestUri } from '../../config.test';
+import testConfig, { getTestUri } from '../config.test';
 
 // User
 test('GET /v3/users/:discordID', async (t) => {

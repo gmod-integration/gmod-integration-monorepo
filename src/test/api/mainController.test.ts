@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'assert';
-import { getTestUri } from '../../config.test.js';
+import { getTestUri } from '../config.test';
 
 // Version Info
 test('GET /v3', async (t) => {
