@@ -4,9 +4,22 @@ import { gmLog } from '../utils/logger.js';
 import { getServerFromID } from '../classes/v3/Server.js';
 import { getPanelUserFromDiscordID } from '../classes/v3/PanelUser.js';
 
+interface wsClientClient {
+  discordID: string;
+  ws: any;
+  guildID: string;
+  serverID: string;
+  action: string;
+}
+
+interface wsClientServer {
+  id: string;
+  ws: any;
+}
+
 let clients = {
-  server: [] as any[],
-  client: [] as any[],
+  server: [] as wsClientServer[],
+  client: [] as wsClientClient[],
 };
 
 const wss = new WebSocketServer({
@@ -61,7 +74,7 @@ wss.on('connection', function connection(ws, req) {
 
   if (id && token) {
     clients.server = clients.server.filter((client) => client.id !== id);
-    clients.server.push({ id, ws });
+    clients.server.push({ id: id.toString(), ws });
     gmLog('websocket', 'Server connected: ' + id);
     ws.on('close', () => {
       clients.server = clients.server.filter((client) => client.id !== id);
