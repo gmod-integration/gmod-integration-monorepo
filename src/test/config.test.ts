@@ -3,8 +3,8 @@ import { serverConfig } from '../config/index';
 
 const testConfig = {
   server: {
-    id: '',
-    token: '',
+    id: '3dWQ1LTknE',
+    token: 'QEFHAqTHZSHB7xY4',
   },
   user: {
     discordID: '333650866747867137',
