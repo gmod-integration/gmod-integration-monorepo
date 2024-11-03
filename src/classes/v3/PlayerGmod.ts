@@ -4,10 +4,11 @@ import prisma from '../../prisma.js';
 import { getUserFromSteamID64 } from './User.js';
 import { Server } from './Server.js';
 import redis from '../../redis/index.js';
-import { gmLog } from '../../utils/logger.js';
+import { gmLog, LogLevel } from '../../utils/logger.js';
 import { Position } from './Position';
 import { Angle } from './Angle';
 import { CustomValues } from './CustomValues';
+import { getTranslate } from '../../utils/localizations';
 
 export interface PlayerGmodInterface {
   steamID: string;
@@ -73,6 +74,29 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   async getDiscordID() {
     const user = await getUserFromSteamID64(this.steamID64);
     return user ? user.getDiscordID() : null;
+  }
+
+  async getLogFormat(lang: string = 'en', level: LogLevel = LogLevel.MINIMAL, listArg: string[] = []) {
+    let dscList = [];
+
+    switch (level) {
+      case LogLevel.MINIMAL:
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + this.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + this.name + '`');
+        break;
+      case LogLevel.NORMAL:
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + this.steamID64 + '`');
+        dscList.push((await getTranslate('name', lang)) + ': `' + this.name + '`');
+        dscList.push((await getTranslate('team', lang)) + ': `' + this.team.getName() + '`');
+        break;
+      case LogLevel.CUSTOM:
+        for (const arg in listArg) {
+          dscList.push((await getTranslate(arg, lang)) + ': `' + this[arg] + '`');
+        }
+        break;
+    }
+
+    return dscList.join('\n');
   }
 
   async saveServerStat(serverID: string) {
