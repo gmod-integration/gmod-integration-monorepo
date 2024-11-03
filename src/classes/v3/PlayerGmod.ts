@@ -1,15 +1,29 @@
 import { BaseClass } from './BaseClass.js';
-import { CustomValues } from './CustomValues.js';
 import { Team } from './Team.js';
-import { Position } from './Position.js';
-import { Angle } from './Angle.js';
 import prisma from '../../prisma.js';
 import { getUserFromSteamID64 } from './User.js';
 import { Server } from './Server.js';
 import redis from '../../redis/index.js';
 import { gmLog } from '../../utils/logger.js';
+import { Position } from './Position';
+import { Angle } from './Angle';
+import { CustomValues } from './CustomValues';
 
-export class PlayerGmod extends BaseClass {
+export interface PlayerGmodInterface {
+  steamID: string;
+  steamID64: string;
+  connectTime: number;
+  kills: number;
+  customValues: CustomValues;
+  deaths: number;
+  team: Team;
+  name: string;
+  userGroup: string;
+  position: Position;
+  angle: Angle;
+}
+
+export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   public readonly steamID: string;
   public readonly steamID64: string;
   public connectTime: number;
@@ -22,19 +36,38 @@ export class PlayerGmod extends BaseClass {
   public position: Position;
   public angle: Angle;
 
-  constructor(obj: any) {
+  constructor(obj: PlayerGmodInterface, throwMissing = true) {
     super();
+
+    this.checkMissingAndThrow(
+      obj,
+      {
+        steamID: 'string',
+        steamID64: 'string',
+        connectTime: 'number',
+        kills: 'number',
+        customValues: 'object',
+        deaths: 'number',
+        team: 'object',
+        name: 'string',
+        userGroup: 'string',
+        position: 'object',
+        angle: 'object',
+      },
+      throwMissing,
+    );
+
     this.steamID = obj.steamID;
     this.steamID64 = obj.steamID64;
     this.connectTime = obj.connectTime;
     this.kills = obj.kills;
     this.customValues = new CustomValues(obj.customValues);
     this.deaths = obj.deaths;
-    this.team = new Team(obj.team);
+    this.team = new Team(obj.team, throwMissing);
     this.name = obj.name;
     this.userGroup = obj.userGroup;
-    this.position = new Position(obj.position);
-    this.angle = new Angle(obj.angle);
+    this.position = new Position(obj.position, throwMissing);
+    this.angle = new Angle(obj.angle, throwMissing);
   }
 
   async getDiscordID() {

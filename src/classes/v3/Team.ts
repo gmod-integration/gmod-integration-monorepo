@@ -1,11 +1,26 @@
 import { BaseClass } from './BaseClass.js';
 
-export class Team extends BaseClass {
-  public id: any;
-  public name: any;
+export interface TeamInterface {
+  id: number;
+  name: string;
+}
 
-  constructor(obj: any) {
+export class Team extends BaseClass implements TeamInterface {
+  public id: number;
+  public name: string;
+
+  constructor(obj: TeamInterface, throwMissing = true) {
     super();
+
+    this.checkMissingAndThrow(
+      obj,
+      {
+        id: 'number',
+        name: 'string',
+      },
+      throwMissing,
+    );
+
     this.id = obj.id;
     this.name = obj.name;
   }

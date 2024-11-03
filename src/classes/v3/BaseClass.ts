@@ -17,6 +17,18 @@ export class BaseClass {
     return true;
   }
 
+  checkMissingAndThrow(obj: { [key: string]: any }, interfaceObj: { [key: string]: any }, throwMissing = true): void {
+    if (!throwMissing) return;
+    const keys = Object.keys(interfaceObj);
+    for (const key of keys) {
+      if (obj[key] === undefined || obj[key] === null) {
+        throw new Error(`Missing key: ${key}`);
+      } else if (typeof obj[key] !== interfaceObj[key]) {
+        throw new Error(`Invalid type for key: ${key}`);
+      }
+    }
+  }
+
   isValidGetInformations(): { [key: string]: any } {
     const keys = Object.keys(this);
     const result: { [key: string]: any } = {};
