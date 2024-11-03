@@ -10,7 +10,7 @@ import { gm_server_sync_chat_filter } from '@prisma/client';
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
-    defaultValue: 'gmodToDiscord',
+    defaultValue: 'gmod-to-discord',
     acceptedValues: ['both', 'gmod-to-discord', 'discord-to-gmod'],
   },
   syncChatDirection: {
