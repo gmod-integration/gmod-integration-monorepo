@@ -10,7 +10,6 @@ import {
   deleteGuildBotInstance,
   deleteGuildLinks,
   deleteGuildServer,
-  deleteGuildSetting,
   deleteGuildVerificationsRoles,
   deleteLogsChannel,
   deleteServerPseudo,
@@ -69,7 +68,6 @@ import {
   postGmodToDiscordFilter,
   postGuildLinks,
   postGuildServerToken,
-  postGuildSetting,
   postLogsChannel,
   postServerPseudo,
   postServerRoles,
@@ -137,8 +135,6 @@ router.get('/:discordID/guilds/:guildID/emojis', asyncHandler(getGuildEmojis));
 router.get('/:discordID/guilds/:guildID/settings', asyncHandler(getGuildSettings));
 router.get('/:discordID/guilds/:guildID/settings/:setting', asyncHandler(getGuildSetting));
 router.put('/:discordID/guilds/:guildID/settings/:setting', asyncHandler(putGuildSetting));
-router.delete('/:discordID/guilds/:guildID/settings/:setting', asyncHandler(deleteGuildSetting));
-router.post('/:discordID/guilds/:guildID/settings/:setting', asyncHandler(postGuildSetting));
 // Servers
 router.get('/:discordID/guilds/:guildID/servers', asyncHandler(findGuildServers));
 router.post('/:discordID/guilds/:guildID/servers', asyncHandler(createNewServer));

@@ -15,6 +15,13 @@ import {
 import prisma from '../../prisma.js';
 import { User } from './User.js';
 
+const guildSettings: Record<string, any> = {
+  verification_dont_mp: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+};
+
 export class Guild {
   public dscGuild: DiscordGuild;
   public id: string;
@@ -26,6 +33,116 @@ export class Guild {
 
   async isPremium() {
     return await isGuildPremium(this.id);
+  }
+
+  async getAllSettings() {
+    const settings = await prisma.gm_guild_settings.findMany({
+      where: {
+        guildID: this.id,
+      },
+    });
+
+    const data: Record<string, any> = {};
+    for (const setting of settings) {
+      data[setting.setting] = setting.value;
+      if (guildSettings[setting.setting] && guildSettings[setting.setting].acceptedValues) {
+        if (
+          guildSettings[setting.setting].acceptedValues.includes(true) ||
+          guildSettings[setting.setting].acceptedValues.includes(false)
+        ) {
+          if (setting.value === '0' || setting.value === 'false') data[setting.setting] = false;
+          if (setting.value === '1' || setting.value === 'true') data[setting.setting] = true;
+        }
+      }
+    }
+
+    return data;
+  }
+
+  async getSetting(setting: string) {
+    if (!guildSettings[setting]) {
+      throw new Error('Setting not found');
+    }
+
+    const redisKey = `server:${this.id}:setting:${setting}`;
+    const redisData = await redis.get(redisKey);
+    if (redisData) {
+      return JSON.parse(redisData);
+    }
+
+    const result = await prisma.gm_guild_settings.findFirst({
+      where: {
+        guildID: this.id,
+        setting,
+      },
+    });
+
+    if (result) {
+      let rtnValue: any = result.value;
+      if (
+        (guildSettings[setting].acceptedValues && guildSettings[setting].acceptedValues.includes(true)) ||
+        guildSettings[setting].acceptedValues.includes(false)
+      ) {
+        if (rtnValue === '0' || rtnValue === 'false') rtnValue = false;
+        if (rtnValue === '1' || rtnValue === 'true') rtnValue = true;
+      }
+
+      await redis.set(redisKey, JSON.stringify(rtnValue), 'EX', 10);
+      return rtnValue;
+    }
+
+    return guildSettings[setting].defaultValue;
+  }
+
+  async setSetting(setting: string, value: any) {
+    if (!guildSettings[setting]) {
+      throw new Error('Setting not found');
+    }
+
+    if (
+      !guildSettings.freeValues &&
+      guildSettings[setting].acceptedValues &&
+      !guildSettings[setting].acceptedValues.includes(value)
+    ) {
+      throw new Error('Invalid value');
+    }
+
+    const result = await prisma.gm_guild_settings.findFirst({
+      where: {
+        guildID: this.id,
+        setting,
+      },
+    });
+
+    value = value.toString();
+
+    if (result) {
+      await prisma.gm_guild_settings.update({
+        where: {
+          guildID_setting: {
+            guildID: this.id,
+            setting,
+          },
+        },
+        data: {
+          value,
+        },
+      });
+    } else {
+      await prisma.gm_guild_settings.create({
+        data: {
+          guildID: this.id,
+          setting,
+          value,
+        },
+      });
+    }
+
+    await redis.del(`server:${this.id}:setting:${setting}`);
+
+    return {
+      value: await this.getSetting(setting),
+    };
   }
 
   async getServers() {

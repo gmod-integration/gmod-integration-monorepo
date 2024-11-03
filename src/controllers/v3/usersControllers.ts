@@ -956,142 +956,51 @@ export async function deleteLogsChannel(req: Request, res: Response) {
 }
 
 export async function getGuildSettings(req: Request, res: Response) {
-  const { guildID } = req.params;
-  const settings = await prisma.gm_guild_settings.findMany({
-    where: {
-      guildID,
-    },
-  });
-  return res.send(settings || []);
+  const guild = req.guild!;
+  return res.send((await guild.getAllSettings()) || []);
 }
 
 export async function getGuildSetting(req: Request, res: Response) {
+  // const { setting } = req.params;
+  // return res.send(
+  //   prisma.gm_guild_settings.findFirst({
+  //     where: {
+  //       setting,
+  //     },
+  //   }) || {},
+  // );
+  const guild = req.guild!;
   const { setting } = req.params;
-  return res.send(
-    prisma.gm_guild_settings.findFirst({
-      where: {
-        setting,
-      },
-    }) || {},
-  );
-}
 
-const allowedGuildSettings = ['verification_dont_mp'];
-
-export async function putGuildSetting(req: Request, res: Response) {
-  const { guildID, setting } = req.params;
-  const { value } = req.body;
-
-  if (badArgument([value])) {
-    return res.status(400).send({
-      error: 'Missing required arguments',
+  try {
+    return res.send({
+      value: await guild.getSetting(setting),
     });
-  }
-
-  if (!allowedGuildSettings.includes(setting)) {
-    return res.status(400).send({
-      error: 'Setting not allowed',
-    });
-  }
-
-  let guildSetting = prisma.gm_guild_settings.findFirst({
-    where: {
-      guildID,
-      setting,
-    },
-  });
-
-  if (!guildSetting) {
-    return res.send(
-      (guildSetting = prisma.gm_guild_settings.create({
-        data: {
-          guildID,
-          setting,
-          value,
-        },
-      })),
-    );
-  } else {
-    return res.send(
-      await prisma.gm_guild_settings.update({
-        where: {
-          guildID_setting: {
-            guildID,
-            setting,
-          },
-        },
-        data: {
-          value,
-        },
-      }),
-    );
-  }
-}
-
-export async function postGuildSetting(req: Request, res: Response) {
-  const { guildID, setting } = req.params;
-  const { value } = req.body;
-
-  if (badArgument([value])) {
-    return res.status(400).send({
-      error: 'Missing required arguments',
-    });
-  }
-
-  if (!allowedGuildSettings.includes(setting)) {
-    return res.status(400).send({
-      error: 'Setting not allowed',
-    });
-  }
-
-  let guildSetting = await prisma.gm_guild_settings.findFirst({
-    where: {
-      guildID,
-      setting,
-    },
-  });
-
-  if (guildSetting) {
-    return res.status(409).send({
-      error: 'Setting already exists',
-    });
-  }
-
-  return res.send(
-    await prisma.gm_guild_settings.create({
-      data: {
-        guildID,
-        setting,
-        value,
-      },
-    }),
-  );
-}
-
-export async function deleteGuildSetting(req: Request, res: Response) {
-  const { guildID, setting } = req.params;
-  const guildSetting = await prisma.gm_guild_settings.findFirst({
-    where: {
-      guildID,
-      setting,
-    },
-  });
-
-  if (!guildSetting) {
+  } catch (error) {
     return res.status(404).send({
       error: 'Setting not found',
     });
   }
+}
 
-  await prisma.gm_guild_settings.delete({
-    where: {
-      guildID_setting: {
-        guildID,
-        setting,
-      },
-    },
-  });
-  return res.send(guildSetting);
+export async function putGuildSetting(req: Request, res: Response) {
+  const guild = req.guild!;
+  const { setting } = req.params;
+  const { value } = req.body;
+
+  if (badArgument([value])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  try {
+    return res.send(await guild.setSetting(setting, value));
+  } catch (error) {
+    return res.status(404).json({
+      error: 'Setting not found or not allowed',
+    });
+  }
 }
 
 export async function getServerSettings(req: Request, res: Response) {
