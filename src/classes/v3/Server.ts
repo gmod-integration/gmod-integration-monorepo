@@ -81,6 +81,15 @@ export class Server extends BaseClass {
     const data: Record<string, any> = {};
     for (const setting of settings) {
       data[setting.setting] = setting.value;
+      if (serverSettings[setting.setting] && serverSettings[setting.setting].acceptedValues) {
+        if (
+          serverSettings[setting.setting].acceptedValues.includes(true) ||
+          serverSettings[setting.setting].acceptedValues.includes(false)
+        ) {
+          if (setting.value === '0' || setting.value === 'false') data[setting.setting] = false;
+          if (setting.value === '1' || setting.value === 'true') data[setting.setting] = true;
+        }
+      }
     }
 
     return data;
@@ -106,8 +115,13 @@ export class Server extends BaseClass {
 
     if (result) {
       let rtnValue: any = result.value;
-      if (rtnValue === '0') rtnValue = false;
-      if (rtnValue === '1') rtnValue = true;
+      if (
+        (serverSettings[setting].acceptedValues && serverSettings[setting].acceptedValues.includes(true)) ||
+        serverSettings[setting].acceptedValues.includes(false)
+      ) {
+        if (rtnValue === '0' || rtnValue === 'false') rtnValue = false;
+        if (rtnValue === '1' || rtnValue === 'true') rtnValue = true;
+      }
 
       await redis.set(redisKey, JSON.stringify(rtnValue), 'EX', 10);
       return rtnValue;
@@ -136,8 +150,6 @@ export class Server extends BaseClass {
       },
     });
 
-    if (value === true || value === 'true') value = '1';
-    if (value === false || value === 'false') value = '0';
     value = value.toString();
 
     if (result) {
@@ -165,7 +177,7 @@ export class Server extends BaseClass {
     await redis.del(`server:${this.id}:setting:${setting}`);
 
     return {
-      value,
+      value: await this.getSetting(setting),
     };
   }
 
