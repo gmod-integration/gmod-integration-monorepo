@@ -1,7 +1,6 @@
 import { getSteamUserAvatarLarge } from '../../steam/index.js';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
 import { discordConfig } from '../../config/index.js';
-import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import prisma from '../../prisma.js';
@@ -15,10 +14,6 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
 
   if (!text || text === '') {
     return { skip: true, message: 'No message' };
-  }
-
-  if (!(await isGuildPremium(server.getGuildID()))) {
-    return { skip: true, message: 'Server is not premium' };
   }
 
   const syncChatChannel = await server.getSyncChatChannel();
