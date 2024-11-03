@@ -24,4 +24,12 @@ export class Team extends BaseClass implements TeamInterface {
     this.id = obj.id;
     this.name = obj.name;
   }
+
+  getName(): string {
+    return this.name;
+  }
+
+  getID(): number {
+    return this.id;
+  }
 }
