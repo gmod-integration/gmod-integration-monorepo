@@ -1,4 +1,4 @@
-import { getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
+import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'discord.js';
@@ -29,24 +29,12 @@ export async function sendMessageToGmod(message: Message) {
 
   let serversInfo = await getServersFromDiscordGuildID(message.guild.id);
 
-  for (const row of channels) {
-    const server = serversInfo.find((server: Server) => server.getID() === row.server);
-    if (!server || !server.isValid()) {
-      console.error(`Server ${row.server} not found`);
-      continue;
-    }
-
+  for (const server of serversInfo) {
     const syncChatChannel = await server.getSyncChatChannel();
-    if (!syncChatChannel) {
-      console.error(`Server ${row.server} not syncing chat because syncChatChannel is not set`);
-      continue;
-    }
+    if (!syncChatChannel) continue;
 
     const syncChatDirection = await server.getSetting('syncChatDirection');
-    if (syncChatDirection === 'gmodToDiscord') {
-      console.log(`Server ${row.server} syncing chat from Gmod to Discord`);
-      continue;
-    }
+    if (syncChatDirection === 'gmodToDiscord') continue;
 
     if (!(await isGuildPremium(message.guild.id))) {
       return message.reply({
@@ -55,7 +43,7 @@ export async function sendMessageToGmod(message: Message) {
       });
     }
 
-    wsSendToServer(row.server, {
+    wsSendToServer(server.getID(), {
       method: 'wsPlayerSay',
       name: message.author.username,
       content: message.content,
