@@ -4,7 +4,7 @@ import { discordConfig } from '../../config/index.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import prisma from '../../prisma.js';
-import { gm_server_sync_chat_filter } from '@prisma/client';
+import { gm_server_sync_chat_filter, gm_server_sync_chat_filter_element } from '@prisma/client';
 
 export async function sendPlayerSay(server: Server, player: PlayerGmod, text: string, onlyTeam: boolean) {
   let anonymous = false;
@@ -50,15 +50,15 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
     }
   }
 
-  function getCorrectValue(element: string) {
+  function getCorrectValue(element: gm_server_sync_chat_filter_element) {
     switch (element) {
-      case 'steamID64':
+      case gm_server_sync_chat_filter_element.steamID64:
         return player.steamID64;
-      case 'userGroup':
+      case gm_server_sync_chat_filter_element.userGroup:
         return player.userGroup;
-      case 'teamName':
+      case gm_server_sync_chat_filter_element.teamName:
         return player.team.name;
-      case 'message':
+      case gm_server_sync_chat_filter_element.message:
         return text;
     }
   }

@@ -5,10 +5,10 @@ import { getUserFromSteamID64 } from './User.js';
 import { Server } from './Server.js';
 import redis from '../../redis/index.js';
 import { gmLog, LogLevel } from '../../utils/logger.js';
-import { Position } from './Position';
-import { Angle } from './Angle';
-import { CustomValues } from './CustomValues';
-import { getTranslate } from '../../utils/localizations';
+import { Position } from './Position.js';
+import { Angle } from './Angle.js';
+import { CustomValues } from './CustomValues.js';
+import { getTranslate } from '../../utils/localizations.js';
 
 export interface PlayerGmodInterface {
   steamID: string;
