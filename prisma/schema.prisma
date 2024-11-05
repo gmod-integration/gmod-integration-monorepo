@@ -1,0 +1,639 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ServerStatus {
+  server    String    @id @db.VarChar(255)
+  message   String    @default("") @db.VarChar(255)
+  channel   String    @default("") @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [server], references: [id], onDelete: Cascade, map: "ServerStatus_ibfk_1")
+}
+
+model banUsers {
+  id        Int      @id @default(autoincrement())
+  steamID64 String   @default("") @db.VarChar(255)
+  ip        String   @default("") @db.VarChar(255)
+  discordID String   @default("") @db.VarChar(255)
+  reason    String   @default("") @db.VarChar(255)
+  banDate   DateTime @default(now())
+  banTime   Int      @default(0)
+  unbanDate DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 2 YEAR)"))
+  admin     String   @default("") @db.VarChar(255)
+  name      String   @default("") @db.VarChar(255)
+  permanent Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model gm_discordToken {
+  discordID      String   @id @db.VarChar(255)
+  accessToken    String   @db.VarChar(255)
+  refreshToken   String   @db.VarChar(255)
+  creationDate   DateTime @default(now())
+  expirationDate DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 7 DAY)"))
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model gm_gmodstore_purchases {
+  steamID64 String   @id @db.VarChar(255)
+  userID    String   @default("") @db.VarChar(255)
+  guild     String   @default("") @db.VarChar(255)
+  token     String   @default("") @db.VarChar(255)
+  revoke    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model gm_guild {
+  guild                    String                     @id @db.VarChar(255)
+  name                     String                     @default("") @db.VarChar(255)
+  member                   Int                        @default(0)
+  language                 String                     @default("en") @db.VarChar(255)
+  createdAt                DateTime                   @default(now())
+  updatedAt                DateTime                   @updatedAt
+  gm_guild_auto_roles      gm_guild_auto_roles[]
+  gm_guild_not_verify_role gm_guild_not_verify_role[]
+  gm_guild_premium         gm_guild_premium?
+  gm_guild_settings        gm_guild_settings[]
+  gm_guild_verify_msg      gm_guild_verify_msg?
+  gm_guild_verify_role     gm_guild_verify_role[]
+  gm_role_auto             gm_role_auto?
+  gm_server                gm_server[]
+  gm_server_links          gm_server_links[]
+  gm_sync_chat             gm_sync_chat[]
+}
+
+model gm_guild_auto_roles {
+  guildID   String   @db.VarChar(255)
+  roleID    String   @id @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gm_guild  gm_guild @relation(fields: [guildID], references: [guild], onDelete: Cascade, map: "gm_guild_auto_roles_ibfk_1")
+
+  @@index([guildID], map: "guildID")
+}
+
+model gm_guild_not_verify_role {
+  guildID   String   @db.VarChar(255)
+  roleID    String   @id @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gm_guild  gm_guild @relation(fields: [guildID], references: [guild], onDelete: Cascade, map: "gm_guild_not_verify_role_ibfk_1")
+
+  @@index([guildID], map: "guildID")
+}
+
+model gm_guild_premium {
+  guildID     String   @id @db.VarChar(255)
+  transaction String?  @db.Text
+  buyer       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  gm_guild    gm_guild @relation(fields: [guildID], references: [guild], onDelete: Cascade, map: "gm_guild_premium_ibfk_1")
+}
+
+model gm_guild_settings {
+  guildID   String   @db.VarChar(255)
+  setting   String   @db.VarChar(255)
+  value     String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gm_guild  gm_guild @relation(fields: [guildID], references: [guild], onDelete: Cascade, map: "gm_guild_settings_ibfk_1")
+
+  @@id([guildID, setting])
+}
+
+model gm_guild_verify_msg {
+  guildID   String   @id @db.VarChar(255)
+  messageID String   @db.VarChar(255)
+  channelID String   @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gm_guild  gm_guild @relation(fields: [guildID], references: [guild], onDelete: Cascade, map: "gm_guild_verify_msg_ibfk_1")
+}
+
+model gm_guild_verify_role {
+  id         Int      @id @default(autoincrement())
+  guildID    String   @db.VarChar(255)
+  roleID     String   @db.VarChar(255)
+  isGiveRole Boolean  @default(true)
+  enabled    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  gm_guild   gm_guild @relation(fields: [guildID], references: [guild], onDelete: Cascade, map: "gm_guild_verify_role_ibfk_1")
+
+  @@index([guildID], map: "guildID")
+}
+
+model gm_panelToken {
+  id             String   @id @default(uuid()) @db.Char(36)
+  discordID      String   @db.VarChar(255)
+  accessToken    String   @db.VarChar(255)
+  creationDate   DateTime @default(now())
+  expirationDate DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 7 DAY)"))
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  os             String?  @db.VarChar(255)
+  ip             String?  @db.VarChar(255)
+  country        String?  @db.VarChar(255)
+  browser        String?  @db.VarChar(255)
+}
+
+model gm_role_auto {
+  guild     String   @id @db.VarChar(255)
+  id        String   @db.VarChar(255)
+  channel   String   @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gm_guild  gm_guild @relation(fields: [guild], references: [guild], onDelete: Cascade, map: "gm_role_auto_ibfk_1")
+}
+
+model gm_server {
+  id                            String                          @id @db.VarChar(255)
+  token                         String                          @db.VarChar(255)
+  description                   String?                         @db.Text
+  publicTempToken               String?                         @default("") @db.VarChar(255)
+  isPublic                      Boolean                         @default(false)
+  guild                         String                          @db.VarChar(255)
+  ip                            String?                         @default("127.0.0.1") @db.VarChar(255)
+  port                          String?                         @default("27015") @db.VarChar(255)
+  name                          String                          @default("New Gmod Server") @db.VarChar(255)
+  image                         String?                         @default("") @db.VarChar(255)
+  verified                      Boolean                         @default(false)
+  createdAt                     DateTime                        @default(now())
+  updatedAt                     DateTime                        @updatedAt
+  ServerStatus                  ServerStatus?
+  gm_guild                      gm_guild                        @relation(fields: [guild], references: [guild], onDelete: Cascade, map: "gm_server_ibfk_1")
+  gm_server_customValues        gm_server_customValues[]
+  gm_server_errors              gm_server_errors[]
+  gm_server_leaderboard_options gm_server_leaderboard_options[]
+  gm_server_logs                gm_server_logs[]
+  gm_server_logs_channel        gm_server_logs_channel?
+  gm_server_pseudo              gm_server_pseudo[]
+  gm_server_report_bugs         gm_server_report_bugs[]
+  gm_server_roles               gm_server_roles[]
+  gm_server_screenshot_channels gm_server_screenshot_channels[]
+  gm_server_screenshots         gm_server_screenshots[]
+  gm_server_settings            gm_server_settings[]
+  gm_server_stat                gm_server_stat[]
+  gm_server_stat_session        gm_server_stat_session[]
+  gm_server_status              gm_server_status?
+  gm_server_sync_chat_filter    gm_server_sync_chat_filter[]
+  gm_server_sync_roles          gm_server_sync_roles[]
+  gm_server_vote                gm_server_vote[]
+  gm_server_vote_channels       gm_server_vote_channels?
+  gm_server_warn                gm_server_warn[]
+  gm_server_warn_options        gm_server_warn_options[]
+  gm_status                     gm_status?
+  gm_status_button              gm_status_button[]
+  gm_sync_chat                  gm_sync_chat?
+
+  @@index([guild], map: "guild")
+}
+
+model gm_server_customValues {
+  serverID  String    @db.VarChar(255)
+  valueName String    @id @db.VarChar(255)
+  enable    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_customValues_ibfk_1")
+
+  @@index([serverID], map: "serverID")
+}
+
+model gm_server_errors {
+  id         Int       @id @default(autoincrement())
+  serverID   String    @db.VarChar(255)
+  count      Int
+  realm      String    @db.VarChar(255)
+  error      String    @db.Text
+  stack      String    @db.Text
+  name       String    @db.VarChar(255)
+  steamID64  String    @default("") @db.VarChar(255)
+  workshopID String    @default("") @db.VarChar(255)
+  uptime     Int
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  gm_server  gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_errors_ibfk_1")
+
+  @@index([serverID], map: "serverID")
+}
+
+model gm_server_leaderboard_options {
+  serverID    String    @db.VarChar(255)
+  messageID   String    @default("") @db.VarChar(255)
+  category    String    @default("") @db.VarChar(255)
+  limitValue  Int       @default(10)
+  offsetValue Int       @default(0)
+  orderValue  String    @default("DESC") @db.VarChar(255)
+  page        Int       @default(1)
+  totalPage   Int       @default(1)
+  total       Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  gm_server   gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_leaderboard_options_ibfk_1")
+
+  @@id([serverID, messageID])
+}
+
+model gm_server_links {
+  id        Int      @id @default(autoincrement())
+  url       String   @default("https://example.com") @db.TinyText
+  alias     String   @default("Example") @db.VarChar(255)
+  guild     String   @db.VarChar(255)
+  active    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gm_guild  gm_guild @relation(fields: [guild], references: [guild], onDelete: Cascade, map: "gm_server_links_ibfk_1")
+
+  @@index([guild], map: "guild")
+}
+
+model gm_server_logs {
+  id                      Int       @id @default(autoincrement())
+  serverID                String    @db.VarChar(255)
+  type                    String    @db.VarChar(255)
+  data                    Json      @default("{}")
+  playerInvolvedSteamID64 Json      @default("[]")
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  gm_server               gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_logs_ibfk_1")
+
+  @@index([serverID], map: "serverID")
+}
+
+model gm_server_logs_channel {
+  serverID     String    @id @db.VarChar(255)
+  channelID    String    @db.VarChar(255)
+  webhookID    String    @db.VarChar(255)
+  webhookToken String    @db.VarChar(255)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  gm_server    gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_logs_channel_ibfk_1")
+}
+
+model gm_server_pseudo {
+  id        Int       @id @default(autoincrement())
+  serverID  String    @db.VarChar(255)
+  role      String    @default("") @db.VarChar(255)
+  name      String    @default("") @db.VarChar(255)
+  prefix    String    @default("") @db.VarChar(255)
+  enabled   Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_pseudo_ibfk_1")
+
+  @@index([serverID], map: "serverID")
+}
+
+model gm_server_report_bugs {
+  id          Int                              @id @default(autoincrement())
+  serverID    String                           @db.VarChar(255)
+  steamID64   String                           @db.VarChar(255)
+  description String                           @db.Text
+  status      gm_server_report_bugs_status     @default(open)
+  steps       String                           @db.Text
+  expected    String                           @db.Text
+  actual      String                           @db.Text
+  importance  gm_server_report_bugs_importance @default(low)
+  screenshot  String                           @default("") @db.VarChar(255)
+  createdAt   DateTime                         @default(now())
+  updatedAt   DateTime                         @updatedAt
+  gm_server   gm_server                        @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_report_bugs_ibfk_1")
+
+  @@index([serverID], map: "serverID")
+}
+
+model gm_server_roles {
+  id            Int       @id @default(autoincrement())
+  serverID      String    @db.VarChar(255)
+  role          String?   @db.VarChar(255)
+  roleName      String    @default("") @db.VarChar(255)
+  prefix        String    @default("") @db.VarChar(255)
+  discordRoleID String?   @db.VarChar(255)
+  enablePrefix  Boolean   @default(false)
+  enableSync    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  gm_server     gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_roles_ibfk_1")
+
+  @@index([serverID], map: "serverID")
+}
+
+model gm_server_screenshot_channels {
+  server    String    @db.VarChar(255)
+  channelID String    @default("") @db.VarChar(255)
+  webhook   String    @default("") @db.VarChar(255)
+  token     String    @default("") @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [server], references: [id], onDelete: Cascade, map: "gm_server_screenshot_channels_ibfk_1")
+
+  @@id([server])
+}
+
+model gm_server_screenshots {
+  id        Int       @id @default(autoincrement())
+  serverID  String    @db.VarChar(255)
+  title     String    @default("") @db.VarChar(255)
+  player    String    @db.LongText
+  url       String    @default("") @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_screenshots_ibfk_1")
+
+  @@index([serverID], map: "serverID")
+}
+
+model gm_server_settings {
+  serverID  String    @db.VarChar(255)
+  setting   String    @db.VarChar(255)
+  value     String    @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_settings_ibfk_1")
+
+  @@id([serverID, setting])
+}
+
+model gm_server_stat {
+  server_id         String        @db.VarChar(255)
+  steam_id          String        @db.VarChar(255)
+  name              String        @db.VarChar(255)
+  rank              String        @default("user") @db.VarChar(255)
+  total_time        Int           @default(0)
+  total_death       Int           @default(0)
+  total_kill        Int           @default(0)
+  total_money       Int           @default(0)
+  total_connect     Int           @default(1)
+  last_connect      DateTime      @updatedAt
+  first_join        DateTime      @default(now())
+  custom_values     Json          @default("{}")
+  bypassMaintenance Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  gm_server         gm_server     @relation(fields: [server_id], references: [id], onDelete: Cascade, map: "gm_server_stat_ibfk_1")
+  gm_user_steam     gm_user_steam @relation(fields: [steam_id], references: [steam_id], onDelete: Cascade, map: "gm_server_stat_ibfk_2")
+
+  @@id([server_id, steam_id])
+  @@index([steam_id], map: "steam_id")
+}
+
+model gm_server_stat_session {
+  id            Int           @id @default(autoincrement())
+  serverID      String        @db.VarChar(255)
+  steamID64     String        @db.VarChar(255)
+  time          Int           @default(0)
+  kills         Int           @default(0)
+  deaths        Int           @default(0)
+  customValues  String        @db.LongText
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  gm_server     gm_server     @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_stat_session_ibfk_489")
+  gm_user_steam gm_user_steam @relation(fields: [steamID64], references: [steam_id], onDelete: Cascade, map: "gm_server_stat_session_ibfk_490")
+
+  @@index([serverID], map: "serverID")
+  @@index([steamID64], map: "steamID64")
+}
+
+model gm_server_status {
+  id         String    @id @db.VarChar(255)
+  ip         String    @default("") @db.VarChar(255)
+  port       Int       @default(0)
+  hostname   String    @default("") @db.VarChar(255)
+  maxPlayers Int       @default(0)
+  players    Int       @default(0)
+  map        String    @default("") @db.VarChar(255)
+  gameMode   String    @default("") @db.VarChar(255)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  gm_server  gm_server @relation(fields: [id], references: [id], onDelete: Cascade, map: "gm_server_status_ibfk_1")
+}
+
+model gm_server_sync_chat_filter {
+  id        Int                                 @id @default(autoincrement())
+  serverID  String                              @db.VarChar(255)
+  element   gm_server_sync_chat_filter_element  @default(message)
+  operator  gm_server_sync_chat_filter_operator @default(startWith)
+  trigger   String                              @default("") @db.VarChar(255)
+  action    gm_server_sync_chat_filter_action   @default(block)
+  active    Boolean                             @default(false)
+  createdAt DateTime                            @default(now())
+  updatedAt DateTime                            @updatedAt
+  gm_server gm_server                           @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_sync_chat_filter_ibfk_1")
+
+  @@index([serverID], map: "serverID")
+}
+
+model gm_server_sync_roles {
+  serverID  String    @db.VarChar(255)
+  roleID    String    @db.VarChar(255)
+  userGroup String    @default("") @db.VarChar(255)
+  enable    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_sync_roles_ibfk_1")
+
+  @@id([serverID, roleID])
+}
+
+model gm_server_vote {
+  id        Int       @id @default(autoincrement())
+  serverID  String    @db.VarChar(255)
+  userID    String    @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_vote_ibfk_347")
+  gm_user   gm_user   @relation(fields: [userID], references: [id], onDelete: Cascade, map: "gm_server_vote_ibfk_348")
+
+  @@index([serverID], map: "serverID")
+  @@index([userID], map: "userID")
+}
+
+model gm_server_vote_channels {
+  serverID     String    @id @db.VarChar(255)
+  channelID    String    @db.VarChar(255)
+  webhookID    String    @db.VarChar(255)
+  webhookToken String    @db.VarChar(255)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  gm_server    gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_vote_channels_ibfk_1")
+}
+
+model gm_server_warn {
+  id             Int       @id @default(autoincrement())
+  serverID       String    @db.VarChar(255)
+  userSteamID64  String    @db.VarChar(255)
+  adminSteamID64 String    @db.VarChar(255)
+  reason         String    @db.Text
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  gm_server      gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_warn_ibfk_1")
+
+  @@index([serverID], map: "serverID")
+}
+
+model gm_server_warn_options {
+  msgID     String    @db.VarChar(255)
+  serverID  String    @db.VarChar(255)
+  steamID64 String    @db.VarChar(255)
+  total     Int
+  limit     Int
+  offset    Int
+  order     String    @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_warn_options_ibfk_1")
+
+  @@id([msgID, steamID64])
+  @@index([serverID], map: "serverID")
+}
+
+model gm_status {
+  server    String    @id @db.VarChar(255)
+  message   String    @default("") @db.VarChar(255)
+  channel   String    @default("") @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [server], references: [id], onDelete: Cascade, map: "gm_status_ibfk_1")
+}
+
+model gm_status_button {
+  id        Int       @id @default(autoincrement())
+  server    String    @db.VarChar(255)
+  name      String    @default("Example") @db.VarChar(255)
+  url       String    @default("https://example.com") @db.TinyText
+  emoji     String    @default("?") @db.VarChar(255)
+  enable    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [server], references: [id], onDelete: Cascade, map: "gm_status_button_ibfk_1")
+
+  @@index([server], map: "server")
+}
+
+model gm_sync_chat {
+  server    String    @id @db.VarChar(255)
+  guild     String    @db.VarChar(255)
+  id        String    @default("") @db.VarChar(255)
+  channel   String    @default("") @db.VarChar(255)
+  token     String    @default("") @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [server], references: [id], onDelete: Cascade, map: "gm_sync_chat_ibfk_1")
+  gm_guild  gm_guild  @relation(fields: [guild], references: [guild], onDelete: Cascade, map: "gm_sync_chat_ibfk_2")
+
+  @@index([guild], map: "guild")
+}
+
+model gm_user {
+  id                     String                   @id @db.VarChar(255)
+  rank                   String                   @default("user") @db.VarChar(255)
+  steam                  String?                  @db.VarChar(255)
+  username               String                   @default("") @db.VarChar(255)
+  last_oauth             DateTime                 @default(now())
+  trust                  Int                      @default(50)
+  token                  String?                  @db.VarChar(255)
+  token_expires          DateTime?                @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 7 DAY)"))
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  gm_server_vote         gm_server_vote[]
+  gm_users_data_request  gm_users_data_request[]
+  gm_users_notifications gm_users_notifications[]
+}
+
+model gm_user_steam {
+  steam_id               String                   @id @db.VarChar(255)
+  username               String                   @default("") @db.VarChar(255)
+  last_ip                String                   @default("") @db.VarChar(255)
+  last_connect           DateTime                 @default(now())
+  total_time             Int                      @default(0)
+  total_death            Int                      @default(0)
+  total_kill             Int                      @default(0)
+  total_connect          Int                      @default(0)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
+  gm_server_stat         gm_server_stat[]
+  gm_server_stat_session gm_server_stat_session[]
+}
+
+model gm_users_data_request {
+  id             String   @id @default(uuid()) @db.Char(36)
+  discordID      String   @db.VarChar(255)
+  status         String   @default("pending") @db.VarChar(255)
+  expirationDate DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 1 DAY)"))
+  downloadLink   String?  @db.VarChar(255)
+  code           String   @db.VarChar(255)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  gm_user        gm_user  @relation(fields: [discordID], references: [id], onDelete: Cascade, map: "gm_users_data_request_ibfk_1")
+
+  @@index([discordID], map: "discordID")
+}
+
+model gm_users_notifications {
+  id        Int      @id @default(autoincrement())
+  discordID String   @db.VarChar(255)
+  type      String   @db.VarChar(255)
+  message   String   @db.VarChar(255)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gm_user   gm_user  @relation(fields: [discordID], references: [id], onDelete: Cascade, map: "gm_users_notifications_ibfk_1")
+
+  @@index([discordID], map: "discordID")
+}
+
+model users {
+  steamID64 String   @id @db.VarChar(255)
+  steamID   String   @default("") @db.VarChar(255)
+  name      String   @default("") @db.VarChar(255)
+  lastIP    String   @default("") @db.VarChar(255)
+  IPS       String   @db.LongText
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum gm_server_sync_chat_filter_element {
+  message
+  teamName
+  userGroup
+  steamID64
+}
+
+enum gm_server_sync_chat_filter_operator {
+  contain
+  notContain
+  equal
+  notEqual
+  startWith
+  endWith
+}
+
+enum gm_server_report_bugs_status {
+  open
+  closed
+}
+
+enum gm_server_sync_chat_filter_action {
+  block
+  relay
+  anonymize
+}
+
+enum gm_server_report_bugs_importance {
+  low
+  medium
+  high
+  trivial
+  critical
+}

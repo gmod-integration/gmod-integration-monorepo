@@ -5,3 +5,4 @@ node_modules
 qodana.yaml
 .env
 gdpr-request/*
+dist

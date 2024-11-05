@@ -23,13 +23,15 @@ jobs:
           NODE_ENV: production
         run: |
           ssh -o StrictHostKeyChecking=no ${{ vars.SSH_USER }}@${{ vars.SSH_HOST }} << 'EOF'
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-            export PATH=$(nvm which current | xargs dirname):$PATH 
-            cd ${{ vars.DEPLOY_PATH }}
-            git fetch --all
-            git reset --hard origin/main
-            git pull
-            npm install
-            pm2 restart gmod-integration-api
+          export NVM_DIR="$HOME/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+          export PATH=$(nvm which current | xargs dirname):$PATH 
+          cd ${{ vars.DEPLOY_PATH }}
+          git fetch --all
+          git reset --hard origin/main
+          git pull
+          npm install
+          npm run build
+          npx prisma migrate deploy
+          pm2 restart gmod-integration-api
           EOF
