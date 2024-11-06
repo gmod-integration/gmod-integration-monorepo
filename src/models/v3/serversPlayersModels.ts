@@ -154,6 +154,10 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
   });
 
   if (user) {
+    let IPArray = user.IPS;
+    if (!Array.isArray(IPArray)) IPArray = [IPArray];
+    if (!IPArray.includes(IP)) IPArray.push(IP);
+
     await prisma.users.update({
       where: {
         steamID64: steamID64,
@@ -161,7 +165,7 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
       data: {
         name: name,
         lastIP: IP,
-        IPS: user.IPS ? (user.IPS.includes(IP) ? [user.IPS] : [...user.IPS, IP]).toString() : IP,
+        IPS: IPArray,
       },
     });
   } else {
@@ -171,7 +175,7 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
         steamID: steamID,
         name: name,
         lastIP: IP,
-        IPS: [IP].toString(),
+        IPS: [IP],
       },
     });
   }

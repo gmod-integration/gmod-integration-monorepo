@@ -588,7 +588,7 @@ model users {
   steamID    String?   @default("") @db.Text
   name       String?   @default("") @db.Text
   lastIP     String?   @default("") @db.Text
-  IPS        String?   @db.LongText
+  IPS        Json
   lastUpdate DateTime? @updatedAt
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
