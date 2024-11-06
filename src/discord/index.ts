@@ -479,8 +479,9 @@ setInterval(async () => {
       }
 
       if (customStatus == 'rotate') {
-        const status = botStatusList[lastStatusID[key]];
-        lastStatusID[key] = (lastStatusID[key] + 1) % Object.keys(botStatusList).length;
+        const objKeys = Object.keys(botStatusList);
+        const status = botStatusList[objKeys[lastStatusID[key]]] || 'default status';
+        lastStatusID[key] = (lastStatusID[key] + 1) % objKeys.length;
         await setPresence(status);
       } else if (botStatusList[customStatus]) {
         await setPresence(botStatusList[customStatus]);
