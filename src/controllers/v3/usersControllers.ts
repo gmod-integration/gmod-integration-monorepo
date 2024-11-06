@@ -1282,16 +1282,16 @@ export async function deleteGmodPurchase(req: Request, res: Response) {
 }
 
 export async function putGuildBotInstance(req: Request, res: Response) {
-  const { username, avatar, token } = req.body;
+  const { username, avatar, token, status } = req.body;
   const guild = req.guild!;
 
-  if (badArgument([username, avatar, token])) {
+  if (badArgument([username, avatar, token, status])) {
     return res.status(400).send({
       error: 'Missing required arguments',
     });
   }
 
-  await guild.updateBotInstanceInfo({ username, avatar, token });
+  await guild.updateBotInstanceInfo({ username, avatar, token, status });
   return res.send((await guild.getBotClientInfo(req.panelUser!.user)) || {});
 }
 

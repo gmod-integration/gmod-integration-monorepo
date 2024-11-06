@@ -20,6 +20,10 @@ const guildSettings: Record<string, any> = {
     defaultValue: false,
     acceptedValues: [true, false],
   },
+  bot_status: {
+    defaultValue: 'disabled',
+    acceptedValues: ['disabled', 'mapName', 'playerCount', 'rotate'],
+  },
 };
 
 export class Guild {
@@ -188,6 +192,13 @@ export class Guild {
       onGuild = botInstance.guilds.cache.has(this.id);
     }
 
+    let status;
+    try {
+      status = await this.getSetting('bot_status');
+    } catch (error) {
+      status = 'disabled';
+    }
+
     return {
       id: botInstance.user.id,
       username: botInstance.user.username,
@@ -197,6 +208,7 @@ export class Guild {
       active: !!activeGuild,
       purchased: !!purchased,
       onGuild,
+      status,
     };
   }
 
@@ -224,12 +236,12 @@ export class Guild {
     await this.reloadBotInstance();
   }
 
-  async updateBotInstanceInfo(data: { username: string; avatar: string; token: string }) {
+  async updateBotInstanceInfo(data: { username: string; avatar: string; token: string; status: string }) {
     const customBotInstance = await this.getCustomBotClient();
     if (!customBotInstance) throw new Error('Bot client not found');
     if (!customBotInstance.user) throw new Error('Bot client user not found');
 
-    const { username, avatar } = data;
+    const { username, avatar, status } = data;
 
     if (username && username !== customBotInstance.user.username) {
       await customBotInstance.user.setUsername(username);
@@ -237,6 +249,10 @@ export class Guild {
 
     if (avatar && avatar !== customBotInstance.user.avatarURL()) {
       await customBotInstance.user.setAvatar(avatar);
+    }
+
+    if (status) {
+      await this.setSetting('bot_status', status);
     }
   }
 
