@@ -115,12 +115,14 @@ export class Server extends BaseClass {
 
     if (result) {
       let rtnValue: any = result.value;
-      if (
-        (serverSettings[setting].acceptedValues && serverSettings[setting].acceptedValues.includes(true)) ||
-        serverSettings[setting].acceptedValues.includes(false)
-      ) {
-        if (rtnValue === '0' || rtnValue === 'false') rtnValue = false;
-        if (rtnValue === '1' || rtnValue === 'true') rtnValue = true;
+      if (serverSettings[setting].acceptedValues) {
+        if (
+          serverSettings[setting].acceptedValues.includes(true) ||
+          serverSettings[setting].acceptedValues.includes(false)
+        ) {
+          if (rtnValue === '0' || rtnValue === 'false') rtnValue = false;
+          if (rtnValue === '1' || rtnValue === 'true') rtnValue = true;
+        }
       }
 
       await redis.set(redisKey, JSON.stringify(rtnValue), 'EX', 10);
