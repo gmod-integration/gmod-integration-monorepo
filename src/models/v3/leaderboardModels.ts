@@ -148,7 +148,7 @@ export async function saveLeaderboardOptions(messageID: string, options: any) {
   if (DBOptions) {
     return prisma.gm_server_leaderboard_options.update({
       where: {
-        serverID_messageID: {
+        messageID_serverID: {
           serverID: serverID,
           messageID: messageID,
         },
@@ -291,6 +291,7 @@ export async function handleLeaderboardInteraction(interaction: ButtonInteractio
   let offset = options.offsetValue;
   let limit = options.limitValue;
   let messageID = options.messageID;
+  let total = options.total || 0;
 
   if (interaction.customId === 'leaderboard_previous') {
     offset = offset - limit;
@@ -300,7 +301,7 @@ export async function handleLeaderboardInteraction(interaction: ButtonInteractio
   } else if (interaction.customId === 'leaderboard_first') {
     offset = 0;
   } else if (interaction.customId === 'leaderboard_last') {
-    offset = options.total - limit;
+    offset = options.total ? options.total - limit : 0;
     if (offset < 0) offset = 0;
   }
 

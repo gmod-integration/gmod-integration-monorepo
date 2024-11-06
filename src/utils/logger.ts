@@ -147,8 +147,15 @@ export async function logServer(server: Server, type: string, data?: any) {
     dataToSave.plyTarget = data.player;
     dataToSave.plyAttacker = attacker;
     dscList.push(await getTranslate('attacker', lang));
-    dscList.push((await getTranslate('steamID64', lang)) + ': `' + attacker.steamID64 + '`');
-    dscList.push((await getTranslate('name', lang)) + ': `' + attacker.name + '`');
+    try {
+      const attacker = new PlayerGmod(data.attacker);
+      dataToSave.attacker = attacker;
+      dscList.push((await getTranslate('steamID64', lang)) + ': `' + attacker.steamID64 + '`');
+      dscList.push((await getTranslate('name', lang)) + ': `' + attacker.name + '`');
+    } catch (error) {
+      dataToSave.attacker = data.attacker;
+      dscList.push((await getTranslate('entity', lang)) + ': `' + data.attacker.class + '`');
+    }
     dscList.push('\n');
     dscList.push(await getTranslate('victim', lang));
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');

@@ -81,23 +81,23 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
         }
         break;
       case 'contain':
-        if (getCorrectValue(rule.element).includes(rule.trigger)) {
+        if (getCorrectValue(rule.element)?.includes(rule.trigger)) {
           executeAction(rule.action);
         }
         break;
       case 'notContain':
-        if (!getCorrectValue(rule.element).includes(rule.trigger)) {
+        if (!getCorrectValue(rule.element)?.includes(rule.trigger)) {
           executeAction(rule.action);
         }
         break;
       case 'startWith':
-        if (getCorrectValue(rule.element).startsWith(rule.trigger)) {
+        if (getCorrectValue(rule.element)?.startsWith(rule.trigger)) {
           outputStr = text.substring(rule.trigger.length);
           executeAction(rule.action);
         }
         break;
       case 'endWith':
-        if (getCorrectValue(rule.element).endsWith(rule.trigger)) {
+        if (getCorrectValue(rule.element)?.endsWith(rule.trigger)) {
           outputStr = text.substring(0, text.length - rule.trigger.length);
           executeAction(rule.action);
         }
@@ -161,7 +161,7 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
       data: {
         name: name,
         lastIP: IP,
-        IPS: (user.IPS.includes(IP) ? [user.IPS] : [...user.IPS, IP]).toString(),
+        IPS: user.IPS ? (user.IPS.includes(IP) ? [user.IPS] : [...user.IPS, IP]).toString() : IP,
       },
     });
   } else {
@@ -193,7 +193,7 @@ export async function saveConnectionSteamInfo(steamID64: string, name: string, I
         data: {
           username: name,
           last_ip: IP,
-          total_connect: player.total_connect + 1,
+          total_connect: player.total_connect ? player.total_connect + 1 : 1,
         },
       });
     } else {

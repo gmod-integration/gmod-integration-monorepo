@@ -496,6 +496,9 @@ export class Server extends BaseClass {
             steam_id: steamID64,
             server_id: this.id,
             name,
+            last_connect: new Date(),
+            first_join: new Date(),
+            custom_values: '{}',
           },
         });
       }
@@ -633,8 +636,10 @@ export class Server extends BaseClass {
       }
       await prisma.gm_server_screenshot_channels.delete({
         where: {
-          channelID: screenshotChannel.channelID,
-          server: this.id,
+          server_adminCmd: {
+            server: this.getID(),
+            adminCmd: screenshotChannel.adminCmd,
+          },
         },
       });
     }
@@ -855,8 +860,10 @@ export class Server extends BaseClass {
       }
       await prisma.gm_sync_chat.delete({
         where: {
-          id: syncChat.id,
-          server: this.id,
+          guild_server: {
+            guild: syncChat.guild,
+            server: this.id,
+          },
         },
       });
     }

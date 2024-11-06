@@ -9,6 +9,7 @@ import redis from '../../redis/index.js';
 import prisma from '../../prisma.js';
 import { Guild, GuildMember } from 'discord.js';
 import { PanelUser } from '../../classes/v3/PanelUser.js';
+import { v4 as uuidv4 } from 'uuid';
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
   const guildBotInstance = await getGuildClient(member.guild.id, false);
@@ -177,62 +178,6 @@ export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
   return true;
 }
 
-export async function addNotVerifiedRoleToUser(guild: Guild, member: GuildMember) {
-  const roles = await prisma.gm_guild_not_verify_role.findMany({
-    where: {
-      guildID: guild.id,
-    },
-  });
-
-  if (!roles) {
-    return;
-  }
-
-  for (const roleData of roles) {
-    const roleDiscord = guild.roles.cache.get(roleData.roleID);
-    if (!roleDiscord) {
-      await prisma.gm_guild_not_verify_role.delete({
-        where: {
-          roleID: roleData.roleID,
-          guildID: guild.id,
-        },
-      });
-      continue;
-    }
-
-    if (member.roles.cache.has(roleData.roleID)) continue;
-    await member.roles.add(roleDiscord);
-  }
-}
-
-export async function removeNotVerifiedRoleToUser(guild: Guild, member: GuildMember) {
-  const roles = await prisma.gm_guild_not_verify_role.findMany({
-    where: {
-      guildID: guild.id,
-    },
-  });
-
-  if (!roles) {
-    return;
-  }
-
-  for (const roleData of roles) {
-    const roleDiscord = guild.roles.cache.get(roleData.roleID);
-    if (!roleDiscord) {
-      await prisma.gm_guild_not_verify_role.delete({
-        where: {
-          roleID: roleData.roleID,
-          guildID: guild.id,
-        },
-      });
-      continue;
-    }
-
-    if (!member.roles.cache.has(roleData.roleID)) continue;
-    await member.roles.remove(roleDiscord);
-  }
-}
-
 export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
   const role = await prisma.gm_guild_verify_role.findMany({
     where: {
@@ -271,12 +216,8 @@ export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
 
 export async function verifyUser(guild: Guild, member: GuildMember) {
   const user = await getUserFromDiscordID(member.id);
-  if (!user || !user.getSteamID64()) {
-    await addNotVerifiedRoleToUser(guild, member);
-    return false;
-  }
+  if (!user || !user.getSteamID64()) return false;
 
-  await removeNotVerifiedRoleToUser(guild, member);
   await addVerifyRoleToUser(guild, member);
   return true;
 }
@@ -420,6 +361,7 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
 
   await prisma.gm_panelToken.create({
     data: {
+      id: uuidv4(),
       discordID,
       accessToken: panelAccessToken,
       creationDate: discordUserToken.creationDate,
