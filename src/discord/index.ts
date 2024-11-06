@@ -29,7 +29,7 @@ import redis from '../redis/index.js';
 import prisma from '../prisma.js';
 import { getServersFromDiscordGuildID, Server } from '../classes/v3/Server.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
-import { Guild, guildSettingExists } from '../classes/v3/Guild';
+import { Guild, guildSettingExists } from '../classes/v3/Guild.js';
 
 const envPath = serverConfig.dev ? 'src' : 'dist';
 const envExtension = serverConfig.dev ? '.ts' : '.js';
