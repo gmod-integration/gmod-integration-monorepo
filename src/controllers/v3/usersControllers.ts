@@ -320,15 +320,21 @@ export async function putGuildServer(req: Request, res: Response) {
   const server = req.server!;
   const { name, image, ip, port, isPublic, description } = req.body;
 
-  server.name = name !== undefined ? name : server.name;
-  server.image = image !== undefined ? image : server.image;
-  server.ip = ip !== undefined ? ip : server.ip;
-  server.port = port !== undefined ? port : server.port;
-  server.isPublic = isPublic !== undefined ? isPublic : server.isPublic;
-  server.description = description !== undefined ? description : server.description;
-
-  await server.save();
-  return res.send(server);
+  return res.send(
+    await prisma.gm_server.update({
+      where: {
+        id: server.id,
+      },
+      data: {
+        name: name !== undefined ? name : server.name,
+        image: image !== undefined ? image : server.image,
+        ip: ip !== undefined ? ip : server.ip,
+        port: port !== undefined ? port : server.port,
+        isPublic: isPublic !== undefined ? isPublic : server.isPublic,
+        description: description !== undefined ? description : server.description,
+      },
+    }),
+  );
 }
 
 export async function deleteGuildServer(req: Request, res: Response) {

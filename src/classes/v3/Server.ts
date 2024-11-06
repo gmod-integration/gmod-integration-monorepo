@@ -248,12 +248,26 @@ export class Server extends BaseClass {
 
   async regeneratePublicTempToken() {
     this.publicTempToken = generateToken(16);
-    await this.save();
+    await prisma.gm_server.update({
+      where: {
+        id: this.id,
+      },
+      data: {
+        publicTempToken: this.publicTempToken,
+      },
+    });
   }
 
   async regenerateToken() {
     this.token = generateToken(16);
-    await this.save();
+    await prisma.gm_server.update({
+      where: {
+        id: this.id,
+      },
+      data: {
+        token: this.token,
+      },
+    });
   }
 
   async getServerStatusButtons() {
