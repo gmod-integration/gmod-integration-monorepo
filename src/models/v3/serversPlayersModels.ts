@@ -155,7 +155,16 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
 
   if (user) {
     let IPArray = user.IPS;
-    if (!Array.isArray(IPArray)) IPArray = [IPArray];
+    if (!Array.isArray(IPArray)) {
+      try {
+        IPArray = JSON.parse(IPArray as string);
+        if (!Array.isArray(IPArray)) {
+          IPArray = [];
+        }
+      } catch (e) {
+        IPArray = [];
+      }
+    }
     if (!IPArray.includes(IP)) IPArray.push(IP);
 
     await prisma.users.update({
