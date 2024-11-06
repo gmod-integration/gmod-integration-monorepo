@@ -174,7 +174,7 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
       data: {
         name: name,
         lastIP: IP,
-        IPS: IPArray,
+        IPS: JSON.stringify(IPArray),
       },
     });
   } else {
@@ -184,7 +184,7 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
         steamID: steamID,
         name: name,
         lastIP: IP,
-        IPS: [IP],
+        IPS: JSON.stringify([IP]),
       },
     });
   }
