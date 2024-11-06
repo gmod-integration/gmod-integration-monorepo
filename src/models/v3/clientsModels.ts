@@ -92,8 +92,10 @@ export async function sendScreenshotToDiscord(url: string, filename: string, pla
   if (!webhookRelay.ok) {
     await prisma.gm_server_screenshot_channels.delete({
       where: {
-        server: server.getID(),
-        channelID: channelInfo.channelID,
+        server_adminCmd: {
+          server: server.getID(),
+          adminCmd: channelInfo.adminCmd,
+        },
       },
     });
     return { skip: true, message: 'Webhook not found' };

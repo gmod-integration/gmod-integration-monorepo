@@ -13,7 +13,10 @@
     "dev": "tsx watch src/gm_integration_api.ts --env dev",
     "start": "pm2 start dist/gm_integration_api.js --log logs/current.log --name gmod-integration-api",
     "prisma:generate": "npx prisma generate",
-    "prisma:push": "npx prisma db push"
+    "prisma:push": "npx prisma db push",
+    "prisma:migrate": "npx prisma migrate dev",
+    "prisma:migration:create": "npx prisma migrate dev --create-only",
+    "prisma:migrate:prod": "npx prisma migrate deploy"
   },
   "repository": {
     "type": "git",
@@ -42,7 +45,7 @@
   },
   "dependencies": {
     "@discordjs/builders": "^1.9.0",
-    "@prisma/client": "^5.21.1",
+    "@prisma/client": "^5.22.0",
     "@sentry/core": "^8.7.0",
     "@sentry/node": "^8.33.1",
     "@sentry/profiling-node": "^8.33.1",

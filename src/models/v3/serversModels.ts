@@ -19,6 +19,7 @@ export async function getServerList(
   });
 
   guildServers.forEach((server) => {
+    if (!server.name) return;
     choices[server.name] = server.id;
   });
 

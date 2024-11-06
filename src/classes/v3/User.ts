@@ -4,7 +4,7 @@ export class User {
   steamID64: string | null;
   discordID: string;
   rank: string;
-  lastVerification: Date;
+  lastVerification: Date | null;
   trustLevel: number;
 
   constructor({
@@ -17,7 +17,7 @@ export class User {
     steamID64: string | null;
     discordID: string;
     rank: string;
-    lastVerification: Date;
+    lastVerification: Date | null;
     trustLevel: number;
   }) {
     this.steamID64 = steamID64;
@@ -54,7 +54,7 @@ export async function getUserFromSteamID64(steamID64: string) {
     discordID: user.id,
     rank: user.rank,
     lastVerification: user.last_oauth,
-    trustLevel: user.trust,
+    trustLevel: user.trust || 50,
   });
 }
 
@@ -72,6 +72,6 @@ export async function getUserFromDiscordID(discordID: string) {
     discordID: user.id,
     rank: user.rank,
     lastVerification: user.last_oauth,
-    trustLevel: user.trust,
+    trustLevel: user.trust || 50,
   });
 }

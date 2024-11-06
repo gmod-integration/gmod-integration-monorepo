@@ -139,6 +139,8 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
             total_kill: kills,
             total_death: deaths,
             custom_values: customValuesString,
+            last_connect: new Date(),
+            first_join: new Date(),
           },
         });
       }
