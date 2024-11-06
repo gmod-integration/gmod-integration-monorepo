@@ -1,4 +1,5 @@
 import {
+  ActivityType,
   Client,
   ClientUser,
   Collection,
@@ -26,8 +27,9 @@ import { readdir } from 'fs/promises';
 import { getUserFromSteamID64 } from '../classes/v3/User.js';
 import redis from '../redis/index.js';
 import prisma from '../prisma.js';
-import { Server } from '../classes/v3/Server.js';
+import { getServersFromDiscordGuildID, Server } from '../classes/v3/Server.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
+import { Guild, guildSettingExists } from '../classes/v3/Guild';
 
 const envPath = serverConfig.dev ? 'src' : 'dist';
 const envExtension = serverConfig.dev ? '.ts' : '.js';
@@ -420,3 +422,73 @@ export async function loadGuildBotInstance(guildID: string) {
   if (!instanceInfo) return;
   await addNewClient(guildID, instanceInfo.token);
 }
+
+let lastStatusID: Record<string, number> = {};
+setInterval(async () => {
+  if (!(await guildSettingExists('bot_status'))) return;
+  const guildsStatusNotDisable = await prisma.gm_guild_settings.findMany({
+    where: {
+      setting: 'bot_status',
+      value: {
+        not: 'disabled',
+      },
+    },
+  });
+
+  for (const guildStatus of guildsStatusNotDisable) {
+    const key = guildStatus.guildID;
+    const customStatus = guildStatus.value as string;
+
+    lastStatusID[key] = lastStatusID[key] || 0;
+    const client = clientList.get(key);
+    if (!client || !client.user) return;
+
+    try {
+      const dscGuild = client.guilds.cache.get(key);
+      if (!dscGuild) return;
+
+      const guild = new Guild(dscGuild);
+      if (!guild) return;
+
+      let totalPlayers = 0;
+      let maxPlayers = 0;
+
+      const servers = await getServersFromDiscordGuildID(key);
+      for (const server of servers) {
+        const data = await server.getStatusData();
+        if (data) {
+          totalPlayers += data.players;
+          maxPlayers += data.maxPlayers;
+        }
+      }
+      const botStatusList: Record<string, string> = {
+        playerCount: `${totalPlayers} / ${maxPlayers} players`,
+        guildMemberCount: `${dscGuild.memberCount} members`,
+      };
+
+      async function setPresence(str: string) {
+        if (!client || !client.user) return;
+        client.user!.setPresence({
+          activities: [
+            {
+              name: str,
+              type: ActivityType.Watching,
+            },
+          ],
+        });
+      }
+
+      if (customStatus == 'rotate') {
+        const status = botStatusList[lastStatusID[key]];
+        lastStatusID[key] = (lastStatusID[key] + 1) % Object.keys(botStatusList).length;
+        await setPresence(status);
+      } else if (botStatusList[customStatus]) {
+        await setPresence(botStatusList[customStatus]);
+      }
+
+      gmLog('discord', `Updated custom status for ${key}`);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+}, 30000);

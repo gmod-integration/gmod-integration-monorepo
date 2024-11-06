@@ -22,7 +22,7 @@ const guildSettings: Record<string, any> = {
   },
   bot_status: {
     defaultValue: 'disabled',
-    acceptedValues: ['disabled', 'mapName', 'playerCount', 'rotate'],
+    acceptedValues: ['disabled', 'guildMemberCount', 'playerCount', 'rotate'],
   },
 };
 
@@ -406,4 +406,8 @@ export async function handlePremiumInteraction(interaction: ButtonInteraction) {
   if (!interaction.guild) return;
   if (interaction.customId !== 'premium') return;
   return replyNeedPremium(interaction);
+}
+
+export async function guildSettingExists(setting: string) {
+  return !!guildSettings[setting];
 }
