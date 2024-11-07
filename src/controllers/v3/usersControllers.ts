@@ -1142,7 +1142,7 @@ export async function getAdminInformations(req: Request, res: Response) {
       },
     },
   });
-  data.user.totalUnverified = data.user.totalDiscordUser - data.user.totalVerified;
+  data.user.totalUnverified = data.user.totalDiscordMembers - data.user.totalVerified;
   data.user.total = data.user.totalDiscordMembers + data.user.totalSteamUser;
   return res.json(data);
 }
