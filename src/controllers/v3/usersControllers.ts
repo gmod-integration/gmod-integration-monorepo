@@ -1103,6 +1103,36 @@ export async function getAdminGuilds(req: Request, res: Response) {
   return res.send((await prisma.gm_guild.findMany()) || []);
 }
 
+export async function getAdminInformations(req: Request, res: Response) {
+  let data: any = {
+    guild: {},
+    server: {},
+    user: {},
+  };
+  data.guild.total = await prisma.gm_guild.count();
+  data.guild.language = (
+    await prisma.gm_guild.groupBy({
+      by: ['language'],
+      _count: {
+        language: true,
+      },
+    })
+  ).map((lang) => ({
+    label: lang.language,
+    value: lang._count.language,
+  }));
+  data.server.total = await prisma.gm_server.count();
+  data.user.total = await prisma.gm_user.count();
+  data.user.totalVerified = await prisma.gm_user.count({
+    where: {
+      steam: {
+        not: null,
+      },
+    },
+  });
+  return res.json(data);
+}
+
 export async function getServerRoles(req: Request, res: Response) {
   const { serverID } = req.params;
 

@@ -30,6 +30,7 @@ import {
   findServerStatus,
   findServerSyncChat,
   getAdminGuilds,
+  getAdminInformations,
   getAutoRoles,
   getGmodToDiscordFilter,
   getGuildAdmins,
@@ -118,6 +119,7 @@ router.post('/:discordID/data-requests', asyncHandler(postUserDataRequest));
 
 router.use('/:discordID/admins', userAdminValidator);
 router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds));
+router.get('/:discordID/admins/informations', asyncHandler(getAdminInformations));
 
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', asyncHandler(findGuild));
