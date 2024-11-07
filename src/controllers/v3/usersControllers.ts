@@ -1109,6 +1109,7 @@ export async function getAdminInformations(req: Request, res: Response) {
     server: {},
     user: {},
   };
+  // Guild
   data.guild.total = await prisma.gm_guild.count();
   data.guild.language = (
     await prisma.gm_guild.groupBy({
@@ -1121,8 +1122,19 @@ export async function getAdminInformations(req: Request, res: Response) {
     label: lang.language,
     value: lang._count.language,
   }));
+  // Server
   data.server.total = await prisma.gm_server.count();
-  data.user.total = await prisma.gm_user.count();
+  // User
+  data.user.totalDiscordMembers =
+    (
+      await prisma.gm_guild.aggregate({
+        _sum: {
+          member: true,
+        },
+      })
+    )._sum.member || 0;
+  data.user.totalDiscordUser = await prisma.gm_user.count();
+  data.user.totalSteamUser = await prisma.users.count();
   data.user.totalVerified = await prisma.gm_user.count({
     where: {
       steam: {
@@ -1130,6 +1142,8 @@ export async function getAdminInformations(req: Request, res: Response) {
       },
     },
   });
+  data.user.totalUnverified = data.user.totalDiscordUser - data.user.totalVerified;
+  data.user.total = data.user.totalDiscordMembers + data.user.totalSteamUser;
   return res.json(data);
 }
 

@@ -14,12 +14,14 @@ export async function getStats() {
   }
 
   const usersCount = await prisma.users.count();
-  const memberCountResult = await prisma.gm_guild.aggregate({
-    _sum: {
-      member: true,
-    },
-  });
-  const memberCount = memberCountResult._sum.member || 0;
+  const memberCount =
+    (
+      await prisma.gm_guild.aggregate({
+        _sum: {
+          member: true,
+        },
+      })
+    )._sum.member || 0;
   const guildCount = await prisma.gm_guild.count();
   const serverCount = await prisma.gm_server.count();
   const verifiedUserCount = await prisma.gm_user.count({
