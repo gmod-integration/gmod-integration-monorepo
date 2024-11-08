@@ -1,4 +1,4 @@
-import { mongoClient } from '../config/mongo';
+import { mongoClient } from '../config/mongo.js';
 
 const db = mongoClient.db('gmod_integration');
 const collection = db.collection('logs');

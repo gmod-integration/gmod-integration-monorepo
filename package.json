@@ -9,7 +9,7 @@
     "discord:push:context": "node src/discord/discord_push_context.ts",
     "discord:remove:cmd": "node --watch --trace-warnings --trace-deprecation src/discord/discord_remove_cmd.ts",
     "clean": "rm -rf ./dist",
-    "build": "npm run clean && tsc && node fix-imports.js",
+    "build": "npm run clean && tsc",
     "dev": "tsx watch src/gm_integration_api.ts --env dev",
     "start": "pm2 start ./dist/gm_integration_api.js --log logs/current.log --name gmod-integration-api",
     "prisma:generate": "npx prisma generate",
