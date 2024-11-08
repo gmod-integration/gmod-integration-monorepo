@@ -5,7 +5,7 @@ import { getTranslate } from './localizations.js';
 import { wsSendToAllClientsOfServer } from '../websockets/index.js';
 import { ColorResolvable, EmbedBuilder } from 'discord.js';
 import { Server } from '../classes/v3/Server.js';
-import prisma from '../prisma.js';
+import { addLog } from '../database/gm_server_logs.js';
 
 export enum LogLevel {
   MINIMAL = 'minimal',
@@ -206,13 +206,13 @@ export async function logServer(server: Server, type: string, data?: any) {
     if (data.ip) dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`');
   }
 
-  await prisma.gm_server_logs.create({
-    data: {
-      serverID: server.getID(),
-      type,
-      data: dataToSave,
-      playerInvolvedSteamID64,
-    },
+  await addLog({
+    serverID: server.getID(),
+    type,
+    data: dataToSave,
+    playerInvolvedSteamID64: playerInvolvedSteamID64,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   });
 
   wsSendToAllClientsOfServer(server.getID(), 'server_logs', { type, data: dataToSave });

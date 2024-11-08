@@ -5,6 +5,7 @@ import { gmLog } from '../../utils/logger.js';
 import prisma from '../../prisma.js';
 import { User } from '../../classes/v3/User.js';
 import { addNotification } from '../../utils/tools.js';
+import { getLogsByServerAndSteamIDList, getLogsCountByServerAndSteamIDList } from '../../database/gm_server_logs.js';
 
 export async function getUserDataGRPD(user: User) {
   const discordID = user.getDiscordID();
@@ -119,27 +120,15 @@ export async function getUserDataGRPD(user: User) {
     fs.writeFileSync(`./gdpr-request/${request.id}/steam.json`, JSON.stringify(userData, null, 2));
 
     try {
-      // Count the number of logs
-      const serverLogCount = await prisma.gm_server_logs.count({
-        where: {
-          playerInvolvedSteamID64: {
-            array_contains: [steamID64],
-          },
-        },
-      });
+      const serverLogCount = await getLogsCountByServerAndSteamIDList('serverID', [steamID64]);
 
       const limit = 1000;
       let offset = 0;
 
       while (offset < serverLogCount) {
-        const serverLogs = await prisma.gm_server_logs.findMany({
-          where: {
-            playerInvolvedSteamID64: {
-              array_contains: [steamID64],
-            },
-          },
-          skip: offset,
-          take: limit,
+        const serverLogs = await getLogsByServerAndSteamIDList('serverID', [steamID64], {
+          limit,
+          offset,
         });
 
         const currentFile = Math.floor(offset / limit) + 1;

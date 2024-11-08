@@ -16,6 +16,7 @@ import { getMainClient } from '../../discord/index.js';
 import redis from '../../redis/index.js';
 import prisma from '../../prisma.js';
 import { NextFunction, Request, Response } from 'express';
+import { getLogsByServer } from '../../database/gm_server_logs.js';
 
 export async function getProfile(req: Request, res: Response) {
   const { steamID64, discordID } = req.query;
@@ -1060,15 +1061,9 @@ export async function getServerLogs(req: Request, res: Response) {
     });
   }
 
-  const logs = await prisma.gm_server_logs.findMany({
-    where: {
-      serverID,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-    skip: Number(offset) || 0,
-    take: limit || 500,
+  const logs = await getLogsByServer(serverID, {
+    offset: Number(offset) || 0,
+    limit: limit || 500,
   });
 
   return res.send(logs || []);
