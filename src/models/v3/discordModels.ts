@@ -434,7 +434,7 @@ export async function givePremiumRoleOfMainGuild() {
     if (!guild) return;
 
     const gmodStoreBuyers = await prisma.gm_gmodstore_purchases.findMany();
-    if (!gmodStoreBuyers) return;
+    if (!gmodStoreBuyers || gmodStoreBuyers.length === 0) return;
 
     let subscriptionBuyers: any = [];
     const dscEntitlements = await getDiscordEntitlements();

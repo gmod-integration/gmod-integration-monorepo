@@ -23,7 +23,7 @@ export async function sendMessageToGmod(message: Message) {
     },
   });
 
-  if (!channels) {
+  if (!channels || channels.length === 0) {
     return;
   }
 
