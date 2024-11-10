@@ -627,10 +627,11 @@ export class Server extends BaseClass {
     return statusButton;
   }
 
-  async getScreenshotsChannel() {
+  async getScreenshotsChannel(admin: boolean = false) {
     return prisma.gm_server_screenshot_channels.findFirst({
       where: {
-        server: this.id,
+        server: this.getID(),
+        adminCmd: admin,
       },
     });
   }
