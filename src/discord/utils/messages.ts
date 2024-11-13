@@ -179,34 +179,20 @@ export async function getNotVerifiedMessage(guild: Guild, member: GuildMember) {
     .addFields(
       {
         name: await getTranslate('join_msg_p1_name', lang),
-        value: await getTranslate('join_msg_p1_value', lang),
-        inline: false,
-      },
-      {
-        name: '\u200b',
-        value: getEmptyEmbedBuilderField(2),
+        value: (await getTranslate('join_msg_p1_value', lang)) + '\n \u200b',
         inline: false,
       },
       {
         name: await getTranslate('join_msg_p2_name', lang),
-        value: await getTranslate('join_msg_p2_value', lang, [
-          `[Garry's Mod Integration](${discordConfig.oauthPanel}&state=redirect:/account)`,
-        ]),
-        inline: false,
-      },
-      {
-        name: '\u200b',
-        value: getEmptyEmbedBuilderField(2),
+        value:
+          (await getTranslate('join_msg_p2_value', lang, [
+            `[Garry's Mod Integration](${discordConfig.oauthPanel}&state=redirect:/account)`,
+          ])) + '\n \u200b',
         inline: false,
       },
       {
         name: await getTranslate('join_msg_p3_name', lang),
-        value: await getTranslate('join_msg_p3_value', lang),
-        inline: false,
-      },
-      {
-        name: '\u200b',
-        value: getEmptyEmbedBuilderField(2),
+        value: (await getTranslate('join_msg_p3_value', lang)) + '\n \u200b',
         inline: false,
       },
       {
@@ -267,27 +253,15 @@ export async function getVerificationGuildMessage(lang: string) {
     .addFields(
       {
         name: await getTranslate('setup_msg_p1_name', lang),
-        value: await getTranslate('setup_msg_p1_value', lang),
-      },
-      {
-        name: '\u200b',
-        value: getEmptyEmbedBuilderField(2),
+        value: (await getTranslate('setup_msg_p1_value', lang)) + '\n \u200b',
       },
       {
         name: await getTranslate('setup_msg_p2_name', lang),
-        value: await getTranslate('setup_msg_p2_value', lang),
-      },
-      {
-        name: '\u200b',
-        value: getEmptyEmbedBuilderField(2),
+        value: (await getTranslate('setup_msg_p2_value', lang)) + '\n \u200b',
       },
       {
         name: await getTranslate('setup_msg_p3_name', lang),
-        value: await getTranslate('setup_msg_p3_value', lang),
-      },
-      {
-        name: '\u200b',
-        value: getEmptyEmbedBuilderField(2),
+        value: (await getTranslate('setup_msg_p3_value', lang)) + '\n \u200b',
       },
       {
         name: await getTranslate('setup_msg_p4_name', lang),
