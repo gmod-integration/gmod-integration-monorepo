@@ -332,7 +332,7 @@ model gm_server_screenshots {
   id        Int       @id @default(autoincrement())
   serverID  String    @db.VarChar(255)
   title     String    @default("") @db.VarChar(255)
-  player    String    @db.LongText
+  player    Json
   url       String    @default("") @db.VarChar(255)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
