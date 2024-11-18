@@ -46,7 +46,7 @@ export async function saveScreenshot(screenshot: string, captureData: any, playe
     data: {
       serverID: server.id,
       title: captureData.title,
-      player,
+      player: JSON.stringify(player),
       url: internUrl,
     },
   });
