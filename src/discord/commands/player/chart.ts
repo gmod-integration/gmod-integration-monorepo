@@ -10,7 +10,7 @@ import { JSDOM } from 'jsdom';
 import * as d3 from 'd3';
 import sharp from 'sharp';
 import { getServerFromID } from '../../../classes/v3/Server.js';
-import prisma from '../../../prisma';
+import prisma from '../../../prisma.js';
 
 async function getServerData(serverID: string, duration = 24 * 60 * 60, interval = 60) {
   const data = await prisma.gm_server_status_history.findMany({
