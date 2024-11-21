@@ -418,6 +418,7 @@ export class Server extends BaseClass {
           gameMode,
           players,
           maxPlayers,
+          playersList: JSON.stringify(playersList),
         },
       });
     } else {
@@ -431,9 +432,17 @@ export class Server extends BaseClass {
           gameMode,
           players,
           maxPlayers,
+          playersList: JSON.stringify(playersList),
         },
       });
     }
+
+    await prisma.gm_server_status_history.create({
+      data: {
+        serverID: this.getID(),
+        players,
+      },
+    });
 
     await this.editStatusChannelAndMessage({
       ip,
