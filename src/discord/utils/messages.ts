@@ -30,7 +30,7 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   maxPlayers = maxPlayers === undefined ? 0 : maxPlayers;
   ip = ip === undefined ? '' : ip;
   port = port === undefined ? '' : port;
-  playersList = playersList === undefined ? [] : playersList;
+  playersList = Array.isArray(playersList) ? playersList : [];
 
   const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
@@ -76,6 +76,11 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
         value: gameMode,
         inline: true,
       },
+      {
+        name: '\u200b',
+        value: getEmptyEmbedBuilderField(2),
+        inline: true,
+      },
     )
     .setTimestamp(new Date());
 
@@ -85,19 +90,13 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
     });
 
     const playersListString = playersList.map((player: PlayerGmod) => {
-      return `${secToTime(player.connectTime)} - ${player.name}`;
+      return `${secToTime(player.connectTime + (player.adjustedTime || 0))} - ${player.name}`;
     });
 
-    embed.addFields(
-      {
-        name: '\u200b',
-        value: getEmptyEmbedBuilderField(2),
-      },
-      {
-        name: '👤⠀' + (await getTranslate('player_list', lang)),
-        value: playersListString.join('\n'),
-      },
-    );
+    embed.addFields({
+      name: '👤⠀' + (await getTranslate('player_list', lang)),
+      value: playersListString.join('\n'),
+    });
   }
 
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
