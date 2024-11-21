@@ -178,6 +178,7 @@ model gm_server {
   gm_status                     gm_status?
   gm_status_button              gm_status_button[]
   gm_sync_chat                  gm_sync_chat[]
+  gm_server_status_history      gm_server_status_history[]
 
   @@index([guild], map: "guild")
 }
@@ -364,7 +365,7 @@ model gm_server_stat {
   total_connect     Int           @default(1)
   last_connect      DateTime      @updatedAt
   first_join        DateTime      @default(now())
-  custom_values     String        @db.LongText
+  custom_values     Json
   bypassMaintenance Boolean       @default(false)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -381,7 +382,7 @@ model gm_server_stat_session {
   time                Int            @default(0)
   deaths              Int            @default(0)
   kills               Int            @default(0)
-  customValues        String?        @db.Text
+  customValues        Json?
   sessionEndTimeStamp DateTime       @default(now()) @db.Timestamp(0)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
@@ -394,17 +395,27 @@ model gm_server_stat_session {
 }
 
 model gm_server_status {
-  id         String    @id @db.VarChar(255)
-  ip         String    @default("") @db.VarChar(255)
-  port       Int       @default(0)
-  hostname   String    @default("") @db.VarChar(255)
-  maxPlayers Int       @default(0)
-  players    Int       @default(0)
-  map        String    @default("") @db.VarChar(255)
-  gameMode   String    @default("") @db.VarChar(255)
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  gm_server  gm_server @relation(fields: [id], references: [id], onDelete: Cascade, map: "gm_server_status_ibfk_1")
+  id          String    @id @db.VarChar(255)
+  ip          String    @default("") @db.VarChar(255)
+  port        Int       @default(0)
+  hostname    String    @default("") @db.VarChar(255)
+  maxPlayers  Int       @default(0)
+  players     Int       @default(0)
+  playersList Json?
+  map         String    @default("") @db.VarChar(255)
+  gameMode    String    @default("") @db.VarChar(255)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  gm_server   gm_server @relation(fields: [id], references: [id], onDelete: Cascade, map: "gm_server_status_ibfk_1")
+}
+
+model gm_server_status_history {
+  id        Int       @id @default(autoincrement())
+  serverID  String    @db.VarChar(255)
+  players   Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade)
 }
 
 model gm_server_sync_chat_filter {
