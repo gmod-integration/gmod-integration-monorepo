@@ -23,7 +23,7 @@ export async function postStatus(req: Request, res: Response) {
     });
   }
 
-  await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime, playersList);
+  await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime, playersList || []);
   return res.status(200).json({ success: true });
 }
 
