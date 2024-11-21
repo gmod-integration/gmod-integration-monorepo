@@ -70,7 +70,9 @@ async function indexCommandsAndContext(dirPath: string, type: string) {
           }
           const command = await import(filePath);
           if (command.default && command.default.data) {
-            commandsData.push(command.default.data.toJSON());
+            if (!command.dev) {
+              commandsData.push(command.default.data.toJSON());
+            }
             gmLog('info', `Pushed ${type} ${command.default.data.name} from ${filePath}`);
           } else {
             gmLog('warning', `The ${type} at ${filePath} is missing a required "data" or "execute" property.`);
