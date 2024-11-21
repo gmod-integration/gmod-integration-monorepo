@@ -22,6 +22,10 @@ export interface PlayerGmodInterface {
   userGroup: string;
   position: Position;
   angle: Angle;
+  fps: number | null;
+  ping: number | null;
+  adjustedTime: number | null;
+  branch: string | null;
 }
 
 export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
@@ -36,6 +40,10 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   public userGroup: string;
   public position: Position;
   public angle: Angle;
+  public fps: number;
+  public ping: number;
+  public adjustedTime: number;
+  public branch: string;
 
   constructor(obj: PlayerGmodInterface, throwMissing = true) {
     super();
@@ -69,6 +77,10 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
     this.userGroup = obj.userGroup;
     this.position = new Position(obj.position, throwMissing);
     this.angle = new Angle(obj.angle, throwMissing);
+    this.fps = obj.fps || 0;
+    this.ping = obj.ping || 0;
+    this.adjustedTime = obj.adjustedTime || 0;
+    this.branch = obj.branch || 'unknown';
   }
 
   async getDiscordID() {
