@@ -5,11 +5,11 @@ import {
   InteractionContextType,
   SlashCommandBuilder,
 } from 'discord.js';
-import { getServerList } from '../../../models/v3/serversModels';
+import { getServerList } from '../../../models/v3/serversModels.js';
 import { JSDOM } from 'jsdom';
 import * as d3 from 'd3';
 import sharp from 'sharp';
-import { getServerFromID } from '../../../classes/v3/Server';
+import { getServerFromID } from '../../../classes/v3/Server.js';
 import prisma from '../../../prisma';
 
 async function getServerData(serverID: string, duration = 24 * 60 * 60, interval = 60) {
