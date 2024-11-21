@@ -197,11 +197,11 @@ export async function logServer(server: Server, type: string, data?: any) {
     if (data.player) {
       dataToSave.ply = data.player;
       delete dataToSave.player;
-      if (data.player.steamID64)
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
-      if (data.player.name) dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
-      if (data.player.team && data.player.team.name)
-        dscList.push((await getTranslate('team', lang)) + ': `' + data.player.team.name + '`');
+      if (dataToSave.ply.steamID64)
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + dataToSave.ply.steamID64 + '`');
+      if (dataToSave.ply.name) dscList.push((await getTranslate('name', lang)) + ': `' + dataToSave.ply.name + '`');
+      if (dataToSave.ply.team && dataToSave.ply.team.name)
+        dscList.push((await getTranslate('team', lang)) + ': `' + dataToSave.ply.team.name + '`');
     }
     if (data.ip) dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`');
   }
