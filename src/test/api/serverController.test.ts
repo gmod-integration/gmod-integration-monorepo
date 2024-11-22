@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'assert';
-import testConfig, { getTestUri } from '../config.test';
+import testConfig, { getTestUri } from '../config.test.js';
 import prisma from '../../prisma.js';
 
 // Server Info

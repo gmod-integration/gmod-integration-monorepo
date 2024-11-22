@@ -131,5 +131,5 @@ process.on('unhandledRejection', (error: Error) => {
 
 // Run Tests
 if (serverConfig.dev) {
-  import('./test');
+  import('./test/index.js');
 }
