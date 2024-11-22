@@ -1,3 +1,6 @@
+-- DropForeignKey
+ALTER TABLE `gm_server_status_history` DROP FOREIGN KEY `gm_server_status_history_ibfk_1`;
+
 -- AlterTable
 ALTER TABLE `banUsers` MODIFY `unbanDate` DATETIME(3) NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 2 YEAR);
 
@@ -8,21 +11,13 @@ ALTER TABLE `gm_discordToken` MODIFY `expirationDate` DATETIME(3) NOT NULL DEFAU
 ALTER TABLE `gm_panelToken` MODIFY `expirationDate` DATETIME(3) NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 7 DAY);
 
 -- AlterTable
+ALTER TABLE `gm_server_status_history` MODIFY `serverID` VARCHAR(255) NOT NULL;
+
+-- AlterTable
 ALTER TABLE `gm_user` MODIFY `token_expires` DATETIME(3) NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 7 DAY);
 
 -- AlterTable
 ALTER TABLE `gm_users_data_request` MODIFY `expirationDate` DATETIME(3) NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 1 DAY);
-
--- CreateTable
-CREATE TABLE `gm_server_status_history` (
-    `id` INTEGER NOT NULL AUTO_INCREMENT,
-    `serverID` CHAR(255) NOT NULL,
-    `players` INTEGER NOT NULL DEFAULT 0,
-    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
-    `updatedAt` DATETIME(3) NOT NULL,
-
-    PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- AddForeignKey
 ALTER TABLE `gm_server_status_history` ADD CONSTRAINT `gm_server_status_history_ibfk_1` FOREIGN KEY (`serverID`) REFERENCES `gm_server`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

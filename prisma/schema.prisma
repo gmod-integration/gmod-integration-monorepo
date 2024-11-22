@@ -251,8 +251,8 @@ model gm_server_logs {
   id                      Int      @id @default(autoincrement())
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
-  data                    Json
-  playerInvolvedSteamID64 Json
+  data                    Json     @default("[]")
+  playerInvolvedSteamID64 Json     @default("[]")
 
   @@index([serverID], map: "gm_server_logs_gm_server_id_fk")
 }
@@ -333,7 +333,7 @@ model gm_server_screenshots {
   id        Int       @id @default(autoincrement())
   serverID  String    @db.VarChar(255)
   title     String    @default("") @db.VarChar(255)
-  player    Json
+  player    Json      @default("[]")
   url       String    @default("") @db.VarChar(255)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -365,7 +365,7 @@ model gm_server_stat {
   total_connect     Int           @default(1)
   last_connect      DateTime      @updatedAt
   first_join        DateTime      @default(now())
-  custom_values     Json
+  custom_values     Json          @default("[]")
   bypassMaintenance Boolean       @default(false)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -382,7 +382,7 @@ model gm_server_stat_session {
   time                Int            @default(0)
   deaths              Int            @default(0)
   kills               Int            @default(0)
-  customValues        Json?
+  customValues        Json?          @default("[]")
   sessionEndTimeStamp DateTime       @default(now()) @db.Timestamp(0)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
@@ -401,7 +401,7 @@ model gm_server_status {
   hostname    String    @default("") @db.VarChar(255)
   maxPlayers  Int       @default(0)
   players     Int       @default(0)
-  playersList Json?
+  playersList Json?     @default("[]")
   map         String    @default("") @db.VarChar(255)
   gameMode    String    @default("") @db.VarChar(255)
   createdAt   DateTime  @default(now())
@@ -599,7 +599,7 @@ model users {
   steamID    String?   @default("") @db.Text
   name       String?   @default("") @db.Text
   lastIP     String?   @default("") @db.Text
-  IPS        Json
+  IPS        Json      @default("[]")
   lastUpdate DateTime? @updatedAt
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
