@@ -418,7 +418,7 @@ export class Server extends BaseClass {
           gameMode,
           players,
           maxPlayers,
-          playersList: JSON.stringify(playersList),
+          // playersList: JSON.stringify(playersList),
         },
       });
     } else {
@@ -432,7 +432,7 @@ export class Server extends BaseClass {
           gameMode,
           players,
           maxPlayers,
-          playersList: JSON.stringify(playersList),
+          // playersList: JSON.stringify(playersList),
         },
       });
     }
