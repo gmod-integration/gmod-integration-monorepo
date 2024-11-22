@@ -437,12 +437,12 @@ export class Server extends BaseClass {
       });
     }
 
-    await prisma.gm_server_status_history.create({
-      data: {
-        serverID: this.getID(),
-        players,
-      },
-    });
+    // await prisma.gm_server_status_history.create({
+    //   data: {
+    //     serverID: this.getID(),
+    //     players,
+    //   },
+    // });
 
     await this.editStatusChannelAndMessage({
       ip,
