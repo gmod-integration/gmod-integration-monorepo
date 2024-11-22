@@ -415,7 +415,7 @@ model gm_server_status_history {
   players   Int       @default(0)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade)
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_status_history_ibfk_1")
 }
 
 model gm_server_sync_chat_filter {
