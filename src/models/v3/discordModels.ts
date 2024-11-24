@@ -55,7 +55,7 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
       }
 
       const roleData = syncRoles.find((syncRole) => syncRole.roleID === role.id);
-      if (!roleData) {
+      if (!roleData || !roleData.enable) {
         continue;
       }
 
@@ -86,7 +86,7 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
       }
 
       const roleData = syncRoles.find((syncRole) => syncRole.roleID === role.id);
-      if (!roleData) {
+      if (!roleData || !roleData.enable) {
         continue;
       }
 

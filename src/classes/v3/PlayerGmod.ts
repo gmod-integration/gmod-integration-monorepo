@@ -199,6 +199,7 @@ async function updateDiscordRole(server: Server, steamID64: string, userGroup: s
   const syncRoles = await server.getSyncRoles();
 
   const rankRole = syncRoles.find((role) => role.userGroup === userGroup) || null;
+  if (!rankRole || !rankRole.enable) return;
 
   // get the bot role
   const botMember = guild.members.cache.get(dscClient.user.id);
