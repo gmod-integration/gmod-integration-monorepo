@@ -55,9 +55,17 @@ export async function handleVerifyInteraction(interaction: ButtonInteraction) {
     }
     return await interaction.reply(`You have been verified in the following guilds: ${verifiedOf.join(', ')}`);
   } else {
-    const isVerified = !!(await getUserFromDiscordID(interaction.user.id));
+    const user = await getUserFromDiscordID(interaction.user.id);
+    let isVerify = false;
+    if (user && user.getSteamID64()) {
+      isVerify = true;
+      const guild = interaction.guild;
+      const member = await guild.members.fetch(interaction.user.id).catch(() => null);
+      if (!member) return;
+      await verifyUser(interaction.guild, member);
+    }
     return await interaction.reply(
-      await getVerifiedMessageAnswer(isVerified, interaction.guild.preferredLocale, interaction.user, true),
+      await getVerifiedMessageAnswer(isVerify, interaction.guild.preferredLocale, interaction.user, true),
     );
   }
 }
