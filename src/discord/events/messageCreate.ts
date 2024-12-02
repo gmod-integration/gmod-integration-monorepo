@@ -5,8 +5,15 @@ import { givePremiumRoleOfMainGuild } from '../../models/v3/discordModels.js';
 import { Message } from 'discord.js';
 
 const devActions: Record<string, (...args: string[]) => void> = {
-  async runWS(serverID: string, msg: string) {
-    wsSendToServer(serverID, { message: msg });
+  async runWS(serverID: string, rawData: string) {
+    // try to convert to JSON
+    let data;
+    try {
+      data = JSON.parse(rawData);
+    } catch (err) {
+      return console.error('Invalid JSON');
+    }
+    wsSendToServer(serverID, data);
   },
   async checkPremium() {
     await givePremiumRoleOfMainGuild();
@@ -35,7 +42,7 @@ export default {
       return message.reply('Command executed');
     } catch (err) {
       console.error(err);
-      return message.reply('Error executing command');
+      return message.reply(`Error executing command ${err}`);
     }
   },
 };
