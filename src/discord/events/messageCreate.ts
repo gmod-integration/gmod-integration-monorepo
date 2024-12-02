@@ -6,12 +6,9 @@ import { Message } from 'discord.js';
 
 const devActions: Record<string, (...args: string[]) => void> = {
   async runWS(serverID: string, rawData: string) {
-    // try to convert to JSON
-    let data;
-    try {
-      data = JSON.parse(rawData);
-    } catch (err) {
-      return console.error('Invalid JSON');
+    const data = JSON.parse(rawData);
+    if (!data || !data.method) {
+      throw new Error('Invalid data or missing method');
     }
     wsSendToServer(serverID, data);
   },
