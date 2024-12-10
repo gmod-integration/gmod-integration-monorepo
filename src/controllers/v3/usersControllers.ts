@@ -219,6 +219,8 @@ export async function getGuildRoles(req: Request, res: Response) {
         id: role.id,
         name: role.name,
         position: role.position,
+        color: role.color,
+        colorHex: `#${role.color.toString(16).padStart(6, '0')}`,
       }))
       .filter((role) => role.name !== '@everyone')
       .sort((a, b) => a.position - b.position),
