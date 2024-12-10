@@ -18,6 +18,7 @@ import {
   deleteServerStatus,
   deleteServerStatusButtons,
   deleteServerSyncChat,
+  deleteServerTeams,
   deleteUserSession,
   deleteVerificationMessage,
   deleteVoteChannels,
@@ -53,6 +54,7 @@ import {
   getServerSetting,
   getServerSettings,
   getServerStatusButtons,
+  getServerTeams,
   getUserDataRequest,
   getUserGmodStorePurchases,
   getUserGuildsOwnOrAdmins,
@@ -75,6 +77,7 @@ import {
   postServerScreenshots,
   postServerStatus,
   postServerSyncChat,
+  postServerTeams,
   postUserDataRequest,
   postUserStartVerification,
   postVoteChannels,
@@ -89,6 +92,7 @@ import {
   putServerRoles,
   putServerSetting,
   putServerStatusButtons,
+  putServerTeams,
 } from '../../controllers/v3/usersControllers.js';
 import {
   userAdminGuildValidator,
@@ -174,6 +178,11 @@ router.get('/:discordID/guilds/:guildID/servers/:serverID/roles', asyncHandler(g
 router.post('/:discordID/guilds/:guildID/servers/:serverID/roles/:roleID', asyncHandler(postServerRoles));
 router.put('/:discordID/guilds/:guildID/servers/:serverID/roles/:roleID', asyncHandler(putServerRoles));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/roles/:roleID', asyncHandler(deleteServerRoles));
+// Team Roles
+router.get('/:discordID/guilds/:guildID/servers/:serverID/teams', asyncHandler(getServerTeams));
+router.post('/:discordID/guilds/:guildID/servers/:serverID/teams/:roleID', asyncHandler(postServerTeams));
+router.put('/:discordID/guilds/:guildID/servers/:serverID/teams/:id', asyncHandler(putServerTeams));
+router.delete('/:discordID/guilds/:guildID/servers/:serverID/teams/:id', asyncHandler(deleteServerTeams));
 // Screenshots
 router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(findServerScreenshots));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(postServerScreenshots));

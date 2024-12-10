@@ -193,5 +193,8 @@
   "warn_for_user": "Advertencia de {1} en {2}",
   "premium_required": "¡Esta función requiere premium!",
   "server_stop": "Servidor Detenido",
-  "server_start": "Servidor Iniciado"
+  "server_start": "Servidor Iniciado",
+  "oldTeam": "Altes Team",
+  "newTeam": "Neues Team",
+  "player_change_team": "Spieler Wechsel Team"
 }

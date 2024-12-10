@@ -178,7 +178,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   }
 }
 
-async function updateDiscordRole(server: Server, steamID64: string, userGroup: string) {
+async function updateDiscordGroupRole(server: Server, steamID64: string, userGroup: string) {
   const user = await getUserFromSteamID64(steamID64);
   if (!user) return;
 
@@ -248,6 +248,65 @@ async function updateDiscordRole(server: Server, steamID64: string, userGroup: s
   }
 }
 
+export async function updateDiscordTeamRole(server: Server, steamID64: string, teamName: string | null) {
+  const user = await getUserFromSteamID64(steamID64);
+  if (!user) return;
+
+  const dscClient = await server.getBotInstance();
+  if (!dscClient || !dscClient.user) return;
+
+  const guild = await server.getDiscordGuild();
+  if (!guild) return;
+
+  const member = await guild.members.fetch(user.getDiscordID());
+  if (!member) return;
+
+  const syncRoles = await server.getSyncTeamRoles();
+
+  // find all roles that are enabled and have the same team name
+  const teamRoles = syncRoles.filter((role) => role.teamName === teamName && role.enable);
+  if (teamRoles.length === 0) return;
+
+  // get the bot role
+  const botMember = guild.members.cache.get(dscClient.user.id);
+  if (!botMember) return;
+
+  const botRole = botMember.roles.highest;
+  if (!botRole) return;
+
+  // check if the bot role is higher than the team role
+  if (teamRoles) {
+    for (const teamRole of teamRoles) {
+      const teamRoleObj = guild.roles.cache.get(teamRole.roleID);
+      if (teamRoleObj && botRole.comparePositionTo(teamRoleObj) <= 0) {
+        teamRoles.splice(teamRoles.indexOf(teamRole), 1);
+      }
+    }
+  }
+
+  const userRoles = member.roles.cache;
+  const rolesToRemove = userRoles.filter(
+    (role) =>
+      syncRoles.some((syncRole) => syncRole.roleID === role.id) &&
+      !teamRoles.some((teamRole) => teamRole.roleID === role.id),
+  );
+
+  if (rolesToRemove.size > 0) {
+    gmLog(
+      'sync-team-role',
+      `Removing roles from ${member.user.tag}: ${rolesToRemove.map((role) => role.name).join(', ')}`,
+    );
+    await member.roles.remove(rolesToRemove);
+  }
+
+  for (const teamRole of teamRoles) {
+    if (!member.roles.cache.has(teamRole.roleID)) {
+      gmLog('sync-team-role', `Adding role to ${member.user.tag}: ${teamRole.roleID}`);
+      await member.roles.add(teamRole.roleID);
+    }
+  }
+}
+
 export async function updatePlayerUserGroup(server: Server, steamID64: string, userGroup: string) {
   try {
     const player = await prisma.gm_server_stat.findFirst({
@@ -271,7 +330,7 @@ export async function updatePlayerUserGroup(server: Server, steamID64: string, u
       });
 
       //   update the player discord role
-      await updateDiscordRole(server, steamID64, userGroup);
+      await updateDiscordGroupRole(server, steamID64, userGroup);
     }
   } catch (error) {
     console.error(error);

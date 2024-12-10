@@ -1,5 +1,5 @@
 import { badArgument, ipGetIP } from '../../utils/tools.js';
-import { PlayerGmod, updatePlayerUserGroup } from '../../classes/v3/PlayerGmod.js';
+import { PlayerGmod, updateDiscordTeamRole, updatePlayerUserGroup } from '../../classes/v3/PlayerGmod.js';
 import {
   saveConnectionGlobalInfo,
   saveConnectionSteamInfo,
@@ -98,6 +98,26 @@ export async function playerChangeGroup(req: Request, res: Response) {
   }
 
   await updatePlayerUserGroup(server, steamID64, newGroup);
+  return res.status(200).json({ success: true });
+}
+
+export async function playerChangeTeam(req: Request, res: Response) {
+  const server = req.server!;
+  const { steamID64 } = req.params;
+  await logServer(server, 'player_change_team', { steamID64, ...req.body });
+
+  const { oldTeam, newTeam } = req.body;
+  if (badArgument([oldTeam, newTeam])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        oldTeam: !!oldTeam,
+        newTeam: !!newTeam,
+      },
+    });
+  }
+
+  await updateDiscordTeamRole(server, steamID64, newTeam?.name);
   return res.status(200).json({ success: true });
 }
 

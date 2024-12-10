@@ -26,6 +26,7 @@ const logEmbedColors: Record<string, ColorResolvable> = {
   player_death: '#cd5151',
   player_spawn: '#51cd51',
   player_ready: '#51cd51',
+  player_change_team: '#cd51bc',
   player_change_group: '#cd51bc',
   player_change_name: '#cd51bc',
   player_give: '#cdc751',
@@ -94,6 +95,7 @@ export async function logServer(server: Server, type: string, data?: any) {
     dataToSave.oldName = oldName;
     const newName = data.newName || 'Unknown';
     dataToSave.newName = newName;
+    dataToSave.ply = data.player;
     // TODO: INSPECT: .name is new or old name ?
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
     dscList.push((await getTranslate('oldName', lang)) + ': `' + oldName + '`');
@@ -103,9 +105,19 @@ export async function logServer(server: Server, type: string, data?: any) {
     dataToSave.oldGroup = oldGroup;
     const newGroup = data.newGroup || 'Unknown';
     dataToSave.newGroup = newGroup;
+    dataToSave.ply = data.player;
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
     dscList.push((await getTranslate('oldGroup', lang)) + ': `' + oldGroup + '`');
     dscList.push((await getTranslate('newGroup', lang)) + ': `' + newGroup + '`');
+  } else if (type === 'player_change_team') {
+    const oldTeam = data.oldTeam?.name || 'Unknown';
+    dataToSave.oldTeam = oldTeam;
+    const newTeam = data.newTeam?.name || 'Unknown';
+    dataToSave.newTeam = newTeam;
+    dataToSave.ply = data.player;
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');
+    dscList.push((await getTranslate('oldTeam', lang)) + ': `' + oldTeam + '`');
+    dscList.push((await getTranslate('newTeam', lang)) + ': `' + newTeam + '`');
   } else if (type === 'player_spawn_object') {
     const model = data.model || 'Unknown';
     dataToSave.model = model;

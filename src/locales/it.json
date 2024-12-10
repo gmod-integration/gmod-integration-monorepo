@@ -207,5 +207,8 @@
   "no_reason": "Nessun Motivo",
   "premium_required": "Questa azione richiede la versione premium del bot!",
   "server_stop": "Server Fermato",
-  "server_start": "Server Avviato"
+  "server_start": "Server Avviato",
+  "oldTeam": "Ancienne Équipe",
+  "newTeam": "Nouvelle Équipe",
+  "player_change_team": "Joueur Change d'Équipe"
 }

@@ -1,6 +1,6 @@
-import { nodeProfilingIntegration } from '@sentry/profiling-node';
 import { serverConfig } from '../config/index.js';
 import * as Sentry from '@sentry/node';
+import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
 if (!serverConfig.dev) {
   Sentry.init({

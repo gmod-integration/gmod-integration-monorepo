@@ -493,6 +493,16 @@ export class Server extends BaseClass {
     );
   }
 
+  async getSyncTeamRoles() {
+    return (
+      (await prisma.gm_server_sync_team_roles.findMany({
+        where: {
+          serverID: this.id,
+        },
+      })) || []
+    );
+  }
+
   async saveUserConnectionInfo(steamID64: string, name: string) {
     try {
       const player = await prisma.gm_server_stat.findFirst({

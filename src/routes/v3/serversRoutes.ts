@@ -14,6 +14,7 @@ import {
   getPlayer,
   playerChangeGroup,
   playerChangeName,
+  playerChangeTeam,
   playerConnect,
   playerDeath,
   playerDisconnect,
@@ -54,5 +55,6 @@ router.post('/:serverID/players/:steamID64/ready', asyncHandler(playerReady));
 router.post('/:serverID/players/:steamID64/spawn', asyncHandler(playerSpawn));
 router.post('/:serverID/players/:steamID64/name', asyncHandler(playerChangeName));
 router.post('/:serverID/players/:steamID64/group', asyncHandler(playerChangeGroup));
+router.post('/:serverID/players/:steamID64/team', asyncHandler(playerChangeTeam));
 
 export default router;

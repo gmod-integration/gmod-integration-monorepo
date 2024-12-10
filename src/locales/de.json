@@ -193,5 +193,8 @@
   "warn_for_user": "Warnung von {1} auf {2}",
   "premium_required": "Diese Funktion erfordert Premium!",
   "server_stop": "Server gestoppt",
-  "server_start": "Server gestartet"
+  "server_start": "Server gestartet",
+  "oldTeam": "Altes Team",
+  "newTeam": "Neues Team",
+  "player_change_team": "Spieler Wechsel Team"
 }

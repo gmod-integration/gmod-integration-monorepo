@@ -193,5 +193,8 @@
   "warn_for_user": "Предупреждение от {1} на {2}",
   "premium_required": "Эта функция требует премиум!",
   "server_stop": "Остановка сервера",
-  "server_start": "Запуск сервера"
+  "server_start": "Запуск сервера",
+  "oldTeam": "Ancienne Équipe",
+  "newTeam": "Nouvelle Équipe",
+  "player_change_team": "Joueur Change d'Équipe"
 }

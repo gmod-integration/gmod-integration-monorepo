@@ -1228,6 +1228,87 @@ export async function deleteServerRoles(req: Request, res: Response) {
   return res.send(role);
 }
 
+export async function getServerTeams(req: Request, res: Response) {
+  const { serverID } = req.params;
+
+  const roles = await prisma.gm_server_sync_team_roles.findMany({
+    where: {
+      serverID,
+    },
+  });
+
+  return res.send(roles || []);
+}
+
+export async function postServerTeams(req: Request, res: Response) {
+  const { serverID, roleID } = req.params;
+
+  const role = await prisma.gm_server_sync_team_roles.create({
+    data: {
+      serverID,
+      roleID,
+    },
+  });
+
+  return res.send(role);
+}
+
+export async function putServerTeams(req: Request, res: Response) {
+  const { serverID, id } = req.params;
+
+  const role = await prisma.gm_server_sync_team_roles.findFirst({
+    where: {
+      serverID,
+      id: Number(id),
+    },
+  });
+
+  if (!role) {
+    return res.status(404).send({
+      error: 'Role not found',
+    });
+  }
+
+  const { teamName, enable } = req.body;
+  return res.send(
+    await prisma.gm_server_sync_team_roles.update({
+      where: {
+        serverID,
+        id: Number(id),
+      },
+      data: {
+        teamName: teamName !== undefined ? teamName : role.teamName,
+        enable: enable !== undefined ? enable : role.enable,
+      },
+    }),
+  );
+}
+
+export async function deleteServerTeams(req: Request, res: Response) {
+  const { serverID, id } = req.params;
+
+  const role = await prisma.gm_server_sync_team_roles.findFirst({
+    where: {
+      serverID,
+      id: Number(id),
+    },
+  });
+
+  if (!role) {
+    return res.status(404).send({
+      error: 'Role not found',
+    });
+  }
+
+  await prisma.gm_server_sync_team_roles.delete({
+    where: {
+      serverID,
+      id: Number(id),
+    },
+  });
+  return res.send(role);
+}
+
 export async function getGuildBotInstance(req: Request, res: Response) {
   const guild = req.guild!;
   return res.send((await guild.getBotClientInfo(req.panelUser!.user)) || {});

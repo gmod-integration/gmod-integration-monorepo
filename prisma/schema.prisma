@@ -171,6 +171,7 @@ model gm_server {
   gm_server_status              gm_server_status?
   gm_server_sync_chat_filter    gm_server_sync_chat_filter[]
   gm_server_sync_roles          gm_server_sync_roles[]
+  gm_server_sync_team_roles     gm_server_sync_team_roles[]
   gm_server_vote                gm_server_vote[]
   gm_server_vote_channels       gm_server_vote_channels?
   gm_server_warn                gm_server_warn[]
@@ -443,6 +444,19 @@ model gm_server_sync_roles {
   gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_sync_roles_ibfk_1")
 
   @@id([serverID, roleID])
+}
+
+model gm_server_sync_team_roles {
+  id        Int       @id @default(autoincrement())
+  serverID  String    @db.VarChar(255)
+  roleID    String    @db.VarChar(255)
+  teamName  String    @default("") @db.VarChar(255)
+  enable    Boolean   @default(false)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade)
+
+  @@index([serverID], map: "serverID")
 }
 
 model gm_server_vote {

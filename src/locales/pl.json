@@ -207,5 +207,8 @@
   "no_reason": "Brak Powodu",
   "premium_required": "Ta akcja wymaga wersji premium bota!",
   "server_stop": "Zatrzymanie Serwera",
-  "server_start": "Uruchomienie Serwera"
+  "server_start": "Uruchomienie Serwera",
+  "oldTeam": "Ancienne Équipe",
+  "newTeam": "Nouvelle Équipe",
+  "player_change_team": "Joueur Change d'Équipe"
 }

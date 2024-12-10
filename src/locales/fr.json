@@ -156,5 +156,8 @@
   "warn_for_user": "Avertissement de {1} sur {2}",
   "premium_required": "Cette fonctionnalité nécessite le premium !",
   "server_stop": "Arrêt du Serveur",
-  "server_start": "Démarrage du Serveur"
+  "server_start": "Démarrage du Serveur",
+  "oldTeam": "Ancienne Équipe",
+  "newTeam": "Nouvelle Équipe",
+  "player_change_team": "Joueur Change d'Équipe"
 }
