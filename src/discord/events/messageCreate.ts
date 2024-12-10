@@ -1,18 +1,22 @@
 import { sendMessageToGmod } from '../../controllers/v3/guildsControllers.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
-import { wsSendToServer } from '../../websockets/index.js';
 import { givePremiumRoleOfMainGuild } from '../../models/v3/discordModels.js';
 import { Message } from 'discord.js';
+import { gmLog } from '../../utils/logger.js';
+import { wsSendToServer } from '../../websockets/index.js';
 
-const devActions: Record<string, (...args: string[]) => void> = {
-  async runWS(serverID: string, msg: string) {
-    wsSendToServer(serverID, { message: msg });
+const devActions: Record<string, (...args: string[]) => Promise<void>> = {
+  async runWS(...args: string[]) {
+    const serverID = args[0];
+    let data = args.slice(1).join(' ');
+    data = JSON.parse(data);
+    wsSendToServer(serverID, data);
   },
   async checkPremium() {
     await givePremiumRoleOfMainGuild();
   },
-  async test() {
-    console.log('test');
+  async test(...args: string[]) {
+    console.log('test', args);
   },
 };
 
@@ -28,14 +32,19 @@ export default {
 
     const action = message.content.slice(1).split(' ')[0];
     const args = message.content.slice(1).split(' ').slice(1);
-    if (!devActions[action]) return;
+    if (!devActions[action]) return message.reply('Command not found');
+    gmLog('info', `Dev command executed by ${user.discordID} '${message.content}'`);
 
     try {
-      devActions[action](...args);
-      return message.reply('Command executed');
+      await devActions[action](...args);
+      return message.reply({
+        content: 'Command executed',
+      });
     } catch (err) {
       console.error(err);
-      return message.reply('Error executing command');
+      return message.reply({
+        content: `Error executing command ${err}`,
+      });
     }
   },
 };
