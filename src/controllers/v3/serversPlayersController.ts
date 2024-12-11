@@ -170,6 +170,7 @@ export async function playerDisconnect(req: Request, res: Response) {
   await ply.saveServerStatSession(server.getID());
   await updatePlayerUserGroup(server, ply.steamID64, ply.userGroup);
   await updateGuildUserPseudo(server, ply);
+  await updateDiscordTeamRole(server, ply.steamID64, null);
   return res.status(200).json({ success: true });
 }
 

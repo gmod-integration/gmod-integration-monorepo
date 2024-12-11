@@ -265,7 +265,6 @@ export async function updateDiscordTeamRole(server: Server, steamID64: string, t
 
   // find all roles that are enabled and have the same team name
   const teamRoles = syncRoles.filter((role) => role.teamName === teamName && role.enable);
-  if (teamRoles.length === 0) return;
 
   // get the bot role
   const botMember = guild.members.cache.get(dscClient.user.id);
