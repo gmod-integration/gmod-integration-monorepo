@@ -11,3 +11,7 @@ async function main() {
 main().catch(console.error);
 
 export default prisma;
+
+export async function gracefulShutdownPrisma() {
+  await prisma.$disconnect();
+}

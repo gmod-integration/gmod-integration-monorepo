@@ -27,12 +27,26 @@ jobs:
           [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
           export PATH=$(nvm which current | xargs dirname):$PATH 
           cd ${{ vars.DEPLOY_PATH }}
+          
+          # Pull the latest changes from the repository
           git fetch --all
           git reset --hard origin/main
           git pull
+          
+          # Install dependencies and build the project
           npm install
           npm run build
+          
+          # Migrate the database and generate Prisma client
           npx prisma migrate deploy
           npx prisma generate
-          pm2 restart gmod-integration-api
+
+          # Restart the PM2 process or start it if it doesn't exist
+          if pm2 describe gmod-integration-api > /dev/null; then
+            echo "Process exists. Restarting..."
+            npm run reload
+          else
+            echo "Process does not exist. Starting..."
+            npm run start
+          fi
           EOF

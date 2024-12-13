@@ -12,7 +12,11 @@ import useragent from 'express-useragent';
 import * as Sentry from '@sentry/node';
 import errorMiddleware from './middleware/errorMiddleware.js';
 import './websockets/index.js';
-import { loadDiscordMain, loadDiscordSlave } from './discord/index.js';
+import { gracefulShutdownDiscord, loadDiscordMain, loadDiscordSlave } from './discord/index.js';
+import { gracefulShutdownRedis } from './redis/index.js';
+import { gracefulShutdownPrisma } from './prisma.js';
+import { gracefulShutdownWebsocket } from './websockets/index.js';
+import { gracefulShutdownMongo } from './database/gm_server_logs.js';
 
 // Load the main discord instance
 async function runDiscord() {
@@ -28,6 +32,15 @@ app.set('trust proxy', true);
 
 // User Agent
 app.use(useragent.express());
+
+let inShutdown = false;
+app.use((req: Request, res: Response, next: NextFunction) => {
+  if (inShutdown) {
+    res.status(503).json({ error: 'Server is in the process of restarting' });
+  } else {
+    next();
+  }
+});
 
 // CORS
 app.use(
@@ -133,3 +146,19 @@ process.on('unhandledRejection', (error: Error) => {
 if (serverConfig.dev) {
   import('./test/index.js');
 }
+
+async function gracefulShutdown() {
+  gmLog('shutdown', 'Gracefully shutting down...');
+  inShutdown = true;
+  await Sentry.flush(2000);
+  await gracefulShutdownWebsocket();
+  await gracefulShutdownDiscord();
+  await gracefulShutdownRedis();
+  await gracefulShutdownPrisma();
+  await gracefulShutdownMongo();
+  process.exit(0);
+}
+
+// Capture termination signals
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);

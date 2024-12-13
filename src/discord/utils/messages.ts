@@ -5,7 +5,7 @@ import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonV
 import { getEmojiVersion } from '../../utils/tools.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
-import { dateToDiscordTimestamp, getTrustRank, secToTime } from './index.js';
+import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import prisma from '../../prisma.js';
@@ -31,6 +31,12 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   ip = ip === undefined ? '' : ip;
   port = port === undefined ? '' : port;
   playersList = Array.isArray(playersList) ? playersList : [];
+
+  const showChar = true;
+  let bufferChart: Buffer | null = null;
+  if (showChar) {
+    bufferChart = await getServerChart(server);
+  }
 
   const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
@@ -83,6 +89,10 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
       },
     )
     .setTimestamp(new Date());
+
+  if (bufferChart) {
+    embed.setImage('attachment://chart.png');
+  }
 
   if (servOnline && playersList.length > 0 && (await server.getSetting('show_player_list_status'))) {
     playersList.sort((a: any, b: any) => {
@@ -166,6 +176,7 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   return {
     embeds: [embed],
     components: rows,
+    files: bufferChart ? [{ attachment: bufferChart, name: 'chart.png' }] : [],
   };
 }
 

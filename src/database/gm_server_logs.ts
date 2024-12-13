@@ -59,3 +59,7 @@ export async function getLogsByServer(
     .skip(options.offset)
     .toArray();
 }
+
+export async function gracefulShutdownMongo() {
+  await mongoClient.close();
+}

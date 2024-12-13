@@ -153,3 +153,7 @@ export function wsSendToAllClientsOfServer(serverID: string, action: string, dat
 }
 
 gmLog('websocket', 'Listening on port ' + serverConfig.ports.websocket);
+
+export async function gracefulShutdownWebsocket() {
+  wss.close();
+}

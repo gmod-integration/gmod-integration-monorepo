@@ -495,3 +495,9 @@ setInterval(async () => {
     }
   }
 }, 30000);
+
+export async function gracefulShutdownDiscord() {
+  for (const client of clientList.values()) {
+    await client.destroy();
+  }
+}
