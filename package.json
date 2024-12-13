@@ -11,7 +11,7 @@
     "clean": "rm -rf ./dist",
     "build": "npm run clean && tsc",
     "dev": "tsx watch src/gm_integration_api.ts --env dev",
-    "start": "pm2 start ./dist/gm_integration_api.js --log logs/current.log --name gmod-integration-api --instances 2 --exec-mode cluster",
+    "start": "pm2 start ./dist/gm_integration_api.js --log logs/current.log --name gmod-integration-api --instances 2 --mode cluster",
     "reload": "pm2 reload gmod-integration-api --update-env",
     "prisma:generate": "npx prisma generate",
     "prisma:push": "npx prisma db push",
