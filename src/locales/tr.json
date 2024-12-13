@@ -208,7 +208,8 @@
   "premium_required": "Bu işlem botun premium sürümünü gerektirir!",
   "server_stop": "Sunucu Durdur",
   "server_start": "Sunucu Başlat",
-  "oldTeam": "Ancienne Équipe",
-  "newTeam": "Nouvelle Équipe",
-  "player_change_team": "Joueur Change d'Équipe"
+  "oldTeam": "Eski Takım",
+  "newTeam": "Yeni Takım",
+  "player_change_team": "Oyuncu Takım Değiştirdi",
+  "entity": "Varlık"
 }

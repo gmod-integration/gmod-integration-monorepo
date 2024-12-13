@@ -159,5 +159,6 @@
   "server_start": "Démarrage du Serveur",
   "oldTeam": "Ancienne Équipe",
   "newTeam": "Nouvelle Équipe",
-  "player_change_team": "Joueur Change d'Équipe"
+  "player_change_team": "Joueur Change d'Équipe",
+  "entity": "Entité"
 }

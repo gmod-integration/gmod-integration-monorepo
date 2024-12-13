@@ -196,5 +196,6 @@
   "server_start": "Server gestartet",
   "oldTeam": "Altes Team",
   "newTeam": "Neues Team",
-  "player_change_team": "Spieler Wechsel Team"
+  "player_change_team": "Spieler Wechsel Team",
+  "entity": "Entität"
 }

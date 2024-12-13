@@ -208,7 +208,8 @@
   "premium_required": "Questa azione richiede la versione premium del bot!",
   "server_stop": "Server Fermato",
   "server_start": "Server Avviato",
-  "oldTeam": "Ancienne Équipe",
-  "newTeam": "Nouvelle Équipe",
-  "player_change_team": "Joueur Change d'Équipe"
+  "oldTeam": "Vecchia Squadra",
+  "newTeam": "Nuova Squadra",
+  "player_change_team": "Giocatore Cambia Squadra",
+  "entity": "Entità"
 }
