@@ -5,7 +5,7 @@ import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonV
 import { getEmojiVersion } from '../../utils/tools.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
-import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
+import { dateToDiscordTimestamp, getTrustRank, secToTime } from './index.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import prisma from '../../prisma.js';
@@ -32,11 +32,12 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   port = port === undefined ? '' : port;
   playersList = Array.isArray(playersList) ? playersList : [];
 
-  const showChar = true;
-  let bufferChart: Buffer | null = null;
-  if (showChar) {
-    bufferChart = await getServerChart(server);
-  }
+  // TODO add possibility to show chart
+  // const showChar = true;
+  // let bufferChart: Buffer | null = null;
+  // if (showChar) {
+  //   bufferChart = await getServerChart(server);
+  // }
 
   const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
