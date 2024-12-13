@@ -91,9 +91,9 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
     )
     .setTimestamp(new Date());
 
-  if (bufferChart) {
-    embed.setImage('attachment://chart.png');
-  }
+  // if (bufferChart) {
+  //   embed.setImage('attachment://chart.png');
+  // }
 
   if (servOnline && playersList.length > 0 && (await server.getSetting('show_player_list_status'))) {
     playersList.sort((a: any, b: any) => {
@@ -177,7 +177,7 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   return {
     embeds: [embed],
     components: rows,
-    files: bufferChart ? [{ attachment: bufferChart, name: 'chart.png' }] : [],
+    // files: bufferChart ? [{ attachment: bufferChart, name: 'chart.png' }] : [],
   };
 }
 
