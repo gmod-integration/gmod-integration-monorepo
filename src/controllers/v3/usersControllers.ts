@@ -2,11 +2,13 @@ import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/Use
 import { createServer, getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
 import { discordConfig } from '../../config/index.js';
 import {
+  addAutoRoleToUser,
   getDiscordUserFromID,
   getUserFromToken,
   getUserTokenFromCode,
   saveUser,
   saveUserPanel,
+  verifyUser,
 } from '../../models/v3/discordModels.js';
 import { badArgument, generateToken, todoControllers } from '../../utils/tools.js';
 import { getVerificationGuildMessage } from '../../discord/utils/messages.js';
@@ -823,6 +825,46 @@ export async function createVerificationMessage(req: Request, res: Response) {
   });
 
   return res.send(newVerif);
+}
+
+export async function getVerificationCheck(req: Request, res: Response) {
+  const guild = req.guild!;
+  return res.send(await guild.canCheckVerif());
+}
+
+export async function postVerificationCheck(req: Request, res: Response) {
+  const guild = req.guild!;
+
+  if (!(await guild.canCheckVerif())) {
+    return res.status(403).send({
+      error: 'Verification check done in the last day',
+    });
+  }
+
+  res.send({
+    success: true,
+  });
+
+  const verif = await prisma.gm_guild_verification_check.create({
+    data: {
+      guildID: guild.id,
+    },
+  });
+
+  const members = await guild.dscGuild.members.fetch();
+  for (const member of members.values()) {
+    await addAutoRoleToUser(guild.dscGuild, member);
+    await verifyUser(guild.dscGuild, member);
+  }
+
+  await prisma.gm_guild_verification_check.update({
+    where: {
+      id: verif.id,
+    },
+    data: {
+      done: true,
+    },
+  });
 }
 
 export async function getVerificationMessage(req: Request, res: Response) {

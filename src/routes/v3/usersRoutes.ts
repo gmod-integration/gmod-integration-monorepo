@@ -60,6 +60,7 @@ import {
   getUserGuildsOwnOrAdmins,
   getUserNotifications,
   getUserSessions,
+  getVerificationCheck,
   getVerificationMessage,
   getVoteChannels,
   logOut,
@@ -80,6 +81,7 @@ import {
   postServerTeams,
   postUserDataRequest,
   postUserStartVerification,
+  postVerificationCheck,
   postVoteChannels,
   putGmodToDiscordFilter,
   putGuildBotInstance,
@@ -157,6 +159,8 @@ router.delete('/:discordID/guilds/:guildID/auto-roles/:roleID', asyncHandler(del
 router.get('/:discordID/guilds/:guildID/verifications', asyncHandler(getVerificationMessage));
 router.delete('/:discordID/guilds/:guildID/verifications', asyncHandler(deleteVerificationMessage));
 router.post('/:discordID/guilds/:guildID/verifications', asyncHandler(createVerificationMessage));
+router.get('/:discordID/guilds/:guildID/verifications/check', asyncHandler(getVerificationCheck));
+router.post('/:discordID/guilds/:guildID/verifications/check', asyncHandler(postVerificationCheck));
 router.get('/:discordID/guilds/:guildID/verifications/roles', asyncHandler(getGuildVerificationsRoles));
 router.put('/:discordID/guilds/:guildID/verifications/roles/:roleID', asyncHandler(putGuildVerificationsRoles));
 router.post('/:discordID/guilds/:guildID/verifications/roles/:roleID', asyncHandler(createGuildVerificationsRoles));

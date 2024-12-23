@@ -44,19 +44,20 @@ model gm_gmodstore_purchases {
 }
 
 model gm_guild {
-  guild                String                 @id @db.Char(255)
-  name                 String                 @default("") @db.VarChar(255)
-  member               Int                    @default(0)
-  language             String                 @default("en") @db.VarChar(255)
-  addDate              DateTime?              @default(now()) @db.Timestamp(0)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  gm_guild_auto_roles  gm_guild_auto_roles[]
-  gm_guild_verify_msg  gm_guild_verify_msg?
-  gm_guild_verify_role gm_guild_verify_role[]
-  gm_server            gm_server[]
-  gm_server_links      gm_server_links[]
-  gm_sync_chat         gm_sync_chat[]
+  guild                       String                        @id @db.Char(255)
+  name                        String                        @default("") @db.VarChar(255)
+  member                      Int                           @default(0)
+  language                    String                        @default("en") @db.VarChar(255)
+  addDate                     DateTime?                     @default(now()) @db.Timestamp(0)
+  createdAt                   DateTime                      @default(now())
+  updatedAt                   DateTime                      @updatedAt
+  gm_guild_auto_roles         gm_guild_auto_roles[]
+  gm_guild_verify_msg         gm_guild_verify_msg?
+  gm_guild_verify_role        gm_guild_verify_role[]
+  gm_server                   gm_server[]
+  gm_server_links             gm_server_links[]
+  gm_sync_chat                gm_sync_chat[]
+  gm_guild_verification_check gm_guild_verification_check[]
 }
 
 model gm_guild_auto_roles {
@@ -444,6 +445,17 @@ model gm_server_sync_roles {
   gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_sync_roles_ibfk_1")
 
   @@id([serverID, roleID])
+}
+
+model gm_guild_verification_check {
+  id        Int      @id @default(autoincrement())
+  done      Boolean  @default(false)
+  guildID   String   @db.VarChar(255)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gm_guild  gm_guild @relation(fields: [guildID], references: [guild], onDelete: Cascade, map: "gm_guild_verification_check_ibfk_1")
+
+  @@index([guildID], map: "guildID")
 }
 
 model gm_server_sync_team_roles {

@@ -63,6 +63,41 @@ export class Guild {
     return data;
   }
 
+  async canCheckVerif() {
+    const guildInfo = await prisma.gm_guild.findFirst({
+      where: {
+        guild: this.id,
+      },
+    });
+
+    if (guildInfo!.member > 1000) {
+      return false;
+    }
+
+    const lastCheck = await prisma.gm_guild_verification_check.findFirst({
+      where: {
+        guildID: this.id,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    if (!lastCheck) {
+      return true;
+    }
+
+    const lastCheckDate = new Date(lastCheck.createdAt);
+    const currentDate = new Date();
+    const diff = currentDate.getTime() - lastCheckDate.getTime();
+
+    if (diff > 60 * 60 * 24 * 1000) {
+      return lastCheck;
+    }
+
+    return false;
+  }
+
   async getSetting(setting: string) {
     if (!guildSettings[setting]) {
       throw new Error('Setting not found');
