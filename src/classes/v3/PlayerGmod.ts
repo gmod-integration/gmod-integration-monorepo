@@ -199,7 +199,7 @@ async function updateDiscordGroupRole(server: Server, steamID64: string, userGro
   const syncRoles = await server.getSyncRoles();
 
   const rankRole = syncRoles.find((role) => role.userGroup === userGroup) || null;
-  if (!rankRole || !rankRole.enable) return;
+  // if (!rankRole || !rankRole.enable) return;
 
   // get the bot role
   const botMember = guild.members.cache.get(dscClient.user.id);
@@ -242,7 +242,7 @@ async function updateDiscordGroupRole(server: Server, steamID64: string, userGro
   }
 
   // if user doesn't have the rank role then add it
-  if (rankRole && !member.roles.cache.has(rankRole.roleID)) {
+  if (rankRole && rankRole.enable && !member.roles.cache.has(rankRole.roleID)) {
     gmLog('sync-ranking', `Adding role to ${member.user.tag}: ${rankRole.roleID}`);
     await member.roles.add(rankRole.roleID);
   }
@@ -264,7 +264,7 @@ export async function updateDiscordTeamRole(server: Server, steamID64: string, t
   const syncRoles = await server.getSyncTeamRoles();
 
   // find all roles that are enabled and have the same team name
-  const teamRoles = syncRoles.filter((role) => role.teamName === teamName && role.enable);
+  const teamRoles = syncRoles.filter((role) => role.teamName === teamName);
 
   // get the bot role
   const botMember = guild.members.cache.get(dscClient.user.id);
@@ -299,7 +299,7 @@ export async function updateDiscordTeamRole(server: Server, steamID64: string, t
   }
 
   for (const teamRole of teamRoles) {
-    if (!member.roles.cache.has(teamRole.roleID)) {
+    if (teamRole.enable && !member.roles.cache.has(teamRole.roleID)) {
       gmLog('sync-team-role', `Adding role to ${member.user.tag}: ${teamRole.roleID}`);
       await member.roles.add(teamRole.roleID);
     }
