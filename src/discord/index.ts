@@ -363,7 +363,7 @@ export async function getGuildClient(guildID: string, forcePresenceOnGuild = tru
   }
 }
 
-export async function updateGuildUserPseudo(server: Server, player: PlayerGmod) {
+export async function updateGuildUserPseudo(server: Server, player: PlayerGmod, forceName?: string) {
   try {
     const pseudoDirection = await server.getSetting('sync_pseudo_direction');
     if (pseudoDirection !== 'both' && pseudoDirection !== 'gmod-to-discord') return;
@@ -380,7 +380,7 @@ export async function updateGuildUserPseudo(server: Server, player: PlayerGmod) 
     });
 
     let newPseudo = pseudoFormat
-      .replace(/{plyName}/g, player.name)
+      .replace(/{plyName}/g, forceName || player.name)
       .replace(/{plySteamID64}/g, player.steamID64)
       .replace(/{rolePrefix}/g, rolesFormat ? rolesFormat.prefix : '')
       .replace(/{roleName}/g, rolesFormat ? rolesFormat.name : '');

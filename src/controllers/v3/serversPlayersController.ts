@@ -77,7 +77,7 @@ export async function playerChangeName(req: Request, res: Response) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await updateGuildUserPseudo(server, ply);
+  await updateGuildUserPseudo(server, ply, newName);
   return res.status(200).json({ success: true });
 }
 
