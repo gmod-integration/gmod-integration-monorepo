@@ -10,6 +10,7 @@ import prisma from '../../prisma.js';
 import { Guild, GuildMember } from 'discord.js';
 import { PanelUser } from '../../classes/v3/PanelUser.js';
 import { v4 as uuidv4 } from 'uuid';
+import { gmLog } from '../../utils/logger.js';
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
   const guildBotInstance = await getGuildClient(member.guild.id, false);
@@ -283,6 +284,83 @@ export async function getUserTokenFromCode(code: string, redirectURI: string) {
 
   return await discordRequest.json();
 }
+
+export async function getUserTokenFromRefreshToken(refreshToken: string) {
+  const discordRequest = await fetch('https://discord.com/api/oauth2/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      client_id: discordConfig.clientID!,
+      client_secret: discordConfig.clientSecret!,
+    }).toString(),
+  });
+
+  if (!discordRequest.ok) {
+    return null;
+  }
+
+  return await discordRequest.json();
+}
+
+export async function refreshUserToken(discordID: string) {
+  const discordToken = await prisma.gm_discordToken.findFirst({
+    where: {
+      discordID,
+    },
+  });
+
+  if (!discordToken) {
+    return null;
+  }
+
+  const token = await getUserTokenFromRefreshToken(discordToken.refreshToken);
+  if (!token) {
+    // delete discord token
+    await prisma.gm_discordToken.delete({
+      where: {
+        discordID,
+      },
+    });
+    return null;
+  }
+
+  await prisma.gm_discordToken.update({
+    where: {
+      discordID,
+    },
+    data: {
+      accessToken: token.access_token,
+      refreshToken: token.refresh_token,
+      creationDate: new Date(),
+      expirationDate: new Date(Date.now() + token.expires_in * 1000),
+    },
+  });
+
+  return token;
+}
+
+// every 30 seconds check if we need to refresh discord tokens
+setInterval(async () => {
+  // get a list of all discord tokens where expiration date is less than 1 day from now
+  const discordTokens = await prisma.gm_discordToken.findMany({
+    where: {
+      expirationDate: {
+        lte: new Date(Date.now() + 60 * 60 * 24 * 1000),
+      },
+    },
+    take: 5,
+  });
+
+  // refresh all tokens
+  for (const discordToken of discordTokens) {
+    await refreshUserToken(discordToken.discordID);
+    gmLog('discord', `Refreshed token for ${discordToken.discordID}`);
+  }
+}, 1000 * 30);
 
 export async function getUserFromToken(token: string) {
   const discordRequest = await fetch('https://discord.com/api/users/@me', {
