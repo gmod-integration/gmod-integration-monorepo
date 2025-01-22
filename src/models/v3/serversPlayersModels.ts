@@ -34,6 +34,11 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
   console.log('relayMessage', relayMessage);
   let outputStr = text;
 
+  // prevent size overflow
+  if (text.length > 2000) {
+    return { skip: true, message: 'Message too long' };
+  }
+
   function executeAction(action: string) {
     switch (action) {
       case 'relay':
@@ -118,6 +123,12 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
 
   if (outputStr === '') {
     return { skip: true, message: 'Final message is empty' };
+  }
+
+  // prevent ping, @everyone, @here or <@&ID>
+  const syncChatPreventPing = await server.getSetting('sync_chat_prevent_ping');
+  if (syncChatPreventPing) {
+    outputStr = outputStr.replace(/@/g, '@\u200B');
   }
 
   const webhookRelay = await fetch(getRandomDiscordRelay(), {

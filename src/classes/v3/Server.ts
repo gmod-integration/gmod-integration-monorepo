@@ -41,6 +41,10 @@ const serverSettings: Record<string, any> = {
     defaultValue: true,
     acceptedValues: [true, false],
   },
+  sync_chat_prevent_ping: {
+    defaultValue: true,
+    acceptedValues: [true, false],
+  },
 };
 
 export class Server extends BaseClass {
