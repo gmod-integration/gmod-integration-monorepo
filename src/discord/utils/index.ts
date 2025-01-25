@@ -148,25 +148,29 @@ export async function getServerChart(server: Server) {
     .curve(d3.curveMonotoneX); // Smooth curve
 
   const now = new Date();
-  const relativeTimeFormat = (d) => {
-    const diffMs = d - now;
+  // Define a flexible formatter for tick values
+  const relativeTimeFormat = (domainValue: Date | d3.NumberValue): string => {
+    const date = domainValue instanceof Date ? domainValue : new Date(+domainValue);
+    const diffMs = date.getTime() - now.getTime();
     const diffHours = Math.round(diffMs / (1000 * 60 * 60));
 
     return `${diffHours > 0 ? '+' : ''}${diffHours}h`;
   };
 
-  // Append axes
+  // Append axes to the SVG
   svg
     .append('g')
     .attr('transform', `translate(0,${height - margin.bottom + 10})`)
     .attr('color', 'white')
-    .call(
-      d3
-        .axisBottom(xScale)
-        // .tickSize(4)
-        .tickFormat(relativeTimeFormat),
-    )
-    .selectAll('text')
+    .call((g) => {
+      g.call(
+        d3
+          .axisBottom(xScale)
+          // Customize tick size and formatting
+          // .tickSize(4)
+          .tickFormat(relativeTimeFormat),
+      );
+    })
     .style('font-size', '16px');
 
   svg

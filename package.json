@@ -9,7 +9,7 @@
     "discord:push:context": "tsx src/discord/discord_push_context.ts",
     "discord:remove:cmd": "tsx --watch --trace-warnings --trace-deprecation src/discord/discord_remove_cmd.ts",
     "clean": "rm -rf ./dist",
-    "build": "npm run clean && tsc",
+    "build": "npm run clean && tsc && npm run sentry:sourcemaps",
     "dev": "tsx watch src/gm_integration_api.ts --env dev",
     "start": "pm2 start ./dist/gm_integration_api.js --log logs/current.log --name gmod-integration-api",
     "reload": "pm2 reload gmod-integration-api --update-env",
@@ -17,7 +17,8 @@
     "prisma:push": "npx prisma db push",
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:migration:create": "npx prisma migrate dev --create-only",
-    "prisma:migrate:prod": "npx prisma migrate deploy"
+    "prisma:migrate:prod": "npx prisma migrate deploy",
+    "sentry:sourcemaps": "sentry-cli sourcemaps inject --org gmod-integration --project node-express ./dist && sentry-cli sourcemaps upload --org gmod-integration --project node-express ./dist"
   },
   "repository": {
     "type": "git",
@@ -48,9 +49,10 @@
   "dependencies": {
     "@discordjs/builders": "^1.9.0",
     "@prisma/client": "^6.0.1",
+    "@sentry/cli": "^2.41.1",
     "@sentry/core": "^8.7.0",
-    "@sentry/node": "^8.42.0",
-    "@sentry/profiling-node": "^8.42.0",
+    "@sentry/node": "^8.51.0",
+    "@sentry/profiling-node": "^8.51.0",
     "@types/d3": "^7.4.3",
     "@types/jsdom": "^21.1.7",
     "@types/node": "^22.7.6",

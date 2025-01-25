@@ -6,3 +6,5 @@ qodana.yaml
 .env
 gdpr-request/*
 dist
+# Sentry Config File
+.sentryclirc
