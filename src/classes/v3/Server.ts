@@ -418,11 +418,11 @@ export class Server extends BaseClass {
     } catch (error: any) {
       gmLog('status', `Error updating status message for server ${this.getID()}: ${error.message}`, true);
       console.error(error);
-      await prisma.gm_status.delete({
-        where: {
-          server: this.getID(),
-        },
-      });
+      // await prisma.gm_status.delete({
+      //   where: {
+      //     server: this.getID(),
+      //   },
+      // });
     }
   }
 
