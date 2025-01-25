@@ -5,7 +5,7 @@ import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonV
 import { getEmojiVersion } from '../../utils/tools.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
-import { dateToDiscordTimestamp, getTrustRank, secToTime } from './index.js';
+import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import prisma from '../../prisma.js';
@@ -32,12 +32,11 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   port = port === undefined ? '' : port;
   playersList = Array.isArray(playersList) ? playersList : [];
 
-  // TODO add possibility to show chart
-  // const showChar = true;
-  // let bufferChart: Buffer | null = null;
-  // if (showChar) {
-  //   bufferChart = await getServerChart(server);
-  // }
+  const showChar = await server.getSetting('show_status_chart');
+  let bufferChart: Buffer | null = null;
+  if (showChar) {
+    bufferChart = await getServerChart(server);
+  }
 
   const embed = new EmbedBuilder()
     .setColor(0x2b2d31)
@@ -91,23 +90,37 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
     )
     .setTimestamp(new Date());
 
-  // if (bufferChart) {
-  //   embed.setImage('attachment://chart.png');
-  // }
-
   if (servOnline && playersList.length > 0 && (await server.getSetting('show_player_list_status'))) {
     playersList.sort((a: any, b: any) => {
       return b.connectTime - a.connectTime;
     });
 
-    const playersListString = playersList.map((player: PlayerGmod) => {
-      return `${secToTime(player.connectTime + (player.adjustedTime || 0))} - ${player.name}`;
+    const status_player_list_format = await server.getSetting('status_player_list_format');
+
+    const playersListString = playersList.map((player: any) => {
+      player = new PlayerGmod(player);
+      return player.getStringFromString(status_player_list_format);
     });
+
+    // keep under 1024 characters
+    let totalLength = 0;
+    for (let i = 0; i < playersListString.length; i++) {
+      totalLength += playersListString[i].length;
+      if (totalLength > 1024) {
+        playersListString.splice(i);
+        playersListString.push('...');
+        break;
+      }
+    }
 
     embed.addFields({
       name: '👤⠀' + (await getTranslate('player_list', lang)),
       value: playersListString.join('\n'),
     });
+  }
+
+  if (bufferChart) {
+    embed.setImage('attachment://chart.png');
   }
 
   const rows: ActionRowBuilder<ButtonBuilder>[] = [];
@@ -177,7 +190,7 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   return {
     embeds: [embed],
     components: rows,
-    // files: bufferChart ? [{ attachment: bufferChart, name: 'chart.png' }] : [],
+    files: bufferChart ? [{ attachment: bufferChart, name: 'chart.png' }] : [],
   };
 }
 

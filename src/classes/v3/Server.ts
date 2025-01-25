@@ -7,6 +7,7 @@ import { gmLog } from '../../utils/logger.js';
 import { ChannelType } from 'discord.js';
 import prisma from '../../prisma.js';
 import { gm_server_sync_chat_filter } from '@prisma/client';
+import { isGuildPremium } from './Guild.js';
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
@@ -36,6 +37,9 @@ const serverSettings: Record<string, any> = {
   show_player_list_status: {
     defaultValue: false,
     acceptedValues: [true, false],
+    onChange: async (server: Server) => {
+      await server.editStatusChannelAndMessage(await server.getStatusData());
+    },
   },
   chat_sync_relay_all: {
     defaultValue: true,
@@ -44,6 +48,21 @@ const serverSettings: Record<string, any> = {
   sync_chat_prevent_ping: {
     defaultValue: true,
     acceptedValues: [true, false],
+  },
+  status_player_list_format: {
+    defaultValue: '{connectTime} - {name}',
+    freeValues: true,
+    onChange: async (server: Server) => {
+      await server.editStatusChannelAndMessage(await server.getStatusData());
+    },
+  },
+  show_status_chart: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+    premium: true,
+    onChange: async (server: Server) => {
+      await server.editStatusChannelAndMessage(await server.getStatusData());
+    },
   },
 };
 
@@ -73,6 +92,10 @@ export class Server extends BaseClass {
     this.publicTempToken = obj.publicTempToken;
     this.description = obj.description;
     this.isPublic = obj.isPublic;
+  }
+
+  async isPremium() {
+    return await isGuildPremium(this.guild);
   }
 
   async getAllSettings() {
@@ -141,6 +164,12 @@ export class Server extends BaseClass {
       throw new Error('Setting not found');
     }
 
+    const previousValue = await this.getSetting(setting);
+
+    if (serverSettings[setting].premium && !(await this.isPremium())) {
+      throw new Error('Premium setting');
+    }
+
     if (
       !serverSettings.freeValues &&
       serverSettings[setting].acceptedValues &&
@@ -181,6 +210,10 @@ export class Server extends BaseClass {
     }
 
     await redis.del(`server:${this.id}:setting:${setting}`);
+
+    if (serverSettings[setting].onChange) {
+      await serverSettings[setting].onChange(this, previousValue, value);
+    }
 
     return {
       value: await this.getSetting(setting),

@@ -4,6 +4,9 @@ import prisma from '../../prisma.js';
 import { JSDOM } from 'jsdom';
 import * as d3 from 'd3';
 import sharp from 'sharp';
+import redis from '../../redis/index.js';
+import fs from 'fs';
+import path from 'path';
 
 const trust_ranks: Record<number, string> = {
   0: 'dangerous',
@@ -62,12 +65,17 @@ export function secToTime(sec: number) {
 }
 
 async function getServerData(serverID: string, duration = 24 * 60 * 60, interval = 60) {
+  const key = `server:${serverID}:chart:${duration}:${interval}`;
+
   const data = await prisma.gm_server_status_history.findMany({
     where: {
       createdAt: {
         gte: new Date(Date.now() - duration * 1000),
       },
       serverID: serverID,
+    },
+    orderBy: {
+      createdAt: 'asc',
     },
   });
 
@@ -90,8 +98,17 @@ async function getServerData(serverID: string, duration = 24 * 60 * 60, interval
 }
 
 export async function getServerChart(server: Server) {
+  const key = `server:${server.getID()}:chart`;
+  const cacheChart = await redis.get(key);
+  if (cacheChart) {
+    // read from /tmp/gmod-integration/status_chart/<serverID>.svg
+    const outputFilePath = path.resolve('/tmp/gmod-integration/status_chart', `${server.getID()}.svg`);
+    if (fs.existsSync(outputFilePath)) {
+      return await sharp(outputFilePath).png().toBuffer();
+    }
+  }
+
   const data = await getServerData(server.getID());
-  console.log(data);
 
   const maxPlayers = await prisma.gm_server_status.findFirst({
     where: {
@@ -116,7 +133,6 @@ export async function getServerChart(server: Server) {
   const xScale = d3
     .scaleTime()
     .domain(d3.extent(data, (d) => d.time) as [Date, Date])
-    .nice()
     .range([margin.left, width - margin.right]);
 
   const yScale = d3
@@ -131,6 +147,14 @@ export async function getServerChart(server: Server) {
     .y((d) => yScale(d.value))
     .curve(d3.curveMonotoneX); // Smooth curve
 
+  const now = new Date();
+  const relativeTimeFormat = (d) => {
+    const diffMs = d - now;
+    const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+
+    return `${diffHours > 0 ? '+' : ''}${diffHours}h`;
+  };
+
   // Append axes
   svg
     .append('g')
@@ -140,7 +164,7 @@ export async function getServerChart(server: Server) {
       d3
         .axisBottom(xScale)
         // .tickSize(4)
-        .tickFormat(d3.timeFormat('%H:%M') as any),
+        .tickFormat(relativeTimeFormat),
     )
     .selectAll('text')
     .style('font-size', '16px');
@@ -165,24 +189,31 @@ export async function getServerChart(server: Server) {
     .attr('stroke-width', 4)
     .attr('d', line);
 
-  // add title
-  svg
-    .append('text')
-    .attr('x', width / 2)
-    .attr('y', margin.top / 2)
-    .attr('text-anchor', 'middle')
-    .attr('fill', 'white')
-    .style('font-size', '20px')
-    .style('font-family', 'Roboto')
-    .text(`Players on ${server.getName()}`);
+  // // add title
+  // svg
+  //   .append('text')
+  //   .attr('x', width / 2)
+  //   .attr('y', margin.top / 2)
+  //   .attr('text-anchor', 'middle')
+  //   .attr('fill', 'white')
+  //   .style('font-size', '20px')
+  //   .style('font-family', 'Roboto')
+  //   .text(`Players on ${server.getName()}`);
 
   // Convert the generated SVG to a string
   const svgString = (body.select('svg').node() as Element)?.outerHTML;
 
   // Save the SVG string to a file
-  // const outputFilePath = path.resolve(__dirname, 'chart.svg');
   // fs.writeFileSync(outputFilePath, svgString);
-  // console.log(`SVG chart saved to ${outputFilePath}`);
+
+  // save in /tmp/gmod-integration/status_chart/<serverID>.svg overwriting the previous one
+  // create folder if not exists
+  fs.mkdirSync(path.resolve('/tmp/gmod-integration/status_chart'), { recursive: true });
+  const outputFilePath = path.resolve('/tmp/gmod-integration/status_chart', `${server.getID()}.svg`);
+  fs.writeFileSync(outputFilePath, svgString);
+
+  // save in redis cache
+  await redis.set(key, true, 'EX', 60 * 2); // 2 minutes
 
   // convert svg to png
   return await sharp(Buffer.from(svgString)).png().toBuffer();

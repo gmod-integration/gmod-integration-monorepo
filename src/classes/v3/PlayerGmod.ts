@@ -9,6 +9,7 @@ import { Position } from './Position.js';
 import { Angle } from './Angle.js';
 import { CustomValues } from './CustomValues.js';
 import { getTranslate } from '../../utils/localizations.js';
+import { secToTime } from '../../discord/utils/index.js';
 
 export interface PlayerGmodInterface {
   steamID: string;
@@ -81,6 +82,23 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
     this.ping = obj.ping || 0;
     this.adjustedTime = obj.adjustedTime || 0;
     this.branch = obj.branch || 'unknown';
+  }
+
+  getStringFromString(str: string) {
+    return str
+      .replace(/{name}/g, this.name)
+      .replace(/{steamID64}/g, this.steamID64)
+      .replace(/{team}/g, this.team.getName())
+      .replace(/{userGroup}/g, this.userGroup)
+      .replace(/{connectTime}/g, secToTime(this.connectTime))
+      .replace(/{kills}/g, this.kills.toString())
+      .replace(/{deaths}/g, this.deaths.toString())
+      .replace(/{position}/g, this.position.toString())
+      .replace(/{angle}/g, this.angle.toString())
+      .replace(/{fps}/g, this.fps.toString())
+      .replace(/{ping}/g, this.ping.toString())
+      .replace(/{adjustedTime}/g, this.adjustedTime.toString())
+      .replace(/{branch}/g, this.branch);
   }
 
   async getDiscordID() {
