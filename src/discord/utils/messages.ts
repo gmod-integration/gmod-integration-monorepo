@@ -105,8 +105,8 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
     // keep under 1024 characters
     let totalLength = 0;
     for (let i = 0; i < playersListString.length; i++) {
-      totalLength += playersListString[i].length;
-      if (totalLength > 1024) {
+      totalLength += playersListString[i].length + 1; // +1 for the newline character
+      if (totalLength > 800) {
         playersListString.splice(i);
         playersListString.push('...');
         break;
