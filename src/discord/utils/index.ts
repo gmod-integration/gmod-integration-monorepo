@@ -65,8 +65,6 @@ export function secToTime(sec: number) {
 }
 
 async function getServerData(serverID: string, duration = 24 * 60 * 60, interval = 60) {
-  const key = `server:${serverID}:chart:${duration}:${interval}`;
-
   const data = await prisma.gm_server_status_history.findMany({
     where: {
       createdAt: {
@@ -108,7 +106,7 @@ export async function getServerChart(server: Server) {
     }
   }
 
-  const data = await getServerData(server.getID());
+  const data = await getServerData(server.getID(), 24 * 60 * 60, 480);
 
   const maxPlayers = await prisma.gm_server_status.findFirst({
     where: {
@@ -217,7 +215,7 @@ export async function getServerChart(server: Server) {
   fs.writeFileSync(outputFilePath, svgString);
 
   // save in redis cache
-  await redis.set(key, true, 'EX', 60 * 2); // 2 minutes
+  await redis.set(key, true, 'EX', 60 * 4); // 4 minutes cache
 
   // convert svg to png
   return await sharp(Buffer.from(svgString)).png().toBuffer();
