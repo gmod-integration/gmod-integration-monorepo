@@ -212,7 +212,12 @@ export async function getServerChart(server: Server) {
   // create folder if not exists
   fs.mkdirSync(path.resolve('/tmp/gmod-integration/status_chart'), { recursive: true });
   const outputFilePath = path.resolve('/tmp/gmod-integration/status_chart', `${server.getID()}.svg`);
-  fs.writeFileSync(outputFilePath, svgString, { flag: 'w' });
+  // delete if exists
+  if (fs.existsSync(outputFilePath)) {
+    fs.unlinkSync(outputFilePath);
+  }
+  // write the file
+  fs.writeFileSync(outputFilePath, svgString);
 
   // save in redis cache
   await redis.set(key, true, 'EX', 60 * 4); // 4 minutes c
