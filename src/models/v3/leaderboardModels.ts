@@ -47,7 +47,7 @@ function ButtonLeaderboardRefresh() {
   return new ButtonBuilder().setStyle(ButtonStyle.Secondary).setEmoji('🔄').setCustomId('leaderboard_refresh');
 }
 
-const defaultCategories = ['total_time', 'total_kill', 'total_death', 'total_connect', 'last_connect', 'first_connect'];
+const defaultCategories = ['total_time', 'total_kill', 'total_death', 'total_connect', 'last_connect', 'first_join'];
 
 export async function getServerLeaderboardCategories(serverID: string) {
   let serverCategories = defaultCategories.slice();
@@ -125,7 +125,7 @@ export async function getCatFormat(category: string, value: any, lang: string) {
       return value + ' ' + (await getTranslate('connect', lang));
     case 'last_connect':
       return dateToDiscordTimestamp(value);
-    case 'first_connect':
+    case 'first_join':
       return dateToDiscordTimestamp(value);
     case 'money':
       return value.toLocaleString({
