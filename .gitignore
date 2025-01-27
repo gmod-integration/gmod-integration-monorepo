@@ -8,3 +8,4 @@ gdpr-request/*
 dist
 # Sentry Config File
 .sentryclirc
+status_chart
