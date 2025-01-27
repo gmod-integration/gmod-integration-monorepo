@@ -103,6 +103,7 @@ import {
   userValidator,
 } from '../../middleware/v3/userValidator.js';
 import asyncHandler from '../../middleware/asyncHandler.js';
+import { getAllPanelUsers } from '../../controllers/v3/usersAdminControllers.js';
 
 const router = express.Router();
 
@@ -126,6 +127,7 @@ router.post('/:discordID/data-requests', asyncHandler(postUserDataRequest));
 router.use('/:discordID/admins', userAdminValidator);
 router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds));
 router.get('/:discordID/admins/informations', asyncHandler(getAdminInformations));
+router.get('/:discordID/admins/panel-users', asyncHandler(getAllPanelUsers));
 
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', asyncHandler(findGuild));
