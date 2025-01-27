@@ -195,9 +195,6 @@ export async function getLeaderboardMessageEmbed(
     .setColor(0x2b2d31)
     .setFields([]);
 
-  let actualPage = 1;
-  let totalPages = 1;
-
   const leaderboardStat = await getServerLeaderboard(server.getID(), category, limit, offset, order);
 
   if (leaderboardStat) {
@@ -206,26 +203,22 @@ export async function getLeaderboardMessageEmbed(
       let rank: any = index + 1 + offset;
 
       if (offset === 0) {
-        // if (rank === 1 || rank === 4) {
-        //   embed.addFields({
-        //     name: '\n',
-        //     value: '',
-        //   });
-        // }
+        if (rank === 1 || rank === 4) {
+          embed.addFields({
+            name: '\n',
+            value: '',
+          });
+        }
 
-        let inTop = false;
         switch (rank) {
           case 1:
             rank = '🥇';
-            inTop = true;
             break;
           case 2:
             rank = '🥈';
-            inTop = true;
             break;
           case 3:
             rank = '🥉';
-            inTop = true;
             break;
         }
       }
@@ -235,27 +228,27 @@ export async function getLeaderboardMessageEmbed(
           category,
           (stat as any)[category] || (stat.custom_values && (stat.custom_values as any)[category]) || 'total_time',
           lang,
-        )) + (rank < 4 ? '\n \u200b' : '');
+        )) || '0';
 
       if (fieldValue.trim().length > 0) {
         embed.addFields({
           name: '**' + rank + '**' + ' - ' + stat.name,
-          value: fieldValue,
+          value: fieldValue.toString() + (rank < 4 ? '  \n \u200b' : ''),
           inline: true,
         });
       }
-
-      actualPage = Math.ceil(leaderboardStat.query.offset / leaderboardStat.query.limit) + 1;
-      totalPages = Math.ceil(leaderboardStat.total / leaderboardStat.query.limit);
-
-      embed.setDescription(
-        await getTranslate('leaderboard_desc', lang, [
-          '**' + (await getTranslate(category, lang)) + '**',
-          '**' + actualPage + '**',
-          '**' + totalPages + '**',
-        ]),
-      );
     }
+
+    const actualPage = Math.ceil((offset + 1) / limit);
+    const totalPages = Math.ceil(leaderboardStat.total / limit);
+
+    embed.setDescription(
+      await getTranslate('leaderboard_desc', lang, [
+        '**' + (await getTranslate(category, lang)) + '**',
+        '**' + actualPage + '**',
+        '**' + totalPages + '**',
+      ]),
+    );
 
     const options = {
       serverID: server.getID(),
