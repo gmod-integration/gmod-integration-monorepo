@@ -202,16 +202,20 @@ export async function getLeaderboardMessageEmbed(
       const index = leaderboardStat.rows.indexOf(stat);
       let rank: any = index + 1 + offset;
 
+      let inTop = false;
       if (offset === 0) {
         switch (rank) {
           case 1:
             rank = '🥇';
+            inTop = true;
             break;
           case 2:
             rank = '🥈';
+            inTop = true;
             break;
           case 3:
             rank = '🥉';
+            inTop = true;
             break;
         }
       }
@@ -226,7 +230,7 @@ export async function getLeaderboardMessageEmbed(
       if (fieldValue.trim().length > 0) {
         embed.addFields({
           name: '**' + rank + '**' + ' - ' + stat.name,
-          value: fieldValue.toString() + (rank < 4 ? '  \n \u200b' : ''),
+          value: fieldValue.toString() + (inTop && leaderboardStat.total > 4 ? '  \n \u200b' : ''),
           inline: true,
         });
       }
