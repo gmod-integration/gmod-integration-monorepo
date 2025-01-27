@@ -98,12 +98,13 @@ async function getServerData(serverID: string, duration = 24 * 60 * 60, interval
 export async function getServerChart(server: Server) {
   const key = `server:${server.getID()}:chart`;
   const cacheChart = await redis.get(key);
-  if (cacheChart) {
-    // read from /tmp/gmod-integration/status_chart/<serverID>.svg
-    const outputFilePath = path.resolve('/tmp/gmod-integration/status_chart', `${server.getID()}.svg`);
-    if (fs.existsSync(outputFilePath)) {
-      return await sharp(outputFilePath).png().toBuffer();
-    }
+  const outputFilePath = path.resolve('./status_chart', `${server.getID()}.svg`);
+
+  if (cacheChart && fs.existsSync(outputFilePath)) {
+    console.log('Serving cached chart');
+    return await sharp(await fs.promises.readFile(outputFilePath))
+      .png()
+      .toBuffer();
   }
 
   const data = await getServerData(server.getID(), 24 * 60 * 60, 480);
@@ -191,37 +192,22 @@ export async function getServerChart(server: Server) {
     .attr('stroke-width', 4)
     .attr('d', line);
 
-  // // add title
-  // svg
-  //   .append('text')
-  //   .attr('x', width / 2)
-  //   .attr('y', margin.top / 2)
-  //   .attr('text-anchor', 'middle')
-  //   .attr('fill', 'white')
-  //   .style('font-size', '20px')
-  //   .style('font-family', 'Roboto')
-  //   .text(`Players on ${server.getName()}`);
-
-  // Convert the generated SVG to a string
   const svgString = (body.select('svg').node() as Element)?.outerHTML;
 
-  // Save the SVG string to a file
-  // fs.writeFileSync(outputFilePath, svgString);
+  // Ensure the directory exists
+  await fs.promises.mkdir(path.resolve('./status_chart'), { recursive: true });
 
-  // save in /tmp/gmod-integration/status_chart/<serverID>.svg overwriting the previous one
-  // create folder if not exists
-  fs.mkdirSync(path.resolve('/tmp/gmod-integration/status_chart'), { recursive: true });
-  const outputFilePath = path.resolve('/tmp/gmod-integration/status_chart', `${server.getID()}.svg`);
-  // delete if exists
-  if (fs.existsSync(outputFilePath)) {
-    fs.unlinkSync(outputFilePath);
-  }
-  // write the file
-  fs.writeFileSync(outputFilePath, svgString);
+  // Write to a temporary file
+  const tempFilePath = `${outputFilePath}.tmp`;
+  await fs.promises.writeFile(tempFilePath, svgString);
 
-  // save in redis cache
-  await redis.set(key, true, 'EX', 60 * 4); // 4 minutes c
+  // Atomically rename the temporary file to the final file
+  await fs.promises.rename(tempFilePath, outputFilePath);
+  console.log('File updated successfully:', outputFilePath);
 
-  // convert svg to png
+  // Update Redis cache after writing the file
+  await redis.set(key, true, 'EX', 60 * 4);
+
+  // Return the PNG conversion
   return await sharp(Buffer.from(svgString)).png().toBuffer();
 }
