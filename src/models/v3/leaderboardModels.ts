@@ -203,13 +203,6 @@ export async function getLeaderboardMessageEmbed(
       let rank: any = index + 1 + offset;
 
       if (offset === 0) {
-        if (rank === 1 || rank === 4) {
-          embed.addFields({
-            name: '\n',
-            value: '',
-          });
-        }
-
         switch (rank) {
           case 1:
             rank = '🥇';
