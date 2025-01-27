@@ -230,16 +230,20 @@ export async function getLeaderboardMessageEmbed(
         }
       }
 
-      embed.addFields({
-        name: '**' + rank + '**' + ' - ' + stat.name,
-        value:
-          (await getCatFormat(
-            category,
-            (stat as any)[category] || (stat.custom_values && (stat.custom_values as any)[category]) || 'total_time',
-            lang,
-          )) + (rank < 4 ? '\n \u200b' : ''),
-        inline: true,
-      });
+      const fieldValue =
+        (await getCatFormat(
+          category,
+          (stat as any)[category] || (stat.custom_values && (stat.custom_values as any)[category]) || 'total_time',
+          lang,
+        )) + (rank < 4 ? '\n \u200b' : '');
+
+      if (fieldValue.trim().length > 0) {
+        embed.addFields({
+          name: '**' + rank + '**' + ' - ' + stat.name,
+          value: fieldValue,
+          inline: true,
+        });
+      }
 
       actualPage = Math.ceil(leaderboardStat.query.offset / leaderboardStat.query.limit) + 1;
       totalPages = Math.ceil(leaderboardStat.total / leaderboardStat.query.limit);
