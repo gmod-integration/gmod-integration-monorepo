@@ -236,7 +236,8 @@ async function updateDiscordGroupRole(server: Server, steamID64: string, userGro
 
   const userRoles = member.roles.cache;
   const rolesToRemove = userRoles.filter(
-    (role) => syncRoles.some((syncRole) => syncRole.roleID === role.id) && role.id !== rankRole?.roleID,
+    (role) =>
+      syncRoles.some((syncRole) => syncRole.roleID === role.id) && role.id !== rankRole?.roleID && rankRole?.enable,
   );
 
   // redis the update to avoid dsc |-> gmod sursync
@@ -305,7 +306,7 @@ export async function updateDiscordTeamRole(server: Server, steamID64: string, t
   const rolesToRemove = userRoles.filter(
     (role) =>
       syncRoles.some((syncRole) => syncRole.roleID === role.id) &&
-      !teamRoles.some((teamRole) => teamRole.roleID === role.id),
+      !teamRoles.some((teamRole) => teamRole.roleID === role.id && teamRole.enable),
   );
 
   if (rolesToRemove.size > 0) {

@@ -63,7 +63,8 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
       // remove all roles except the one we are adding
       const userRoles = member.roles.cache;
       const rolesToRemove = userRoles.filter(
-        (role) => syncRoles.some((syncRole) => syncRole.roleID === role.id) && role.id !== roleData?.roleID,
+        (role) =>
+          syncRoles.some((syncRole) => syncRole.roleID === role.id && syncRole.enable) && role.id !== roleData?.roleID,
       );
 
       if (rolesToRemove.size > 0) {
