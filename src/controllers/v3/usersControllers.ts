@@ -638,7 +638,73 @@ export async function deleteGmodToDiscordFilter(req: Request, res: Response) {
 
 export async function getServerPlayers(req: Request, res: Response) {
   const server = req.server!;
-  return res.send((await server.getDBPlayers()) || []);
+
+  // those are optional query params and default values
+  const limit: number = (req.query.limit && Number(req.query.limit)) || 50;
+  const offset: number = (req.query.offset && Number(req.query.offset)) || 0;
+  const order: string = (req.query.order && String(req.query.order)) || 'desc';
+  const searchColum: string = (req.query.searchColum && String(req.query.searchColum)) || 'total_time';
+  const search: string = (req.query.search && String(req.query.search)) || '';
+
+  // check if searchColum query is valid
+  const allowedSearch = ['total_time', 'total_connect', 'rank', 'name', 'bypassMaintenance'];
+  if (!allowedSearch.includes(searchColum)) {
+    return res.status(400).send({
+      error: 'invalid searchColum query',
+    });
+  }
+  const allowedOrder = ['asc', 'desc'];
+  if (!allowedOrder.includes(order)) {
+    return res.status(400).send({
+      error: 'invalid order query',
+    });
+  }
+
+  // reply data, query {limit, offset, order, total}
+  const players = await prisma.gm_server_stat.findMany({
+    where: {
+      server_id: server.id,
+      OR: [
+        {
+          name: {
+            contains: search,
+          },
+        },
+        {
+          steam_id: {
+            contains: search,
+          },
+        },
+        {
+          rank: {
+            contains: search,
+          },
+        },
+      ],
+    },
+    orderBy: {
+      [searchColum]: order,
+    },
+    take: limit,
+    skip: offset,
+  });
+
+  const total = await prisma.gm_server_stat.count({
+    where: {
+      server_id: server.id,
+    },
+  });
+
+  return res.send({
+    rows: players,
+    query: {
+      limit: limit,
+      offset: offset,
+      order: order,
+      total: total,
+      searchColum: searchColum,
+    },
+  });
 }
 
 export async function putPlayerBypassMaintenance(req: Request, res: Response) {
@@ -926,7 +992,6 @@ export async function getPublicServers(req: Request, res: Response) {
   let publicServers: any = [];
 
   let thirtyDaysAgo = moment().subtract(30, 'days').toDate();
-  console.log(thirtyDaysAgo);
   for (const serverData of serversData) {
     const server = new Server(serverData);
     let publicInformations = await server.getPublicInformations();
