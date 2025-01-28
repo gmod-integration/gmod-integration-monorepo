@@ -692,6 +692,23 @@ export async function getServerPlayers(req: Request, res: Response) {
   const total = await prisma.gm_server_stat.count({
     where: {
       server_id: server.id,
+      OR: [
+        {
+          name: {
+            contains: search,
+          },
+        },
+        {
+          steam_id: {
+            contains: search,
+          },
+        },
+        {
+          rank: {
+            contains: search,
+          },
+        },
+      ],
     },
   });
 
