@@ -344,6 +344,16 @@ model gm_server_screenshots {
   @@index([serverID], map: "serverID")
 }
 
+model gm_users_transfers {
+  id           String   @id @default(uuid()) @db.Char(36)
+  oldDiscordID String   @default("") @db.VarChar(255)
+  newDiscordID String   @default("") @db.VarChar(255)
+  oldSteamID64 String   @default("") @db.VarChar(255)
+  newSteamID64 String   @default("") @db.VarChar(255)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model gm_server_settings {
   serverID  String    @db.Char(255)
   setting   String    @db.Char(255)

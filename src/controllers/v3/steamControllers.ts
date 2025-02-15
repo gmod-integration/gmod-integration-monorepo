@@ -73,7 +73,17 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
       });
 
       for (const userWithSteam of usersWithSteam) {
+        await prisma.gm_users_transfers.create({
+          data: {
+            oldSteamID64: steamID64,
+            newSteamID64: steamID64,
+            oldDiscordID: userWithSteam.id,
+            newDiscordID: user.id,
+          },
+        });
+
         gmLog('steam', `STEAM MOVE FROM ${userWithSteam.id} TO ${user.id}`);
+
         await prisma.gm_user.update({
           where: {
             id: userWithSteam.id,
