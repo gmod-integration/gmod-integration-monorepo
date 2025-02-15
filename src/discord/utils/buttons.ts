@@ -43,6 +43,9 @@ export async function ButtonVerify(lang: string) {
 }
 
 export async function ButtonConnect(lang: string, ip: string, port: string) {
+  if (ip.includes(':')) {
+    ip = ip.split(':')[0];
+  }
   return new ButtonBuilder()
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('server-connect', lang)}`)
