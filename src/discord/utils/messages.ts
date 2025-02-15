@@ -210,7 +210,7 @@ export async function getNotVerifiedMessage(guild: Guild, member: GuildMember) {
         name: await getTranslate('join_msg_p2_name', lang),
         value:
           (await getTranslate('join_msg_p2_value', lang, [
-            `[Garry's Mod Integration](${discordConfig.oauthPanel}&state=redirect:/account)`,
+            `[Garry's Mod Integration](${discordConfig.oauthPanel}&state=redirect:/account?startVerification=true')`,
           ])) + '\n \u200b',
         inline: false,
       },
