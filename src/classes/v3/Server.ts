@@ -335,17 +335,22 @@ export class Server extends BaseClass {
     const status = await this.getStatusChannelAndMessage();
     if (!status) return;
 
-    const guild = await this.getDiscordGuild();
-    if (!guild) return;
+    try {
+      const guild = await this.getDiscordGuild();
+      if (!guild) return;
 
-    const channel = guild.channels.cache.get(status.channel);
-    if (!channel) return;
+      const channel = guild.channels.cache.get(status.channel);
+      if (!channel) return;
 
-    if (channel.isTextBased()) {
-      const message = await channel.messages.fetch(status.message);
-      if (message) await message.delete();
+      if (channel.isTextBased()) {
+        const message = await channel.messages.fetch(status.message);
+        if (message) await message.delete();
+      }
+    } catch (error) {
+      // skip
     }
 
+    // force delete the status from the database
     await prisma.gm_status.delete({
       where: {
         server: this.getID(),
