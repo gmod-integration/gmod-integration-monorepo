@@ -175,11 +175,3 @@ gmLog('websocket', 'Listening on port ' + serverConfig.ports.websocket);
 export async function gracefulShutdownWebsocket() {
   wss.close();
 }
-
-// for test every 5s list all clients
-setInterval(() => {
-  gmLog(
-    'websocket',
-    `Clients: [${clients.client.map((client) => client.panelUser.discordID).join(', ')}] Servers: [${clients.server.map((client) => client.id).join(', ')}]`,
-  );
-}, 5000);
