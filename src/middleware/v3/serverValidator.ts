@@ -1,5 +1,6 @@
 import { getServerFromID } from '../../classes/v3/Server.js';
 import { NextFunction, Request, Response } from 'express';
+import redis from '../../redis/index.js';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -22,6 +23,12 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
       res.status(401).json({ error: 'unauthorized' });
       return;
     }
+
+    const version = req.headers['gmod-integrations-version'];
+    const redisKeyServerVersion = `server:${serverID}:version`;
+    redis.set(redisKeyServerVersion, version);
+    const redisKeyServerLastRequest = `server:${serverID}:last_request`;
+    redis.set(redisKeyServerLastRequest, new Date().toISOString());
 
     req.server = server;
     return next();

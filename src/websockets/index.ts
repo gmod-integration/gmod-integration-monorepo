@@ -3,6 +3,8 @@ import { serverConfig } from '../config/index.js';
 import { gmLog } from '../utils/logger.js';
 import { getServerFromID, getServersFromDiscordGuildID } from '../classes/v3/Server.js';
 import { getPanelUserFromDiscordID, PanelUser } from '../classes/v3/PanelUser.js';
+import redis from '../redis/index.js';
+import { lastGmodIntegrationTag, versionComparator } from '../utils/tools.js';
 
 interface wsClientClient {
   ws: any;
@@ -98,6 +100,49 @@ wss.on('connection', async function connection(ws, req) {
       clients.client = clients.client.filter((client) => client.panelUser.discordID !== discordID);
       clients.client.push({ ws, panelUser: user, guildAdminListID, serverAdminListID });
       gmLog('websocket', 'Client connected: ' + discordID);
+
+      ws.on('message', async (message: string) => {
+        try {
+          const wsInfo = JSON.parse(message);
+
+          if (!wsInfo.action) {
+            return;
+          }
+
+          gmLog('websocket', 'Received from client ' + discordID + ' ' + JSON.stringify(wsInfo));
+
+          switch (wsInfo.action) {
+            case 'server_status':
+              const { serverID } = wsInfo.data;
+
+              const serverVersion = await redis.get(`server:${serverID}:version`);
+              const serverLastRequest = await redis.get(`server:${serverID}:last_request`);
+
+              // reply with server status
+              wsSendToClient(
+                discordID,
+                {
+                  action: 'server_status',
+                  serverID,
+                  version: serverVersion,
+                  versionComparator: serverVersion ? versionComparator(lastGmodIntegrationTag, serverVersion) : 1,
+                  lastRequest: serverLastRequest
+                    ? new Date(serverLastRequest)
+                    : new Date(new Date().getTime() - 1000 * 60 * 2),
+                  isWebSocketConnected: !!clients.server.find((client) => client.id === serverID),
+                },
+                'server_status',
+              );
+
+              break;
+            default:
+              break;
+          }
+        } catch (e) {
+          gmLog('websocket', 'Error parsing message from client ' + discordID + ' ' + e);
+        }
+      });
+
       ws.on('close', () => {
         clients.client = clients.client.filter((client) => client.panelUser.discordID !== discordID);
         gmLog('websocket', 'Client disconnected: ' + discordID);

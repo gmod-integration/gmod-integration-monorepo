@@ -73,3 +73,49 @@ export function todoControllers(req: Request, res: Response) {
     error: 'Not Implemented',
   });
 }
+
+async function fetchLastTag() {
+  return await fetch('https://api.github.com/repos/gmod-integration/lua/tags')
+    .then((response) => response.json())
+    .then((data) => {
+      return data[0].name;
+    })
+    .catch((error) => {
+      console.error('Error:', error);
+      return 'Unknown';
+    });
+}
+
+// update every 10 min
+export let lastGmodIntegrationTag = await fetchLastTag();
+setInterval(
+  async () => {
+    lastGmodIntegrationTag = await fetchLastTag();
+  },
+  1000 * 60 * 10,
+);
+
+/*
+ * Compare two versions
+ * @param {string} version1
+ * @param {string} version2
+ * @returns {number} 1 if version1 > version2, -1 if version1 < version2, 0 if version1 === version2
+ * @example
+ * versionComparator('1.0.0', '1.0.1') // -1
+ * versionComparator('1.0.1', '1.0.0') // 1
+ * versionComparator('1.0.0', '1.0.0') // 0
+ */
+export function versionComparator(version1: string, version2: string) {
+  const v1 = version1.startsWith('v') ? version1.slice(1) : version1;
+  const v2 = version2.startsWith('v') ? version2.slice(1) : version2;
+
+  for (let i = 0; i < v1.length; i++) {
+    if (parseInt(v1[i]) > parseInt(v2[i])) {
+      return 1;
+    } else if (parseInt(v1[i]) < parseInt(v2[i])) {
+      return -1;
+    }
+  }
+
+  return 0;
+}
