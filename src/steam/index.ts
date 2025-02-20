@@ -31,7 +31,7 @@ export function getSteamUserAvatarLarge(steamID64: string) {
     }
 
     const summary = await steam.getUserSummary(steamID64);
-    await redis.set(redisKey, summary.avatar.large, 'EX', 60 * 60 * 24);
+    await redis.set(redisKey, summary.avatar.large, 'EX', 60 * 60 * 24 * 7);
     resolve(summary.avatar.large);
   });
 }
