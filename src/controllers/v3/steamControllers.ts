@@ -75,7 +75,7 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
       for (const userWithSteam of usersWithSteam) {
         await prisma.gm_users_transfers.create({
           data: {
-            oldSteamID64: steamID64,
+            oldSteamID64: userWithSteam.steam ?? '',
             newSteamID64: steamID64,
             oldDiscordID: userWithSteam.id,
             newDiscordID: user.id,
