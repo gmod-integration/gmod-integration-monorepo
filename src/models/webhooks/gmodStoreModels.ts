@@ -4,6 +4,7 @@ import { gmLog } from '../../utils/logger.js';
 import { getUserFromSteamID64 } from '../../classes/v3/User.js';
 import prisma from '../../prisma.js';
 import { addNotification } from '../../utils/tools.js';
+import JSONbig from 'json-bigint';
 
 export async function verifyWebhookSignature(headers: any, payload: any) {
   const webhookSignature = headers['webhook-signature'];
@@ -35,18 +36,19 @@ export async function verifyWebhookSignature(headers: any, payload: any) {
 }
 
 export async function getUser(userID: string) {
-  const userData = await fetch(`https://www.gmodstore.com/api/v3/users/${userID}`, {
+  const response = await fetch(`https://www.gmodstore.com/api/v3/users/${userID}`, {
     headers: {
       Authorization: `Bearer ${gmodStoreConfig.apiKey}`,
       Accept: 'application/json',
     },
   });
 
-  if (!userData.ok) {
+  if (!response.ok) {
     throw new Error('Failed to fetch user data');
-  } else {
-    return await userData.json();
   }
+
+  const rawText = await response.text();
+  return JSONbig({ storeAsString: true }).parse(rawText);
 }
 
 export async function saveGmodStorePurchase(steamID64: string, userID: string, revoke: boolean) {

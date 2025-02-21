@@ -1,19 +1,13 @@
 import { gmLog } from '../../utils/logger.js';
-import { gmodStoreConfig } from '../../config/index.js';
 import { NextFunction, Request, Response } from 'express';
+import { verifyWebhookSignature } from '../../models/webhooks/gmodStoreModels.js';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const payload = req.body;
 
-    if (!payload.extra) {
-      gmLog('error', 'No extra field in payload');
-      res.status(401).send('unauthorized');
-      return;
-    }
-
-    if (payload.extra !== gmodStoreConfig.secretWebhook) {
-      gmLog('error', 'Invalid secret');
+    if (!(await verifyWebhookSignature(req.headers, payload))) {
+      gmLog('error', 'Invalid signature');
       res.status(401).send('unauthorized');
       return;
     }
