@@ -117,6 +117,12 @@ export async function playerChangeTeam(req: Request, res: Response) {
     });
   }
 
+  const { player } = req.body;
+  const ply = new PlayerGmod(player);
+  if (ply.isValid()) {
+    await ply.saveTeamTime(server.getID());
+  }
+
   await updateDiscordTeamRole(server, steamID64, newTeam?.name);
   return res.status(200).json({ success: true });
 }
@@ -168,6 +174,7 @@ export async function playerDisconnect(req: Request, res: Response) {
 
   await ply.saveServerStat(server.getID());
   await ply.saveServerStatSession(server.getID());
+  await ply.saveTeamTime(server.getID());
   await updatePlayerUserGroup(server, ply.steamID64, ply.userGroup);
   await updateGuildUserPseudo(server, ply);
   await updateDiscordTeamRole(server, ply.steamID64, null);

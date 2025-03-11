@@ -27,6 +27,7 @@ export interface PlayerGmodInterface {
   ping: number | null;
   adjustedTime: number | null;
   branch: string | null;
+  timeLastTeamChange: number | null;
 }
 
 export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
@@ -45,6 +46,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   public ping: number;
   public adjustedTime: number;
   public branch: string;
+  public timeLastTeamChange: number;
 
   constructor(obj: PlayerGmodInterface, throwMissing = true) {
     super();
@@ -82,6 +84,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
     this.ping = obj.ping || 0;
     this.adjustedTime = obj.adjustedTime || 0;
     this.branch = obj.branch || 'unknown';
+    this.timeLastTeamChange = obj.timeLastTeamChange || 0;
   }
 
   getStringFromString(str: string) {
@@ -91,6 +94,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
       .replace(/{team}/g, this.team.getName())
       .replace(/{userGroup}/g, this.userGroup)
       .replace(/{connectTime}/g, secToTime(this.connectTime))
+      .replace(/{timeLastTeamChange}/g, secToTime(this.timeLastTeamChange))
       .replace(/{kills}/g, this.kills.toString())
       .replace(/{deaths}/g, this.deaths.toString())
       .replace(/{position}/g, this.position.toString())
@@ -127,6 +131,23 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
     }
 
     return dscList.join('\n');
+  }
+
+  async saveTeamTime(serverID: string) {
+    try {
+      await prisma.gm_server_stat_team_time.create({
+        data: {
+          serverID,
+          steamID64: this.steamID64,
+          team: this.team.getName(),
+          teamID: this.team.getID(),
+          time: this.timeLastTeamChange,
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
   }
 
   async saveServerStat(serverID: string) {

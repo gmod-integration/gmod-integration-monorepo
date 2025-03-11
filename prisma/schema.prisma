@@ -181,6 +181,7 @@ model gm_server {
   gm_status_button              gm_status_button[]
   gm_sync_chat                  gm_sync_chat[]
   gm_server_status_history      gm_server_status_history[]
+  gm_server_stat_team_time      gm_server_stat_team_time[]
 
   @@index([guild], map: "guild")
 }
@@ -386,6 +387,20 @@ model gm_server_stat {
 
   @@id([server_id, steam_id])
   @@index([steam_id], map: "gm_server_stat_gm_user_steam_steam_id_fk")
+}
+
+model gm_server_stat_team_time {
+  id        Int       @id @default(autoincrement())
+  serverID  String    @db.VarChar(255)
+  steamID64 String    @db.VarChar(255)
+  team      String    @default("") @db.VarChar(255)
+  teamID    String    @default("") @db.VarChar(255)
+  time      Int       @default(0)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade)
+
+  @@index([serverID], map: "serverID")
 }
 
 model gm_server_stat_session {

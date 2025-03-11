@@ -1,4 +1,4 @@
-import './utils/instrument.js';
+// import './utils/instrument.js';
 import './utils/update-log.js';
 import express, { NextFunction, Request, Response } from 'express';
 import { serverConfig } from './config/index.js';
@@ -9,7 +9,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import mainRoutes from './routes/mainRoutes.js';
 import useragent from 'express-useragent';
-import * as Sentry from '@sentry/node';
+// import * as Sentry from '@sentry/node';
 import errorMiddleware from './middleware/errorMiddleware.js';
 import './websockets/index.js';
 import { gracefulShutdownDiscord, loadDiscordMain, loadDiscordSlave } from './discord/index.js';
@@ -124,7 +124,7 @@ app.all('*', (req: Request, res: Response, next: NextFunction) => {
 });
 
 // Sentry
-Sentry.setupExpressErrorHandler(app);
+// Sentry.setupExpressErrorHandler(app);
 
 // Errors
 app.use(errorMiddleware);
@@ -150,7 +150,7 @@ if (serverConfig.dev) {
 async function gracefulShutdown() {
   gmLog('shutdown', 'Gracefully shutting down...');
   inShutdown = true;
-  await Sentry.flush(2000);
+  // await Sentry.flush(2000);
   await gracefulShutdownWebsocket();
   await gracefulShutdownDiscord();
   await gracefulShutdownRedis();
