@@ -13,8 +13,7 @@ export default {
   data: new ContextMenuCommandBuilder()
     .setName('Verify')
     .setContexts([InteractionContextType.Guild])
-    .setType(ApplicationCommandType.User as ContextMenuCommandType)
-    .setDefaultMemberPermissions(0),
+    .setType(ApplicationCommandType.User as ContextMenuCommandType),
   category: 'admin',
   async execute(interaction: ContextMenuCommandInteraction) {
     if (!interaction.guild) return interaction.reply('Something went wrong!');

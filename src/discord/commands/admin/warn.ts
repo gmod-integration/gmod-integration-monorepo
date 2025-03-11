@@ -29,8 +29,7 @@ export default {
     .addStringOption((option) =>
       option.setName('steam').setDescription('The steamID64 of the user you want to show the warn').setRequired(false),
     )
-    .setContexts([InteractionContextType.Guild])
-    .setDefaultMemberPermissions(0),
+    .setContexts([InteractionContextType.Guild]),
   category: 'admin',
   async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.guild) return;
