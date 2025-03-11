@@ -19,6 +19,7 @@ CREATE TABLE `gm_server_stat_team_time` (
     `serverID` VARCHAR(255) NOT NULL,
     `steamID64` VARCHAR(255) NOT NULL,
     `team` VARCHAR(255) NOT NULL DEFAULT '',
+    `teamID` INTEGER NOT NULL DEFAULT 0,
     `time` INTEGER NOT NULL DEFAULT 0,
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,

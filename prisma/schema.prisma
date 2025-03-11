@@ -394,7 +394,7 @@ model gm_server_stat_team_time {
   serverID  String    @db.VarChar(255)
   steamID64 String    @db.VarChar(255)
   team      String    @default("") @db.VarChar(255)
-  teamID    String    @default("") @db.VarChar(255)
+  teamID    Int       @default(0)
   time      Int       @default(0)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
