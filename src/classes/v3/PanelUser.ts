@@ -47,6 +47,7 @@ export class PanelUser {
       where: {
         discordID: this.discordID,
         accessToken: token,
+        revoke: false,
         expirationDate: {
           gt: new Date(),
         },
@@ -141,6 +142,10 @@ export async function getPanelUserFromDiscordID(discordID: string) {
   const panelInfo = await prisma.gm_panelToken.findFirst({
     where: {
       discordID: discordID,
+      revoke: false,
+      expirationDate: {
+        gt: new Date(),
+      },
     },
     orderBy: {
       createdAt: 'desc',

@@ -52,6 +52,7 @@ export async function getUserSessions(req: Request, res: Response) {
   const { discordID } = req.params;
   const sessions = await prisma.gm_panelToken.findMany({
     where: {
+      revoke: false,
       discordID,
     },
   });
@@ -65,6 +66,7 @@ export async function deleteUserSession(req: Request, res: Response) {
     where: {
       discordID,
       id: sessionID,
+      revoke: false,
     },
   });
 
@@ -74,9 +76,12 @@ export async function deleteUserSession(req: Request, res: Response) {
     });
   }
 
-  await prisma.gm_panelToken.delete({
+  await prisma.gm_panelToken.update({
     where: {
       id: sessionID,
+    },
+    data: {
+      revoke: true,
     },
   });
 
@@ -89,13 +94,17 @@ export async function logOut(req: Request, res: Response) {
     where: {
       discordID: panelUser.discordID,
       accessToken: panelUser.panelToken.token,
+      revoke: false,
     },
   });
 
   if (sessionToken) {
-    await prisma.gm_panelToken.delete({
+    await prisma.gm_panelToken.update({
       where: {
         id: sessionToken.id,
+      },
+      data: {
+        revoke: true,
       },
     });
   }

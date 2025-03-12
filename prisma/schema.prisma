@@ -126,6 +126,7 @@ model gm_panelToken {
   ip             String?  @db.VarChar(255)
   country        String?  @db.VarChar(255)
   browser        String?  @db.VarChar(255)
+  revoke         Boolean  @default(false)
   creationDate   DateTime @default(now())
   expirationDate DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 7 DAY)"))
   createdAt      DateTime @default(now())
