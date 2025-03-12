@@ -197,5 +197,12 @@
   "oldTeam": "Altes Team",
   "newTeam": "Neues Team",
   "player_change_team": "Spieler Wechsel Team",
-  "entity": "Entidad"
+  "entity": "Entidad",
+  "last_days_of": "Últimos {1} días de {2} para {3}",
+  "stat_not_found": "¡No se encontraron estadísticas!",
+  "kd": "K/D",
+  "time": "Tiempo",
+  "kills": "Asesinatos",
+  "deaths": "Muertes",
+  "connections": "Conexiones"
 }

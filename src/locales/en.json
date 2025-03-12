@@ -211,5 +211,12 @@
   "premium_required": "This action require the premium version of the bot !",
   "server_stop": "Server Stop",
   "server_start": "Server Start",
-  "entity": "Entity"
+  "entity": "Entity",
+  "last_days_of": "Last {1} days of {2} for {3}",
+  "stat_not_found": "No statistics found !",
+  "kd": "K/D",
+  "time": "Time",
+  "kills": "Kills",
+  "deaths": "Deaths",
+  "connections": "Connections"
 }

@@ -197,5 +197,12 @@
   "oldTeam": "Altes Team",
   "newTeam": "Neues Team",
   "player_change_team": "Spieler Wechsel Team",
-  "entity": "Entität"
+  "entity": "Entität",
+  "last_days_of": "Letzte {1} Tage von {2} für {3}",
+  "stat_not_found": "Keine Statistiken gefunden!",
+  "kd": "K/D",
+  "time": "Zeit",
+  "kills": "Abschüsse",
+  "deaths": "Tode",
+  "connections": "Verbindungen"
 }

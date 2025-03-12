@@ -36,7 +36,7 @@ export function dateToDiscordTimestamp(date: Date) {
   return '<t:' + Math.floor(date.getTime() / 1000) + ':R>';
 }
 
-export function secToTime(sec: number) {
+export function secToTime(sec: number, precision: number = -1) {
   // convert seconds to ??w ??d ??h ??m ??s
   let time = '';
   const weeks = Math.floor(sec / 604800);
@@ -61,7 +61,12 @@ export function secToTime(sec: number) {
     time += seconds + 's';
   }
 
-  return time;
+  if (precision === -1) {
+    return time;
+  }
+
+  const timeParts = time.trim().split(' ');
+  return timeParts.slice(0, precision).join(' ');
 }
 
 async function getServerData(serverID: string, duration = 24 * 60 * 60, interval = 60) {
@@ -209,5 +214,197 @@ export async function getServerChart(server: Server) {
   await redis.set(key, true, 'EX', 60 * 4);
 
   // Return the PNG conversion
+  return await sharp(Buffer.from(svgString)).png().toBuffer();
+}
+
+export type d3Data = {
+  date: string;
+  time: number;
+  kills: number;
+  deaths: number;
+  kd: number;
+  connections: number;
+};
+
+type chartPlayerD3 = Exclude<keyof d3Data, 'date'>;
+
+export async function playerConnectionChart(
+  server: Server,
+  steamID64: string,
+  lang: string,
+  stat: string = 'time',
+  duration: number = 7,
+) {
+  if (!steamID64 || !server) throw new Error('Missing parameters');
+
+  const allowedStats: string[] = ['time', 'kills', 'deaths', 'kd', 'connections'];
+  if (!allowedStats.includes(stat)) throw new Error('Invalid focus stat');
+
+  const focusStat = stat as chartPlayerD3;
+
+  const maxDuration = 30;
+  if (duration > maxDuration) throw new Error('Duration too long');
+
+  const last7days = await prisma.gm_server_stat_session.findMany({
+    where: {
+      serverID: server.getID(),
+      steamID64: steamID64,
+      createdAt: {
+        gte: new Date(Date.now() - duration * 24 * 60 * 60 * 1000),
+      },
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  });
+
+  // Prepare a Record to accumulate daily stats
+  let perDaySumRecord: Record<string, d3Data> = {};
+
+  // Initialize a zero-entry for each day in the desired range
+  for (let i = 0; i < duration; i++) {
+    const dateStr = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toDateString();
+    perDaySumRecord[dateStr] = {
+      date: dateStr,
+      time: 0,
+      kills: 0,
+      deaths: 0,
+      kd: 0,
+      connections: 0,
+    };
+  }
+
+  // Sum up the time/kills/deaths in perDaySumRecord
+  last7days.forEach((curr) => {
+    const dateStr = curr.createdAt.toDateString();
+    if (!perDaySumRecord[dateStr]) {
+      perDaySumRecord[dateStr] = {
+        date: dateStr,
+        time: 0,
+        kills: 0,
+        deaths: 0,
+        kd: 0,
+        connections: 0,
+      };
+    }
+    const record = perDaySumRecord[dateStr];
+    record.time += curr.time;
+    record.kills += curr.kills;
+    record.deaths += curr.deaths;
+    record.kd = record.deaths === 0 ? record.kills : record.kills / record.deaths;
+  });
+
+  // for every day, calculate the connections
+  for (let i = 0; i < duration; i++) {
+    const dateStr = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toDateString();
+    const record = perDaySumRecord[dateStr];
+    record.connections = last7days.filter((d) => d.createdAt.toDateString() === dateStr).length;
+  }
+
+  // Convert the record to an array for D3
+  const perDaySumArray: d3Data[] = Object.values(perDaySumRecord).reverse();
+
+  // Now everything below uses the array version in the D3 calls
+  const width = 600;
+  const height = 300;
+  const margin = { top: 40, right: 30, bottom: 60, left: 50 };
+
+  const dom = new JSDOM(`<!DOCTYPE html><html><body></body></html>`);
+  const body = d3.select(dom.window.document).select('body');
+
+  // Create the SVG container
+  const svg = body.append('svg').attr('width', width).attr('height', height);
+
+  // (Optional) fetch the player's name
+  const playerInfo = await prisma.gm_server_stat.findFirst({
+    where: {
+      server_id: server.getID(),
+      steam_id: steamID64,
+    },
+  });
+
+  // Add chart title
+  svg
+    .append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 2)
+    .attr('text-anchor', 'middle')
+    .attr('font-size', '20px')
+    .attr('fill', 'white')
+    .text(
+      await getTranslate('last_days_of', lang, [
+        duration.toString(),
+        playerInfo ? playerInfo.name : steamID64,
+        focusStat,
+      ]),
+    )
+    .attr('font-family', 'Roboto');
+
+  // Define scales
+  const xScale = d3
+    .scaleBand()
+    .domain(perDaySumArray.map((d) => d.date))
+    .range([margin.left, width - margin.right])
+    .padding(0.1);
+
+  const yMax = d3.max(perDaySumArray, (d) => d[focusStat]) || 0;
+  const yScale = d3
+    .scaleLinear()
+    .domain([0, yMax])
+    .nice()
+    .range([height - margin.bottom, margin.top]);
+
+  // Append the bottom axis
+  svg
+    .append('g')
+    .attr('transform', `translate(0,${height - margin.bottom + 10})`)
+    .attr('color', 'white')
+    .call((g) => {
+      g.call(
+        d3.axisBottom(xScale).tickFormat((d) => new Date(d as string).toLocaleDateString(lang, { weekday: 'short' })),
+      );
+    })
+    .selectAll('text')
+    .style('font-size', '16px');
+
+  // Append the left axis
+  svg
+    .append('g')
+    .attr('transform', `translate(${margin.left - 0},0)`)
+    .attr('color', 'white')
+    .call((g) =>
+      g.call(
+        d3
+          .axisLeft(yScale)
+          .ticks(yScale.ticks().length / 2)
+          .tickFormat((d) => (focusStat === 'time' ? secToTime(d as number, 1) : d.toString())),
+      ),
+    )
+    .selectAll('text')
+    .style('font-size', '16px');
+
+  // Define the line generator (matching the d3Data type)
+  const lineGen = d3
+    .line<d3Data>()
+    .x((d) => {
+      // xScale(d.date) might be undefined if the domain is missing that date,
+      // so we use ! to tell TS it's definitely present
+      const xVal = xScale(d.date);
+      return xVal !== undefined ? xVal : 0;
+    })
+    .y((d) => yScale(d[focusStat]))
+    .curve(d3.curveMonotoneX);
+
+  // Add the line path
+  svg
+    .append('path')
+    .datum(perDaySumArray)
+    .attr('fill', 'none')
+    .attr('stroke', 'steelblue')
+    .attr('stroke-width', 4)
+    .attr('d', lineGen(perDaySumArray));
+
+  // Convert the finished SVG to PNG
+  const svgString = (body.select('svg').node() as Element)?.outerHTML;
   return await sharp(Buffer.from(svgString)).png().toBuffer();
 }

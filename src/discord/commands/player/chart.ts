@@ -3,20 +3,31 @@ import {
   ChatInputCommandInteraction,
   EmbedBuilder,
   InteractionContextType,
+  MessageFlags,
   SlashCommandBuilder,
 } from 'discord.js';
-import { getServerList } from '../../../models/v3/serversModels.js';
-import { getServerFromID } from '../../../classes/v3/Server.js';
-import { getServerChart } from '../../utils/index.js';
+import { getServerFromID, getServersFromDiscordGuildID } from '../../../classes/v3/Server.js';
+import { playerConnectionChart } from '../../utils/index.js';
+import { getUserFromDiscordID } from '../../../classes/v3/User.js';
+import { getTranslate } from '../../../utils/localizations.js';
 
 export default {
-  dev: true,
   data: new SlashCommandBuilder()
     .setName('chart')
     .setDescription('Get an Server leaderboard for specific category')
     .setContexts([InteractionContextType.Guild])
     .addStringOption((option) =>
       option.setName('server').setDescription('Server to get leaderboard from').setRequired(true).setAutocomplete(true),
+    )
+    .addStringOption((option) =>
+      option.setName('stat').setDescription('The stat you want to see').setRequired(true).setAutocomplete(true),
+    )
+    .addStringOption((option) =>
+      option
+        .setName('duration')
+        .addChoices({ name: '7d', value: '7' }, { name: '30d', value: '30' })
+        .setDescription('The duration of the chart')
+        .setRequired(false),
     )
     .addUserOption((option) =>
       option.setName('user').setDescription("The user's stat you want to see").setRequired(false),
@@ -27,28 +38,55 @@ export default {
   category: 'player',
   async execute(interaction: ChatInputCommandInteraction) {
     if (!interaction.guild) return;
-    const lang = interaction.guild.preferredLocale;
-    const serverID = interaction.options.getString('server');
-    if (!serverID) return interaction.reply('No server provided');
-    const server = await getServerFromID(serverID);
-    if (!server) return interaction.reply('Server not found');
 
-    const user = interaction.options.getUser('user');
-    const steamID64 = interaction.options.getString('steam');
+    const lang = interaction.guild.preferredLocale;
+
+    const serverID = interaction.options.getString('server');
+    if (!serverID) return interaction.reply(await getTranslate('server_not_found', lang));
+
+    const server = await getServerFromID(serverID);
+    if (!server) return interaction.reply(await getTranslate('server_not_found', lang));
+
+    let steamID64 = interaction.options.getString('steam') || null;
+    const user = interaction.options.getUser('user') || interaction.user;
+
+    const stat = interaction.options.getString('stat');
+    if (!stat) return interaction.reply(await getTranslate('stat_not_found', lang));
+
+    const duration = interaction.options.getString('duration') || '7';
+    if (!['7', '30'].includes(duration)) return interaction.reply(await getTranslate('duration_not_found', lang));
+    const durationNumber = parseInt(duration);
+
+    if (!steamID64) {
+      const dbUser = await getUserFromDiscordID(user.id);
+      if (!dbUser || !dbUser.getSteamID64()) {
+        return interaction.reply({
+          content: await getTranslate('user_not_verified', lang, [`<@${user.id}>`, '/verify']),
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+      steamID64 = dbUser.getSteamID64();
+      if (!steamID64) {
+        return interaction.reply({
+          content: 'This user has no steamID64',
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+    }
 
     try {
       const embed = new EmbedBuilder()
         .setImage('attachment://chart.png')
         .setColor('#2b2d31')
         .setFooter({
-          text: 'Chart',
+          text: `${server.getName()} - ${steamID64} - ${stat}`,
         })
         .setTimestamp();
       await interaction.reply({
         embeds: [embed],
         files: [
           {
-            attachment: await getServerChart(server),
+            attachment: await playerConnectionChart(server, steamID64, lang, stat, durationNumber),
             name: 'chart.png',
           },
         ],
@@ -61,10 +99,43 @@ export default {
   async autocomplete(interaction: AutocompleteInteraction) {
     if (!interaction.guild) return;
     const focusedOption = interaction.options.getFocused(true);
-    let choices: Record<string, string> = {
-      // [await getTranslate('global_stat', interaction.guild.preferredLocale)]: 'global',
-    };
-    const filtered = await getServerList(interaction, focusedOption, choices);
-    return interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })));
+    const focusedName = focusedOption.name;
+    const lang = interaction.guild.preferredLocale;
+    let choices: { [key: string]: string } = {};
+
+    if (focusedName === 'server') {
+      // Add the global option TODO
+      // choices[getTranslate('global_stat', lang)] = 'global';
+
+      getServersFromDiscordGuildID(interaction.guild.id).then((servers) => {
+        // Add all servers to the choices
+        servers.forEach((server) => {
+          choices[server.name] = server.id;
+        });
+        // Filter the choices based on the focused option
+        const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value));
+
+        // Respond with the filtered choices
+        interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })));
+      });
+    } else if (focusedName === 'stat') {
+      /*
+      return those choices
+          time: 'Time',
+          kills: 'Kills',
+          deaths: 'Deaths',
+          kd: 'K/D',
+          connections: 'Connections',
+       */
+      const stats = ['time', 'kills', 'deaths', 'kd', 'connections'];
+      // Add all categories to the choices
+      for (const stat of stats) {
+        choices[await getTranslate(stat, lang)] = stat;
+      }
+
+      // Filter the choices based on the focused option
+      const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value));
+      await interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })));
+    }
   },
 };

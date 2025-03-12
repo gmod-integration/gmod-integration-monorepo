@@ -211,5 +211,12 @@
   "oldTeam": "Eski Takım",
   "newTeam": "Yeni Takım",
   "player_change_team": "Oyuncu Takım Değiştirdi",
-  "entity": "Varlık"
+  "entity": "Varlık",
+  "last_days_of": "Son {1} gün {2} için {3}",
+  "stat_not_found": "İstatistik bulunamadı!",
+  "kd": "Ö/K",
+  "time": "Zaman",
+  "kills": "Öldürmeler",
+  "deaths": "Ölümler",
+  "connections": "Bağlantılar"
 }

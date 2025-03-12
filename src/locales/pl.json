@@ -211,5 +211,12 @@
   "oldTeam": "Stara Drużyna",
   "newTeam": "Nowa Drużyna",
   "player_change_team": "Zmiana Drużyny Gracza",
-  "entity": "Jednostka"
+  "entity": "Jednostka",
+  "last_days_of": "Ostatnie {1} dni {2} dla {3}",
+  "stat_not_found": "Nie znaleziono statystyk!",
+  "kd": "K/D",
+  "time": "Czas",
+  "kills": "Zabójstwa",
+  "deaths": "Zgony",
+  "connections": "Połączenia"
 }

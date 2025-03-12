@@ -211,5 +211,12 @@
   "oldTeam": "Vecchia Squadra",
   "newTeam": "Nuova Squadra",
   "player_change_team": "Giocatore Cambia Squadra",
-  "entity": "Entità"
+  "entity": "Entità",
+  "last_days_of": "Ultimi {1} giorni di {2} per {3}",
+  "stat_not_found": "Nessuna statistica trovata!",
+  "kd": "K/D",
+  "time": "Tempo",
+  "kills": "Uccisioni",
+  "deaths": "Morti",
+  "connections": "Connessioni"
 }
