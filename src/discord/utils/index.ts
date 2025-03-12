@@ -354,18 +354,37 @@ export async function playerConnectionChart(
     .nice()
     .range([height - margin.bottom, margin.top]);
 
-  // Append the bottom axis
+  // Get the full domain from xScale
+  const fullDomain = xScale.domain();
+
+  // If duration > 8, keep only every other value
+  const tickValues = duration > 8 ? fullDomain.filter((_, i) => i % 2 === 0) : fullDomain;
+
   svg
     .append('g')
     .attr('transform', `translate(0,${height - margin.bottom + 10})`)
     .attr('color', 'white')
-    .call((g) => {
-      g.call(
-        d3.axisBottom(xScale).tickFormat((d) => new Date(d as string).toLocaleDateString(lang, { weekday: 'short' })),
-      );
-    })
+    .call(
+      d3
+        .axisBottom(xScale)
+        // Use our filtered tickValues here:
+        .tickValues(tickValues)
+        .tickFormat((d) => {
+          const date = new Date(d as string);
+          return duration < 8
+            ? date.toLocaleDateString(lang, { weekday: 'short' })
+            : date.toLocaleDateString(lang, {
+                day: 'numeric',
+                weekday: 'short',
+              });
+        }),
+    )
     .selectAll('text')
-    .style('font-size', '16px');
+    .style('font-size', '12px')
+    .style('text-anchor', 'end')
+    .attr('dx', '-0.8em')
+    .attr('dy', '0.15em')
+    .attr('transform', 'rotate(-45)');
 
   // Append the left axis
   svg
