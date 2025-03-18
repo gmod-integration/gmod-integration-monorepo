@@ -1,0 +1,32 @@
+-- AlterTable
+ALTER TABLE `banUsers` MODIFY `unbanDate` DATETIME(3) NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 2 YEAR);
+
+-- AlterTable
+ALTER TABLE `gm_discordToken` MODIFY `expirationDate` DATETIME(3) NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 7 DAY);
+
+-- AlterTable
+ALTER TABLE `gm_panelToken` MODIFY `expirationDate` DATETIME(3) NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 7 DAY);
+
+-- AlterTable
+ALTER TABLE `gm_user` MODIFY `token_expires` DATETIME(3) NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 7 DAY);
+
+-- AlterTable
+ALTER TABLE `gm_users_data_request` MODIFY `expirationDate` DATETIME(3) NOT NULL DEFAULT (CURRENT_TIMESTAMP + INTERVAL 1 DAY);
+
+-- CreateTable
+CREATE TABLE `gm_server_ban` (
+    `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `serverID` VARCHAR(255) NOT NULL,
+    `userSteamID64` VARCHAR(255) NOT NULL,
+    `adminSteamID64` VARCHAR(255) NOT NULL,
+    `reason` TEXT NOT NULL,
+    `time` INTEGER NOT NULL DEFAULT 0,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    `updatedAt` DATETIME(3) NOT NULL,
+
+    INDEX `serverID`(`serverID`),
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- AddForeignKey
+ALTER TABLE `gm_server_ban` ADD CONSTRAINT `gm_server_ban_serverID_fkey` FOREIGN KEY (`serverID`) REFERENCES `gm_server`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

@@ -248,3 +248,7 @@ export async function playerWarn(req: Request, res: Response) {
   });
   return res.status(200).json(warn);
 }
+
+export async function playerBan(req: Request, res: Response) {
+  return res.status(400).json({ error: 'not_implemented' });
+}

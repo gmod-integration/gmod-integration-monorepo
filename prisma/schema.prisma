@@ -177,6 +177,7 @@ model gm_server {
   gm_server_vote                gm_server_vote[]
   gm_server_vote_channels       gm_server_vote_channels?
   gm_server_warn                gm_server_warn[]
+  gm_server_ban                 gm_server_ban[]
   gm_server_warn_options        gm_server_warn_options[]
   gm_status                     gm_status?
   gm_status_button              gm_status_button[]
@@ -529,6 +530,20 @@ model gm_server_warn {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
   gm_server      gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_warn_ibfk_1")
+
+  @@index([serverID], map: "serverID")
+}
+
+model gm_server_ban {
+  id             Int       @id @default(autoincrement())
+  serverID       String    @db.VarChar(255)
+  userSteamID64  String    @db.VarChar(255)
+  adminSteamID64 String    @db.VarChar(255)
+  reason         String    @db.Text
+  time           Int       @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  gm_server      gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade)
 
   @@index([serverID], map: "serverID")
 }

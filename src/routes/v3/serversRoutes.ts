@@ -12,6 +12,7 @@ import {
 import { reportError } from '../../controllers/v3/errorsControllers.js';
 import {
   getPlayer,
+  playerBan,
   playerChangeGroup,
   playerChangeName,
   playerChangeTeam,
@@ -44,6 +45,7 @@ router.post('/:serverID/logs', asyncHandler(postMultiLog));
 router.get('/:serverID/players/:steamID64', asyncHandler(getPlayer));
 router.post('/:serverID/players/:steamID64/say', asyncHandler(playerSay));
 router.post('/:serverID/players/:steamID64/warns', asyncHandler(playerWarn));
+router.post('/:serverID/players/:steamID64/bans', asyncHandler(playerBan));
 router.post('/:serverID/players/:steamID64/death', asyncHandler(playerDeath));
 router.post('/:serverID/players/:steamID64/initial-spawn', asyncHandler(playerInitialSpawn));
 router.post('/:serverID/players/:steamID64/hurt', asyncHandler(playerHurt));
