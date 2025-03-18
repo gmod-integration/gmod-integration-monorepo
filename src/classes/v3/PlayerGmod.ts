@@ -134,6 +134,8 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   }
 
   async saveTeamTime(serverID: string) {
+    if (!this.timeLastTeamChange || this.timeLastTeamChange === 0) return;
+
     try {
       await prisma.gm_server_stat_team_time.create({
         data: {
