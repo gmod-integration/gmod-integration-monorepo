@@ -20,6 +20,7 @@ export async function saveScreenshot(screenshot: string, captureData: any, playe
 
   const path = `./screenshots/${filename}`;
   const internUrl = `${serverConfig.domain}/screenshots/${filename}`;
+  fs.mkdirSync('./screenshots', { recursive: true });
   fs.writeFile(path, buffer, (err) => {
     if (err) {
       console.error(err);
