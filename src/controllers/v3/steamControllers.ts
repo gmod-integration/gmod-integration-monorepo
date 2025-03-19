@@ -3,6 +3,10 @@ import axios from 'axios';
 import { gmLog } from '../../utils/logger.js';
 import { NextFunction, Request, Response } from 'express';
 import prisma from '../../prisma.js';
+import { removeDiscordSync, removeServerSync } from '../../classes/v3/PlayerGmod.js';
+import { verifyUser } from '../../models/v3/discordModels.js';
+import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
+import { getGuildClient } from '../../discord/index.js';
 
 const steamAuthUrl = 'https://steamcommunity.com/openid/login';
 
@@ -72,7 +76,14 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
         },
       });
 
+      let oldDscToClean: string[] = [];
+      let oldSteamToClean: string[] = [];
+
       for (const userWithSteam of usersWithSteam) {
+        if (userWithSteam.id === user.id && userWithSteam.steam === steamID64) {
+          continue; // Skip the user if it's the same as the one we're updating
+        }
+
         await prisma.gm_users_transfers.create({
           data: {
             oldSteamID64: userWithSteam.steam ?? '',
@@ -83,6 +94,20 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
         });
 
         gmLog('steam', `STEAM MOVE FROM ${userWithSteam.id} TO ${user.id}`);
+
+        if (user.id !== userWithSteam.id && !oldDscToClean.includes(userWithSteam.id)) {
+          oldDscToClean.push(userWithSteam.id);
+          await removeDiscordSync(userWithSteam.id);
+        }
+
+        if (
+          userWithSteam.steam &&
+          userWithSteam.steam !== steamID64 &&
+          !oldSteamToClean.includes(userWithSteam.steam)
+        ) {
+          oldSteamToClean.push(userWithSteam.steam);
+          await removeServerSync(userWithSteam.steam);
+        }
 
         await prisma.gm_user.update({
           where: {
@@ -105,6 +130,30 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
           steam: steamID64,
         },
       });
+
+      const panelUser = await getPanelUserFromDiscordID(user.id);
+      if (panelUser) {
+        const guilds = await panelUser.findGuilds();
+        for (const aGuild of guilds) {
+          const dbGuild = await prisma.gm_guild.findFirst({
+            where: {
+              guild: aGuild.id,
+            },
+          });
+          if (!dbGuild) continue;
+
+          const client = await getGuildClient(aGuild.id);
+          if (!client) continue;
+
+          const guild = await client.guilds.fetch(aGuild.id).catch(() => null);
+          if (!guild) continue;
+
+          const userInf = await guild.members.fetch(user.id).catch(() => null);
+          if (!userInf) continue;
+
+          await verifyUser(guild, userInf);
+        }
+      }
 
       res.redirect(`${serverConfig.websiteUrl}/account`);
     } else {
