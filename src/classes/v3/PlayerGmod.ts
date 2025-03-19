@@ -1,8 +1,8 @@
 import { BaseClass } from './BaseClass.js';
 import { Team } from './Team.js';
 import prisma from '../../prisma.js';
-import { getUserFromSteamID64 } from './User.js';
-import { Server } from './Server.js';
+import { getUserFromDiscordID, getUserFromSteamID64 } from './User.js';
+import { getServerFromID, Server } from './Server.js';
 import redis from '../../redis/index.js';
 import { gmLog, LogLevel } from '../../utils/logger.js';
 import { Position } from './Position.js';
@@ -10,6 +10,9 @@ import { Angle } from './Angle.js';
 import { CustomValues } from './CustomValues.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { secToTime } from '../../discord/utils/index.js';
+import { Guild } from './Guild.js';
+import { addAutoRoleToUser } from '../../models/v3/discordModels.js';
+import { wsSendToServer } from '../../websockets/index.js';
 
 export interface PlayerGmodInterface {
   steamID: string;
@@ -377,4 +380,114 @@ export async function updatePlayerUserGroup(server: Server, steamID64: string, u
     console.error(error);
     throw error;
   }
+}
+
+export async function removeDiscordSync(discordID: string) {
+  try {
+    const user = await getUserFromDiscordID(discordID);
+    if (!user || !user.steamID64) return;
+
+    const serversStat = await prisma.gm_server_stat.findMany({
+      where: {
+        steam_id: user.steamID64,
+      },
+    });
+
+    let guildsDone: string[] = [];
+
+    for (const serverStat of serversStat) {
+      const server = await getServerFromID(serverStat.server_id);
+      if (!server) continue;
+
+      // don't do the same guild twice
+      if (guildsDone.includes(server.getGuildID())) continue;
+      guildsDone.push(server.getGuildID());
+
+      const dscGuild = await server.getDiscordGuild();
+      if (!dscGuild) return;
+
+      const gmGuild = new Guild(dscGuild);
+      if (!gmGuild) return;
+
+      const member = await dscGuild.members.fetch(discordID).catch(() => null);
+      if (!member) return;
+
+      // get team roles
+      const teamRoles = await server.getSyncTeamRoles();
+
+      // get sync roles
+      const syncRoles = await server.getSyncRoles();
+
+      // get verif roles
+      const verifyRole = await prisma.gm_guild_verify_role.findMany({
+        where: {
+          guildID: dscGuild.id,
+        },
+      });
+
+      const userRoles = member.roles.cache;
+
+      const rolesToRemove = userRoles.filter(
+        (role) =>
+          syncRoles.some((syncRole) => syncRole.roleID === role.id) ||
+          teamRoles.some((teamRole) => teamRole.roleID === role.id) ||
+          verifyRole.some((verifyRole) => verifyRole.roleID === role.id),
+      );
+
+      if (rolesToRemove.size > 0) {
+        gmLog(
+          'sync-team-role',
+          `Removing roles from ${member.user.tag}: ${rolesToRemove.map((role) => role.name).join(', ')}`,
+        );
+        await member.roles.remove(rolesToRemove);
+      }
+
+      // regive default role
+      await addAutoRoleToUser(dscGuild, member);
+    }
+  } catch (error) {
+    console.error(error);
+    // skip the error
+  }
+
+  return;
+}
+
+export async function removeServerSync(steamID64: string) {
+  try {
+    const serversStat = await prisma.gm_server_stat.findMany({
+      where: {
+        steam_id: steamID64,
+      },
+    });
+
+    for (const serverStat of serversStat) {
+      const server = await getServerFromID(serverStat.server_id);
+      if (!server) continue;
+
+      await prisma.gm_server_stat.update({
+        where: {
+          server_id_steam_id: {
+            steam_id: steamID64,
+            server_id: server.getID(),
+          },
+        },
+        data: {
+          rank: 'user',
+        },
+      });
+
+      wsSendToServer(server.getID(), {
+        method: 'wsPlayerUpdateGroup',
+        steamID64: steamID64,
+        group: serverStat.rank,
+        add: false,
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    // skip the error
+  }
+
+  return;
 }
