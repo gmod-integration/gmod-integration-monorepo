@@ -55,6 +55,7 @@ import {
   getServerSettings,
   getServerStatusButtons,
   getServerTeams,
+  getServerWarns,
   getUserDataRequest,
   getUserGmodStorePurchases,
   getUserGuildsOwnOrAdmins,
@@ -141,22 +142,27 @@ router.get('/:discordID/guilds/:guildID/channels', asyncHandler(findGuildChannel
 router.get('/:discordID/guilds/:guildID/roles', asyncHandler(getGuildRoles));
 router.get('/:discordID/guilds/:guildID/admins', asyncHandler(getGuildAdmins));
 router.get('/:discordID/guilds/:guildID/emojis', asyncHandler(getGuildEmojis));
+
 // Settings
 router.get('/:discordID/guilds/:guildID/settings', asyncHandler(getGuildSettings));
 router.get('/:discordID/guilds/:guildID/settings/:setting', asyncHandler(getGuildSetting));
 router.put('/:discordID/guilds/:guildID/settings/:setting', asyncHandler(putGuildSetting));
+
 // Servers
 router.get('/:discordID/guilds/:guildID/servers', asyncHandler(findGuildServers));
 router.post('/:discordID/guilds/:guildID/servers', asyncHandler(createNewServer));
+
 // Links
 router.get('/:discordID/guilds/:guildID/links', asyncHandler(getGuildLinks));
 router.post('/:discordID/guilds/:guildID/links', asyncHandler(postGuildLinks));
 router.put('/:discordID/guilds/:guildID/links/:linkID', asyncHandler(putGuildLinks));
 router.delete('/:discordID/guilds/:guildID/links/:linkID', asyncHandler(deleteGuildLinks));
+
 // Links
 router.get('/:discordID/guilds/:guildID/auto-roles', asyncHandler(getAutoRoles));
 router.post('/:discordID/guilds/:guildID/auto-roles/:roleID', asyncHandler(postAutoRoles));
 router.delete('/:discordID/guilds/:guildID/auto-roles/:roleID', asyncHandler(deleteAutoRoles));
+
 // Verifications
 router.get('/:discordID/guilds/:guildID/verifications', asyncHandler(getVerificationMessage));
 router.delete('/:discordID/guilds/:guildID/verifications', asyncHandler(deleteVerificationMessage));
@@ -175,43 +181,52 @@ router.post('/:discordID/guilds/:guildID/servers/:serverID/token', asyncHandler(
 router.get('/:discordID/guilds/:guildID/servers/:serverID/players', asyncHandler(getServerPlayers));
 router.put('/:discordID/guilds/:guildID/servers/:serverID/players/:playerID', asyncHandler(putPlayerBypassMaintenance));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID', asyncHandler(deleteGuildServer));
+
 // Settings
 router.get('/:discordID/guilds/:guildID/servers/:serverID/settings', asyncHandler(getServerSettings));
 router.get('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(getServerSetting));
 router.put('/:discordID/guilds/:guildID/servers/:serverID/settings/:setting', asyncHandler(putServerSetting));
+
 // Roles
 router.get('/:discordID/guilds/:guildID/servers/:serverID/roles', asyncHandler(getServerRoles));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/roles/:roleID', asyncHandler(postServerRoles));
 router.put('/:discordID/guilds/:guildID/servers/:serverID/roles/:roleID', asyncHandler(putServerRoles));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/roles/:roleID', asyncHandler(deleteServerRoles));
+
 // Team Roles
 router.get('/:discordID/guilds/:guildID/servers/:serverID/teams', asyncHandler(getServerTeams));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/teams/:roleID', asyncHandler(postServerTeams));
 router.put('/:discordID/guilds/:guildID/servers/:serverID/teams/:id', asyncHandler(putServerTeams));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/teams/:id', asyncHandler(deleteServerTeams));
+
 // Screenshots
 router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(findServerScreenshots));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(postServerScreenshots));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(deleteServerScreenshots));
+
 // Logs
 router.get('/:discordID/guilds/:guildID/servers/:serverID/logs', asyncHandler(getServerLogs));
 router.get('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(getLogsChannel));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(postLogsChannel));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(deleteLogsChannel));
+
 // Errors
 router.get('/:discordID/guilds/:guildID/servers/:serverID/errors', asyncHandler(getServerErrors));
 // router.get('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(getServerErrorsChannel));
 // router.post('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(postServerErrorsChannel));
 // router.delete('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(deleteServerErrorsChannel));
+
 // Vote
 router.get('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(getVoteChannels));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(postVoteChannels));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(deleteVoteChannels));
+
 // Pseudo
 router.get('/:discordID/guilds/:guildID/servers/:serverID/pseudo', asyncHandler(getServerPseudo));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/pseudo', asyncHandler(postServerPseudo));
 router.put('/:discordID/guilds/:guildID/servers/:serverID/pseudo/:roleID', asyncHandler(putServerPseudo));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/pseudo/:roleID', asyncHandler(deleteServerPseudo));
+
 // Sync Chat
 router.get('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(findServerSyncChat));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/chats', asyncHandler(postServerSyncChat));
@@ -226,8 +241,13 @@ router.delete(
   '/:discordID/guilds/:guildID/servers/:serverID/chats/filters/:filterID',
   asyncHandler(deleteGmodToDiscordFilter),
 );
+
 // Report Bug
 router.get('/:discordID/guilds/:guildID/servers/:serverID/bugs', asyncHandler(getServerReportBugs));
+
+// Warn
+router.get('/:discordID/guilds/:guildID/servers/:serverID/warns', asyncHandler(getServerWarns));
+
 // Status
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(findServerStatus));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(postServerStatus));

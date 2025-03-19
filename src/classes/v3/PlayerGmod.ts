@@ -13,6 +13,8 @@ import { secToTime } from '../../discord/utils/index.js';
 import { Guild } from './Guild.js';
 import { addAutoRoleToUser } from '../../models/v3/discordModels.js';
 import { wsSendToServer } from '../../websockets/index.js';
+import { getGuildClient } from '../../discord/index.js';
+import { GuildBan } from 'discord.js';
 
 export interface PlayerGmodInterface {
   steamID: string;
@@ -483,6 +485,53 @@ export async function removeServerSync(steamID64: string) {
         group: serverStat.rank,
         add: false,
       });
+    }
+  } catch (error) {
+    console.error(error);
+    // skip the error
+  }
+
+  return;
+}
+
+export async function changeLinkCheckDiscordBan(oldDiscordIDS: string[], newDiscordID: string) {
+  try {
+    const dscGuilds = await prisma.gm_guild_member.findMany({
+      where: {
+        user_id: {
+          in: oldDiscordIDS,
+        },
+      },
+    });
+
+    for (const dscGuild of dscGuilds) {
+      const client = await getGuildClient(dscGuild.guild_id);
+
+      const guild = client.guilds.cache.get(dscGuild.guild_id);
+      if (!guild) continue;
+
+      // get if one of the discordID is banned
+      let banInfo: GuildBan | null = null;
+      for (const oldDiscordID of oldDiscordIDS) {
+        const ban = await guild.bans.fetch(oldDiscordID);
+        if (ban) {
+          banInfo = ban;
+          break;
+        }
+      }
+
+      // if ban, ban all discordID and the new one with prefix to reason "Gmod Integration - Sync Ban : ..."
+      if (banInfo) {
+        for (const oldDiscordID of oldDiscordIDS) {
+          await guild.members.ban(oldDiscordID, {
+            reason: `Gmod Integration - Sync Ban : ${banInfo.reason || 'No Reason'}`,
+          });
+        }
+
+        await guild.members.ban(newDiscordID, {
+          reason: `Gmod Integration - Sync Ban : ${banInfo.reason || 'No Reason'}`,
+        });
+      }
     }
   } catch (error) {
     console.error(error);

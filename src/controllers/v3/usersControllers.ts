@@ -1747,3 +1747,71 @@ export async function getServerReportBugs(req: Request, res: Response) {
     }),
   );
 }
+
+export async function getServerWarns(req: Request, res: Response) {
+  // example usage: assume you have some "server" object on req
+  const server = req.server!;
+  const serverID = server.id; // or however you retrieve the ID
+
+  // 1) Extract raw query params
+  const rawOffset = req.query.offset?.toString() || '0';
+  const rawLimit = req.query.limit?.toString() || '50';
+  const rawSort = req.query.sort?.toString() || 'createdAt';
+  const rawOrderBy = req.query.orderBy?.toString().toUpperCase() || 'DESC';
+
+  // 2) Parse offset & limit
+  let offset = parseInt(rawOffset, 10);
+  let limit = parseInt(rawLimit, 10);
+
+  if (isNaN(offset) || offset < 0) offset = 0;
+  if (isNaN(limit) || limit < 1) limit = 50;
+  if (limit > 500) limit = 500; // enforce a max, if you want
+
+  // 3) Dynamically fetch the columns from MariaDB
+  const allowedColumns = ['createdAt', 'updatedAt', 'userSteamID64', 'adminSteamID64', 'reason'];
+
+  let sort = rawSort;
+  // If sort is not in the table’s columns, fallback or reject
+  if (!allowedColumns.includes(sort)) {
+    // console.warn(`Invalid sort column "${sort}", falling back to "createdAt".`);
+    return res.status(400).json({ error: 'Invalid sort column' });
+    // sort = 'createdAt';
+  }
+
+  // 4) Convert orderBy to Prisma's format
+  const orderBy = rawOrderBy === 'ASC' ? 'asc' : 'desc';
+
+  // 5) Count total warns for pagination
+  const total = await prisma.gm_server_warn.count({
+    where: {
+      serverID: serverID,
+    },
+  });
+
+  // 6) Fetch the warns with skip/take & orderBy
+  const warns = await prisma.gm_server_warn.findMany({
+    where: {
+      serverID: serverID,
+    },
+    skip: offset,
+    take: limit,
+    orderBy: {
+      [sort]: orderBy,
+    },
+  });
+
+  // 7) Shape the response
+  const warnsData = {
+    warns,
+    query: {
+      offset,
+      limit,
+      sort,
+      // Return order in uppercase to match the front-end’s "ASC"/"DESC"
+      orderBy: orderBy.toUpperCase(),
+      total,
+    },
+  };
+
+  return res.json(warnsData);
+}
