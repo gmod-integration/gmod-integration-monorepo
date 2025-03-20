@@ -17,7 +17,7 @@ export const serverConfig = {
     verify: 53137,
     websocket: 53139,
   },
-  version: 'v0.4.8',
+  version: 'v0.4.9',
 };
 
 export const discordConfig = {
