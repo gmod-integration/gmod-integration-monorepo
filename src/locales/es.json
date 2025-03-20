@@ -1,4 +1,7 @@
 {
+  "pie_team": "Tiempo de equipo de {1} para los últimos {2}",
+  "max": "Máximo",
+  "días": "Días",
   "actual_languae": "Español",
   "test_string": "Este es un string de prueba {1}",
   "never": "Nunca",

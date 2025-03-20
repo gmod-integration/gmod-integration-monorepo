@@ -1,4 +1,7 @@
 {
+  "pie_team": "Team time of {1} for the last {2}",
+  "max": "Max",
+  "days": "Days",
   "actual_languae": "English",
   "test_string": "This is a test string {1}",
   "never": "Never",

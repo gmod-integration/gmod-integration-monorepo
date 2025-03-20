@@ -242,9 +242,6 @@ export async function playerConnectionChart(
 
   const focusStat = stat as chartPlayerD3;
 
-  const maxDuration = 30;
-  if (duration > maxDuration) throw new Error('Duration too long');
-
   const last7days = await prisma.gm_server_stat_session.findMany({
     where: {
       serverID: server.getID(),
@@ -335,7 +332,7 @@ export async function playerConnectionChart(
       await getTranslate('last_days_of', lang, [
         duration.toString(),
         playerInfo ? playerInfo.name : steamID64,
-        focusStat,
+        await getTranslate(stat, lang),
       ]),
     )
     .attr('font-family', 'Roboto');
@@ -357,8 +354,15 @@ export async function playerConnectionChart(
   // Get the full domain from xScale
   const fullDomain = xScale.domain();
 
-  // If duration > 8, keep only every other value
-  const tickValues = duration > 8 ? fullDomain.filter((_, i) => i % 2 === 0) : fullDomain;
+  // If duration > 8 < 40 = 1/2
+  // If duration > 40 = 1/4
+  const tickValues =
+    duration > 40
+      ? fullDomain.filter((_, i) => i % 4 === 0)
+      : duration > 8
+        ? fullDomain.filter((_, i) => i % 2 === 0)
+        : fullDomain;
+  // = duration > 8 ? fullDomain.filter((_, i) => i % 2 === 0) : fullDomain;
 
   svg
     .append('g')
@@ -424,6 +428,146 @@ export async function playerConnectionChart(
     .attr('d', lineGen(perDaySumArray));
 
   // Convert the finished SVG to PNG
+  const svgString = (body.select('svg').node() as Element)?.outerHTML;
+  return await sharp(Buffer.from(svgString)).png().toBuffer();
+}
+
+export async function playerTeamTimeChat(server: Server, steamID64: string, lang: string = 'en', duration: number = 7) {
+  // First, group by team and sum the time
+  const rawGroupedData = await prisma.gm_server_stat_team_time.groupBy({
+    by: ['team'],
+    where: {
+      serverID: server.getID(),
+      steamID64,
+      createdAt:
+        duration > 0
+          ? {
+              gte: new Date(Date.now() - duration * 24 * 60 * 60 * 1000),
+            }
+          : undefined,
+    },
+    _sum: {
+      time: true,
+    },
+  });
+
+  // Transform the data so each item has { team, time }
+  const teamTime = rawGroupedData.map((row) => ({
+    team: row.team,
+    time: row._sum.time ?? 0, // default to 0 if null
+  }));
+
+  const user = await prisma.gm_server_stat.findFirst({
+    where: {
+      server_id: server.getID(),
+      steam_id: steamID64,
+    },
+  });
+  if (!user) throw new Error('User not found');
+
+  // Calculate total time
+  const totalTime = teamTime.reduce((acc, obj) => acc + obj.time, 0);
+
+  const width = 600;
+  const height = 400;
+  const margin = { top: 80, right: 60, bottom: -10, left: 60 };
+
+  // Create a virtual DOM
+  const dom = new JSDOM(`<!DOCTYPE html><html><body></body></html>`);
+  const body = d3.select(dom.window.document).select('body');
+
+  // Create the SVG container
+  const svg = body.append('svg').attr('width', width).attr('height', height);
+
+  // Add chart title
+  svg
+    .append('text')
+    .attr('x', width / 2)
+    .attr('y', margin.top / 4)
+    .attr('text-anchor', 'middle')
+    .attr('font-size', '20px')
+    .attr('fill', 'white')
+    .text(
+      await getTranslate('pie_team', lang, [
+        user.name,
+        `${(duration !== 0 ? duration : 'max') + ' ' + (duration !== 0 ? await getTranslate('days', lang) : '')}`,
+      ]),
+    )
+    .attr('font-family', 'Roboto');
+
+  // Calculate the radius for the pie
+  const radius = Math.min(width - margin.left - margin.right, height - margin.top - margin.bottom) / 2;
+
+  // Create a group for the pie chart and center it
+  const g = svg.append('g').attr('transform', `translate(${width / 2}, ${height / 2})`);
+
+  const color = d3
+    .scaleOrdinal<string>()
+    .domain(teamTime.map((d) => d.team))
+    .range([
+      '#7a2e2e',
+      '#7a5e2e',
+      '#5f7a2e',
+      '#2e7a70',
+      '#2e407a',
+      '#622e7a',
+      '#7a2e2e',
+      '#7a5e2e',
+      '#5f7a2e',
+      '#2e7a70',
+      '#2e407a',
+      '#622e7a',
+    ]);
+  // Create the pie generator
+  const pie = d3.pie<{ time: number; team: string }>().value((d) => d.time);
+
+  // Create the arc generator
+  const arc = d3.arc<d3.PieArcDatum<{ time: number; team: string }>>().innerRadius(0).outerRadius(radius);
+
+  // Create containers
+  const arcsContainer = g.append('g').attr('class', 'arcs');
+  const labelsContainer = g.append('g').attr('class', 'labels');
+
+  // Bind data to arcs
+  const arcPaths = arcsContainer
+    .selectAll('.arc')
+    .data(pie(teamTime))
+    .enter()
+    .append('path')
+    .attr('class', 'arc')
+    .attr('d', arc)
+    .attr('fill', (d) => color(d.data.team));
+
+  // Now bind the same data for labels in a separate container
+  const labels = labelsContainer.selectAll('.label').data(pie(teamTime)).enter().append('g').attr('class', 'label');
+
+  // (Optional) Filter out small slices if < 5%
+  labels
+    .filter((d) => d.data.time / totalTime >= 0.05)
+    .append('text')
+    .attr('transform', (d) => `translate(${arc.centroid(d)})`)
+    .attr('text-anchor', 'middle')
+    .attr('font-family', 'Roboto')
+    .attr('fill', 'white')
+    .call((text) => {
+      // First line: team name
+      text
+        .append('tspan')
+        .attr('x', 0)
+        .attr('dy', '-0.2em')
+        .attr('font-size', '16px')
+        .text((d) => d.data.team);
+
+      // Second line: formatted time
+      text
+        .append('tspan')
+        .attr('x', 0)
+        .attr('dy', '1.2em')
+        .attr('font-size', '14px')
+        .text((d) => `${secToTime(d.data.time, 2)}`);
+    });
+
+  // Convert SVG to PNG and return buffer
   const svgString = (body.select('svg').node() as Element)?.outerHTML;
   return await sharp(Buffer.from(svgString)).png().toBuffer();
 }

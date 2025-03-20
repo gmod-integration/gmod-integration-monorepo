@@ -7,7 +7,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { getServerFromID, getServersFromDiscordGuildID } from '../../../classes/v3/Server.js';
-import { playerConnectionChart } from '../../utils/index.js';
+import { playerConnectionChart, playerTeamTimeChat } from '../../utils/index.js';
 import { getUserFromDiscordID } from '../../../classes/v3/User.js';
 import { getTranslate } from '../../../utils/localizations.js';
 
@@ -23,11 +23,7 @@ export default {
       option.setName('stat').setDescription('The stat you want to see').setRequired(true).setAutocomplete(true),
     )
     .addStringOption((option) =>
-      option
-        .setName('duration')
-        .addChoices({ name: '7d', value: '7' }, { name: '30d', value: '30' })
-        .setDescription('The duration of the chart')
-        .setRequired(false),
+      option.setName('duration').setDescription('The duration of the chart').setRequired(false).setAutocomplete(true),
     )
     .addUserOption((option) =>
       option.setName('user').setDescription("The user's stat you want to see").setRequired(false),
@@ -53,8 +49,10 @@ export default {
     const stat = interaction.options.getString('stat');
     if (!stat) return interaction.reply(await getTranslate('stat_not_found', lang));
 
-    const duration = interaction.options.getString('duration') || '7';
-    if (!['7', '30'].includes(duration)) return interaction.reply(await getTranslate('duration_not_found', lang));
+    let duration = interaction.options.getString('duration') || '7';
+    if (!['7', '30', '90', 'max'].includes(duration))
+      return interaction.reply(await getTranslate('duration_not_found', lang));
+    if (duration === 'max') duration = '0';
     const durationNumber = parseInt(duration);
 
     if (!steamID64) {
@@ -79,14 +77,16 @@ export default {
         .setImage('attachment://chart.png')
         .setColor('#2b2d31')
         .setFooter({
-          text: `${server.getName()} - ${steamID64} - ${stat}`,
+          text: `${server.getName()} - ${steamID64} - ${await getTranslate(stat, lang)} - ${(durationNumber !== 0 ? durationNumber : 'max') + ' ' + (durationNumber !== 0 ? await getTranslate('days', lang) : '')}`,
         })
         .setTimestamp();
       await interaction.reply({
         embeds: [embed],
         files: [
           {
-            attachment: await playerConnectionChart(server, steamID64, lang, stat, durationNumber),
+            attachment:
+              (stat == 'team' && (await playerTeamTimeChat(server, steamID64, lang, durationNumber))) ||
+              (await playerConnectionChart(server, steamID64, lang, stat, durationNumber)),
             name: 'chart.png',
           },
         ],
@@ -127,10 +127,28 @@ export default {
           kd: 'K/D',
           connections: 'Connections',
        */
-      const stats = ['time', 'kills', 'deaths', 'kd', 'connections'];
+      const stats = ['time', 'team', 'kills', 'deaths', 'kd', 'connections'];
       // Add all categories to the choices
       for (const stat of stats) {
         choices[await getTranslate(stat, lang)] = stat;
+      }
+
+      // Filter the choices based on the focused option
+      const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value));
+      await interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })));
+    } else if (focusedName === 'duration') {
+      // Add all durations to the choices 7 = 7 days, 30 = 30 days, 90 = 90 days, max = max days
+      const durations = ['7', '30', '90'];
+      if (interaction.options.getString('stat') === 'team') {
+        durations.push('max');
+      }
+      // add days to the choices of translate max
+      for (const duration of durations) {
+        if (duration === 'max') {
+          choices[await getTranslate('max', lang)] = duration;
+        } else {
+          choices[`${duration} ${await getTranslate('days', lang)}`] = duration;
+        }
       }
 
       // Filter the choices based on the focused option
