@@ -400,12 +400,24 @@ export async function getUserStatisticMessage(
 ) {
   const lang = guild.preferredLocale;
 
-  const customValueFormatList: { [key: string]: { format: (value: number) => string; emoji: string } } = {
+  const customValueFormatList: { [key: string]: { format: (value: any) => string; emoji: string } } = {
     money: {
       format: (value: number) => {
         return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
       },
       emoji: '💰',
+    },
+    bank: {
+      format: (value: number) => {
+        return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+      },
+      emoji: '🏦',
+    },
+    job: {
+      format: (value: string) => {
+        return value.toString();
+      },
+      emoji: '👔',
     },
   };
 
