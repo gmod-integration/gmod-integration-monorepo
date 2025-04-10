@@ -1449,6 +1449,11 @@ export async function getGuildBotInstance(req: Request, res: Response) {
   return res.send((await guild.getBotClientInfo(req.panelUser!.user)) || {});
 }
 
+export async function getGuildBotRoleSubordination(req: Request, res: Response) {
+  const guild = req.guild!;
+  return res.send((await guild.getBotRoleSubordination()) || {});
+}
+
 export async function patchGuildBotInstance(req: Request, res: Response) {
   const { token } = req.body;
   if (badArgument([token])) {

@@ -200,6 +200,21 @@ export class Guild {
     return mainClient.guilds.cache.has(this.id);
   }
 
+  async getBotRoleSubordination() {
+    // Get all the guild roles
+    const guildRoles = await this.dscGuild.roles.fetch();
+    if (!guildRoles) throw new Error('Guild roles not found');
+
+    let roles: Record<string, { name: string; editable: boolean }> = {};
+    guildRoles.forEach((role) => {
+      roles[role.id] = {
+        name: role.name,
+        editable: role.editable,
+      };
+    });
+    return roles;
+  }
+
   async getBotClientInfo(user: User) {
     const botInstance = await getGuildClient(this.id, false);
     if (!botInstance || !botInstance.user) throw new Error('Bot client not found');

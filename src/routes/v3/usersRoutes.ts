@@ -36,6 +36,7 @@ import {
   getGmodToDiscordFilter,
   getGuildAdmins,
   getGuildBotInstance,
+  getGuildBotRoleSubordination,
   getGuildEmojis,
   getGuildLinks,
   getGuildRoles,
@@ -134,6 +135,7 @@ router.use('/:discordID/guilds/:guildID', userAdminGuildValidator);
 router.get('/:discordID/guilds/:guildID', asyncHandler(findGuild));
 router.get('/:discordID/guilds/:guildID/bot', asyncHandler(getGuildBotInstance));
 router.put('/:discordID/guilds/:guildID/bot', asyncHandler(putGuildBotInstance));
+router.get('/:discordID/guilds/:guildID/bot/roles/subordination', asyncHandler(getGuildBotRoleSubordination));
 router.patch('/:discordID/guilds/:guildID/bot', asyncHandler(patchGuildBotInstance));
 router.delete('/:discordID/guilds/:guildID/bot', asyncHandler(deleteGuildBotInstance));
 router.post('/:discordID/guilds/:guildID/gmod-store', asyncHandler(postGmodPurchase));
