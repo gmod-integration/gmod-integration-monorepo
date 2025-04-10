@@ -23,6 +23,50 @@ export function getEmojiVersion(emoji: string) {
   }
 }
 
+const currenciesByLang = [
+  { lang: 'bg', currency: 'BGN' }, // Bulgarian Lev
+  { lang: 'zh-CN', currency: 'CNY' }, // Chinese Yuan
+  { lang: 'zh-TW', currency: 'TWD' }, // New Taiwan Dollar
+  { lang: 'hr', currency: 'HRK' }, // Croatian Kuna
+  { lang: 'cs', currency: 'CZK' }, // Czech Koruna
+  { lang: 'da', currency: 'DKK' }, // Danish Krone
+  { lang: 'nl', currency: 'EUR' }, // Euro
+  { lang: 'en-GB', currency: 'GBP' }, // British Pound Sterling
+  { lang: 'en-US', currency: 'USD' }, // United States Dollar
+  { lang: 'fi', currency: 'EUR' }, // Euro
+  { lang: 'fr', currency: 'EUR' }, // Euro
+  { lang: 'de', currency: 'EUR' }, // Euro
+  { lang: 'el', currency: 'EUR' }, // Euro
+  { lang: 'hi', currency: 'INR' }, // Indian Rupee
+  { lang: 'hu', currency: 'HUF' }, // Hungarian Forint
+  { lang: 'id', currency: 'IDR' }, // Indonesian Rupiah
+  { lang: 'it', currency: 'EUR' }, // Euro
+  { lang: 'ja', currency: 'JPY' }, // Japanese Yen
+  { lang: 'ko', currency: 'KRW' }, // South Korean Won
+  { lang: 'lt', currency: 'EUR' }, // Euro
+  { lang: 'no', currency: 'NOK' }, // Norwegian Krone
+  { lang: 'pl', currency: 'PLN' }, // Polish Złoty
+  { lang: 'pt-BR', currency: 'BRL' }, // Brazilian Real
+  { lang: 'ro', currency: 'RON' }, // Romanian Leu
+  { lang: 'ru', currency: 'RUB' }, // Russian Ruble
+  { lang: 'es-ES', currency: 'EUR' }, // Euro
+  { lang: 'es-419', currency: 'USD' }, // United States Dollar (commonly used in Latin America)
+  { lang: 'sv-SE', currency: 'SEK' }, // Swedish Krona
+  { lang: 'th', currency: 'THB' }, // Thai Baht
+  { lang: 'tr', currency: 'TRY' }, // Turkish Lira
+  { lang: 'uk', currency: 'UAH' }, // Ukrainian Hryvnia
+  { lang: 'vi', currency: 'VND' }, // Vietnamese Đồng
+] as const;
+
+export function getCurrencyByLang(lang: string) {
+  const currency = currenciesByLang.find((c) => c.lang === lang);
+  if (currency) {
+    return currency.currency;
+  } else {
+    return 'USD'; // Default to USD if language not found
+  }
+}
+
 export function badArgument(list: any[]) {
   let valid = true;
   const failedArg = [];

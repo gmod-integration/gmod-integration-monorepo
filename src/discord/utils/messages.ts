@@ -2,7 +2,7 @@ import { getTranslate } from '../../utils/localizations.js';
 import { gmLog } from '../../utils/logger.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Guild, GuildMember, User } from 'discord.js';
 import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
-import { getEmojiVersion } from '../../utils/tools.js';
+import { getCurrencyByLang, getEmojiVersion } from '../../utils/tools.js';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
@@ -403,13 +403,19 @@ export async function getUserStatisticMessage(
   const customValueFormatList: { [key: string]: { format: (value: any) => string; emoji: string } } = {
     money: {
       format: (value: number) => {
-        return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        return value.toLocaleString(lang, {
+          style: 'currency',
+          currency: getCurrencyByLang(lang),
+        });
       },
       emoji: '💰',
     },
     bank: {
       format: (value: number) => {
-        return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+        return value.toLocaleString(lang, {
+          style: 'currency',
+          currency: getCurrencyByLang(lang),
+        });
       },
       emoji: '🏦',
     },
