@@ -219,5 +219,6 @@
   "ch_atm_take_money": "Geld von Geldautomat nehmen",
   "ch_atm_receive_money": "Geld von Geldautomat erhalten",
   "ch_atm_deposit_money": "Geld auf Geldautomat einzahlen",
-  "ch_atm_withdraw_money": "Geld von Geldautomat abheben"
+  "ch_atm_withdraw_money": "Geld von Geldautomat abheben",
+  "ammount": "Betrag"
 }

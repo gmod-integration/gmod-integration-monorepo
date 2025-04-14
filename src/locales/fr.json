@@ -182,5 +182,6 @@
   "ch_atm_take_money": "ATM prendre de l'argent",
   "ch_atm_receive_money": "ATM recevoir de l'argent",
   "ch_atm_deposit_money": "ATM déposer de l'argent",
-  "ch_atm_withdraw_money": "ATM retirer de l'argent"
+  "ch_atm_withdraw_money": "ATM retirer de l'argent",
+  "ammount": "Montant"
 }

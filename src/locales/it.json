@@ -233,5 +233,6 @@
   "ch_atm_take_money": "ATM preleva denaro",
   "ch_atm_receive_money": "ATM riceve denaro",
   "ch_atm_deposit_money": "ATM deposita denaro",
-  "ch_atm_withdraw_money": "ATM ritira denaro"
+  "ch_atm_withdraw_money": "ATM ritira denaro",
+  "ammount": "Importo"
 }

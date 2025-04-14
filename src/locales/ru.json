@@ -219,5 +219,6 @@
   "ch_atm_take_money": "ATM забрал деньги",
   "ch_atm_receive_money": "ATM получил деньги",
   "ch_atm_deposit_money": "ATM внес деньги",
-  "ch_atm_withdraw_money": "ATM снял деньги"
+  "ch_atm_withdraw_money": "ATM снял деньги",
+  "ammount": "Количество"
 }
