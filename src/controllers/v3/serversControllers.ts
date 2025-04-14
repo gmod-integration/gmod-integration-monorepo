@@ -2,6 +2,7 @@ import { badArgument } from '../../utils/tools.js';
 import { logServer } from '../../utils/logger.js';
 import { Request, Response } from 'express';
 import prisma from '../../prisma.js';
+import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 
 export async function postStatus(req: Request, res: Response) {
   const server = req.server!;
@@ -104,7 +105,230 @@ export async function getPublicToken(req: Request, res: Response) {
   return res.status(200).json({ publicTempToken: server.getPublicToken() });
 }
 
-const endpointToLogID = {
+export async function postDarkRPDropMoney(req: Request, res: Response) {
+  const server = req.server!;
+  const { player, amount, entity } = req.body;
+  if (badArgument([player, amount, entity])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+        amount: !!amount,
+        entity: !!entity,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server, 'dark_rp_drop_money', {
+    player: ply,
+    amount: Math.round(amount),
+    entity,
+  });
+
+  return res.status(200).json({ success: true });
+}
+
+export async function postDarkRPPickedUpMoney(req: Request, res: Response) {
+  const server = req.server!;
+  const { player, amount, entity } = req.body;
+  if (badArgument([player, amount, entity])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+        amount: !!amount,
+        entity: !!entity,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server, 'dark_rp_picked_up_money', {
+    player: ply,
+    amount: Math.round(amount),
+    entity,
+  });
+
+  return res.status(200).json({ success: true });
+}
+
+export async function postDarkRPPickedUpCheque(req: Request, res: Response) {
+  const server = req.server!;
+  const { playerChequeWriter, playerChequeTarget, amount, entity } = req.body;
+  if (badArgument([playerChequeWriter, playerChequeTarget, amount, entity])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        playerChequeWriter: !!playerChequeWriter,
+        playerChequeTarget: !!playerChequeTarget,
+        amount: !!amount,
+        entity: !!entity,
+      },
+    });
+  }
+
+  const plyWriter = new PlayerGmod(playerChequeWriter);
+  const plyTarget = new PlayerGmod(playerChequeTarget);
+  if (!plyWriter.isValid() || !plyTarget.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: plyWriter.isValidGetInformations() });
+  }
+
+  await logServer(server, 'dark_rp_picked_up_cheque', {
+    playerChequeWriter: plyWriter,
+    playerChequeTarget: plyTarget,
+    amount: Math.round(amount),
+    entity,
+  });
+  return res.status(200).json({ success: true });
+}
+
+export async function postCHATMTakeMoney(req: Request, res: Response) {
+  const server = req.server!;
+  const { player, amount, reason } = req.body;
+  if (badArgument([player, amount, reason])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+        amount: !!amount,
+        reason: !!reason,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server, 'ch_atm_take_money', {
+    player: ply,
+    amount: Math.round(amount),
+    reason,
+  });
+
+  return res.status(200).json({ success: true });
+}
+
+export async function postCHATMReceiveMoney(req: Request, res: Response) {
+  const server = req.server!;
+  const { player, amount, reason } = req.body;
+  if (badArgument([player, amount, reason])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+        amount: !!amount,
+        reason: !!reason,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server, 'ch_atm_receive_money', {
+    player: ply,
+    amount: Math.round(amount),
+    reason,
+  });
+
+  return res.status(200).json({ success: true });
+}
+
+export async function postCHATMSendMoney(req: Request, res: Response) {
+  const server = req.server!;
+  const { player, amount, receiver } = req.body;
+  if (badArgument([player, amount, receiver])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+        amount: !!amount,
+        receiver: !!receiver,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  const plyReceiver = new PlayerGmod(receiver);
+  if (!ply.isValid() || !plyReceiver.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server, 'ch_atm_send_money', {
+    player: ply,
+    receiver: plyReceiver,
+    amount: Math.round(amount),
+  });
+
+  return res.status(200).json({ success: true });
+}
+
+export async function postCHATMWithdrawMoney(req: Request, res: Response) {
+  const server = req.server!;
+  const { player, amount } = req.body;
+  if (badArgument([player, amount])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+        amount: !!amount,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server, 'ch_atm_withdraw_money', {
+    player: ply,
+    amount: Math.round(amount),
+  });
+
+  return res.status(200).json({ success: true });
+}
+
+export async function postCHATMDepositMoney(req: Request, res: Response) {
+  const server = req.server!;
+  const { player, amount } = req.body;
+  if (badArgument([player, amount])) {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: {
+        player: !!player,
+        amount: !!amount,
+      },
+    });
+  }
+
+  const ply = new PlayerGmod(player);
+  if (!ply.isValid()) {
+    return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
+  }
+
+  await logServer(server, 'ch_atm_deposit_money', {
+    player: ply,
+    amount: Math.round(amount),
+  });
+
+  return res.status(200).json({ success: true });
+}
+
+const endpointToLogID: Record<string, string> = {
   '^/servers/[^/]+/players/[^/]+/warns$': 'player_warned',
   '^/servers/[^/]+/players/[^/]+/death$': 'player_death',
   '^/servers/[^/]+/players/[^/]+/initial-spawn$': 'player_initial_spawn',
@@ -119,11 +343,50 @@ const endpointToLogID = {
   '^/servers/[^/]+/players/[^/]+/group$': 'player_change_group',
 };
 
-function matchEndpoint(endpoint: string) {
+const endpointToFunction: Record<string, Function> = {
+  //   DarkRP
+  '^/servers/[^/]+/players/[^/]+/dark-rp/drop-money$': function (req: Request, res: Response) {
+    return postDarkRPDropMoney(req, res);
+  },
+  '^/servers/[^/]+/players/[^/]+/dark-rp/picked-up-money$': function (req: Request, res: Response) {
+    return postDarkRPPickedUpMoney(req, res);
+  },
+  '^/servers/[^/]+/players/[^/]+/dark-rp/picked-up-cheque$': function (req: Request, res: Response) {
+    return postDarkRPPickedUpCheque(req, res);
+  },
+  //   CH ATM
+  '^/servers/[^/]+/players/[^/]+/ch-atm/send-money$': function (req: Request, res: Response) {
+    return postCHATMSendMoney(req, res);
+  },
+  '^/servers/[^/]+/players/[^/]+/ch-atm/take-money$': function (req: Request, res: Response) {
+    return postCHATMTakeMoney(req, res);
+  },
+  '^/servers/[^/]+/players/[^/]+/ch-atm/receive-money$': function (req: Request, res: Response) {
+    return postCHATMReceiveMoney(req, res);
+  },
+  '^/servers/[^/]+/players/[^/]+/ch-atm/deposit-money$': function (req: Request, res: Response) {
+    return postCHATMDepositMoney(req, res);
+  },
+  '^/servers/[^/]+/players/[^/]+/ch-atm/withdraw-money$': function (req: Request, res: Response) {
+    return postCHATMWithdrawMoney(req, res);
+  },
+};
+
+function matchLogIDEndpoint(endpoint: string) {
   for (const [regexPattern, logID] of Object.entries(endpointToLogID)) {
     const regex = new RegExp(regexPattern);
     if (regex.test(endpoint)) {
       return logID;
+    }
+  }
+  return null;
+}
+
+function matchFunctionEndpoint(endpoint: string): Function | null {
+  for (const regexPattern of Object.keys(endpointToFunction)) {
+    const regex = new RegExp(regexPattern);
+    if (regex.test(endpoint)) {
+      return endpointToFunction[regexPattern];
     }
   }
   return null;
@@ -137,8 +400,26 @@ export async function postMultiLog(req: Request, res: Response) {
     const { endpoint, data } = log;
     if (!endpoint || !data) continue;
 
-    const logID = matchEndpoint(endpoint);
-    if (!logID) continue;
+    const logID = matchLogIDEndpoint(endpoint);
+    if (!logID) {
+      const functionEndpoint = matchFunctionEndpoint(endpoint);
+      if (functionEndpoint) {
+        const localReq = {
+          ...req,
+          body: data,
+        };
+        await functionEndpoint(localReq, {
+          ...res,
+
+          send: () => {},
+          json: () => {},
+        }).catch((err: Error) => {
+          //
+        });
+        continue;
+      }
+      continue;
+    }
 
     if (logID === 'player_spawn_object') {
       data.object = endpoint.split('/').pop();

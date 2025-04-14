@@ -37,6 +37,18 @@ const logEmbedColors: Record<string, ColorResolvable> = {
   default: '#2B2D31',
   server_start: '#7c15d5',
   server_stop: '#7c15d5',
+  dark_rp_drop_money: '#c7c751',
+  dark_rp_picked_up_money: '#c7c751',
+  dark_rp_picked_up_cheque: '#c7c751',
+  ch_atm_send_money: '#adc751',
+  ch_atm_receive_money: '#adc751',
+  ch_atm_take_money: '#adc751',
+  ch_atm_withdraw_money: '#adc751',
+  ch_atm_deposit_money: '#adc751',
+  player_warned: '#9d2929',
+  player_ban: '#9d2929',
+  player_unban: '#9d2929',
+  player_kick: '#9d2929',
 };
 
 export async function logServer(server: Server, type: string, data?: any) {
@@ -141,9 +153,12 @@ export async function logServer(server: Server, type: string, data?: any) {
     dscList.push((await getTranslate('admin', lang)) + ':');
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + admin.steamID64 + '`');
     dscList.push((await getTranslate('name', lang)) + ': `' + admin.name + '`');
-    dscList.push((await getTranslate('reason', lang)) + ': `' + reason + '`');
+    dscList.push('\n');
+    dscList.push((await getTranslate('player', lang)) + ':');
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+    dscList.push('\n');
+    dscList.push((await getTranslate('reason', lang)) + ': `' + reason + '`');
   } else if (type === 'player_give') {
     const swep = data.swep || {};
     dataToSave.wep_class = swep.ClassName || '';
@@ -201,6 +216,124 @@ export async function logServer(server: Server, type: string, data?: any) {
     dataToSave.ply = data.player;
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+    /*
+
+  dark_rp_drop_money: '#c7c751',
+  dark_rp_picked_up_money: '#c7c751',
+  dark_rp_picked_up_cheque: '#c7c751',
+  ch_atm_send_money: '#adc751',
+  ch_atm_receive_money: '#adc751',
+  ch_atm_take_money: '#adc751',
+  ch_atm_withdraw_money: '#adc751',
+  ch_atm_deposit_money: '#adc751',
+     */
+  } else if (type === 'dark_rp_drop_money') {
+    const amount = data.amount || 0;
+    /*
+    player: ply,
+    amount: Math.round(amount),
+    entity,
+     */
+    dataToSave.amount = amount;
+    dataToSave.player = data.player;
+    dataToSave.entity = data.entity;
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+    dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+    dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`');
+  } else if (type === 'dark_rp_picked_up_money') {
+    /*
+    player: ply,
+    amount: Math.round(amount),
+    entity,
+     */
+    const amount = data.amount || 0;
+    dataToSave.amount = amount;
+    dataToSave.entity = data.entity;
+    dataToSave.player = data.player;
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+    dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+    dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`');
+  } else if (type === 'dark_rp_picked_up_cheque') {
+    /*
+     playerChequeWriter: plyWriter,
+    playerChequeTarget: plyTarget,
+    amount: Math.round(amount),
+    entity,
+     */
+    const amount = data.amount || 0;
+    dataToSave.amount = amount;
+    dataToSave.playerChequeWriter = data.playerChequeWriter;
+    dataToSave.playerChequeTarget = data.playerChequeTarget;
+    dataToSave.entity = data.entity;
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.playerChequeWriter.steamID64 + '`');
+    dscList.push((await getTranslate('name', lang)) + ': `' + data.playerChequeWriter.name + '`');
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.playerChequeTarget.steamID64 + '`');
+    dscList.push((await getTranslate('name', lang)) + ': `' + data.playerChequeTarget.name + '`');
+    dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`');
+  } else if (type === 'ch_atm_send_money') {
+    /*
+    player: ply,
+    amount: Math.round(amount),
+    reason,
+     */
+    const amount = data.amount || 0;
+    dataToSave.amount = amount;
+    dataToSave.reason = data.reason;
+    dataToSave.player = data.player;
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+    dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+    dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`');
+    dscList.push((await getTranslate('reason', lang)) + ': `' + data.reason + '`');
+  } else if (type === 'ch_atm_receive_money') {
+    /*
+    player: ply,
+    amount: Math.round(amount),
+    reason,
+     */
+    const amount = data.amount || 0;
+    dataToSave.amount = amount;
+    dataToSave.reason = data.reason;
+    dataToSave.player = data.player;
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+    dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+    dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`');
+    dscList.push((await getTranslate('reason', lang)) + ': `' + data.reason + '`');
+  } else if (type === 'ch_atm_take_money') {
+    /*
+    player: ply,
+    amount: Math.round(amount),
+    reason,
+     */
+    const amount = data.amount || 0;
+    dataToSave.amount = amount;
+    dataToSave.reason = data.reason;
+    dataToSave.player = data.player;
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+    dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+    dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`');
+    dscList.push((await getTranslate('reason', lang)) + ': `' + data.reason + '`');
+  } else if (type === 'ch_atm_withdraw_money') {
+    /*
+    player: ply,
+    amount: Math.round(amount),
+     */
+    const amount = data.amount || 0;
+    dataToSave.amount = amount;
+    dataToSave.player = data.player;
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+    dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+    dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`');
+  } else if (type === 'ch_atm_deposit_money') {
+    /*
+    player: ply,
+    amount: Math.round(amount),
+     */
+    const amount = data.amount || 0;
+    dataToSave.amount = amount;
+    dataToSave.player = data.player;
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
+    dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
+    dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`');
   } else {
     dataToSave = data;
     if (data.steamID64) dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.steamID64 + '`');

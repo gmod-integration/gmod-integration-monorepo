@@ -223,5 +223,15 @@
   "time": "Tempo",
   "kills": "Uccisioni",
   "deaths": "Morti",
-  "connections": "Connessioni"
+  "connections": "Connessioni",
+  "admin": "Amministratore",
+  "player_warned": "Giocatore avvisato",
+  "dark_rp_drop_money": "DarkRP lascia denaro",
+  "dark_rp_picked_up_money": "DarkRP raccolto denaro",
+  "dark_rp_picked_up_cheque": "DarkRP raccolto assegno",
+  "ch_atm_send_money": "ATM invia denaro",
+  "ch_atm_take_money": "ATM preleva denaro",
+  "ch_atm_receive_money": "ATM riceve denaro",
+  "ch_atm_deposit_money": "ATM deposita denaro",
+  "ch_atm_withdraw_money": "ATM ritira denaro"
 }

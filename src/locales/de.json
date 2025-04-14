@@ -209,5 +209,15 @@
   "time": "Zeit",
   "kills": "Abschüsse",
   "deaths": "Tode",
-  "connections": "Verbindungen"
+  "connections": "Verbindungen",
+  "admin": "Administrator",
+  "player_warned": "Spieler gewarnt",
+  "dark_rp_drop_money": "DarkRP Geld fallen lassen",
+  "dark_rp_picked_up_money": "DarkRP Geld aufgehoben",
+  "dark_rp_picked_up_cheque": "DarkRP Scheck aufgehoben",
+  "ch_atm_send_money": "Geld an Geldautomat senden",
+  "ch_atm_take_money": "Geld von Geldautomat nehmen",
+  "ch_atm_receive_money": "Geld von Geldautomat erhalten",
+  "ch_atm_deposit_money": "Geld auf Geldautomat einzahlen",
+  "ch_atm_withdraw_money": "Geld von Geldautomat abheben"
 }

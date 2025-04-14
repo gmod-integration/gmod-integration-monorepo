@@ -209,5 +209,15 @@
   "time": "Время",
   "kills": "Убийства",
   "deaths": "Смерти",
-  "connections": "Подключения"
+  "connections": "Подключения",
+  "admin": "Админ",
+  "player_warned": "Игрок предупрежден",
+  "dark_rp_drop_money": "DarkRP сбросил деньги",
+  "dark_rp_picked_up_money": "DarkRP поднял деньги",
+  "dark_rp_picked_up_cheque": "DarkRP поднял чек",
+  "ch_atm_send_money": "ATM отправил деньги",
+  "ch_atm_take_money": "ATM забрал деньги",
+  "ch_atm_receive_money": "ATM получил деньги",
+  "ch_atm_deposit_money": "ATM внес деньги",
+  "ch_atm_withdraw_money": "ATM снял деньги"
 }

@@ -223,5 +223,14 @@
   "time": "Zaman",
   "kills": "Öldürmeler",
   "deaths": "Ölümler",
-  "connections": "Bağlantılar"
-}
+  "connections": "Bağlantılar",
+  "admin": "Yönetici",
+  "player_warned": "Oyuncu uyarıldı",
+  "dark_rp_drop_money": "DarkRP para düşürdü",
+  "dark_rp_picked_up_money": "DarkRP para aldı",
+  "dark_rp_picked_up_cheque": "DarkRP çek aldı",
+  "ch_atm_send_money": "ATM para gönderdi",
+  "ch_atm_take_money": "ATM para aldı",
+  "ch_atm_receive_money": "ATM para aldı",
+  "ch_atm_deposit_money": "ATM para yatırdı",
+  "ch_atm_withdraw_money": "ATM para çekti"

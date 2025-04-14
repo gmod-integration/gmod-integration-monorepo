@@ -223,5 +223,15 @@
   "time": "Czas",
   "kills": "Zabójstwa",
   "deaths": "Zgony",
-  "connections": "Połączenia"
+  "connections": "Połączenia",
+  "admin": "Admin",
+  "player_warned": "Gracz ostrzeżony",
+  "dark_rp_drop_money": "DarkRP upuścił pieniądze",
+  "dark_rp_picked_up_money": "DarkRP podniósł pieniądze",
+  "dark_rp_picked_up_cheque": "DarkRP podniósł czek",
+  "ch_atm_send_money": "ATM wysłał pieniądze",
+  "ch_atm_take_money": "ATM pobrał pieniądze",
+  "ch_atm_receive_money": "ATM otrzymał pieniądze",
+  "ch_atm_deposit_money": "ATM wpłacił pieniądze",
+  "ch_atm_withdraw_money": "ATM wypłacił pieniądze"
 }

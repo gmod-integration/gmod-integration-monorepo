@@ -223,5 +223,15 @@
   "time": "Time",
   "kills": "Kills",
   "deaths": "Deaths",
-  "connections": "Connections"
+  "connections": "Connections",
+  "admin": "Admin",
+  "player_warned": "Player warned",
+  "dark_rp_drop_money": "DarkRP drop money",
+  "dark_rp_picked_up_money": "DarkRP picked up money",
+  "dark_rp_picked_up_cheque": "DarkRP picked up cheque",
+  "ch_atm_send_money": "ATM send money",
+  "ch_atm_take_money": "ATM take money",
+  "ch_atm_receive_money": "ATM receive money",
+  "ch_atm_deposit_money": "ATM deposit money",
+  "ch_atm_withdraw_money": "ATM withdraw money"
 }

@@ -3,6 +3,14 @@ import serverValidator from '../../middleware/v3/serverValidator.js';
 import {
   getInfo,
   getPublicToken,
+  postCHATMDepositMoney,
+  postCHATMReceiveMoney,
+  postCHATMSendMoney,
+  postCHATMTakeMoney,
+  postCHATMWithdrawMoney,
+  postDarkRPDropMoney,
+  postDarkRPPickedUpCheque,
+  postDarkRPPickedUpMoney,
   postMultiLog,
   postStatus,
   serverImportWarns,
@@ -58,5 +66,16 @@ router.post('/:serverID/players/:steamID64/spawn', asyncHandler(playerSpawn));
 router.post('/:serverID/players/:steamID64/name', asyncHandler(playerChangeName));
 router.post('/:serverID/players/:steamID64/group', asyncHandler(playerChangeGroup));
 router.post('/:serverID/players/:steamID64/team', asyncHandler(playerChangeTeam));
+
+// Dark RP
+router.post('/:serverID/players/:steamID64/dark-rp/drop-money', asyncHandler(postDarkRPDropMoney));
+router.post('/:serverID/players/:steamID64/dark-rp/picked-up-money', asyncHandler(postDarkRPPickedUpMoney));
+router.post('/:serverID/players/:steamID64/dark-rp/picked-up-cheque', asyncHandler(postDarkRPPickedUpCheque));
+// CH ATM
+router.post('/:serverID/players/:steamID64/ch-atm/send-money', asyncHandler(postCHATMSendMoney));
+router.post('/:serverID/players/:steamID64/ch-atm/take-money', asyncHandler(postCHATMTakeMoney));
+router.post('/:serverID/players/:steamID64/ch-atm/receive-money', asyncHandler(postCHATMReceiveMoney));
+router.post('/:serverID/players/:steamID64/ch-atm/withdraw-money', asyncHandler(postCHATMWithdrawMoney));
+router.post('/:serverID/players/:steamID64/ch-atm/deposit-money', asyncHandler(postCHATMDepositMoney));
 
 export default router;

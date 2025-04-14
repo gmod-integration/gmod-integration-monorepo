@@ -172,5 +172,15 @@
   "time": "Temps",
   "kills": "Kills",
   "deaths": "Morts",
-  "connections": "Connexions"
+  "connections": "Connexions",
+  "admin": "Administrateur",
+  "player_warned": "Joueur averti",
+  "dark_rp_drop_money": "DarkRP déposer de l'argent",
+  "dark_rp_picked_up_money": "DarkRP ramasser de l'argent",
+  "dark_rp_picked_up_cheque": "DarkRP ramasser un chèque",
+  "ch_atm_send_money": "ATM envoyer de l'argent",
+  "ch_atm_take_money": "ATM prendre de l'argent",
+  "ch_atm_receive_money": "ATM recevoir de l'argent",
+  "ch_atm_deposit_money": "ATM déposer de l'argent",
+  "ch_atm_withdraw_money": "ATM retirer de l'argent"
 }
