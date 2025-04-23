@@ -436,6 +436,9 @@ setInterval(async () => {
       },
     },
   });
+  console.log(
+    `[DEBUG] Found ${guildsStatusNotDisable.length} guilds with custom status [${guildsStatusNotDisable.map((g) => g.guildID)}]`,
+  );
 
   for (const guildStatus of guildsStatusNotDisable) {
     const key = guildStatus.guildID;
