@@ -440,14 +440,15 @@ setInterval(async () => {
   for (const guildStatus of guildsStatusNotDisable) {
     const key = guildStatus.guildID;
     const customStatus = guildStatus.value as string;
+    console.log(`[DEBUG] Updating custom status for ${key} with ${customStatus}`);
 
     lastStatusID[key] = lastStatusID[key] || 0;
     const client = clientList.get(key);
-    if (!client || !client.user) return;
+    if (!client || !client.user) return console.log('[DEBUG] No client found');
 
     try {
       const dscGuild = client.guilds.cache.get(key);
-      if (!dscGuild) return;
+      if (!dscGuild) return console.log('[DEBUG] No guild found');
 
       const guild = new Guild(dscGuild);
       if (!guild) return;
@@ -469,7 +470,7 @@ setInterval(async () => {
       };
 
       async function setPresence(str: string) {
-        if (!client || !client.user) return;
+        if (!client || !client.user) return console.log('[DEBUG] No client found');
         client.user!.setPresence({
           activities: [
             {
