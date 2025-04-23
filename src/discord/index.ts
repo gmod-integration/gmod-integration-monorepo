@@ -489,8 +489,9 @@ setInterval(async () => {
         await setPresence(botStatusList[customStatus]);
       }
 
-      gmLog('discord', `Updated custom status for ${key}`);
+      gmLog('discord', `Updated custom status for ${client.user.globalName} & server ${key}`);
     } catch (error) {
+      gmLog('discord', `Failed to update custom status for ${client.user.globalName} & server ${key}`);
       console.error(error);
     }
   }
