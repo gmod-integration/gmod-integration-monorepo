@@ -436,25 +436,21 @@ setInterval(async () => {
       },
     },
   });
-  console.log(
-    `[DEBUG] Found ${guildsStatusNotDisable.length} guilds with custom status [${guildsStatusNotDisable.map((g) => g.guildID)}]`,
-  );
 
   for (const guildStatus of guildsStatusNotDisable) {
     const key = guildStatus.guildID;
     const customStatus = guildStatus.value as string;
-    console.log(`[DEBUG] Updating custom status for ${key} with ${customStatus}`);
 
     lastStatusID[key] = lastStatusID[key] || 0;
     const client = clientList.get(key);
-    if (!client || !client.user) return console.log('[DEBUG] No client found');
+    if (!client || !client.user) continue;
 
     try {
       const dscGuild = client.guilds.cache.get(key);
-      if (!dscGuild) return console.log('[DEBUG] No guild found');
+      if (!dscGuild) continue;
 
       const guild = new Guild(dscGuild);
-      if (!guild) return;
+      if (!guild) continue;
 
       let totalPlayers = 0;
       let maxPlayers = 0;
@@ -473,7 +469,7 @@ setInterval(async () => {
       };
 
       async function setPresence(str: string) {
-        if (!client || !client.user) return console.log('[DEBUG] No client found');
+        if (!client || !client.user) return;
         client.user!.setPresence({
           activities: [
             {
@@ -495,7 +491,7 @@ setInterval(async () => {
 
       gmLog('discord', `Updated custom status for ${client.user.globalName} & server ${key}`);
     } catch (error) {
-      gmLog('discord', `Failed to update custom status for ${client.user.globalName} & server ${key}`);
+      gmLog('discord', `Failed to update custom status for server ${key}`);
       console.error(error);
     }
   }
