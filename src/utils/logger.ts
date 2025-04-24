@@ -273,17 +273,22 @@ export async function logServer(server: Server, type: string, data?: any) {
   } else if (type === 'ch_atm_send_money') {
     /*
     player: ply,
+    receiver: plyTarget,
     amount: Math.round(amount),
-    reason,
      */
     const amount = data.amount || 0;
     dataToSave.amount = amount;
-    dataToSave.reason = data.reason;
+    dataToSave.receiver = data.receiver;
     dataToSave.player = data.player;
+    dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`');
+    dscList.push('\n');
+    dscList.push((await getTranslate('sender', lang)) + ':');
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`');
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`');
-    dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`');
-    dscList.push((await getTranslate('reason', lang)) + ': `' + data.reason + '`');
+    dscList.push('\n');
+    dscList.push((await getTranslate('receiver', lang)) + ':');
+    dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.receiver.steamID64 + '`');
+    dscList.push((await getTranslate('name', lang)) + ': `' + data.receiver.name + '`');
   } else if (type === 'ch_atm_receive_money') {
     /*
     player: ply,
