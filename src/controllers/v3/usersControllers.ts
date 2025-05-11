@@ -18,7 +18,7 @@ import { getMainClient } from '../../discord/index.js';
 import redis from '../../redis/index.js';
 import prisma from '../../prisma.js';
 import { NextFunction, Request, Response } from 'express';
-import { getLogsByServer } from '../../database/gm_server_logs.js';
+import { getLogsByServer, getTotalLogsByServer } from '../../database/gm_server_logs.js';
 
 export async function getProfile(req: Request, res: Response) {
   const { steamID64, discordID } = req.query;
@@ -1185,25 +1185,6 @@ export async function putServerSetting(req: Request, res: Response) {
   }
 }
 
-export async function getServerLogs(req: Request, res: Response) {
-  const { serverID } = req.params;
-  const { offset, limit: number } = req.query;
-  const limit = Number(number);
-
-  if (limit && limit > 100) {
-    return res.status(400).send({
-      error: 'limit too high',
-    });
-  }
-
-  const logs = await getLogsByServer(serverID, {
-    offset: Number(offset) || 0,
-    limit: limit || 500,
-  });
-
-  return res.send(logs || []);
-}
-
 export async function getServerErrors(req: Request, res: Response) {
   const { serverID } = req.params;
   const { offset, limit: number } = req.query;
@@ -1751,6 +1732,59 @@ export async function getServerReportBugs(req: Request, res: Response) {
       where: { serverID },
     }),
   );
+}
+
+export async function getServerLogs(req: Request, res: Response) {
+  const { serverID } = req.params;
+
+  const rawOffset = req.query.offset?.toString() || '0';
+  const rawLimit = req.query.limit?.toString() || '50';
+  const rawSort = req.query.sort?.toString() || 'createdAt';
+  const rawOrderBy = req.query.orderBy?.toString().toUpperCase() || 'DESC';
+
+  // 2) Parse offset & limit
+  let offset = parseInt(rawOffset, 10);
+  let limit = parseInt(rawLimit, 10);
+
+  if (isNaN(offset) || offset < 0) offset = 0;
+  if (isNaN(limit) || limit < 1) limit = 50;
+  if (limit > 500) limit = 500; // enforce a max, if you want
+
+  // 3) Dynamically fetch the columns from MariaDB
+  const allowedColumns = ['createdAt', 'updatedAt', 'id', 'data', 'playerInvolvedSteamID64', 'type', 'serverID'];
+
+  let sort = rawSort;
+  // If sort is not in the table’s columns, fallback or reject
+  if (!allowedColumns.includes(sort)) {
+    // console.warn(`Invalid sort column "${sort}", falling back to "createdAt".`);
+    return res.status(400).json({ error: 'Invalid sort column' });
+    // sort = 'createdAt';
+  }
+
+  // 4) Convert orderBy to Prisma's format
+  const orderBy = rawOrderBy === 'ASC' ? 'asc' : 'desc';
+
+  // 5) Count total warns for pagination
+  const total = await getTotalLogsByServer(serverID);
+
+  const logs = await getLogsByServer(serverID, {
+    offset,
+    limit,
+    orderBy,
+    sort,
+  });
+
+  return res.send({
+    logs,
+    query: {
+      offset,
+      limit,
+      sort,
+      // Return order in uppercase to match the front-end’s "ASC"/"DESC"
+      orderBy: orderBy.toUpperCase(),
+      total,
+    },
+  });
 }
 
 export async function getServerWarns(req: Request, res: Response) {

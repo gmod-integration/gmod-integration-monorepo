@@ -43,18 +43,28 @@ export async function getLogsByServerAndSteamIDList(
     .toArray();
 }
 
+export async function getTotalLogsByServer(serverID: string) {
+  return await collection.countDocuments({
+    serverID,
+  });
+}
+
 export async function getLogsByServer(
   serverID: string,
   options: {
     limit: number | 0;
     offset: number | 0;
+    orderBy: 'asc' | 'desc';
+    sort: string;
   },
 ) {
   return await collection
     .find({
       serverID,
     })
-    .sort({ createdAt: -1 })
+    .sort({
+      [options.sort]: options.orderBy === 'asc' ? 1 : -1,
+    })
     .limit(options.limit)
     .skip(options.offset)
     .toArray();
