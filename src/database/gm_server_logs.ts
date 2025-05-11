@@ -49,6 +49,11 @@ export async function getTotalLogsByServer(serverID: string) {
   });
 }
 
+/*
+In mongoDB run
+db.logs.createIndex({ serverID: 1, createdAt: -1 });
+db.logs.createIndex({ serverID: 1, type: 1, createdAt: -1 });
+ */
 export async function getLogsByServer(
   serverID: string,
   options: {
