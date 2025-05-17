@@ -46,6 +46,7 @@ import {
   getLogsChannel,
   getProfile,
   getPublicServers,
+  getScreenshotsList,
   getServerErrors,
   getServerLogs,
   getServerPlayers,
@@ -205,6 +206,7 @@ router.delete('/:discordID/guilds/:guildID/servers/:serverID/teams/:id', asyncHa
 router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(findServerScreenshots));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(postServerScreenshots));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(deleteServerScreenshots));
+router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots/list', asyncHandler(getScreenshotsList));
 
 // Logs
 router.get('/:discordID/guilds/:guildID/servers/:serverID/logs', asyncHandler(getServerLogs));

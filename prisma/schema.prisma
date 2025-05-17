@@ -251,19 +251,6 @@ model gm_server_links {
   @@index([guild], map: "guild")
 }
 
-model gm_server_logs {
-  serverID                String?  @db.Char(255)
-  type                    String   @db.VarChar(255)
-  timeStamp               DateTime @default(now()) @db.Timestamp(0)
-  id                      Int      @id @default(autoincrement())
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  data                    Json     @default("[]")
-  playerInvolvedSteamID64 Json     @default("[]")
-
-  @@index([serverID], map: "gm_server_logs_gm_server_id_fk")
-}
-
 model gm_server_logs_channel {
   serverID     String    @id @db.VarChar(255)
   channelID    String    @db.VarChar(255)

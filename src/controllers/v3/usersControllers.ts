@@ -1854,3 +1854,56 @@ export async function getServerWarns(req: Request, res: Response) {
 
   return res.json(warnsData);
 }
+
+export async function getScreenshotsList(req: Request, res: Response) {
+  // example usage: assume you have some "server" object on req
+  const server = req.server!;
+  const serverID = server.id; // or however you retrieve the ID
+
+  // 1) Extract raw query params
+  const rawOffset = req.query.offset?.toString() || '0';
+  const rawLimit = req.query.limit?.toString() || '50';
+  const rawSort = 'createdAt';
+  const rawOrderBy = req.query.orderBy?.toString().toUpperCase() || 'DESC';
+
+  // 2) Parse offset & limit
+  let offset = parseInt(rawOffset, 10);
+  let limit = parseInt(rawLimit, 10);
+
+  if (isNaN(offset) || offset < 0) offset = 0;
+  if (isNaN(limit) || limit < 1) limit = 50;
+  if (limit > 500) limit = 500; // enforce a max, if you want
+
+  const screenshots = await prisma.gm_server_screenshots.findMany({
+    where: {
+      serverID: serverID,
+    },
+    skip: offset,
+    take: limit,
+    orderBy: {
+      [rawSort]: rawOrderBy === 'ASC' ? 'asc' : 'desc',
+    },
+  });
+
+  // 3) Count total screenshots for pagination
+  const total = await prisma.gm_server_screenshots.count({
+    where: {
+      serverID: serverID,
+    },
+  });
+
+  // 4) Shape the response
+  const screenshotsData = {
+    screenshots,
+    query: {
+      offset,
+      limit,
+      sort: rawSort,
+      // Return order in uppercase to match the front-end’s "ASC"/"DESC"
+      orderBy: rawOrderBy.toUpperCase(),
+      total,
+    },
+  };
+
+  return res.json(screenshotsData);
+}
