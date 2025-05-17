@@ -33,6 +33,7 @@ export const discordConfig = {
   gmodStorePremiumRoleID: process.env.DISCORD_GUILD_GMODSTORE_PREMIUM_ROLE_ID,
   discordPremiumRoleID: process.env.DISCORD_GUILD_DISCORD_PREMIUM_ROLE_ID,
   subscriptionSKUID: process.env.DISCORD_SUBSCRIPTION_SKU_ID,
+  gmodIntegrationLogo: 'https://gmod-integration.com/src/assets/brand/logo.png',
 };
 
 export const steamConfig = {

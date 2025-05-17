@@ -58,6 +58,7 @@ model gm_guild {
   gm_server_links             gm_server_links[]
   gm_sync_chat                gm_sync_chat[]
   gm_guild_verification_check gm_guild_verification_check[]
+  gm_guild_webooks            gm_guild_webooks[]
 }
 
 model gm_guild_auto_roles {
@@ -184,6 +185,7 @@ model gm_server {
   gm_sync_chat                  gm_sync_chat[]
   gm_server_status_history      gm_server_status_history[]
   gm_server_stat_team_time      gm_server_stat_team_time[]
+  gm_server_logs_triggers       gm_server_logs_triggers[]
 
   @@index([guild], map: "guild")
 }
@@ -571,6 +573,49 @@ model gm_status {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   gm_server gm_server @relation(fields: [server], references: [id], onDelete: Cascade, map: "gm_status_ibfk_1")
+}
+
+model gm_guild_webooks {
+  id           Int      @id @default(autoincrement())
+  guild        String   @db.VarChar(255)
+  channelID    String   @db.VarChar(255)
+  webhookID    String   @db.VarChar(255)
+  webhookToken String   @db.VarChar(255)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  gm_guild     gm_guild @relation(fields: [guild], references: [guild], onDelete: Cascade)
+
+  @@index([guild], map: "guild")
+}
+
+enum operator {
+  equal
+  notEqual
+  contain
+  notContain
+  startWith
+  endWith
+}
+
+enum trigger_action {
+  sendInChannel
+  sendInDMToAdmins
+}
+
+model gm_server_logs_triggers {
+  id        Int            @id @default(autoincrement())
+  log_type  String         @db.VarChar(255)
+  value     String         @db.VarChar(255)
+  operator  operator       @default(equal)
+  action    trigger_action @default(sendInChannel)
+  channelID String         @default("") @db.VarChar(255)
+  adminIDS  Json           @default("[]")
+  message   String         @default("") @db.VarChar(255)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  serverID  String    @db.VarChar(255)
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade)
 }
 
 model gm_status_button {

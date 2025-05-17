@@ -8,6 +8,7 @@ import {
   ButtonBuilder,
   ButtonInteraction,
   ButtonStyle,
+  ChannelType,
   ChatInputCommandInteraction,
   Guild as DiscordGuild,
   MessageActionRowComponentBuilder,
@@ -131,6 +132,49 @@ export class Guild {
     }
 
     return guildSettings[setting].defaultValue;
+  }
+
+  async getOrCreateChannelWebhook(channelID: string) {
+    const dbWebhook = await prisma.gm_guild_webooks.findFirst({
+      where: {
+        guild: this.id,
+        channelID,
+      },
+    });
+
+    const channel = this.dscGuild.channels.cache.get(channelID);
+    if (!channel) {
+      throw new Error('Channel not found');
+    }
+
+    if (channel.type !== ChannelType.GuildText) {
+      throw new Error('Channel is not a guild text channel');
+    }
+
+    if (!dbWebhook) {
+      const webhook = await channel.createWebhook({
+        name: 'Gmod Integration',
+        avatar: discordConfig.gmodIntegrationLogo,
+      });
+
+      await prisma.gm_guild_webooks.create({
+        data: {
+          guild: this.id,
+          channelID,
+          webhookID: webhook.id,
+          webhookToken: webhook.token,
+        },
+      });
+
+      return webhook;
+    }
+
+    const webhook = await this.dscGuild.client.fetchWebhook(dbWebhook.webhookID, dbWebhook.webhookToken);
+    if (!webhook) {
+      throw new Error('Webhook not found');
+    }
+
+    return webhook;
   }
 
   async setSetting(setting: string, value: any) {

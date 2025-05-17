@@ -42,7 +42,7 @@
     "@types/steamapi": "^2.2.5",
     "@types/uuid": "^10.0.0",
     "prettier": "^3.2.5",
-    "prisma": "^6.5.0",
+    "prisma": "^6.8.2",
     "ts-node": "^10.9.2",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"
@@ -83,6 +83,7 @@
     "steamapi": "^2.4.2",
     "unicode-emoji": "^2.5.0",
     "uuid": "^9.0.1",
-    "ws": "^8.16.0"
+    "ws": "^8.16.0",
+    "zod": "^3.24.4"
   }
 }
