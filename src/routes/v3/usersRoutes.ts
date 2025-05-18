@@ -203,10 +203,13 @@ router.put('/:discordID/guilds/:guildID/servers/:serverID/teams/:id', asyncHandl
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/teams/:id', asyncHandler(deleteServerTeams));
 
 // Screenshots
-router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(findServerScreenshots));
-router.post('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(postServerScreenshots));
-router.delete('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(deleteServerScreenshots));
-router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots/list', asyncHandler(getScreenshotsList));
+router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots/channel', asyncHandler(findServerScreenshots));
+router.post('/:discordID/guilds/:guildID/servers/:serverID/screenshots/channel', asyncHandler(postServerScreenshots));
+router.delete(
+  '/:discordID/guilds/:guildID/servers/:serverID/screenshots/channel',
+  asyncHandler(deleteServerScreenshots),
+);
+router.get('/:discordID/guilds/:guildID/servers/:serverID/screenshots', asyncHandler(getScreenshotsList));
 
 // Logs
 router.get('/:discordID/guilds/:guildID/servers/:serverID/logs', asyncHandler(getServerLogs));
