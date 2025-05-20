@@ -6,7 +6,12 @@ import { getStatusMessage } from '../../discord/utils/messages.js';
 import { gmLog } from '../../utils/logger.js';
 import { ChannelType } from 'discord.js';
 import prisma from '../../prisma.js';
-import { gm_server_sync_chat_filter } from '@prisma/client';
+import {
+  gm_server_logs_triggers,
+  gm_server_logs_triggers_action,
+  gm_server_logs_triggers_operator,
+  gm_server_sync_chat_filter,
+} from '@prisma/client';
 import { isGuildPremium } from './Guild.js';
 
 const serverSettings: Record<string, any> = {
@@ -972,6 +977,155 @@ export class Server extends BaseClass {
         token: webhook.token,
       },
     });
+  }
+
+  async getLogsTrigger() {
+    return prisma.gm_server_logs_triggers.findMany({
+      where: {
+        serverID: this.id,
+      },
+    });
+  }
+
+  /*$
+  model gm_server_logs_triggers {
+  id        Int            @id @default(autoincrement())
+  log_type  String         @db.VarChar(255)
+  value     String         @db.VarChar(255)
+  operator  operator       @default(equal)
+  action    trigger_action @default(sendInChannel)
+  channelID String         @default("") @db.VarChar(255)
+  adminIDS  Json           @default("[]")
+  message   String         @default("") @db.VarChar(255)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  serverID  String    @db.VarChar(255)
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade)
+}
+   */
+  async deleteLogsTrigger(id: number) {
+    const trigger = await prisma.gm_server_logs_triggers.findFirst({
+      where: {
+        serverID: this.id,
+        id,
+      },
+    });
+
+    if (trigger) {
+      await prisma.gm_server_logs_triggers.delete({
+        where: {
+          id,
+          serverID: this.id,
+        },
+      });
+    }
+
+    await this.resetRedisLogsTrigger();
+    return trigger;
+  }
+
+  async createLogsTrigger(
+    action: string,
+    compare: string,
+    channelID: string,
+    value: string,
+    operator: string,
+    message: string,
+    log_type: string,
+  ) {
+    const newOperator = gm_server_logs_triggers_operator[operator as keyof typeof gm_server_logs_triggers_operator];
+    const newAction = gm_server_logs_triggers_action[action as keyof typeof gm_server_logs_triggers_action];
+    const data = prisma.gm_server_logs_triggers.create({
+      data: {
+        serverID: this.id,
+        action: newAction,
+        compare,
+        channelID,
+        value,
+        operator: newOperator,
+        message,
+        log_type,
+      },
+    });
+
+    await this.resetRedisLogsTrigger();
+    return data;
+  }
+
+  async updateLogsTrigger(
+    id: number,
+    action: string,
+    compare: string,
+    channelID: string,
+    value: string,
+    operator: string,
+    message: string,
+    log_type: string,
+  ) {
+    const newOperator = gm_server_logs_triggers_operator[operator as keyof typeof gm_server_logs_triggers_operator];
+    const newAction = gm_server_logs_triggers_action[action as keyof typeof gm_server_logs_triggers_action];
+    const data = await prisma.gm_server_logs_triggers.update({
+      where: {
+        id,
+        serverID: this.id,
+      },
+      data: {
+        action: newAction,
+        compare,
+        channelID,
+        value,
+        operator: newOperator,
+        message,
+        log_type,
+      },
+    });
+
+    await this.resetRedisLogsTrigger();
+    return data;
+  }
+
+  async resetRedisLogsTrigger() {
+    const redisKey = `server:${this.id}:logsTrigger`;
+    await redis.del(redisKey);
+    const triggers = await this.getLogsTrigger();
+    if (triggers) {
+      for (const trigger of triggers) {
+        await redis.del(`${redisKey}:${trigger.log_type}`);
+      }
+    }
+    await this.getLogsTriggerFromRedis();
+  }
+
+  async getLogsTriggerFromRedis() {
+    const redisKey = `server:${this.id}:logsTrigger`;
+    const redisData = await redis.get(redisKey);
+    if (redisData) {
+      return JSON.parse(redisData);
+    } else {
+      const redisKey = `server:${this.id}:logsTrigger`;
+      const triggers = await this.getLogsTrigger();
+
+      let triggersByType: Record<string, gm_server_logs_triggers[]> = {};
+      for (const trigger of triggers) {
+        if (!triggersByType[trigger.log_type]) {
+          triggersByType[trigger.log_type] = [];
+        }
+        triggersByType[trigger.log_type].push(trigger);
+      }
+
+      // save every triggersByType in redis
+      for (const [key, value] of Object.entries(triggersByType)) {
+        await redis.set(`${redisKey}:${key}`, JSON.stringify(value), 'EX', 60 * 60 * 24);
+      }
+
+      // save list
+      const trigger_types = Object.keys(triggersByType) || [];
+      await redis.set(redisKey, JSON.stringify(trigger_types), 'EX', 60 * 60 * 24);
+
+      //
+      return trigger_types;
+    }
   }
 }
 

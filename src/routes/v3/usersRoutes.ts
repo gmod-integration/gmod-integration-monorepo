@@ -12,6 +12,7 @@ import {
   deleteGuildServer,
   deleteGuildVerificationsRoles,
   deleteLogsChannel,
+  deleteServerLogsTrigger,
   deleteServerPseudo,
   deleteServerRoles,
   deleteServerScreenshots,
@@ -49,6 +50,7 @@ import {
   getScreenshotsList,
   getServerErrors,
   getServerLogs,
+  getServerLogsTrigger,
   getServerPlayers,
   getServerPseudo,
   getServerReportBugs,
@@ -76,6 +78,7 @@ import {
   postGuildLinks,
   postGuildServerToken,
   postLogsChannel,
+  postServerLogsTrigger,
   postServerPseudo,
   postServerRoles,
   postServerScreenshots,
@@ -93,6 +96,7 @@ import {
   putGuildSetting,
   putGuildVerificationsRoles,
   putPlayerBypassMaintenance,
+  putServerLogsTrigger,
   putServerPseudo,
   putServerRoles,
   putServerSetting,
@@ -216,6 +220,16 @@ router.get('/:discordID/guilds/:guildID/servers/:serverID/logs', asyncHandler(ge
 router.get('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(getLogsChannel));
 router.post('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(postLogsChannel));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/logs/channels', asyncHandler(deleteLogsChannel));
+router.get('/:discordID/guilds/:guildID/servers/:serverID/logs/triggers', asyncHandler(getServerLogsTrigger));
+router.post('/:discordID/guilds/:guildID/servers/:serverID/logs/triggers', asyncHandler(postServerLogsTrigger));
+router.put(
+  '/:discordID/guilds/:guildID/servers/:serverID/logs/triggers/:triggerID',
+  asyncHandler(putServerLogsTrigger),
+);
+router.delete(
+  '/:discordID/guilds/:guildID/servers/:serverID/logs/triggers/:triggerID',
+  asyncHandler(deleteServerLogsTrigger),
+);
 
 // Errors
 router.get('/:discordID/guilds/:guildID/servers/:serverID/errors', asyncHandler(getServerErrors));

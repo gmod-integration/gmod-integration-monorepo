@@ -1907,3 +1907,68 @@ export async function getScreenshotsList(req: Request, res: Response) {
 
   return res.json(screenshotsData);
 }
+
+export async function getServerLogsTrigger(req: Request, res: Response) {
+  const server = req.server!;
+  if (!(await server.isPremium())) {
+    return res.status(403).send({
+      error: 'Server is not premium',
+    });
+  }
+  return res.send((await server.getLogsTrigger()) || {});
+}
+
+export async function postServerLogsTrigger(req: Request, res: Response) {
+  const server = req.server!;
+  if (!(await server.isPremium())) {
+    return res.status(403).send({
+      error: 'Server is not premium',
+    });
+  }
+
+  const { action, compare, channelID, value, operator, message, log_type } = req.body;
+  const failed = badArgument([action, compare, channelID, value, operator, message, log_type]);
+  if (failed) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  return res.send(await server.createLogsTrigger(action, compare, channelID, value, operator, message, log_type));
+}
+
+export async function putServerLogsTrigger(req: Request, res: Response) {
+  const server = req.server!;
+  if (!(await server.isPremium())) {
+    return res.status(403).send({
+      error: 'Server is not premium',
+    });
+  }
+
+  const { triggerID } = req.params;
+  let trigger_number = Number(triggerID);
+  const { action, compare, channelID, value, operator, message, log_type } = req.body;
+
+  if (badArgument([action, compare, channelID, value, operator, message, log_type])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    });
+  }
+
+  return res.send(
+    await server.updateLogsTrigger(trigger_number, action, compare, channelID, value, operator, message, log_type),
+  );
+}
+
+export async function deleteServerLogsTrigger(req: Request, res: Response) {
+  const server = req.server!;
+  if (!(await server.isPremium())) {
+    return res.status(403).send({
+      error: 'Server is not premium',
+    });
+  }
+
+  const { triggerID } = req.params;
+  let trigger_number = Number(triggerID);
+  return res.send(await server.deleteLogsTrigger(trigger_number));
+}

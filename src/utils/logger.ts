@@ -3,9 +3,11 @@ import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { getRandomDiscordRelay, ipGetIP } from './tools.js';
 import { getTranslate } from './localizations.js';
 import { wsSendToAllClientsOfServer } from '../websockets/index.js';
-import { ColorResolvable, EmbedBuilder } from 'discord.js';
+import { ChannelType, ColorResolvable, EmbedBuilder } from 'discord.js';
 import { Server } from '../classes/v3/Server.js';
 import { addLog } from '../database/gm_server_logs.js';
+import redis from '../redis/index.js';
+import { gm_server_logs_triggers } from '@prisma/client';
 
 export enum LogLevel {
   MINIMAL = 'minimal',
@@ -51,6 +53,250 @@ const logEmbedColors: Record<string, ColorResolvable> = {
   player_kick: '#9d2929',
 };
 
+const log_trigger_operator: Record<string, string> = {
+  greaterThan: 'greaterThan',
+  lessThan: 'lessThan',
+  equal: 'equal',
+  notEqual: 'notEqual',
+  contain: 'contain',
+  notContain: 'notContain',
+  startWith: 'startWith',
+  endWith: 'endWith',
+};
+
+const log_trigger_action: Record<string, string> = {
+  sendMessageInChannel: 'sendMessageInChannel',
+};
+
+interface log_trigger_compare {
+  [key: string]: {
+    type: string;
+    id: string;
+  };
+}
+
+const log_trigger_compare: Record<string, log_trigger_compare> = {
+  dark_rp_drop_money: {
+    amount: {
+      type: 'number',
+      id: 'amount',
+    },
+  },
+  dark_rp_picked_up_money: {
+    amount: {
+      type: 'number',
+      id: 'amount',
+    },
+  },
+  dark_rp_picked_up_cheque: {
+    amount: {
+      type: 'number',
+      id: 'amount',
+    },
+  },
+  ch_atm_send_money: {
+    amount: {
+      type: 'number',
+      id: 'amount',
+    },
+  },
+  ch_atm_receive_money: {
+    amount: {
+      type: 'number',
+      id: 'amount',
+    },
+  },
+  ch_atm_take_money: {
+    amount: {
+      type: 'number',
+      id: 'amount',
+    },
+  },
+  ch_atm_withdraw_money: {
+    amount: {
+      type: 'number',
+      id: 'amount',
+    },
+  },
+  ch_atm_deposit_money: {
+    amount: {
+      type: 'number',
+      id: 'amount',
+    },
+  },
+};
+
+/*
+structure example:
+data: {
+  "data": {
+    "ply": {
+      "steamID": "STEAM_0:1:129391972",
+      "steamID64": "76561198219049673",
+      "connectTime": 2419,
+      "kills": 0,
+      "customValues": {
+        "job": "Citizen",
+        "money": 999997530,
+        "bank": 300
+      },
+      "deaths": 0,
+      "team": {
+        "id": 1,
+        "name": "Citizen"
+      },
+      "name": "Linventif",
+      "userGroup": "superadmin",
+      "position": {
+        "x": 695,
+        "y": 288,
+        "z": -143
+      },
+      "angle": {
+        "p": 19,
+        "y": -149,
+        "r": 0
+      },
+      "fps": 15,
+      "ping": 14,
+      "adjustedTime": 0,
+      "branch": "unknown",
+      "timeLastTeamChange": 2421
+    },
+    "amount": 1000,
+    "player": {
+      "steamID": "STEAM_0:1:129391972",
+      "steamID64": "76561198219049673",
+      "connectTime": 2419,
+      "kills": 0,
+      "customValues": {
+        "job": "Citizen",
+        "money": 999997530,
+        "bank": 300
+      },
+      "deaths": 0,
+      "team": {
+        "id": 1,
+        "name": "Citizen"
+      },
+      "name": "Linventif",
+      "userGroup": "superadmin",
+      "position": {
+        "x": 695,
+        "y": 288,
+        "z": -143
+      },
+      "angle": {
+        "p": 19,
+        "y": -149,
+        "r": 0
+      },
+      "fps": 15,
+      "ping": 14,
+      "adjustedTime": 0,
+      "branch": "unknown",
+      "timeLastTeamChange": 2421
+    },
+    "entity": {
+      "angle": {
+        "y": 31,
+        "r": 0,
+        "p": 0
+      },
+      "model": "models/props/cs_assault/money.mdl",
+      "position": {
+        "y": 247,
+        "x": 627,
+        "z": -107
+      },
+      "class": "spawned_money"
+    }
+  },
+  "category": "dark_rp_drop_money",
+  "createAt": "2025-05-20T01:04:42.872Z"
+}
+ */
+
+async function handleLogsTrigger(server: Server, type: string, data?: any) {
+  const availableTriggers = await server.getLogsTriggerFromRedis();
+  if (!availableTriggers || availableTriggers.length === 0 || !availableTriggers.includes(type)) return;
+  const redisKey = `server:${server.id}:logsTrigger:${type}`;
+  const triggers = (await redis.get(redisKey)) || '[]';
+  const triggerList: gm_server_logs_triggers[] = JSON.parse(triggers);
+  for (const trigger of triggerList) {
+    if (!trigger) continue;
+
+    const typeInfo = log_trigger_compare[type];
+    if (!typeInfo) continue;
+
+    const correctValueType = typeInfo[trigger.compare];
+    if (!correctValueType) continue;
+
+    let newValue;
+    let compareValue;
+    if (correctValueType.type === 'number') {
+      newValue = parseFloat(data[trigger.compare]);
+      compareValue = parseFloat(trigger.compare);
+    } else {
+      newValue = data[trigger.compare];
+      compareValue = data[trigger.compare];
+    }
+
+    if (newValue === undefined || compareValue === undefined) continue;
+    if (trigger.operator === log_trigger_operator.greaterThan && newValue <= compareValue) continue;
+    if (trigger.operator === log_trigger_operator.lessThan && newValue >= compareValue) continue;
+    if (trigger.operator === log_trigger_operator.equal && newValue !== compareValue) continue;
+    if (trigger.operator === log_trigger_operator.notEqual && newValue === compareValue) continue;
+    if (trigger.operator === log_trigger_operator.contain && !newValue.includes(compareValue)) continue;
+    if (trigger.operator === log_trigger_operator.notContain && newValue.includes(compareValue)) continue;
+    if (trigger.operator === log_trigger_operator.startWith && !newValue.startsWith(compareValue)) continue;
+    if (trigger.operator === log_trigger_operator.endWith && !newValue.endsWith(compareValue)) continue;
+
+    if (trigger.action === log_trigger_action.sendMessageInChannel) {
+      const client = await server.getBotInstance();
+      if (!client) continue;
+
+      const channel = client.channels.cache.get(trigger.channelID);
+      if (!channel || channel.type !== ChannelType.GuildText) continue;
+
+      let message = trigger.message;
+      // remplace every {{path.to.value}} by the value of the data
+      // 1# get all regex
+      const regex = /{{data\.(.*?)}}/g;
+      const matches = message.match(regex);
+      if (matches) {
+        for (const match of matches) {
+          // remove {{ and }}
+          const path = match.replace(/{{data\./, '').replace(/}}/, '');
+          const pathArray = path.split('.');
+          // get the value of the data
+          let value = data;
+          for (const key of pathArray) {
+            if (value[key] !== undefined) {
+              value = value[key];
+            } else {
+              value = null;
+              break;
+            }
+          }
+          if (value !== null) {
+            message = message.replace(match, value);
+          } else {
+            message = message.replace(match, 'undefined');
+          }
+        }
+      }
+
+      const embed = new EmbedBuilder().setColor(logEmbedColors[type] || logEmbedColors.default).setDescription(message);
+
+      // send the message
+      await channel.send({
+        embeds: [embed],
+      });
+    }
+  }
+}
+
 export async function logServer(server: Server, type: string, data?: any) {
   data = data || {};
   try {
@@ -58,6 +304,8 @@ export async function logServer(server: Server, type: string, data?: any) {
   } catch (error) {
     //
   }
+
+  handleLogsTrigger(server, type, data).catch(() => {});
 
   const playerInvolvedSteamID64: any = [];
   const dataString = JSON.stringify(data);

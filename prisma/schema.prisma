@@ -575,8 +575,10 @@ model gm_guild_webooks {
   @@index([guild], map: "guild")
 }
 
-enum operator {
+enum gm_server_logs_triggers_operator {
   equal
+  greaterThan
+  lessThan
   notEqual
   contain
   notContain
@@ -584,22 +586,23 @@ enum operator {
   endWith
 }
 
-enum trigger_action {
-  sendInChannel
-  sendInDMToAdmins
+enum gm_server_logs_triggers_action {
+  sendMessageInChannel
+  sendMessageInDMToAdmins
 }
 
 model gm_server_logs_triggers {
-  id        Int            @id @default(autoincrement())
-  log_type  String         @db.VarChar(255)
-  value     String         @db.VarChar(255)
-  operator  operator       @default(equal)
-  action    trigger_action @default(sendInChannel)
-  channelID String         @default("") @db.VarChar(255)
-  adminIDS  Json           @default("[]")
-  message   String         @default("") @db.VarChar(255)
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
+  id        Int                              @id @default(autoincrement())
+  log_type  String                           @db.VarChar(255)
+  value     String                           @db.VarChar(255)
+  compare   String                           @db.VarChar(255)
+  operator  gm_server_logs_triggers_operator @default(equal)
+  action    gm_server_logs_triggers_action   @default(sendMessageInChannel)
+  channelID String                           @default("") @db.VarChar(255)
+  adminIDS  Json                             @default("[]")
+  message   String                           @default("") @db.VarChar(255)
+  createdAt DateTime                         @default(now())
+  updatedAt DateTime                         @updatedAt
 
   serverID  String    @db.VarChar(255)
   gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade)

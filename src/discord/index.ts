@@ -102,7 +102,6 @@ async function addNewClient(guildInstance: string, token: string) {
       GatewayIntentBits.AutoModerationConfiguration,
       GatewayIntentBits.AutoModerationExecution,
       GatewayIntentBits.DirectMessages,
-      GatewayIntentBits.GuildEmojisAndStickers,
       GatewayIntentBits.GuildInvites,
       GatewayIntentBits.GuildMembers,
       GatewayIntentBits.GuildMessages,
