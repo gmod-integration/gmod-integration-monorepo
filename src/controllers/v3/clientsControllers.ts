@@ -5,7 +5,7 @@ import prisma from '../../prisma.js';
 
 export async function uploadScreenshot(req: Request, res: Response) {
   const server = req.server!;
-  const { player, screenshot, captureData, size } = req.body;
+  const { player, screenshot, captureData, size, title } = req.body;
 
   if (badArgument([player, screenshot, captureData, size])) {
     return res.status(400).json({
@@ -19,8 +19,8 @@ export async function uploadScreenshot(req: Request, res: Response) {
     });
   }
 
-  const { discordUrl, filename } = await saveScreenshot(screenshot, captureData, player, server);
-  await sendScreenshotToDiscord(discordUrl, filename, player, server);
+  const { discordUrl, filename, internUrl } = await saveScreenshot(screenshot, captureData, player, server, title);
+  await sendScreenshotToDiscord(discordUrl, internUrl, filename, player, server, title);
   res.status(200).json({ success: true });
 }
 

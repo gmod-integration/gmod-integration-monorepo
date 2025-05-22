@@ -324,14 +324,15 @@ model gm_server_screenshot_channels {
 }
 
 model gm_server_screenshots {
-  id        Int       @id @default(autoincrement())
-  serverID  String    @db.VarChar(255)
-  title     String    @default("") @db.VarChar(255)
-  player    Json      @default("[]")
-  url       String    @default("") @db.VarChar(255)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_screenshots_ibfk_1")
+  id          Int       @id @default(autoincrement())
+  serverID    String    @db.VarChar(255)
+  title       String    @default("") @db.VarChar(255)
+  player      Json      @default("[]")
+  captureData Json      @default("[]")
+  url         String    @default("") @db.VarChar(255)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  gm_server   gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_screenshots_ibfk_1")
 
   @@index([serverID], map: "serverID")
 }

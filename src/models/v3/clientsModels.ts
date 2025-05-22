@@ -8,8 +8,15 @@ import { v4 as uuidv4 } from 'uuid';
 import { Server } from '../../classes/v3/Server.js';
 import prisma from '../../prisma.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
+import { getTranslate } from '../../utils/localizations.js';
 
-export async function saveScreenshot(screenshot: string, captureData: any, player: PlayerGmod, server: Server) {
+export async function saveScreenshot(
+  screenshot: string,
+  captureData: any,
+  player: PlayerGmod,
+  server: Server,
+  title: string | undefined,
+) {
   const format = captureData.format || 'jpeg';
   const dateFormatted = new Date().toISOString().replace(/T/g, '_').replace(/\..+/, '').replace(/:/g, '-');
   const filename = `${dateFormatted}_${player.steamID64}_${uuidv4()}.${format}`;
@@ -46,9 +53,10 @@ export async function saveScreenshot(screenshot: string, captureData: any, playe
   await prisma.gm_server_screenshots.create({
     data: {
       serverID: server.id,
-      title: captureData.title,
+      title: title,
       player: JSON.stringify(player),
       url: internUrl,
+      captureData: JSON.stringify(captureData),
     },
   });
 
@@ -59,15 +67,24 @@ export async function saveScreenshot(screenshot: string, captureData: any, playe
   };
 }
 
-export async function sendScreenshotToDiscord(url: string, filename: string, player: PlayerGmod, server: Server) {
+export async function sendScreenshotToDiscord(
+  discordUrl: string,
+  internUrl: string,
+  filename: string,
+  player: PlayerGmod,
+  server: Server,
+  title: string | undefined,
+) {
   const channelInfo = await server.getScreenshotsChannel();
   if (!channelInfo) {
     return { skip: true, message: 'Channel not found' };
   }
 
   const embed = new EmbedBuilder()
-    .setImage(url)
+    .setImage(discordUrl)
     .setColor('#2b2d31')
+    .setTitle(title || (await getTranslate('discord.screenshot.no_title', 'No title')))
+    .setURL(internUrl)
     .setFooter({
       text: `${player.steamID64} - ${server.getName()}`,
     })

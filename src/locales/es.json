@@ -220,5 +220,6 @@
   "ch_atm_receive_money": "Cajero recibir dinero",
   "ch_atm_deposit_money": "Cajero depositar dinero",
   "ch_atm_withdraw_money": "Cajero retirar dinero",
-  "ammount": "Monto"
+  "ammount": "Monto",
+  "discord.screenshot.no_title": "Sin título"
 }

@@ -234,5 +234,6 @@
   "ch_atm_receive_money": "ATM otrzymał pieniądze",
   "ch_atm_deposit_money": "ATM wpłacił pieniądze",
   "ch_atm_withdraw_money": "ATM wypłacił pieniądze",
-  "ammount": "Kwota"
+  "ammount": "Kwota",
+  "discord.screenshot.no_title": "Brak tytułu"
 }

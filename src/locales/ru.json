@@ -220,5 +220,6 @@
   "ch_atm_receive_money": "ATM получил деньги",
   "ch_atm_deposit_money": "ATM внес деньги",
   "ch_atm_withdraw_money": "ATM снял деньги",
-  "ammount": "Количество"
+  "ammount": "Количество",
+  "discord.screenshot.no_title": "Без названия"
 }
