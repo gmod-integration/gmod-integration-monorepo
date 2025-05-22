@@ -236,10 +236,10 @@ async function handleLogsTrigger(server: Server, type: string, data?: any) {
     let compareValue;
     if (correctValueType.type === 'number') {
       newValue = parseFloat(data[trigger.compare]);
-      compareValue = parseFloat(trigger.compare);
+      compareValue = parseFloat(trigger.value);
     } else {
       newValue = data[trigger.compare];
-      compareValue = data[trigger.compare];
+      compareValue = trigger.value;
     }
 
     if (newValue === undefined || compareValue === undefined) continue;
