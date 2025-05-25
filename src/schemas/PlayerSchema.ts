@@ -3,8 +3,6 @@ import { extendZodWithOpenApi } from 'zod-openapi';
 import { TeamSchema } from './TeamSchema.js';
 import { PositionSchema } from './PositionSchema.js';
 import { AngleSchema } from './AngleSchema.js';
-import { CustomValuesSchema } from './CustomValuesSchema.js';
-import { BranchSchema } from './Branch.js';
 
 extendZodWithOpenApi(z);
 
@@ -54,8 +52,17 @@ export const PlayerSchema = z
       example: 0,
       description: 'FPS of the player',
     }),
-    branch: BranchSchema.optional(),
-    customValues: CustomValuesSchema.optional(),
+    branch: z.enum(['unknown', 'dev', 'prerelease', 'x86-64']).openapi({
+      example: 'unknown',
+      description: 'Branch of the player',
+    }),
+    customValues: z.record(z.string(), z.any()).openapi({
+      example: {
+        level: 1,
+        policeRank: 'Officer',
+      },
+      description: 'Custom values for the server',
+    }),
     team: TeamSchema,
     position: PositionSchema,
     angle: AngleSchema,

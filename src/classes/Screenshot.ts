@@ -1,6 +1,7 @@
 import { ScreenshotInput, ScreenshotSchema } from '../schemas/ScreenshotSchema.js';
 import { CaptureData } from './CaptureData.js';
 import { Player } from './Players.js';
+import { Server } from './v3/Server.js';
 
 export class Screenshot {
   public readonly captureData: CaptureData;
@@ -11,9 +12,9 @@ export class Screenshot {
 
   private constructor(data: ScreenshotInput) {
     const parsed = ScreenshotSchema.parse(data);
-    this.captureData = CaptureData.from(data);
-    this.title = parsed.title;
-    this.player = Player.from(parsed.player);
+    this.captureData = CaptureData.from(parsed.captureData);
+    this.title = parsed.title || undefined;
+    this.player = (parsed.player && Player.from(parsed.player)) || undefined;
     this.screenshot = parsed.screenshot;
     this.size = parsed.size;
   }
@@ -24,5 +25,9 @@ export class Screenshot {
 
   public getTitle(): string {
     return this.title || 'No Title';
+  }
+
+  public saveInServer(server: Server) {
+    //
   }
 }
