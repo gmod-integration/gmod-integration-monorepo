@@ -6,10 +6,10 @@ export class Position {
   public readonly z: number;
 
   private constructor(data: PositionInput) {
-    PositionSchema.parse(data);
-    this.x = data.x;
-    this.y = data.y;
-    this.z = data.z;
+    const parsed = PositionSchema.parse(data);
+    this.x = parsed.x;
+    this.y = parsed.y;
+    this.z = parsed.z;
   }
 
   public static from(data: unknown): Position {

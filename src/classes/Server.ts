@@ -13,16 +13,16 @@ export class Server {
   public readonly uptime: number;
 
   private constructor(data: ServerInput) {
-    ServerSchema.parse(data);
-    this.hostname = data.hostname;
-    this.ip = data.ip;
-    this.port = data.port;
-    this.map = data.map;
-    this.players = data.players;
-    this.playersList = data.playersList.map((player) => Player.from(player));
-    this.maxPlayers = data.maxPlayers;
-    this.gameMode = data.gameMode;
-    this.uptime = data.uptime;
+    const parsed = ServerSchema.parse(data);
+    this.hostname = parsed.hostname;
+    this.ip = parsed.ip;
+    this.port = parsed.port;
+    this.map = parsed.map;
+    this.players = parsed.players;
+    this.playersList = parsed.playersList.map((player) => Player.from(player));
+    this.maxPlayers = parsed.maxPlayers;
+    this.gameMode = parsed.gameMode;
+    this.uptime = parsed.uptime;
   }
 
   public static from(data: unknown): Server {

@@ -6,10 +6,10 @@ export class Angle {
   public readonly r: number;
 
   private constructor(data: AngleInput) {
-    AngleSchema.parse(data);
-    this.p = data.p;
-    this.y = data.y;
-    this.r = data.r;
+    const parsed = AngleSchema.parse(data);
+    this.p = parsed.p;
+    this.y = parsed.y;
+    this.r = parsed.r;
   }
 
   public static from(data: unknown): Angle {

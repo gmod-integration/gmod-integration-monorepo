@@ -5,9 +5,9 @@ export class Weapon {
   public readonly printName: string;
 
   private constructor(data: WeaponInput) {
-    WeaponSchema.parse(data);
-    this.class = data.class;
-    this.printName = data.printName;
+    const parsed = WeaponSchema.parse(data);
+    this.class = parsed.class;
+    this.printName = parsed.printName;
   }
 
   public static from(data: unknown): Weapon {

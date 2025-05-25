@@ -5,9 +5,9 @@ export class Team {
   public readonly name: string;
 
   private constructor(data: TeamInput) {
-    TeamSchema.parse(data);
-    this.id = data.id;
-    this.name = data.name;
+    const parsed = TeamSchema.parse(data);
+    this.id = parsed.id;
+    this.name = parsed.name;
   }
 
   public static from(data: unknown): Team {

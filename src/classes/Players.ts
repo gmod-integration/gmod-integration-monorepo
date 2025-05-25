@@ -24,23 +24,23 @@ export class Player {
   public customValues?: CustomValues;
 
   private constructor(data: PlayerInput) {
-    PlayerSchema.parse(data);
-    this.steamID64 = data.steamID64;
-    this.steamID = data.steamID;
-    this.name = data.name;
-    this.userGroup = data.userGroup;
-    this.kills = data.kills;
-    this.deaths = data.deaths;
-    this.connectTime = data.connectTime;
-    this.adjustedTime = data.adjustedTime;
-    this.timeLastTeamChange = data.timeLastTeamChange;
-    this.ping = data.ping;
-    this.fps = data.fps;
-    this.branch = data.branch ? Branch.from(data.branch) : undefined;
-    this.team = Team.from(data.team);
-    this.position = Position.from(data.position);
-    this.angle = Angle.from(data.angle);
-    this.customValues = data.customValues ? CustomValues.from(data.customValues) : undefined;
+    const parsed = PlayerSchema.parse(data);
+    this.steamID64 = parsed.steamID64;
+    this.steamID = parsed.steamID;
+    this.name = parsed.name;
+    this.userGroup = parsed.userGroup;
+    this.kills = parsed.kills;
+    this.deaths = parsed.deaths;
+    this.connectTime = parsed.connectTime;
+    this.adjustedTime = parsed.adjustedTime;
+    this.timeLastTeamChange = parsed.timeLastTeamChange;
+    this.ping = parsed.ping;
+    this.fps = parsed.fps;
+    this.branch = parsed.branch ? Branch.from(parsed.branch) : undefined;
+    this.team = Team.from(parsed.team);
+    this.position = Position.from(parsed.position);
+    this.angle = Angle.from(parsed.angle);
+    this.customValues = parsed.customValues ? CustomValues.from(parsed.customValues) : undefined;
   }
 
   public static from(data: unknown): Player {

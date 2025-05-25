@@ -4,8 +4,8 @@ export class Branch {
   public readonly branch: 'unknown' | 'dev' | 'prerelease' | 'x86-64';
 
   private constructor(data: BranchInput) {
-    BranchSchema.parse(data);
-    this.branch = data.branch;
+    const parsed = BranchSchema.parse(data);
+    this.branch = parsed.branch;
   }
 
   public static from(data: unknown): Branch {

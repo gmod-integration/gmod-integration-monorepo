@@ -1,5 +1,4 @@
-import { EntityInput } from '../schemas/EntitySchema.js';
-import { WeaponSchema } from '../schemas/WeaponSchema.js';
+import { EntityInput, EntitySchema } from '../schemas/EntitySchema.js';
 import { Angle } from './Angle.js';
 import { Position } from './Position.js';
 
@@ -10,11 +9,11 @@ export class Entity {
   public readonly position: Position;
 
   private constructor(data: EntityInput) {
-    WeaponSchema.parse(data);
-    this.class = data.class;
-    this.model = data.model;
-    this.angle = Angle.from(data.angle);
-    this.position = Position.from(data.position);
+    const parsed = EntitySchema.parse(data);
+    this.class = parsed.class;
+    this.model = parsed.model;
+    this.angle = Angle.from(parsed.angle);
+    this.position = Position.from(parsed.position);
   }
 
   public static from(data: unknown): Entity {
