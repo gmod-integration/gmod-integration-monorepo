@@ -3,7 +3,7 @@ import { extendZodWithOpenApi } from 'zod-openapi';
 
 extendZodWithOpenApi(z);
 
-export const PositionSchema = z
+export const GmodPositionSchema = z
   .object({
     x: z.number().openapi({
       example: 0,
@@ -20,4 +20,4 @@ export const PositionSchema = z
   })
   .openapi({ ref: 'Position' });
 
-export type PositionInput = z.infer<typeof PositionSchema>;
+export type GmodPositionInput = z.infer<typeof GmodPositionSchema>;

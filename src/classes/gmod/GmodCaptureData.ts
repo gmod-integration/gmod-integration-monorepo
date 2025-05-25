@@ -1,6 +1,6 @@
-import { CaptureDataInput, CaptureDataSchema } from '../schemas/CaptureDataSchema.js';
+import { GmodCaptureDataInput, GmodCaptureDataSchema } from '../../schemas/gmod/GmodCaptureDataSchema.js';
 
-export class CaptureData {
+export class GmodCaptureData {
   public readonly w: number;
   public readonly h: number;
   public readonly x: number;
@@ -8,8 +8,8 @@ export class CaptureData {
   public readonly quality: number;
   public readonly format: 'jpeg' | 'png';
 
-  private constructor(data: CaptureDataInput) {
-    const parsed = CaptureDataSchema.parse(data);
+  private constructor(data: GmodCaptureDataInput) {
+    const parsed = GmodCaptureDataSchema.parse(data);
     this.w = parsed.w;
     this.h = parsed.h;
     this.x = parsed.x;
@@ -18,7 +18,7 @@ export class CaptureData {
     this.format = parsed.format;
   }
 
-  public static from(data: unknown): CaptureData {
-    return new CaptureData(data as CaptureDataInput);
+  public static from(data: unknown): GmodCaptureData {
+    return new GmodCaptureData(data as GmodCaptureDataInput);
   }
 }

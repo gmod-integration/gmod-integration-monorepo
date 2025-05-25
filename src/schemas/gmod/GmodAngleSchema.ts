@@ -3,7 +3,7 @@ import { extendZodWithOpenApi } from 'zod-openapi';
 
 extendZodWithOpenApi(z);
 
-export const AngleSchema = z
+export const GmodAngleSchema = z
   .object({
     p: z.number().openapi({
       example: 0,
@@ -20,4 +20,4 @@ export const AngleSchema = z
   })
   .openapi({ ref: 'Angle' });
 
-export type AngleInput = z.infer<typeof AngleSchema>;
+export type GmodAngleInput = z.infer<typeof GmodAngleSchema>;

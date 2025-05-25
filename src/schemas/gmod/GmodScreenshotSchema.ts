@@ -1,19 +1,20 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from 'zod-openapi';
-import { CaptureDataSchema } from './CaptureDataSchema.js';
-import { PlayerSchema } from './PlayerSchema.js';
+import { GmodStatusServerSchema } from './GmodServerSchema.js';
+import { GmodPlayerSchema } from './GmodPlayerSchema.js';
+import { GmodCaptureDataSchema } from './GmodCaptureDataSchema.js';
 
 extendZodWithOpenApi(z);
 
-export const ScreenshotSchema = z.object({
-  captureData: CaptureDataSchema.openapi({
+export const GmodScreenshotSchema = z.object({
+  captureData: GmodCaptureDataSchema.openapi({
     description: 'Information about the capture area and format',
   }),
   title: z.string().optional().openapi({
     description: 'Title of the screenshot',
     example: 'My Screenshot',
   }),
-  player: PlayerSchema.optional().openapi({
+  player: GmodPlayerSchema.optional().openapi({
     description: 'Player information associated with the screenshot',
   }),
   screenshot: z.string().openapi({
@@ -23,6 +24,7 @@ export const ScreenshotSchema = z.object({
     description: 'Size of the screenshot',
     example: '10KB',
   }),
+  server: GmodStatusServerSchema,
 });
 
-export type ScreenshotInput = z.infer<typeof ScreenshotSchema>;
+export type GmodScreenshotInput = z.infer<typeof GmodScreenshotSchema>;

@@ -1,9 +1,10 @@
-import { PlayerInput, PlayerSchema } from '../schemas/PlayerSchema.js';
-import { Angle } from './Angle.js';
-import { Position } from './Position.js';
-import { Team } from './Team.js';
+import { GmodAngle } from './GmodAngle.js';
+import { GmodPosition } from './GmodPosition.js';
+import { GmodTeam } from './GmodTeam.js';
+import { GmodPlayerInput, GmodPlayerSchema } from '../../schemas/gmod/GmodPlayerSchema.js';
+import { GmodWeapon } from './GmodWeapon.js';
 
-export class Player {
+export class GmodPlayer {
   public readonly steamID64: string;
   public readonly steamID: string;
   public readonly name: string;
@@ -16,13 +17,14 @@ export class Player {
   public readonly ping?: number;
   public readonly fps?: number;
   public readonly branch?: 'unknown' | 'dev' | 'prerelease' | 'x86-64';
-  public readonly team: Team;
-  public readonly position: Position;
-  public readonly angle: Angle;
+  public readonly team: GmodTeam;
+  public readonly position: GmodPosition;
+  public readonly angle: GmodAngle;
   public readonly customValues: Record<string, any>;
+  public readonly weapon: GmodWeapon;
 
-  private constructor(data: PlayerInput) {
-    const parsed = PlayerSchema.parse(data);
+  private constructor(data: GmodPlayerInput) {
+    const parsed = GmodPlayerSchema.parse(data);
     this.steamID64 = parsed.steamID64;
     this.steamID = parsed.steamID;
     this.name = parsed.name;
@@ -35,13 +37,14 @@ export class Player {
     this.ping = parsed.ping;
     this.fps = parsed.fps;
     this.branch = parsed.branch;
-    this.team = Team.from(parsed.team);
-    this.position = Position.from(parsed.position);
-    this.angle = Angle.from(parsed.angle);
+    this.team = GmodTeam.from(parsed.team);
+    this.position = GmodPosition.from(parsed.position);
+    this.angle = GmodAngle.from(parsed.angle);
     this.customValues = parsed.customValues || {};
+    this.weapon = GmodWeapon.from(parsed.weapon);
   }
 
-  public static from(data: unknown): Player {
-    return new Player(data as PlayerInput);
+  public static from(data: unknown): GmodPlayer {
+    return new GmodPlayer(data as GmodPlayerInput);
   }
 }

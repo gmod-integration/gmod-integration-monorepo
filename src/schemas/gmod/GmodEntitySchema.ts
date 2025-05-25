@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from 'zod-openapi';
-import { PositionSchema } from './PositionSchema.js';
-import { AngleSchema } from './AngleSchema.js';
+import { GmodAngleSchema } from './GmodAngleSchema.js';
+import { GmodPositionSchema } from './GmodPositionSchema.js';
 
 extendZodWithOpenApi(z);
 
-export const EntitySchema = z
+export const GmodEntitySchema = z
   .object({
     class: z.string().openapi({
       example: 'prop_physics',
@@ -15,9 +15,9 @@ export const EntitySchema = z
       example: 'models/props_c17/oildrum001.mdl',
       description: 'Model of the entity',
     }),
-    position: PositionSchema,
-    angle: AngleSchema,
+    position: GmodPositionSchema,
+    angle: GmodAngleSchema,
   })
   .openapi({ ref: 'Entity' });
 
-export type EntityInput = z.infer<typeof EntitySchema>;
+export type GmodEntityInput = z.infer<typeof GmodEntitySchema>;

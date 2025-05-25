@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from 'zod-openapi';
-import { PlayerSchema } from './PlayerSchema.js';
+import { GmodPlayerSchema } from './GmodPlayerSchema.js';
 
 extendZodWithOpenApi(z);
 
-export const ServerSchema = z
+export const GmodStatusServerSchema = z
   .object({
     hostname: z.string().openapi({
       example: 'My Server',
@@ -26,7 +26,7 @@ export const ServerSchema = z
       example: 0,
       description: 'Number of players on the server',
     }),
-    playersList: z.array(PlayerSchema),
+    playersList: z.array(GmodPlayerSchema),
     maxPlayers: z.number().openapi({
       example: 16,
       description: 'Max players on the server',
@@ -40,6 +40,6 @@ export const ServerSchema = z
       description: 'Uptime of the server',
     }),
   })
-  .openapi({ ref: 'Server' });
+  .openapi({ ref: 'Status Server' });
 
-export type ServerInput = z.infer<typeof ServerSchema>;
+export type GmodStatusServerInput = z.infer<typeof GmodStatusServerSchema>;

@@ -3,7 +3,7 @@ import { extendZodWithOpenApi } from 'zod-openapi';
 
 extendZodWithOpenApi(z);
 
-export const CaptureDataSchema = z.object({
+export const GmodCaptureDataSchema = z.object({
   w: z.number().openapi({
     description: 'Width of the capture area',
     example: 1920,
@@ -30,4 +30,4 @@ export const CaptureDataSchema = z.object({
   }),
 });
 
-export type CaptureDataInput = z.infer<typeof CaptureDataSchema>;
+export type GmodCaptureDataInput = z.infer<typeof GmodCaptureDataSchema>;

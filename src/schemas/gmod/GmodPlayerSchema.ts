@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from 'zod-openapi';
-import { TeamSchema } from './TeamSchema.js';
-import { PositionSchema } from './PositionSchema.js';
-import { AngleSchema } from './AngleSchema.js';
+import { GmodTeamSchema } from './GmodTeamSchema.js';
+import { GmodPositionSchema } from './GmodPositionSchema.js';
+import { GmodAngleSchema } from './GmodAngleSchema.js';
+import { GmodWeaponSchema } from './GmodWeaponSchema.js';
 
 extendZodWithOpenApi(z);
 
-export const PlayerSchema = z
+export const GmodPlayerSchema = z
   .object({
     steamID64: z.string().length(17).openapi({
       example: '76561198219049673',
@@ -63,13 +64,14 @@ export const PlayerSchema = z
       },
       description: 'Custom values for the server',
     }),
-    team: TeamSchema,
-    position: PositionSchema,
-    angle: AngleSchema,
+    team: GmodTeamSchema,
+    position: GmodPositionSchema,
+    angle: GmodAngleSchema,
+    weapon: GmodWeaponSchema,
   })
   .openapi({ ref: 'Player' });
 
-export const PlayersListSchema = z.array(PlayerSchema);
+export const GmodPlayersListSchema = z.array(GmodPlayerSchema);
 
-export type PlayerInput = z.infer<typeof PlayerSchema>;
-export type PlayersListInput = z.infer<typeof PlayersListSchema>;
+export type GmodPlayerInput = z.infer<typeof GmodPlayerSchema>;
+export type GmodPlayersListInput = z.infer<typeof GmodPlayersListSchema>;
