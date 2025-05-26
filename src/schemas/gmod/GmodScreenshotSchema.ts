@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { extendZodWithOpenApi } from 'zod-openapi';
-import { GmodStatusServerSchema } from './GmodServerSchema.js';
 import { GmodPlayerSchema } from './GmodPlayerSchema.js';
 import { GmodCaptureDataSchema } from './GmodCaptureDataSchema.js';
 
@@ -24,7 +23,6 @@ export const GmodScreenshotSchema = z.object({
     description: 'Size of the screenshot',
     example: '10KB',
   }),
-  server: GmodStatusServerSchema,
 });
 
 export type GmodScreenshotInput = z.infer<typeof GmodScreenshotSchema>;
