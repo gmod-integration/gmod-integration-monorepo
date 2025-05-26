@@ -1,7 +1,7 @@
 import { GmodPlayer } from './GmodPlayers.js';
-import { GmodStatusServerInput, GmodStatusServerSchema } from '../../schemas/gmod/GmodServerSchema.js';
+import { GmodServerInput, GmodServerSchema } from '../../schemas/gmod/GmodServerSchema.js';
 
-export class GmodStatusServer {
+export class GmodServer {
   public readonly hostname: string;
   public readonly ip: string;
   public readonly port: number;
@@ -12,8 +12,8 @@ export class GmodStatusServer {
   public readonly gameMode: string;
   public readonly uptime: number;
 
-  private constructor(data: GmodStatusServerInput) {
-    const parsed = GmodStatusServerSchema.parse(data);
+  private constructor(data: GmodServerInput) {
+    const parsed = GmodServerSchema.parse(data);
     this.hostname = parsed.hostname;
     this.ip = parsed.ip;
     this.port = parsed.port;
@@ -25,7 +25,7 @@ export class GmodStatusServer {
     this.uptime = parsed.uptime;
   }
 
-  public static from(data: unknown): GmodStatusServer {
-    return new GmodStatusServer(data as GmodStatusServerInput);
+  public static from(data: unknown): GmodServer {
+    return new GmodServer(data as GmodServerInput);
   }
 }

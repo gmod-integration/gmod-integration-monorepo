@@ -4,7 +4,7 @@ import { GmodPlayerSchema } from './GmodPlayerSchema.js';
 
 extendZodWithOpenApi(z);
 
-export const GmodStatusServerSchema = z
+export const GmodServerSchema = z
   .object({
     hostname: z.string().openapi({
       example: 'My Server',
@@ -42,4 +42,4 @@ export const GmodStatusServerSchema = z
   })
   .openapi({ ref: 'Status Server' });
 
-export type GmodStatusServerInput = z.infer<typeof GmodStatusServerSchema>;
+export type GmodServerInput = z.infer<typeof GmodServerSchema>;
