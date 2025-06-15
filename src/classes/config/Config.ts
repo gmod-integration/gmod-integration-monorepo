@@ -68,3 +68,10 @@ export const ConfigGmodStore = {
   signingSecretKey: config.SIGNING_SECRET_WEBHOOK,
   secretWebhook: config.GMODSTORE_SECRET_WEBHOOK,
 };
+
+export const ConfigMinIO = {
+  endpoint: config.MINIO_ENDPOINT,
+  accessKey: config.MINIO_ACCESS_KEY,
+  secretKey: config.MINIO_SECRET_KEY,
+  region: config.MINIO_REGION,
+};
