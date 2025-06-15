@@ -2,7 +2,7 @@ import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/Use
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { getGuildClient, getMainClient } from '../../discord/index.js';
 import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.js';
-import { discordConfig } from '../../classes/config/Config.js';
+import { ConfigDiscord } from '../../classes/config/Config.js';
 import { generateToken } from '../../utils/tools.js';
 import { wsSendToServer } from '../../websockets/index.js';
 import redis from '../../services/redis/index.js';
@@ -269,8 +269,8 @@ export async function getUserTokenFromCode(code: string, redirectURI: string) {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body: new URLSearchParams({
-      client_id: discordConfig.clientID!,
-      client_secret: discordConfig.clientSecret!,
+      client_id: ConfigDiscord.clientID!,
+      client_secret: ConfigDiscord.clientSecret!,
       grant_type: 'authorization_code',
       code,
       redirect_uri: redirectURI,
@@ -295,8 +295,8 @@ export async function getUserTokenFromRefreshToken(refreshToken: string) {
     body: new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: refreshToken,
-      client_id: discordConfig.clientID!,
-      client_secret: discordConfig.clientSecret!,
+      client_id: ConfigDiscord.clientID!,
+      client_secret: ConfigDiscord.clientSecret!,
     }).toString(),
   });
 
@@ -459,7 +459,7 @@ export async function addUserToGuild(guildID: string, userID: string, userToken:
   const response = await fetch(`https://discord.com/api/guilds/${guildID}/members/${userID}`, {
     method: 'PUT',
     headers: {
-      Authorization: `Bot ${discordConfig.botToken}`,
+      Authorization: `Bot ${ConfigDiscord.botToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -509,7 +509,7 @@ export async function givePremiumRoleOfMainGuild() {
     const mainClient = await getMainClient();
     if (!mainClient) return;
 
-    const guild = mainClient.guilds.cache.get(discordConfig.guildID!);
+    const guild = mainClient.guilds.cache.get(ConfigDiscord.guildID!);
     if (!guild) return;
 
     const gmodStoreBuyers = await index.gm_gmodstore_purchases.findMany();
@@ -525,11 +525,11 @@ export async function givePremiumRoleOfMainGuild() {
       }
     }
 
-    if (!discordConfig.premiumRoleID || !discordConfig.gmodStorePremiumRoleID || !discordConfig.discordPremiumRoleID)
+    if (!ConfigDiscord.premiumRoleID || !ConfigDiscord.gmodStorePremiumRoleID || !ConfigDiscord.discordPremiumRoleID)
       return;
-    const premiumRole = guild.roles.cache.get(discordConfig.premiumRoleID);
-    const gmodStorePremiumRole = guild.roles.cache.get(discordConfig.gmodStorePremiumRoleID);
-    const discordPremiumRole = guild.roles.cache.get(discordConfig.discordPremiumRoleID);
+    const premiumRole = guild.roles.cache.get(ConfigDiscord.premiumRoleID);
+    const gmodStorePremiumRole = guild.roles.cache.get(ConfigDiscord.gmodStorePremiumRoleID);
+    const discordPremiumRole = guild.roles.cache.get(ConfigDiscord.discordPremiumRoleID);
     if (!premiumRole || !gmodStorePremiumRole || !discordPremiumRole) return;
 
     premiumRole.members.map(async (member) => {
@@ -563,11 +563,11 @@ export async function givePremiumRoleOfMainGuild() {
       const member = await guild.members.fetch(user.getDiscordID()).catch(() => null);
       if (!member) continue;
 
-      if (!member.roles.cache.has(discordConfig.premiumRoleID)) {
+      if (!member.roles.cache.has(ConfigDiscord.premiumRoleID)) {
         await member.roles.add(premiumRole);
       }
 
-      if (!member.roles.cache.has(discordConfig.gmodStorePremiumRoleID)) {
+      if (!member.roles.cache.has(ConfigDiscord.gmodStorePremiumRoleID)) {
         await member.roles.add(gmodStorePremiumRole);
       }
     }
@@ -576,11 +576,11 @@ export async function givePremiumRoleOfMainGuild() {
       const member = await guild.members.fetch(buyer).catch(() => null);
       if (!member) continue;
 
-      if (!member.roles.cache.has(discordConfig.premiumRoleID)) {
+      if (!member.roles.cache.has(ConfigDiscord.premiumRoleID)) {
         await member.roles.add(premiumRole);
       }
 
-      if (!member.roles.cache.has(discordConfig.discordPremiumRoleID)) {
+      if (!member.roles.cache.has(ConfigDiscord.discordPremiumRoleID)) {
         await member.roles.add(discordPremiumRole);
       }
     }

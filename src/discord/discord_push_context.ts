@@ -1,5 +1,5 @@
 import { REST, Routes } from 'discord.js';
-import { discordConfig } from '../classes/config/Config.js';
+import { ConfigDiscord } from '../classes/config/Config.js';
 import { join } from 'path';
 import { readdir } from 'fs/promises';
 
@@ -34,7 +34,7 @@ async function loadCommands(dirPath: string, type: string) {
   }
 }
 
-const rest = new REST().setToken(discordConfig.botToken!);
+const rest = new REST().setToken(ConfigDiscord.botToken!);
 try {
   console.log('[INFO] Started reloading application.');
 
@@ -43,7 +43,7 @@ try {
 
   console.log(commandsData);
 
-  await rest.put(Routes.applicationCommands(discordConfig.clientID!), {
+  await rest.put(Routes.applicationCommands(ConfigDiscord.clientID!), {
     body: commandsData,
   });
 

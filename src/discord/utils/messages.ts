@@ -3,7 +3,7 @@ import { gmLog } from '../../utils/logger.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Guild, GuildMember, User } from 'discord.js';
 import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
 import { getCurrencyByLang, getEmojiVersion } from '../../utils/tools.js';
-import { discordConfig, serverConfig } from '../../classes/config/Config.js';
+import { ConfigDiscord, ConfigServer } from '../../classes/config/Config.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
 import { Server } from '../../classes/v3/Server.js';
@@ -161,7 +161,7 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
       .setStyle(ButtonStyle.Link)
       .setLabel(`⠀${name}`)
       .setEmoji(emoji)
-      .setURL(`${serverConfig.websiteUrl}/open?link=${encodeURIComponent(url)}`);
+      .setURL(`${ConfigServer.websiteUrl}/open?link=${encodeURIComponent(url)}`);
 
     // Ajouter le bouton à la ligne
     theRow.addComponents(theButton);
@@ -210,7 +210,7 @@ export async function getNotVerifiedMessage(guild: Guild, member: GuildMember) {
         name: await getTranslate('join_msg_p2_name', lang),
         value:
           (await getTranslate('join_msg_p2_value', lang, [
-            `[Garry's Mod Integration](${discordConfig.oauthPanel}&state=redirect:/account?startVerification=true')`,
+            `[Garry's Mod Integration](${ConfigDiscord.oauthPanel}&state=redirect:/account?startVerification=true')`,
           ])) + '\n \u200b',
         inline: false,
       },

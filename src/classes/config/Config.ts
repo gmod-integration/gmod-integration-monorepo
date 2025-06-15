@@ -25,7 +25,7 @@ try {
 
 export { config };
 
-export const serverConfig = {
+export const ConfigServer = {
   dev: config.DEV === 'true',
   bodyLimit: '10mb',
   sentryDSN: config.SENTRY_DSN,
@@ -42,7 +42,7 @@ export const serverConfig = {
   version: 'v0.4.9',
 };
 
-export const discordConfig = {
+export const ConfigDiscord = {
   clientID: config.DISCORD_CLIENT_ID,
   clientSecret: config.DISCORD_CLIENT_SECRET,
   guildID: config.DISCORD_GUILD_ID,
@@ -58,11 +58,11 @@ export const discordConfig = {
   gmodIntegrationLogo: 'https://gmod-integration.com/src/assets/brand/logo.png',
 };
 
-export const steamConfig = {
+export const ConfigSteam = {
   apiKey: config.STEAM_API_KEY,
 };
 
-export const gmodStoreConfig = {
+export const ConfigGmodStore = {
   apiKey: config.GMODSTORE_API_KEY,
   signingSecretKey: config.SIGNING_SECRET_WEBHOOK,
   secretWebhook: config.GMODSTORE_SECRET_WEBHOOK,

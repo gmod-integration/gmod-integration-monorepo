@@ -1,5 +1,5 @@
 import { ButtonBuilder, ButtonStyle } from 'discord.js';
-import { discordConfig, serverConfig } from '../../classes/config/Config.js';
+import { ConfigDiscord, ConfigServer } from '../../classes/config/Config.js';
 import { getTranslate } from '../../utils/localizations.js';
 
 export async function ButtonVerificationWebsite(lang: string) {
@@ -7,7 +7,7 @@ export async function ButtonVerificationWebsite(lang: string) {
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('verify_yourself', lang)}`)
     .setEmoji('🛡️')
-    .setURL(discordConfig.oauthPanel + '&state=redirect:/account?startVerification=true');
+    .setURL(ConfigDiscord.oauthPanel + '&state=redirect:/account?startVerification=true');
 }
 
 export async function ButtonWebsite(lang: string) {
@@ -15,7 +15,7 @@ export async function ButtonWebsite(lang: string) {
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('website', lang)}`)
     .setEmoji('🌐')
-    .setURL(serverConfig.websiteUrl!);
+    .setURL(ConfigServer.websiteUrl!);
 }
 
 export async function ButtonDiscordSupport(lang: string) {
@@ -31,7 +31,7 @@ export async function ButtonInviteBot(lang: string) {
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('invite_bot', lang)}`)
     .setEmoji('🔗')
-    .setURL(discordConfig.invite!);
+    .setURL(ConfigDiscord.invite!);
 }
 
 export async function ButtonVerify(lang: string) {
@@ -50,7 +50,7 @@ export async function ButtonConnect(lang: string, ip: string, port: string) {
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('server-connect', lang)}`)
     .setEmoji('🔗')
-    .setURL(`${serverConfig.websiteUrl}/open?link=steam://connect/${ip}:${port}`);
+    .setURL(`${ConfigServer.websiteUrl}/open?link=steam://connect/${ip}:${port}`);
 }
 
 export async function ButtonPremium(lang: string) {

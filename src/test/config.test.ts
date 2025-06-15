@@ -1,5 +1,5 @@
 import index from '../services/prisma/index.js';
-import { serverConfig } from '../classes/config/Config.js';
+import { ConfigServer } from '../classes/config/Config.js';
 
 const testConfig = {
   server: {
@@ -37,7 +37,7 @@ export function getTestUri(path: string): string {
   // remplace :guildID by testConfig.guildID
   path = path.replace(/:guildID/g, testConfig.guild.id);
 
-  return `http://localhost:${serverConfig.ports.api}${path}`;
+  return `http://localhost:${ConfigServer.ports.api}${path}`;
 }
 
 export default testConfig;

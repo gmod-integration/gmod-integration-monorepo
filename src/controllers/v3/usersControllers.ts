@@ -1,6 +1,6 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
 import { createServer, getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
-import { discordConfig } from '../../classes/config/Config.js';
+import { ConfigDiscord } from '../../classes/config/Config.js';
 import {
   addAutoRoleToUser,
   getDiscordUserFromID,
@@ -121,7 +121,7 @@ export async function oauthLogin(req: Request, res: Response) {
 
   if (!code) {
     const { redirect } = req.query;
-    return res.redirect(discordConfig.oauthPanel + (redirect ? `&state=redirect:${redirect}` : ''));
+    return res.redirect(ConfigDiscord.oauthPanel + (redirect ? `&state=redirect:${redirect}` : ''));
   }
 
   const redirect = typeof req.query.state === 'string' ? req.query.state.split('redirect:')[1] : null;
@@ -168,7 +168,7 @@ export async function oauthLogin(req: Request, res: Response) {
   await saveUser(discordUser.id, discordUser.username);
 
   return res.redirect(
-    `${discordConfig.oauthPanelRedirect}?discordID=${discordUser.id}&accessToken=${panelAccessToken}&expirationDate=${discordUserToken.expirationDate.getTime()}${
+    `${ConfigDiscord.oauthPanelRedirect}?discordID=${discordUser.id}&accessToken=${panelAccessToken}&expirationDate=${discordUserToken.expirationDate.getTime()}${
       redirect ? `&redirect=${redirect}` : ''
     }`,
   );

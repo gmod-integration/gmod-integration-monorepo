@@ -1,4 +1,4 @@
-import { discordConfig } from '../../classes/config/Config.js';
+import { ConfigDiscord } from '../../classes/config/Config.js';
 import { addAutoRoleToUser, updateGuildStat, verifyUser } from '../../models/v3/discordModels.js';
 import { gmLog } from '../../utils/logger.js';
 import { getNotVerifiedMessage } from '../utils/messages.js';
@@ -8,7 +8,7 @@ import index from '../../services/prisma/index.js';
 export default {
   name: 'guildMemberAdd',
   async execute(add_info: GuildMember) {
-    if (add_info.user.id === discordConfig.clientID) return;
+    if (add_info.user.id === ConfigDiscord.clientID) return;
 
     try {
       const guild = add_info.client.guilds.cache.get(add_info.guild.id);

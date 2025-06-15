@@ -1,5 +1,5 @@
 // import './utils/instrument.js';
-import { serverConfig } from './classes/config/Config.js';
+import { ConfigServer } from './classes/config/Config.js';
 import './utils/update-log.js';
 import express, { NextFunction, Request, Response } from 'express';
 import { gmLog } from './utils/logger.js';
@@ -109,8 +109,8 @@ app.use(
 app.use(rawBodyMiddleware);
 
 // Body Parser
-app.use(express.json({ limit: serverConfig.bodyLimit, type: 'application/json' }));
-app.use(express.urlencoded({ limit: serverConfig.bodyLimit, extended: true }));
+app.use(express.json({ limit: ConfigServer.bodyLimit, type: 'application/json' }));
+app.use(express.urlencoded({ limit: ConfigServer.bodyLimit, extended: true }));
 
 // Logger
 app.use(loggerMiddleware);
@@ -130,9 +130,9 @@ app.all('*', (req: Request, res: Response, next: NextFunction) => {
 app.use(errorMiddleware);
 
 // Listen
-app.listen(serverConfig.ports.api, () => {
+app.listen(ConfigServer.ports.api, () => {
   gmLog('express', '- - - - - - - - - - - - - - - - - - -');
-  gmLog('express', `Server started and listening on port ${serverConfig.ports.api}`);
+  gmLog('express', `Server started and listening on port ${ConfigServer.ports.api}`);
   gmLog('express', '- - - - - - - - - - - - - - - - - - -');
 });
 
@@ -143,7 +143,7 @@ process.on('unhandledRejection', (error: Error) => {
 });
 
 // Run Tests
-if (serverConfig.dev) {
+if (ConfigServer.dev) {
   import('./test/index.js');
 }
 

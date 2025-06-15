@@ -1,11 +1,11 @@
 import { getEmojis } from 'unicode-emoji';
-import { serverConfig } from '../classes/config/Config.js';
+import { ConfigServer } from '../classes/config/Config.js';
 import index from '../services/prisma/index.js';
 import { Request, Response } from 'express';
 
 export function getRandomDiscordRelay() {
   let relays = [];
-  if (serverConfig.dev) {
+  if (ConfigServer.dev) {
     relays.push('https://dsc-relay-dev.gmod-integration.com');
   } else {
     relays.push('https://1-dsc-relay.gmod-integration.com');

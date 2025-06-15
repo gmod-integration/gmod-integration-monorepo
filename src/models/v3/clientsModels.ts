@@ -1,6 +1,6 @@
 import { getRandomDiscordRelay } from '../../utils/tools.js';
 import fs from 'fs';
-import { discordConfig, serverConfig } from '../../classes/config/Config.js';
+import { ConfigDiscord, ConfigServer } from '../../classes/config/Config.js';
 import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
 import { getMainClient } from '../../discord/index.js';
@@ -26,7 +26,7 @@ export async function saveScreenshot(
   const buffer = Buffer.from(base64Data, 'base64');
 
   const path = `./screenshots/${filename}`;
-  const internUrl = `${serverConfig.domain}/screenshots/${filename}`;
+  const internUrl = `${ConfigServer.domain}/screenshots/${filename}`;
   fs.mkdirSync('./screenshots', { recursive: true });
   fs.writeFile(path, buffer, (err) => {
     if (err) {
@@ -37,7 +37,7 @@ export async function saveScreenshot(
   // Send screenshot to discord to be usable in discord
   let discordUrl = '';
   const dscClient = await getMainClient();
-  const channel = await dscClient.channels.fetch(serverConfig.screenshotChannel!);
+  const channel = await dscClient.channels.fetch(ConfigServer.screenshotChannel!);
   try {
     if (channel && channel.isSendable()) {
       const message = await channel.send({
@@ -94,7 +94,7 @@ export async function sendScreenshotToDiscord(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + discordConfig.barerTokenRelay,
+      Authorization: 'Bearer ' + ConfigDiscord.barerTokenRelay,
     },
     body: JSON.stringify({
       webhookID: channelInfo.webhook,

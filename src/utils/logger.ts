@@ -1,4 +1,4 @@
-import { discordConfig, serverConfig } from '../classes/config/Config.js';
+import { ConfigDiscord, ConfigServer } from '../classes/config/Config.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { getRandomDiscordRelay, ipGetIP } from './tools.js';
 import { getTranslate } from './localizations.js';
@@ -18,7 +18,7 @@ export enum LogLevel {
 }
 
 export function gmLog(type: string, message: string, debug: boolean = false) {
-  if (debug && !serverConfig.dev) return;
+  if (debug && !ConfigServer.dev) return;
   console.log(`[${new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')}] [${type.toUpperCase()}] ${message}`);
 }
 
@@ -642,7 +642,7 @@ export async function logServer(server: Server, type: string, data?: any) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: 'Bearer ' + discordConfig.barerTokenRelay,
+        Authorization: 'Bearer ' + ConfigDiscord.barerTokenRelay,
       },
       body: JSON.stringify({
         webhookID,

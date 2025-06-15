@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { gmodStoreConfig } from '../../classes/config/Config.js';
+import { ConfigGmodStore } from '../../classes/config/Config.js';
 import { gmLog } from '../../utils/logger.js';
 import { getUserFromSteamID64 } from '../../classes/v3/User.js';
 import index from '../../services/prisma/index.js';
@@ -11,7 +11,7 @@ export async function verifyWebhookSignature(headers: any, payload: any) {
   const webhookTimestamp = headers['webhook-timestamp'];
   const webhookId = headers['webhook-id'];
 
-  const signingSecret = gmodStoreConfig.signingSecretKey!.replace('whsec_', '');
+  const signingSecret = ConfigGmodStore.signingSecretKey!.replace('whsec_', '');
 
   const expectedSignature = crypto
     .createHmac('sha256', Buffer.from(signingSecret, 'base64'))
@@ -38,7 +38,7 @@ export async function verifyWebhookSignature(headers: any, payload: any) {
 export async function getUser(userID: string) {
   const response = await fetch(`https://www.gmodstore.com/api/v3/users/${userID}`, {
     headers: {
-      Authorization: `Bearer ${gmodStoreConfig.apiKey}`,
+      Authorization: `Bearer ${ConfigGmodStore.apiKey}`,
       Accept: 'application/json',
     },
   });

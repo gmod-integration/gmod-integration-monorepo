@@ -1,5 +1,5 @@
 import { WebSocketServer } from 'ws';
-import { serverConfig } from '../classes/config/Config.js';
+import { ConfigServer } from '../classes/config/Config.js';
 import { gmLog } from '../utils/logger.js';
 import { getServerFromID, getServersFromDiscordGuildID } from '../classes/v3/Server.js';
 import { getPanelUserFromDiscordID, PanelUser } from '../classes/v3/PanelUser.js';
@@ -24,7 +24,7 @@ let clients = {
 };
 
 const wss = new WebSocketServer({
-  port: serverConfig.ports.websocket,
+  port: ConfigServer.ports.websocket,
   clientTracking: true,
   verifyClient: async (info, cb) => {
     const { id, token } = info.req.headers;
@@ -215,7 +215,7 @@ export function wsSendToAllClientsOfServer(serverID: string, action: string, dat
   return true;
 }
 
-gmLog('websocket', 'Listening on port ' + serverConfig.ports.websocket);
+gmLog('websocket', 'Listening on port ' + ConfigServer.ports.websocket);
 
 export async function gracefulShutdownWebsocket() {
   wss.close();

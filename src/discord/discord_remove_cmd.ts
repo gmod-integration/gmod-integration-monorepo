@@ -1,14 +1,14 @@
 import { REST } from 'discord.js';
-import { discordConfig } from '../classes/config/Config.js';
+import { ConfigDiscord } from '../classes/config/Config.js';
 
 const cmdToRemove = ['1230296259160444971'];
 
-const rest = new REST().setToken(discordConfig.botToken!);
+const rest = new REST().setToken(ConfigDiscord.botToken!);
 try {
   console.log('[INFO] Started removing application commands.');
 
   for (const cmd of cmdToRemove) {
-    await rest.delete(`/applications/${discordConfig.clientID}/commands/${cmd}`);
+    await rest.delete(`/applications/${ConfigDiscord.clientID}/commands/${cmd}`);
     console.log(`[INFO] Removed command ${cmd}`);
   }
 } catch (error) {

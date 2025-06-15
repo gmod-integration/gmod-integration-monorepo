@@ -7,7 +7,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { getTranslate } from '../../../utils/localizations.js';
-import { serverConfig } from '../../../classes/config/Config.js';
+import { ConfigServer } from '../../../classes/config/Config.js';
 import index from '../../../services/prisma/index.js';
 
 export default {
@@ -40,7 +40,7 @@ export default {
             (await getTranslate('the_link_to_not_set', lang, ['`' + linkID + '`'])) +
             '\n' +
             (await getTranslate('how_to_set_the_link', lang, [
-              `[Edit Guild Links](${serverConfig.websiteUrl}/dashboard/guilds/${interaction.guild.id}/config/links)`,
+              `[Edit Guild Links](${ConfigServer.websiteUrl}/dashboard/guilds/${interaction.guild.id}/config/links)`,
             ])),
           ephemeral: true,
         });
@@ -55,7 +55,7 @@ export default {
     const urlEncoded = encodeURIComponent(linkInfo.url);
     return await interaction.reply({
       content: await getTranslate('the_link_to', lang, [
-        `[${linkInfo.alias}](<${serverConfig.websiteUrl}/open?link=${urlEncoded}>)`,
+        `[${linkInfo.alias}](<${ConfigServer.websiteUrl}/open?link=${urlEncoded}>)`,
       ]),
     });
   },

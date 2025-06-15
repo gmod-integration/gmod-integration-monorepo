@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { discordConfig } from '../config/Config.js';
+import { ConfigDiscord } from '../config/Config.js';
 import redis from '../../services/redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
 import { getGuildClient, getMainClient, loadGuildBotInstance } from '../../discord/index.js';
@@ -154,7 +154,7 @@ export class Guild {
     if (!dbWebhook) {
       const webhook = await channel.createWebhook({
         name: 'Gmod Integration',
-        avatar: discordConfig.gmodIntegrationLogo,
+        avatar: ConfigDiscord.gmodIntegrationLogo,
       });
 
       await index.gm_guild_webooks.create({
@@ -235,7 +235,7 @@ export class Guild {
   async getCustomBotClient() {
     const botCustomClient = await getGuildClient(this.id, false);
     if (!botCustomClient || !botCustomClient.user) throw new Error('Bot client not found');
-    if (botCustomClient.user.id === discordConfig.clientID) throw new Error('Bot client is not custom');
+    if (botCustomClient.user.id === ConfigDiscord.clientID) throw new Error('Bot client is not custom');
     return botCustomClient;
   }
 
@@ -262,7 +262,7 @@ export class Guild {
   async getBotClientInfo(user: User) {
     const botInstance = await getGuildClient(this.id, false);
     if (!botInstance || !botInstance.user) throw new Error('Bot client not found');
-    const isCustom = botInstance.user!.id !== discordConfig.clientID;
+    const isCustom = botInstance.user!.id !== ConfigDiscord.clientID;
 
     const activeGuild = await index.gm_gmodstore_purchases.findFirst({
       where: {
@@ -433,10 +433,10 @@ export async function getDiscordEntitlements() {
     let entitlementGuilds: any = await redis.get(redisKey);
     if (entitlementGuilds === null) {
       const response = await axios.get(
-        `https://discord.com/api/v10/applications/${discordConfig.clientID}/entitlements`,
+        `https://discord.com/api/v10/applications/${ConfigDiscord.clientID}/entitlements`,
         {
           headers: {
-            Authorization: `Bot ${discordConfig.botToken}`,
+            Authorization: `Bot ${ConfigDiscord.botToken}`,
           },
         },
       );
@@ -485,7 +485,7 @@ export async function isGuildPremium(guildID: string): Promise<boolean> {
 
 export async function replyNeedPremium(interaction: ChatInputCommandInteraction | ButtonInteraction) {
   const components = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
-    new ButtonBuilder().setStyle(ButtonStyle.Premium).setSKUId(discordConfig.subscriptionSKUID!),
+    new ButtonBuilder().setStyle(ButtonStyle.Premium).setSKUId(ConfigDiscord.subscriptionSKUID!),
   );
   await interaction.reply({
     components: [components],

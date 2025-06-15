@@ -1,10 +1,10 @@
-import { serverConfig } from '../classes/config/Config.js';
+import { ConfigServer } from '../classes/config/Config.js';
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 
-if (!serverConfig.dev) {
+if (!ConfigServer.dev) {
   Sentry.init({
-    dsn: serverConfig.sentryDSN,
+    dsn: ConfigServer.sentryDSN,
     integrations: [nodeProfilingIntegration()],
     tracesSampleRate: 1.0,
     profilesSampleRate: 1.0,

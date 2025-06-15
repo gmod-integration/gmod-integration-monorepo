@@ -1,8 +1,8 @@
 import steamApi from 'steamapi';
-import { steamConfig } from '../../classes/config/Config.js';
+import { ConfigSteam } from '../../classes/config/Config.js';
 import redis from '../redis/index.js';
 
-const steam = new steamApi(steamConfig.apiKey!);
+const steam = new steamApi(ConfigSteam.apiKey!);
 
 export function getSteamApi() {
   return steam;

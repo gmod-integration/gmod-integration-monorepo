@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { serverConfig } from '../../classes/config/Config.js';
+import { ConfigServer } from '../../classes/config/Config.js';
 import archiver from 'archiver';
 import { gmLog } from '../../utils/logger.js';
 import index from '../../services/prisma/index.js';
@@ -180,7 +180,7 @@ export async function getUserDataGRPD(user: User) {
     }
   });
 
-  request.downloadLink = `${serverConfig.domain}/gdpr-request/${request.id}`;
+  request.downloadLink = `${ConfigServer.domain}/gdpr-request/${request.id}`;
   request.status = 'ready';
   await index.gm_users_data_request.update({
     where: {
@@ -196,7 +196,7 @@ export async function getUserDataGRPD(user: User) {
     await addNotification(
       discordID,
       'gdpr',
-      `Your GDPR request has been processed. You can download the data from ${serverConfig.websiteUrl}/account`,
+      `Your GDPR request has been processed. You can download the data from ${ConfigServer.websiteUrl}/account`,
     );
   }
 

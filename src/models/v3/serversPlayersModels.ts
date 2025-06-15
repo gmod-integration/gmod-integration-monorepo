@@ -1,6 +1,6 @@
 import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
-import { discordConfig } from '../../classes/config/Config.js';
+import { ConfigDiscord } from '../../classes/config/Config.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import index from '../../services/prisma/index.js';
@@ -135,7 +135,7 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + discordConfig.barerTokenRelay,
+      Authorization: 'Bearer ' + ConfigDiscord.barerTokenRelay,
     },
     body: JSON.stringify({
       webhookID: syncChatChannel.id,

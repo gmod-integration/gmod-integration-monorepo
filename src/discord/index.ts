@@ -12,7 +12,7 @@ import {
   Routes,
 } from 'discord.js';
 import { gmLog } from '../utils/logger.js';
-import { discordConfig, serverConfig } from '../classes/config/Config.js';
+import { ConfigDiscord, ConfigServer } from '../classes/config/Config.js';
 import { fork } from 'child_process';
 
 import { fileURLToPath } from 'url';
@@ -31,8 +31,8 @@ import { getServersFromDiscordGuildID, Server } from '../classes/v3/Server.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { Guild, guildSettingExists } from '../classes/v3/Guild.js';
 
-const envPath = serverConfig.dev ? 'src' : 'dist';
-const envExtension = serverConfig.dev ? '.ts' : '.js';
+const envPath = ConfigServer.dev ? 'src' : 'dist';
+const envExtension = ConfigServer.dev ? '.ts' : '.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -205,7 +205,7 @@ async function addNewClient(guildInstance: string, token: string) {
     gmLog('discord', `Ready on ${guildInstance} with ${user.tag}`);
 
     // Load commands and context menu commands
-    if (serverConfig.dev) {
+    if (ConfigServer.dev) {
       gmLog('discord', 'Skipping command push due to test mode');
       return;
     }
@@ -279,7 +279,7 @@ export async function loadDiscordMain() {
   await indexCommandsAndContext(`${envPath}/discord/commands`, 'Command');
 
   gmLog('discord', `Loaded ${commandsData.length} commands and context menu commands`);
-  await addNewClient('main', discordConfig.botToken!).catch((error) => {
+  await addNewClient('main', ConfigDiscord.botToken!).catch((error) => {
     console.error('Error adding main client:', error);
   });
 

@@ -1,4 +1,4 @@
-import { serverConfig } from '../../classes/config/Config.js';
+import { ConfigServer } from '../../classes/config/Config.js';
 import axios from 'axios';
 import { gmLog } from '../../utils/logger.js';
 import { NextFunction, Request, Response } from 'express';
@@ -18,12 +18,12 @@ export async function steamVerification(req: Request, res: Response, next: NextF
     return;
   }
 
-  const returnUrl = `${serverConfig.domain}/steam/return?verificationCode=${verificationCode}`;
+  const returnUrl = `${ConfigServer.domain}/steam/return?verificationCode=${verificationCode}`;
   const params = new URLSearchParams({
     'openid.ns': 'http://specs.openid.net/auth/2.0',
     'openid.mode': 'checkid_setup',
     'openid.return_to': returnUrl,
-    'openid.realm': serverConfig.domain || '',
+    'openid.realm': ConfigServer.domain || '',
     'openid.identity': 'http://specs.openid.net/auth/2.0/identifier_select',
     'openid.claimed_id': 'http://specs.openid.net/auth/2.0/identifier_select',
   });
@@ -155,7 +155,7 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
         }
       }
 
-      res.redirect(`${serverConfig.websiteUrl}/account`);
+      res.redirect(`${ConfigServer.websiteUrl}/account`);
     } else {
       res.json({ message: 'Authentication failed' });
     }
