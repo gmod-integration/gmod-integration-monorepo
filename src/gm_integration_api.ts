@@ -1,7 +1,7 @@
 // import './utils/instrument.js';
+import { serverConfig } from './config/index.js';
 import './utils/update-log.js';
 import express, { NextFunction, Request, Response } from 'express';
-import { serverConfig } from './config/index.js';
 import { gmLog } from './utils/logger.js';
 import rawBodyMiddleware from './middleware/rawBodyMiddleware.js';
 import loggerMiddleware from './middleware/v3/loggers.js';
