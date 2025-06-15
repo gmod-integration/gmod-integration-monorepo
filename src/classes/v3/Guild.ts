@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { discordConfig } from '../../config/index.js';
-import redis from '../../redis/index.js';
+import redis from '../../services/redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
 import { getGuildClient, getMainClient, loadGuildBotInstance } from '../../discord/index.js';
 import {

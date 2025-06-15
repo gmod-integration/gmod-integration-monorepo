@@ -3,7 +3,7 @@ import { serverConfig } from '../config/index.js';
 import { gmLog } from '../utils/logger.js';
 import { getServerFromID, getServersFromDiscordGuildID } from '../classes/v3/Server.js';
 import { getPanelUserFromDiscordID, PanelUser } from '../classes/v3/PanelUser.js';
-import redis from '../redis/index.js';
+import redis from '../services/redis/index.js';
 import { lastGmodIntegrationTag, versionComparator } from '../utils/tools.js';
 
 interface wsClientClient {

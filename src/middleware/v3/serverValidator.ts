@@ -1,6 +1,6 @@
 import { getServerFromID } from '../../classes/v3/Server.js';
 import { NextFunction, Request, Response } from 'express';
-import redis from '../../redis/index.js';
+import redis from '../../services/redis/index.js';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

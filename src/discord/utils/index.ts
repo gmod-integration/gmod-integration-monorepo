@@ -4,7 +4,7 @@ import prisma from '../../prisma.js';
 import { JSDOM } from 'jsdom';
 import * as d3 from 'd3';
 import sharp from 'sharp';
-import redis from '../../redis/index.js';
+import redis from '../../services/redis/index.js';
 import fs from 'fs';
 import path from 'path';
 

@@ -6,7 +6,7 @@ import { wsSendToAllClientsOfServer } from '../websockets/index.js';
 import { ChannelType, ColorResolvable, EmbedBuilder } from 'discord.js';
 import { Server } from '../classes/v3/Server.js';
 import { addLog } from '../database/gm_server_logs.js';
-import redis from '../redis/index.js';
+import redis from '../services/redis/index.js';
 import { gm_server_logs_triggers } from '@prisma/client';
 
 export enum LogLevel {

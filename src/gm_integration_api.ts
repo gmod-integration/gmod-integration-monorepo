@@ -13,7 +13,7 @@ import useragent from 'express-useragent';
 import errorMiddleware from './middleware/errorMiddleware.js';
 import './websockets/index.js';
 import { gracefulShutdownDiscord, loadDiscordMain, loadDiscordSlave } from './discord/index.js';
-import { gracefulShutdownRedis } from './redis/index.js';
+import { gracefulShutdownRedis } from './services/redis/index.js';
 import { gracefulShutdownPrisma } from './prisma.js';
 import { gracefulShutdownWebsocket } from './websockets/index.js';
 import { gracefulShutdownMongo } from './database/gm_server_logs.js';

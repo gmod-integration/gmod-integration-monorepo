@@ -5,7 +5,7 @@ import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.j
 import { discordConfig } from '../../config/index.js';
 import { generateToken } from '../../utils/tools.js';
 import { wsSendToServer } from '../../websockets/index.js';
-import redis from '../../redis/index.js';
+import redis from '../../services/redis/index.js';
 import prisma from '../../prisma.js';
 import { Guild, GuildMember } from 'discord.js';
 import { PanelUser } from '../../classes/v3/PanelUser.js';

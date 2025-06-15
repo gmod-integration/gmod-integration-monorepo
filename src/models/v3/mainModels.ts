@@ -1,4 +1,4 @@
-import redis from '../../redis/index.js';
+import redis from '../../services/redis/index.js';
 import { ActivityType } from 'discord.js';
 import { statusRoutine } from '../../classes/v3/Server.js';
 import { getMainClient } from '../../discord/index.js';
