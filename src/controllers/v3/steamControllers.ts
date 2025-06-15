@@ -1,4 +1,4 @@
-import { serverConfig } from '../../config/index.js';
+import { serverConfig } from '../../classes/config/Config.js';
 import axios from 'axios';
 import { gmLog } from '../../utils/logger.js';
 import { NextFunction, Request, Response } from 'express';

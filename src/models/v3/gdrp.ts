@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { serverConfig } from '../../config/index.js';
+import { serverConfig } from '../../classes/config/Config.js';
 import archiver from 'archiver';
 import { gmLog } from '../../utils/logger.js';
 import index from '../../services/prisma/index.js';

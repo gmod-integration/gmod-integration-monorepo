@@ -12,7 +12,7 @@ import {
   Routes,
 } from 'discord.js';
 import { gmLog } from '../utils/logger.js';
-import { discordConfig, serverConfig } from '../config/index.js';
+import { discordConfig, serverConfig } from '../classes/config/Config.js';
 import { fork } from 'child_process';
 
 import { fileURLToPath } from 'url';

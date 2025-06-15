@@ -1,4 +1,4 @@
-import { discordConfig, serverConfig } from '../config/index.js';
+import { discordConfig, serverConfig } from '../classes/config/Config.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { getRandomDiscordRelay, ipGetIP } from './tools.js';
 import { getTranslate } from './localizations.js';

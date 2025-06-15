@@ -1,6 +1,6 @@
 import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
-import { discordConfig } from '../../config/index.js';
+import { discordConfig } from '../../classes/config/Config.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import index from '../../services/prisma/index.js';

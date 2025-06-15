@@ -1,5 +1,5 @@
 // import './utils/instrument.js';
-import { serverConfig } from './config/index.js';
+import { serverConfig } from './classes/config/Config.js';
 import './utils/update-log.js';
 import express, { NextFunction, Request, Response } from 'express';
 import { gmLog } from './utils/logger.js';

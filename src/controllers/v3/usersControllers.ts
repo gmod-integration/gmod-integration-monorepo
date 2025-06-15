@@ -1,6 +1,6 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
 import { createServer, getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
-import { discordConfig } from '../../config/index.js';
+import { discordConfig } from '../../classes/config/Config.js';
 import {
   addAutoRoleToUser,
   getDiscordUserFromID,

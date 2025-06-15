@@ -1,5 +1,5 @@
 import index from '../services/prisma/index.js';
-import { serverConfig } from '../config/index.js';
+import { serverConfig } from '../classes/config/Config.js';
 
 const testConfig = {
   server: {

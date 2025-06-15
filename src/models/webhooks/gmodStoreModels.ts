@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { gmodStoreConfig } from '../../config/index.js';
+import { gmodStoreConfig } from '../../classes/config/Config.js';
 import { gmLog } from '../../utils/logger.js';
 import { getUserFromSteamID64 } from '../../classes/v3/User.js';
 import index from '../../services/prisma/index.js';

@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { ConfigInput, ConfigSchema } from '../schemas/config/ConfigSchema.js';
+import { ConfigInput, ConfigSchema } from '../../schemas/config/ConfigSchema.js';
 import { ZodError } from 'zod';
 
 dotenv.config();

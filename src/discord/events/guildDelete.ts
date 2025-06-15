@@ -1,5 +1,5 @@
 import { gmLog } from '../../utils/logger.js';
-import { discordConfig } from '../../config/index.js';
+import { discordConfig } from '../../classes/config/Config.js';
 import { getGuildClient, killGuildClient } from '../index.js';
 import { Guild } from 'discord.js';
 import index from '../../services/prisma/index.js';

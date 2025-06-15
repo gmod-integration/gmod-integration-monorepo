@@ -1,6 +1,6 @@
 import { getRandomDiscordRelay } from '../../utils/tools.js';
 import fs from 'fs';
-import { discordConfig, serverConfig } from '../../config/index.js';
+import { discordConfig, serverConfig } from '../../classes/config/Config.js';
 import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
 import { getMainClient } from '../../discord/index.js';

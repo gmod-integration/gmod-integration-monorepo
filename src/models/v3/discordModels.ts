@@ -2,7 +2,7 @@ import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/Use
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { getGuildClient, getMainClient } from '../../discord/index.js';
 import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.js';
-import { discordConfig } from '../../config/index.js';
+import { discordConfig } from '../../classes/config/Config.js';
 import { generateToken } from '../../utils/tools.js';
 import { wsSendToServer } from '../../websockets/index.js';
 import redis from '../../services/redis/index.js';
