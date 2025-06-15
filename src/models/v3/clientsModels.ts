@@ -2,7 +2,7 @@ import { getRandomDiscordRelay } from '../../utils/tools.js';
 import fs from 'fs';
 import { discordConfig, serverConfig } from '../../config/index.js';
 import { EmbedBuilder } from 'discord.js';
-import { getSteamUserAvatarLarge } from '../../steam/index.js';
+import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
 import { getMainClient } from '../../discord/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Server } from '../../classes/v3/Server.js';

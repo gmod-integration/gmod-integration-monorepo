@@ -1,4 +1,4 @@
-import { getSteamUserAvatarLarge } from '../../steam/index.js';
+import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
 import { discordConfig } from '../../config/index.js';
 import { Server } from '../../classes/v3/Server.js';
