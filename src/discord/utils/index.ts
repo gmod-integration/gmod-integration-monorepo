@@ -70,10 +70,11 @@ export function secToTime(sec: number, precision: number = -1) {
 }
 
 async function getServerData(serverID: string, duration = 24 * 60 * 60, interval = 60) {
+  const now = Date.now();
   const data = await prisma.gm_server_status_history.findMany({
     where: {
       createdAt: {
-        gte: new Date(Date.now() - duration * 1000),
+        gte: new Date(now - duration * 1000),
       },
       serverID: serverID,
     },
@@ -83,18 +84,20 @@ async function getServerData(serverID: string, duration = 24 * 60 * 60, interval
   });
 
   const result: { time: Date; value: number }[] = [];
-  // create all interval
   for (let i = 0; i < duration / interval; i++) {
     result.push({
-      time: new Date(Date.now() - (duration - i * interval) * 1000),
+      time: new Date(now - (duration - i * interval) * 1000),
       value: 0,
     });
   }
 
-  // fill the data
   for (const d of data) {
     const index = Math.floor((d.createdAt.getTime() - result[0].time.getTime()) / (interval * 1000));
-    if (result[index].value < d.players) result[index].value = d.players;
+    if (index >= 0 && index < result.length) {
+      if (result[index].value < d.players) {
+        result[index].value = d.players;
+      }
+    }
   }
 
   return result;
