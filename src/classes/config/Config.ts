@@ -56,6 +56,7 @@ export const ConfigDiscord = {
   discordPremiumRoleID: config.DISCORD_GUILD_DISCORD_PREMIUM_ROLE_ID,
   subscriptionSKUID: config.DISCORD_SUBSCRIPTION_SKU_ID,
   gmodIntegrationLogo: 'https://gmod-integration.com/src/assets/brand/logo.png',
+  embedColor: 0x323339,
 };
 
 export const ConfigSteam = {

@@ -10,6 +10,7 @@ import { dateToDiscordTimestamp, secToTime } from '../../discord/utils/index.js'
 import { getTranslate } from '../../utils/localizations.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
 import index from '../../services/prisma/index.js';
+import { ConfigDiscord } from '../../classes/config/Config.js';
 
 function ButtonLeaderboardFirst(disabled: boolean) {
   return new ButtonBuilder()
@@ -192,7 +193,7 @@ export async function getLeaderboardMessageEmbed(
 
   let embed = new EmbedBuilder()
     .setTitle(await getTranslate('leaderboard', lang, [server.getName()]))
-    .setColor(0x2b2d31)
+    .setColor(ConfigDiscord.embedColor)
     .setFields([]);
 
   const leaderboardStat = await getServerLeaderboard(server.getID(), category, limit, offset, order);

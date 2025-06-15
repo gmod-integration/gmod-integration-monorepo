@@ -2,6 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, EmbedB
 import { getTranslate } from '../../utils/localizations.js';
 import { getServerFromID, Server } from '../../classes/v3/Server.js';
 import index from '../../services/prisma/index.js';
+import { ConfigDiscord } from '../../classes/config/Config.js';
 
 export async function getServerUserWarn(
   serverID: string,
@@ -99,7 +100,7 @@ export async function getWarnMessageEmbed(
   order?: string,
 ) {
   const embed = new EmbedBuilder()
-    .setColor(0x2b2d31)
+    .setColor(ConfigDiscord.embedColor)
     .setTitle(await getTranslate('warn_for_user', lang, [steamID64, server.getName()]))
     .setTimestamp();
 

@@ -31,6 +31,11 @@ export const ConfigSchema = z.object({
   GMODSTORE_API_KEY: z.string(),
   SIGNING_SECRET_WEBHOOK: z.string(),
   GMODSTORE_SECRET_WEBHOOK: z.string(),
+
+  MINIO_ENDPOINT: z.string().url(),
+  MINIO_REGION: z.string(),
+  MINIO_ACCESS_KEY: z.string(),
+  MINIO_SECRET_KEY: z.string(),
 });
 
 export type ConfigInput = z.infer<typeof ConfigSchema>;

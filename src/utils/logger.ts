@@ -36,7 +36,6 @@ const logEmbedColors: Record<string, ColorResolvable> = {
   player_hurt: '#cd5151',
   player_initial_spawn: '#51cd51',
   player_say: '#51c3cd',
-  default: '#2B2D31',
   server_start: '#7c15d5',
   server_stop: '#7c15d5',
   dark_rp_drop_money: '#c7c751',
@@ -287,7 +286,9 @@ async function handleLogsTrigger(server: Server, type: string, data?: any) {
         }
       }
 
-      const embed = new EmbedBuilder().setColor(logEmbedColors[type] || logEmbedColors.default).setDescription(message);
+      const embed = new EmbedBuilder()
+        .setColor(logEmbedColors[type] || ConfigDiscord.embedColor)
+        .setDescription(message);
 
       // send the message
       await channel.send({
@@ -624,7 +625,7 @@ export async function logServer(server: Server, type: string, data?: any) {
         // url: `${serverConfig.websiteUrl}/dashboard/guilds/${server.getGuildID()}/config/servers/${server.getID()}/logs`,
       })
       .setDescription(dscList.length > 0 ? dscList.join('\n') : null)
-      .setColor(logEmbedColors[type] || logEmbedColors.default)
+      .setColor(logEmbedColors[type] || ConfigDiscord.embedColor)
       .setFooter({
         text: server.getName(),
       })

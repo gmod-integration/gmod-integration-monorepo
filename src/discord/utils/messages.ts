@@ -39,7 +39,7 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   }
 
   const embed = new EmbedBuilder()
-    .setColor(0x2b2d31)
+    .setColor(ConfigDiscord.embedColor)
     .setTitle(await getTranslate('status_of', lang, [server.getName() || server.getID()]))
     .addFields(
       {
@@ -198,7 +198,7 @@ export async function getNotVerifiedMessage(guild: Guild, member: GuildMember) {
   const lang = guild.preferredLocale;
 
   const embed = new EmbedBuilder()
-    .setColor(0x2b2d31)
+    .setColor(ConfigDiscord.embedColor)
     .setTitle(await getTranslate('hello', lang, [member.user.username]))
     .addFields(
       {
@@ -272,7 +272,7 @@ export async function getVerifiedMessageAnswer(isVerified: boolean, lang: string
 
 export async function getVerificationGuildMessage(lang: string) {
   const embed = new EmbedBuilder()
-    .setColor(0x2b2d31)
+    .setColor(ConfigDiscord.embedColor)
     .setTitle(await getTranslate('welcome_on_our_server', lang))
     .addFields(
       {
@@ -319,7 +319,7 @@ export async function getProfileMessage(guild: Guild, user: User) {
   }
 
   const embed = new EmbedBuilder()
-    .setColor(0x2b2d31)
+    .setColor(ConfigDiscord.embedColor)
     .setTitle(await getTranslate('profile_info', lang))
     .setThumbnail(user.displayAvatarURL())
     .addFields(
@@ -466,7 +466,7 @@ export async function getUserStatisticMessage(
     }
 
     const embed = new EmbedBuilder()
-      .setColor(0x2b2d31)
+      .setColor(ConfigDiscord.embedColor)
       .setTitle(await getTranslate('stat_of_global', lang, [userData.username || userData.steam_id]))
       .setFields(
         {
@@ -547,7 +547,7 @@ export async function getUserStatisticMessage(
     }
 
     const embed = new EmbedBuilder()
-      .setColor(0x2b2d31)
+      .setColor(ConfigDiscord.embedColor)
       .setTitle(await getTranslate('stat_of_server', lang, [userData.name || userData.steam_id]))
       .addFields(
         {

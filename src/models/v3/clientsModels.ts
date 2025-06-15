@@ -82,7 +82,7 @@ export async function sendScreenshotToDiscord(
 
   const embed = new EmbedBuilder()
     .setImage(discordUrl)
-    .setColor('#2b2d31')
+    .setColor(ConfigDiscord.embedColor)
     .setTitle(title || (await getTranslate('discord.screenshot.no_title', 'No title')))
     .setURL(internUrl)
     .setFooter({
