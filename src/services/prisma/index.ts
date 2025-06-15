@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { connectToMongoDB } from '../../config/mongo.js';
+import { connectToMongoDB } from '../mongo/index.js';
 
 const index = new PrismaClient();
 
