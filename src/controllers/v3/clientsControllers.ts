@@ -46,10 +46,12 @@ export async function reportBugs(req: Request, res: Response) {
   if (screenshot) {
     const { screenshot: screenshot2, captureData, size } = screenshot;
     if (screenshot2 && captureData && size) {
-      const { internUrl, filename } = await saveScreenshot(screenshot2, captureData, player, server).catch((err) => {
-        console.error(err);
-        return { internUrl: '', filename: '' };
-      });
+      const { internUrl, filename } = await saveScreenshot(screenshot2, captureData, player, server, '').catch(
+        (err) => {
+          console.error(err);
+          return { internUrl: '', filename: '' };
+        },
+      );
       screenshotName = filename;
     }
   }
