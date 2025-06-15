@@ -1,6 +1,6 @@
 import { badArgument } from '../../utils/tools.js';
 import { Request, Response } from 'express';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 
 export async function reportError(req: Request, res: Response) {
   let { error, stack, id, name, realm, uptime, count } = req.body;

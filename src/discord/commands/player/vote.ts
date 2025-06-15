@@ -8,7 +8,7 @@ import { getTranslate } from '../../../utils/localizations.js';
 import { getServerList } from '../../../models/v3/serversModels.js';
 import { secToTime } from '../../utils/index.js';
 import { getServerFromID } from '../../../classes/v3/Server.js';
-import prisma from '../../../prisma.js';
+import prisma from '../../../services/prisma/prisma.js';
 
 export default {
   data: new SlashCommandBuilder()

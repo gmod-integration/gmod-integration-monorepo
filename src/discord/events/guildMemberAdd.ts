@@ -3,7 +3,7 @@ import { addAutoRoleToUser, updateGuildStat, verifyUser } from '../../models/v3/
 import { gmLog } from '../../utils/logger.js';
 import { getNotVerifiedMessage } from '../utils/messages.js';
 import { GuildMember } from 'discord.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 
 export default {
   name: 'guildMemberAdd',

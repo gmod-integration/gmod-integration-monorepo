@@ -16,7 +16,7 @@ import moment from 'moment';
 import { getUserDataGRPD } from '../../models/v3/gdrp.js';
 import { getMainClient } from '../../discord/index.js';
 import redis from '../../services/redis/index.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import { NextFunction, Request, Response } from 'express';
 import { getLogsByServer, getTotalLogsByServer } from '../../database/gm_server_logs.js';
 

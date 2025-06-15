@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 import { getTranslate } from '../../../utils/localizations.js';
 import { serverConfig } from '../../../config/index.js';
-import prisma from '../../../prisma.js';
+import prisma from '../../../services/prisma/prisma.js';
 
 export default {
   data: new SlashCommandBuilder()

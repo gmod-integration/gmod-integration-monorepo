@@ -6,7 +6,7 @@ import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
 import { getMainClient } from '../../discord/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Server } from '../../classes/v3/Server.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import { getTranslate } from '../../utils/localizations.js';
 

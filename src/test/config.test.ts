@@ -1,4 +1,4 @@
-import prisma from '../prisma.js';
+import prisma from '../services/prisma/prisma.js';
 import { serverConfig } from '../config/index.js';
 
 const testConfig = {

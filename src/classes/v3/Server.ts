@@ -5,7 +5,7 @@ import { getGuildClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import { gmLog } from '../../utils/logger.js';
 import { ChannelType } from 'discord.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import {
   gm_server_logs_triggers,
   gm_server_logs_triggers_action,

@@ -5,7 +5,7 @@ import { ButtonVerificationWebsite } from '../../discord/utils/buttons.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { getVerifiedMessageAnswer } from '../../discord/utils/messages.js';
 import { verifyUser } from './discordModels.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 
 export async function handleVerifyInteraction(interaction: ButtonInteraction) {
   if (!interaction.isButton()) return;

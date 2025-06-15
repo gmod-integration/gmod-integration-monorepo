@@ -2,7 +2,7 @@ import fs from 'fs';
 import { serverConfig } from '../../config/index.js';
 import archiver from 'archiver';
 import { gmLog } from '../../utils/logger.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import { User } from '../../classes/v3/User.js';
 import { addNotification } from '../../utils/tools.js';
 import { getLogsByServerAndSteamIDList, getLogsCountByServerAndSteamIDList } from '../../database/gm_server_logs.js';

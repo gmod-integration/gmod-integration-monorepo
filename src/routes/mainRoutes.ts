@@ -4,7 +4,7 @@ import v3Routes from './v3/_v3Routes.js';
 import steamRoutes from './steamRoutes.js';
 import fs from 'fs';
 import asyncHandler from '../middleware/asyncHandler.js';
-import prisma from '../prisma.js';
+import prisma from '../services/prisma/prisma.js';
 
 const router = express.Router();
 

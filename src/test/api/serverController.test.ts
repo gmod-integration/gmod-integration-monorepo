@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'assert';
 import testConfig, { getTestUri } from '../config.test.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 
 // Server Info
 test('GET /v3/servers/:serverID', async (t) => {

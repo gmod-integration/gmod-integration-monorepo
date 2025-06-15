@@ -3,7 +3,7 @@ import { ActivityType } from 'discord.js';
 import { statusRoutine } from '../../classes/v3/Server.js';
 import { getMainClient } from '../../discord/index.js';
 import { givePremiumRoleOfMainGuild } from './discordModels.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import { lastGmodIntegrationTag } from '../../utils/tools.js';
 
 export async function getStats() {

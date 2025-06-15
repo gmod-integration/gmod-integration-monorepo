@@ -26,7 +26,7 @@ import {
 import { readdir } from 'fs/promises';
 import { getUserFromSteamID64 } from '../classes/v3/User.js';
 import redis from '../services/redis/index.js';
-import prisma from '../prisma.js';
+import prisma from '../services/prisma/prisma.js';
 import { getServersFromDiscordGuildID, Server } from '../classes/v3/Server.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { Guild, guildSettingExists } from '../classes/v3/Guild.js';

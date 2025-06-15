@@ -1,4 +1,4 @@
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 
 export class User {
   steamID64: string | null;

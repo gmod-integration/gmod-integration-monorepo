@@ -13,7 +13,7 @@ import {
   Guild as DiscordGuild,
   MessageActionRowComponentBuilder,
 } from 'discord.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import { User } from './User.js';
 
 const guildSettings: Record<string, any> = {

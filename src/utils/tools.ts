@@ -1,6 +1,6 @@
 import { getEmojis } from 'unicode-emoji';
 import { serverConfig } from '../config/index.js';
-import prisma from '../prisma.js';
+import prisma from '../services/prisma/prisma.js';
 import { Request, Response } from 'express';
 
 export function getRandomDiscordRelay() {

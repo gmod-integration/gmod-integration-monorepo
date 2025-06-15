@@ -3,7 +3,7 @@ import { getRandomDiscordRelay } from '../../utils/tools.js';
 import { discordConfig } from '../../config/index.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import { gm_server_sync_chat_filter, gm_server_sync_chat_filter_element } from '@prisma/client';
 
 export async function sendPlayerSay(server: Server, player: PlayerGmod, text: string, onlyTeam: boolean) {

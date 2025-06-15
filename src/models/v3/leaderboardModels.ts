@@ -9,7 +9,7 @@ import {
 import { dateToDiscordTimestamp, secToTime } from '../../discord/utils/index.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 
 function ButtonLeaderboardFirst(disabled: boolean) {
   return new ButtonBuilder()

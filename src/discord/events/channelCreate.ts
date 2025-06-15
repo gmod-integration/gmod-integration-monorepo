@@ -1,6 +1,6 @@
 import { gmLog } from '../../utils/logger.js';
 import { GuildChannel } from 'discord.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 
 export default {
   name: 'channelCreate',

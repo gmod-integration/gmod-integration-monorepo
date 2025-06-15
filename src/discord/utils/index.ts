@@ -1,6 +1,6 @@
 import { getTranslate } from '../../utils/localizations.js';
 import { Server } from '../../classes/v3/Server.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import { JSDOM } from 'jsdom';
 import * as d3 from 'd3';
 import sharp from 'sharp';

@@ -7,7 +7,7 @@ import {
 } from '../../models/v3/serversPlayersModels.js';
 import { updateGuildUserPseudo } from '../../discord/index.js';
 import { Request, Response } from 'express';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import { logServer } from '../../utils/logger.js';
 
 export async function getPlayer(req: Request, res: Response) {

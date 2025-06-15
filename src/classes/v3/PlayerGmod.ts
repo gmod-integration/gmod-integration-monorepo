@@ -1,6 +1,6 @@
 import { BaseClass } from './BaseClass.js';
 import { Team } from './Team.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import { getUserFromDiscordID, getUserFromSteamID64 } from './User.js';
 import { getServerFromID, Server } from './Server.js';
 import redis from '../../services/redis/index.js';

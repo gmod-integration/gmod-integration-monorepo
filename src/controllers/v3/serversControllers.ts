@@ -1,7 +1,7 @@
 import { badArgument } from '../../utils/tools.js';
 import { logServer } from '../../utils/logger.js';
 import { Request, Response } from 'express';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 
 export async function postStatus(req: Request, res: Response) {

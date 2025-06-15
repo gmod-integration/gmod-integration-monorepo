@@ -8,7 +8,7 @@ import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 
 export function getEmptyEmbedBuilderField(lineBreak: number = 1) {
   let emptyField = '';

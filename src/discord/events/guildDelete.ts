@@ -2,7 +2,7 @@ import { gmLog } from '../../utils/logger.js';
 import { discordConfig } from '../../config/index.js';
 import { getGuildClient, killGuildClient } from '../index.js';
 import { Guild } from 'discord.js';
-import prisma from '../../prisma.js';
+import prisma from '../../services/prisma/prisma.js';
 
 export default {
   name: 'guildDelete',
