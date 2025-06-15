@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { getServerFromID, Server } from '../../classes/v3/Server.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 export async function getServerUserWarn(
   serverID: string,
@@ -10,14 +10,14 @@ export async function getServerUserWarn(
   offset: number = 0,
   order: string = 'DESC',
 ) {
-  const total = await prisma.gm_server_warn.count({
+  const total = await index.gm_server_warn.count({
     where: {
       serverID: serverID,
       userSteamID64: steamID64,
     },
   });
 
-  const warnStat = await prisma.gm_server_warn.findMany({
+  const warnStat = await index.gm_server_warn.findMany({
     where: {
       serverID: serverID,
       userSteamID64: steamID64,
@@ -52,14 +52,14 @@ export async function saveWarnListOptions(
   },
 ) {
   const { total, limit, offset, order } = options;
-  const oldOptions = await prisma.gm_server_warn_options.findFirst({
+  const oldOptions = await index.gm_server_warn_options.findFirst({
     where: {
       msgID,
     },
   });
 
   if (oldOptions) {
-    await prisma.gm_server_warn_options.update({
+    await index.gm_server_warn_options.update({
       where: {
         msgID_steamID64: {
           msgID: msgID,
@@ -76,7 +76,7 @@ export async function saveWarnListOptions(
       },
     });
   } else {
-    await prisma.gm_server_warn_options.create({
+    await index.gm_server_warn_options.create({
       data: {
         msgID: msgID,
         serverID: serverID,
@@ -192,7 +192,7 @@ export async function handleWarnInteraction(interaction: ButtonInteraction) {
 
   const lang = interaction.guild.preferredLocale;
   const msgID = interaction.message.id;
-  const optionsOld = await prisma.gm_server_warn_options.findFirst({
+  const optionsOld = await index.gm_server_warn_options.findFirst({
     where: {
       msgID: msgID,
     },

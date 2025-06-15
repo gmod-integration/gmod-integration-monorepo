@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 export async function getAllPanelUsers(req: Request, res: Response) {
-  const users = await prisma.gm_panelToken.findMany({
+  const users = await index.gm_panelToken.findMany({
     where: {
       expirationDate: {
         gt: new Date(),

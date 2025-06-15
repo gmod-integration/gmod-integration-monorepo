@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { connectToMongoDB } from '../../config/mongo.js';
 
-const prisma = new PrismaClient();
+const index = new PrismaClient();
 
 async function main() {
   await connectToMongoDB();
@@ -10,8 +10,8 @@ async function main() {
 
 main().catch(console.error);
 
-export default prisma;
+export default index;
 
 export async function gracefulShutdownPrisma() {
-  await prisma.$disconnect();
+  await index.$disconnect();
 }

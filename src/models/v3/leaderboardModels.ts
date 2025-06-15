@@ -9,7 +9,7 @@ import {
 import { dateToDiscordTimestamp, secToTime } from '../../discord/utils/index.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { getServerFromID } from '../../classes/v3/Server.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 function ButtonLeaderboardFirst(disabled: boolean) {
   return new ButtonBuilder()
@@ -52,7 +52,7 @@ const defaultCategories = ['total_time', 'total_kill', 'total_death', 'total_con
 export async function getServerLeaderboardCategories(serverID: string) {
   let serverCategories = defaultCategories.slice();
 
-  const categories = await prisma.gm_server_customValues.findMany({
+  const categories = await index.gm_server_customValues.findMany({
     where: {
       serverID: serverID,
       enable: true,
@@ -85,13 +85,13 @@ export async function getServerLeaderboard(
   offset: number = 0,
   order: string = 'DESC',
 ) {
-  const total = await prisma.gm_server_stat.count({
+  const total = await index.gm_server_stat.count({
     where: {
       server_id: serverID,
     },
   });
 
-  const plyStat = await prisma.gm_server_stat.findMany({
+  const plyStat = await index.gm_server_stat.findMany({
     where: {
       server_id: serverID,
     },
@@ -139,14 +139,14 @@ export async function getCatFormat(category: string, value: any, lang: string) {
 
 export async function saveLeaderboardOptions(messageID: string, options: any) {
   const { serverID, category, limit, offset, order, page, totalPages, total } = options;
-  const DBOptions = await prisma.gm_server_leaderboard_options.findFirst({
+  const DBOptions = await index.gm_server_leaderboard_options.findFirst({
     where: {
       messageID: messageID,
     },
   });
 
   if (DBOptions) {
-    return prisma.gm_server_leaderboard_options.update({
+    return index.gm_server_leaderboard_options.update({
       where: {
         messageID_serverID: {
           serverID: serverID,
@@ -163,7 +163,7 @@ export async function saveLeaderboardOptions(messageID: string, options: any) {
       },
     });
   } else {
-    return prisma.gm_server_leaderboard_options.create({
+    return index.gm_server_leaderboard_options.create({
       data: {
         serverID,
         category,
@@ -272,7 +272,7 @@ export async function handleLeaderboardInteraction(interaction: ButtonInteractio
   if (!interaction.customId.startsWith('leaderboard_')) return;
   const lang = interaction.guild.preferredLocale;
 
-  const options = await prisma.gm_server_leaderboard_options.findFirst({
+  const options = await index.gm_server_leaderboard_options.findFirst({
     where: {
       messageID: interaction.message.id,
     },

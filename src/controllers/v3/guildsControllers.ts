@@ -5,7 +5,7 @@ import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'dis
 import { ButtonPremium } from '../../discord/utils/buttons.js';
 import { wsSendToServer } from '../../websockets/index.js';
 import { getGuildClient } from '../../discord/index.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 export async function sendMessageToGmod(message: Message) {
   if (message.author.bot || !message.guild) return;
@@ -16,7 +16,7 @@ export async function sendMessageToGmod(message: Message) {
     return;
   }
 
-  const channels = await prisma.gm_sync_chat.findMany({
+  const channels = await index.gm_sync_chat.findMany({
     where: {
       guild: message.guild.id,
       channel: message.channel.id,

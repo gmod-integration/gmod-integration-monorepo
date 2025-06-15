@@ -5,7 +5,7 @@ import { getGuildClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import { gmLog } from '../../utils/logger.js';
 import { ChannelType } from 'discord.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 import {
   gm_server_logs_triggers,
   gm_server_logs_triggers_action,
@@ -104,7 +104,7 @@ export class Server extends BaseClass {
   }
 
   async getAllSettings() {
-    const settings = await prisma.gm_server_settings.findMany({
+    const settings = await index.gm_server_settings.findMany({
       where: {
         serverID: this.id,
       },
@@ -138,7 +138,7 @@ export class Server extends BaseClass {
       return JSON.parse(redisData);
     }
 
-    const result = await prisma.gm_server_settings.findFirst({
+    const result = await index.gm_server_settings.findFirst({
       where: {
         serverID: this.id,
         setting,
@@ -183,7 +183,7 @@ export class Server extends BaseClass {
       throw new Error('Invalid value');
     }
 
-    const result = await prisma.gm_server_settings.findFirst({
+    const result = await index.gm_server_settings.findFirst({
       where: {
         serverID: this.id,
         setting,
@@ -193,7 +193,7 @@ export class Server extends BaseClass {
     value = value.toString();
 
     if (result) {
-      await prisma.gm_server_settings.update({
+      await index.gm_server_settings.update({
         where: {
           serverID_setting: {
             serverID: this.id,
@@ -205,7 +205,7 @@ export class Server extends BaseClass {
         },
       });
     } else {
-      await prisma.gm_server_settings.create({
+      await index.gm_server_settings.create({
         data: {
           serverID: this.id,
           setting,
@@ -233,7 +233,7 @@ export class Server extends BaseClass {
       return JSON.parse(redisData);
     }
 
-    const result = await prisma.gm_server_sync_chat_filter.findMany({
+    const result = await index.gm_server_sync_chat_filter.findMany({
       where: {
         serverID: this.id,
       },
@@ -248,7 +248,7 @@ export class Server extends BaseClass {
   }
 
   async getStatusChannelAndMessage() {
-    return prisma.gm_status.findFirst({
+    return index.gm_status.findFirst({
       where: {
         server: this.id,
       },
@@ -256,7 +256,7 @@ export class Server extends BaseClass {
   }
 
   async getStatusData() {
-    return prisma.gm_server_status.findFirst({
+    return index.gm_server_status.findFirst({
       where: {
         id: this.getID(),
         updatedAt: {
@@ -292,7 +292,7 @@ export class Server extends BaseClass {
 
   async regeneratePublicTempToken() {
     this.publicTempToken = generateToken(16);
-    await prisma.gm_server.update({
+    await index.gm_server.update({
       where: {
         id: this.id,
       },
@@ -304,7 +304,7 @@ export class Server extends BaseClass {
 
   async regenerateToken() {
     this.token = generateToken(16);
-    await prisma.gm_server.update({
+    await index.gm_server.update({
       where: {
         id: this.id,
       },
@@ -315,7 +315,7 @@ export class Server extends BaseClass {
   }
 
   async getServerStatusButtons() {
-    return prisma.gm_status_button.findMany({
+    return index.gm_status_button.findMany({
       where: {
         server: this.getID(),
         enable: true,
@@ -356,7 +356,7 @@ export class Server extends BaseClass {
     }
 
     // force delete the status from the database
-    await prisma.gm_status.delete({
+    await index.gm_status.delete({
       where: {
         server: this.getID(),
       },
@@ -380,7 +380,7 @@ export class Server extends BaseClass {
     const embed = await getStatusMessage(this, msgData, guild.preferredLocale);
     const message = await channel.send(embed);
 
-    return prisma.gm_status.create({
+    return index.gm_status.create({
       data: {
         server: this.getID(),
         message: message.id,
@@ -447,13 +447,13 @@ export class Server extends BaseClass {
     uptime: number,
     playersList: any,
   ) {
-    const serverStatus = await prisma.gm_server_status.findFirst({
+    const serverStatus = await index.gm_server_status.findFirst({
       where: {
         id: this.getID(),
       },
     });
     if (serverStatus) {
-      await prisma.gm_server_status.update({
+      await index.gm_server_status.update({
         where: {
           id: this.getID(),
         },
@@ -469,7 +469,7 @@ export class Server extends BaseClass {
         },
       });
     } else {
-      await prisma.gm_server_status.create({
+      await index.gm_server_status.create({
         data: {
           id: this.getID(),
           ip,
@@ -484,7 +484,7 @@ export class Server extends BaseClass {
       });
     }
 
-    await prisma.gm_server_status_history.create({
+    await index.gm_server_status_history.create({
       data: {
         serverID: this.getID(),
         players,
@@ -512,7 +512,7 @@ export class Server extends BaseClass {
         return JSON.parse(redisData);
       }
 
-      const results = await prisma.gm_sync_chat.findFirst({
+      const results = await index.gm_sync_chat.findFirst({
         where: {
           server: this.id,
         },
@@ -532,7 +532,7 @@ export class Server extends BaseClass {
 
   async getSyncRoles() {
     return (
-      (await prisma.gm_server_sync_roles.findMany({
+      (await index.gm_server_sync_roles.findMany({
         where: {
           serverID: this.id,
         },
@@ -542,7 +542,7 @@ export class Server extends BaseClass {
 
   async getSyncTeamRoles() {
     return (
-      (await prisma.gm_server_sync_team_roles.findMany({
+      (await index.gm_server_sync_team_roles.findMany({
         where: {
           serverID: this.id,
         },
@@ -552,7 +552,7 @@ export class Server extends BaseClass {
 
   async saveUserConnectionInfo(steamID64: string, name: string) {
     try {
-      const player = await prisma.gm_server_stat.findFirst({
+      const player = await index.gm_server_stat.findFirst({
         where: {
           steam_id: steamID64,
           server_id: this.id,
@@ -560,7 +560,7 @@ export class Server extends BaseClass {
       });
 
       if (player) {
-        await prisma.gm_server_stat.update({
+        await index.gm_server_stat.update({
           where: {
             server_id_steam_id: {
               steam_id: steamID64,
@@ -573,7 +573,7 @@ export class Server extends BaseClass {
           },
         });
       } else {
-        await prisma.gm_server_stat.create({
+        await index.gm_server_stat.create({
           data: {
             steam_id: steamID64,
             server_id: this.id,
@@ -592,7 +592,7 @@ export class Server extends BaseClass {
 
   async getServerPlayer(steamID64: string) {
     try {
-      return await prisma.gm_server_stat.findFirst({
+      return await index.gm_server_stat.findFirst({
         where: {
           server_id: this.id,
           steam_id: steamID64,
@@ -605,14 +605,14 @@ export class Server extends BaseClass {
   }
 
   async delete() {
-    const serverToDelete = await prisma.gm_server.findFirst({
+    const serverToDelete = await index.gm_server.findFirst({
       where: {
         id: this.id,
       },
     });
 
     if (serverToDelete) {
-      await prisma.gm_server.delete({
+      await index.gm_server.delete({
         where: {
           id: this.id,
         },
@@ -623,14 +623,14 @@ export class Server extends BaseClass {
   }
 
   async save() {
-    const serverToSave = await prisma.gm_server.findFirst({
+    const serverToSave = await index.gm_server.findFirst({
       where: {
         id: this.id,
       },
     });
 
     if (serverToSave) {
-      await prisma.gm_server.update({
+      await index.gm_server.update({
         where: {
           id: this.id,
         },
@@ -649,7 +649,7 @@ export class Server extends BaseClass {
   }
 
   async findStatusButtons() {
-    return prisma.gm_status_button.findMany({
+    return index.gm_status_button.findMany({
       where: {
         server: this.id,
       },
@@ -657,7 +657,7 @@ export class Server extends BaseClass {
   }
 
   async findStatusButton(id: number) {
-    return prisma.gm_status_button.findFirst({
+    return index.gm_status_button.findFirst({
       where: {
         id,
         server: this.id,
@@ -666,7 +666,7 @@ export class Server extends BaseClass {
   }
 
   async createStatusButton() {
-    return prisma.gm_status_button.create({
+    return index.gm_status_button.create({
       data: {
         server: this.id,
       },
@@ -674,7 +674,7 @@ export class Server extends BaseClass {
   }
 
   async destroyStatusButton(id: number) {
-    const statusButton = await prisma.gm_status_button.findFirst({
+    const statusButton = await index.gm_status_button.findFirst({
       where: {
         server: this.id,
         id,
@@ -682,7 +682,7 @@ export class Server extends BaseClass {
     });
 
     if (statusButton) {
-      await prisma.gm_status_button.delete({
+      await index.gm_status_button.delete({
         where: {
           id,
           server: this.id,
@@ -694,7 +694,7 @@ export class Server extends BaseClass {
   }
 
   async getScreenshotsChannel(admin: boolean = false) {
-    return prisma.gm_server_screenshot_channels.findFirst({
+    return index.gm_server_screenshot_channels.findFirst({
       where: {
         server: this.getID(),
         adminCmd: admin,
@@ -717,7 +717,7 @@ export class Server extends BaseClass {
       } catch (error) {
         // skip
       }
-      await prisma.gm_server_screenshot_channels.delete({
+      await index.gm_server_screenshot_channels.delete({
         where: {
           server_adminCmd: {
             server: this.getID(),
@@ -731,7 +731,7 @@ export class Server extends BaseClass {
   }
 
   async getLogsChannel() {
-    return prisma.gm_server_logs_channel.findFirst({
+    return index.gm_server_logs_channel.findFirst({
       where: {
         serverID: this.id,
       },
@@ -768,7 +768,7 @@ export class Server extends BaseClass {
         // skip
       }
       await redis.del(`server:${this.id}:logsChannel`);
-      await prisma.gm_server_logs_channel.delete({
+      await index.gm_server_logs_channel.delete({
         where: {
           serverID: this.id,
         },
@@ -794,7 +794,7 @@ export class Server extends BaseClass {
     if (!webhook) throw new Error('Webhook not created');
 
     await redis.del(`server:${this.id}:logsChannel`);
-    return prisma.gm_server_logs_channel.create({
+    return index.gm_server_logs_channel.create({
       data: {
         serverID: this.id,
         channelID,
@@ -805,7 +805,7 @@ export class Server extends BaseClass {
   }
 
   async getVoteChannel() {
-    return prisma.gm_server_vote_channels.findFirst({
+    return index.gm_server_vote_channels.findFirst({
       where: {
         serverID: this.id,
       },
@@ -841,7 +841,7 @@ export class Server extends BaseClass {
         // skip
       }
 
-      await prisma.gm_server_vote_channels.delete({
+      await index.gm_server_vote_channels.delete({
         where: {
           channelID: voteChannel.channelID,
           serverID: this.id,
@@ -867,7 +867,7 @@ export class Server extends BaseClass {
 
     if (!webhook) throw new Error('Webhook not created');
 
-    return prisma.gm_server_vote_channels.create({
+    return index.gm_server_vote_channels.create({
       data: {
         serverID: this.id,
         channelID,
@@ -878,7 +878,7 @@ export class Server extends BaseClass {
   }
 
   async getDBPlayers() {
-    return prisma.gm_server_stat.findMany({
+    return index.gm_server_stat.findMany({
       where: {
         server_id: this.id,
       },
@@ -886,7 +886,7 @@ export class Server extends BaseClass {
   }
 
   async getPlayerStats(steamID64: string) {
-    return prisma.gm_server_stat.findFirst({
+    return index.gm_server_stat.findFirst({
       where: {
         server_id: this.id,
         steam_id: steamID64,
@@ -909,7 +909,7 @@ export class Server extends BaseClass {
 
     if (!webhook) throw new Error('Webhook not created');
 
-    return prisma.gm_server_screenshot_channels.create({
+    return index.gm_server_screenshot_channels.create({
       data: {
         server: this.id,
         channelID,
@@ -920,7 +920,7 @@ export class Server extends BaseClass {
   }
 
   async getSyncChat() {
-    return prisma.gm_sync_chat.findFirst({
+    return index.gm_sync_chat.findFirst({
       where: {
         server: this.id,
       },
@@ -941,7 +941,7 @@ export class Server extends BaseClass {
       } catch (error) {
         // skip
       }
-      await prisma.gm_sync_chat.delete({
+      await index.gm_sync_chat.delete({
         where: {
           guild_server: {
             guild: syncChat.guild,
@@ -968,7 +968,7 @@ export class Server extends BaseClass {
 
     if (!webhook) throw new Error('Webhook not created');
 
-    return prisma.gm_sync_chat.create({
+    return index.gm_sync_chat.create({
       data: {
         guild: this.guild,
         server: this.id,
@@ -980,7 +980,7 @@ export class Server extends BaseClass {
   }
 
   async getLogsTrigger() {
-    return prisma.gm_server_logs_triggers.findMany({
+    return index.gm_server_logs_triggers.findMany({
       where: {
         serverID: this.id,
       },
@@ -1005,7 +1005,7 @@ export class Server extends BaseClass {
 }
    */
   async deleteLogsTrigger(id: number) {
-    const trigger = await prisma.gm_server_logs_triggers.findFirst({
+    const trigger = await index.gm_server_logs_triggers.findFirst({
       where: {
         serverID: this.id,
         id,
@@ -1013,7 +1013,7 @@ export class Server extends BaseClass {
     });
 
     if (trigger) {
-      await prisma.gm_server_logs_triggers.delete({
+      await index.gm_server_logs_triggers.delete({
         where: {
           id,
           serverID: this.id,
@@ -1036,7 +1036,7 @@ export class Server extends BaseClass {
   ) {
     const newOperator = gm_server_logs_triggers_operator[operator as keyof typeof gm_server_logs_triggers_operator];
     const newAction = gm_server_logs_triggers_action[action as keyof typeof gm_server_logs_triggers_action];
-    const data = prisma.gm_server_logs_triggers.create({
+    const data = index.gm_server_logs_triggers.create({
       data: {
         serverID: this.id,
         action: newAction,
@@ -1065,7 +1065,7 @@ export class Server extends BaseClass {
   ) {
     const newOperator = gm_server_logs_triggers_operator[operator as keyof typeof gm_server_logs_triggers_operator];
     const newAction = gm_server_logs_triggers_action[action as keyof typeof gm_server_logs_triggers_action];
-    const data = await prisma.gm_server_logs_triggers.update({
+    const data = await index.gm_server_logs_triggers.update({
       where: {
         id,
         serverID: this.id,
@@ -1131,7 +1131,7 @@ export class Server extends BaseClass {
 
 export async function generateServerUniqueID() {
   const generatedID = generateToken(10);
-  const server = await prisma.gm_server.findFirst({
+  const server = await index.gm_server.findFirst({
     where: {
       id: generatedID,
     },
@@ -1141,7 +1141,7 @@ export async function generateServerUniqueID() {
 }
 
 export async function getServerFromID(serverID: string) {
-  const server = await prisma.gm_server.findFirst({
+  const server = await index.gm_server.findFirst({
     where: {
       id: serverID,
     },
@@ -1150,7 +1150,7 @@ export async function getServerFromID(serverID: string) {
 }
 
 export async function getServersFromDiscordGuildID(guildID: string) {
-  const servers = await prisma.gm_server.findMany({
+  const servers = await index.gm_server.findMany({
     where: {
       guild: guildID,
     },
@@ -1160,7 +1160,7 @@ export async function getServersFromDiscordGuildID(guildID: string) {
 
 export async function createServer(guildID: string) {
   const serverID = await generateServerUniqueID();
-  const server = await prisma.gm_server.create({
+  const server = await index.gm_server.create({
     data: {
       id: serverID,
       token: generateToken(16),
@@ -1171,12 +1171,12 @@ export async function createServer(guildID: string) {
 }
 
 export async function statusRoutine() {
-  const serversStatusChannel = await prisma.gm_status.findMany();
+  const serversStatusChannel = await index.gm_status.findMany();
 
   for (const statusChannel of serversStatusChannel) {
     const server = await getServerFromID(statusChannel.server);
     if (!server) {
-      await prisma.gm_status.delete({
+      await index.gm_status.delete({
         where: {
           server: statusChannel.server,
         },
@@ -1184,7 +1184,7 @@ export async function statusRoutine() {
       continue;
     }
 
-    const statusInfo = await prisma.gm_server_status.findFirst({
+    const statusInfo = await index.gm_server_status.findFirst({
       where: {
         id: server.getID(),
         updatedAt: {

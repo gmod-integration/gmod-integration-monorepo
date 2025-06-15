@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { gmodStoreConfig } from '../../config/index.js';
 import { gmLog } from '../../utils/logger.js';
 import { getUserFromSteamID64 } from '../../classes/v3/User.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 import { addNotification } from '../../utils/tools.js';
 import JSONbig from 'json-bigint';
 
@@ -52,7 +52,7 @@ export async function getUser(userID: string) {
 }
 
 export async function saveGmodStorePurchase(steamID64: string, userID: string, revoke: boolean) {
-  const gmGmodStorePurchases = await prisma.gm_gmodstore_purchases.findUnique({
+  const gmGmodStorePurchases = await index.gm_gmodstore_purchases.findUnique({
     where: {
       steamID64,
     },
@@ -75,7 +75,7 @@ export async function saveGmodStorePurchase(steamID64: string, userID: string, r
   }
 
   if (gmGmodStorePurchases) {
-    await prisma.gm_gmodstore_purchases.update({
+    await index.gm_gmodstore_purchases.update({
       where: {
         steamID64,
       },
@@ -85,7 +85,7 @@ export async function saveGmodStorePurchase(steamID64: string, userID: string, r
       },
     });
   } else {
-    await prisma.gm_gmodstore_purchases.create({
+    await index.gm_gmodstore_purchases.create({
       data: {
         steamID64,
         revoke,

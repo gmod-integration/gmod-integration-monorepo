@@ -1,7 +1,7 @@
 import { getUserFromDiscordID } from './User.js';
 import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels.js';
 import redis from '../../services/redis/index.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 export class PanelUser {
   public user: any;
@@ -43,7 +43,7 @@ export class PanelUser {
   }
 
   async isValidPanelToken(token: string) {
-    const tokens = await prisma.gm_panelToken.findMany({
+    const tokens = await index.gm_panelToken.findMany({
       where: {
         discordID: this.discordID,
         accessToken: token,
@@ -139,7 +139,7 @@ export class PanelUser {
 }
 
 export async function getPanelUserFromDiscordID(discordID: string) {
-  const panelInfo = await prisma.gm_panelToken.findFirst({
+  const panelInfo = await index.gm_panelToken.findFirst({
     where: {
       discordID: discordID,
       revoke: false,
@@ -152,7 +152,7 @@ export async function getPanelUserFromDiscordID(discordID: string) {
     },
   });
 
-  const discordInfo = await prisma.gm_discordToken.findFirst({
+  const discordInfo = await index.gm_discordToken.findFirst({
     where: {
       discordID: discordID,
     },

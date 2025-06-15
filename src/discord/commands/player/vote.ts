@@ -8,7 +8,7 @@ import { getTranslate } from '../../../utils/localizations.js';
 import { getServerList } from '../../../models/v3/serversModels.js';
 import { secToTime } from '../../utils/index.js';
 import { getServerFromID } from '../../../classes/v3/Server.js';
-import prisma from '../../../services/prisma/prisma.js';
+import index from '../../../services/prisma/index.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -28,7 +28,7 @@ export default {
     const user = interaction.user;
     const lang = interaction.guild.preferredLocale;
 
-    const lastVote = await prisma.gm_server_vote.findFirst({
+    const lastVote = await index.gm_server_vote.findFirst({
       where: {
         serverID: server,
         userID: user.id,
@@ -51,7 +51,7 @@ export default {
       }
     }
 
-    await prisma.gm_server_vote.create({
+    await index.gm_server_vote.create({
       data: {
         serverID: server,
         userID: user.id,

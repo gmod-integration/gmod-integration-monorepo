@@ -1,6 +1,6 @@
 import { badArgument } from '../../utils/tools.js';
 import { Request, Response } from 'express';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 export async function reportError(req: Request, res: Response) {
   let { error, stack, id, name, realm, uptime, count } = req.body;
@@ -24,7 +24,7 @@ export async function reportError(req: Request, res: Response) {
 
   stack = JSON.stringify(stack);
 
-  const luaError = await prisma.gm_server_errors.create({
+  const luaError = await index.gm_server_errors.create({
     data: {
       error,
       stack,

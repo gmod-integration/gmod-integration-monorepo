@@ -1,4 +1,4 @@
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 export class User {
   steamID64: string | null;
@@ -41,7 +41,7 @@ export class User {
 }
 
 export async function getUserFromSteamID64(steamID64: string) {
-  const user = await prisma.gm_user.findFirst({
+  const user = await index.gm_user.findFirst({
     where: {
       steam: steamID64,
     },
@@ -59,7 +59,7 @@ export async function getUserFromSteamID64(steamID64: string) {
 }
 
 export async function getUserFromDiscordID(discordID: string) {
-  const user = await prisma.gm_user.findFirst({
+  const user = await index.gm_user.findFirst({
     where: {
       id: discordID,
     },

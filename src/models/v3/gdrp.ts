@@ -2,7 +2,7 @@ import fs from 'fs';
 import { serverConfig } from '../../config/index.js';
 import archiver from 'archiver';
 import { gmLog } from '../../utils/logger.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 import { User } from '../../classes/v3/User.js';
 import { addNotification } from '../../utils/tools.js';
 import { getLogsByServerAndSteamIDList, getLogsCountByServerAndSteamIDList } from '../../database/gm_server_logs.js';
@@ -16,7 +16,7 @@ export async function getUserDataGRPD(user: User) {
     fs.mkdirSync('./gdpr-request');
   }
 
-  const request = await prisma.gm_users_data_request.create({
+  const request = await index.gm_users_data_request.create({
     data: {
       discordID,
       status: 'pending',
@@ -31,7 +31,7 @@ export async function getUserDataGRPD(user: User) {
   if (discordID) {
     let userData: any = {};
     userData.discordUser =
-      (await prisma.gm_user.findUnique({
+      (await index.gm_user.findUnique({
         where: {
           id: discordID,
         },
@@ -50,13 +50,13 @@ export async function getUserDataGRPD(user: User) {
       })) || {};
 
     userData.vote =
-      (await prisma.gm_server_vote.findMany({
+      (await index.gm_server_vote.findMany({
         where: {
           userID: discordID,
         },
       })) || {};
 
-    userData.ban = await prisma.banUsers.findMany({
+    userData.ban = await index.banUsers.findMany({
       where: {
         discordID,
       },
@@ -68,7 +68,7 @@ export async function getUserDataGRPD(user: User) {
   if (steamID64) {
     let userData: any = {};
     userData.steamUser =
-      (await prisma.gm_user_steam.findUnique({
+      (await index.gm_user_steam.findUnique({
         where: {
           steam_id: steamID64,
         },
@@ -86,7 +86,7 @@ export async function getUserDataGRPD(user: User) {
         },
       })) || {};
 
-    userData.userWarn = await prisma.gm_server_warn.findMany({
+    userData.userWarn = await index.gm_server_warn.findMany({
       where: {
         OR: [
           {
@@ -99,19 +99,19 @@ export async function getUserDataGRPD(user: User) {
       },
     });
 
-    userData.user = await prisma.users.findMany({
+    userData.user = await index.users.findMany({
       where: {
         steamID64,
       },
     });
 
-    userData.gmodStore = await prisma.gm_gmodstore_purchases.findMany({
+    userData.gmodStore = await index.gm_gmodstore_purchases.findMany({
       where: {
         steamID64,
       },
     });
 
-    userData.ban = await prisma.banUsers.findMany({
+    userData.ban = await index.banUsers.findMany({
       where: {
         steamID64,
       },
@@ -182,7 +182,7 @@ export async function getUserDataGRPD(user: User) {
 
   request.downloadLink = `${serverConfig.domain}/gdpr-request/${request.id}`;
   request.status = 'ready';
-  await prisma.gm_users_data_request.update({
+  await index.gm_users_data_request.update({
     where: {
       id: request.id,
     },

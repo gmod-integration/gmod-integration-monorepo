@@ -3,7 +3,7 @@ import { getRandomDiscordRelay } from '../../utils/tools.js';
 import { discordConfig } from '../../config/index.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 import { gm_server_sync_chat_filter, gm_server_sync_chat_filter_element } from '@prisma/client';
 
 export async function sendPlayerSay(server: Server, player: PlayerGmod, text: string, onlyTeam: boolean) {
@@ -158,7 +158,7 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
 }
 
 export async function saveConnectionGlobalInfo(steamID64: string, steamID: string, IP: string, name: string) {
-  const user = await prisma.users.findFirst({
+  const user = await index.users.findFirst({
     where: {
       steamID64: steamID64,
     },
@@ -178,7 +178,7 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
     }
     if (!IPArray.includes(IP)) IPArray.push(IP);
 
-    await prisma.users.update({
+    await index.users.update({
       where: {
         steamID64: steamID64,
       },
@@ -189,7 +189,7 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
       },
     });
   } else {
-    await prisma.users.create({
+    await index.users.create({
       data: {
         steamID64: steamID64,
         steamID: steamID,
@@ -203,14 +203,14 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
 
 export async function saveConnectionSteamInfo(steamID64: string, name: string, IP: string) {
   try {
-    const player = await prisma.gm_user_steam.findFirst({
+    const player = await index.gm_user_steam.findFirst({
       where: {
         steam_id: steamID64,
       },
     });
 
     if (player) {
-      await prisma.gm_user_steam.update({
+      await index.gm_user_steam.update({
         where: {
           steam_id: steamID64,
         },
@@ -221,7 +221,7 @@ export async function saveConnectionSteamInfo(steamID64: string, name: string, I
         },
       });
     } else {
-      await prisma.gm_user_steam.create({
+      await index.gm_user_steam.create({
         data: {
           steam_id: steamID64,
           username: name,

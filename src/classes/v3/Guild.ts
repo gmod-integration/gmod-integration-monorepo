@@ -13,7 +13,7 @@ import {
   Guild as DiscordGuild,
   MessageActionRowComponentBuilder,
 } from 'discord.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 import { User } from './User.js';
 
 const guildSettings: Record<string, any> = {
@@ -41,7 +41,7 @@ export class Guild {
   }
 
   async getAllSettings() {
-    const settings = await prisma.gm_guild_settings.findMany({
+    const settings = await index.gm_guild_settings.findMany({
       where: {
         guildID: this.id,
       },
@@ -65,7 +65,7 @@ export class Guild {
   }
 
   async canCheckVerif() {
-    const guildInfo = await prisma.gm_guild.findFirst({
+    const guildInfo = await index.gm_guild.findFirst({
       where: {
         guild: this.id,
       },
@@ -75,7 +75,7 @@ export class Guild {
       return false;
     }
 
-    const lastCheck = await prisma.gm_guild_verification_check.findFirst({
+    const lastCheck = await index.gm_guild_verification_check.findFirst({
       where: {
         guildID: this.id,
       },
@@ -110,7 +110,7 @@ export class Guild {
       return JSON.parse(redisData);
     }
 
-    const result = await prisma.gm_guild_settings.findFirst({
+    const result = await index.gm_guild_settings.findFirst({
       where: {
         guildID: this.id,
         setting,
@@ -135,7 +135,7 @@ export class Guild {
   }
 
   async getOrCreateChannelWebhook(channelID: string) {
-    const dbWebhook = await prisma.gm_guild_webooks.findFirst({
+    const dbWebhook = await index.gm_guild_webooks.findFirst({
       where: {
         guild: this.id,
         channelID,
@@ -157,7 +157,7 @@ export class Guild {
         avatar: discordConfig.gmodIntegrationLogo,
       });
 
-      await prisma.gm_guild_webooks.create({
+      await index.gm_guild_webooks.create({
         data: {
           guild: this.id,
           channelID,
@@ -190,7 +190,7 @@ export class Guild {
       throw new Error('Invalid value');
     }
 
-    const result = await prisma.gm_guild_settings.findFirst({
+    const result = await index.gm_guild_settings.findFirst({
       where: {
         guildID: this.id,
         setting,
@@ -200,7 +200,7 @@ export class Guild {
     value = value.toString();
 
     if (result) {
-      await prisma.gm_guild_settings.update({
+      await index.gm_guild_settings.update({
         where: {
           guildID_setting: {
             guildID: this.id,
@@ -212,7 +212,7 @@ export class Guild {
         },
       });
     } else {
-      await prisma.gm_guild_settings.create({
+      await index.gm_guild_settings.create({
         data: {
           guildID: this.id,
           setting,
@@ -264,7 +264,7 @@ export class Guild {
     if (!botInstance || !botInstance.user) throw new Error('Bot client not found');
     const isCustom = botInstance.user!.id !== discordConfig.clientID;
 
-    const activeGuild = await prisma.gm_gmodstore_purchases.findFirst({
+    const activeGuild = await index.gm_gmodstore_purchases.findFirst({
       where: {
         guild: this.id,
         revoke: false,
@@ -273,7 +273,7 @@ export class Guild {
 
     let purchased = false;
     if (user.steamID64) {
-      const hasPurchase = await prisma.gm_gmodstore_purchases.findFirst({
+      const hasPurchase = await index.gm_gmodstore_purchases.findFirst({
         where: {
           steamID64: user.steamID64,
         },
@@ -311,7 +311,7 @@ export class Guild {
   }
 
   async updateBotInstanceToken(newToken: string) {
-    const botInstanceData = await prisma.gm_gmodstore_purchases.findFirst({
+    const botInstanceData = await index.gm_gmodstore_purchases.findFirst({
       where: {
         guild: this.id,
         revoke: false,
@@ -319,7 +319,7 @@ export class Guild {
     });
 
     if (!botInstanceData) throw new Error('Bot client not found');
-    await prisma.gm_gmodstore_purchases.update({
+    await index.gm_gmodstore_purchases.update({
       where: {
         steamID64: botInstanceData.steamID64,
       },
@@ -364,7 +364,7 @@ export class Guild {
   }
 
   async getLinks() {
-    return prisma.gm_server_links.findMany({
+    return index.gm_server_links.findMany({
       where: {
         guild: this.id,
       },
@@ -373,7 +373,7 @@ export class Guild {
 
   async getLink(linkID: number | string) {
     if (typeof linkID === 'string') linkID = parseInt(linkID);
-    return prisma.gm_server_links.findFirst({
+    return index.gm_server_links.findFirst({
       where: {
         guild: this.id,
         id: linkID,
@@ -383,7 +383,7 @@ export class Guild {
 
   async deleteLink(linkID: number | string) {
     if (typeof linkID === 'string') linkID = parseInt(linkID);
-    return prisma.gm_server_links.delete({
+    return index.gm_server_links.delete({
       where: {
         id: linkID,
         guild: this.id,
@@ -392,7 +392,7 @@ export class Guild {
   }
 
   async createNewLink() {
-    return prisma.gm_server_links.create({
+    return index.gm_server_links.create({
       data: {
         guild: this.id,
       },
@@ -400,7 +400,7 @@ export class Guild {
   }
 
   async getVerificationRoles() {
-    return prisma.gm_guild_verify_role.findMany({
+    return index.gm_guild_verify_role.findMany({
       where: {
         guildID: this.id,
       },
@@ -408,7 +408,7 @@ export class Guild {
   }
 
   async getVerificationRole(roleID: string) {
-    return prisma.gm_guild_verify_role.findFirst({
+    return index.gm_guild_verify_role.findFirst({
       where: {
         guildID: this.id,
         roleID,
@@ -417,7 +417,7 @@ export class Guild {
   }
 
   async createVerificationRole(roleID: string) {
-    return prisma.gm_guild_verify_role.create({
+    return index.gm_guild_verify_role.create({
       data: {
         guildID: this.id,
         roleID,
@@ -455,12 +455,12 @@ export async function getDiscordEntitlements() {
 
 export async function isGuildPremium(guildID: string): Promise<boolean> {
   if (
-    (await prisma.gm_guild_premium.findFirst({
+    (await index.gm_guild_premium.findFirst({
       where: {
         guildID,
       },
     })) ||
-    (await prisma.gm_gmodstore_purchases.findFirst({
+    (await index.gm_gmodstore_purchases.findFirst({
       where: {
         guild: guildID,
         revoke: false,

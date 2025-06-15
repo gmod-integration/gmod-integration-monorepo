@@ -1,4 +1,4 @@
-import prisma from '../services/prisma/prisma.js';
+import index from '../services/prisma/index.js';
 import { serverConfig } from '../config/index.js';
 
 const testConfig = {
@@ -16,7 +16,7 @@ const testConfig = {
   },
 };
 
-const userToken = await prisma.gm_panelToken.findFirst({
+const userToken = await index.gm_panelToken.findFirst({
   where: {
     discordID: testConfig.user.discordID,
   },

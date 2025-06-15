@@ -1,7 +1,7 @@
 import { badArgument } from '../../utils/tools.js';
 import { saveScreenshot, sendScreenshotToDiscord } from '../../models/v3/clientsModels.js';
 import { Request, Response } from 'express';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 export async function uploadScreenshot(req: Request, res: Response) {
   const server = req.server!;
@@ -57,7 +57,7 @@ export async function reportBugs(req: Request, res: Response) {
   }
 
   res.status(200).json(
-    await prisma.gm_server_report_bugs.create({
+    await index.gm_server_report_bugs.create({
       data: {
         serverID: server.id,
         steamID64: player.steamID64,

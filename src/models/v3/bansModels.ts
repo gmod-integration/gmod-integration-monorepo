@@ -1,7 +1,7 @@
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 export async function isGlobalBanIP(IP: string) {
-  return prisma.banUsers.findFirst({
+  return index.banUsers.findFirst({
     where: {
       ip: IP,
     },
@@ -9,7 +9,7 @@ export async function isGlobalBanIP(IP: string) {
 }
 
 export function isGlobalBanSteamID64(steamID64: string) {
-  return prisma.banUsers.findFirst({
+  return index.banUsers.findFirst({
     where: {
       steamID64,
     },
@@ -17,7 +17,7 @@ export function isGlobalBanSteamID64(steamID64: string) {
 }
 
 export function isGlobalBanDiscordID(discordID: string) {
-  return prisma.banUsers.findFirst({
+  return index.banUsers.findFirst({
     where: {
       discordID,
     },

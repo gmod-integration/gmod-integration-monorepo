@@ -6,7 +6,7 @@ import { discordConfig } from '../../config/index.js';
 import { generateToken } from '../../utils/tools.js';
 import { wsSendToServer } from '../../websockets/index.js';
 import redis from '../../services/redis/index.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 import { Guild, GuildMember } from 'discord.js';
 import { PanelUser } from '../../classes/v3/PanelUser.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -120,14 +120,14 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
 }
 
 export async function updateGuildStat(guild: Guild) {
-  let guildDB = await prisma.gm_guild.findUnique({
+  let guildDB = await index.gm_guild.findUnique({
     where: {
       guild: guild.id,
     },
   });
 
   if (!guildDB) {
-    await prisma.gm_guild.create({
+    await index.gm_guild.create({
       data: {
         guild: guild.id,
         name: guild.name,
@@ -136,7 +136,7 @@ export async function updateGuildStat(guild: Guild) {
       },
     });
   } else {
-    await prisma.gm_guild.update({
+    await index.gm_guild.update({
       where: {
         guild: guild.id,
       },
@@ -151,7 +151,7 @@ export async function updateGuildStat(guild: Guild) {
 }
 
 export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
-  const roles = await prisma.gm_guild_auto_roles.findMany({
+  const roles = await index.gm_guild_auto_roles.findMany({
     where: {
       guildID: guild.id,
     },
@@ -164,7 +164,7 @@ export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
   for (const roleData of roles) {
     const roleDiscord = guild.roles.cache.get(roleData.roleID);
     if (!roleDiscord) {
-      await prisma.gm_guild_auto_roles.delete({
+      await index.gm_guild_auto_roles.delete({
         where: {
           roleID: roleData.roleID,
           guildID: guild.id,
@@ -181,7 +181,7 @@ export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
 }
 
 export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
-  const role = await prisma.gm_guild_verify_role.findMany({
+  const role = await index.gm_guild_verify_role.findMany({
     where: {
       guildID: guild.id,
     },
@@ -194,7 +194,7 @@ export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
   for (const roleData of role) {
     const roleDiscord = guild.roles.cache.get(roleData.roleID);
     if (!roleDiscord) {
-      await prisma.gm_guild_verify_role.delete({
+      await index.gm_guild_verify_role.delete({
         where: {
           id: roleData.id,
         },
@@ -229,7 +229,7 @@ export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
   const permGuilds = await panelUser.findGuildsWithPerms();
   const permGuildsID = permGuilds.map((guild) => guild.id);
 
-  const rows = await prisma.gm_guild.findMany({
+  const rows = await index.gm_guild.findMany({
     where: {
       guild: {
         in: permGuildsID,
@@ -308,7 +308,7 @@ export async function getUserTokenFromRefreshToken(refreshToken: string) {
 }
 
 export async function refreshUserToken(discordID: string) {
-  const discordToken = await prisma.gm_discordToken.findFirst({
+  const discordToken = await index.gm_discordToken.findFirst({
     where: {
       discordID,
     },
@@ -321,7 +321,7 @@ export async function refreshUserToken(discordID: string) {
   const token = await getUserTokenFromRefreshToken(discordToken.refreshToken);
   if (!token) {
     // delete discord token
-    await prisma.gm_discordToken.delete({
+    await index.gm_discordToken.delete({
       where: {
         discordID,
       },
@@ -329,7 +329,7 @@ export async function refreshUserToken(discordID: string) {
     return null;
   }
 
-  await prisma.gm_discordToken.update({
+  await index.gm_discordToken.update({
     where: {
       discordID,
     },
@@ -347,7 +347,7 @@ export async function refreshUserToken(discordID: string) {
 // every 30 seconds check if we need to refresh discord tokens
 setInterval(async () => {
   // get a list of all discord tokens where expiration date is less than 1 day from now
-  const discordTokens = await prisma.gm_discordToken.findMany({
+  const discordTokens = await index.gm_discordToken.findMany({
     where: {
       expirationDate: {
         lte: new Date(Date.now() + 60 * 60 * 24 * 1000),
@@ -378,21 +378,21 @@ export async function getUserFromToken(token: string) {
 }
 
 export async function saveUser(id: string, username: string) {
-  const user = await prisma.gm_user.findFirst({
+  const user = await index.gm_user.findFirst({
     where: {
       id,
     },
   });
 
   if (!user) {
-    await prisma.gm_user.create({
+    await index.gm_user.create({
       data: {
         id,
         username,
       },
     });
   } else {
-    await prisma.gm_user.update({
+    await index.gm_user.update({
       where: {
         id,
       },
@@ -406,14 +406,14 @@ export async function saveUser(id: string, username: string) {
 }
 
 export async function saveUserPanel(discordID: string, discordUserToken: any, sessionData: any) {
-  const discordToken = await prisma.gm_discordToken.findFirst({
+  const discordToken = await index.gm_discordToken.findFirst({
     where: {
       discordID,
     },
   });
 
   if (!discordToken) {
-    await prisma.gm_discordToken.create({
+    await index.gm_discordToken.create({
       data: {
         discordID,
         accessToken: discordUserToken.access_token,
@@ -423,7 +423,7 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
       },
     });
   } else {
-    await prisma.gm_discordToken.update({
+    await index.gm_discordToken.update({
       where: {
         discordID,
       },
@@ -438,7 +438,7 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
 
   const panelAccessToken = generateToken(32);
 
-  await prisma.gm_panelToken.create({
+  await index.gm_panelToken.create({
     data: {
       id: uuidv4(),
       discordID,
@@ -512,7 +512,7 @@ export async function givePremiumRoleOfMainGuild() {
     const guild = mainClient.guilds.cache.get(discordConfig.guildID!);
     if (!guild) return;
 
-    const gmodStoreBuyers = await prisma.gm_gmodstore_purchases.findMany();
+    const gmodStoreBuyers = await index.gm_gmodstore_purchases.findMany();
     if (!gmodStoreBuyers || gmodStoreBuyers.length === 0) return;
 
     let subscriptionBuyers: any = [];

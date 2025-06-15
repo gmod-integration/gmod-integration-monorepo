@@ -1,6 +1,6 @@
 import { gmLog } from '../../utils/logger.js';
 import { GuildChannel } from 'discord.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 export default {
   name: 'channelCreate',
@@ -8,7 +8,7 @@ export default {
     const guild = channel.guild;
     gmLog('event', `Channel created in guild: ${guild.name}`);
 
-    const notVerifiedRole = await prisma.gm_role_auto.findFirst({
+    const notVerifiedRole = await index.gm_role_auto.findFirst({
       where: {
         guild: guild.id,
       },

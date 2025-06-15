@@ -1,6 +1,6 @@
 import { getTranslate } from '../../utils/localizations.js';
 import { Server } from '../../classes/v3/Server.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 import { JSDOM } from 'jsdom';
 import * as d3 from 'd3';
 import sharp from 'sharp';
@@ -71,7 +71,7 @@ export function secToTime(sec: number, precision: number = -1) {
 
 async function getServerData(serverID: string, duration = 24 * 60 * 60, interval = 60) {
   const now = Date.now();
-  const data = await prisma.gm_server_status_history.findMany({
+  const data = await index.gm_server_status_history.findMany({
     where: {
       createdAt: {
         gte: new Date(now - duration * 1000),
@@ -117,7 +117,7 @@ export async function getServerChart(server: Server) {
 
   const data = await getServerData(server.getID(), 24 * 60 * 60, 480);
 
-  const maxPlayers = await prisma.gm_server_status.findFirst({
+  const maxPlayers = await index.gm_server_status.findFirst({
     where: {
       id: server.getID(),
     },
@@ -245,7 +245,7 @@ export async function playerConnectionChart(
 
   const focusStat = stat as chartPlayerD3;
 
-  const last7days = await prisma.gm_server_stat_session.findMany({
+  const last7days = await index.gm_server_stat_session.findMany({
     where: {
       serverID: server.getID(),
       steamID64: steamID64,
@@ -316,7 +316,7 @@ export async function playerConnectionChart(
   const svg = body.append('svg').attr('width', width).attr('height', height);
 
   // (Optional) fetch the player's name
-  const playerInfo = await prisma.gm_server_stat.findFirst({
+  const playerInfo = await index.gm_server_stat.findFirst({
     where: {
       server_id: server.getID(),
       steam_id: steamID64,
@@ -437,7 +437,7 @@ export async function playerConnectionChart(
 
 export async function playerTeamTimeChat(server: Server, steamID64: string, lang: string = 'en', duration: number = 7) {
   // First, group by team and sum the time
-  const rawGroupedData = await prisma.gm_server_stat_team_time.groupBy({
+  const rawGroupedData = await index.gm_server_stat_team_time.groupBy({
     by: ['team'],
     where: {
       serverID: server.getID(),
@@ -460,7 +460,7 @@ export async function playerTeamTimeChat(server: Server, steamID64: string, lang
     time: row._sum.time ?? 0, // default to 0 if null
   }));
 
-  const user = await prisma.gm_server_stat.findFirst({
+  const user = await index.gm_server_stat.findFirst({
     where: {
       server_id: server.getID(),
       steam_id: steamID64,

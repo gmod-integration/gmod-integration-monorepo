@@ -3,7 +3,7 @@ import { ActivityType } from 'discord.js';
 import { statusRoutine } from '../../classes/v3/Server.js';
 import { getMainClient } from '../../discord/index.js';
 import { givePremiumRoleOfMainGuild } from './discordModels.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 import { lastGmodIntegrationTag } from '../../utils/tools.js';
 
 export async function getStats() {
@@ -13,18 +13,18 @@ export async function getStats() {
     return JSON.parse(redisStat);
   }
 
-  const usersCount = await prisma.users.count();
+  const usersCount = await index.users.count();
   const memberCount =
     (
-      await prisma.gm_guild.aggregate({
+      await index.gm_guild.aggregate({
         _sum: {
           member: true,
         },
       })
     )._sum.member || 0;
-  const guildCount = await prisma.gm_guild.count();
-  const serverCount = await prisma.gm_server.count();
-  const verifiedUserCount = await prisma.gm_user.count({
+  const guildCount = await index.gm_guild.count();
+  const serverCount = await index.gm_server.count();
+  const verifiedUserCount = await index.gm_user.count({
     where: {
       steam: {
         not: null,

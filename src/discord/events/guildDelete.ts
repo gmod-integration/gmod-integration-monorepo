@@ -2,7 +2,7 @@ import { gmLog } from '../../utils/logger.js';
 import { discordConfig } from '../../config/index.js';
 import { getGuildClient, killGuildClient } from '../index.js';
 import { Guild } from 'discord.js';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 
 export default {
   name: 'guildDelete',
@@ -23,28 +23,28 @@ export default {
       }
     }
 
-    const oldGuild = await prisma.gm_guild.findFirst({
+    const oldGuild = await index.gm_guild.findFirst({
       where: {
         guild: guild.id,
       },
     });
 
     if (oldGuild) {
-      await prisma.gm_guild.delete({
+      await index.gm_guild.delete({
         where: {
           guild: guild.id,
         },
       });
     }
 
-    const purchase = await prisma.gm_gmodstore_purchases.findFirst({
+    const purchase = await index.gm_gmodstore_purchases.findFirst({
       where: {
         guild: guild.id,
       },
     });
 
     if (purchase) {
-      await prisma.gm_gmodstore_purchases.update({
+      await index.gm_gmodstore_purchases.update({
         where: {
           steamID64: purchase.steamID64,
         },

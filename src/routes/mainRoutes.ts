@@ -4,7 +4,7 @@ import v3Routes from './v3/_v3Routes.js';
 import steamRoutes from './steamRoutes.js';
 import fs from 'fs';
 import asyncHandler from '../middleware/asyncHandler.js';
-import prisma from '../services/prisma/prisma.js';
+import index from '../services/prisma/index.js';
 
 const router = express.Router();
 
@@ -16,7 +16,7 @@ router.use(
     let { uuid } = req.params;
     if (!code) return res.status(400).json({ error: 'missing_code' });
 
-    const request = await prisma.gm_users_data_request.findFirst({
+    const request = await index.gm_users_data_request.findFirst({
       where: {
         code: code as string,
         id: uuid,

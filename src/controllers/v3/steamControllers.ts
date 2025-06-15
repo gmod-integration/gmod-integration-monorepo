@@ -2,7 +2,7 @@ import { serverConfig } from '../../config/index.js';
 import axios from 'axios';
 import { gmLog } from '../../utils/logger.js';
 import { NextFunction, Request, Response } from 'express';
-import prisma from '../../services/prisma/prisma.js';
+import index from '../../services/prisma/index.js';
 import { removeDiscordSync, removeServerSync } from '../../classes/v3/PlayerGmod.js';
 import { verifyUser } from '../../models/v3/discordModels.js';
 import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
@@ -38,7 +38,7 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
     return;
   }
 
-  const user = await prisma.gm_user.findFirst({
+  const user = await index.gm_user.findFirst({
     where: {
       token: verificationCode as string,
       token_expires: {
@@ -70,7 +70,7 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
     if (verificationResponse.data.includes('is_valid:true')) {
       const steamID64 = (req.query['openid.claimed_id'] as string)?.split('/').pop();
 
-      const usersWithSteam = await prisma.gm_user.findMany({
+      const usersWithSteam = await index.gm_user.findMany({
         where: {
           steam: steamID64,
         },
@@ -84,7 +84,7 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
           continue; // Skip the user if it's the same as the one we're updating
         }
 
-        await prisma.gm_users_transfers.create({
+        await index.gm_users_transfers.create({
           data: {
             oldSteamID64: userWithSteam.steam ?? '',
             newSteamID64: steamID64,
@@ -109,7 +109,7 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
           await removeServerSync(userWithSteam.steam);
         }
 
-        await prisma.gm_user.update({
+        await index.gm_user.update({
           where: {
             id: userWithSteam.id,
           },
@@ -119,7 +119,7 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
         });
       }
 
-      await prisma.gm_user.update({
+      await index.gm_user.update({
         where: {
           id: user.id,
         },
@@ -135,7 +135,7 @@ export async function steamVerificationReturn(req: Request, res: Response): Prom
       if (panelUser) {
         const guilds = await panelUser.findGuilds();
         for (const aGuild of guilds) {
-          const dbGuild = await prisma.gm_guild.findFirst({
+          const dbGuild = await index.gm_guild.findFirst({
             where: {
               guild: aGuild.id,
             },
