@@ -3,6 +3,7 @@ import { createServer, getServersFromDiscordGuildID, Server } from '../../classe
 import { ConfigDiscord } from '../../classes/config/Config.js';
 import {
   addAutoRoleToUser,
+  addUserToGuild,
   getDiscordUserFromID,
   getUserFromToken,
   getUserTokenFromCode,
@@ -147,13 +148,13 @@ export async function oauthLogin(req: Request, res: Response) {
   }
 
   // I remove the auto join guild feature if uncomment also update perm here: getUserTokenFromCode
-  // await addUserToGuild(discordConfig.guildID, discordUser.id, discordUserToken.access_token)
-  //   .then(() => {
-  //     console.log('User added to guild');
-  //   })
-  //   .catch((error) => {
-  //     console.error(error);
-  //   });
+  await addUserToGuild(ConfigDiscord.guildID, discordUser.id, discordUserToken.access_token)
+    .then(() => {
+      console.log('User added to guild');
+    })
+    .catch((error) => {
+      console.error(error);
+    });
 
   const userIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   const userCountry = req.headers['cf-ipcountry'] || 'XX';
