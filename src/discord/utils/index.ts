@@ -200,7 +200,7 @@ export async function getServerChart(server: Server) {
   await redis.set(key, true, 'EX', 60 * 4);
   const pngImg = await sharp(Buffer.from(svgString)).png().toBuffer();
 
-  const rst = await s3
+  await s3
     .send(
       new PutObjectCommand({
         Bucket: 'gmi-servers-status',
