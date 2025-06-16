@@ -8,8 +8,9 @@ import { getLogsBySteamIDList, getLogsCountBySteamIDList } from '../../database/
 import path from 'path';
 import * as os from 'node:os';
 import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import prisma from '../../services/prisma/index.js';
+import { Readable } from 'node:stream';
 
 export async function getUserDataGRPD(user: User) {
   const discordID = user.getDiscordID();
@@ -40,6 +41,17 @@ export async function getUserDataGRPD(user: User) {
         })) || {},
       vote: (await prisma.gm_server_vote.findMany({ where: { userID: discordID } })) || {},
       ban: (await prisma.banUsers.findMany({ where: { discordID } })) || {},
+      accountTransfers: await prisma.gm_users_transfers.findMany({
+        where: {
+          OR: [{ oldDiscordID: discordID }, { newDiscordID: discordID }],
+        },
+      }),
+      notifications: await prisma.gm_users_notifications.findMany({
+        where: { discordID },
+      }),
+      dataRequest: await prisma.gm_users_data_request.findMany({
+        where: { discordID },
+      }),
     };
 
     fs.writeFileSync(`${tempPath}/discord.json`, JSON.stringify(userData));
@@ -63,10 +75,38 @@ export async function getUserDataGRPD(user: User) {
       user: await prisma.users.findMany({ where: { steamID64 } }),
       gmodStore: await prisma.gm_gmodstore_purchases.findMany({ where: { steamID64 } }),
       ban: await prisma.banUsers.findMany({ where: { steamID64 } }),
+      screenshots: await prisma.gm_server_screenshots.findMany({
+        where: {
+          url: {
+            contains: steamID64,
+          },
+        },
+      }),
+      sessions: await prisma.gm_server_stat_session.findMany({
+        where: {
+          steamID64,
+        },
+      }),
+      warns: await prisma.gm_server_warn.findMany({
+        where: {
+          OR: [{ userSteamID64: steamID64 }, { adminSteamID64: steamID64 }],
+        },
+      }),
+      accountTransfers: await prisma.gm_users_transfers.findMany({
+        where: {
+          OR: [{ oldSteamID64: steamID64 }, { newSteamID64: steamID64 }],
+        },
+      }),
+      reportBugs: await prisma.gm_server_report_bugs.findMany({
+        where: {
+          steamID64,
+        },
+      }),
     };
 
     fs.writeFileSync(`${tempPath}/steam.json`, JSON.stringify(userData));
 
+    //  Server logs
     try {
       const serverLogCount = await getLogsCountBySteamIDList([steamID64]);
       const limit = 1000;
@@ -94,6 +134,77 @@ export async function getUserDataGRPD(user: User) {
     } catch (error) {
       console.error('Error fetching server logs:', error);
     }
+
+    // Error
+    try {
+      const plyErrorsCount = await prisma.gm_server_errors.count({
+        where: {
+          steamID64,
+        },
+      });
+
+      const limit = 1000;
+      let offset = 0;
+      let fileIndex = 1;
+      const totalFiles = Math.ceil(plyErrorsCount / limit);
+
+      while (offset < plyErrorsCount) {
+        const errorLogs = await prisma.gm_server_errors.findMany({
+          where: {
+            steamID64,
+          },
+          take: limit,
+          skip: offset,
+        });
+
+        const stream = fs.createWriteStream(`${tempPath}/steam-errors-${fileIndex}-${totalFiles}.json`);
+
+        stream.write('[');
+        for (let i = 0; i < errorLogs.length; i++) {
+          if (i !== 0) stream.write(',');
+          stream.write(JSON.stringify(errorLogs[i]));
+        }
+        stream.write(']');
+        stream.end();
+
+        await new Promise<void>((resolve) => stream.on('finish', () => resolve()));
+
+        offset += limit;
+        fileIndex++;
+      }
+    } catch (error) {
+      console.error('Error fetching error logs:', error);
+    }
+
+    // Screenshots
+    const screenshotsPath = path.join(tempPath, 'screenshots');
+    fs.mkdirSync(screenshotsPath, { recursive: true });
+
+    // do a LIKE in the url: https://api-dev.gmod-integration.com/screenshots/2025-05-25_23-14-03_76561198219049673_1cd2d7dd-1ef3-434e-bb92-ff57984dc0ef.jpeg
+    const plyScreens = await prisma.gm_server_screenshots.findMany({
+      where: {
+        url: {
+          contains: steamID64,
+        },
+      },
+    });
+
+    for (const screen of plyScreens) {
+      const fileName = path.basename(screen.url);
+
+      const command = new GetObjectCommand({
+        Bucket: 'gmi-players-screenshots',
+        Key: fileName,
+      });
+      const response = await s3.send(command);
+      if (response.Body instanceof Readable) {
+        const fileStream = fs.createWriteStream(path.join(screenshotsPath, fileName));
+        response.Body.pipe(fileStream);
+        await new Promise<void>((resolve) => fileStream.on('finish', () => resolve()));
+      } else {
+        console.error(`Error: no stream returned for screenshot ${fileName}`);
+      }
+    }
   }
 
   const zipFilePath = path.join(baseTempPath, `${request.id}.zip`);
@@ -109,10 +220,22 @@ export async function getUserDataGRPD(user: User) {
   });
   archive.pipe(output);
 
-  const files = fs.readdirSync(tempPath);
-  for (const file of files) {
-    archive.file(path.join(tempPath, file), { name: file });
+  function addFilesRecursively(dir: string, archive: archiver.Archiver, baseDir: string) {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      const archivePath = path.relative(baseDir, fullPath);
+      if (entry.isDirectory()) {
+        addFilesRecursively(fullPath, archive, baseDir);
+        console.log(`Adding directory to archive: ${archivePath}`);
+      } else {
+        archive.file(fullPath, { name: archivePath });
+        console.log(`Adding file to archive: ${archivePath}`);
+      }
+    }
   }
+
+  addFilesRecursively(tempPath, archive, tempPath);
 
   await archive.finalize();
 
