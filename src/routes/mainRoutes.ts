@@ -5,10 +5,38 @@ import steamRoutes from './steamRoutes.js';
 import fs from 'fs';
 import asyncHandler from '../middleware/asyncHandler.js';
 import index from '../services/prisma/index.js';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { s3 } from '../services/minio/index.js';
+import { Readable } from 'node:stream';
 
 const router = express.Router();
 
-router.use('/screenshots', express.static('screenshots'));
+router.get('/screenshots/:filename', async (req, res) => {
+  const filename = req.params.filename;
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: 'gmi-players-screenshots',
+      Key: filename,
+    });
+
+    const response = await s3.send(command);
+
+    res.setHeader('Content-Type', response.ContentType || 'image/jpeg');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.status(200);
+
+    if (response.Body instanceof Readable) {
+      response.Body.pipe(res);
+    } else {
+      res.end('Error: no stream returned');
+    }
+  } catch (err) {
+    console.error('Error generating signed URL for screenshot:', err);
+    res.status(404).send('Screenshot not found');
+  }
+});
+
 router.use(
   '/gdpr-request/:uuid',
   asyncHandler(async (req: Request, res: Response) => {

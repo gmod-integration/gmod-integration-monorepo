@@ -1,5 +1,4 @@
 import { getRandomDiscordRelay } from '../../utils/tools.js';
-import fs from 'fs';
 import { ConfigDiscord, ConfigServer } from '../../classes/config/Config.js';
 import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
@@ -9,6 +8,8 @@ import { Server } from '../../classes/v3/Server.js';
 import index from '../../services/prisma/index.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import { getTranslate } from '../../utils/localizations.js';
+import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 
 export async function saveScreenshot(
   screenshot: string,
@@ -24,17 +25,21 @@ export async function saveScreenshot(
   // Save screenshot to be usable in the website
   const base64Data = screenshot.replace(/^data:image\/\w+;base64,/, '');
   const buffer = Buffer.from(base64Data, 'base64');
-
-  const path = `./screenshots/${filename}`;
   const internUrl = `${ConfigServer.domain}/screenshots/${filename}`;
-  fs.mkdirSync('./screenshots', { recursive: true });
-  fs.writeFile(path, buffer, (err) => {
-    if (err) {
-      console.error(err);
-    }
-  });
+  await createBucketIfNotExists('gmi-players-screenshots');
+  await s3
+    .send(
+      new PutObjectCommand({
+        Bucket: 'gmi-players-screenshots',
+        Key: filename,
+        Body: buffer,
+        ContentType: `image/${format}`,
+      }),
+    )
+    .catch((err) => {
+      console.error('Error uploading players screenshot to S3:', err);
+    });
 
-  // Send screenshot to discord to be usable in discord
   let discordUrl = '';
   const dscClient = await getMainClient();
   const channel = await dscClient.channels.fetch(ConfigServer.screenshotChannel!);
