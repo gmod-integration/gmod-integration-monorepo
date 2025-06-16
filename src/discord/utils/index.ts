@@ -5,8 +5,9 @@ import { JSDOM } from 'jsdom';
 import * as d3 from 'd3';
 import sharp from 'sharp';
 import redis from '../../services/redis/index.js';
-import fs from 'fs';
-import path from 'path';
+import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
+import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
+import { Readable } from 'node:stream';
 
 const trust_ranks: Record<number, string> = {
   0: 'dangerous',
@@ -106,17 +107,27 @@ async function getServerData(serverID: string, duration = 24 * 60 * 60, interval
 export async function getServerChart(server: Server) {
   const key = `server:${server.getID()}:chart`;
   const cacheChart = await redis.get(key);
-  const outputFilePath = path.resolve('./status_chart', `${server.getID()}.svg`);
 
-  if (cacheChart && fs.existsSync(outputFilePath)) {
-    console.log('Serving cached chart');
-    return await sharp(await fs.promises.readFile(outputFilePath))
-      .png()
-      .toBuffer();
+  try {
+    await createBucketIfNotExists('gmi-servers-status');
+    if (cacheChart) {
+      const resul = await s3.send(
+        new GetObjectCommand({
+          Bucket: 'gmi-servers-status',
+          Key: `${server.getID()}.png`,
+        }),
+      );
+      const chunks: Buffer[] = [];
+      for await (const chunk of resul.Body as Readable) {
+        chunks.push(chunk as Buffer);
+      }
+      return Buffer.concat(chunks);
+    }
+  } catch (err) {
+    console.error('Error fetching server chart from MinIO:', err);
   }
 
   const data = await getServerData(server.getID(), 24 * 60 * 60, 480);
-
   const maxPlayers = await index.gm_server_status.findFirst({
     where: {
       id: server.getID(),
@@ -132,11 +143,8 @@ export async function getServerChart(server: Server) {
 
   const dom = new JSDOM(`<!DOCTYPE html><html><body></body></html>`);
   const body = d3.select(dom.window.document).select('body');
-
-  // Create the SVG container
   const svg = body.append('svg').attr('width', width).attr('height', height);
 
-  // Define scales
   const xScale = d3
     .scaleTime()
     .domain(d3.extent(data, (d) => d.time) as [Date, Date])
@@ -155,7 +163,6 @@ export async function getServerChart(server: Server) {
     .curve(d3.curveMonotoneX); // Smooth curve
 
   const now = new Date();
-  // Define a flexible formatter for tick values
   const relativeTimeFormat = (domainValue: Date | d3.NumberValue): string => {
     const date = domainValue instanceof Date ? domainValue : new Date(+domainValue);
     const diffMs = date.getTime() - now.getTime();
@@ -164,19 +171,12 @@ export async function getServerChart(server: Server) {
     return `${diffHours > 0 ? '+' : ''}${diffHours}h`;
   };
 
-  // Append axes to the SVG
   svg
     .append('g')
     .attr('transform', `translate(0,${height - margin.bottom + 10})`)
     .attr('color', 'white')
     .call((g) => {
-      g.call(
-        d3
-          .axisBottom(xScale)
-          // Customize tick size and formatting
-          // .tickSize(4)
-          .tickFormat(relativeTimeFormat),
-      );
+      g.call(d3.axisBottom(xScale).tickFormat(relativeTimeFormat));
     })
     .style('font-size', '16px');
 
@@ -184,14 +184,10 @@ export async function getServerChart(server: Server) {
     .append('g')
     .attr('transform', `translate(${margin.left - 10},0)`)
     .attr('color', 'white')
-    .call(
-      d3.axisLeft(yScale),
-      //.tickSize(4)
-    )
+    .call(d3.axisLeft(yScale))
     .selectAll('text')
     .style('font-size', '16px');
 
-  // Add the line path
   svg
     .append('path')
     .datum(data)
@@ -201,23 +197,23 @@ export async function getServerChart(server: Server) {
     .attr('d', line);
 
   const svgString = (body.select('svg').node() as Element)?.outerHTML;
-
-  // Ensure the directory exists
-  await fs.promises.mkdir(path.resolve('./status_chart'), { recursive: true });
-
-  // Write to a temporary file
-  const tempFilePath = `${outputFilePath}.tmp`;
-  await fs.promises.writeFile(tempFilePath, svgString);
-
-  // Atomically rename the temporary file to the final file
-  await fs.promises.rename(tempFilePath, outputFilePath);
-  console.log('File updated successfully:', outputFilePath);
-
-  // Update Redis cache after writing the file
   await redis.set(key, true, 'EX', 60 * 4);
+  const pngImg = await sharp(Buffer.from(svgString)).png().toBuffer();
 
-  // Return the PNG conversion
-  return await sharp(Buffer.from(svgString)).png().toBuffer();
+  const rst = await s3
+    .send(
+      new PutObjectCommand({
+        Bucket: 'gmi-servers-status',
+        Key: `${server.getID()}.png`,
+        Body: pngImg,
+        ContentType: 'image/png',
+      }),
+    )
+    .catch((err) => {
+      console.error('Error uploading server chart to MinIO:', err);
+    });
+
+  return pngImg;
 }
 
 export type d3Data = {
@@ -238,6 +234,27 @@ export async function playerConnectionChart(
   stat: string = 'time',
   duration: number = 7,
 ) {
+  const key = `server:${server.getID()}:connection:${steamID64}:${stat}:${duration}`;
+  const cacheChart = await redis.get(key);
+  try {
+    await createBucketIfNotExists('gmi-servers-players-connection');
+    if (cacheChart) {
+      const resul = await s3.send(
+        new GetObjectCommand({
+          Bucket: 'gmi-servers-players-connection',
+          Key: `${server.getID()}:${steamID64}:${stat}:${duration}.png`,
+        }),
+      );
+      const chunks: Buffer[] = [];
+      for await (const chunk of resul.Body as Readable) {
+        chunks.push(chunk as Buffer);
+      }
+      return Buffer.concat(chunks);
+    }
+  } catch (err) {
+    console.error('Error fetching player connection chart from MinIO:', err);
+  }
+
   if (!steamID64 || !server) throw new Error('Missing parameters');
 
   const allowedStats: string[] = ['time', 'kills', 'deaths', 'kd', 'connections'];
@@ -432,10 +449,46 @@ export async function playerConnectionChart(
 
   // Convert the finished SVG to PNG
   const svgString = (body.select('svg').node() as Element)?.outerHTML;
-  return await sharp(Buffer.from(svgString)).png().toBuffer();
+  const pngImg = await sharp(Buffer.from(svgString)).png().toBuffer();
+  await redis.set(`server:${server.getID()}:connection:${steamID64}:${stat}:${duration}`, true, 'EX', 60 * 10);
+  await s3
+    .send(
+      new PutObjectCommand({
+        Bucket: 'gmi-servers-players-connection',
+        Key: `${server.getID()}:${steamID64}:${stat}:${duration}.png`,
+        Body: pngImg,
+        ContentType: 'image/png',
+      }),
+    )
+    .catch((err) => {
+      console.error('Error uploading player connection chart to MinIO:', err);
+    });
+  return pngImg;
 }
 
 export async function playerTeamTimeChat(server: Server, steamID64: string, lang: string = 'en', duration: number = 7) {
+  const key = `server:${server.getID()}:team-time:${steamID64}:${duration}`;
+  const cacheChart = await redis.get(key);
+
+  try {
+    await createBucketIfNotExists('gmi-servers-team-time');
+    if (cacheChart) {
+      const resul = await s3.send(
+        new GetObjectCommand({
+          Bucket: 'gmi-servers-players-team-time',
+          Key: `${server.getID()}:${steamID64}:${duration}.png`,
+        }),
+      );
+      const chunks: Buffer[] = [];
+      for await (const chunk of resul.Body as Readable) {
+        chunks.push(chunk as Buffer);
+      }
+      return Buffer.concat(chunks);
+    }
+  } catch (err) {
+    console.error('Error fetching team time chart from MinIO:', err);
+  }
+
   // First, group by team and sum the time
   const rawGroupedData = await index.gm_server_stat_team_time.groupBy({
     by: ['team'],
@@ -572,5 +625,19 @@ export async function playerTeamTimeChat(server: Server, steamID64: string, lang
 
   // Convert SVG to PNG and return buffer
   const svgString = (body.select('svg').node() as Element)?.outerHTML;
-  return await sharp(Buffer.from(svgString)).png().toBuffer();
+  const pngImg = await sharp(Buffer.from(svgString)).png().toBuffer();
+  await redis.set(key, true, 'EX', 60 * 10);
+  await s3
+    .send(
+      new PutObjectCommand({
+        Bucket: 'gmi-servers-players-team-time',
+        Key: `${server.getID()}:${steamID64}:${duration}.png`,
+        Body: pngImg,
+        ContentType: 'image/png',
+      }),
+    )
+    .catch((err) => {
+      console.error('Error uploading team time chart to MinIO:', err);
+    });
+  return pngImg;
 }
