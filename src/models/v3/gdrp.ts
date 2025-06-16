@@ -5,7 +5,7 @@ import { gmLog } from '../../utils/logger.js';
 import index from '../../services/prisma/index.js';
 import { User } from '../../classes/v3/User.js';
 import { addNotification } from '../../utils/tools.js';
-import { getLogsByServerAndSteamIDList, getLogsCountByServerAndSteamIDList } from '../../database/gm_server_logs.js';
+import { getLogsBySteamIDList, getLogsCountBySteamIDList } from '../../database/gm_server_logs.js';
 import path from 'path';
 import * as os from 'node:os';
 import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
@@ -120,13 +120,13 @@ export async function getUserDataGRPD(user: User) {
     fs.writeFileSync(`${tempPath}/steam.json`, JSON.stringify(userData, null, 2));
 
     try {
-      const serverLogCount = await getLogsCountByServerAndSteamIDList('serverID', [steamID64]);
+      const serverLogCount = await getLogsCountBySteamIDList([steamID64]);
 
       const limit = 1000;
       let offset = 0;
 
       while (offset < serverLogCount) {
-        const serverLogs = await getLogsByServerAndSteamIDList('serverID', [steamID64], {
+        const serverLogs = await getLogsBySteamIDList([steamID64], {
           limit,
           offset,
         });
@@ -192,7 +192,7 @@ export async function getUserDataGRPD(user: User) {
 
   request.downloadLink = `${ConfigServer.domain}/gdpr-request/${request.id}`;
   request.status = 'ready';
-  
+
   await index.gm_users_data_request.update({
     where: {
       id: request.id,

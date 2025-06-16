@@ -16,17 +16,15 @@ export async function addLog(log: Log) {
   await collection.insertOne(log);
 }
 
-export async function getLogsCountByServerAndSteamIDList(serverID: string, SteamIDS: string[]) {
+export async function getLogsCountBySteamIDList(SteamIDS: string[]) {
   return await collection.countDocuments({
-    serverID,
     playerInvolvedSteamID64: {
       $in: SteamIDS,
     },
   });
 }
 
-export async function getLogsByServerAndSteamIDList(
-  serverID: string,
+export async function getLogsBySteamIDList(
   SteamIDS: string[],
   options: {
     limit: number | 0;
@@ -35,7 +33,6 @@ export async function getLogsByServerAndSteamIDList(
 ) {
   return await collection
     .find({
-      serverID,
       playerInvolvedSteamID64: {
         $in: SteamIDS,
       },
