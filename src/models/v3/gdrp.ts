@@ -71,27 +71,26 @@ export async function getUserDataGRPD(user: User) {
       const serverLogCount = await getLogsCountBySteamIDList([steamID64]);
       const limit = 1000;
       let offset = 0;
-      const logsPath = `${tempPath}/steam-logs.json`;
-      const stream = fs.createWriteStream(logsPath);
-
-      stream.write('[\n');
-      let first = true;
+      let fileIndex = 1;
+      const totalFiles = Math.ceil(serverLogCount / limit);
 
       while (offset < serverLogCount) {
         const logs = await getLogsBySteamIDList([steamID64], { limit, offset });
+        const stream = fs.createWriteStream(`${tempPath}/steam-logs-${fileIndex}-${totalFiles}.json`);
 
-        for (const log of logs) {
-          if (!first) stream.write(',\n');
-          stream.write(JSON.stringify(log));
-          first = false;
+        stream.write('[\n');
+        for (let i = 0; i < logs.length; i++) {
+          if (i !== 0) stream.write(',\n');
+          stream.write(JSON.stringify(logs[i]));
         }
+        stream.write('\n]');
+        stream.end();
+
+        await new Promise<void>((resolve) => stream.on('finish', () => resolve()));
 
         offset += limit;
+        fileIndex++;
       }
-
-      stream.write('\n]');
-      stream.end();
-      await new Promise<void>((resolve) => stream.on('finish', () => resolve()));
     } catch (error) {
       console.error('Error fetching server logs:', error);
     }
