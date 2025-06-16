@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 import { getTranslate } from '../../../utils/localizations.js';
 import { ConfigServer } from '../../../classes/config/Config.js';
-import index from '../../../services/prisma/index.js';
+import prisma from '../../../services/prisma/index.js';
 
 export default {
   data: new SlashCommandBuilder()
@@ -26,7 +26,7 @@ export default {
     const linkID = interaction.options.getString('link');
     if (!linkID) return;
 
-    const linkInfo = await index.gm_server_links.findFirst({
+    const linkInfo = await prisma.gm_server_links.findFirst({
       where: {
         id: Number(linkID),
       },
@@ -64,7 +64,7 @@ export default {
     const focusedOption = interaction.options.getFocused(true);
     const choices: Record<string, string> = {};
 
-    const guildLinks = await index.gm_server_links.findMany({
+    const guildLinks = await prisma.gm_server_links.findMany({
       where: {
         guild: interaction.guild.id,
       },

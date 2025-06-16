@@ -1,5 +1,5 @@
 import { AutocompleteFocusedOption, AutocompleteInteraction } from 'discord.js';
-import index from '../../services/prisma/index.js';
+import prisma from '../../services/prisma/index.js';
 
 export async function getServerList(
   interaction: AutocompleteInteraction,
@@ -12,7 +12,7 @@ export async function getServerList(
     return [];
   }
 
-  const guildServers = await index.gm_server.findMany({
+  const guildServers = await prisma.gm_server.findMany({
     where: {
       guild: interaction.guildId,
     },

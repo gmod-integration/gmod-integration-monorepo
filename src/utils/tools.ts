@@ -1,6 +1,6 @@
 import { getEmojis } from 'unicode-emoji';
 import { ConfigServer } from '../classes/config/Config.js';
-import index from '../services/prisma/index.js';
+import prisma from '../services/prisma/index.js';
 import { Request, Response } from 'express';
 
 export function getRandomDiscordRelay() {
@@ -103,7 +103,7 @@ export function generateToken(length: number) {
 
 export async function addNotification(discordID: string, type: string, message: string) {
   // TODO send notification to websocket for webpanel user
-  await index.gm_users_notifications.create({
+  await prisma.gm_users_notifications.create({
     data: {
       discordID,
       type,

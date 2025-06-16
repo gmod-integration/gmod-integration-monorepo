@@ -1,6 +1,6 @@
 import { BaseClass } from './BaseClass.js';
 import { Team } from './Team.js';
-import index from '../../services/prisma/index.js';
+import prisma from '../../services/prisma/index.js';
 import { getUserFromDiscordID, getUserFromSteamID64 } from './User.js';
 import { getServerFromID, Server } from './Server.js';
 import redis from '../../services/redis/index.js';
@@ -142,7 +142,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
     if (!this.timeLastTeamChange || this.timeLastTeamChange === 0) return;
 
     try {
-      await index.gm_server_stat_team_time.create({
+      await prisma.gm_server_stat_team_time.create({
         data: {
           serverID,
           steamID64: this.steamID64,
@@ -162,7 +162,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
       const { connectTime, kills, deaths, customValues, userGroup, steamID64, name } = this;
       const customValuesString = JSON.stringify(customValues);
 
-      const player = await index.gm_server_stat.findFirst({
+      const player = await prisma.gm_server_stat.findFirst({
         where: {
           steam_id: steamID64,
           server_id: serverID,
@@ -170,7 +170,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
       });
 
       if (player) {
-        await index.gm_server_stat.update({
+        await prisma.gm_server_stat.update({
           where: {
             server_id_steam_id: {
               steam_id: steamID64,
@@ -187,7 +187,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
           },
         });
       } else {
-        await index.gm_server_stat.create({
+        await prisma.gm_server_stat.create({
           data: {
             steam_id: steamID64,
             server_id: serverID,
@@ -211,7 +211,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   async saveServerStatSession(serverID: string) {
     const { connectTime, deaths, kills, customValues, steamID64 } = this;
 
-    await index.gm_server_stat_session.create({
+    await prisma.gm_server_stat_session.create({
       data: {
         serverID,
         steamID64,
@@ -355,7 +355,7 @@ export async function updateDiscordTeamRole(server: Server, steamID64: string, t
 
 export async function updatePlayerUserGroup(server: Server, steamID64: string, userGroup: string) {
   try {
-    const player = await index.gm_server_stat.findFirst({
+    const player = await prisma.gm_server_stat.findFirst({
       where: {
         steam_id: steamID64,
         server_id: server.getID(),
@@ -363,7 +363,7 @@ export async function updatePlayerUserGroup(server: Server, steamID64: string, u
     });
 
     if (player) {
-      await index.gm_server_stat.update({
+      await prisma.gm_server_stat.update({
         where: {
           server_id_steam_id: {
             steam_id: steamID64,
@@ -389,7 +389,7 @@ export async function removeDiscordSync(discordID: string) {
     const user = await getUserFromDiscordID(discordID);
     if (!user || !user.steamID64) return;
 
-    const serversStat = await index.gm_server_stat.findMany({
+    const serversStat = await prisma.gm_server_stat.findMany({
       where: {
         steam_id: user.steamID64,
       },
@@ -421,7 +421,7 @@ export async function removeDiscordSync(discordID: string) {
       const syncRoles = await server.getSyncRoles();
 
       // get verif roles
-      const verifyRole = await index.gm_guild_verify_role.findMany({
+      const verifyRole = await prisma.gm_guild_verify_role.findMany({
         where: {
           guildID: dscGuild.id,
         },
@@ -457,7 +457,7 @@ export async function removeDiscordSync(discordID: string) {
 
 export async function removeServerSync(steamID64: string) {
   try {
-    const serversStat = await index.gm_server_stat.findMany({
+    const serversStat = await prisma.gm_server_stat.findMany({
       where: {
         steam_id: steamID64,
       },
@@ -467,7 +467,7 @@ export async function removeServerSync(steamID64: string) {
       const server = await getServerFromID(serverStat.server_id);
       if (!server) continue;
 
-      await index.gm_server_stat.update({
+      await prisma.gm_server_stat.update({
         where: {
           server_id_steam_id: {
             steam_id: steamID64,
@@ -496,7 +496,7 @@ export async function removeServerSync(steamID64: string) {
 
 export async function changeLinkCheckDiscordBan(oldDiscordIDS: string[], newDiscordID: string) {
   try {
-    const dscGuilds = await index.gm_guild_member.findMany({
+    const dscGuilds = await prisma.gm_guild_member.findMany({
       where: {
         user_id: {
           in: oldDiscordIDS,

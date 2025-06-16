@@ -8,7 +8,7 @@ import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
-import index from '../../services/prisma/index.js';
+import prisma from '../../services/prisma/index.js';
 
 export function getEmptyEmbedBuilderField(lineBreak: number = 1) {
   let emptyField = '';
@@ -455,7 +455,7 @@ export async function getUserStatisticMessage(
   }
 
   if (serverInstanceID === 'global') {
-    const userData = await index.gm_user_steam.findFirst({
+    const userData = await prisma.gm_user_steam.findFirst({
       where: {
         steam_id: steamID64ToUse!,
       },
@@ -525,7 +525,7 @@ export async function getUserStatisticMessage(
       embeds: [embed],
     };
   } else {
-    const serverDB = await index.gm_server.findFirst({
+    const serverDB = await prisma.gm_server.findFirst({
       where: {
         id: serverInstanceID,
       },
@@ -535,7 +535,7 @@ export async function getUserStatisticMessage(
       return { content: await getTranslate('server_not_found', lang), ephemeral: true };
     }
 
-    const userData = await index.gm_server_stat.findFirst({
+    const userData = await prisma.gm_server_stat.findFirst({
       where: {
         steam_id: steamID64ToUse!,
         server_id: serverInstanceID,

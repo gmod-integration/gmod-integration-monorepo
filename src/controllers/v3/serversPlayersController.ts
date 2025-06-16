@@ -7,7 +7,7 @@ import {
 } from '../../models/v3/serversPlayersModels.js';
 import { updateGuildUserPseudo } from '../../discord/index.js';
 import { Request, Response } from 'express';
-import index from '../../services/prisma/index.js';
+import prisma from '../../services/prisma/index.js';
 import { logServer } from '../../utils/logger.js';
 
 export async function getPlayer(req: Request, res: Response) {
@@ -237,7 +237,7 @@ export async function playerWarn(req: Request, res: Response) {
   const plyAdmin = new PlayerGmod(admin);
   const plyUser = new PlayerGmod(player);
 
-  const warn = await index.gm_server_warn.create({
+  const warn = await prisma.gm_server_warn.create({
     data: {
       serverID: server.getID(),
       userSteamID64: (plyUser && plyUser.steamID64) || steamID64,

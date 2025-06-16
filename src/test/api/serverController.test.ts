@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'assert';
 import testConfig, { getTestUri } from '../config.test.js';
-import index from '../../services/prisma/index.js';
+import prisma from '../../services/prisma/index.js';
 
 // Server Info
 test('GET /v3/servers/:serverID', async (t) => {
@@ -25,7 +25,7 @@ test('POST /v3/servers/:serverID/public-token', async (t) => {
     },
   });
   assert.strictEqual(response.status, 200);
-  const prismaData = await index.gm_server.findFirst({
+  const prismaData = await prisma.gm_server.findFirst({
     where: {
       id: testConfig.server.id,
     },

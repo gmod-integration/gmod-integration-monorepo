@@ -3,7 +3,7 @@ import webhooksRoutes from './webhooks/_webhooksRoutes.js';
 import v3Routes from './v3/_v3Routes.js';
 import steamRoutes from './steamRoutes.js';
 import asyncHandler from '../middleware/asyncHandler.js';
-import index from '../services/prisma/index.js';
+import prisma from '../services/prisma/index.js';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { s3 } from '../services/minio/index.js';
 import { Readable } from 'node:stream';
@@ -44,7 +44,7 @@ router.get(
 
     if (!code) return res.status(400).json({ error: 'missing_code' });
 
-    const request = await index.gm_users_data_request.findFirst({
+    const request = await prisma.gm_users_data_request.findFirst({
       where: {
         code: code as string,
         id: uuid,

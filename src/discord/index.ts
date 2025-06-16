@@ -26,7 +26,7 @@ import {
 import { readdir } from 'fs/promises';
 import { getUserFromSteamID64 } from '../classes/v3/User.js';
 import redis from '../services/redis/index.js';
-import index from '../services/prisma/index.js';
+import prisma from '../services/prisma/index.js';
 import { getServersFromDiscordGuildID, Server } from '../classes/v3/Server.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { Guild, guildSettingExists } from '../classes/v3/Guild.js';
@@ -292,7 +292,7 @@ export async function loadDiscordMain() {
  * Load all discord instances
  */
 export async function loadDiscordSlave() {
-  const gmodStorePurchases = await index.gm_gmodstore_purchases.findMany({
+  const gmodStorePurchases = await prisma.gm_gmodstore_purchases.findMany({
     where: {
       revoke: false,
     },
@@ -370,7 +370,7 @@ export async function updateGuildUserPseudo(server: Server, player: PlayerGmod, 
     const pseudoFormat = await server.getSetting('pseudoFormat');
     if (!pseudoFormat) return;
 
-    const rolesFormat = await index.gm_server_pseudo.findFirst({
+    const rolesFormat = await prisma.gm_server_pseudo.findFirst({
       where: {
         serverID: server.getID(),
         role: player.userGroup,
@@ -414,7 +414,7 @@ export async function updateGuildUserPseudo(server: Server, player: PlayerGmod, 
 
 export async function loadGuildBotInstance(guildID: string) {
   await killGuildClient(guildID);
-  const instanceInfo = await index.gm_gmodstore_purchases.findFirst({
+  const instanceInfo = await prisma.gm_gmodstore_purchases.findFirst({
     where: {
       guild: guildID,
       revoke: false,
@@ -427,7 +427,7 @@ export async function loadGuildBotInstance(guildID: string) {
 let lastStatusID: Record<string, number> = {};
 setInterval(async () => {
   if (!(await guildSettingExists('bot_status'))) return;
-  const guildsStatusNotDisable = await index.gm_guild_settings.findMany({
+  const guildsStatusNotDisable = await prisma.gm_guild_settings.findMany({
     where: {
       setting: 'bot_status',
       value: {

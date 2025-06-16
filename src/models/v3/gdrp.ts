@@ -2,7 +2,6 @@ import fs from 'fs';
 import { ConfigServer } from '../../classes/config/Config.js';
 import archiver from 'archiver';
 import { gmLog } from '../../utils/logger.js';
-import index from '../../services/prisma/index.js';
 import { User } from '../../classes/v3/User.js';
 import { addNotification } from '../../utils/tools.js';
 import { getLogsBySteamIDList, getLogsCountBySteamIDList } from '../../database/gm_server_logs.js';
@@ -10,12 +9,13 @@ import path from 'path';
 import * as os from 'node:os';
 import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
+import prisma from '../../services/prisma/index.js';
 
 export async function getUserDataGRPD(user: User) {
   const discordID = user.getDiscordID();
   const steamID64 = user.getSteamID64();
 
-  const request = await index.gm_users_data_request.create({
+  const request = await prisma.gm_users_data_request.create({
     data: {
       discordID,
       status: 'pending',
@@ -31,15 +31,15 @@ export async function getUserDataGRPD(user: User) {
   if (discordID) {
     const userData: any = {
       discordUser:
-        (await index.gm_user.findUnique({
+        (await prisma.gm_user.findUnique({
           where: { id: discordID },
           include: {
             gm_users_data_request: { where: { discordID } },
             gm_users_notifications: { where: { discordID } },
           },
         })) || {},
-      vote: (await index.gm_server_vote.findMany({ where: { userID: discordID } })) || {},
-      ban: (await index.banUsers.findMany({ where: { discordID } })) || {},
+      vote: (await prisma.gm_server_vote.findMany({ where: { userID: discordID } })) || {},
+      ban: (await prisma.banUsers.findMany({ where: { discordID } })) || {},
     };
 
     fs.writeFileSync(`${tempPath}/discord.json`, JSON.stringify(userData));
@@ -48,21 +48,21 @@ export async function getUserDataGRPD(user: User) {
   if (steamID64) {
     const userData: any = {
       steamUser:
-        (await index.gm_user_steam.findUnique({
+        (await prisma.gm_user_steam.findUnique({
           where: { steam_id: steamID64 },
           include: {
             gm_server_stat: { where: { steam_id: steamID64 } },
             gm_server_stat_session: { where: { steamID64 } },
           },
         })) || {},
-      userWarn: await index.gm_server_warn.findMany({
+      userWarn: await prisma.gm_server_warn.findMany({
         where: {
           OR: [{ userSteamID64: steamID64 }, { adminSteamID64: steamID64 }],
         },
       }),
-      user: await index.users.findMany({ where: { steamID64 } }),
-      gmodStore: await index.gm_gmodstore_purchases.findMany({ where: { steamID64 } }),
-      ban: await index.banUsers.findMany({ where: { steamID64 } }),
+      user: await prisma.users.findMany({ where: { steamID64 } }),
+      gmodStore: await prisma.gm_gmodstore_purchases.findMany({ where: { steamID64 } }),
+      ban: await prisma.banUsers.findMany({ where: { steamID64 } }),
     };
 
     fs.writeFileSync(`${tempPath}/steam.json`, JSON.stringify(userData));
@@ -138,7 +138,7 @@ export async function getUserDataGRPD(user: User) {
   request.downloadLink = `${ConfigServer.domain}/gdpr-request/${request.id}`;
   request.status = 'ready';
 
-  await index.gm_users_data_request.update({
+  await prisma.gm_users_data_request.update({
     where: { id: request.id },
     data: {
       downloadLink: request.downloadLink,

@@ -17,7 +17,7 @@ import moment from 'moment';
 import { getUserDataGRPD } from '../../models/v3/gdrp.js';
 import { getMainClient } from '../../discord/index.js';
 import redis from '../../services/redis/index.js';
-import index from '../../services/prisma/index.js';
+import prisma from '../../services/prisma/index.js';
 import { NextFunction, Request, Response } from 'express';
 import { getLogsByServer, getTotalLogsByServer } from '../../database/gm_server_logs.js';
 
@@ -51,7 +51,7 @@ export async function getProfile(req: Request, res: Response) {
 
 export async function getUserSessions(req: Request, res: Response) {
   const { discordID } = req.params;
-  const sessions = await index.gm_panelToken.findMany({
+  const sessions = await prisma.gm_panelToken.findMany({
     where: {
       revoke: false,
       discordID,
@@ -63,7 +63,7 @@ export async function getUserSessions(req: Request, res: Response) {
 
 export async function deleteUserSession(req: Request, res: Response) {
   const { discordID, sessionID } = req.params;
-  const session = await index.gm_panelToken.findFirst({
+  const session = await prisma.gm_panelToken.findFirst({
     where: {
       discordID,
       id: sessionID,
@@ -77,7 +77,7 @@ export async function deleteUserSession(req: Request, res: Response) {
     });
   }
 
-  await index.gm_panelToken.update({
+  await prisma.gm_panelToken.update({
     where: {
       id: sessionID,
     },
@@ -91,7 +91,7 @@ export async function deleteUserSession(req: Request, res: Response) {
 
 export async function logOut(req: Request, res: Response) {
   const panelUser = req.panelUser!;
-  const sessionToken = await index.gm_panelToken.findFirst({
+  const sessionToken = await prisma.gm_panelToken.findFirst({
     where: {
       discordID: panelUser.discordID,
       accessToken: panelUser.panelToken.token,
@@ -100,7 +100,7 @@ export async function logOut(req: Request, res: Response) {
   });
 
   if (sessionToken) {
-    await index.gm_panelToken.update({
+    await prisma.gm_panelToken.update({
       where: {
         id: sessionToken.id,
       },
@@ -302,7 +302,7 @@ export async function putGuildLinks(req: Request, res: Response) {
   }
 
   return res.send(
-    await index.gm_server_links.update({
+    await prisma.gm_server_links.update({
       where: {
         id: link.id,
         guild: guild.id,
@@ -336,7 +336,7 @@ export async function putGuildServer(req: Request, res: Response) {
   const { name, image, ip, port, isPublic, description } = req.body;
 
   return res.send(
-    await index.gm_server.update({
+    await prisma.gm_server.update({
       where: {
         id: server.id,
       },
@@ -387,7 +387,7 @@ export async function putGuildVerificationsRoles(req: Request, res: Response) {
   }
 
   return res.send(
-    await index.gm_guild_verify_role.update({
+    await prisma.gm_guild_verify_role.update({
       where: {
         id: verificationRole.id,
         guildID: guild.id,
@@ -411,7 +411,7 @@ export async function deleteGuildVerificationsRoles(req: Request, res: Response)
     });
   }
 
-  await index.gm_guild_verify_role.delete({
+  await prisma.gm_guild_verify_role.delete({
     where: {
       id: verificationRole.id,
     },
@@ -477,7 +477,7 @@ export async function putServerStatusButtons(req: Request, res: Response) {
     });
   }
 
-  const updateButton = await index.gm_status_button.update({
+  const updateButton = await prisma.gm_status_button.update({
     where: {
       id: button.id,
       server: server.id,
@@ -558,7 +558,7 @@ export async function deleteServerSyncChat(req: Request, res: Response) {
 export async function getGmodToDiscordFilter(req: Request, res: Response) {
   const server = req.server!;
   return res.send(
-    (await index.gm_server_sync_chat_filter.findMany({
+    (await prisma.gm_server_sync_chat_filter.findMany({
       where: {
         serverID: server.id,
       },
@@ -569,7 +569,7 @@ export async function getGmodToDiscordFilter(req: Request, res: Response) {
 export async function postGmodToDiscordFilter(req: Request, res: Response) {
   const server = req.server!;
 
-  const filter = await index.gm_server_sync_chat_filter.create({
+  const filter = await prisma.gm_server_sync_chat_filter.create({
     data: {
       serverID: server.id,
     },
@@ -590,7 +590,7 @@ export async function putGmodToDiscordFilter(req: Request, res: Response) {
     });
   }
 
-  const filter = await index.gm_server_sync_chat_filter.findFirst({
+  const filter = await prisma.gm_server_sync_chat_filter.findFirst({
     where: {
       id: Number(filterID),
       serverID: server.id,
@@ -603,7 +603,7 @@ export async function putGmodToDiscordFilter(req: Request, res: Response) {
     });
   }
 
-  const updatedFilter = await index.gm_server_sync_chat_filter.update({
+  const updatedFilter = await prisma.gm_server_sync_chat_filter.update({
     where: {
       id: Number(filterID),
     },
@@ -623,7 +623,7 @@ export async function putGmodToDiscordFilter(req: Request, res: Response) {
 export async function deleteGmodToDiscordFilter(req: Request, res: Response) {
   const { filterID } = req.params;
   const server = req.server!;
-  const filter = await index.gm_server_sync_chat_filter.findFirst({
+  const filter = await prisma.gm_server_sync_chat_filter.findFirst({
     where: {
       id: Number(filterID),
       serverID: server.id,
@@ -638,7 +638,7 @@ export async function deleteGmodToDiscordFilter(req: Request, res: Response) {
 
   await redis.del(`server:${server.id}:gmodToDiscordFilter`);
   // await filter.destroy();
-  await index.gm_server_sync_chat_filter.delete({
+  await prisma.gm_server_sync_chat_filter.delete({
     where: {
       id: Number(filterID),
     },
@@ -671,7 +671,7 @@ export async function getServerPlayers(req: Request, res: Response) {
   }
 
   // reply data, query {limit, offset, order, total}
-  const players = await index.gm_server_stat.findMany({
+  const players = await prisma.gm_server_stat.findMany({
     where: {
       server_id: server.id,
       OR: [
@@ -699,7 +699,7 @@ export async function getServerPlayers(req: Request, res: Response) {
     skip: offset,
   });
 
-  const total = await index.gm_server_stat.count({
+  const total = await prisma.gm_server_stat.count({
     where: {
       server_id: server.id,
       OR: [
@@ -754,7 +754,7 @@ export async function putPlayerBypassMaintenance(req: Request, res: Response) {
 
   player.bypassMaintenance = bypassMaintenance !== undefined ? bypassMaintenance : player.bypassMaintenance;
 
-  const editPlayer = await index.gm_server_stat.update({
+  const editPlayer = await prisma.gm_server_stat.update({
     where: {
       server_id_steam_id: {
         steam_id: player.steam_id,
@@ -770,7 +770,7 @@ export async function putPlayerBypassMaintenance(req: Request, res: Response) {
 
 export async function postUserStartVerification(req: Request, res: Response) {
   const { discordID } = req.params;
-  const user = await index.gm_user.findFirst({
+  const user = await prisma.gm_user.findFirst({
     where: {
       id: discordID,
     },
@@ -782,7 +782,7 @@ export async function postUserStartVerification(req: Request, res: Response) {
     });
   }
 
-  const newUser = await index.gm_user.update({
+  const newUser = await prisma.gm_user.update({
     where: {
       id: discordID,
     },
@@ -800,7 +800,7 @@ export async function postUserStartVerification(req: Request, res: Response) {
 
 export async function postAutoRoles(req: Request, res: Response) {
   const { guildID, roleID } = req.params;
-  const existingAutoRole = await index.gm_guild_auto_roles.findFirst({
+  const existingAutoRole = await prisma.gm_guild_auto_roles.findFirst({
     where: {
       guildID,
       roleID,
@@ -813,7 +813,7 @@ export async function postAutoRoles(req: Request, res: Response) {
     });
   }
 
-  const autoRole = await index.gm_guild_auto_roles.create({
+  const autoRole = await prisma.gm_guild_auto_roles.create({
     data: {
       guildID,
       roleID,
@@ -825,7 +825,7 @@ export async function postAutoRoles(req: Request, res: Response) {
 
 export async function deleteAutoRoles(req: Request, res: Response) {
   const { guildID, roleID } = req.params;
-  const autoRole = await index.gm_guild_auto_roles.findFirst({
+  const autoRole = await prisma.gm_guild_auto_roles.findFirst({
     where: {
       guildID,
       roleID,
@@ -838,7 +838,7 @@ export async function deleteAutoRoles(req: Request, res: Response) {
     });
   }
 
-  await index.gm_guild_auto_roles.delete({
+  await prisma.gm_guild_auto_roles.delete({
     where: {
       roleID,
       guildID,
@@ -849,7 +849,7 @@ export async function deleteAutoRoles(req: Request, res: Response) {
 
 export async function getAutoRoles(req: Request, res: Response) {
   const { guildID } = req.params;
-  const autoRoles = await index.gm_guild_auto_roles.findMany({
+  const autoRoles = await prisma.gm_guild_auto_roles.findMany({
     where: {
       guildID,
     },
@@ -881,7 +881,7 @@ export async function createVerificationMessage(req: Request, res: Response) {
     });
   }
 
-  const oldMsg = await index.gm_guild_verify_msg.findFirst({
+  const oldMsg = await prisma.gm_guild_verify_msg.findFirst({
     where: {
       guildID: dscGuild.id,
     },
@@ -897,7 +897,7 @@ export async function createVerificationMessage(req: Request, res: Response) {
         //skip
       }
     }
-    await index.gm_guild_verify_msg.delete({
+    await prisma.gm_guild_verify_msg.delete({
       where: {
         guildID: dscGuild.id,
       },
@@ -909,7 +909,7 @@ export async function createVerificationMessage(req: Request, res: Response) {
   const sentMsg = await channel.send(msg);
 
   // save msg
-  const newVerif = await index.gm_guild_verify_msg.create({
+  const newVerif = await prisma.gm_guild_verify_msg.create({
     data: {
       guildID: dscGuild.id,
       messageID: sentMsg.id,
@@ -938,7 +938,7 @@ export async function postVerificationCheck(req: Request, res: Response) {
     success: true,
   });
 
-  const verif = await index.gm_guild_verification_check.create({
+  const verif = await prisma.gm_guild_verification_check.create({
     data: {
       guildID: guild.id,
     },
@@ -950,7 +950,7 @@ export async function postVerificationCheck(req: Request, res: Response) {
     await verifyUser(guild.dscGuild, member);
   }
 
-  await index.gm_guild_verification_check.update({
+  await prisma.gm_guild_verification_check.update({
     where: {
       id: verif.id,
     },
@@ -962,7 +962,7 @@ export async function postVerificationCheck(req: Request, res: Response) {
 
 export async function getVerificationMessage(req: Request, res: Response) {
   const dscGuild = req.dscGuild!;
-  const msg = await index.gm_guild_verify_msg.findFirst({
+  const msg = await prisma.gm_guild_verify_msg.findFirst({
     where: {
       guildID: dscGuild.id,
     },
@@ -979,7 +979,7 @@ export async function getVerificationMessage(req: Request, res: Response) {
 
 export async function deleteVerificationMessage(req: Request, res: Response) {
   const dscGuild = req.dscGuild!;
-  const msg = await index.gm_guild_verify_msg.findFirst({
+  const msg = await prisma.gm_guild_verify_msg.findFirst({
     where: {
       guildID: dscGuild.id,
     },
@@ -1001,7 +1001,7 @@ export async function deleteVerificationMessage(req: Request, res: Response) {
     }
   }
 
-  await index.gm_guild_verify_msg.delete({
+  await prisma.gm_guild_verify_msg.delete({
     where: {
       guildID: dscGuild.id,
     },
@@ -1010,7 +1010,7 @@ export async function deleteVerificationMessage(req: Request, res: Response) {
 }
 
 export async function getPublicServers(req: Request, res: Response) {
-  const serversData = await index.gm_server.findMany({
+  const serversData = await prisma.gm_server.findMany({
     where: {
       isPublic: true,
     },
@@ -1022,7 +1022,7 @@ export async function getPublicServers(req: Request, res: Response) {
   for (const serverData of serversData) {
     const server = new Server(serverData);
     let publicInformations = await server.getPublicInformations();
-    publicInformations.vote = await index.gm_server_vote.count({
+    publicInformations.vote = await prisma.gm_server_vote.count({
       where: {
         serverID: server.id,
         createdAt: {
@@ -1033,7 +1033,7 @@ export async function getPublicServers(req: Request, res: Response) {
     publicServers.push(publicInformations);
   }
 
-  const serverStatus = await index.gm_server_status.findMany({
+  const serverStatus = await prisma.gm_server_status.findMany({
     where: {
       id: {
         in: serversData.map((server: any) => server.id),
@@ -1197,7 +1197,7 @@ export async function getServerErrors(req: Request, res: Response) {
     });
   }
 
-  const errors = await index.gm_server_errors.findMany({
+  const errors = await prisma.gm_server_errors.findMany({
     where: {
       serverID,
     },
@@ -1212,7 +1212,7 @@ export async function getServerErrors(req: Request, res: Response) {
 }
 
 export async function getAdminGuilds(req: Request, res: Response) {
-  return res.send((await index.gm_guild.findMany()) || []);
+  return res.send((await prisma.gm_guild.findMany()) || []);
 }
 
 export async function getAdminInformations(req: Request, res: Response) {
@@ -1222,9 +1222,9 @@ export async function getAdminInformations(req: Request, res: Response) {
     user: {},
   };
   // Guild
-  data.guild.total = await index.gm_guild.count();
+  data.guild.total = await prisma.gm_guild.count();
   data.guild.language = (
-    await index.gm_guild.groupBy({
+    await prisma.gm_guild.groupBy({
       by: ['language'],
       _count: {
         language: true,
@@ -1235,19 +1235,19 @@ export async function getAdminInformations(req: Request, res: Response) {
     value: lang._count.language,
   }));
   // Server
-  data.server.total = await index.gm_server.count();
+  data.server.total = await prisma.gm_server.count();
   // User
   data.user.totalDiscordMembers =
     (
-      await index.gm_guild.aggregate({
+      await prisma.gm_guild.aggregate({
         _sum: {
           member: true,
         },
       })
     )._sum.member || 0;
-  data.user.totalDiscordUser = await index.gm_user.count();
-  data.user.totalSteamUser = await index.users.count();
-  data.user.totalVerified = await index.gm_user.count({
+  data.user.totalDiscordUser = await prisma.gm_user.count();
+  data.user.totalSteamUser = await prisma.users.count();
+  data.user.totalVerified = await prisma.gm_user.count({
     where: {
       steam: {
         not: null,
@@ -1262,7 +1262,7 @@ export async function getAdminInformations(req: Request, res: Response) {
 export async function getServerRoles(req: Request, res: Response) {
   const { serverID } = req.params;
 
-  const roles = await index.gm_server_sync_roles.findMany({
+  const roles = await prisma.gm_server_sync_roles.findMany({
     where: {
       serverID,
     },
@@ -1274,7 +1274,7 @@ export async function getServerRoles(req: Request, res: Response) {
 export async function postServerRoles(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const role = await index.gm_server_sync_roles.create({
+  const role = await prisma.gm_server_sync_roles.create({
     data: {
       serverID,
       roleID,
@@ -1287,7 +1287,7 @@ export async function postServerRoles(req: Request, res: Response) {
 export async function putServerRoles(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const role = await index.gm_server_sync_roles.findFirst({
+  const role = await prisma.gm_server_sync_roles.findFirst({
     where: {
       serverID,
       roleID,
@@ -1303,7 +1303,7 @@ export async function putServerRoles(req: Request, res: Response) {
   const { userGroup, enable } = req.body;
 
   return res.send(
-    await index.gm_server_sync_roles.update({
+    await prisma.gm_server_sync_roles.update({
       where: {
         serverID_roleID: {
           serverID,
@@ -1321,7 +1321,7 @@ export async function putServerRoles(req: Request, res: Response) {
 export async function deleteServerRoles(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const role = await index.gm_server_sync_roles.findFirst({
+  const role = await prisma.gm_server_sync_roles.findFirst({
     where: {
       serverID,
       roleID,
@@ -1334,7 +1334,7 @@ export async function deleteServerRoles(req: Request, res: Response) {
     });
   }
 
-  await index.gm_server_sync_roles.delete({
+  await prisma.gm_server_sync_roles.delete({
     where: {
       serverID_roleID: {
         serverID,
@@ -1348,7 +1348,7 @@ export async function deleteServerRoles(req: Request, res: Response) {
 export async function getServerTeams(req: Request, res: Response) {
   const { serverID } = req.params;
 
-  const roles = await index.gm_server_sync_team_roles.findMany({
+  const roles = await prisma.gm_server_sync_team_roles.findMany({
     where: {
       serverID,
     },
@@ -1360,7 +1360,7 @@ export async function getServerTeams(req: Request, res: Response) {
 export async function postServerTeams(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const role = await index.gm_server_sync_team_roles.create({
+  const role = await prisma.gm_server_sync_team_roles.create({
     data: {
       serverID,
       roleID,
@@ -1373,7 +1373,7 @@ export async function postServerTeams(req: Request, res: Response) {
 export async function putServerTeams(req: Request, res: Response) {
   const { serverID, id } = req.params;
 
-  const role = await index.gm_server_sync_team_roles.findFirst({
+  const role = await prisma.gm_server_sync_team_roles.findFirst({
     where: {
       serverID,
       id: Number(id),
@@ -1388,7 +1388,7 @@ export async function putServerTeams(req: Request, res: Response) {
 
   const { teamName, enable } = req.body;
   return res.send(
-    await index.gm_server_sync_team_roles.update({
+    await prisma.gm_server_sync_team_roles.update({
       where: {
         serverID,
         id: Number(id),
@@ -1404,7 +1404,7 @@ export async function putServerTeams(req: Request, res: Response) {
 export async function deleteServerTeams(req: Request, res: Response) {
   const { serverID, id } = req.params;
 
-  const role = await index.gm_server_sync_team_roles.findFirst({
+  const role = await prisma.gm_server_sync_team_roles.findFirst({
     where: {
       serverID,
       id: Number(id),
@@ -1417,7 +1417,7 @@ export async function deleteServerTeams(req: Request, res: Response) {
     });
   }
 
-  await index.gm_server_sync_team_roles.delete({
+  await prisma.gm_server_sync_team_roles.delete({
     where: {
       serverID,
       id: Number(id),
@@ -1465,7 +1465,7 @@ export async function postGmodPurchase(req: Request, res: Response) {
   }
 
   const guild = req.guild!;
-  const purchase = await index.gm_gmodstore_purchases.findFirst({
+  const purchase = await prisma.gm_gmodstore_purchases.findFirst({
     where: {
       steamID64: user.getSteamID64()!,
     },
@@ -1477,7 +1477,7 @@ export async function postGmodPurchase(req: Request, res: Response) {
     });
   }
 
-  await index.gm_gmodstore_purchases.update({
+  await prisma.gm_gmodstore_purchases.update({
     where: {
       steamID64: user.getSteamID64()!,
     },
@@ -1504,7 +1504,7 @@ export async function deleteGmodPurchase(req: Request, res: Response) {
     });
   }
 
-  const purchase = await index.gm_gmodstore_purchases.findFirst({
+  const purchase = await prisma.gm_gmodstore_purchases.findFirst({
     where: {
       steamID64: user.getSteamID64()!,
     },
@@ -1516,7 +1516,7 @@ export async function deleteGmodPurchase(req: Request, res: Response) {
     });
   }
 
-  const savedPurchase = await index.gm_gmodstore_purchases.update({
+  const savedPurchase = await prisma.gm_gmodstore_purchases.update({
     where: {
       steamID64: user.getSteamID64()!,
     },
@@ -1559,7 +1559,7 @@ export async function getUserGmodStorePurchases(req: Request, res: Response) {
     });
   }
 
-  let purchases: any = await index.gm_gmodstore_purchases.findFirst({
+  let purchases: any = await prisma.gm_gmodstore_purchases.findFirst({
     where: {
       steamID64: user.getSteamID64()!,
     },
@@ -1576,7 +1576,7 @@ export async function getUserGmodStorePurchases(req: Request, res: Response) {
 export async function getServerPseudo(req: Request, res: Response) {
   const server = req.server!;
   return res.send(
-    (await index.gm_server_pseudo.findMany({
+    (await prisma.gm_server_pseudo.findMany({
       where: {
         serverID: server.id,
       },
@@ -1587,7 +1587,7 @@ export async function getServerPseudo(req: Request, res: Response) {
 export async function postServerPseudo(req: Request, res: Response) {
   const { serverID } = req.params;
 
-  const pseudo = await index.gm_server_pseudo.create({
+  const pseudo = await prisma.gm_server_pseudo.create({
     data: {
       serverID,
     },
@@ -1599,7 +1599,7 @@ export async function postServerPseudo(req: Request, res: Response) {
 export async function putServerPseudo(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const pseudo = await index.gm_server_pseudo.findFirst({
+  const pseudo = await prisma.gm_server_pseudo.findFirst({
     where: {
       serverID,
       id: Number(roleID),
@@ -1614,7 +1614,7 @@ export async function putServerPseudo(req: Request, res: Response) {
 
   const { role, name, prefix, enabled } = req.body;
 
-  const updatePseudo = await index.gm_server_pseudo.update({
+  const updatePseudo = await prisma.gm_server_pseudo.update({
     where: {
       id: pseudo.id,
       serverID,
@@ -1633,7 +1633,7 @@ export async function putServerPseudo(req: Request, res: Response) {
 export async function deleteServerPseudo(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
 
-  const pseudo = await index.gm_server_pseudo.findFirst({
+  const pseudo = await prisma.gm_server_pseudo.findFirst({
     where: {
       serverID,
       id: Number(roleID),
@@ -1646,7 +1646,7 @@ export async function deleteServerPseudo(req: Request, res: Response) {
     });
   }
 
-  await index.gm_server_pseudo.delete({
+  await prisma.gm_server_pseudo.delete({
     where: {
       id: pseudo.id,
       serverID,
@@ -1658,7 +1658,7 @@ export async function deleteServerPseudo(req: Request, res: Response) {
 export async function getUserNotifications(req: Request, res: Response) {
   const { discordID } = req.params;
   return res.json(
-    await index.gm_users_notifications.findMany({
+    await prisma.gm_users_notifications.findMany({
       where: { discordID },
     }),
   );
@@ -1666,7 +1666,7 @@ export async function getUserNotifications(req: Request, res: Response) {
 
 export async function patchUserNotifications(req: Request, res: Response) {
   const { discordID, notificationID } = req.params;
-  const notification = await index.gm_users_notifications.findFirst({
+  const notification = await prisma.gm_users_notifications.findFirst({
     where: {
       id: Number(notificationID),
       discordID,
@@ -1678,7 +1678,7 @@ export async function patchUserNotifications(req: Request, res: Response) {
   }
 
   res.json(
-    await index.gm_users_notifications.update({
+    await prisma.gm_users_notifications.update({
       where: {
         id: notification.id,
         discordID,
@@ -1693,7 +1693,7 @@ export async function patchUserNotifications(req: Request, res: Response) {
 export async function getUserDataRequest(req: Request, res: Response) {
   const { discordID } = req.params;
   return res.json(
-    await index.gm_users_data_request.findMany({
+    await prisma.gm_users_data_request.findMany({
       where: { discordID },
     }),
   );
@@ -1701,7 +1701,7 @@ export async function getUserDataRequest(req: Request, res: Response) {
 
 export async function postUserDataRequest(req: Request, res: Response) {
   const { discordID } = req.params;
-  const lastRequest = await index.gm_users_data_request.findFirst({
+  const lastRequest = await prisma.gm_users_data_request.findFirst({
     where: {
       discordID,
     },
@@ -1729,7 +1729,7 @@ export async function postUserDataRequest(req: Request, res: Response) {
 export async function getServerReportBugs(req: Request, res: Response) {
   const { serverID } = req.params;
   return res.json(
-    await index.gm_server_report_bugs.findMany({
+    await prisma.gm_server_report_bugs.findMany({
       where: { serverID },
     }),
   );
@@ -1822,14 +1822,14 @@ export async function getServerWarns(req: Request, res: Response) {
   const orderBy = rawOrderBy === 'ASC' ? 'asc' : 'desc';
 
   // 5) Count total warns for pagination
-  const total = await index.gm_server_warn.count({
+  const total = await prisma.gm_server_warn.count({
     where: {
       serverID: serverID,
     },
   });
 
   // 6) Fetch the warns with skip/take & orderBy
-  const warns = await index.gm_server_warn.findMany({
+  const warns = await prisma.gm_server_warn.findMany({
     where: {
       serverID: serverID,
     },
@@ -1875,7 +1875,7 @@ export async function getScreenshotsList(req: Request, res: Response) {
   if (isNaN(limit) || limit < 1) limit = 50;
   if (limit > 500) limit = 500; // enforce a max, if you want
 
-  const screenshots = await index.gm_server_screenshots.findMany({
+  const screenshots = await prisma.gm_server_screenshots.findMany({
     where: {
       serverID: serverID,
     },
@@ -1887,7 +1887,7 @@ export async function getScreenshotsList(req: Request, res: Response) {
   });
 
   // 3) Count total screenshots for pagination
-  const total = await index.gm_server_screenshots.count({
+  const total = await prisma.gm_server_screenshots.count({
     where: {
       serverID: serverID,
     },

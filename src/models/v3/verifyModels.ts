@@ -5,7 +5,7 @@ import { ButtonVerificationWebsite } from '../../discord/utils/buttons.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { getVerifiedMessageAnswer } from '../../discord/utils/messages.js';
 import { verifyUser } from './discordModels.js';
-import index from '../../services/prisma/index.js';
+import prisma from '../../services/prisma/index.js';
 
 export async function handleVerifyInteraction(interaction: ButtonInteraction) {
   if (!interaction.isButton()) return;
@@ -37,7 +37,7 @@ export async function handleVerifyInteraction(interaction: ButtonInteraction) {
     const guilds = await panelUser.findGuilds();
     let verifiedOf = [];
     for (const aGuild of guilds) {
-      const dbGuild = await index.gm_guild.findFirst({
+      const dbGuild = await prisma.gm_guild.findFirst({
         where: {
           guild: aGuild.id,
         },

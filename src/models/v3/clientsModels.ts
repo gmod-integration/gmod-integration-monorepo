@@ -5,7 +5,7 @@ import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
 import { getMainClient } from '../../discord/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Server } from '../../classes/v3/Server.js';
-import index from '../../services/prisma/index.js';
+import prisma from '../../services/prisma/index.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
@@ -55,7 +55,7 @@ export async function saveScreenshot(
     // do nothing
   }
 
-  await index.gm_server_screenshots.create({
+  await prisma.gm_server_screenshots.create({
     data: {
       serverID: server.id,
       title: title,
@@ -113,7 +113,7 @@ export async function sendScreenshotToDiscord(
   });
 
   if (!webhookRelay.ok) {
-    await index.gm_server_screenshot_channels.delete({
+    await prisma.gm_server_screenshot_channels.delete({
       where: {
         server_adminCmd: {
           server: server.getID(),

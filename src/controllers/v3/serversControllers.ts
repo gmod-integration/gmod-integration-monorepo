@@ -1,7 +1,7 @@
 import { badArgument } from '../../utils/tools.js';
 import { logServer } from '../../utils/logger.js';
 import { Request, Response } from 'express';
-import index from '../../services/prisma/index.js';
+import prisma from '../../services/prisma/index.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 
 export async function postStatus(req: Request, res: Response) {
@@ -54,7 +54,7 @@ export async function serverImportWarns(req: Request, res: Response) {
     }
     reason = reason || 'No reason provided';
 
-    const warnExists = await index.gm_server_warn.findFirst({
+    const warnExists = await prisma.gm_server_warn.findFirst({
       where: {
         userSteamID64: playerSteamID64,
         adminSteamID64,
@@ -67,7 +67,7 @@ export async function serverImportWarns(req: Request, res: Response) {
       continue;
     }
 
-    await index.gm_server_warn.create({
+    await prisma.gm_server_warn.create({
       data: {
         serverID: server.getID(),
         userSteamID64: playerSteamID64,
