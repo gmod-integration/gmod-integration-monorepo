@@ -78,12 +78,12 @@ export async function getUserDataGRPD(user: User) {
         const logs = await getLogsBySteamIDList([steamID64], { limit, offset });
         const stream = fs.createWriteStream(`${tempPath}/steam-logs-${fileIndex}-${totalFiles}.json`);
 
-        stream.write('[\n');
+        stream.write('[');
         for (let i = 0; i < logs.length; i++) {
-          if (i !== 0) stream.write(',\n');
+          if (i !== 0) stream.write(',');
           stream.write(JSON.stringify(logs[i]));
         }
-        stream.write('\n]');
+        stream.write(']');
         stream.end();
 
         await new Promise<void>((resolve) => stream.on('finish', () => resolve()));

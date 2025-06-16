@@ -37,6 +37,8 @@ export async function getLogsBySteamIDList(
         $in: SteamIDS,
       },
     })
+    .limit(options.limit)
+    .skip(options.offset)
     .toArray();
 }
 
