@@ -237,11 +237,11 @@ export async function playerConnectionChart(
   const key = `server:${server.getID()}:connection:${steamID64}:${stat}:${duration}`;
   const cacheChart = await redis.get(key);
   try {
-    await createBucketIfNotExists('gmi-servers-players-connection');
+    await createBucketIfNotExists('gmi-players-connections-charts');
     if (cacheChart) {
       const resul = await s3.send(
         new GetObjectCommand({
-          Bucket: 'gmi-servers-players-connection',
+          Bucket: 'gmi-players-connections-charts',
           Key: `${server.getID()}:${steamID64}:${stat}:${duration}.png`,
         }),
       );
@@ -454,7 +454,7 @@ export async function playerConnectionChart(
   await s3
     .send(
       new PutObjectCommand({
-        Bucket: 'gmi-servers-players-connection',
+        Bucket: 'gmi-players-connections-charts',
         Key: `${server.getID()}:${steamID64}:${stat}:${duration}.png`,
         Body: pngImg,
         ContentType: 'image/png',
@@ -471,11 +471,11 @@ export async function playerTeamTimeChat(server: Server, steamID64: string, lang
   const cacheChart = await redis.get(key);
 
   try {
-    await createBucketIfNotExists('gmi-servers-team-time');
+    await createBucketIfNotExists('gmi-players-team-charts');
     if (cacheChart) {
       const resul = await s3.send(
         new GetObjectCommand({
-          Bucket: 'gmi-servers-players-team-time',
+          Bucket: 'gmi-players-team-charts',
           Key: `${server.getID()}:${steamID64}:${duration}.png`,
         }),
       );
@@ -630,7 +630,7 @@ export async function playerTeamTimeChat(server: Server, steamID64: string, lang
   await s3
     .send(
       new PutObjectCommand({
-        Bucket: 'gmi-servers-players-team-time',
+        Bucket: 'gmi-players-team-charts',
         Key: `${server.getID()}:${steamID64}:${duration}.png`,
         Body: pngImg,
         ContentType: 'image/png',
