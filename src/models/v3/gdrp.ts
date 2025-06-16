@@ -6,15 +6,14 @@ import index from '../../services/prisma/index.js';
 import { User } from '../../classes/v3/User.js';
 import { addNotification } from '../../utils/tools.js';
 import { getLogsByServerAndSteamIDList, getLogsCountByServerAndSteamIDList } from '../../database/gm_server_logs.js';
+import path from 'path';
+import * as os from 'node:os';
+import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 
 export async function getUserDataGRPD(user: User) {
   const discordID = user.getDiscordID();
   const steamID64 = user.getSteamID64();
-
-  // first if not exist create folder gdpr-request
-  if (!fs.existsSync('./gdpr-request')) {
-    fs.mkdirSync('./gdpr-request');
-  }
 
   const request = await index.gm_users_data_request.create({
     data: {
@@ -25,8 +24,9 @@ export async function getUserDataGRPD(user: User) {
     },
   });
 
-  // create folder with id
-  fs.mkdirSync(`./gdpr-request/${request.id}`);
+  const baseTempPath = path.join(os.tmpdir(), 'gmod-integration', 'gdpr');
+  const tempPath = path.join(baseTempPath, request.id);
+  fs.mkdirSync(tempPath, { recursive: true });
 
   if (discordID) {
     let userData: any = {};
@@ -62,7 +62,7 @@ export async function getUserDataGRPD(user: User) {
       },
     });
 
-    fs.writeFileSync(`./gdpr-request/${request.id}/discord.json`, JSON.stringify(userData, null, 2));
+    fs.writeFileSync(`${tempPath}/discord.json`, JSON.stringify(userData, null, 2));
   }
 
   if (steamID64) {
@@ -117,7 +117,7 @@ export async function getUserDataGRPD(user: User) {
       },
     });
 
-    fs.writeFileSync(`./gdpr-request/${request.id}/steam.json`, JSON.stringify(userData, null, 2));
+    fs.writeFileSync(`${tempPath}/steam.json`, JSON.stringify(userData, null, 2));
 
     try {
       const serverLogCount = await getLogsCountByServerAndSteamIDList('serverID', [steamID64]);
@@ -134,7 +134,7 @@ export async function getUserDataGRPD(user: User) {
         const currentFile = Math.floor(offset / limit) + 1;
         const currentFileCount = Math.floor(serverLogCount / limit + 1);
         fs.appendFileSync(
-          `./gdpr-request/${request.id}/steam-server-logs-${currentFile}-${currentFileCount}.json`,
+          `${tempPath}/steam-server-logs-${currentFile}-${currentFileCount}.json`,
           JSON.stringify(serverLogs, null, 2),
         );
 
@@ -146,11 +146,9 @@ export async function getUserDataGRPD(user: User) {
   }
 
   // to zip the folder
-  const zipFilePath = `./gdpr-request/${request.id}.zip`;
+  const zipFilePath = path.join(baseTempPath, `${request.id}.zip`);
   const output = fs.createWriteStream(zipFilePath);
-  const archive = archiver('zip', {
-    zlib: { level: 9 },
-  });
+  const archive = archiver('zip', { zlib: { level: 9 } });
 
   output.on('close', () => {
     gmLog(
@@ -165,23 +163,36 @@ export async function getUserDataGRPD(user: User) {
 
   archive.pipe(output);
 
-  const files = fs.readdirSync(`./gdpr-request/${request.id}`);
+  const files = fs.readdirSync(tempPath);
   files.forEach((file) => {
-    archive.file(`./gdpr-request/${request.id}/${file}`, { name: file });
+    archive.file(`${tempPath}/${file}`, { name: file });
   });
 
-  // delete the folder
   await archive.finalize();
 
-  fs.rm(`./gdpr-request/${request.id}`, { recursive: true }, (err) => {
-    if (err) {
-      gmLog('rgpd', `Error while deleting folder ${request.id}`);
-      console.error(err);
-    }
-  });
+  await createBucketIfNotExists('gmi-gdpr-exports');
+  const fileBuffer = fs.readFileSync(zipFilePath);
+
+  await s3
+    .send(
+      new PutObjectCommand({
+        Bucket: 'gmi-gdpr-exports',
+        Key: `${request.id}.zip`,
+        Body: fileBuffer,
+        ContentType: 'application/zip',
+      }),
+    )
+    .catch((err) => {
+      console.error('Error uploading zip to MinIO:', err);
+    });
+
+  // Clean temp
+  fs.rmSync(tempPath, { recursive: true, force: true });
+  fs.rmSync(zipFilePath, { force: true });
 
   request.downloadLink = `${ConfigServer.domain}/gdpr-request/${request.id}`;
   request.status = 'ready';
+  
   await index.gm_users_data_request.update({
     where: {
       id: request.id,

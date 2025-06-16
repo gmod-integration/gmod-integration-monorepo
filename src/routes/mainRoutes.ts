@@ -1,8 +1,7 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import webhooksRoutes from './webhooks/_webhooksRoutes.js';
 import v3Routes from './v3/_v3Routes.js';
 import steamRoutes from './steamRoutes.js';
-import fs from 'fs';
 import asyncHandler from '../middleware/asyncHandler.js';
 import index from '../services/prisma/index.js';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
@@ -37,11 +36,12 @@ router.get('/screenshots/:filename', async (req, res) => {
   }
 });
 
-router.use(
+router.get(
   '/gdpr-request/:uuid',
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req, res) => {
     const { code } = req.query;
-    let { uuid } = req.params;
+    const { uuid } = req.params;
+
     if (!code) return res.status(400).json({ error: 'missing_code' });
 
     const request = await index.gm_users_data_request.findFirst({
@@ -56,13 +56,30 @@ router.use(
 
     if (!request) return res.status(404).json({ error: 'invalid_code' });
 
-    if (!fs.existsSync(`./gdpr-request/${uuid}.zip`)) {
+    try {
+      const command = new GetObjectCommand({
+        Bucket: 'gmi-gdpr-exports',
+        Key: `${uuid}.zip`,
+      });
+
+      const response = await s3.send(command);
+
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', `attachment; filename="${uuid}.zip"`);
+      res.status(200);
+
+      if (response.Body instanceof Readable) {
+        response.Body.pipe(res);
+      } else {
+        res.end('Error: no stream returned');
+      }
+    } catch (err) {
+      console.error('Error downloading GDPR ZIP from S3:', err);
       return res.status(404).json({ error: 'invalid_uuid' });
-    } else {
-      return res.status(200).download(`./gdpr-request/${uuid}.zip`);
     }
   }),
 );
+
 router.use('/webhooks', webhooksRoutes);
 router.use('/v3', v3Routes);
 router.use('/steam', steamRoutes);

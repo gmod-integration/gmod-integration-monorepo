@@ -1,11 +1,7 @@
 logs/*
-screenshots/*
 node_modules
 .idea
 qodana.yaml
 .env
-gdpr-request/*
 dist
-# Sentry Config File
 .sentryclirc
-status_chart
