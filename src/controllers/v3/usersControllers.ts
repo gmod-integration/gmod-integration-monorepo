@@ -1186,31 +1186,6 @@ export async function putServerSetting(req: Request, res: Response) {
   }
 }
 
-export async function getServerErrors(req: Request, res: Response) {
-  const { serverID } = req.params;
-  const { offset, limit: number } = req.query;
-  const limit = Number(number);
-
-  if (limit && limit > 100) {
-    return res.status(400).send({
-      error: 'limit too high',
-    });
-  }
-
-  const errors = await prisma.gm_server_errors.findMany({
-    where: {
-      serverID,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-    skip: Number(offset) || 0,
-    take: limit || 500,
-  });
-
-  return res.send(errors || []);
-}
-
 export async function getAdminGuilds(req: Request, res: Response) {
   return res.send((await prisma.gm_guild.findMany()) || []);
 }

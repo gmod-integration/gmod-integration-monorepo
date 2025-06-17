@@ -17,7 +17,7 @@ import {
   serverStart,
   serverStop,
 } from '../../controllers/v3/serversControllers.js';
-import { reportError } from '../../controllers/v3/errorsControllers.js';
+import { reportError } from '../../controllers/gmod/GmodErrorsControllers.js';
 import {
   getPlayer,
   playerBan,

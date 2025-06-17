@@ -48,7 +48,6 @@ import {
   getProfile,
   getPublicServers,
   getScreenshotsList,
-  getServerErrors,
   getServerLogs,
   getServerLogsTrigger,
   getServerPlayers,
@@ -111,6 +110,7 @@ import {
 } from '../../middleware/v3/userValidator.js';
 import asyncHandler from '../../middleware/asyncHandler.js';
 import { getAllPanelUsers } from '../../controllers/v3/usersAdminControllers.js';
+import { getServerErrors } from '../../controllers/website/WebsiteErrorsControllers.js';
 
 const router = express.Router();
 

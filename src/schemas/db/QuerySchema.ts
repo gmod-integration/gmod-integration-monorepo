@@ -5,50 +5,37 @@ extendZodWithOpenApi(z);
 
 export const QuerySchema = z
   .object({
-    offset: z.number().openapi({
+    offset: z.coerce.number().int().nonnegative().default(0).openapi({
       example: 0,
       description: 'Offset for pagination',
     }),
-    limit: z.number().max(500).openapi({
-      example: 10,
+    limit: z.coerce.number().int().nonnegative().max(500).default(25).openapi({
+      example: 25,
       description: 'Limit for pagination',
     }),
-    sort: z
-      .object({
-        field: z.string().openapi({
-          example: 'name',
-          description: 'Field to sort by',
-        }),
-        order: z.enum(['asc', 'desc']).openapi({
-          example: 'asc',
-          description: 'Order of sorting',
-        }),
-      })
+    sort: z.string().optional().openapi({
+      example: 'createdAt',
+      description: 'Field to sort by, e.g., "createdAt" or "name"',
+    }),
+    orderBy: z.enum(['ASC', 'DESC']).optional().openapi({
+      example: 'ASC',
+      description: 'Order of sorting, either "ASC" or "DESC"',
+    }),
+    filterField: z.string().optional().openapi({
+      example: 'status',
+      description: 'Field to filter by, e.g., "status" or "type"',
+    }),
+    filterComparator: z
+      .enum(['equal', 'not_equal', 'greater_than', 'less_than', 'contains', 'starts_with', 'ends_with'])
       .optional()
       .openapi({
-        description: 'Sorting options',
+        example: 'equal',
+        description: 'Comparator for filtering, e.g., "equal" or "contains"',
       }),
-    filter: z
-      .object({
-        field: z.string().openapi({
-          example: 'status',
-          description: 'Field to filter by',
-        }),
-        comparator: z
-          .enum(['equal', 'not_equal', 'greater_than', 'less_than', 'contains', 'starts_with', 'ends_with'])
-          .openapi({
-            example: 'equal',
-            description: 'Comparator for filtering',
-          }),
-        value: z.any().openapi({
-          example: 'active',
-          description: 'Value to filter by',
-        }),
-      })
-      .optional()
-      .openapi({
-        description: 'Filtering options',
-      }),
+    filterValue: z.any().optional().openapi({
+      example: 'active',
+      description: 'Value to filter by, e.g., "active" or "error"',
+    }),
   })
   .openapi({ ref: 'Query' });
 

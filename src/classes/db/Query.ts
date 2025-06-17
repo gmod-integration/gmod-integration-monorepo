@@ -3,28 +3,28 @@ import { QueryInput, QuerySchema } from '../../schemas/db/QuerySchema.js';
 export class Query {
   public readonly offset: number;
   public readonly limit: number;
-  public readonly sort?: {
-    field: string;
-    order: 'asc' | 'desc';
-  };
-  public readonly filter?: {
-    field: string;
-    comparator: 'equal' | 'not_equal' | 'greater_than' | 'less_than' | 'contains' | 'starts_with' | 'ends_with';
-    value: any;
-  };
+  public readonly sort?: string;
+  public readonly orderBy?: 'ASC' | 'DESC';
+  public readonly filterField?: string;
+  public readonly filterComparator?:
+    | 'equal'
+    | 'not_equal'
+    | 'greater_than'
+    | 'less_than'
+    | 'contains'
+    | 'starts_with'
+    | 'ends_with';
+  public readonly filterValue?: unknown;
 
   private constructor(data: QueryInput) {
     const parsed = QuerySchema.parse(data);
     this.offset = parsed.offset;
     this.limit = parsed.limit;
-    this.sort = parsed.sort ? { field: parsed.sort.field, order: parsed.sort.order } : undefined;
-    this.filter = parsed.filter
-      ? {
-          field: parsed.filter.field,
-          comparator: parsed.filter.comparator,
-          value: parsed.filter.value,
-        }
-      : undefined;
+    this.sort = parsed.sort;
+    this.orderBy = parsed.orderBy;
+    this.filterField = parsed.filterField;
+    this.filterComparator = parsed.filterComparator;
+    this.filterValue = parsed.filterValue;
   }
 
   public static from(data: unknown): Query {
