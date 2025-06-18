@@ -46,12 +46,6 @@ export async function getUserDataGRPD(user: User) {
           OR: [{ oldDiscordID: discordID }, { newDiscordID: discordID }],
         },
       }),
-      notifications: await prisma.gm_users_notifications.findMany({
-        where: { discordID },
-      }),
-      dataRequest: await prisma.gm_users_data_request.findMany({
-        where: { discordID },
-      }),
     };
 
     fs.writeFileSync(`${tempPath}/discord.json`, JSON.stringify(userData));
@@ -80,11 +74,6 @@ export async function getUserDataGRPD(user: User) {
           url: {
             contains: steamID64,
           },
-        },
-      }),
-      sessions: await prisma.gm_server_stat_session.findMany({
-        where: {
-          steamID64,
         },
       }),
       warns: await prisma.gm_server_warn.findMany({
