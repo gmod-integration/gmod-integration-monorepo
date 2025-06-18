@@ -111,18 +111,18 @@ export async function sendScreenshotToDiscord(
       },
     }),
   });
-
-  if (!webhookRelay.ok) {
-    await prisma.gm_server_screenshot_channels.delete({
-      where: {
-        server_adminCmd: {
-          server: server.getID(),
-          adminCmd: channelInfo.adminCmd,
-        },
-      },
-    });
-    return { skip: true, message: 'Webhook not found' };
-  }
+  //
+  // if (!webhookRelay.ok) {
+  //   await prisma.gm_server_screenshot_channels.delete({
+  //     where: {
+  //       server_adminCmd: {
+  //         server: server.getID(),
+  //         adminCmd: channelInfo.adminCmd,
+  //       },
+  //     },
+  //   });
+  //   return { skip: true, message: 'Webhook not found' };
+  // }
 
   return { success: true };
 }
