@@ -1,7 +1,8 @@
 import { mongoClient } from '../services/mongo/index.js';
 
 const db = mongoClient.db('gmod_integration');
-const collection = db.collection('logs');
+const collectionLogs = db.collection('logs');
+const collectionErrors = db.collection('errors');
 
 interface Log {
   serverID: string;
@@ -13,11 +14,11 @@ interface Log {
 }
 
 export async function addLog(log: Log) {
-  await collection.insertOne(log);
+  await collectionLogs.insertOne(log);
 }
 
 export async function getLogsCountBySteamIDList(SteamIDS: string[]) {
-  return await collection.countDocuments({
+  return await collectionLogs.countDocuments({
     playerInvolvedSteamID64: {
       $in: SteamIDS,
     },
@@ -31,7 +32,7 @@ export async function getLogsBySteamIDList(
     offset: number | 0;
   },
 ) {
-  return await collection
+  return await collectionLogs
     .find({
       playerInvolvedSteamID64: {
         $in: SteamIDS,
@@ -43,7 +44,7 @@ export async function getLogsBySteamIDList(
 }
 
 export async function getTotalLogsByServer(serverID: string) {
-  return await collection.countDocuments({
+  return await collectionLogs.countDocuments({
     serverID,
   });
 }
@@ -62,7 +63,7 @@ export async function getLogsByServer(
     sort: string;
   },
 ) {
-  return await collection
+  return await collectionLogs
     .find({
       serverID,
     })

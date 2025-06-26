@@ -50,10 +50,34 @@ export class GmodErrors {
   }
 }
 
-export async function getErrorsCountByServer(serverID: string): Promise<number> {
+export async function getErrorsCountByServer(serverID: string) {
   return await collection.countDocuments({
     serverID,
   });
+}
+
+export async function getErrorsCountBySteamID(steamID64: string) {
+  return await collection.countDocuments({
+    steamID64,
+  });
+}
+
+export async function getErrorsBySteamID(steamID64: string, query: Query) {
+  return {
+    errors: await collection
+      .find({
+        steamID64,
+      })
+      .limit(query.limit)
+      .skip(query.offset)
+      .toArray(),
+    query: {
+      ...query,
+      total: await collection.countDocuments({
+        steamID64,
+      }),
+    },
+  };
 }
 
 export async function getErrorsByServer(query: Query, serverID: string) {

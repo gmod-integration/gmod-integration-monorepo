@@ -11,6 +11,7 @@ import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import prisma from '../../services/prisma/index.js';
 import { Readable } from 'node:stream';
+import { getErrorsBySteamID, getErrorsCountBySteamID } from '../../classes/gmod/GmodErrors.js';
 
 export async function getUserDataGRPD(user: User) {
   const discordID = user.getDiscordID();
@@ -124,45 +125,30 @@ export async function getUserDataGRPD(user: User) {
       console.error('Error fetching server logs:', error);
     }
 
-    // Error
+    //  Error logs
     try {
-      const plyErrorsCount = await prisma.gm_server_errors.count({
-        where: {
-          steamID64,
-        },
-      });
-
+      const serverErrorsCount = await getErrorsCountBySteamID(steamID64);
       const limit = 1000;
       let offset = 0;
       let fileIndex = 1;
-      const totalFiles = Math.ceil(plyErrorsCount / limit);
-
-      while (offset < plyErrorsCount) {
-        const errorLogs = await prisma.gm_server_errors.findMany({
-          where: {
-            steamID64,
-          },
-          take: limit,
-          skip: offset,
-        });
-
+      const totalFiles = Math.ceil(serverErrorsCount / limit);
+      while (offset < serverErrorsCount) {
+        const errors = await getErrorsBySteamID(steamID64, { limit, offset });
         const stream = fs.createWriteStream(`${tempPath}/steam-errors-${fileIndex}-${totalFiles}.json`);
 
         stream.write('[');
-        for (let i = 0; i < errorLogs.length; i++) {
+        for (let i = 0; i < errors.errors.length; i++) {
           if (i !== 0) stream.write(',');
-          stream.write(JSON.stringify(errorLogs[i]));
+          stream.write(JSON.stringify(errors.errors[i]));
         }
         stream.write(']');
         stream.end();
-
         await new Promise<void>((resolve) => stream.on('finish', () => resolve()));
-
         offset += limit;
         fileIndex++;
       }
     } catch (error) {
-      console.error('Error fetching error logs:', error);
+      console.error('Error fetching server logs:', error);
     }
 
     // Screenshots

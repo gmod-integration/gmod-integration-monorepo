@@ -160,7 +160,6 @@ model gm_server {
   description                   String?                         @default("") @db.VarChar(255)
   isPublic                      Boolean                         @default(false)
   gm_guild                      gm_guild                        @relation(fields: [guild], references: [guild], onDelete: Cascade, map: "gm_server_ibfk_1")
-  gm_server_errors              gm_server_errors[]
   gm_server_leaderboard_options gm_server_leaderboard_options[]
   gm_server_logs_channel        gm_server_logs_channel?
   gm_server_pseudo              gm_server_pseudo[]
@@ -197,24 +196,6 @@ model gm_server_customValues {
   valueName String   @id @db.VarChar(255)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-}
-
-model gm_server_errors {
-  id         Int       @id @default(autoincrement())
-  serverID   String    @db.VarChar(255)
-  count      Int
-  realm      String    @db.VarChar(255)
-  error      String    @db.Text
-  stack      String    @db.Text
-  name       String    @db.VarChar(255)
-  steamID64  String    @default("") @db.VarChar(255)
-  workshopID String    @default("") @db.VarChar(255)
-  uptime     Int
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  gm_server  gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_errors_ibfk_1")
-
-  @@index([serverID], map: "serverID")
 }
 
 model gm_server_leaderboard_options {
