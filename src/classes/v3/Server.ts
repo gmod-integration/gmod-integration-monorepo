@@ -1193,7 +1193,7 @@ export async function statusRoutine() {
       },
     });
 
-    if (statusInfo) return;
+    if (statusInfo) continue;
     await server.editStatusChannelAndMessage(await server.getStatusData());
   }
 }
