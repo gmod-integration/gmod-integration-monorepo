@@ -2,12 +2,16 @@ import { ButtonBuilder, ButtonStyle } from 'discord.js';
 import { ConfigDiscord, ConfigServer } from '../../classes/config/Config.js';
 import { getTranslate } from '../../utils/localizations.js';
 
-export async function ButtonVerificationWebsite(lang: string) {
+export async function ButtonVerificationWebsite(lang: string, guildID?: string) {
   return new ButtonBuilder()
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('verify_yourself', lang)}`)
     .setEmoji('🛡️')
-    .setURL(ConfigDiscord.oauthPanel + '&state=redirect:/account?startVerification=true');
+    .setURL(
+      ConfigDiscord.oauthPanel +
+        '&state=' +
+        encodeURIComponent('redirect:/account?startVerification=true' + (guildID ? `&guildID=${guildID}` : '')),
+    );
 }
 
 export async function ButtonWebsite(lang: string) {

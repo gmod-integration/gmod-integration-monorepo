@@ -50,10 +50,6 @@ const serverSettings: Record<string, any> = {
     defaultValue: true,
     acceptedValues: [true, false],
   },
-  verification_dont_join_support: {
-    defaultValue: false,
-    acceptedValues: [true, false],
-  },
   sync_chat_prevent_ping: {
     defaultValue: true,
     acceptedValues: [true, false],

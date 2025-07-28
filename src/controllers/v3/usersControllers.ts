@@ -15,11 +15,12 @@ import { badArgument, generateToken, todoControllers } from '../../utils/tools.j
 import { getVerificationGuildMessage } from '../../discord/utils/messages.js';
 import moment from 'moment';
 import { getUserDataGRPD } from '../../models/v3/gdrp.js';
-import { getMainClient } from '../../discord/index.js';
+import { getGuildClient, getMainClient } from '../../discord/index.js';
 import redis from '../../services/redis/index.js';
 import prisma from '../../services/prisma/index.js';
 import { NextFunction, Request, Response } from 'express';
 import { getLogsByServer, getTotalLogsByServer } from '../../database/gm_server_logs.js';
+import { Guild } from '../../classes/v3/Guild.js';
 
 export async function getProfile(req: Request, res: Response) {
   const { steamID64, discordID } = req.query;
@@ -137,6 +138,9 @@ export async function oauthLogin(req: Request, res: Response) {
     });
   }
 
+  const guildIDMatch = typeof req.query.state === 'string' ? req.query.state.match(/guildID=([0-9]+)/) : null;
+  const guildID = guildIDMatch ? guildIDMatch[1] : null;
+
   discordUserToken.expirationDate = new Date(Date.now() + discordUserToken.expires_in * 1000);
   discordUserToken.creationDate = new Date();
 
@@ -147,14 +151,30 @@ export async function oauthLogin(req: Request, res: Response) {
     });
   }
 
-  // I remove the auto join guild feature if uncomment also update perm here: getUserTokenFromCode
-  await addUserToGuild(ConfigDiscord.guildID, discordUser.id, discordUserToken.access_token)
-    .then(() => {
-      console.log('User added to guild');
-    })
-    .catch((error) => {
-      console.error(error);
-    });
+  let skipGuidJoin = false;
+
+  if (guildID) {
+    const dscClient = await getGuildClient(guildID);
+    if (!dscClient) return;
+
+    const dscGuild = dscClient.guilds.cache.get(guildID);
+    if (!dscGuild) return;
+
+    const guild = new Guild(dscGuild);
+    if (!guild) return;
+
+    skipGuidJoin = await guild.getSetting('verification_dont_join_support');
+  }
+
+  if (!skipGuidJoin) {
+    await addUserToGuild(ConfigDiscord.guildID, discordUser.id, discordUserToken.access_token)
+      .then(() => {
+        console.log('User added to guild');
+      })
+      .catch((error) => {
+        console.error(error);
+      });
+  }
 
   const userIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
   const userCountry = req.headers['cf-ipcountry'] || 'XX';
@@ -905,7 +925,7 @@ export async function createVerificationMessage(req: Request, res: Response) {
   }
 
   // send msg
-  const msg = await getVerificationGuildMessage(dscGuild.preferredLocale);
+  const msg = await getVerificationGuildMessage(dscGuild.preferredLocale, dscGuild.id);
   const sentMsg = await channel.send(msg);
 
   // save msg

@@ -270,7 +270,7 @@ export async function getVerifiedMessageAnswer(isVerified: boolean, lang: string
   }
 }
 
-export async function getVerificationGuildMessage(lang: string) {
+export async function getVerificationGuildMessage(lang: string, guildID: string) {
   const embed = new EmbedBuilder()
     .setColor(ConfigDiscord.embedColor)
     .setTitle(await getTranslate('welcome_on_our_server', lang))
@@ -294,7 +294,7 @@ export async function getVerificationGuildMessage(lang: string) {
     );
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    await ButtonVerificationWebsite(lang),
+    await ButtonVerificationWebsite(lang, guildID),
     await ButtonVerify(lang),
     await ButtonDiscordSupport(lang),
   );

@@ -20,10 +20,17 @@ const guildSettings: Record<string, any> = {
   verification_dont_mp: {
     defaultValue: false,
     acceptedValues: [true, false],
+    premium: true,
   },
   bot_status: {
     defaultValue: 'disabled',
     acceptedValues: ['disabled', 'guildMemberCount', 'playerCount', 'rotate'],
+    premium: true,
+  },
+  verification_dont_join_support: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+    premium: true,
   },
 };
 
@@ -180,6 +187,10 @@ export class Guild {
   async setSetting(setting: string, value: any) {
     if (!guildSettings[setting]) {
       throw new Error('Setting not found');
+    }
+
+    if (guildSettings[setting].premium && !(await this.isPremium())) {
+      throw new Error('Premium setting');
     }
 
     if (
