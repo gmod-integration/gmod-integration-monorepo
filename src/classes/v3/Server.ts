@@ -398,13 +398,36 @@ export class Server extends BaseClass {
     }
 
     try {
-      const guild = await dscClient.guilds.fetch(this.getGuildID());
+      let guild;
+      try {
+        guild = await dscClient.guilds.fetch(this.getGuildID(), { withCounts: true });
+      } catch (err: any) {
+        if (err.code === 10004) {
+          // Guild no longer exists or bot has been kicked
+          gmLog('status', `Guild ${this.getGuildID()} unknown – cleaning up status record.`, true);
+          await prisma.gm_status.delete({ where: { server: this.getID() } });
+          return;
+        }
+        throw err;
+      }
       if (!guild) {
-        gmLog('status', `Guild not found for server ${this.getID()}`, true);
+        gmLog('status', `Guild fetch returned null for server ${this.getID()}`, true);
         return;
       }
 
-      const channel = await dscClient.channels.fetch(serverStatusInfo.channel);
+      let channel;
+      try {
+        channel = await dscClient.channels.fetch(serverStatusInfo.channel);
+      } catch (err) {
+        if (err.code === 10003) {
+          // channel deleted or otherwise not found
+          gmLog('status', `Channel ${serverStatusInfo.channel} no longer exists – removing record.`, true);
+          await prisma.gm_status.delete({ where: { server: this.getID() } });
+          return;
+        }
+        throw err;
+      }
+
       if (!channel) {
         gmLog('status', `Channel not found for server ${this.getID()}`, true);
         return;
@@ -416,9 +439,16 @@ export class Server extends BaseClass {
         return;
       }
 
+      // is message exists?
       message = await channel.messages.fetch(serverStatusInfo.message);
       if (!message) {
         gmLog('status', `Message not found for server ${this.getID()}`, true);
+        return;
+      }
+
+      // is same author?
+      if (message.author.id !== dscClient.user?.id) {
+        gmLog('status', `Message author is not the bot for server ${this.getID()}`, true);
         return;
       }
 
