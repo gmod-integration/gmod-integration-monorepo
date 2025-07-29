@@ -61,11 +61,20 @@ wss.on('connection', async function connection(ws, req) {
   const { id, token } = req.headers;
 
   if (id && token) {
-    clients.server = clients.server.filter((client) => client.id !== id);
+    // Find existing client with same id and close its socket if present
+    const existingClient = clients.server.find((client) => client.id === id);
+    if (existingClient) {
+      try {
+        existingClient.ws.close();
+      } catch (e) {
+        // Ignore errors on close
+      }
+      clients.server = clients.server.filter((client) => client.id !== id);
+    }
     clients.server.push({ id: id.toString(), ws });
     gmLog('websocket', 'Server connected: ' + id);
     ws.on('close', () => {
-      clients.server = clients.server.filter((client) => client.id !== id);
+      clients.server = clients.server.filter((client) => client.ws !== ws);
       gmLog('websocket', 'Server disconnected: ' + id);
     });
   }
