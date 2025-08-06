@@ -46,7 +46,11 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(
   cors((req: Request, callback: any) => {
     const origin = req.headers.origin;
-    if (!origin || origin.includes('gmod-integration.com')) {
+    if (
+      !origin ||
+      origin.includes('gmod-integration.com') ||
+      (ConfigServer.dev && (origin.includes('localhost') || origin.includes('127.0.0.1')))
+    ) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
