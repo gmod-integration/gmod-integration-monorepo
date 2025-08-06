@@ -5,3 +5,4 @@ qodana.yaml
 .env
 dist
 .sentryclirc
+.turbo
