@@ -1235,7 +1235,8 @@ export async function statusRoutine() {
       where: {
         id: server.getID(),
         updatedAt: {
-          gt: new Date(new Date().getTime() - 6 * 60 * 1000),
+          gte: new Date(new Date().getTime() - 10 * 60 * 1000), // 10 minutes ago
+          lte: new Date(new Date().getTime() - 6 * 60 * 1000), // 6 minutes ago
         },
       },
     });
