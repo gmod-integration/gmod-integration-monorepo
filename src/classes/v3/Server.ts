@@ -1241,7 +1241,9 @@ export async function statusRoutine() {
       },
     });
 
-    if (statusInfo) continue;
+    // Only update if status is between 6-10 minutes old
+    if (!statusInfo) continue;
+
     await server.editStatusChannelAndMessage(await server.getStatusData());
   }
 }
