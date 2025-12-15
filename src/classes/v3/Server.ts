@@ -440,7 +440,18 @@ export class Server extends BaseClass {
       }
 
       // is message exists?
-      message = await channel.messages.fetch(serverStatusInfo.message);
+      try {
+        message = await channel.messages.fetch(serverStatusInfo.message);
+      } catch (err: any) {
+        if (err.code === 10008) {
+          // Message deleted or otherwise not found
+          gmLog('status', `Message ${serverStatusInfo.message} no longer exists – removing record.`, true);
+          await prisma.gm_status.delete({ where: { server: this.getID() } });
+          return;
+        }
+        throw err;
+      }
+
       if (!message) {
         gmLog('status', `Message not found for server ${this.getID()}`, true);
         return;
