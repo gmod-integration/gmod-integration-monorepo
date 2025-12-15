@@ -400,7 +400,7 @@ export class Server extends BaseClass {
     try {
       let guild;
       try {
-        guild = await dscClient.guilds.fetch(this.getGuildID(), { withCounts: true });
+        guild = await dscClient.guilds.fetch(this.getGuildID());
       } catch (err: any) {
         if (err.code === 10004) {
           // Guild no longer exists or bot has been kicked
@@ -418,7 +418,7 @@ export class Server extends BaseClass {
       let channel;
       try {
         channel = await dscClient.channels.fetch(serverStatusInfo.channel);
-      } catch (err) {
+      } catch (err: any) {
         if (err.code === 10003) {
           // channel deleted or otherwise not found
           gmLog('status', `Channel ${serverStatusInfo.channel} no longer exists – removing record.`, true);
