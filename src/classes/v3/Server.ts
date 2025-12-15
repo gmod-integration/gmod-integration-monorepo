@@ -449,6 +449,12 @@ export class Server extends BaseClass {
           await prisma.gm_status.delete({ where: { server: this.getID() } });
           return;
         }
+        if (err.code === 50001) {
+          // Missing Access - bot no longer has permission to access the channel/message
+          gmLog('status', `Missing access to message ${serverStatusInfo.message} – removing record.`, true);
+          await prisma.gm_status.delete({ where: { server: this.getID() } });
+          return;
+        }
         throw err;
       }
 
