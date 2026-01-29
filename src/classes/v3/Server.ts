@@ -11,7 +11,7 @@ import {
   gm_server_logs_triggers_action,
   gm_server_logs_triggers_operator,
   gm_server_sync_chat_filter,
-} from '@prisma/client';
+} from '../../prisma/generated/prisma/enums.js';
 import { isGuildPremium } from './Guild.js';
 
 const serverSettings: Record<string, any> = {

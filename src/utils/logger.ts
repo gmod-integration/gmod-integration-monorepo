@@ -7,7 +7,7 @@ import { ChannelType, ColorResolvable, EmbedBuilder } from 'discord.js';
 import { Server } from '../classes/v3/Server.js';
 import { addLog } from '../database/gm_server_logs.js';
 import redis from '../services/redis/index.js';
-import { gm_server_logs_triggers } from '@prisma/client';
+import { gm_server_logs_triggers } from '../prisma/generated/prisma/enums.js';
 
 export enum LogLevel {
   MINIMAL = 'minimal',
