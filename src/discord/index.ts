@@ -200,7 +200,7 @@ async function addNewClient(guildInstance: string, token: string) {
     }
   });
 
-  client.on('ready', async () => {
+  client.on('clientReady', async () => {
     const user: ClientUser = client.user!;
     gmLog('discord', `Ready on ${guildInstance} with ${user.tag}`);
 
@@ -316,7 +316,7 @@ export async function getMainClient() {
     return mainClient;
   } else if (mainClient) {
     await new Promise<void>((resolve) => {
-      mainClient.on('ready', () => {
+      mainClient.on('clientReady', () => {
         resolve();
       });
     });
@@ -350,7 +350,7 @@ export async function getGuildClient(guildID: string, forcePresenceOnGuild = tru
     return guildClient;
   } else {
     await new Promise<void>((resolve) => {
-      guildClient.on('ready', () => {
+      guildClient.on('clientReady', () => {
         resolve();
       });
     });
