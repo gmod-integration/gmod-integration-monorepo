@@ -67,7 +67,7 @@
     "discord-api-types": "^0.37.120",
     "discord.js": "^14.25.1",
     "dotenv": "^16.6.1",
-    "express": "^4.22.1",
+    "express": "^5.2.1",
     "express-useragent": "^1.0.15",
     "helmet": "^7.2.0",
     "ioredis": "^5.9.2",
