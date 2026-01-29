@@ -10,7 +10,9 @@ const prisma = new PrismaClient({ adapter });
 
 async function main() {
   await connectToMongoDB();
-  console.log('Connected to both MySQL and MongoDB');
+  console.log('Connected to MySQL');
+  await prisma.$connect();
+  console.log('Prisma Client connected');
 }
 
 main().catch(console.error);
