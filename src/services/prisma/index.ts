@@ -3,14 +3,17 @@ import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { connectToMongoDB } from '../mongo/index.js';
 
 const adapter = new PrismaMariaDb({
-  connectionString: process.env.DATABASE_URL,
+  host: process.env.DATABASE_HOST,
+  user: process.env.DATABASE_USER,
+  password: process.env.DATABASE_PASSWORD,
+  database: process.env.DATABASE_NAME,
+  connectionLimit: 50,
 });
 
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
   await connectToMongoDB();
-  console.log('Connected to MySQL');
   await prisma.$connect();
   console.log('Prisma Client connected');
 }
