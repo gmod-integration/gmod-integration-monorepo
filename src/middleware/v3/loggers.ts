@@ -10,9 +10,9 @@ export default (req: Request, res: Response, next: NextFunction) => {
 
   const cpBody = structuredClone(req.body);
 
-  if (url.endsWith('/bugs') && cpBody.screenshot && cpBody.screenshot.screenshot) {
+  if (url.endsWith('/bugs') && cpBody && cpBody.screenshot && cpBody.screenshot.screenshot) {
     cpBody.screenshot.screenshot = '[IMAGE]';
-  } else if (url.endsWith('/screenshots') && cpBody.screenshot) {
+  } else if (url.endsWith('/screenshots') && cpBody && cpBody.screenshot) {
     cpBody.screenshot = '[IMAGE]';
   }
 
