@@ -15,7 +15,7 @@ model banUsers {
   reason    String   @default("") @db.VarChar(255)
   banDate   DateTime @default(now())
   banTime   Int      @default(0)
-  unbanDate DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 2 YEAR)"))
+  unbanDate DateTime @default(dbgenerated("(current_timestamp() + interval 2 year)"))
   admin     String   @default("") @db.VarChar(255)
   name      String   @default("") @db.VarChar(255)
   permanent Boolean  @default(false)
@@ -28,7 +28,7 @@ model gm_discordToken {
   accessToken    String   @db.VarChar(255)
   refreshToken   String   @db.VarChar(255)
   creationDate   DateTime @default(now())
-  expirationDate DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 7 DAY)"))
+  expirationDate DateTime @default(dbgenerated("(current_timestamp() + interval 7 day)"))
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -52,13 +52,13 @@ model gm_guild {
   createdAt                   DateTime                      @default(now())
   updatedAt                   DateTime                      @updatedAt
   gm_guild_auto_roles         gm_guild_auto_roles[]
+  gm_guild_verification_check gm_guild_verification_check[]
   gm_guild_verify_msg         gm_guild_verify_msg?
   gm_guild_verify_role        gm_guild_verify_role[]
+  gm_guild_webooks            gm_guild_webooks[]
   gm_server                   gm_server[]
   gm_server_links             gm_server_links[]
   gm_sync_chat                gm_sync_chat[]
-  gm_guild_verification_check gm_guild_verification_check[]
-  gm_guild_webooks            gm_guild_webooks[]
 }
 
 model gm_guild_auto_roles {
@@ -129,7 +129,7 @@ model gm_panelToken {
   browser        String?  @db.VarChar(255)
   revoke         Boolean  @default(false)
   creationDate   DateTime @default(now())
-  expirationDate DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 7 DAY)"))
+  expirationDate DateTime @default(dbgenerated("(current_timestamp() + interval 7 day)"))
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -160,8 +160,10 @@ model gm_server {
   description                   String?                         @default("") @db.VarChar(255)
   isPublic                      Boolean                         @default(false)
   gm_guild                      gm_guild                        @relation(fields: [guild], references: [guild], onDelete: Cascade, map: "gm_server_ibfk_1")
+  gm_server_ban                 gm_server_ban[]
   gm_server_leaderboard_options gm_server_leaderboard_options[]
   gm_server_logs_channel        gm_server_logs_channel?
+  gm_server_logs_triggers       gm_server_logs_triggers[]
   gm_server_pseudo              gm_server_pseudo[]
   gm_server_report_bugs         gm_server_report_bugs[]
   gm_server_roles               gm_server_roles[]
@@ -170,21 +172,19 @@ model gm_server {
   gm_server_settings            gm_server_settings[]
   gm_server_stat                gm_server_stat[]
   gm_server_stat_session        gm_server_stat_session[]
+  gm_server_stat_team_time      gm_server_stat_team_time[]
   gm_server_status              gm_server_status?
+  gm_server_status_history      gm_server_status_history[]
   gm_server_sync_chat_filter    gm_server_sync_chat_filter[]
   gm_server_sync_roles          gm_server_sync_roles[]
   gm_server_sync_team_roles     gm_server_sync_team_roles[]
   gm_server_vote                gm_server_vote[]
   gm_server_vote_channels       gm_server_vote_channels?
   gm_server_warn                gm_server_warn[]
-  gm_server_ban                 gm_server_ban[]
   gm_server_warn_options        gm_server_warn_options[]
   gm_status                     gm_status?
   gm_status_button              gm_status_button[]
   gm_sync_chat                  gm_sync_chat[]
-  gm_server_status_history      gm_server_status_history[]
-  gm_server_stat_team_time      gm_server_stat_team_time[]
-  gm_server_logs_triggers       gm_server_logs_triggers[]
 
   @@index([guild], map: "guild")
 }
@@ -308,8 +308,8 @@ model gm_server_screenshots {
   id          Int       @id @default(autoincrement())
   serverID    String    @db.VarChar(255)
   title       String    @default("") @db.VarChar(255)
-  player      Json      @default("[]")
-  captureData Json      @default("[]")
+  player      String    @db.LongText
+  captureData String    @db.LongText
   url         String    @default("") @db.VarChar(255)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -351,7 +351,7 @@ model gm_server_stat {
   total_connect     Int           @default(1)
   last_connect      DateTime      @updatedAt
   first_join        DateTime      @default(now())
-  custom_values     Json          @default("[]")
+  custom_values     String        @db.LongText
   bypassMaintenance Boolean       @default(false)
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -382,7 +382,7 @@ model gm_server_stat_session {
   time                Int            @default(0)
   deaths              Int            @default(0)
   kills               Int            @default(0)
-  customValues        Json?          @default("[]")
+  customValues        String?        @db.LongText
   sessionEndTimeStamp DateTime       @default(now()) @db.Timestamp(0)
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
@@ -401,7 +401,7 @@ model gm_server_status {
   hostname    String    @default("") @db.VarChar(255)
   maxPlayers  Int       @default(0)
   players     Int       @default(0)
-  playersList Json?     @default("[]")
+  playersList String?   @db.LongText
   map         String    @default("") @db.VarChar(255)
   gameMode    String    @default("") @db.VarChar(255)
   createdAt   DateTime  @default(now())
@@ -416,6 +416,8 @@ model gm_server_status_history {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_status_history_ibfk_1")
+
+  @@index([serverID], map: "gm_server_status_history_ibfk_1")
 }
 
 model gm_server_sync_chat_filter {
@@ -557,22 +559,6 @@ model gm_guild_webooks {
   @@index([guild], map: "guild")
 }
 
-enum gm_server_logs_triggers_operator {
-  equal
-  greaterThan
-  lessThan
-  notEqual
-  contain
-  notContain
-  startWith
-  endWith
-}
-
-enum gm_server_logs_triggers_action {
-  sendMessageInChannel
-  sendMessageInDMToAdmins
-}
-
 model gm_server_logs_triggers {
   id        Int                              @id @default(autoincrement())
   log_type  String                           @db.VarChar(255)
@@ -581,13 +567,14 @@ model gm_server_logs_triggers {
   operator  gm_server_logs_triggers_operator @default(equal)
   action    gm_server_logs_triggers_action   @default(sendMessageInChannel)
   channelID String                           @default("") @db.VarChar(255)
-  adminIDS  Json                             @default("[]")
+  adminIDS  String                           @db.LongText
   message   String                           @default("") @db.VarChar(255)
   createdAt DateTime                         @default(now())
   updatedAt DateTime                         @updatedAt
+  serverID  String                           @db.VarChar(255)
+  gm_server gm_server                        @relation(fields: [serverID], references: [id], onDelete: Cascade)
 
-  serverID  String    @db.VarChar(255)
-  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade)
+  @@index([serverID], map: "gm_server_logs_triggers_serverID_fkey")
 }
 
 model gm_status_button {
@@ -628,7 +615,7 @@ model gm_user {
   last_oauth             DateTime?                @default(now())
   trust                  Int?                     @default(50)
   token                  String?                  @db.VarChar(255)
-  token_expires          DateTime?                @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 7 DAY)"))
+  token_expires          DateTime?                @default(dbgenerated("(current_timestamp() + interval 7 day)"))
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
   gm_server_vote         gm_server_vote[]
@@ -655,7 +642,7 @@ model gm_users_data_request {
   id             String   @id @default(uuid()) @db.Char(36)
   discordID      String   @db.VarChar(255)
   status         String   @default("pending") @db.VarChar(255)
-  expirationDate DateTime @default(dbgenerated("(CURRENT_TIMESTAMP + INTERVAL 1 DAY)"))
+  expirationDate DateTime @default(dbgenerated("(current_timestamp() + interval 1 day)"))
   downloadLink   String?  @db.VarChar(255)
   code           String   @db.VarChar(255)
   createdAt      DateTime @default(now())
@@ -683,10 +670,26 @@ model users {
   steamID    String?   @default("") @db.Text
   name       String?   @default("") @db.Text
   lastIP     String?   @default("") @db.Text
-  IPS        Json      @default("[]")
+  IPS        String    @db.LongText
   lastUpdate DateTime? @updatedAt
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+}
+
+enum gm_server_logs_triggers_operator {
+  equal
+  greaterThan
+  lessThan
+  notEqual
+  contain
+  notContain
+  startWith
+  endWith
+}
+
+enum gm_server_logs_triggers_action {
+  sendMessageInChannel
+  sendMessageInDMToAdmins
 }
 
 enum gm_server_sync_chat_filter_element {
