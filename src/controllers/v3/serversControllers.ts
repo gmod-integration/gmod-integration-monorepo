@@ -4,6 +4,28 @@ import { Request, Response } from 'express';
 import prisma from '../../services/prisma/index.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 
+export async function postIGSettings(req: Request, res: Response) {
+  const server = req.server!;
+  const settings = req.body;
+
+  if (!settings || typeof settings !== 'object') {
+    return res.status(400).json({
+      error: 'missing_arguments',
+      args: { settings: !!settings },
+    });
+  }
+
+  await server.saveIGSettings(settings);
+  return res.status(200).json({ success: true });
+}
+
+export async function getIGSettings(req: Request, res: Response) {
+  console.log('Getting IG settings');
+  const server = req.server!;
+  const settings = await server.getAllIGSettings();
+  return res.status(200).json({ settings });
+}
+
 export async function postStatus(req: Request, res: Response) {
   const server = req.server!;
   const { players, playersList, maxPlayers, map, hostname, gameMode, port, ip, uptime } = req.body;

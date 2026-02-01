@@ -1,6 +1,7 @@
 import express from 'express';
 import serverValidator from '../../middleware/v3/serverValidator.js';
 import {
+  getIGSettings,
   getInfo,
   getPublicToken,
   postCHATMDepositMoney,
@@ -11,6 +12,7 @@ import {
   postDarkRPDropMoney,
   postDarkRPPickedUpCheque,
   postDarkRPPickedUpMoney,
+  postIGSettings,
   postMultiLog,
   postStatus,
   serverImportWarns,
@@ -43,6 +45,8 @@ const router = express.Router();
 router.use('/:serverID', serverValidator);
 
 router.get('/:serverID', asyncHandler(getInfo));
+router.post('/:serverID/config', asyncHandler(postIGSettings));
+router.get('/:serverID/config', asyncHandler(getIGSettings));
 router.post('/:serverID/status', asyncHandler(postStatus));
 router.get('/:serverID/public-token', asyncHandler(getPublicToken));
 router.post('/:serverID/errors', asyncHandler(reportError));

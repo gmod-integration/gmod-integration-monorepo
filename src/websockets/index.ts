@@ -77,6 +77,29 @@ wss.on('connection', async function connection(ws, req) {
       clients.server = clients.server.filter((client) => client.ws !== ws);
       gmLog('websocket', 'Server disconnected: ' + id);
     });
+    ws.on('message', async (message: string) => {
+      try {
+        const wsInfo = JSON.parse(message);
+
+        if (!wsInfo.action) {
+          return;
+        }
+
+        gmLog('websocket', 'Received from server ' + id + ' ' + JSON.stringify(wsInfo));
+
+        switch (wsInfo.action) {
+          case 'save_config':
+            const server = await getServerFromID(id.toString());
+            if (!server) return;
+            await server.saveIGSettings(wsInfo.config);
+            break;
+          default:
+            break;
+        }
+      } catch (e) {
+        gmLog('websocket', 'Error parsing message from server ' + id + ' ' + e);
+      }
+    });
   }
 
   if (req.url && req.url.includes('discordID') && req.url.includes('token')) {

@@ -111,6 +111,7 @@ import {
 import asyncHandler from '../../middleware/asyncHandler.js';
 import { getAllPanelUsers } from '../../controllers/v3/usersAdminControllers.js';
 import { getServerErrors } from '../../controllers/website/WebsiteErrorsControllers.js';
+import { getIGSettings, postIGSettings } from 'src/controllers/v3/serversControllers.js';
 
 const router = express.Router();
 
@@ -188,6 +189,10 @@ router.post('/:discordID/guilds/:guildID/servers/:serverID/token', asyncHandler(
 router.get('/:discordID/guilds/:guildID/servers/:serverID/players', asyncHandler(getServerPlayers));
 router.put('/:discordID/guilds/:guildID/servers/:serverID/players/:playerID', asyncHandler(putPlayerBypassMaintenance));
 router.delete('/:discordID/guilds/:guildID/servers/:serverID', asyncHandler(deleteGuildServer));
+
+// Config
+router.post('/:discordID/guilds/:guildID/servers/:serverID/config', asyncHandler(postIGSettings));
+router.get('/:discordID/guilds/:guildID/servers/:serverID/config', asyncHandler(getIGSettings));
 
 // Settings
 router.get('/:discordID/guilds/:guildID/servers/:serverID/settings', asyncHandler(getServerSettings));

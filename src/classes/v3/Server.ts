@@ -155,7 +155,9 @@ const serverSettings: Record<string, any> = {
     acceptedValues: null,
   },
   ig_adminRank: {
-    defaultValue: ['superadmin'],
+    defaultValue: {
+      superadmin: true,
+    },
     acceptedValues: null,
   },
 };
@@ -192,7 +194,13 @@ export class Server extends BaseClass {
     return await isGuildPremium(this.guild);
   }
 
-  async getAllSettings() {
+  async saveIGSettings(settings: Record<string, any>) {
+    for (const setting in settings) {
+      await this.setSetting('ig_' + setting, settings[setting]);
+    }
+  }
+
+  async getAllSettings(evenNotSet: boolean = false) {
     const settings = await prisma.gm_server_settings.findMany({
       where: {
         serverID: this.id,
@@ -213,7 +221,26 @@ export class Server extends BaseClass {
       }
     }
 
+    if (evenNotSet) {
+      for (const setting in serverSettings) {
+        if (!data[setting]) {
+          data[setting] = serverSettings[setting].defaultValue;
+        }
+      }
+    }
+
     return data;
+  }
+
+  async getAllIGSettings() {
+    const allSettings = await this.getAllSettings(true);
+    const igSettings: Record<string, any> = {};
+    for (const setting in allSettings) {
+      if (setting.startsWith('ig_')) {
+        igSettings[setting.replace('ig_', '')] = allSettings[setting];
+      }
+    }
+    return igSettings;
   }
 
   async getSetting(setting: string) {
