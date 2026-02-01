@@ -1,11 +1,21 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../../prisma/generated/prisma/client.js';
+import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { connectToMongoDB } from '../mongo/index.js';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaMariaDb({
+  host: process.env.DATABASE_HOST,
+  user: process.env.DATABASE_USER,
+  password: process.env.DATABASE_PASSWORD,
+  database: process.env.DATABASE_NAME,
+  connectionLimit: 50,
+});
+
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   await connectToMongoDB();
-  console.log('Connected to both MySQL and MongoDB');
+  await prisma.$connect();
+  console.log('Prisma Client connected');
 }
 
 main().catch(console.error);

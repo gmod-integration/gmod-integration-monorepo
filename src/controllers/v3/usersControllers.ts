@@ -1198,7 +1198,7 @@ export async function putServerSetting(req: Request, res: Response) {
   }
 
   try {
-    return res.send(await server.setSetting(setting, value));
+    return res.send(await server.setSetting(setting, value, 'dashboard'));
   } catch (error) {
     return res.status(404).send({
       error: 'Setting not found or not allowed',

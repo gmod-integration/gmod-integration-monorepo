@@ -7,12 +7,12 @@ import { gmLog } from '../../utils/logger.js';
 import { ChannelType } from 'discord.js';
 import prisma from '../../services/prisma/index.js';
 import {
-  gm_server_logs_triggers,
   gm_server_logs_triggers_action,
   gm_server_logs_triggers_operator,
-  gm_server_sync_chat_filter,
-} from '@prisma/client';
+} from '../../prisma/generated/prisma/enums.js';
+import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '../../prisma/generated/prisma/client.js';
 import { isGuildPremium } from './Guild.js';
+import { wsSendToServer } from 'src/websockets/index.js';
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
@@ -69,6 +69,98 @@ const serverSettings: Record<string, any> = {
       await server.editStatusChannelAndMessage(await server.getStatusData());
     },
   },
+  // in game settings
+  // Punishment
+  // gmInte.config.syncBan = true // If true, the addon will sync gmod bans with discord bans (and vice versa)
+  // gmInte.config.syncTimeout = false // If true, the addon will sync gmod timeouts with discord timeouts (and vice versa)
+  // gmInte.config.syncKick = false // If true, the addon will sync gmod kicks with discord kicks (and vice versa)
+  ig_syncBan: {
+    defaultValue: true,
+    acceptedValues: [true, false],
+  },
+  ig_syncTimeout: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  ig_syncKick: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  // Ban
+  // gmInte.config.filterOnBan = true // If true, the addon will filter the players according to their ban status
+  ig_filterOnBan: {
+    defaultValue: true,
+    acceptedValues: [true, false],
+  },
+  // Materials
+  // gmInte.config.redownloadMaterials = false // If true, the addon will redownload the materials of the addon (useful if you have a problem with the materials)
+  ig_redownloadMaterials: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  // Debug & Development
+  // gmInte.config.debug = false // If true, the addon will show debug informations in the console
+  ig_debug: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  // Security
+  // gmInte.config.forcePlayerLink = false // If true, the addon will force the players to link their discord account to their steam account before playing
+  // gmInte.config.verifyOnJoin = false // If true, the addon will verify the players when they join the server or on player ready
+  // gmInte.config.verifyOnReadyKickTime = 600 // The time in seconds before kicking a player that is not verified (0 to disable)
+  // gmInte.config.verifyFamilySharing = false // If true, the addon will verify the family sharing of the players
+  // gmInte.config.clientBranch = "any" // The branch of the addon that the clients should use (none, dev, prerelease, x86-64)
+  ig_forcePlayerLink: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  ig_verifyOnJoin: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  ig_verifyOnReadyKickTime: {
+    defaultValue: 600,
+    acceptedValues: null,
+  },
+  ig_verifyFamilySharing: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  ig_clientBranch: {
+    defaultValue: 'any',
+    acceptedValues: ['none', 'dev', 'prerelease', 'x86-64', 'any'],
+  },
+  // Other
+  // gmInte.config.supportLink = "" // The link of your support (shown when a player do not have the requiments to join the server)
+  // gmInte.config.maintenance = false // If true, the addon will only allow the players with the "gmod-integration.maintenance" permission to join the server
+  // gmInte.config.language = "en" // The language of the addon (en, fr, de, es, it, tr, ru)
+  // gmInte.config.logTimestamp = "%H:%M:%S" // The timestamp format of the logs
+  // gmInte.config.adminRank = {
+  //     // How can edit the configuration of the addon / bypass the maintenance mode
+  //     ["superadmin"] = true,
+  // }
+  ig_supportLink: {
+    defaultValue: '',
+    acceptedValues: null,
+  },
+  ig_maintenance: {
+    defaultValue: false,
+    acceptedValues: [true, false],
+  },
+  ig_language: {
+    defaultValue: 'en',
+    acceptedValues: ['en', 'fr', 'de', 'es', 'it', 'tr', 'ru'],
+  },
+  ig_logTimestamp: {
+    defaultValue: '%H:%M:%S',
+    acceptedValues: null,
+  },
+  ig_adminRank: {
+    defaultValue: {
+      superadmin: true,
+    },
+    acceptedValues: null,
+  },
 };
 
 export class Server extends BaseClass {
@@ -103,7 +195,13 @@ export class Server extends BaseClass {
     return await isGuildPremium(this.guild);
   }
 
-  async getAllSettings() {
+  async saveIGSettings(settings: Record<string, any>) {
+    for (const setting in settings) {
+      await this.setSetting('ig_' + setting, settings[setting]).catch(() => {});
+    }
+  }
+
+  async getAllSettings(evenNotSet: boolean = false) {
     const settings = await prisma.gm_server_settings.findMany({
       where: {
         serverID: this.id,
@@ -111,6 +209,15 @@ export class Server extends BaseClass {
     });
 
     const data: Record<string, any> = {};
+
+    if (evenNotSet) {
+      for (const setting in serverSettings) {
+        if (!data[setting]) {
+          data[setting] = serverSettings[setting].defaultValue;
+        }
+      }
+    }
+
     for (const setting of settings) {
       data[setting.setting] = setting.value;
       if (serverSettings[setting.setting] && serverSettings[setting.setting].acceptedValues) {
@@ -125,6 +232,17 @@ export class Server extends BaseClass {
     }
 
     return data;
+  }
+
+  async getAllIGSettings() {
+    const allSettings = await this.getAllSettings(true);
+    const igSettings: Record<string, any> = {};
+    for (const setting in allSettings) {
+      if (setting.startsWith('ig_')) {
+        igSettings[setting] = allSettings[setting];
+      }
+    }
+    return igSettings;
   }
 
   async getSetting(setting: string) {
@@ -164,7 +282,7 @@ export class Server extends BaseClass {
     return serverSettings[setting].defaultValue;
   }
 
-  async setSetting(setting: string, value: any) {
+  async setSetting(setting: string, value: any, source: string = 'unknow') {
     if (!serverSettings[setting]) {
       throw new Error('Setting not found');
     }
@@ -190,7 +308,11 @@ export class Server extends BaseClass {
       },
     });
 
-    value = value.toString();
+    if (typeof value === 'object' && value !== null) {
+      value = JSON.stringify(value);
+    } else {
+      value = value.toString();
+    }
 
     if (result) {
       await prisma.gm_server_settings.update({
@@ -218,6 +340,15 @@ export class Server extends BaseClass {
 
     if (serverSettings[setting].onChange) {
       await serverSettings[setting].onChange(this, previousValue, value);
+    }
+
+    if (source == 'dashboard' && setting.startsWith('ig_')) {
+      // wsEditSetting;
+      wsSendToServer(this.getID(), {
+        method: 'wsEditSetting',
+        setting: setting,
+        value: value,
+      });
     }
 
     return {
