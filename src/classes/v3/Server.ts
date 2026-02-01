@@ -208,6 +208,15 @@ export class Server extends BaseClass {
     });
 
     const data: Record<string, any> = {};
+
+    if (evenNotSet) {
+      for (const setting in serverSettings) {
+        if (!data[setting]) {
+          data[setting] = serverSettings[setting].defaultValue;
+        }
+      }
+    }
+
     for (const setting of settings) {
       data[setting.setting] = setting.value;
       if (serverSettings[setting.setting] && serverSettings[setting.setting].acceptedValues) {
@@ -221,14 +230,6 @@ export class Server extends BaseClass {
       }
     }
 
-    if (evenNotSet) {
-      for (const setting in serverSettings) {
-        if (!data[setting]) {
-          data[setting] = serverSettings[setting].defaultValue;
-        }
-      }
-    }
-
     return data;
   }
 
@@ -237,7 +238,7 @@ export class Server extends BaseClass {
     const igSettings: Record<string, any> = {};
     for (const setting in allSettings) {
       if (setting.startsWith('ig_')) {
-        igSettings[setting.replace('ig_', '')] = allSettings[setting];
+        igSettings[setting] = allSettings[setting];
       }
     }
     return igSettings;
