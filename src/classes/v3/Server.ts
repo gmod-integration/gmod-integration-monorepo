@@ -12,6 +12,7 @@ import {
 } from '../../prisma/generated/prisma/enums.js';
 import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '../../prisma/generated/prisma/client.js';
 import { isGuildPremium } from './Guild.js';
+import { wsSendToServer } from 'src/websockets/index.js';
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
@@ -281,7 +282,7 @@ export class Server extends BaseClass {
     return serverSettings[setting].defaultValue;
   }
 
-  async setSetting(setting: string, value: any) {
+  async setSetting(setting: string, value: any, source: string = 'unknow') {
     if (!serverSettings[setting]) {
       throw new Error('Setting not found');
     }
@@ -339,6 +340,15 @@ export class Server extends BaseClass {
 
     if (serverSettings[setting].onChange) {
       await serverSettings[setting].onChange(this, previousValue, value);
+    }
+
+    if (source == 'dashboard' && setting.startsWith('ig_')) {
+      // wsEditSetting;
+      wsSendToServer(this.getID(), {
+        method: 'wsEditSetting',
+        setting: setting,
+        value: value,
+      });
     }
 
     return {
