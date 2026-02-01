@@ -12,7 +12,7 @@ import {
 } from '../../prisma/generated/prisma/enums.js';
 import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '../../prisma/generated/prisma/client.js';
 import { isGuildPremium } from './Guild.js';
-import { wsSendToServer } from 'src/websockets/index.js';
+import { wsSendToServer } from '../../websockets/index.js';
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
