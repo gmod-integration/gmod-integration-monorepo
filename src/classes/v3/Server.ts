@@ -196,7 +196,7 @@ export class Server extends BaseClass {
 
   async saveIGSettings(settings: Record<string, any>) {
     for (const setting in settings) {
-      await this.setSetting('ig_' + setting, settings[setting]);
+      await this.setSetting('ig_' + setting, settings[setting]).catch(() => {});
     }
   }
 
@@ -307,7 +307,11 @@ export class Server extends BaseClass {
       },
     });
 
-    value = value.toString();
+    if (typeof value === 'object' && value !== null) {
+      value = JSON.stringify(value);
+    } else {
+      value = value.toString();
+    }
 
     if (result) {
       await prisma.gm_server_settings.update({
