@@ -111,7 +111,7 @@ import {
 import asyncHandler from '../../middleware/asyncHandler.js';
 import { getAllPanelUsers } from '../../controllers/v3/usersAdminControllers.js';
 import { getServerErrors } from '../../controllers/website/WebsiteErrorsControllers.js';
-import { getIGSettings, postIGSettings } from 'src/controllers/v3/serversControllers.js';
+import { getIGSettings, postIGSettings } from '../../controllers/v3/serversControllers.js';
 
 const router = express.Router();
 
