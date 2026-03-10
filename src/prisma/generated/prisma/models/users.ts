@@ -29,6 +29,7 @@ export type UsersMinAggregateOutputType = {
   steamID: string | null
   name: string | null
   lastIP: string | null
+  IPS: string | null
   lastUpdate: Date | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -39,6 +40,7 @@ export type UsersMaxAggregateOutputType = {
   steamID: string | null
   name: string | null
   lastIP: string | null
+  IPS: string | null
   lastUpdate: Date | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -62,6 +64,7 @@ export type UsersMinAggregateInputType = {
   steamID?: true
   name?: true
   lastIP?: true
+  IPS?: true
   lastUpdate?: true
   createdAt?: true
   updatedAt?: true
@@ -72,6 +75,7 @@ export type UsersMaxAggregateInputType = {
   steamID?: true
   name?: true
   lastIP?: true
+  IPS?: true
   lastUpdate?: true
   createdAt?: true
   updatedAt?: true
@@ -166,7 +170,7 @@ export type UsersGroupByOutputType = {
   steamID: string | null
   name: string | null
   lastIP: string | null
-  IPS: runtime.JsonValue
+  IPS: string
   lastUpdate: Date | null
   createdAt: Date
   updatedAt: Date
@@ -198,7 +202,7 @@ export type usersWhereInput = {
   steamID?: Prisma.StringNullableFilter<"users"> | string | null
   name?: Prisma.StringNullableFilter<"users"> | string | null
   lastIP?: Prisma.StringNullableFilter<"users"> | string | null
-  IPS?: Prisma.JsonFilter<"users">
+  IPS?: Prisma.StringFilter<"users"> | string
   lastUpdate?: Prisma.DateTimeNullableFilter<"users"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"users"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"users"> | Date | string
@@ -224,7 +228,7 @@ export type usersWhereUniqueInput = Prisma.AtLeast<{
   steamID?: Prisma.StringNullableFilter<"users"> | string | null
   name?: Prisma.StringNullableFilter<"users"> | string | null
   lastIP?: Prisma.StringNullableFilter<"users"> | string | null
-  IPS?: Prisma.JsonFilter<"users">
+  IPS?: Prisma.StringFilter<"users"> | string
   lastUpdate?: Prisma.DateTimeNullableFilter<"users"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"users"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"users"> | Date | string
@@ -252,7 +256,7 @@ export type usersScalarWhereWithAggregatesInput = {
   steamID?: Prisma.StringNullableWithAggregatesFilter<"users"> | string | null
   name?: Prisma.StringNullableWithAggregatesFilter<"users"> | string | null
   lastIP?: Prisma.StringNullableWithAggregatesFilter<"users"> | string | null
-  IPS?: Prisma.JsonWithAggregatesFilter<"users">
+  IPS?: Prisma.StringWithAggregatesFilter<"users"> | string
   lastUpdate?: Prisma.DateTimeNullableWithAggregatesFilter<"users"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"users"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"users"> | Date | string
@@ -263,7 +267,7 @@ export type usersCreateInput = {
   steamID?: string | null
   name?: string | null
   lastIP?: string | null
-  IPS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  IPS: string
   lastUpdate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -274,7 +278,7 @@ export type usersUncheckedCreateInput = {
   steamID?: string | null
   name?: string | null
   lastIP?: string | null
-  IPS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  IPS: string
   lastUpdate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -285,7 +289,7 @@ export type usersUpdateInput = {
   steamID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastIP?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  IPS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  IPS?: Prisma.StringFieldUpdateOperationsInput | string
   lastUpdate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -296,7 +300,7 @@ export type usersUncheckedUpdateInput = {
   steamID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastIP?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  IPS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  IPS?: Prisma.StringFieldUpdateOperationsInput | string
   lastUpdate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -307,7 +311,7 @@ export type usersCreateManyInput = {
   steamID?: string | null
   name?: string | null
   lastIP?: string | null
-  IPS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  IPS: string
   lastUpdate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -318,7 +322,7 @@ export type usersUpdateManyMutationInput = {
   steamID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastIP?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  IPS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  IPS?: Prisma.StringFieldUpdateOperationsInput | string
   lastUpdate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -329,7 +333,7 @@ export type usersUncheckedUpdateManyInput = {
   steamID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   name?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   lastIP?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  IPS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  IPS?: Prisma.StringFieldUpdateOperationsInput | string
   lastUpdate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -357,6 +361,7 @@ export type usersMaxOrderByAggregateInput = {
   steamID?: Prisma.SortOrder
   name?: Prisma.SortOrder
   lastIP?: Prisma.SortOrder
+  IPS?: Prisma.SortOrder
   lastUpdate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -367,6 +372,7 @@ export type usersMinOrderByAggregateInput = {
   steamID?: Prisma.SortOrder
   name?: Prisma.SortOrder
   lastIP?: Prisma.SortOrder
+  IPS?: Prisma.SortOrder
   lastUpdate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -408,7 +414,7 @@ export type $usersPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     steamID: string | null
     name: string | null
     lastIP: string | null
-    IPS: runtime.JsonValue
+    IPS: string
     lastUpdate: Date | null
     createdAt: Date
     updatedAt: Date
@@ -785,7 +791,7 @@ export interface usersFieldRefs {
   readonly steamID: Prisma.FieldRef<"users", 'String'>
   readonly name: Prisma.FieldRef<"users", 'String'>
   readonly lastIP: Prisma.FieldRef<"users", 'String'>
-  readonly IPS: Prisma.FieldRef<"users", 'Json'>
+  readonly IPS: Prisma.FieldRef<"users", 'String'>
   readonly lastUpdate: Prisma.FieldRef<"users", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"users", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"users", 'DateTime'>

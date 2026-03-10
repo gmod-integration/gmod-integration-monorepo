@@ -45,6 +45,7 @@ export type Gm_server_statusMinAggregateOutputType = {
   hostname: string | null
   maxPlayers: number | null
   players: number | null
+  playersList: string | null
   map: string | null
   gameMode: string | null
   createdAt: Date | null
@@ -58,6 +59,7 @@ export type Gm_server_statusMaxAggregateOutputType = {
   hostname: string | null
   maxPlayers: number | null
   players: number | null
+  playersList: string | null
   map: string | null
   gameMode: string | null
   createdAt: Date | null
@@ -99,6 +101,7 @@ export type Gm_server_statusMinAggregateInputType = {
   hostname?: true
   maxPlayers?: true
   players?: true
+  playersList?: true
   map?: true
   gameMode?: true
   createdAt?: true
@@ -112,6 +115,7 @@ export type Gm_server_statusMaxAggregateInputType = {
   hostname?: true
   maxPlayers?: true
   players?: true
+  playersList?: true
   map?: true
   gameMode?: true
   createdAt?: true
@@ -226,7 +230,7 @@ export type Gm_server_statusGroupByOutputType = {
   hostname: string
   maxPlayers: number
   players: number
-  playersList: runtime.JsonValue | null
+  playersList: string | null
   map: string
   gameMode: string
   createdAt: Date
@@ -263,7 +267,7 @@ export type gm_server_statusWhereInput = {
   hostname?: Prisma.StringFilter<"gm_server_status"> | string
   maxPlayers?: Prisma.IntFilter<"gm_server_status"> | number
   players?: Prisma.IntFilter<"gm_server_status"> | number
-  playersList?: Prisma.JsonNullableFilter<"gm_server_status">
+  playersList?: Prisma.StringNullableFilter<"gm_server_status"> | string | null
   map?: Prisma.StringFilter<"gm_server_status"> | string
   gameMode?: Prisma.StringFilter<"gm_server_status"> | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_status"> | Date | string
@@ -297,7 +301,7 @@ export type gm_server_statusWhereUniqueInput = Prisma.AtLeast<{
   hostname?: Prisma.StringFilter<"gm_server_status"> | string
   maxPlayers?: Prisma.IntFilter<"gm_server_status"> | number
   players?: Prisma.IntFilter<"gm_server_status"> | number
-  playersList?: Prisma.JsonNullableFilter<"gm_server_status">
+  playersList?: Prisma.StringNullableFilter<"gm_server_status"> | string | null
   map?: Prisma.StringFilter<"gm_server_status"> | string
   gameMode?: Prisma.StringFilter<"gm_server_status"> | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_status"> | Date | string
@@ -334,7 +338,7 @@ export type gm_server_statusScalarWhereWithAggregatesInput = {
   hostname?: Prisma.StringWithAggregatesFilter<"gm_server_status"> | string
   maxPlayers?: Prisma.IntWithAggregatesFilter<"gm_server_status"> | number
   players?: Prisma.IntWithAggregatesFilter<"gm_server_status"> | number
-  playersList?: Prisma.JsonNullableWithAggregatesFilter<"gm_server_status">
+  playersList?: Prisma.StringNullableWithAggregatesFilter<"gm_server_status"> | string | null
   map?: Prisma.StringWithAggregatesFilter<"gm_server_status"> | string
   gameMode?: Prisma.StringWithAggregatesFilter<"gm_server_status"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"gm_server_status"> | Date | string
@@ -347,7 +351,7 @@ export type gm_server_statusCreateInput = {
   hostname?: string
   maxPlayers?: number
   players?: number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: string | null
   map?: string
   gameMode?: string
   createdAt?: Date | string
@@ -362,7 +366,7 @@ export type gm_server_statusUncheckedCreateInput = {
   hostname?: string
   maxPlayers?: number
   players?: number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: string | null
   map?: string
   gameMode?: string
   createdAt?: Date | string
@@ -375,7 +379,7 @@ export type gm_server_statusUpdateInput = {
   hostname?: Prisma.StringFieldUpdateOperationsInput | string
   maxPlayers?: Prisma.IntFieldUpdateOperationsInput | number
   players?: Prisma.IntFieldUpdateOperationsInput | number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   map?: Prisma.StringFieldUpdateOperationsInput | string
   gameMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -390,7 +394,7 @@ export type gm_server_statusUncheckedUpdateInput = {
   hostname?: Prisma.StringFieldUpdateOperationsInput | string
   maxPlayers?: Prisma.IntFieldUpdateOperationsInput | number
   players?: Prisma.IntFieldUpdateOperationsInput | number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   map?: Prisma.StringFieldUpdateOperationsInput | string
   gameMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -404,7 +408,7 @@ export type gm_server_statusCreateManyInput = {
   hostname?: string
   maxPlayers?: number
   players?: number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: string | null
   map?: string
   gameMode?: string
   createdAt?: Date | string
@@ -417,7 +421,7 @@ export type gm_server_statusUpdateManyMutationInput = {
   hostname?: Prisma.StringFieldUpdateOperationsInput | string
   maxPlayers?: Prisma.IntFieldUpdateOperationsInput | number
   players?: Prisma.IntFieldUpdateOperationsInput | number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   map?: Prisma.StringFieldUpdateOperationsInput | string
   gameMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -431,7 +435,7 @@ export type gm_server_statusUncheckedUpdateManyInput = {
   hostname?: Prisma.StringFieldUpdateOperationsInput | string
   maxPlayers?: Prisma.IntFieldUpdateOperationsInput | number
   players?: Prisma.IntFieldUpdateOperationsInput | number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   map?: Prisma.StringFieldUpdateOperationsInput | string
   gameMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -476,6 +480,7 @@ export type gm_server_statusMaxOrderByAggregateInput = {
   hostname?: Prisma.SortOrder
   maxPlayers?: Prisma.SortOrder
   players?: Prisma.SortOrder
+  playersList?: Prisma.SortOrder
   map?: Prisma.SortOrder
   gameMode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -489,6 +494,7 @@ export type gm_server_statusMinOrderByAggregateInput = {
   hostname?: Prisma.SortOrder
   maxPlayers?: Prisma.SortOrder
   players?: Prisma.SortOrder
+  playersList?: Prisma.SortOrder
   map?: Prisma.SortOrder
   gameMode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -539,7 +545,7 @@ export type gm_server_statusCreateWithoutGm_serverInput = {
   hostname?: string
   maxPlayers?: number
   players?: number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: string | null
   map?: string
   gameMode?: string
   createdAt?: Date | string
@@ -552,7 +558,7 @@ export type gm_server_statusUncheckedCreateWithoutGm_serverInput = {
   hostname?: string
   maxPlayers?: number
   players?: number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: string | null
   map?: string
   gameMode?: string
   createdAt?: Date | string
@@ -581,7 +587,7 @@ export type gm_server_statusUpdateWithoutGm_serverInput = {
   hostname?: Prisma.StringFieldUpdateOperationsInput | string
   maxPlayers?: Prisma.IntFieldUpdateOperationsInput | number
   players?: Prisma.IntFieldUpdateOperationsInput | number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   map?: Prisma.StringFieldUpdateOperationsInput | string
   gameMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -594,7 +600,7 @@ export type gm_server_statusUncheckedUpdateWithoutGm_serverInput = {
   hostname?: Prisma.StringFieldUpdateOperationsInput | string
   maxPlayers?: Prisma.IntFieldUpdateOperationsInput | number
   players?: Prisma.IntFieldUpdateOperationsInput | number
-  playersList?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  playersList?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   map?: Prisma.StringFieldUpdateOperationsInput | string
   gameMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -651,7 +657,7 @@ export type $gm_server_statusPayload<ExtArgs extends runtime.Types.Extensions.In
     hostname: string
     maxPlayers: number
     players: number
-    playersList: runtime.JsonValue | null
+    playersList: string | null
     map: string
     gameMode: string
     createdAt: Date
@@ -1032,7 +1038,7 @@ export interface gm_server_statusFieldRefs {
   readonly hostname: Prisma.FieldRef<"gm_server_status", 'String'>
   readonly maxPlayers: Prisma.FieldRef<"gm_server_status", 'Int'>
   readonly players: Prisma.FieldRef<"gm_server_status", 'Int'>
-  readonly playersList: Prisma.FieldRef<"gm_server_status", 'Json'>
+  readonly playersList: Prisma.FieldRef<"gm_server_status", 'String'>
   readonly map: Prisma.FieldRef<"gm_server_status", 'String'>
   readonly gameMode: Prisma.FieldRef<"gm_server_status", 'String'>
   readonly createdAt: Prisma.FieldRef<"gm_server_status", 'DateTime'>

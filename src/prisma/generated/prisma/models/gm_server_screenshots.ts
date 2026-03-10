@@ -38,6 +38,8 @@ export type Gm_server_screenshotsMinAggregateOutputType = {
   id: number | null
   serverID: string | null
   title: string | null
+  player: string | null
+  captureData: string | null
   url: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -47,6 +49,8 @@ export type Gm_server_screenshotsMaxAggregateOutputType = {
   id: number | null
   serverID: string | null
   title: string | null
+  player: string | null
+  captureData: string | null
   url: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -77,6 +81,8 @@ export type Gm_server_screenshotsMinAggregateInputType = {
   id?: true
   serverID?: true
   title?: true
+  player?: true
+  captureData?: true
   url?: true
   createdAt?: true
   updatedAt?: true
@@ -86,6 +92,8 @@ export type Gm_server_screenshotsMaxAggregateInputType = {
   id?: true
   serverID?: true
   title?: true
+  player?: true
+  captureData?: true
   url?: true
   createdAt?: true
   updatedAt?: true
@@ -193,8 +201,8 @@ export type Gm_server_screenshotsGroupByOutputType = {
   id: number
   serverID: string
   title: string
-  player: runtime.JsonValue
-  captureData: runtime.JsonValue
+  player: string
+  captureData: string
   url: string
   createdAt: Date
   updatedAt: Date
@@ -227,8 +235,8 @@ export type gm_server_screenshotsWhereInput = {
   id?: Prisma.IntFilter<"gm_server_screenshots"> | number
   serverID?: Prisma.StringFilter<"gm_server_screenshots"> | string
   title?: Prisma.StringFilter<"gm_server_screenshots"> | string
-  player?: Prisma.JsonFilter<"gm_server_screenshots">
-  captureData?: Prisma.JsonFilter<"gm_server_screenshots">
+  player?: Prisma.StringFilter<"gm_server_screenshots"> | string
+  captureData?: Prisma.StringFilter<"gm_server_screenshots"> | string
   url?: Prisma.StringFilter<"gm_server_screenshots"> | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_screenshots"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_screenshots"> | Date | string
@@ -255,8 +263,8 @@ export type gm_server_screenshotsWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.gm_server_screenshotsWhereInput | Prisma.gm_server_screenshotsWhereInput[]
   serverID?: Prisma.StringFilter<"gm_server_screenshots"> | string
   title?: Prisma.StringFilter<"gm_server_screenshots"> | string
-  player?: Prisma.JsonFilter<"gm_server_screenshots">
-  captureData?: Prisma.JsonFilter<"gm_server_screenshots">
+  player?: Prisma.StringFilter<"gm_server_screenshots"> | string
+  captureData?: Prisma.StringFilter<"gm_server_screenshots"> | string
   url?: Prisma.StringFilter<"gm_server_screenshots"> | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_screenshots"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_screenshots"> | Date | string
@@ -286,8 +294,8 @@ export type gm_server_screenshotsScalarWhereWithAggregatesInput = {
   id?: Prisma.IntWithAggregatesFilter<"gm_server_screenshots"> | number
   serverID?: Prisma.StringWithAggregatesFilter<"gm_server_screenshots"> | string
   title?: Prisma.StringWithAggregatesFilter<"gm_server_screenshots"> | string
-  player?: Prisma.JsonWithAggregatesFilter<"gm_server_screenshots">
-  captureData?: Prisma.JsonWithAggregatesFilter<"gm_server_screenshots">
+  player?: Prisma.StringWithAggregatesFilter<"gm_server_screenshots"> | string
+  captureData?: Prisma.StringWithAggregatesFilter<"gm_server_screenshots"> | string
   url?: Prisma.StringWithAggregatesFilter<"gm_server_screenshots"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"gm_server_screenshots"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"gm_server_screenshots"> | Date | string
@@ -295,8 +303,8 @@ export type gm_server_screenshotsScalarWhereWithAggregatesInput = {
 
 export type gm_server_screenshotsCreateInput = {
   title?: string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player: string
+  captureData: string
   url?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -307,8 +315,8 @@ export type gm_server_screenshotsUncheckedCreateInput = {
   id?: number
   serverID: string
   title?: string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player: string
+  captureData: string
   url?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -316,8 +324,8 @@ export type gm_server_screenshotsUncheckedCreateInput = {
 
 export type gm_server_screenshotsUpdateInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player?: Prisma.StringFieldUpdateOperationsInput | string
+  captureData?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -328,8 +336,8 @@ export type gm_server_screenshotsUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   serverID?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player?: Prisma.StringFieldUpdateOperationsInput | string
+  captureData?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -339,8 +347,8 @@ export type gm_server_screenshotsCreateManyInput = {
   id?: number
   serverID: string
   title?: string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player: string
+  captureData: string
   url?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -348,8 +356,8 @@ export type gm_server_screenshotsCreateManyInput = {
 
 export type gm_server_screenshotsUpdateManyMutationInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player?: Prisma.StringFieldUpdateOperationsInput | string
+  captureData?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -359,8 +367,8 @@ export type gm_server_screenshotsUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   serverID?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player?: Prisma.StringFieldUpdateOperationsInput | string
+  captureData?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -401,6 +409,8 @@ export type gm_server_screenshotsMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   serverID?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  player?: Prisma.SortOrder
+  captureData?: Prisma.SortOrder
   url?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -410,6 +420,8 @@ export type gm_server_screenshotsMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   serverID?: Prisma.SortOrder
   title?: Prisma.SortOrder
+  player?: Prisma.SortOrder
+  captureData?: Prisma.SortOrder
   url?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -463,8 +475,8 @@ export type gm_server_screenshotsUncheckedUpdateManyWithoutGm_serverNestedInput 
 
 export type gm_server_screenshotsCreateWithoutGm_serverInput = {
   title?: string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player: string
+  captureData: string
   url?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -473,8 +485,8 @@ export type gm_server_screenshotsCreateWithoutGm_serverInput = {
 export type gm_server_screenshotsUncheckedCreateWithoutGm_serverInput = {
   id?: number
   title?: string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player: string
+  captureData: string
   url?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -513,8 +525,8 @@ export type gm_server_screenshotsScalarWhereInput = {
   id?: Prisma.IntFilter<"gm_server_screenshots"> | number
   serverID?: Prisma.StringFilter<"gm_server_screenshots"> | string
   title?: Prisma.StringFilter<"gm_server_screenshots"> | string
-  player?: Prisma.JsonFilter<"gm_server_screenshots">
-  captureData?: Prisma.JsonFilter<"gm_server_screenshots">
+  player?: Prisma.StringFilter<"gm_server_screenshots"> | string
+  captureData?: Prisma.StringFilter<"gm_server_screenshots"> | string
   url?: Prisma.StringFilter<"gm_server_screenshots"> | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_screenshots"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_screenshots"> | Date | string
@@ -523,8 +535,8 @@ export type gm_server_screenshotsScalarWhereInput = {
 export type gm_server_screenshotsCreateManyGm_serverInput = {
   id?: number
   title?: string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player: string
+  captureData: string
   url?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -532,8 +544,8 @@ export type gm_server_screenshotsCreateManyGm_serverInput = {
 
 export type gm_server_screenshotsUpdateWithoutGm_serverInput = {
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player?: Prisma.StringFieldUpdateOperationsInput | string
+  captureData?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -542,8 +554,8 @@ export type gm_server_screenshotsUpdateWithoutGm_serverInput = {
 export type gm_server_screenshotsUncheckedUpdateWithoutGm_serverInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player?: Prisma.StringFieldUpdateOperationsInput | string
+  captureData?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -552,8 +564,8 @@ export type gm_server_screenshotsUncheckedUpdateWithoutGm_serverInput = {
 export type gm_server_screenshotsUncheckedUpdateManyWithoutGm_serverInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   title?: Prisma.StringFieldUpdateOperationsInput | string
-  player?: Prisma.JsonNullValueInput | runtime.InputJsonValue
-  captureData?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  player?: Prisma.StringFieldUpdateOperationsInput | string
+  captureData?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -600,8 +612,8 @@ export type $gm_server_screenshotsPayload<ExtArgs extends runtime.Types.Extensio
     id: number
     serverID: string
     title: string
-    player: runtime.JsonValue
-    captureData: runtime.JsonValue
+    player: string
+    captureData: string
     url: string
     createdAt: Date
     updatedAt: Date
@@ -978,8 +990,8 @@ export interface gm_server_screenshotsFieldRefs {
   readonly id: Prisma.FieldRef<"gm_server_screenshots", 'Int'>
   readonly serverID: Prisma.FieldRef<"gm_server_screenshots", 'String'>
   readonly title: Prisma.FieldRef<"gm_server_screenshots", 'String'>
-  readonly player: Prisma.FieldRef<"gm_server_screenshots", 'Json'>
-  readonly captureData: Prisma.FieldRef<"gm_server_screenshots", 'Json'>
+  readonly player: Prisma.FieldRef<"gm_server_screenshots", 'String'>
+  readonly captureData: Prisma.FieldRef<"gm_server_screenshots", 'String'>
   readonly url: Prisma.FieldRef<"gm_server_screenshots", 'String'>
   readonly createdAt: Prisma.FieldRef<"gm_server_screenshots", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"gm_server_screenshots", 'DateTime'>

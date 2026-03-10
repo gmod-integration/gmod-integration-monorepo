@@ -42,6 +42,7 @@ export type Gm_server_logs_triggersMinAggregateOutputType = {
   operator: $Enums.gm_server_logs_triggers_operator | null
   action: $Enums.gm_server_logs_triggers_action | null
   channelID: string | null
+  adminIDS: string | null
   message: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -56,6 +57,7 @@ export type Gm_server_logs_triggersMaxAggregateOutputType = {
   operator: $Enums.gm_server_logs_triggers_operator | null
   action: $Enums.gm_server_logs_triggers_action | null
   channelID: string | null
+  adminIDS: string | null
   message: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -95,6 +97,7 @@ export type Gm_server_logs_triggersMinAggregateInputType = {
   operator?: true
   action?: true
   channelID?: true
+  adminIDS?: true
   message?: true
   createdAt?: true
   updatedAt?: true
@@ -109,6 +112,7 @@ export type Gm_server_logs_triggersMaxAggregateInputType = {
   operator?: true
   action?: true
   channelID?: true
+  adminIDS?: true
   message?: true
   createdAt?: true
   updatedAt?: true
@@ -225,7 +229,7 @@ export type Gm_server_logs_triggersGroupByOutputType = {
   operator: $Enums.gm_server_logs_triggers_operator
   action: $Enums.gm_server_logs_triggers_action
   channelID: string
-  adminIDS: runtime.JsonValue
+  adminIDS: string
   message: string
   createdAt: Date
   updatedAt: Date
@@ -263,7 +267,7 @@ export type gm_server_logs_triggersWhereInput = {
   operator?: Prisma.Enumgm_server_logs_triggers_operatorFilter<"gm_server_logs_triggers"> | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionFilter<"gm_server_logs_triggers"> | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringFilter<"gm_server_logs_triggers"> | string
-  adminIDS?: Prisma.JsonFilter<"gm_server_logs_triggers">
+  adminIDS?: Prisma.StringFilter<"gm_server_logs_triggers"> | string
   message?: Prisma.StringFilter<"gm_server_logs_triggers"> | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_logs_triggers"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_logs_triggers"> | Date | string
@@ -299,7 +303,7 @@ export type gm_server_logs_triggersWhereUniqueInput = Prisma.AtLeast<{
   operator?: Prisma.Enumgm_server_logs_triggers_operatorFilter<"gm_server_logs_triggers"> | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionFilter<"gm_server_logs_triggers"> | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringFilter<"gm_server_logs_triggers"> | string
-  adminIDS?: Prisma.JsonFilter<"gm_server_logs_triggers">
+  adminIDS?: Prisma.StringFilter<"gm_server_logs_triggers"> | string
   message?: Prisma.StringFilter<"gm_server_logs_triggers"> | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_logs_triggers"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_logs_triggers"> | Date | string
@@ -338,7 +342,7 @@ export type gm_server_logs_triggersScalarWhereWithAggregatesInput = {
   operator?: Prisma.Enumgm_server_logs_triggers_operatorWithAggregatesFilter<"gm_server_logs_triggers"> | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionWithAggregatesFilter<"gm_server_logs_triggers"> | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringWithAggregatesFilter<"gm_server_logs_triggers"> | string
-  adminIDS?: Prisma.JsonWithAggregatesFilter<"gm_server_logs_triggers">
+  adminIDS?: Prisma.StringWithAggregatesFilter<"gm_server_logs_triggers"> | string
   message?: Prisma.StringWithAggregatesFilter<"gm_server_logs_triggers"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"gm_server_logs_triggers"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"gm_server_logs_triggers"> | Date | string
@@ -352,7 +356,7 @@ export type gm_server_logs_triggersCreateInput = {
   operator?: $Enums.gm_server_logs_triggers_operator
   action?: $Enums.gm_server_logs_triggers_action
   channelID?: string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS: string
   message?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -367,7 +371,7 @@ export type gm_server_logs_triggersUncheckedCreateInput = {
   operator?: $Enums.gm_server_logs_triggers_operator
   action?: $Enums.gm_server_logs_triggers_action
   channelID?: string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS: string
   message?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -381,7 +385,7 @@ export type gm_server_logs_triggersUpdateInput = {
   operator?: Prisma.Enumgm_server_logs_triggers_operatorFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringFieldUpdateOperationsInput | string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS?: Prisma.StringFieldUpdateOperationsInput | string
   message?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -396,7 +400,7 @@ export type gm_server_logs_triggersUncheckedUpdateInput = {
   operator?: Prisma.Enumgm_server_logs_triggers_operatorFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringFieldUpdateOperationsInput | string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS?: Prisma.StringFieldUpdateOperationsInput | string
   message?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -411,7 +415,7 @@ export type gm_server_logs_triggersCreateManyInput = {
   operator?: $Enums.gm_server_logs_triggers_operator
   action?: $Enums.gm_server_logs_triggers_action
   channelID?: string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS: string
   message?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -425,7 +429,7 @@ export type gm_server_logs_triggersUpdateManyMutationInput = {
   operator?: Prisma.Enumgm_server_logs_triggers_operatorFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringFieldUpdateOperationsInput | string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS?: Prisma.StringFieldUpdateOperationsInput | string
   message?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -439,7 +443,7 @@ export type gm_server_logs_triggersUncheckedUpdateManyInput = {
   operator?: Prisma.Enumgm_server_logs_triggers_operatorFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringFieldUpdateOperationsInput | string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS?: Prisma.StringFieldUpdateOperationsInput | string
   message?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -489,6 +493,7 @@ export type gm_server_logs_triggersMaxOrderByAggregateInput = {
   operator?: Prisma.SortOrder
   action?: Prisma.SortOrder
   channelID?: Prisma.SortOrder
+  adminIDS?: Prisma.SortOrder
   message?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -503,6 +508,7 @@ export type gm_server_logs_triggersMinOrderByAggregateInput = {
   operator?: Prisma.SortOrder
   action?: Prisma.SortOrder
   channelID?: Prisma.SortOrder
+  adminIDS?: Prisma.SortOrder
   message?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -570,7 +576,7 @@ export type gm_server_logs_triggersCreateWithoutGm_serverInput = {
   operator?: $Enums.gm_server_logs_triggers_operator
   action?: $Enums.gm_server_logs_triggers_action
   channelID?: string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS: string
   message?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -584,7 +590,7 @@ export type gm_server_logs_triggersUncheckedCreateWithoutGm_serverInput = {
   operator?: $Enums.gm_server_logs_triggers_operator
   action?: $Enums.gm_server_logs_triggers_action
   channelID?: string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS: string
   message?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -627,7 +633,7 @@ export type gm_server_logs_triggersScalarWhereInput = {
   operator?: Prisma.Enumgm_server_logs_triggers_operatorFilter<"gm_server_logs_triggers"> | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionFilter<"gm_server_logs_triggers"> | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringFilter<"gm_server_logs_triggers"> | string
-  adminIDS?: Prisma.JsonFilter<"gm_server_logs_triggers">
+  adminIDS?: Prisma.StringFilter<"gm_server_logs_triggers"> | string
   message?: Prisma.StringFilter<"gm_server_logs_triggers"> | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_logs_triggers"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_logs_triggers"> | Date | string
@@ -642,7 +648,7 @@ export type gm_server_logs_triggersCreateManyGm_serverInput = {
   operator?: $Enums.gm_server_logs_triggers_operator
   action?: $Enums.gm_server_logs_triggers_action
   channelID?: string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS: string
   message?: string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -655,7 +661,7 @@ export type gm_server_logs_triggersUpdateWithoutGm_serverInput = {
   operator?: Prisma.Enumgm_server_logs_triggers_operatorFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringFieldUpdateOperationsInput | string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS?: Prisma.StringFieldUpdateOperationsInput | string
   message?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -669,7 +675,7 @@ export type gm_server_logs_triggersUncheckedUpdateWithoutGm_serverInput = {
   operator?: Prisma.Enumgm_server_logs_triggers_operatorFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringFieldUpdateOperationsInput | string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS?: Prisma.StringFieldUpdateOperationsInput | string
   message?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -683,7 +689,7 @@ export type gm_server_logs_triggersUncheckedUpdateManyWithoutGm_serverInput = {
   operator?: Prisma.Enumgm_server_logs_triggers_operatorFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_operator
   action?: Prisma.Enumgm_server_logs_triggers_actionFieldUpdateOperationsInput | $Enums.gm_server_logs_triggers_action
   channelID?: Prisma.StringFieldUpdateOperationsInput | string
-  adminIDS?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  adminIDS?: Prisma.StringFieldUpdateOperationsInput | string
   message?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -742,7 +748,7 @@ export type $gm_server_logs_triggersPayload<ExtArgs extends runtime.Types.Extens
     operator: $Enums.gm_server_logs_triggers_operator
     action: $Enums.gm_server_logs_triggers_action
     channelID: string
-    adminIDS: runtime.JsonValue
+    adminIDS: string
     message: string
     createdAt: Date
     updatedAt: Date
@@ -1124,7 +1130,7 @@ export interface gm_server_logs_triggersFieldRefs {
   readonly operator: Prisma.FieldRef<"gm_server_logs_triggers", 'gm_server_logs_triggers_operator'>
   readonly action: Prisma.FieldRef<"gm_server_logs_triggers", 'gm_server_logs_triggers_action'>
   readonly channelID: Prisma.FieldRef<"gm_server_logs_triggers", 'String'>
-  readonly adminIDS: Prisma.FieldRef<"gm_server_logs_triggers", 'Json'>
+  readonly adminIDS: Prisma.FieldRef<"gm_server_logs_triggers", 'String'>
   readonly message: Prisma.FieldRef<"gm_server_logs_triggers", 'String'>
   readonly createdAt: Prisma.FieldRef<"gm_server_logs_triggers", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"gm_server_logs_triggers", 'DateTime'>

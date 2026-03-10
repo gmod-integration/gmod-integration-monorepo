@@ -223,6 +223,11 @@ export type gm_guild_webooks = Prisma.gm_guild_webooksModel
  */
 export type gm_server_logs_triggers = Prisma.gm_server_logs_triggersModel
 /**
+ * Model gm_server_status_channel
+ * 
+ */
+export type gm_server_status_channel = Prisma.gm_server_status_channelModel
+/**
  * Model gm_status_button
  * 
  */

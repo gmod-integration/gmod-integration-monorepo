@@ -233,13 +233,13 @@ export type gm_guildWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"gm_guild"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_guild"> | Date | string
   gm_guild_auto_roles?: Prisma.Gm_guild_auto_rolesListRelationFilter
+  gm_guild_verification_check?: Prisma.Gm_guild_verification_checkListRelationFilter
   gm_guild_verify_msg?: Prisma.XOR<Prisma.Gm_guild_verify_msgNullableScalarRelationFilter, Prisma.gm_guild_verify_msgWhereInput> | null
   gm_guild_verify_role?: Prisma.Gm_guild_verify_roleListRelationFilter
+  gm_guild_webooks?: Prisma.Gm_guild_webooksListRelationFilter
   gm_server?: Prisma.Gm_serverListRelationFilter
   gm_server_links?: Prisma.Gm_server_linksListRelationFilter
   gm_sync_chat?: Prisma.Gm_sync_chatListRelationFilter
-  gm_guild_verification_check?: Prisma.Gm_guild_verification_checkListRelationFilter
-  gm_guild_webooks?: Prisma.Gm_guild_webooksListRelationFilter
 }
 
 export type gm_guildOrderByWithRelationInput = {
@@ -251,13 +251,13 @@ export type gm_guildOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesOrderByRelationAggregateInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkOrderByRelationAggregateInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgOrderByWithRelationInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleOrderByRelationAggregateInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksOrderByRelationAggregateInput
   gm_server?: Prisma.gm_serverOrderByRelationAggregateInput
   gm_server_links?: Prisma.gm_server_linksOrderByRelationAggregateInput
   gm_sync_chat?: Prisma.gm_sync_chatOrderByRelationAggregateInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkOrderByRelationAggregateInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksOrderByRelationAggregateInput
   _relevance?: Prisma.gm_guildOrderByRelevanceInput
 }
 
@@ -273,13 +273,13 @@ export type gm_guildWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"gm_guild"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_guild"> | Date | string
   gm_guild_auto_roles?: Prisma.Gm_guild_auto_rolesListRelationFilter
+  gm_guild_verification_check?: Prisma.Gm_guild_verification_checkListRelationFilter
   gm_guild_verify_msg?: Prisma.XOR<Prisma.Gm_guild_verify_msgNullableScalarRelationFilter, Prisma.gm_guild_verify_msgWhereInput> | null
   gm_guild_verify_role?: Prisma.Gm_guild_verify_roleListRelationFilter
+  gm_guild_webooks?: Prisma.Gm_guild_webooksListRelationFilter
   gm_server?: Prisma.Gm_serverListRelationFilter
   gm_server_links?: Prisma.Gm_server_linksListRelationFilter
   gm_sync_chat?: Prisma.Gm_sync_chatListRelationFilter
-  gm_guild_verification_check?: Prisma.Gm_guild_verification_checkListRelationFilter
-  gm_guild_webooks?: Prisma.Gm_guild_webooksListRelationFilter
 }, "guild">
 
 export type gm_guildOrderByWithAggregationInput = {
@@ -319,13 +319,13 @@ export type gm_guildCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildUncheckedCreateInput = {
@@ -337,13 +337,13 @@ export type gm_guildUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildUpdateInput = {
@@ -355,13 +355,13 @@ export type gm_guildUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildUncheckedUpdateInput = {
@@ -373,13 +373,13 @@ export type gm_guildUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildCreateManyInput = {
@@ -585,13 +585,13 @@ export type gm_guildCreateWithoutGm_guild_auto_rolesInput = {
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildUncheckedCreateWithoutGm_guild_auto_rolesInput = {
@@ -602,13 +602,13 @@ export type gm_guildUncheckedCreateWithoutGm_guild_auto_rolesInput = {
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildCreateOrConnectWithoutGm_guild_auto_rolesInput = {
@@ -635,13 +635,13 @@ export type gm_guildUpdateWithoutGm_guild_auto_rolesInput = {
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildUncheckedUpdateWithoutGm_guild_auto_rolesInput = {
@@ -652,13 +652,13 @@ export type gm_guildUncheckedUpdateWithoutGm_guild_auto_rolesInput = {
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildCreateWithoutGm_guild_verify_msgInput = {
@@ -670,12 +670,12 @@ export type gm_guildCreateWithoutGm_guild_verify_msgInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildUncheckedCreateWithoutGm_guild_verify_msgInput = {
@@ -687,12 +687,12 @@ export type gm_guildUncheckedCreateWithoutGm_guild_verify_msgInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildCreateOrConnectWithoutGm_guild_verify_msgInput = {
@@ -720,12 +720,12 @@ export type gm_guildUpdateWithoutGm_guild_verify_msgInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildUncheckedUpdateWithoutGm_guild_verify_msgInput = {
@@ -737,12 +737,12 @@ export type gm_guildUncheckedUpdateWithoutGm_guild_verify_msgInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildCreateWithoutGm_guild_verify_roleInput = {
@@ -754,12 +754,12 @@ export type gm_guildCreateWithoutGm_guild_verify_roleInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgCreateNestedOneWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildUncheckedCreateWithoutGm_guild_verify_roleInput = {
@@ -771,12 +771,12 @@ export type gm_guildUncheckedCreateWithoutGm_guild_verify_roleInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedCreateNestedOneWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildCreateOrConnectWithoutGm_guild_verify_roleInput = {
@@ -804,12 +804,12 @@ export type gm_guildUpdateWithoutGm_guild_verify_roleInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUpdateOneWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildUncheckedUpdateWithoutGm_guild_verify_roleInput = {
@@ -821,12 +821,12 @@ export type gm_guildUncheckedUpdateWithoutGm_guild_verify_roleInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedUpdateOneWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildCreateWithoutGm_serverInput = {
@@ -838,12 +838,12 @@ export type gm_guildCreateWithoutGm_serverInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildUncheckedCreateWithoutGm_serverInput = {
@@ -855,12 +855,12 @@ export type gm_guildUncheckedCreateWithoutGm_serverInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildCreateOrConnectWithoutGm_serverInput = {
@@ -888,12 +888,12 @@ export type gm_guildUpdateWithoutGm_serverInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildUncheckedUpdateWithoutGm_serverInput = {
@@ -905,12 +905,12 @@ export type gm_guildUncheckedUpdateWithoutGm_serverInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildCreateWithoutGm_server_linksInput = {
@@ -922,12 +922,12 @@ export type gm_guildCreateWithoutGm_server_linksInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildUncheckedCreateWithoutGm_server_linksInput = {
@@ -939,12 +939,12 @@ export type gm_guildUncheckedCreateWithoutGm_server_linksInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverUncheckedCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildCreateOrConnectWithoutGm_server_linksInput = {
@@ -972,12 +972,12 @@ export type gm_guildUpdateWithoutGm_server_linksInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildUncheckedUpdateWithoutGm_server_linksInput = {
@@ -989,12 +989,12 @@ export type gm_guildUncheckedUpdateWithoutGm_server_linksInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildCreateWithoutGm_guild_verification_checkInput = {
@@ -1008,10 +1008,10 @@ export type gm_guildCreateWithoutGm_guild_verification_checkInput = {
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildUncheckedCreateWithoutGm_guild_verification_checkInput = {
@@ -1025,10 +1025,10 @@ export type gm_guildUncheckedCreateWithoutGm_guild_verification_checkInput = {
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildCreateOrConnectWithoutGm_guild_verification_checkInput = {
@@ -1058,10 +1058,10 @@ export type gm_guildUpdateWithoutGm_guild_verification_checkInput = {
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildUncheckedUpdateWithoutGm_guild_verification_checkInput = {
@@ -1075,10 +1075,10 @@ export type gm_guildUncheckedUpdateWithoutGm_guild_verification_checkInput = {
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildCreateWithoutGm_guild_webooksInput = {
@@ -1090,12 +1090,12 @@ export type gm_guildCreateWithoutGm_guild_webooksInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildUncheckedCreateWithoutGm_guild_webooksInput = {
@@ -1107,12 +1107,12 @@ export type gm_guildUncheckedCreateWithoutGm_guild_webooksInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildCreateOrConnectWithoutGm_guild_webooksInput = {
@@ -1140,12 +1140,12 @@ export type gm_guildUpdateWithoutGm_guild_webooksInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildUncheckedUpdateWithoutGm_guild_webooksInput = {
@@ -1157,12 +1157,12 @@ export type gm_guildUncheckedUpdateWithoutGm_guild_webooksInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_sync_chat?: Prisma.gm_sync_chatUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildCreateWithoutGm_sync_chatInput = {
@@ -1174,12 +1174,12 @@ export type gm_guildCreateWithoutGm_sync_chatInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildUncheckedCreateWithoutGm_sync_chatInput = {
@@ -1191,12 +1191,12 @@ export type gm_guildUncheckedCreateWithoutGm_sync_chatInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedCreateNestedOneWithoutGm_guildInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedCreateNestedManyWithoutGm_guildInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server?: Prisma.gm_serverUncheckedCreateNestedManyWithoutGm_guildInput
   gm_server_links?: Prisma.gm_server_linksUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedCreateNestedManyWithoutGm_guildInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedCreateNestedManyWithoutGm_guildInput
 }
 
 export type gm_guildCreateOrConnectWithoutGm_sync_chatInput = {
@@ -1224,12 +1224,12 @@ export type gm_guildUpdateWithoutGm_sync_chatInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUpdateManyWithoutGm_guildNestedInput
 }
 
 export type gm_guildUncheckedUpdateWithoutGm_sync_chatInput = {
@@ -1241,12 +1241,12 @@ export type gm_guildUncheckedUpdateWithoutGm_sync_chatInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   gm_guild_auto_roles?: Prisma.gm_guild_auto_rolesUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_guild_verify_msg?: Prisma.gm_guild_verify_msgUncheckedUpdateOneWithoutGm_guildNestedInput
   gm_guild_verify_role?: Prisma.gm_guild_verify_roleUncheckedUpdateManyWithoutGm_guildNestedInput
+  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server?: Prisma.gm_serverUncheckedUpdateManyWithoutGm_guildNestedInput
   gm_server_links?: Prisma.gm_server_linksUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_verification_check?: Prisma.gm_guild_verification_checkUncheckedUpdateManyWithoutGm_guildNestedInput
-  gm_guild_webooks?: Prisma.gm_guild_webooksUncheckedUpdateManyWithoutGm_guildNestedInput
 }
 
 
@@ -1256,22 +1256,22 @@ export type gm_guildUncheckedUpdateWithoutGm_sync_chatInput = {
 
 export type Gm_guildCountOutputType = {
   gm_guild_auto_roles: number
+  gm_guild_verification_check: number
   gm_guild_verify_role: number
+  gm_guild_webooks: number
   gm_server: number
   gm_server_links: number
   gm_sync_chat: number
-  gm_guild_verification_check: number
-  gm_guild_webooks: number
 }
 
 export type Gm_guildCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   gm_guild_auto_roles?: boolean | Gm_guildCountOutputTypeCountGm_guild_auto_rolesArgs
+  gm_guild_verification_check?: boolean | Gm_guildCountOutputTypeCountGm_guild_verification_checkArgs
   gm_guild_verify_role?: boolean | Gm_guildCountOutputTypeCountGm_guild_verify_roleArgs
+  gm_guild_webooks?: boolean | Gm_guildCountOutputTypeCountGm_guild_webooksArgs
   gm_server?: boolean | Gm_guildCountOutputTypeCountGm_serverArgs
   gm_server_links?: boolean | Gm_guildCountOutputTypeCountGm_server_linksArgs
   gm_sync_chat?: boolean | Gm_guildCountOutputTypeCountGm_sync_chatArgs
-  gm_guild_verification_check?: boolean | Gm_guildCountOutputTypeCountGm_guild_verification_checkArgs
-  gm_guild_webooks?: boolean | Gm_guildCountOutputTypeCountGm_guild_webooksArgs
 }
 
 /**
@@ -1294,8 +1294,22 @@ export type Gm_guildCountOutputTypeCountGm_guild_auto_rolesArgs<ExtArgs extends 
 /**
  * Gm_guildCountOutputType without action
  */
+export type Gm_guildCountOutputTypeCountGm_guild_verification_checkArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.gm_guild_verification_checkWhereInput
+}
+
+/**
+ * Gm_guildCountOutputType without action
+ */
 export type Gm_guildCountOutputTypeCountGm_guild_verify_roleArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.gm_guild_verify_roleWhereInput
+}
+
+/**
+ * Gm_guildCountOutputType without action
+ */
+export type Gm_guildCountOutputTypeCountGm_guild_webooksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.gm_guild_webooksWhereInput
 }
 
 /**
@@ -1319,20 +1333,6 @@ export type Gm_guildCountOutputTypeCountGm_sync_chatArgs<ExtArgs extends runtime
   where?: Prisma.gm_sync_chatWhereInput
 }
 
-/**
- * Gm_guildCountOutputType without action
- */
-export type Gm_guildCountOutputTypeCountGm_guild_verification_checkArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.gm_guild_verification_checkWhereInput
-}
-
-/**
- * Gm_guildCountOutputType without action
- */
-export type Gm_guildCountOutputTypeCountGm_guild_webooksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.gm_guild_webooksWhereInput
-}
-
 
 export type gm_guildSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   guild?: boolean
@@ -1343,13 +1343,13 @@ export type gm_guildSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   createdAt?: boolean
   updatedAt?: boolean
   gm_guild_auto_roles?: boolean | Prisma.gm_guild$gm_guild_auto_rolesArgs<ExtArgs>
+  gm_guild_verification_check?: boolean | Prisma.gm_guild$gm_guild_verification_checkArgs<ExtArgs>
   gm_guild_verify_msg?: boolean | Prisma.gm_guild$gm_guild_verify_msgArgs<ExtArgs>
   gm_guild_verify_role?: boolean | Prisma.gm_guild$gm_guild_verify_roleArgs<ExtArgs>
+  gm_guild_webooks?: boolean | Prisma.gm_guild$gm_guild_webooksArgs<ExtArgs>
   gm_server?: boolean | Prisma.gm_guild$gm_serverArgs<ExtArgs>
   gm_server_links?: boolean | Prisma.gm_guild$gm_server_linksArgs<ExtArgs>
   gm_sync_chat?: boolean | Prisma.gm_guild$gm_sync_chatArgs<ExtArgs>
-  gm_guild_verification_check?: boolean | Prisma.gm_guild$gm_guild_verification_checkArgs<ExtArgs>
-  gm_guild_webooks?: boolean | Prisma.gm_guild$gm_guild_webooksArgs<ExtArgs>
   _count?: boolean | Prisma.Gm_guildCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["gm_guild"]>
 
@@ -1368,13 +1368,13 @@ export type gm_guildSelectScalar = {
 export type gm_guildOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"guild" | "name" | "member" | "language" | "addDate" | "createdAt" | "updatedAt", ExtArgs["result"]["gm_guild"]>
 export type gm_guildInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   gm_guild_auto_roles?: boolean | Prisma.gm_guild$gm_guild_auto_rolesArgs<ExtArgs>
+  gm_guild_verification_check?: boolean | Prisma.gm_guild$gm_guild_verification_checkArgs<ExtArgs>
   gm_guild_verify_msg?: boolean | Prisma.gm_guild$gm_guild_verify_msgArgs<ExtArgs>
   gm_guild_verify_role?: boolean | Prisma.gm_guild$gm_guild_verify_roleArgs<ExtArgs>
+  gm_guild_webooks?: boolean | Prisma.gm_guild$gm_guild_webooksArgs<ExtArgs>
   gm_server?: boolean | Prisma.gm_guild$gm_serverArgs<ExtArgs>
   gm_server_links?: boolean | Prisma.gm_guild$gm_server_linksArgs<ExtArgs>
   gm_sync_chat?: boolean | Prisma.gm_guild$gm_sync_chatArgs<ExtArgs>
-  gm_guild_verification_check?: boolean | Prisma.gm_guild$gm_guild_verification_checkArgs<ExtArgs>
-  gm_guild_webooks?: boolean | Prisma.gm_guild$gm_guild_webooksArgs<ExtArgs>
   _count?: boolean | Prisma.Gm_guildCountOutputTypeDefaultArgs<ExtArgs>
 }
 
@@ -1382,13 +1382,13 @@ export type $gm_guildPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
   name: "gm_guild"
   objects: {
     gm_guild_auto_roles: Prisma.$gm_guild_auto_rolesPayload<ExtArgs>[]
+    gm_guild_verification_check: Prisma.$gm_guild_verification_checkPayload<ExtArgs>[]
     gm_guild_verify_msg: Prisma.$gm_guild_verify_msgPayload<ExtArgs> | null
     gm_guild_verify_role: Prisma.$gm_guild_verify_rolePayload<ExtArgs>[]
+    gm_guild_webooks: Prisma.$gm_guild_webooksPayload<ExtArgs>[]
     gm_server: Prisma.$gm_serverPayload<ExtArgs>[]
     gm_server_links: Prisma.$gm_server_linksPayload<ExtArgs>[]
     gm_sync_chat: Prisma.$gm_sync_chatPayload<ExtArgs>[]
-    gm_guild_verification_check: Prisma.$gm_guild_verification_checkPayload<ExtArgs>[]
-    gm_guild_webooks: Prisma.$gm_guild_webooksPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     guild: string
@@ -1739,13 +1739,13 @@ readonly fields: gm_guildFieldRefs;
 export interface Prisma__gm_guildClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   gm_guild_auto_roles<T extends Prisma.gm_guild$gm_guild_auto_rolesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.gm_guild$gm_guild_auto_rolesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$gm_guild_auto_rolesPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  gm_guild_verification_check<T extends Prisma.gm_guild$gm_guild_verification_checkArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.gm_guild$gm_guild_verification_checkArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$gm_guild_verification_checkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   gm_guild_verify_msg<T extends Prisma.gm_guild$gm_guild_verify_msgArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.gm_guild$gm_guild_verify_msgArgs<ExtArgs>>): Prisma.Prisma__gm_guild_verify_msgClient<runtime.Types.Result.GetResult<Prisma.$gm_guild_verify_msgPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   gm_guild_verify_role<T extends Prisma.gm_guild$gm_guild_verify_roleArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.gm_guild$gm_guild_verify_roleArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$gm_guild_verify_rolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  gm_guild_webooks<T extends Prisma.gm_guild$gm_guild_webooksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.gm_guild$gm_guild_webooksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$gm_guild_webooksPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   gm_server<T extends Prisma.gm_guild$gm_serverArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.gm_guild$gm_serverArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$gm_serverPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   gm_server_links<T extends Prisma.gm_guild$gm_server_linksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.gm_guild$gm_server_linksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$gm_server_linksPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   gm_sync_chat<T extends Prisma.gm_guild$gm_sync_chatArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.gm_guild$gm_sync_chatArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$gm_sync_chatPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  gm_guild_verification_check<T extends Prisma.gm_guild$gm_guild_verification_checkArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.gm_guild$gm_guild_verification_checkArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$gm_guild_verification_checkPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  gm_guild_webooks<T extends Prisma.gm_guild$gm_guild_webooksArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.gm_guild$gm_guild_webooksArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$gm_guild_webooksPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2149,6 +2149,30 @@ export type gm_guild$gm_guild_auto_rolesArgs<ExtArgs extends runtime.Types.Exten
 }
 
 /**
+ * gm_guild.gm_guild_verification_check
+ */
+export type gm_guild$gm_guild_verification_checkArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the gm_guild_verification_check
+   */
+  select?: Prisma.gm_guild_verification_checkSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the gm_guild_verification_check
+   */
+  omit?: Prisma.gm_guild_verification_checkOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.gm_guild_verification_checkInclude<ExtArgs> | null
+  where?: Prisma.gm_guild_verification_checkWhereInput
+  orderBy?: Prisma.gm_guild_verification_checkOrderByWithRelationInput | Prisma.gm_guild_verification_checkOrderByWithRelationInput[]
+  cursor?: Prisma.gm_guild_verification_checkWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.Gm_guild_verification_checkScalarFieldEnum | Prisma.Gm_guild_verification_checkScalarFieldEnum[]
+}
+
+/**
  * gm_guild.gm_guild_verify_msg
  */
 export type gm_guild$gm_guild_verify_msgArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -2189,6 +2213,30 @@ export type gm_guild$gm_guild_verify_roleArgs<ExtArgs extends runtime.Types.Exte
   take?: number
   skip?: number
   distinct?: Prisma.Gm_guild_verify_roleScalarFieldEnum | Prisma.Gm_guild_verify_roleScalarFieldEnum[]
+}
+
+/**
+ * gm_guild.gm_guild_webooks
+ */
+export type gm_guild$gm_guild_webooksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the gm_guild_webooks
+   */
+  select?: Prisma.gm_guild_webooksSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the gm_guild_webooks
+   */
+  omit?: Prisma.gm_guild_webooksOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.gm_guild_webooksInclude<ExtArgs> | null
+  where?: Prisma.gm_guild_webooksWhereInput
+  orderBy?: Prisma.gm_guild_webooksOrderByWithRelationInput | Prisma.gm_guild_webooksOrderByWithRelationInput[]
+  cursor?: Prisma.gm_guild_webooksWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.Gm_guild_webooksScalarFieldEnum | Prisma.Gm_guild_webooksScalarFieldEnum[]
 }
 
 /**
@@ -2261,54 +2309,6 @@ export type gm_guild$gm_sync_chatArgs<ExtArgs extends runtime.Types.Extensions.I
   take?: number
   skip?: number
   distinct?: Prisma.Gm_sync_chatScalarFieldEnum | Prisma.Gm_sync_chatScalarFieldEnum[]
-}
-
-/**
- * gm_guild.gm_guild_verification_check
- */
-export type gm_guild$gm_guild_verification_checkArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the gm_guild_verification_check
-   */
-  select?: Prisma.gm_guild_verification_checkSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the gm_guild_verification_check
-   */
-  omit?: Prisma.gm_guild_verification_checkOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.gm_guild_verification_checkInclude<ExtArgs> | null
-  where?: Prisma.gm_guild_verification_checkWhereInput
-  orderBy?: Prisma.gm_guild_verification_checkOrderByWithRelationInput | Prisma.gm_guild_verification_checkOrderByWithRelationInput[]
-  cursor?: Prisma.gm_guild_verification_checkWhereUniqueInput
-  take?: number
-  skip?: number
-  distinct?: Prisma.Gm_guild_verification_checkScalarFieldEnum | Prisma.Gm_guild_verification_checkScalarFieldEnum[]
-}
-
-/**
- * gm_guild.gm_guild_webooks
- */
-export type gm_guild$gm_guild_webooksArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the gm_guild_webooks
-   */
-  select?: Prisma.gm_guild_webooksSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the gm_guild_webooks
-   */
-  omit?: Prisma.gm_guild_webooksOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.gm_guild_webooksInclude<ExtArgs> | null
-  where?: Prisma.gm_guild_webooksWhereInput
-  orderBy?: Prisma.gm_guild_webooksOrderByWithRelationInput | Prisma.gm_guild_webooksOrderByWithRelationInput[]
-  cursor?: Prisma.gm_guild_webooksWhereUniqueInput
-  take?: number
-  skip?: number
-  distinct?: Prisma.Gm_guild_webooksScalarFieldEnum | Prisma.Gm_guild_webooksScalarFieldEnum[]
 }
 
 /**

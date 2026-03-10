@@ -425,6 +425,7 @@ export const ModelName = {
   gm_status: 'gm_status',
   gm_guild_webooks: 'gm_guild_webooks',
   gm_server_logs_triggers: 'gm_server_logs_triggers',
+  gm_server_status_channel: 'gm_server_status_channel',
   gm_status_button: 'gm_status_button',
   gm_sync_chat: 'gm_sync_chat',
   gm_user: 'gm_user',
@@ -447,7 +448,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "banUsers" | "gm_discordToken" | "gm_gmodstore_purchases" | "gm_guild" | "gm_guild_auto_roles" | "gm_guild_member" | "gm_guild_premium" | "gm_guild_settings" | "gm_guild_verify_msg" | "gm_guild_verify_role" | "gm_panelToken" | "gm_role_auto" | "gm_server" | "gm_server_customValues" | "gm_server_leaderboard_options" | "gm_server_links" | "gm_server_logs_channel" | "gm_server_pseudo" | "gm_server_report_bugs" | "gm_server_roles" | "gm_server_screenshot_channels" | "gm_server_screenshots" | "gm_users_transfers" | "gm_server_settings" | "gm_server_stat" | "gm_server_stat_team_time" | "gm_server_stat_session" | "gm_server_status" | "gm_server_status_history" | "gm_server_sync_chat_filter" | "gm_server_sync_roles" | "gm_guild_verification_check" | "gm_server_sync_team_roles" | "gm_server_vote" | "gm_server_vote_channels" | "gm_server_warn" | "gm_server_ban" | "gm_server_warn_options" | "gm_status" | "gm_guild_webooks" | "gm_server_logs_triggers" | "gm_status_button" | "gm_sync_chat" | "gm_user" | "gm_user_steam" | "gm_users_data_request" | "gm_users_notifications" | "users"
+    modelProps: "banUsers" | "gm_discordToken" | "gm_gmodstore_purchases" | "gm_guild" | "gm_guild_auto_roles" | "gm_guild_member" | "gm_guild_premium" | "gm_guild_settings" | "gm_guild_verify_msg" | "gm_guild_verify_role" | "gm_panelToken" | "gm_role_auto" | "gm_server" | "gm_server_customValues" | "gm_server_leaderboard_options" | "gm_server_links" | "gm_server_logs_channel" | "gm_server_pseudo" | "gm_server_report_bugs" | "gm_server_roles" | "gm_server_screenshot_channels" | "gm_server_screenshots" | "gm_users_transfers" | "gm_server_settings" | "gm_server_stat" | "gm_server_stat_team_time" | "gm_server_stat_session" | "gm_server_status" | "gm_server_status_history" | "gm_server_sync_chat_filter" | "gm_server_sync_roles" | "gm_guild_verification_check" | "gm_server_sync_team_roles" | "gm_server_vote" | "gm_server_vote_channels" | "gm_server_warn" | "gm_server_ban" | "gm_server_warn_options" | "gm_status" | "gm_guild_webooks" | "gm_server_logs_triggers" | "gm_server_status_channel" | "gm_status_button" | "gm_sync_chat" | "gm_user" | "gm_user_steam" | "gm_users_data_request" | "gm_users_notifications" | "users"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3157,6 +3158,72 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    gm_server_status_channel: {
+      payload: Prisma.$gm_server_status_channelPayload<ExtArgs>
+      fields: Prisma.gm_server_status_channelFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.gm_server_status_channelFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_server_status_channelPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.gm_server_status_channelFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_server_status_channelPayload>
+        }
+        findFirst: {
+          args: Prisma.gm_server_status_channelFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_server_status_channelPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.gm_server_status_channelFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_server_status_channelPayload>
+        }
+        findMany: {
+          args: Prisma.gm_server_status_channelFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_server_status_channelPayload>[]
+        }
+        create: {
+          args: Prisma.gm_server_status_channelCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_server_status_channelPayload>
+        }
+        createMany: {
+          args: Prisma.gm_server_status_channelCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        delete: {
+          args: Prisma.gm_server_status_channelDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_server_status_channelPayload>
+        }
+        update: {
+          args: Prisma.gm_server_status_channelUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_server_status_channelPayload>
+        }
+        deleteMany: {
+          args: Prisma.gm_server_status_channelDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.gm_server_status_channelUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        upsert: {
+          args: Prisma.gm_server_status_channelUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_server_status_channelPayload>
+        }
+        aggregate: {
+          args: Prisma.Gm_server_status_channelAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateGm_server_status_channel>
+        }
+        groupBy: {
+          args: Prisma.gm_server_status_channelGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Gm_server_status_channelGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.gm_server_status_channelCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Gm_server_status_channelCountAggregateOutputType> | number
+        }
+      }
+    }
     gm_status_button: {
       payload: Prisma.$gm_status_buttonPayload<ExtArgs>
       fields: Prisma.gm_status_buttonFieldRefs
@@ -4224,6 +4291,18 @@ export const Gm_server_logs_triggersScalarFieldEnum = {
 export type Gm_server_logs_triggersScalarFieldEnum = (typeof Gm_server_logs_triggersScalarFieldEnum)[keyof typeof Gm_server_logs_triggersScalarFieldEnum]
 
 
+export const Gm_server_status_channelScalarFieldEnum = {
+  id: 'id',
+  serverID: 'serverID',
+  channelID: 'channelID',
+  format: 'format',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type Gm_server_status_channelScalarFieldEnum = (typeof Gm_server_status_channelScalarFieldEnum)[keyof typeof Gm_server_status_channelScalarFieldEnum]
+
+
 export const Gm_status_buttonScalarFieldEnum = {
   id: 'id',
   server: 'server',
@@ -4331,21 +4410,6 @@ export const SortOrder = {
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
-
-
-export const JsonNullValueInput = {
-  JsonNull: JsonNull
-} as const
-
-export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
-
-
-export const NullableJsonNullValueInput = {
-  DbNull: DbNull,
-  JsonNull: JsonNull
-} as const
-
-export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const banUsersOrderByRelevanceFieldEnum = {
@@ -4567,26 +4631,11 @@ export const gm_server_screenshot_channelsOrderByRelevanceFieldEnum = {
 export type gm_server_screenshot_channelsOrderByRelevanceFieldEnum = (typeof gm_server_screenshot_channelsOrderByRelevanceFieldEnum)[keyof typeof gm_server_screenshot_channelsOrderByRelevanceFieldEnum]
 
 
-export const JsonNullValueFilter = {
-  DbNull: DbNull,
-  JsonNull: JsonNull,
-  AnyNull: AnyNull
-} as const
-
-export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
-
-
-export const QueryMode = {
-  default: 'default',
-  insensitive: 'insensitive'
-} as const
-
-export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
-
-
 export const gm_server_screenshotsOrderByRelevanceFieldEnum = {
   serverID: 'serverID',
   title: 'title',
+  player: 'player',
+  captureData: 'captureData',
   url: 'url'
 } as const
 
@@ -4617,7 +4666,8 @@ export const gm_server_statOrderByRelevanceFieldEnum = {
   steam_id: 'steam_id',
   server_id: 'server_id',
   name: 'name',
-  rank: 'rank'
+  rank: 'rank',
+  custom_values: 'custom_values'
 } as const
 
 export type gm_server_statOrderByRelevanceFieldEnum = (typeof gm_server_statOrderByRelevanceFieldEnum)[keyof typeof gm_server_statOrderByRelevanceFieldEnum]
@@ -4634,7 +4684,8 @@ export type gm_server_stat_team_timeOrderByRelevanceFieldEnum = (typeof gm_serve
 
 export const gm_server_stat_sessionOrderByRelevanceFieldEnum = {
   serverID: 'serverID',
-  steamID64: 'steamID64'
+  steamID64: 'steamID64',
+  customValues: 'customValues'
 } as const
 
 export type gm_server_stat_sessionOrderByRelevanceFieldEnum = (typeof gm_server_stat_sessionOrderByRelevanceFieldEnum)[keyof typeof gm_server_stat_sessionOrderByRelevanceFieldEnum]
@@ -4644,6 +4695,7 @@ export const gm_server_statusOrderByRelevanceFieldEnum = {
   id: 'id',
   ip: 'ip',
   hostname: 'hostname',
+  playersList: 'playersList',
   map: 'map',
   gameMode: 'gameMode'
 } as const
@@ -4763,11 +4815,22 @@ export const gm_server_logs_triggersOrderByRelevanceFieldEnum = {
   value: 'value',
   compare: 'compare',
   channelID: 'channelID',
+  adminIDS: 'adminIDS',
   message: 'message',
   serverID: 'serverID'
 } as const
 
 export type gm_server_logs_triggersOrderByRelevanceFieldEnum = (typeof gm_server_logs_triggersOrderByRelevanceFieldEnum)[keyof typeof gm_server_logs_triggersOrderByRelevanceFieldEnum]
+
+
+export const gm_server_status_channelOrderByRelevanceFieldEnum = {
+  id: 'id',
+  serverID: 'serverID',
+  channelID: 'channelID',
+  format: 'format'
+} as const
+
+export type gm_server_status_channelOrderByRelevanceFieldEnum = (typeof gm_server_status_channelOrderByRelevanceFieldEnum)[keyof typeof gm_server_status_channelOrderByRelevanceFieldEnum]
 
 
 export const gm_status_buttonOrderByRelevanceFieldEnum = {
@@ -4836,7 +4899,8 @@ export const usersOrderByRelevanceFieldEnum = {
   steamID64: 'steamID64',
   steamID: 'steamID',
   name: 'name',
-  lastIP: 'lastIP'
+  lastIP: 'lastIP',
+  IPS: 'IPS'
 } as const
 
 export type usersOrderByRelevanceFieldEnum = (typeof usersOrderByRelevanceFieldEnum)[keyof typeof usersOrderByRelevanceFieldEnum]
@@ -4887,20 +4951,6 @@ export type Enumgm_server_report_bugs_statusFieldRefInput<$PrismaModel> = FieldR
  * Reference to a field of type 'gm_server_report_bugs_importance'
  */
 export type Enumgm_server_report_bugs_importanceFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'gm_server_report_bugs_importance'>
-    
-
-
-/**
- * Reference to a field of type 'Json'
- */
-export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
-    
-
-
-/**
- * Reference to a field of type 'QueryMode'
- */
-export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -5081,6 +5131,7 @@ export type GlobalOmitConfig = {
   gm_status?: Prisma.gm_statusOmit
   gm_guild_webooks?: Prisma.gm_guild_webooksOmit
   gm_server_logs_triggers?: Prisma.gm_server_logs_triggersOmit
+  gm_server_status_channel?: Prisma.gm_server_status_channelOmit
   gm_status_button?: Prisma.gm_status_buttonOmit
   gm_sync_chat?: Prisma.gm_sync_chatOmit
   gm_user?: Prisma.gm_userOmit

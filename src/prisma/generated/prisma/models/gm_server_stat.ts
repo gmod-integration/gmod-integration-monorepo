@@ -54,6 +54,7 @@ export type Gm_server_statMinAggregateOutputType = {
   total_connect: number | null
   last_connect: Date | null
   first_join: Date | null
+  custom_values: string | null
   bypassMaintenance: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -71,6 +72,7 @@ export type Gm_server_statMaxAggregateOutputType = {
   total_connect: number | null
   last_connect: Date | null
   first_join: Date | null
+  custom_values: string | null
   bypassMaintenance: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -124,6 +126,7 @@ export type Gm_server_statMinAggregateInputType = {
   total_connect?: true
   last_connect?: true
   first_join?: true
+  custom_values?: true
   bypassMaintenance?: true
   createdAt?: true
   updatedAt?: true
@@ -141,6 +144,7 @@ export type Gm_server_statMaxAggregateInputType = {
   total_connect?: true
   last_connect?: true
   first_join?: true
+  custom_values?: true
   bypassMaintenance?: true
   createdAt?: true
   updatedAt?: true
@@ -263,7 +267,7 @@ export type Gm_server_statGroupByOutputType = {
   total_connect: number
   last_connect: Date
   first_join: Date
-  custom_values: runtime.JsonValue
+  custom_values: string
   bypassMaintenance: boolean
   createdAt: Date
   updatedAt: Date
@@ -304,7 +308,7 @@ export type gm_server_statWhereInput = {
   total_connect?: Prisma.IntFilter<"gm_server_stat"> | number
   last_connect?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
   first_join?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
-  custom_values?: Prisma.JsonFilter<"gm_server_stat">
+  custom_values?: Prisma.StringFilter<"gm_server_stat"> | string
   bypassMaintenance?: Prisma.BoolFilter<"gm_server_stat"> | boolean
   createdAt?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
@@ -349,7 +353,7 @@ export type gm_server_statWhereUniqueInput = Prisma.AtLeast<{
   total_connect?: Prisma.IntFilter<"gm_server_stat"> | number
   last_connect?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
   first_join?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
-  custom_values?: Prisma.JsonFilter<"gm_server_stat">
+  custom_values?: Prisma.StringFilter<"gm_server_stat"> | string
   bypassMaintenance?: Prisma.BoolFilter<"gm_server_stat"> | boolean
   createdAt?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
@@ -395,7 +399,7 @@ export type gm_server_statScalarWhereWithAggregatesInput = {
   total_connect?: Prisma.IntWithAggregatesFilter<"gm_server_stat"> | number
   last_connect?: Prisma.DateTimeWithAggregatesFilter<"gm_server_stat"> | Date | string
   first_join?: Prisma.DateTimeWithAggregatesFilter<"gm_server_stat"> | Date | string
-  custom_values?: Prisma.JsonWithAggregatesFilter<"gm_server_stat">
+  custom_values?: Prisma.StringWithAggregatesFilter<"gm_server_stat"> | string
   bypassMaintenance?: Prisma.BoolWithAggregatesFilter<"gm_server_stat"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"gm_server_stat"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"gm_server_stat"> | Date | string
@@ -411,7 +415,7 @@ export type gm_server_statCreateInput = {
   total_connect?: number
   last_connect?: Date | string
   first_join?: Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values: string
   bypassMaintenance?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -431,7 +435,7 @@ export type gm_server_statUncheckedCreateInput = {
   total_connect?: number
   last_connect?: Date | string
   first_join?: Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values: string
   bypassMaintenance?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -447,7 +451,7 @@ export type gm_server_statUpdateInput = {
   total_connect?: Prisma.IntFieldUpdateOperationsInput | number
   last_connect?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   first_join?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values?: Prisma.StringFieldUpdateOperationsInput | string
   bypassMaintenance?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -467,7 +471,7 @@ export type gm_server_statUncheckedUpdateInput = {
   total_connect?: Prisma.IntFieldUpdateOperationsInput | number
   last_connect?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   first_join?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values?: Prisma.StringFieldUpdateOperationsInput | string
   bypassMaintenance?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -485,7 +489,7 @@ export type gm_server_statCreateManyInput = {
   total_connect?: number
   last_connect?: Date | string
   first_join?: Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values: string
   bypassMaintenance?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -501,7 +505,7 @@ export type gm_server_statUpdateManyMutationInput = {
   total_connect?: Prisma.IntFieldUpdateOperationsInput | number
   last_connect?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   first_join?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values?: Prisma.StringFieldUpdateOperationsInput | string
   bypassMaintenance?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -519,7 +523,7 @@ export type gm_server_statUncheckedUpdateManyInput = {
   total_connect?: Prisma.IntFieldUpdateOperationsInput | number
   last_connect?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   first_join?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values?: Prisma.StringFieldUpdateOperationsInput | string
   bypassMaintenance?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -584,6 +588,7 @@ export type gm_server_statMaxOrderByAggregateInput = {
   total_connect?: Prisma.SortOrder
   last_connect?: Prisma.SortOrder
   first_join?: Prisma.SortOrder
+  custom_values?: Prisma.SortOrder
   bypassMaintenance?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -601,6 +606,7 @@ export type gm_server_statMinOrderByAggregateInput = {
   total_connect?: Prisma.SortOrder
   last_connect?: Prisma.SortOrder
   first_join?: Prisma.SortOrder
+  custom_values?: Prisma.SortOrder
   bypassMaintenance?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -708,7 +714,7 @@ export type gm_server_statCreateWithoutGm_serverInput = {
   total_connect?: number
   last_connect?: Date | string
   first_join?: Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values: string
   bypassMaintenance?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -726,7 +732,7 @@ export type gm_server_statUncheckedCreateWithoutGm_serverInput = {
   total_connect?: number
   last_connect?: Date | string
   first_join?: Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values: string
   bypassMaintenance?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -773,7 +779,7 @@ export type gm_server_statScalarWhereInput = {
   total_connect?: Prisma.IntFilter<"gm_server_stat"> | number
   last_connect?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
   first_join?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
-  custom_values?: Prisma.JsonFilter<"gm_server_stat">
+  custom_values?: Prisma.StringFilter<"gm_server_stat"> | string
   bypassMaintenance?: Prisma.BoolFilter<"gm_server_stat"> | boolean
   createdAt?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_stat"> | Date | string
@@ -789,7 +795,7 @@ export type gm_server_statCreateWithoutGm_user_steamInput = {
   total_connect?: number
   last_connect?: Date | string
   first_join?: Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values: string
   bypassMaintenance?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -807,7 +813,7 @@ export type gm_server_statUncheckedCreateWithoutGm_user_steamInput = {
   total_connect?: number
   last_connect?: Date | string
   first_join?: Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values: string
   bypassMaintenance?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -850,7 +856,7 @@ export type gm_server_statCreateManyGm_serverInput = {
   total_connect?: number
   last_connect?: Date | string
   first_join?: Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values: string
   bypassMaintenance?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -866,7 +872,7 @@ export type gm_server_statUpdateWithoutGm_serverInput = {
   total_connect?: Prisma.IntFieldUpdateOperationsInput | number
   last_connect?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   first_join?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values?: Prisma.StringFieldUpdateOperationsInput | string
   bypassMaintenance?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -884,7 +890,7 @@ export type gm_server_statUncheckedUpdateWithoutGm_serverInput = {
   total_connect?: Prisma.IntFieldUpdateOperationsInput | number
   last_connect?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   first_join?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values?: Prisma.StringFieldUpdateOperationsInput | string
   bypassMaintenance?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -901,7 +907,7 @@ export type gm_server_statUncheckedUpdateManyWithoutGm_serverInput = {
   total_connect?: Prisma.IntFieldUpdateOperationsInput | number
   last_connect?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   first_join?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values?: Prisma.StringFieldUpdateOperationsInput | string
   bypassMaintenance?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -918,7 +924,7 @@ export type gm_server_statCreateManyGm_user_steamInput = {
   total_connect?: number
   last_connect?: Date | string
   first_join?: Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values: string
   bypassMaintenance?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -934,7 +940,7 @@ export type gm_server_statUpdateWithoutGm_user_steamInput = {
   total_connect?: Prisma.IntFieldUpdateOperationsInput | number
   last_connect?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   first_join?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values?: Prisma.StringFieldUpdateOperationsInput | string
   bypassMaintenance?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -952,7 +958,7 @@ export type gm_server_statUncheckedUpdateWithoutGm_user_steamInput = {
   total_connect?: Prisma.IntFieldUpdateOperationsInput | number
   last_connect?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   first_join?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values?: Prisma.StringFieldUpdateOperationsInput | string
   bypassMaintenance?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -969,7 +975,7 @@ export type gm_server_statUncheckedUpdateManyWithoutGm_user_steamInput = {
   total_connect?: Prisma.IntFieldUpdateOperationsInput | number
   last_connect?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   first_join?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  custom_values?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  custom_values?: Prisma.StringFieldUpdateOperationsInput | string
   bypassMaintenance?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1041,7 +1047,7 @@ export type $gm_server_statPayload<ExtArgs extends runtime.Types.Extensions.Inte
     total_connect: number
     last_connect: Date
     first_join: Date
-    custom_values: runtime.JsonValue
+    custom_values: string
     bypassMaintenance: boolean
     createdAt: Date
     updatedAt: Date
@@ -1427,7 +1433,7 @@ export interface gm_server_statFieldRefs {
   readonly total_connect: Prisma.FieldRef<"gm_server_stat", 'Int'>
   readonly last_connect: Prisma.FieldRef<"gm_server_stat", 'DateTime'>
   readonly first_join: Prisma.FieldRef<"gm_server_stat", 'DateTime'>
-  readonly custom_values: Prisma.FieldRef<"gm_server_stat", 'Json'>
+  readonly custom_values: Prisma.FieldRef<"gm_server_stat", 'String'>
   readonly bypassMaintenance: Prisma.FieldRef<"gm_server_stat", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"gm_server_stat", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"gm_server_stat", 'DateTime'>

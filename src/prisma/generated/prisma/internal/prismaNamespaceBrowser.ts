@@ -92,6 +92,7 @@ export const ModelName = {
   gm_status: 'gm_status',
   gm_guild_webooks: 'gm_guild_webooks',
   gm_server_logs_triggers: 'gm_server_logs_triggers',
+  gm_server_status_channel: 'gm_server_status_channel',
   gm_status_button: 'gm_status_button',
   gm_sync_chat: 'gm_sync_chat',
   gm_user: 'gm_user',
@@ -683,6 +684,18 @@ export const Gm_server_logs_triggersScalarFieldEnum = {
 export type Gm_server_logs_triggersScalarFieldEnum = (typeof Gm_server_logs_triggersScalarFieldEnum)[keyof typeof Gm_server_logs_triggersScalarFieldEnum]
 
 
+export const Gm_server_status_channelScalarFieldEnum = {
+  id: 'id',
+  serverID: 'serverID',
+  channelID: 'channelID',
+  format: 'format',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type Gm_server_status_channelScalarFieldEnum = (typeof Gm_server_status_channelScalarFieldEnum)[keyof typeof Gm_server_status_channelScalarFieldEnum]
+
+
 export const Gm_status_buttonScalarFieldEnum = {
   id: 'id',
   server: 'server',
@@ -790,21 +803,6 @@ export const SortOrder = {
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
-
-
-export const JsonNullValueInput = {
-  JsonNull: JsonNull
-} as const
-
-export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
-
-
-export const NullableJsonNullValueInput = {
-  DbNull: DbNull,
-  JsonNull: JsonNull
-} as const
-
-export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const banUsersOrderByRelevanceFieldEnum = {
@@ -1026,26 +1024,11 @@ export const gm_server_screenshot_channelsOrderByRelevanceFieldEnum = {
 export type gm_server_screenshot_channelsOrderByRelevanceFieldEnum = (typeof gm_server_screenshot_channelsOrderByRelevanceFieldEnum)[keyof typeof gm_server_screenshot_channelsOrderByRelevanceFieldEnum]
 
 
-export const JsonNullValueFilter = {
-  DbNull: DbNull,
-  JsonNull: JsonNull,
-  AnyNull: AnyNull
-} as const
-
-export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
-
-
-export const QueryMode = {
-  default: 'default',
-  insensitive: 'insensitive'
-} as const
-
-export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
-
-
 export const gm_server_screenshotsOrderByRelevanceFieldEnum = {
   serverID: 'serverID',
   title: 'title',
+  player: 'player',
+  captureData: 'captureData',
   url: 'url'
 } as const
 
@@ -1076,7 +1059,8 @@ export const gm_server_statOrderByRelevanceFieldEnum = {
   steam_id: 'steam_id',
   server_id: 'server_id',
   name: 'name',
-  rank: 'rank'
+  rank: 'rank',
+  custom_values: 'custom_values'
 } as const
 
 export type gm_server_statOrderByRelevanceFieldEnum = (typeof gm_server_statOrderByRelevanceFieldEnum)[keyof typeof gm_server_statOrderByRelevanceFieldEnum]
@@ -1093,7 +1077,8 @@ export type gm_server_stat_team_timeOrderByRelevanceFieldEnum = (typeof gm_serve
 
 export const gm_server_stat_sessionOrderByRelevanceFieldEnum = {
   serverID: 'serverID',
-  steamID64: 'steamID64'
+  steamID64: 'steamID64',
+  customValues: 'customValues'
 } as const
 
 export type gm_server_stat_sessionOrderByRelevanceFieldEnum = (typeof gm_server_stat_sessionOrderByRelevanceFieldEnum)[keyof typeof gm_server_stat_sessionOrderByRelevanceFieldEnum]
@@ -1103,6 +1088,7 @@ export const gm_server_statusOrderByRelevanceFieldEnum = {
   id: 'id',
   ip: 'ip',
   hostname: 'hostname',
+  playersList: 'playersList',
   map: 'map',
   gameMode: 'gameMode'
 } as const
@@ -1222,11 +1208,22 @@ export const gm_server_logs_triggersOrderByRelevanceFieldEnum = {
   value: 'value',
   compare: 'compare',
   channelID: 'channelID',
+  adminIDS: 'adminIDS',
   message: 'message',
   serverID: 'serverID'
 } as const
 
 export type gm_server_logs_triggersOrderByRelevanceFieldEnum = (typeof gm_server_logs_triggersOrderByRelevanceFieldEnum)[keyof typeof gm_server_logs_triggersOrderByRelevanceFieldEnum]
+
+
+export const gm_server_status_channelOrderByRelevanceFieldEnum = {
+  id: 'id',
+  serverID: 'serverID',
+  channelID: 'channelID',
+  format: 'format'
+} as const
+
+export type gm_server_status_channelOrderByRelevanceFieldEnum = (typeof gm_server_status_channelOrderByRelevanceFieldEnum)[keyof typeof gm_server_status_channelOrderByRelevanceFieldEnum]
 
 
 export const gm_status_buttonOrderByRelevanceFieldEnum = {
@@ -1295,7 +1292,8 @@ export const usersOrderByRelevanceFieldEnum = {
   steamID64: 'steamID64',
   steamID: 'steamID',
   name: 'name',
-  lastIP: 'lastIP'
+  lastIP: 'lastIP',
+  IPS: 'IPS'
 } as const
 
 export type usersOrderByRelevanceFieldEnum = (typeof usersOrderByRelevanceFieldEnum)[keyof typeof usersOrderByRelevanceFieldEnum]

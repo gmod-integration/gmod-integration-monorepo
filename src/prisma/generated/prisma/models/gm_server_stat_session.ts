@@ -46,6 +46,7 @@ export type Gm_server_stat_sessionMinAggregateOutputType = {
   time: number | null
   deaths: number | null
   kills: number | null
+  customValues: string | null
   sessionEndTimeStamp: Date | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -58,6 +59,7 @@ export type Gm_server_stat_sessionMaxAggregateOutputType = {
   time: number | null
   deaths: number | null
   kills: number | null
+  customValues: string | null
   sessionEndTimeStamp: Date | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -99,6 +101,7 @@ export type Gm_server_stat_sessionMinAggregateInputType = {
   time?: true
   deaths?: true
   kills?: true
+  customValues?: true
   sessionEndTimeStamp?: true
   createdAt?: true
   updatedAt?: true
@@ -111,6 +114,7 @@ export type Gm_server_stat_sessionMaxAggregateInputType = {
   time?: true
   deaths?: true
   kills?: true
+  customValues?: true
   sessionEndTimeStamp?: true
   createdAt?: true
   updatedAt?: true
@@ -223,7 +227,7 @@ export type Gm_server_stat_sessionGroupByOutputType = {
   time: number
   deaths: number
   kills: number
-  customValues: runtime.JsonValue | null
+  customValues: string | null
   sessionEndTimeStamp: Date
   createdAt: Date
   updatedAt: Date
@@ -259,7 +263,7 @@ export type gm_server_stat_sessionWhereInput = {
   time?: Prisma.IntFilter<"gm_server_stat_session"> | number
   deaths?: Prisma.IntFilter<"gm_server_stat_session"> | number
   kills?: Prisma.IntFilter<"gm_server_stat_session"> | number
-  customValues?: Prisma.JsonNullableFilter<"gm_server_stat_session">
+  customValues?: Prisma.StringNullableFilter<"gm_server_stat_session"> | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFilter<"gm_server_stat_session"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_stat_session"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_stat_session"> | Date | string
@@ -294,7 +298,7 @@ export type gm_server_stat_sessionWhereUniqueInput = Prisma.AtLeast<{
   time?: Prisma.IntFilter<"gm_server_stat_session"> | number
   deaths?: Prisma.IntFilter<"gm_server_stat_session"> | number
   kills?: Prisma.IntFilter<"gm_server_stat_session"> | number
-  customValues?: Prisma.JsonNullableFilter<"gm_server_stat_session">
+  customValues?: Prisma.StringNullableFilter<"gm_server_stat_session"> | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFilter<"gm_server_stat_session"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_stat_session"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_stat_session"> | Date | string
@@ -329,7 +333,7 @@ export type gm_server_stat_sessionScalarWhereWithAggregatesInput = {
   time?: Prisma.IntWithAggregatesFilter<"gm_server_stat_session"> | number
   deaths?: Prisma.IntWithAggregatesFilter<"gm_server_stat_session"> | number
   kills?: Prisma.IntWithAggregatesFilter<"gm_server_stat_session"> | number
-  customValues?: Prisma.JsonNullableWithAggregatesFilter<"gm_server_stat_session">
+  customValues?: Prisma.StringNullableWithAggregatesFilter<"gm_server_stat_session"> | string | null
   sessionEndTimeStamp?: Prisma.DateTimeWithAggregatesFilter<"gm_server_stat_session"> | Date | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"gm_server_stat_session"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"gm_server_stat_session"> | Date | string
@@ -340,7 +344,7 @@ export type gm_server_stat_sessionCreateInput = {
   time?: number
   deaths?: number
   kills?: number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: string | null
   sessionEndTimeStamp?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -354,7 +358,7 @@ export type gm_server_stat_sessionUncheckedCreateInput = {
   time?: number
   deaths?: number
   kills?: number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: string | null
   sessionEndTimeStamp?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -365,7 +369,7 @@ export type gm_server_stat_sessionUpdateInput = {
   time?: Prisma.IntFieldUpdateOperationsInput | number
   deaths?: Prisma.IntFieldUpdateOperationsInput | number
   kills?: Prisma.IntFieldUpdateOperationsInput | number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -379,7 +383,7 @@ export type gm_server_stat_sessionUncheckedUpdateInput = {
   time?: Prisma.IntFieldUpdateOperationsInput | number
   deaths?: Prisma.IntFieldUpdateOperationsInput | number
   kills?: Prisma.IntFieldUpdateOperationsInput | number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -392,7 +396,7 @@ export type gm_server_stat_sessionCreateManyInput = {
   time?: number
   deaths?: number
   kills?: number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: string | null
   sessionEndTimeStamp?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -403,7 +407,7 @@ export type gm_server_stat_sessionUpdateManyMutationInput = {
   time?: Prisma.IntFieldUpdateOperationsInput | number
   deaths?: Prisma.IntFieldUpdateOperationsInput | number
   kills?: Prisma.IntFieldUpdateOperationsInput | number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -415,7 +419,7 @@ export type gm_server_stat_sessionUncheckedUpdateManyInput = {
   time?: Prisma.IntFieldUpdateOperationsInput | number
   deaths?: Prisma.IntFieldUpdateOperationsInput | number
   kills?: Prisma.IntFieldUpdateOperationsInput | number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -464,6 +468,7 @@ export type gm_server_stat_sessionMaxOrderByAggregateInput = {
   time?: Prisma.SortOrder
   deaths?: Prisma.SortOrder
   kills?: Prisma.SortOrder
+  customValues?: Prisma.SortOrder
   sessionEndTimeStamp?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -476,6 +481,7 @@ export type gm_server_stat_sessionMinOrderByAggregateInput = {
   time?: Prisma.SortOrder
   deaths?: Prisma.SortOrder
   kills?: Prisma.SortOrder
+  customValues?: Prisma.SortOrder
   sessionEndTimeStamp?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -577,7 +583,7 @@ export type gm_server_stat_sessionCreateWithoutGm_serverInput = {
   time?: number
   deaths?: number
   kills?: number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: string | null
   sessionEndTimeStamp?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -589,7 +595,7 @@ export type gm_server_stat_sessionUncheckedCreateWithoutGm_serverInput = {
   time?: number
   deaths?: number
   kills?: number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: string | null
   sessionEndTimeStamp?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -631,7 +637,7 @@ export type gm_server_stat_sessionScalarWhereInput = {
   time?: Prisma.IntFilter<"gm_server_stat_session"> | number
   deaths?: Prisma.IntFilter<"gm_server_stat_session"> | number
   kills?: Prisma.IntFilter<"gm_server_stat_session"> | number
-  customValues?: Prisma.JsonNullableFilter<"gm_server_stat_session">
+  customValues?: Prisma.StringNullableFilter<"gm_server_stat_session"> | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFilter<"gm_server_stat_session"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"gm_server_stat_session"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_server_stat_session"> | Date | string
@@ -642,7 +648,7 @@ export type gm_server_stat_sessionCreateWithoutGm_user_steamInput = {
   time?: number
   deaths?: number
   kills?: number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: string | null
   sessionEndTimeStamp?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -654,7 +660,7 @@ export type gm_server_stat_sessionUncheckedCreateWithoutGm_user_steamInput = {
   time?: number
   deaths?: number
   kills?: number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: string | null
   sessionEndTimeStamp?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -692,7 +698,7 @@ export type gm_server_stat_sessionCreateManyGm_serverInput = {
   time?: number
   deaths?: number
   kills?: number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: string | null
   sessionEndTimeStamp?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -703,7 +709,7 @@ export type gm_server_stat_sessionUpdateWithoutGm_serverInput = {
   time?: Prisma.IntFieldUpdateOperationsInput | number
   deaths?: Prisma.IntFieldUpdateOperationsInput | number
   kills?: Prisma.IntFieldUpdateOperationsInput | number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -715,7 +721,7 @@ export type gm_server_stat_sessionUncheckedUpdateWithoutGm_serverInput = {
   time?: Prisma.IntFieldUpdateOperationsInput | number
   deaths?: Prisma.IntFieldUpdateOperationsInput | number
   kills?: Prisma.IntFieldUpdateOperationsInput | number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -727,7 +733,7 @@ export type gm_server_stat_sessionUncheckedUpdateManyWithoutGm_serverInput = {
   time?: Prisma.IntFieldUpdateOperationsInput | number
   deaths?: Prisma.IntFieldUpdateOperationsInput | number
   kills?: Prisma.IntFieldUpdateOperationsInput | number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -739,7 +745,7 @@ export type gm_server_stat_sessionCreateManyGm_user_steamInput = {
   time?: number
   deaths?: number
   kills?: number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: string | null
   sessionEndTimeStamp?: Date | string
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -750,7 +756,7 @@ export type gm_server_stat_sessionUpdateWithoutGm_user_steamInput = {
   time?: Prisma.IntFieldUpdateOperationsInput | number
   deaths?: Prisma.IntFieldUpdateOperationsInput | number
   kills?: Prisma.IntFieldUpdateOperationsInput | number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -762,7 +768,7 @@ export type gm_server_stat_sessionUncheckedUpdateWithoutGm_user_steamInput = {
   time?: Prisma.IntFieldUpdateOperationsInput | number
   deaths?: Prisma.IntFieldUpdateOperationsInput | number
   kills?: Prisma.IntFieldUpdateOperationsInput | number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -774,7 +780,7 @@ export type gm_server_stat_sessionUncheckedUpdateManyWithoutGm_user_steamInput =
   time?: Prisma.IntFieldUpdateOperationsInput | number
   deaths?: Prisma.IntFieldUpdateOperationsInput | number
   kills?: Prisma.IntFieldUpdateOperationsInput | number
-  customValues?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  customValues?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   sessionEndTimeStamp?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -831,7 +837,7 @@ export type $gm_server_stat_sessionPayload<ExtArgs extends runtime.Types.Extensi
     time: number
     deaths: number
     kills: number
-    customValues: runtime.JsonValue | null
+    customValues: string | null
     sessionEndTimeStamp: Date
     createdAt: Date
     updatedAt: Date
@@ -1212,7 +1218,7 @@ export interface gm_server_stat_sessionFieldRefs {
   readonly time: Prisma.FieldRef<"gm_server_stat_session", 'Int'>
   readonly deaths: Prisma.FieldRef<"gm_server_stat_session", 'Int'>
   readonly kills: Prisma.FieldRef<"gm_server_stat_session", 'Int'>
-  readonly customValues: Prisma.FieldRef<"gm_server_stat_session", 'Json'>
+  readonly customValues: Prisma.FieldRef<"gm_server_stat_session", 'String'>
   readonly sessionEndTimeStamp: Prisma.FieldRef<"gm_server_stat_session", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"gm_server_stat_session", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"gm_server_stat_session", 'DateTime'>
