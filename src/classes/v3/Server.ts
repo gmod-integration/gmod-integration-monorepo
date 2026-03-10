@@ -13,6 +13,7 @@ import {
 import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '../../prisma/generated/prisma/client.js';
 import { isGuildPremium } from './Guild.js';
 import { wsSendToServer } from '../../websockets/index.js';
+import { ServerStatusChannel } from './ServerStatusChannel.js';
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
@@ -199,6 +200,22 @@ export class Server extends BaseClass {
     for (const setting in settings) {
       await this.setSetting('ig_' + setting, settings[setting]).catch(() => {});
     }
+  }
+
+  async getStatusChannel(): Promise<ServerStatusChannel | null> {
+    return await ServerStatusChannel.get(this);
+  }
+
+  async putStatusChannel(channelID: string, format: string): Promise<ServerStatusChannel | null> {
+    return await ServerStatusChannel.update(this, channelID, format);
+  }
+
+  async deleteStatusChannel(): Promise<void> {
+    return await ServerStatusChannel.delete(this);
+  }
+
+  async postStatusChannel(channelID: string, format: string): Promise<ServerStatusChannel | null> {
+    return await ServerStatusChannel.create(this, channelID, format);
   }
 
   async getAllSettings(evenNotSet: boolean = false) {

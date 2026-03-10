@@ -184,6 +184,7 @@ model gm_server {
   gm_server_warn_options        gm_server_warn_options[]
   gm_status                     gm_status?
   gm_status_button              gm_status_button[]
+  gm_server_status_channel         gm_server_status_channel[]
   gm_sync_chat                  gm_sync_chat[]
 
   @@index([guild], map: "guild")
@@ -575,6 +576,17 @@ model gm_server_logs_triggers {
   gm_server gm_server                        @relation(fields: [serverID], references: [id], onDelete: Cascade)
 
   @@index([serverID], map: "gm_server_logs_triggers_serverID_fkey")
+}
+model gm_server_status_channel {
+  id        String    @id @default(uuid()) @db.Char(36)
+  serverID  String    @db.VarChar(255)
+  channelID String    @default("") @db.VarChar(255)
+  format    String    @default("%s players") @db.VarChar(255)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_status_channel_ibfk_1")
+
+  @@index([serverID], map: "gm_server_status_channel_server_id_fk")
 }
 
 model gm_status_button {

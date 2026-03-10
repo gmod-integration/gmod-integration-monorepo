@@ -112,6 +112,12 @@ import asyncHandler from '../../middleware/asyncHandler.js';
 import { getAllPanelUsers } from '../../controllers/v3/usersAdminControllers.js';
 import { getServerErrors } from '../../controllers/website/WebsiteErrorsControllers.js';
 import { getIGSettings, postIGSettings } from '../../controllers/v3/serversControllers.js';
+import {
+  deleteServerStatusChannel,
+  getServerStatusChannel,
+  postServerStatusChannel,
+  putServerStatusChannel,
+} from 'src/controllers/v3/users/ServerStatusChannelControllers.js';
 
 const router = express.Router();
 
@@ -288,5 +294,6 @@ router.delete(
   '/:discordID/guilds/:guildID/servers/:serverID/status/buttons/:buttonID',
   asyncHandler(deleteServerStatusButtons),
 );
+router.put('/:discordID/guilds/:guildID/servers/:serverID/status/channel', asyncHandler(putServerStatusChannel));
 
 export default router;
