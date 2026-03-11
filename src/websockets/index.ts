@@ -221,16 +221,7 @@ const wsSendToServerWorker = new Worker(
   },
 );
 
-export function wsSendToClient(discordID: string, data: any, action: string) {
-  // const client = clients.client.find((client) => client.discordID === discordID && client.action === action);
-  //
-  // if (!client) {
-  //   return false;
-  // }
-  //
-  // gmLog('websocket', 'Sending to client ' + discordID + ' ' + JSON.stringify(data));
-  // client.ws.send(JSON.stringify(data));
-
+function wsSendToClient(discordID: string, data: any, action: string) {
   const client = clients.client.find((client) => client.panelUser.discordID === discordID);
 
   if (!client) {
@@ -244,12 +235,6 @@ export function wsSendToClient(discordID: string, data: any, action: string) {
 }
 
 export function wsSendToAllClientsOfServer(serverID: string, action: string, data: any) {
-  // const clientsToSend = clients.client.filter((client) => client.serverID === serverID && client.action === action);
-  //
-  // for (const client of clientsToSend) {
-  //   gmLog('websocket', 'Sending to client ' + client.discordID + ' ' + JSON.stringify(data));
-  //   client.ws.send(JSON.stringify(data));
-  // }
   const clientsToSend = clients.client.filter((client) => client.serverAdminListID.includes(serverID));
 
   for (const client of clientsToSend) {
