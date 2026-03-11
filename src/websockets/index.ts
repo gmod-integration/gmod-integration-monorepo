@@ -234,7 +234,7 @@ function wsSendToClient(discordID: string, data: any, action: string) {
   return true;
 }
 
-export function wsSendToAllClientsOfServer(serverID: string, action: string, data: any) {
+function wsSendToAllClientsOfServer(serverID: string, action: string, data: any) {
   const clientsToSend = clients.client.filter((client) => client.serverAdminListID.includes(serverID));
 
   for (const client of clientsToSend) {
@@ -250,6 +250,25 @@ export function wsSendToAllClientsOfServer(serverID: string, action: string, dat
 
   return true;
 }
+
+
+export interface wsSendToAllClientsOfServerData {
+  id: string;
+  action: string;
+  data: any;
+}
+
+export const wsSendToAllClientsOfServerQueue = new Queue('wsSendToAllClientsOfServer');
+
+const wsSendToAllClientsOfServerWorker = new Worker(
+  'wsSendToAllClientsOfServer',
+  async (job) => {
+    wsSendToAllClientsOfServer(job.data.id, job.data.action, job.data.data);
+  },
+  {
+    connection,
+  },
+);
 
 gmLog('websocket', 'Listening on port ' + ConfigServer.ports.websocket);
 

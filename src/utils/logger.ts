@@ -2,12 +2,12 @@ import { ConfigDiscord, ConfigServer } from '../classes/config/Config.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { getRandomDiscordRelay, ipGetIP } from './tools.js';
 import { getTranslate } from './localizations.js';
-import { wsSendToAllClientsOfServer } from '../websockets/index.js';
 import { ChannelType, ColorResolvable, EmbedBuilder } from 'discord.js';
 import { Server } from '../classes/v3/Server.js';
 import { addLog } from '../database/gm_server_logs.js';
 import redis from '../services/redis/index.js';
 import type { gm_server_logs_triggers } from '../prisma/generated/prisma/client.js';
+import { wsSendToAllClientsOfServerData, wsSendToAllClientsOfServerQueue } from 'src/websockets/index.js';
 
 export enum LogLevel {
   MINIMAL = 'minimal',
@@ -614,7 +614,11 @@ export async function logServer(server: Server, type: string, data?: any) {
     updatedAt: new Date(),
   });
 
-  wsSendToAllClientsOfServer(server.getID(), 'server_logs', { type, data: dataToSave });
+  await wsSendToAllClientsOfServerQueue.add('wsSendToAllClientsOfServer', {
+    id: server.getID(),
+    action: 'server_logs',
+    data: { type, data: dataToSave },
+  } as wsSendToAllClientsOfServerData);
 
   if (relayChannelInfo) {
     const { webhookID, webhookToken } = relayChannelInfo;
