@@ -4,13 +4,13 @@ import { getGuildClient, getMainClient } from '../../discord/index.js';
 import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.js';
 import { ConfigDiscord } from '../../classes/config/Config.js';
 import { generateToken } from '../../utils/tools.js';
-import { wsSendToServer } from '../../websockets/index.js';
 import redis from '../../services/redis/index.js';
 import prisma from '../../services/prisma/index.js';
 import { Guild, GuildMember } from 'discord.js';
 import { PanelUser } from '../../classes/v3/PanelUser.js';
 import { v4 as uuidv4 } from 'uuid';
 import { gmLog } from '../../utils/logger.js';
+import { WSSendToServerData, wsSendToServerQueue } from 'src/websockets/index.js';
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
   const guildBotInstance = await getGuildClient(member.guild.id, false);
@@ -73,12 +73,15 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
         await member.roles.remove(rolesToRemove);
       }
 
-      wsSendToServer(server.getID(), {
-        method: 'wsPlayerUpdateGroup',
-        steamID64: user.getSteamID64(),
-        group: roleData.userGroup,
-        add: true,
-      });
+      await wsSendToServerQueue.add('wsSendToServer', {
+        id: server.getID(),
+        data: {
+          method: 'wsPlayerUpdateGroup',
+          steamID64: user.getSteamID64(),
+          group: roleData.userGroup,
+          add: true,
+        },
+      } as WSSendToServerData);
     }
 
     for (const roleCollection of removedRoles) {
@@ -97,12 +100,15 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
         await redis.set(redisKey, JSON.stringify(data), 'EX', 120);
       }
 
-      wsSendToServer(server.getID(), {
-        method: 'wsPlayerUpdateGroup',
-        steamID64: user.getSteamID64(),
-        group: roleData.userGroup,
-        add: false,
-      });
+      await wsSendToServerQueue.add('wsSendToServer', {
+        id: server.getID(),
+        data: {
+          method: 'wsPlayerUpdateGroup',
+          steamID64: user.getSteamID64(),
+          group: roleData.userGroup,
+          add: false,
+        },
+      } as WSSendToServerData);
     }
 
     // if no sync role anymore check id a 'user' role is present in sync and add it
@@ -496,11 +502,10 @@ export async function updatePseudoToGmod(member: GuildMember, oldMember: GuildMe
     if (redisData === newMember.nickname || redisData === newMember.user.username) return;
 
     const pseudo = newMember.nickname || newMember.user.username;
-    wsSendToServer(server.getID(), {
-      method: 'wsSyncName',
-      steamID64: user.getSteamID64(),
-      name: pseudo,
-    });
+    await wsSendToServerQueue.add('wsSendToServer', {
+      id: server.getID(),
+      data: { method: 'wsSyncName', steamID64: user.getSteamID64(), name: pseudo },
+    } as WSSendToServerData);
   }
 }
 

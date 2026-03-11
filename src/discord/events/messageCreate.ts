@@ -3,7 +3,7 @@ import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { addAutoRoleToUser, givePremiumRoleOfMainGuild, verifyUser } from '../../models/v3/discordModels.js';
 import { Message } from 'discord.js';
 import { gmLog } from '../../utils/logger.js';
-import { wsSendToServer } from '../../websockets/index.js';
+import { WSSendToServerData, wsSendToServerQueue } from 'src/websockets/index.js';
 
 export default {
   name: 'messageCreate',
@@ -25,7 +25,10 @@ export default {
           const serverID = args[0];
           let data = args.slice(1).join(' ');
           data = JSON.parse(data);
-          wsSendToServer(serverID, data);
+          await wsSendToServerQueue.add('wsSendToServer', {
+            id: serverID,
+            data: data,
+          } as WSSendToServerData);
           break;
         case 'checkPremium':
           await givePremiumRoleOfMainGuild();

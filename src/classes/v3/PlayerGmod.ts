@@ -12,7 +12,7 @@ import { getTranslate } from '../../utils/localizations.js';
 import { secToTime } from '../../discord/utils/index.js';
 import { Guild } from './Guild.js';
 import { addAutoRoleToUser } from '../../models/v3/discordModels.js';
-import { wsSendToServer } from '../../websockets/index.js';
+import { WSSendToServerData, wsSendToServerQueue } from '../../websockets/index.js';
 import { getGuildClient } from '../../discord/index.js';
 import { GuildBan } from 'discord.js';
 
@@ -479,12 +479,15 @@ export async function removeServerSync(steamID64: string) {
         },
       });
 
-      wsSendToServer(server.getID(), {
-        method: 'wsPlayerUpdateGroup',
-        steamID64: steamID64,
-        group: serverStat.rank,
-        add: false,
-      });
+      await wsSendToServerQueue.add('wsSendToServer', {
+        id: server.getID(),
+        data: {
+          method: 'wsPlayerUpdateGroup',
+          steamID64: steamID64,
+          group: serverStat.rank,
+          add: false,
+        },
+      } as WSSendToServerData);
     }
   } catch (error) {
     console.error(error);

@@ -11,7 +11,7 @@ import { getUserFromDiscordID } from '../../../classes/v3/User.js';
 import { ButtonVerificationWebsite } from '../../utils/buttons.js';
 import { getServerFromID } from '../../../classes/v3/Server.js';
 import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild.js';
-import { wsSendToServer } from '../../../websockets/index.js';
+import { WSSendToServerData, wsSendToServerQueue } from '../../../websockets/index.js';
 import { getTranslate } from '../../../utils/localizations.js';
 
 export default {
@@ -74,11 +74,14 @@ export default {
       return replyNeedPremium(interaction);
     }
 
-    const wsSend = wsSendToServer(server.getID(), {
-      method: 'wsRcon',
-      steamID: user.getSteamID64(),
-      command: interaction.options.getString('command'),
-    });
+    await wsSendToServerQueue.add('wsSendToServer', {
+      id: server.getID(),
+      data: {
+        method: 'wsRcon',
+        steamID: user.getSteamID64(),
+        command: interaction.options.getString('command'),
+      },
+    } as WSSendToServerData);
 
     return interaction.reply({
       content: await getTranslate(wsSend ? 'rcon_command_success' : 'rcon_command_error', lang),

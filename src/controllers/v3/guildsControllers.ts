@@ -3,7 +3,7 @@ import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'discord.js';
 import { ButtonPremium } from '../../discord/utils/buttons.js';
-import { wsSendToServer } from '../../websockets/index.js';
+import { WSSendToServerData, wsSendToServerQueue } from '../../websockets/index.js';
 import { getGuildClient } from '../../discord/index.js';
 import prisma from '../../services/prisma/index.js';
 
@@ -43,11 +43,14 @@ export async function sendMessageToGmod(message: Message) {
       });
     }
 
-    wsSendToServer(server.getID(), {
-      method: 'wsPlayerSay',
-      name: message.author.username,
-      content: message.content,
-      avatar: message.author.displayAvatarURL({ extension: 'png' }),
-    });
+    await wsSendToServerQueue.add('wsSendToServer', {
+      id: server.getID(),
+      data: {
+        method: 'wsPlayerSay',
+        name: message.author.username,
+        content: message.content,
+        avatar: message.author.displayAvatarURL({ extension: 'png' }),
+      },
+    } as WSSendToServerData);
   }
 }

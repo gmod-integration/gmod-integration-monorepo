@@ -5,6 +5,8 @@ import { getServerFromID, getServersFromDiscordGuildID } from '../classes/v3/Ser
 import { getPanelUserFromDiscordID, PanelUser } from '../classes/v3/PanelUser.js';
 import redis from '../services/redis/index.js';
 import { lastGmodIntegrationTag, versionComparator } from '../utils/tools.js';
+import { Queue, Worker } from 'bullmq';
+import { connection } from 'src/services/bullmq/index.js';
 
 interface wsClientClient {
   ws: any;
@@ -187,7 +189,7 @@ wss.on('connection', async function connection(ws, req) {
   }, 1000);
 });
 
-export function wsSendToServer(id: string, data: any) {
+function wsSendToServer(id: string, data: any) {
   const client = clients.server.find((client) => client.id === id);
 
   if (!client) {
@@ -201,6 +203,23 @@ export function wsSendToServer(id: string, data: any) {
 
   return true;
 }
+
+export interface WSSendToServerData {
+  id: string;
+  data: any;
+}
+
+export const wsSendToServerQueue = new Queue('wsSendToServer');
+
+const wsSendToServerWorker = new Worker(
+  'wsSendToServer',
+  async (job) => {
+    wsSendToServer(job.data.id, job.data.data);
+  },
+  {
+    connection,
+  },
+);
 
 export function wsSendToClient(discordID: string, data: any, action: string) {
   // const client = clients.client.find((client) => client.discordID === discordID && client.action === action);

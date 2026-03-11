@@ -12,7 +12,7 @@ import {
 } from '../../prisma/generated/prisma/enums.js';
 import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '../../prisma/generated/prisma/client.js';
 import { isGuildPremium } from './Guild.js';
-import { wsSendToServer } from '../../websockets/index.js';
+import { WSSendToServerData, wsSendToServerQueue } from '../../websockets/index.js';
 import { ServerStatusChannel } from './ServerStatusChannel.js';
 
 const serverSettings: Record<string, any> = {
@@ -360,12 +360,14 @@ export class Server extends BaseClass {
     }
 
     if (source == 'dashboard' && setting.startsWith('ig_')) {
-      // wsEditSetting;
-      wsSendToServer(this.getID(), {
-        method: 'wsEditSetting',
-        setting: setting,
-        value: value,
-      });
+      await wsSendToServerQueue.add('wsSendToServer', {
+        id: this.getID(),
+        data: {
+          method: 'wsEditSetting',
+          setting: setting,
+          value: value,
+        },
+      } as WSSendToServerData);
     }
 
     return {

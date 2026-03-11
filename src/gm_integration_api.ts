@@ -17,6 +17,7 @@ import { gracefulShutdownRedis } from './services/redis/index.js';
 import { gracefulShutdownPrisma } from './services/prisma/index.js';
 import { gracefulShutdownWebsocket } from './websockets/index.js';
 import { gracefulShutdownMongo } from './database/gm_server_logs.js';
+import './services/bullmq/index.js';
 
 // Load the main discord instance
 async function runDiscord() {
