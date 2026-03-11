@@ -13,6 +13,7 @@ import useragent from 'express-useragent';
 import errorMiddleware from './middleware/errorMiddleware.js';
 import './websockets/index.js';
 import { gracefulShutdownDiscord, loadDiscordMain, loadDiscordSlave } from './discord/index.js';
+import { initializeDiscordQueueWorkers } from './discord/workers/discordQueueWorkers.js';
 import { gracefulShutdownRedis } from './services/redis/index.js';
 import { gracefulShutdownPrisma } from './services/prisma/index.js';
 import { gracefulShutdownWebsocket } from './websockets/index.js';
@@ -22,6 +23,7 @@ import './services/bullmq/index.js';
 // Load the main discord instance
 async function runDiscord() {
   await loadDiscordMain();
+  await initializeDiscordQueueWorkers();
   await loadDiscordSlave();
 }
 

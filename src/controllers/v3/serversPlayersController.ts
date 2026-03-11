@@ -1,11 +1,15 @@
 import { badArgument, ipGetIP } from '../../utils/tools.js';
-import { PlayerGmod, updateDiscordTeamRole, updatePlayerUserGroup } from '../../classes/v3/PlayerGmod.js';
+import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import {
   saveConnectionGlobalInfo,
   saveConnectionSteamInfo,
   sendPlayerSay,
 } from '../../models/v3/serversPlayersModels.js';
-import { updateGuildUserPseudo } from '../../discord/index.js';
+import {
+  enqueueUpdateGuildUserPseudo,
+  enqueueUpdatePlayerUserGroup,
+  enqueueUpdateDiscordTeamRole,
+} from '../../services/bullmq/discordQueueAdapters.js';
 import { Request, Response } from 'express';
 import prisma from '../../services/prisma/index.js';
 import { logServer } from '../../utils/logger.js';
@@ -77,7 +81,13 @@ export async function playerChangeName(req: Request, res: Response) {
     return res.status(400).json({ error: 'player_bad_format', arguments: ply.isValidGetInformations() });
   }
 
-  await updateGuildUserPseudo(server, ply, newName);
+  await enqueueUpdateGuildUserPseudo({
+    serverID: server.getID(),
+    steamID64: ply.steamID64,
+    playerName: ply.name,
+    userGroup: ply.userGroup,
+    forceName: newName,
+  });
   return res.status(200).json({ success: true });
 }
 
@@ -97,7 +107,11 @@ export async function playerChangeGroup(req: Request, res: Response) {
     });
   }
 
-  await updatePlayerUserGroup(server, steamID64, newGroup);
+  await enqueueUpdatePlayerUserGroup({
+    serverID: server.getID(),
+    steamID64,
+    userGroup: newGroup,
+  });
   return res.status(200).json({ success: true });
 }
 
@@ -123,7 +137,11 @@ export async function playerChangeTeam(req: Request, res: Response) {
     await ply.saveTeamTime(server.getID());
   }
 
-  await updateDiscordTeamRole(server, steamID64, newTeam?.name);
+  await enqueueUpdateDiscordTeamRole({
+    serverID: server.getID(),
+    steamID64,
+    teamName: newTeam?.name || null,
+  });
   return res.status(200).json({ success: true });
 }
 
@@ -175,9 +193,22 @@ export async function playerDisconnect(req: Request, res: Response) {
   await ply.saveServerStat(server.getID());
   await ply.saveServerStatSession(server.getID());
   await ply.saveTeamTime(server.getID());
-  await updatePlayerUserGroup(server, ply.steamID64, ply.userGroup);
-  await updateGuildUserPseudo(server, ply);
-  await updateDiscordTeamRole(server, ply.steamID64, null);
+  await enqueueUpdatePlayerUserGroup({
+    serverID: server.getID(),
+    steamID64: ply.steamID64,
+    userGroup: ply.userGroup,
+  });
+  await enqueueUpdateGuildUserPseudo({
+    serverID: server.getID(),
+    steamID64: ply.steamID64,
+    playerName: ply.name,
+    userGroup: ply.userGroup,
+  });
+  await enqueueUpdateDiscordTeamRole({
+    serverID: server.getID(),
+    steamID64: ply.steamID64,
+    teamName: null,
+  });
   return res.status(200).json({ success: true });
 }
 
