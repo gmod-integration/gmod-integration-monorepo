@@ -18,6 +18,7 @@
     "prisma:migrate": "npx prisma migrate dev",
     "prisma:migration:create": "npx prisma migrate dev --create-only",
     "prisma:migrate:prod": "npx prisma migrate deploy",
+    "prisma:reset": "npx prisma migrate reset --force",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org gmod-integration --project node-express ./dist && sentry-cli sourcemaps upload --org gmod-integration --project node-express ./dist"
   },
   "repository": {
