@@ -1,9 +1,15 @@
 import { Worker, Job } from 'bullmq';
 import { connection } from 'src/services/bullmq/index.js';
+import { s3 } from 'src/services/minio/index.js';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   type UpdateGuildUserPseudoJob,
   type UpdatePlayerUserGroupJob,
   type UpdateDiscordTeamRoleJob,
+  MainClientHasGuildJobSchema,
+  MainClientUploadScreenshotJobSchema,
+  type MainClientHasGuildJob,
+  type MainClientUploadScreenshotJob,
 } from 'src/services/bullmq/schemas.js';
 import { gmLog } from 'src/utils/logger.js';
 import prisma from 'src/services/prisma/index.js';
@@ -11,6 +17,7 @@ import { getUserFromSteamID64 } from 'src/classes/v3/User.js';
 import { getServerFromID } from 'src/classes/v3/Server.js';
 import { PermissionsBitField, Role } from 'discord.js';
 import redis from 'src/services/redis/index.js';
+import { getMainClient } from 'src/discord/index.js';
 
 /**
  * Worker: synchroniser le pseudo Discord
@@ -320,6 +327,78 @@ export const discordUpdateTeamRoleWorker = new Worker<UpdateDiscordTeamRoleJob>(
   { connection, concurrency: 2 }
 );
 
+export const discordMainClientOpsWorker = new Worker<MainClientHasGuildJob | MainClientUploadScreenshotJob>(
+  'discord-mainClientOps',
+  async (job: Job<MainClientHasGuildJob | MainClientUploadScreenshotJob>) => {
+    if (job.name === 'mainClientHasGuild') {
+      const payload = MainClientHasGuildJobSchema.parse(job.data);
+      const mainClient = await getMainClient();
+      const hasGuild = mainClient.guilds.cache.has(payload.guildID);
+
+      await redis.set(
+        `bullmq:reply:${payload.correlationId}`,
+        JSON.stringify({ correlationId: payload.correlationId, hasGuild }),
+        'EX',
+        30,
+      );
+      return;
+    }
+
+    if (job.name === 'mainClientUploadScreenshot') {
+      const payload = MainClientUploadScreenshotJobSchema.parse(job.data);
+      let discordUrl = '';
+
+      try {
+        // Fetch file from Minio
+        const s3Response = await s3.send(
+          new GetObjectCommand({
+            Bucket: 'gmi-players-screenshots',
+            Key: payload.minioKey,
+          }),
+        );
+
+        if (!s3Response.Body) {
+          throw new Error('No file content from Minio');
+        }
+
+        // Convert stream to buffer
+        const chunks: Uint8Array[] = [];
+        const reader = s3Response.Body as AsyncIterable<Uint8Array>;
+        for await (const chunk of reader) {
+          chunks.push(chunk);
+        }
+        const fileBuffer = Buffer.concat(chunks);
+
+        // Upload to Discord
+        const mainClient = await getMainClient();
+        const channel = await mainClient.channels.fetch(payload.channelID);
+        if (channel && channel.isSendable()) {
+          const message = await channel.send({
+            content: payload.content,
+            files: [
+              {
+                attachment: fileBuffer,
+                name: payload.fileName,
+              },
+            ],
+          });
+          discordUrl = message.attachments.first()?.url || '';
+        }
+      } catch (error) {
+        gmLog('bullmq-worker', `[mainClientUploadScreenshot] Error: ${(error as Error).message}`);
+      }
+
+      await redis.set(
+        `bullmq:reply:${payload.correlationId}`,
+        JSON.stringify({ correlationId: payload.correlationId, discordUrl }),
+        'EX',
+        30,
+      );
+    }
+  },
+  { connection, concurrency: 2 },
+);
+
 /**
  * Initialize all Discord queue workers
  */
@@ -348,6 +427,14 @@ export async function initializeDiscordQueueWorkers() {
 
   discordUpdateTeamRoleWorker.on('failed', (job, err) => {
     gmLog('bullmq-worker', `[updateTeamRole] Job failed: ${job?.id} - ${err.message}`);
+  });
+
+  discordMainClientOpsWorker.on('completed', (job) => {
+    gmLog('bullmq-worker', `[mainClientOps] Job completed: ${job.id}`);
+  });
+
+  discordMainClientOpsWorker.on('failed', (job, err) => {
+    gmLog('bullmq-worker', `[mainClientOps] Job failed: ${job?.id} - ${err.message}`);
   });
 
   gmLog('bullmq', 'Discord queue workers initialized');

@@ -2,7 +2,6 @@ import { getRandomDiscordRelay } from '../../utils/tools.js';
 import { ConfigDiscord, ConfigServer } from '../../classes/config/Config.js';
 import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
-import { getMainClient } from '../../discord/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Server } from '../../classes/v3/Server.js';
 import prisma from '../../services/prisma/index.js';
@@ -10,6 +9,7 @@ import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { enqueueMainClientUploadScreenshot } from '../../services/bullmq/discordQueueAdapters.js';
 
 export async function saveScreenshot(
   screenshot: string,
@@ -41,18 +41,14 @@ export async function saveScreenshot(
     });
 
   let discordUrl = '';
-  const dscClient = await getMainClient();
-  const channel = await dscClient.channels.fetch(ConfigServer.screenshotChannel!);
-  try {
-    if (channel && channel.isSendable()) {
-      const message = await channel.send({
-        files: [buffer],
-        content: `Server: ${server.getName()} - Player: ${player.name} - SteamID64: ${player.steamID64}`,
-      });
-      discordUrl = message.attachments.first()?.url || '';
-    }
-  } catch (e) {
-    // do nothing
+  if (ConfigServer.screenshotChannel) {
+    discordUrl = await enqueueMainClientUploadScreenshot({
+      channelID: ConfigServer.screenshotChannel,
+      content: `Server: ${server.getName()} - Player: ${player.name} - SteamID64: ${player.steamID64}`,
+      minioKey: filename,
+      fileName: filename,
+      contentType: `image/${format}`,
+    }).catch(() => '');
   }
 
   await prisma.gm_server_screenshots.create({

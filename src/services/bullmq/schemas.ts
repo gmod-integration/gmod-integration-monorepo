@@ -61,3 +61,37 @@ export const DiscordJobResultSchema = z.object({
 });
 
 export type DiscordJobResult = z.infer<typeof DiscordJobResultSchema>;
+
+export const MainClientHasGuildJobSchema = z.object({
+  guildID: z.string().min(1, 'guildID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.date().optional(),
+});
+
+export type MainClientHasGuildJob = z.infer<typeof MainClientHasGuildJobSchema>;
+
+export const MainClientHasGuildReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  hasGuild: z.boolean(),
+});
+
+export type MainClientHasGuildReply = z.infer<typeof MainClientHasGuildReplySchema>;
+
+export const MainClientUploadScreenshotJobSchema = z.object({
+  channelID: z.string().min(1, 'channelID required'),
+  content: z.string().min(1, 'content required'),
+  minioKey: z.string().min(1, 'minioKey required'),
+  fileName: z.string().min(1, 'fileName required'),
+  contentType: z.string().min(1, 'contentType required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.date().optional(),
+});
+
+export type MainClientUploadScreenshotJob = z.infer<typeof MainClientUploadScreenshotJobSchema>;
+
+export const MainClientUploadScreenshotReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  discordUrl: z.string(),
+});
+
+export type MainClientUploadScreenshotReply = z.infer<typeof MainClientUploadScreenshotReplySchema>;

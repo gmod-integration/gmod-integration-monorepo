@@ -15,7 +15,8 @@ import { badArgument, generateToken, todoControllers } from '../../utils/tools.j
 import { getVerificationGuildMessage } from '../../discord/utils/messages.js';
 import moment from 'moment';
 import { getUserDataGRPD } from '../../models/v3/gdrp.js';
-import { getGuildClient, getMainClient } from '../../discord/index.js';
+import { getGuildClient } from '../../discord/index.js';
+import { enqueueMainClientHasGuild } from '../../services/bullmq/discordQueueAdapters.js';
 import redis from '../../services/redis/index.js';
 import prisma from '../../services/prisma/index.js';
 import { NextFunction, Request, Response } from 'express';
@@ -1561,8 +1562,7 @@ export async function getUserGmodStorePurchases(req: Request, res: Response) {
   });
 
   if (purchases && purchases.guild) {
-    const mainClient = await getMainClient();
-    purchases.hasMainBot = mainClient.guilds.cache.has(purchases.guild);
+    purchases.hasMainBot = await enqueueMainClientHasGuild(purchases.guild).catch(() => false);
   }
 
   return res.send(purchases || {});

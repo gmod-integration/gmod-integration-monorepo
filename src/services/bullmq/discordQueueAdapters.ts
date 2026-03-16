@@ -4,17 +4,44 @@ import {
   UpdateGuildUserPseudoJobSchema,
   UpdatePlayerUserGroupJobSchema,
   UpdateDiscordTeamRoleJobSchema,
+  MainClientHasGuildJobSchema,
+  MainClientHasGuildReplySchema,
+  MainClientUploadScreenshotJobSchema,
+  MainClientUploadScreenshotReplySchema,
   type UpdateGuildUserPseudoJob,
   type UpdatePlayerUserGroupJob,
   type UpdateDiscordTeamRoleJob,
+  type MainClientUploadScreenshotJob,
 } from './schemas.js';
 import { v4 as uuidv4 } from 'uuid';
 import { gmLog } from '../../utils/logger.js';
+import redis from '../redis/index.js';
 
 // Queues
 const discordUpdatePseudoQueue = new Queue('discord-updatePseudo', { connection });
 const discordUpdateGroupQueue = new Queue('discord-updateGroup', { connection });
 const discordUpdateTeamRoleQueue = new Queue('discord-updateTeamRole', { connection });
+const discordMainClientOpsQueue = new Queue('discord-mainClientOps', { connection });
+
+function getReplyKey(correlationId: string): string {
+  return `bullmq:reply:${correlationId}`;
+}
+
+async function waitForReply<T>(correlationId: string, parser: (value: unknown) => T, timeoutMs = 5000): Promise<T> {
+  const key = getReplyKey(correlationId);
+  const started = Date.now();
+
+  while (Date.now() - started < timeoutMs) {
+    const raw = await redis.get(key);
+    if (raw) {
+      await redis.del(key);
+      return parser(JSON.parse(raw));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error(`Timeout waiting for BullMQ reply (${correlationId})`);
+}
 
 /**
  * Enqueue: Synchroniser pseudo Discord
@@ -97,4 +124,51 @@ export async function enqueueUpdateDiscordTeamRole(
   }
 }
 
-export { discordUpdatePseudoQueue, discordUpdateGroupQueue, discordUpdateTeamRoleQueue };
+export async function enqueueMainClientHasGuild(guildID: string, timeoutMs = 5000): Promise<boolean> {
+  const correlationId = uuidv4();
+  const payload = MainClientHasGuildJobSchema.parse({
+    guildID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordMainClientOpsQueue.add('mainClientHasGuild', payload, {
+    priority: 10,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(correlationId, (value) => MainClientHasGuildReplySchema.parse(value), timeoutMs);
+
+  return reply.hasGuild;
+}
+
+export async function enqueueMainClientUploadScreenshot(
+  data: Omit<MainClientUploadScreenshotJob, 'correlationId' | 'timestamp'>,
+  timeoutMs = 7000,
+): Promise<string> {
+  const correlationId = uuidv4();
+  const payload = MainClientUploadScreenshotJobSchema.parse({
+    ...data,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordMainClientOpsQueue.add('mainClientUploadScreenshot', payload, {
+    priority: 6,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => MainClientUploadScreenshotReplySchema.parse(value),
+    timeoutMs,
+  );
+
+  return reply.discordUrl;
+}
+
+export { discordUpdatePseudoQueue, discordUpdateGroupQueue, discordUpdateTeamRoleQueue, discordMainClientOpsQueue };
