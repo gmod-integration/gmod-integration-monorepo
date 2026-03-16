@@ -1,0 +1,13 @@
+{
+  "name": "@gmod/infra-steam",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./index.js": "./src/index.ts"
+  },
+  "dependencies": {
+    "@gmod/infra-redis": "workspace:*",
+    "steamapi": "^2.5.0"
+  }
+}

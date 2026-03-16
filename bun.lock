@@ -7,6 +7,12 @@
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1009.0",
         "@discordjs/builders": "^1.13.1",
+        "@gmod/infra-bullmq": "workspace:*",
+        "@gmod/infra-minio": "workspace:*",
+        "@gmod/infra-mongo": "workspace:*",
+        "@gmod/infra-prisma": "workspace:*",
+        "@gmod/infra-redis": "workspace:*",
+        "@gmod/infra-steam": "workspace:*",
         "@prisma/adapter-mariadb": "^7.5.0",
         "@prisma/client": "^7.5.0",
         "@sentry/cli": "^2.58.5",
@@ -68,6 +74,54 @@
     "packages/infra": {
       "name": "@gmod/infra",
       "version": "1.0.0",
+    },
+    "packages/infra-bullmq": {
+      "name": "@gmod/infra-bullmq",
+      "version": "1.0.0",
+      "dependencies": {
+        "@gmod/infra-redis": "workspace:*",
+        "bullmq": "^5.71.0",
+        "uuid": "^9.0.1",
+        "zod": "^3.25.76",
+      },
+    },
+    "packages/infra-minio": {
+      "name": "@gmod/infra-minio",
+      "version": "1.0.0",
+      "dependencies": {
+        "@aws-sdk/client-s3": "^3.1009.0",
+      },
+    },
+    "packages/infra-mongo": {
+      "name": "@gmod/infra-mongo",
+      "version": "1.0.0",
+      "dependencies": {
+        "mongodb": "^6.21.0",
+      },
+    },
+    "packages/infra-prisma": {
+      "name": "@gmod/infra-prisma",
+      "version": "1.0.0",
+      "dependencies": {
+        "@gmod/infra-mongo": "workspace:*",
+        "@prisma/adapter-mariadb": "^7.5.0",
+        "@prisma/client": "^7.5.0",
+      },
+    },
+    "packages/infra-redis": {
+      "name": "@gmod/infra-redis",
+      "version": "1.0.0",
+      "dependencies": {
+        "ioredis": "^5.10.0",
+      },
+    },
+    "packages/infra-steam": {
+      "name": "@gmod/infra-steam",
+      "version": "1.0.0",
+      "dependencies": {
+        "@gmod/infra-redis": "workspace:*",
+        "steamapi": "^2.5.0",
+      },
     },
     "packages/locales": {
       "name": "@gmod/locales",
@@ -250,6 +304,18 @@
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.27.4", "", { "os": "win32", "cpu": "x64" }, "sha512-+knoa0BDoeXgkNvvV1vvbZX4+hizelrkwmGJBdT17t8FNPwG2lKemmuMZlmaNQ3ws3DKKCxpb4zRZEIp3UxFCg=="],
 
     "@gmod/infra": ["@gmod/infra@workspace:packages/infra"],
+
+    "@gmod/infra-bullmq": ["@gmod/infra-bullmq@workspace:packages/infra-bullmq"],
+
+    "@gmod/infra-minio": ["@gmod/infra-minio@workspace:packages/infra-minio"],
+
+    "@gmod/infra-mongo": ["@gmod/infra-mongo@workspace:packages/infra-mongo"],
+
+    "@gmod/infra-prisma": ["@gmod/infra-prisma@workspace:packages/infra-prisma"],
+
+    "@gmod/infra-redis": ["@gmod/infra-redis@workspace:packages/infra-redis"],
+
+    "@gmod/infra-steam": ["@gmod/infra-steam@workspace:packages/infra-steam"],
 
     "@gmod/locales": ["@gmod/locales@workspace:packages/locales"],
 

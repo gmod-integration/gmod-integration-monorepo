@@ -1,0 +1,12 @@
+{
+  "name": "@gmod/infra-mongo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./index.js": "./src/index.ts"
+  },
+  "dependencies": {
+    "mongodb": "^6.21.0"
+  }
+}

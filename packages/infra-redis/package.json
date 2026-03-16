@@ -1,0 +1,12 @@
+{
+  "name": "@gmod/infra-redis",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./index.js": "./src/index.ts"
+  },
+  "dependencies": {
+    "ioredis": "^5.10.0"
+  }
+}

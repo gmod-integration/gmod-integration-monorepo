@@ -1,9 +1,9 @@
 import { BaseClass } from './BaseClass.js';
 import { Team } from './Team.js';
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { getUserFromDiscordID, getUserFromSteamID64 } from './User.js';
 import { getServerFromID, Server } from './Server.js';
-import redis from '../../services/redis/index.js';
+import redis from '@gmod/infra-redis/index.js';
 import { gmLog, LogLevel } from '../../utils/logger.js';
 import { Position } from './Position.js';
 import { Angle } from './Angle.js';

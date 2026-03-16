@@ -1,4 +1,4 @@
-import prisma from 'src/services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { ServerStatusChannelInput, ServerStatusChannelSchema } from '../../schemas/server/ServerStatusChannelSchema.js';
 import { Server } from './Server.js';
 

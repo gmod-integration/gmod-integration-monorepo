@@ -1,4 +1,1 @@
-export const connection = {
-  host: 'localhost',
-  port: 6379,
-};
+export { connection } from '@gmod/infra-bullmq/index.js';

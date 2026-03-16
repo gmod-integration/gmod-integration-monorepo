@@ -3,9 +3,9 @@ import webhooksRoutes from './webhooks/_webhooksRoutes.js';
 import v3Routes from './v3/_v3Routes.js';
 import steamRoutes from './steamRoutes.js';
 import asyncHandler from '../middleware/asyncHandler.js';
-import prisma from '../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
-import { s3 } from '../services/minio/index.js';
+import { s3 } from '@gmod/infra-minio/index.js';
 import { Readable } from 'node:stream';
 
 const router = express.Router();

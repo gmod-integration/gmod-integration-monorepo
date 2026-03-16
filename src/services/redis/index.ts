@@ -1,10 +1,1 @@
-import Redis from 'ioredis';
-
-// @ts-ignore
-const redis = new Redis();
-
-export default redis;
-
-export async function gracefulShutdownRedis() {
-  await redis.quit();
-}
+export { default, gracefulShutdownRedis } from '@gmod/infra-redis/index.js';

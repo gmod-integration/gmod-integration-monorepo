@@ -1,11 +1,11 @@
 import { getTranslate } from '../../utils/localizations.js';
 import { Server } from '../../classes/v3/Server.js';
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { JSDOM } from 'jsdom';
 import * as d3 from 'd3';
 import sharp from 'sharp';
-import redis from '../../services/redis/index.js';
-import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
+import redis from '@gmod/infra-redis/index.js';
+import { createBucketIfNotExists, s3 } from '@gmod/infra-minio/index.js';
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
 

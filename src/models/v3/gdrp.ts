@@ -7,9 +7,9 @@ import { addNotification } from '../../utils/tools.js';
 import { getLogsBySteamIDList, getLogsCountBySteamIDList } from '../../database/gm_server_logs.js';
 import path from 'path';
 import * as os from 'node:os';
-import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
+import { createBucketIfNotExists, s3 } from '@gmod/infra-minio/index.js';
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { Readable } from 'node:stream';
 import { getErrorsBySteamID, getErrorsCountBySteamID } from '../../classes/gmod/GmodErrors.js';
 

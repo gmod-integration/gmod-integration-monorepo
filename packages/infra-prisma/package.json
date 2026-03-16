@@ -1,0 +1,14 @@
+{
+  "name": "@gmod/infra-prisma",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./index.js": "./src/index.ts"
+  },
+  "dependencies": {
+    "@gmod/infra-mongo": "workspace:*",
+    "@prisma/adapter-mariadb": "^7.5.0",
+    "@prisma/client": "^7.5.0"
+  }
+}

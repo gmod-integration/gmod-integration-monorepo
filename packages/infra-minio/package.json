@@ -1,0 +1,12 @@
+{
+  "name": "@gmod/infra-minio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./index.js": "./src/index.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1009.0"
+  }
+}

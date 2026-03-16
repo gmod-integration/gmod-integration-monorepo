@@ -1,7 +1,7 @@
 import { badArgument } from '../../utils/tools.js';
 import { saveScreenshot, sendScreenshotToDiscord } from '../../models/v3/clientsModels.js';
 import { Request, Response } from 'express';
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 
 export async function uploadScreenshot(req: Request, res: Response) {
   const server = req.server!;

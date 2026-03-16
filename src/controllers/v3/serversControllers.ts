@@ -1,7 +1,7 @@
 import { badArgument } from '../../utils/tools.js';
 import { logServer } from '../../utils/logger.js';
 import { Request, Response } from 'express';
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 
 export async function postIGSettings(req: Request, res: Response) {

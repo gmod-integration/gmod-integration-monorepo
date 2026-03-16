@@ -9,9 +9,9 @@ import {
   enqueueUpdateGuildUserPseudo,
   enqueueUpdatePlayerUserGroup,
   enqueueUpdateDiscordTeamRole,
-} from '../../services/bullmq/discordQueueAdapters.js';
+} from '@gmod/infra-bullmq/discordQueueAdapters.js';
 import { Request, Response } from 'express';
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { logServer } from '../../utils/logger.js';
 
 export async function getPlayer(req: Request, res: Response) {

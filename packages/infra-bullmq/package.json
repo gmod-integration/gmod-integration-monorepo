@@ -1,0 +1,17 @@
+{
+  "name": "@gmod/infra-bullmq",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./index.js": "./src/index.ts",
+    "./schemas.js": "./src/schemas.ts",
+    "./discordQueueAdapters.js": "./src/discordQueueAdapters.ts"
+  },
+  "dependencies": {
+    "@gmod/infra-redis": "workspace:*",
+    "bullmq": "^5.71.0",
+    "uuid": "^9.0.1",
+    "zod": "^3.25.76"
+  }
+}

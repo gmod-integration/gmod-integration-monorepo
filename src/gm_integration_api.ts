@@ -14,11 +14,11 @@ import errorMiddleware from './middleware/errorMiddleware.js';
 import './websockets/index.js';
 import { gracefulShutdownDiscord, loadDiscordMain, loadDiscordSlave } from './discord/index.js';
 import { initializeDiscordQueueWorkers } from './discord/workers/discordQueueWorkers.js';
-import { gracefulShutdownRedis } from './services/redis/index.js';
-import { gracefulShutdownPrisma } from './services/prisma/index.js';
+import { gracefulShutdownRedis } from '@gmod/infra-redis/index.js';
+import { gracefulShutdownPrisma } from '@gmod/infra-prisma/index.js';
 import { gracefulShutdownWebsocket } from './websockets/index.js';
 import { gracefulShutdownMongo } from './database/gm_server_logs.js';
-import './services/bullmq/index.js';
+import '@gmod/infra-bullmq/index.js';
 
 // Load the main discord instance
 async function runDiscord() {

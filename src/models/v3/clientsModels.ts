@@ -1,15 +1,15 @@
 import { getRandomDiscordRelay } from '../../utils/tools.js';
 import { ConfigDiscord, ConfigServer } from '../../classes/config/Config.js';
 import { EmbedBuilder } from 'discord.js';
-import { getSteamUserAvatarLarge } from '../../services/steam/index.js';
+import { getSteamUserAvatarLarge } from '@gmod/infra-steam/index.js';
 import { v4 as uuidv4 } from 'uuid';
 import { Server } from '../../classes/v3/Server.js';
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import { getTranslate } from '../../utils/localizations.js';
-import { createBucketIfNotExists, s3 } from '../../services/minio/index.js';
+import { createBucketIfNotExists, s3 } from '@gmod/infra-minio/index.js';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { enqueueMainClientUploadScreenshot } from '../../services/bullmq/discordQueueAdapters.js';
+import { enqueueMainClientUploadScreenshot } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 
 export async function saveScreenshot(
   screenshot: string,

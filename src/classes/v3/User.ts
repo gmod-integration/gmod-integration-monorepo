@@ -1,4 +1,4 @@
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 
 export class User {
   steamID64: string | null;

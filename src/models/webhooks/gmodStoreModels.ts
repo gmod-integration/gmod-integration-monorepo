@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { ConfigGmodStore } from '../../classes/config/Config.js';
 import { gmLog } from '../../utils/logger.js';
 import { getUserFromSteamID64 } from '../../classes/v3/User.js';
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { addNotification } from '../../utils/tools.js';
 import JSONbig from 'json-bigint';
 

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'assert';
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { testURL } from '../index.js';
 import { testServer } from '../config.test.js';
 

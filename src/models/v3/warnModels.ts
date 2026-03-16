@@ -1,7 +1,7 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, EmbedBuilder } from 'discord.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { getServerFromID, Server } from '../../classes/v3/Server.js';
-import prisma from '../../services/prisma/index.js';
+import prisma from '@gmod/infra-prisma/index.js';
 import { ConfigDiscord } from '../../classes/config/Config.js';
 
 export async function getServerUserWarn(

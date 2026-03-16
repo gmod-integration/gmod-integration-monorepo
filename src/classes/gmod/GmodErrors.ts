@@ -1,5 +1,5 @@
 import { GmodErrorsInput, GmodErrorsSchema } from '../../schemas/gmod/GmodErrorsSchema.js';
-import { mongoClient } from '../../services/mongo/index.js';
+import { mongoClient } from '@gmod/infra-mongo/index.js';
 import { Query } from '../db/Query.js';
 
 const db = mongoClient.db('gmod_integration');

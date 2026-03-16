@@ -3,10 +3,10 @@ import { ConfigServer } from '../classes/config/Config.js';
 import { gmLog } from '../utils/logger.js';
 import { getServerFromID, getServersFromDiscordGuildID } from '../classes/v3/Server.js';
 import { getPanelUserFromDiscordID, PanelUser } from '../classes/v3/PanelUser.js';
-import redis from '../services/redis/index.js';
+import redis from '@gmod/infra-redis/index.js';
 import { lastGmodIntegrationTag, versionComparator } from '../utils/tools.js';
 import { Queue, Worker } from 'bullmq';
-import { connection } from 'src/services/bullmq/index.js';
+import { connection } from '@gmod/infra-bullmq/index.js';
 
 interface wsClientClient {
   ws: any;
