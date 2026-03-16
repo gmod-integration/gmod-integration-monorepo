@@ -12,7 +12,7 @@ import { getTranslate } from '../../utils/localizations.js';
 import { secToTime } from '../../discord/utils/index.js';
 import { Guild } from './Guild.js';
 import { addAutoRoleToUser } from '../../models/v3/discordModels.js';
-import { WSSendToServerData, wsSendToServerQueue } from '../../websockets/index.js';
+import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { getGuildClient } from '../../discord/index.js';
 import { GuildBan } from 'discord.js';
 

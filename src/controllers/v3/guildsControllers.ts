@@ -3,7 +3,7 @@ import { isGuildPremium } from '../../classes/v3/Guild.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'discord.js';
 import { ButtonPremium } from '../../discord/utils/buttons.js';
-import { WSSendToServerData, wsSendToServerQueue } from '../../websockets/index.js';
+import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { getGuildClient } from '../../discord/index.js';
 import prisma from '@gmod/infra-prisma/index.js';
 

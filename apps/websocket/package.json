@@ -1,0 +1,18 @@
+{
+  "name": "@gmod/app-websocket",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@gmod/infra-bullmq": "workspace:*",
+    "@gmod/infra-redis": "workspace:*",
+    "@gmod/infra-websocket": "workspace:*",
+    "bullmq": "^5.71.0",
+    "dotenv": "^16.6.1",
+    "ws": "^8.19.0"
+  }
+}

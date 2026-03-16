@@ -1,0 +1,13 @@
+{
+  "name": "@gmod/infra-websocket",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./queues.js": "./src/queues.ts"
+  },
+  "dependencies": {
+    "@gmod/infra-bullmq": "workspace:*",
+    "bullmq": "^5.71.0"
+  }
+}

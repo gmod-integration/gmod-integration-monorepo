@@ -11,12 +11,10 @@ import mainRoutes from './routes/mainRoutes.js';
 import useragent from 'express-useragent';
 // import * as Sentry from '@sentry/node';
 import errorMiddleware from './middleware/errorMiddleware.js';
-import './websockets/index.js';
 import { gracefulShutdownDiscord, loadDiscordMain, loadDiscordSlave } from './discord/index.js';
 import { initializeDiscordQueueWorkers } from './discord/workers/discordQueueWorkers.js';
 import { gracefulShutdownRedis } from '@gmod/infra-redis/index.js';
 import { gracefulShutdownPrisma } from '@gmod/infra-prisma/index.js';
-import { gracefulShutdownWebsocket } from './websockets/index.js';
 import { gracefulShutdownMongo } from './database/gm_server_logs.js';
 import '@gmod/infra-bullmq/index.js';
 
@@ -158,7 +156,6 @@ async function gracefulShutdown() {
   gmLog('shutdown', 'Gracefully shutting down...');
   inShutdown = true;
   // await Sentry.flush(2000);
-  await gracefulShutdownWebsocket();
   await gracefulShutdownDiscord();
   await gracefulShutdownRedis();
   await gracefulShutdownPrisma();

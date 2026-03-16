@@ -7,7 +7,7 @@ import { Server } from '../classes/v3/Server.js';
 import { addLog } from '../database/gm_server_logs.js';
 import redis from '@gmod/infra-redis/index.js';
 import type { gm_server_logs_triggers } from '../prisma/generated/prisma/client.js';
-import { wsSendToAllClientsOfServerData, wsSendToAllClientsOfServerQueue } from 'src/websockets/index.js';
+import { wsSendToAllClientsOfServerData, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js';
 
 export enum LogLevel {
   MINIMAL = 'minimal',

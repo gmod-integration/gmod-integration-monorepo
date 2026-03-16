@@ -1,12 +1,18 @@
 import { WebSocketServer } from 'ws';
-import { ConfigServer } from '../classes/config/Config.js';
-import { gmLog } from '../utils/logger.js';
-import { getServerFromID, getServersFromDiscordGuildID } from '../classes/v3/Server.js';
-import { getPanelUserFromDiscordID, PanelUser } from '../classes/v3/PanelUser.js';
+import { Worker } from 'bullmq';
+import { ConfigServer } from '../../../src/classes/config/Config.js';
+import { gmLog } from '../../../src/utils/logger.js';
+import { getServerFromID, getServersFromDiscordGuildID } from '../../../src/classes/v3/Server.js';
+import { getPanelUserFromDiscordID, PanelUser } from '../../../src/classes/v3/PanelUser.js';
 import redis from '@gmod/infra-redis/index.js';
-import { lastGmodIntegrationTag, versionComparator } from '../utils/tools.js';
-import { Queue, Worker } from 'bullmq';
+import { lastGmodIntegrationTag, versionComparator } from '../../../src/utils/tools.js';
 import { connection } from '@gmod/infra-bullmq/index.js';
+import {
+  type WSSendToServerData,
+  type wsSendToAllClientsOfServerData,
+  wsSendToServerQueue,
+  wsSendToAllClientsOfServerQueue,
+} from '@gmod/infra-websocket/queues.js';
 
 interface wsClientClient {
   ws: any;
@@ -59,26 +65,28 @@ const wss = new WebSocketServer({
   },
 });
 
-wss.on('connection', async function connection(ws, req) {
+wss.on('connection', async function connectionWS(ws, req) {
   const { id, token } = req.headers;
 
   if (id && token) {
-    // Find existing client with same id and close its socket if present
     const existingClient = clients.server.find((client) => client.id === id);
     if (existingClient) {
       try {
         existingClient.ws.close();
-      } catch (e) {
-        // Ignore errors on close
+      } catch {
+        // ignore socket close errors
       }
       clients.server = clients.server.filter((client) => client.id !== id);
     }
+
     clients.server.push({ id: id.toString(), ws });
     gmLog('websocket', 'Server connected: ' + id);
+
     ws.on('close', () => {
       clients.server = clients.server.filter((client) => client.ws !== ws);
       gmLog('websocket', 'Server disconnected: ' + id);
     });
+
     ws.on('message', async (message: string) => {
       try {
         const wsInfo = JSON.parse(message);
@@ -90,11 +98,12 @@ wss.on('connection', async function connection(ws, req) {
         gmLog('websocket', 'Received from server ' + id + ' ' + JSON.stringify(wsInfo));
 
         switch (wsInfo.action) {
-          case 'save_config':
+          case 'save_config': {
             const server = await getServerFromID(id.toString());
             if (!server) return;
             await server.saveIGSettings(wsInfo.config);
             break;
+          }
           default:
             break;
         }
@@ -117,8 +126,8 @@ wss.on('connection', async function connection(ws, req) {
         return;
       }
 
-      let guildAdminListID: string[] = [];
-      let serverAdminListID: string[] = [];
+      const guildAdminListID: string[] = [];
+      const serverAdminListID: string[] = [];
 
       const guildAdminList = await user.findGuildsWithPermsForPanel();
       for (const guildID of guildAdminList) {
@@ -146,13 +155,12 @@ wss.on('connection', async function connection(ws, req) {
           gmLog('websocket', 'Received from client ' + discordID + ' ' + JSON.stringify(wsInfo));
 
           switch (wsInfo.action) {
-            case 'server_status':
+            case 'server_status': {
               const { serverID } = wsInfo.data;
 
               const serverVersion = await redis.get(`server:${serverID}:version`);
               const serverLastRequest = await redis.get(`server:${serverID}:last_request`);
 
-              // reply with server status
               wsSendToClient(
                 discordID,
                 {
@@ -169,6 +177,7 @@ wss.on('connection', async function connection(ws, req) {
               );
 
               break;
+            }
             default:
               break;
           }
@@ -204,15 +213,8 @@ function wsSendToServer(id: string, data: any) {
   return true;
 }
 
-export interface WSSendToServerData {
-  id: string;
-  data: any;
-}
-
-export const wsSendToServerQueue = new Queue('wsSendToServer');
-
 const wsSendToServerWorker = new Worker(
-  'wsSendToServer',
+  wsSendToServerQueue.name,
   async (job) => {
     wsSendToServer(job.data.id, job.data.data);
   },
@@ -251,17 +253,8 @@ function wsSendToAllClientsOfServer(serverID: string, action: string, data: any)
   return true;
 }
 
-
-export interface wsSendToAllClientsOfServerData {
-  id: string;
-  action: string;
-  data: any;
-}
-
-export const wsSendToAllClientsOfServerQueue = new Queue('wsSendToAllClientsOfServer');
-
 const wsSendToAllClientsOfServerWorker = new Worker(
-  'wsSendToAllClientsOfServer',
+  wsSendToAllClientsOfServerQueue.name,
   async (job) => {
     wsSendToAllClientsOfServer(job.data.id, job.data.action, job.data.data);
   },
@@ -272,6 +265,18 @@ const wsSendToAllClientsOfServerWorker = new Worker(
 
 gmLog('websocket', 'Listening on port ' + ConfigServer.ports.websocket);
 
-export async function gracefulShutdownWebsocket() {
-  wss.close();
+async function gracefulShutdown() {
+  gmLog('shutdown', 'Gracefully shutting down websocket app...');
+
+  await wsSendToServerWorker.close();
+  await wsSendToAllClientsOfServerWorker.close();
+
+  await new Promise<void>((resolve) => {
+    wss.close(() => resolve());
+  });
+
+  process.exit(0);
 }
+
+process.on('SIGINT', gracefulShutdown);
+process.on('SIGTERM', gracefulShutdown);

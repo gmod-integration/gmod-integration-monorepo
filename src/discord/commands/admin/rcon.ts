@@ -11,7 +11,7 @@ import { getUserFromDiscordID } from '../../../classes/v3/User.js';
 import { ButtonVerificationWebsite } from '../../utils/buttons.js';
 import { getServerFromID } from '../../../classes/v3/Server.js';
 import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild.js';
-import { WSSendToServerData, wsSendToServerQueue } from '../../../websockets/index.js';
+import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { getTranslate } from '../../../utils/localizations.js';
 
 export default {

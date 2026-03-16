@@ -10,7 +10,7 @@ import { Guild, GuildMember } from 'discord.js';
 import { PanelUser } from '../../classes/v3/PanelUser.js';
 import { v4 as uuidv4 } from 'uuid';
 import { gmLog } from '../../utils/logger.js';
-import { WSSendToServerData, wsSendToServerQueue } from 'src/websockets/index.js';
+import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
   const guildBotInstance = await getGuildClient(member.guild.id, false);

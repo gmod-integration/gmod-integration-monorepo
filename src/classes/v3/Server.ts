@@ -12,7 +12,7 @@ import {
 } from '../../prisma/generated/prisma/enums.js';
 import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '../../prisma/generated/prisma/client.js';
 import { isGuildPremium } from './Guild.js';
-import { WSSendToServerData, wsSendToServerQueue } from '../../websockets/index.js';
+import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { ServerStatusChannel } from './ServerStatusChannel.js';
 
 const serverSettings: Record<string, any> = {

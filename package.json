@@ -13,6 +13,8 @@
     "clean": "rm -rf ./dist",
     "build": "npm run clean && tsc && npm run sentry:sourcemaps",
     "dev": "tsx watch src/gm_integration_api.ts --env DEV=true",
+    "websocket:dev": "bun run --cwd apps/websocket dev",
+    "websocket:start": "bun run --cwd apps/websocket start",
     "start": "pm2 start ./dist/gm_integration_api.js --log logs/current.log --name gmod-integration-api",
     "reload": "pm2 reload gmod-integration-api --update-env",
     "prisma:generate": "npx prisma generate",
@@ -28,6 +30,7 @@
   },
   "workspaces": [
     ".",
+    "apps/*",
     "packages/*"
   ],
   "repository": {
@@ -65,6 +68,7 @@
     "@gmod/infra-prisma": "workspace:*",
     "@gmod/infra-redis": "workspace:*",
     "@gmod/infra-steam": "workspace:*",
+    "@gmod/infra-websocket": "workspace:*",
     "@aws-sdk/client-s3": "^3.1009.0",
     "@discordjs/builders": "^1.13.1",
     "@prisma/adapter-mariadb": "^7.5.0",
