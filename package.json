@@ -62,6 +62,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@gmod/config": "workspace:*",
     "@gmod/infra-bullmq": "workspace:*",
     "@gmod/infra-minio": "workspace:*",
     "@gmod/infra-mongo": "workspace:*",

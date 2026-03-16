@@ -7,6 +7,7 @@
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1009.0",
         "@discordjs/builders": "^1.13.1",
+        "@gmod/config": "workspace:*",
         "@gmod/infra-bullmq": "workspace:*",
         "@gmod/infra-minio": "workspace:*",
         "@gmod/infra-mongo": "workspace:*",
@@ -76,12 +77,20 @@
       "name": "@gmod/app-websocket",
       "version": "1.0.0",
       "dependencies": {
+        "@gmod/config": "workspace:*",
         "@gmod/infra-bullmq": "workspace:*",
         "@gmod/infra-redis": "workspace:*",
         "@gmod/infra-websocket": "workspace:*",
         "bullmq": "^5.71.0",
-        "dotenv": "^16.6.1",
         "ws": "^8.19.0",
+      },
+    },
+    "packages/config": {
+      "name": "@gmod/config",
+      "version": "1.0.0",
+      "dependencies": {
+        "dotenv": "^16.6.1",
+        "zod": "^3.25.76",
       },
     },
     "packages/infra-bullmq": {
@@ -99,6 +108,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1009.0",
+        "@gmod/config": "workspace:*",
       },
     },
     "packages/infra-mongo": {
@@ -128,6 +138,7 @@
       "name": "@gmod/infra-steam",
       "version": "1.0.0",
       "dependencies": {
+        "@gmod/config": "workspace:*",
         "@gmod/infra-redis": "workspace:*",
         "steamapi": "^2.5.0",
       },
@@ -321,6 +332,8 @@
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.27.4", "", { "os": "win32", "cpu": "x64" }, "sha512-+knoa0BDoeXgkNvvV1vvbZX4+hizelrkwmGJBdT17t8FNPwG2lKemmuMZlmaNQ3ws3DKKCxpb4zRZEIp3UxFCg=="],
 
     "@gmod/app-websocket": ["@gmod/app-websocket@workspace:apps/websocket"],
+
+    "@gmod/config": ["@gmod/config@workspace:packages/config"],
 
     "@gmod/infra-bullmq": ["@gmod/infra-bullmq@workspace:packages/infra-bullmq"],
 

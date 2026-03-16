@@ -1,0 +1,14 @@
+{
+  "name": "@gmod/config",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./index.js": "./src/index.ts",
+    "./schema.js": "./src/schema.ts"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "zod": "^3.25.76"
+  }
+}

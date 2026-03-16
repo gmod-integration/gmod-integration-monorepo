@@ -1,6 +1,6 @@
 import { WebSocketServer } from 'ws';
 import { Worker } from 'bullmq';
-import { ConfigServer } from '../../../src/classes/config/Config.js';
+import { ConfigServer } from '@gmod/config/index.js';
 import { gmLog } from '../../../src/utils/logger.js';
 import { getServerFromID, getServersFromDiscordGuildID } from '../../../src/classes/v3/Server.js';
 import { getPanelUserFromDiscordID, PanelUser } from '../../../src/classes/v3/PanelUser.js';
