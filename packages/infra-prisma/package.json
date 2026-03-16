@@ -4,7 +4,9 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./index.js": "./src/index.ts"
+    "./index.js": "./src/index.ts",
+    "./client.js": "./src/client.ts",
+    "./enums.js": "./src/enums.ts"
   },
   "dependencies": {
     "@gmod/infra-mongo": "workspace:*",

@@ -1,4 +1,4 @@
-import { PrismaClient } from '../../../src/prisma/generated/prisma/client.js';
+import { PrismaClient } from '../generated/prisma/client.js';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
 import { connectToMongoDB } from '@gmod/infra-mongo/index.js';
 
