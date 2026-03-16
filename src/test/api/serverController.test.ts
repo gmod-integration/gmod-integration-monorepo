@@ -1,15 +1,16 @@
 import { test } from 'node:test';
 import assert from 'assert';
-import testConfig, { getTestUri } from '../config.test.js';
 import prisma from '../../services/prisma/index.js';
+import { testURL } from '../index.js';
+import { testServer } from '../config.test.js';
 
 // Server Info
 test('GET /v3/servers/:serverID', async (t) => {
-  const response = await fetch(getTestUri('/v3/servers/:serverID'), {
+  const response = await fetch(testURL('/v3/servers/:serverID'), {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + testConfig.server.token,
+      Authorization: 'Bearer ' + testServer.token,
     },
   });
   assert.strictEqual(response.status, 200);
@@ -17,17 +18,17 @@ test('GET /v3/servers/:serverID', async (t) => {
 
 // Server Generate Public Token
 test('POST /v3/servers/:serverID/public-token', async (t) => {
-  const response = await fetch(getTestUri('/v3/servers/:serverID/public-token'), {
+  const response = await fetch(testURL('/v3/servers/:serverID/public-token'), {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + testConfig.server.token,
+      Authorization: 'Bearer ' + testServer.token,
     },
   });
   assert.strictEqual(response.status, 200);
   const prismaData = await prisma.gm_server.findFirst({
     where: {
-      id: testConfig.server.id,
+      id: testServer.id,
     },
   });
   const responseJson = await response.json();

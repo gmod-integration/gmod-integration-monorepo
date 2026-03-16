@@ -1,43 +1,51 @@
-import prisma from '../services/prisma/index.js';
-import { ConfigServer } from '../classes/config/Config.js';
-
-const testConfig = {
-  server: {
-    id: '3dWQ1LTknE',
-    token: 'QEFHAqTHZSHB7xY4',
-  },
-  user: {
-    discordID: '333650866747867137',
-    steamID: '76561198219049673',
-    token: '<token>',
-  },
-  guild: {
-    id: '1299172406169960458',
-  },
+export const testGuild = {
+  id: '1299172406169960458', // @dev-test
+  name: 'Test Server',
 };
 
-const userToken = await prisma.gm_panelToken.findFirst({
-  where: {
-    discordID: testConfig.user.discordID,
-  },
-  orderBy: {
-    createdAt: 'desc',
-  },
-});
+export const testServer = {
+  id: '---TEST---',
+  token: '-----TOKEN------',
+  name: 'Test Server',
+};
 
-testConfig.user.token = userToken?.accessToken || '';
+export const testUser = {
+  discordID: '333650866747867137', // @linventif
+  steamID: '76561198219049673', // @linventif
+  token: '-------------TOKEN--------------',
+};
 
-export function getTestUri(path: string): string {
-  // remplace :discordID by testConfig.discordID
-  path = path.replace(/:discordID/g, testConfig.user.discordID);
-  // remplace :steamID by testConfig.steamID64
-  path = path.replace(/:steamID64/g, testConfig.user.steamID);
-  // remplace :serverID by testConfig.serverID
-  path = path.replace(/:serverID/g, testConfig.server.id);
-  // remplace :guildID by testConfig.guildID
-  path = path.replace(/:guildID/g, testConfig.guild.id);
+export const testGuildRoles = [
+  '1316096105657667586', // '・⠀・⠀・⠀Group⠀・⠀・⠀・⠀⠀'
+  '1212492003485421618', // 'user'
+  '1176193601693286461', // 'admin'
+  '1212487237615489094', // 'superadmin'
+  '1316096354124038244', // '・⠀・⠀・⠀Premium⠀・⠀・⠀・⠀⠀'
+  '1280241516941676674', // 'premium'
+  '1280281729269239910', // 'discord sub'
+  '1280281812597477468', // 'gmod store byu'
+  '1316096111634681856', // '・⠀・⠀・⠀Role⠀・⠀・⠀・⠀⠀'
+  '1316098181007933531', // 'hobo'
+  '1316097442114179102', // 'gangsters'
+  '1316097323910303826', // 'civil protecton'
+  '1316097152593952769', // 'citizens'
+  '1316097007840133181', // '・⠀・⠀・⠀Team⠀・⠀・⠀・⠀⠀'
+  '1248061972772163656', // 'auto'
+  '1245464012825690275', // 'verif'
+  '1245463981641175112', // 'not verif'
+  '1176193628918513715', // 'member'
+];
 
-  return `http://localhost:${ConfigServer.ports.api}${path}`;
-}
+export const testGuildAutoRoles = [
+  '1248061972772163656', // 'auto'
+  '1245463981641175112', // 'not verif'
+  '1176193628918513715', // 'member'
+];
 
-export default testConfig;
+export const testGuildVerifyAddRoles = [
+  '1245464012825690275', // 'verif'
+];
+
+export const testGuildVerifyRemoveRoles = [
+  '1245463981641175112', // 'not verif'
+];
