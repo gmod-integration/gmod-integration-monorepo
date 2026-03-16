@@ -1239,6 +1239,11 @@ export type gm_server_statusFindManyArgs<ExtArgs extends runtime.Types.Extension
    * Skip the first `n` gm_server_statuses.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_statuses.
+   */
   distinct?: Prisma.Gm_server_statusScalarFieldEnum | Prisma.Gm_server_statusScalarFieldEnum[]
 }
 

@@ -1197,6 +1197,11 @@ export type gm_server_banFindManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Skip the first `n` gm_server_bans.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_bans.
+   */
   distinct?: Prisma.Gm_server_banScalarFieldEnum | Prisma.Gm_server_banScalarFieldEnum[]
 }
 

@@ -1092,6 +1092,11 @@ export type gm_guild_verification_checkFindManyArgs<ExtArgs extends runtime.Type
    * Skip the first `n` gm_guild_verification_checks.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_guild_verification_checks.
+   */
   distinct?: Prisma.Gm_guild_verification_checkScalarFieldEnum | Prisma.Gm_guild_verification_checkScalarFieldEnum[]
 }
 

@@ -1354,6 +1354,11 @@ export type gm_user_steamFindManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Skip the first `n` gm_user_steams.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_user_steams.
+   */
   distinct?: Prisma.Gm_user_steamScalarFieldEnum | Prisma.Gm_user_steamScalarFieldEnum[]
 }
 

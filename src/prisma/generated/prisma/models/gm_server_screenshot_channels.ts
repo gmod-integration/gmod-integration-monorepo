@@ -1125,6 +1125,11 @@ export type gm_server_screenshot_channelsFindManyArgs<ExtArgs extends runtime.Ty
    * Skip the first `n` gm_server_screenshot_channels.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_screenshot_channels.
+   */
   distinct?: Prisma.Gm_server_screenshot_channelsScalarFieldEnum | Prisma.Gm_server_screenshot_channelsScalarFieldEnum[]
 }
 

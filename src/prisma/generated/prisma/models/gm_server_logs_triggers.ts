@@ -1331,6 +1331,11 @@ export type gm_server_logs_triggersFindManyArgs<ExtArgs extends runtime.Types.Ex
    * Skip the first `n` gm_server_logs_triggers.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_logs_triggers.
+   */
   distinct?: Prisma.Gm_server_logs_triggersScalarFieldEnum | Prisma.Gm_server_logs_triggersScalarFieldEnum[]
 }
 

@@ -1203,6 +1203,11 @@ export type gm_server_stat_team_timeFindManyArgs<ExtArgs extends runtime.Types.E
    * Skip the first `n` gm_server_stat_team_times.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_stat_team_times.
+   */
   distinct?: Prisma.Gm_server_stat_team_timeScalarFieldEnum | Prisma.Gm_server_stat_team_timeScalarFieldEnum[]
 }
 

@@ -1033,6 +1033,11 @@ export type gm_server_logs_channelFindManyArgs<ExtArgs extends runtime.Types.Ext
    * Skip the first `n` gm_server_logs_channels.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_logs_channels.
+   */
   distinct?: Prisma.Gm_server_logs_channelScalarFieldEnum | Prisma.Gm_server_logs_channelScalarFieldEnum[]
 }
 

@@ -923,6 +923,11 @@ export type gm_server_customValuesFindManyArgs<ExtArgs extends runtime.Types.Ext
    * Skip the first `n` gm_server_customValues.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_customValues.
+   */
   distinct?: Prisma.Gm_server_customValuesScalarFieldEnum | Prisma.Gm_server_customValuesScalarFieldEnum[]
 }
 

@@ -1158,6 +1158,11 @@ export type gm_server_sync_team_rolesFindManyArgs<ExtArgs extends runtime.Types.
    * Skip the first `n` gm_server_sync_team_roles.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_sync_team_roles.
+   */
   distinct?: Prisma.Gm_server_sync_team_rolesScalarFieldEnum | Prisma.Gm_server_sync_team_rolesScalarFieldEnum[]
 }
 

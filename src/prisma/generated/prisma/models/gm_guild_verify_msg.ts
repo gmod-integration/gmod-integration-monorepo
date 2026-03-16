@@ -1003,6 +1003,11 @@ export type gm_guild_verify_msgFindManyArgs<ExtArgs extends runtime.Types.Extens
    * Skip the first `n` gm_guild_verify_msgs.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_guild_verify_msgs.
+   */
   distinct?: Prisma.Gm_guild_verify_msgScalarFieldEnum | Prisma.Gm_guild_verify_msgScalarFieldEnum[]
 }
 

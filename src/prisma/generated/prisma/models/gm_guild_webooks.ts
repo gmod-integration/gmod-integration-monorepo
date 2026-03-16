@@ -1158,6 +1158,11 @@ export type gm_guild_webooksFindManyArgs<ExtArgs extends runtime.Types.Extension
    * Skip the first `n` gm_guild_webooks.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_guild_webooks.
+   */
   distinct?: Prisma.Gm_guild_webooksScalarFieldEnum | Prisma.Gm_guild_webooksScalarFieldEnum[]
 }
 

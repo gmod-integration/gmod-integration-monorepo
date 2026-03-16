@@ -1253,6 +1253,11 @@ export type gm_sync_chatFindManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * Skip the first `n` gm_sync_chats.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_sync_chats.
+   */
   distinct?: Prisma.Gm_sync_chatScalarFieldEnum | Prisma.Gm_sync_chatScalarFieldEnum[]
 }
 

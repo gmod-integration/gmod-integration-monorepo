@@ -1158,6 +1158,11 @@ export type gm_guild_verify_roleFindManyArgs<ExtArgs extends runtime.Types.Exten
    * Skip the first `n` gm_guild_verify_roles.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_guild_verify_roles.
+   */
   distinct?: Prisma.Gm_guild_verify_roleScalarFieldEnum | Prisma.Gm_guild_verify_roleScalarFieldEnum[]
 }
 

@@ -1191,6 +1191,11 @@ export type gm_server_screenshotsFindManyArgs<ExtArgs extends runtime.Types.Exte
    * Skip the first `n` gm_server_screenshots.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_screenshots.
+   */
   distinct?: Prisma.Gm_server_screenshotsScalarFieldEnum | Prisma.Gm_server_screenshotsScalarFieldEnum[]
 }
 

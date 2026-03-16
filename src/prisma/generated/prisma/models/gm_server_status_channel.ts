@@ -1086,6 +1086,11 @@ export type gm_server_status_channelFindManyArgs<ExtArgs extends runtime.Types.E
    * Skip the first `n` gm_server_status_channels.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_status_channels.
+   */
   distinct?: Prisma.Gm_server_status_channelScalarFieldEnum | Prisma.Gm_server_status_channelScalarFieldEnum[]
 }
 

@@ -945,6 +945,11 @@ export type gm_users_transfersFindManyArgs<ExtArgs extends runtime.Types.Extensi
    * Skip the first `n` gm_users_transfers.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_users_transfers.
+   */
   distinct?: Prisma.Gm_users_transfersScalarFieldEnum | Prisma.Gm_users_transfersScalarFieldEnum[]
 }
 

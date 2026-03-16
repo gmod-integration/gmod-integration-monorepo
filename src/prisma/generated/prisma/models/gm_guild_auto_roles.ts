@@ -1020,6 +1020,11 @@ export type gm_guild_auto_rolesFindManyArgs<ExtArgs extends runtime.Types.Extens
    * Skip the first `n` gm_guild_auto_roles.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_guild_auto_roles.
+   */
   distinct?: Prisma.Gm_guild_auto_rolesScalarFieldEnum | Prisma.Gm_guild_auto_rolesScalarFieldEnum[]
 }
 

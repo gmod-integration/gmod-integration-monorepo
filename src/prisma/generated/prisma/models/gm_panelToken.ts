@@ -1075,6 +1075,11 @@ export type gm_panelTokenFindManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Skip the first `n` gm_panelTokens.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_panelTokens.
+   */
   distinct?: Prisma.Gm_panelTokenScalarFieldEnum | Prisma.Gm_panelTokenScalarFieldEnum[]
 }
 

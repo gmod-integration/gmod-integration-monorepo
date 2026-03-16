@@ -1438,6 +1438,11 @@ export type gm_server_leaderboard_optionsFindManyArgs<ExtArgs extends runtime.Ty
    * Skip the first `n` gm_server_leaderboard_options.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_leaderboard_options.
+   */
   distinct?: Prisma.Gm_server_leaderboard_optionsScalarFieldEnum | Prisma.Gm_server_leaderboard_optionsScalarFieldEnum[]
 }
 

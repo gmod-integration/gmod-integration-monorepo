@@ -899,6 +899,11 @@ export type gm_guild_settingsFindManyArgs<ExtArgs extends runtime.Types.Extensio
    * Skip the first `n` gm_guild_settings.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_guild_settings.
+   */
   distinct?: Prisma.Gm_guild_settingsScalarFieldEnum | Prisma.Gm_guild_settingsScalarFieldEnum[]
 }
 

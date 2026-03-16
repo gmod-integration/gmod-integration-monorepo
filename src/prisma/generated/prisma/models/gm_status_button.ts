@@ -1191,6 +1191,11 @@ export type gm_status_buttonFindManyArgs<ExtArgs extends runtime.Types.Extension
    * Skip the first `n` gm_status_buttons.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_status_buttons.
+   */
   distinct?: Prisma.Gm_status_buttonScalarFieldEnum | Prisma.Gm_status_buttonScalarFieldEnum[]
 }
 

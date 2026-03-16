@@ -1158,6 +1158,11 @@ export type gm_users_notificationsFindManyArgs<ExtArgs extends runtime.Types.Ext
    * Skip the first `n` gm_users_notifications.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_users_notifications.
+   */
   distinct?: Prisma.Gm_users_notificationsScalarFieldEnum | Prisma.Gm_users_notificationsScalarFieldEnum[]
 }
 

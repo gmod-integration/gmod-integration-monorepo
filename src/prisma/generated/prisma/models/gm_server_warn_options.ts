@@ -1247,6 +1247,11 @@ export type gm_server_warn_optionsFindManyArgs<ExtArgs extends runtime.Types.Ext
    * Skip the first `n` gm_server_warn_options.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_warn_options.
+   */
   distinct?: Prisma.Gm_server_warn_optionsScalarFieldEnum | Prisma.Gm_server_warn_optionsScalarFieldEnum[]
 }
 

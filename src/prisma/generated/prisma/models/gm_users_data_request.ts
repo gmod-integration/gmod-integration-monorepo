@@ -1152,6 +1152,11 @@ export type gm_users_data_requestFindManyArgs<ExtArgs extends runtime.Types.Exte
    * Skip the first `n` gm_users_data_requests.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_users_data_requests.
+   */
   distinct?: Prisma.Gm_users_data_requestScalarFieldEnum | Prisma.Gm_users_data_requestScalarFieldEnum[]
 }
 

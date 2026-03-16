@@ -1191,6 +1191,11 @@ export type gm_server_pseudoFindManyArgs<ExtArgs extends runtime.Types.Extension
    * Skip the first `n` gm_server_pseudos.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_pseudos.
+   */
   distinct?: Prisma.Gm_server_pseudoScalarFieldEnum | Prisma.Gm_server_pseudoScalarFieldEnum[]
 }
 

@@ -945,6 +945,11 @@ export type gm_gmodstore_purchasesFindManyArgs<ExtArgs extends runtime.Types.Ext
    * Skip the first `n` gm_gmodstore_purchases.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_gmodstore_purchases.
+   */
   distinct?: Prisma.Gm_gmodstore_purchasesScalarFieldEnum | Prisma.Gm_gmodstore_purchasesScalarFieldEnum[]
 }
 

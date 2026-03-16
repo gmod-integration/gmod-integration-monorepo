@@ -1059,6 +1059,11 @@ export type gm_server_settingsFindManyArgs<ExtArgs extends runtime.Types.Extensi
    * Skip the first `n` gm_server_settings.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_settings.
+   */
   distinct?: Prisma.Gm_server_settingsScalarFieldEnum | Prisma.Gm_server_settingsScalarFieldEnum[]
 }
 

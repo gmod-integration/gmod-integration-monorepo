@@ -945,6 +945,11 @@ export type gm_discordTokenFindManyArgs<ExtArgs extends runtime.Types.Extensions
    * Skip the first `n` gm_discordTokens.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_discordTokens.
+   */
   distinct?: Prisma.Gm_discordTokenScalarFieldEnum | Prisma.Gm_discordTokenScalarFieldEnum[]
 }
 

@@ -1168,6 +1168,11 @@ export type banUsersFindManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Skip the first `n` banUsers.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of banUsers.
+   */
   distinct?: Prisma.BanUsersScalarFieldEnum | Prisma.BanUsersScalarFieldEnum[]
 }
 

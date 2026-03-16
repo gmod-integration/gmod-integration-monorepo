@@ -1633,6 +1633,11 @@ export type gm_server_statFindManyArgs<ExtArgs extends runtime.Types.Extensions.
    * Skip the first `n` gm_server_stats.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_stats.
+   */
   distinct?: Prisma.Gm_server_statScalarFieldEnum | Prisma.Gm_server_statScalarFieldEnum[]
 }
 

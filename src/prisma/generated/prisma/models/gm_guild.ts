@@ -1978,6 +1978,11 @@ export type gm_guildFindManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Skip the first `n` gm_guilds.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_guilds.
+   */
   distinct?: Prisma.Gm_guildScalarFieldEnum | Prisma.Gm_guildScalarFieldEnum[]
 }
 

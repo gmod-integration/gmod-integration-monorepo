@@ -1033,6 +1033,11 @@ export type gm_server_vote_channelsFindManyArgs<ExtArgs extends runtime.Types.Ex
    * Skip the first `n` gm_server_vote_channels.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_vote_channels.
+   */
   distinct?: Prisma.Gm_server_vote_channelsScalarFieldEnum | Prisma.Gm_server_vote_channelsScalarFieldEnum[]
 }
 

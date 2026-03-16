@@ -1236,6 +1236,11 @@ export type gm_server_sync_chat_filterFindManyArgs<ExtArgs extends runtime.Types
    * Skip the first `n` gm_server_sync_chat_filters.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of gm_server_sync_chat_filters.
+   */
   distinct?: Prisma.Gm_server_sync_chat_filterScalarFieldEnum | Prisma.Gm_server_sync_chat_filterScalarFieldEnum[]
 }
 
