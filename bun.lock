@@ -85,6 +85,29 @@
         "typescript-eslint": "^8.46.1",
       },
     },
+    "apps/discord": {
+      "name": "@gmod/app-discord",
+      "version": "1.0.0",
+      "dependencies": {
+        "@aws-sdk/client-s3": "^3.1009.0",
+        "@gmod/config": "workspace:*",
+        "@gmod/core": "workspace:*",
+        "@gmod/domain-guild": "workspace:*",
+        "@gmod/domain-moderation": "workspace:*",
+        "@gmod/domain-server": "workspace:*",
+        "@gmod/domain-user": "workspace:*",
+        "@gmod/infra-bullmq": "workspace:*",
+        "@gmod/infra-minio": "workspace:*",
+        "@gmod/infra-prisma": "workspace:*",
+        "@gmod/infra-redis": "workspace:*",
+        "@gmod/infra-websocket": "workspace:*",
+        "bullmq": "^5.71.0",
+        "d3": "^7.9.0",
+        "discord.js": "^14.25.1",
+        "jsdom": "^25.0.1",
+        "sharp": "^0.33.5",
+      },
+    },
     "apps/websocket": {
       "name": "@gmod/app-websocket",
       "version": "1.0.0",
@@ -467,6 +490,8 @@
     "@eslint/object-schema": ["@eslint/object-schema@2.1.7", "", {}, "sha512-VtAOaymWVfZcmZbp6E2mympDIHvyjXs/12LqWYjVw6qjrfF+VK+fyG33kChz3nnK+SU5/NeHOqrTEHS8sXO3OA=="],
 
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.4.1", "", { "dependencies": { "@eslint/core": "^0.17.0", "levn": "^0.4.1" } }, "sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA=="],
+
+    "@gmod/app-discord": ["@gmod/app-discord@workspace:apps/discord"],
 
     "@gmod/app-websocket": ["@gmod/app-websocket@workspace:apps/websocket"],
 

@@ -7,7 +7,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
-import { playerConnectionChart, playerTeamTimeChat } from '@/discord/utils/index.js';
+import { playerConnectionChart, playerTeamTimeChat } from '../../utils/index.js';
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
 import { getTranslate } from '@gmod/core/utils/localizations.js';
 import { ConfigDiscord } from '@gmod/config';

@@ -1,4 +1,4 @@
-import { sendMessageToGmod } from '../../controllers/v3/guildsControllers.js';
+import { processDiscordMessageToGmod } from '@gmod/core/models/v3/guildsControllerModels.js';
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
 import { addAutoRoleToUser, givePremiumRoleOfMainGuild, verifyUser } from '@gmod/domain-guild/discordModels.js';
 import { type Message } from 'discord.js';
@@ -8,7 +8,7 @@ import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websoc
 export default {
   name: 'messageCreate',
   async execute(message: Message) {
-    await sendMessageToGmod(message);
+    await processDiscordMessageToGmod(message);
 
     const user = await getUserFromDiscordID(message.author.id);
     if (!user) return;

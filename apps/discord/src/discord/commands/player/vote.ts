@@ -6,7 +6,7 @@ import {
 } from 'discord.js';
 import { getTranslate } from '@gmod/core/utils/localizations.js';
 import { getServerList } from '@gmod/domain-server/serversModels.js';
-import { secToTime } from '@/discord/utils/index.js';
+import { secToTime } from '../../utils/index.js';
 import { getServerFromID } from '@gmod/domain-server/Server.js';
 import prisma from '@gmod/infra-prisma';
 

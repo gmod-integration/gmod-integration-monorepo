@@ -9,7 +9,7 @@ import { getServerList } from '@gmod/domain-server/serversModels.js';
 import { getServerFromID } from '@gmod/domain-server/Server.js';
 import { getTranslate } from '@gmod/core/utils/localizations.js';
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
-import { ButtonVerificationWebsite } from '@/discord/utils/buttons.js';
+import { ButtonVerificationWebsite } from '../../utils/buttons.js';
 import { getWarnMessageEmbed, saveWarnListOptions } from '@gmod/domain-moderation/warnModels.js';
 
 export default {

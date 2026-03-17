@@ -1,7 +1,7 @@
 import { ConfigDiscord } from '@gmod/config';
 import { addAutoRoleToUser, updateGuildStat, verifyUser } from '@gmod/domain-guild/discordModels.js';
 import { gmLog } from '@gmod/core/utils/logger.js';
-import { getNotVerifiedMessage } from '@/discord/utils/messages.js';
+import { getNotVerifiedMessage } from '../utils/messages.js';
 import { type GuildMember } from 'discord.js';
 import prisma from '@gmod/infra-prisma';
 

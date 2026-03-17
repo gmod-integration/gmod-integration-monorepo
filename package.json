@@ -8,8 +8,10 @@
   "scripts": {
     "js:start": "pm2 start apps/api/src/gm_integration_api.ts --log logs/current.log --name gmod-integration-api",
     "js:dev": "node --watch --trace-warnings --trace-deprecation .",
-    "discord:push:context": "tsx apps/api/src/discord/discord_push_context.ts",
-    "discord:remove:cmd": "tsx --watch --trace-warnings --trace-deprecation apps/api/src/discord/discord_remove_cmd.ts",
+    "discord:start": "bun run --cwd apps/discord start",
+    "discord:dev": "tsx watch apps/discord/src/main.ts --env DEV=true",
+    "discord:push:context": "bun run --cwd apps/discord push:context",
+    "discord:remove:cmd": "bun run --cwd apps/discord remove:cmd",
     "clean": "rm -rf ./dist",
     "build": "npm run clean && tsc && npm run sentry:sourcemaps",
     "dev": "tsx watch apps/api/src/gm_integration_api.ts --env DEV=true",

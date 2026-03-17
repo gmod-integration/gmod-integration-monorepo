@@ -38,8 +38,8 @@ const rest = new REST().setToken(ConfigDiscord.botToken!);
 try {
   console.log('[INFO] Started reloading application.');
 
-  await loadCommands('apps/api/src/discord/contexts', 'Context');
-  await loadCommands('apps/api/src/discord/commands', 'Command');
+  await loadCommands('apps/discord/src/discord/contexts', 'Context');
+  await loadCommands('apps/discord/src/discord/commands', 'Command');
 
   console.log(commandsData);
 

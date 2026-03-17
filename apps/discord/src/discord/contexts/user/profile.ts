@@ -5,7 +5,7 @@ import {
   InteractionContextType,
   type UserContextMenuCommandInteraction,
 } from 'discord.js';
-import { getProfileMessage } from '@/discord/utils/messages.js';
+import { getProfileMessage } from '../../utils/messages.js';
 
 export default {
   data: new ContextMenuCommandBuilder()
