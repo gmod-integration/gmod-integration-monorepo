@@ -3,10 +3,12 @@ import crypto from 'crypto'
 import { type NextFunction, type Request, type Response } from 'express'
 import { badArgument } from '@gmod/core/utils/tools.js'
 import redis from '@gmod/infra-redis'
+import { getSingleParam } from '@/utils/requestParams.js'
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { serverID, clientID64 } = req.params
+    const serverID = getSingleParam(req.params.serverID)
+    const clientID64 = getSingleParam(req.params.clientID64)
     const { authorization } = req.headers
 
     if (badArgument([serverID, authorization, clientID64])) {

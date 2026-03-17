@@ -62,47 +62,56 @@ export async function getPublicToken(req: Request, res: Response) {
 }
 
 export async function postDarkRPDropMoney(req: Request, res: Response) {
-  const result = await processDarkRPDropMoney(req.server!, req.body)
+  const server = req.server!
+  const result = await processDarkRPDropMoney(server, req.body)
   return res.status(result.status).json(result.body)
 }
 
 export async function postDarkRPPickedUpMoney(req: Request, res: Response) {
-  const result = await processDarkRPPickedUpMoney(req.server!, req.body)
+  const server = req.server!
+  const result = await processDarkRPPickedUpMoney(server, req.body)
   return res.status(result.status).json(result.body)
 }
 
 export async function postDarkRPPickedUpCheque(req: Request, res: Response) {
-  const result = await processDarkRPPickedUpCheque(req.server!, req.body)
+  const server = req.server!
+  const result = await processDarkRPPickedUpCheque(server, req.body)
   return res.status(result.status).json(result.body)
 }
 
 export async function postCHATMTakeMoney(req: Request, res: Response) {
-  const result = await processCHATMTakeMoney(req.server!, req.body)
+  const server = req.server!
+  const result = await processCHATMTakeMoney(server, req.body)
   return res.status(result.status).json(result.body)
 }
 
 export async function postCHATMReceiveMoney(req: Request, res: Response) {
-  const result = await processCHATMReceiveMoney(req.server!, req.body)
+  const server = req.server!
+  const result = await processCHATMReceiveMoney(server, req.body)
   return res.status(result.status).json(result.body)
 }
 
 export async function postCHATMSendMoney(req: Request, res: Response) {
-  const result = await processCHATMSendMoney(req.server!, req.body)
+  const server = req.server!
+  const result = await processCHATMSendMoney(server, req.body)
   return res.status(result.status).json(result.body)
 }
 
 export async function postCHATMWithdrawMoney(req: Request, res: Response) {
-  const result = await processCHATMWithdrawMoney(req.server!, req.body)
+  const server = req.server!
+  const result = await processCHATMWithdrawMoney(server, req.body)
   return res.status(result.status).json(result.body)
 }
 
 export async function postCHATMDepositMoney(req: Request, res: Response) {
-  const result = await processCHATMDepositMoney(req.server!, req.body)
+  const server = req.server!
+  const result = await processCHATMDepositMoney(server, req.body)
   return res.status(result.status).json(result.body)
 }
 
 export async function postMultiLog(req: Request, res: Response) {
   const logs = Array.isArray(req.body) ? req.body : []
-  const result = await processMultiLog(req.server!, logs)
+  const server = req.server!
+  const result = await processMultiLog(server, logs)
   return res.status(result.status).json(result.body)
 }

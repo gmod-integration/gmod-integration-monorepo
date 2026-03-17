@@ -7,11 +7,12 @@ import prisma from '@gmod/infra-prisma'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { s3 } from '@gmod/infra-minio'
 import { Readable } from 'node:stream'
+import { getSingleParam } from '@/utils/requestParams.js'
 
 const router = express.Router()
 
 router.get('/screenshots/:filename', async (req, res) => {
-  const filename = req.params.filename
+  const filename = getSingleParam(req.params.filename)
 
   try {
     const command = new GetObjectCommand({
@@ -40,7 +41,7 @@ router.get(
   '/gdpr-request/:uuid',
   asyncHandler(async (req, res) => {
     const { code } = req.query
-    const { uuid } = req.params
+    const uuid = getSingleParam(req.params.uuid)
 
     if (!code) return res.status(400).json({ error: 'missing_code' })
 

@@ -1,10 +1,11 @@
 import { getServerFromID } from '@gmod/domain-server/Server.js'
 import { type NextFunction, type Request, type Response } from 'express'
 import redis from '@gmod/infra-redis'
+import { getSingleParam } from '@/utils/requestParams.js'
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { serverID } = req.params
+    const serverID = getSingleParam(req.params.serverID)
     const { authorization } = req.headers
 
     if (!authorization || !authorization.startsWith('Bearer ')) {

@@ -5,10 +5,11 @@ import { Guild } from '@gmod/domain-guild/Guild.js'
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { type NextFunction, type Request, type Response } from 'express'
 import { enqueueDiscordGuildSnapshot } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { getSingleParam } from '@/utils/requestParams.js'
 
 export async function userValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { discordID } = req.params
+    const discordID = getSingleParam(req.params.discordID)
     const { authorization } = req.headers
 
     if (badArgument([discordID])) {
@@ -56,7 +57,7 @@ export async function userValidator(req: Request, res: Response, next: NextFunct
 export async function userAdminGuildValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const panelUser = req.panelUser!
-    const { guildID } = req.params
+    const guildID = getSingleParam(req.params.guildID)
 
     if (!(await panelUser.isAdminOfGuild(guildID))) {
       res.status(403).json({
@@ -91,7 +92,7 @@ export async function userAdminGuildValidator(req: Request, res: Response, next:
 
 export async function userServerValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { serverID } = req.params
+    const serverID = getSingleParam(req.params.serverID)
 
     const server = await getServerFromID(serverID)
     if (!server) {

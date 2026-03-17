@@ -51,6 +51,7 @@ import {
   enqueueDiscordGuildRunVerificationCheck,
   enqueueDiscordGuildSnapshot,
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { getSingleParam } from '@/utils/requestParams.js'
 
 export async function getProfile(req: Request, res: Response) {
   const result = await processGetProfile(req.query.steamID64, req.query.discordID)
@@ -63,7 +64,8 @@ export async function getUserSessions(req: Request, res: Response) {
 }
 
 export async function deleteUserSession(req: Request, res: Response) {
-  const { discordID, sessionID } = req.params
+  const discordID = getSingleParam(req.params.discordID)
+  const sessionID = getSingleParam(req.params.sessionID)
   const result = await processDeleteUserSession(String(discordID), String(sessionID))
   return res.status(result.status).send(result.body)
 }
@@ -75,7 +77,7 @@ export async function logOut(req: Request, res: Response) {
 }
 
 export async function findCurrentUser(req: Request, res: Response) {
-  return res.send((await getDiscordUserFromID(req.params.discordID)) || {})
+  return res.send((await getDiscordUserFromID(getSingleParam(req.params.discordID))) || {})
 }
 
 export async function oauthLogin(req: Request, res: Response) {
@@ -189,7 +191,7 @@ export async function getGuildRoles(req: Request, res: Response) {
   return res.send(
     dscGuild.roles
       .filter((role: any) => role.managed === false)
-      .filter((role) => role.name !== '@everyone')
+      .filter((role: any) => role.name !== '@everyone')
       .sort((a: any, b: any) => a.position - b.position),
   )
 }
@@ -234,7 +236,7 @@ export async function postGuildLinks(req: Request, res: Response) {
 }
 
 export async function putGuildLinks(req: Request, res: Response) {
-  const { linkID } = req.params
+  const linkID = getSingleParam(req.params.linkID)
   const guild = req.guild!
   const { url, alias, active } = req.body
 
@@ -261,7 +263,7 @@ export async function putGuildLinks(req: Request, res: Response) {
 }
 
 export async function deleteGuildLinks(req: Request, res: Response) {
-  const { linkID } = req.params
+  const linkID = getSingleParam(req.params.linkID)
   const guild = req.guild!
 
   const link = await guild.getLink(linkID)
@@ -320,7 +322,7 @@ export async function getGuildVerificationsRoles(req: Request, res: Response) {
 
 export async function putGuildVerificationsRoles(req: Request, res: Response) {
   const guild = req.guild!
-  const { roleID } = req.params
+  const roleID = getSingleParam(req.params.roleID)
   const { isGiveRole, enabled } = req.body
 
   const verificationRole = await guild.getVerificationRole(roleID)
@@ -346,7 +348,7 @@ export async function putGuildVerificationsRoles(req: Request, res: Response) {
 
 export async function deleteGuildVerificationsRoles(req: Request, res: Response) {
   const guild = req.guild!
-  const { roleID } = req.params
+  const roleID = getSingleParam(req.params.roleID)
 
   const verificationRole = await guild.getVerificationRole(roleID)
   if (!verificationRole) {
@@ -365,7 +367,7 @@ export async function deleteGuildVerificationsRoles(req: Request, res: Response)
 
 export async function createGuildVerificationsRoles(req: Request, res: Response) {
   const guild = req.guild!
-  const { roleID } = req.params
+  const roleID = getSingleParam(req.params.roleID)
   const isPremium = await guild.isPremium()
 
   const verificationRoles = await guild.getVerificationRoles()
@@ -412,7 +414,7 @@ export async function getServerStatusButtons(req: Request, res: Response) {
 
 export async function putServerStatusButtons(req: Request, res: Response) {
   const server = req.server!
-  const { buttonID } = req.params
+  const buttonID = getSingleParam(req.params.buttonID)
   const { name, emoji, url, enable } = req.body
 
   const button = await server.findStatusButton(Number(buttonID))
@@ -450,7 +452,7 @@ export async function createServerStatusButtons(req: Request, res: Response) {
 
 export async function deleteServerStatusButtons(req: Request, res: Response) {
   const server = req.server!
-  const { buttonID } = req.params
+  const buttonID = getSingleParam(req.params.buttonID)
 
   const button = await server.findStatusButton(Number(buttonID))
   if (!button) {
@@ -525,14 +527,14 @@ export async function postGmodToDiscordFilter(req: Request, res: Response) {
 }
 
 export async function putGmodToDiscordFilter(req: Request, res: Response) {
-  const { filterID } = req.params
+  const filterID = getSingleParam(req.params.filterID)
   const server = req.server!
   const result = await processPutGmodToDiscordFilter(server, filterID, req.body)
   return res.status(result.status).send(result.body)
 }
 
 export async function deleteGmodToDiscordFilter(req: Request, res: Response) {
-  const { filterID } = req.params
+  const filterID = getSingleParam(req.params.filterID)
   const server = req.server!
   const result = await processDeleteGmodToDiscordFilter(server, filterID)
   return res.status(result.status).send(result.body)
@@ -552,7 +554,7 @@ export async function getServerPlayers(req: Request, res: Response) {
 
 export async function putPlayerBypassMaintenance(req: Request, res: Response) {
   const server = req.server!
-  const { playerID } = req.params
+  const playerID = getSingleParam(req.params.playerID)
   const result = await processPutPlayerBypassMaintenance(server, String(playerID), req.body.bypassMaintenance)
   return res.status(result.status).send(result.body)
 }
@@ -563,13 +565,15 @@ export async function postUserStartVerification(req: Request, res: Response) {
 }
 
 export async function postAutoRoles(req: Request, res: Response) {
-  const { guildID, roleID } = req.params
+  const guildID = getSingleParam(req.params.guildID)
+  const roleID = getSingleParam(req.params.roleID)
   const result = await processPostAutoRoles(String(guildID), String(roleID))
   return res.status(result.status).send(result.body)
 }
 
 export async function deleteAutoRoles(req: Request, res: Response) {
-  const { guildID, roleID } = req.params
+  const guildID = getSingleParam(req.params.guildID)
+  const roleID = getSingleParam(req.params.roleID)
   const result = await processDeleteAutoRoles(String(guildID), String(roleID))
   return res.status(result.status).send(result.body)
 }
@@ -793,7 +797,7 @@ export async function getGuildSetting(req: Request, res: Response) {
   //   }) || {},
   // );
   const guild = req.guild!
-  const { setting } = req.params
+  const setting = getSingleParam(req.params.setting)
 
   try {
     return res.send({
@@ -808,7 +812,7 @@ export async function getGuildSetting(req: Request, res: Response) {
 
 export async function putGuildSetting(req: Request, res: Response) {
   const guild = req.guild!
-  const { setting } = req.params
+  const setting = getSingleParam(req.params.setting)
   const { value } = req.body
 
   if (badArgument([value])) {
@@ -832,7 +836,7 @@ export async function getServerSettings(req: Request, res: Response) {
 }
 
 export async function getServerSetting(req: Request, res: Response) {
-  const { setting } = req.params
+  const setting = getSingleParam(req.params.setting)
   const server = req.server!
 
   try {
@@ -847,7 +851,7 @@ export async function getServerSetting(req: Request, res: Response) {
 }
 
 export async function putServerSetting(req: Request, res: Response) {
-  const { setting } = req.params
+  const setting = getSingleParam(req.params.setting)
   const server = req.server!
   const { value } = req.body
 
@@ -876,7 +880,7 @@ export async function getAdminInformations(req: Request, res: Response) {
 }
 
 export async function getServerRoles(req: Request, res: Response) {
-  const { serverID } = req.params
+  const serverID = getSingleParam(req.params.serverID)
 
   const roles = await prisma.gm_server_sync_roles.findMany({
     where: {
@@ -888,7 +892,8 @@ export async function getServerRoles(req: Request, res: Response) {
 }
 
 export async function postServerRoles(req: Request, res: Response) {
-  const { serverID, roleID } = req.params
+  const serverID = getSingleParam(req.params.serverID)
+  const roleID = getSingleParam(req.params.roleID)
 
   const role = await prisma.gm_server_sync_roles.create({
     data: {
@@ -901,7 +906,8 @@ export async function postServerRoles(req: Request, res: Response) {
 }
 
 export async function putServerRoles(req: Request, res: Response) {
-  const { serverID, roleID } = req.params
+  const serverID = getSingleParam(req.params.serverID)
+  const roleID = getSingleParam(req.params.roleID)
 
   const role = await prisma.gm_server_sync_roles.findFirst({
     where: {
@@ -935,7 +941,8 @@ export async function putServerRoles(req: Request, res: Response) {
 }
 
 export async function deleteServerRoles(req: Request, res: Response) {
-  const { serverID, roleID } = req.params
+  const serverID = getSingleParam(req.params.serverID)
+  const roleID = getSingleParam(req.params.roleID)
 
   const role = await prisma.gm_server_sync_roles.findFirst({
     where: {
@@ -962,7 +969,7 @@ export async function deleteServerRoles(req: Request, res: Response) {
 }
 
 export async function getServerTeams(req: Request, res: Response) {
-  const { serverID } = req.params
+  const serverID = getSingleParam(req.params.serverID)
 
   const roles = await prisma.gm_server_sync_team_roles.findMany({
     where: {
@@ -974,7 +981,8 @@ export async function getServerTeams(req: Request, res: Response) {
 }
 
 export async function postServerTeams(req: Request, res: Response) {
-  const { serverID, roleID } = req.params
+  const serverID = getSingleParam(req.params.serverID)
+  const roleID = getSingleParam(req.params.roleID)
 
   const role = await prisma.gm_server_sync_team_roles.create({
     data: {
@@ -987,7 +995,8 @@ export async function postServerTeams(req: Request, res: Response) {
 }
 
 export async function putServerTeams(req: Request, res: Response) {
-  const { serverID, id } = req.params
+  const serverID = getSingleParam(req.params.serverID)
+  const id = getSingleParam(req.params.id)
 
   const role = await prisma.gm_server_sync_team_roles.findFirst({
     where: {
@@ -1018,7 +1027,8 @@ export async function putServerTeams(req: Request, res: Response) {
 }
 
 export async function deleteServerTeams(req: Request, res: Response) {
-  const { serverID, id } = req.params
+  const serverID = getSingleParam(req.params.serverID)
+  const id = getSingleParam(req.params.id)
 
   const role = await prisma.gm_server_sync_team_roles.findFirst({
     where: {
@@ -1072,7 +1082,8 @@ export async function patchGuildBotInstance(req: Request, res: Response) {
 }
 
 export async function postGmodPurchase(req: Request, res: Response) {
-  const { guildID, discordID } = req.params
+  const guildID = getSingleParam(req.params.guildID)
+  const discordID = getSingleParam(req.params.discordID)
   const result = await processPostGmodPurchase(String(guildID), String(discordID), req.guild!, req.panelUser!)
   return res.status(result.status).send(result.body)
 }
@@ -1120,7 +1131,7 @@ export async function getServerPseudo(req: Request, res: Response) {
 }
 
 export async function postServerPseudo(req: Request, res: Response) {
-  const { serverID } = req.params
+  const serverID = getSingleParam(req.params.serverID)
 
   const pseudo = await prisma.gm_server_pseudo.create({
     data: {
@@ -1132,19 +1143,21 @@ export async function postServerPseudo(req: Request, res: Response) {
 }
 
 export async function putServerPseudo(req: Request, res: Response) {
-  const { serverID, roleID } = req.params
+  const serverID = getSingleParam(req.params.serverID)
+  const roleID = getSingleParam(req.params.roleID)
   const result = await processPutServerPseudo(String(serverID), roleID, req.body)
   return res.status(result.status).send(result.body)
 }
 
 export async function deleteServerPseudo(req: Request, res: Response) {
-  const { serverID, roleID } = req.params
+  const serverID = getSingleParam(req.params.serverID)
+  const roleID = getSingleParam(req.params.roleID)
   const result = await processDeleteServerPseudo(String(serverID), roleID)
   return res.status(result.status).send(result.body)
 }
 
 export async function getUserNotifications(req: Request, res: Response) {
-  const { discordID } = req.params
+  const discordID = getSingleParam(req.params.discordID)
   return res.json(
     await prisma.gm_users_notifications.findMany({
       where: { discordID },
@@ -1153,13 +1166,14 @@ export async function getUserNotifications(req: Request, res: Response) {
 }
 
 export async function patchUserNotifications(req: Request, res: Response) {
-  const { discordID, notificationID } = req.params
+  const discordID = getSingleParam(req.params.discordID)
+  const notificationID = getSingleParam(req.params.notificationID)
   const result = await processPatchUserNotifications(String(discordID), notificationID)
   return res.status(result.status).json(result.body)
 }
 
 export async function getUserDataRequest(req: Request, res: Response) {
-  const { discordID } = req.params
+  const discordID = getSingleParam(req.params.discordID)
   return res.json(
     await prisma.gm_users_data_request.findMany({
       where: { discordID },
@@ -1168,7 +1182,7 @@ export async function getUserDataRequest(req: Request, res: Response) {
 }
 
 export async function postUserDataRequest(req: Request, res: Response) {
-  const { discordID } = req.params
+  const discordID = getSingleParam(req.params.discordID)
   const lastRequest = await prisma.gm_users_data_request.findFirst({
     where: {
       discordID,
@@ -1195,7 +1209,7 @@ export async function postUserDataRequest(req: Request, res: Response) {
 }
 
 export async function getServerReportBugs(req: Request, res: Response) {
-  const { serverID } = req.params
+  const serverID = getSingleParam(req.params.serverID)
   return res.json(
     await prisma.gm_server_report_bugs.findMany({
       where: { serverID },
@@ -1236,12 +1250,12 @@ export async function postServerLogsTrigger(req: Request, res: Response) {
 }
 
 export async function putServerLogsTrigger(req: Request, res: Response) {
-  const { triggerID } = req.params
+  const triggerID = getSingleParam(req.params.triggerID)
   const result = await processPutServerLogsTrigger(req.server!, triggerID, req.body)
   return res.status(result.status).send(result.body)
 }
 
 export async function deleteServerLogsTrigger(req: Request, res: Response) {
-  const result = await processDeleteServerLogsTrigger(req.server!, req.params.triggerID)
+  const result = await processDeleteServerLogsTrigger(req.server!, getSingleParam(req.params.triggerID))
   return res.status(result.status).send(result.body)
 }
