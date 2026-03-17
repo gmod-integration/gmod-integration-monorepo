@@ -1,4 +1,4 @@
-import { mongoClient } from '@gmod/infra-mongo/index.js';
+import { mongoClient } from '@gmod/infra-mongo';
 
 const db = mongoClient.db('gmod_integration');
 const collectionLogs = db.collection('logs');

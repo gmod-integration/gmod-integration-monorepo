@@ -11,7 +11,7 @@ import {
   enqueueUpdateDiscordTeamRole,
 } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 import { Request, Response } from 'express';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 import { logServer } from '../../utils/logger.js';
 
 export async function getPlayer(req: Request, res: Response) {

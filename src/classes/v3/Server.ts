@@ -1,11 +1,11 @@
 import { BaseClass } from './BaseClass.js';
 import { generateToken } from '../../utils/tools.js';
-import redis from '@gmod/infra-redis/index.js';
+import redis from '@gmod/infra-redis';
 import { getGuildClient } from '../../discord/index.js';
 import { getStatusMessage } from '../../discord/utils/messages.js';
 import { gmLog } from '../../utils/logger.js';
 import { ChannelType } from 'discord.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 import {
   gm_server_logs_triggers_action,
   gm_server_logs_triggers_operator,

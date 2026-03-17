@@ -1,6 +1,6 @@
 import { Worker, Job } from 'bullmq';
-import { connection } from '@gmod/infra-bullmq/index.js';
-import { s3 } from '@gmod/infra-minio/index.js';
+import { connection } from '@gmod/infra-bullmq';
+import { s3 } from '@gmod/infra-minio';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   type UpdateGuildUserPseudoJob,
@@ -12,11 +12,11 @@ import {
   type MainClientUploadScreenshotJob,
 } from '@gmod/infra-bullmq/schemas.js';
 import { gmLog } from 'src/utils/logger.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 import { getUserFromSteamID64 } from 'src/classes/v3/User.js';
 import { getServerFromID } from 'src/classes/v3/Server.js';
 import { PermissionsBitField, Role } from 'discord.js';
-import redis from '@gmod/infra-redis/index.js';
+import redis from '@gmod/infra-redis';
 import { getMainClient } from 'src/discord/index.js';
 
 /**

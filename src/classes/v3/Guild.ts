@@ -1,6 +1,6 @@
 import axios from 'axios';
-import { ConfigDiscord } from '@gmod/config/index.js';
-import redis from '@gmod/infra-redis/index.js';
+import { ConfigDiscord } from '@gmod/config';
+import redis from '@gmod/infra-redis';
 import { getServersFromDiscordGuildID } from './Server.js';
 import { getGuildClient, getMainClient, loadGuildBotInstance } from '../../discord/index.js';
 import {
@@ -13,7 +13,7 @@ import {
   Guild as DiscordGuild,
   MessageActionRowComponentBuilder,
 } from 'discord.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 import { User } from './User.js';
 
 const guildSettings: Record<string, any> = {

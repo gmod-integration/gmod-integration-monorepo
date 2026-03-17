@@ -1,5 +1,5 @@
 import { REST, Routes } from 'discord.js';
-import { ConfigDiscord } from '@gmod/config/index.js';
+import { ConfigDiscord } from '@gmod/config';
 import { join } from 'path';
 import { readdir } from 'fs/promises';
 

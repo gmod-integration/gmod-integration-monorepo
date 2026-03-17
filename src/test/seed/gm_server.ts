@@ -1,4 +1,4 @@
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 import { testGuild, testServer } from "../config.test.js";
 
 export async function testSeedServer() {

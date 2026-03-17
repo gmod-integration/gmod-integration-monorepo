@@ -1,4 +1,4 @@
-import { ConfigServer } from '@gmod/config/index.js';
+import { ConfigServer } from '@gmod/config';
 import * as Sentry from '@sentry/node';
 import { nodeProfilingIntegration } from '@sentry/profiling-node';
 

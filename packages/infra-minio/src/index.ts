@@ -1,5 +1,5 @@
 import { CreateBucketCommand, HeadBucketCommand, S3Client, S3ServiceException } from '@aws-sdk/client-s3';
-import { ConfigMinIO } from '@gmod/config/index.js';
+import { ConfigMinIO } from '@gmod/config';
 
 export const s3 = new S3Client({
   endpoint: ConfigMinIO.endpoint,

@@ -1,6 +1,6 @@
 import { PrismaClient } from '../generated/prisma/client.js';
 import { PrismaMariaDb } from '@prisma/adapter-mariadb';
-import { connectToMongoDB } from '@gmod/infra-mongo/index.js';
+import { connectToMongoDB } from '@gmod/infra-mongo';
 
 const adapter = new PrismaMariaDb({
   host: process.env.DATABASE_HOST,

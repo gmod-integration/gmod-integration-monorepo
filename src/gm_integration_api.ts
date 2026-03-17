@@ -1,5 +1,5 @@
 // import './utils/instrument.js';
-import { ConfigServer } from '@gmod/config/index.js';
+import { ConfigServer } from '@gmod/config';
 import './utils/update-log.js';
 import express, { NextFunction, Request, Response } from 'express';
 import { gmLog } from './utils/logger.js';
@@ -13,10 +13,10 @@ import useragent from 'express-useragent';
 import errorMiddleware from './middleware/errorMiddleware.js';
 import { gracefulShutdownDiscord, loadDiscordMain, loadDiscordSlave } from './discord/index.js';
 import { initializeDiscordQueueWorkers } from './discord/workers/discordQueueWorkers.js';
-import { gracefulShutdownRedis } from '@gmod/infra-redis/index.js';
-import { gracefulShutdownPrisma } from '@gmod/infra-prisma/index.js';
+import { gracefulShutdownRedis } from '@gmod/infra-redis';
+import { gracefulShutdownPrisma } from '@gmod/infra-prisma';
 import { gracefulShutdownMongo } from './database/gm_server_logs.js';
-import '@gmod/infra-bullmq/index.js';
+import '@gmod/infra-bullmq';
 
 // Load the main discord instance
 async function runDiscord() {

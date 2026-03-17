@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 
 export async function getAllPanelUsers(req: Request, res: Response) {
   const users = await prisma.gm_panelToken.findMany({

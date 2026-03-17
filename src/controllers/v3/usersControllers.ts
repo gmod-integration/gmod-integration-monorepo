@@ -1,6 +1,6 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
 import { createServer, getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
-import { ConfigDiscord } from '@gmod/config/index.js';
+import { ConfigDiscord } from '@gmod/config';
 import {
   addAutoRoleToUser,
   addUserToGuild,
@@ -17,8 +17,8 @@ import moment from 'moment';
 import { getUserDataGRPD } from '../../models/v3/gdrp.js';
 import { getGuildClient } from '../../discord/index.js';
 import { enqueueMainClientHasGuild } from '@gmod/infra-bullmq/discordQueueAdapters.js';
-import redis from '@gmod/infra-redis/index.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import redis from '@gmod/infra-redis';
+import prisma from '@gmod/infra-prisma';
 import { NextFunction, Request, Response } from 'express';
 import { getLogsByServer, getTotalLogsByServer } from '../../database/gm_server_logs.js';
 import { Guild } from '../../classes/v3/Guild.js';

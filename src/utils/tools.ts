@@ -1,6 +1,6 @@
 import { getEmojis } from 'unicode-emoji';
-import { ConfigServer } from '@gmod/config/index.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import { ConfigServer } from '@gmod/config';
+import prisma from '@gmod/infra-prisma';
 import { Request, Response } from 'express';
 
 export function getRandomDiscordRelay() {

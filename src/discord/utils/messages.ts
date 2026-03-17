@@ -3,12 +3,12 @@ import { gmLog } from '../../utils/logger.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Guild, GuildMember, User } from 'discord.js';
 import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
 import { getCurrencyByLang, getEmojiVersion } from '../../utils/tools.js';
-import { ConfigDiscord, ConfigServer } from '@gmod/config/index.js';
+import { ConfigDiscord, ConfigServer } from '@gmod/config';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 
 export function getEmptyEmbedBuilderField(lineBreak: number = 1) {
   let emptyField = '';

@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import { connection } from '@gmod/infra-bullmq/index.js';
+import { connection } from '@gmod/infra-bullmq';
 
 export interface WSSendToServerData {
   id: string;

@@ -1,5 +1,5 @@
 import { REST } from 'discord.js';
-import { ConfigDiscord } from '@gmod/config/index.js';
+import { ConfigDiscord } from '@gmod/config';
 
 const cmdToRemove = ['1230296259160444971'];
 

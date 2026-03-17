@@ -1,9 +1,9 @@
-import { getSteamUserAvatarLarge } from '@gmod/infra-steam/index.js';
+import { getSteamUserAvatarLarge } from '@gmod/infra-steam';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
-import { ConfigDiscord } from '@gmod/config/index.js';
+import { ConfigDiscord } from '@gmod/config';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 import { gm_server_sync_chat_filter_element } from '@gmod/infra-prisma/enums.js';
 import type { gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js';
 

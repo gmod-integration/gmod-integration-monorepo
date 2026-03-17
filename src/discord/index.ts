@@ -12,7 +12,7 @@ import {
   Routes,
 } from 'discord.js';
 import { gmLog } from '../utils/logger.js';
-import { ConfigDiscord, ConfigServer } from '@gmod/config/index.js';
+import { ConfigDiscord, ConfigServer } from '@gmod/config';
 import { fork } from 'child_process';
 
 import { fileURLToPath } from 'url';
@@ -25,8 +25,8 @@ import {
 } from '../models/v3/mainModels.js';
 import { readdir } from 'fs/promises';
 import { getUserFromSteamID64 } from '../classes/v3/User.js';
-import redis from '@gmod/infra-redis/index.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import redis from '@gmod/infra-redis';
+import prisma from '@gmod/infra-prisma';
 import { getServersFromDiscordGuildID, Server } from '../classes/v3/Server.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { Guild, guildSettingExists } from '../classes/v3/Guild.js';

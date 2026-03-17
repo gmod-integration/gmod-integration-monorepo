@@ -1,6 +1,6 @@
 import steamApi from 'steamapi';
-import { ConfigSteam } from '@gmod/config/index.js';
-import redis from '@gmod/infra-redis/index.js';
+import { ConfigSteam } from '@gmod/config';
+import redis from '@gmod/infra-redis';
 
 const steam = new steamApi(ConfigSteam.apiKey!);
 

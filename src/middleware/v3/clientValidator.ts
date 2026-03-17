@@ -2,7 +2,7 @@ import { getServerFromID } from '../../classes/v3/Server.js';
 import crypto from 'crypto';
 import { NextFunction, Request, Response } from 'express';
 import { badArgument } from '../../utils/tools.js';
-import redis from '@gmod/infra-redis/index.js';
+import redis from '@gmod/infra-redis';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {

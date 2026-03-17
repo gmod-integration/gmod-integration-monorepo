@@ -10,7 +10,7 @@ import { getServerFromID, getServersFromDiscordGuildID } from '../../../classes/
 import { playerConnectionChart, playerTeamTimeChat } from '../../utils/index.js';
 import { getUserFromDiscordID } from '../../../classes/v3/User.js';
 import { getTranslate } from '../../../utils/localizations.js';
-import { ConfigDiscord } from '@gmod/config/index.js';
+import { ConfigDiscord } from '@gmod/config';
 
 export default {
   data: new SlashCommandBuilder()

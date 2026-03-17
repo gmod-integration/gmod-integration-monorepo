@@ -5,7 +5,7 @@ import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'dis
 import { ButtonPremium } from '../../discord/utils/buttons.js';
 import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { getGuildClient } from '../../discord/index.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 
 export async function sendMessageToGmod(message: Message) {
   if (message.author.bot || !message.guild) return;

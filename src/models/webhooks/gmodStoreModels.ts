@@ -1,8 +1,8 @@
 import crypto from 'crypto';
-import { ConfigGmodStore } from '@gmod/config/index.js';
+import { ConfigGmodStore } from '@gmod/config';
 import { gmLog } from '../../utils/logger.js';
 import { getUserFromSteamID64 } from '../../classes/v3/User.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 import { addNotification } from '../../utils/tools.js';
 import JSONbig from 'json-bigint';
 

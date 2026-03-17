@@ -2,10 +2,10 @@ import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/Use
 import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
 import { getGuildClient, getMainClient } from '../../discord/index.js';
 import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.js';
-import { ConfigDiscord } from '@gmod/config/index.js';
+import { ConfigDiscord } from '@gmod/config';
 import { generateToken } from '../../utils/tools.js';
-import redis from '@gmod/infra-redis/index.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import redis from '@gmod/infra-redis';
+import prisma from '@gmod/infra-prisma';
 import { Guild, GuildMember } from 'discord.js';
 import { PanelUser } from '../../classes/v3/PanelUser.js';
 import { v4 as uuidv4 } from 'uuid';

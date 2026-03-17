@@ -1,4 +1,4 @@
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 
 export async function isGlobalBanIP(IP: string) {
   return prisma.banUsers.findFirst({

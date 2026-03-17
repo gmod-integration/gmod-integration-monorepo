@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { ConfigServer } from '@gmod/config/index.js';
+import { ConfigServer } from '@gmod/config';
 import archiver from 'archiver';
 import { gmLog } from '../../utils/logger.js';
 import { User } from '../../classes/v3/User.js';
@@ -7,9 +7,9 @@ import { addNotification } from '../../utils/tools.js';
 import { getLogsBySteamIDList, getLogsCountBySteamIDList } from '../../database/gm_server_logs.js';
 import path from 'path';
 import * as os from 'node:os';
-import { createBucketIfNotExists, s3 } from '@gmod/infra-minio/index.js';
+import { createBucketIfNotExists, s3 } from '@gmod/infra-minio';
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 import { Readable } from 'node:stream';
 import { getErrorsBySteamID, getErrorsCountBySteamID } from '@gmod/domain-gmod/GmodErrors.js';
 

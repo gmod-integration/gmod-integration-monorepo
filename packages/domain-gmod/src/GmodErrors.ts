@@ -1,5 +1,5 @@
 import { GmodErrorsInput, GmodErrorsSchema } from '@gmod/schema/gmod/GmodErrorsSchema.js';
-import { mongoClient } from '@gmod/infra-mongo/index.js';
+import { mongoClient } from '@gmod/infra-mongo';
 
 interface OffsetLimitQuery {
   offset: number;

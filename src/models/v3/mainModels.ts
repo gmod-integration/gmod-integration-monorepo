@@ -1,9 +1,9 @@
-import redis from '@gmod/infra-redis/index.js';
+import redis from '@gmod/infra-redis';
 import { ActivityType } from 'discord.js';
 import { statusRoutine } from '../../classes/v3/Server.js';
 import { getMainClient } from '../../discord/index.js';
 import { givePremiumRoleOfMainGuild } from './discordModels.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 import { lastGmodIntegrationTag } from '../../utils/tools.js';
 
 export async function getStats() {

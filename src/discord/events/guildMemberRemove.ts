@@ -1,5 +1,5 @@
 import { GuildMember } from 'discord.js';
-import prisma from '@gmod/infra-prisma/index.js';
+import prisma from '@gmod/infra-prisma';
 
 export default {
   name: 'guildMemberRemove',
