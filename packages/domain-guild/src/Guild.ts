@@ -2,7 +2,7 @@ import axios from 'axios';
 import { ConfigDiscord } from '@gmod/config';
 import redis from '@gmod/infra-redis';
 import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
-import { getGuildClient, getMainClient, loadGuildBotInstance } from 'src/discord/index.js';
+import { getGuildClient, getMainClient, loadGuildBotInstance } from '@/discord/index.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,

@@ -1,6 +1,6 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js';
 import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
-import { getGuildClient, getMainClient } from 'src/discord/index.js';
+import { getGuildClient, getMainClient } from '@/discord/index.js';
 import { getDiscordEntitlements, isGuildPremium } from './Guild.js';
 import { ConfigDiscord } from '@gmod/config';
 import { generateToken } from '@gmod/core/utils/tools.js';
