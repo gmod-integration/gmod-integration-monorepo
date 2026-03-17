@@ -1,5 +1,5 @@
 import { ConfigDiscord } from '@gmod/config';
-import { addAutoRoleToUser, updateGuildStat, verifyUser } from '../../models/v3/discordModels.js';
+import { addAutoRoleToUser, updateGuildStat, verifyUser } from '@gmod/domain-guild/discordModels.js';
 import { gmLog } from '../../utils/logger.js';
 import { getNotVerifiedMessage } from '../utils/messages.js';
 import { GuildMember } from 'discord.js';

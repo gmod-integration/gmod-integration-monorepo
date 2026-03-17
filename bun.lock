@@ -8,7 +8,12 @@
         "@aws-sdk/client-s3": "^3.1009.0",
         "@discordjs/builders": "^1.13.1",
         "@gmod/config": "workspace:*",
+        "@gmod/domain-compliance": "workspace:*",
         "@gmod/domain-gmod": "workspace:*",
+        "@gmod/domain-guild": "workspace:*",
+        "@gmod/domain-moderation": "workspace:*",
+        "@gmod/domain-server": "workspace:*",
+        "@gmod/domain-user": "workspace:*",
         "@gmod/infra-bullmq": "workspace:*",
         "@gmod/infra-minio": "workspace:*",
         "@gmod/infra-mongo": "workspace:*",
@@ -80,6 +85,8 @@
       "version": "1.0.0",
       "dependencies": {
         "@gmod/config": "workspace:*",
+        "@gmod/domain-server": "workspace:*",
+        "@gmod/domain-user": "workspace:*",
         "@gmod/infra-bullmq": "workspace:*",
         "@gmod/infra-redis": "workspace:*",
         "@gmod/infra-websocket": "workspace:*",
@@ -95,12 +102,70 @@
         "zod": "^3.25.76",
       },
     },
+    "packages/domain-compliance": {
+      "name": "@gmod/domain-compliance",
+      "version": "1.0.0",
+      "dependencies": {
+        "@aws-sdk/client-s3": "^3.1009.0",
+        "@gmod/config": "workspace:*",
+        "@gmod/domain-gmod": "workspace:*",
+        "@gmod/domain-user": "workspace:*",
+        "@gmod/infra-minio": "workspace:*",
+        "@gmod/infra-prisma": "workspace:*",
+        "archiver": "^7.0.1",
+      },
+    },
     "packages/domain-gmod": {
       "name": "@gmod/domain-gmod",
       "version": "1.0.0",
       "dependencies": {
         "@gmod/infra-mongo": "workspace:*",
         "@gmod/schema": "workspace:*",
+      },
+    },
+    "packages/domain-guild": {
+      "name": "@gmod/domain-guild",
+      "version": "1.0.0",
+      "dependencies": {
+        "@gmod/config": "workspace:*",
+        "@gmod/domain-server": "workspace:*",
+        "@gmod/domain-user": "workspace:*",
+        "@gmod/infra-prisma": "workspace:*",
+        "@gmod/infra-redis": "workspace:*",
+        "@gmod/infra-websocket": "workspace:*",
+        "axios": "^1.13.6",
+        "discord.js": "^14.25.1",
+        "uuid": "^9.0.1",
+      },
+    },
+    "packages/domain-moderation": {
+      "name": "@gmod/domain-moderation",
+      "version": "1.0.0",
+      "dependencies": {
+        "@gmod/config": "workspace:*",
+        "@gmod/domain-server": "workspace:*",
+        "@gmod/infra-prisma": "workspace:*",
+        "discord.js": "^14.25.1",
+      },
+    },
+    "packages/domain-server": {
+      "name": "@gmod/domain-server",
+      "version": "1.0.0",
+      "dependencies": {
+        "@gmod/config": "workspace:*",
+        "@gmod/infra-prisma": "workspace:*",
+        "@gmod/infra-redis": "workspace:*",
+        "@gmod/infra-websocket": "workspace:*",
+        "@gmod/schema": "workspace:*",
+        "discord.js": "^14.25.1",
+      },
+    },
+    "packages/domain-user": {
+      "name": "@gmod/domain-user",
+      "version": "1.0.0",
+      "dependencies": {
+        "@gmod/infra-prisma": "workspace:*",
+        "@gmod/infra-redis": "workspace:*",
       },
     },
     "packages/infra-bullmq": {
@@ -353,7 +418,17 @@
 
     "@gmod/config": ["@gmod/config@workspace:packages/config"],
 
+    "@gmod/domain-compliance": ["@gmod/domain-compliance@workspace:packages/domain-compliance"],
+
     "@gmod/domain-gmod": ["@gmod/domain-gmod@workspace:packages/domain-gmod"],
+
+    "@gmod/domain-guild": ["@gmod/domain-guild@workspace:packages/domain-guild"],
+
+    "@gmod/domain-moderation": ["@gmod/domain-moderation@workspace:packages/domain-moderation"],
+
+    "@gmod/domain-server": ["@gmod/domain-server@workspace:packages/domain-server"],
+
+    "@gmod/domain-user": ["@gmod/domain-user@workspace:packages/domain-user"],
 
     "@gmod/infra-bullmq": ["@gmod/infra-bullmq@workspace:packages/infra-bullmq"],
 

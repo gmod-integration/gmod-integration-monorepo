@@ -1,0 +1,20 @@
+{
+  "name": "@gmod/domain-compliance",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./index.js": "./src/index.ts",
+    "./*.js": "./src/*.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1009.0",
+    "@gmod/config": "workspace:*",
+    "@gmod/domain-gmod": "workspace:*",
+    "@gmod/domain-user": "workspace:*",
+    "@gmod/infra-minio": "workspace:*",
+    "@gmod/infra-prisma": "workspace:*",
+    "archiver": "^7.0.1"
+  }
+}

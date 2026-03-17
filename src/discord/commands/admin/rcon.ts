@@ -6,11 +6,11 @@ import {
   MessageActionRowComponentBuilder,
   SlashCommandBuilder,
 } from 'discord.js';
-import { getServerList } from '../../../models/v3/serversModels.js';
-import { getUserFromDiscordID } from '../../../classes/v3/User.js';
+import { getServerList } from '@gmod/domain-server/serversModels.js';
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
 import { ButtonVerificationWebsite } from '../../utils/buttons.js';
-import { getServerFromID } from '../../../classes/v3/Server.js';
-import { isGuildPremium, replyNeedPremium } from '../../../classes/v3/Guild.js';
+import { getServerFromID } from '@gmod/domain-server/Server.js';
+import { isGuildPremium, replyNeedPremium } from '@gmod/domain-guild/Guild.js';
 import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { getTranslate } from '../../../utils/localizations.js';
 

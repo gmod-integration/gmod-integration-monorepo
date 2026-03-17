@@ -1,0 +1,17 @@
+{
+  "name": "@gmod/domain-moderation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./index.js": "./src/index.ts",
+    "./*.js": "./src/*.ts"
+  },
+  "dependencies": {
+    "@gmod/config": "workspace:*",
+    "@gmod/domain-server": "workspace:*",
+    "@gmod/infra-prisma": "workspace:*",
+    "discord.js": "^14.25.1"
+  }
+}

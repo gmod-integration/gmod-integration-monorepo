@@ -1,5 +1,5 @@
 import { getTranslate } from '../../utils/localizations.js';
-import { Server } from '../../classes/v3/Server.js';
+import { Server } from '@gmod/domain-server/Server.js';
 import prisma from '@gmod/infra-prisma';
 import { JSDOM } from 'jsdom';
 import * as d3 from 'd3';

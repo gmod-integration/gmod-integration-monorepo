@@ -24,12 +24,12 @@ import {
   routineUpdateStatus,
 } from '../models/v3/mainModels.js';
 import { readdir } from 'fs/promises';
-import { getUserFromSteamID64 } from '../classes/v3/User.js';
+import { getUserFromSteamID64 } from '@gmod/domain-user/User.js';
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
-import { getServersFromDiscordGuildID, Server } from '../classes/v3/Server.js';
+import { getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
-import { Guild, guildSettingExists } from '../classes/v3/Guild.js';
+import { Guild, guildSettingExists } from '@gmod/domain-guild/Guild.js';
 
 const envPath = ConfigServer.dev ? 'src' : 'dist';
 const envExtension = ConfigServer.dev ? '.ts' : '.js';

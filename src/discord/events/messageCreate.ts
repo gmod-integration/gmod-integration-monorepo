@@ -1,6 +1,6 @@
 import { sendMessageToGmod } from '../../controllers/v3/guildsControllers.js';
-import { getUserFromDiscordID } from '../../classes/v3/User.js';
-import { addAutoRoleToUser, givePremiumRoleOfMainGuild, verifyUser } from '../../models/v3/discordModels.js';
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
+import { addAutoRoleToUser, givePremiumRoleOfMainGuild, verifyUser } from '@gmod/domain-guild/discordModels.js';
 import { Message } from 'discord.js';
 import { gmLog } from '../../utils/logger.js';
 import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';

@@ -1,6 +1,6 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, EmbedBuilder } from 'discord.js';
-import { getTranslate } from '../../utils/localizations.js';
-import { getServerFromID, Server } from '../../classes/v3/Server.js';
+import { getTranslate } from 'src/utils/localizations.js';
+import { getServerFromID, Server } from '@gmod/domain-server/Server.js';
 import prisma from '@gmod/infra-prisma';
 import { ConfigDiscord } from '@gmod/config';
 

@@ -4,8 +4,8 @@ import { gmLog } from '../../utils/logger.js';
 import { NextFunction, Request, Response } from 'express';
 import prisma from '@gmod/infra-prisma';
 import { removeDiscordSync, removeServerSync } from '../../classes/v3/PlayerGmod.js';
-import { verifyUser } from '../../models/v3/discordModels.js';
-import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
+import { verifyUser } from '@gmod/domain-guild/discordModels.js';
+import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js';
 import { getGuildClient } from '../../discord/index.js';
 
 const steamAuthUrl = 'https://steamcommunity.com/openid/login';

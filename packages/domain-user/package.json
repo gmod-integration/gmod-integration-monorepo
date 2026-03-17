@@ -1,0 +1,15 @@
+{
+  "name": "@gmod/domain-user",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./index.js": "./src/index.ts",
+    "./*.js": "./src/*.ts"
+  },
+  "dependencies": {
+    "@gmod/infra-prisma": "workspace:*",
+    "@gmod/infra-redis": "workspace:*"
+  }
+}

@@ -1,20 +1,22 @@
 {
-  "name": "@gmod/app-websocket",
+  "name": "@gmod/domain-guild",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts"
+  "exports": {
+    ".": "./src/index.ts",
+    "./index.js": "./src/index.ts",
+    "./*.js": "./src/*.ts"
   },
   "dependencies": {
     "@gmod/config": "workspace:*",
     "@gmod/domain-server": "workspace:*",
     "@gmod/domain-user": "workspace:*",
-    "@gmod/infra-bullmq": "workspace:*",
+    "@gmod/infra-prisma": "workspace:*",
     "@gmod/infra-redis": "workspace:*",
     "@gmod/infra-websocket": "workspace:*",
-    "bullmq": "^5.71.0",
-    "ws": "^8.19.0"
+    "axios": "^1.13.6",
+    "discord.js": "^14.25.1",
+    "uuid": "^9.0.1"
   }
 }

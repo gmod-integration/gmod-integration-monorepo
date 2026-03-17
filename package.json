@@ -63,7 +63,12 @@
   },
   "dependencies": {
     "@gmod/config": "workspace:*",
+    "@gmod/domain-compliance": "workspace:*",
     "@gmod/domain-gmod": "workspace:*",
+    "@gmod/domain-guild": "workspace:*",
+    "@gmod/domain-moderation": "workspace:*",
+    "@gmod/domain-server": "workspace:*",
+    "@gmod/domain-user": "workspace:*",
     "@gmod/infra-bullmq": "workspace:*",
     "@gmod/infra-minio": "workspace:*",
     "@gmod/infra-mongo": "workspace:*",

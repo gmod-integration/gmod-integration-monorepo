@@ -4,9 +4,9 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Guild, Guil
 import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
 import { getCurrencyByLang, getEmojiVersion } from '../../utils/tools.js';
 import { ConfigDiscord, ConfigServer } from '@gmod/config';
-import { getUserFromDiscordID } from '../../classes/v3/User.js';
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
 import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
-import { Server } from '../../classes/v3/Server.js';
+import { Server } from '@gmod/domain-server/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import prisma from '@gmod/infra-prisma';
 

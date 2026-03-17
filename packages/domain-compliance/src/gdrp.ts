@@ -1,10 +1,10 @@
 import fs from 'fs';
 import { ConfigServer } from '@gmod/config';
 import archiver from 'archiver';
-import { gmLog } from '../../utils/logger.js';
-import { User } from '../../classes/v3/User.js';
-import { addNotification } from '../../utils/tools.js';
-import { getLogsBySteamIDList, getLogsCountBySteamIDList } from '../../database/gm_server_logs.js';
+import { gmLog } from 'src/utils/logger.js';
+import { User } from '@gmod/domain-user/User.js';
+import { addNotification } from 'src/utils/tools.js';
+import { getLogsBySteamIDList, getLogsCountBySteamIDList } from 'src/database/gm_server_logs.js';
 import path from 'path';
 import * as os from 'node:os';
 import { createBucketIfNotExists, s3 } from '@gmod/infra-minio';

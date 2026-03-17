@@ -3,7 +3,7 @@ import { ConfigDiscord, ConfigServer } from '@gmod/config';
 import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '@gmod/infra-steam';
 import { v4 as uuidv4 } from 'uuid';
-import { Server } from '../../classes/v3/Server.js';
+import { Server } from '@gmod/domain-server/Server.js';
 import prisma from '@gmod/infra-prisma';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import { getTranslate } from '../../utils/localizations.js';

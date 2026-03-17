@@ -1,4 +1,4 @@
-import { getServerFromID } from '../../classes/v3/Server.js';
+import { getServerFromID } from '@gmod/domain-server/Server.js';
 import { NextFunction, Request, Response } from 'express';
 import redis from '@gmod/infra-redis';
 

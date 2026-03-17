@@ -1,9 +1,10 @@
-import { BaseClass } from './BaseClass.js';
-import { generateToken } from '../../utils/tools.js';
+import { BaseClass } from 'src/classes/v3/BaseClass.js';
+import { generateToken } from 'src/utils/tools.js';
+import { ConfigDiscord } from '@gmod/config';
 import redis from '@gmod/infra-redis';
-import { getGuildClient } from '../../discord/index.js';
-import { getStatusMessage } from '../../discord/utils/messages.js';
-import { gmLog } from '../../utils/logger.js';
+import { getGuildClient } from 'src/discord/index.js';
+import { getStatusMessage } from 'src/discord/utils/messages.js';
+import { gmLog } from 'src/utils/logger.js';
 import { ChannelType } from 'discord.js';
 import prisma from '@gmod/infra-prisma';
 import {
@@ -11,7 +12,6 @@ import {
   gm_server_logs_triggers_operator,
 } from '@gmod/infra-prisma/enums.js';
 import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js';
-import { isGuildPremium } from './Guild.js';
 import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { ServerStatusChannel } from './ServerStatusChannel.js';
 
@@ -164,6 +164,55 @@ const serverSettings: Record<string, any> = {
   },
 };
 
+async function isGuildPremiumForServer(guildID: string): Promise<boolean> {
+  const hasPremium =
+    (await prisma.gm_guild_premium.findFirst({
+      where: {
+        guildID,
+      },
+    })) ||
+    (await prisma.gm_gmodstore_purchases.findFirst({
+      where: {
+        guild: guildID,
+        revoke: false,
+      },
+    }));
+
+  if (hasPremium) {
+    return true;
+  }
+
+  const redisKey = `guild:${guildID}:premium`;
+  const cachedPremiumStatus = await redis.get(redisKey);
+  if (cachedPremiumStatus !== null) {
+    return JSON.parse(cachedPremiumStatus);
+  }
+
+  if (!ConfigDiscord.clientID || !ConfigDiscord.botToken) {
+    return false;
+  }
+
+  try {
+    const response = await fetch(`https://discord.com/api/v10/applications/${ConfigDiscord.clientID}/entitlements`, {
+      headers: {
+        Authorization: `Bot ${ConfigDiscord.botToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const entitlementGuilds = (await response.json()) as Array<{ guild_id?: string }>;
+    const isPremium = entitlementGuilds.some((entitlement) => entitlement.guild_id === guildID);
+    await redis.set(redisKey, JSON.stringify(isPremium), 'EX', 60);
+    return isPremium;
+  } catch (error) {
+    console.error('Error getting entitlements:', error);
+    return false;
+  }
+}
+
 export class Server extends BaseClass {
   public token: string;
   public id: string;
@@ -193,7 +242,7 @@ export class Server extends BaseClass {
   }
 
   async isPremium() {
-    return await isGuildPremium(this.guild);
+    return await isGuildPremiumForServer(this.guild);
   }
 
   async saveIGSettings(settings: Record<string, any>) {

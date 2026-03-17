@@ -1,9 +1,9 @@
-import { getPanelUserFromDiscordID } from '../../classes/v3/PanelUser.js';
-import { getTranslate } from '../../utils/localizations.js';
+import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js';
+import { getTranslate } from 'src/utils/localizations.js';
 import { ActionRowBuilder, ButtonInteraction, MessageActionRowComponentBuilder } from 'discord.js';
-import { ButtonVerificationWebsite } from '../../discord/utils/buttons.js';
-import { getUserFromDiscordID } from '../../classes/v3/User.js';
-import { getVerifiedMessageAnswer } from '../../discord/utils/messages.js';
+import { ButtonVerificationWebsite } from 'src/discord/utils/buttons.js';
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
+import { getVerifiedMessageAnswer } from 'src/discord/utils/messages.js';
 import { verifyUser } from './discordModels.js';
 import prisma from '@gmod/infra-prisma';
 

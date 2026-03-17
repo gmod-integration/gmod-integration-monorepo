@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, InteractionContextType, MessageFlags, SlashCommandBuilder } from 'discord.js';
 import { getProfileMessage } from '../../utils/messages.js';
-import { getUserFromSteamID64 } from '../../../classes/v3/User.js';
+import { getUserFromSteamID64 } from '@gmod/domain-user/User.js';
 
 export default {
   data: new SlashCommandBuilder()

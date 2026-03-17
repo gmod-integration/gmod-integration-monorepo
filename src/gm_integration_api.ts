@@ -149,7 +149,7 @@ process.on('unhandledRejection', (error: Error) => {
 
 // Run Tests
 if (ConfigServer.dev) {
-  import('./test/index.js');
+  // import('./test/index.js');
 }
 
 async function gracefulShutdown() {

@@ -3,6 +3,10 @@
     "target": "ESNext",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "baseUrl": ".",
+    "paths": {
+      "src/*": ["../../src/*"]
+    },
     "strict": true,
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,

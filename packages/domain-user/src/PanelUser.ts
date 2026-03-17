@@ -1,5 +1,4 @@
 import { getUserFromDiscordID } from './User.js';
-import { getUserGuildsWithPermsForPanel } from '../../models/v3/discordModels.js';
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
 
@@ -119,10 +118,6 @@ export class PanelUser {
     }
 
     return permGuildsID;
-  }
-
-  async findGuildsWithPermsForPanel() {
-    return await getUserGuildsWithPermsForPanel(this);
   }
 
   async isAdminOfGuild(guildID: string) {

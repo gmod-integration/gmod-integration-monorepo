@@ -1,8 +1,8 @@
 import axios from 'axios';
 import { ConfigDiscord } from '@gmod/config';
 import redis from '@gmod/infra-redis';
-import { getServersFromDiscordGuildID } from './Server.js';
-import { getGuildClient, getMainClient, loadGuildBotInstance } from '../../discord/index.js';
+import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
+import { getGuildClient, getMainClient, loadGuildBotInstance } from 'src/discord/index.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -14,7 +14,7 @@ import {
   MessageActionRowComponentBuilder,
 } from 'discord.js';
 import prisma from '@gmod/infra-prisma';
-import { User } from './User.js';
+import { User } from '@gmod/domain-user/User.js';
 
 const guildSettings: Record<string, any> = {
   verification_dont_mp: {

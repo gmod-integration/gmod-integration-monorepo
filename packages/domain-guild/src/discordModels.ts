@@ -1,15 +1,15 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
-import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
-import { getGuildClient, getMainClient } from '../../discord/index.js';
-import { getDiscordEntitlements, isGuildPremium } from '../../classes/v3/Guild.js';
+import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js';
+import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
+import { getGuildClient, getMainClient } from 'src/discord/index.js';
+import { getDiscordEntitlements, isGuildPremium } from './Guild.js';
 import { ConfigDiscord } from '@gmod/config';
-import { generateToken } from '../../utils/tools.js';
+import { generateToken } from 'src/utils/tools.js';
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
 import { Guild, GuildMember } from 'discord.js';
-import { PanelUser } from '../../classes/v3/PanelUser.js';
+import type { PanelUser } from '@gmod/domain-user/PanelUser.js';
 import { v4 as uuidv4 } from 'uuid';
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from 'src/utils/logger.js';
 import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {

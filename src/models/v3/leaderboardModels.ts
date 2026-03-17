@@ -8,7 +8,7 @@ import {
 } from 'discord.js';
 import { dateToDiscordTimestamp, secToTime } from '../../discord/utils/index.js';
 import { getTranslate } from '../../utils/localizations.js';
-import { getServerFromID } from '../../classes/v3/Server.js';
+import { getServerFromID } from '@gmod/domain-server/Server.js';
 import prisma from '@gmod/infra-prisma';
 import { ConfigDiscord } from '@gmod/config';
 

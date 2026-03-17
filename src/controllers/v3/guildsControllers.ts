@@ -1,5 +1,5 @@
-import { getServersFromDiscordGuildID } from '../../classes/v3/Server.js';
-import { isGuildPremium } from '../../classes/v3/Guild.js';
+import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
+import { isGuildPremium } from '@gmod/domain-guild/Guild.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'discord.js';
 import { ButtonPremium } from '../../discord/utils/buttons.js';

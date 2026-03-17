@@ -6,9 +6,9 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from 'discord.js';
-import { getServerFromID, getServersFromDiscordGuildID } from '../../../classes/v3/Server.js';
+import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
 import { playerConnectionChart, playerTeamTimeChat } from '../../utils/index.js';
-import { getUserFromDiscordID } from '../../../classes/v3/User.js';
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
 import { getTranslate } from '../../../utils/localizations.js';
 import { ConfigDiscord } from '@gmod/config';
 

@@ -1,27 +1,28 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '../../classes/v3/User.js';
-import { createServer, getServersFromDiscordGuildID, Server } from '../../classes/v3/Server.js';
+import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js';
+import { createServer, getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js';
 import { ConfigDiscord } from '@gmod/config';
 import {
   addAutoRoleToUser,
   addUserToGuild,
   getDiscordUserFromID,
+  getUserGuildsWithPermsForPanel,
   getUserFromToken,
   getUserTokenFromCode,
   saveUser,
   saveUserPanel,
   verifyUser,
-} from '../../models/v3/discordModels.js';
+} from '@gmod/domain-guild/discordModels.js';
 import { badArgument, generateToken, todoControllers } from '../../utils/tools.js';
 import { getVerificationGuildMessage } from '../../discord/utils/messages.js';
 import moment from 'moment';
-import { getUserDataGRPD } from '../../models/v3/gdrp.js';
+import { getUserDataGRPD } from '@gmod/domain-compliance/gdrp.js';
 import { getGuildClient } from '../../discord/index.js';
 import { enqueueMainClientHasGuild } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
 import { NextFunction, Request, Response } from 'express';
 import { getLogsByServer, getTotalLogsByServer } from '../../database/gm_server_logs.js';
-import { Guild } from '../../classes/v3/Guild.js';
+import { Guild } from '@gmod/domain-guild/Guild.js';
 
 export async function getProfile(req: Request, res: Response) {
   const { steamID64, discordID } = req.query;
@@ -199,7 +200,7 @@ export async function oauthLogin(req: Request, res: Response) {
 export async function getUserGuildsOwnOrAdmins(req: Request, res: Response) {
   const panelUser = req.panelUser!;
 
-  return res.send(await panelUser.findGuildsWithPermsForPanel());
+  return res.send(await getUserGuildsWithPermsForPanel(panelUser));
 }
 
 export async function findGuild(req: Request, res: Response) {

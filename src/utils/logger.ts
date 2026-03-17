@@ -3,7 +3,7 @@ import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { getRandomDiscordRelay, ipGetIP } from './tools.js';
 import { getTranslate } from './localizations.js';
 import { ChannelType, ColorResolvable, EmbedBuilder } from 'discord.js';
-import { Server } from '../classes/v3/Server.js';
+import { Server } from '@gmod/domain-server/Server.js';
 import { addLog } from '../database/gm_server_logs.js';
 import redis from '@gmod/infra-redis';
 import type { gm_server_logs_triggers } from '@gmod/infra-prisma/client.js';

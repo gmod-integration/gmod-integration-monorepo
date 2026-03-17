@@ -2,8 +2,9 @@ import { WebSocketServer } from 'ws';
 import { Worker } from 'bullmq';
 import { ConfigServer } from '@gmod/config';
 import { gmLog } from '../../../src/utils/logger.js';
-import { getServerFromID, getServersFromDiscordGuildID } from '../../../src/classes/v3/Server.js';
-import { getPanelUserFromDiscordID, PanelUser } from '../../../src/classes/v3/PanelUser.js';
+import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
+import { getPanelUserFromDiscordID, PanelUser } from '@gmod/domain-user/PanelUser.js';
+import { getUserGuildsWithPermsForPanel } from '@gmod/domain-guild/discordModels.js';
 import redis from '@gmod/infra-redis';
 import { lastGmodIntegrationTag, versionComparator } from '../../../src/utils/tools.js';
 import { connection } from '@gmod/infra-bullmq';
@@ -129,7 +130,7 @@ wss.on('connection', async function connectionWS(ws, req) {
       const guildAdminListID: string[] = [];
       const serverAdminListID: string[] = [];
 
-      const guildAdminList = await user.findGuildsWithPermsForPanel();
+      const guildAdminList = await getUserGuildsWithPermsForPanel(user);
       for (const guildID of guildAdminList) {
         const server = await getServersFromDiscordGuildID(guildID.id);
         if (server) {

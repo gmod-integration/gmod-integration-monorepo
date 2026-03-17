@@ -10,7 +10,7 @@ import {
   getServerLeaderboardCategories,
   saveLeaderboardOptions,
 } from '../../../models/v3/leaderboardModels.js';
-import { getServersFromDiscordGuildID } from '../../../classes/v3/Server.js';
+import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
 import { getTranslate } from '../../../utils/localizations.js';
 
 export default {

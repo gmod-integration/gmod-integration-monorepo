@@ -13,8 +13,8 @@ import {
 } from '@gmod/infra-bullmq/schemas.js';
 import { gmLog } from 'src/utils/logger.js';
 import prisma from '@gmod/infra-prisma';
-import { getUserFromSteamID64 } from 'src/classes/v3/User.js';
-import { getServerFromID } from 'src/classes/v3/Server.js';
+import { getUserFromSteamID64 } from '@gmod/domain-user/User.js';
+import { getServerFromID } from '@gmod/domain-server/Server.js';
 import { PermissionsBitField, Role } from 'discord.js';
 import redis from '@gmod/infra-redis';
 import { getMainClient } from 'src/discord/index.js';

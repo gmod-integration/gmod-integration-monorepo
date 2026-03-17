@@ -1,4 +1,4 @@
-import { isGlobalBan } from '../../models/v3/bansModels.js';
+import { isGlobalBan } from '@gmod/domain-moderation/bansModels.js';
 import { ipGetIP } from '../../utils/tools.js';
 import { Request, Response } from 'express';
 

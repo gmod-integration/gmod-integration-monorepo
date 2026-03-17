@@ -1,6 +1,6 @@
-import { handlePremiumInteraction } from '../../classes/v3/Guild.js';
-import { handleWarnInteraction } from '../../models/v3/warnModels.js';
-import { handleVerifyInteraction } from '../../models/v3/verifyModels.js';
+import { handlePremiumInteraction } from '@gmod/domain-guild/Guild.js';
+import { handleWarnInteraction } from '@gmod/domain-moderation/warnModels.js';
+import { handleVerifyInteraction } from '@gmod/domain-guild/verifyModels.js';
 import { handleLeaderboardInteraction } from '../../models/v3/leaderboardModels.js';
 import { ButtonInteraction, Interaction } from 'discord.js';
 

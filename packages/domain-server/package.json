@@ -1,0 +1,19 @@
+{
+  "name": "@gmod/domain-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./index.js": "./src/index.ts",
+    "./*.js": "./src/*.ts"
+  },
+  "dependencies": {
+    "@gmod/config": "workspace:*",
+    "@gmod/infra-prisma": "workspace:*",
+    "@gmod/infra-redis": "workspace:*",
+    "@gmod/infra-websocket": "workspace:*",
+    "@gmod/schema": "workspace:*",
+    "discord.js": "^14.25.1"
+  }
+}

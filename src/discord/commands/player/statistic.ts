@@ -4,7 +4,7 @@ import {
   InteractionContextType,
   SlashCommandBuilder,
 } from 'discord.js';
-import { getServerList } from '../../../models/v3/serversModels.js';
+import { getServerList } from '@gmod/domain-server/serversModels.js';
 import { getUserStatisticMessage } from '../../utils/messages.js';
 import { getTranslate } from '../../../utils/localizations.js';
 
