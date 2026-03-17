@@ -1,10 +1,9 @@
-import { isProduction } from "./utils";
+import { WEBSITE_CONFIG } from "../config";
 import { ClientQuery } from "./types/QueryTypes";
 
 export const Api = "v3";
-const devAPI = import.meta.env.VITE_DEV_API_URL || "https://api-dev.gmod-integration.com";
-const prodAPI = import.meta.env.VITE_PROD_API_URL || "https://api.gmod-integration.com";
-export const API_FQDN = (isProduction() ? prodAPI : devAPI) + "/" + Api;
+const apiBaseUrl = WEBSITE_CONFIG.apiUrl;
+export const API_FQDN = apiBaseUrl + "/" + Api;
 
 console.log("API FQDN:", API_FQDN);
 
@@ -12,7 +11,7 @@ export function getAPIUrl(withVersion = true) {
   if (withVersion) {
     return API_FQDN;
   }
-  return isProduction() ? prodAPI : devAPI;
+  return apiBaseUrl;
 }
 
 export function getUrlWithActualParams(url: string) {

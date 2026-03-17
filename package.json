@@ -17,6 +17,8 @@
     "dev": "tsx watch apps/api/src/gm_integration_api.ts --env DEV=true",
     "websocket:dev": "bun run --cwd apps/websocket dev",
     "websocket:start": "bun run --cwd apps/websocket start",
+    "website:dev": "bun run --cwd apps/website dev",
+    "website:start": "bun run --cwd apps/website start",
     "start": "pm2 start ./dist/gm_integration_api.js --log logs/current.log --name gmod-integration-api",
     "reload": "pm2 reload gmod-integration-api --update-env",
     "prisma:generate": "npx prisma generate",

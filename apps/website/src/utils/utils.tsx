@@ -1,16 +1,16 @@
-export const DEV = import.meta.env.VITE_DEV === "true";
+import { WEBSITE_CONFIG } from "../config";
+
+export const DEV = WEBSITE_CONFIG.dev;
 export function isDevEnvironment() {
   return DEV;
 }
-export const DEV_SHOW_MISSING_TRANSLATIONS = import.meta.env.VITE_DEV_SHOW_MISSING_TRANSLATIONS === "true";
+export const DEV_SHOW_MISSING_TRANSLATIONS = WEBSITE_CONFIG.devShowMissingTranslations;
 
 export function isProduction() {
   return window.location.href.includes("//gmod-integration.com");
 }
 
-const devClientID = "1136093457782415420";
-const prodClientID = "1110121451501129758";
-export const INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${isProduction() ? prodClientID : devClientID}&permissions=8&scope=bot`;
+export const INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${WEBSITE_CONFIG.discordClientId}&permissions=8&scope=bot`;
 
 export function linkifyEmails(text: string) {
   const emailPattern = /(\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b)/gi;

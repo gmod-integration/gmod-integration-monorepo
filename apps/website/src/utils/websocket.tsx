@@ -1,10 +1,9 @@
-import { isProduction } from "./utils";
 import { isLogged } from "./event";
 import { createSignal } from "solid-js";
 import { getUrlWithActualParams } from "./api";
+import { WEBSITE_CONFIG } from "../config";
 
-const devWss = import.meta.env.VITE_DEV_WS_URL ?? "wss://ws-dev.gmod-integration.com";
-const prodWss = import.meta.env.VITE_PROD_WS_URL ?? "wss://ws.gmod-integration.com";
+const wsBaseUrl = WEBSITE_CONFIG.wsUrl;
 
 export const [webSocketSignal, setWebSocketSignal] = createSignal<WebSocket | null>(null);
 export const [webSocketLogsMessages, setWebSocketLogsMessages] = createSignal([] as any[]);
@@ -25,7 +24,7 @@ export const [webSocketServerStatus, setWebSocketServerStatus] = createSignal({
 });
 
 export function websocket(params: Array<string> = []) {
-  let baseUrl = !isProduction() ? devWss : prodWss;
+  let baseUrl = wsBaseUrl;
   baseUrl += "?action=main";
   baseUrl += "&token=" + localStorage.getItem("accessToken");
   baseUrl += "&discordID=" + localStorage.getItem("discordID");

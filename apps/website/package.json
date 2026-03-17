@@ -1,6 +1,6 @@
 {
-  "name": "vite-template-solid",
-  "version": "0.0.0",
+  "name": "@gmod/app-website",
+  "version": "1.0.0",
   "description": "",
   "scripts": {
     "start": "vite",
@@ -24,13 +24,13 @@
     "vite-plugin-static-copy": "^3.2.0"
   },
   "dependencies": {
+    "@gmod/config": "workspace:*",
     "@sentry/solid": "^10.42.0",
     "@sentry/vite-plugin": "^5.1.1",
     "@solid-primitives/i18n": "^2.2.1",
     "@solid-primitives/storage": "^4.3.4",
     "@solidjs/router": "^0.15.4",
     "d3": "^7.9.0",
-    "dotenv": "^17.3.1",
     "emoji-picker-element": "^1.29.1",
     "highlight.js": "^11.11.1",
     "prettier": "^3.8.1",
