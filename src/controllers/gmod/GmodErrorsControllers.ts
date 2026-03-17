@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { GmodErrors } from '../../classes/gmod/GmodErrors.js';
+import { GmodErrors } from '@gmod/domain-gmod/GmodErrors.js';
 
 export async function reportError(req: Request, res: Response) {
   const { error, stack, id, name, realm, uptime, count } = req.body;

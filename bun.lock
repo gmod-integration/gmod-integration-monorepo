@@ -8,6 +8,7 @@
         "@aws-sdk/client-s3": "^3.1009.0",
         "@discordjs/builders": "^1.13.1",
         "@gmod/config": "workspace:*",
+        "@gmod/domain-gmod": "workspace:*",
         "@gmod/infra-bullmq": "workspace:*",
         "@gmod/infra-minio": "workspace:*",
         "@gmod/infra-mongo": "workspace:*",
@@ -92,6 +93,14 @@
       "dependencies": {
         "dotenv": "^16.6.1",
         "zod": "^3.25.76",
+      },
+    },
+    "packages/domain-gmod": {
+      "name": "@gmod/domain-gmod",
+      "version": "1.0.0",
+      "dependencies": {
+        "@gmod/infra-mongo": "workspace:*",
+        "@gmod/schema": "workspace:*",
       },
     },
     "packages/infra-bullmq": {
@@ -343,6 +352,8 @@
     "@gmod/app-websocket": ["@gmod/app-websocket@workspace:apps/websocket"],
 
     "@gmod/config": ["@gmod/config@workspace:packages/config"],
+
+    "@gmod/domain-gmod": ["@gmod/domain-gmod@workspace:packages/domain-gmod"],
 
     "@gmod/infra-bullmq": ["@gmod/infra-bullmq@workspace:packages/infra-bullmq"],
 

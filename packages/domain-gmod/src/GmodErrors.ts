@@ -1,6 +1,10 @@
 import { GmodErrorsInput, GmodErrorsSchema } from '@gmod/schema/gmod/GmodErrorsSchema.js';
 import { mongoClient } from '@gmod/infra-mongo/index.js';
-import { Query } from '../db/Query.js';
+
+interface OffsetLimitQuery {
+  offset: number;
+  limit: number;
+}
 
 const db = mongoClient.db('gmod_integration');
 const collection = db.collection('errors');
@@ -62,7 +66,7 @@ export async function getErrorsCountBySteamID(steamID64: string) {
   });
 }
 
-export async function getErrorsBySteamID(steamID64: string, query: Query) {
+export async function getErrorsBySteamID(steamID64: string, query: OffsetLimitQuery) {
   return {
     errors: await collection
       .find({
@@ -80,7 +84,7 @@ export async function getErrorsBySteamID(steamID64: string, query: Query) {
   };
 }
 
-export async function getErrorsByServer(query: Query, serverID: string) {
+export async function getErrorsByServer(query: OffsetLimitQuery, serverID: string) {
   return {
     errors: await collection
       .find({

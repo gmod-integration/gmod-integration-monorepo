@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { Query } from '../../classes/db/Query.js';
-import { getErrorsByServer } from '../../classes/gmod/GmodErrors.js';
+import { getErrorsByServer } from '@gmod/domain-gmod/GmodErrors.js';
 
 export async function getServerErrors(req: Request, res: Response) {
   const { serverID } = req.params;

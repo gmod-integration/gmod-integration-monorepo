@@ -1,0 +1,14 @@
+{
+  "name": "@gmod/domain-gmod",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./index.js": "./src/index.ts",
+    "./*.js": "./src/*.ts"
+  },
+  "dependencies": {
+    "@gmod/infra-mongo": "workspace:*",
+    "@gmod/schema": "workspace:*"
+  }
+}

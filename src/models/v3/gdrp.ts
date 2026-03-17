@@ -11,7 +11,7 @@ import { createBucketIfNotExists, s3 } from '@gmod/infra-minio/index.js';
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import prisma from '@gmod/infra-prisma/index.js';
 import { Readable } from 'node:stream';
-import { getErrorsBySteamID, getErrorsCountBySteamID } from '../../classes/gmod/GmodErrors.js';
+import { getErrorsBySteamID, getErrorsCountBySteamID } from '@gmod/domain-gmod/GmodErrors.js';
 
 export async function getUserDataGRPD(user: User) {
   const discordID = user.getDiscordID();
