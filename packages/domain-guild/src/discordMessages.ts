@@ -1,6 +1,6 @@
 import { ConfigDiscord } from '@gmod/config';
-import { getTranslate } from '@gmod/core/utils/localizations.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type User } from 'discord.js';
+import { getTranslate } from './localizations.js';
 
 export async function ButtonVerificationWebsite(lang: string, guildID?: string) {
   return new ButtonBuilder()

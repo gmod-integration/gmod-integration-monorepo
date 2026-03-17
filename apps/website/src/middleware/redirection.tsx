@@ -1,0 +1,107 @@
+import { createEffect, createSignal } from "solid-js";
+import { useLocation, useNavigate } from "@solidjs/router";
+import { INVITE_URL } from "../utils/utils";
+
+const redirections = [
+  {
+    url: "/invite",
+    redirect: INVITE_URL,
+  },
+  {
+    url: "/workshop",
+    redirect: "https://steamcommunity.com/sharedfiles/filedetails/?id=3002852280",
+  },
+  {
+    url: "/open",
+    func: (url: string) => {
+      const link = url.split("?link=")[1];
+      if (!link) return;
+      const decoded = decodeURIComponent(link);
+      window.location.href = decoded;
+      setRedirecting(decoded);
+    },
+  },
+  {
+    url: "/gmodstore",
+    redirect: "https://www.gmodstore.com/market/view/gmod-integration",
+  },
+  {
+    url: "/privacy",
+    redirect: "/legal/privacy",
+  },
+  {
+    url: "/terms",
+    redirect: "/legal/terms",
+  },
+  {
+    url: "/config",
+    redirect: "/dashboard/guilds",
+  },
+  {
+    url: "/trello",
+    redirect: "https://trello.com/b/JQeTFZgP/gmod-integration",
+  },
+  {
+    url: "/workshop",
+    redirect: "https://steamcommunity.com/sharedfiles/filedetails/?id=3002852280",
+  },
+  {
+    url: "/github",
+    redirect: "https://github.com/gmod-integration",
+  },
+  {
+    url: "/discord",
+    redirect: "https://discord.gg/AexDDx5RaU",
+  },
+  {
+    url: "/support",
+    redirect: "/discord",
+  },
+  {
+    url: "/dashboard",
+    redirect: "/dashboard/guilds",
+    exact: true,
+  },
+  {
+    url: "/documentation",
+    redirect: "https://docs.gmod-integration.com/",
+  },
+  {
+    url: "/docs",
+    redirect: "/documentation",
+  },
+];
+
+export const [isRedirecting, setRedirecting] = createSignal("");
+
+const RedirectMiddleware = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  createEffect(() => {
+    setRedirecting("");
+    const currentPath = location.pathname + location.search;
+    const redirectRule = redirections.find((r) => currentPath.startsWith(r.url));
+
+    if (redirectRule && redirectRule.func) {
+      redirectRule.func(currentPath);
+      return;
+    }
+
+    if (!redirectRule) return;
+    if (redirectRule.exact && currentPath !== redirectRule.url) return;
+    if (currentPath === redirectRule.redirect) return;
+
+    const pathToRedirect = currentPath.replace(redirectRule.url, redirectRule.redirect);
+    setRedirecting(pathToRedirect);
+    if (redirectRule.redirect.startsWith("/")) {
+      navigate(pathToRedirect);
+    } else {
+      window.location.href = pathToRedirect;
+    }
+  });
+
+  return null;
+};
+
+export default RedirectMiddleware;

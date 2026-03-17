@@ -1,0 +1,7 @@
+# robots.txt
+
+User-agent: *
+Disallow: /dashboard
+Allow: /
+
+Sitemap: https://gmod-integration.com/sitemap.xml

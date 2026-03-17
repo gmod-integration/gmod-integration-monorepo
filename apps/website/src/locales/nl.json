@@ -1,0 +1,1041 @@
+{
+  "main": {
+    "click_if_not_redirected": "Klik hier als u niet wordt doorgestuurd.",
+    "dashboard": "Dashboard",
+    "add_bot": "Nodig de Bot uit",
+    "support": "Steun",
+    "premium": "Premie",
+    "services": "Diensten",
+    "links": "Links",
+    "resources": "Middelen",
+    "documentation": "Documentatie",
+    "login": "Aanmelden",
+    "logout": "Afmelden",
+    "home": "Begin",
+    "guilds": "Guilden",
+    "servers": "Servers",
+    "users": "Gebruikers",
+    "verified_users": "Geverifieerde gebruikers",
+    "account": "Account",
+    "profile": "Profiel",
+    "settings": "Instellingen",
+    "notifications": "Kennisgevingen",
+    "admin": "Beheerder",
+    "admin_dashboard": "Beheers Dashboard",
+    "servers_ranking": "Serversrangschikking",
+    "terms": "Voorwaarden",
+    "privacy": "Privacybeleid",
+    "buy_premium": "Deze functie is alleen beschikbaar voor premium gebruikers.",
+    "badge_New": "Nieuw",
+    "badge_Soon": "Binnenkort.",
+    "badge_Todo": "Taken",
+    "badge_Updated": "Bijgewerkt"
+  },
+  "header": {
+    "login": "Aanmelden met Discord"
+  },
+  "footer": {
+    "disclaimer": "Deze service is niet aangesloten bij Discord, Steam, of enig ander platform of spel.",
+    "last_build_date": "Datum laatste bouwdatum"
+  },
+  "account": {
+    "title": "Account",
+    "discord": "Discord",
+    "steam": "Stoom",
+    "gmodstore_purchase": "Gmod Store Aankoop",
+    "gmodstore_purchase_description": "Beheer uw premie gekocht in Gmod Store.",
+    "manage_sessions": "Sessies beheren",
+    "manage_sessions_description": "Beheer uw actieve sessies.",
+    "manage_data": "Gegevens beheren",
+    "manage_data_description": "In overeenstemming met de AVG, kunt u uw gegevens aanvragen of verwijderen.",
+    "id": "ID",
+    "link_steam_account": "Link Steam-account",
+    "buy_premium": "Koop Premium",
+    "activate_on_guild": "Activeer op gilde",
+    "active_sessions": "Actieve sessies",
+    "session_id": "Sessie-ID",
+    "session_date": "Datum van sessie",
+    "ip": "IP",
+    "os": "OS",
+    "browser": "Browser",
+    "country": "Land",
+    "actions": "Acties",
+    "delete_session": "Deze sessie verwijderen",
+    "current_session": "Huidige sessie",
+    "data_requests": "Gegevensverzoeken",
+    "request_date": "Datum van aanvraag",
+    "expiration_date": "Geldigheidsduur",
+    "status": "Status",
+    "active": "Actief",
+    "expired": "Verlopen",
+    "request_expired": "Verzoek is verlopen",
+    "download_data": "Uw gegevens downloaden",
+    "loading_message": "Afhankelijk van uw gegevensgrootte kan dit even duren.",
+    "request_my_data": "Vraag mijn gegevens aan",
+    "delete_my_data": "Mijn gegevens verwijderen",
+    "error_create_data_request": "Aanmaken van de gegevensaanvraag mislukt"
+  },
+  "premium": {
+    "sync_chat": "Chatten synchroniseren",
+    "sync_chat_customisation": "Synchronisatiechat - Aanpassen",
+    "server_status": "Serverstatus",
+    "server_status_buttons_limit": "Serverstatus - Knoppenlimiet",
+    "sync_player_name": "Spelernaam synchroniseren",
+    "sync_player_name_customisation": "Naam van de speler synchroniseren - Aanpassen",
+    "player_stats": "Spelerstatistieken",
+    "player_stats_custom": "Spelerstatistieken - aangepaste statistieken",
+    "screenshots": "Spelerschermafbeeldingen",
+    "ig_report_bug": "In-game-rapportbug",
+    "team_vocal": "Team Vocal",
+    "server_status_alert": "Serverstatus - Alert",
+    "guild_link": "Guildlinks",
+    "guild_link_limit": "Guildlinks - limiet",
+    "logs_relay": "Serverlogs herladen",
+    "logs": "WebPanel-logs",
+    "players": "Spelersdatabase",
+    "user_profiles": "Gebruikersprofielen",
+    "user_stats": "Spelerstatistieken",
+    "user_stats_custom_value": "Spelerstatistieken - Aangepaste waarde",
+    "leaderboards": "Speler Leaderboards",
+    "servers": "Servers",
+    "sync_bans": "Bans synchroniseren",
+    "sync_roles": "Rol synchroniseren",
+    "sync_roles_limit": "Rol synchroniseren - limiet",
+    "sync_kicks": "Kicks synchroniseren",
+    "sync_warns": "Schrappen synchroniseren",
+    "report_bugs": "Rapporteer bugs",
+    "sync_team": "Teams rollen synchroniseren",
+    "sync_team_limit": "Teams rollen synchroniseren - limiet",
+    "guild_tickets": "Guild Tickets",
+    "guild_suggestions": "Guild Suggesties",
+    "guild_verification": "Guild-verificatie",
+    "guild_verification_role_limit": "Guild-verificatie - Rollimiet",
+    "force_ply_link": "Spelerkoppeling forceren",
+    "maintenance_white_list": "Onderhoud",
+    "rcon": "Uitvoeren van RCON",
+    "reward": "Beloning",
+    "free": "Vrij",
+    "free_description": "Toegang krijgen tot alle basisfuncties",
+    "all_free_features": "Alle gratis functies",
+    "basic_support": "Basisondersteuning",
+    "setup_server": "Server instellen",
+    "subscribe": "Abonneren",
+    "subscribe_description": "Toegang krijgen tot alle functies en maatwerk",
+    "all_premium_features": "Alle Premium functies",
+    "premium_discord_role": "Premium Discord Rol",
+    "priority_support": "Prioritaire steun",
+    "subscribe_on_discord": "Abonneren op Discord",
+    "one_time": "Eén keer",
+    "one_time_description": "Toegang krijgen tot alle functies en maatwerk",
+    "custom_bot": "Aangepaste bot",
+    "lifetime_access": "Toegang tot levenslange gegevens",
+    "buy_on_gmod_store": "Koop op Gmod Store",
+    "faq_question_1": "Wat zijn de verschillen tussen de gratis en de premium versie ?",
+    "faq_answer_1": "Gmod Integration Premium biedt meer functies en maatwerk en is een manier om het project te ondersteunen. U kunt de volledige lijst van functies in de bovenstaande tabel van de plannenvergelijking bekijken.",
+    "faq_question_2": "Wat is een server en wat is een gilde?",
+    "faq_answer_2": "De terms server verwijst naar een Garry's Mod server en gilden verwijst naar een Discord gilden (aka discord server).",
+    "faq_question_3": "Wat gebeurt er als ik mijn premium abonnement verlies of als ik het niet vernieuw?",
+    "faq_answer_3": "U verliest toegang tot de premium functies en maatwerk. U verliest uw gegevens niet, maar kunt er geen toegang meer toe hebben.",
+    "faq_question_4": "Kan ik mijn abonnement terugkrijgen of annuleren?",
+    "faq_answer_4": "Wij verwerken betalingen zelf niet. Wij gebruiken Discord en GmodStore voor de verwerking van betalingen. Als zodanig, wij u doorverwijzen naar hun respectieve restitutiebeleid voor vragen met betrekking tot restituties of annuleringen.",
+    "faq_question_5": "Wie kan de premium versie kopen?",
+    "faq_answer_5": "Iedereen kan de maandelijkse versie voor uw gilden direct kopen op Discord. De lifetime versie is alleen beschikbaar in Gmod Store en kan slechts één keer per gilde en alleen door een gilde Administrator worden gekocht.",
+    "faq_question_6": "Hoeveel premie kan ik kopen?",
+    "faq_answer_6": "Je kunt maar één levenslange versie kopen, maar je kunt meerdere maandelijkse versies kopen voor verschillende gilden.",
+    "faq_question_7": "Kan ik mijn premium versie overzetten naar een andere gilden?",
+    "faq_answer_7": "Alleen de levenslange versie is overdraagbaar naar een andere gilden, je moet beheerder van beide gilden.",
+    "faq_question_8": "Waarom zijn er zoveel functies in ontwikkeling?",
+    "faq_answer_8": "Omdat ik een solo-ontwikkelaar ben is het project vrij nieuw en groot, dus ik heb tijd nodig om alle functies te ontwikkelen. Maar ik werk hard om ze zo snel mogelijk beschikbaar te maken.",
+    "server": "Server",
+    "utility": "Hulpmiddel",
+    "data_statistics": "Gegevens en statistieken",
+    "security": "Veiligheid",
+    "synchronization": "Synchronisatie",
+    "title": "Premie",
+    "subtitle": "Upgrade uw community naar het volgende niveau met maatwerk en meer functies",
+    "plans_comparison": "Vergelijking van plannen",
+    "category": "Categorie",
+    "premium": "Premie",
+    "faq_title": "Veelgestelde vragen",
+    "in_dev_tooltip": "Deze functie is nog in ontwikkeling en niet beschikbaar.",
+    "one_time_price": "gilden / levensduur",
+    "subscribe_price": "gilden / maand",
+    "free_price": "vrij, nada, niets, niente",
+    "guild_verification_free_value": "Standaardbericht",
+    "guild_verification_premium_value": "Aangepast bericht",
+    "infinite": "Oneindig",
+    "guild_roles": "{1} rollen",
+    "guild_hours": "{1} uur",
+    "guild_server": "{1} server",
+    "guild_teams": "{1} teams"
+  },
+  "tools": {
+    "needRolesPerms": "De bot heeft geen rechten om rollen aan gebruikers toe te wijzen of te verwijderen. Zet de bot-rol hoger in de rollijst, de rol is aangetast: {1}",
+    "needWS_1": "Deze functie vereist een",
+    "needWS_2": "verbinding om goed te werken.",
+    "needAddon": "Om deze functie te gebruiken moet u de addon(s installeren):",
+    "needAddon2": "om goed te werken.",
+    "upgrade_now": "Nu upgraden",
+    "premium": "Premie",
+    "premium_only": "Alleen premie",
+    "select_channel": "Een kanaal selecteren"
+  },
+  "todo": {
+    "title": "Te-doen",
+    "description": "De pagina die u zoekt bestaat nog niet."
+  },
+  "servers": {
+    "title": "Servers",
+    "vote": "Stemming",
+    "players": "Spelers",
+    "no_name": "Geen naam",
+    "no_description": "Geen beschrijving",
+    "offline": "Offline",
+    "map": "Kaart",
+    "game_mode": "Spelmodus",
+    "ip": "IP"
+  },
+  "notifications": {
+    "title": "Kennisgevingen",
+    "date": "Datum",
+    "type": "Type",
+    "message": "Bericht",
+    "actions": "Acties",
+    "mark_as_read": "Markeren als gelezen"
+  },
+  "home": {
+    "hero": {
+      "title": "Verbeter uw discord server met de meest geavanceerde Garry's Mod bot",
+      "button": "Ga naar Dashboard"
+    },
+    "features": {
+      "server_status": {
+        "title": "Serverstatus",
+        "description": "Toon de actuele status van uw server, als het online of offline is, hoeveel spelers er op staan, de werkelijke kaart en de spelmodus, aangezien wanneer de server online ect is... Serverstatus wordt elke 2 minuten bijgewerkt, standaard wordt slechts één knop (connect) getoond als de server online is, maar u kunt meer knoppen zoals 'Shop' of 'Workshop' in het dashboard toevoegen."
+      },
+      "user_profile": {
+        "title": "Gebruikersprofiel",
+        "description": "Toon het profiel van een gebruiker, het toont hun naam, bot rang, trust factor, laatste verificatie datum, discord id en stoom id. U kunt gemakkelijk interactie met het gebruikersprofiel door te klikken op de knoppen, 'Steam Profile' ect..."
+      },
+      "chat_bridge": {
+        "title": "Chatbrug",
+        "description": "De bot kan de chat tussen uw server en uw discord gilden overbruggen, zodat uw gebruikers met elkaar kunnen praten zonder op hetzelfde platform te staan. U kunt de kanalen kiezen die u wilt overslaan, de richting van de brug (van discord naar server, van server naar discord of beide) en aangepaste regels toepassen zoals commando's overslaan, anonimiseren /ano, bericht overslaan voor specifieke gebruikersgroepen ect..."
+      },
+      "discord_rcon": {
+        "title": "Discord-Rcon",
+        "description": "Heb je geen toegang tot je serverconsole? Geen probleem, je kunt de bot gebruiken om commando's op je server te draaien vanaf je discord gilden. Alleen discord Admins met superadmin rang kunnen deze functie gebruiken."
+      },
+      "custom_link": {
+        "title": "Aangepaste koppeling",
+        "description": "U kunt een aangepaste link maken voor uw discord gilden, het is een goede manier om community link te delen, zoals uw website, uw stoomgroep, uw workshop ect... Gebruik deze links om de toegang tot uw community resources te vereenvoudigen."
+      },
+      "user_verification": {
+        "title": "Controle van de gebruiker",
+        "description": "Eigenlijk de belangrijkste eigenschap van de bot, het stelt u in staat om uw gebruikers te dwingen om hun Discord-account te verifiëren met hun Steam-account, het is een goede manier om te voorkomen dat trollen, bots en vermijdaars toetreden tot uw server. Ook, het stelt ons in staat om uw gebruikers te synchroniseren met uw server, zodat u andere gesynchroniseerde functie zoals gebruikersinformatie kunt gebruiken (naam, statistieken, rang, waarschuwing, ban ect...)."
+      },
+      "statistics": {
+        "title": "Statistieken",
+        "description": "De bot kan statistieken verzamelen over uw server, zoals het aantal spelers, het aantal bans, het aantal warns ect... Je kunt de statistieken in het dashboard zien, en je kunt ook het statistiekkanaal inschakelen, zodat de bot een bericht in een kanaal zal sturen wanneer een gebruiker verboden ect krijgt..."
+      },
+      "logs": {
+        "title": "Logs",
+        "description": "De bot kan een aantal acties van uw gebruikers loggen, zoals wanneer ze toetreden of uw server verlaten, wanneer ze worden verboden of geschopt, wanneer ze gewaarschuwd ect... U kunt de logs in het dashboard zien, en u kunt ook het logskanaal inschakelen, zodat de bot een bericht in een kanaal zal sturen wanneer een gebruiker verboden ect krijgt..."
+      },
+      "player_database": {
+        "title": "Spelersdatabase",
+        "description": "Bekijk alle spelers die zich bij uw server hebben aangesloten, u kunt hun naam, stoom-id, discord-id, join-datum, laatste join-datum, totale tijd die op uw server, totale waarschuwingen, totale verbod ect... U kunt ook zoeken naar een speler op naam, stoom-id of discord-id."
+      }
+    }
+  },
+  "dashboard": {
+    "server": {
+      "warns": {
+        "title": "Waarschuwt",
+        "description": "Lijst van alle waarschuwingen op uw server"
+      },
+      "bugsReport": {
+        "title": "Rapport over bugs",
+        "description": "Lijst van alle bugs die op uw server zijn gemeld"
+      },
+      "chat": {
+        "chats": "Gesprekken",
+        "set_channel": "Stel een kanaal in om de chats tussen uw server en Discord te synchroniseren.",
+        "premium_sync": "Synchronisatie beperkt tot 'Gmod to Discord' voor gratis gebruikers.",
+        "no_sync_chats": "Geen synchrone chats",
+        "sync_direction": "Chatrichting van de synchronisatie",
+        "prevent_chat_ping": "Chatten Ping voorkomen",
+        "chats_channels": "Werkelijke chatskanalen",
+        "from_discord_to_gmod": "Van Discord naar Gmod",
+        "from_gmod_to_discord": "Van Gmod naar Discord",
+        "both_ways": "Beide manieren",
+        "select_channel": "Kanaal selecteren",
+        "remove_channel": "Kanaal verwijderen",
+        "gmod_to_discord_filter": "Gmod naar Discord Filter",
+        "add_rules": "Voeg specifieke regels toe om de berichten die van Gmod naar Discord zijn verzonden te filteren.",
+        "default_behavior": "Comportement naar Standaard:",
+        "relay_all_messages": "Alle berichten opnieuw ophalen",
+        "block_all_messages": "Alle berichten blokkeren",
+        "element": "Element",
+        "operator": "Operator",
+        "trigger": "Trigger",
+        "actions_on_match": "Acties op het gebied van overeenstemming",
+        "active": "Actief",
+        "actions": "Acties",
+        "loading": "Laden...",
+        "edit_rule": "Regel bewerken",
+        "message": "Bericht",
+        "user_group": "Gebruikersgroep",
+        "steam_id_64": "Stoom-ID 64",
+        "team_name": "Naam van het team",
+        "contain": "Bevat",
+        "not_contain": "Niet bevatten",
+        "equal": "Gelijk",
+        "not_equal": "Niet gelijk",
+        "start_with": "Beginnen met",
+        "end_with": "Eindig met",
+        "block": "Blok",
+        "relay": "Relais",
+        "anonymize": "Anonimeren",
+        "yes": "Ja.",
+        "no": "Nee",
+        "save": "Opslaan",
+        "edit": "Bewerken",
+        "delete": "Verwijderen",
+        "add_rule": "Regel toevoegen"
+      },
+      "pseudo": {
+        "pseudo": "Pseudo",
+        "editRole": "Rol bewerken",
+        "userGroup": "Gebruikersgroep",
+        "name": "Naam",
+        "prefix": "Voorvoegsel",
+        "active": "Actief",
+        "yes": "Ja.",
+        "no": "Nee",
+        "save": "Opslaan",
+        "editFormat": "Formaat bewerken",
+        "variables": "Variabelen",
+        "playerName": "Spelernaam",
+        "playerSteamID64": "Speler SteamID64",
+        "rolePrefix": "Rolvoorvoegsel",
+        "roleName": "Rolnaam",
+        "format": "Formaat",
+        "preview": "Voorbeeld",
+        "pseudoSyncDirection": "Pseudo-synchronisatierichting",
+        "fromDiscordToGmod": "Van Discord naar Gmod",
+        "fromGmodToDiscord": "Van Gmod naar Discord",
+        "bothWays": "Beide manieren",
+        "disable": "Uitschakelen",
+        "description": "Definieer de pseudo die gesynchroniseerd zijn met uw Discord-server.",
+        "info": "Houd er rekening mee dat Guild Owner geen pseudo updates zal hebben.",
+        "premium": "Synchronisatie beperkt tot 'Gmod to Discord' voor gratis gebruikers.",
+        "rolePrefixDescription": "Definieer voorvoegsels voor elke gebruikersgroep.",
+        "rolePrefixPremium": "Beperkt tot 3 rollen aanpassing voor gratis gebruikers.",
+        "actions": "Acties",
+        "edit": "Bewerken",
+        "delete": "Verwijderen",
+        "addRole": "Rol toevoegen"
+      },
+      "logs": {
+        "unknown": "Onbekend",
+        "logNames": {
+          "player_connect": "Speler verbinden",
+          "player_disconnect": "Speler verbreken",
+          "player_death": "Spelerdood",
+          "player_spawn": "Speler Spawn",
+          "player_ready": "Speler klaar",
+          "player_change_team": "Speler verandert van team",
+          "player_change_group": "Speler Groep wijzigen",
+          "player_change_name": "Speler naam wijzigen",
+          "player_say": "Speler Zeg",
+          "player_give": "Speler geven",
+          "player_spawn_object": "Speler Spawn-object",
+          "player_hurt": "Speler gewond",
+          "player_initial_spawn": "Speler Initial Spawn",
+          "server_start": "Serverstart",
+          "server_stop": "Serverstop",
+          "dark_rp_drop_money": "Donkere RP-valgeld",
+          "dark_rp_picked_up_money": "DarkRP opgehaald geld",
+          "dark_rp_picked_up_cheque": "DarkRP Cheque opgepikt",
+          "ch_atm_send_money": "Geldautomaat verzenden",
+          "ch_atm_receive_money": "Geldautomaten ontvangen",
+          "ch_atm_take_money": "Geldautomaat nemen geld",
+          "ch_atm_withdraw_money": "Geldautomaten",
+          "ch_atm_deposit_money": "Geld van geldautomaten",
+          "player_warned": "Speler gewaarschuwd",
+          "player_ban": "Spelerverbod",
+          "player_unban": "Speler unban",
+          "player_kick": "Speler Kick"
+        },
+        "dark_rp": {
+          "has_dropped": "is gevallen",
+          "has_picked_up": "heeft opgenomen",
+          "has_picked_up_cheque": "heeft cheque opgehaald"
+        },
+        "ch_atm": {
+          "has_sent": "heeft verzonden",
+          "has_received": "ontvangen",
+          "has_taken": "heeft genomen",
+          "has_withdrawn": "heeft zich teruggetrokken",
+          "has_deposited": "heeft gedeponeerd"
+        },
+        "player_warned": {
+          "has_been_warned": "is gewaarschuwd"
+        },
+        "player_ban": {
+          "has_been_banned": "is verboden"
+        },
+        "player_unban": {
+          "has_been_unbanned": "is niet verboden"
+        },
+        "player_kick": {
+          "has_been_kicked": "is geschopt"
+        },
+        "player_say": {
+          "say": "zeggen"
+        },
+        "player_disconnect": {
+          "has_disconnected": "heeft afgesloten"
+        },
+        "player_spawn": {
+          "has_spawned": "heeft voortgebracht"
+        },
+        "player_death": {
+          "has_been_killed_by": "is gedood door"
+        },
+        "player_ready": {
+          "is_ready": "is klaar"
+        },
+        "player_connect": {
+          "is_connecting_from": "is verbinden van"
+        },
+        "player_change_team": {
+          "has_changed_team_from": "is team veranderd van",
+          "to": "tot"
+        },
+        "player_change_group": {
+          "has_changed_group_from": "heeft groep veranderd van",
+          "to": "tot"
+        },
+        "player_change_name": {
+          "has_changed_name_from": "heeft naam veranderd van",
+          "to": "tot"
+        },
+        "player_give": {
+          "get": "krijgen"
+        },
+        "player_spawn_object": {
+          "has_spawned": "heeft voortgebracht"
+        },
+        "player_hurt": {
+          "has_been_hurt_by": "is gewond door",
+          "for": "voor",
+          "damage": "schade"
+        },
+        "player_initial_spawn": {
+          "has_spawned_first_time": "voor het eerst heeft voortgebracht"
+        },
+        "server_start": {
+          "started": "Server is gestart"
+        },
+        "server_stop": {
+          "stopped": "Server is gestopt"
+        },
+        "tooltip": {
+          "show_more": "Meer tonen",
+          "download": "Downloaden"
+        },
+        "log_filename_prefix": "log-",
+        "title": {
+          "logs_channel": "Logs-kanaal",
+          "logs": "Logs"
+        },
+        "description": {
+          "logs_channel": "Stel een kanaal in om de logs te synchroniseren tussen uw server en Discord.",
+          "logs": "Let op de logs van je server."
+        },
+        "label": {
+          "chats_channels": "Chatskanalen:",
+          "hide_ip": "IP verbergen in discord logs:",
+          "attach_log_file": "Loginformatiebestand bijvoegen:"
+        },
+        "no_logs_channel": "Geen logs kanaal",
+        "button": {
+          "remove_channel": "Kanaal verwijderen",
+          "select_channel": "Kanaal selecteren"
+        },
+        "premium": "Beperkt tot 500 laatste logs voor gratis gebruikers.",
+        "table_headers": {
+          "date": "Datum",
+          "category": "Categorie",
+          "log": "Log",
+          "actions": "Acties"
+        }
+      },
+      "date": "Datum",
+      "admin": "Beheerder",
+      "reason": "Reden",
+      "player": "Speler",
+      "status": {
+        "show_player_chart": "Spelerdiagram tonen",
+        "format": "Opmaak van spelerslijst",
+        "title": "Serverstatus",
+        "premium_only": "Deze functie is alleen beschikbaar voor premium gebruikers.",
+        "premium": "Beperkt tot 3 knoppen voor gratis gebruikers.",
+        "playerName": "Naam",
+        "playerSteamID64": "Stoom-ID 64",
+        "team": "Team",
+        "userGroup": "Gebruikersgroep",
+        "connectTime": "Tijd verbinden",
+        "kills": "Doodt",
+        "deaths": "Sterfte",
+        "position": "Positie",
+        "angle": "Hoek",
+        "fps": "FPS",
+        "ping": "Ping",
+        "adjustedTime": "Aangepaste tijd",
+        "branch": "Branch",
+        "status_message": "Statusbericht",
+        "status_buttons": "Statusknoppen",
+        "button_icon": "Pictogram",
+        "active": "Actief",
+        "actions": "Acties",
+        "remove_status": "Status verwijderen",
+        "description": "Hier kunt u uw server status bericht en knoppen beheren.",
+        "status_buttons_description": "Hulpprogrammaknoppen toevoegen aan uw statusbericht van de server.",
+        "status_message_description": "Configureer het statusbericht dat op uw Discord-server wordt weergegeven.",
+        "buttons_panel_title": "Statusknoppen",
+        "message_panel_title": "Statusbericht",
+        "no_status_message": "Geen statusbericht",
+        "send_status": "Status versturen",
+        "show_player_list": "Spelerslijst tonen",
+        "edit_button": "Knop bewerken",
+        "add_button": "Knop toevoegen",
+        "delete_button": "Knop verwijderen",
+        "save_button": "Opslaan",
+        "cancel_button": "Annuleren",
+        "button_name": "Naam",
+        "button_url": "URL",
+        "button_emoji": "Emoji",
+        "button_style": "Stijl",
+        "button_style_primary": "Primair",
+        "button_style_secondary": "Secundair",
+        "button_style_success": "Succes",
+        "button_style_danger": "Gevaar",
+        "select_channel": "Kanaal selecteren",
+        "loading": "Laden...",
+        "failed_to_load": "Laden mislukt",
+        "no_buttons": "Geen knoppen ingesteld",
+        "confirmation": "Weet je het zeker?",
+        "yes": "Ja.",
+        "no": "Nee",
+        "online": "Online",
+        "offline": "Offline",
+        "players": "Spelers",
+        "map": "Kaart",
+        "gamemode": "Spelmodus",
+        "connect": "Verbinden",
+        "workshop": "Workshop",
+        "store": "Opslaan",
+        "status_message_placeholder": "Statusberichtinhoud...",
+        "status_message_preview": "Voorbeeld",
+        "delete_confirmation": "Weet u zeker dat u deze knop wilt verwijderen?",
+        "premium_limit": "Beperkt tot 2 knoppen voor gratis gebruikers",
+        "required_field": "Dit veld is vereist",
+        "invalid_url": "Ongeldig URL-formaat"
+      },
+      "importance": "Belang",
+      "description": "Omschrijving",
+      "actions": "Acties",
+      "errors": {
+        "title": "Fouten",
+        "description": "Bekijk de fouten van uw server.",
+        "premium": "Beperkt tot 50 laatste fouten voor gratis gebruikers.",
+        "error_details": {
+          "timestamp": "Datum",
+          "addon": "Adon",
+          "realm": "Rijk",
+          "count": "Aantal",
+          "message": "Bericht"
+        },
+        "actions": {
+          "actions": "Acties"
+        }
+      },
+      "logs_trigger": {
+        "edit_trigger": "Trigger bewerken",
+        "trigger": "Trigger",
+        "triggers": "Drempels",
+        "add_trigger": "Trigger toevoegen",
+        "add": "Toevoegen",
+        "save": "Opslaan",
+        "edit": "Bewerken",
+        "compare": "Vergelijken",
+        "operator": "Operator",
+        "operator_list": {
+          "greaterThan": "Groter dan",
+          "lessThan": "Minder dan",
+          "equal": "Gelijk",
+          "notEqual": "Niet gelijk",
+          "contain": "Bevat",
+          "notContain": "Niet bevatten",
+          "startWith": "Beginnen met",
+          "endWith": "Eindig met"
+        },
+        "value": "Waarde",
+        "reply_action": "Actie beantwoorden",
+        "title": {
+          "logs_channel": "Logstrigger"
+        },
+        "description": {
+          "logs_channel": "Definieer aangepaste acties voor specifieke gebeurtenissen op uw server. U kunt de acties aanpassen aan uw behoeften."
+        },
+        "action": "Actie",
+        "addTrigger": "Trigger toevoegen",
+        "compare_list": {
+          "amount": "Bedrag"
+        },
+        "sendMessageInChannel": "Bericht in kanaal verzenden",
+        "channel": "Kanaal",
+        "message": "Bericht",
+        "message_show_vars": "Vars tonen",
+        "message_show_vars_description": "U kunt elke var van de log gebruiken door {{data.path.to.var}} te gebruiken, hier is een lijst van de vars die u kunt gebruiken",
+        "steamID64": "SteamID64",
+        "name": "Naam",
+        "team": "Team",
+        "amount": "Bedrag",
+        "category": "Categorie"
+      },
+      "screenshots": {
+        "title": "Schermafbeeldingen",
+        "description": "Configureer waar schermafdrukken van uw server verzonden zullen worden",
+        "settings_title": "Instellingen schermafdruk",
+        "settings_description": "Het kanaal instellen waar screenshots worden verzonden",
+        "no_channel": "Geen kanaal geselecteerd",
+        "current_channel": "Huidig kanaal",
+        "select_channel": "Kanaal selecteren",
+        "delete_channel": "Kanaal verwijderen",
+        "loading": "Laden...",
+        "failed_to_load": "Laden van schermafdrukinstellingen is mislukt",
+        "save_changes": "Wijzigingen opslaan",
+        "cancel": "Annuleren",
+        "success_message": "Screenshot-instellingen succesvol bijgewerkt",
+        "error_message": "Bijwerken van screenshot-instellingen is mislukt",
+        "confirmation": "Weet je het zeker?",
+        "yes": "Ja.",
+        "no": "Nee",
+        "send_screenshots": "Schermafdrukken versturen",
+        "delete_confirmation": "Weet u zeker dat u het schermafdrukkanaal wilt verwijderen?",
+        "select_new_channel": "Selecteer een nieuw kanaal waar screenshots worden verzonden"
+      },
+      "screenshots_list": {
+        "title": "Alle schermafbeeldingen",
+        "description": "Alle screenshots op uw server bekijken",
+        "no_title": "Geen titel",
+        "date": "Datum",
+        "player": "Speler",
+        "no_name": "Geen naam",
+        "steam_id64": "Stoom-ID 64",
+        "no_steam_id": "Geen Steam-ID",
+        "steamID64": "Stoom-ID 64",
+        "no_steamID64": "Geen Steam ID 64",
+        "information": "Informatie",
+        "player_metadata": "Spelermetadata",
+        "end_of_list": "Einde lijst",
+        "capture_metadata": "Metadata vastleggen"
+      },
+      "edit_player": {
+        "title": "Speler bewerken",
+        "bypass_maintenance": "Onderhoud door Pass",
+        "yes": "Ja.",
+        "no": "Nee",
+        "save": "Opslaan"
+      },
+      "players_database": {
+        "title": "Spelersdatabase",
+        "description": "Lijst van alle spelers op de server",
+        "name": "Naam",
+        "rank": "Rang",
+        "total_time": "Totale tijd",
+        "total_connect": "Totaal Verbinding",
+        "bypass_maintenance": "Omleidingsonderhoud",
+        "actions": "Acties",
+        "steam": "Stoom",
+        "edit": "Bewerken"
+      },
+      "vote": {
+        "title": "Stemming",
+        "description": "Voer stemmeldingen in voor uw server",
+        "vote_channel": "Stemkanaal",
+        "no_channel_selected": "Geen kanaal geselecteerd",
+        "select_channel": "Kanaal selecteren",
+        "delete_channel": "Kanaal verwijderen",
+        "settings_title": "Steminstellingen",
+        "settings_description": "Configureren waar stemmeldingen verzonden zullen worden",
+        "loading": "Laden...",
+        "failed_to_load": "Kon steminstellingen niet laden",
+        "save_changes": "Wijzigingen opslaan",
+        "cancel": "Annuleren",
+        "success_message": "Steminstellingen succesvol bijgewerkt",
+        "error_message": "Bijwerken van steminstellingen is mislukt",
+        "confirmation": "Weet je het zeker?",
+        "yes": "Ja.",
+        "no": "Nee",
+        "current_channel": "Huidig kanaal",
+        "select_new_channel": "Selecteer een nieuw kanaal",
+        "send_screenshots": "Schermafdrukken versturen",
+        "delete_confirmation": "Weet u zeker dat u het stemkanaal wilt verwijderen?"
+      },
+      "servers_selector": {
+        "premium_feature_message": "Het gratis plan staat je alleen toe om één server te beheren.",
+        "loading": "Laden...",
+        "select_server": "Selecteer een server om te beheren",
+        "manage_server": "Beheer",
+        "create_server": "Server aanmaken"
+      },
+      "server_informations": {
+        "informations": "Informatie",
+        "server_logo": "Logo",
+        "server_id": "ID",
+        "connection_status_title": "Verbindingsstatus",
+        "connection_status_description": "Hier kunt u de verbindingsstatus van uw server zien.",
+        "http_request_title": "HTTP-verzoek",
+        "http_request_fallback_part1": "We hebben geen verzoek ontvangen van uw server in de laatste minuut, zorg ervoor dat de",
+        "http_request_fallback_part2": "correct en hebben volledig geconfigureerd uw server id & token, lees de",
+        "http_request_fallback_part3": "voor meer informatie.",
+        "http_request_success": "Gefeliciteerd met de juiste instelling van uw server kunt u deze nu instellen.",
+        "websocket_title": "WebSocket",
+        "websocket_fallback_part1": "Uw server is niet verbonden met de websocket, geavanceerde functies zijn niet beschikbaar, om ze te gebruiken moet u de",
+        "websocket_fallback_part2": "op uw server.",
+        "websocket_success": "Gefeliciteerd met uw succesvolle verbinding met uw server in websocket, geavanceerde functies zijn nu beschikbaar.",
+        "version_title": "Versie",
+        "version_fallback_http_part1": "We kunnen de versie van uw server niet controleren, zorg ervoor dat de",
+        "version_fallback_http_part2": "correct en hebben volledig geconfigureerd uw server id & token, lees de",
+        "version_fallback_http_part3": "voor meer informatie.",
+        "version_fallback_outdated": "Uw server is verouderd, nieuwe functies werken niet goed, u moet het bijwerken. Als u de Workshop versie gebruikt, herstart u eenvoudig uw server en zal deze automatisch worden bijgewerkt. Maar als u de Github repo of een ongecomprimeerde workshopversie gebruikt, moet u het handmatig bijwerken.",
+        "version_success": "Geweldig uw server is up-to-date en zal perfect werken met de nieuwste functies.",
+        "workshop_content": "inhoud van de workshop",
+        "documentation": "documentatie",
+        "gwsocket_module": "GWSocket-module",
+        "reset_server_token": "Servertoets resetten",
+        "delete_confirmation": "Weet u zeker dat u deze server wilt verwijderen?",
+        "edit_server": "Server bewerken",
+        "delete_server": "Server verwijderen",
+        "show_token": "Token tonen",
+        "hide_token": "Token verbergen",
+        "save_changes": "Wijzigingen opslaan",
+        "cancel": "Annuleren",
+        "server_name": "Naam",
+        "server_ip": "IP",
+        "server_port": "Haven",
+        "server_token": "Token",
+        "server_status": "Status",
+        "server_online": "Online",
+        "server_offline": "Offline",
+        "server_players": "Spelers",
+        "server_map": "Kaart",
+        "server_game_mode": "Spelmodus",
+        "server_uptime": "Uptime",
+        "server_actions": "Acties",
+        "server_edit": "Bewerken",
+        "server_delete": "Verwijderen",
+        "server_save": "Opslaan",
+        "server_cancel": "Annuleren",
+        "server_public": "Openbaar",
+        "loading": "Laden...",
+        "failed_to_load": "Kon de serverinformatie niet laden",
+        "add_server": "Server toevoegen",
+        "server_details": "Serverdetails",
+        "server_settings": "Serverinstellingen",
+        "server_management": "Serverbeheer",
+        "informations_description": "Hier kunt u enkele informatie over uw server zien en enkele daarvan bewerken.",
+        "server_informations": "Informatie",
+        "server_description": "Omschrijving",
+        "no": "Nee",
+        "yes": "Ja."
+      },
+      "roles": {
+        "premium_feature_3": "Beperkt tot 3 gesynchroniseerde rollen voor gratis gebruikers",
+        "title": "Serverrollen",
+        "description": "Beheer rolsynchronisatie tussen uw Discord-server en gameserver.",
+        "sync_direction": "Richting synchroniseren",
+        "sync_direction_description": "Kies hoe rollen moeten worden gesynchroniseerd tussen Discord en de gameserver.",
+        "server_to_discord": "Server naar Discord",
+        "discord_to_server": "Discord naar server",
+        "both_directions": "Beide richtingen",
+        "role_sync": "Rol synchroniseren",
+        "role_sync_description": "Configureer welke Discord rollen overeenkomen met gebruikersgroepen van de gameserver.",
+        "add_role_sync": "Rolsynchronisatie toevoegen",
+        "edit_role_sync": "Rol synchroniseren",
+        "delete_role_sync": "Rolsynchronisatie verwijderen",
+        "select_role": "Selecteer rol",
+        "select_user_group": "Gebruikersgroep selecteren",
+        "enable_sync": "Synchronisatie inschakelen",
+        "save_changes": "Wijzigingen opslaan",
+        "cancel": "Annuleren",
+        "loading": "Laden...",
+        "failed_to_load": "Laden van rolconfiguratie is mislukt",
+        "no_roles_configured": "Geen rollen geconfigureerd voor synchronisatie",
+        "role_name": "Rolnaam",
+        "user_group": "Gebruikersgroep",
+        "status": "Status",
+        "actions": "Acties",
+        "enabled": "Ingeschakeld",
+        "disabled": "Uitgeschakeld",
+        "yes": "Ja.",
+        "no": "Nee",
+        "delete_confirmation": "Weet u zeker dat u deze rolsynchronisatie wilt verwijderen?",
+        "premium_feature": "Role synchronisatie is een premium functie",
+        "premium_feature_limited": "Beperkt tot {1} teamrollen voor vrije gebruikers.",
+        "websocket_required": "WebSocket verbinding is vereist voor rolsynchronisatie",
+        "error_occurred": "Er is een fout opgetreden bij het ophalen van de pseudorichting."
+      },
+      "config": {
+        "title": "Configuration",
+        "description": "Manage the in game configuration of this server.",
+        "error_occurred": "Er is een fout opgetreden bij het ophalen van de serverconfiguratie.",
+        "default": "Standaard",
+        "add_admin_rank": "Add rank",
+        "settings": {
+          "ig_syncBan": {
+            "title": "Bans synchroniseren",
+            "description": "Synchroniseer spelbans met Discord-bans (bidirectioneel)."
+          },
+          "ig_syncTimeout": {
+            "title": "Timeouts synchroniseren",
+            "description": "Synchroniseer spel-timeouts met Discord-timeouts (bidirectioneel)."
+          },
+          "ig_syncKick": {
+            "title": "Kicks synchroniseren",
+            "description": "Synchroniseer spelkicks met Discord-kicks (bidirectioneel)."
+          },
+          "ig_filterOnBan": {
+            "title": "Filteren op ban",
+            "description": "Filter spelers op basis van banstatus."
+          },
+          "ig_redownloadMaterials": {
+            "title": "Materialen opnieuw downloaden",
+            "description": "Add-on materialen opnieuw downloaden (gebruik als materialen kapot zijn)."
+          },
+          "ig_debug": {
+            "title": "Debug-modus",
+            "description": "Toon debug-informatie in de serverconsole."
+          },
+          "ig_forcePlayerLink": {
+            "title": "Speler koppeling afdwingen",
+            "description": "Vereis dat spelers Discord met Steam koppelen voordat ze spelen."
+          },
+          "ig_verifyOnJoin": {
+            "title": "Verifiëren bij toetreden",
+            "description": "Verifieer spelers wanneer ze toetreden of klaar zijn."
+          },
+          "ig_verifyOnReadyKickTime": {
+            "title": "Verificatie kick vertraging (sec)",
+            "description": "Seconden voordat niet-geverifieerde spelers worden uitgezet (0 om uit te schakelen)."
+          },
+          "ig_verifyFamilySharing": {
+            "title": "Familie delen verifiëren",
+            "description": "Verifieer de Steam Family Sharing status van spelers."
+          },
+          "ig_clientBranch": {
+            "title": "Clienttak",
+            "description": "Vereiste client add-on tak (none, dev, prerelease, x86-64, any)."
+          },
+          "ig_supportLink": {
+            "title": "Ondersteuningskoppeling",
+            "description": "Ondersteuningskoppeling weergegeven wanneer een speler niet aan de vereisten voldoet."
+          },
+          "ig_maintenance": {
+            "title": "Onderhoudsmodus",
+            "description": "Sta alleen spelers met onderhoudsby pass toe om deel te nemen (speler > bewerken > bypass)"
+          },
+          "ig_language": {
+            "title": "Add-on taal",
+            "description": "Taal die door de add-on wordt gebruikt."
+          },
+          "ig_logTimestamp": {
+            "title": "Logboektijdstempelindeling",
+            "description": "Tijdstempelindeling voor logboeken."
+          },
+          "ig_adminRank": {
+            "title": "Admin-rangen",
+            "description": "Rangen die gemachtigd zijn om de configuratie te bewerken of de onderhoudsmodus over te slaan."
+          }
+        }
+      },
+      "team_roles": {
+        "error_occurred": "Er is een fout opgetreden bij het ophalen van de rollensynchronisatie.",
+        "select_role": "Selecteer rol",
+        "loading": "Laden...",
+        "edit_role_sync": "Rol bewerken",
+        "role_name": "Discord Rol",
+        "team_name": "Naam van het team",
+        "enable_sync": "Actief",
+        "yes": "Ja.",
+        "no": "Nee",
+        "save_changes": "Opslaan",
+        "role": "Teamrol",
+        "role_sync_description": "Voeg tijdelijke rollen toe aan uw Discord-leden wanneer ze lid worden van een specifiek team in uw gameserver.",
+        "premium_feature_limited": "Beperkt tot {1} teamrollen voor vrije gebruikers.",
+        "status": "Actief",
+        "actions": "Acties",
+        "add_role_sync": "Teamrol toevoegen",
+        "delete_role_sync": "Rolsynchronisatie verwijderen"
+      }
+    },
+    "guild": {
+      "select": {
+        "select_guild": "Selecteer een Guild om te beheren / voeg de Bot toe aan",
+        "failed_to_fetch_guilds": "Kon uw gilden niet ophalen",
+        "manage_guild": "Guild beheren",
+        "create_guild": "Guild aanmaken",
+        "owner": "Eigenaar",
+        "admin": "Beheerder",
+        "manage": "Beheer",
+        "add_bot": "Bot toevoegen"
+      },
+      "auto_role": {
+        "actions": "Acties",
+        "title": "Autorollen",
+        "description": "Beheer de rollen die automatisch worden toegewezen aan gebruikers wanneer ze toetreden tot de gilde.",
+        "admin_panel_title": "Autorolinstellingen",
+        "loading": "Laden...",
+        "no_roles": "Geen automatische rollen geconfigureerd.",
+        "role_name": "Rolnaam",
+        "edit_button": "Bewerken",
+        "modal_title": "Automatisch bewerken",
+        "modal_description": "Bewerk de instellingen voor deze autorol.",
+        "close_button": "Sluiten",
+        "failed_to_load": "Kon de links niet laden",
+        "add_role": "Rol toevoegen"
+      },
+      "verification": {
+        "check_button": "Alle rollen controleren",
+        "check": "Controleer alle leden en voer het verificatieproces uit. max. 1000 leden.",
+        "select_role_modal_title": "Selecteer rol",
+        "loading": "Laden...",
+        "select_role": "Selecteer een rol",
+        "edit_role_modal_title": "Rol bewerken",
+        "role_label": "Rol",
+        "action_on_verification_label": "Actie inzake verificatie",
+        "give_role": "Rol geven",
+        "remove_role": "Rol verwijderen",
+        "active_label": "Actief",
+        "yes": "Ja.",
+        "no": "Nee",
+        "save_button": "Opslaan",
+        "verification_panel_title": "Verificatie",
+        "verification_panel_description": "Stel het verificatiesysteem in voor uw server en kies de rol om te geven / verwijderen wanneer een gebruiker wordt geverifieerd.",
+        "verification_message_label": "Verificatiebericht:",
+        "no_verification_message": "Geen verificatiebericht",
+        "dont_send_verification_message_label": "Verzend geen verificatiebericht in DM",
+        "dont_join_support_guild_message_label": "Niet automatisch gebruiker bij support gilde laten aansluiten",
+        "send_verification_message_button": "Verificatiebericht verzenden",
+        "delete_verification_message_button": "Verificatiebericht verwijderen",
+        "verification_roles_panel_title": "Verificatiefuncties",
+        "verification_roles_panel_description": "Hier kunt u de rollen instellen die worden gegeven of verwijderd wanneer een gebruiker wordt geverifieerd.",
+        "premium_limit": "Beperkt tot 2 rollen voor gratis gebruikers.",
+        "role_column": "Rol",
+        "action_on_verification_column": "Actie inzake verificatie",
+        "active_column": "Actief",
+        "actions_column": "Acties",
+        "edit_tooltip": "Bewerken",
+        "delete_tooltip": "Verwijderen",
+        "failed_to_load_links": "Kon de links niet laden",
+        "add_role_button": "Rol toevoegen"
+      },
+      "information": {
+        "title": "Informatie",
+        "description": "Hier kunt u enkele informatie over uw gilde zien, en sommige daarvan bewerken.",
+        "guild_name": "Guildnaam",
+        "guild_id": "Guild ID",
+        "admins": "Beheerders",
+        "premium": "Premie",
+        "warning": "Wees voorzichtig, beheerders kunnen de bot beheren en dus wijzigingen aanbrengen aan uw Discord Guild en uw Garry's Mod Server.",
+        "activate_gmod_store_premium": "Gmod Store Premium activeren",
+        "deactivate_gmod_store_premium": "Gmod Store Premium deactiveren",
+        "reinvite_main_bot": "Voordat u de Gmod Store Premium verwijdert, moet u de hoofdbot opnieuw uitnodigen naar uw gilde.",
+        "invite_main_bot": "Uitnodigen hoofdbot"
+      },
+      "bot": {
+        "custom_bot": "Aangepaste bot",
+        "feature_unavailable": "Deze functie is alleen beschikbaar voor GmodStore's aangepaste bots.",
+        "get_custom_bot": "Een aangepaste bot kopen",
+        "edit_custom_bot": "Aangepaste bot bewerken",
+        "setup_custom_bot": "Aangepaste bot instellen",
+        "how_to_setup": "Hoe een aangepaste bot instellen:",
+        "create_app": "Een app aanmaken op",
+        "go_to_bot_tab": "Ga naar het tabblad bot",
+        "enable_x": "\"{1}' inschakelen",
+        "reset_token": "Token resetten",
+        "copy_token": "Kopieer het token",
+        "name": "Naam",
+        "avatar": "Avatar",
+        "status": "Status",
+        "refresh_every_30s": "Verversen om de 30 jaar",
+        "save": "Opslaan",
+        "join_guild": "Guild lid worden",
+        "loading": "Laden...",
+        "disabled": "Uitgeschakeld",
+        "guildMemberCount": "Aantal gilden-leden tonen",
+        "playerCount": "Aantal spelers tonen",
+        "rotate": "Alternatieve getoonde informatie",
+        "unknown": "Onbekend",
+        "edit_bot_info": "Bewerk de botinformatie.",
+        "token": "Token"
+      },
+      "links": {
+        "title": "Links",
+        "description": "Maak snelkoppelingen voor uw serverinformatie.",
+        "premium": "Beperkt tot 2 links voor gratis gebruikers.",
+        "alias": "Alias",
+        "url": "URL",
+        "active": "Actief",
+        "actions": "Acties",
+        "edit": "Bewerken",
+        "delete": "Verwijderen",
+        "failed_to_load": "Kon de links niet laden",
+        "add_link": "Verwijzing toevoegen",
+        "edit_link": "Verwijzing bewerken",
+        "save": "Opslaan",
+        "yes": "Ja.",
+        "no": "Nee"
+      }
+    },
+    "menu": {
+      "collapse": "Inklappen",
+      "back": "Terug",
+      "guilds": {
+        "informations": "Informatie",
+        "custom_bot": "Aangepaste bot",
+        "links": "Links",
+        "verification": "Verificatie",
+        "auto_role": "Auto-Role",
+        "suggestions": "Suggesties",
+        "tickets": "Tickets",
+        "servers": "Servers"
+      },
+      "servers": {
+        "informations": "Informatie",
+        "config": "Configuratie",
+        "status": "Status",
+        "roles": "Rol",
+        "chats": "Gesprekken",
+        "warns": "Waarschuwt",
+        "pseudo": "Pseudo",
+        "rewards": "Beloningen",
+        "players": "Spelers",
+        "logs": "Logs",
+        "errors": "Fouten",
+        "forwards": "Vooruit",
+        "bugs_report": "Rapport over bugs",
+        "screenshots": "Schermafbeeldingen",
+        "vote": "Stemming",
+        "streams": "Stroom",
+        "bans": "Verbod",
+        "tickets": "Tickets",
+        "teams": "Teams"
+      }
+    }
+  }
+}

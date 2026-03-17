@@ -1,10 +1,10 @@
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js';
-import { getTranslate } from '@gmod/core/utils/localizations.js';
 import { ActionRowBuilder, type ButtonInteraction, type MessageActionRowComponentBuilder } from 'discord.js';
 import { ButtonVerificationWebsite, getVerifiedMessageAnswer } from './discordMessages.js';
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
 import { verifyUser } from './discordModels.js';
 import prisma from '@gmod/infra-prisma';
+import { getTranslate } from './localizations.js';
 
 export async function handleVerifyInteraction(interaction: ButtonInteraction) {
   if (!interaction.isButton()) return;

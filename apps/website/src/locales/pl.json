@@ -1,0 +1,1041 @@
+{
+  "main": {
+    "click_if_not_redirected": "Cliquez ici si vous n'êtes pas redirigé.",
+    "dashboard": "Tableau de bord",
+    "add_bot": "Invitez le Bot",
+    "support": "Appui",
+    "premium": "Prime",
+    "services": "Services",
+    "links": "Liens",
+    "resources": "Ressources",
+    "documentation": "Documentation",
+    "login": "Connexion",
+    "logout": "Déconnexion",
+    "home": "Sommaire",
+    "guilds": "Guildes",
+    "servers": "Serveurs",
+    "users": "Utilisateurs",
+    "verified_users": "Utilisateurs vérifiés",
+    "account": "Compte",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "notifications": "Notifications",
+    "admin": "Administrateur",
+    "admin_dashboard": "Tableau de bord",
+    "servers_ranking": "Classement des serveurs",
+    "terms": "Conditions d'utilisation",
+    "privacy": "Politique de confidentialité",
+    "buy_premium": "Cette fonctionnalité est uniquement disponible pour les utilisateurs premium.",
+    "badge_New": "Nouveau",
+    "badge_Soon": "Bientôt",
+    "badge_Todo": "Todo",
+    "badge_Updated": "Mise à jour"
+  },
+  "header": {
+    "login": "Connexion avec le discorde"
+  },
+  "footer": {
+    "disclaimer": "Ce service n'est pas affilié à Discord, Steam, ou à toute autre plateforme ou jeux.",
+    "last_build_date": "Date de la dernière construction"
+  },
+  "account": {
+    "title": "Compte",
+    "discord": "Discorde",
+    "steam": "vapeur",
+    "gmodstore_purchase": "Achat de magasins Gmod",
+    "gmodstore_purchase_description": "Gérez votre prime achetée sur Gmod Store.",
+    "manage_sessions": "Gérer les sessions",
+    "manage_sessions_description": "Gérez vos séances actives.",
+    "manage_data": "Gérer les données",
+    "manage_data_description": "En conformité avec le RGPD, vous pouvez demander ou supprimer vos données.",
+    "id": "Numéro d'identification",
+    "link_steam_account": "Lien compte vapeur",
+    "buy_premium": "Acheter Premium",
+    "activate_on_guild": "Activer sur la guilde",
+    "active_sessions": "Sessions actives",
+    "session_id": "ID de la session",
+    "session_date": "Date de la session",
+    "ip": "IP",
+    "os": "Système d'exploitation",
+    "browser": "Navigateur",
+    "country": "Pays",
+    "actions": "Actions",
+    "delete_session": "Supprimer cette session",
+    "current_session": "Session en cours",
+    "data_requests": "Demandes de données",
+    "request_date": "Date de la demande",
+    "expiration_date": "Date d'expiration",
+    "status": "État",
+    "active": "Activité",
+    "expired": "Expiré",
+    "request_expired": "La demande a expiré",
+    "download_data": "Téléchargez vos données",
+    "loading_message": "Cela dépend de la taille de vos données, cela peut prendre un certain temps.",
+    "request_my_data": "Demande de mes données",
+    "delete_my_data": "Supprimer mes données",
+    "error_create_data_request": "Impossible de créer la requête de données"
+  },
+  "premium": {
+    "sync_chat": "Synchronisation",
+    "sync_chat_customisation": "Sync Chat - Personnalisation",
+    "server_status": "État du serveur",
+    "server_status_buttons_limit": "État du serveur - Limite des boutons",
+    "sync_player_name": "Synchroniser le nom du joueur",
+    "sync_player_name_customisation": "Synchronisation du nom du joueur - Personnalisation",
+    "player_stats": "Statistiques des joueurs",
+    "player_stats_custom": "Statistiques des joueurs - Statistiques personnalisées",
+    "screenshots": "Captures d'écran du lecteur",
+    "ig_report_bug": "Bug dans le rapport du jeu",
+    "team_vocal": "Équipe Vocal",
+    "server_status_alert": "État du serveur - Alerte",
+    "guild_link": "Liens de guilde",
+    "guild_link_limit": "Liens de guilde - Limite",
+    "logs_relay": "Relay des journaux de serveur",
+    "logs": "Registres WebPanel",
+    "players": "Base de données des joueurs",
+    "user_profiles": "Profils des utilisateurs",
+    "user_stats": "Statistiques des joueurs",
+    "user_stats_custom_value": "Statistiques des joueurs - Valeur personnalisée",
+    "leaderboards": "Tableau de classement des joueurs",
+    "servers": "Serveurs",
+    "sync_bans": "Bans de syntaxe",
+    "sync_roles": "Synchroniser le rôle",
+    "sync_roles_limit": "Synchroniser le rôle - Limite",
+    "sync_kicks": "Synchroniser les coups de pied",
+    "sync_warns": "Synchronisation",
+    "report_bugs": "Signaler les bogues",
+    "sync_team": "Synchroniser les rôles des équipes",
+    "sync_team_limit": "Synchroniser les rôles des équipes - Limite",
+    "guild_tickets": "Billets de guilde",
+    "guild_suggestions": "Suggestions de la Guilde",
+    "guild_verification": "Vérification de la guilde",
+    "guild_verification_role_limit": "Vérification de la guilde - Limite de rôle",
+    "force_ply_link": "Forcer le lien du joueur",
+    "maintenance_white_list": "Entretien",
+    "rcon": "Exécution RCON",
+    "reward": "Récompenses",
+    "free": "Gratuit",
+    "free_description": "Accédez à toutes les fonctionnalités de base",
+    "all_free_features": "Toutes les fonctionnalités gratuites",
+    "basic_support": "Appui de base",
+    "setup_server": "Configuration du serveur",
+    "subscribe": "Abonnez-vous",
+    "subscribe_description": "Accédez à toutes les fonctionnalités et à la personnalisation",
+    "all_premium_features": "Toutes les fonctionnalités Premium",
+    "premium_discord_role": "Rôle de discorde Premium",
+    "priority_support": "Appui prioritaire",
+    "subscribe_on_discord": "Abonnez-vous sur Discord",
+    "one_time": "Une fois",
+    "one_time_description": "Accédez à toutes les fonctionnalités et à la personnalisation",
+    "custom_bot": "Bot personnalisé",
+    "lifetime_access": "Accès à vie",
+    "buy_on_gmod_store": "Acheter sur Gmod Store",
+    "faq_question_1": "Quelles sont les différences entre la version gratuite et la version premium ?",
+    "faq_answer_1": "Gmod Integration Premium offre plus de fonctionnalités et de personnalisation et est un moyen de soutenir le projet. Vous pouvez voir la liste complète des fonctionnalités dans le tableau de comparaison des plans ci-dessus.",
+    "faq_question_2": "Qu'est-ce qu'un serveur et qu'est-ce qu'une guildes ?",
+    "faq_answer_2": "Le serveur de termes se réfère au serveur Mod de Garry et guilds se réfère à un serveur Discord guilds (alias discord server).",
+    "faq_question_3": "Que se passera-t-il si je perds mon abonnement premium ou si je ne le renouvelle pas ?",
+    "faq_answer_3": "Vous perdrez l'accès aux fonctionnalités premium et la personnalisation. Vous ne perdrez pas vos données mais ne pouvez plus y accéder.",
+    "faq_question_4": "Puis-je obtenir un remboursement ou annuler mon abonnement ?",
+    "faq_answer_4": "Nous utilisons Discord et GmodStore pour le traitement des paiements. Ainsi, nous vous redirigeons vers leurs politiques de remboursement respectives pour toute demande de remboursement ou d'annulation.",
+    "faq_question_5": "Qui peut acheter la version premium ?",
+    "faq_answer_5": "N'importe qui peut acheter la version mensuelle pour vos guildes directement sur Discord. La version à vie est disponible uniquement sur Gmod Store et peut être achetée une seule fois par guildes et seulement par un administrateur de guildes.",
+    "faq_question_6": "Combien de primes puis-je acheter ?",
+    "faq_answer_6": "Vous pouvez acheter une seule version à vie, mais vous pouvez acheter plusieurs versions mensuelles pour différentes guildes.",
+    "faq_question_7": "Puis-je transférer ma version premium à une autre guilde ?",
+    "faq_answer_7": "Seule la version à vie est transférable à une autre guildes, vous devez être administrateur des deux guildes.",
+    "faq_question_8": "Pourquoi tant de caractéristiques sont en développement ?",
+    "faq_answer_8": "Parce que je suis un développeur solo, le projet est assez nouveau et grand, donc j'ai besoin de temps pour développer toutes les fonctionnalités. Mais je travaille dur pour les rendre disponibles dès que possible.",
+    "server": "Serveur",
+    "utility": "Utilitaire",
+    "data_statistics": "Données et statistiques",
+    "security": "Sécurité",
+    "synchronization": "Synchronisation",
+    "title": "Prime",
+    "subtitle": "Mettre votre communauté au niveau supérieur avec personnalisation et plus de fonctionnalités",
+    "plans_comparison": "Comparaison des plans",
+    "category": "Catégorie",
+    "premium": "Prime",
+    "faq_title": "Foire aux questions",
+    "in_dev_tooltip": "Cette fonctionnalité est encore en développement et n'est pas disponible.",
+    "one_time_price": "guildes / durée de vie",
+    "subscribe_price": "guildes / mois",
+    "free_price": "gratuit, nada, rien, niente",
+    "guild_verification_free_value": "Message par défaut",
+    "guild_verification_premium_value": "Message personnalisé",
+    "infinite": "Infinite",
+    "guild_roles": "{1} rôles",
+    "guild_hours": "{1} heures",
+    "guild_server": "serveur {1}",
+    "guild_teams": "Équipes {1}"
+  },
+  "tools": {
+    "needRolesPerms": "Le bot n'a pas la permission d'attribuer ou de supprimer des rôles aux utilisateurs. Mettez le rôle bot plus haut dans la liste des rôles, rôles affectés : {1}",
+    "needWS_1": "Cette fonctionnalité nécessite une",
+    "needWS_2": "connexion au travail correctement.",
+    "needAddon": "Pour utiliser cette fonctionnalité, vous devez installer le(s) addon(s) :",
+    "needAddon2": "de travailler correctement.",
+    "upgrade_now": "Mise à jour maintenant",
+    "premium": "Prime",
+    "premium_only": "Prime seulement",
+    "select_channel": "Sélectionnez un canal"
+  },
+  "todo": {
+    "title": "Faire",
+    "description": "La page que vous recherchez n'existe pas encore."
+  },
+  "servers": {
+    "title": "Serveurs",
+    "vote": "Vote",
+    "players": "Joueurs",
+    "no_name": "Pas de nom",
+    "no_description": "Pas de description",
+    "offline": "Hors ligne",
+    "map": "Carte",
+    "game_mode": "Mode de jeu",
+    "ip": "IP"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "date": "Date",
+    "type": "Type",
+    "message": "Message",
+    "actions": "Actions",
+    "mark_as_read": "Marquer comme lus"
+  },
+  "home": {
+    "hero": {
+      "title": "Améliorez votre serveur discord avec le robot Mod le plus avancé de Garry",
+      "button": "Aller au tableau de bord"
+    },
+    "features": {
+      "server_status": {
+        "title": "État du serveur",
+        "description": "Afficher l'état réel de votre serveur, s'il est en ligne ou hors ligne, combien de joueurs sont sur, la carte réelle et le mode de jeu, puisque quand le serveur est en ligne ect... L'état du serveur est mis à jour toutes les 2 minutes, par défaut, un seul bouton (connect) est affiché si le serveur est en ligne, mais vous pouvez ajouter plus de boutons comme 'Shop' ou 'Workshop' dans le tableau de bord."
+      },
+      "user_profile": {
+        "title": "Profil de l'utilisateur",
+        "description": "Afficher le profil d'un utilisateur, il montre son nom, rang de bot, facteur de confiance, dernière date de vérification, discord id et steam id. Vous pouvez facilement interagir avec le profil d'utilisateur en cliquant sur les boutons, 'Steam Profile' ect..."
+      },
+      "chat_bridge": {
+        "title": "Dialoguer avec le pont",
+        "description": "Le bot peut relier le chat entre votre serveur et vos guildes de discorde, de sorte que vos utilisateurs peuvent se parler sans être sur la même plateforme. Vous pouvez choisir les canaux que vous voulez ponter, la direction du pont (de discorde au serveur, du serveur à discorde ou les deux) et appliquer des règles personnalisées comme sauter des commandes, anonymiser /ano, sauter des messages pour des groupes d'utilisateurs spécifiques ect..."
+      },
+      "discord_rcon": {
+        "title": "Concorde Rcon",
+        "description": "Vous n'avez pas accès à votre console serveur ? Aucun problème, vous pouvez utiliser le bot pour exécuter des commandes sur votre serveur à partir de vos guildes de discorde. Seuls les administrateurs de discorde avec rang superadmin peuvent utiliser cette fonctionnalité."
+      },
+      "custom_link": {
+        "title": "Lien personnalisé",
+        "description": "Vous pouvez créer un lien personnalisé pour vos guildes discordes, c'est une bonne façon de partager le lien communautaire, comme votre site Web, votre groupe de vapeur, votre atelier ect... Utilisez ces liens pour simplifier l'accès à vos ressources communautaires."
+      },
+      "user_verification": {
+        "title": "Vérification de l'utilisateur",
+        "description": "En fait la caractéristique la plus importante du bot, il vous permet de forcer vos utilisateurs à vérifier leur compte Discord avec leur compte Steam, c'est un bon moyen d'empêcher les trolls, les bots et les élucateurs de bannir de rejoindre votre serveur. De plus, il nous permet de synchroniser vos utilisateurs avec votre serveur, afin que vous puissiez utiliser d'autres fonctionnalités synchronisées comme les informations utilisateur (nom, statistiques, rang, avertissement, ban ect...)."
+      },
+      "statistics": {
+        "title": "Statistiques",
+        "description": "Le bot peut collecter des statistiques sur votre serveur, comme le nombre de joueurs, le nombre de bans, le nombre d'avertissements ect... Vous pouvez voir les statistiques dans le tableau de bord, et vous pouvez également activer le canal statistique, de sorte que le bot enverra un message dans un canal quand un utilisateur est interdit ect..."
+      },
+      "logs": {
+        "title": "Registres",
+        "description": "Le bot peut enregistrer certaines actions de vos utilisateurs, comme quand ils rejoignent ou quittent votre serveur, quand ils sont interdits ou frappés, quand ils sont avertis ect... Vous pouvez voir les journaux dans le tableau de bord, et vous pouvez également activer le canal de journaux, de sorte que le bot enverra un message dans un canal quand un utilisateur est interdit ect..."
+      },
+      "player_database": {
+        "title": "Base de données des lecteurs",
+        "description": "Voir tous les joueurs qui ont rejoint votre serveur, vous pouvez voir leur nom, steam id, discord id, date de jointure, date de la dernière jointure, temps total passé sur votre serveur, avertissements totaux, bans total ect... Vous pouvez également rechercher un lecteur par nom, steam id ou discord id."
+      }
+    }
+  },
+  "dashboard": {
+    "server": {
+      "warns": {
+        "title": "Avertissements",
+        "description": "Liste de tous les avertissements sur votre serveur"
+      },
+      "bugsReport": {
+        "title": "Rapport sur les bogues",
+        "description": "Liste de tous les bogues signalés sur votre serveur"
+      },
+      "chat": {
+        "chats": "Chats",
+        "set_channel": "Définissez un canal pour synchroniser les conversations entre votre serveur et Discord.",
+        "premium_sync": "Synchronisation limitée à 'Gmod to Discord' pour les utilisateurs libres.",
+        "no_sync_chats": "Pas de discussion sync",
+        "sync_direction": "Direction de synchronisation des conversations",
+        "prevent_chat_ping": "Empêcher le chat ping",
+        "chats_channels": "Chaînes de clavardage réelles",
+        "from_discord_to_gmod": "De la discorde à la Gmod",
+        "from_gmod_to_discord": "De Gmod à Discord",
+        "both_ways": "Les deux voies",
+        "select_channel": "Sélectionnez le canal",
+        "remove_channel": "Supprimer le canal",
+        "gmod_to_discord_filter": "Filtre Gmod pour discorder",
+        "add_rules": "Ajouter des règles spécifiques pour filtrer les messages envoyés de Gmod à Discord.",
+        "default_behavior": "Comportement par défaut :",
+        "relay_all_messages": "Relâcher tous les messages",
+        "block_all_messages": "Bloquer tous les messages",
+        "element": "Élément",
+        "operator": "Opérateur",
+        "trigger": "Déclencheur",
+        "actions_on_match": "Actions sur le Match",
+        "active": "Activité",
+        "actions": "Actions",
+        "loading": "Chargement...",
+        "edit_rule": "Modifier la règle",
+        "message": "Message",
+        "user_group": "Groupe d'utilisateurs",
+        "steam_id_64": "Numéro d'identification de la vapeur 64",
+        "team_name": "Nom de l'équipe",
+        "contain": "Contient",
+        "not_contain": "Ne contient pas",
+        "equal": "Égal",
+        "not_equal": "Pas égal",
+        "start_with": "Commencez par",
+        "end_with": "Finir avec",
+        "block": "Bloc",
+        "relay": "Relais",
+        "anonymize": "Anonymiser",
+        "yes": "Oui",
+        "no": "Numéro",
+        "save": "Enregistrer",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "add_rule": "Ajouter une règle"
+      },
+      "pseudo": {
+        "pseudo": "Pseudo",
+        "editRole": "Modifier le rôle",
+        "userGroup": "Groupe d'utilisateurs",
+        "name": "Dénomination",
+        "prefix": "Préfixe",
+        "active": "Activité",
+        "yes": "Oui",
+        "no": "Numéro",
+        "save": "Enregistrer",
+        "editFormat": "Modifier le format",
+        "variables": "Variables",
+        "playerName": "Nom du joueur",
+        "playerSteamID64": "Le joueur SteamID64",
+        "rolePrefix": "Préfixe du rôle",
+        "roleName": "Nom du rôle",
+        "format": "Présentation",
+        "preview": "Aperçu",
+        "pseudoSyncDirection": "Direction de synchronisation de Pseudo",
+        "fromDiscordToGmod": "De la discorde à la Gmod",
+        "fromGmodToDiscord": "De Gmod à Discord",
+        "bothWays": "Les deux voies",
+        "disable": "Désactiver",
+        "description": "Définissez le pseudo qui est synchronisé avec votre serveur Discord.",
+        "info": "Veuillez noter que Guild Owner n'aura pas de pseudo-mises à jour.",
+        "premium": "Synchronisation limitée à 'Gmod to Discord' pour les utilisateurs libres.",
+        "rolePrefixDescription": "Définir les préfixes pour chaque groupe d'utilisateurs.",
+        "rolePrefixPremium": "Limité à 3 rôles de personnalisation pour les utilisateurs libres.",
+        "actions": "Actions",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "addRole": "Ajouter un rôle"
+      },
+      "logs": {
+        "unknown": "Inconnu",
+        "logNames": {
+          "player_connect": "Connexion du lecteur",
+          "player_disconnect": "Déconnecter le lecteur",
+          "player_death": "Mort du joueur",
+          "player_spawn": "Joueur Spawn",
+          "player_ready": "Prêt pour le joueur",
+          "player_change_team": "Équipe de changement de joueur",
+          "player_change_group": "Groupe Changement de joueur",
+          "player_change_name": "Nom du changement de joueur",
+          "player_say": "Le joueur dit",
+          "player_give": "Joueur Donner",
+          "player_spawn_object": "Objet de la partie « Joueur Spawn »",
+          "player_hurt": "Le joueur est blessé",
+          "player_initial_spawn": "Joueur initial Spawn",
+          "server_start": "Démarrer le serveur",
+          "server_stop": "Arrêt du serveur",
+          "dark_rp_drop_money": "DarkRP Drop Money",
+          "dark_rp_picked_up_money": "DarkRP a pris de l'argent",
+          "dark_rp_picked_up_cheque": "DarkRP a ramassé le chèque",
+          "ch_atm_send_money": "ATM Envoyer de l'argent",
+          "ch_atm_receive_money": "Les distributeurs reçoivent de l'argent",
+          "ch_atm_take_money": "Les distributeurs prennent de l'argent",
+          "ch_atm_withdraw_money": "Remplacement de l'argent par un distributeur automatique",
+          "ch_atm_deposit_money": "Dépôt de billets de banque",
+          "player_warned": "Le joueur averti",
+          "player_ban": "Interdiction de jouer",
+          "player_unban": "Le joueur non-ban",
+          "player_kick": "Coup de pied du joueur"
+        },
+        "dark_rp": {
+          "has_dropped": "a baissé",
+          "has_picked_up": "a pris",
+          "has_picked_up_cheque": "a pris le chèque"
+        },
+        "ch_atm": {
+          "has_sent": "a envoyé",
+          "has_received": "a reçu",
+          "has_taken": "a pris",
+          "has_withdrawn": "a retiré",
+          "has_deposited": "a déposé"
+        },
+        "player_warned": {
+          "has_been_warned": "a été prévenu"
+        },
+        "player_ban": {
+          "has_been_banned": "a été interdit"
+        },
+        "player_unban": {
+          "has_been_unbanned": "a été non interdite"
+        },
+        "player_kick": {
+          "has_been_kicked": "a été frappé"
+        },
+        "player_say": {
+          "say": "Disons"
+        },
+        "player_disconnect": {
+          "has_disconnected": "a été déconnecté"
+        },
+        "player_spawn": {
+          "has_spawned": "a frayé"
+        },
+        "player_death": {
+          "has_been_killed_by": "a été tué par"
+        },
+        "player_ready": {
+          "is_ready": "est prêt"
+        },
+        "player_connect": {
+          "is_connecting_from": "est connecté à partir de"
+        },
+        "player_change_team": {
+          "has_changed_team_from": "a changé d'équipe",
+          "to": "à"
+        },
+        "player_change_group": {
+          "has_changed_group_from": "a changé de groupe",
+          "to": "à"
+        },
+        "player_change_name": {
+          "has_changed_name_from": "a changé de nom",
+          "to": "à"
+        },
+        "player_give": {
+          "get": "obtenir"
+        },
+        "player_spawn_object": {
+          "has_spawned": "a frayé"
+        },
+        "player_hurt": {
+          "has_been_hurt_by": "a été blessé par",
+          "for": "pour",
+          "damage": "dommages"
+        },
+        "player_initial_spawn": {
+          "has_spawned_first_time": "a fraicé pour la première fois"
+        },
+        "server_start": {
+          "started": "Le serveur a commencé"
+        },
+        "server_stop": {
+          "stopped": "Le serveur s'est arrêté"
+        },
+        "tooltip": {
+          "show_more": "Afficher plus",
+          "download": "Télécharger"
+        },
+        "log_filename_prefix": "Journal...",
+        "title": {
+          "logs_channel": "Chaîne de journaux",
+          "logs": "Registres"
+        },
+        "description": {
+          "logs_channel": "Définissez un canal pour synchroniser les journaux entre votre serveur et Discord.",
+          "logs": "Regardez les journaux de votre serveur."
+        },
+        "label": {
+          "chats_channels": "Chats Chaînes :",
+          "hide_ip": "Cacher l'IP dans les journaux de discorde :",
+          "attach_log_file": "Joindre le fichier d'information du journal :"
+        },
+        "no_logs_channel": "Pas de chaîne de journaux",
+        "button": {
+          "remove_channel": "Supprimer le canal",
+          "select_channel": "Sélectionnez le canal"
+        },
+        "premium": "Limité à 500 derniers journaux pour les utilisateurs gratuits.",
+        "table_headers": {
+          "date": "Date",
+          "category": "Catégorie",
+          "log": "Journal",
+          "actions": "Actions"
+        }
+      },
+      "date": "Date",
+      "admin": "Administrateur",
+      "reason": "Motifs",
+      "player": "Joueur",
+      "status": {
+        "show_player_chart": "Afficher le tableau des joueurs",
+        "format": "Format de la liste des lecteurs",
+        "title": "État du serveur",
+        "premium_only": "Cette fonctionnalité est uniquement disponible pour les utilisateurs premium.",
+        "premium": "Limité à 3 boutons pour les utilisateurs gratuits.",
+        "playerName": "Dénomination",
+        "playerSteamID64": "Numéro d'identification de la vapeur 64",
+        "team": "Équipe",
+        "userGroup": "Groupe d'utilisateurs",
+        "connectTime": "Connecter l'heure",
+        "kills": "Tue",
+        "deaths": "Décès",
+        "position": "Emplacement",
+        "angle": "Angle",
+        "fps": "SPF",
+        "ping": "Ping",
+        "adjustedTime": "Temps ajusté",
+        "branch": "Branche",
+        "status_message": "Message d'état",
+        "status_buttons": "Boutons de statut",
+        "button_icon": "Icône",
+        "active": "Activité",
+        "actions": "Actions",
+        "remove_status": "Supprimer l' état",
+        "description": "Ici, vous pouvez gérer votre message d'état du serveur et les boutons.",
+        "status_buttons_description": "Ajoutez des boutons d'utilitaire à votre message d'état du serveur.",
+        "status_message_description": "Configurez le message d'état qui sera affiché dans votre serveur Discord.",
+        "buttons_panel_title": "Boutons de statut",
+        "message_panel_title": "Message d'état",
+        "no_status_message": "Pas de message d'état",
+        "send_status": "Envoyer l' état",
+        "show_player_list": "Afficher la liste des lecteurs",
+        "edit_button": "Modifier le bouton",
+        "add_button": "Ajouter le bouton",
+        "delete_button": "Supprimer le bouton",
+        "save_button": "Enregistrer",
+        "cancel_button": "Annuler",
+        "button_name": "Dénomination",
+        "button_url": "URL",
+        "button_emoji": "Emoji",
+        "button_style": "Style",
+        "button_style_primary": "Enseignement primaire",
+        "button_style_secondary": "Secondaire",
+        "button_style_success": "Succès",
+        "button_style_danger": "Danger",
+        "select_channel": "Sélectionnez le canal",
+        "loading": "Chargement...",
+        "failed_to_load": "Échec du chargement",
+        "no_buttons": "Pas de boutons configurés",
+        "confirmation": "Tu es sûr ?",
+        "yes": "Oui",
+        "no": "Numéro",
+        "online": "En ligne",
+        "offline": "Hors ligne",
+        "players": "Joueurs",
+        "map": "Carte",
+        "gamemode": "Mode de jeu",
+        "connect": "Connexion",
+        "workshop": "Atelier",
+        "store": "A conserver",
+        "status_message_placeholder": "Contenu du message d'état...",
+        "status_message_preview": "Aperçu",
+        "delete_confirmation": "Voulez-vous vraiment supprimer ce bouton ?",
+        "premium_limit": "Limité à 2 boutons pour les utilisateurs gratuits",
+        "required_field": "Ce champ est requis",
+        "invalid_url": "Format URL non valide"
+      },
+      "importance": "Importance",
+      "description": "Désignation des marchandises",
+      "actions": "Actions",
+      "errors": {
+        "title": "Erreurs",
+        "description": "Regardez les erreurs de votre serveur.",
+        "premium": "Limité à 50 dernières erreurs pour les utilisateurs gratuits.",
+        "error_details": {
+          "timestamp": "Date",
+          "addon": "Addon",
+          "realm": "Royaume",
+          "count": "Nombre",
+          "message": "Message"
+        },
+        "actions": {
+          "actions": "Actions"
+        }
+      },
+      "logs_trigger": {
+        "edit_trigger": "Modifier le déclencheur",
+        "trigger": "Déclencheur",
+        "triggers": "Déclencheurs",
+        "add_trigger": "Ajouter le déclencheur",
+        "add": "Ajouter",
+        "save": "Enregistrer",
+        "edit": "Modifier",
+        "compare": "Comparer",
+        "operator": "Opérateur",
+        "operator_list": {
+          "greaterThan": "Plus que",
+          "lessThan": "Moins de",
+          "equal": "Égal",
+          "notEqual": "Pas égal",
+          "contain": "Contient",
+          "notContain": "Ne contient pas",
+          "startWith": "Commencez par",
+          "endWith": "Finir avec"
+        },
+        "value": "Valeur",
+        "reply_action": "Réponse",
+        "title": {
+          "logs_channel": "Déclencheur de journaux"
+        },
+        "description": {
+          "logs_channel": "Définissez des actions personnalisées pour des événements spécifiques sur votre serveur. Vous pouvez personnaliser les actions en fonction de vos besoins."
+        },
+        "action": "Décision",
+        "addTrigger": "Ajouter le déclencheur",
+        "compare_list": {
+          "amount": "Montant"
+        },
+        "sendMessageInChannel": "Envoyer un message dans le canal",
+        "channel": "Chaîne",
+        "message": "Message",
+        "message_show_vars": "Afficher les Vars",
+        "message_show_vars_description": "Vous pouvez utiliser n'importe quel var du journal en utilisant {{data.path.to.var}}, voici une liste des vars que vous pouvez utiliser",
+        "steamID64": "La vapeurID64",
+        "name": "Dénomination",
+        "team": "Équipe",
+        "amount": "Montant",
+        "category": "Catégorie"
+      },
+      "screenshots": {
+        "title": "Captures d'écran",
+        "description": "Configurez où les captures d'écran de votre serveur seront envoyées",
+        "settings_title": "Paramètres de la capture d'écran",
+        "settings_description": "Configurer le canal où les captures d'écran seront envoyées",
+        "no_channel": "Aucun canal sélectionné",
+        "current_channel": "Chaîne actuelle",
+        "select_channel": "Sélectionnez le canal",
+        "delete_channel": "Supprimer le canal",
+        "loading": "Chargement...",
+        "failed_to_load": "Impossible de charger les paramètres de capture d'écran",
+        "save_changes": "Enregistrer les modifications",
+        "cancel": "Annuler",
+        "success_message": "Paramètres de capture d'écran mis à jour avec succès",
+        "error_message": "Impossible de mettre à jour les paramètres de capture d'écran",
+        "confirmation": "Tu es sûr ?",
+        "yes": "Oui",
+        "no": "Numéro",
+        "send_screenshots": "Envoyer des captures d'écran",
+        "delete_confirmation": "Voulez-vous vraiment supprimer le canal screenshot ?",
+        "select_new_channel": "Sélectionnez un nouveau canal où des captures d'écran seront envoyées"
+      },
+      "screenshots_list": {
+        "title": "Toutes les captures d'écran",
+        "description": "Voir tous les visuels pris sur votre serveur",
+        "no_title": "Pas de titre",
+        "date": "Date",
+        "player": "Joueur",
+        "no_name": "Pas de nom",
+        "steam_id64": "Numéro d'identification de la vapeur 64",
+        "no_steam_id": "Pas d'identifiant de vapeur",
+        "steamID64": "Numéro d'identification de la vapeur 64",
+        "no_steamID64": "Pas d'identification de vapeur 64",
+        "information": "Renseignements",
+        "player_metadata": "Métadonnées du lecteur",
+        "end_of_list": "Fin de liste",
+        "capture_metadata": "Capturer les métadonnées"
+      },
+      "edit_player": {
+        "title": "Modifier le lecteur",
+        "bypass_maintenance": "Entretien par passe",
+        "yes": "Oui",
+        "no": "Numéro",
+        "save": "Enregistrer"
+      },
+      "players_database": {
+        "title": "Base de données des joueurs",
+        "description": "Liste de tous les joueurs du serveur",
+        "name": "Dénomination",
+        "rank": "Classement",
+        "total_time": "Durée totale",
+        "total_connect": "Total Connecter",
+        "bypass_maintenance": "Entretien du passage",
+        "actions": "Actions",
+        "steam": "vapeur",
+        "edit": "Modifier"
+      },
+      "vote": {
+        "title": "Vote",
+        "description": "Configurez les notifications de vote pour votre serveur",
+        "vote_channel": "Voie électorale",
+        "no_channel_selected": "Aucun canal sélectionné",
+        "select_channel": "Sélectionnez le canal",
+        "delete_channel": "Supprimer le canal",
+        "settings_title": "Paramètres des votes",
+        "settings_description": "Configurez où les notifications de vote seront envoyées",
+        "loading": "Chargement...",
+        "failed_to_load": "Impossible de charger les paramètres de vote",
+        "save_changes": "Enregistrer les modifications",
+        "cancel": "Annuler",
+        "success_message": "Paramètres de vote mis à jour avec succès",
+        "error_message": "Impossible de mettre à jour les paramètres de vote",
+        "confirmation": "Tu es sûr ?",
+        "yes": "Oui",
+        "no": "Numéro",
+        "current_channel": "Chaîne actuelle",
+        "select_new_channel": "Sélectionnez un nouveau canal",
+        "send_screenshots": "Envoyer des captures d'écran",
+        "delete_confirmation": "Voulez-vous vraiment supprimer le canal de vote?"
+      },
+      "servers_selector": {
+        "premium_feature_message": "Le plan gratuit ne vous permet de gérer qu'un seul serveur.",
+        "loading": "Chargement...",
+        "select_server": "Sélectionnez un serveur à gérer",
+        "manage_server": "Gérer",
+        "create_server": "Créer un serveur"
+      },
+      "server_informations": {
+        "informations": "Informations",
+        "server_logo": "Logo",
+        "server_id": "Numéro d'identification",
+        "connection_status_title": "État de la connexion",
+        "connection_status_description": "Ici vous pouvez voir l'état de connexion de votre serveur.",
+        "http_request_title": "Demande HTTP",
+        "http_request_fallback_part1": "Nous n'avons reçu aucune requête de votre serveur à la dernière minute, assurez-vous d'avoir installé le",
+        "http_request_fallback_part2": "correctement et ont entièrement configuré votre serveur id & token, lire la",
+        "http_request_fallback_part3": "pour plus d'informations.",
+        "http_request_success": "Félicitations pour votre serveur, vous pouvez maintenant le configurer correctement.",
+        "websocket_title": "WebSocket",
+        "websocket_fallback_part1": "Votre serveur n'est pas connecté au websocket, les fonctionnalités avancées ne sont pas disponibles, pour les utiliser, vous devez installer le",
+        "websocket_fallback_part2": "sur votre serveur.",
+        "websocket_success": "Félicitations vous avez bien connecté à votre serveur dans websocket, fonctionnalités avancées sont maintenant disponibles.",
+        "version_title": "Version",
+        "version_fallback_http_part1": "Nous ne pouvons pas vérifier la version de votre serveur, assurez-vous d'avoir installé le",
+        "version_fallback_http_part2": "correctement et ont entièrement configuré votre serveur id & token, lire la",
+        "version_fallback_http_part3": "pour plus d'informations.",
+        "version_fallback_outdated": "Si vous utilisez la version Workshop, redémarrez simplement votre serveur et il sera automatiquement mis à jour. Mais si vous utilisez la version github repo ou une version d'atelier non compressée, vous devez la mettre à jour manuellement.",
+        "version_success": "Excellente votre serveur est à jour et fonctionnera parfaitement avec les dernières fonctionnalités.",
+        "workshop_content": "contenu de l ' atelier",
+        "documentation": "Documentation",
+        "gwsocket_module": "Module de poche GWS",
+        "reset_server_token": "Reset Ton de serveur",
+        "delete_confirmation": "Voulez-vous vraiment supprimer ce serveur ?",
+        "edit_server": "Éditer le serveur",
+        "delete_server": "Supprimer le serveur",
+        "show_token": "Afficher le jeton",
+        "hide_token": "Cacher le jeton",
+        "save_changes": "Enregistrer les modifications",
+        "cancel": "Annuler",
+        "server_name": "Dénomination",
+        "server_ip": "IP",
+        "server_port": "Port",
+        "server_token": "Jeton",
+        "server_status": "État",
+        "server_online": "En ligne",
+        "server_offline": "Hors ligne",
+        "server_players": "Joueurs",
+        "server_map": "Carte",
+        "server_game_mode": "Mode de jeu",
+        "server_uptime": "Temps de disponibilité",
+        "server_actions": "Actions",
+        "server_edit": "Modifier",
+        "server_delete": "Supprimer",
+        "server_save": "Enregistrer",
+        "server_cancel": "Annuler",
+        "server_public": "Public",
+        "loading": "Chargement...",
+        "failed_to_load": "Impossible de charger les informations du serveur",
+        "add_server": "Ajouter un serveur",
+        "server_details": "Détails du serveur",
+        "server_settings": "Paramètres du serveur",
+        "server_management": "Gestion des serveurs",
+        "informations_description": "Ici vous pouvez voir quelques informations sur votre serveur, et éditer certaines d'entre elles.",
+        "server_informations": "Informations",
+        "server_description": "Désignation des marchandises",
+        "no": "Numéro",
+        "yes": "Oui"
+      },
+      "roles": {
+        "premium_feature_3": "Limité à 3 rôles synchronisés pour les utilisateurs libres",
+        "title": "Rôles du serveur",
+        "description": "Gérer la synchronisation des rôles entre votre serveur Discord et le serveur de jeu.",
+        "sync_direction": "Direction synchronique",
+        "sync_direction_description": "Choisissez comment les rôles doivent être synchronisés entre Discord et le serveur de jeu.",
+        "server_to_discord": "Serveur à discorder",
+        "discord_to_server": "Discorder au serveur",
+        "both_directions": "Les deux directions",
+        "role_sync": "Synchronisation des rôles",
+        "role_sync_description": "Configurer les rôles de Discord correspondant aux groupes d'utilisateurs du serveur de jeu.",
+        "add_role_sync": "Ajouter une synchronisation des rôles",
+        "edit_role_sync": "Modifier la synchronisation des rôles",
+        "delete_role_sync": "Supprimer la synchronisation des rôles",
+        "select_role": "Sélectionner le rôle",
+        "select_user_group": "Sélectionnez le groupe d'utilisateurs",
+        "enable_sync": "Activer Sync",
+        "save_changes": "Enregistrer les modifications",
+        "cancel": "Annuler",
+        "loading": "Chargement...",
+        "failed_to_load": "Impossible de charger la configuration du rôle",
+        "no_roles_configured": "Aucun rôle configuré pour la synchronisation",
+        "role_name": "Nom du rôle",
+        "user_group": "Groupe d'utilisateurs",
+        "status": "État",
+        "actions": "Actions",
+        "enabled": "Activé",
+        "disabled": "Handicapés",
+        "yes": "Oui",
+        "no": "Numéro",
+        "delete_confirmation": "Voulez-vous vraiment supprimer cette synchronisation de rôle ?",
+        "premium_feature": "La synchronisation des rôles est une fonction premium",
+        "premium_feature_limited": "Limité à {1} rôles d'équipe pour les utilisateurs libres.",
+        "websocket_required": "Une connexion WebSocket est nécessaire pour la synchronisation des rôles",
+        "error_occurred": "Une erreur s'est produite lors de la recherche de la pseudo direction."
+      },
+      "config": {
+        "title": "Configuration",
+        "description": "Manage the in game configuration of this server.",
+        "error_occurred": "Wystąpił błąd podczas pobierania konfiguracji serwera.",
+        "default": "Domyślnie",
+        "add_admin_rank": "Add rank",
+        "settings": {
+          "ig_syncBan": {
+            "title": "Synchronizuj bany",
+            "description": "Synchronizuj bany gry z banami Discord (dwukierunkowo)."
+          },
+          "ig_syncTimeout": {
+            "title": "Synchronizuj Timeouty",
+            "description": "Synchronizuj timeouty gry z timeoutami Discord (dwukierunkowo)."
+          },
+          "ig_syncKick": {
+            "title": "Synchronizuj kopnięcia",
+            "description": "Synchronizuj kopnięcia gry z kopnięciami Discord (dwukierunkowo)."
+          },
+          "ig_filterOnBan": {
+            "title": "Filtruj na banie",
+            "description": "Filtruj graczy na podstawie statusu banu."
+          },
+          "ig_redownloadMaterials": {
+            "title": "Pobierz materiały ponownie",
+            "description": "Pobierz materiały dodatku ponownie (użyj jeśli materiały są uszkodzone)."
+          },
+          "ig_debug": {
+            "title": "Tryb debugowania",
+            "description": "Pokaż informacje debugowania w konsoli serwera."
+          },
+          "ig_forcePlayerLink": {
+            "title": "Wymuś połączenie gracza",
+            "description": "Wymagaj od graczy połączenia Discord z Steam przed grą."
+          },
+          "ig_verifyOnJoin": {
+            "title": "Sprawdź przy przyłączeniu",
+            "description": "Sprawdź graczy gdy się przyłączają lub są gotowi."
+          },
+          "ig_verifyOnReadyKickTime": {
+            "title": "Opóźnienie kopnięcia weryfikacji (sek)",
+            "description": "Sekundy przed kopnięciem niezweryfikowanych graczy (0 aby wyłączyć)."
+          },
+          "ig_verifyFamilySharing": {
+            "title": "Zweryfikuj Family Sharing",
+            "description": "Zweryfikuj status Family Sharing Steam graczy."
+          },
+          "ig_clientBranch": {
+            "title": "Gałąź klienta",
+            "description": "Wymagana gałąź dodatku klienta (none, dev, prerelease, x86-64, any)."
+          },
+          "ig_supportLink": {
+            "title": "Link pomocy",
+            "description": "Link pomocy wyświetlany gdy gracz nie spełnia wymagań."
+          },
+          "ig_maintenance": {
+            "title": "Tryb konserwacji",
+            "description": "Pozwól tylko graczom z obejściem konserwacji dołączyć (gracz > edytuj > obejście)"
+          },
+          "ig_language": {
+            "title": "Język dodatku",
+            "description": "Język używany przez dodatek."
+          },
+          "ig_logTimestamp": {
+            "title": "Format znacznika czasu dziennika",
+            "description": "Format znacznika czasu dla dzienników."
+          },
+          "ig_adminRank": {
+            "title": "Rangi admina",
+            "description": "Rangi uprawnione do edycji konfiguracji lub obejścia trybu konserwacji."
+          }
+        }
+      },
+      "team_roles": {
+        "error_occurred": "Une erreur s'est produite lors de la recherche de la synchronisation des rôles.",
+        "select_role": "Sélectionner le rôle",
+        "loading": "Chargement...",
+        "edit_role_sync": "Modifier le rôle",
+        "role_name": "Rôle discordant",
+        "team_name": "Nom de l'équipe",
+        "enable_sync": "Activité",
+        "yes": "Oui",
+        "no": "Numéro",
+        "save_changes": "Enregistrer",
+        "role": "Rôle de l'équipe",
+        "role_sync_description": "Ajoutez des rôles temporaires à vos membres Discord lorsqu'ils rejoignent une équipe spécifique dans votre serveur de jeu.",
+        "premium_feature_limited": "Limité à {1} rôles d'équipe pour les utilisateurs libres.",
+        "status": "Activité",
+        "actions": "Actions",
+        "add_role_sync": "Ajouter le rôle d'équipe",
+        "delete_role_sync": "Supprimer la synchronisation des rôles"
+      }
+    },
+    "guild": {
+      "select": {
+        "select_guild": "Sélectionnez une guilde pour gérer / ajouter le Bot à",
+        "failed_to_fetch_guilds": "J'ai échoué à chercher vos guildes.",
+        "manage_guild": "Gérer la guilde",
+        "create_guild": "Créer une guilde",
+        "owner": "Propriétaire",
+        "admin": "Administrateur",
+        "manage": "Gérer",
+        "add_bot": "Ajouter le bot"
+      },
+      "auto_role": {
+        "actions": "Actions",
+        "title": "Rôles de l'auto",
+        "description": "Gérer les rôles qui sont automatiquement assignés aux utilisateurs lorsqu'ils rejoignent la guilde.",
+        "admin_panel_title": "Paramètres de rôle automatique",
+        "loading": "Chargement...",
+        "no_roles": "Pas de rôles auto configurés.",
+        "role_name": "Nom du rôle",
+        "edit_button": "Modifier",
+        "modal_title": "Modifier le rôle automatique",
+        "modal_description": "Modifier les paramètres de ce rôle automatique.",
+        "close_button": "Fermer",
+        "failed_to_load": "Impossible de charger les liens",
+        "add_role": "Ajouter un rôle"
+      },
+      "verification": {
+        "check_button": "Vérifier tous les rôles",
+        "check": "Vérifiez tous les membres et exécutez le processus de vérification. 1000 membres max.",
+        "select_role_modal_title": "Sélectionner le rôle",
+        "loading": "Chargement...",
+        "select_role": "Sélectionner un rôle",
+        "edit_role_modal_title": "Modifier le rôle",
+        "role_label": "Rôle",
+        "action_on_verification_label": "Décision sur la vérification",
+        "give_role": "Donner un rôle",
+        "remove_role": "Supprimer le rôle",
+        "active_label": "Activité",
+        "yes": "Oui",
+        "no": "Numéro",
+        "save_button": "Enregistrer",
+        "verification_panel_title": "Vérification",
+        "verification_panel_description": "Configurez le système de vérification pour votre serveur et choisissez le rôle à donner / supprimer lorsqu'un utilisateur est vérifié.",
+        "verification_message_label": "Message de vérification :",
+        "no_verification_message": "Pas de message de vérification",
+        "dont_send_verification_message_label": "N'envoyez pas de message de vérification en DM",
+        "dont_join_support_guild_message_label": "Ne pas faire utilisateur automatiquement rejoindre guild de support",
+        "send_verification_message_button": "Envoyer un message de vérification",
+        "delete_verification_message_button": "Supprimer le message de vérification",
+        "verification_roles_panel_title": "Rôles de vérification",
+        "verification_roles_panel_description": "Ici, vous pouvez configurer les rôles qui seront donnés ou supprimés lorsqu'un utilisateur est vérifié.",
+        "premium_limit": "Limité à 2 rôles pour les utilisateurs libres.",
+        "role_column": "Rôle",
+        "action_on_verification_column": "Décision sur la vérification",
+        "active_column": "Activité",
+        "actions_column": "Actions",
+        "edit_tooltip": "Modifier",
+        "delete_tooltip": "Supprimer",
+        "failed_to_load_links": "Impossible de charger les liens",
+        "add_role_button": "Ajouter un rôle"
+      },
+      "information": {
+        "title": "Informations",
+        "description": "Ici vous pouvez voir quelques informations sur votre guilde, et éditer certaines d'entre elles.",
+        "guild_name": "Nom de la guilde",
+        "guild_id": "Numéro de la guilde",
+        "admins": "Administrateurs",
+        "premium": "Prime",
+        "warning": "Attention, les administrateurs peuvent gérer le bot et donc apporter des modifications à votre Discord Guild et à votre serveur Mod de Garry.",
+        "activate_gmod_store_premium": "Activer Gmod Store Premium",
+        "deactivate_gmod_store_premium": "Désactiver Gmod Store Premium",
+        "reinvite_main_bot": "Avant de retirer le Gmod Store Premium, vous devez réinviter le robot principal à votre guilde.",
+        "invite_main_bot": "Inviter le bot principal"
+      },
+      "bot": {
+        "custom_bot": "Bot personnalisé",
+        "feature_unavailable": "Cette fonctionnalité est uniquement disponible pour les robots personnalisés de GmodStore.",
+        "get_custom_bot": "Obtenez un Bot personnalisé",
+        "edit_custom_bot": "Modifier le bot personnalisé",
+        "setup_custom_bot": "Configuration personnalisée Bot",
+        "how_to_setup": "Comment configurer un robot personnalisé :",
+        "create_app": "Créer une application sur",
+        "go_to_bot_tab": "Allez dans l'onglet bot",
+        "enable_x": "Activer « {1} »",
+        "reset_token": "Réinitialisez le jeton",
+        "copy_token": "Copier le jeton",
+        "name": "Dénomination",
+        "avatar": "Avatar",
+        "status": "État",
+        "refresh_every_30s": "Rafraîchir toutes les 30 ans",
+        "save": "Enregistrer",
+        "join_guild": "Rejoignez la Guilde",
+        "loading": "Chargement...",
+        "disabled": "Handicapés",
+        "guildMemberCount": "Afficher le numéro de membre de la Guilde",
+        "playerCount": "Afficher le nombre de joueurs",
+        "rotate": "Informations affichées de rechange",
+        "unknown": "Inconnu",
+        "edit_bot_info": "Modifier l'information du robot.",
+        "token": "Jeton"
+      },
+      "links": {
+        "title": "Liens",
+        "description": "Créez des raccourcis pour les informations de votre serveur.",
+        "premium": "Limité à 2 liens pour les utilisateurs gratuits.",
+        "alias": "Autres",
+        "url": "URL",
+        "active": "Activité",
+        "actions": "Actions",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "failed_to_load": "Impossible de charger les liens",
+        "add_link": "Ajouter un lien",
+        "edit_link": "Modifier le lien",
+        "save": "Enregistrer",
+        "yes": "Oui",
+        "no": "Numéro"
+      }
+    },
+    "menu": {
+      "collapse": "Effondré",
+      "back": "Précédent",
+      "guilds": {
+        "informations": "Informations",
+        "custom_bot": "Bot personnalisé",
+        "links": "Liens",
+        "verification": "Vérification",
+        "auto_role": "Auto-rôle",
+        "suggestions": "Suggestions",
+        "tickets": "Billets",
+        "servers": "Serveurs"
+      },
+      "servers": {
+        "informations": "Informations",
+        "config": "Configuration",
+        "status": "État",
+        "roles": "Rôles",
+        "chats": "Chats",
+        "warns": "Avertissements",
+        "pseudo": "Pseudo",
+        "rewards": "Récompenses",
+        "players": "Joueurs",
+        "logs": "Registres",
+        "errors": "Erreurs",
+        "forwards": "Transférés",
+        "bugs_report": "Rapport sur les bogues",
+        "screenshots": "Captures d'écran",
+        "vote": "Vote",
+        "streams": "Flux",
+        "bans": "Interdictions",
+        "tickets": "Billets",
+        "teams": "Équipes"
+      }
+    }
+  }
+}
