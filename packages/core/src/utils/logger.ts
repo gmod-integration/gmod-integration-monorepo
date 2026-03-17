@@ -2,12 +2,14 @@ import { ConfigDiscord, ConfigServer } from '@gmod/config'
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js'
 import { getRandomDiscordRelay, ipGetIP } from './tools.js'
 import { getTranslate } from './localizations.js'
-import { ChannelType, type ColorResolvable, EmbedBuilder } from 'discord.js'
+import { type ColorResolvable, EmbedBuilder } from 'discord.js'
 import { type Server } from '@gmod/domain-server/Server.js'
 import { addLog } from '../database/gm_server_logs.js'
 import redis from '@gmod/infra-redis'
 import type { gm_server_logs_triggers } from '@gmod/infra-prisma/client.js'
 import { type wsSendToAllClientsOfServerData, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js'
+import { resolveGuildPreferredLocale } from './guildLocaleCache.js'
+import { enqueueDiscordGuildSendLogMessage } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 
 export enum LogLevel {
   MINIMAL = 'minimal',
@@ -252,12 +254,6 @@ async function handleLogsTrigger(server: Server, type: string, data?: any) {
     if (trigger.operator === log_trigger_operator.endWith && !newValue.endsWith(compareValue)) continue
 
     if (trigger.action === log_trigger_action.sendMessageInChannel) {
-      const client = await server.getBotInstance()
-      if (!client) continue
-
-      const channel = client.channels.cache.get(trigger.channelID)
-      if (!channel || channel.type !== ChannelType.GuildText) continue
-
       let message = trigger.message
       // remplace every {{path.to.value}} by the value of the data
       // 1# get all regex
@@ -286,14 +282,17 @@ async function handleLogsTrigger(server: Server, type: string, data?: any) {
         }
       }
 
-      const embed = new EmbedBuilder()
-        .setColor(logEmbedColors[type] || ConfigDiscord.embedColor)
-        .setDescription(message)
-
-      // send the message
-      await channel.send({
-        embeds: [embed],
-      })
+      await enqueueDiscordGuildSendLogMessage(
+        {
+          guildID: server.getGuildID(),
+          channelID: trigger.channelID,
+          title: `Trigger: ${type}`,
+          description: message,
+          color: String(logEmbedColors[type] || ConfigDiscord.embedColor),
+          footer: server.getName(),
+        },
+        5000,
+      ).catch(() => null)
     }
   }
 }
@@ -319,8 +318,7 @@ export async function logServer(server: Server, type: string, data?: any) {
   let dataToSave: any = {}
   if (data.player) dataToSave.ply = data.player
 
-  const guild = await server.getDiscordGuild()
-  const lang = guild.preferredLocale
+  const lang = await resolveGuildPreferredLocale(server.getGuildID())
   const relayChannelInfo = await server.getCachedLogsChannel()
 
   const dscList = []

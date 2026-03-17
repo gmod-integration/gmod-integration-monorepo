@@ -34,6 +34,8 @@ import {
   DiscordGuildSyncBanReplySchema,
   DiscordGuildAdminsJobSchema,
   DiscordGuildAdminsReplySchema,
+  DiscordGuildSendLogMessageJobSchema,
+  DiscordGuildSendLogMessageReplySchema,
   type UpdateGuildUserPseudoJob,
   type UpdatePlayerUserGroupJob,
   type UpdateDiscordTeamRoleJob,
@@ -532,6 +534,39 @@ export async function enqueueDiscordGuildAdmins(
 
   const reply = await waitForReply(correlationId, (value) => DiscordGuildAdminsReplySchema.parse(value), timeoutMs)
   return reply.admins
+}
+
+export async function enqueueDiscordGuildSendLogMessage(
+  data: {
+    guildID: string
+    channelID: string
+    title: string
+    description?: string | null
+    color: string
+    footer: string
+  },
+  timeoutMs = 5000,
+): Promise<boolean> {
+  const correlationId = uuidv4()
+  const payload = DiscordGuildSendLogMessageJobSchema.parse({
+    ...data,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('guildSendLogMessage', payload, {
+    priority: 6,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordGuildSendLogMessageReplySchema.parse(value),
+    timeoutMs,
+  )
+  return reply.sent
 }
 
 export {

@@ -21,6 +21,7 @@ import {
   DiscordGuildUpdateBotProfileJobSchema,
   DiscordGuildSyncBanJobSchema,
   DiscordGuildAdminsJobSchema,
+  DiscordGuildSendLogMessageJobSchema,
   type MainClientHasGuildJob,
   type MainClientUploadScreenshotJob,
   type MainClientFetchUserJob,
@@ -36,12 +37,13 @@ import {
   type DiscordGuildUpdateBotProfileJob,
   type DiscordGuildSyncBanJob,
   type DiscordGuildAdminsJob,
+  type DiscordGuildSendLogMessageJob,
 } from '@gmod/infra-bullmq/schemas.js'
 import { gmLog } from '@gmod/core/utils/logger.js'
 import prisma from '@gmod/infra-prisma'
 import { getUserFromSteamID64 } from '@gmod/domain-user/User.js'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
-import { PermissionsBitField, type Role } from 'discord.js'
+import { EmbedBuilder, PermissionsBitField, type ColorResolvable, type Role } from 'discord.js'
 import redis from '@gmod/infra-redis'
 import { getGuildClient, getMainClient, loadGuildBotInstance } from '../index.js'
 import { addAutoRoleToUser, verifyUser } from '@gmod/domain-guild/discordModels.js'
@@ -590,6 +592,7 @@ export const discordGuildOpsWorker = new Worker<
   | DiscordGuildUpdateBotProfileJob
   | DiscordGuildSyncBanJob
   | DiscordGuildAdminsJob
+  | DiscordGuildSendLogMessageJob
 >(
   'discord-guildOps',
   async (
@@ -604,6 +607,7 @@ export const discordGuildOpsWorker = new Worker<
       | DiscordGuildUpdateBotProfileJob
       | DiscordGuildSyncBanJob
       | DiscordGuildAdminsJob
+      | DiscordGuildSendLogMessageJob
     >,
   ) => {
     if (job.name === 'guildSnapshot') {
@@ -920,6 +924,49 @@ export const discordGuildOpsWorker = new Worker<
         }))
 
       await writeReply(payload.correlationId, { correlationId: payload.correlationId, admins })
+      return
+    }
+
+    if (job.name === 'guildSendLogMessage') {
+      const payload = DiscordGuildSendLogMessageJobSchema.parse(job.data)
+      try {
+        const client = await getGuildClient(payload.guildID, false)
+        const guild = await client.guilds.fetch(payload.guildID).catch(() => null)
+        if (!guild) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            sent: false,
+            error: 'Guild not found',
+          })
+          return
+        }
+
+        const channel = guild.channels.cache.get(payload.channelID) ?? (await guild.channels.fetch(payload.channelID))
+        if (!channel || !channel.isSendable()) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            sent: false,
+            error: 'Channel is not sendable',
+          })
+          return
+        }
+
+        const embed = new EmbedBuilder()
+          .setColor(payload.color as ColorResolvable)
+          .setTitle(payload.title)
+          .setDescription(payload.description ?? null)
+          .setFooter({ text: payload.footer })
+          .setTimestamp()
+
+        await channel.send({ embeds: [embed] })
+        await writeReply(payload.correlationId, { correlationId: payload.correlationId, sent: true })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          sent: false,
+          error: (error as Error).message,
+        })
+      }
     }
   },
   { connection, concurrency: 2 },

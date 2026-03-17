@@ -372,3 +372,24 @@ export const DiscordGuildAdminsReplySchema = z.object({
 })
 
 export type DiscordGuildAdminsReply = z.infer<typeof DiscordGuildAdminsReplySchema>
+
+export const DiscordGuildSendLogMessageJobSchema = z.object({
+  guildID: z.string().min(1, 'guildID required'),
+  channelID: z.string().min(1, 'channelID required'),
+  title: z.string().min(1, 'title required'),
+  description: z.string().nullable().optional(),
+  color: z.string().min(1, 'color required'),
+  footer: z.string().min(1, 'footer required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordGuildSendLogMessageJob = z.infer<typeof DiscordGuildSendLogMessageJobSchema>
+
+export const DiscordGuildSendLogMessageReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  sent: z.boolean(),
+  error: z.string().optional(),
+})
+
+export type DiscordGuildSendLogMessageReply = z.infer<typeof DiscordGuildSendLogMessageReplySchema>

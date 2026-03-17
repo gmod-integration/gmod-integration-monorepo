@@ -585,7 +585,6 @@ export class Server extends BaseClass {
   }
 
   async editStatusChannelAndMessage(msgData: any) {
-    const dscClient = await this.getBotInstance()
     const serverStatusInfo = await this.getStatusChannelAndMessage()
     if (!serverStatusInfo) {
       gmLog('status', `Status channel not found for server ${this.getID()}`, true)
@@ -593,6 +592,7 @@ export class Server extends BaseClass {
     }
 
     try {
+      const dscClient = await this.getBotInstance()
       let guild
       try {
         guild = await dscClient.guilds.fetch(this.getGuildID())
@@ -668,6 +668,13 @@ export class Server extends BaseClass {
       const newMsgContent = await buildDiscordStatusMessage(this, msgData, lang)
       await message.edit(newMsgContent)
     } catch (error: any) {
+      if (
+        error?.message === 'Discord guild client resolver is not configured' ||
+        error?.message === 'Discord status message builder is not configured'
+      ) {
+        return
+      }
+
       gmLog('status', `Error updating status message for server ${this.getID()}: ${error.message}`, true)
       console.error(error)
       // await prisma.gm_status.delete({
