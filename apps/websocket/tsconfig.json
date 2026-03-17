@@ -5,7 +5,8 @@
     "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "paths": {
-      "src/*": ["../../src/*"]
+      "src/*": ["../../apps/api/src/*"],
+      "@/*": ["../../apps/api/src/*"]
     },
     "strict": true,
     "skipLibCheck": true,

@@ -3,8 +3,12 @@
     "target": "ESNext",
     "module": "NodeNext",
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./apps/api/src",
     "baseUrl": "./",
+    "paths": {
+      "@/*": ["apps/api/src/*"],
+      "src/*": ["apps/api/src/*"]
+    },
     "moduleResolution": "nodenext",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
@@ -15,7 +19,7 @@
 
     "typeRoots": [
       "./node_modules/@types",
-      "./src/types"
+      "./apps/api/src/types"
     ],
 
     "types": [
@@ -32,7 +36,7 @@
     "sourceRoot": "/"
   },
   "include": [
-    "src/**/*"
+    "apps/api/src/**/*"
   ],
   "exclude": [
     "node_modules",

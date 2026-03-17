@@ -14,7 +14,7 @@ import {
   type MainClientUploadScreenshotJob,
 } from './schemas.js';
 import { v4 as uuidv4 } from 'uuid';
-import { gmLog } from '../../../src/utils/logger.js';
+import { gmLog } from 'src/utils/logger.js';
 import redis from '@gmod/infra-redis';
 
 // Queues

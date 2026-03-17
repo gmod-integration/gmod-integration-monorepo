@@ -1,12 +1,12 @@
 import { WebSocketServer } from 'ws';
 import { Worker } from 'bullmq';
 import { ConfigServer } from '@gmod/config';
-import { gmLog } from '../../../src/utils/logger.js';
+import { gmLog } from 'src/utils/logger.js';
 import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
 import { getPanelUserFromDiscordID, PanelUser } from '@gmod/domain-user/PanelUser.js';
 import { getUserGuildsWithPermsForPanel } from '@gmod/domain-guild/discordModels.js';
 import redis from '@gmod/infra-redis';
-import { lastGmodIntegrationTag, versionComparator } from '../../../src/utils/tools.js';
+import { lastGmodIntegrationTag, versionComparator } from 'src/utils/tools.js';
 import { connection } from '@gmod/infra-bullmq';
 import {
   type WSSendToServerData,
