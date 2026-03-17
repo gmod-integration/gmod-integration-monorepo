@@ -217,7 +217,7 @@ function wsSendToServer(id: string, data: any) {
 const wsSendToServerWorker = new Worker(
   wsSendToServerQueue.name,
   async (job) => {
-    wsSendToServer(job.data.id, job.data.data)
+    return wsSendToServer(job.data.id, job.data.data)
   },
   {
     connection,

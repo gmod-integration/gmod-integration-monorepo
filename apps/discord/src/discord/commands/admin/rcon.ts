@@ -11,7 +11,7 @@ import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { ButtonVerificationWebsite } from '../../utils/buttons.js'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
 import { isGuildPremium, replyNeedPremium } from '@gmod/domain-guild/Guild.js'
-import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
+import { enqueueWSSendToServerAndWait } from '@gmod/infra-websocket/queues.js'
 import { getTranslate } from '@gmod/core/utils/localizations.js'
 
 export default {
@@ -74,17 +74,23 @@ export default {
       return replyNeedPremium(interaction)
     }
 
-    await wsSendToServerQueue.add('wsSendToServer', {
-      id: server.getID(),
-      data: {
-        method: 'wsRcon',
-        steamID: user.getSteamID64(),
-        command: interaction.options.getString('command'),
+    const queued = await enqueueWSSendToServerAndWait(
+      {
+        id: server.getID(),
+        data: {
+          method: 'wsRcon',
+          steamID: user.getSteamID64(),
+          command: interaction.options.getString('command', true),
+        },
       },
-    } as WSSendToServerData)
+      5000,
+    ).catch((error) => {
+      console.error('Failed to enqueue wsRcon job:', error)
+      return false
+    })
 
     return interaction.reply({
-      content: await getTranslate(wsSend ? 'rcon_command_success' : 'rcon_command_error', lang),
+      content: await getTranslate(queued ? 'rcon_command_success' : 'rcon_command_error', lang),
       ephemeral: true,
     })
   },
