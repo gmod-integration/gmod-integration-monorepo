@@ -17,9 +17,9 @@ setDiscordGuildClientResolver(async (guildID: string, forcePresenceOnGuild = tru
 setDiscordStatusMessageBuilder(getStatusMessage);
 
 async function runDiscord() {
-  await initializeDiscordQueueWorkers();
   await loadDiscordMain();
   await loadDiscordSlave();
+  await initializeDiscordQueueWorkers();
 }
 
 await runDiscord();

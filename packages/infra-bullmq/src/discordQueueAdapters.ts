@@ -50,6 +50,22 @@ const discordUpdateTeamRoleQueue = new Queue('discord-updateTeamRole', { connect
 const discordMainClientOpsQueue = new Queue('discord-mainClientOps', { connection });
 const discordGuildOpsQueue = new Queue('discord-guildOps', { connection });
 
+export class BullMQReplyTimeoutError extends Error {
+  public readonly correlationId: string;
+  public readonly timeoutMs: number;
+
+  constructor(correlationId: string, timeoutMs: number) {
+    super(`Timeout waiting for BullMQ reply (${correlationId})`);
+    this.name = 'BullMQReplyTimeoutError';
+    this.correlationId = correlationId;
+    this.timeoutMs = timeoutMs;
+  }
+}
+
+export function isBullMQReplyTimeoutError(error: unknown): error is BullMQReplyTimeoutError {
+  return error instanceof BullMQReplyTimeoutError || (error instanceof Error && error.name === 'BullMQReplyTimeoutError');
+}
+
 function getReplyKey(correlationId: string): string {
   return `bullmq:reply:${correlationId}`;
 }
@@ -67,7 +83,7 @@ async function waitForReply<T>(correlationId: string, parser: (value: unknown) =
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  throw new Error(`Timeout waiting for BullMQ reply (${correlationId})`);
+  throw new BullMQReplyTimeoutError(correlationId, timeoutMs);
 }
 
 /**

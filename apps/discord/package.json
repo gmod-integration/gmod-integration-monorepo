@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "tsx watch src/main.ts --env DEV=true",
     "start": "tsx src/main.ts",
     "push:context": "tsx src/discord/discord_push_context.ts",
     "remove:cmd": "tsx src/discord/discord_remove_cmd.ts"
