@@ -1,5 +1,5 @@
 import { reportBugPayload, uploadScreenshotPayload } from '@gmod/core/models/v3/clientsModels.js';
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 
 export async function uploadScreenshot(req: Request, res: Response) {
   const server = req.server!;

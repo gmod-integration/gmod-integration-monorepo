@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, InteractionContextType, SlashCommandBuilder } from 'discord.js';
+import { type ChatInputCommandInteraction, InteractionContextType, SlashCommandBuilder } from 'discord.js';
 import { verifyUser } from '@gmod/domain-guild/discordModels.js';
 import { getVerifiedMessageAnswer } from '@/discord/utils/messages.js';
 import { getTranslate } from '@gmod/core/utils/localizations.js';

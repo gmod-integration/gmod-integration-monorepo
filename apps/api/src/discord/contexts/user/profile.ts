@@ -1,9 +1,9 @@
 import {
   ApplicationCommandType,
   ContextMenuCommandBuilder,
-  ContextMenuCommandType,
+  type ContextMenuCommandType,
   InteractionContextType,
-  UserContextMenuCommandInteraction,
+  type UserContextMenuCommandInteraction,
 } from 'discord.js';
 import { getProfileMessage } from '@/discord/utils/messages.js';
 

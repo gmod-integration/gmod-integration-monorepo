@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { getServerErrorsPayloadSafe } from '@gmod/core/models/gmod/gmodErrorsModels.js';
 
 export async function getServerErrors(req: Request, res: Response) {

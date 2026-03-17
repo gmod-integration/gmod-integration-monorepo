@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { gmLog } from '@gmod/core/utils/logger.js';
-import { NextFunction, Request, Response } from 'express';
+import { type NextFunction, type Request, type Response } from 'express';
 
 export default async (err: Error, req: Request, res: Response, next: NextFunction) => {
   const error_uuid = uuidv4();

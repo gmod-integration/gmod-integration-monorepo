@@ -1,4 +1,4 @@
-import { QueryInput, QuerySchema } from '@gmod/schema/db/QuerySchema.js';
+import { type QueryInput, QuerySchema } from '@gmod/schema/db/QuerySchema.js';
 
 export class Query {
   public readonly offset: number;

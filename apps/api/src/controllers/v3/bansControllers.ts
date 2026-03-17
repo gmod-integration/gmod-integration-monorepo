@@ -1,6 +1,6 @@
 import { isGlobalBan } from '@gmod/domain-moderation/bansModels.js';
 import { ipGetIP } from '@gmod/core/utils/tools.js';
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 
 export async function isGlobalBanSomewhere(req: Request, res: Response) {
   const { steamID64, IP, discordID } = req.query;

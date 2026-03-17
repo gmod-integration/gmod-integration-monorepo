@@ -2,12 +2,12 @@ import { ConfigDiscord, ConfigServer } from '@gmod/config';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { getRandomDiscordRelay, ipGetIP } from './tools.js';
 import { getTranslate } from './localizations.js';
-import { ChannelType, ColorResolvable, EmbedBuilder } from 'discord.js';
-import { Server } from '@gmod/domain-server/Server.js';
+import { ChannelType, type ColorResolvable, EmbedBuilder } from 'discord.js';
+import { type Server } from '@gmod/domain-server/Server.js';
 import { addLog } from '../database/gm_server_logs.js';
 import redis from '@gmod/infra-redis';
 import type { gm_server_logs_triggers } from '@gmod/infra-prisma/client.js';
-import { wsSendToAllClientsOfServerData, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js';
+import { type wsSendToAllClientsOfServerData, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js';
 
 export enum LogLevel {
   MINIMAL = 'minimal',

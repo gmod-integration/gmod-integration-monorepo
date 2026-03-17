@@ -2,7 +2,7 @@ import { handlePremiumInteraction } from '@gmod/domain-guild/Guild.js';
 import { handleWarnInteraction } from '@gmod/domain-moderation/warnModels.js';
 import { handleVerifyInteraction } from '@gmod/domain-guild/verifyModels.js';
 import { handleLeaderboardInteraction } from '@gmod/core/models/v3/leaderboardModels.js';
-import { ButtonInteraction, Interaction } from 'discord.js';
+import { type ButtonInteraction, type Interaction } from 'discord.js';
 
 export default {
   name: 'interactionCreate',

@@ -3,7 +3,7 @@ import { Worker } from 'bullmq';
 import { ConfigServer } from '@gmod/config';
 import { gmLog } from '@gmod/core/utils/logger.js';
 import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
-import { getPanelUserFromDiscordID, PanelUser } from '@gmod/domain-user/PanelUser.js';
+import { getPanelUserFromDiscordID, type PanelUser } from '@gmod/domain-user/PanelUser.js';
 import { getUserGuildsWithPermsForPanel } from '@gmod/domain-guild/discordModels.js';
 import redis from '@gmod/infra-redis';
 import { lastGmodIntegrationTag, versionComparator } from '@gmod/core/utils/tools.js';

@@ -1,10 +1,10 @@
 import {
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonInteraction,
+  type ButtonInteraction,
   ButtonStyle,
   EmbedBuilder,
-  MessageActionRowComponentBuilder,
+  type MessageActionRowComponentBuilder,
 } from 'discord.js';
 import { dateToDiscordTimestamp, secToTime } from '@/discord/utils/index.js';
 import { getTranslate } from '../../utils/localizations.js';

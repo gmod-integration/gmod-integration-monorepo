@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { reportGmodErrorPayloadSafe } from '@gmod/core/models/gmod/gmodErrorsModels.js';
 
 export async function reportError(req: Request, res: Response) {

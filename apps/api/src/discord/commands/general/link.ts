@@ -1,7 +1,7 @@
 import {
-  AutocompleteInteraction,
-  ChatInputCommandInteraction,
-  GuildMember,
+  type AutocompleteInteraction,
+  type ChatInputCommandInteraction,
+  type GuildMember,
   InteractionContextType,
   PermissionsBitField,
   SlashCommandBuilder,

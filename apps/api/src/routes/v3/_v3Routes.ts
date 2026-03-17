@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { type Request, type Response } from 'express';
 import serversRoutes from './serversRoutes.js';
 import bansRoutes from './bansRoutes.js';
 import clientsRoutes from './clientsRoutes.js';

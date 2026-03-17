@@ -4,7 +4,7 @@ import { getGuildClient } from '../../discord/index.js';
 import { getServerFromID } from '@gmod/domain-server/Server.js';
 import { Guild } from '@gmod/domain-guild/Guild.js';
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
-import { NextFunction, Request, Response } from 'express';
+import { type NextFunction, type Request, type Response } from 'express';
 
 export async function userValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {

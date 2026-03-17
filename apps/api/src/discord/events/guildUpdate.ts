@@ -1,6 +1,6 @@
 import { gmLog } from '@gmod/core/utils/logger.js';
 import { updateGuildStat } from '@gmod/domain-guild/discordModels.js';
-import { Guild } from 'discord.js';
+import { type Guild } from 'discord.js';
 
 export default {
   name: 'guildUpdate',

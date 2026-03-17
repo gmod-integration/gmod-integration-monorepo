@@ -1,8 +1,8 @@
 import {
   ApplicationCommandType,
   ContextMenuCommandBuilder,
-  ContextMenuCommandInteraction,
-  ContextMenuCommandType,
+  type ContextMenuCommandInteraction,
+  type ContextMenuCommandType,
   InteractionContextType,
 } from 'discord.js';
 import { verifyUser } from '@gmod/domain-guild/discordModels.js';

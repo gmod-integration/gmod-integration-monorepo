@@ -1,6 +1,6 @@
 import prisma from '@gmod/infra-prisma';
-import { ServerStatusChannelInput, ServerStatusChannelSchema } from '@gmod/schema/server/ServerStatusChannelSchema.js';
-import { Server } from './Server.js';
+import { type ServerStatusChannelInput, ServerStatusChannelSchema } from '@gmod/schema/server/ServerStatusChannelSchema.js';
+import { type Server } from './Server.js';
 
 export class ServerStatusChannel {
   public readonly id: string;

@@ -1,7 +1,7 @@
-import { Guild as DiscordGuild } from 'discord.js';
-import { Server } from '@gmod/domain-server/Server.js';
-import { PanelUser } from '@gmod/domain-user/PanelUser.js';
-import { Guild } from '@gmod/domain-guild/Guild.js';
+import { type Guild as DiscordGuild } from 'discord.js';
+import { type Server } from '@gmod/domain-server/Server.js';
+import { type PanelUser } from '@gmod/domain-user/PanelUser.js';
+import { type Guild } from '@gmod/domain-guild/Guild.js';
 
 declare global {
   namespace Express {

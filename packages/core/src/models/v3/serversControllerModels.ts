@@ -2,7 +2,7 @@ import { badArgument } from '../../utils/tools.js';
 import { logServer } from '../../utils/logger.js';
 import prisma from '@gmod/infra-prisma';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
-import { Server } from '@gmod/domain-server/Server.js';
+import { type Server } from '@gmod/domain-server/Server.js';
 
 type EndpointResult = {
   status: number;

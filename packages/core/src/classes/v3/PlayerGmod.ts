@@ -2,7 +2,7 @@ import { BaseClass } from './BaseClass.js';
 import { Team } from './Team.js';
 import prisma from '@gmod/infra-prisma';
 import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js';
-import { getServerFromID, Server } from '@gmod/domain-server/Server.js';
+import { getServerFromID, type Server } from '@gmod/domain-server/Server.js';
 import redis from '@gmod/infra-redis';
 import { gmLog, LogLevel } from '../../utils/logger.js';
 import { Position } from './Position.js';
@@ -12,9 +12,9 @@ import { getTranslate } from '../../utils/localizations.js';
 import { secToTime } from '@/discord/utils/index.js';
 import { Guild } from '@gmod/domain-guild/Guild.js';
 import { addAutoRoleToUser } from '@gmod/domain-guild/discordModels.js';
-import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
+import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { getGuildClient } from '@/discord/index.js';
-import { GuildBan } from 'discord.js';
+import { type GuildBan } from 'discord.js';
 
 export interface PlayerGmodInterface {
   steamID: string;

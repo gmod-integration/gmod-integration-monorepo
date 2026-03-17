@@ -1,5 +1,5 @@
 import { processGmodStoreWebhook } from '@gmod/core/models/webhooks/gmodStoreModels.js';
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 
 export default async (req: Request, res: Response) => {
   const result = await processGmodStoreWebhook(req.body);

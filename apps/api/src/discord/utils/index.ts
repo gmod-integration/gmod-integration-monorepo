@@ -1,5 +1,5 @@
 import { getTranslate } from '@gmod/core/utils/localizations.js';
-import { Server } from '@gmod/domain-server/Server.js';
+import { type Server } from '@gmod/domain-server/Server.js';
 import prisma from '@gmod/infra-prisma';
 import { JSDOM } from 'jsdom';
 import * as d3 from 'd3';
@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import redis from '@gmod/infra-redis';
 import { createBucketIfNotExists, s3 } from '@gmod/infra-minio';
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { Readable } from 'node:stream';
+import { type Readable } from 'node:stream';
 
 const trust_ranks: Record<number, string> = {
   0: 'dangerous',

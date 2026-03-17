@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 
 export async function getServerStatusChannel(req: Request, res: Response) {
   const server = req.server!;

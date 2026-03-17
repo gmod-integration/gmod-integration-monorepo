@@ -1,4 +1,4 @@
-import { GmodTeamInput, GmodTeamSchema } from '@gmod/schema/gmod/GmodTeamSchema.js';
+import { type GmodTeamInput, GmodTeamSchema } from '@gmod/schema/gmod/GmodTeamSchema.js';
 
 export class GmodTeam {
   public readonly id: number;

@@ -1,4 +1,4 @@
-import { GuildMember } from 'discord.js';
+import { type GuildMember } from 'discord.js';
 import prisma from '@gmod/infra-prisma';
 
 export default {

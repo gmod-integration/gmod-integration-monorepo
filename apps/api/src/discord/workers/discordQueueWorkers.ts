@@ -1,4 +1,4 @@
-import { Worker, Job } from 'bullmq';
+import { Worker, type Job } from 'bullmq';
 import { connection } from '@gmod/infra-bullmq';
 import { s3 } from '@gmod/infra-minio';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
@@ -15,7 +15,7 @@ import { gmLog } from '@gmod/core/utils/logger.js';
 import prisma from '@gmod/infra-prisma';
 import { getUserFromSteamID64 } from '@gmod/domain-user/User.js';
 import { getServerFromID } from '@gmod/domain-server/Server.js';
-import { PermissionsBitField, Role } from 'discord.js';
+import { PermissionsBitField, type Role } from 'discord.js';
 import redis from '@gmod/infra-redis';
 import { getMainClient } from '@/discord/index.js';
 

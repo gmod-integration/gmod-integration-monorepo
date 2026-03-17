@@ -6,15 +6,15 @@ import { getGuildClient, getMainClient, loadGuildBotInstance } from 'src/discord
 import {
   ActionRowBuilder,
   ButtonBuilder,
-  ButtonInteraction,
+  type ButtonInteraction,
   ButtonStyle,
   ChannelType,
-  ChatInputCommandInteraction,
-  Guild as DiscordGuild,
-  MessageActionRowComponentBuilder,
+  type ChatInputCommandInteraction,
+  type Guild as DiscordGuild,
+  type MessageActionRowComponentBuilder,
 } from 'discord.js';
 import prisma from '@gmod/infra-prisma';
-import { User } from '@gmod/domain-user/User.js';
+import { type User } from '@gmod/domain-user/User.js';
 
 const guildSettings: Record<string, any> = {
   verification_dont_mp: {

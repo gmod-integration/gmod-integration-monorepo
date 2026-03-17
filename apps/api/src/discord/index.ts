@@ -1,11 +1,11 @@
 import {
   ActivityType,
   Client,
-  ClientUser,
+  type ClientUser,
   Collection,
   Events,
   GatewayIntentBits,
-  Interaction,
+  type Interaction,
   Partials,
   PermissionsBitField,
   REST,
@@ -27,8 +27,8 @@ import { readdir } from 'fs/promises';
 import { getUserFromSteamID64 } from '@gmod/domain-user/User.js';
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
-import { getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js';
-import { PlayerGmod } from '@gmod/core/classes/v3/PlayerGmod.js';
+import { getServersFromDiscordGuildID, type Server } from '@gmod/domain-server/Server.js';
+import { type PlayerGmod } from '@gmod/core/classes/v3/PlayerGmod.js';
 import { Guild, guildSettingExists } from '@gmod/domain-guild/Guild.js';
 
 const envExtension = ConfigServer.dev ? '.ts' : '.js';

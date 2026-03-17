@@ -1,4 +1,4 @@
-import { GmodWeaponInput, GmodWeaponSchema } from '@gmod/schema/gmod/GmodWeaponSchema.js';
+import { type GmodWeaponInput, GmodWeaponSchema } from '@gmod/schema/gmod/GmodWeaponSchema.js';
 
 export class GmodWeapon {
   public readonly class: string;

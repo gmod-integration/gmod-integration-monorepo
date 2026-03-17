@@ -1,5 +1,5 @@
 import { logServer } from '@gmod/core/utils/logger.js';
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import {
   processCHATMDepositMoney,
   processCHATMReceiveMoney,

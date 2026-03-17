@@ -1,5 +1,5 @@
 import { getServerFromID } from '@gmod/domain-server/Server.js';
-import { NextFunction, Request, Response } from 'express';
+import { type NextFunction, type Request, type Response } from 'express';
 import redis from '@gmod/infra-redis';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {

@@ -1,5 +1,5 @@
 import { updatePseudoToGmod, updateRolesToGmod } from '@gmod/domain-guild/discordModels.js';
-import { GuildMember } from 'discord.js';
+import { type GuildMember } from 'discord.js';
 
 export default {
   name: 'guildMemberUpdate',

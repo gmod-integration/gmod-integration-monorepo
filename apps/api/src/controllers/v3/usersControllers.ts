@@ -19,7 +19,7 @@ import { getUserDataGRPD } from '@gmod/domain-compliance/gdrp.js';
 import { getGuildClient } from '@/discord/index.js';
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
-import { NextFunction, Request, Response } from 'express';
+import { type NextFunction, type Request, type Response } from 'express';
 import {
   processCreateNewServer,
   processDeleteAutoRoles,

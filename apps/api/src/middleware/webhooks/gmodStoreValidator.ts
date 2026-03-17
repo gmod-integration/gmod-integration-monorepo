@@ -1,5 +1,5 @@
 import { gmLog } from '@gmod/core/utils/logger.js';
-import { NextFunction, Request, Response } from 'express';
+import { type NextFunction, type Request, type Response } from 'express';
 import { verifyWebhookSignature } from '@gmod/core/models/webhooks/gmodStoreModels.js';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {

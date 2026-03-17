@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, InteractionContextType, SlashCommandBuilder } from 'discord.js';
+import { type ChatInputCommandInteraction, InteractionContextType, SlashCommandBuilder } from 'discord.js';
 import { isGuildPremium, replyNeedPremium } from '@gmod/domain-guild/Guild.js';
 import { getTranslate } from '@gmod/core/utils/localizations.js';
 

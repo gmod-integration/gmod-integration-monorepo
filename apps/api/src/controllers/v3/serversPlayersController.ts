@@ -7,7 +7,7 @@ import {
   processPlayerSay,
   processPlayerWarn,
 } from '@gmod/core/models/v3/serversPlayersControllerModels.js';
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { logServer } from '@gmod/core/utils/logger.js';
 
 export async function getPlayer(req: Request, res: Response) {

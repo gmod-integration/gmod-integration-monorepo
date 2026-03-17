@@ -1,9 +1,9 @@
 import {
   ActionRowBuilder,
-  AutocompleteInteraction,
-  ChatInputCommandInteraction,
+  type AutocompleteInteraction,
+  type ChatInputCommandInteraction,
   InteractionContextType,
-  MessageActionRowComponentBuilder,
+  type MessageActionRowComponentBuilder,
   SlashCommandBuilder,
 } from 'discord.js';
 import { getServerList } from '@gmod/domain-server/serversModels.js';
@@ -11,7 +11,7 @@ import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
 import { ButtonVerificationWebsite } from '@/discord/utils/buttons.js';
 import { getServerFromID } from '@gmod/domain-server/Server.js';
 import { isGuildPremium, replyNeedPremium } from '@gmod/domain-guild/Guild.js';
-import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
+import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { getTranslate } from '@gmod/core/utils/localizations.js';
 
 export default {

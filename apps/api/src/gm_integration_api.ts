@@ -1,7 +1,7 @@
 // import '@gmod/core/utils/instrument.js';
 import { ConfigServer } from '@gmod/config';
 import '@gmod/core/utils/update-log.js';
-import express, { NextFunction, Request, Response } from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import { gmLog } from '@gmod/core/utils/logger.js';
 import rawBodyMiddleware from '@/middleware/rawBodyMiddleware.js';
 import loggerMiddleware from '@/middleware/v3/loggers.js';

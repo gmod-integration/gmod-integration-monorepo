@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { type Request, type Response } from 'express';
 import { getAllActivePanelUsers } from '@gmod/core/models/v3/usersAdminControllerModels.js';
 
 export async function getAllPanelUsers(req: Request, res: Response) {

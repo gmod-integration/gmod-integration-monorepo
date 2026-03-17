@@ -1,6 +1,6 @@
 import { getServerFromID } from '@gmod/domain-server/Server.js';
 import crypto from 'crypto';
-import { NextFunction, Request, Response } from 'express';
+import { type NextFunction, type Request, type Response } from 'express';
 import { badArgument } from '@gmod/core/utils/tools.js';
 import redis from '@gmod/infra-redis';
 

@@ -12,7 +12,7 @@ import {
   gm_server_logs_triggers_operator,
 } from '@gmod/infra-prisma/enums.js';
 import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js';
-import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
+import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { ServerStatusChannel } from './ServerStatusChannel.js';
 
 const serverSettings: Record<string, any> = {

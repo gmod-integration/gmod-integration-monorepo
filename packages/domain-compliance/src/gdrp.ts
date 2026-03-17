@@ -2,7 +2,7 @@ import fs from 'fs';
 import { ConfigServer } from '@gmod/config';
 import archiver from 'archiver';
 import { gmLog } from '@gmod/core/utils/logger.js';
-import { User } from '@gmod/domain-user/User.js';
+import { type User } from '@gmod/domain-user/User.js';
 import { addNotification } from '@gmod/core/utils/tools.js';
 import { getLogsBySteamIDList, getLogsCountBySteamIDList } from '@gmod/core/database/gm_server_logs.js';
 import path from 'path';

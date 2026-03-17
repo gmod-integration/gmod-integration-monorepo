@@ -1,7 +1,7 @@
 import { gmLog } from '@gmod/core/utils/logger.js';
 import { ConfigDiscord } from '@gmod/config';
 import { getGuildClient, killGuildClient } from '../index.js';
-import { Guild } from 'discord.js';
+import { type Guild } from 'discord.js';
 import prisma from '@gmod/infra-prisma';
 
 export default {

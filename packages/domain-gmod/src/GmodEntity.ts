@@ -1,6 +1,6 @@
 import { GmodAngle } from './GmodAngle.js';
 import { GmodPosition } from './GmodPosition.js';
-import { GmodEntityInput, GmodEntitySchema } from '@gmod/schema/gmod/GmodEntitySchema.js';
+import { type GmodEntityInput, GmodEntitySchema } from '@gmod/schema/gmod/GmodEntitySchema.js';
 
 export class GmodEntity {
   public readonly class: string;

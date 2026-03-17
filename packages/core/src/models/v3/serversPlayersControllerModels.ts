@@ -7,7 +7,7 @@ import {
   enqueueUpdateDiscordTeamRole,
 } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 import prisma from '@gmod/infra-prisma';
-import { Server } from '@gmod/domain-server/Server.js';
+import { type Server } from '@gmod/domain-server/Server.js';
 
 type EndpointResult = {
   status: number;

@@ -1,4 +1,4 @@
-import { GmodPositionInput, GmodPositionSchema } from '@gmod/schema/gmod/GmodPositionSchema.js';
+import { type GmodPositionInput, GmodPositionSchema } from '@gmod/schema/gmod/GmodPositionSchema.js';
 
 export class GmodPosition {
   public readonly x: number;
