@@ -3,12 +3,12 @@ import {
   type ChatInputCommandInteraction,
   InteractionContextType,
   SlashCommandBuilder,
-} from 'discord.js';
-import { getTranslate } from '@gmod/core/utils/localizations.js';
-import { getServerList } from '@gmod/domain-server/serversModels.js';
-import { secToTime } from '../../utils/index.js';
-import { getServerFromID } from '@gmod/domain-server/Server.js';
-import prisma from '@gmod/infra-prisma';
+} from 'discord.js'
+import { getTranslate } from '@gmod/core/utils/localizations.js'
+import { getServerList } from '@gmod/domain-server/serversModels.js'
+import { secToTime } from '../../utils/index.js'
+import { getServerFromID } from '@gmod/domain-server/Server.js'
+import prisma from '@gmod/infra-prisma'
 
 export default {
   data: new SlashCommandBuilder()
@@ -20,13 +20,13 @@ export default {
     ),
   category: 'player',
   async execute(interaction: ChatInputCommandInteraction) {
-    if (!interaction.guild) return;
+    if (!interaction.guild) return
 
-    const server = interaction.options.getString('server');
-    if (!server) return;
+    const server = interaction.options.getString('server')
+    if (!server) return
 
-    const user = interaction.user;
-    const lang = interaction.guild.preferredLocale;
+    const user = interaction.user
+    const lang = interaction.guild.preferredLocale
 
     const lastVote = await prisma.gm_server_vote.findFirst({
       where: {
@@ -36,18 +36,18 @@ export default {
       orderBy: {
         createdAt: 'desc',
       },
-    });
+    })
 
     if (lastVote) {
-      const lastVoteTime = new Date(lastVote.createdAt).getTime();
-      const voteCooldown = 1000 * 60 * 60 * 3;
+      const lastVoteTime = new Date(lastVote.createdAt).getTime()
+      const voteCooldown = 1000 * 60 * 60 * 3
 
       if (lastVoteTime + voteCooldown > Date.now()) {
-        const timeLeft = Math.ceil((lastVoteTime + voteCooldown - Date.now()) / 1000);
+        const timeLeft = Math.ceil((lastVoteTime + voteCooldown - Date.now()) / 1000)
         return interaction.reply({
           content: await getTranslate('vote_cooldown', lang, [secToTime(timeLeft)]),
           ephemeral: true,
-        });
+        })
       }
     }
 
@@ -56,35 +56,35 @@ export default {
         serverID: server,
         userID: user.id,
       },
-    });
+    })
 
-    const serverData = await getServerFromID(server);
+    const serverData = await getServerFromID(server)
     if (!serverData) {
       return interaction.reply({
         content: await getTranslate('server_not_found', lang),
         ephemeral: true,
-      });
+      })
     }
 
-    const webhooks = await serverData.getVoteChannel();
+    const webhooks = await serverData.getVoteChannel()
     if (webhooks) {
-      const channel = interaction.guild.channels.cache.get(webhooks.channelID);
+      const channel = interaction.guild.channels.cache.get(webhooks.channelID)
       if (webhooks && channel && channel.isTextBased()) {
         channel.send({
           content: await getTranslate('vote_webhook', lang, [user.username, serverData.name]),
-        });
+        })
       }
     }
 
     return interaction.reply({
       content: await getTranslate('vote_success', lang, [serverData.name]),
       ephemeral: true,
-    });
+    })
   },
   async autocomplete(interaction: AutocompleteInteraction) {
-    const focusedOption = interaction.options.getFocused(true);
-    let choices: { [key: string]: string } = {};
-    const filtered = await getServerList(interaction, focusedOption, choices);
-    return interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })));
+    const focusedOption = interaction.options.getFocused(true)
+    const choices: { [key: string]: string } = {}
+    const filtered = await getServerList(interaction, focusedOption, choices)
+    return interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })))
   },
-};
+}

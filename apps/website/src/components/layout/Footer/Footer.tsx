@@ -1,6 +1,6 @@
-import { Component } from "solid-js";
-import FirstFooter from "./FirstFooter";
-import SecondFooter from "./SecondFooter";
+import { Component } from 'solid-js'
+import FirstFooter from './FirstFooter'
+import SecondFooter from './SecondFooter'
 
 export const Footer: Component = () => {
   return (
@@ -12,5 +12,5 @@ export const Footer: Component = () => {
         <SecondFooter />
       </div>
     </>
-  );
-};
+  )
+}

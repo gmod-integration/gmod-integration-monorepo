@@ -1,22 +1,22 @@
-import { BaseClass } from './BaseClass.js';
+import { BaseClass } from './BaseClass.js'
 
 export interface CustomValuesInterface {
-  [key: string]: string;
+  [key: string]: string
 }
 
 export class CustomValues extends BaseClass implements CustomValuesInterface {
-  [key: string]: any;
+  [key: string]: any
 
   constructor(obj: CustomValuesInterface) {
-    super();
+    super()
 
-    const keys = Object.keys(obj);
+    const keys = Object.keys(obj)
     for (const key of keys) {
-      this[key] = obj[key];
+      this[key] = obj[key]
     }
   }
 
   isValid(): boolean {
-    return true;
+    return true
   }
 }

@@ -1,17 +1,17 @@
-import { REST } from 'discord.js';
-import { ConfigDiscord } from '@gmod/config';
+import { REST } from 'discord.js'
+import { ConfigDiscord } from '@gmod/config'
 
-const cmdToRemove = ['1230296259160444971'];
+const cmdToRemove = ['1230296259160444971']
 
-const rest = new REST().setToken(ConfigDiscord.botToken!);
+const rest = new REST().setToken(ConfigDiscord.botToken!)
 try {
-  console.log('[INFO] Started removing application commands.');
+  console.log('[INFO] Started removing application commands.')
 
   for (const cmd of cmdToRemove) {
-    await rest.delete(`/applications/${ConfigDiscord.clientID}/commands/${cmd}`);
-    console.log(`[INFO] Removed command ${cmd}`);
+    await rest.delete(`/applications/${ConfigDiscord.clientID}/commands/${cmd}`)
+    console.log(`[INFO] Removed command ${cmd}`)
   }
 } catch (error) {
-  console.error('[ERROR] Failed to remove application commands.');
-  console.error(error);
+  console.error('[ERROR] Failed to remove application commands.')
+  console.error(error)
 }

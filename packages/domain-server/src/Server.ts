@@ -1,18 +1,15 @@
-import { BaseClass } from '@gmod/core/classes/v3/BaseClass.js';
-import { generateToken } from '@gmod/core/utils/tools.js';
-import { ConfigDiscord } from '@gmod/config';
-import redis from '@gmod/infra-redis';
-import { gmLog } from '@gmod/core/utils/logger.js';
-import { ChannelType } from 'discord.js';
-import prisma from '@gmod/infra-prisma';
-import {
-  gm_server_logs_triggers_action,
-  gm_server_logs_triggers_operator,
-} from '@gmod/infra-prisma/enums.js';
-import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js';
-import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
-import { ServerStatusChannel } from './ServerStatusChannel.js';
-import { buildDiscordStatusMessage, resolveDiscordGuildClient } from './discordBridge.js';
+import { BaseClass } from '@gmod/core/classes/v3/BaseClass.js'
+import { generateToken } from '@gmod/core/utils/tools.js'
+import { ConfigDiscord } from '@gmod/config'
+import redis from '@gmod/infra-redis'
+import { gmLog } from '@gmod/core/utils/logger.js'
+import { ChannelType } from 'discord.js'
+import prisma from '@gmod/infra-prisma'
+import { gm_server_logs_triggers_action, gm_server_logs_triggers_operator } from '@gmod/infra-prisma/enums.js'
+import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js'
+import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
+import { ServerStatusChannel } from './ServerStatusChannel.js'
+import { buildDiscordStatusMessage, resolveDiscordGuildClient } from './discordBridge.js'
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
@@ -43,7 +40,7 @@ const serverSettings: Record<string, any> = {
     defaultValue: false,
     acceptedValues: [true, false],
     onChange: async (server: Server) => {
-      await server.editStatusChannelAndMessage(await server.getStatusData());
+      await server.editStatusChannelAndMessage(await server.getStatusData())
     },
   },
   chat_sync_relay_all: {
@@ -58,7 +55,7 @@ const serverSettings: Record<string, any> = {
     defaultValue: '{connectTime} - {name}',
     freeValues: true,
     onChange: async (server: Server) => {
-      await server.editStatusChannelAndMessage(await server.getStatusData());
+      await server.editStatusChannelAndMessage(await server.getStatusData())
     },
   },
   show_status_chart: {
@@ -66,7 +63,7 @@ const serverSettings: Record<string, any> = {
     acceptedValues: [true, false],
     premium: true,
     onChange: async (server: Server) => {
-      await server.editStatusChannelAndMessage(await server.getStatusData());
+      await server.editStatusChannelAndMessage(await server.getStatusData())
     },
   },
   // in game settings
@@ -161,7 +158,7 @@ const serverSettings: Record<string, any> = {
     },
     acceptedValues: null,
   },
-};
+}
 
 async function isGuildPremiumForServer(guildID: string): Promise<boolean> {
   const hasPremium =
@@ -175,20 +172,20 @@ async function isGuildPremiumForServer(guildID: string): Promise<boolean> {
         guild: guildID,
         revoke: false,
       },
-    }));
+    }))
 
   if (hasPremium) {
-    return true;
+    return true
   }
 
-  const redisKey = `guild:${guildID}:premium`;
-  const cachedPremiumStatus = await redis.get(redisKey);
+  const redisKey = `guild:${guildID}:premium`
+  const cachedPremiumStatus = await redis.get(redisKey)
   if (cachedPremiumStatus !== null) {
-    return JSON.parse(cachedPremiumStatus);
+    return JSON.parse(cachedPremiumStatus)
   }
 
   if (!ConfigDiscord.clientID || !ConfigDiscord.botToken) {
-    return false;
+    return false
   }
 
   try {
@@ -196,74 +193,74 @@ async function isGuildPremiumForServer(guildID: string): Promise<boolean> {
       headers: {
         Authorization: `Bot ${ConfigDiscord.botToken}`,
       },
-    });
+    })
 
     if (!response.ok) {
-      return false;
+      return false
     }
 
-    const entitlementGuilds = (await response.json()) as Array<{ guild_id?: string }>;
-    const isPremium = entitlementGuilds.some((entitlement) => entitlement.guild_id === guildID);
-    await redis.set(redisKey, JSON.stringify(isPremium), 'EX', 60);
-    return isPremium;
+    const entitlementGuilds = (await response.json()) as Array<{ guild_id?: string }>
+    const isPremium = entitlementGuilds.some((entitlement) => entitlement.guild_id === guildID)
+    await redis.set(redisKey, JSON.stringify(isPremium), 'EX', 60)
+    return isPremium
   } catch (error) {
-    console.error('Error getting entitlements:', error);
-    return false;
+    console.error('Error getting entitlements:', error)
+    return false
   }
 }
 
 export class Server extends BaseClass {
-  public token: string;
-  public id: string;
-  public guild: string;
-  public name: string;
-  public ip: string;
-  public port: string;
-  public image: string;
-  public verified: boolean;
-  public publicTempToken: string;
-  public description: string;
-  public isPublic: boolean;
+  public token: string
+  public id: string
+  public guild: string
+  public name: string
+  public ip: string
+  public port: string
+  public image: string
+  public verified: boolean
+  public publicTempToken: string
+  public description: string
+  public isPublic: boolean
 
   constructor(obj: any) {
-    super();
-    this.token = obj.token;
-    this.id = obj.id;
-    this.guild = obj.guild;
-    this.name = obj.name;
-    this.ip = obj.ip;
-    this.port = obj.port;
-    this.image = obj.image;
-    this.verified = obj.verified;
-    this.publicTempToken = obj.publicTempToken;
-    this.description = obj.description;
-    this.isPublic = obj.isPublic;
+    super()
+    this.token = obj.token
+    this.id = obj.id
+    this.guild = obj.guild
+    this.name = obj.name
+    this.ip = obj.ip
+    this.port = obj.port
+    this.image = obj.image
+    this.verified = obj.verified
+    this.publicTempToken = obj.publicTempToken
+    this.description = obj.description
+    this.isPublic = obj.isPublic
   }
 
   async isPremium() {
-    return await isGuildPremiumForServer(this.guild);
+    return await isGuildPremiumForServer(this.guild)
   }
 
   async saveIGSettings(settings: Record<string, any>) {
     for (const setting in settings) {
-      await this.setSetting('ig_' + setting, settings[setting]).catch(() => {});
+      await this.setSetting('ig_' + setting, settings[setting]).catch(() => {})
     }
   }
 
   async getStatusChannel(): Promise<ServerStatusChannel | null> {
-    return await ServerStatusChannel.get(this);
+    return await ServerStatusChannel.get(this)
   }
 
   async putStatusChannel(channelID: string, format: string): Promise<ServerStatusChannel | null> {
-    return await ServerStatusChannel.update(this, channelID, format);
+    return await ServerStatusChannel.update(this, channelID, format)
   }
 
   async deleteStatusChannel(): Promise<void> {
-    return await ServerStatusChannel.delete(this);
+    return await ServerStatusChannel.delete(this)
   }
 
   async postStatusChannel(channelID: string, format: string): Promise<ServerStatusChannel | null> {
-    return await ServerStatusChannel.create(this, channelID, format);
+    return await ServerStatusChannel.create(this, channelID, format)
   }
 
   async getAllSettings(evenNotSet: boolean = false) {
@@ -271,54 +268,54 @@ export class Server extends BaseClass {
       where: {
         serverID: this.id,
       },
-    });
+    })
 
-    const data: Record<string, any> = {};
+    const data: Record<string, any> = {}
 
     if (evenNotSet) {
       for (const setting in serverSettings) {
         if (!data[setting]) {
-          data[setting] = serverSettings[setting].defaultValue;
+          data[setting] = serverSettings[setting].defaultValue
         }
       }
     }
 
     for (const setting of settings) {
-      data[setting.setting] = setting.value;
+      data[setting.setting] = setting.value
       if (serverSettings[setting.setting] && serverSettings[setting.setting].acceptedValues) {
         if (
           serverSettings[setting.setting].acceptedValues.includes(true) ||
           serverSettings[setting.setting].acceptedValues.includes(false)
         ) {
-          if (setting.value === '0' || setting.value === 'false') data[setting.setting] = false;
-          if (setting.value === '1' || setting.value === 'true') data[setting.setting] = true;
+          if (setting.value === '0' || setting.value === 'false') data[setting.setting] = false
+          if (setting.value === '1' || setting.value === 'true') data[setting.setting] = true
         }
       }
     }
 
-    return data;
+    return data
   }
 
   async getAllIGSettings() {
-    const allSettings = await this.getAllSettings(true);
-    const igSettings: Record<string, any> = {};
+    const allSettings = await this.getAllSettings(true)
+    const igSettings: Record<string, any> = {}
     for (const setting in allSettings) {
       if (setting.startsWith('ig_')) {
-        igSettings[setting] = allSettings[setting];
+        igSettings[setting] = allSettings[setting]
       }
     }
-    return igSettings;
+    return igSettings
   }
 
   async getSetting(setting: string) {
     if (!serverSettings[setting]) {
-      throw new Error('Setting not found');
+      throw new Error('Setting not found')
     }
 
-    const redisKey = `server:${this.id}:setting:${setting}`;
-    const redisData = await redis.get(redisKey);
+    const redisKey = `server:${this.id}:setting:${setting}`
+    const redisData = await redis.get(redisKey)
     if (redisData) {
-      return JSON.parse(redisData);
+      return JSON.parse(redisData)
     }
 
     const result = await prisma.gm_server_settings.findFirst({
@@ -326,36 +323,36 @@ export class Server extends BaseClass {
         serverID: this.id,
         setting,
       },
-    });
+    })
 
     if (result) {
-      let rtnValue: any = result.value;
+      let rtnValue: any = result.value
       if (serverSettings[setting].acceptedValues) {
         if (
           serverSettings[setting].acceptedValues.includes(true) ||
           serverSettings[setting].acceptedValues.includes(false)
         ) {
-          if (rtnValue === '0' || rtnValue === 'false') rtnValue = false;
-          if (rtnValue === '1' || rtnValue === 'true') rtnValue = true;
+          if (rtnValue === '0' || rtnValue === 'false') rtnValue = false
+          if (rtnValue === '1' || rtnValue === 'true') rtnValue = true
         }
       }
 
-      await redis.set(redisKey, JSON.stringify(rtnValue), 'EX', 10);
-      return rtnValue;
+      await redis.set(redisKey, JSON.stringify(rtnValue), 'EX', 10)
+      return rtnValue
     }
 
-    return serverSettings[setting].defaultValue;
+    return serverSettings[setting].defaultValue
   }
 
   async setSetting(setting: string, value: any, source: string = 'unknow') {
     if (!serverSettings[setting]) {
-      throw new Error('Setting not found');
+      throw new Error('Setting not found')
     }
 
-    const previousValue = await this.getSetting(setting);
+    const previousValue = await this.getSetting(setting)
 
     if (serverSettings[setting].premium && !(await this.isPremium())) {
-      throw new Error('Premium setting');
+      throw new Error('Premium setting')
     }
 
     if (
@@ -363,7 +360,7 @@ export class Server extends BaseClass {
       serverSettings[setting].acceptedValues &&
       !serverSettings[setting].acceptedValues.includes(value)
     ) {
-      throw new Error('Invalid value');
+      throw new Error('Invalid value')
     }
 
     const result = await prisma.gm_server_settings.findFirst({
@@ -371,12 +368,12 @@ export class Server extends BaseClass {
         serverID: this.id,
         setting,
       },
-    });
+    })
 
     if (typeof value === 'object' && value !== null) {
-      value = JSON.stringify(value);
+      value = JSON.stringify(value)
     } else {
-      value = value.toString();
+      value = value.toString()
     }
 
     if (result) {
@@ -390,7 +387,7 @@ export class Server extends BaseClass {
         data: {
           value,
         },
-      });
+      })
     } else {
       await prisma.gm_server_settings.create({
         data: {
@@ -398,13 +395,13 @@ export class Server extends BaseClass {
           setting,
           value,
         },
-      });
+      })
     }
 
-    await redis.del(`server:${this.id}:setting:${setting}`);
+    await redis.del(`server:${this.id}:setting:${setting}`)
 
     if (serverSettings[setting].onChange) {
-      await serverSettings[setting].onChange(this, previousValue, value);
+      await serverSettings[setting].onChange(this, previousValue, value)
     }
 
     if (source == 'dashboard' && setting.startsWith('ig_')) {
@@ -415,34 +412,34 @@ export class Server extends BaseClass {
           setting: setting,
           value: value,
         },
-      } as WSSendToServerData);
+      } as WSSendToServerData)
     }
 
     return {
       value: await this.getSetting(setting),
-    };
+    }
   }
 
   async getGmodToDiscordFilter(): Promise<gm_server_sync_chat_filter[] | null> {
-    const redisKey = `server:${this.id}:gmodToDiscordFilter`;
-    const redisData = await redis.get(redisKey);
+    const redisKey = `server:${this.id}:gmodToDiscordFilter`
+    const redisData = await redis.get(redisKey)
 
     if (redisData) {
-      return JSON.parse(redisData);
+      return JSON.parse(redisData)
     }
 
     const result = await prisma.gm_server_sync_chat_filter.findMany({
       where: {
         serverID: this.id,
       },
-    });
+    })
 
     if (result) {
-      await redis.set(redisKey, JSON.stringify(result), 'EX', 60);
-      return result;
+      await redis.set(redisKey, JSON.stringify(result), 'EX', 60)
+      return result
     }
 
-    return null;
+    return null
   }
 
   async getStatusChannelAndMessage() {
@@ -450,7 +447,7 @@ export class Server extends BaseClass {
       where: {
         server: this.id,
       },
-    });
+    })
   }
 
   async getStatusData() {
@@ -461,35 +458,35 @@ export class Server extends BaseClass {
           gt: new Date(new Date().getTime() - 6 * 60 * 1000),
         },
       },
-    });
+    })
   }
 
   isValidToken(token: string) {
-    return this.token === token;
+    return this.token === token
   }
 
   getName() {
-    return this.name;
+    return this.name
   }
 
   getID() {
-    return this.id;
+    return this.id
   }
 
   getGuildID() {
-    return this.guild;
+    return this.guild
   }
 
   getPublicToken() {
-    return this.publicTempToken;
+    return this.publicTempToken
   }
 
   getToken() {
-    return this.token;
+    return this.token
   }
 
   async regeneratePublicTempToken() {
-    this.publicTempToken = generateToken(16);
+    this.publicTempToken = generateToken(16)
     await prisma.gm_server.update({
       where: {
         id: this.id,
@@ -497,11 +494,11 @@ export class Server extends BaseClass {
       data: {
         publicTempToken: this.publicTempToken,
       },
-    });
+    })
   }
 
   async regenerateToken() {
-    this.token = generateToken(16);
+    this.token = generateToken(16)
     await prisma.gm_server.update({
       where: {
         id: this.id,
@@ -509,7 +506,7 @@ export class Server extends BaseClass {
       data: {
         token: this.token,
       },
-    });
+    })
   }
 
   async getServerStatusButtons() {
@@ -518,36 +515,36 @@ export class Server extends BaseClass {
         server: this.getID(),
         enable: true,
       },
-    });
+    })
   }
 
   async getBotInstance() {
-    return await resolveDiscordGuildClient(this.guild);
+    return await resolveDiscordGuildClient(this.guild)
   }
 
   async getDiscordGuild() {
-    const dscClient = await this.getBotInstance();
-    const guild = await dscClient.guilds.fetch(this.guild);
+    const dscClient = await this.getBotInstance()
+    const guild = await dscClient.guilds.fetch(this.guild)
     if (!guild) {
-      throw new Error('Guild not found');
+      throw new Error('Guild not found')
     }
-    return guild;
+    return guild
   }
 
   async deleteStatus() {
-    const status = await this.getStatusChannelAndMessage();
-    if (!status) return;
+    const status = await this.getStatusChannelAndMessage()
+    if (!status) return
 
     try {
-      const guild = await this.getDiscordGuild();
-      if (!guild) return;
+      const guild = await this.getDiscordGuild()
+      if (!guild) return
 
-      const channel = guild.channels.cache.get(status.channel);
-      if (!channel) return;
+      const channel = guild.channels.cache.get(status.channel)
+      if (!channel) return
 
       if (channel.isTextBased()) {
-        const message = await channel.messages.fetch(status.message);
-        if (message) await message.delete();
+        const message = await channel.messages.fetch(status.message)
+        if (message) await message.delete()
       }
     } catch (error) {
       // skip
@@ -558,25 +555,25 @@ export class Server extends BaseClass {
       where: {
         server: this.getID(),
       },
-    });
+    })
 
-    return status;
+    return status
   }
 
   async createStatus(channelID: string) {
-    const guild = await this.getDiscordGuild();
+    const guild = await this.getDiscordGuild()
 
     if (!channelID) {
-      throw new Error('Channel ID is required');
+      throw new Error('Channel ID is required')
     }
 
-    const channel = guild.channels.cache.get(channelID);
-    if (!channel) throw new Error('Channel not found');
-    if (!channel.isSendable()) throw new Error('Channel is not sendable');
+    const channel = guild.channels.cache.get(channelID)
+    if (!channel) throw new Error('Channel not found')
+    if (!channel.isSendable()) throw new Error('Channel is not sendable')
 
-    const msgData = await this.getStatusData();
-    const embed = await buildDiscordStatusMessage(this, msgData, guild.preferredLocale);
-    const message = await channel.send(embed);
+    const msgData = await this.getStatusData()
+    const embed = await buildDiscordStatusMessage(this, msgData, guild.preferredLocale)
+    const message = await channel.send(embed)
 
     return prisma.gm_status.create({
       data: {
@@ -584,95 +581,95 @@ export class Server extends BaseClass {
         message: message.id,
         channel: channel.id,
       },
-    });
+    })
   }
 
   async editStatusChannelAndMessage(msgData: any) {
-    const dscClient = await this.getBotInstance();
-    const serverStatusInfo = await this.getStatusChannelAndMessage();
+    const dscClient = await this.getBotInstance()
+    const serverStatusInfo = await this.getStatusChannelAndMessage()
     if (!serverStatusInfo) {
-      gmLog('status', `Status channel not found for server ${this.getID()}`, true);
-      return;
+      gmLog('status', `Status channel not found for server ${this.getID()}`, true)
+      return
     }
 
     try {
-      let guild;
+      let guild
       try {
-        guild = await dscClient.guilds.fetch(this.getGuildID());
+        guild = await dscClient.guilds.fetch(this.getGuildID())
       } catch (err: any) {
         if (err.code === 10004) {
           // Guild no longer exists or bot has been kicked
-          gmLog('status', `Guild ${this.getGuildID()} unknown – cleaning up status record.`, true);
-          await prisma.gm_status.delete({ where: { server: this.getID() } });
-          return;
+          gmLog('status', `Guild ${this.getGuildID()} unknown – cleaning up status record.`, true)
+          await prisma.gm_status.delete({ where: { server: this.getID() } })
+          return
         }
-        throw err;
+        throw err
       }
       if (!guild) {
-        gmLog('status', `Guild fetch returned null for server ${this.getID()}`, true);
-        return;
+        gmLog('status', `Guild fetch returned null for server ${this.getID()}`, true)
+        return
       }
 
-      let channel;
+      let channel
       try {
-        channel = await dscClient.channels.fetch(serverStatusInfo.channel);
+        channel = await dscClient.channels.fetch(serverStatusInfo.channel)
       } catch (err: any) {
         if (err.code === 10003) {
           // channel deleted or otherwise not found
-          gmLog('status', `Channel ${serverStatusInfo.channel} no longer exists – removing record.`, true);
-          await prisma.gm_status.delete({ where: { server: this.getID() } });
-          return;
+          gmLog('status', `Channel ${serverStatusInfo.channel} no longer exists – removing record.`, true)
+          await prisma.gm_status.delete({ where: { server: this.getID() } })
+          return
         }
-        throw err;
+        throw err
       }
 
       if (!channel) {
-        gmLog('status', `Channel not found for server ${this.getID()}`, true);
-        return;
+        gmLog('status', `Channel not found for server ${this.getID()}`, true)
+        return
       }
 
-      let message;
+      let message
       if (!channel.isTextBased()) {
-        gmLog('status', `Channel is not text based for server ${this.getID()}`, true);
-        return;
+        gmLog('status', `Channel is not text based for server ${this.getID()}`, true)
+        return
       }
 
       // is message exists?
       try {
-        message = await channel.messages.fetch(serverStatusInfo.message);
+        message = await channel.messages.fetch(serverStatusInfo.message)
       } catch (err: any) {
         if (err.code === 10008) {
           // Message deleted or otherwise not found
-          gmLog('status', `Message ${serverStatusInfo.message} no longer exists – removing record.`, true);
-          await prisma.gm_status.delete({ where: { server: this.getID() } });
-          return;
+          gmLog('status', `Message ${serverStatusInfo.message} no longer exists – removing record.`, true)
+          await prisma.gm_status.delete({ where: { server: this.getID() } })
+          return
         }
         if (err.code === 50001) {
           // Missing Access - bot no longer has permission to access the channel/message
-          gmLog('status', `Missing access to message ${serverStatusInfo.message} – removing record.`, true);
-          await prisma.gm_status.delete({ where: { server: this.getID() } });
-          return;
+          gmLog('status', `Missing access to message ${serverStatusInfo.message} – removing record.`, true)
+          await prisma.gm_status.delete({ where: { server: this.getID() } })
+          return
         }
-        throw err;
+        throw err
       }
 
       if (!message) {
-        gmLog('status', `Message not found for server ${this.getID()}`, true);
-        return;
+        gmLog('status', `Message not found for server ${this.getID()}`, true)
+        return
       }
 
       // is same author?
       if (message.author.id !== dscClient.user?.id) {
-        gmLog('status', `Message author is not the bot for server ${this.getID()}`, true);
-        return;
+        gmLog('status', `Message author is not the bot for server ${this.getID()}`, true)
+        return
       }
 
-      const lang = guild.preferredLocale;
-      const newMsgContent = await buildDiscordStatusMessage(this, msgData, lang);
-      await message.edit(newMsgContent);
+      const lang = guild.preferredLocale
+      const newMsgContent = await buildDiscordStatusMessage(this, msgData, lang)
+      await message.edit(newMsgContent)
     } catch (error: any) {
-      gmLog('status', `Error updating status message for server ${this.getID()}: ${error.message}`, true);
-      console.error(error);
+      gmLog('status', `Error updating status message for server ${this.getID()}: ${error.message}`, true)
+      console.error(error)
       // await prisma.gm_status.delete({
       //   where: {
       //     server: this.getID(),
@@ -696,7 +693,7 @@ export class Server extends BaseClass {
       where: {
         id: this.getID(),
       },
-    });
+    })
     if (serverStatus) {
       await prisma.gm_server_status.update({
         where: {
@@ -712,7 +709,7 @@ export class Server extends BaseClass {
           maxPlayers,
           playersList: JSON.stringify(playersList),
         },
-      });
+      })
     } else {
       await prisma.gm_server_status.create({
         data: {
@@ -726,7 +723,7 @@ export class Server extends BaseClass {
           maxPlayers,
           playersList: JSON.stringify(playersList),
         },
-      });
+      })
     }
 
     await prisma.gm_server_status_history.create({
@@ -734,7 +731,7 @@ export class Server extends BaseClass {
         serverID: this.getID(),
         players,
       },
-    });
+    })
 
     await this.editStatusChannelAndMessage({
       ip,
@@ -746,32 +743,32 @@ export class Server extends BaseClass {
       maxPlayers,
       uptime,
       playersList,
-    });
+    })
   }
 
   async getSyncChatChannel() {
     try {
-      const redisKey = `server:${this.id}:syncChatChannel`;
-      const redisData = await redis.get(redisKey);
+      const redisKey = `server:${this.id}:syncChatChannel`
+      const redisData = await redis.get(redisKey)
       if (redisData) {
-        return JSON.parse(redisData);
+        return JSON.parse(redisData)
       }
 
       const results = await prisma.gm_sync_chat.findFirst({
         where: {
           server: this.id,
         },
-      });
+      })
 
       if (results) {
-        await redis.set(redisKey, JSON.stringify(results), 'EX', 60);
-        return results;
+        await redis.set(redisKey, JSON.stringify(results), 'EX', 60)
+        return results
       }
 
-      return null;
+      return null
     } catch (error) {
-      console.error(error);
-      return null;
+      console.error(error)
+      return null
     }
   }
 
@@ -782,7 +779,7 @@ export class Server extends BaseClass {
           serverID: this.id,
         },
       })) || []
-    );
+    )
   }
 
   async getSyncTeamRoles() {
@@ -792,7 +789,7 @@ export class Server extends BaseClass {
           serverID: this.id,
         },
       })) || []
-    );
+    )
   }
 
   async saveUserConnectionInfo(steamID64: string, name: string) {
@@ -802,7 +799,7 @@ export class Server extends BaseClass {
           steam_id: steamID64,
           server_id: this.id,
         },
-      });
+      })
 
       if (player) {
         await prisma.gm_server_stat.update({
@@ -816,7 +813,7 @@ export class Server extends BaseClass {
             name,
             total_connect: player.total_connect + 1,
           },
-        });
+        })
       } else {
         await prisma.gm_server_stat.create({
           data: {
@@ -827,11 +824,11 @@ export class Server extends BaseClass {
             first_join: new Date(),
             custom_values: '{}',
           },
-        });
+        })
       }
     } catch (error) {
-      console.error(error);
-      throw error;
+      console.error(error)
+      throw error
     }
   }
 
@@ -842,10 +839,10 @@ export class Server extends BaseClass {
           server_id: this.id,
           steam_id: steamID64,
         },
-      });
+      })
     } catch (error) {
-      console.error(error);
-      return null;
+      console.error(error)
+      return null
     }
   }
 
@@ -854,17 +851,17 @@ export class Server extends BaseClass {
       where: {
         id: this.id,
       },
-    });
+    })
 
     if (serverToDelete) {
       await prisma.gm_server.delete({
         where: {
           id: this.id,
         },
-      });
+      })
     }
 
-    return serverToDelete;
+    return serverToDelete
   }
 
   async save() {
@@ -872,7 +869,7 @@ export class Server extends BaseClass {
       where: {
         id: this.id,
       },
-    });
+    })
 
     if (serverToSave) {
       await prisma.gm_server.update({
@@ -889,7 +886,7 @@ export class Server extends BaseClass {
           publicTempToken: this.publicTempToken,
           description: this.description,
         },
-      });
+      })
     }
   }
 
@@ -898,7 +895,7 @@ export class Server extends BaseClass {
       where: {
         server: this.id,
       },
-    });
+    })
   }
 
   async findStatusButton(id: number) {
@@ -907,7 +904,7 @@ export class Server extends BaseClass {
         id,
         server: this.id,
       },
-    });
+    })
   }
 
   async createStatusButton() {
@@ -915,7 +912,7 @@ export class Server extends BaseClass {
       data: {
         server: this.id,
       },
-    });
+    })
   }
 
   async destroyStatusButton(id: number) {
@@ -924,7 +921,7 @@ export class Server extends BaseClass {
         server: this.id,
         id,
       },
-    });
+    })
 
     if (statusButton) {
       await prisma.gm_status_button.delete({
@@ -932,10 +929,10 @@ export class Server extends BaseClass {
           id,
           server: this.id,
         },
-      });
+      })
     }
 
-    return statusButton;
+    return statusButton
   }
 
   async getScreenshotsChannel(admin: boolean = false) {
@@ -944,21 +941,21 @@ export class Server extends BaseClass {
         server: this.getID(),
         adminCmd: admin,
       },
-    });
+    })
   }
 
   async destroyScreenshotChannel() {
-    const screenshotChannel = await this.getScreenshotsChannel();
+    const screenshotChannel = await this.getScreenshotsChannel()
 
     if (screenshotChannel) {
       try {
-        const guild = await this.getDiscordGuild();
-        if (!guild) throw new Error('Guild not found');
+        const guild = await this.getDiscordGuild()
+        if (!guild) throw new Error('Guild not found')
 
-        const webhooks = await guild.fetchWebhooks();
-        const webhookToDelete = webhooks.find((webhook) => webhook.id === screenshotChannel.webhook);
+        const webhooks = await guild.fetchWebhooks()
+        const webhookToDelete = webhooks.find((webhook) => webhook.id === screenshotChannel.webhook)
 
-        if (webhookToDelete) await webhookToDelete.delete();
+        if (webhookToDelete) await webhookToDelete.delete()
       } catch (error) {
         // skip
       }
@@ -969,10 +966,10 @@ export class Server extends BaseClass {
             adminCmd: screenshotChannel.adminCmd,
           },
         },
-      });
+      })
     }
 
-    return screenshotChannel;
+    return screenshotChannel
   }
 
   async getLogsChannel() {
@@ -980,65 +977,65 @@ export class Server extends BaseClass {
       where: {
         serverID: this.id,
       },
-    });
+    })
   }
 
   async getCachedLogsChannel() {
-    const redisKey = `server:${this.id}:logsChannel`;
-    const redisData = await redis.get(redisKey);
+    const redisKey = `server:${this.id}:logsChannel`
+    const redisData = await redis.get(redisKey)
     if (redisData) {
-      return JSON.parse(redisData);
+      return JSON.parse(redisData)
     }
 
-    const logsChannel = await this.getLogsChannel();
+    const logsChannel = await this.getLogsChannel()
     if (logsChannel) {
-      await redis.set(redisKey, JSON.stringify(logsChannel), 'EX', 60);
+      await redis.set(redisKey, JSON.stringify(logsChannel), 'EX', 60)
     }
 
-    return logsChannel;
+    return logsChannel
   }
 
   async destroyLogsChannel() {
-    const logsChannel = await this.getLogsChannel();
+    const logsChannel = await this.getLogsChannel()
 
     if (logsChannel) {
       try {
-        const guild = await this.getDiscordGuild();
-        if (!guild) throw new Error('Guild not found');
+        const guild = await this.getDiscordGuild()
+        if (!guild) throw new Error('Guild not found')
 
-        const webhooks = await guild.fetchWebhooks();
-        const webhookToDelete = webhooks.find((webhook) => webhook.id === logsChannel.webhookID);
-        if (webhookToDelete) await webhookToDelete.delete();
+        const webhooks = await guild.fetchWebhooks()
+        const webhookToDelete = webhooks.find((webhook) => webhook.id === logsChannel.webhookID)
+        if (webhookToDelete) await webhookToDelete.delete()
       } catch (error) {
         // skip
       }
-      await redis.del(`server:${this.id}:logsChannel`);
+      await redis.del(`server:${this.id}:logsChannel`)
       await prisma.gm_server_logs_channel.delete({
         where: {
           serverID: this.id,
         },
-      });
+      })
     }
 
-    return logsChannel;
+    return logsChannel
   }
 
   async createLogsChannel(channelID: string) {
-    await this.destroyLogsChannel();
+    await this.destroyLogsChannel()
 
-    const guild = await this.getDiscordGuild();
-    if (!guild) throw new Error('Guild not found');
+    const guild = await this.getDiscordGuild()
+    if (!guild) throw new Error('Guild not found')
 
-    const channel = guild.channels.cache.get(channelID);
-    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found');
+    const channel = guild.channels.cache.get(channelID)
+    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found')
 
     const webhook = await channel.createWebhook({
       name: 'Server Logs',
-    });
+    })
 
-    if (!webhook) throw new Error('Webhook not created');
+    if (!webhook) throw new Error('Webhook not created')
 
-    await redis.del(`server:${this.id}:logsChannel`);
+    await redis.del(`server:${this.id}:logsChannel`)
     return prisma.gm_server_logs_channel.create({
       data: {
         serverID: this.id,
@@ -1046,7 +1043,7 @@ export class Server extends BaseClass {
         webhookID: webhook.id,
         webhookToken: webhook.token,
       },
-    });
+    })
   }
 
   async getVoteChannel() {
@@ -1054,7 +1051,7 @@ export class Server extends BaseClass {
       where: {
         serverID: this.id,
       },
-    });
+    })
   }
 
   async getPublicInformations() {
@@ -1068,20 +1065,20 @@ export class Server extends BaseClass {
       description: this.description,
       ip: this.ip,
       port: this.port,
-    };
+    }
   }
 
   async destroyVoteChannel() {
-    const voteChannel = await this.getVoteChannel();
+    const voteChannel = await this.getVoteChannel()
 
     if (voteChannel) {
       try {
-        const guild = await this.getDiscordGuild();
-        if (!guild) throw new Error('Guild not found');
+        const guild = await this.getDiscordGuild()
+        if (!guild) throw new Error('Guild not found')
 
-        const webhooks = await guild.fetchWebhooks();
-        const webhookToDelete = webhooks.find((webhook) => webhook.id === voteChannel.webhookID);
-        if (webhookToDelete) await webhookToDelete.delete();
+        const webhooks = await guild.fetchWebhooks()
+        const webhookToDelete = webhooks.find((webhook) => webhook.id === voteChannel.webhookID)
+        if (webhookToDelete) await webhookToDelete.delete()
       } catch (error) {
         // skip
       }
@@ -1091,26 +1088,26 @@ export class Server extends BaseClass {
           channelID: voteChannel.channelID,
           serverID: this.id,
         },
-      });
+      })
     }
 
-    return voteChannel;
+    return voteChannel
   }
 
   async createVoteChannel(channelID: string) {
-    await this.destroyVoteChannel();
+    await this.destroyVoteChannel()
 
-    const guild = await this.getDiscordGuild();
-    if (!guild) throw new Error('Guild not found');
+    const guild = await this.getDiscordGuild()
+    if (!guild) throw new Error('Guild not found')
 
-    const channel = guild.channels.cache.get(channelID);
-    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found');
+    const channel = guild.channels.cache.get(channelID)
+    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found')
 
     const webhook = await channel.createWebhook({
       name: 'Server Vote',
-    });
+    })
 
-    if (!webhook) throw new Error('Webhook not created');
+    if (!webhook) throw new Error('Webhook not created')
 
     return prisma.gm_server_vote_channels.create({
       data: {
@@ -1119,7 +1116,7 @@ export class Server extends BaseClass {
         webhookID: webhook.id,
         webhookToken: webhook.token,
       },
-    });
+    })
   }
 
   async getDBPlayers() {
@@ -1127,7 +1124,7 @@ export class Server extends BaseClass {
       where: {
         server_id: this.id,
       },
-    });
+    })
   }
 
   async getPlayerStats(steamID64: string) {
@@ -1136,23 +1133,23 @@ export class Server extends BaseClass {
         server_id: this.id,
         steam_id: steamID64,
       },
-    });
+    })
   }
 
   async createScreenshotChannel(channelID: string) {
-    await this.destroyScreenshotChannel();
+    await this.destroyScreenshotChannel()
 
-    const guild = await this.getDiscordGuild();
-    if (!guild) throw new Error('Guild not found');
+    const guild = await this.getDiscordGuild()
+    if (!guild) throw new Error('Guild not found')
 
-    const channel = guild.channels.cache.get(channelID);
-    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found');
+    const channel = guild.channels.cache.get(channelID)
+    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found')
 
     const webhook = await channel.createWebhook({
       name: 'Server Screenshots',
-    });
+    })
 
-    if (!webhook) throw new Error('Webhook not created');
+    if (!webhook) throw new Error('Webhook not created')
 
     return prisma.gm_server_screenshot_channels.create({
       data: {
@@ -1161,7 +1158,7 @@ export class Server extends BaseClass {
         webhook: webhook.id,
         token: webhook.token,
       },
-    });
+    })
   }
 
   async getSyncChat() {
@@ -1169,20 +1166,20 @@ export class Server extends BaseClass {
       where: {
         server: this.id,
       },
-    });
+    })
   }
 
   async destroySyncChat() {
-    const syncChat = await this.getSyncChat();
+    const syncChat = await this.getSyncChat()
 
     if (syncChat) {
       try {
-        const guild = await this.getDiscordGuild();
-        if (!guild) throw new Error('Guild not found');
+        const guild = await this.getDiscordGuild()
+        if (!guild) throw new Error('Guild not found')
 
-        const webhooks = await guild.fetchWebhooks();
-        const webhookToDelete = webhooks.find((webhook) => webhook.id === syncChat.id);
-        if (webhookToDelete) await webhookToDelete.delete();
+        const webhooks = await guild.fetchWebhooks()
+        const webhookToDelete = webhooks.find((webhook) => webhook.id === syncChat.id)
+        if (webhookToDelete) await webhookToDelete.delete()
       } catch (error) {
         // skip
       }
@@ -1193,25 +1190,25 @@ export class Server extends BaseClass {
             server: this.id,
           },
         },
-      });
+      })
     }
-    return syncChat;
+    return syncChat
   }
 
   async createSyncChat(channelID: string) {
-    await this.destroySyncChat();
+    await this.destroySyncChat()
 
-    const guild = await this.getDiscordGuild();
-    if (!guild) throw new Error('Guild not found');
+    const guild = await this.getDiscordGuild()
+    if (!guild) throw new Error('Guild not found')
 
-    const channel = guild.channels.cache.get(channelID);
-    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found');
+    const channel = guild.channels.cache.get(channelID)
+    if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found')
 
     const webhook = await channel.createWebhook({
       name: 'Server Chat',
-    });
+    })
 
-    if (!webhook) throw new Error('Webhook not created');
+    if (!webhook) throw new Error('Webhook not created')
 
     return prisma.gm_sync_chat.create({
       data: {
@@ -1221,7 +1218,7 @@ export class Server extends BaseClass {
         id: webhook.id,
         token: webhook.token,
       },
-    });
+    })
   }
 
   async getLogsTrigger() {
@@ -1229,7 +1226,7 @@ export class Server extends BaseClass {
       where: {
         serverID: this.id,
       },
-    });
+    })
   }
 
   /*$
@@ -1255,7 +1252,7 @@ export class Server extends BaseClass {
         serverID: this.id,
         id,
       },
-    });
+    })
 
     if (trigger) {
       await prisma.gm_server_logs_triggers.delete({
@@ -1263,11 +1260,11 @@ export class Server extends BaseClass {
           id,
           serverID: this.id,
         },
-      });
+      })
     }
 
-    await this.resetRedisLogsTrigger();
-    return trigger;
+    await this.resetRedisLogsTrigger()
+    return trigger
   }
 
   async createLogsTrigger(
@@ -1279,8 +1276,8 @@ export class Server extends BaseClass {
     message: string,
     log_type: string,
   ) {
-    const newOperator = gm_server_logs_triggers_operator[operator as keyof typeof gm_server_logs_triggers_operator];
-    const newAction = gm_server_logs_triggers_action[action as keyof typeof gm_server_logs_triggers_action];
+    const newOperator = gm_server_logs_triggers_operator[operator as keyof typeof gm_server_logs_triggers_operator]
+    const newAction = gm_server_logs_triggers_action[action as keyof typeof gm_server_logs_triggers_action]
     const data = prisma.gm_server_logs_triggers.create({
       data: {
         serverID: this.id,
@@ -1292,10 +1289,10 @@ export class Server extends BaseClass {
         message,
         log_type,
       },
-    });
+    })
 
-    await this.resetRedisLogsTrigger();
-    return data;
+    await this.resetRedisLogsTrigger()
+    return data
   }
 
   async updateLogsTrigger(
@@ -1308,8 +1305,8 @@ export class Server extends BaseClass {
     message: string,
     log_type: string,
   ) {
-    const newOperator = gm_server_logs_triggers_operator[operator as keyof typeof gm_server_logs_triggers_operator];
-    const newAction = gm_server_logs_triggers_action[action as keyof typeof gm_server_logs_triggers_action];
+    const newOperator = gm_server_logs_triggers_operator[operator as keyof typeof gm_server_logs_triggers_operator]
+    const newAction = gm_server_logs_triggers_action[action as keyof typeof gm_server_logs_triggers_action]
     const data = await prisma.gm_server_logs_triggers.update({
       where: {
         id,
@@ -1324,65 +1321,65 @@ export class Server extends BaseClass {
         message,
         log_type,
       },
-    });
+    })
 
-    await this.resetRedisLogsTrigger();
-    return data;
+    await this.resetRedisLogsTrigger()
+    return data
   }
 
   async resetRedisLogsTrigger() {
-    const redisKey = `server:${this.id}:logsTrigger`;
-    await redis.del(redisKey);
-    const triggers = await this.getLogsTrigger();
+    const redisKey = `server:${this.id}:logsTrigger`
+    await redis.del(redisKey)
+    const triggers = await this.getLogsTrigger()
     if (triggers) {
       for (const trigger of triggers) {
-        await redis.del(`${redisKey}:${trigger.log_type}`);
+        await redis.del(`${redisKey}:${trigger.log_type}`)
       }
     }
-    await this.getLogsTriggerFromRedis();
+    await this.getLogsTriggerFromRedis()
   }
 
   async getLogsTriggerFromRedis() {
-    const redisKey = `server:${this.id}:logsTrigger`;
-    const redisData = await redis.get(redisKey);
+    const redisKey = `server:${this.id}:logsTrigger`
+    const redisData = await redis.get(redisKey)
     if (redisData) {
-      return JSON.parse(redisData);
+      return JSON.parse(redisData)
     } else {
-      const redisKey = `server:${this.id}:logsTrigger`;
-      const triggers = await this.getLogsTrigger();
+      const redisKey = `server:${this.id}:logsTrigger`
+      const triggers = await this.getLogsTrigger()
 
-      let triggersByType: Record<string, gm_server_logs_triggers[]> = {};
+      const triggersByType: Record<string, gm_server_logs_triggers[]> = {}
       for (const trigger of triggers) {
         if (!triggersByType[trigger.log_type]) {
-          triggersByType[trigger.log_type] = [];
+          triggersByType[trigger.log_type] = []
         }
-        triggersByType[trigger.log_type].push(trigger);
+        triggersByType[trigger.log_type].push(trigger)
       }
 
       // save every triggersByType in redis
       for (const [key, value] of Object.entries(triggersByType)) {
-        await redis.set(`${redisKey}:${key}`, JSON.stringify(value), 'EX', 60 * 60 * 24);
+        await redis.set(`${redisKey}:${key}`, JSON.stringify(value), 'EX', 60 * 60 * 24)
       }
 
       // save list
-      const trigger_types = Object.keys(triggersByType) || [];
-      await redis.set(redisKey, JSON.stringify(trigger_types), 'EX', 60 * 60 * 24);
+      const trigger_types = Object.keys(triggersByType) || []
+      await redis.set(redisKey, JSON.stringify(trigger_types), 'EX', 60 * 60 * 24)
 
       //
-      return trigger_types;
+      return trigger_types
     }
   }
 }
 
 export async function generateServerUniqueID() {
-  const generatedID = generateToken(10);
+  const generatedID = generateToken(10)
   const server = await prisma.gm_server.findFirst({
     where: {
       id: generatedID,
     },
-  });
-  if (server) return await generateServerUniqueID();
-  return generatedID;
+  })
+  if (server) return await generateServerUniqueID()
+  return generatedID
 }
 
 export async function getServerFromID(serverID: string) {
@@ -1390,8 +1387,8 @@ export async function getServerFromID(serverID: string) {
     where: {
       id: serverID,
     },
-  });
-  return server ? new Server(server) : null;
+  })
+  return server ? new Server(server) : null
 }
 
 export async function getServersFromDiscordGuildID(guildID: string) {
@@ -1399,34 +1396,34 @@ export async function getServersFromDiscordGuildID(guildID: string) {
     where: {
       guild: guildID,
     },
-  });
-  return servers.map((server) => new Server(server));
+  })
+  return servers.map((server) => new Server(server))
 }
 
 export async function createServer(guildID: string) {
-  const serverID = await generateServerUniqueID();
+  const serverID = await generateServerUniqueID()
   const server = await prisma.gm_server.create({
     data: {
       id: serverID,
       token: generateToken(16),
       guild: guildID,
     },
-  });
-  return new Server(server);
+  })
+  return new Server(server)
 }
 
 export async function statusRoutine() {
-  const serversStatusChannel = await prisma.gm_status.findMany();
+  const serversStatusChannel = await prisma.gm_status.findMany()
 
   for (const statusChannel of serversStatusChannel) {
-    const server = await getServerFromID(statusChannel.server);
+    const server = await getServerFromID(statusChannel.server)
     if (!server) {
       await prisma.gm_status.delete({
         where: {
           server: statusChannel.server,
         },
-      });
-      continue;
+      })
+      continue
     }
 
     const statusInfo = await prisma.gm_server_status.findFirst({
@@ -1437,11 +1434,11 @@ export async function statusRoutine() {
           lte: new Date(new Date().getTime() - 6 * 60 * 1000), // 6 minutes ago
         },
       },
-    });
+    })
 
     // Only update if status is between 6-10 minutes old
-    if (!statusInfo) continue;
+    if (!statusInfo) continue
 
-    await server.editStatusChannelAndMessage(await server.getStatusData());
+    await server.editStatusChannelAndMessage(await server.getStatusData())
   }
 }

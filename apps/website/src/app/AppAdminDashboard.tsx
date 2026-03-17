@@ -1,6 +1,6 @@
-import { AdminMenu } from "../components/layout/menu/AdminMenu";
-import { ErrorBoundary } from "solid-js/web";
-import { ParentProps } from "solid-js";
+import { AdminMenu } from '../components/layout/menu/AdminMenu'
+import { ErrorBoundary } from 'solid-js/web'
+import { ParentProps } from 'solid-js'
 
 export const AppAdminDashboard = (props: ParentProps) => (
   <>
@@ -23,4 +23,4 @@ export const AppAdminDashboard = (props: ParentProps) => (
       </div>
     </div>
   </>
-);
+)

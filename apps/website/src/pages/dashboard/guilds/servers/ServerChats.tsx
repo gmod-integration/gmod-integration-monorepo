@@ -1,185 +1,185 @@
-import { Component, createResource, createSignal, For, Show } from "solid-js";
-import AdminPanel from "../../../../components/AdminPanel";
-import { guildChannelsRefetch } from "../GuildInformations";
-import AdminChannelSelector from "../../../../components/AdminChannelSelector";
-import AdminModal from "../../../../components/AdminModal";
-import { useI18n } from "../../../../i18n";
-import DiscordChannel from "../../../../components/discord/DiscordChannel";
-import { NeedWebsocket } from "../../../../components/popup/NeedWebsocket";
-import { premium, PremiumBadge } from "../../../../utils/premium";
-import { PremiumOnly } from "../../../../components/PremiumOnly";
-import { fetchAPI } from "../../../../utils/api";
-import { TextValue } from "../../../../components/popup/TextValue";
+import { Component, createResource, createSignal, For, Show } from 'solid-js'
+import AdminPanel from '../../../../components/AdminPanel'
+import { guildChannelsRefetch } from '../GuildInformations'
+import AdminChannelSelector from '../../../../components/AdminChannelSelector'
+import AdminModal from '../../../../components/AdminModal'
+import { useI18n } from '../../../../i18n'
+import DiscordChannel from '../../../../components/discord/DiscordChannel'
+import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket'
+import { premium, PremiumBadge } from '../../../../utils/premium'
+import { PremiumOnly } from '../../../../components/PremiumOnly'
+import { fetchAPI } from '../../../../utils/api'
+import { TextValue } from '../../../../components/popup/TextValue'
 
 const fetchScreenshot = async () => {
-  const res = await fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/chats", "GET");
+  const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats', 'GET')
   if (!res.ok) {
-    return {};
+    return {}
   }
-  return await res.json();
-};
+  return await res.json()
+}
 
 const ServerChats: Component = () => {
-  const [syncChats, { mutate: syncChatsMutate }] = createResource("screenshot", fetchScreenshot);
-  const { t } = useI18n();
+  const [syncChats, { mutate: syncChatsMutate }] = createResource('screenshot', fetchScreenshot)
+  const { t } = useI18n()
 
   const sendScreenshots = async (channelID: string) => {
-    const res = await fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/chats", "POST", {
+    const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats', 'POST', {
       channelID,
-    });
+    })
     if (!res.ok) {
-      return;
+      return
     }
-    const screenshot = await res.json();
-    syncChatsMutate(screenshot);
-    return screenshot;
-  };
+    const screenshot = await res.json()
+    syncChatsMutate(screenshot)
+    return screenshot
+  }
 
   const removeScreenshots = async () => {
-    const res = await fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/chats", "DELETE");
+    const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats', 'DELETE')
     if (!res.ok) {
-      return;
+      return
     }
-    syncChatsMutate({});
-    return {};
-  };
+    syncChatsMutate({})
+    return {}
+  }
 
-  const [pseudoDirection, { mutate: mutatePseudoDirection }] = createResource("pseudoDirection", async () => {
-    return fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/settings/syncChatDirection", "GET").then(
+  const [pseudoDirection, { mutate: mutatePseudoDirection }] = createResource('pseudoDirection', async () => {
+    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/syncChatDirection', 'GET').then(
       async (res) => {
-        if (!res.ok) throw new Error("An error occurred while fetching the pseudo direction.");
-        return (await res.json()) || {};
+        if (!res.ok) throw new Error('An error occurred while fetching the pseudo direction.')
+        return (await res.json()) || {}
       },
-    );
-  });
+    )
+  })
 
   const [gmToDscFilterRelayAll, { mutate: mutateGmToDscFilterRelayAll }] = createResource(
-    "gmToDscFilterRelayAll",
+    'gmToDscFilterRelayAll',
     async () => {
-      return fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/settings/chat_sync_relay_all", "GET").then(
+      return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/chat_sync_relay_all', 'GET').then(
         async (res) => {
-          if (!res.ok) throw new Error("An error occurred while fetching the pseudo direction.");
-          return (await res.json()) || {};
+          if (!res.ok) throw new Error('An error occurred while fetching the pseudo direction.')
+          return (await res.json()) || {}
         },
-      );
+      )
     },
-  );
+  )
 
   function updateGmToDscFilterRelayAll(relayAll: boolean) {
-    fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/settings/chat_sync_relay_all", "PUT", {
+    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/chat_sync_relay_all', 'PUT', {
       value: relayAll,
     })
       .then((res) => {
         if (res.ok) {
-          return res.json();
+          return res.json()
         } else {
-          throw new Error("An error occurred while updating the pseudo direction.");
+          throw new Error('An error occurred while updating the pseudo direction.')
         }
       })
       .then((data) => {
-        mutateGmToDscFilterRelayAll(data);
-      });
+        mutateGmToDscFilterRelayAll(data)
+      })
   }
 
-  const [preventChatPing, { mutate: mutatePreventChatPing }] = createResource("preventChatPing", async () => {
-    return fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_chat_prevent_ping", "GET").then(
+  const [preventChatPing, { mutate: mutatePreventChatPing }] = createResource('preventChatPing', async () => {
+    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_chat_prevent_ping', 'GET').then(
       async (res) => {
-        if (!res.ok) throw new Error("An error occurred while fetching the prevent chat ping.");
-        return (await res.json()) || {};
+        if (!res.ok) throw new Error('An error occurred while fetching the prevent chat ping.')
+        return (await res.json()) || {}
       },
-    );
-  });
+    )
+  })
 
   function updatePreventChatPing(preventPing: boolean) {
-    fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_chat_prevent_ping", "PUT", {
+    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_chat_prevent_ping', 'PUT', {
       value: preventPing,
     })
       .then((res) => {
         if (res.ok) {
-          return res.json();
+          return res.json()
         } else {
-          throw new Error("An error occurred while updating the prevent chat ping.");
+          throw new Error('An error occurred while updating the prevent chat ping.')
         }
       })
       .then((data) => {
-        mutatePreventChatPing(data);
-      });
+        mutatePreventChatPing(data)
+      })
   }
 
-  const [gmToDscFilters, { mutate: mutateGmToDscFilters }] = createResource("gmToDscFilters", async () => {
-    return fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters", "GET").then(async (res) => {
-      if (!res.ok) throw new Error("An error occurred while fetching the pseudo direction.");
-      return (await res.json()) || {};
-    });
-  });
+  const [gmToDscFilters, { mutate: mutateGmToDscFilters }] = createResource('gmToDscFilters', async () => {
+    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters', 'GET').then(async (res) => {
+      if (!res.ok) throw new Error('An error occurred while fetching the pseudo direction.')
+      return (await res.json()) || {}
+    })
+  })
 
   function addGmToDscFilter() {
-    fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters", "POST")
+    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters', 'POST')
       .then((res) => {
         if (res.ok) {
-          return res.json();
+          return res.json()
         } else {
-          throw new Error("An error occurred while adding the role.");
+          throw new Error('An error occurred while adding the role.')
         }
       })
       .then((data) => {
-        mutateGmToDscFilters((prev) => [...prev, data]);
-      });
+        mutateGmToDscFilters((prev) => [...prev, data])
+      })
   }
 
   function deleteGmToDscFilter(roleID: string) {
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters/${roleID}`, "DELETE")
+    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters/${roleID}`, 'DELETE')
       .then((res) => {
         if (res.ok) {
-          return res.json();
+          return res.json()
         } else {
-          throw new Error("An error occurred while deleting the role.");
+          throw new Error('An error occurred while deleting the role.')
         }
       })
       .then((data) => {
-        mutateGmToDscFilters((prev) => prev.filter((r) => r.id !== data.id));
-      });
+        mutateGmToDscFilters((prev) => prev.filter((r) => r.id !== data.id))
+      })
   }
 
-  const [selectFilter, setSelectFilter] = createSignal({});
+  const [selectFilter, setSelectFilter] = createSignal({})
 
   function editGmToDscFilter() {
     fetchAPI(
       `/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters/${selectFilter().id}`,
-      "PUT",
+      'PUT',
       selectFilter(),
     )
       .then((res) => {
         if (res.ok) {
-          return res.json();
+          return res.json()
         } else {
-          throw new Error("An error occurred while editing the role.");
+          throw new Error('An error occurred while editing the role.')
         }
       })
       .then((data) => {
-        mutateGmToDscFilters((prev) => prev.map((r) => (r.id === data.id ? data : r)));
-        setSelectFilter({});
-      });
+        mutateGmToDscFilters((prev) => prev.map((r) => (r.id === data.id ? data : r)))
+        setSelectFilter({})
+      })
   }
 
   function updateSyncPseudoDirection(direction: string) {
-    fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/settings/syncChatDirection", "PUT", {
+    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/syncChatDirection', 'PUT', {
       value: direction,
     })
       .then((res) => {
         if (res.ok) {
-          return res.json();
+          return res.json()
         } else {
-          throw new Error("An error occurred while updating the pseudo direction.");
+          throw new Error('An error occurred while updating the pseudo direction.')
         }
       })
       .then((data) => {
-        mutatePseudoDirection(data);
-      });
+        mutatePseudoDirection(data)
+      })
   }
 
   function getSelectorClassList(direction: string) {
-    return !pseudoDirection.loading ? pseudoDirection().value === direction : false;
+    return !pseudoDirection.loading ? pseudoDirection().value === direction : false
   }
 
   return (
@@ -187,66 +187,66 @@ const ServerChats: Component = () => {
       <NeedWebsocket />
       <AdminChannelSelector id="select_channel_modal" callback={sendScreenshots} />
 
-      <AdminModal title={t("dashboard.server.chat.edit_rule", "Edit Rule")} id="edit_rule_modal">
+      <AdminModal title={t('dashboard.server.chat.edit_rule', 'Edit Rule')} id="edit_rule_modal">
         <div class="fieldset">
           <label class="label">
-            <span>{t("dashboard.server.chat.element", "Element")}</span>
+            <span>{t('dashboard.server.chat.element', 'Element')}</span>
           </label>
           <select
             class="select"
             disabled={gmToDscFilters.loading}
             onChange={(e) => {
-              selectFilter().element = e.currentTarget.value;
+              selectFilter().element = e.currentTarget.value
             }}
           >
-            <option value="message" selected={selectFilter().element === "message"}>
-              {t("dashboard.server.chat.message", "Message")}
+            <option value="message" selected={selectFilter().element === 'message'}>
+              {t('dashboard.server.chat.message', 'Message')}
             </option>
-            <option value="userGroup" selected={selectFilter().element === "userGroup"}>
-              {t("dashboard.server.chat.user_group", "User Group")}
+            <option value="userGroup" selected={selectFilter().element === 'userGroup'}>
+              {t('dashboard.server.chat.user_group', 'User Group')}
             </option>
-            <option value="steamID64" selected={selectFilter().element === "steamID64"}>
-              {t("dashboard.server.chat.steam_id_64", "Steam ID 64")}
+            <option value="steamID64" selected={selectFilter().element === 'steamID64'}>
+              {t('dashboard.server.chat.steam_id_64', 'Steam ID 64')}
             </option>
-            <option value="teamName" selected={selectFilter().element === "teamName"}>
-              {t("dashboard.server.chat.team_name", "Team Name")}
+            <option value="teamName" selected={selectFilter().element === 'teamName'}>
+              {t('dashboard.server.chat.team_name', 'Team Name')}
             </option>
           </select>
         </div>
         <div class="fieldset">
           <label class="label">
-            <span>{t("dashboard.server.chat.operator", "Operator")}</span>
+            <span>{t('dashboard.server.chat.operator', 'Operator')}</span>
           </label>
           <select
             disabled={gmToDscFilters.loading}
             class="select"
             onChange={(e) => {
-              selectFilter().operator = e.currentTarget.value;
+              selectFilter().operator = e.currentTarget.value
             }}
           >
-            <option value="contain" selected={selectFilter().operator === "contain"}>
-              {t("dashboard.server.chat.contain", "Contain")}
+            <option value="contain" selected={selectFilter().operator === 'contain'}>
+              {t('dashboard.server.chat.contain', 'Contain')}
             </option>
-            <option value="notContain" selected={selectFilter().operator === "notContain"}>
-              {t("dashboard.server.chat.not_contain", "Not Contain")}
+            <option value="notContain" selected={selectFilter().operator === 'notContain'}>
+              {t('dashboard.server.chat.not_contain', 'Not Contain')}
             </option>
-            <option value="equal" selected={selectFilter().operator === "equal"}>
-              {t("dashboard.server.chat.equal", "Equal")}
+            <option value="equal" selected={selectFilter().operator === 'equal'}>
+              {t('dashboard.server.chat.equal', 'Equal')}
             </option>
-            <option value="notEqual" selected={selectFilter().operator === "notEqual"}>
-              {t("dashboard.server.chat.not_equal", "Not Equal")}
+            <option value="notEqual" selected={selectFilter().operator === 'notEqual'}>
+              {t('dashboard.server.chat.not_equal', 'Not Equal')}
             </option>
-            <option value="startWith" selected={selectFilter().operator === "startWith"}>
-              {t("dashboard.server.chat.start_with", "Start With")}
+            <option value="startWith" selected={selectFilter().operator === 'startWith'}>
+              {t('dashboard.server.chat.start_with', 'Start With')}
             </option>
-            <option value="endWith" selected={selectFilter().operator === "endWith"}>
-              {t("dashboard.server.chat.end_with", "End With")}
+            <option value="endWith" selected={selectFilter().operator === 'endWith'}>
+              {t('dashboard.server.chat.end_with', 'End With')}
             </option>
           </select>
         </div>
         <div class="fieldset">
           <label class="label">
-            <span>{t("dashboard.server.chat.trigger", "Trigger")}</span>
+            <span>{t('dashboard.server.chat.trigger', 'Trigger')}</span>
           </label>
           <input
             type="text"
@@ -254,48 +254,48 @@ const ServerChats: Component = () => {
             class="input"
             value={selectFilter().trigger}
             onInput={(e) => {
-              selectFilter().trigger = e.currentTarget.value;
+              selectFilter().trigger = e.currentTarget.value
             }}
           />
         </div>
         <div class="fieldset">
           <label class="label">
-            <span>{t("dashboard.server.chat.actions_on_match", "Actions on Match")}</span>
+            <span>{t('dashboard.server.chat.actions_on_match', 'Actions on Match')}</span>
           </label>
           <select
             disabled={gmToDscFilters.loading}
             class="select"
             onChange={(e) => {
-              selectFilter().action = e.currentTarget.value;
+              selectFilter().action = e.currentTarget.value
             }}
           >
-            <option value="block" selected={selectFilter().action === "block"}>
-              {t("dashboard.server.chat.block", "Block")}
+            <option value="block" selected={selectFilter().action === 'block'}>
+              {t('dashboard.server.chat.block', 'Block')}
             </option>
-            <option value="relay" selected={selectFilter().action === "relay"}>
-              {t("dashboard.server.chat.relay", "Relay")}
+            <option value="relay" selected={selectFilter().action === 'relay'}>
+              {t('dashboard.server.chat.relay', 'Relay')}
             </option>
-            <option value="anonymize" selected={selectFilter().action === "anonymize"}>
-              {t("dashboard.server.chat.anonymize", "Anonymize")}
+            <option value="anonymize" selected={selectFilter().action === 'anonymize'}>
+              {t('dashboard.server.chat.anonymize', 'Anonymize')}
             </option>
           </select>
         </div>
         <div class="fieldset">
           <label class="label">
-            <span>{t("dashboard.server.chat.active", "Active")}</span>
+            <span>{t('dashboard.server.chat.active', 'Active')}</span>
           </label>
           <select
             disabled={gmToDscFilters.loading}
             class="select"
             onChange={(e) => {
-              selectFilter().active = e.currentTarget.value === "true";
+              selectFilter().active = e.currentTarget.value === 'true'
             }}
           >
             <option value="true" selected={selectFilter().active === true}>
-              {t("dashboard.server.chat.yes", "Yes")}
+              {t('dashboard.server.chat.yes', 'Yes')}
             </option>
             <option value="false" selected={selectFilter().active === false}>
-              {t("dashboard.server.chat.no", "No")}
+              {t('dashboard.server.chat.no', 'No')}
             </option>
           </select>
         </div>
@@ -304,26 +304,26 @@ const ServerChats: Component = () => {
           disabled={gmToDscFilters.loading}
           onClick={async () => {
             // @ts-ignore
-            edit_rule_modal.close();
-            editGmToDscFilter();
+            edit_rule_modal.close()
+            editGmToDscFilter()
           }}
         >
-          {t("dashboard.server.chat.save", "Save")}
+          {t('dashboard.server.chat.save', 'Save')}
         </button>
       </AdminModal>
 
       <AdminPanel
-        title={t("dashboard.server.chat.chats", "Chats")}
+        title={t('dashboard.server.chat.chats', 'Chats')}
         description={t(
-          "dashboard.server.chat.set_channel",
-          "Set a channel to sync the chats between your server and Discord.",
+          'dashboard.server.chat.set_channel',
+          'Set a channel to sync the chats between your server and Discord.',
         )}
       >
         <div class="flex w-fit items-center">
-          <span class="mr-2">{t("dashboard.server.chat.chats_channels", "Actual Chats Channels") + " : "}</span>
+          <span class="mr-2">{t('dashboard.server.chat.chats_channels', 'Actual Chats Channels') + ' : '}</span>
           <Show
             when={!syncChats.loading && syncChats().channel}
-            fallback={<span>{t("dashboard.server.chat.no_sync_chats", "No Sync Chats")}</span>}
+            fallback={<span>{t('dashboard.server.chat.no_sync_chats', 'No Sync Chats')}</span>}
           >
             <DiscordChannel channelID={syncChats().channel} />
           </Show>
@@ -331,35 +331,35 @@ const ServerChats: Component = () => {
         <div class="flex w-fit items-center">
           <PremiumBadge onlyIcon={true} />
           <span class="mr-2 text-nowrap">
-            {t("dashboard.server.chat.sync_direction", "Chats Synchronization Direction") + " : "}
+            {t('dashboard.server.chat.sync_direction', 'Chats Synchronization Direction') + ' : '}
           </span>
           <select
             class="select w-full max-w-xs"
             disabled={pseudoDirection.loading}
             onChange={(e) => {
-              updateSyncPseudoDirection(e.currentTarget.value);
+              updateSyncPseudoDirection(e.currentTarget.value)
             }}
           >
-            <option value="discordToGmod" selected={getSelectorClassList("discordToGmod")} disabled={!premium()}>
-              {t("dashboard.server.chat.from_discord_to_gmod", "From Discord to Gmod")} <PremiumOnly />
+            <option value="discordToGmod" selected={getSelectorClassList('discordToGmod')} disabled={!premium()}>
+              {t('dashboard.server.chat.from_discord_to_gmod', 'From Discord to Gmod')} <PremiumOnly />
             </option>
-            <option value="gmodToDiscord" selected={getSelectorClassList("gmodToDiscord")}>
-              {t("dashboard.server.chat.from_gmod_to_discord", "From Gmod to Discord")}
+            <option value="gmodToDiscord" selected={getSelectorClassList('gmodToDiscord')}>
+              {t('dashboard.server.chat.from_gmod_to_discord', 'From Gmod to Discord')}
             </option>
-            <option value="both" selected={getSelectorClassList("both")} disabled={!premium()}>
-              {t("dashboard.server.chat.both_ways", "Both Ways")} <PremiumOnly />
+            <option value="both" selected={getSelectorClassList('both')} disabled={!premium()}>
+              {t('dashboard.server.chat.both_ways', 'Both Ways')} <PremiumOnly />
             </option>
           </select>
         </div>
         <div class="flex w-fit items-center">
-          <span class="mr-2">{t("dashboard.server.chat.prevent_chat_ping", "Prevent Chat Ping") + " : "}</span>
+          <span class="mr-2">{t('dashboard.server.chat.prevent_chat_ping', 'Prevent Chat Ping') + ' : '}</span>
           <input
             type="checkbox"
             class="toggle toggle-md"
             disabled={preventChatPing.loading}
             checked={!preventChatPing.loading ? preventChatPing().value : false}
             onChange={(e) => {
-              updatePreventChatPing(e.currentTarget.checked);
+              updatePreventChatPing(e.currentTarget.checked)
             }}
           />
         </div>
@@ -368,54 +368,54 @@ const ServerChats: Component = () => {
             <button
               class="btn btn-warning"
               onClick={async () => {
-                await removeScreenshots();
+                await removeScreenshots()
               }}
             >
-              {t("dashboard.server.chat.remove_channel", "Remove Channel")}
+              {t('dashboard.server.chat.remove_channel', 'Remove Channel')}
             </button>
           </Show>
           <button
             class="btn btn-base-200"
             onClick={() => {
               // @ts-ignore
-              select_channel_modal.showModal();
-              guildChannelsRefetch();
+              select_channel_modal.showModal()
+              guildChannelsRefetch()
             }}
           >
-            {t("dashboard.server.chat.select_channel", "Select Channel")}
+            {t('dashboard.server.chat.select_channel', 'Select Channel')}
           </button>
         </div>
       </AdminPanel>
 
       <AdminPanel
-        title={t("dashboard.server.chat.gmod_to_discord_filter", "Gmod to Discord Filter")}
+        title={t('dashboard.server.chat.gmod_to_discord_filter', 'Gmod to Discord Filter')}
         description={t(
-          "dashboard.server.chat.add_rules",
-          "Add specific rules to filter the messages sent from Gmod to Discord.",
+          'dashboard.server.chat.add_rules',
+          'Add specific rules to filter the messages sent from Gmod to Discord.',
         )}
         type="none"
         premium={true}
       >
         <div class="p-4 flex w-fit items-center">
           <span class="mr-2 text-nowrap">
-            {t("dashboard.server.chat.default_behavior", "Comportement by Default : ")}
+            {t('dashboard.server.chat.default_behavior', 'Comportement by Default : ')}
           </span>
           <select
             class="select w-full max-w-xs"
             disabled={!premium() || gmToDscFilterRelayAll.loading}
             onChange={(e) => {
-              updateGmToDscFilterRelayAll(e.currentTarget.value === "true");
+              updateGmToDscFilterRelayAll(e.currentTarget.value === 'true')
             }}
           >
             <Show
               when={!gmToDscFilterRelayAll.loading}
-              fallback={<div>{t("dashboard.server.chat.loading", "Loading...")}</div>}
+              fallback={<div>{t('dashboard.server.chat.loading', 'Loading...')}</div>}
             >
               <option value="true" selected={gmToDscFilterRelayAll().value === true}>
-                {t("dashboard.server.chat.relay_all_messages", "Relay All Messages")}
+                {t('dashboard.server.chat.relay_all_messages', 'Relay All Messages')}
               </option>
               <option value="false" selected={gmToDscFilterRelayAll().value === false}>
-                {t("dashboard.server.chat.block_all_messages", "Block All Messages")}
+                {t('dashboard.server.chat.block_all_messages', 'Block All Messages')}
               </option>
             </Show>
           </select>
@@ -424,12 +424,12 @@ const ServerChats: Component = () => {
         <table class="table border-b border-base-300 rounded-none">
           <thead>
             <tr class="text-l">
-              <th>{t("dashboard.server.chat.element", "Element")}</th>
-              <th>{t("dashboard.server.chat.operator", "Operator")}</th>
-              <th>{t("dashboard.server.chat.trigger", "Trigger")}</th>
-              <th>{t("dashboard.server.chat.actions_on_match", "Actions on Match")}</th>
-              <th class="w-1/6 text-center">{t("dashboard.server.chat.active", "Active")}</th>
-              <th class="w-1/6 text-center">{t("dashboard.server.chat.actions", "Actions")}</th>
+              <th>{t('dashboard.server.chat.element', 'Element')}</th>
+              <th>{t('dashboard.server.chat.operator', 'Operator')}</th>
+              <th>{t('dashboard.server.chat.trigger', 'Trigger')}</th>
+              <th>{t('dashboard.server.chat.actions_on_match', 'Actions on Match')}</th>
+              <th class="w-1/6 text-center">{t('dashboard.server.chat.active', 'Active')}</th>
+              <th class="w-1/6 text-center">{t('dashboard.server.chat.actions', 'Actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -461,17 +461,17 @@ const ServerChats: Component = () => {
                     </td>
                     <td>
                       <div class="flex gap-2 justify-center">
-                        <div class="tooltip tooltip-info" data-tip={t("dashboard.server.chat.edit", "Edit")}>
+                        <div class="tooltip tooltip-info" data-tip={t('dashboard.server.chat.edit', 'Edit')}>
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
                               // @ts-ignore
-                              edit_rule_modal.showModal();
-                              setSelectFilter(rule);
+                              edit_rule_modal.showModal()
+                              setSelectFilter(rule)
                             }}
                           ></i>
                         </div>
-                        <div class="tooltip tooltip-error" data-tip={t("dashboard.server.chat.delete", "Delete")}>
+                        <div class="tooltip tooltip-error" data-tip={t('dashboard.server.chat.delete', 'Delete')}>
                           <i
                             class="hover:cursor-pointer fa-solid fa-trash text-error"
                             onClick={() => deleteGmToDscFilter(rule.id)}
@@ -491,16 +491,16 @@ const ServerChats: Component = () => {
             class="btn btn-base-200"
             disabled={!premium() || gmToDscFilters.loading}
             classList={{
-              "btn-disabled": !premium(),
+              'btn-disabled': !premium(),
             }}
             onClick={addGmToDscFilter}
           >
-            {t("dashboard.server.chat.add_rule", "Add Rule")}
+            {t('dashboard.server.chat.add_rule', 'Add Rule')}
           </button>
         </div>
       </AdminPanel>
     </>
-  );
-};
+  )
+}
 
-export default ServerChats;
+export default ServerChats

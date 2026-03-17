@@ -1,58 +1,58 @@
-import { Component } from "solid-js";
-import { ClientQuery, QuerySort } from "../utils/types/QueryTypes";
+import { Component } from 'solid-js'
+import { ClientQuery, QuerySort } from '../utils/types/QueryTypes'
 
 interface PaginationProps {
-  query: ClientQuery;
-  total: number;
-  onChange: (newQuery: ClientQuery) => void;
-  colSpan?: number;
+  query: ClientQuery
+  total: number
+  onChange: (newQuery: ClientQuery) => void
+  colSpan?: number
 }
 
 const Pagination: Component<PaginationProps> = (props) => {
-  const currentPage = () => Math.floor(props.query.offset / props.query.limit) + 1;
-  const totalPages = () => Math.ceil(props.total / props.query.limit) || 1;
+  const currentPage = () => Math.floor(props.query.offset / props.query.limit) + 1
+  const totalPages = () => Math.ceil(props.total / props.query.limit) || 1
 
-  const canPrev = () => props.query.offset > 0;
-  const canNext = () => props.query.offset + props.query.limit < props.total;
+  const canPrev = () => props.query.offset > 0
+  const canNext = () => props.query.offset + props.query.limit < props.total
 
   const handlePrev = () => {
-    if (!canPrev()) return;
+    if (!canPrev()) return
     props.onChange({
       ...props.query,
       offset: props.query.offset - props.query.limit,
-    });
-  };
+    })
+  }
 
   const handleNext = () => {
-    if (!canNext()) return;
+    if (!canNext()) return
     props.onChange({
       ...props.query,
       offset: props.query.offset + props.query.limit,
-    });
-  };
+    })
+  }
 
   const handleReset = () => {
     props.onChange({
       ...props.query,
       offset: 0,
-    });
-  };
+    })
+  }
 
   const toggleSort = () => {
     props.onChange({
       ...props.query,
       orderBy: props.query.orderBy === QuerySort.ASC ? QuerySort.DESC : QuerySort.ASC,
-    });
-  };
+    })
+  }
 
   const handleLimitChange = (event: Event) => {
-    const newLimit = parseInt((event.target as HTMLSelectElement).value, 10);
+    const newLimit = parseInt((event.target as HTMLSelectElement).value, 10)
     props.onChange({
       ...props.query,
       limit: newLimit,
       offset: 0, // Reset offset when limit changes
-    });
-  };
+    })
+  }
 
   return (
     <tr>
@@ -86,7 +86,7 @@ const Pagination: Component<PaginationProps> = (props) => {
         </div>
       </td>
     </tr>
-  );
-};
+  )
+}
 
-export default Pagination;
+export default Pagination

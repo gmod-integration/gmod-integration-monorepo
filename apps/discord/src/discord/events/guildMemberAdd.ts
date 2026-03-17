@@ -1,24 +1,24 @@
-import { ConfigDiscord } from '@gmod/config';
-import { addAutoRoleToUser, updateGuildStat, verifyUser } from '@gmod/domain-guild/discordModels.js';
-import { gmLog } from '@gmod/core/utils/logger.js';
-import { getNotVerifiedMessage } from '../utils/messages.js';
-import { type GuildMember } from 'discord.js';
-import prisma from '@gmod/infra-prisma';
+import { ConfigDiscord } from '@gmod/config'
+import { addAutoRoleToUser, updateGuildStat, verifyUser } from '@gmod/domain-guild/discordModels.js'
+import { gmLog } from '@gmod/core/utils/logger.js'
+import { getNotVerifiedMessage } from '../utils/messages.js'
+import { type GuildMember } from 'discord.js'
+import prisma from '@gmod/infra-prisma'
 
 export default {
   name: 'guildMemberAdd',
   async execute(add_info: GuildMember) {
-    if (add_info.user.id === ConfigDiscord.clientID) return;
+    if (add_info.user.id === ConfigDiscord.clientID) return
 
     try {
-      const guild = add_info.client.guilds.cache.get(add_info.guild.id);
-      if (!guild) throw new Error('Guild not found');
-      const member = guild.members.cache.get(add_info.user.id);
-      if (!member) throw new Error('Member not found');
+      const guild = add_info.client.guilds.cache.get(add_info.guild.id)
+      if (!guild) throw new Error('Guild not found')
+      const member = guild.members.cache.get(add_info.user.id)
+      if (!member) throw new Error('Member not found')
 
-      gmLog('event', `New member joined guild: ${add_info.guild.name}`);
-      await updateGuildStat(guild);
-      await addAutoRoleToUser(guild, member).catch(() => {});
+      gmLog('event', `New member joined guild: ${add_info.guild.name}`)
+      await updateGuildStat(guild)
+      await addAutoRoleToUser(guild, member).catch(() => {})
 
       if (!(await verifyUser(guild, member))) {
         const dontMp = await prisma.gm_guild_settings.findFirst({
@@ -26,16 +26,16 @@ export default {
             guildID: guild.id,
             setting: 'verification_dont_mp',
           },
-        });
+        })
 
         if (dontMp) {
-          return;
+          return
         }
 
-        await member.send(await getNotVerifiedMessage(guild, member));
+        await member.send(await getNotVerifiedMessage(guild, member))
       }
     } catch (err) {
-      gmLog('error', `Error in guildMemberAdd: ${err}`);
+      gmLog('error', `Error in guildMemberAdd: ${err}`)
     }
   },
-};
+}

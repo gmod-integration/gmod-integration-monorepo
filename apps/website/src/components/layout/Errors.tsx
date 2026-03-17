@@ -1,15 +1,15 @@
-import { Component, createSignal, For, ParentProps } from "solid-js";
+import { Component, createSignal, For, ParentProps } from 'solid-js'
 
-const [errorsList, setErrorsList] = createSignal<string[]>([]);
+const [errorsList, setErrorsList] = createSignal<string[]>([])
 export const Errors = (error: string, displayTime: number = 5000) => {
-  setErrorsList((errors: string[]) => [...errors, error]);
+  setErrorsList((errors: string[]) => [...errors, error])
   setTimeout(() => {
-    setErrorsList((errors: string[]) => errors.filter((e: string) => e !== error));
-  }, displayTime);
-};
+    setErrorsList((errors: string[]) => errors.filter((e: string) => e !== error))
+  }, displayTime)
+}
 
 interface ErrorProps extends ParentProps {
-  message: string;
+  message: string
 }
 
 export const AddErrorComponent: Component<ErrorProps> = (props) => {
@@ -20,13 +20,13 @@ export const AddErrorComponent: Component<ErrorProps> = (props) => {
         <span>Error : {props.message}</span>
       </div>
     </>
-  );
-};
+  )
+}
 
 export const ShowErrorList: Component = (props: ParentProps) => {
   return (
     <>
       <For each={errorsList()}>{(error) => <AddErrorComponent message={error} />}</For>
     </>
-  );
-};
+  )
+}

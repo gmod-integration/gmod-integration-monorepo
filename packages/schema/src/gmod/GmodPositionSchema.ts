@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const GmodPositionSchema = z
   .object({
@@ -18,6 +18,6 @@ export const GmodPositionSchema = z
       description: 'Z coordinate',
     }),
   })
-  .openapi({ ref: 'Position' });
+  .openapi({ ref: 'Position' })
 
-export type GmodPositionInput = z.infer<typeof GmodPositionSchema>;
+export type GmodPositionInput = z.infer<typeof GmodPositionSchema>

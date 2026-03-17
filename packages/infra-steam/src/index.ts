@@ -1,37 +1,37 @@
-import steamApi from 'steamapi';
-import { ConfigSteam } from '@gmod/config';
-import redis from '@gmod/infra-redis';
+import steamApi from 'steamapi'
+import { ConfigSteam } from '@gmod/config'
+import redis from '@gmod/infra-redis'
 
-const steam = new steamApi(ConfigSteam.apiKey!);
+const steam = new steamApi(ConfigSteam.apiKey!)
 
 export function getSteamApi() {
-  return steam;
+  return steam
 }
 
 export function getSteamUserSummary(steamID64: string) {
   return new Promise(async (resolve, reject) => {
-    const summary = await steam.getUserSummary(steamID64);
-    resolve(summary);
-  });
+    const summary = await steam.getUserSummary(steamID64)
+    resolve(summary)
+  })
 }
 
 export function getSteamUserAvatars(steamID64: string) {
   return new Promise(async (resolve, reject) => {
-    const summary = await steam.getUserSummary(steamID64);
-    resolve(summary.avatar);
-  });
+    const summary = await steam.getUserSummary(steamID64)
+    resolve(summary.avatar)
+  })
 }
 
 export function getSteamUserAvatarLarge(steamID64: string) {
   return new Promise(async (resolve, reject) => {
-    const redisKey = `steam:${steamID64}:avatar`;
-    const redisValue = await redis.get(redisKey);
+    const redisKey = `steam:${steamID64}:avatar`
+    const redisValue = await redis.get(redisKey)
     if (redisValue) {
-      return resolve(redisValue);
+      return resolve(redisValue)
     }
 
-    const summary = await steam.getUserSummary(steamID64);
-    await redis.set(redisKey, summary.avatar.large, 'EX', 60 * 60 * 24 * 7);
-    resolve(summary.avatar.large);
-  });
+    const summary = await steam.getUserSummary(steamID64)
+    await redis.set(redisKey, summary.avatar.large, 'EX', 60 * 60 * 24 * 7)
+    resolve(summary.avatar.large)
+  })
 }

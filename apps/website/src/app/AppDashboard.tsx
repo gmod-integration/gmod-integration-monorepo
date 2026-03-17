@@ -1,8 +1,8 @@
-import DashboardMiddleware from "../middleware/DashboardMiddleware";
-import { DashboardMenu } from "../components/layout/menu/DashboardMenu";
-import { AddErrorComponent, ShowErrorList } from "../components/layout/Errors";
-import { ErrorBoundary } from "solid-js/web";
-import { ParentProps } from "solid-js";
+import DashboardMiddleware from '../middleware/DashboardMiddleware'
+import { DashboardMenu } from '../components/layout/menu/DashboardMenu'
+import { AddErrorComponent, ShowErrorList } from '../components/layout/Errors'
+import { ErrorBoundary } from 'solid-js/web'
+import { ParentProps } from 'solid-js'
 
 export const AppDashboard = (props: ParentProps) => (
   <>
@@ -25,4 +25,4 @@ export const AppDashboard = (props: ParentProps) => (
       </div>
     </div>
   </>
-);
+)

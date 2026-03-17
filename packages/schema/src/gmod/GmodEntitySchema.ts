@@ -1,9 +1,9 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
-import { GmodAngleSchema } from './GmodAngleSchema.js';
-import { GmodPositionSchema } from './GmodPositionSchema.js';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
+import { GmodAngleSchema } from './GmodAngleSchema.js'
+import { GmodPositionSchema } from './GmodPositionSchema.js'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const GmodEntitySchema = z
   .object({
@@ -18,6 +18,6 @@ export const GmodEntitySchema = z
     position: GmodPositionSchema,
     angle: GmodAngleSchema,
   })
-  .openapi({ ref: 'Entity' });
+  .openapi({ ref: 'Entity' })
 
-export type GmodEntityInput = z.infer<typeof GmodEntitySchema>;
+export type GmodEntityInput = z.infer<typeof GmodEntitySchema>

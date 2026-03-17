@@ -1,38 +1,38 @@
 // ServerWarns.tsx
-import { Component, createResource, createSignal, For, Show } from "solid-js";
-import AdminPanel from "../../../../components/AdminPanel";
-import { useI18n } from "../../../../i18n";
-import Pagination from "../../../../components/Pagination";
-import { ClientQuery, QuerySort, ServerQuery } from "../../../../utils/types/QueryTypes";
-import { NeedAddon } from "../../../../components/popup/NeedAddons";
-import { fetchAPI } from "../../../../utils/api";
+import { Component, createResource, createSignal, For, Show } from 'solid-js'
+import AdminPanel from '../../../../components/AdminPanel'
+import { useI18n } from '../../../../i18n'
+import Pagination from '../../../../components/Pagination'
+import { ClientQuery, QuerySort, ServerQuery } from '../../../../utils/types/QueryTypes'
+import { NeedAddon } from '../../../../components/popup/NeedAddons'
+import { fetchAPI } from '../../../../utils/api'
 
 interface Warn {
-  id: number;
-  serverID: string;
-  userSteamID64: string;
-  adminSteamID64: string;
-  reason: string;
-  createdAt: string;
-  updatedAt: string;
+  id: number
+  serverID: string
+  userSteamID64: string
+  adminSteamID64: string
+  reason: string
+  createdAt: string
+  updatedAt: string
 }
 
 interface WarnResponse {
-  warns: Warn[];
-  query: ServerQuery;
+  warns: Warn[]
+  query: ServerQuery
 }
 
 const ServerWarns: Component = () => {
-  const { t } = useI18n();
+  const { t } = useI18n()
 
   // 1) Our local query state (offset, limit, sort, orderBy)
   // Omit 'total' so that setting it doesn't re-fetch
   const [query, setQuery] = createSignal<ClientQuery>({
     limit: 25,
     offset: 0,
-    sort: "createdAt",
+    sort: 'createdAt',
     orderBy: QuerySort.DESC,
-  });
+  })
 
   // 2) The fetcher uses your query to form the request
   async function fetchWarns(q: ClientQuery) {
@@ -42,13 +42,13 @@ const ServerWarns: Component = () => {
         `&limit=${q.limit}` +
         `&sort=${q.sort}` +
         `&orderBy=${q.orderBy}`,
-      "GET",
-    );
+      'GET',
+    )
 
     if (!res.ok) {
-      throw new Error("Failed to fetch warns");
+      throw new Error('Failed to fetch warns')
     }
-    return (await res.json()) as WarnResponse;
+    return (await res.json()) as WarnResponse
   }
 
   // 3) Create the resource, bound to the 'query' signal
@@ -61,30 +61,30 @@ const ServerWarns: Component = () => {
         total: 0,
       },
     },
-  });
+  })
 
   return (
     <>
       <NeedAddon
         addons={[
           {
-            name: "AWarn3",
-            link: "https://www.gmodstore.com/market/view/awarn3-warning-system",
+            name: 'AWarn3',
+            link: 'https://www.gmodstore.com/market/view/awarn3-warning-system',
           },
         ]}
       />
       <AdminPanel
-        title={t("dashboard.server.warns.title", "Warns")}
-        description={t("dashboard.server.warns.description", "List of all warns on your server")}
+        title={t('dashboard.server.warns.title', 'Warns')}
+        description={t('dashboard.server.warns.description', 'List of all warns on your server')}
         type="none"
       >
         <table class="table">
           <thead>
             <tr class="text-l">
-              <th>{t("dashboard.server.date", "Date")}</th>
-              <th>{t("dashboard.server.admin", "Admin")}</th>
-              <th>{t("dashboard.server.player", "Player")}</th>
-              <th>{t("dashboard.server.reason", "Reason")}</th>
+              <th>{t('dashboard.server.date', 'Date')}</th>
+              <th>{t('dashboard.server.admin', 'Admin')}</th>
+              <th>{t('dashboard.server.player', 'Player')}</th>
+              <th>{t('dashboard.server.reason', 'Reason')}</th>
             </tr>
           </thead>
           <tbody>
@@ -117,7 +117,7 @@ const ServerWarns: Component = () => {
         </table>
       </AdminPanel>
     </>
-  );
-};
+  )
+}
 
-export default ServerWarns;
+export default ServerWarns

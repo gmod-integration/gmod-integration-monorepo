@@ -1,11 +1,11 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
-import { GmodTeamSchema } from './GmodTeamSchema.js';
-import { GmodPositionSchema } from './GmodPositionSchema.js';
-import { GmodAngleSchema } from './GmodAngleSchema.js';
-import { GmodWeaponSchema } from './GmodWeaponSchema.js';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
+import { GmodTeamSchema } from './GmodTeamSchema.js'
+import { GmodPositionSchema } from './GmodPositionSchema.js'
+import { GmodAngleSchema } from './GmodAngleSchema.js'
+import { GmodWeaponSchema } from './GmodWeaponSchema.js'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const GmodPlayerSchema = z
   .object({
@@ -69,9 +69,9 @@ export const GmodPlayerSchema = z
     angle: GmodAngleSchema,
     weapon: GmodWeaponSchema,
   })
-  .openapi({ ref: 'Player' });
+  .openapi({ ref: 'Player' })
 
-export const GmodPlayersListSchema = z.array(GmodPlayerSchema);
+export const GmodPlayersListSchema = z.array(GmodPlayerSchema)
 
-export type GmodPlayerInput = z.infer<typeof GmodPlayerSchema>;
-export type GmodPlayersListInput = z.infer<typeof GmodPlayersListSchema>;
+export type GmodPlayerInput = z.infer<typeof GmodPlayerSchema>
+export type GmodPlayersListInput = z.infer<typeof GmodPlayersListSchema>

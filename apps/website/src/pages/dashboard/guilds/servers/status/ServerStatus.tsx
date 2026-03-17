@@ -1,9 +1,9 @@
-import { Component } from "solid-js";
-import "emoji-picker-element";
-import ServerStatusButtons from "./ServerStatusButtons";
+import { Component } from 'solid-js'
+import 'emoji-picker-element'
+import ServerStatusButtons from './ServerStatusButtons'
 // import ServerStatusCustom from "./ServerStatusCustom";
 // import ServerStatusChannel from "./ServerStatusChannel";
-import ServerStatusMessage from "./ServerStatusMessage";
+import ServerStatusMessage from './ServerStatusMessage'
 
 const ServerStatus: Component = () => {
   // @ts-ignore
@@ -14,7 +14,7 @@ const ServerStatus: Component = () => {
       {/* <ServerStatusChannel /> */}
       {/* <ServerStatusCustom /> */}
     </>
-  );
-};
+  )
+}
 
-export default ServerStatus;
+export default ServerStatus

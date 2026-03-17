@@ -1,93 +1,93 @@
-import { Component, createResource, createSignal, For, Match, Show, Switch } from "solid-js";
-import AdminPanel from "../../../../../components/AdminPanel";
-import { useI18n } from "../../../../../i18n";
-import { LinkValue } from "../../../../../components/popup/LinkValue";
-import { TextValue } from "../../../../../components/popup/TextValue";
-import { BuyPremiumBtn } from "../../../../../utils/premium";
-import { fetchAPI } from "../../../../../utils/api";
-import AdminModal from "../../../../../components/AdminModal";
+import { Component, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
+import AdminPanel from '../../../../../components/AdminPanel'
+import { useI18n } from '../../../../../i18n'
+import { LinkValue } from '../../../../../components/popup/LinkValue'
+import { TextValue } from '../../../../../components/popup/TextValue'
+import { BuyPremiumBtn } from '../../../../../utils/premium'
+import { fetchAPI } from '../../../../../utils/api'
+import AdminModal from '../../../../../components/AdminModal'
 
 //show_player_list_status
 class StatusButton {
-  id: number;
-  emoji: string;
-  name: string;
-  url: string;
-  enable: boolean;
+  id: number
+  emoji: string
+  name: string
+  url: string
+  enable: boolean
 
   constructor(id: number, emoji: string, name: string, url: string, enable: boolean) {
-    this.id = id;
-    this.emoji = emoji;
-    this.name = name;
-    this.url = url;
-    this.enable = enable;
+    this.id = id
+    this.emoji = emoji
+    this.name = name
+    this.url = url
+    this.enable = enable
   }
 }
 
 const fetchStatusButtons = async () => {
-  const res = await fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/status/buttons", "GET");
+  const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status/buttons', 'GET')
   if (!res.ok) {
-    return {};
+    return {}
   }
-  return await res.json();
-};
+  return await res.json()
+}
 
 const ServerStatusButtons: Component = () => {
-  const { t } = useI18n();
-  const [statusButtons, { mutate }] = createResource("statusButtons", fetchStatusButtons);
-  const [selectStatusButton, setSelectStatusButton] = createSignal(new StatusButton(0, "", "", "", false));
-  const [visibleEmojiPicker, setVisibleEmojiPicker] = createSignal(false);
+  const { t } = useI18n()
+  const [statusButtons, { mutate }] = createResource('statusButtons', fetchStatusButtons)
+  const [selectStatusButton, setSelectStatusButton] = createSignal(new StatusButton(0, '', '', '', false))
+  const [visibleEmojiPicker, setVisibleEmojiPicker] = createSignal(false)
 
   const createStatusButton = async () => {
-    const res = await fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/status/buttons", "POST");
+    const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status/buttons', 'POST')
     if (!res.ok) {
-      return;
+      return
     }
-    const button = await res.json();
+    const button = await res.json()
     mutate((prevButtons) =>
       prevButtons
         ? [...prevButtons, new StatusButton(button.id, button.emoji, button.name, button.url, button.enable)]
         : [],
-    );
-    return button;
-  };
+    )
+    return button
+  }
 
   const deleteStatusButton = async (button: StatusButton) => {
     const res = await fetchAPI(
       `/users/:discordID/guilds/:guildID/servers/:serverID/status/buttons/${button.id}`,
-      "DELETE",
-    );
+      'DELETE',
+    )
     if (!res.ok) {
-      return;
+      return
     }
-    mutate((prevButtons) => prevButtons?.filter((b: StatusButton) => b.id !== button.id));
-  };
+    mutate((prevButtons) => prevButtons?.filter((b: StatusButton) => b.id !== button.id))
+  }
 
   const editStatusButton = async (button: StatusButton) => {
     const res = await fetchAPI(
       `/users/:discordID/guilds/:guildID/servers/:serverID/status/buttons/${button.id}`,
-      "PUT",
+      'PUT',
       button,
-    );
+    )
     if (!res.ok) {
-      return;
+      return
     }
-    const newButton = await res.json();
-    mutate((prevButtons) => prevButtons?.map((b: StatusButton) => (b.id === newButton.id ? newButton : b)));
-    return newButton;
-  };
+    const newButton = await res.json()
+    mutate((prevButtons) => prevButtons?.map((b: StatusButton) => (b.id === newButton.id ? newButton : b)))
+    return newButton
+  }
 
   const handleEmojiClick = (event: CustomEvent) => {
-    setSelectStatusButton({ ...selectStatusButton(), emoji: event.detail.unicode });
-    setVisibleEmojiPicker(false);
-  };
+    setSelectStatusButton({ ...selectStatusButton(), emoji: event.detail.unicode })
+    setVisibleEmojiPicker(false)
+  }
 
   return (
     <>
-      <AdminModal title={t("dashboard.server.status.edit_button", "Edit Button")} id="edit_status_button">
+      <AdminModal title={t('dashboard.server.status.edit_button', 'Edit Button')} id="edit_status_button">
         <div class="fieldset">
           <label class="label">
-            <span>{t("dashboard.server.status.select_emoji", "Select an Emoji")}</span>
+            <span>{t('dashboard.server.status.select_emoji', 'Select an Emoji')}</span>
           </label>
           <button class="input text-left" onClick={() => setVisibleEmojiPicker(!visibleEmojiPicker())}>
             {selectStatusButton().emoji}
@@ -100,7 +100,7 @@ const ServerStatusButtons: Component = () => {
 
         <div class="fieldset">
           <label class="label">
-            <span>{t("dashboard.server.status.button_name", "Button Name")}</span>
+            <span>{t('dashboard.server.status.button_name', 'Button Name')}</span>
           </label>
           <input
             type="text"
@@ -112,7 +112,7 @@ const ServerStatusButtons: Component = () => {
 
         <div class="fieldset">
           <label class="label">
-            <span>{t("dashboard.server.status.button_url", "Button URL")}</span>
+            <span>{t('dashboard.server.status.button_url', 'Button URL')}</span>
           </label>
           <input
             type="text"
@@ -124,17 +124,17 @@ const ServerStatusButtons: Component = () => {
 
         <div class="fieldset">
           <label class="label">
-            <span>{t("dashboard.server.status.button_action", "Button Action")}</span>
+            <span>{t('dashboard.server.status.button_action', 'Button Action')}</span>
           </label>
           <select
             class="select"
-            value={selectStatusButton().enable ? "true" : "false"}
+            value={selectStatusButton().enable ? 'true' : 'false'}
             onChange={(e) => {
-              selectStatusButton().enable = e.currentTarget.value === "true";
+              selectStatusButton().enable = e.currentTarget.value === 'true'
             }}
           >
-            <option value="true">{t("dashboard.server.status.yes", "Yes")}</option>
-            <option value="false">{t("dashboard.server.status.no", "No")}</option>
+            <option value="true">{t('dashboard.server.status.yes', 'Yes')}</option>
+            <option value="false">{t('dashboard.server.status.no', 'No')}</option>
           </select>
         </div>
 
@@ -142,30 +142,30 @@ const ServerStatusButtons: Component = () => {
           class="btn btn-base-200 mt-2"
           onClick={async () => {
             // @ts-ignore
-            edit_status_button.close();
-            await editStatusButton(selectStatusButton());
+            edit_status_button.close()
+            await editStatusButton(selectStatusButton())
           }}
         >
-          {t("dashboard.server.status.save", "Save")}
+          {t('dashboard.server.status.save', 'Save')}
         </button>
       </AdminModal>
 
       <AdminPanel
-        title={t("dashboard.server.status.status_buttons", "Status Buttons")}
+        title={t('dashboard.server.status.status_buttons', 'Status Buttons')}
         description={t(
-          "dashboard.server.status.status_buttons_description",
-          "Add utility buttons to your server status message.",
+          'dashboard.server.status.status_buttons_description',
+          'Add utility buttons to your server status message.',
         )}
         type="none"
       >
         <table class="table border-b border-base-300 rounded-none">
           <thead>
             <tr class="text-l">
-              <th>{t("dashboard.server.status.button_icon", "Icon")}</th>
-              <th>{t("dashboard.server.status.button_name", "Name")}</th>
-              <th>{t("dashboard.server.status.button_url", "URL")}</th>
-              <th class="w-1/6 text-center">{t("dashboard.server.status.active", "Active")}</th>
-              <th class="w-1/6 text-center">{t("dashboard.server.status.actions", "Actions")}</th>
+              <th>{t('dashboard.server.status.button_icon', 'Icon')}</th>
+              <th>{t('dashboard.server.status.button_name', 'Name')}</th>
+              <th>{t('dashboard.server.status.button_url', 'URL')}</th>
+              <th class="w-1/6 text-center">{t('dashboard.server.status.active', 'Active')}</th>
+              <th class="w-1/6 text-center">{t('dashboard.server.status.actions', 'Actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -191,17 +191,17 @@ const ServerStatusButtons: Component = () => {
                     </td>
                     <td>
                       <div class="flex gap-2 justify-center">
-                        <div class="tooltip tooltip-info" data-tip={t("dashboard.server.status.edit", "Edit")}>
+                        <div class="tooltip tooltip-info" data-tip={t('dashboard.server.status.edit', 'Edit')}>
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
                               // @ts-ignore
-                              edit_status_button.showModal();
-                              setSelectStatusButton(button);
+                              edit_status_button.showModal()
+                              setSelectStatusButton(button)
                             }}
                           ></i>
                         </div>
-                        <div class="tooltip tooltip-error" data-tip={t("dashboard.server.status.delete", "Delete")}>
+                        <div class="tooltip tooltip-error" data-tip={t('dashboard.server.status.delete', 'Delete')}>
                           <i
                             class="hover:cursor-pointer fa-solid fa-trash text-error"
                             onClick={() => deleteStatusButton(button)}
@@ -224,7 +224,7 @@ const ServerStatusButtons: Component = () => {
           </Match>
           <Match when={statusButtons.error}>
             <tr>
-              <td colSpan="4">{t("dashboard.server.status.failed_to_load", "Failed to load the links")}</td>
+              <td colSpan="4">{t('dashboard.server.status.failed_to_load', 'Failed to load the links')}</td>
             </tr>
           </Match>
         </Switch>
@@ -232,17 +232,17 @@ const ServerStatusButtons: Component = () => {
         <div class="flex gap-4 p-4">
           <BuyPremiumBtn
             subCondition={statusButtons()?.length < 3}
-            btnText={t("dashboard.server.status.premium", "Limited to 3 buttons for free users.")}
+            btnText={t('dashboard.server.status.premium', 'Limited to 3 buttons for free users.')}
             hidden={statusButtons.loading}
           >
             <button class="btn btn-base-200" disabled={statusButtons.loading} onClick={() => createStatusButton()}>
-              {t("dashboard.server.status.add_button", "Add Button")}
+              {t('dashboard.server.status.add_button', 'Add Button')}
             </button>
           </BuyPremiumBtn>
         </div>
       </AdminPanel>
     </>
-  );
-};
+  )
+}
 
-export default ServerStatusButtons;
+export default ServerStatusButtons

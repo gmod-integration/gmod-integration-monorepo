@@ -1,15 +1,15 @@
-import { type NextFunction, type Request, type Response } from 'express';
+import { type NextFunction, type Request, type Response } from 'express'
 
 export default async (req: Request, res: Response, next: NextFunction) => {
   try {
-    req.rawBody = '';
-    
-    req.on('data', (chunk) => {
-      req.rawBody += chunk;
-    });
+    req.rawBody = ''
 
-    return next();
+    req.on('data', (chunk) => {
+      req.rawBody += chunk
+    })
+
+    return next()
   } catch (error) {
-    return next(error);
+    return next(error)
   }
-};
+}

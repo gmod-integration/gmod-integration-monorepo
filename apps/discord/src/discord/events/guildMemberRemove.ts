@@ -1,5 +1,5 @@
-import { type GuildMember } from 'discord.js';
-import prisma from '@gmod/infra-prisma';
+import { type GuildMember } from 'discord.js'
+import prisma from '@gmod/infra-prisma'
 
 export default {
   name: 'guildMemberRemove',
@@ -8,9 +8,9 @@ export default {
       where: {
         guild: remove_info.guild.id,
       },
-    });
+    })
 
-    if (!dbGuild) return;
+    if (!dbGuild) return
 
     await prisma.gm_guild.update({
       where: {
@@ -19,6 +19,6 @@ export default {
       data: {
         member: dbGuild.member - 1,
       },
-    });
+    })
   },
-};
+}

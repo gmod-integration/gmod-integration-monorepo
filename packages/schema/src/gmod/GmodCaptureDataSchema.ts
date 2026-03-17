@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const GmodCaptureDataSchema = z.object({
   w: z.number().openapi({
@@ -28,6 +28,6 @@ export const GmodCaptureDataSchema = z.object({
     description: 'Format of the screenshot',
     example: 'jpeg',
   }),
-});
+})
 
-export type GmodCaptureDataInput = z.infer<typeof GmodCaptureDataSchema>;
+export type GmodCaptureDataInput = z.infer<typeof GmodCaptureDataSchema>

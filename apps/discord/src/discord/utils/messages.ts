@@ -1,41 +1,49 @@
-import { getTranslate } from '@gmod/core/utils/localizations.js';
-import { gmLog } from '@gmod/core/utils/logger.js';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type Guild, type GuildMember, type User } from 'discord.js';
-import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
-import { getCurrencyByLang, getEmojiVersion } from '@gmod/core/utils/tools.js';
-import { ConfigDiscord, ConfigServer } from '@gmod/config';
-import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
-import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
-import { type Server } from '@gmod/domain-server/Server.js';
-import { PlayerGmod } from '@gmod/core/classes/v3/PlayerGmod.js';
-import prisma from '@gmod/infra-prisma';
+import { getTranslate } from '@gmod/core/utils/localizations.js'
+import { gmLog } from '@gmod/core/utils/logger.js'
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  EmbedBuilder,
+  type Guild,
+  type GuildMember,
+  type User,
+} from 'discord.js'
+import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js'
+import { getCurrencyByLang, getEmojiVersion } from '@gmod/core/utils/tools.js'
+import { ConfigDiscord, ConfigServer } from '@gmod/config'
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
+import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js'
+import { type Server } from '@gmod/domain-server/Server.js'
+import { PlayerGmod } from '@gmod/core/classes/v3/PlayerGmod.js'
+import prisma from '@gmod/infra-prisma'
 
 export function getEmptyEmbedBuilderField(lineBreak: number = 1) {
-  let emptyField = '';
+  let emptyField = ''
   for (let i = 0; i < lineBreak; i++) {
-    emptyField += '\n \u200b';
+    emptyField += '\n \u200b'
   }
-  return emptyField;
+  return emptyField
 }
 
 export async function getStatusMessage(server: Server, data: any, lang: string) {
-  gmLog('status', 'refresh server status message for ' + server.getID());
+  gmLog('status', 'refresh server status message for ' + server.getID())
 
-  let { servOnline, hostname, map, gameMode, players, maxPlayers, ip, port, playersList } = data || {};
-  servOnline = !!hostname;
-  hostname = hostname === undefined ? await getTranslate('offline', lang) : hostname;
-  map = map === undefined ? await getTranslate('offline', lang) : map;
-  gameMode = gameMode === undefined ? await getTranslate('offline', lang) : gameMode;
-  players = players === undefined ? 0 : players;
-  maxPlayers = maxPlayers === undefined ? 0 : maxPlayers;
-  ip = ip === undefined ? '' : ip;
-  port = port === undefined ? '' : port;
-  playersList = Array.isArray(playersList) ? playersList : [];
+  let { servOnline, hostname, map, gameMode, players, maxPlayers, ip, port, playersList } = data || {}
+  servOnline = !!hostname
+  hostname = hostname === undefined ? await getTranslate('offline', lang) : hostname
+  map = map === undefined ? await getTranslate('offline', lang) : map
+  gameMode = gameMode === undefined ? await getTranslate('offline', lang) : gameMode
+  players = players === undefined ? 0 : players
+  maxPlayers = maxPlayers === undefined ? 0 : maxPlayers
+  ip = ip === undefined ? '' : ip
+  port = port === undefined ? '' : port
+  playersList = Array.isArray(playersList) ? playersList : []
 
-  const showChar = await server.getSetting('show_status_chart');
-  let bufferChart: Buffer | null = null;
+  const showChar = await server.getSetting('show_status_chart')
+  let bufferChart: Buffer | null = null
   if (showChar) {
-    bufferChart = await getServerChart(server);
+    bufferChart = await getServerChart(server)
   }
 
   const embed = new EmbedBuilder()
@@ -88,114 +96,114 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
         inline: true,
       },
     )
-    .setTimestamp(new Date());
+    .setTimestamp(new Date())
 
   if (servOnline && playersList.length > 0 && (await server.getSetting('show_player_list_status'))) {
     playersList.sort((a: any, b: any) => {
-      return b.connectTime - a.connectTime;
-    });
+      return b.connectTime - a.connectTime
+    })
 
-    const status_player_list_format = await server.getSetting('status_player_list_format');
+    const status_player_list_format = await server.getSetting('status_player_list_format')
 
     const playersListString = playersList.map((player: any) => {
-      player = new PlayerGmod(player);
-      return player.getStringFromString(status_player_list_format);
-    });
+      player = new PlayerGmod(player)
+      return player.getStringFromString(status_player_list_format)
+    })
 
     // keep under 1024 characters
-    let totalLength = 0;
+    let totalLength = 0
     for (let i = 0; i < playersListString.length; i++) {
-      totalLength += playersListString[i].length + 1; // +1 for the newline character
+      totalLength += playersListString[i].length + 1 // +1 for the newline character
       if (totalLength > 800) {
-        playersListString.splice(i);
-        playersListString.push('...');
-        break;
+        playersListString.splice(i)
+        playersListString.push('...')
+        break
       }
     }
 
     embed.addFields({
       name: '👤⠀' + (await getTranslate('player_list', lang)),
       value: playersListString.join('\n'),
-    });
+    })
   }
 
   if (bufferChart) {
-    embed.setImage('attachment://chart.png');
+    embed.setImage('attachment://chart.png')
   }
 
-  const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-  const row1 = new ActionRowBuilder<ButtonBuilder>();
-  const row2 = new ActionRowBuilder<ButtonBuilder>();
-  const row3 = new ActionRowBuilder<ButtonBuilder>();
-  const row4 = new ActionRowBuilder<ButtonBuilder>();
-  const row5 = new ActionRowBuilder<ButtonBuilder>();
+  const rows: ActionRowBuilder<ButtonBuilder>[] = []
+  const row1 = new ActionRowBuilder<ButtonBuilder>()
+  const row2 = new ActionRowBuilder<ButtonBuilder>()
+  const row3 = new ActionRowBuilder<ButtonBuilder>()
+  const row4 = new ActionRowBuilder<ButtonBuilder>()
+  const row5 = new ActionRowBuilder<ButtonBuilder>()
 
   if (servOnline) {
-    row1.addComponents(await ButtonConnect(lang, ip, port));
+    row1.addComponents(await ButtonConnect(lang, ip, port))
   }
 
-  const buttons = await server.getServerStatusButtons();
+  const buttons = await server.getServerStatusButtons()
 
   function addButtons(
     button: {
-      name: string;
-      emoji: string;
-      url: string;
+      name: string
+      emoji: string
+      url: string
     },
     theRow: ActionRowBuilder<ButtonBuilder>,
   ) {
-    let { name, emoji, url } = button;
+    let { name, emoji, url } = button
 
     if (!name || !emoji) {
-      return;
+      return
     }
 
-    name = name.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase());
+    name = name.toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase())
 
-    const emojiVersion = getEmojiVersion(emoji);
+    const emojiVersion = getEmojiVersion(emoji)
     if (!emojiVersion || Number(emojiVersion) > 12) {
-      emoji = '❓';
+      emoji = '❓'
     }
 
     const theButton = new ButtonBuilder()
       .setStyle(ButtonStyle.Link)
       .setLabel(`⠀${name}`)
       .setEmoji(emoji)
-      .setURL(`${ConfigServer.websiteUrl}/open?link=${encodeURIComponent(url)}`);
+      .setURL(`${ConfigServer.websiteUrl}/open?link=${encodeURIComponent(url)}`)
 
     // Ajouter le bouton à la ligne
-    theRow.addComponents(theButton);
+    theRow.addComponents(theButton)
   }
 
   buttons.forEach((button) => {
     if (row1.components.length < 5) {
-      addButtons(button, row1);
+      addButtons(button, row1)
     } else if (row2.components.length < 5) {
-      addButtons(button, row2);
+      addButtons(button, row2)
     } else if (row3.components.length < 5) {
-      addButtons(button, row3);
+      addButtons(button, row3)
     } else if (row4.components.length < 5) {
-      addButtons(button, row4);
+      addButtons(button, row4)
     } else if (row5.components.length < 5) {
-      addButtons(button, row5);
+      addButtons(button, row5)
     }
-  });
+  })
 
-  if (row1.components.length > 0) rows.push(row1);
-  if (row2.components.length > 0) rows.push(row2);
-  if (row3.components.length > 0) rows.push(row3);
-  if (row4.components.length > 0) rows.push(row4);
-  if (row5.components.length > 0) rows.push(row5);
+  if (row1.components.length > 0) rows.push(row1)
+  if (row2.components.length > 0) rows.push(row2)
+  if (row3.components.length > 0) rows.push(row3)
+  if (row4.components.length > 0) rows.push(row4)
+  if (row5.components.length > 0) rows.push(row5)
 
   return {
     embeds: [embed],
     components: rows,
     files: bufferChart ? [{ attachment: bufferChart, name: 'chart.png' }] : [],
-  };
+  }
 }
 
 export async function getNotVerifiedMessage(guild: Guild, member: GuildMember) {
-  const lang = guild.preferredLocale;
+  const lang = guild.preferredLocale
 
   const embed = new EmbedBuilder()
     .setColor(ConfigDiscord.embedColor)
@@ -224,34 +232,34 @@ export async function getNotVerifiedMessage(guild: Guild, member: GuildMember) {
         value: await getTranslate('join_msg_p4_value', lang),
         inline: false,
       },
-    );
+    )
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     await ButtonVerificationWebsite(lang),
     await ButtonVerify(lang),
     await ButtonDiscordSupport(lang),
-  );
+  )
 
   return {
     embeds: [embed],
     components: [row],
-  };
+  }
 }
 
 export async function getVerifiedMessageAnswer(isVerified: boolean, lang: string, member: User, selfVerify: boolean) {
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(await ButtonVerificationWebsite(lang));
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(await ButtonVerificationWebsite(lang))
 
   if (isVerified) {
     if (selfVerify) {
       return {
         content: await getTranslate('user_verified_self', lang),
         ephemeral: true,
-      };
+      }
     } else {
       return {
         content: await getTranslate('user_verified', lang, [`<@${member.id}>`]),
         ephemeral: true,
-      };
+      }
     }
   } else {
     if (selfVerify) {
@@ -259,13 +267,13 @@ export async function getVerifiedMessageAnswer(isVerified: boolean, lang: string
         content: (await getTranslate('user_not_verified_self', lang, ['/verify'])) + '\n_ _',
         ephemeral: true,
         components: [row],
-      };
+      }
     } else {
       return {
         content: (await getTranslate('user_not_verified', lang, [`<@${member.id}>`, '/verify'])) + '\n_ _',
         ephemeral: true,
         components: [row],
-      };
+      }
     }
   }
 }
@@ -291,31 +299,31 @@ export async function getVerificationGuildMessage(lang: string, guildID: string)
         name: await getTranslate('setup_msg_p4_name', lang),
         value: await getTranslate('setup_msg_p4_value', lang, ['https://gmod-integration.com/legal/privacy']),
       },
-    );
+    )
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     await ButtonVerificationWebsite(lang, guildID),
     await ButtonVerify(lang),
     await ButtonDiscordSupport(lang),
-  );
+  )
 
   return {
     embeds: [embed],
     components: [row],
-  };
+  }
 }
 
 export async function getProfileMessage(guild: Guild, user: User) {
-  const lang = guild.preferredLocale;
+  const lang = guild.preferredLocale
 
   let gm_user: any = {
     rank: 'user',
     trustLevel: 50,
-  };
+  }
 
-  const dbUser = await getUserFromDiscordID(user.id);
+  const dbUser = await getUserFromDiscordID(user.id)
   if (dbUser) {
-    gm_user = dbUser;
+    gm_user = dbUser
   }
 
   const embed = new EmbedBuilder()
@@ -370,26 +378,26 @@ export async function getProfileMessage(guild: Guild, user: User) {
         value: gm_user.steamID64 ? gm_user.steamID64 : await getTranslate('not_verified', lang),
         inline: true,
       },
-    );
+    )
 
-  const open_verify = await ButtonVerificationWebsite(lang);
+  const open_verify = await ButtonVerificationWebsite(lang)
 
-  const row = new ActionRowBuilder<ButtonBuilder>();
-  row.addComponents(open_verify);
+  const row = new ActionRowBuilder<ButtonBuilder>()
+  row.addComponents(open_verify)
 
   if (gm_user.steamID64) {
     const open_steam = new ButtonBuilder()
       .setStyle(ButtonStyle.Link)
       .setLabel('⠀' + (await getTranslate('steam_profile', lang)))
       .setEmoji('🔗')
-      .setURL(`https://steamcommunity.com/profiles/${gm_user.steamID64}`);
-    row.addComponents(open_steam);
+      .setURL(`https://steamcommunity.com/profiles/${gm_user.steamID64}`)
+    row.addComponents(open_steam)
   }
 
   return {
     embeds: [embed],
     components: [row],
-  };
+  }
 }
 
 export async function getUserStatisticMessage(
@@ -398,7 +406,7 @@ export async function getUserStatisticMessage(
   guild: Guild,
   steamid?: string | null,
 ) {
-  const lang = guild.preferredLocale;
+  const lang = guild.preferredLocale
 
   const customValueFormatList: { [key: string]: { format: (value: any) => string; emoji: string } } = {
     money: {
@@ -406,7 +414,7 @@ export async function getUserStatisticMessage(
         return value.toLocaleString(lang, {
           style: 'currency',
           currency: getCurrencyByLang(lang),
-        });
+        })
       },
       emoji: '💰',
     },
@@ -415,43 +423,43 @@ export async function getUserStatisticMessage(
         return value.toLocaleString(lang, {
           style: 'currency',
           currency: getCurrencyByLang(lang),
-        });
+        })
       },
       emoji: '🏦',
     },
     job: {
       format: (value: string) => {
-        return value.toString();
+        return value.toString()
       },
       emoji: '👔',
     },
-  };
+  }
 
   function customValueFormat(key: string, value: any) {
     if (customValueFormatList[key]) {
-      return customValueFormatList[key].format(value);
+      return customValueFormatList[key].format(value)
     } else {
-      return value;
+      return value
     }
   }
 
   async function customValueFormatTitle(key: string, lang: string) {
     if (customValueFormatList[key]) {
-      return customValueFormatList[key].emoji + '⠀' + (await getTranslate(key, lang));
+      return customValueFormatList[key].emoji + '⠀' + (await getTranslate(key, lang))
     } else {
-      return key;
+      return key
     }
   }
 
-  let steamID64ToUse;
+  let steamID64ToUse
   if (!steamid) {
-    const dbUser = await getUserFromDiscordID(user.id);
+    const dbUser = await getUserFromDiscordID(user.id)
     if (!dbUser) {
-      return { content: await getTranslate('user_not_linked', lang), ephemeral: true };
+      return { content: await getTranslate('user_not_linked', lang), ephemeral: true }
     }
-    steamID64ToUse = dbUser.steamID64;
+    steamID64ToUse = dbUser.steamID64
   } else {
-    steamID64ToUse = steamid;
+    steamID64ToUse = steamid
   }
 
   if (serverInstanceID === 'global') {
@@ -459,10 +467,10 @@ export async function getUserStatisticMessage(
       where: {
         steam_id: steamID64ToUse!,
       },
-    });
+    })
 
     if (!userData) {
-      return { content: await getTranslate('user_not_found', lang), ephemeral: true };
+      return { content: await getTranslate('user_not_found', lang), ephemeral: true }
     }
 
     const embed = new EmbedBuilder()
@@ -519,20 +527,20 @@ export async function getUserStatisticMessage(
           value: userData.last_connect ? dateToDiscordTimestamp(userData.last_connect) : 'Never',
           inline: true,
         },
-      );
+      )
 
     return {
       embeds: [embed],
-    };
+    }
   } else {
     const serverDB = await prisma.gm_server.findFirst({
       where: {
         id: serverInstanceID,
       },
-    });
+    })
 
     if (!serverDB) {
-      return { content: await getTranslate('server_not_found', lang), ephemeral: true };
+      return { content: await getTranslate('server_not_found', lang), ephemeral: true }
     }
 
     const userData = await prisma.gm_server_stat.findFirst({
@@ -540,10 +548,10 @@ export async function getUserStatisticMessage(
         steam_id: steamID64ToUse!,
         server_id: serverInstanceID,
       },
-    });
+    })
 
     if (!userData) {
-      return { content: await getTranslate('user_or_server_not_found', lang), ephemeral: true };
+      return { content: await getTranslate('user_or_server_not_found', lang), ephemeral: true }
     }
 
     const embed = new EmbedBuilder()
@@ -611,29 +619,29 @@ export async function getUserStatisticMessage(
           inline: true,
         },
       )
-      .setFooter({ text: `SteamID: ${userData.steam_id} - Server: ${serverDB.name}` });
+      .setFooter({ text: `SteamID: ${userData.steam_id} - Server: ${serverDB.name}` })
 
     if (userData.custom_values) {
-      let acID = 1;
+      let acID = 1
       for (const [key, value] of Object.entries(JSON.parse(userData.custom_values as string))) {
         embed.addFields({
           name: await customValueFormatTitle(key, lang),
           value: await customValueFormat(key, value).toString(),
           inline: true,
-        });
+        })
 
-        acID++;
+        acID++
 
         if (acID % 2 === 0) {
           embed.addFields({
             name: '\u200b',
             value: getEmptyEmbedBuilderField(2),
             inline: true,
-          });
+          })
         }
       }
     }
 
-    return { embeds: [embed] };
+    return { embeds: [embed] }
   }
 }

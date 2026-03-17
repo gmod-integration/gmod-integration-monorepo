@@ -1,14 +1,14 @@
-import { Component, createResource, Show } from "solid-js";
-import PieChart from "./pieChart";
-import AdminChart from "../../../components/AdminChart";
-import { fetchAPI } from "../../../utils/api";
+import { Component, createResource, Show } from 'solid-js'
+import PieChart from './pieChart'
+import AdminChart from '../../../components/AdminChart'
+import { fetchAPI } from '../../../utils/api'
 
 const AdminInformations: Component = () => {
-  const [adminData, { refetch }] = createResource("adminData", async () => {
-    const res = await fetchAPI("/users/:discordID/admins/informations", "GET");
-    if (!res.ok) return [];
-    return await res.json();
-  });
+  const [adminData, { refetch }] = createResource('adminData', async () => {
+    const res = await fetchAPI('/users/:discordID/admins/informations', 'GET')
+    if (!res.ok) return []
+    return await res.json()
+  })
 
   return (
     <>
@@ -37,28 +37,28 @@ const AdminInformations: Component = () => {
           <div class="stat">
             <div class="stat-title">Total Discord Members</div>
             <div class="stat-value">
-              {adminData().user.totalDiscordMembers.toLocaleString()} -{" "}
+              {adminData().user.totalDiscordMembers.toLocaleString()} -{' '}
               {Math.round((adminData().user.totalDiscordMembers / adminData().user.total) * 100)}%
             </div>
           </div>
           <div class="stat">
             <div class="stat-title">Total Discord User</div>
             <div class="stat-value">
-              {adminData().user.totalDiscordUser.toLocaleString()} -{" "}
+              {adminData().user.totalDiscordUser.toLocaleString()} -{' '}
               {Math.round((adminData().user.totalDiscordUser / adminData().user.total) * 100)}%
             </div>
           </div>
           <div class="stat">
             <div class="stat-title">Total Verified</div>
             <div class="stat-value">
-              {adminData().user.totalVerified.toLocaleString()} -{" "}
+              {adminData().user.totalVerified.toLocaleString()} -{' '}
               {Math.round((adminData().user.totalVerified / adminData().user.total) * 100)}%
             </div>
           </div>
           <div class="stat">
             <div class="stat-title">Total Unverified</div>
             <div class="stat-value">
-              {adminData().user.totalUnverified.toLocaleString()} -{" "}
+              {adminData().user.totalUnverified.toLocaleString()} -{' '}
               {Math.round((adminData().user.totalUnverified / adminData().user.total) * 100)}%
             </div>
           </div>
@@ -84,7 +84,7 @@ const AdminInformations: Component = () => {
         </AdminChart>
       </div>
     </>
-  );
-};
+  )
+}
 
-export default AdminInformations;
+export default AdminInformations

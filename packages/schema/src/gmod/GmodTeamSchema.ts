@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const GmodTeamSchema = z
   .object({
@@ -14,6 +14,6 @@ export const GmodTeamSchema = z
       description: 'Name of the team',
     }),
   })
-  .openapi({ ref: 'Team' });
+  .openapi({ ref: 'Team' })
 
-export type GmodTeamInput = z.infer<typeof GmodTeamSchema>;
+export type GmodTeamInput = z.infer<typeof GmodTeamSchema>

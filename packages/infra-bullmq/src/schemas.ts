@@ -1,1 +1,1 @@
-export * from '@gmod/schema/bullmq.js';
+export * from '@gmod/schema/bullmq.js'

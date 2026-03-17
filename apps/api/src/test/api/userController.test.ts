@@ -1,7 +1,7 @@
-import { test } from 'node:test';
-import assert from 'assert';
-import { testURL } from '../index.js';
-import { testUser } from '../config.test.js';
+import { test } from 'node:test'
+import assert from 'assert'
+import { testURL } from '../index.js'
+import { testUser } from '../config.test.js'
 
 // User
 test('GET /v3/users/:discordID', async (t) => {
@@ -11,9 +11,9 @@ test('GET /v3/users/:discordID', async (t) => {
       'Content-Type': 'application/json',
       Authorization: 'Bearer ' + testUser.token,
     },
-  });
-  assert.strictEqual(response.status, 200);
-});
+  })
+  assert.strictEqual(response.status, 200)
+})
 
 // User Guilds
 test('GET /v3/users/:discordID/guilds', async (t) => {
@@ -23,9 +23,9 @@ test('GET /v3/users/:discordID/guilds', async (t) => {
       'Content-Type': 'application/json',
       Authorization: 'Bearer ' + testUser.token,
     },
-  });
-  assert.strictEqual(response.status, 200);
-});
+  })
+  assert.strictEqual(response.status, 200)
+})
 
 // User Guilds Info
 test('GET /v3/users/:discordID/guilds/:guildID', async (t) => {
@@ -35,6 +35,6 @@ test('GET /v3/users/:discordID/guilds/:guildID', async (t) => {
       'Content-Type': 'application/json',
       Authorization: 'Bearer ' + testUser.token,
     },
-  });
-  assert.strictEqual(response.status, 200);
-});
+  })
+  assert.strictEqual(response.status, 200)
+})

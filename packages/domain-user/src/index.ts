@@ -1,2 +1,2 @@
-export * from './User.js';
-export * from './PanelUser.js';
+export * from './User.js'
+export * from './PanelUser.js'

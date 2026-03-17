@@ -1,2 +1,2 @@
-export * from './bansModels.js';
-export * from './warnModels.js';
+export * from './bansModels.js'
+export * from './warnModels.js'

@@ -17,15 +17,9 @@
     "strict": true,
     "resolveJsonModule": true,
 
-    "typeRoots": [
-      "./node_modules/@types",
-      "./packages/core/src/types"
-    ],
+    "typeRoots": ["./node_modules/@types", "./packages/core/src/types"],
 
-    "types": [
-      "node",
-      "express"
-    ],
+    "types": ["node", "express"],
 
     "sourceMap": true,
     "inlineSources": true,
@@ -35,12 +29,6 @@
     // This improves issue grouping in Sentry.
     "sourceRoot": "/"
   },
-  "include": [
-    "apps/api/src/**/*",
-    "packages/core/src/types/**/*.d.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["apps/api/src/**/*", "packages/core/src/types/**/*.d.ts"],
+  "exclude": ["node_modules", "dist"]
 }

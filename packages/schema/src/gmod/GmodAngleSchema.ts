@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const GmodAngleSchema = z
   .object({
@@ -18,6 +18,6 @@ export const GmodAngleSchema = z
       description: 'Roll',
     }),
   })
-  .openapi({ ref: 'Angle' });
+  .openapi({ ref: 'Angle' })
 
-export type GmodAngleInput = z.infer<typeof GmodAngleSchema>;
+export type GmodAngleInput = z.infer<typeof GmodAngleSchema>

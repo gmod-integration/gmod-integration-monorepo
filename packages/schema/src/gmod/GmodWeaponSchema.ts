@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const GmodWeaponSchema = z
   .object({
@@ -14,6 +14,6 @@ export const GmodWeaponSchema = z
       description: 'Print name of the Weapon',
     }),
   })
-  .openapi({ ref: 'Weapon' });
+  .openapi({ ref: 'Weapon' })
 
-export type GmodWeaponInput = z.infer<typeof GmodWeaponSchema>;
+export type GmodWeaponInput = z.infer<typeof GmodWeaponSchema>

@@ -1,31 +1,31 @@
-import { Query } from '../../classes/db/Query.js';
-import { GmodErrors, getErrorsByServer } from '@gmod/domain-gmod/GmodErrors.js';
+import { Query } from '../../classes/db/Query.js'
+import { GmodErrors, getErrorsByServer } from '@gmod/domain-gmod/GmodErrors.js'
 
 export class InvalidErrorPayloadError extends Error {
   constructor() {
-    super('Invalid error data');
-    this.name = 'InvalidErrorPayloadError';
+    super('Invalid error data')
+    this.name = 'InvalidErrorPayloadError'
   }
 }
 
 export class InvalidQueryParametersError extends Error {
   constructor() {
-    super('Invalid query parameters');
-    this.name = 'InvalidQueryParametersError';
+    super('Invalid query parameters')
+    this.name = 'InvalidQueryParametersError'
   }
 }
 
 export async function reportGmodErrorPayload(
   body: any,
   params: {
-    serverID: string;
-    steamID64: string;
+    serverID: string
+    steamID64: string
   },
 ) {
-  const { error, stack, id, name, realm, uptime, count } = body;
-  const { serverID, steamID64 } = params;
+  const { error, stack, id, name, realm, uptime, count } = body
+  const { serverID, steamID64 } = params
 
-  let parsedError: GmodErrors;
+  let parsedError: GmodErrors
   try {
     parsedError = GmodErrors.from({
       error,
@@ -37,46 +37,46 @@ export async function reportGmodErrorPayload(
       count,
       serverID,
       steamID64,
-    });
+    })
   } catch {
-    throw new InvalidErrorPayloadError();
+    throw new InvalidErrorPayloadError()
   }
 
-  return await parsedError.save();
+  return await parsedError.save()
 }
 
 export async function reportGmodErrorPayloadSafe(
   body: any,
   params: {
-    serverID: string;
-    steamID64: string;
+    serverID: string
+    steamID64: string
   },
 ) {
   try {
     return {
       status: 200,
       body: await reportGmodErrorPayload(body, params),
-    };
+    }
   } catch (error) {
     if (error instanceof InvalidErrorPayloadError) {
       return {
         status: 400,
         body: { error: 'Invalid error data' },
-      };
+      }
     }
-    throw error;
+    throw error
   }
 }
 
 export async function getServerErrorsPayload(rawQuery: unknown, serverID: string) {
-  let query: Query;
+  let query: Query
   try {
-    query = Query.from(rawQuery);
+    query = Query.from(rawQuery)
   } catch {
-    throw new InvalidQueryParametersError();
+    throw new InvalidQueryParametersError()
   }
 
-  return (await getErrorsByServer(query, serverID)) || [];
+  return (await getErrorsByServer(query, serverID)) || []
 }
 
 export async function getServerErrorsPayloadSafe(rawQuery: unknown, serverID: string) {
@@ -84,14 +84,14 @@ export async function getServerErrorsPayloadSafe(rawQuery: unknown, serverID: st
     return {
       status: 200,
       body: await getServerErrorsPayload(rawQuery, serverID),
-    };
+    }
   } catch (error) {
     if (error instanceof InvalidQueryParametersError) {
       return {
         status: 400,
         body: { error: 'Invalid query parameters' },
-      };
+      }
     }
-    throw error;
+    throw error
   }
 }

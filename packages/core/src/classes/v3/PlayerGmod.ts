@@ -1,63 +1,63 @@
-import { BaseClass } from './BaseClass.js';
-import { Team } from './Team.js';
-import prisma from '@gmod/infra-prisma';
-import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js';
-import { getServerFromID, type Server } from '@gmod/domain-server/Server.js';
-import redis from '@gmod/infra-redis';
-import { gmLog, LogLevel } from '../../utils/logger.js';
-import { Position } from './Position.js';
-import { Angle } from './Angle.js';
-import { CustomValues } from './CustomValues.js';
-import { getTranslate } from '../../utils/localizations.js';
-import { secToTime } from '../../utils/discordFormat.js';
-import { Guild } from '@gmod/domain-guild/Guild.js';
-import { addAutoRoleToUser } from '@gmod/domain-guild/discordModels.js';
-import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
+import { BaseClass } from './BaseClass.js'
+import { Team } from './Team.js'
+import prisma from '@gmod/infra-prisma'
+import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js'
+import { getServerFromID, type Server } from '@gmod/domain-server/Server.js'
+import redis from '@gmod/infra-redis'
+import { gmLog, LogLevel } from '../../utils/logger.js'
+import { Position } from './Position.js'
+import { Angle } from './Angle.js'
+import { CustomValues } from './CustomValues.js'
+import { getTranslate } from '../../utils/localizations.js'
+import { secToTime } from '../../utils/discordFormat.js'
+import { Guild } from '@gmod/domain-guild/Guild.js'
+import { addAutoRoleToUser } from '@gmod/domain-guild/discordModels.js'
+import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
 import {
   enqueueDiscordGuildSyncBan,
   enqueueUpdateDiscordTeamRole,
   enqueueUpdatePlayerUserGroup,
-} from '@gmod/infra-bullmq/discordQueueAdapters.js';
+} from '@gmod/infra-bullmq/discordQueueAdapters.js'
 
 export interface PlayerGmodInterface {
-  steamID: string;
-  steamID64: string;
-  connectTime: number;
-  kills: number;
-  customValues: CustomValues;
-  deaths: number;
-  team: Team;
-  name: string;
-  userGroup: string;
-  position: Position;
-  angle: Angle;
-  fps: number | null;
-  ping: number | null;
-  adjustedTime: number | null;
-  branch: string | null;
-  timeLastTeamChange: number | null;
+  steamID: string
+  steamID64: string
+  connectTime: number
+  kills: number
+  customValues: CustomValues
+  deaths: number
+  team: Team
+  name: string
+  userGroup: string
+  position: Position
+  angle: Angle
+  fps: number | null
+  ping: number | null
+  adjustedTime: number | null
+  branch: string | null
+  timeLastTeamChange: number | null
 }
 
 export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
-  public readonly steamID: string;
-  public readonly steamID64: string;
-  public connectTime: number;
-  public kills: number;
-  public customValues: CustomValues;
-  public deaths: number;
-  public team: Team;
-  public name: string;
-  public userGroup: string;
-  public position: Position;
-  public angle: Angle;
-  public fps: number;
-  public ping: number;
-  public adjustedTime: number;
-  public branch: string;
-  public timeLastTeamChange: number;
+  public readonly steamID: string
+  public readonly steamID64: string
+  public connectTime: number
+  public kills: number
+  public customValues: CustomValues
+  public deaths: number
+  public team: Team
+  public name: string
+  public userGroup: string
+  public position: Position
+  public angle: Angle
+  public fps: number
+  public ping: number
+  public adjustedTime: number
+  public branch: string
+  public timeLastTeamChange: number
 
   constructor(obj: PlayerGmodInterface, throwMissing = true) {
-    super();
+    super()
 
     this.checkMissingAndThrow(
       obj,
@@ -75,24 +75,24 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
         angle: 'object',
       },
       throwMissing,
-    );
+    )
 
-    this.steamID = obj.steamID;
-    this.steamID64 = obj.steamID64;
-    this.connectTime = obj.connectTime;
-    this.kills = obj.kills;
-    this.customValues = new CustomValues(obj.customValues);
-    this.deaths = obj.deaths;
-    this.team = new Team(obj.team, throwMissing);
-    this.name = obj.name;
-    this.userGroup = obj.userGroup;
-    this.position = new Position(obj.position, throwMissing);
-    this.angle = new Angle(obj.angle, throwMissing);
-    this.fps = obj.fps || 0;
-    this.ping = obj.ping || 0;
-    this.adjustedTime = obj.adjustedTime || 0;
-    this.branch = obj.branch || 'unknown';
-    this.timeLastTeamChange = obj.timeLastTeamChange || 0;
+    this.steamID = obj.steamID
+    this.steamID64 = obj.steamID64
+    this.connectTime = obj.connectTime
+    this.kills = obj.kills
+    this.customValues = new CustomValues(obj.customValues)
+    this.deaths = obj.deaths
+    this.team = new Team(obj.team, throwMissing)
+    this.name = obj.name
+    this.userGroup = obj.userGroup
+    this.position = new Position(obj.position, throwMissing)
+    this.angle = new Angle(obj.angle, throwMissing)
+    this.fps = obj.fps || 0
+    this.ping = obj.ping || 0
+    this.adjustedTime = obj.adjustedTime || 0
+    this.branch = obj.branch || 'unknown'
+    this.timeLastTeamChange = obj.timeLastTeamChange || 0
   }
 
   getStringFromString(str: string) {
@@ -110,39 +110,39 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
       .replace(/{fps}/g, this.fps.toString())
       .replace(/{ping}/g, this.ping.toString())
       .replace(/{adjustedTime}/g, this.adjustedTime.toString())
-      .replace(/{branch}/g, this.branch);
+      .replace(/{branch}/g, this.branch)
   }
 
   async getDiscordID() {
-    const user = await getUserFromSteamID64(this.steamID64);
-    return user ? user.getDiscordID() : null;
+    const user = await getUserFromSteamID64(this.steamID64)
+    return user ? user.getDiscordID() : null
   }
 
   async getLogFormat(lang: string = 'en', level: LogLevel = LogLevel.MINIMAL, listArg: string[] = []) {
-    let dscList = [];
+    const dscList = []
 
     switch (level) {
       case LogLevel.MINIMAL:
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + this.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + this.name + '`');
-        break;
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + this.steamID64 + '`')
+        dscList.push((await getTranslate('name', lang)) + ': `' + this.name + '`')
+        break
       case LogLevel.NORMAL:
-        dscList.push((await getTranslate('steamID64', lang)) + ': `' + this.steamID64 + '`');
-        dscList.push((await getTranslate('name', lang)) + ': `' + this.name + '`');
-        dscList.push((await getTranslate('team', lang)) + ': `' + this.team.getName() + '`');
-        break;
+        dscList.push((await getTranslate('steamID64', lang)) + ': `' + this.steamID64 + '`')
+        dscList.push((await getTranslate('name', lang)) + ': `' + this.name + '`')
+        dscList.push((await getTranslate('team', lang)) + ': `' + this.team.getName() + '`')
+        break
       case LogLevel.CUSTOM:
         for (const arg in listArg) {
-          dscList.push((await getTranslate(arg, lang)) + ': `' + this[arg] + '`');
+          dscList.push((await getTranslate(arg, lang)) + ': `' + this[arg] + '`')
         }
-        break;
+        break
     }
 
-    return dscList.join('\n');
+    return dscList.join('\n')
   }
 
   async saveTeamTime(serverID: string) {
-    if (!this.timeLastTeamChange || this.timeLastTeamChange === 0) return;
+    if (!this.timeLastTeamChange || this.timeLastTeamChange === 0) return
 
     try {
       await prisma.gm_server_stat_team_time.create({
@@ -153,24 +153,24 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
           teamID: this.team.getID(),
           time: this.timeLastTeamChange,
         },
-      });
+      })
     } catch (error) {
-      console.error(error);
-      throw error;
+      console.error(error)
+      throw error
     }
   }
 
   async saveServerStat(serverID: string) {
     try {
-      const { connectTime, kills, deaths, customValues, userGroup, steamID64, name } = this;
-      const customValuesString = JSON.stringify(customValues);
+      const { connectTime, kills, deaths, customValues, userGroup, steamID64, name } = this
+      const customValuesString = JSON.stringify(customValues)
 
       const player = await prisma.gm_server_stat.findFirst({
         where: {
           steam_id: steamID64,
           server_id: serverID,
         },
-      });
+      })
 
       if (player) {
         await prisma.gm_server_stat.update({
@@ -188,7 +188,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
             total_death: player.total_death + deaths,
             custom_values: customValuesString,
           },
-        });
+        })
       } else {
         await prisma.gm_server_stat.create({
           data: {
@@ -203,16 +203,16 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
             last_connect: new Date(),
             first_join: new Date(),
           },
-        });
+        })
       }
     } catch (error) {
-      console.error(error);
-      throw error;
+      console.error(error)
+      throw error
     }
   }
 
   async saveServerStatSession(serverID: string) {
-    const { connectTime, deaths, kills, customValues, steamID64 } = this;
+    const { connectTime, deaths, kills, customValues, steamID64 } = this
 
     await prisma.gm_server_stat_session.create({
       data: {
@@ -223,7 +223,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
         kills,
         customValues: JSON.stringify(customValues),
       },
-    });
+    })
   }
 }
 
@@ -232,7 +232,7 @@ export async function updateDiscordTeamRole(server: Server, steamID64: string, t
     serverID: server.getID(),
     steamID64,
     teamName,
-  });
+  })
 }
 
 export async function updatePlayerUserGroup(server: Server, steamID64: string, userGroup: string) {
@@ -242,7 +242,7 @@ export async function updatePlayerUserGroup(server: Server, steamID64: string, u
         steam_id: steamID64,
         server_id: server.getID(),
       },
-    });
+    })
 
     if (player) {
       await prisma.gm_server_stat.update({
@@ -255,89 +255,89 @@ export async function updatePlayerUserGroup(server: Server, steamID64: string, u
         data: {
           rank: userGroup,
         },
-      });
+      })
 
       await enqueueUpdatePlayerUserGroup({
         serverID: server.getID(),
         steamID64,
         userGroup,
-      });
+      })
     }
   } catch (error) {
-    console.error(error);
-    throw error;
+    console.error(error)
+    throw error
   }
 }
 
 export async function removeDiscordSync(discordID: string) {
   try {
-    const user = await getUserFromDiscordID(discordID);
-    if (!user || !user.steamID64) return;
+    const user = await getUserFromDiscordID(discordID)
+    if (!user || !user.steamID64) return
 
     const serversStat = await prisma.gm_server_stat.findMany({
       where: {
         steam_id: user.steamID64,
       },
-    });
+    })
 
-    let guildsDone: string[] = [];
+    const guildsDone: string[] = []
 
     for (const serverStat of serversStat) {
-      const server = await getServerFromID(serverStat.server_id);
-      if (!server) continue;
+      const server = await getServerFromID(serverStat.server_id)
+      if (!server) continue
 
       // don't do the same guild twice
-      if (guildsDone.includes(server.getGuildID())) continue;
-      guildsDone.push(server.getGuildID());
+      if (guildsDone.includes(server.getGuildID())) continue
+      guildsDone.push(server.getGuildID())
 
-      const dscGuild = await server.getDiscordGuild();
-      if (!dscGuild) return;
+      const dscGuild = await server.getDiscordGuild()
+      if (!dscGuild) return
 
-      const gmGuild = new Guild(dscGuild);
-      if (!gmGuild) return;
+      const gmGuild = new Guild(dscGuild)
+      if (!gmGuild) return
 
-      const member = await dscGuild.members.fetch(discordID).catch(() => null);
-      if (!member) return;
+      const member = await dscGuild.members.fetch(discordID).catch(() => null)
+      if (!member) return
 
       // get team roles
-      const teamRoles = await server.getSyncTeamRoles();
+      const teamRoles = await server.getSyncTeamRoles()
 
       // get sync roles
-      const syncRoles = await server.getSyncRoles();
+      const syncRoles = await server.getSyncRoles()
 
       // get verif roles
       const verifyRole = await prisma.gm_guild_verify_role.findMany({
         where: {
           guildID: dscGuild.id,
         },
-      });
+      })
 
-      const userRoles = member.roles.cache;
+      const userRoles = member.roles.cache
 
       const rolesToRemove = userRoles.filter(
         (role) =>
           syncRoles.some((syncRole) => syncRole.roleID === role.id) ||
           teamRoles.some((teamRole) => teamRole.roleID === role.id) ||
           verifyRole.some((verifyRole) => verifyRole.roleID === role.id),
-      );
+      )
 
       if (rolesToRemove.size > 0) {
         gmLog(
           'sync-team-role',
           `Removing roles from ${member.user.tag}: ${rolesToRemove.map((role) => role.name).join(', ')}`,
-        );
-        await member.roles.remove(rolesToRemove);
+        )
+        await member.roles.remove(rolesToRemove)
       }
 
       // regive default role
-      await addAutoRoleToUser(dscGuild, member);
+      await addAutoRoleToUser(dscGuild, member)
     }
   } catch (error) {
-    console.error(error);
+    console.error(error)
     // skip the error
   }
 
-  return;
+  return
 }
 
 export async function removeServerSync(steamID64: string) {
@@ -346,11 +346,11 @@ export async function removeServerSync(steamID64: string) {
       where: {
         steam_id: steamID64,
       },
-    });
+    })
 
     for (const serverStat of serversStat) {
-      const server = await getServerFromID(serverStat.server_id);
-      if (!server) continue;
+      const server = await getServerFromID(serverStat.server_id)
+      if (!server) continue
 
       await prisma.gm_server_stat.update({
         where: {
@@ -362,7 +362,7 @@ export async function removeServerSync(steamID64: string) {
         data: {
           rank: 'user',
         },
-      });
+      })
 
       await wsSendToServerQueue.add('wsSendToServer', {
         id: server.getID(),
@@ -372,14 +372,14 @@ export async function removeServerSync(steamID64: string) {
           group: serverStat.rank,
           add: false,
         },
-      } as WSSendToServerData);
+      } as WSSendToServerData)
     }
   } catch (error) {
-    console.error(error);
+    console.error(error)
     // skip the error
   }
 
-  return;
+  return
 }
 
 export async function changeLinkCheckDiscordBan(oldDiscordIDS: string[], newDiscordID: string) {
@@ -390,15 +390,15 @@ export async function changeLinkCheckDiscordBan(oldDiscordIDS: string[], newDisc
           in: oldDiscordIDS,
         },
       },
-    });
+    })
 
     for (const dscGuild of dscGuilds) {
-      await enqueueDiscordGuildSyncBan(dscGuild.guild_id, oldDiscordIDS, newDiscordID);
+      await enqueueDiscordGuildSyncBan(dscGuild.guild_id, oldDiscordIDS, newDiscordID)
     }
   } catch (error) {
-    console.error(error);
+    console.error(error)
     // skip the error
   }
 
-  return;
+  return
 }

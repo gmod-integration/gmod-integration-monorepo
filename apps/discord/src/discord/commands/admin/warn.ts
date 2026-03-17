@@ -4,13 +4,13 @@ import {
   type ChatInputCommandInteraction,
   InteractionContextType,
   SlashCommandBuilder,
-} from 'discord.js';
-import { getServerList } from '@gmod/domain-server/serversModels.js';
-import { getServerFromID } from '@gmod/domain-server/Server.js';
-import { getTranslate } from '@gmod/core/utils/localizations.js';
-import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
-import { ButtonVerificationWebsite } from '../../utils/buttons.js';
-import { getWarnMessageEmbed, saveWarnListOptions } from '@gmod/domain-moderation/warnModels.js';
+} from 'discord.js'
+import { getServerList } from '@gmod/domain-server/serversModels.js'
+import { getServerFromID } from '@gmod/domain-server/Server.js'
+import { getTranslate } from '@gmod/core/utils/localizations.js'
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
+import { ButtonVerificationWebsite } from '../../utils/buttons.js'
+import { getWarnMessageEmbed, saveWarnListOptions } from '@gmod/domain-moderation/warnModels.js'
 
 export default {
   data: new SlashCommandBuilder()
@@ -32,36 +32,36 @@ export default {
     .setContexts([InteractionContextType.Guild]),
   category: 'admin',
   async execute(interaction: ChatInputCommandInteraction) {
-    if (!interaction.guild) return;
+    if (!interaction.guild) return
 
-    const lang = interaction.guild.preferredLocale;
-    const serverID = interaction.options.getString('server');
-    const member = interaction.options.getUser('member') || interaction.user;
-    let steamID64 = interaction.options.getString('steam');
+    const lang = interaction.guild.preferredLocale
+    const serverID = interaction.options.getString('server')
+    const member = interaction.options.getUser('member') || interaction.user
+    let steamID64 = interaction.options.getString('steam')
 
-    const server = await getServerFromID(serverID!);
+    const server = await getServerFromID(serverID!)
     if (!server) {
       return interaction.reply({
         content: await getTranslate('server_not_found', lang),
         ephemeral: true,
-      });
+      })
     }
 
     if (!steamID64) {
-      const dbUser = await getUserFromDiscordID(member.id);
+      const dbUser = await getUserFromDiscordID(member.id)
       if (!dbUser || !dbUser.getSteamID64()) {
-        const row = new ActionRowBuilder().addComponents(await ButtonVerificationWebsite(lang));
+        const row = new ActionRowBuilder().addComponents(await ButtonVerificationWebsite(lang))
         return {
           content: (await getTranslate('user_not_verified', lang, [`<@${member.id}>`, '/verify'])) + '\n_ _',
           ephemeral: true,
           components: [row],
-        };
+        }
       } else {
-        steamID64 = dbUser.getSteamID64();
+        steamID64 = dbUser.getSteamID64()
       }
     }
 
-    const { embed, component, options } = await getWarnMessageEmbed(server, steamID64!, lang);
+    const { embed, component, options } = await getWarnMessageEmbed(server, steamID64!, lang)
     interaction
       .reply({
         embeds: [embed],
@@ -69,13 +69,13 @@ export default {
         fetchReply: true,
       })
       .then(async (msgReply) => {
-        await saveWarnListOptions(msgReply.id, server.getID(), steamID64!, options);
-      });
+        await saveWarnListOptions(msgReply.id, server.getID(), steamID64!, options)
+      })
   },
   async autocomplete(interaction: AutocompleteInteraction) {
-    const focusedOption = interaction.options.getFocused(true);
-    let choices: { [key: string]: string } = {};
-    const filtered = await getServerList(interaction, focusedOption, choices);
-    return interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })));
+    const focusedOption = interaction.options.getFocused(true)
+    const choices: { [key: string]: string } = {}
+    const filtered = await getServerList(interaction, focusedOption, choices)
+    return interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })))
   },
-};
+}

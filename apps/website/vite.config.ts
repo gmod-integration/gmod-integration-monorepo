@@ -1,8 +1,8 @@
-import { sentryVitePlugin } from "@sentry/vite-plugin";
-import { defineConfig } from "vite";
-import solidPlugin from "vite-plugin-solid";
-import { viteStaticCopy } from "vite-plugin-static-copy";
-import { ConfigWebsite } from "@gmod/config/website.js";
+import { sentryVitePlugin } from '@sentry/vite-plugin'
+import { defineConfig } from 'vite'
+import solidPlugin from 'vite-plugin-solid'
+import { viteStaticCopy } from 'vite-plugin-static-copy'
+import { ConfigWebsite } from '@gmod/config/website.js'
 
 export default defineConfig(() => {
   const websiteConfig = {
@@ -12,8 +12,8 @@ export default defineConfig(() => {
     wsUrl: ConfigWebsite.wsUrl,
     discordClientId: ConfigWebsite.discordClientId,
     websiteUrl: ConfigWebsite.websiteUrl,
-  };
-  const isDev = websiteConfig.dev;
+  }
+  const isDev = websiteConfig.dev
 
   return {
     define: {
@@ -23,7 +23,7 @@ export default defineConfig(() => {
     server: {
       port: 3000,
       host: isDev ? true : false, // Allow all hosts in development
-      allowedHosts: isDev ? true : ["gmod-integration.com", "dev.gmod-integration.com"],
+      allowedHosts: isDev ? true : ['gmod-integration.com', 'dev.gmod-integration.com'],
       watch: {
         usePolling: true,
         useFsEvents: false,
@@ -31,7 +31,7 @@ export default defineConfig(() => {
       },
     },
     build: {
-      target: "esnext",
+      target: 'esnext',
       sourcemap: true,
     },
     plugins: [
@@ -39,9 +39,9 @@ export default defineConfig(() => {
         dev: isDev, // Enable SolidJS debug features in development
       }),
       sentryVitePlugin({
-        org: "gmod-integration",
-        project: "javascript-solid",
+        org: 'gmod-integration',
+        project: 'javascript-solid',
       }),
     ],
-  };
-});
+  }
+})

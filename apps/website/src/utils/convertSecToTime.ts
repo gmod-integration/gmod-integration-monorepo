@@ -4,9 +4,9 @@
  * @param {boolean} force - Force the conversion even if the time is 0 min 2digit
  * @param {Array<format>} formatDate - The format to convert the time
  */
-export function convertSecToTime(seconds: number, force: boolean, formatDate: Array<"w" | "d" | "h" | "m" | "s">) {
-  force = force || false;
-  formatDate = formatDate || ["w", "d", "h", "m", "s"];
+export function convertSecToTime(seconds: number, force: boolean, formatDate: Array<'w' | 'd' | 'h' | 'm' | 's'>) {
+  force = force || false
+  formatDate = formatDate || ['w', 'd', 'h', 'm', 's']
 
   // let weeks = Math.floor(seconds / 604800);
   // let days = Math.floor((seconds % 604800) / 86400);
@@ -19,15 +19,15 @@ export function convertSecToTime(seconds: number, force: boolean, formatDate: Ar
     h: (seconds: number) => Math.floor(((seconds % 604800) % 86400) / 3600),
     m: (seconds: number) => Math.floor((((seconds % 604800) % 86400) % 3600) / 60),
     s: (seconds: number) => Math.floor((((seconds % 604800) % 86400) % 3600) % 60),
-  };
+  }
 
-  let time = "";
+  let time = ''
   formatDate.forEach((format) => {
-    let value = operators[format](seconds);
+    const value = operators[format](seconds)
     if (value > 0 || force) {
-      time += value.toString().padStart(2, "0") + format + " ";
+      time += value.toString().padStart(2, '0') + format + ' '
     }
-  });
+  })
 
-  return time.trim();
+  return time.trim()
 }

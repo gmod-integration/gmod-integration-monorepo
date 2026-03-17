@@ -1,70 +1,73 @@
-import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
-import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
-import { isGuildPremium } from './Guild.js';
-import { ConfigDiscord } from '@gmod/config';
-import { generateToken } from '@gmod/core/utils/tools.js';
-import redis from '@gmod/infra-redis';
-import prisma from '@gmod/infra-prisma';
-import { type Guild, type GuildMember } from 'discord.js';
-import type { PanelUser } from '@gmod/domain-user/PanelUser.js';
-import { v4 as uuidv4 } from 'uuid';
-import { gmLog } from '@gmod/core/utils/logger.js';
-import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
-import { enqueueMainClientFetchUser, enqueueMainClientSyncPremiumRoles } from '@gmod/infra-bullmq/discordQueueAdapters.js';
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
+import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
+import { isGuildPremium } from './Guild.js'
+import { ConfigDiscord } from '@gmod/config'
+import { generateToken } from '@gmod/core/utils/tools.js'
+import redis from '@gmod/infra-redis'
+import prisma from '@gmod/infra-prisma'
+import { type Guild, type GuildMember } from 'discord.js'
+import type { PanelUser } from '@gmod/domain-user/PanelUser.js'
+import { v4 as uuidv4 } from 'uuid'
+import { gmLog } from '@gmod/core/utils/logger.js'
+import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
+import {
+  enqueueMainClientFetchUser,
+  enqueueMainClientSyncPremiumRoles,
+} from '@gmod/infra-bullmq/discordQueueAdapters.js'
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
-  const addedRoles = newMember.roles.cache.filter((role) => !oldMember.roles.cache.has(role.id));
-  const removedRoles = oldMember.roles.cache.filter((role) => !newMember.roles.cache.has(role.id));
+  const addedRoles = newMember.roles.cache.filter((role) => !oldMember.roles.cache.has(role.id))
+  const removedRoles = oldMember.roles.cache.filter((role) => !newMember.roles.cache.has(role.id))
 
-  const servers = await getServersFromDiscordGuildID(member.guild.id);
+  const servers = await getServersFromDiscordGuildID(member.guild.id)
   if (!servers || servers.length === 0) {
-    return;
+    return
   }
 
-  const user = await getUserFromDiscordID(member.id);
+  const user = await getUserFromDiscordID(member.id)
   if (!user || !user.getSteamID64()) {
-    return;
+    return
   }
 
   for (const server of servers) {
-    const syncDirection = await server.getSetting('sync_role_direction');
+    const syncDirection = await server.getSetting('sync_role_direction')
     if (syncDirection !== 'both' && syncDirection !== 'discord-to-gmod') {
-      continue;
+      continue
     }
 
-    const syncRoles = await server.getSyncRoles();
+    const syncRoles = await server.getSyncRoles()
     if (!syncRoles || syncRoles.length === 0) {
-      continue;
+      continue
     }
 
     // skip for now
-    const redisKey = `sync-role:gmod:server:${server.id}:user:${user.getSteamID64()}`;
-    const redisData = await redis.get(redisKey);
-    const data = redisData ? JSON.parse(redisData) : { removeIDs: [], addIDs: [] };
+    const redisKey = `sync-role:gmod:server:${server.id}:user:${user.getSteamID64()}`
+    const redisData = await redis.get(redisKey)
+    const data = redisData ? JSON.parse(redisData) : { removeIDs: [], addIDs: [] }
 
     // add roles
     for (const roleCollection of addedRoles) {
-      const role = roleCollection[1];
+      const role = roleCollection[1]
       if (data && data.addIDs.includes(role.id)) {
-        continue;
+        continue
       }
 
-      const roleData = syncRoles.find((syncRole) => syncRole.roleID === role.id);
+      const roleData = syncRoles.find((syncRole) => syncRole.roleID === role.id)
       if (!roleData || !roleData.enable) {
-        continue;
+        continue
       }
 
       // remove all roles except the one we are adding
-      const userRoles = member.roles.cache;
+      const userRoles = member.roles.cache
       const rolesToRemove = userRoles.filter(
         (role) =>
           syncRoles.some((syncRole) => syncRole.roleID === role.id && syncRole.enable) && role.id !== roleData?.roleID,
-      );
+      )
 
       if (rolesToRemove.size > 0) {
-        data.removeIDs.push(...rolesToRemove.map((role) => role.id));
-        await redis.set(redisKey, JSON.stringify(data), 'EX', 120);
-        await member.roles.remove(rolesToRemove);
+        data.removeIDs.push(...rolesToRemove.map((role) => role.id))
+        await redis.set(redisKey, JSON.stringify(data), 'EX', 120)
+        await member.roles.remove(rolesToRemove)
       }
 
       await wsSendToServerQueue.add('wsSendToServer', {
@@ -75,23 +78,23 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
           group: roleData.userGroup,
           add: true,
         },
-      } as WSSendToServerData);
+      } as WSSendToServerData)
     }
 
     for (const roleCollection of removedRoles) {
-      const role = roleCollection[1];
+      const role = roleCollection[1]
       if (data && data.removeIDs.includes(role.id)) {
-        continue;
+        continue
       }
 
-      const roleData = syncRoles.find((syncRole) => syncRole.roleID === role.id);
+      const roleData = syncRoles.find((syncRole) => syncRole.roleID === role.id)
       if (!roleData || !roleData.enable) {
-        continue;
+        continue
       }
 
       if (data.addIDs.includes(roleData.roleID)) {
-        data.addIDs = data.addIDs.filter((id: string) => id !== roleData.roleID);
-        await redis.set(redisKey, JSON.stringify(data), 'EX', 120);
+        data.addIDs = data.addIDs.filter((id: string) => id !== roleData.roleID)
+        await redis.set(redisKey, JSON.stringify(data), 'EX', 120)
       }
 
       await wsSendToServerQueue.add('wsSendToServer', {
@@ -102,29 +105,29 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
           group: roleData.userGroup,
           add: false,
         },
-      } as WSSendToServerData);
+      } as WSSendToServerData)
     }
 
     // if no sync role anymore check id a 'user' role is present in sync and add it
-    const userRoles = member.roles.cache;
-    const syncedRole = userRoles.filter((role) => syncRoles.some((syncRole) => syncRole.roleID === role.id));
+    const userRoles = member.roles.cache
+    const syncedRole = userRoles.filter((role) => syncRoles.some((syncRole) => syncRole.roleID === role.id))
     if (syncedRole.size === 0 && data.addIDs.length === 0) {
-      const userRole = syncRoles.find((syncRole) => syncRole.userGroup === 'user');
+      const userRole = syncRoles.find((syncRole) => syncRole.userGroup === 'user')
       if (userRole) {
-        data.addIDs.push(userRole.roleID);
-        await redis.set(redisKey, JSON.stringify(data), 'EX', 2);
-        await member.roles.add(userRole.roleID);
+        data.addIDs.push(userRole.roleID)
+        await redis.set(redisKey, JSON.stringify(data), 'EX', 2)
+        await member.roles.add(userRole.roleID)
       }
     }
   }
 }
 
 export async function updateGuildStat(guild: Guild) {
-  let guildDB = await prisma.gm_guild.findUnique({
+  const guildDB = await prisma.gm_guild.findUnique({
     where: {
       guild: guild.id,
     },
-  });
+  })
 
   if (!guildDB) {
     await prisma.gm_guild.create({
@@ -134,7 +137,7 @@ export async function updateGuildStat(guild: Guild) {
         member: guild.memberCount,
         language: guild.preferredLocale,
       },
-    });
+    })
   } else {
     await prisma.gm_guild.update({
       where: {
@@ -146,7 +149,7 @@ export async function updateGuildStat(guild: Guild) {
         name: guild.name,
         updatedAt: new Date(),
       },
-    });
+    })
   }
 }
 
@@ -155,29 +158,29 @@ export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
     where: {
       guildID: guild.id,
     },
-  });
+  })
 
   if (!roles) {
-    return;
+    return
   }
 
   for (const roleData of roles) {
-    const roleDiscord = guild.roles.cache.get(roleData.roleID);
+    const roleDiscord = guild.roles.cache.get(roleData.roleID)
     if (!roleDiscord) {
       await prisma.gm_guild_auto_roles.delete({
         where: {
           roleID: roleData.roleID,
           guildID: guild.id,
         },
-      });
-      continue;
+      })
+      continue
     }
 
-    if (member.roles.cache.has(roleData.roleID)) continue;
-    await member.roles.add(roleDiscord);
+    if (member.roles.cache.has(roleData.roleID)) continue
+    await member.roles.add(roleDiscord)
   }
 
-  return true;
+  return true
 }
 
 export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
@@ -185,49 +188,49 @@ export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
     where: {
       guildID: guild.id,
     },
-  });
+  })
 
   if (!role) {
-    return;
+    return
   }
 
   for (const roleData of role) {
-    const roleDiscord = guild.roles.cache.get(roleData.roleID);
+    const roleDiscord = guild.roles.cache.get(roleData.roleID)
     if (!roleDiscord) {
       await prisma.gm_guild_verify_role.delete({
         where: {
           id: roleData.id,
         },
-      });
-      continue;
+      })
+      continue
     }
 
     // if not enabled skip
-    if (!roleData.enabled) continue;
+    if (!roleData.enabled) continue
 
     // give or remove role
     if (roleData.isGiveRole) {
-      if (member.roles.cache.has(roleData.roleID)) continue;
-      await member.roles.add(roleDiscord);
+      if (member.roles.cache.has(roleData.roleID)) continue
+      await member.roles.add(roleDiscord)
     } else {
-      if (!member.roles.cache.has(roleData.roleID)) continue;
-      await member.roles.remove(roleDiscord);
+      if (!member.roles.cache.has(roleData.roleID)) continue
+      await member.roles.remove(roleDiscord)
     }
   }
 }
 
 export async function verifyUser(guild: Guild, member: GuildMember) {
-  const user = await getUserFromDiscordID(member.id);
-  if (!user || !user.getSteamID64()) return false;
+  const user = await getUserFromDiscordID(member.id)
+  if (!user || !user.getSteamID64()) return false
 
-  await addVerifyRoleToUser(guild, member);
-  return true;
+  await addVerifyRoleToUser(guild, member)
+  return true
 }
 
 export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
-  const guilds = [];
-  const permGuilds = await panelUser.findGuildsWithPerms();
-  const permGuildsID = permGuilds.map((guild) => guild.id);
+  const guilds = []
+  const permGuilds = await panelUser.findGuildsWithPerms()
+  const permGuildsID = permGuilds.map((guild) => guild.id)
 
   const rows = await prisma.gm_guild.findMany({
     where: {
@@ -235,18 +238,18 @@ export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
         in: permGuildsID,
       },
     },
-  });
+  })
 
-  const hasBotGuildsID = [];
+  const hasBotGuildsID = []
   for (const guildData of rows) {
-    hasBotGuildsID.push(guildData.guild);
+    hasBotGuildsID.push(guildData.guild)
   }
 
   for (const guildData of permGuilds) {
-    const guildID = guildData.id;
+    const guildID = guildData.id
 
     if (!permGuildsID.includes(guildID)) {
-      continue;
+      continue
     }
 
     guilds.push({
@@ -256,10 +259,10 @@ export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
       hasBot: hasBotGuildsID.includes(guildID),
       isOwner: guildData.owner,
       isPremium: hasBotGuildsID.includes(guildID) ? await isGuildPremium(guildID) : false,
-    });
+    })
   }
 
-  return guilds;
+  return guilds
 }
 
 export async function getUserTokenFromCode(code: string, redirectURI: string) {
@@ -277,13 +280,13 @@ export async function getUserTokenFromCode(code: string, redirectURI: string) {
       // scope: 'identify guilds.join email guilds',
       scope: 'identify guilds',
     }).toString(),
-  });
+  })
 
   if (!discordRequest.ok) {
-    return null;
+    return null
   }
 
-  return await discordRequest.json();
+  return await discordRequest.json()
 }
 
 export async function getUserTokenFromRefreshToken(refreshToken: string) {
@@ -298,13 +301,13 @@ export async function getUserTokenFromRefreshToken(refreshToken: string) {
       client_id: ConfigDiscord.clientID!,
       client_secret: ConfigDiscord.clientSecret!,
     }).toString(),
-  });
+  })
 
   if (!discordRequest.ok) {
-    return null;
+    return null
   }
 
-  return await discordRequest.json();
+  return await discordRequest.json()
 }
 
 export async function refreshUserToken(discordID: string) {
@@ -312,21 +315,21 @@ export async function refreshUserToken(discordID: string) {
     where: {
       discordID,
     },
-  });
+  })
 
   if (!discordToken) {
-    return null;
+    return null
   }
 
-  const token = await getUserTokenFromRefreshToken(discordToken.refreshToken);
+  const token = await getUserTokenFromRefreshToken(discordToken.refreshToken)
   if (!token) {
     // delete discord token
     await prisma.gm_discordToken.delete({
       where: {
         discordID,
       },
-    });
-    return null;
+    })
+    return null
   }
 
   await prisma.gm_discordToken.update({
@@ -339,9 +342,9 @@ export async function refreshUserToken(discordID: string) {
       creationDate: new Date(),
       expirationDate: new Date(Date.now() + token.expires_in * 1000),
     },
-  });
+  })
 
-  return token;
+  return token
 }
 
 // every 30 seconds check if we need to refresh discord tokens
@@ -354,27 +357,27 @@ setInterval(async () => {
       },
     },
     take: 5,
-  });
+  })
 
   // refresh all tokens
   for (const discordToken of discordTokens) {
-    await refreshUserToken(discordToken.discordID);
-    gmLog('discord', `Refreshed token for ${discordToken.discordID}`);
+    await refreshUserToken(discordToken.discordID)
+    gmLog('discord', `Refreshed token for ${discordToken.discordID}`)
   }
-}, 1000 * 30);
+}, 1000 * 30)
 
 export async function getUserFromToken(token: string) {
   const discordRequest = await fetch('https://discord.com/api/users/@me', {
     headers: {
       authorization: token,
     },
-  });
+  })
 
   if (!discordRequest.ok) {
-    return null;
+    return null
   }
 
-  return await discordRequest.json();
+  return await discordRequest.json()
 }
 
 export async function saveUser(id: string, username: string) {
@@ -382,7 +385,7 @@ export async function saveUser(id: string, username: string) {
     where: {
       id,
     },
-  });
+  })
 
   if (!user) {
     await prisma.gm_user.create({
@@ -390,7 +393,7 @@ export async function saveUser(id: string, username: string) {
         id,
         username,
       },
-    });
+    })
   } else {
     await prisma.gm_user.update({
       where: {
@@ -399,10 +402,10 @@ export async function saveUser(id: string, username: string) {
       data: {
         username,
       },
-    });
+    })
   }
 
-  return true;
+  return true
 }
 
 export async function saveUserPanel(discordID: string, discordUserToken: any, sessionData: any) {
@@ -410,7 +413,7 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
     where: {
       discordID,
     },
-  });
+  })
 
   if (!discordToken) {
     await prisma.gm_discordToken.create({
@@ -421,7 +424,7 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
         creationDate: discordUserToken.creationDate,
         expirationDate: discordUserToken.expirationDate,
       },
-    });
+    })
   } else {
     await prisma.gm_discordToken.update({
       where: {
@@ -433,10 +436,10 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
         creationDate: discordUserToken.creationDate,
         expirationDate: discordUserToken.expirationDate,
       },
-    });
+    })
   }
 
-  const panelAccessToken = generateToken(32);
+  const panelAccessToken = generateToken(32)
 
   await prisma.gm_panelToken.create({
     data: {
@@ -450,9 +453,9 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
       browser: sessionData.browser,
       country: sessionData.country,
     },
-  });
+  })
 
-  return panelAccessToken;
+  return panelAccessToken
 }
 
 export async function addUserToGuild(guildID: string, userID: string, userToken: string) {
@@ -465,38 +468,38 @@ export async function addUserToGuild(guildID: string, userID: string, userToken:
     body: JSON.stringify({
       access_token: userToken,
     }),
-  });
+  })
 
-  return response.ok;
+  return response.ok
 }
 
 export async function getDiscordUserFromID(discordID: string) {
-  return await enqueueMainClientFetchUser(discordID);
+  return await enqueueMainClientFetchUser(discordID)
 }
 
 export async function updatePseudoToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
-  const servers = await getServersFromDiscordGuildID(member.guild.id);
-  if (!servers || servers.length === 0) return;
+  const servers = await getServersFromDiscordGuildID(member.guild.id)
+  if (!servers || servers.length === 0) return
 
-  const user = await getUserFromDiscordID(member.id);
-  if (!user || !user.getSteamID64()) return;
+  const user = await getUserFromDiscordID(member.id)
+  if (!user || !user.getSteamID64()) return
 
   for (const server of servers) {
-    const pseudoDirection = await server.getSetting('sync_pseudo_direction');
-    if (pseudoDirection !== 'both' && pseudoDirection !== 'discord-to-gmod') return;
+    const pseudoDirection = await server.getSetting('sync_pseudo_direction')
+    if (pseudoDirection !== 'both' && pseudoDirection !== 'discord-to-gmod') return
 
-    const redisKey = `sync-pseudo:gmod:server:${server.id}:user:${user.getSteamID64()}`;
-    const redisData = await redis.get(redisKey);
-    if (redisData === newMember.nickname || redisData === newMember.user.username) return;
+    const redisKey = `sync-pseudo:gmod:server:${server.id}:user:${user.getSteamID64()}`
+    const redisData = await redis.get(redisKey)
+    if (redisData === newMember.nickname || redisData === newMember.user.username) return
 
-    const pseudo = newMember.nickname || newMember.user.username;
+    const pseudo = newMember.nickname || newMember.user.username
     await wsSendToServerQueue.add('wsSendToServer', {
       id: server.getID(),
       data: { method: 'wsSyncName', steamID64: user.getSteamID64(), name: pseudo },
-    } as WSSendToServerData);
+    } as WSSendToServerData)
   }
 }
 
 export async function givePremiumRoleOfMainGuild() {
-  return await enqueueMainClientSyncPremiumRoles();
+  return await enqueueMainClientSyncPremiumRoles()
 }

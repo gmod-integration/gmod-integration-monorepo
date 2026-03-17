@@ -5,10 +5,10 @@ import {
   InteractionContextType,
   PermissionsBitField,
   SlashCommandBuilder,
-} from 'discord.js';
-import { getTranslate } from '@gmod/core/utils/localizations.js';
-import { ConfigServer } from '@gmod/config';
-import prisma from '@gmod/infra-prisma';
+} from 'discord.js'
+import { getTranslate } from '@gmod/core/utils/localizations.js'
+import { ConfigServer } from '@gmod/config'
+import prisma from '@gmod/infra-prisma'
 
 export default {
   data: new SlashCommandBuilder()
@@ -20,19 +20,19 @@ export default {
     .setContexts([InteractionContextType.Guild]),
   category: 'general',
   async execute(interaction: ChatInputCommandInteraction) {
-    if (!interaction.guild || !interaction.member) return;
+    if (!interaction.guild || !interaction.member) return
 
-    const lang = interaction.guild.preferredLocale;
-    const linkID = interaction.options.getString('link');
-    if (!linkID) return;
+    const lang = interaction.guild.preferredLocale
+    const linkID = interaction.options.getString('link')
+    if (!linkID) return
 
     const linkInfo = await prisma.gm_server_links.findFirst({
       where: {
         id: Number(linkID),
       },
-    });
+    })
 
-    const member = interaction.member as GuildMember;
+    const member = interaction.member as GuildMember
     if (!linkInfo) {
       if (member.permissions.has(PermissionsBitField.Flags.Administrator)) {
         return await interaction.reply({
@@ -43,41 +43,41 @@ export default {
               `[Edit Guild Links](${ConfigServer.websiteUrl}/dashboard/guilds/${interaction.guild.id}/config/links)`,
             ])),
           ephemeral: true,
-        });
+        })
       }
 
       return await interaction.reply({
         content: await getTranslate('the_link_to_not_set', lang, ['`' + linkID + '`']),
         ephemeral: true,
-      });
+      })
     }
 
-    const urlEncoded = encodeURIComponent(linkInfo.url);
+    const urlEncoded = encodeURIComponent(linkInfo.url)
     return await interaction.reply({
       content: await getTranslate('the_link_to', lang, [
         `[${linkInfo.alias}](<${ConfigServer.websiteUrl}/open?link=${urlEncoded}>)`,
       ]),
-    });
+    })
   },
   async autocomplete(interaction: AutocompleteInteraction) {
-    if (!interaction.guild) return;
-    const focusedOption = interaction.options.getFocused(true);
-    const choices: Record<string, string> = {};
+    if (!interaction.guild) return
+    const focusedOption = interaction.options.getFocused(true)
+    const choices: Record<string, string> = {}
 
     const guildLinks = await prisma.gm_server_links.findMany({
       where: {
         guild: interaction.guild.id,
       },
-    });
+    })
 
     guildLinks.forEach((link) => {
-      if (!link.alias) return;
-      if (choices[link.id]) return;
-      if (!link.active) return;
-      choices[link.id] = link.alias;
-    });
+      if (!link.alias) return
+      if (choices[link.id]) return
+      if (!link.active) return
+      choices[link.id] = link.alias
+    })
 
-    const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value));
-    return await interaction.respond(filtered.map((choice) => ({ name: choices[choice], value: choice })));
+    const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value))
+    return await interaction.respond(filtered.map((choice) => ({ name: choices[choice], value: choice })))
   },
-};
+}

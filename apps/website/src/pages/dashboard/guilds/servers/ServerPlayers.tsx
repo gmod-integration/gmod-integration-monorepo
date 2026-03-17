@@ -1,27 +1,27 @@
-import { Component, createResource, createSignal, For, Match, Show, Switch } from "solid-js";
-import AdminPanel from "../../../../components/AdminPanel";
-import AdminModal from "../../../../components/AdminModal";
-import Pagination from "../../../../components/Pagination";
-import { useI18n } from "../../../../i18n";
-import { convertSecToTime } from "../../../../utils/convertSecToTime";
-import { fetchAPI } from "../../../../utils/api";
-import { ClientQuery, QuerySort } from "../../../../utils/types/QueryTypes";
+import { Component, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
+import AdminPanel from '../../../../components/AdminPanel'
+import AdminModal from '../../../../components/AdminModal'
+import Pagination from '../../../../components/Pagination'
+import { useI18n } from '../../../../i18n'
+import { convertSecToTime } from '../../../../utils/convertSecToTime'
+import { fetchAPI } from '../../../../utils/api'
+import { ClientQuery, QuerySort } from '../../../../utils/types/QueryTypes'
 
 const fetchPlayers = async () => {
-  const res = await fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/players", "GET");
+  const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/players', 'GET')
   if (!res.ok) {
-    return {};
+    return {}
   }
-  return await res.json();
-};
+  return await res.json()
+}
 
 class Player {
-  steam_id: string;
-  name: string;
-  rank: number;
-  total_time: number;
-  total_connect: number;
-  bypassMaintenance: boolean;
+  steam_id: string
+  name: string
+  rank: number
+  total_time: number
+  total_connect: number
+  bypassMaintenance: boolean
 
   constructor(
     steam_id: string,
@@ -31,46 +31,46 @@ class Player {
     total_connect: number,
     bypassMaintenance: boolean,
   ) {
-    this.steam_id = steam_id;
-    this.name = name;
-    this.rank = rank;
-    this.total_time = total_time;
-    this.total_connect = total_connect;
-    this.bypassMaintenance = bypassMaintenance;
+    this.steam_id = steam_id
+    this.name = name
+    this.rank = rank
+    this.total_time = total_time
+    this.total_connect = total_connect
+    this.bypassMaintenance = bypassMaintenance
   }
 }
 
 const ServerPlayer: Component = () => {
-  const [playersList, { mutate }] = createResource("playersList", fetchPlayers);
-  const [currentPlayers, setCurrentPlayers] = createSignal(new Player("", "", 0, 0, 0, false));
+  const [playersList, { mutate }] = createResource('playersList', fetchPlayers)
+  const [currentPlayers, setCurrentPlayers] = createSignal(new Player('', '', 0, 0, 0, false))
   const [sortInfo, setSortInfo] = createSignal({
     dsc: true,
-    lastKey: "",
-  });
+    lastKey: '',
+  })
   const [query, setQuery] = createSignal<ClientQuery>({
     limit: 50,
     offset: 0,
-    sort: "name",
+    sort: 'name',
     orderBy: QuerySort.DESC,
-  });
-  const { t } = useI18n();
+  })
+  const { t } = useI18n()
 
-  const [loadSearch, setLoadSearch] = createSignal(false);
-  const [searchValue, setSearchValue] = createSignal("");
+  const [loadSearch, setLoadSearch] = createSignal(false)
+  const [searchValue, setSearchValue] = createSignal('')
 
   async function sortPlayerBy(
-    key: string = "name",
+    key: string = 'name',
     inverseOrder: boolean = true,
     offset: number = 0,
-    search: string = "",
+    search: string = '',
   ) {
-    let sortInfoValue = sortInfo();
+    const sortInfoValue = sortInfo()
 
     if (inverseOrder) {
       setSortInfo({
         dsc: sortInfoValue.lastKey === key ? !sortInfoValue.dsc : false,
         lastKey: key,
-      });
+      })
     }
 
     const newQuery: ClientQuery = {
@@ -78,90 +78,90 @@ const ServerPlayer: Component = () => {
       sort: key,
       orderBy: !sortInfo().dsc ? QuerySort.ASC : QuerySort.DESC,
       offset: offset,
-    };
+    }
 
-    let params = {
+    const params = {
       order: newQuery.orderBy,
       limit: newQuery.limit,
       offset: newQuery.offset,
       searchColum: key,
       search: search,
-    };
+    }
 
     // transform the object into a query string
-    let queryString = Object.keys(params)
+    const queryString = Object.keys(params)
       .map((k) => `${k}=${(params as Record<string, any>)[k]}`)
-      .join("&");
+      .join('&')
 
-    setLoadSearch(true);
+    setLoadSearch(true)
     mutate(() => {
       return {
         ...playersList(),
         rows: [],
-      };
-    });
-    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/players?${queryString}`, "GET");
-    setLoadSearch(false);
+      }
+    })
+    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/players?${queryString}`, 'GET')
+    setLoadSearch(false)
     if (!res.ok) {
-      return;
+      return
     }
 
-    const data = await res.json();
-    mutate(() => data);
+    const data = await res.json()
+    mutate(() => data)
   }
 
   function getSortIcon(key: string) {
-    let sortInfoValue = sortInfo();
+    const sortInfoValue = sortInfo()
     if (sortInfoValue.lastKey === key) {
-      return sortInfoValue.dsc ? "fa-solid fa-sort-down" : "fa-solid fa-sort-up";
+      return sortInfoValue.dsc ? 'fa-solid fa-sort-down' : 'fa-solid fa-sort-up'
     }
-    return "fa-solid fa-sort";
+    return 'fa-solid fa-sort'
   }
 
   async function handleQueryChange(newQuery: ClientQuery) {
-    setQuery(newQuery);
-    await sortPlayerBy(newQuery.sort, false, newQuery.offset, searchValue());
+    setQuery(newQuery)
+    await sortPlayerBy(newQuery.sort, false, newQuery.offset, searchValue())
   }
 
   async function savePlayer() {
     const res = await fetchAPI(
       `/users/:discordID/guilds/:guildID/servers/:serverID/players/${currentPlayers().steam_id}`,
-      "PUT",
+      'PUT',
       currentPlayers(),
-    );
+    )
     if (!res.ok) {
-      return;
+      return
     }
-    const ply = await res.json();
+    const ply = await res.json()
     mutate((prevPlayers) => {
-      if (!prevPlayers) return prevPlayers;
+      if (!prevPlayers) return prevPlayers
       return {
         ...prevPlayers,
         rows: prevPlayers.rows.map((p) =>
           p.steam_id === ply.steam_id ? { ...p, bypassMaintenance: ply.bypassMaintenance } : p,
         ),
-      };
-    });
+      }
+    })
   }
 
-  const [inputID, setInputID] = createSignal(0);
+  const [inputID, setInputID] = createSignal(0)
   return (
     <>
-      <AdminModal title={t("dashboard.server.edit_player.title", "Edit Player")} id="edit_player">
+      <AdminModal title={t('dashboard.server.edit_player.title', 'Edit Player')} id="edit_player">
         <div class="fieldset">
           <label class="label">
-            <span>{t("dashboard.server.edit_player.bypass_maintenance", "ByPass Maintenance")}</span>
+            <span>{t('dashboard.server.edit_player.bypass_maintenance', 'ByPass Maintenance')}</span>
           </label>
           <select
             class="select"
             disabled={playersList.loading}
-            value={currentPlayers().bypassMaintenance ? "true" : "false"}
+            value={currentPlayers().bypassMaintenance ? 'true' : 'false'}
             onChange={(e) => {
-              currentPlayers().bypassMaintenance = e.currentTarget.value === "true";
+              currentPlayers().bypassMaintenance = e.currentTarget.value === 'true'
             }}
           >
-            <option value="true">{t("dashboard.server.edit_player.yes", "Yes")}</option>
-            <option value="false">{t("dashboard.server.edit_player.no", "No")}</option>
+            <option value="true">{t('dashboard.server.edit_player.yes', 'Yes')}</option>
+            <option value="false">{t('dashboard.server.edit_player.no', 'No')}</option>
           </select>
         </div>
 
@@ -170,17 +170,17 @@ const ServerPlayer: Component = () => {
           disabled={playersList.loading}
           onClick={async () => {
             // @ts-ignore
-            edit_player.close();
-            await savePlayer();
+            edit_player.close()
+            await savePlayer()
           }}
         >
-          {t("dashboard.server.edit_player.save", "Save")}
+          {t('dashboard.server.edit_player.save', 'Save')}
         </button>
       </AdminModal>
 
       <AdminPanel
-        title={t("dashboard.server.players_database.title", "Players Database")}
-        description={t("dashboard.server.players_database.description", "List of all players in the server")}
+        title={t('dashboard.server.players_database.title', 'Players Database')}
+        description={t('dashboard.server.players_database.description', 'List of all players in the server')}
         type="none"
       >
         {/* search*/}
@@ -191,16 +191,16 @@ const ServerPlayer: Component = () => {
               class="grow"
               placeholder="Search for SteamID64, Name, Rank..."
               onInput={(e) => {
-                const value = e.currentTarget.value;
-                setSearchValue(value);
-                const currentID = inputID() + 1;
-                setInputID(currentID);
+                const value = e.currentTarget.value
+                setSearchValue(value)
+                const currentID = inputID() + 1
+                setInputID(currentID)
                 setTimeout(async () => {
                   if (currentID === inputID()) {
-                    console.log(value);
-                    await sortPlayerBy(query().sort, false, 0, value);
+                    console.log(value)
+                    await sortPlayerBy(query().sort, false, 0, value)
                   }
-                }, 400);
+                }, 400)
               }}
             />
             <i class="fa-solid fa-search"></i>
@@ -209,26 +209,26 @@ const ServerPlayer: Component = () => {
         <table class="table table-auto table-fixed border-t border-base-200 rounded-none">
           <thead>
             <tr class="text-l hover:cursor-pointer">
-              <th class="w-1/4" onClick={() => sortPlayerBy("name")}>
-                {t("dashboard.server.players_database.name", "Name")} <i class={getSortIcon("name")}></i>
+              <th class="w-1/4" onClick={() => sortPlayerBy('name')}>
+                {t('dashboard.server.players_database.name', 'Name')} <i class={getSortIcon('name')}></i>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy("rank")}>
-                {t("dashboard.server.players_database.rank", "Rank")} <i class={getSortIcon("rank")}></i>
+              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('rank')}>
+                {t('dashboard.server.players_database.rank', 'Rank')} <i class={getSortIcon('rank')}></i>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy("total_time")}>
-                {t("dashboard.server.players_database.total_time", "Total Time")}{" "}
-                <i class={getSortIcon("total_time")}></i>
+              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('total_time')}>
+                {t('dashboard.server.players_database.total_time', 'Total Time')}{' '}
+                <i class={getSortIcon('total_time')}></i>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy("total_connect")}>
-                {t("dashboard.server.players_database.total_connect", "Total Connect")}{" "}
-                <i class={getSortIcon("total_connect")}></i>
+              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('total_connect')}>
+                {t('dashboard.server.players_database.total_connect', 'Total Connect')}{' '}
+                <i class={getSortIcon('total_connect')}></i>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy("bypassMaintenance")}>
-                {t("dashboard.server.players_database.bypass_maintenance", "Bypass Maintenance")}{" "}
-                <i class={getSortIcon("bypassMaintenance")}></i>
+              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('bypassMaintenance')}>
+                {t('dashboard.server.players_database.bypass_maintenance', 'Bypass Maintenance')}{' '}
+                <i class={getSortIcon('bypassMaintenance')}></i>
               </th>
               <th class="hover:cursor-default w-1/6 text-center">
-                {t("dashboard.server.players_database.actions", "Actions")}
+                {t('dashboard.server.players_database.actions', 'Actions')}
               </th>
             </tr>
           </thead>
@@ -267,20 +267,20 @@ const ServerPlayer: Component = () => {
                           href={`https://steamcommunity.com/profiles/${player.steam_id}`}
                           target="_blank"
                           class="tooltip tooltip-info"
-                          data-tip={t("dashboard.server.players_database.steam", "Steam")}
+                          data-tip={t('dashboard.server.players_database.steam', 'Steam')}
                         >
                           <i class="fa-brands fa-steam"></i>
                         </a>
                         <div
                           class="tooltip tooltip-info"
-                          data-tip={t("dashboard.server.players_database.edit", "Edit")}
+                          data-tip={t('dashboard.server.players_database.edit', 'Edit')}
                         >
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              setCurrentPlayers(player);
+                              setCurrentPlayers(player)
                               // @ts-ignore
-                              edit_player.showModal();
+                              edit_player.showModal()
                             }}
                           />
                         </div>
@@ -302,13 +302,13 @@ const ServerPlayer: Component = () => {
           </Match>
           <Match when={playersList.error}>
             <tr>
-              <td colSpan="4">{t("dashboard.server.players_database.failed_to_load", "Failed to load the links")}</td>
+              <td colSpan="4">{t('dashboard.server.players_database.failed_to_load', 'Failed to load the links')}</td>
             </tr>
           </Match>
         </Switch>
       </AdminPanel>
     </>
-  );
-};
+  )
+}
 
-export default ServerPlayer;
+export default ServerPlayer

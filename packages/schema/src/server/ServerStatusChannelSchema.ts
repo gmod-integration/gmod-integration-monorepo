@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
-extendZodWithOpenApi(z);
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
+extendZodWithOpenApi(z)
 
 export const ServerStatusChannelSchema = z
   .object({
@@ -29,6 +29,6 @@ export const ServerStatusChannelSchema = z
       description: 'Timestamp when the status channel configuration was last updated',
     }),
   })
-  .openapi({ ref: 'Server Status Channel' });
+  .openapi({ ref: 'Server Status Channel' })
 
-export type ServerStatusChannelInput = z.infer<typeof ServerStatusChannelSchema>;
+export type ServerStatusChannelInput = z.infer<typeof ServerStatusChannelSchema>

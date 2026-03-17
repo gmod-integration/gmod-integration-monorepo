@@ -1,6 +1,6 @@
-import { ConfigDiscord } from '@gmod/config';
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type User } from 'discord.js';
-import { getTranslate } from './localizations.js';
+import { ConfigDiscord } from '@gmod/config'
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, type User } from 'discord.js'
+import { getTranslate } from './localizations.js'
 
 export async function ButtonVerificationWebsite(lang: string, guildID?: string) {
   return new ButtonBuilder()
@@ -11,7 +11,7 @@ export async function ButtonVerificationWebsite(lang: string, guildID?: string) 
       ConfigDiscord.oauthPanel +
         '&state=' +
         encodeURIComponent('redirect:/account?startVerification=true' + (guildID ? `&guildID=${guildID}` : '')),
-    );
+    )
 }
 
 export async function ButtonVerify(lang: string) {
@@ -19,7 +19,7 @@ export async function ButtonVerify(lang: string) {
     .setStyle(ButtonStyle.Secondary)
     .setLabel(`⠀${await getTranslate('check_verification', lang)}`)
     .setEmoji('🔎')
-    .setCustomId('verify');
+    .setCustomId('verify')
 }
 
 export async function ButtonDiscordSupport(lang: string) {
@@ -27,7 +27,7 @@ export async function ButtonDiscordSupport(lang: string) {
     .setStyle(ButtonStyle.Link)
     .setLabel(`⠀${await getTranslate('discord_support', lang)}`)
     .setEmoji('🚨')
-    .setURL('https://discord.gg/AexDDx5RaU');
+    .setURL('https://discord.gg/AexDDx5RaU')
 }
 
 export async function ButtonPremium(lang: string) {
@@ -35,24 +35,24 @@ export async function ButtonPremium(lang: string) {
     .setStyle(ButtonStyle.Primary)
     .setLabel(`⠀${await getTranslate('premium', lang)}`)
     .setEmoji('💎')
-    .setCustomId('premium');
+    .setCustomId('premium')
 }
 
 export async function getVerifiedMessageAnswer(isVerified: boolean, lang: string, member: User, selfVerify: boolean) {
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(await ButtonVerificationWebsite(lang));
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(await ButtonVerificationWebsite(lang))
 
   if (isVerified) {
     if (selfVerify) {
       return {
         content: await getTranslate('user_verified_self', lang),
         ephemeral: true,
-      };
+      }
     }
 
     return {
       content: await getTranslate('user_verified', lang, [`<@${member.id}>`]),
       ephemeral: true,
-    };
+    }
   }
 
   if (selfVerify) {
@@ -60,14 +60,14 @@ export async function getVerifiedMessageAnswer(isVerified: boolean, lang: string
       content: (await getTranslate('user_not_verified_self', lang, ['/verify'])) + '\n_ _',
       ephemeral: true,
       components: [row],
-    };
+    }
   }
 
   return {
     content: (await getTranslate('user_not_verified', lang, [`<@${member.id}>`, '/verify'])) + '\n_ _',
     ephemeral: true,
     components: [row],
-  };
+  }
 }
 
 export async function getVerificationGuildMessage(lang: string, guildID: string) {
@@ -91,16 +91,16 @@ export async function getVerificationGuildMessage(lang: string, guildID: string)
         name: await getTranslate('setup_msg_p4_name', lang),
         value: await getTranslate('setup_msg_p4_value', lang, ['https://gmod-integration.com/legal/privacy']),
       },
-    );
+    )
 
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     await ButtonVerificationWebsite(lang, guildID),
     await ButtonVerify(lang),
     await ButtonDiscordSupport(lang),
-  );
+  )
 
   return {
     embeds: [embed],
     components: [row],
-  };
+  }
 }

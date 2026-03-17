@@ -1,9 +1,9 @@
-import { Component } from "solid-js";
+import { Component } from 'solid-js'
 
 interface AdminModalProps {
-  title: string;
-  id: string;
-  children: any;
+  title: string
+  id: string
+  children: any
 }
 
 const AdminModal: Component<AdminModalProps> = (props) => {
@@ -23,7 +23,7 @@ const AdminModal: Component<AdminModalProps> = (props) => {
         </div>
       </dialog>
     </>
-  );
-};
+  )
+}
 
-export default AdminModal;
+export default AdminModal

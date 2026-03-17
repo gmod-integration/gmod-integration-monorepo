@@ -1,11 +1,11 @@
-import { Component, ParentProps } from "solid-js";
+import { Component, ParentProps } from 'solid-js'
 
 interface SteamID64Props extends ParentProps {
-  steamID64: string;
+  steamID64: string
 }
 
 export const SteamID64: Component<SteamID64Props> = (props) => {
-  const steamID64 = props.steamID64;
+  const steamID64 = props.steamID64
 
   return (
     <a
@@ -16,5 +16,5 @@ export const SteamID64: Component<SteamID64Props> = (props) => {
     >
       {steamID64}
     </a>
-  );
-};
+  )
+}

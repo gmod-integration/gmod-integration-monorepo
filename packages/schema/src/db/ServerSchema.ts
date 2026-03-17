@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const ServerSchema = z
   .object({
@@ -50,6 +50,6 @@ export const ServerSchema = z
       example: true,
     }),
   })
-  .openapi({ ref: 'Server' });
+  .openapi({ ref: 'Server' })
 
-export type ServerInput = z.infer<typeof ServerSchema>;
+export type ServerInput = z.infer<typeof ServerSchema>

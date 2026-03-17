@@ -1,75 +1,75 @@
-import { Component, createResource, createSignal, For, Index, Show } from "solid-js";
-import AdminPanel from "../../../../components/AdminPanel";
-import { useI18n } from "../../../../i18n";
-import { NeedWebsocket } from "../../../../components/popup/NeedWebsocket";
-import { fetchAPI } from "../../../../utils/api";
-import { createStore } from "solid-js/store";
+import { Component, createResource, createSignal, For, Index, Show } from 'solid-js'
+import AdminPanel from '../../../../components/AdminPanel'
+import { useI18n } from '../../../../i18n'
+import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket'
+import { fetchAPI } from '../../../../utils/api'
+import { createStore } from 'solid-js/store'
 
 const ServerConfig: Component = () => {
-  const { t } = useI18n();
-  const [debounceTimers, setDebounceTimers] = createSignal<Record<string, NodeJS.Timeout>>({});
+  const { t } = useI18n()
+  const [debounceTimers, setDebounceTimers] = createSignal<Record<string, NodeJS.Timeout>>({})
 
   // Store to hold fetched config values
-  const [config, setConfig] = createStore<Record<string, unknown>>({});
+  const [config, setConfig] = createStore<Record<string, unknown>>({})
 
   // Intermediate state for admin rank list - maintains array representation
-  const [adminRankList, setAdminRankList] = createSignal<string[]>([]);
-  const [adminRankListDebounce, setAdminRankListDebounce] = createSignal<NodeJS.Timeout | null>(null);
+  const [adminRankList, setAdminRankList] = createSignal<string[]>([])
+  const [adminRankListDebounce, setAdminRankListDebounce] = createSignal<NodeJS.Timeout | null>(null)
 
   const isBooleanOption = (info: { acceptedValues: unknown }) =>
     Array.isArray(info.acceptedValues) &&
     (info.acceptedValues as Array<unknown>).includes(true) &&
-    (info.acceptedValues as Array<unknown>).includes(false);
+    (info.acceptedValues as Array<unknown>).includes(false)
   const toAdminRankObject = (ranks: string[]) =>
     ranks
       .map((rank) => rank.trim())
       .filter((rank) => rank.length > 0)
       .reduce(
         (acc, rank) => {
-          acc[rank] = true;
-          return acc;
+          acc[rank] = true
+          return acc
         },
         {} as Record<string, boolean>,
-      );
+      )
   // Fix duplication issue and ensure proper updates on remove
   const toAdminRankObjectWithEmpty = (ranks: string[]) =>
     ranks.reduce(
       (acc, rank, index) => {
-        const trimmed = rank.trim();
+        const trimmed = rank.trim()
         if (trimmed.length > 0 && !acc[trimmed]) {
-          acc[trimmed] = true;
+          acc[trimmed] = true
         } else if (trimmed.length === 0 && !acc[`__empty_${index}`]) {
-          acc[`__empty_${index}`] = true;
+          acc[`__empty_${index}`] = true
         }
-        return acc;
+        return acc
       },
       {} as Record<string, boolean>,
-    );
+    )
   const getAdminRankList = (value: unknown) => {
-    if (Array.isArray(value)) return value as string[];
+    if (Array.isArray(value)) return value as string[]
     // Handle string that might be "[object Object]" or stringified JSON
-    if (typeof value === "string") {
-      if (value === "[object Object]" || value === "") return [];
+    if (typeof value === 'string') {
+      if (value === '[object Object]' || value === '') return []
       try {
-        const parsed = JSON.parse(value);
-        if (parsed && typeof parsed === "object") {
+        const parsed = JSON.parse(value)
+        if (parsed && typeof parsed === 'object') {
           return Object.keys(parsed).map((key) => {
-            if (key.startsWith("__empty_")) return "";
-            return key;
-          });
+            if (key.startsWith('__empty_')) return ''
+            return key
+          })
         }
       } catch {
-        return [];
+        return []
       }
     }
-    if (value && typeof value === "object") {
+    if (value && typeof value === 'object') {
       return Object.keys(value as Record<string, boolean>).map((key) => {
-        if (key.startsWith("__empty_")) return "";
-        return key;
-      });
+        if (key.startsWith('__empty_')) return ''
+        return key
+      })
     }
-    return [] as string[];
-  };
+    return [] as string[]
+  }
   const configInfo = {
     // in game settings
     // Punishment
@@ -79,44 +79,44 @@ const ServerConfig: Component = () => {
     ig_syncBan: {
       defaultValue: true,
       acceptedValues: [true, false],
-      labelKey: "dashboard.server.config.settings.ig_syncBan.title",
-      descriptionKey: "dashboard.server.config.settings.ig_syncBan.description",
+      labelKey: 'dashboard.server.config.settings.ig_syncBan.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_syncBan.description',
     },
     ig_syncTimeout: {
       defaultValue: false,
       acceptedValues: [true, false],
-      labelKey: "dashboard.server.config.settings.ig_syncTimeout.title",
-      descriptionKey: "dashboard.server.config.settings.ig_syncTimeout.description",
+      labelKey: 'dashboard.server.config.settings.ig_syncTimeout.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_syncTimeout.description',
     },
     ig_syncKick: {
       defaultValue: false,
       acceptedValues: [true, false],
-      labelKey: "dashboard.server.config.settings.ig_syncKick.title",
-      descriptionKey: "dashboard.server.config.settings.ig_syncKick.description",
+      labelKey: 'dashboard.server.config.settings.ig_syncKick.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_syncKick.description',
     },
     // Ban
     // gmInte.config.filterOnBan = true // If true, the addon will filter the players according to their ban status
     ig_filterOnBan: {
       defaultValue: true,
       acceptedValues: [true, false],
-      labelKey: "dashboard.server.config.settings.ig_filterOnBan.title",
-      descriptionKey: "dashboard.server.config.settings.ig_filterOnBan.description",
+      labelKey: 'dashboard.server.config.settings.ig_filterOnBan.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_filterOnBan.description',
     },
     // Materials
     // gmInte.config.redownloadMaterials = false // If true, the addon will redownload the materials of the addon (useful if you have a problem with the materials)
     ig_redownloadMaterials: {
       defaultValue: false,
       acceptedValues: [true, false],
-      labelKey: "dashboard.server.config.settings.ig_redownloadMaterials.title",
-      descriptionKey: "dashboard.server.config.settings.ig_redownloadMaterials.description",
+      labelKey: 'dashboard.server.config.settings.ig_redownloadMaterials.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_redownloadMaterials.description',
     },
     // Debug & Development
     // gmInte.config.debug = false // If true, the addon will show debug informations in the console
     ig_debug: {
       defaultValue: false,
       acceptedValues: [true, false],
-      labelKey: "dashboard.server.config.settings.ig_debug.title",
-      descriptionKey: "dashboard.server.config.settings.ig_debug.description",
+      labelKey: 'dashboard.server.config.settings.ig_debug.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_debug.description',
     },
     // Security
     // gmInte.config.forcePlayerLink = false // If true, the addon will force the players to link their discord account to their steam account before playing
@@ -127,32 +127,32 @@ const ServerConfig: Component = () => {
     ig_forcePlayerLink: {
       defaultValue: false,
       acceptedValues: [true, false],
-      labelKey: "dashboard.server.config.settings.ig_forcePlayerLink.title",
-      descriptionKey: "dashboard.server.config.settings.ig_forcePlayerLink.description",
+      labelKey: 'dashboard.server.config.settings.ig_forcePlayerLink.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_forcePlayerLink.description',
     },
     ig_verifyOnJoin: {
       defaultValue: false,
       acceptedValues: [true, false],
-      labelKey: "dashboard.server.config.settings.ig_verifyOnJoin.title",
-      descriptionKey: "dashboard.server.config.settings.ig_verifyOnJoin.description",
+      labelKey: 'dashboard.server.config.settings.ig_verifyOnJoin.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_verifyOnJoin.description',
     },
     ig_verifyOnReadyKickTime: {
       defaultValue: 600,
       acceptedValues: null,
-      labelKey: "dashboard.server.config.settings.ig_verifyOnReadyKickTime.title",
-      descriptionKey: "dashboard.server.config.settings.ig_verifyOnReadyKickTime.description",
+      labelKey: 'dashboard.server.config.settings.ig_verifyOnReadyKickTime.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_verifyOnReadyKickTime.description',
     },
     ig_verifyFamilySharing: {
       defaultValue: false,
       acceptedValues: [true, false],
-      labelKey: "dashboard.server.config.settings.ig_verifyFamilySharing.title",
-      descriptionKey: "dashboard.server.config.settings.ig_verifyFamilySharing.description",
+      labelKey: 'dashboard.server.config.settings.ig_verifyFamilySharing.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_verifyFamilySharing.description',
     },
     ig_clientBranch: {
-      defaultValue: "any",
-      acceptedValues: ["none", "dev", "prerelease", "x86-64", "any"],
-      labelKey: "dashboard.server.config.settings.ig_clientBranch.title",
-      descriptionKey: "dashboard.server.config.settings.ig_clientBranch.description",
+      defaultValue: 'any',
+      acceptedValues: ['none', 'dev', 'prerelease', 'x86-64', 'any'],
+      labelKey: 'dashboard.server.config.settings.ig_clientBranch.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_clientBranch.description',
     },
     // Other
     // gmInte.config.supportLink = "" // The link of your support (shown when a player do not have the requiments to join the server)
@@ -164,166 +164,166 @@ const ServerConfig: Component = () => {
     //     ["superadmin"] = true,
     // }
     ig_supportLink: {
-      defaultValue: "",
+      defaultValue: '',
       acceptedValues: null,
-      labelKey: "dashboard.server.config.settings.ig_supportLink.title",
-      descriptionKey: "dashboard.server.config.settings.ig_supportLink.description",
+      labelKey: 'dashboard.server.config.settings.ig_supportLink.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_supportLink.description',
     },
     ig_maintenance: {
       defaultValue: false,
       acceptedValues: [true, false],
-      labelKey: "dashboard.server.config.settings.ig_maintenance.title",
-      descriptionKey: "dashboard.server.config.settings.ig_maintenance.description",
+      labelKey: 'dashboard.server.config.settings.ig_maintenance.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_maintenance.description',
     },
     ig_language: {
-      defaultValue: "en",
-      acceptedValues: ["en", "fr", "de", "es", "it", "tr", "ru"],
-      labelKey: "dashboard.server.config.settings.ig_language.title",
-      descriptionKey: "dashboard.server.config.settings.ig_language.description",
+      defaultValue: 'en',
+      acceptedValues: ['en', 'fr', 'de', 'es', 'it', 'tr', 'ru'],
+      labelKey: 'dashboard.server.config.settings.ig_language.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_language.description',
     },
     ig_logTimestamp: {
-      defaultValue: "%H:%M:%S",
+      defaultValue: '%H:%M:%S',
       acceptedValues: null,
-      labelKey: "dashboard.server.config.settings.ig_logTimestamp.title",
-      descriptionKey: "dashboard.server.config.settings.ig_logTimestamp.description",
+      labelKey: 'dashboard.server.config.settings.ig_logTimestamp.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_logTimestamp.description',
     },
     ig_adminRank: {
       defaultValue: {
         superadmin: true,
       },
       acceptedValues: null,
-      labelKey: "dashboard.server.config.settings.ig_adminRank.title",
-      descriptionKey: "dashboard.server.config.settings.ig_adminRank.description",
+      labelKey: 'dashboard.server.config.settings.ig_adminRank.title',
+      descriptionKey: 'dashboard.server.config.settings.ig_adminRank.description',
     },
-  };
+  }
 
-  const [serverConfig, { refetch: refetchConfig }] = createResource("serverConfig", async () => {
-    return fetchAPI("/users/:discordID/guilds/:guildID/servers/:serverID/config", "GET").then(async (res) => {
+  const [serverConfig, { refetch: refetchConfig }] = createResource('serverConfig', async () => {
+    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/config', 'GET').then(async (res) => {
       if (!res.ok)
         throw new Error(
-          t("dashboard.server.config.error_occurred", "An error occurred while fetching the server configuration."),
-        );
-      const data = await res.json();
-      console.log("Fetched config:", data);
+          t('dashboard.server.config.error_occurred', 'An error occurred while fetching the server configuration.'),
+        )
+      const data = await res.json()
+      console.log('Fetched config:', data)
 
       // Update store with fetched config - extract settings from nested structure
-      const settings = data?.settings || {};
+      const settings = data?.settings || {}
 
       // Parse ig_adminRank if it's a string
-      if (settings.ig_adminRank && typeof settings.ig_adminRank === "string") {
-        if (settings.ig_adminRank === "[object Object]") {
-          settings.ig_adminRank = { superadmin: true }; // fallback to default
+      if (settings.ig_adminRank && typeof settings.ig_adminRank === 'string') {
+        if (settings.ig_adminRank === '[object Object]') {
+          settings.ig_adminRank = { superadmin: true } // fallback to default
         } else {
           try {
-            settings.ig_adminRank = JSON.parse(settings.ig_adminRank);
+            settings.ig_adminRank = JSON.parse(settings.ig_adminRank)
           } catch {
-            settings.ig_adminRank = { superadmin: true };
+            settings.ig_adminRank = { superadmin: true }
           }
         }
       }
 
-      setConfig(settings);
+      setConfig(settings)
 
       // Initialize admin rank list from the fetched config
-      const adminRankObj = (settings.ig_adminRank as Record<string, boolean>) || { superadmin: true };
+      const adminRankObj = (settings.ig_adminRank as Record<string, boolean>) || { superadmin: true }
       const rankList = Object.keys(adminRankObj)
-        .filter((key) => !key.startsWith("__empty_"))
-        .sort();
-      setAdminRankList(rankList);
+        .filter((key) => !key.startsWith('__empty_'))
+        .sort()
+      setAdminRankList(rankList)
 
-      return settings;
-    });
-  });
+      return settings
+    })
+  })
 
   function updateSetting(setting: string, value: unknown) {
     // Debug log to check what's being sent
-    console.log(`Updating ${setting}:`, value, typeof value);
+    console.log(`Updating ${setting}:`, value, typeof value)
 
     // Convert object values to JSON strings for objects like adminRank
-    let sendValue: unknown = value;
-    if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-      sendValue = JSON.stringify(value);
+    let sendValue: unknown = value
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      sendValue = JSON.stringify(value)
     }
 
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/settings/${setting}`, "PUT", {
+    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/settings/${setting}`, 'PUT', {
       value: sendValue,
     })
       .then((res) => {
         if (res.ok) {
-          return res.json();
+          return res.json()
         } else {
-          throw new Error("An error occurred while updating the setting.");
+          throw new Error('An error occurred while updating the setting.')
         }
       })
       .then((data) => {
-        console.log(`Received response for ${setting}:`, data);
-        let value = data.value;
+        console.log(`Received response for ${setting}:`, data)
+        let value = data.value
         // Parse stringified objects back
-        if (typeof value === "string" && (value.startsWith("{") || value === "[object Object]")) {
+        if (typeof value === 'string' && (value.startsWith('{') || value === '[object Object]')) {
           try {
-            value = JSON.parse(value);
+            value = JSON.parse(value)
           } catch {
             // Keep as string if parsing fails
           }
         }
-        setConfig(setting, value);
-      });
+        setConfig(setting, value)
+      })
   }
 
   function updateAdminRank(newList: string[]) {
     // Update the intermediate state
-    setAdminRankList(newList);
+    setAdminRankList(newList)
 
     // Clear existing debounce timer
-    const existingTimer = adminRankListDebounce();
+    const existingTimer = adminRankListDebounce()
     if (existingTimer) {
-      clearTimeout(existingTimer);
+      clearTimeout(existingTimer)
     }
 
     // Set new debounce timer for API update
     const newTimer = setTimeout(() => {
       // Clean empty values before converting to object
-      const cleanedList = newList.map((rank) => rank.trim()).filter((rank) => rank.length > 0);
+      const cleanedList = newList.map((rank) => rank.trim()).filter((rank) => rank.length > 0)
 
       // Convert to object format
       const adminRankObject = cleanedList.reduce(
         (acc, rank) => {
-          acc[rank] = true;
-          return acc;
+          acc[rank] = true
+          return acc
         },
         {} as Record<string, boolean>,
-      );
+      )
 
       // Update config store with the object representation
-      setConfig("ig_adminRank", adminRankObject);
+      setConfig('ig_adminRank', adminRankObject)
 
       // Send to server
-      updateSetting("ig_adminRank", adminRankObject);
-    }, 500);
+      updateSetting('ig_adminRank', adminRankObject)
+    }, 500)
 
-    setAdminRankListDebounce(newTimer);
+    setAdminRankListDebounce(newTimer)
   }
 
   function debouncedUpdateSetting(setting: string, value: unknown) {
     // Clear existing timer for this setting
-    const timers = debounceTimers();
+    const timers = debounceTimers()
     if (timers[setting]) {
-      clearTimeout(timers[setting]);
+      clearTimeout(timers[setting])
     }
 
     // Update local state immediately for UI responsiveness
-    setConfig(setting, value);
+    setConfig(setting, value)
 
     // Set new timer
     const newTimer = setTimeout(() => {
-      updateSetting(setting, value);
-    }, 500); // 500ms debounce
+      updateSetting(setting, value)
+    }, 500) // 500ms debounce
 
     // Save the new timer
     setDebounceTimers({
       ...timers,
       [setting]: newTimer,
-    });
+    })
   }
 
   return (
@@ -331,9 +331,9 @@ const ServerConfig: Component = () => {
       <NeedWebsocket />
 
       <AdminPanel
-        title={t("dashboard.server.config.title", "Configuration")}
+        title={t('dashboard.server.config.title', 'Configuration')}
         type="none"
-        description={t("dashboard.server.config.description", "Manage the in game configuration of this server.")}
+        description={t('dashboard.server.config.description', 'Manage the in game configuration of this server.')}
       >
         <div class="flex flex-col">
           <For each={Object.entries(configInfo)}>
@@ -342,11 +342,11 @@ const ServerConfig: Component = () => {
                 <div class="flex items-center gap-4">
                   <div class="flex flex-col w-1/2">
                     <span class="font-medium">{t(info.labelKey, key)}</span>
-                    <span class="text-xs text-base-content/60">{t(info.descriptionKey, "")}</span>
+                    <span class="text-xs text-base-content/60">{t(info.descriptionKey, '')}</span>
                   </div>
                   <div class="flex items-center gap-4 w-1/2">
                     <Show
-                      when={key === "ig_adminRank"}
+                      when={key === 'ig_adminRank'}
                       fallback={
                         <Show
                           when={info.acceptedValues && Array.isArray(info.acceptedValues)}
@@ -355,11 +355,11 @@ const ServerConfig: Component = () => {
                               type="text"
                               id={key}
                               class="input"
-                              value={String(config[key] ?? info.defaultValue ?? "")}
+                              value={String(config[key] ?? info.defaultValue ?? '')}
                               disabled={serverConfig.loading}
                               onInput={(e) => {
-                                const newValue = e.currentTarget.value;
-                                debouncedUpdateSetting(key, newValue);
+                                const newValue = e.currentTarget.value
+                                debouncedUpdateSetting(key, newValue)
                               }}
                             />
                           }
@@ -370,14 +370,14 @@ const ServerConfig: Component = () => {
                               <select
                                 id={key}
                                 class="select"
-                                value={String(config[key] ?? info.defaultValue ?? "")}
+                                value={String(config[key] ?? info.defaultValue ?? '')}
                                 disabled={serverConfig.loading}
                                 onChange={(e) => {
-                                  const value = e.currentTarget.value;
-                                  let parsedValue: any = value;
-                                  if (value === "true") parsedValue = true;
-                                  else if (value === "false") parsedValue = false;
-                                  updateSetting(key, parsedValue);
+                                  const value = e.currentTarget.value
+                                  let parsedValue: any = value
+                                  if (value === 'true') parsedValue = true
+                                  else if (value === 'false') parsedValue = false
+                                  updateSetting(key, parsedValue)
                                 }}
                               >
                                 <For each={info.acceptedValues!}>
@@ -396,7 +396,7 @@ const ServerConfig: Component = () => {
                               checked={Boolean(serverConfig()?.[key] ?? info.defaultValue)}
                               disabled={serverConfig.loading}
                               onChange={(e) => {
-                                updateSetting(key, e.currentTarget.checked);
+                                updateSetting(key, e.currentTarget.checked)
                               }}
                             />
                           </Show>
@@ -413,17 +413,17 @@ const ServerConfig: Component = () => {
                                 value={rank()}
                                 disabled={serverConfig.loading}
                                 onInput={(e) => {
-                                  const newList = [...adminRankList()];
-                                  newList[index] = e.currentTarget.value;
-                                  updateAdminRank(newList);
+                                  const newList = [...adminRankList()]
+                                  newList[index] = e.currentTarget.value
+                                  updateAdminRank(newList)
                                 }}
                               />
                               <button
                                 class="btn btn-ghost btn-sm"
                                 disabled={serverConfig.loading}
                                 onClick={() => {
-                                  const newList = adminRankList().filter((_, i) => i !== index);
-                                  updateAdminRank(newList);
+                                  const newList = adminRankList().filter((_, i) => i !== index)
+                                  updateAdminRank(newList)
                                 }}
                               >
                                 <i class="fa-solid fa-xmark"></i>
@@ -435,20 +435,20 @@ const ServerConfig: Component = () => {
                           class="btn btn-base-200 btn-sm w-fit"
                           disabled={serverConfig.loading}
                           onClick={() => {
-                            setAdminRankList([...adminRankList(), ""]);
+                            setAdminRankList([...adminRankList(), ''])
                           }}
                         >
-                          {t("dashboard.server.config.add_admin_rank", "Add rank")}
+                          {t('dashboard.server.config.add_admin_rank', 'Add rank')}
                         </button>
                       </div>
                     </Show>
                   </div>
                 </div>
                 <span class="text-xs text-base-content/60">
-                  {t("dashboard.server.config.default", "Default")}:{" "}
-                  {key === "ig_adminRank"
+                  {t('dashboard.server.config.default', 'Default')}:{' '}
+                  {key === 'ig_adminRank'
                     ? JSON.stringify(info.defaultValue)
-                    : typeof info.defaultValue === "object"
+                    : typeof info.defaultValue === 'object'
                       ? JSON.stringify(info.defaultValue)
                       : String(info.defaultValue)}
                 </span>
@@ -458,7 +458,7 @@ const ServerConfig: Component = () => {
         </div>
       </AdminPanel>
     </>
-  );
-};
+  )
+}
 
-export default ServerConfig;
+export default ServerConfig

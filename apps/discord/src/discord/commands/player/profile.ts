@@ -1,6 +1,6 @@
-import { type ChatInputCommandInteraction, InteractionContextType, MessageFlags, SlashCommandBuilder } from 'discord.js';
-import { getProfileMessage } from '../../utils/messages.js';
-import { getUserFromSteamID64 } from '@gmod/domain-user/User.js';
+import { type ChatInputCommandInteraction, InteractionContextType, MessageFlags, SlashCommandBuilder } from 'discord.js'
+import { getProfileMessage } from '../../utils/messages.js'
+import { getUserFromSteamID64 } from '@gmod/domain-user/User.js'
 
 export default {
   data: new SlashCommandBuilder()
@@ -17,40 +17,40 @@ export default {
     ),
   category: 'player',
   async execute(interaction: ChatInputCommandInteraction) {
-    if (!interaction.guild) return;
+    if (!interaction.guild) return
 
-    const user = interaction.options.getUser('user');
+    const user = interaction.options.getUser('user')
     if (user) {
-      return interaction.reply(await getProfileMessage(interaction.guild, user));
+      return interaction.reply(await getProfileMessage(interaction.guild, user))
     }
 
-    const steamID64 = interaction.options.getString('steam');
+    const steamID64 = interaction.options.getString('steam')
     if (steamID64) {
-      const user = await getUserFromSteamID64(steamID64);
+      const user = await getUserFromSteamID64(steamID64)
       if (!user) {
         return interaction.reply({
           content: 'This steamID64 is not linked to any discord account.',
           flags: MessageFlags.Ephemeral,
-        });
+        })
       }
 
-      let discordUser;
+      let discordUser
       try {
-        discordUser = await interaction.guild.members.fetch(user.discordID);
-        discordUser = discordUser.user;
+        discordUser = await interaction.guild.members.fetch(user.discordID)
+        discordUser = discordUser.user
       } catch {
-        discordUser = await interaction.client.users.fetch(user.discordID);
+        discordUser = await interaction.client.users.fetch(user.discordID)
       }
       if (!discordUser) {
         return interaction.reply({
           content: 'We have an issue fetching the discord user.',
           flags: MessageFlags.Ephemeral,
-        });
+        })
       }
 
-      return interaction.reply(await getProfileMessage(interaction.guild, discordUser));
+      return interaction.reply(await getProfileMessage(interaction.guild, discordUser))
     }
 
-    return interaction.reply(await getProfileMessage(interaction.guild, interaction.user));
+    return interaction.reply(await getProfileMessage(interaction.guild, interaction.user))
   },
-};
+}

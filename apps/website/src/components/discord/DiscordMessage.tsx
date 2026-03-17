@@ -1,29 +1,29 @@
-import { Component } from "solid-js";
-import { hexToHSL } from "../../utils/hexToHSL";
-import { TypeDiscordChannel } from "../../utils/types/DiscordTypes";
-import { guildChannels } from "../../pages/dashboard/guilds/GuildInformations";
-import { getUrlWithActualParams } from "../../utils/api";
+import { Component } from 'solid-js'
+import { hexToHSL } from '../../utils/hexToHSL'
+import { TypeDiscordChannel } from '../../utils/types/DiscordTypes'
+import { guildChannels } from '../../pages/dashboard/guilds/GuildInformations'
+import { getUrlWithActualParams } from '../../utils/api'
 
 interface DiscordMessageProps {
-  channelID?: string;
-  channel?: TypeDiscordChannel;
-  messageID: string;
+  channelID?: string
+  channel?: TypeDiscordChannel
+  messageID: string
 }
 
-const hsl = hexToHSL("#7d95ff");
+const hsl = hexToHSL('#7d95ff')
 
 const DiscordMessage: Component<DiscordMessageProps> = (props) => {
-  let channel;
+  let channel
 
   if (!props.channelID && !props.channel) {
-    return null;
+    return null
   }
 
   if (!props.channel) {
-    channel = guildChannels().find((ch: TypeDiscordChannel) => ch.id === props.channelID);
-    if (!channel) return null;
+    channel = guildChannels().find((ch: TypeDiscordChannel) => ch.id === props.channelID)
+    if (!channel) return null
   } else {
-    channel = props.channel;
+    channel = props.channel
   }
 
   return (
@@ -32,13 +32,13 @@ const DiscordMessage: Component<DiscordMessageProps> = (props) => {
       class="w-min text-nowrap rounded-md px-1"
       target="_blank"
       style={{
-        color: "#7d95ff",
-        "background-color": `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.1)`,
+        color: '#7d95ff',
+        'background-color': `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.1)`,
       }}
     >
       {`#${channel.name} > `} <i class="fa-solid fa-comment" />
     </a>
-  );
-};
+  )
+}
 
-export default DiscordMessage;
+export default DiscordMessage

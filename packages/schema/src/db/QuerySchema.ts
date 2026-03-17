@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const QuerySchema = z
   .object({
@@ -37,6 +37,6 @@ export const QuerySchema = z
       description: 'Value to filter by, e.g., "active" or "error"',
     }),
   })
-  .openapi({ ref: 'Query' });
+  .openapi({ ref: 'Query' })
 
-export type QueryInput = z.infer<typeof QuerySchema>;
+export type QueryInput = z.infer<typeof QuerySchema>

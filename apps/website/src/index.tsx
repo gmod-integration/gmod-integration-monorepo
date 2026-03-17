@@ -1,54 +1,54 @@
 /* @refresh reload */
-import { render } from "solid-js/web";
+import { render } from 'solid-js/web'
 
-import "./index.css";
-import "./sentry";
-import { Route, Router } from "@solidjs/router";
-import NotFound from "./pages/NotFound";
-import Premium from "./pages/Premium";
-import Terms from "./pages/legal/Terms";
-import Login from "./pages/Login";
-import Logout from "./pages/Logout";
-import Privacy from "./pages/legal/Privacy";
-import Home from "./pages/Home";
-import GuildsSelector from "./pages/dashboard/guilds/GuildsSelector";
-import GuildInformations from "./pages/dashboard/guilds/GuildInformations";
-import ServerList from "./pages/dashboard/guilds/servers/ServersSelector";
-import GuildLinks from "./pages/dashboard/guilds/GuildLinks";
-import GuildVerification from "./pages/dashboard/guilds/GuildVerifications";
-import ServerInformations from "./pages/dashboard/guilds/servers/ServerInformations";
-import ServerStatus from "./pages/dashboard/guilds/servers/status/ServerStatus";
-import ServerPlayer from "./pages/dashboard/guilds/servers/ServerPlayers";
-import ServerRoles from "./pages/dashboard/guilds/servers/ServerRoles";
-import ServerChats from "./pages/dashboard/guilds/servers/ServerChats";
-import ServerPseudo from "./pages/dashboard/guilds/servers/ServerPseudo";
-import ServerScreenshots from "./pages/dashboard/guilds/servers/screenshots/ServerScreenshots";
-import Account from "./pages/Account";
-import GuildAutoRole from "./pages/dashboard/guilds/GuildAutoRoles";
-import Servers from "./pages/Servers";
-import ServerVote from "./pages/dashboard/guilds/servers/ServerVote";
-import ServerLogs from "./pages/dashboard/guilds/servers/logs/ServerLogs";
-import ServerErrors from "./pages/dashboard/guilds/servers/errors/ServerErrors";
-import GuildList from "./pages/dashboard/admins/GuildList";
-import GuildBot from "./pages/dashboard/guilds/GuildBot";
-import Notifications from "./pages/Notifications";
-import ServerBugs from "./pages/dashboard/guilds/servers/ServerBugs";
-import AdminInformations from "./pages/dashboard/admins/AdminInformations";
-import ServerTeam from "./pages/dashboard/guilds/servers/ServerTeam";
-import "highlight.js/styles/tokyo-night-dark.css";
-import Impersonate from "./pages/dashboard/admins/Impersonate";
-import ServerWarns from "./pages/dashboard/guilds/servers/ServerWarns";
-import { AppAdminDashboard } from "./app/AppAdminDashboard";
-import { AppDashboard } from "./app/AppDashboard";
-import { App } from "./app/App";
-import ServerConfig from "./pages/dashboard/guilds/servers/ServerConfig";
+import './index.css'
+import './sentry'
+import { Route, Router } from '@solidjs/router'
+import NotFound from './pages/NotFound'
+import Premium from './pages/Premium'
+import Terms from './pages/legal/Terms'
+import Login from './pages/Login'
+import Logout from './pages/Logout'
+import Privacy from './pages/legal/Privacy'
+import Home from './pages/Home'
+import GuildsSelector from './pages/dashboard/guilds/GuildsSelector'
+import GuildInformations from './pages/dashboard/guilds/GuildInformations'
+import ServerList from './pages/dashboard/guilds/servers/ServersSelector'
+import GuildLinks from './pages/dashboard/guilds/GuildLinks'
+import GuildVerification from './pages/dashboard/guilds/GuildVerifications'
+import ServerInformations from './pages/dashboard/guilds/servers/ServerInformations'
+import ServerStatus from './pages/dashboard/guilds/servers/status/ServerStatus'
+import ServerPlayer from './pages/dashboard/guilds/servers/ServerPlayers'
+import ServerRoles from './pages/dashboard/guilds/servers/ServerRoles'
+import ServerChats from './pages/dashboard/guilds/servers/ServerChats'
+import ServerPseudo from './pages/dashboard/guilds/servers/ServerPseudo'
+import ServerScreenshots from './pages/dashboard/guilds/servers/screenshots/ServerScreenshots'
+import Account from './pages/Account'
+import GuildAutoRole from './pages/dashboard/guilds/GuildAutoRoles'
+import Servers from './pages/Servers'
+import ServerVote from './pages/dashboard/guilds/servers/ServerVote'
+import ServerLogs from './pages/dashboard/guilds/servers/logs/ServerLogs'
+import ServerErrors from './pages/dashboard/guilds/servers/errors/ServerErrors'
+import GuildList from './pages/dashboard/admins/GuildList'
+import GuildBot from './pages/dashboard/guilds/GuildBot'
+import Notifications from './pages/Notifications'
+import ServerBugs from './pages/dashboard/guilds/servers/ServerBugs'
+import AdminInformations from './pages/dashboard/admins/AdminInformations'
+import ServerTeam from './pages/dashboard/guilds/servers/ServerTeam'
+import 'highlight.js/styles/tokyo-night-dark.css'
+import Impersonate from './pages/dashboard/admins/Impersonate'
+import ServerWarns from './pages/dashboard/guilds/servers/ServerWarns'
+import { AppAdminDashboard } from './app/AppAdminDashboard'
+import { AppDashboard } from './app/AppDashboard'
+import { App } from './app/App'
+import ServerConfig from './pages/dashboard/guilds/servers/ServerConfig'
 
-const root = document.getElementById("root");
+const root = document.getElementById('root')
 
 if (import.meta.env.DEV && !(root instanceof HTMLElement)) {
   throw new Error(
-    "Root element not found. Did you forget to add it to your index.html? Or maybe the id attribute got misspelled?",
-  );
+    'Root element not found. Did you forget to add it to your index.html? Or maybe the id attribute got misspelled?',
+  )
 }
 
 render(
@@ -98,4 +98,4 @@ render(
     </Router>
   ),
   root!,
-);
+)

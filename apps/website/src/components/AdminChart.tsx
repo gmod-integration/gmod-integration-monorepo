@@ -1,4 +1,4 @@
-import { Component } from "solid-js";
+import { Component } from 'solid-js'
 
 const AdminChart: Component = (props: any) => {
   return (
@@ -6,7 +6,7 @@ const AdminChart: Component = (props: any) => {
       <h1 class="text-lg font-semibold text-zinc-500">{props.name}</h1>
       {props.children}
     </div>
-  );
-};
+  )
+}
 
-export default AdminChart;
+export default AdminChart

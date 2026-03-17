@@ -1,9 +1,9 @@
-import express from 'express';
-import { steamVerification, steamVerificationReturn } from '@/controllers/v3/steamControllers.js';
+import express from 'express'
+import { steamVerification, steamVerificationReturn } from '@/controllers/v3/steamControllers.js'
 
-const router = express.Router();
+const router = express.Router()
 
-router.get('/', steamVerification);
-router.get('/return', steamVerificationReturn);
+router.get('/', steamVerification)
+router.get('/return', steamVerificationReturn)
 
-export default router;
+export default router

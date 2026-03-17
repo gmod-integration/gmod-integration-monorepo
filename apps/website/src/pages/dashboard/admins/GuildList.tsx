@@ -1,16 +1,16 @@
-import { Component, createResource, For, Show } from "solid-js";
+import { Component, createResource, For, Show } from 'solid-js'
 
-import { fetchAPI } from "../../../utils/api";
+import { fetchAPI } from '../../../utils/api'
 
 const fetchGuildList = async () => {
-  const res = await fetchAPI("/users/:discordID/admins/guilds", "GET");
-  if (!res.ok) return [];
-  const data = await res.json();
-  return data.sort((a, b) => b.member - a.member);
-};
+  const res = await fetchAPI('/users/:discordID/admins/guilds', 'GET')
+  if (!res.ok) return []
+  const data = await res.json()
+  return data.sort((a, b) => b.member - a.member)
+}
 
 const GuildList: Component = () => {
-  const [guildList, { mutate: guildListMutate }] = createResource("guildList", fetchGuildList);
+  const [guildList, { mutate: guildListMutate }] = createResource('guildList', fetchGuildList)
 
   return (
     <>
@@ -43,7 +43,7 @@ const GuildList: Component = () => {
         </div>
       </Show>
     </>
-  );
-};
+  )
+}
 
-export default GuildList;
+export default GuildList

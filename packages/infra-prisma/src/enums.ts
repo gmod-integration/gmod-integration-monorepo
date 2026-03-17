@@ -1,1 +1,1 @@
-export * from '../generated/prisma/enums.js';
+export * from '../generated/prisma/enums.js'

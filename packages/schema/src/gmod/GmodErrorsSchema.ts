@@ -1,7 +1,7 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const GmodErrorsSchema = z
   .object({
@@ -42,6 +42,6 @@ export const GmodErrorsSchema = z
       description: 'The workshop ID related to the error, if applicable',
     }),
   })
-  .openapi({ ref: 'Errors' });
+  .openapi({ ref: 'Errors' })
 
-export type GmodErrorsInput = z.infer<typeof GmodErrorsSchema>;
+export type GmodErrorsInput = z.infer<typeof GmodErrorsSchema>

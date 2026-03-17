@@ -1,18 +1,18 @@
-import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js';
-import { ActionRowBuilder, type ButtonInteraction, type MessageActionRowComponentBuilder } from 'discord.js';
-import { ButtonVerificationWebsite, getVerifiedMessageAnswer } from './discordMessages.js';
-import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
-import { verifyUser } from './discordModels.js';
-import prisma from '@gmod/infra-prisma';
-import { getTranslate } from './localizations.js';
+import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js'
+import { ActionRowBuilder, type ButtonInteraction, type MessageActionRowComponentBuilder } from 'discord.js'
+import { ButtonVerificationWebsite, getVerifiedMessageAnswer } from './discordMessages.js'
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
+import { verifyUser } from './discordModels.js'
+import prisma from '@gmod/infra-prisma'
+import { getTranslate } from './localizations.js'
 
 export async function handleVerifyInteraction(interaction: ButtonInteraction) {
-  if (!interaction.isButton()) return;
-  if (interaction.user.bot) return;
-  if (interaction.customId !== 'verify') return;
+  if (!interaction.isButton()) return
+  if (interaction.user.bot) return
+  if (interaction.customId !== 'verify') return
   if (!interaction.guild) {
-    const panelUser = await getPanelUserFromDiscordID(interaction.user.id);
-    const lang = 'en';
+    const panelUser = await getPanelUserFromDiscordID(interaction.user.id)
+    const lang = 'en'
 
     if (
       !panelUser ||
@@ -25,46 +25,46 @@ export async function handleVerifyInteraction(interaction: ButtonInteraction) {
           new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(await ButtonVerificationWebsite(lang)),
         ],
         ephemeral: true,
-      });
+      })
     }
 
-    const DBUser = await getUserFromDiscordID(interaction.user.id);
+    const DBUser = await getUserFromDiscordID(interaction.user.id)
     if (!DBUser || !DBUser.getSteamID64()) {
-      return await interaction.reply(await getVerifiedMessageAnswer(false, lang, interaction.user, true));
+      return await interaction.reply(await getVerifiedMessageAnswer(false, lang, interaction.user, true))
     }
 
-    const guilds = await panelUser.findGuilds();
-    let verifiedOf = [];
+    const guilds = await panelUser.findGuilds()
+    const verifiedOf = []
     for (const aGuild of guilds) {
       const dbGuild = await prisma.gm_guild.findFirst({
         where: {
           guild: aGuild.id,
         },
-      });
-      if (!dbGuild) continue;
+      })
+      if (!dbGuild) continue
 
-      const guild = await interaction.client.guilds.fetch(aGuild.id).catch(() => null);
-      if (!guild) continue;
+      const guild = await interaction.client.guilds.fetch(aGuild.id).catch(() => null)
+      if (!guild) continue
 
-      const user = await guild.members.fetch(interaction.user.id).catch(() => null);
-      if (!user) continue;
+      const user = await guild.members.fetch(interaction.user.id).catch(() => null)
+      if (!user) continue
 
-      const isVerified = await verifyUser(guild, user);
-      if (isVerified) verifiedOf.push(guild.name);
+      const isVerified = await verifyUser(guild, user)
+      if (isVerified) verifiedOf.push(guild.name)
     }
-    return await interaction.reply(`You have been verified in the following guilds: ${verifiedOf.join(', ')}`);
+    return await interaction.reply(`You have been verified in the following guilds: ${verifiedOf.join(', ')}`)
   } else {
-    const user = await getUserFromDiscordID(interaction.user.id);
-    let isVerify = false;
+    const user = await getUserFromDiscordID(interaction.user.id)
+    let isVerify = false
     if (user && user.getSteamID64()) {
-      isVerify = true;
-      const guild = interaction.guild;
-      const member = await guild.members.fetch(interaction.user.id).catch(() => null);
-      if (!member) return;
-      await verifyUser(interaction.guild, member);
+      isVerify = true
+      const guild = interaction.guild
+      const member = await guild.members.fetch(interaction.user.id).catch(() => null)
+      if (!member) return
+      await verifyUser(interaction.guild, member)
     }
     return await interaction.reply(
       await getVerifiedMessageAnswer(isVerify, interaction.guild.preferredLocale, interaction.user, true),
-    );
+    )
   }
 }

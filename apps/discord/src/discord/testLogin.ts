@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, Partials } from 'discord.js';
+import { Client, GatewayIntentBits, Partials } from 'discord.js'
 
 async function testLogin(token: string) {
   try {
@@ -19,17 +19,17 @@ async function testLogin(token: string) {
         GatewayIntentBits.DirectMessages,
       ],
       partials: [Partials.Channel],
-    });
+    })
 
-    await client.login(token);
-    await client.destroy();
-    process.exit(0);
+    await client.login(token)
+    await client.destroy()
+    process.exit(0)
   } catch (error) {
-    console.error('Login failed:', error);
-    process.exit(1);
+    console.error('Login failed:', error)
+    process.exit(1)
   }
 }
 
 process.on('message', async (token: string) => {
-  await testLogin(token);
-});
+  await testLogin(token)
+})

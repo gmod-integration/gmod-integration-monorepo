@@ -3,15 +3,15 @@ import {
   type ChatInputCommandInteraction,
   InteractionContextType,
   SlashCommandBuilder,
-} from 'discord.js';
+} from 'discord.js'
 import {
   getLeaderboardButtons,
   getLeaderboardMessageEmbed,
   getServerLeaderboardCategories,
   saveLeaderboardOptions,
-} from '@gmod/core/models/v3/leaderboardModels.js';
-import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
-import { getTranslate } from '@gmod/core/utils/localizations.js';
+} from '@gmod/core/models/v3/leaderboardModels.js'
+import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
+import { getTranslate } from '@gmod/core/utils/localizations.js'
 
 export default {
   data: new SlashCommandBuilder()
@@ -42,19 +42,19 @@ export default {
     ),
   category: 'player',
   async execute(interaction: ChatInputCommandInteraction) {
-    if (!interaction.guild) return;
-    const lang = interaction.guild.preferredLocale;
-    const server = interaction.options.getString('server');
-    const category = interaction.options.getString('category') || 'total_time';
+    if (!interaction.guild) return
+    const lang = interaction.guild.preferredLocale
+    const server = interaction.options.getString('server')
+    const category = interaction.options.getString('category') || 'total_time'
     // const user = interaction.options.getUser('user'); // TODO
     // const steamID64 = interaction.options.getString('steam'); // TODO
 
-    const leaderboardData = await getLeaderboardMessageEmbed(server!, category, lang);
+    const leaderboardData = await getLeaderboardMessageEmbed(server!, category, lang)
     if (!leaderboardData) {
-      return interaction.reply({ content: 'Failed to retrieve leaderboard data.', ephemeral: true });
+      return interaction.reply({ content: 'Failed to retrieve leaderboard data.', ephemeral: true })
     }
 
-    const { embed, options } = leaderboardData;
+    const { embed, options } = leaderboardData
     interaction
       .reply({
         embeds: [embed],
@@ -62,15 +62,15 @@ export default {
         fetchReply: true,
       })
       .then((embedMessage) => {
-        saveLeaderboardOptions(embedMessage.id, options);
-      });
+        saveLeaderboardOptions(embedMessage.id, options)
+      })
   },
   async autocomplete(interaction: AutocompleteInteraction) {
-    if (!interaction.guild) return;
-    const focusedOption = interaction.options.getFocused(true);
-    const focusedName = focusedOption.name;
-    const lang = interaction.guild.preferredLocale;
-    let choices: { [key: string]: string } = {};
+    if (!interaction.guild) return
+    const focusedOption = interaction.options.getFocused(true)
+    const focusedName = focusedOption.name
+    const lang = interaction.guild.preferredLocale
+    const choices: { [key: string]: string } = {}
 
     if (focusedName === 'server') {
       // Add the global option TODO
@@ -79,27 +79,27 @@ export default {
       getServersFromDiscordGuildID(interaction.guild.id).then((servers) => {
         // Add all servers to the choices
         servers.forEach((server) => {
-          choices[server.name] = server.id;
-        });
+          choices[server.name] = server.id
+        })
 
         // Filter the choices based on the focused option
-        const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value));
+        const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value))
 
         // Respond with the filtered choices
-        interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })));
-      });
+        interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })))
+      })
     } else if (focusedName === 'category') {
-      const serverSelected = interaction.options.getString('server');
-      if (!serverSelected) return;
+      const serverSelected = interaction.options.getString('server')
+      if (!serverSelected) return
 
-      const categories = await getServerLeaderboardCategories(serverSelected);
+      const categories = await getServerLeaderboardCategories(serverSelected)
       // Add all categories to the choices
       categories.forEach((category) => {
-        choices[category] = category;
-      });
+        choices[category] = category
+      })
 
       // Filter the choices based on the focused option
-      const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value));
+      const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value))
 
       // Respond with the translated filtered choices
       const translated = await Promise.all(
@@ -107,9 +107,9 @@ export default {
           name: await getTranslate(choice, lang),
           value: choices[choice],
         })),
-      );
+      )
 
-      await interaction.respond(translated);
+      await interaction.respond(translated)
     }
   },
-};
+}

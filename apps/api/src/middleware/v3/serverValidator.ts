@@ -1,38 +1,38 @@
-import { getServerFromID } from '@gmod/domain-server/Server.js';
-import { type NextFunction, type Request, type Response } from 'express';
-import redis from '@gmod/infra-redis';
+import { getServerFromID } from '@gmod/domain-server/Server.js'
+import { type NextFunction, type Request, type Response } from 'express'
+import redis from '@gmod/infra-redis'
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { serverID } = req.params;
-    const { authorization } = req.headers;
+    const { serverID } = req.params
+    const { authorization } = req.headers
 
     if (!authorization || !authorization.startsWith('Bearer ')) {
-      res.status(400).json({ error: 'invalid_authorization' });
-      return;
+      res.status(400).json({ error: 'invalid_authorization' })
+      return
     }
-    const token = authorization.split(' ')[1];
+    const token = authorization.split(' ')[1]
 
-    const server = await getServerFromID(serverID);
+    const server = await getServerFromID(serverID)
     if (!server) {
-      res.status(404).json({ error: 'server_not_found' });
-      return;
+      res.status(404).json({ error: 'server_not_found' })
+      return
     }
 
     if (!server.isValidToken(token)) {
-      res.status(401).json({ error: 'unauthorized' });
-      return;
+      res.status(401).json({ error: 'unauthorized' })
+      return
     }
 
-    const version = req.headers['gmod-integrations-version'];
-    const redisKeyServerVersion = `server:${serverID}:version`;
-    redis.set(redisKeyServerVersion, version);
-    const redisKeyServerLastRequest = `server:${serverID}:last_request`;
-    redis.set(redisKeyServerLastRequest, new Date().toISOString());
+    const version = req.headers['gmod-integrations-version']
+    const redisKeyServerVersion = `server:${serverID}:version`
+    redis.set(redisKeyServerVersion, version)
+    const redisKeyServerLastRequest = `server:${serverID}:last_request`
+    redis.set(redisKeyServerLastRequest, new Date().toISOString())
 
-    req.server = server;
-    return next();
+    req.server = server
+    return next()
   } catch (error) {
-    return next(error);
+    return next(error)
   }
-};
+}

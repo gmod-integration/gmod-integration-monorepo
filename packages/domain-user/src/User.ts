@@ -1,11 +1,11 @@
-import prisma from '@gmod/infra-prisma';
+import prisma from '@gmod/infra-prisma'
 
 export class User {
-  steamID64: string | null;
-  discordID: string;
-  rank: string;
-  lastVerification: Date | null;
-  trustLevel: number;
+  steamID64: string | null
+  discordID: string
+  rank: string
+  lastVerification: Date | null
+  trustLevel: number
 
   constructor({
     steamID64,
@@ -14,29 +14,29 @@ export class User {
     lastVerification,
     trustLevel,
   }: {
-    steamID64: string | null;
-    discordID: string;
-    rank: string;
-    lastVerification: Date | null;
-    trustLevel: number;
+    steamID64: string | null
+    discordID: string
+    rank: string
+    lastVerification: Date | null
+    trustLevel: number
   }) {
-    this.steamID64 = steamID64;
-    this.discordID = discordID;
-    this.rank = rank;
-    this.lastVerification = lastVerification;
-    this.trustLevel = trustLevel;
+    this.steamID64 = steamID64
+    this.discordID = discordID
+    this.rank = rank
+    this.lastVerification = lastVerification
+    this.trustLevel = trustLevel
   }
 
   getDiscordID() {
-    return this.discordID;
+    return this.discordID
   }
 
   getSteamID64() {
-    return this.steamID64;
+    return this.steamID64
   }
 
   isDeveloper() {
-    return this.rank === 'developer';
+    return this.rank === 'developer'
   }
 }
 
@@ -45,9 +45,9 @@ export async function getUserFromSteamID64(steamID64: string) {
     where: {
       steam: steamID64,
     },
-  });
+  })
 
-  if (!user) return null;
+  if (!user) return null
 
   return new User({
     steamID64: user.steam,
@@ -55,7 +55,7 @@ export async function getUserFromSteamID64(steamID64: string) {
     rank: user.rank,
     lastVerification: user.last_oauth,
     trustLevel: user.trust || 50,
-  });
+  })
 }
 
 export async function getUserFromDiscordID(discordID: string) {
@@ -63,9 +63,9 @@ export async function getUserFromDiscordID(discordID: string) {
     where: {
       id: discordID,
     },
-  });
+  })
 
-  if (!user) return null;
+  if (!user) return null
 
   return new User({
     steamID64: user.steam,
@@ -73,5 +73,5 @@ export async function getUserFromDiscordID(discordID: string) {
     rank: user.rank,
     lastVerification: user.last_oauth,
     trustLevel: user.trust || 50,
-  });
+  })
 }

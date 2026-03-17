@@ -1,5 +1,5 @@
-import prisma from '@gmod/infra-prisma';
-import { testGuild, testGuildAutoRoles } from '../config.test.js';
+import prisma from '@gmod/infra-prisma'
+import { testGuild, testGuildAutoRoles } from '../config.test.js'
 
 export async function testSeedAutoRoles() {
   for (const roleID of testGuildAutoRoles) {
@@ -14,7 +14,7 @@ export async function testSeedAutoRoles() {
         guildID: testGuild.id,
         roleID,
       },
-    });
+    })
   }
 }
 
@@ -25,6 +25,6 @@ export async function testClearAutoRoles() {
         guildID: testGuild.id,
         roleID,
       },
-    });
+    })
   }
 }

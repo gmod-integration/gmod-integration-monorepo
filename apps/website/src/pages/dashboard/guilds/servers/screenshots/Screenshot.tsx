@@ -1,20 +1,20 @@
-import { Component, ParentProps, Show } from "solid-js";
-import { ScreenshotStructure } from "./ServerScreenshotList";
-import { SteamID64 } from "../../../../../components/SteamID64";
-import { A } from "@solidjs/router";
-import { useI18n } from "../../../../../i18n";
+import { Component, ParentProps, Show } from 'solid-js'
+import { ScreenshotStructure } from './ServerScreenshotList'
+import { SteamID64 } from '../../../../../components/SteamID64'
+import { A } from '@solidjs/router'
+import { useI18n } from '../../../../../i18n'
 
 interface ScreenshotProps extends ParentProps {
-  screenshot: ScreenshotStructure;
-  setFocusImg: (screenshot: ScreenshotStructure) => void;
+  screenshot: ScreenshotStructure
+  setFocusImg: (screenshot: ScreenshotStructure) => void
 }
 
 export const Screenshot: Component<ScreenshotProps> = (props) => {
-  const { t } = useI18n();
+  const { t } = useI18n()
   return (
     <div class="flex flex-col gap-2 border-base-200 border p-4 rounded-lg shadow-md">
       <h2 class="text-lg font-bold h-12 flex items-center">
-        {props.screenshot.title || t("dashboard.server.screenshots_list.no_title", "No Title")}
+        {props.screenshot.title || t('dashboard.server.screenshots_list.no_title', 'No Title')}
       </h2>
 
       {/* wrapper relatif pour l’overlay */}
@@ -24,9 +24,9 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
           alt="Screenshot"
           class="w-full aspect-video rounded-lg object-cover"
           onClick={() => {
-            props.setFocusImg(props.screenshot);
+            props.setFocusImg(props.screenshot)
             // @ts-ignore
-            focusImgModal.showModal();
+            focusImgModal.showModal()
           }}
         />
 
@@ -41,9 +41,9 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
             class="p-1 hover:text-base-content/70 rounded-sm"
             aria-label="View Screenshot"
             onClick={() => {
-              props.setFocusImg(props.screenshot);
+              props.setFocusImg(props.screenshot)
               // @ts-ignore
-              focusImgModal.showModal();
+              focusImgModal.showModal()
             }}
           >
             <i class="fa-solid fa-eye"></i>
@@ -74,23 +74,23 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
       {/* Métadonnées */}
       <div class="flex flex-col gap-2 items-start w-full mt-2">
         <p class="text-sm text-base-content/50">
-          {t("dashboard.server.screenshots_list.date", "Date")} : {props.screenshot.createdAt}
+          {t('dashboard.server.screenshots_list.date', 'Date')} : {props.screenshot.createdAt}
         </p>
         <Show when={props.screenshot.player !== null}>
           <p class="text-sm text-base-content/50">
-            {t("dashboard.server.screenshots_list.player", "Player")} :{" "}
-            {props.screenshot.player.name || t("dashboard.server.screenshots_list.no_name", "No Name")}
+            {t('dashboard.server.screenshots_list.player', 'Player')} :{' '}
+            {props.screenshot.player.name || t('dashboard.server.screenshots_list.no_name', 'No Name')}
           </p>
           <p class="text-sm text-base-content/50">
-            {t("dashboard.server.screenshots_list.steam_id64", "Steam ID 64")} :
+            {t('dashboard.server.screenshots_list.steam_id64', 'Steam ID 64')} :
             {props.screenshot.player.steamID64 ? (
               <SteamID64 steamID64={props.screenshot.player.steamID64} />
             ) : (
-              t("dashboard.server.screenshots_list.no_steam_id", "No Steam ID")
+              t('dashboard.server.screenshots_list.no_steam_id', 'No Steam ID')
             )}
           </p>
         </Show>
       </div>
     </div>
-  );
-};
+  )
+}

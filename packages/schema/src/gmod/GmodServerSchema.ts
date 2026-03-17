@@ -1,8 +1,8 @@
-import { z } from 'zod';
-import { extendZodWithOpenApi } from 'zod-openapi';
-import { GmodPlayerSchema } from './GmodPlayerSchema.js';
+import { z } from 'zod'
+import { extendZodWithOpenApi } from 'zod-openapi'
+import { GmodPlayerSchema } from './GmodPlayerSchema.js'
 
-extendZodWithOpenApi(z);
+extendZodWithOpenApi(z)
 
 export const GmodServerSchema = z
   .object({
@@ -40,6 +40,6 @@ export const GmodServerSchema = z
       description: 'Uptime of the server',
     }),
   })
-  .openapi({ ref: 'Status Server' });
+  .openapi({ ref: 'Status Server' })
 
-export type GmodServerInput = z.infer<typeof GmodServerSchema>;
+export type GmodServerInput = z.infer<typeof GmodServerSchema>

@@ -1,25 +1,25 @@
-import { gmLog } from '@gmod/core/utils/logger.js';
-import { ConfigDiscord } from '@gmod/config';
-import { getGuildClient, killGuildClient } from '../index.js';
-import { type Guild } from 'discord.js';
-import prisma from '@gmod/infra-prisma';
+import { gmLog } from '@gmod/core/utils/logger.js'
+import { ConfigDiscord } from '@gmod/config'
+import { getGuildClient, killGuildClient } from '../index.js'
+import { type Guild } from 'discord.js'
+import prisma from '@gmod/infra-prisma'
 
 export default {
   name: 'guildDelete',
   async execute(guild: Guild) {
-    gmLog('event', `Bot left guild: ${guild.name}`);
+    gmLog('event', `Bot left guild: ${guild.name}`)
 
-    const guildBotInstance = await getGuildClient(guild.id, false);
-    if (!guildBotInstance.user) return;
+    const guildBotInstance = await getGuildClient(guild.id, false)
+    if (!guildBotInstance.user) return
     if (guildBotInstance.user.id !== guild.client.user.id) {
-      return;
+      return
     }
 
     if (guild.client.user.id !== ConfigDiscord.clientID) {
-      const member = await guild.members.fetch(ConfigDiscord.clientID!).catch(() => null);
-      await killGuildClient(guild.id);
+      const member = await guild.members.fetch(ConfigDiscord.clientID!).catch(() => null)
+      await killGuildClient(guild.id)
       if (member) {
-        return;
+        return
       }
     }
 
@@ -27,21 +27,21 @@ export default {
       where: {
         guild: guild.id,
       },
-    });
+    })
 
     if (oldGuild) {
       await prisma.gm_guild.delete({
         where: {
           guild: guild.id,
         },
-      });
+      })
     }
 
     const purchase = await prisma.gm_gmodstore_purchases.findFirst({
       where: {
         guild: guild.id,
       },
-    });
+    })
 
     if (purchase) {
       await prisma.gm_gmodstore_purchases.update({
@@ -52,7 +52,7 @@ export default {
           guild: '',
           token: '',
         },
-      });
+      })
     }
   },
-};
+}

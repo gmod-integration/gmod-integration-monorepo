@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod'
 
 export const ConfigSchema = z.object({
   DEV: z.enum(['true', 'false']).default('false'),
@@ -39,6 +39,6 @@ export const ConfigSchema = z.object({
   MINIO_REGION: z.string().min(1),
   MINIO_ACCESS_KEY: z.string().min(1),
   MINIO_SECRET_KEY: z.string().min(1),
-});
+})
 
-export type ConfigInput = z.infer<typeof ConfigSchema>;
+export type ConfigInput = z.infer<typeof ConfigSchema>

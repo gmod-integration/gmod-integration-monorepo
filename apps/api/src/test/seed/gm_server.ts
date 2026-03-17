@@ -1,5 +1,5 @@
-import prisma from '@gmod/infra-prisma';
-import { testGuild, testServer } from "../config.test.js";
+import prisma from '@gmod/infra-prisma'
+import { testGuild, testServer } from '../config.test.js'
 
 export async function testSeedServer() {
   await prisma.gm_server.create({
@@ -13,7 +13,7 @@ export async function testSeedServer() {
       verified: true,
       isPublic: true,
     },
-  });
+  })
 }
 
 export async function testClearServer() {
@@ -21,5 +21,5 @@ export async function testClearServer() {
     where: {
       id: testServer.id,
     },
-  });
+  })
 }

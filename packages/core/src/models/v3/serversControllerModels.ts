@@ -1,24 +1,24 @@
-import { badArgument } from '../../utils/tools.js';
-import { logServer } from '../../utils/logger.js';
-import prisma from '@gmod/infra-prisma';
-import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
-import { type Server } from '@gmod/domain-server/Server.js';
+import { badArgument } from '../../utils/tools.js'
+import { logServer } from '../../utils/logger.js'
+import prisma from '@gmod/infra-prisma'
+import { PlayerGmod } from '../../classes/v3/PlayerGmod.js'
+import { type Server } from '@gmod/domain-server/Server.js'
 
 type EndpointResult = {
-  status: number;
-  body: unknown;
-};
+  status: number
+  body: unknown
+}
 
 function ok(body: unknown = { success: true }): EndpointResult {
-  return { status: 200, body };
+  return { status: 200, body }
 }
 
 function bad(body: unknown): EndpointResult {
-  return { status: 400, body };
+  return { status: 400, body }
 }
 
 function invalidPlayerResult(player: PlayerGmod): EndpointResult {
-  return bad({ error: 'player_bad_format', arguments: player.isValidGetInformations() });
+  return bad({ error: 'player_bad_format', arguments: player.isValidGetInformations() })
 }
 
 export async function processPostIGSettings(server: Server, settings: any): Promise<EndpointResult> {
@@ -26,15 +26,15 @@ export async function processPostIGSettings(server: Server, settings: any): Prom
     return bad({
       error: 'missing_arguments',
       args: { settings: !!settings },
-    });
+    })
   }
 
-  await server.saveIGSettings(settings);
-  return ok();
+  await server.saveIGSettings(settings)
+  return ok()
 }
 
 export async function processPostStatus(server: Server, body: any): Promise<EndpointResult> {
-  const { players, playersList, maxPlayers, map, hostname, gameMode, port, ip, uptime } = body;
+  const { players, playersList, maxPlayers, map, hostname, gameMode, port, ip, uptime } = body
 
   if (badArgument([players, maxPlayers, map, hostname, gameMode, port, ip, uptime])) {
     return bad({
@@ -49,11 +49,11 @@ export async function processPostStatus(server: Server, body: any): Promise<Endp
         ip: !!ip,
         uptime: !!uptime,
       },
-    });
+    })
   }
 
-  await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime, playersList || []);
-  return ok();
+  await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime, playersList || [])
+  return ok()
 }
 
 export async function processServerImportWarns(server: Server, warns: any): Promise<EndpointResult> {
@@ -61,23 +61,23 @@ export async function processServerImportWarns(server: Server, warns: any): Prom
     return bad({
       error: 'missing_arguments',
       args: { warns: !!warns },
-    });
+    })
   }
 
   for (const warn of warns) {
-    let { adminSteamID64, playerSteamID64, date, reason } = warn;
+    let { adminSteamID64, playerSteamID64, date, reason } = warn
     if (!adminSteamID64 || !playerSteamID64 || !date) {
-      continue;
+      continue
     }
 
     if (typeof date === 'string' && !isNaN(Number(date))) {
-      date = new Date(Number(date) * 1000);
+      date = new Date(Number(date) * 1000)
     } else if (typeof date === 'number') {
-      date = new Date(date * 1000);
+      date = new Date(date * 1000)
     } else {
-      continue;
+      continue
     }
-    reason = reason || 'No reason provided';
+    reason = reason || 'No reason provided'
 
     const warnExists = await prisma.gm_server_warn.findFirst({
       where: {
@@ -86,10 +86,10 @@ export async function processServerImportWarns(server: Server, warns: any): Prom
         reason,
         createdAt: date,
       },
-    });
+    })
 
     if (warnExists) {
-      continue;
+      continue
     }
 
     await prisma.gm_server_warn.create({
@@ -100,14 +100,14 @@ export async function processServerImportWarns(server: Server, warns: any): Prom
         reason,
         createdAt: date,
       },
-    });
+    })
   }
 
-  return ok();
+  return ok()
 }
 
 export async function processDarkRPDropMoney(server: Server, body: any): Promise<EndpointResult> {
-  const { player, amount, entity } = body;
+  const { player, amount, entity } = body
   if (badArgument([player, amount, entity])) {
     return bad({
       error: 'missing_arguments',
@@ -116,25 +116,25 @@ export async function processDarkRPDropMoney(server: Server, body: any): Promise
         amount: !!amount,
         entity: !!entity,
       },
-    });
+    })
   }
 
-  const ply = new PlayerGmod(player);
+  const ply = new PlayerGmod(player)
   if (!ply.isValid()) {
-    return invalidPlayerResult(ply);
+    return invalidPlayerResult(ply)
   }
 
   await logServer(server, 'dark_rp_drop_money', {
     player: ply,
     amount: Math.round(amount),
     entity,
-  });
+  })
 
-  return ok();
+  return ok()
 }
 
 export async function processDarkRPPickedUpMoney(server: Server, body: any): Promise<EndpointResult> {
-  const { player, amount, entity } = body;
+  const { player, amount, entity } = body
   if (badArgument([player, amount, entity])) {
     return bad({
       error: 'missing_arguments',
@@ -143,25 +143,25 @@ export async function processDarkRPPickedUpMoney(server: Server, body: any): Pro
         amount: !!amount,
         entity: !!entity,
       },
-    });
+    })
   }
 
-  const ply = new PlayerGmod(player);
+  const ply = new PlayerGmod(player)
   if (!ply.isValid()) {
-    return invalidPlayerResult(ply);
+    return invalidPlayerResult(ply)
   }
 
   await logServer(server, 'dark_rp_picked_up_money', {
     player: ply,
     amount: Math.round(amount),
     entity,
-  });
+  })
 
-  return ok();
+  return ok()
 }
 
 export async function processDarkRPPickedUpCheque(server: Server, body: any): Promise<EndpointResult> {
-  const { playerChequeWriter, playerChequeTarget, amount, entity } = body;
+  const { playerChequeWriter, playerChequeTarget, amount, entity } = body
   if (badArgument([playerChequeWriter, playerChequeTarget, amount, entity])) {
     return bad({
       error: 'missing_arguments',
@@ -171,13 +171,13 @@ export async function processDarkRPPickedUpCheque(server: Server, body: any): Pr
         amount: !!amount,
         entity: !!entity,
       },
-    });
+    })
   }
 
-  const plyWriter = new PlayerGmod(playerChequeWriter);
-  const plyTarget = new PlayerGmod(playerChequeTarget);
+  const plyWriter = new PlayerGmod(playerChequeWriter)
+  const plyTarget = new PlayerGmod(playerChequeTarget)
   if (!plyWriter.isValid() || !plyTarget.isValid()) {
-    return invalidPlayerResult(plyWriter);
+    return invalidPlayerResult(plyWriter)
   }
 
   await logServer(server, 'dark_rp_picked_up_cheque', {
@@ -185,12 +185,12 @@ export async function processDarkRPPickedUpCheque(server: Server, body: any): Pr
     playerChequeTarget: plyTarget,
     amount: Math.round(amount),
     entity,
-  });
-  return ok();
+  })
+  return ok()
 }
 
 export async function processCHATMTakeMoney(server: Server, body: any): Promise<EndpointResult> {
-  const { player, amount, reason } = body;
+  const { player, amount, reason } = body
   if (badArgument([player, amount, reason])) {
     return bad({
       error: 'missing_arguments',
@@ -199,25 +199,25 @@ export async function processCHATMTakeMoney(server: Server, body: any): Promise<
         amount: !!amount,
         reason: !!reason,
       },
-    });
+    })
   }
 
-  const ply = new PlayerGmod(player);
+  const ply = new PlayerGmod(player)
   if (!ply.isValid()) {
-    return invalidPlayerResult(ply);
+    return invalidPlayerResult(ply)
   }
 
   await logServer(server, 'ch_atm_take_money', {
     player: ply,
     amount: Math.round(amount),
     reason,
-  });
+  })
 
-  return ok();
+  return ok()
 }
 
 export async function processCHATMReceiveMoney(server: Server, body: any): Promise<EndpointResult> {
-  const { player, amount, reason } = body;
+  const { player, amount, reason } = body
   if (badArgument([player, amount, reason])) {
     return bad({
       error: 'missing_arguments',
@@ -226,25 +226,25 @@ export async function processCHATMReceiveMoney(server: Server, body: any): Promi
         amount: !!amount,
         reason: !!reason,
       },
-    });
+    })
   }
 
-  const ply = new PlayerGmod(player);
+  const ply = new PlayerGmod(player)
   if (!ply.isValid()) {
-    return invalidPlayerResult(ply);
+    return invalidPlayerResult(ply)
   }
 
   await logServer(server, 'ch_atm_receive_money', {
     player: ply,
     amount: Math.round(amount),
     reason,
-  });
+  })
 
-  return ok();
+  return ok()
 }
 
 export async function processCHATMSendMoney(server: Server, body: any): Promise<EndpointResult> {
-  const { player, amount, receiver } = body;
+  const { player, amount, receiver } = body
   if (badArgument([player, amount, receiver])) {
     return bad({
       error: 'missing_arguments',
@@ -253,26 +253,26 @@ export async function processCHATMSendMoney(server: Server, body: any): Promise<
         amount: !!amount,
         receiver: !!receiver,
       },
-    });
+    })
   }
 
-  const ply = new PlayerGmod(player);
-  const plyReceiver = new PlayerGmod(receiver);
+  const ply = new PlayerGmod(player)
+  const plyReceiver = new PlayerGmod(receiver)
   if (!ply.isValid() || !plyReceiver.isValid()) {
-    return invalidPlayerResult(ply);
+    return invalidPlayerResult(ply)
   }
 
   await logServer(server, 'ch_atm_send_money', {
     player: ply,
     receiver: plyReceiver,
     amount: Math.round(amount),
-  });
+  })
 
-  return ok();
+  return ok()
 }
 
 export async function processCHATMWithdrawMoney(server: Server, body: any): Promise<EndpointResult> {
-  const { player, amount } = body;
+  const { player, amount } = body
   if (badArgument([player, amount])) {
     return bad({
       error: 'missing_arguments',
@@ -280,24 +280,24 @@ export async function processCHATMWithdrawMoney(server: Server, body: any): Prom
         player: !!player,
         amount: !!amount,
       },
-    });
+    })
   }
 
-  const ply = new PlayerGmod(player);
+  const ply = new PlayerGmod(player)
   if (!ply.isValid()) {
-    return invalidPlayerResult(ply);
+    return invalidPlayerResult(ply)
   }
 
   await logServer(server, 'ch_atm_withdraw_money', {
     player: ply,
     amount: Math.round(amount),
-  });
+  })
 
-  return ok();
+  return ok()
 }
 
 export async function processCHATMDepositMoney(server: Server, body: any): Promise<EndpointResult> {
-  const { player, amount } = body;
+  const { player, amount } = body
   if (badArgument([player, amount])) {
     return bad({
       error: 'missing_arguments',
@@ -305,20 +305,20 @@ export async function processCHATMDepositMoney(server: Server, body: any): Promi
         player: !!player,
         amount: !!amount,
       },
-    });
+    })
   }
 
-  const ply = new PlayerGmod(player);
+  const ply = new PlayerGmod(player)
   if (!ply.isValid()) {
-    return invalidPlayerResult(ply);
+    return invalidPlayerResult(ply)
   }
 
   await logServer(server, 'ch_atm_deposit_money', {
     player: ply,
     amount: Math.round(amount),
-  });
+  })
 
-  return ok();
+  return ok()
 }
 
 const endpointToLogID: Record<string, string> = {
@@ -334,7 +334,7 @@ const endpointToLogID: Record<string, string> = {
   '^/servers/[^/]+/players/[^/]+/spawn$': 'player_spawn',
   '^/servers/[^/]+/players/[^/]+/name$': 'player_change_name',
   '^/servers/[^/]+/players/[^/]+/group$': 'player_change_group',
-};
+}
 
 const endpointToAction: Record<string, (server: Server, data: any) => Promise<EndpointResult>> = {
   '^/servers/[^/]+/players/[^/]+/dark-rp/drop-money$': processDarkRPDropMoney,
@@ -345,39 +345,39 @@ const endpointToAction: Record<string, (server: Server, data: any) => Promise<En
   '^/servers/[^/]+/players/[^/]+/ch-atm/receive-money$': processCHATMReceiveMoney,
   '^/servers/[^/]+/players/[^/]+/ch-atm/deposit-money$': processCHATMDepositMoney,
   '^/servers/[^/]+/players/[^/]+/ch-atm/withdraw-money$': processCHATMWithdrawMoney,
-};
+}
 
 function matchRegex<T>(endpoint: string, items: Record<string, T>): T | null {
   for (const [regexPattern, value] of Object.entries(items)) {
-    const regex = new RegExp(regexPattern);
+    const regex = new RegExp(regexPattern)
     if (regex.test(endpoint)) {
-      return value;
+      return value
     }
   }
-  return null;
+  return null
 }
 
 export async function processMultiLog(server: Server, logs: any[]): Promise<EndpointResult> {
   for (const log of logs) {
-    const { endpoint, data } = log;
-    if (!endpoint || !data) continue;
+    const { endpoint, data } = log
+    if (!endpoint || !data) continue
 
-    const logID = matchRegex(endpoint, endpointToLogID);
+    const logID = matchRegex(endpoint, endpointToLogID)
     if (logID) {
       if (logID === 'player_spawn_object') {
-        data.object = endpoint.split('/').pop();
+        data.object = endpoint.split('/').pop()
       }
-      await logServer(server, logID, data);
-      continue;
+      await logServer(server, logID, data)
+      continue
     }
 
-    const action = matchRegex(endpoint, endpointToAction);
+    const action = matchRegex(endpoint, endpointToAction)
     if (!action) {
-      continue;
+      continue
     }
 
-    await action(server, data).catch(() => {});
+    await action(server, data).catch(() => {})
   }
 
-  return ok();
+  return ok()
 }

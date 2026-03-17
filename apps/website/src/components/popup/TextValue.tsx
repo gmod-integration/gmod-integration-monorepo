@@ -1,8 +1,8 @@
-import { Component, ParentProps } from "solid-js";
+import { Component, ParentProps } from 'solid-js'
 
 interface TextValue extends ParentProps {
-  value: string;
-  class?: string;
+  value: string
+  class?: string
 }
 
 export const TextValue: Component<TextValue> = (props) => {
@@ -10,10 +10,10 @@ export const TextValue: Component<TextValue> = (props) => {
     <p
       class="w-min text-nowrap rounded-md px-1"
       style={{
-        "background-color": `hsla(0, 0%, 52%, 0.1)`,
+        'background-color': `hsla(0, 0%, 52%, 0.1)`,
       }}
     >
-      {props.value || ""}
+      {props.value || ''}
     </p>
-  );
-};
+  )
+}

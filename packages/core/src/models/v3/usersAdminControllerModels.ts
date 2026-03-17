@@ -1,4 +1,4 @@
-import prisma from '@gmod/infra-prisma';
+import prisma from '@gmod/infra-prisma'
 
 export async function getAllActivePanelUsers() {
   return await prisma.gm_panelToken.findMany({
@@ -7,5 +7,5 @@ export async function getAllActivePanelUsers() {
         gt: new Date(),
       },
     },
-  });
+  })
 }

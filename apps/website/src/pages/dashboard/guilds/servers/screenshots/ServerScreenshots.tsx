@@ -1,6 +1,6 @@
-import { Component } from "solid-js";
-import { ServerScreenshotsParameters } from "./ServerScreenshotsParameters";
-import { ServerScreenshotList } from "./ServerScreenshotList";
+import { Component } from 'solid-js'
+import { ServerScreenshotsParameters } from './ServerScreenshotsParameters'
+import { ServerScreenshotList } from './ServerScreenshotList'
 
 const ServerScreenshots: Component = () => {
   return (
@@ -8,7 +8,7 @@ const ServerScreenshots: Component = () => {
       <ServerScreenshotsParameters />
       <ServerScreenshotList />
     </>
-  );
-};
+  )
+}
 
-export default ServerScreenshots;
+export default ServerScreenshots

@@ -1,18 +1,18 @@
-import { type GmodAngleInput, GmodAngleSchema } from '@gmod/schema/gmod/GmodAngleSchema.js';
+import { type GmodAngleInput, GmodAngleSchema } from '@gmod/schema/gmod/GmodAngleSchema.js'
 
 export class GmodAngle {
-  public readonly p: number;
-  public readonly y: number;
-  public readonly r: number;
+  public readonly p: number
+  public readonly y: number
+  public readonly r: number
 
   private constructor(data: GmodAngleInput) {
-    const parsed = GmodAngleSchema.parse(data);
-    this.p = parsed.p;
-    this.y = parsed.y;
-    this.r = parsed.r;
+    const parsed = GmodAngleSchema.parse(data)
+    this.p = parsed.p
+    this.y = parsed.y
+    this.r = parsed.r
   }
 
   public static from(data: unknown): GmodAngle {
-    return new GmodAngle(data as GmodAngleInput);
+    return new GmodAngle(data as GmodAngleInput)
   }
 }

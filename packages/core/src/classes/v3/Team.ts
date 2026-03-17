@@ -1,16 +1,16 @@
-import { BaseClass } from './BaseClass.js';
+import { BaseClass } from './BaseClass.js'
 
 export interface TeamInterface {
-  id: number;
-  name: string;
+  id: number
+  name: string
 }
 
 export class Team extends BaseClass implements TeamInterface {
-  public id: number;
-  public name: string;
+  public id: number
+  public name: string
 
   constructor(obj: TeamInterface, throwMissing = true) {
-    super();
+    super()
 
     this.checkMissingAndThrow(
       obj,
@@ -19,17 +19,17 @@ export class Team extends BaseClass implements TeamInterface {
         name: 'string',
       },
       throwMissing,
-    );
+    )
 
-    this.id = obj.id;
-    this.name = obj.name;
+    this.id = obj.id
+    this.name = obj.name
   }
 
   getName(): string {
-    return this.name;
+    return this.name
   }
 
   getID(): number {
-    return this.id;
+    return this.id
   }
 }
