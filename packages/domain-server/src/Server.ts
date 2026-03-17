@@ -2,8 +2,6 @@ import { BaseClass } from '@gmod/core/classes/v3/BaseClass.js';
 import { generateToken } from '@gmod/core/utils/tools.js';
 import { ConfigDiscord } from '@gmod/config';
 import redis from '@gmod/infra-redis';
-import { getGuildClient } from '@/discord/index.js';
-import { getStatusMessage } from '@/discord/utils/messages.js';
 import { gmLog } from '@gmod/core/utils/logger.js';
 import { ChannelType } from 'discord.js';
 import prisma from '@gmod/infra-prisma';
@@ -14,6 +12,7 @@ import {
 import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js';
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 import { ServerStatusChannel } from './ServerStatusChannel.js';
+import { buildDiscordStatusMessage, resolveDiscordGuildClient } from './discordBridge.js';
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
@@ -523,7 +522,7 @@ export class Server extends BaseClass {
   }
 
   async getBotInstance() {
-    return await getGuildClient(this.guild);
+    return await resolveDiscordGuildClient(this.guild);
   }
 
   async getDiscordGuild() {
@@ -576,7 +575,7 @@ export class Server extends BaseClass {
     if (!channel.isSendable()) throw new Error('Channel is not sendable');
 
     const msgData = await this.getStatusData();
-    const embed = await getStatusMessage(this, msgData, guild.preferredLocale);
+    const embed = await buildDiscordStatusMessage(this, msgData, guild.preferredLocale);
     const message = await channel.send(embed);
 
     return prisma.gm_status.create({
@@ -669,7 +668,7 @@ export class Server extends BaseClass {
       }
 
       const lang = guild.preferredLocale;
-      const newMsgContent = await getStatusMessage(this, msgData, lang);
+      const newMsgContent = await buildDiscordStatusMessage(this, msgData, lang);
       await message.edit(newMsgContent);
     } catch (error: any) {
       gmLog('status', `Error updating status message for server ${this.getID()}: ${error.message}`, true);

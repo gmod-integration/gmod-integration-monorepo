@@ -9,12 +9,15 @@ import { Position } from './Position.js';
 import { Angle } from './Angle.js';
 import { CustomValues } from './CustomValues.js';
 import { getTranslate } from '../../utils/localizations.js';
-import { secToTime } from '@/discord/utils/index.js';
+import { secToTime } from '../../utils/discordFormat.js';
 import { Guild } from '@gmod/domain-guild/Guild.js';
 import { addAutoRoleToUser } from '@gmod/domain-guild/discordModels.js';
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
-import { getGuildClient } from '@/discord/index.js';
-import { type GuildBan } from 'discord.js';
+import {
+  enqueueDiscordGuildSyncBan,
+  enqueueUpdateDiscordTeamRole,
+  enqueueUpdatePlayerUserGroup,
+} from '@gmod/infra-bullmq/discordQueueAdapters.js';
 
 export interface PlayerGmodInterface {
   steamID: string;
@@ -224,133 +227,12 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   }
 }
 
-async function updateDiscordGroupRole(server: Server, steamID64: string, userGroup: string) {
-  const user = await getUserFromSteamID64(steamID64);
-  if (!user) return;
-
-  const syncDirection = await server.getSetting('sync_role_direction');
-  if (syncDirection !== 'both' && syncDirection !== 'gmod-to-discord') {
-    return;
-  }
-
-  const dscClient = await server.getBotInstance();
-  if (!dscClient || !dscClient.user) return;
-
-  const guild = await server.getDiscordGuild();
-  if (!guild) return;
-
-  const member = await guild.members.fetch(user.getDiscordID());
-  if (!member) return;
-
-  const syncRoles = await server.getSyncRoles();
-
-  const rankRole = syncRoles.find((role) => role.userGroup === userGroup) || null;
-  // if (!rankRole || !rankRole.enable) return;
-
-  // get the bot role
-  const botMember = guild.members.cache.get(dscClient.user.id);
-  if (!botMember) return;
-
-  const botRole = botMember.roles.highest;
-  if (!botRole) return;
-
-  // check if the bot role is higher than the rank role
-  if (rankRole) {
-    const rankRoleObj = guild.roles.cache.get(rankRole.roleID);
-    if (rankRoleObj && botRole.comparePositionTo(rankRoleObj) <= 0) {
-      return;
-    }
-  }
-
-  const userRoles = member.roles.cache;
-  const rolesToRemove = userRoles.filter(
-    (role) =>
-      syncRoles.some((syncRole) => syncRole.roleID === role.id) && role.id !== rankRole?.roleID && rankRole?.enable,
-  );
-
-  // redis the update to avoid dsc |-> gmod sursync
-  const redisKey = `sync-role:gmod:server:${server.id}:user:${user.getSteamID64()}`;
-  await redis.set(
-    redisKey,
-    JSON.stringify({
-      removeIDs: rolesToRemove.map((role) => role.id),
-      addIDs: rankRole ? [rankRole.roleID] : [],
-    }),
-    'EX',
-    120,
-  );
-
-  if (rolesToRemove.size > 0) {
-    gmLog(
-      'sync-ranking',
-      `Removing roles from ${member.user.tag}: ${rolesToRemove.map((role) => role.name).join(', ')}`,
-    );
-    await member.roles.remove(rolesToRemove);
-  }
-
-  // if user doesn't have the rank role then add it
-  if (rankRole && rankRole.enable && !member.roles.cache.has(rankRole.roleID)) {
-    gmLog('sync-ranking', `Adding role to ${member.user.tag}: ${rankRole.roleID}`);
-    await member.roles.add(rankRole.roleID);
-  }
-}
-
 export async function updateDiscordTeamRole(server: Server, steamID64: string, teamName: string | null) {
-  const user = await getUserFromSteamID64(steamID64);
-  if (!user) return;
-
-  const dscClient = await server.getBotInstance();
-  if (!dscClient || !dscClient.user) return;
-
-  const guild = await server.getDiscordGuild();
-  if (!guild) return;
-
-  const member = await guild.members.fetch(user.getDiscordID());
-  if (!member) return;
-
-  const syncRoles = await server.getSyncTeamRoles();
-
-  // find all roles that are enabled and have the same team name
-  const teamRoles = syncRoles.filter((role) => role.teamName === teamName);
-
-  // get the bot role
-  const botMember = guild.members.cache.get(dscClient.user.id);
-  if (!botMember) return;
-
-  const botRole = botMember.roles.highest;
-  if (!botRole) return;
-
-  // check if the bot role is higher than the team role
-  if (teamRoles) {
-    for (const teamRole of teamRoles) {
-      const teamRoleObj = guild.roles.cache.get(teamRole.roleID);
-      if (teamRoleObj && botRole.comparePositionTo(teamRoleObj) <= 0) {
-        teamRoles.splice(teamRoles.indexOf(teamRole), 1);
-      }
-    }
-  }
-
-  const userRoles = member.roles.cache;
-  const rolesToRemove = userRoles.filter(
-    (role) =>
-      syncRoles.some((syncRole) => syncRole.roleID === role.id) &&
-      !teamRoles.some((teamRole) => teamRole.roleID === role.id && teamRole.enable),
-  );
-
-  if (rolesToRemove.size > 0) {
-    gmLog(
-      'sync-team-role',
-      `Removing roles from ${member.user.tag}: ${rolesToRemove.map((role) => role.name).join(', ')}`,
-    );
-    await member.roles.remove(rolesToRemove);
-  }
-
-  for (const teamRole of teamRoles) {
-    if (teamRole.enable && !member.roles.cache.has(teamRole.roleID)) {
-      gmLog('sync-team-role', `Adding role to ${member.user.tag}: ${teamRole.roleID}`);
-      await member.roles.add(teamRole.roleID);
-    }
-  }
+  await enqueueUpdateDiscordTeamRole({
+    serverID: server.getID(),
+    steamID64,
+    teamName,
+  });
 }
 
 export async function updatePlayerUserGroup(server: Server, steamID64: string, userGroup: string) {
@@ -375,8 +257,11 @@ export async function updatePlayerUserGroup(server: Server, steamID64: string, u
         },
       });
 
-      //   update the player discord role
-      await updateDiscordGroupRole(server, steamID64, userGroup);
+      await enqueueUpdatePlayerUserGroup({
+        serverID: server.getID(),
+        steamID64,
+        userGroup,
+      });
     }
   } catch (error) {
     console.error(error);
@@ -508,33 +393,7 @@ export async function changeLinkCheckDiscordBan(oldDiscordIDS: string[], newDisc
     });
 
     for (const dscGuild of dscGuilds) {
-      const client = await getGuildClient(dscGuild.guild_id);
-
-      const guild = client.guilds.cache.get(dscGuild.guild_id);
-      if (!guild) continue;
-
-      // get if one of the discordID is banned
-      let banInfo: GuildBan | null = null;
-      for (const oldDiscordID of oldDiscordIDS) {
-        const ban = await guild.bans.fetch(oldDiscordID);
-        if (ban) {
-          banInfo = ban;
-          break;
-        }
-      }
-
-      // if ban, ban all discordID and the new one with prefix to reason "Gmod Integration - Sync Ban : ..."
-      if (banInfo) {
-        for (const oldDiscordID of oldDiscordIDS) {
-          await guild.members.ban(oldDiscordID, {
-            reason: `Gmod Integration - Sync Ban : ${banInfo.reason || 'No Reason'}`,
-          });
-        }
-
-        await guild.members.ban(newDiscordID, {
-          reason: `Gmod Integration - Sync Ban : ${banInfo.reason || 'No Reason'}`,
-        });
-      }
+      await enqueueDiscordGuildSyncBan(dscGuild.guild_id, oldDiscordIDS, newDiscordID);
     }
   } catch (error) {
     console.error(error);

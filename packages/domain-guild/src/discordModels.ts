@@ -1,7 +1,6 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js';
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
 import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
-import { getGuildClient, getMainClient } from '@/discord/index.js';
-import { getDiscordEntitlements, isGuildPremium } from './Guild.js';
+import { isGuildPremium } from './Guild.js';
 import { ConfigDiscord } from '@gmod/config';
 import { generateToken } from '@gmod/core/utils/tools.js';
 import redis from '@gmod/infra-redis';
@@ -11,14 +10,9 @@ import type { PanelUser } from '@gmod/domain-user/PanelUser.js';
 import { v4 as uuidv4 } from 'uuid';
 import { gmLog } from '@gmod/core/utils/logger.js';
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
+import { enqueueMainClientFetchUser, enqueueMainClientSyncPremiumRoles } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
-  const guildBotInstance = await getGuildClient(member.guild.id, false);
-  if (!guildBotInstance.user) throw new Error('Bot not found');
-  if (guildBotInstance.user.id !== member.guild.client.user.id) {
-    return;
-  }
-
   const addedRoles = newMember.roles.cache.filter((role) => !oldMember.roles.cache.has(role.id));
   const removedRoles = oldMember.roles.cache.filter((role) => !newMember.roles.cache.has(role.id));
 
@@ -477,16 +471,10 @@ export async function addUserToGuild(guildID: string, userID: string, userToken:
 }
 
 export async function getDiscordUserFromID(discordID: string) {
-  const client = await getMainClient();
-  return client.users.fetch(discordID);
+  return await enqueueMainClientFetchUser(discordID);
 }
 
 export async function updatePseudoToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
-  const guildBotInstance = await getGuildClient(member.guild.id, false);
-  if (guildBotInstance.user!.id !== member.guild.client.user.id) {
-    return;
-  }
-
   const servers = await getServersFromDiscordGuildID(member.guild.id);
   if (!servers || servers.length === 0) return;
 
@@ -510,87 +498,5 @@ export async function updatePseudoToGmod(member: GuildMember, oldMember: GuildMe
 }
 
 export async function givePremiumRoleOfMainGuild() {
-  try {
-    const mainClient = await getMainClient();
-    if (!mainClient) return;
-
-    const guild = mainClient.guilds.cache.get(ConfigDiscord.guildID!);
-    if (!guild) return;
-
-    const gmodStoreBuyers = await prisma.gm_gmodstore_purchases.findMany();
-    if (!gmodStoreBuyers || gmodStoreBuyers.length === 0) return;
-
-    let subscriptionBuyers: any = [];
-    const dscEntitlements = await getDiscordEntitlements();
-    if (dscEntitlements) {
-      for (const entitlement of dscEntitlements) {
-        if (!subscriptionBuyers.includes(entitlement.user_id)) {
-          subscriptionBuyers.push(entitlement.user_id);
-        }
-      }
-    }
-
-    if (!ConfigDiscord.premiumRoleID || !ConfigDiscord.gmodStorePremiumRoleID || !ConfigDiscord.discordPremiumRoleID)
-      return;
-    const premiumRole = guild.roles.cache.get(ConfigDiscord.premiumRoleID);
-    const gmodStorePremiumRole = guild.roles.cache.get(ConfigDiscord.gmodStorePremiumRoleID);
-    const discordPremiumRole = guild.roles.cache.get(ConfigDiscord.discordPremiumRoleID);
-    if (!premiumRole || !gmodStorePremiumRole || !discordPremiumRole) return;
-
-    premiumRole.members.map(async (member) => {
-      const user = await getUserFromDiscordID(member.id);
-      if (
-        !user ||
-        (!subscriptionBuyers.includes(member.id) &&
-          !gmodStoreBuyers.find((buyer) => buyer.steamID64 === user.getSteamID64()))
-      ) {
-        await member.roles.remove(premiumRole);
-      }
-    });
-
-    gmodStorePremiumRole.members.map(async (member) => {
-      const user = await getUserFromDiscordID(member.id);
-      if (!user || !gmodStoreBuyers.find((buyer) => buyer.steamID64 === user.getSteamID64())) {
-        await member.roles.remove(gmodStorePremiumRole);
-      }
-    });
-
-    discordPremiumRole.members.map(async (member) => {
-      if (!subscriptionBuyers.includes(member.id)) {
-        await member.roles.remove(discordPremiumRole);
-      }
-    });
-
-    for (const buyer of gmodStoreBuyers) {
-      const user = await getUserFromSteamID64(buyer.steamID64);
-      if (!user) continue;
-
-      const member = await guild.members.fetch(user.getDiscordID()).catch(() => null);
-      if (!member) continue;
-
-      if (!member.roles.cache.has(ConfigDiscord.premiumRoleID)) {
-        await member.roles.add(premiumRole);
-      }
-
-      if (!member.roles.cache.has(ConfigDiscord.gmodStorePremiumRoleID)) {
-        await member.roles.add(gmodStorePremiumRole);
-      }
-    }
-
-    for (const buyer of subscriptionBuyers) {
-      const member = await guild.members.fetch(buyer).catch(() => null);
-      if (!member) continue;
-
-      if (!member.roles.cache.has(ConfigDiscord.premiumRoleID)) {
-        await member.roles.add(premiumRole);
-      }
-
-      if (!member.roles.cache.has(ConfigDiscord.discordPremiumRoleID)) {
-        await member.roles.add(discordPremiumRole);
-      }
-    }
-  } catch (err) {
-    console.error('Error checking premium:', err);
-    return err;
-  }
+  return await enqueueMainClientSyncPremiumRoles();
 }

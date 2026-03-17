@@ -2,19 +2,13 @@ import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
 import { isGuildPremium } from '@gmod/domain-guild/Guild.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { ActionRowBuilder, type Message, type MessageActionRowComponentBuilder } from 'discord.js';
-import { ButtonPremium } from '@/discord/utils/buttons.js';
+import { ButtonPremium } from '@gmod/domain-guild/discordMessages.js';
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
-import { getGuildClient } from '@/discord/index.js';
 import prisma from '@gmod/infra-prisma';
 
 export async function processDiscordMessageToGmod(message: Message) {
   if (message.author.bot || !message.guild) return;
   const lang = message.guild.preferredLocale;
-
-  const guildBotInstance = await getGuildClient(message.guild.id, false);
-  if (guildBotInstance.user!.id !== message.guild.client.user.id) {
-    return;
-  }
 
   const channels = await prisma.gm_sync_chat.findMany({
     where: {

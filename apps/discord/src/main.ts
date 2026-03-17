@@ -4,14 +4,21 @@ import { gracefulShutdownMongo } from '@gmod/core/database/gm_server_logs.js';
 import { gracefulShutdownPrisma } from '@gmod/infra-prisma';
 import { gracefulShutdownRedis } from '@gmod/infra-redis';
 import '@gmod/infra-bullmq';
-import { gracefulShutdownDiscord, loadDiscordMain, loadDiscordSlave } from './discord/index.js';
+import { gracefulShutdownDiscord, getGuildClient, loadDiscordMain, loadDiscordSlave } from './discord/index.js';
 import { initializeDiscordQueueWorkers } from './discord/workers/discordQueueWorkers.js';
+import { setDiscordGuildClientResolver, setDiscordStatusMessageBuilder } from '@gmod/domain-server/discordBridge.js';
+import { getStatusMessage } from './discord/utils/messages.js';
 
 let inShutdown = false;
 
+setDiscordGuildClientResolver(async (guildID: string, forcePresenceOnGuild = true) => {
+  return await getGuildClient(guildID, forcePresenceOnGuild);
+});
+setDiscordStatusMessageBuilder(getStatusMessage);
+
 async function runDiscord() {
-  await loadDiscordMain();
   await initializeDiscordQueueWorkers();
+  await loadDiscordMain();
   await loadDiscordSlave();
 }
 

@@ -20,6 +20,7 @@ export * from './models/v3/usersControllerModels.js';
 export * from './models/v3/serversPlayersModels.js';
 export * from './models/webhooks/gmodStoreModels.js';
 export * from './utils/instrument.js';
+export * from './utils/discordFormat.js';
 export * from './utils/localizations.js';
 export * from './utils/logger.js';
 export * from './utils/tools.js';

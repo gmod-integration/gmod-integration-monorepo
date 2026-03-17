@@ -1,9 +1,8 @@
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js';
 import { getTranslate } from '@gmod/core/utils/localizations.js';
 import { ActionRowBuilder, type ButtonInteraction, type MessageActionRowComponentBuilder } from 'discord.js';
-import { ButtonVerificationWebsite } from '@/discord/utils/buttons.js';
+import { ButtonVerificationWebsite, getVerifiedMessageAnswer } from './discordMessages.js';
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
-import { getVerifiedMessageAnswer } from '@/discord/utils/messages.js';
 import { verifyUser } from './discordModels.js';
 import prisma from '@gmod/infra-prisma';
 

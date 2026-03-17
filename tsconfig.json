@@ -6,8 +6,6 @@
     "rootDir": "./apps/api/src",
     "baseUrl": "./",
     "paths": {
-      "@/discord": ["apps/discord/src/discord/index.ts"],
-      "@/discord/*": ["apps/discord/src/discord/*"],
       "@/*": ["apps/api/src/*"],
       "src/*": ["apps/api/src/*"]
     },

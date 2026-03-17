@@ -1,10 +1,9 @@
 import redis from '@gmod/infra-redis';
-import { ActivityType } from 'discord.js';
 import { statusRoutine } from '@gmod/domain-server/Server.js';
-import { getMainClient } from '@/discord/index.js';
 import { givePremiumRoleOfMainGuild } from '@gmod/domain-guild/discordModels.js';
 import prisma from '@gmod/infra-prisma';
 import { lastGmodIntegrationTag } from '../../utils/tools.js';
+import { enqueueMainClientSetPresence } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 
 export async function getStats() {
   const redisKey = 'stats';
@@ -45,7 +44,6 @@ export async function getStats() {
 }
 
 export async function routineUpdateStatus() {
-  const client = await getMainClient();
   const botStatusList = [
     async function userCount(stat: any) {
       return `${stat.user.toLocaleString()} users`;
@@ -68,14 +66,7 @@ export async function routineUpdateStatus() {
     const status = botStatusList[lastStatusID];
     lastStatusID = (lastStatusID + 1) % botStatusList.length;
 
-    client.user!.setPresence({
-      activities: [
-        {
-          name: await status(stats),
-          type: ActivityType.Watching,
-        },
-      ],
-    });
+    await enqueueMainClientSetPresence(await status(stats), 3);
   }
 
   // every 30s update the bot status
@@ -89,13 +80,17 @@ export async function routineServerStatusRefresh() {
 }
 
 function routPremiumRoleOfMainGuild() {
-  givePremiumRoleOfMainGuild().then((err) => {
-    if (err) {
-      console.error('Error checking premium:', err);
-    } else {
-      console.log('Premium checked');
-    }
-  });
+  givePremiumRoleOfMainGuild()
+    .then((synced) => {
+      if (!synced) {
+        console.error('Error checking premium');
+      } else {
+        console.log('Premium checked');
+      }
+    })
+    .catch((error) => {
+      console.error('Error checking premium:', error);
+    });
 }
 
 export async function routinePremiumRoleOfMainGuild() {

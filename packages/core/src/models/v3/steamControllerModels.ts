@@ -3,9 +3,8 @@ import axios from 'axios';
 import { gmLog } from '../../utils/logger.js';
 import prisma from '@gmod/infra-prisma';
 import { removeDiscordSync, removeServerSync } from '../../classes/v3/PlayerGmod.js';
-import { verifyUser } from '@gmod/domain-guild/discordModels.js';
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js';
-import { getGuildClient } from '@/discord/index.js';
+import { enqueueDiscordGuildVerifyUser } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 
 const steamAuthUrl = 'https://steamcommunity.com/openid/login';
 
@@ -150,17 +149,7 @@ export async function processSteamVerificationReturn(query: Record<string, unkno
           },
         });
         if (!dbGuild) continue;
-
-        const client = await getGuildClient(aGuild.id);
-        if (!client) continue;
-
-        const guild = await client.guilds.fetch(aGuild.id).catch(() => null);
-        if (!guild) continue;
-
-        const userInf = await guild.members.fetch(user.id).catch(() => null);
-        if (!userInf) continue;
-
-        await verifyUser(guild, userInf);
+        await enqueueDiscordGuildVerifyUser(aGuild.id, user.id);
       }
     }
 

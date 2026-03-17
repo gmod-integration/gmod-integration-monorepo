@@ -1,10 +1,10 @@
 import { badArgument } from '@gmod/core/utils/tools.js';
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js';
-import { getGuildClient } from '@/discord/index.js';
 import { getServerFromID } from '@gmod/domain-server/Server.js';
 import { Guild } from '@gmod/domain-guild/Guild.js';
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
 import { type NextFunction, type Request, type Response } from 'express';
+import { enqueueDiscordGuildSnapshot } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 
 export async function userValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -65,8 +65,7 @@ export async function userAdminGuildValidator(req: Request, res: Response, next:
       return;
     }
 
-    const dscClient = await getGuildClient(guildID);
-    const dscGuild = dscClient.guilds.cache.get(guildID);
+    const dscGuild = await enqueueDiscordGuildSnapshot(guildID);
     if (!dscGuild) {
       res.status(404).json({
         error: 'guild_not_found',
@@ -74,7 +73,7 @@ export async function userAdminGuildValidator(req: Request, res: Response, next:
       return;
     }
 
-    const guild = new Guild(dscGuild);
+    const guild = new Guild({ id: guildID });
     if (!guild) {
       res.status(404).json({
         error: 'guild_not_found',

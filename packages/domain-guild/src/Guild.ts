@@ -2,7 +2,6 @@ import axios from 'axios';
 import { ConfigDiscord } from '@gmod/config';
 import redis from '@gmod/infra-redis';
 import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
-import { getGuildClient, getMainClient, loadGuildBotInstance } from '@/discord/index.js';
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -15,6 +14,14 @@ import {
 } from 'discord.js';
 import prisma from '@gmod/infra-prisma';
 import { type User } from '@gmod/domain-user/User.js';
+import {
+  enqueueDiscordGuildAdmins,
+  enqueueDiscordGuildBotClientInfo,
+  enqueueDiscordGuildReloadBotInstance,
+  enqueueDiscordGuildSnapshot,
+  enqueueDiscordGuildUpdateBotProfile,
+  enqueueMainClientHasGuild,
+} from '@gmod/infra-bullmq/discordQueueAdapters.js';
 
 const guildSettings: Record<string, any> = {
   verification_dont_mp: {
@@ -35,12 +42,12 @@ const guildSettings: Record<string, any> = {
 };
 
 export class Guild {
-  public dscGuild: DiscordGuild;
+  public dscGuild: DiscordGuild | null;
   public id: string;
 
-  constructor(guild: DiscordGuild) {
-    this.dscGuild = guild;
+  constructor(guild: DiscordGuild | { id: string }) {
     this.id = guild.id;
+    this.dscGuild = 'channels' in guild && !!(guild as any).channels?.cache ? (guild as DiscordGuild) : null;
   }
 
   async isPremium() {
@@ -142,6 +149,10 @@ export class Guild {
   }
 
   async getOrCreateChannelWebhook(channelID: string) {
+    if (!this.dscGuild) {
+      throw new Error('Guild runtime unavailable');
+    }
+
     const dbWebhook = await prisma.gm_guild_webooks.findFirst({
       where: {
         guild: this.id,
@@ -244,24 +255,19 @@ export class Guild {
   }
 
   async getCustomBotClient() {
-    const botCustomClient = await getGuildClient(this.id, false);
-    if (!botCustomClient || !botCustomClient.user) throw new Error('Bot client not found');
-    if (botCustomClient.user.id === ConfigDiscord.clientID) throw new Error('Bot client is not custom');
-    return botCustomClient;
+    throw new Error('Not available outside discord runtime');
   }
 
   async mainBotOnGuild() {
-    const mainClient = await getMainClient();
-    return mainClient.guilds.cache.has(this.id);
+    return await enqueueMainClientHasGuild(this.id);
   }
 
   async getBotRoleSubordination() {
-    // Get all the guild roles
-    const guildRoles = await this.dscGuild.roles.fetch();
-    if (!guildRoles) throw new Error('Guild roles not found');
+    const snapshot = await enqueueDiscordGuildSnapshot(this.id);
+    if (!snapshot) throw new Error('Guild not found');
 
     let roles: Record<string, { name: string; editable: boolean }> = {};
-    guildRoles.forEach((role) => {
+    snapshot.roles.forEach((role) => {
       roles[role.id] = {
         name: role.name,
         editable: role.editable,
@@ -271,9 +277,9 @@ export class Guild {
   }
 
   async getBotClientInfo(user: User) {
-    const botInstance = await getGuildClient(this.id, false);
-    if (!botInstance || !botInstance.user) throw new Error('Bot client not found');
-    const isCustom = botInstance.user!.id !== ConfigDiscord.clientID;
+    const botInfo = await enqueueDiscordGuildBotClientInfo(this.id);
+    if (!botInfo) throw new Error('Bot client not found');
+    const isCustom = botInfo.custom;
 
     const activeGuild = await prisma.gm_gmodstore_purchases.findFirst({
       where: {
@@ -292,11 +298,6 @@ export class Guild {
       purchased = !!hasPurchase;
     }
 
-    let onGuild = false;
-    if (isCustom) {
-      onGuild = botInstance.guilds.cache.has(this.id);
-    }
-
     let status;
     try {
       status = await this.getSetting('bot_status');
@@ -305,20 +306,20 @@ export class Guild {
     }
 
     return {
-      id: botInstance.user.id,
-      username: botInstance.user.username,
-      avatar: botInstance.user.avatarURL(),
+      id: botInfo.id,
+      username: botInfo.username,
+      avatar: botInfo.avatar,
       custom: isCustom,
       token: activeGuild ? activeGuild.token : null,
       active: !!activeGuild,
       purchased: !!purchased,
-      onGuild,
+      onGuild: botInfo.onGuild,
       status,
     };
   }
 
   async reloadBotInstance() {
-    await loadGuildBotInstance(this.id);
+    await enqueueDiscordGuildReloadBotInstance(this.id);
   }
 
   async updateBotInstanceToken(newToken: string) {
@@ -342,19 +343,9 @@ export class Guild {
   }
 
   async updateBotInstanceInfo(data: { username: string; avatar: string; token: string; status: string }) {
-    const customBotInstance = await this.getCustomBotClient();
-    if (!customBotInstance) throw new Error('Bot client not found');
-    if (!customBotInstance.user) throw new Error('Bot client user not found');
-
     const { username, avatar, status } = data;
-
-    if (username && username !== customBotInstance.user.username) {
-      await customBotInstance.user.setUsername(username);
-    }
-
-    if (avatar && avatar !== customBotInstance.user.avatarURL()) {
-      await customBotInstance.user.setAvatar(avatar);
-    }
+    const updateResult = await enqueueDiscordGuildUpdateBotProfile({ guildID: this.id, username, avatar });
+    if (!updateResult.updated) throw new Error(updateResult.error || 'Unable to update bot profile');
 
     if (status) {
       await this.setSetting('bot_status', status);
@@ -362,16 +353,7 @@ export class Guild {
   }
 
   async getAdmins() {
-    const members = await this.dscGuild.members.fetch();
-    return members
-      .filter((member) => member.permissions.has('Administrator') && !member.user.bot)
-      .map((member) => {
-        return {
-          id: member.id,
-          name: member.displayName,
-          avatar: member.user.displayAvatarURL(),
-        };
-      });
+    return await enqueueDiscordGuildAdmins(this.id);
   }
 
   async getLinks() {

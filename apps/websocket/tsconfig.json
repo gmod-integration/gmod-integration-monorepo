@@ -5,8 +5,6 @@
     "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "paths": {
-      "@/discord": ["../../apps/discord/src/discord/index.ts"],
-      "@/discord/*": ["../../apps/discord/src/discord/*"],
       "src/*": ["../../apps/api/src/*"],
       "@/*": ["../../apps/api/src/*"]
     },

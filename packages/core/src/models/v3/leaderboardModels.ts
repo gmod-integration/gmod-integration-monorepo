@@ -6,7 +6,7 @@ import {
   EmbedBuilder,
   type MessageActionRowComponentBuilder,
 } from 'discord.js';
-import { dateToDiscordTimestamp, secToTime } from '@/discord/utils/index.js';
+import { dateToDiscordTimestamp, secToTime } from '../../utils/discordFormat.js';
 import { getTranslate } from '../../utils/localizations.js';
 import { getServerFromID } from '@gmod/domain-server/Server.js';
 import prisma from '@gmod/infra-prisma';

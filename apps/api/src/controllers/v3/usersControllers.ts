@@ -2,7 +2,6 @@ import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
 import { getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js';
 import { ConfigDiscord } from '@gmod/config';
 import {
-  addAutoRoleToUser,
   addUserToGuild,
   getDiscordUserFromID,
   getUserGuildsWithPermsForPanel,
@@ -10,13 +9,10 @@ import {
   getUserTokenFromCode,
   saveUser,
   saveUserPanel,
-  verifyUser,
 } from '@gmod/domain-guild/discordModels.js';
 import { badArgument, todoControllers } from '@gmod/core/utils/tools.js';
-import { getVerificationGuildMessage } from '@/discord/utils/messages.js';
 import moment from 'moment';
 import { getUserDataGRPD } from '@gmod/domain-compliance/gdrp.js';
-import { getGuildClient } from '@/discord/index.js';
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
 import { type NextFunction, type Request, type Response } from 'express';
@@ -49,6 +45,12 @@ import {
   processPutServerPseudo,
 } from '@gmod/core/models/v3/usersControllerModels.js';
 import { Guild } from '@gmod/domain-guild/Guild.js';
+import {
+  enqueueDiscordCreateVerificationMessage,
+  enqueueDiscordDeleteVerificationMessage,
+  enqueueDiscordGuildRunVerificationCheck,
+  enqueueDiscordGuildSnapshot,
+} from '@gmod/infra-bullmq/discordQueueAdapters.js';
 
 export async function getProfile(req: Request, res: Response) {
   const result = await processGetProfile(req.query.steamID64, req.query.discordID);
@@ -112,14 +114,14 @@ export async function oauthLogin(req: Request, res: Response) {
   let skipGuidJoin = false;
 
   if (guildID) {
-    const dscClient = await getGuildClient(guildID);
-    if (!dscClient) return;
+    const dscGuild = await enqueueDiscordGuildSnapshot(guildID);
+    if (!dscGuild) {
+      return res.status(404).send({
+        error: 'guild_not_found',
+      });
+    }
 
-    const dscGuild = dscClient.guilds.cache.get(guildID);
-    if (!dscGuild) return;
-
-    const guild = new Guild(dscGuild);
-    if (!guild) return;
+    const guild = new Guild({ id: dscGuild.id });
 
     skipGuidJoin = await guild.getSetting('verification_dont_join_support');
   }
@@ -166,54 +168,29 @@ export async function findGuild(req: Request, res: Response) {
     id: dscGuild.id,
     name: dscGuild.name,
     icon: dscGuild.icon,
-    ownerID: dscGuild.ownerId,
+    ownerID: dscGuild.ownerID,
   });
 }
 
 export async function findGuildChannels(req: Request, res: Response, next: NextFunction) {
   const dscGuild = req.dscGuild!;
 
-  return res.send(
-    dscGuild.channels.cache.map((channel) => ({
-      id: channel.id,
-      name: channel.name,
-      type: channel.type,
-      position: 'position' in channel ? channel.position : null,
-      parentID: channel.parent ? channel.parent.id : null,
-    })),
-  );
+  return res.send(dscGuild.channels);
 }
 
 export async function getGuildEmojis(req: Request, res: Response) {
   const dscGuild = req.dscGuild!;
-  const totalEmojis: any = [];
-
-  dscGuild.emojis.cache.forEach((emoji) => {
-    totalEmojis.push({
-      id: emoji.id,
-      name: emoji.name,
-      url: emoji.url,
-    });
-  });
-
-  return res.send(totalEmojis);
+  return res.send(dscGuild.emojis);
 }
 
 export async function getGuildRoles(req: Request, res: Response) {
   const dscGuild = req.dscGuild!;
 
   return res.send(
-    dscGuild.roles.cache
-      .filter((role) => role.managed === false)
-      .map((role) => ({
-        id: role.id,
-        name: role.name,
-        position: role.position,
-        color: role.color,
-        colorHex: `#${role.color.toString(16).padStart(6, '0')}`,
-      }))
+    dscGuild.roles
+      .filter((role: any) => role.managed === false)
       .filter((role) => role.name !== '@everyone')
-      .sort((a, b) => a.position - b.position),
+      .sort((a: any, b: any) => a.position - b.position),
   );
 }
 
@@ -404,7 +381,8 @@ export async function createGuildVerificationsRoles(req: Request, res: Response)
     });
   }
 
-  if (!guild.dscGuild.roles.cache.has(roleID)) {
+  const dscGuild = req.dscGuild!;
+  if (!dscGuild.roles.some((role: any) => role.id === roleID)) {
     return res.status(404).send({
       error: 'role not found',
     });
@@ -611,56 +589,27 @@ export async function createVerificationMessage(req: Request, res: Response) {
     });
   }
 
-  if (!dscGuild.channels.cache.has(channelID)) {
+  const targetChannel = dscGuild.channels.find((channel: any) => channel.id === channelID);
+  if (!targetChannel) {
     return res.status(404).send({
       error: 'Channel not found',
     });
   }
 
-  const channel = dscGuild.channels.cache.get(channelID);
-  if (!channel || !channel.isSendable()) {
+  if (!targetChannel.sendable) {
     return res.status(400).send({
       error: 'Channel is not a text channel',
     });
   }
 
-  const oldMsg = await prisma.gm_guild_verify_msg.findFirst({
-    where: {
-      guildID: dscGuild.id,
-    },
-  });
-
-  if (oldMsg) {
-    const oldChannel = dscGuild.channels.cache.get(oldMsg.channelID);
-    if (oldChannel && oldChannel.isTextBased()) {
-      try {
-        const oldMessage = await oldChannel.messages.fetch(oldMsg.messageID);
-        await oldMessage.delete();
-      } catch (error) {
-        //skip
-      }
-    }
-    await prisma.gm_guild_verify_msg.delete({
-      where: {
-        guildID: dscGuild.id,
-      },
+  try {
+    const verifyMessage = await enqueueDiscordCreateVerificationMessage(dscGuild.id, channelID);
+    return res.send(verifyMessage);
+  } catch (error) {
+    return res.status(400).send({
+      error: (error as Error).message,
     });
   }
-
-  // send msg
-  const msg = await getVerificationGuildMessage(dscGuild.preferredLocale, dscGuild.id);
-  const sentMsg = await channel.send(msg);
-
-  // save msg
-  const newVerif = await prisma.gm_guild_verify_msg.create({
-    data: {
-      guildID: dscGuild.id,
-      messageID: sentMsg.id,
-      channelID: channelID,
-    },
-  });
-
-  return res.send(newVerif);
 }
 
 export async function getVerificationCheck(req: Request, res: Response) {
@@ -687,11 +636,7 @@ export async function postVerificationCheck(req: Request, res: Response) {
     },
   });
 
-  const members = await guild.dscGuild.members.fetch();
-  for (const member of members.values()) {
-    await addAutoRoleToUser(guild.dscGuild, member);
-    await verifyUser(guild.dscGuild, member);
-  }
+  await enqueueDiscordGuildRunVerificationCheck(guild.id);
 
   await prisma.gm_guild_verification_check.update({
     where: {
@@ -734,15 +679,7 @@ export async function deleteVerificationMessage(req: Request, res: Response) {
     });
   }
 
-  const channel = dscGuild.channels.cache.get(msg.channelID);
-  if (channel && channel.isTextBased()) {
-    try {
-      const message = await channel.messages.fetch(msg.messageID);
-      await message.delete();
-    } catch (error) {
-      //skip
-    }
-  }
+  await enqueueDiscordDeleteVerificationMessage(dscGuild.id, msg.channelID, msg.messageID);
 
   await prisma.gm_guild_verify_msg.delete({
     where: {

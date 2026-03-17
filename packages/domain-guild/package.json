@@ -10,8 +10,10 @@
   },
   "dependencies": {
     "@gmod/config": "workspace:*",
+    "@gmod/core": "workspace:*",
     "@gmod/domain-server": "workspace:*",
     "@gmod/domain-user": "workspace:*",
+    "@gmod/infra-bullmq": "workspace:*",
     "@gmod/infra-prisma": "workspace:*",
     "@gmod/infra-redis": "workspace:*",
     "@gmod/infra-websocket": "workspace:*",

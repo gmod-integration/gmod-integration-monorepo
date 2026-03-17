@@ -8,13 +8,39 @@ import {
   MainClientHasGuildReplySchema,
   MainClientUploadScreenshotJobSchema,
   MainClientUploadScreenshotReplySchema,
+  MainClientFetchUserJobSchema,
+  MainClientFetchUserReplySchema,
+  MainClientSyncPremiumRolesJobSchema,
+  MainClientSyncPremiumRolesReplySchema,
+  MainClientSetPresenceJobSchema,
+  MainClientSetPresenceReplySchema,
+  DiscordGuildSnapshotJobSchema,
+  DiscordGuildSnapshotReplySchema,
+  DiscordGuildVerifyUserJobSchema,
+  DiscordGuildVerifyUserReplySchema,
+  DiscordGuildRunVerificationCheckJobSchema,
+  DiscordGuildRunVerificationCheckReplySchema,
+  DiscordCreateVerificationMessageJobSchema,
+  DiscordCreateVerificationMessageReplySchema,
+  DiscordDeleteVerificationMessageJobSchema,
+  DiscordDeleteVerificationMessageReplySchema,
+  DiscordGuildBotClientInfoJobSchema,
+  DiscordGuildBotClientInfoReplySchema,
+  DiscordGuildReloadBotInstanceJobSchema,
+  DiscordGuildReloadBotInstanceReplySchema,
+  DiscordGuildUpdateBotProfileJobSchema,
+  DiscordGuildUpdateBotProfileReplySchema,
+  DiscordGuildSyncBanJobSchema,
+  DiscordGuildSyncBanReplySchema,
+  DiscordGuildAdminsJobSchema,
+  DiscordGuildAdminsReplySchema,
   type UpdateGuildUserPseudoJob,
   type UpdatePlayerUserGroupJob,
   type UpdateDiscordTeamRoleJob,
   type MainClientUploadScreenshotJob,
+  type DiscordGuildSummary,
 } from './schemas.js';
 import { v4 as uuidv4 } from 'uuid';
-import { gmLog } from '@gmod/core/utils/logger.js';
 import redis from '@gmod/infra-redis';
 
 // Queues
@@ -22,6 +48,7 @@ const discordUpdatePseudoQueue = new Queue('discord-updatePseudo', { connection 
 const discordUpdateGroupQueue = new Queue('discord-updateGroup', { connection });
 const discordUpdateTeamRoleQueue = new Queue('discord-updateTeamRole', { connection });
 const discordMainClientOpsQueue = new Queue('discord-mainClientOps', { connection });
+const discordGuildOpsQueue = new Queue('discord-guildOps', { connection });
 
 function getReplyKey(correlationId: string): string {
   return `bullmq:reply:${correlationId}`;
@@ -63,9 +90,8 @@ export async function enqueueUpdateGuildUserPseudo(
       removeOnComplete: true,
     });
 
-    gmLog('bullmq', `Queued updatePseudo for ${data.steamID64} on server ${data.serverID}`);
   } catch (error) {
-    gmLog('bullmq', `Failed to queue updatePseudo: ${(error as Error).message}`);
+    console.error(`[bullmq] Failed to queue updatePseudo: ${(error as Error).message}`);
     throw error;
   }
 }
@@ -90,9 +116,8 @@ export async function enqueueUpdatePlayerUserGroup(
       removeOnComplete: true,
     });
 
-    gmLog('bullmq', `Queued updateGroup for ${data.steamID64} on server ${data.serverID}`);
   } catch (error) {
-    gmLog('bullmq', `Failed to queue updateGroup: ${(error as Error).message}`);
+    console.error(`[bullmq] Failed to queue updateGroup: ${(error as Error).message}`);
     throw error;
   }
 }
@@ -117,9 +142,8 @@ export async function enqueueUpdateDiscordTeamRole(
       removeOnComplete: true,
     });
 
-    gmLog('bullmq', `Queued updateTeamRole for ${data.steamID64} on server ${data.serverID}`);
   } catch (error) {
-    gmLog('bullmq', `Failed to queue updateTeamRole: ${(error as Error).message}`);
+    console.error(`[bullmq] Failed to queue updateTeamRole: ${(error as Error).message}`);
     throw error;
   }
 }
@@ -171,4 +195,331 @@ export async function enqueueMainClientUploadScreenshot(
   return reply.discordUrl;
 }
 
-export { discordUpdatePseudoQueue, discordUpdateGroupQueue, discordUpdateTeamRoleQueue, discordMainClientOpsQueue };
+export async function enqueueMainClientFetchUser(
+  discordID: string,
+  timeoutMs = 5000,
+): Promise<{ id: string; username: string; displayName: string; avatarURL: string | null } | null> {
+  const correlationId = uuidv4();
+  const payload = MainClientFetchUserJobSchema.parse({
+    discordID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordMainClientOpsQueue.add('mainClientFetchUser', payload, {
+    priority: 9,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(correlationId, (value) => MainClientFetchUserReplySchema.parse(value), timeoutMs);
+  return reply.user;
+}
+
+export async function enqueueMainClientSyncPremiumRoles(timeoutMs = 10000): Promise<boolean> {
+  const correlationId = uuidv4();
+  const payload = MainClientSyncPremiumRolesJobSchema.parse({
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordMainClientOpsQueue.add('mainClientSyncPremiumRoles', payload, {
+    priority: 5,
+    attempts: 1,
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => MainClientSyncPremiumRolesReplySchema.parse(value),
+    timeoutMs,
+  );
+  return reply.synced;
+}
+
+export async function enqueueMainClientSetPresence(
+  activityName: string,
+  activityType = 3,
+  timeoutMs = 7000,
+): Promise<boolean> {
+  const correlationId = uuidv4();
+  const payload = MainClientSetPresenceJobSchema.parse({
+    activityName,
+    activityType,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordMainClientOpsQueue.add('mainClientSetPresence', payload, {
+    priority: 5,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(correlationId, (value) => MainClientSetPresenceReplySchema.parse(value), timeoutMs);
+  return reply.updated;
+}
+
+export async function enqueueDiscordGuildSnapshot(guildID: string, timeoutMs = 6000): Promise<DiscordGuildSummary | null> {
+  const correlationId = uuidv4();
+  const payload = DiscordGuildSnapshotJobSchema.parse({
+    guildID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordGuildOpsQueue.add('guildSnapshot', payload, {
+    priority: 9,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(correlationId, (value) => DiscordGuildSnapshotReplySchema.parse(value), timeoutMs);
+  return reply.guild;
+}
+
+export async function enqueueDiscordGuildVerifyUser(
+  guildID: string,
+  userID: string,
+  timeoutMs = 7000,
+): Promise<boolean> {
+  const correlationId = uuidv4();
+  const payload = DiscordGuildVerifyUserJobSchema.parse({
+    guildID,
+    userID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordGuildOpsQueue.add('guildVerifyUser', payload, {
+    priority: 7,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(correlationId, (value) => DiscordGuildVerifyUserReplySchema.parse(value), timeoutMs);
+  return reply.verified;
+}
+
+export async function enqueueDiscordGuildRunVerificationCheck(guildID: string, timeoutMs = 15000): Promise<number> {
+  const correlationId = uuidv4();
+  const payload = DiscordGuildRunVerificationCheckJobSchema.parse({
+    guildID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordGuildOpsQueue.add('guildRunVerificationCheck', payload, {
+    priority: 6,
+    attempts: 1,
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordGuildRunVerificationCheckReplySchema.parse(value),
+    timeoutMs,
+  );
+  return reply.processed;
+}
+
+export async function enqueueDiscordCreateVerificationMessage(
+  guildID: string,
+  channelID: string,
+  timeoutMs = 10000,
+): Promise<{ guildID: string; channelID: string; messageID: string } | null> {
+  const correlationId = uuidv4();
+  const payload = DiscordCreateVerificationMessageJobSchema.parse({
+    guildID,
+    channelID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordGuildOpsQueue.add('createVerificationMessage', payload, {
+    priority: 7,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordCreateVerificationMessageReplySchema.parse(value),
+    timeoutMs,
+  );
+
+  if (reply.error) {
+    throw new Error(reply.error);
+  }
+
+  return reply.verifyMessage;
+}
+
+export async function enqueueDiscordDeleteVerificationMessage(
+  guildID: string,
+  channelID: string,
+  messageID: string,
+  timeoutMs = 7000,
+): Promise<boolean> {
+  const correlationId = uuidv4();
+  const payload = DiscordDeleteVerificationMessageJobSchema.parse({
+    guildID,
+    channelID,
+    messageID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordGuildOpsQueue.add('deleteVerificationMessage', payload, {
+    priority: 7,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordDeleteVerificationMessageReplySchema.parse(value),
+    timeoutMs,
+  );
+  return reply.deleted;
+}
+
+export async function enqueueDiscordGuildBotClientInfo(
+  guildID: string,
+  timeoutMs = 7000,
+): Promise<{ id: string; username: string; avatar: string | null; custom: boolean; onGuild: boolean } | null> {
+  const correlationId = uuidv4();
+  const payload = DiscordGuildBotClientInfoJobSchema.parse({
+    guildID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordGuildOpsQueue.add('guildBotClientInfo', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordGuildBotClientInfoReplySchema.parse(value),
+    timeoutMs,
+  );
+  return reply.botInfo;
+}
+
+export async function enqueueDiscordGuildReloadBotInstance(guildID: string, timeoutMs = 10000): Promise<boolean> {
+  const correlationId = uuidv4();
+  const payload = DiscordGuildReloadBotInstanceJobSchema.parse({
+    guildID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordGuildOpsQueue.add('guildReloadBotInstance', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordGuildReloadBotInstanceReplySchema.parse(value),
+    timeoutMs,
+  );
+  return reply.reloaded;
+}
+
+export async function enqueueDiscordGuildUpdateBotProfile(
+  data: { guildID: string; username?: string; avatar?: string },
+  timeoutMs = 10000,
+): Promise<{ updated: boolean; error?: string }> {
+  const correlationId = uuidv4();
+  const payload = DiscordGuildUpdateBotProfileJobSchema.parse({
+    ...data,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordGuildOpsQueue.add('guildUpdateBotProfile', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordGuildUpdateBotProfileReplySchema.parse(value),
+    timeoutMs,
+  );
+  return {
+    updated: reply.updated,
+    error: reply.error,
+  };
+}
+
+export async function enqueueDiscordGuildSyncBan(
+  guildID: string,
+  oldDiscordIDs: string[],
+  newDiscordID: string,
+  timeoutMs = 7000,
+): Promise<boolean> {
+  const correlationId = uuidv4();
+  const payload = DiscordGuildSyncBanJobSchema.parse({
+    guildID,
+    oldDiscordIDs,
+    newDiscordID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordGuildOpsQueue.add('guildSyncBan', payload, {
+    priority: 7,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(correlationId, (value) => DiscordGuildSyncBanReplySchema.parse(value), timeoutMs);
+  return reply.synced;
+}
+
+export async function enqueueDiscordGuildAdmins(
+  guildID: string,
+  timeoutMs = 7000,
+): Promise<Array<{ id: string; name: string; avatar: string | null }>> {
+  const correlationId = uuidv4();
+  const payload = DiscordGuildAdminsJobSchema.parse({
+    guildID,
+    correlationId,
+    timestamp: new Date(),
+  });
+
+  await discordGuildOpsQueue.add('guildAdmins', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  });
+
+  const reply = await waitForReply(correlationId, (value) => DiscordGuildAdminsReplySchema.parse(value), timeoutMs);
+  return reply.admins;
+}
+
+export {
+  discordUpdatePseudoQueue,
+  discordUpdateGroupQueue,
+  discordUpdateTeamRoleQueue,
+  discordMainClientOpsQueue,
+  discordGuildOpsQueue,
+};
