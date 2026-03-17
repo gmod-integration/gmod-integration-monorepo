@@ -1,0 +1,11 @@
+node_modules
+dist
+.turbo
+coverage
+logs
+
+# package manager locks
+bun.lock
+
+# generated code
+packages/infra-prisma/generated
