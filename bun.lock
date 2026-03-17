@@ -15,6 +15,7 @@
         "@gmod/infra-redis": "workspace:*",
         "@gmod/infra-steam": "workspace:*",
         "@gmod/infra-websocket": "workspace:*",
+        "@gmod/schema": "workspace:*",
         "@prisma/adapter-mariadb": "^7.5.0",
         "@prisma/client": "^7.5.0",
         "@sentry/cli": "^2.58.5",
@@ -98,9 +99,9 @@
       "version": "1.0.0",
       "dependencies": {
         "@gmod/infra-redis": "workspace:*",
+        "@gmod/schema": "workspace:*",
         "bullmq": "^5.71.0",
         "uuid": "^9.0.1",
-        "zod": "^3.25.76",
       },
     },
     "packages/infra-minio": {
@@ -154,6 +155,14 @@
     "packages/locales": {
       "name": "@gmod/locales",
       "version": "1.0.0",
+    },
+    "packages/schema": {
+      "name": "@gmod/schema",
+      "version": "1.0.0",
+      "dependencies": {
+        "zod": "^3.25.76",
+        "zod-openapi": "^4.2.4",
+      },
     },
   },
   "packages": {
@@ -350,6 +359,8 @@
     "@gmod/infra-websocket": ["@gmod/infra-websocket@workspace:packages/infra-websocket"],
 
     "@gmod/locales": ["@gmod/locales@workspace:packages/locales"],
+
+    "@gmod/schema": ["@gmod/schema@workspace:packages/schema"],
 
     "@hono/node-server": ["@hono/node-server@1.19.9", "", { "peerDependencies": { "hono": "^4" } }, "sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw=="],
 

@@ -1,5 +1,5 @@
 import { GmodCaptureData } from './GmodCaptureData.js';
-import { GmodScreenshotInput, GmodScreenshotSchema } from '../../schemas/gmod/GmodScreenshotSchema.js';
+import { GmodScreenshotInput, GmodScreenshotSchema } from '@gmod/schema/gmod/GmodScreenshotSchema.js';
 import { GmodPlayer } from './GmodPlayers.js';
 
 export class GmodScreenshot {

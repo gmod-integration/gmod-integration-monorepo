@@ -1,4 +1,4 @@
-import { ServerInput, ServerSchema } from '../../schemas/db/ServerSchema.js';
+import { ServerInput, ServerSchema } from '@gmod/schema/db/ServerSchema.js';
 
 export class Server {
   public readonly token: string;

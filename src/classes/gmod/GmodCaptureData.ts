@@ -1,4 +1,4 @@
-import { GmodCaptureDataInput, GmodCaptureDataSchema } from '../../schemas/gmod/GmodCaptureDataSchema.js';
+import { GmodCaptureDataInput, GmodCaptureDataSchema } from '@gmod/schema/gmod/GmodCaptureDataSchema.js';
 
 export class GmodCaptureData {
   public readonly w: number;

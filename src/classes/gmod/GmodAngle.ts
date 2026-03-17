@@ -1,4 +1,4 @@
-import { GmodAngleInput, GmodAngleSchema } from '../../schemas/gmod/GmodAngleSchema.js';
+import { GmodAngleInput, GmodAngleSchema } from '@gmod/schema/gmod/GmodAngleSchema.js';
 
 export class GmodAngle {
   public readonly p: number;

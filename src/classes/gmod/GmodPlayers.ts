@@ -1,7 +1,7 @@
 import { GmodAngle } from './GmodAngle.js';
 import { GmodPosition } from './GmodPosition.js';
 import { GmodTeam } from './GmodTeam.js';
-import { GmodPlayerInput, GmodPlayerSchema } from '../../schemas/gmod/GmodPlayerSchema.js';
+import { GmodPlayerInput, GmodPlayerSchema } from '@gmod/schema/gmod/GmodPlayerSchema.js';
 import { GmodWeapon } from './GmodWeapon.js';
 
 export class GmodPlayer {

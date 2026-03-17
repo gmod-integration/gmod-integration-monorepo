@@ -1,5 +1,5 @@
 import { GmodPlayer } from './GmodPlayers.js';
-import { GmodServerInput, GmodServerSchema } from '../../schemas/gmod/GmodServerSchema.js';
+import { GmodServerInput, GmodServerSchema } from '@gmod/schema/gmod/GmodServerSchema.js';
 
 export class GmodServer {
   public readonly hostname: string;

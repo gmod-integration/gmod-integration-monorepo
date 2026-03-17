@@ -1,4 +1,4 @@
-import { GmodErrorsInput, GmodErrorsSchema } from '../../schemas/gmod/GmodErrorsSchema.js';
+import { GmodErrorsInput, GmodErrorsSchema } from '@gmod/schema/gmod/GmodErrorsSchema.js';
 import { mongoClient } from '@gmod/infra-mongo/index.js';
 import { Query } from '../db/Query.js';
 

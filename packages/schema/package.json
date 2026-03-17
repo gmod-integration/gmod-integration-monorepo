@@ -1,0 +1,16 @@
+{
+  "name": "@gmod/schema",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./bullmq.js": "./src/bullmq.ts",
+    "./db/*.js": "./src/db/*.ts",
+    "./gmod/*.js": "./src/gmod/*.ts",
+    "./server/*.js": "./src/server/*.ts"
+  },
+  "dependencies": {
+    "zod": "^3.25.76",
+    "zod-openapi": "^4.2.4"
+  }
+}
