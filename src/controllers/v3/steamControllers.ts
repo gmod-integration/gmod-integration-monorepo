@@ -1,4 +1,4 @@
-import { ConfigServer } from '../../classes/config/Config.js';
+import { ConfigServer } from '@gmod/config/index.js';
 import axios from 'axios';
 import { gmLog } from '../../utils/logger.js';
 import { NextFunction, Request, Response } from 'express';

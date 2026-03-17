@@ -1,5 +1,5 @@
 import { getRandomDiscordRelay } from '../../utils/tools.js';
-import { ConfigDiscord, ConfigServer } from '../../classes/config/Config.js';
+import { ConfigDiscord, ConfigServer } from '@gmod/config/index.js';
 import { EmbedBuilder } from 'discord.js';
 import { getSteamUserAvatarLarge } from '@gmod/infra-steam/index.js';
 import { v4 as uuidv4 } from 'uuid';

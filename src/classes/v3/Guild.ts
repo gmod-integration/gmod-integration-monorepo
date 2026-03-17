@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ConfigDiscord } from '../config/Config.js';
+import { ConfigDiscord } from '@gmod/config/index.js';
 import redis from '@gmod/infra-redis/index.js';
 import { getServersFromDiscordGuildID } from './Server.js';
 import { getGuildClient, getMainClient, loadGuildBotInstance } from '../../discord/index.js';

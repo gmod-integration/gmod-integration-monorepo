@@ -1,5 +1,5 @@
 import { getEmojis } from 'unicode-emoji';
-import { ConfigServer } from '../classes/config/Config.js';
+import { ConfigServer } from '@gmod/config/index.js';
 import prisma from '@gmod/infra-prisma/index.js';
 import { Request, Response } from 'express';
 

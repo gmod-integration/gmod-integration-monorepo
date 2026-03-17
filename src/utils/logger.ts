@@ -1,4 +1,4 @@
-import { ConfigDiscord, ConfigServer } from '../classes/config/Config.js';
+import { ConfigDiscord, ConfigServer } from '@gmod/config/index.js';
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
 import { getRandomDiscordRelay, ipGetIP } from './tools.js';
 import { getTranslate } from './localizations.js';

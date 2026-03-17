@@ -2,7 +2,7 @@ import { ActionRowBuilder, ButtonBuilder, ButtonInteraction, ButtonStyle, EmbedB
 import { getTranslate } from '../../utils/localizations.js';
 import { getServerFromID, Server } from '../../classes/v3/Server.js';
 import prisma from '@gmod/infra-prisma/index.js';
-import { ConfigDiscord } from '../../classes/config/Config.js';
+import { ConfigDiscord } from '@gmod/config/index.js';
 
 export async function getServerUserWarn(
   serverID: string,

@@ -3,7 +3,7 @@ import { gmLog } from '../../utils/logger.js';
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, Guild, GuildMember, User } from 'discord.js';
 import { ButtonConnect, ButtonDiscordSupport, ButtonVerificationWebsite, ButtonVerify } from './buttons.js';
 import { getCurrencyByLang, getEmojiVersion } from '../../utils/tools.js';
-import { ConfigDiscord, ConfigServer } from '../../classes/config/Config.js';
+import { ConfigDiscord, ConfigServer } from '@gmod/config/index.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { dateToDiscordTimestamp, getServerChart, getTrustRank, secToTime } from './index.js';
 import { Server } from '../../classes/v3/Server.js';

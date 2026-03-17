@@ -7,7 +7,7 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { getTranslate } from '../../../utils/localizations.js';
-import { ConfigServer } from '../../../classes/config/Config.js';
+import { ConfigServer } from '@gmod/config/index.js';
 import prisma from '@gmod/infra-prisma/index.js';
 
 export default {

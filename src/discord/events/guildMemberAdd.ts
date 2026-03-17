@@ -1,4 +1,4 @@
-import { ConfigDiscord } from '../../classes/config/Config.js';
+import { ConfigDiscord } from '@gmod/config/index.js';
 import { addAutoRoleToUser, updateGuildStat, verifyUser } from '../../models/v3/discordModels.js';
 import { gmLog } from '../../utils/logger.js';
 import { getNotVerifiedMessage } from '../utils/messages.js';

@@ -1,5 +1,5 @@
 // Config
-import { ConfigServer } from 'src/classes/config/Config.js';
+import { ConfigServer } from '@gmod/config/index.js';
 import { testUser } from './config.test.js';
 
 export function testURL(path: string): string {

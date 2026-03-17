@@ -1,6 +1,6 @@
 import { getSteamUserAvatarLarge } from '@gmod/infra-steam/index.js';
 import { getRandomDiscordRelay } from '../../utils/tools.js';
-import { ConfigDiscord } from '../../classes/config/Config.js';
+import { ConfigDiscord } from '@gmod/config/index.js';
 import { Server } from '../../classes/v3/Server.js';
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js';
 import prisma from '@gmod/infra-prisma/index.js';

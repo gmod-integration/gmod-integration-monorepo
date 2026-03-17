@@ -1,5 +1,5 @@
 import fs from 'fs';
-import { ConfigServer } from '../../classes/config/Config.js';
+import { ConfigServer } from '@gmod/config/index.js';
 import archiver from 'archiver';
 import { gmLog } from '../../utils/logger.js';
 import { User } from '../../classes/v3/User.js';
