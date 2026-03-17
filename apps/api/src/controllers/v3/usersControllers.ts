@@ -1,5 +1,5 @@
-import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js';
-import { createServer, getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js';
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js';
+import { getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js';
 import { ConfigDiscord } from '@gmod/config';
 import {
   addAutoRoleToUser,
@@ -12,108 +12,64 @@ import {
   saveUserPanel,
   verifyUser,
 } from '@gmod/domain-guild/discordModels.js';
-import { badArgument, generateToken, todoControllers } from '@gmod/core/utils/tools.js';
+import { badArgument, todoControllers } from '@gmod/core/utils/tools.js';
 import { getVerificationGuildMessage } from '@/discord/utils/messages.js';
 import moment from 'moment';
 import { getUserDataGRPD } from '@gmod/domain-compliance/gdrp.js';
 import { getGuildClient } from '@/discord/index.js';
-import { enqueueMainClientHasGuild } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
 import { NextFunction, Request, Response } from 'express';
-import { getLogsByServer, getTotalLogsByServer } from '@gmod/core/database/gm_server_logs.js';
+import {
+  processCreateNewServer,
+  processDeleteAutoRoles,
+  processDeleteGmodPurchase,
+  processDeleteGmodToDiscordFilter,
+  processDeleteServerLogsTrigger,
+  processDeleteServerPseudo,
+  processDeleteUserSession,
+  processGetAdminInformations,
+  processGetAutoRoles,
+  processGetProfile,
+  processGetScreenshotsList,
+  processGetServerLogs,
+  processGetServerPlayers,
+  processGetServerWarns,
+  processGetUserGmodStorePurchases,
+  processGetUserSessions,
+  processLogOut,
+  processPatchUserNotifications,
+  processPostAutoRoles,
+  processPostGmodPurchase,
+  processPostServerLogsTrigger,
+  processPostUserStartVerification,
+  processPutGmodToDiscordFilter,
+  processPutPlayerBypassMaintenance,
+  processPutServerLogsTrigger,
+  processPutServerPseudo,
+} from '@gmod/core/models/v3/usersControllerModels.js';
 import { Guild } from '@gmod/domain-guild/Guild.js';
 
 export async function getProfile(req: Request, res: Response) {
-  const { steamID64, discordID } = req.query;
-
-  if (discordID) {
-    const user = await getUserFromDiscordID(discordID as string);
-    if (!user) {
-      return res.status(404).send({
-        error: 'User not found',
-      });
-    }
-    return res.send(user);
-  }
-
-  if (steamID64) {
-    const user = await getUserFromSteamID64(steamID64 as string);
-    if (!user) {
-      return res.status(404).send({
-        error: 'User not found',
-      });
-    }
-    return res.send(user);
-  }
-
-  return res.status(400).send({
-    error: 'Missing required query parameter',
-  });
+  const result = await processGetProfile(req.query.steamID64, req.query.discordID);
+  return res.status(result.status).send(result.body);
 }
 
 export async function getUserSessions(req: Request, res: Response) {
-  const { discordID } = req.params;
-  const sessions = await prisma.gm_panelToken.findMany({
-    where: {
-      revoke: false,
-      discordID,
-    },
-  });
-
-  return res.send(sessions || []);
+  const result = await processGetUserSessions(String(req.params.discordID));
+  return res.status(result.status).send(result.body);
 }
 
 export async function deleteUserSession(req: Request, res: Response) {
   const { discordID, sessionID } = req.params;
-  const session = await prisma.gm_panelToken.findFirst({
-    where: {
-      discordID,
-      id: sessionID,
-      revoke: false,
-    },
-  });
-
-  if (!session) {
-    return res.status(404).send({
-      error: 'Session not found',
-    });
-  }
-
-  await prisma.gm_panelToken.update({
-    where: {
-      id: sessionID,
-    },
-    data: {
-      revoke: true,
-    },
-  });
-
-  return res.send(session || {});
+  const result = await processDeleteUserSession(String(discordID), String(sessionID));
+  return res.status(result.status).send(result.body);
 }
 
 export async function logOut(req: Request, res: Response) {
   const panelUser = req.panelUser!;
-  const sessionToken = await prisma.gm_panelToken.findFirst({
-    where: {
-      discordID: panelUser.discordID,
-      accessToken: panelUser.panelToken.token,
-      revoke: false,
-    },
-  });
-
-  if (sessionToken) {
-    await prisma.gm_panelToken.update({
-      where: {
-        id: sessionToken.id,
-      },
-      data: {
-        revoke: true,
-      },
-    });
-  }
-
-  return res.status(200).json(sessionToken || {});
+  const result = await processLogOut(panelUser.discordID, panelUser.panelToken.token);
+  return res.status(result.status).json(result.body);
 }
 
 export async function findCurrentUser(req: Request, res: Response) {
@@ -277,19 +233,8 @@ export async function findServerStatus(req: Request, res: Response) {
 }
 
 export async function createNewServer(req: Request, res: Response) {
-  const guild = req.guild!;
-
-  const isPremium = await guild.isPremium();
-  const servers = await guild.getServers();
-
-  if (servers.length >= 1 && !isPremium) {
-    return res.status(403).send({
-      error: 'Server limit reached',
-    });
-  }
-
-  const newServer = await createServer(guild.id);
-  return res.send(newServer);
+  const result = await processCreateNewServer(req.guild!);
+  return res.status(result.status).send(result.body);
 }
 
 export async function getGuildLinks(req: Request, res: Response) {
@@ -604,280 +549,56 @@ export async function postGmodToDiscordFilter(req: Request, res: Response) {
 export async function putGmodToDiscordFilter(req: Request, res: Response) {
   const { filterID } = req.params;
   const server = req.server!;
-  const { element, operator, trigger, action, active } = req.body;
-
-  if (badArgument([element, operator, trigger, action, active])) {
-    return res.status(400).send({
-      error: 'missing arguments',
-    });
-  }
-
-  const filter = await prisma.gm_server_sync_chat_filter.findFirst({
-    where: {
-      id: Number(filterID),
-      serverID: server.id,
-    },
-  });
-
-  if (!filter) {
-    return res.status(404).send({
-      error: 'filter not found',
-    });
-  }
-
-  const updatedFilter = await prisma.gm_server_sync_chat_filter.update({
-    where: {
-      id: Number(filterID),
-    },
-    data: {
-      element: element !== undefined ? element : filter.element,
-      operator: operator !== undefined ? operator : filter.operator,
-      trigger: trigger !== undefined ? trigger : filter.trigger,
-      action: action !== undefined ? action : filter.action,
-      active: active !== undefined ? active : filter.active,
-    },
-  });
-
-  await redis.del(`server:${server.id}:gmodToDiscordFilter`);
-  return res.send(updatedFilter);
+  const result = await processPutGmodToDiscordFilter(server, filterID, req.body);
+  return res.status(result.status).send(result.body);
 }
 
 export async function deleteGmodToDiscordFilter(req: Request, res: Response) {
   const { filterID } = req.params;
   const server = req.server!;
-  const filter = await prisma.gm_server_sync_chat_filter.findFirst({
-    where: {
-      id: Number(filterID),
-      serverID: server.id,
-    },
-  });
-
-  if (!filter) {
-    return res.status(404).send({
-      error: 'filter not found',
-    });
-  }
-
-  await redis.del(`server:${server.id}:gmodToDiscordFilter`);
-  // await filter.destroy();
-  await prisma.gm_server_sync_chat_filter.delete({
-    where: {
-      id: Number(filterID),
-    },
-  });
-  return res.send(filter);
+  const result = await processDeleteGmodToDiscordFilter(server, filterID);
+  return res.status(result.status).send(result.body);
 }
 
 export async function getServerPlayers(req: Request, res: Response) {
   const server = req.server!;
-
-  // those are optional query params and default values
-  const limit: number = (req.query.limit && Number(req.query.limit)) || 50;
-  const offset: number = (req.query.offset && Number(req.query.offset)) || 0;
-  const order: string = (req.query.order && String(req.query.order)) || 'desc';
-  const searchColum: string = (req.query.searchColum && String(req.query.searchColum)) || 'total_time';
-  const search: string = (req.query.search && String(req.query.search)) || '';
-
-  // check if searchColum query is valid
-  const allowedSearch = ['total_time', 'total_connect', 'rank', 'name', 'bypassMaintenance'];
-  if (!allowedSearch.includes(searchColum)) {
-    return res.status(400).send({
-      error: 'invalid searchColum query',
-    });
-  }
-  const allowedOrder = ['asc', 'desc'];
-  if (!allowedOrder.includes(order)) {
-    return res.status(400).send({
-      error: 'invalid order query',
-    });
-  }
-
-  // reply data, query {limit, offset, order, total}
-  const players = await prisma.gm_server_stat.findMany({
-    where: {
-      server_id: server.id,
-      OR: [
-        {
-          name: {
-            contains: search,
-          },
-        },
-        {
-          steam_id: {
-            contains: search,
-          },
-        },
-        {
-          rank: {
-            contains: search,
-          },
-        },
-      ],
-    },
-    orderBy: {
-      [searchColum]: order,
-    },
-    take: limit,
-    skip: offset,
+  const result = await processGetServerPlayers(server.id, {
+    limit: req.query.limit,
+    offset: req.query.offset,
+    order: req.query.order,
+    searchColum: req.query.searchColum,
+    search: req.query.search,
   });
-
-  const total = await prisma.gm_server_stat.count({
-    where: {
-      server_id: server.id,
-      OR: [
-        {
-          name: {
-            contains: search,
-          },
-        },
-        {
-          steam_id: {
-            contains: search,
-          },
-        },
-        {
-          rank: {
-            contains: search,
-          },
-        },
-      ],
-    },
-  });
-
-  return res.send({
-    rows: players,
-    query: {
-      limit: limit,
-      offset: offset,
-      order: order,
-      total: total,
-      searchColum: searchColum,
-    },
-  });
+  return res.status(result.status).send(result.body);
 }
 
 export async function putPlayerBypassMaintenance(req: Request, res: Response) {
   const server = req.server!;
   const { playerID } = req.params;
-  const { bypassMaintenance } = req.body;
-
-  if (badArgument([bypassMaintenance])) {
-    return res.status(400).send({
-      error: 'missing arguments',
-    });
-  }
-
-  const player = await server.getPlayerStats(playerID);
-  if (!player) {
-    return res.status(404).send({
-      error: 'player not found',
-    });
-  }
-
-  player.bypassMaintenance = bypassMaintenance !== undefined ? bypassMaintenance : player.bypassMaintenance;
-
-  const editPlayer = await prisma.gm_server_stat.update({
-    where: {
-      server_id_steam_id: {
-        steam_id: player.steam_id,
-        server_id: server.id,
-      },
-    },
-    data: {
-      bypassMaintenance: player.bypassMaintenance,
-    },
-  });
-  return res.send(editPlayer);
+  const result = await processPutPlayerBypassMaintenance(server, String(playerID), req.body.bypassMaintenance);
+  return res.status(result.status).send(result.body);
 }
 
 export async function postUserStartVerification(req: Request, res: Response) {
-  const { discordID } = req.params;
-  const user = await prisma.gm_user.findFirst({
-    where: {
-      id: discordID,
-    },
-  });
-
-  if (!user) {
-    return res.status(404).send({
-      error: 'User not found',
-    });
-  }
-
-  const newUser = await prisma.gm_user.update({
-    where: {
-      id: discordID,
-    },
-    data: {
-      token: generateToken(16),
-      token_expires: new Date(Date.now() + 1000 * 60 * 7),
-    },
-  });
-
-  return res.json({
-    token: newUser.token,
-    expires: newUser.token_expires,
-  });
+  const result = await processPostUserStartVerification(String(req.params.discordID));
+  return res.status(result.status).json(result.body);
 }
 
 export async function postAutoRoles(req: Request, res: Response) {
   const { guildID, roleID } = req.params;
-  const existingAutoRole = await prisma.gm_guild_auto_roles.findFirst({
-    where: {
-      guildID,
-      roleID,
-    },
-  });
-
-  if (existingAutoRole) {
-    return res.status(409).send({
-      error: 'Auto role already exists',
-    });
-  }
-
-  const autoRole = await prisma.gm_guild_auto_roles.create({
-    data: {
-      guildID,
-      roleID,
-    },
-  });
-
-  return res.send(autoRole);
+  const result = await processPostAutoRoles(String(guildID), String(roleID));
+  return res.status(result.status).send(result.body);
 }
 
 export async function deleteAutoRoles(req: Request, res: Response) {
   const { guildID, roleID } = req.params;
-  const autoRole = await prisma.gm_guild_auto_roles.findFirst({
-    where: {
-      guildID,
-      roleID,
-    },
-  });
-
-  if (!autoRole) {
-    return res.status(404).send({
-      error: 'Auto role not found',
-    });
-  }
-
-  await prisma.gm_guild_auto_roles.delete({
-    where: {
-      roleID,
-      guildID,
-    },
-  });
-  return res.send(autoRole);
+  const result = await processDeleteAutoRoles(String(guildID), String(roleID));
+  return res.status(result.status).send(result.body);
 }
 
 export async function getAutoRoles(req: Request, res: Response) {
-  const { guildID } = req.params;
-  const autoRoles = await prisma.gm_guild_auto_roles.findMany({
-    where: {
-      guildID,
-    },
-  });
-
-  return res.send(autoRoles || []);
+  const result = await processGetAutoRoles(String(req.params.guildID));
+  return res.status(result.status).send(result.body);
 }
 
 export async function createVerificationMessage(req: Request, res: Response) {
@@ -1213,47 +934,8 @@ export async function getAdminGuilds(req: Request, res: Response) {
 }
 
 export async function getAdminInformations(req: Request, res: Response) {
-  let data: any = {
-    guild: {},
-    server: {},
-    user: {},
-  };
-  // Guild
-  data.guild.total = await prisma.gm_guild.count();
-  data.guild.language = (
-    await prisma.gm_guild.groupBy({
-      by: ['language'],
-      _count: {
-        language: true,
-      },
-    })
-  ).map((lang) => ({
-    label: lang.language,
-    value: lang._count.language,
-  }));
-  // Server
-  data.server.total = await prisma.gm_server.count();
-  // User
-  data.user.totalDiscordMembers =
-    (
-      await prisma.gm_guild.aggregate({
-        _sum: {
-          member: true,
-        },
-      })
-    )._sum.member || 0;
-  data.user.totalDiscordUser = await prisma.gm_user.count();
-  data.user.totalSteamUser = await prisma.users.count();
-  data.user.totalVerified = await prisma.gm_user.count({
-    where: {
-      steam: {
-        not: null,
-      },
-    },
-  });
-  data.user.totalUnverified = data.user.totalDiscordMembers - data.user.totalVerified;
-  data.user.total = data.user.totalDiscordMembers + data.user.totalSteamUser;
-  return res.json(data);
+  const result = await processGetAdminInformations();
+  return res.status(result.status).json(result.body);
 }
 
 export async function getServerRoles(req: Request, res: Response) {
@@ -1454,76 +1136,13 @@ export async function patchGuildBotInstance(req: Request, res: Response) {
 
 export async function postGmodPurchase(req: Request, res: Response) {
   const { guildID, discordID } = req.params;
-  const user = await getUserFromDiscordID(discordID);
-  if (!user || !user.getSteamID64()) {
-    return res.status(404).send({
-      error: 'User not found or not linked',
-    });
-  }
-
-  const guild = req.guild!;
-  const purchase = await prisma.gm_gmodstore_purchases.findFirst({
-    where: {
-      steamID64: user.getSteamID64()!,
-    },
-  });
-
-  if (!purchase) {
-    return res.status(404).send({
-      error: 'Purchase not found',
-    });
-  }
-
-  await prisma.gm_gmodstore_purchases.update({
-    where: {
-      steamID64: user.getSteamID64()!,
-    },
-    data: {
-      guild: guildID,
-    },
-  });
-  return res.send((await guild.getBotClientInfo(req.panelUser!.user)) || {});
+  const result = await processPostGmodPurchase(String(guildID), String(discordID), req.guild!, req.panelUser!);
+  return res.status(result.status).send(result.body);
 }
 
 export async function deleteGmodPurchase(req: Request, res: Response) {
-  const { discordID } = req.params;
-  const guild = req.guild!;
-  if (!(await guild.mainBotOnGuild())) {
-    return res.status(400).send({
-      error: 'Main bot not on guild',
-    });
-  }
-
-  const user = await getUserFromDiscordID(discordID);
-  if (!user || !user.getSteamID64()) {
-    return res.status(404).send({
-      error: 'User not found or not linked',
-    });
-  }
-
-  const purchase = await prisma.gm_gmodstore_purchases.findFirst({
-    where: {
-      steamID64: user.getSteamID64()!,
-    },
-  });
-
-  if (!purchase) {
-    return res.status(404).send({
-      error: 'Purchase not found',
-    });
-  }
-
-  const savedPurchase = await prisma.gm_gmodstore_purchases.update({
-    where: {
-      steamID64: user.getSteamID64()!,
-    },
-    data: {
-      guild: '',
-      token: '',
-    },
-  });
-  await guild.reloadBotInstance();
-  return res.send(savedPurchase);
+  const result = await processDeleteGmodPurchase(String(req.params.discordID), req.guild!);
+  return res.status(result.status).send(result.body);
 }
 
 export async function putGuildBotInstance(req: Request, res: Response) {
@@ -1548,25 +1167,8 @@ export async function deleteGuildBotInstance(req: Request, res: Response) {
 }
 
 export async function getUserGmodStorePurchases(req: Request, res: Response) {
-  const { discordID } = req.params;
-  const user = await getUserFromDiscordID(discordID);
-  if (!user || !user.getSteamID64()) {
-    return res.status(404).send({
-      error: 'User not found or not linked',
-    });
-  }
-
-  let purchases: any = await prisma.gm_gmodstore_purchases.findFirst({
-    where: {
-      steamID64: user.getSteamID64()!,
-    },
-  });
-
-  if (purchases && purchases.guild) {
-    purchases.hasMainBot = await enqueueMainClientHasGuild(purchases.guild).catch(() => false);
-  }
-
-  return res.send(purchases || {});
+  const result = await processGetUserGmodStorePurchases(String(req.params.discordID));
+  return res.status(result.status).send(result.body);
 }
 
 export async function getServerPseudo(req: Request, res: Response) {
@@ -1594,61 +1196,14 @@ export async function postServerPseudo(req: Request, res: Response) {
 
 export async function putServerPseudo(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
-
-  const pseudo = await prisma.gm_server_pseudo.findFirst({
-    where: {
-      serverID,
-      id: Number(roleID),
-    },
-  });
-
-  if (!pseudo) {
-    return res.status(404).send({
-      error: 'Pseudo not found',
-    });
-  }
-
-  const { role, name, prefix, enabled } = req.body;
-
-  const updatePseudo = await prisma.gm_server_pseudo.update({
-    where: {
-      id: pseudo.id,
-      serverID,
-    },
-    data: {
-      name: name !== undefined ? name : pseudo.name,
-      prefix: prefix !== undefined ? prefix : pseudo.prefix,
-      role: role !== undefined ? role : pseudo.role,
-      enabled: enabled !== undefined ? enabled : pseudo.enabled,
-    },
-  });
-
-  return res.send(updatePseudo);
+  const result = await processPutServerPseudo(String(serverID), roleID, req.body);
+  return res.status(result.status).send(result.body);
 }
 
 export async function deleteServerPseudo(req: Request, res: Response) {
   const { serverID, roleID } = req.params;
-
-  const pseudo = await prisma.gm_server_pseudo.findFirst({
-    where: {
-      serverID,
-      id: Number(roleID),
-    },
-  });
-
-  if (!pseudo) {
-    return res.status(404).send({
-      error: 'Pseudo not found',
-    });
-  }
-
-  await prisma.gm_server_pseudo.delete({
-    where: {
-      id: pseudo.id,
-      serverID,
-    },
-  });
-  return res.send(pseudo);
+  const result = await processDeleteServerPseudo(String(serverID), roleID);
+  return res.status(result.status).send(result.body);
 }
 
 export async function getUserNotifications(req: Request, res: Response) {
@@ -1662,28 +1217,8 @@ export async function getUserNotifications(req: Request, res: Response) {
 
 export async function patchUserNotifications(req: Request, res: Response) {
   const { discordID, notificationID } = req.params;
-  const notification = await prisma.gm_users_notifications.findFirst({
-    where: {
-      id: Number(notificationID),
-      discordID,
-    },
-  });
-
-  if (!notification) {
-    return res.status(404).send({ error: 'Notification not found' });
-  }
-
-  res.json(
-    await prisma.gm_users_notifications.update({
-      where: {
-        id: notification.id,
-        discordID,
-      },
-      data: {
-        read: true,
-      },
-    }),
-  );
+  const result = await processPatchUserNotifications(String(discordID), notificationID);
+  return res.status(result.status).json(result.body);
 }
 
 export async function getUserDataRequest(req: Request, res: Response) {
@@ -1732,177 +1267,20 @@ export async function getServerReportBugs(req: Request, res: Response) {
 }
 
 export async function getServerLogs(req: Request, res: Response) {
-  const { serverID } = req.params;
-
-  const rawOffset = req.query.offset?.toString() || '0';
-  const rawLimit = req.query.limit?.toString() || '50';
-  const rawSort = req.query.sort?.toString() || 'createdAt';
-  const rawOrderBy = req.query.orderBy?.toString().toUpperCase() || 'DESC';
-
-  // 2) Parse offset & limit
-  let offset = parseInt(rawOffset, 10);
-  let limit = parseInt(rawLimit, 10);
-
-  if (isNaN(offset) || offset < 0) offset = 0;
-  if (isNaN(limit) || limit < 1) limit = 50;
-  if (limit > 500) limit = 500; // enforce a max, if you want
-
-  // 3) Dynamically fetch the columns from MariaDB
-  const allowedColumns = ['createdAt', 'updatedAt', 'id', 'data', 'playerInvolvedSteamID64', 'type', 'serverID'];
-
-  let sort = rawSort;
-  // If sort is not in the table’s columns, fallback or reject
-  if (!allowedColumns.includes(sort)) {
-    // console.warn(`Invalid sort column "${sort}", falling back to "createdAt".`);
-    return res.status(400).json({ error: 'Invalid sort column' });
-    // sort = 'createdAt';
-  }
-
-  // 4) Convert orderBy to Prisma's format
-  const orderBy = rawOrderBy === 'ASC' ? 'asc' : 'desc';
-
-  // 5) Count total warns for pagination
-  const total = await getTotalLogsByServer(serverID);
-
-  const logs = await getLogsByServer(serverID, {
-    offset,
-    limit,
-    orderBy,
-    sort,
-  });
-
-  return res.send({
-    logs,
-    query: {
-      offset,
-      limit,
-      sort,
-      // Return order in uppercase to match the front-end’s "ASC"/"DESC"
-      orderBy: orderBy.toUpperCase(),
-      total,
-    },
-  });
+  const result = await processGetServerLogs(String(req.params.serverID), req.query);
+  return res.status(result.status).send(result.body);
 }
 
 export async function getServerWarns(req: Request, res: Response) {
-  // example usage: assume you have some "server" object on req
   const server = req.server!;
-  const serverID = server.id; // or however you retrieve the ID
-
-  // 1) Extract raw query params
-  const rawOffset = req.query.offset?.toString() || '0';
-  const rawLimit = req.query.limit?.toString() || '50';
-  const rawSort = req.query.sort?.toString() || 'createdAt';
-  const rawOrderBy = req.query.orderBy?.toString().toUpperCase() || 'DESC';
-
-  // 2) Parse offset & limit
-  let offset = parseInt(rawOffset, 10);
-  let limit = parseInt(rawLimit, 10);
-
-  if (isNaN(offset) || offset < 0) offset = 0;
-  if (isNaN(limit) || limit < 1) limit = 50;
-  if (limit > 500) limit = 500; // enforce a max, if you want
-
-  // 3) Dynamically fetch the columns from MariaDB
-  const allowedColumns = ['createdAt', 'updatedAt', 'userSteamID64', 'adminSteamID64', 'reason'];
-
-  let sort = rawSort;
-  // If sort is not in the table’s columns, fallback or reject
-  if (!allowedColumns.includes(sort)) {
-    // console.warn(`Invalid sort column "${sort}", falling back to "createdAt".`);
-    return res.status(400).json({ error: 'Invalid sort column' });
-    // sort = 'createdAt';
-  }
-
-  // 4) Convert orderBy to Prisma's format
-  const orderBy = rawOrderBy === 'ASC' ? 'asc' : 'desc';
-
-  // 5) Count total warns for pagination
-  const total = await prisma.gm_server_warn.count({
-    where: {
-      serverID: serverID,
-    },
-  });
-
-  // 6) Fetch the warns with skip/take & orderBy
-  const warns = await prisma.gm_server_warn.findMany({
-    where: {
-      serverID: serverID,
-    },
-    skip: offset,
-    take: limit,
-    orderBy: {
-      [sort]: orderBy,
-    },
-  });
-
-  // 7) Shape the response
-  const warnsData = {
-    warns,
-    query: {
-      offset,
-      limit,
-      sort,
-      // Return order in uppercase to match the front-end’s "ASC"/"DESC"
-      orderBy: orderBy.toUpperCase(),
-      total,
-    },
-  };
-
-  return res.json(warnsData);
+  const result = await processGetServerWarns(server.id, req.query);
+  return res.status(result.status).json(result.body);
 }
 
 export async function getScreenshotsList(req: Request, res: Response) {
-  // example usage: assume you have some "server" object on req
   const server = req.server!;
-  const serverID = server.id; // or however you retrieve the ID
-
-  // 1) Extract raw query params
-  const rawOffset = req.query.offset?.toString() || '0';
-  const rawLimit = req.query.limit?.toString() || '50';
-  const rawSort = 'createdAt';
-  const rawOrderBy = req.query.orderBy?.toString().toUpperCase() || 'DESC';
-
-  // 2) Parse offset & limit
-  let offset = parseInt(rawOffset, 10);
-  let limit = parseInt(rawLimit, 10);
-
-  if (isNaN(offset) || offset < 0) offset = 0;
-  if (isNaN(limit) || limit < 1) limit = 50;
-  if (limit > 500) limit = 500; // enforce a max, if you want
-
-  const screenshots = await prisma.gm_server_screenshots.findMany({
-    where: {
-      serverID: serverID,
-    },
-    skip: offset,
-    take: limit,
-    orderBy: {
-      [rawSort]: rawOrderBy === 'ASC' ? 'asc' : 'desc',
-    },
-  });
-
-  // 3) Count total screenshots for pagination
-  const total = await prisma.gm_server_screenshots.count({
-    where: {
-      serverID: serverID,
-    },
-  });
-
-  // 4) Shape the response
-  const screenshotsData = {
-    screenshots,
-    query: {
-      offset,
-      limit,
-      sort: rawSort,
-      // Return order in uppercase to match the front-end’s "ASC"/"DESC"
-      orderBy: rawOrderBy.toUpperCase(),
-      total,
-    },
-  };
-
-  return res.json(screenshotsData);
+  const result = await processGetScreenshotsList(server.id, req.query);
+  return res.status(result.status).json(result.body);
 }
 
 export async function getServerLogsTrigger(req: Request, res: Response) {
@@ -1916,56 +1294,17 @@ export async function getServerLogsTrigger(req: Request, res: Response) {
 }
 
 export async function postServerLogsTrigger(req: Request, res: Response) {
-  const server = req.server!;
-  if (!(await server.isPremium())) {
-    return res.status(403).send({
-      error: 'Server is not premium',
-    });
-  }
-
-  const { action, compare, channelID, value, operator, message, log_type } = req.body;
-  const failed = badArgument([action, compare, channelID, value, operator, message, log_type]);
-  if (failed) {
-    return res.status(400).send({
-      error: 'Missing required arguments',
-    });
-  }
-
-  return res.send(await server.createLogsTrigger(action, compare, channelID, value, operator, message, log_type));
+  const result = await processPostServerLogsTrigger(req.server!, req.body);
+  return res.status(result.status).send(result.body);
 }
 
 export async function putServerLogsTrigger(req: Request, res: Response) {
-  const server = req.server!;
-  if (!(await server.isPremium())) {
-    return res.status(403).send({
-      error: 'Server is not premium',
-    });
-  }
-
   const { triggerID } = req.params;
-  let trigger_number = Number(triggerID);
-  const { action, compare, channelID, value, operator, message, log_type } = req.body;
-
-  if (badArgument([action, compare, channelID, value, operator, message, log_type])) {
-    return res.status(400).send({
-      error: 'Missing required arguments',
-    });
-  }
-
-  return res.send(
-    await server.updateLogsTrigger(trigger_number, action, compare, channelID, value, operator, message, log_type),
-  );
+  const result = await processPutServerLogsTrigger(req.server!, triggerID, req.body);
+  return res.status(result.status).send(result.body);
 }
 
 export async function deleteServerLogsTrigger(req: Request, res: Response) {
-  const server = req.server!;
-  if (!(await server.isPremium())) {
-    return res.status(403).send({
-      error: 'Server is not premium',
-    });
-  }
-
-  const { triggerID } = req.params;
-  let trigger_number = Number(triggerID);
-  return res.send(await server.deleteLogsTrigger(trigger_number));
+  const result = await processDeleteServerLogsTrigger(req.server!, req.params.triggerID);
+  return res.status(result.status).send(result.body);
 }

@@ -94,3 +94,54 @@ export async function saveGmodStorePurchase(steamID64: string, userID: string, r
     });
   }
 }
+
+export async function processGmodStoreWebhook(body: any) {
+  const userID = body?.data?.userId;
+  if (!userID) {
+    return {
+      status: 400,
+      body: { error: 'missing_arguments', args: { user_id: !!userID } },
+    };
+  }
+
+  const user = await getUser(userID);
+  if (!user || !user.data.steamId) {
+    return {
+      status: 404,
+      body: { error: 'user_not_found' },
+    };
+  }
+
+  const eventType = body?.eventType;
+  if (!eventType) {
+    return {
+      status: 400,
+      body: { error: 'missing_arguments', args: { eventType: !!eventType } },
+    };
+  }
+
+  switch (eventType) {
+    case 'product_purchase.created':
+      await saveGmodStorePurchase(user.data.steamId, userID, false);
+      break;
+    case 'product_purchase.unrevoked':
+      await saveGmodStorePurchase(user.data.steamId, userID, false);
+      break;
+    case 'product_purchase.deleted':
+      await saveGmodStorePurchase(user.data.steamId, userID, true);
+      break;
+    case 'product_purchase.revoked':
+      await saveGmodStorePurchase(user.data.steamId, userID, true);
+      break;
+    default:
+      return {
+        status: 400,
+        body: { error: 'invalid_event_type' },
+      };
+  }
+
+  return {
+    status: 200,
+    body: { success: true },
+  };
+}

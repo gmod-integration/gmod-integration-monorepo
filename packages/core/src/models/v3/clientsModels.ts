@@ -11,6 +11,31 @@ import { createBucketIfNotExists, s3 } from '@gmod/infra-minio';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { enqueueMainClientUploadScreenshot } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 
+type MissingArgumentsResponse<T extends Record<string, unknown>> = {
+  error: 'missing_arguments';
+  args: {
+    [K in keyof T]: boolean;
+  };
+};
+
+function getMissingArguments<T extends Record<string, unknown>>(
+  args: T,
+): MissingArgumentsResponse<T> | null {
+  const state = Object.fromEntries(
+    Object.entries(args).map(([key, value]) => [key, value !== undefined]),
+  ) as MissingArgumentsResponse<T>['args'];
+
+  const hasMissingArguments = Object.values(state).some((isPresent) => !isPresent);
+  if (!hasMissingArguments) {
+    return null;
+  }
+
+  return {
+    error: 'missing_arguments',
+    args: state,
+  };
+}
+
 export async function saveScreenshot(
   screenshot: string,
   captureData: any,
@@ -121,4 +146,62 @@ export async function sendScreenshotToDiscord(
   // }
 
   return { success: true };
+}
+
+export async function uploadScreenshotPayload(server: Server, payload: any) {
+  const { player, screenshot, captureData, size, title } = payload;
+  const missingArguments = getMissingArguments({
+    player,
+    screenshot,
+    captureData,
+    size,
+  });
+  if (missingArguments) {
+    return missingArguments;
+  }
+
+  const { discordUrl, filename, internUrl } = await saveScreenshot(screenshot, captureData, player, server, title);
+  await sendScreenshotToDiscord(discordUrl, internUrl, filename, player, server, title);
+  return { success: true };
+}
+
+export async function reportBugPayload(server: Server, payload: any) {
+  const { player, screenshot, description, importance, steps, expected, actual } = payload;
+  const missingArguments = getMissingArguments({
+    player,
+    description,
+    importance,
+    steps,
+    expected,
+    actual,
+  });
+  if (missingArguments) {
+    return missingArguments;
+  }
+
+  let screenshotName = '';
+  if (screenshot) {
+    const { screenshot: screenshotData, captureData, size } = screenshot;
+    if (screenshotData && captureData && size) {
+      const screenshotResult = await saveScreenshot(screenshotData, captureData, player, server, '').catch((error) => {
+        console.error(error);
+        return { internUrl: '', filename: '' };
+      });
+      screenshotName = screenshotResult.filename;
+    }
+  }
+
+  return await prisma.gm_server_report_bugs.create({
+    data: {
+      serverID: server.id,
+      steamID64: player.steamID64,
+      description,
+      status: 'open',
+      steps,
+      expected,
+      actual,
+      importance,
+      screenshot: screenshotName,
+    },
+  });
 }

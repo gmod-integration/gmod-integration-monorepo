@@ -1,13 +1,7 @@
 import { Request, Response } from 'express';
-import prisma from '@gmod/infra-prisma';
+import { getAllActivePanelUsers } from '@gmod/core/models/v3/usersAdminControllerModels.js';
 
 export async function getAllPanelUsers(req: Request, res: Response) {
-  const users = await prisma.gm_panelToken.findMany({
-    where: {
-      expirationDate: {
-        gt: new Date(),
-      },
-    },
-  });
+  const users = await getAllActivePanelUsers();
   return res.status(200).json(users);
 }
