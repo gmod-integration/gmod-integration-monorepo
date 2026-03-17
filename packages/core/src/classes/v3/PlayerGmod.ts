@@ -9,11 +9,11 @@ import { Position } from './Position.js';
 import { Angle } from './Angle.js';
 import { CustomValues } from './CustomValues.js';
 import { getTranslate } from '../../utils/localizations.js';
-import { secToTime } from '../../discord/utils/index.js';
+import { secToTime } from '@/discord/utils/index.js';
 import { Guild } from '@gmod/domain-guild/Guild.js';
 import { addAutoRoleToUser } from '@gmod/domain-guild/discordModels.js';
 import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
-import { getGuildClient } from '../../discord/index.js';
+import { getGuildClient } from '@/discord/index.js';
 import { GuildBan } from 'discord.js';
 
 export interface PlayerGmodInterface {

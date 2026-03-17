@@ -1,4 +1,4 @@
-import { gmLog } from '../../utils/logger.js';
+import { gmLog } from '@gmod/core/utils/logger.js';
 import { GuildChannel } from 'discord.js';
 import prisma from '@gmod/infra-prisma';
 

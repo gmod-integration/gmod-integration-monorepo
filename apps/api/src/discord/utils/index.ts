@@ -1,4 +1,4 @@
-import { getTranslate } from '../../utils/localizations.js';
+import { getTranslate } from '@gmod/core/utils/localizations.js';
 import { Server } from '@gmod/domain-server/Server.js';
 import prisma from '@gmod/infra-prisma';
 import { JSDOM } from 'jsdom';

@@ -1,10 +1,10 @@
-import { BaseClass } from 'src/classes/v3/BaseClass.js';
-import { generateToken } from 'src/utils/tools.js';
+import { BaseClass } from '@gmod/core/classes/v3/BaseClass.js';
+import { generateToken } from '@gmod/core/utils/tools.js';
 import { ConfigDiscord } from '@gmod/config';
 import redis from '@gmod/infra-redis';
 import { getGuildClient } from 'src/discord/index.js';
 import { getStatusMessage } from 'src/discord/utils/messages.js';
-import { gmLog } from 'src/utils/logger.js';
+import { gmLog } from '@gmod/core/utils/logger.js';
 import { ChannelType } from 'discord.js';
 import prisma from '@gmod/infra-prisma';
 import {

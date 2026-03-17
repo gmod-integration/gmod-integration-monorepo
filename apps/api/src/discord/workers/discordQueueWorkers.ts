@@ -11,7 +11,7 @@ import {
   type MainClientHasGuildJob,
   type MainClientUploadScreenshotJob,
 } from '@gmod/infra-bullmq/schemas.js';
-import { gmLog } from '@/utils/logger.js';
+import { gmLog } from '@gmod/core/utils/logger.js';
 import prisma from '@gmod/infra-prisma';
 import { getUserFromSteamID64 } from '@gmod/domain-user/User.js';
 import { getServerFromID } from '@gmod/domain-server/Server.js';

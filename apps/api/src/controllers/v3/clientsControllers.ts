@@ -1,5 +1,5 @@
-import { badArgument } from '@/utils/tools.js';
-import { saveScreenshot, sendScreenshotToDiscord } from '@/models/v3/clientsModels.js';
+import { badArgument } from '@gmod/core/utils/tools.js';
+import { saveScreenshot, sendScreenshotToDiscord } from '@gmod/core/models/v3/clientsModels.js';
 import { Request, Response } from 'express';
 import prisma from '@gmod/infra-prisma';
 

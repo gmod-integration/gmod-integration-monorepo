@@ -1,5 +1,5 @@
 import { isGlobalBan } from '@gmod/domain-moderation/bansModels.js';
-import { ipGetIP } from '@/utils/tools.js';
+import { ipGetIP } from '@gmod/core/utils/tools.js';
 import { Request, Response } from 'express';
 
 export async function isGlobalBanSomewhere(req: Request, res: Response) {

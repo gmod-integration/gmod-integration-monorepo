@@ -1,8 +1,8 @@
-import { badArgument } from '@/utils/tools.js';
-import { logServer } from '@/utils/logger.js';
+import { badArgument } from '@gmod/core/utils/tools.js';
+import { logServer } from '@gmod/core/utils/logger.js';
 import { Request, Response } from 'express';
 import prisma from '@gmod/infra-prisma';
-import { PlayerGmod } from '@/classes/v3/PlayerGmod.js';
+import { PlayerGmod } from '@gmod/core/classes/v3/PlayerGmod.js';
 
 export async function postIGSettings(req: Request, res: Response) {
   const server = req.server!;

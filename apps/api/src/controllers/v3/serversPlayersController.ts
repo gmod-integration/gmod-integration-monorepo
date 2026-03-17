@@ -1,10 +1,10 @@
-import { badArgument, ipGetIP } from '@/utils/tools.js';
-import { PlayerGmod } from '@/classes/v3/PlayerGmod.js';
+import { badArgument, ipGetIP } from '@gmod/core/utils/tools.js';
+import { PlayerGmod } from '@gmod/core/classes/v3/PlayerGmod.js';
 import {
   saveConnectionGlobalInfo,
   saveConnectionSteamInfo,
   sendPlayerSay,
-} from '@/models/v3/serversPlayersModels.js';
+} from '@gmod/core/models/v3/serversPlayersModels.js';
 import {
   enqueueUpdateGuildUserPseudo,
   enqueueUpdatePlayerUserGroup,
@@ -12,7 +12,7 @@ import {
 } from '@gmod/infra-bullmq/discordQueueAdapters.js';
 import { Request, Response } from 'express';
 import prisma from '@gmod/infra-prisma';
-import { logServer } from '@/utils/logger.js';
+import { logServer } from '@gmod/core/utils/logger.js';
 
 export async function getPlayer(req: Request, res: Response) {
   const { steamID64 } = req.params;

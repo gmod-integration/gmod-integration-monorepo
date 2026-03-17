@@ -11,7 +11,7 @@ import {
   REST,
   Routes,
 } from 'discord.js';
-import { gmLog } from '../utils/logger.js';
+import { gmLog } from '@gmod/core/utils/logger.js';
 import { ConfigDiscord, ConfigServer } from '@gmod/config';
 import { fork } from 'child_process';
 
@@ -22,13 +22,13 @@ import {
   routinePremiumRoleOfMainGuild,
   routineServerStatusRefresh,
   routineUpdateStatus,
-} from '../models/v3/mainModels.js';
+} from '@gmod/core/models/v3/mainModels.js';
 import { readdir } from 'fs/promises';
 import { getUserFromSteamID64 } from '@gmod/domain-user/User.js';
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
 import { getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js';
-import { PlayerGmod } from '../classes/v3/PlayerGmod.js';
+import { PlayerGmod } from '@gmod/core/classes/v3/PlayerGmod.js';
 import { Guild, guildSettingExists } from '@gmod/domain-guild/Guild.js';
 
 const envExtension = ConfigServer.dev ? '.ts' : '.js';

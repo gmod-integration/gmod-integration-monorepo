@@ -1,8 +1,8 @@
-// import '@/utils/instrument.js';
+// import '@gmod/core/utils/instrument.js';
 import { ConfigServer } from '@gmod/config';
-import '@/utils/update-log.js';
+import '@gmod/core/utils/update-log.js';
 import express, { NextFunction, Request, Response } from 'express';
-import { gmLog } from '@/utils/logger.js';
+import { gmLog } from '@gmod/core/utils/logger.js';
 import rawBodyMiddleware from '@/middleware/rawBodyMiddleware.js';
 import loggerMiddleware from '@/middleware/v3/loggers.js';
 import cors from 'cors';
@@ -15,7 +15,7 @@ import { gracefulShutdownDiscord, loadDiscordMain, loadDiscordSlave } from '@/di
 import { initializeDiscordQueueWorkers } from '@/discord/workers/discordQueueWorkers.js';
 import { gracefulShutdownRedis } from '@gmod/infra-redis';
 import { gracefulShutdownPrisma } from '@gmod/infra-prisma';
-import { gracefulShutdownMongo } from '@/database/gm_server_logs.js';
+import { gracefulShutdownMongo } from '@gmod/core/database/gm_server_logs.js';
 import '@gmod/infra-bullmq';
 
 // Load the main discord instance

@@ -1,5 +1,5 @@
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js';
-import { getTranslate } from 'src/utils/localizations.js';
+import { getTranslate } from '@gmod/core/utils/localizations.js';
 import { ActionRowBuilder, ButtonInteraction, MessageActionRowComponentBuilder } from 'discord.js';
 import { ButtonVerificationWebsite } from 'src/discord/utils/buttons.js';
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js';

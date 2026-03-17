@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Query } from '@/classes/db/Query.js';
+import { Query } from '@gmod/core/classes/db/Query.js';
 import { getErrorsByServer } from '@gmod/domain-gmod/GmodErrors.js';
 
 export async function getServerErrors(req: Request, res: Response) {

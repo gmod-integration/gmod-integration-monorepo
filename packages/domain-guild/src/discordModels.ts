@@ -3,13 +3,13 @@ import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
 import { getGuildClient, getMainClient } from 'src/discord/index.js';
 import { getDiscordEntitlements, isGuildPremium } from './Guild.js';
 import { ConfigDiscord } from '@gmod/config';
-import { generateToken } from 'src/utils/tools.js';
+import { generateToken } from '@gmod/core/utils/tools.js';
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
 import { Guild, GuildMember } from 'discord.js';
 import type { PanelUser } from '@gmod/domain-user/PanelUser.js';
 import { v4 as uuidv4 } from 'uuid';
-import { gmLog } from 'src/utils/logger.js';
+import { gmLog } from '@gmod/core/utils/logger.js';
 import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {

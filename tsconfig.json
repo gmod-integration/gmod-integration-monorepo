@@ -19,7 +19,7 @@
 
     "typeRoots": [
       "./node_modules/@types",
-      "./apps/api/src/types"
+      "./packages/core/src/types"
     ],
 
     "types": [
@@ -36,7 +36,8 @@
     "sourceRoot": "/"
   },
   "include": [
-    "apps/api/src/**/*"
+    "apps/api/src/**/*",
+    "packages/core/src/types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",

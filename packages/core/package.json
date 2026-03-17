@@ -1,0 +1,36 @@
+{
+  "name": "@gmod/core",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./index.js": "./src/index.ts",
+    "./*.js": "./src/*.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1009.0",
+    "@gmod/config": "workspace:*",
+    "@gmod/domain-guild": "workspace:*",
+    "@gmod/domain-server": "workspace:*",
+    "@gmod/domain-user": "workspace:*",
+    "@gmod/infra-bullmq": "workspace:*",
+    "@gmod/infra-minio": "workspace:*",
+    "@gmod/infra-mongo": "workspace:*",
+    "@gmod/infra-prisma": "workspace:*",
+    "@gmod/infra-redis": "workspace:*",
+    "@gmod/infra-steam": "workspace:*",
+    "@gmod/infra-websocket": "workspace:*",
+    "@sentry/node": "^8.55.0",
+    "@sentry/profiling-node": "^8.55.0",
+    "discord.js": "^14.25.1",
+    "d3": "^7.9.0",
+    "express": "^5.2.1",
+    "jsdom": "^25.0.1",
+    "json-bigint": "^1.0.0",
+    "node-cron": "^3.0.3",
+    "sharp": "^0.33.5",
+    "unicode-emoji": "^2.6.0",
+    "uuid": "^9.0.1"
+  }
+}

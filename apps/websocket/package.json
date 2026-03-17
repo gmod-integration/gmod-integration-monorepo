@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@gmod/config": "workspace:*",
+    "@gmod/core": "workspace:*",
     "@gmod/domain-server": "workspace:*",
     "@gmod/domain-user": "workspace:*",
     "@gmod/infra-bullmq": "workspace:*",

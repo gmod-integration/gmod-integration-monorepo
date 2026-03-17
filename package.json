@@ -70,6 +70,7 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@gmod/core": "workspace:*",
     "@gmod/config": "workspace:*",
     "@gmod/domain-compliance": "workspace:*",
     "@gmod/domain-gmod": "workspace:*",

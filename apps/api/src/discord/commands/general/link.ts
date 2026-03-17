@@ -6,7 +6,7 @@ import {
   PermissionsBitField,
   SlashCommandBuilder,
 } from 'discord.js';
-import { getTranslate } from '../../../utils/localizations.js';
+import { getTranslate } from '@gmod/core/utils/localizations.js';
 import { ConfigServer } from '@gmod/config';
 import prisma from '@gmod/infra-prisma';
 

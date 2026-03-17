@@ -1,4 +1,4 @@
-import { getUser, saveGmodStorePurchase } from '@/models/webhooks/gmodStoreModels.js';
+import { getUser, saveGmodStorePurchase } from '@gmod/core/models/webhooks/gmodStoreModels.js';
 import { Request, Response } from 'express';
 
 export default async (req: Request, res: Response) => {

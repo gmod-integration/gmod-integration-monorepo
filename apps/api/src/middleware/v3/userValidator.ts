@@ -1,4 +1,4 @@
-import { badArgument } from '../../utils/tools.js';
+import { badArgument } from '@gmod/core/utils/tools.js';
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js';
 import { getGuildClient } from '../../discord/index.js';
 import { getServerFromID } from '@gmod/domain-server/Server.js';

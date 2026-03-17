@@ -1,6 +1,6 @@
 import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js';
 import { isGuildPremium } from '@gmod/domain-guild/Guild.js';
-import { getTranslate } from '@/utils/localizations.js';
+import { getTranslate } from '@gmod/core/utils/localizations.js';
 import { ActionRowBuilder, Message, MessageActionRowComponentBuilder } from 'discord.js';
 import { ButtonPremium } from '@/discord/utils/buttons.js';
 import { WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js';

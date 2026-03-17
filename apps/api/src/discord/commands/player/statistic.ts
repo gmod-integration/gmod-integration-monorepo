@@ -5,8 +5,8 @@ import {
   SlashCommandBuilder,
 } from 'discord.js';
 import { getServerList } from '@gmod/domain-server/serversModels.js';
-import { getUserStatisticMessage } from '../../utils/messages.js';
-import { getTranslate } from '../../../utils/localizations.js';
+import { getUserStatisticMessage } from '@/discord/utils/messages.js';
+import { getTranslate } from '@gmod/core/utils/localizations.js';
 
 export default {
   data: new SlashCommandBuilder()

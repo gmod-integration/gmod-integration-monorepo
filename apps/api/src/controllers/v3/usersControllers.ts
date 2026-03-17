@@ -12,7 +12,7 @@ import {
   saveUserPanel,
   verifyUser,
 } from '@gmod/domain-guild/discordModels.js';
-import { badArgument, generateToken, todoControllers } from '@/utils/tools.js';
+import { badArgument, generateToken, todoControllers } from '@gmod/core/utils/tools.js';
 import { getVerificationGuildMessage } from '@/discord/utils/messages.js';
 import moment from 'moment';
 import { getUserDataGRPD } from '@gmod/domain-compliance/gdrp.js';
@@ -21,7 +21,7 @@ import { enqueueMainClientHasGuild } from '@gmod/infra-bullmq/discordQueueAdapte
 import redis from '@gmod/infra-redis';
 import prisma from '@gmod/infra-prisma';
 import { NextFunction, Request, Response } from 'express';
-import { getLogsByServer, getTotalLogsByServer } from '@/database/gm_server_logs.js';
+import { getLogsByServer, getTotalLogsByServer } from '@gmod/core/database/gm_server_logs.js';
 import { Guild } from '@gmod/domain-guild/Guild.js';
 
 export async function getProfile(req: Request, res: Response) {
