@@ -3,7 +3,7 @@ import { generateToken } from '@gmod/core/utils/tools.js'
 import { ConfigDiscord } from '@gmod/config'
 import redis from '@gmod/infra-redis'
 import { gmLog } from '@gmod/core/utils/logger.js'
-import { ChannelType } from 'discord.js'
+import { ChannelType, type Webhook } from 'discord.js'
 import prisma from '@gmod/infra-prisma'
 import { gm_server_logs_triggers_action, gm_server_logs_triggers_operator } from '@gmod/infra-prisma/enums.js'
 import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js'
@@ -960,7 +960,7 @@ export class Server extends BaseClass {
         if (!guild) throw new Error('Guild not found')
 
         const webhooks = await guild.fetchWebhooks()
-        const webhookToDelete = webhooks.find((webhook) => webhook.id === screenshotChannel.webhook)
+        const webhookToDelete = webhooks.find((webhook: Webhook) => webhook.id === screenshotChannel.webhook)
 
         if (webhookToDelete) await webhookToDelete.delete()
       } catch (error) {
@@ -1011,7 +1011,7 @@ export class Server extends BaseClass {
         if (!guild) throw new Error('Guild not found')
 
         const webhooks = await guild.fetchWebhooks()
-        const webhookToDelete = webhooks.find((webhook) => webhook.id === logsChannel.webhookID)
+        const webhookToDelete = webhooks.find((webhook: Webhook) => webhook.id === logsChannel.webhookID)
         if (webhookToDelete) await webhookToDelete.delete()
       } catch (error) {
         // skip
@@ -1084,7 +1084,7 @@ export class Server extends BaseClass {
         if (!guild) throw new Error('Guild not found')
 
         const webhooks = await guild.fetchWebhooks()
-        const webhookToDelete = webhooks.find((webhook) => webhook.id === voteChannel.webhookID)
+        const webhookToDelete = webhooks.find((webhook: Webhook) => webhook.id === voteChannel.webhookID)
         if (webhookToDelete) await webhookToDelete.delete()
       } catch (error) {
         // skip
@@ -1185,7 +1185,7 @@ export class Server extends BaseClass {
         if (!guild) throw new Error('Guild not found')
 
         const webhooks = await guild.fetchWebhooks()
-        const webhookToDelete = webhooks.find((webhook) => webhook.id === syncChat.id)
+        const webhookToDelete = webhooks.find((webhook: Webhook) => webhook.id === syncChat.id)
         if (webhookToDelete) await webhookToDelete.delete()
       } catch (error) {
         // skip
@@ -1293,6 +1293,7 @@ export class Server extends BaseClass {
         channelID,
         value,
         operator: newOperator,
+        adminIDS: '[]',
         message,
         log_type,
       },

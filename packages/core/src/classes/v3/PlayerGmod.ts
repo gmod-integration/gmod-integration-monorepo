@@ -13,6 +13,7 @@ import { secToTime } from '../../utils/discordFormat.js'
 import { Guild } from '@gmod/domain-guild/Guild.js'
 import { addAutoRoleToUser } from '@gmod/domain-guild/discordModels.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
+import { type Role } from 'discord.js'
 import {
   enqueueDiscordGuildSyncBan,
   enqueueUpdateDiscordTeamRole,
@@ -315,7 +316,7 @@ export async function removeDiscordSync(discordID: string) {
       const userRoles = member.roles.cache
 
       const rolesToRemove = userRoles.filter(
-        (role) =>
+        (role: Role) =>
           syncRoles.some((syncRole) => syncRole.roleID === role.id) ||
           teamRoles.some((teamRole) => teamRole.roleID === role.id) ||
           verifyRole.some((verifyRole) => verifyRole.roleID === role.id),
@@ -324,7 +325,7 @@ export async function removeDiscordSync(discordID: string) {
       if (rolesToRemove.size > 0) {
         gmLog(
           'sync-team-role',
-          `Removing roles from ${member.user.tag}: ${rolesToRemove.map((role) => role.name).join(', ')}`,
+          `Removing roles from ${member.user.tag}: ${rolesToRemove.map((role: Role) => role.name).join(', ')}`,
         )
         await member.roles.remove(rolesToRemove)
       }
