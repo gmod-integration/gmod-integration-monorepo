@@ -1,17 +1,19 @@
 import prisma from '@gmod/infra-prisma'
-import { testGuild } from './config.js'
+import { devGuild } from './config.js'
 
-export async function testSeedGuild() {
-  await prisma.gm_guild.upsert({
+export async function devSeedGuild() {
+  const guild = await prisma.gm_guild.upsert({
     where: {
-      guild: testGuild.id,
+      guild: devGuild.id,
     },
     update: {
-      name: testGuild.name,
+      name: devGuild.name,
     },
     create: {
-      guild: testGuild.id,
-      name: testGuild.name,
+      guild: devGuild.id,
+      name: devGuild.name,
     },
   })
+
+  console.log(guild)
 }

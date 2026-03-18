@@ -1,21 +1,21 @@
-export const testGuild = {
-  id: '1299172406169960458', // @dev-test
-  name: 'Test Server',
+export const devGuild = {
+  id: '1299172406169960458', // @dev-dev
+  name: 'Dev Server',
 }
 
-export const testServer = {
-  id: '---TEST---',
+export const devServer = {
+  id: '---DEV----',
   token: '-----TOKEN------',
-  name: 'Test Server',
+  name: 'Dev Server',
 }
 
-export const testUser = {
+export const devUser = {
   discordID: '333650866747867137', // @linventif
   steamID: '76561198219049673', // @linventif
   token: '-------------TOKEN--------------',
 }
 
-export const testGuildRoles = [
+export const devGuildRoles = [
   '1316096105657667586', // '・⠀・⠀・⠀Group⠀・⠀・⠀・⠀⠀'
   '1212492003485421618', // 'user'
   '1176193601693286461', // 'admin'
@@ -36,16 +36,16 @@ export const testGuildRoles = [
   '1176193628918513715', // 'member'
 ]
 
-export const testGuildAutoRoles = [
+export const devGuildAutoRoles = [
   '1248061972772163656', // 'auto'
   '1245463981641175112', // 'not verif'
   '1176193628918513715', // 'member'
 ]
 
-export const testGuildVerifyAddRoles = [
+export const devGuildVerifyAddRoles = [
   '1245464012825690275', // 'verif'
 ]
 
-export const testGuildVerifyRemoveRoles = [
+export const devGuildVerifyRemoveRoles = [
   '1245463981641175112', // 'not verif'
 ]

@@ -1,25 +1,40 @@
 import prisma from '@gmod/infra-prisma'
-import { testGuild, testServer } from './config.js'
+import { devGuild, devServer } from './config.js'
 
-export async function testSeedServer() {
-  await prisma.gm_server.create({
-    data: {
-      id: testServer.id,
-      token: testServer.token,
-      guild: testGuild.id,
-      name: 'Test Gmod Server',
+export async function devSeedServer() {
+  const server = await prisma.gm_server.upsert({
+    where: {
+      id: devServer.id,
+    },
+    update: {
+      id: devServer.id,
+      token: devServer.token,
+      guild: devGuild.id,
+      name: 'Dev Gmod Server',
+      ip: '127.0.0.1',
+      port: '27015',
+      verified: true,
+      isPublic: true,
+    },
+    create: {
+      id: devServer.id,
+      token: devServer.token,
+      guild: devGuild.id,
+      name: 'dev Gmod Server',
       ip: '127.0.0.1',
       port: '27015',
       verified: true,
       isPublic: true,
     },
   })
+
+  console.log(server)
 }
 
-export async function testClearServer() {
+export async function devClearServer() {
   await prisma.gm_server.deleteMany({
     where: {
-      id: testServer.id,
+      id: devServer.id,
     },
   })
 }

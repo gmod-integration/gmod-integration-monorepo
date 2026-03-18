@@ -1,28 +1,30 @@
 import prisma from '@gmod/infra-prisma'
-import { testGuild, testGuildAutoRoles } from './config.js'
+import { devGuild, devGuildAutoRoles } from './config.js'
 
-export async function testSeedAutoRoles() {
-  for (const roleID of testGuildAutoRoles) {
-    await prisma.gm_guild_auto_roles.upsert({
+export async function devSeedAutoRoles() {
+  for (const roleID of devGuildAutoRoles) {
+    const autoRole = await prisma.gm_guild_auto_roles.upsert({
       where: {
         roleID,
       },
       update: {
-        guildID: testGuild.id,
+        guildID: devGuild.id,
       },
       create: {
-        guildID: testGuild.id,
+        guildID: devGuild.id,
         roleID,
       },
     })
+
+    console.log(autoRole)
   }
 }
 
-export async function testClearAutoRoles() {
-  for (const roleID of testGuildAutoRoles) {
+export async function devClearAutoRoles() {
+  for (const roleID of devGuildAutoRoles) {
     await prisma.gm_guild_auto_roles.deleteMany({
       where: {
-        guildID: testGuild.id,
+        guildID: devGuild.id,
         roleID,
       },
     })
