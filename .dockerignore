@@ -1,0 +1,14 @@
+.git
+.github
+.turbo
+.vscode
+node_modules
+dist
+logs
+coverage
+**/*.log
+apps/website/node_modules
+apps/website/dist
+apps/website/.solid
+apps/website/.output
+docs
