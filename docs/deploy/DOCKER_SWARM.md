@@ -1,41 +1,41 @@
 # Docker + Swarm
 
-Ce guide couvre:
+This guide covers:
 
-- démarrage des services requis (DB/Redis/Mongo/MinIO) avec `docker compose`,
-- build des images app (`api`, `websocket`, `discord`),
-- déploiement Swarm avec **2 replicas** pour `api`, `websocket`, `discord`.
+- starting required services (DB/Redis/Mongo/MinIO) with `docker compose`
+- building app images (`api`, `websocket`, `discord`)
+- Swarm deployment with **2 replicas** for `api`, `websocket`, and `discord`
 
-## Fichiers
+## Files
 
-- `Dockerfile`: image monorepo unique.
-- `docker-compose.requirements.yml`: services requis uniquement.
-- `docker-compose.apps.yml`: apps (`api`, `websocket`, `discord`) séparées.
-- `docker-stack.swarm.yml`: stack complète Swarm (requirements + apps).
+- `Dockerfile`: monorepo multi-target image definition
+- `docker-compose.requirements.yml`: required services only
+- `docker-compose.apps.yml`: split app services (`api`, `websocket`, `discord`)
+- `docker-stack.swarm.yml`: full Swarm stack (requirements + apps)
 
-## 1) Préparer l'environnement
+## 1) Prepare environment
 
-1. Copier `.env.example` vers `.env` et remplir les secrets.
-2. Vérifier au minimum:
+1. Copy `.env.example` to `.env` and fill all secrets.
+2. At minimum, verify:
    - `MARIA_*`
    - `MINIO_*`
    - `DISCORD_*`
    - `BARER_DISCORD_RELAY`
    - `STEAM_API_KEY`
 
-## 2) Démarrer uniquement les requirements (mode compose)
+## 2) Start only requirements (compose mode)
 
 ```bash
 docker compose --env-file .env -f docker-compose.requirements.yml up -d
 ```
 
-Arrêt:
+Stop:
 
 ```bash
 docker compose -f docker-compose.requirements.yml down
 ```
 
-## 3) Build images séparées
+## 3) Build split images
 
 ```bash
 docker build --target api -t gmod-integration/api:latest .
@@ -43,7 +43,7 @@ docker build --target websocket -t gmod-integration/websocket:latest .
 docker build --target discord -t gmod-integration/discord:latest .
 ```
 
-Si cluster multi-node, pousser l’image vers un registry:
+If using a multi-node cluster, push images to a registry:
 
 ```bash
 docker tag gmod-integration/api:latest registry.example.com/gmod-integration/api:latest
@@ -54,7 +54,7 @@ docker push registry.example.com/gmod-integration/websocket:latest
 docker push registry.example.com/gmod-integration/discord:latest
 ```
 
-Puis déployer avec:
+Then deploy with:
 
 ```bash
 API_IMAGE=registry.example.com/gmod-integration/api:latest \
@@ -63,41 +63,41 @@ DISCORD_IMAGE=registry.example.com/gmod-integration/discord:latest \
 docker stack deploy -c docker-stack.swarm.yml gmod
 ```
 
-## 4) Déploiement Swarm (2x api/ws/discord)
+## 4) Swarm deployment (2x api/ws/discord)
 
-Initialiser Swarm (une seule fois):
+Initialize Swarm (once):
 
 ```bash
 docker swarm init
 ```
 
-Déployer:
+Deploy:
 
 ```bash
 docker stack deploy -c docker-stack.swarm.yml gmod
 ```
 
-### Déployer une seule app
+### Deploy only one app (local compose)
 
-Tu peux lancer uniquement l’API en local compose:
+API only:
 
 ```bash
 docker compose --env-file .env -f docker-compose.requirements.yml -f docker-compose.apps.yml up -d api
 ```
 
-Ou uniquement websocket:
+WebSocket only:
 
 ```bash
 docker compose --env-file .env -f docker-compose.requirements.yml -f docker-compose.apps.yml up -d websocket
 ```
 
-Ou uniquement discord:
+Discord only:
 
 ```bash
 docker compose --env-file .env -f docker-compose.requirements.yml -f docker-compose.apps.yml up -d discord
 ```
 
-Vérifier:
+Verify:
 
 ```bash
 docker stack services gmod
@@ -115,15 +115,15 @@ docker service logs -f gmod_websocket
 docker service logs -f gmod_discord
 ```
 
-Suppression:
+Remove:
 
 ```bash
 docker stack rm gmod
 ```
 
-## 5) Notes importantes
+## 5) Important notes
 
-- `api`, `websocket`, `discord` sont configurés en `replicas: 2`.
-- Les services stateful (`mariadb`, `redis`, `mongo`, `minio`) sont en `replicas: 1` avec volumes locaux.
-- En multi-node, volumes `local` ne sont pas partagés: utiliser un driver de volume distribué si nécessaire.
-- Sur plusieurs replicas `websocket`/`discord`, des effets fonctionnels peuvent nécessiter une stratégie d’élection de leader selon vos flows métier.
+- `api`, `websocket`, and `discord` are configured with `replicas: 2`.
+- Stateful services (`mariadb`, `redis`, `mongo`, `minio`) run with `replicas: 1` and local volumes.
+- In multi-node mode, `local` volumes are not shared. Use a distributed volume driver if needed.
+- With multiple `websocket`/`discord` replicas, some features may require leader-election or singleton behavior depending on your business logic.

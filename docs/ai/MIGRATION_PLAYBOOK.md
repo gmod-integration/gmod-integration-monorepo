@@ -1,48 +1,48 @@
 # Migration Playbook
 
-Guide pour déplacer du code de `apps/*` vers `packages/*` sans casser l’architecture.
+Guide to move code from `apps/*` to `packages/*` without breaking architecture.
 
-## Checklist de migration
+## Migration Checklist
 
-1. Identifier le code “shared” (réutilisable par api/discord/ws).
-2. Choisir le package cible:
-   - métier -> `domain-*`
-   - applicatif transverse -> `core`
-   - technique -> `infra-*`
-   - contrat/validation -> `schema`
-3. Déplacer les fichiers + corriger les imports en chemin package (`@gmod/...`).
-4. Supprimer les anciens wrappers/re-exports inutiles dans `apps/api/src/...`.
-5. Vérifier qu’aucun package n’importe un fichier dans `apps/*`.
-6. Vérifier les cycles Turbo (dependency graph).
-7. Lancer lint + typecheck + dev ciblé.
+1. Identify “shared” code (reusable by api/discord/ws).
+2. Choose the target package:
+   - business logic -> `domain-*`
+   - cross-cutting application logic -> `core`
+   - technical integration -> `infra-*`
+   - contracts/validation -> `schema`
+3. Move files and fix imports to package paths (`@gmod/...`).
+4. Remove obsolete wrappers/re-exports from `apps/api/src/...`.
+5. Ensure no package imports files from `apps/*`.
+6. Check Turbo for dependency cycles.
+7. Run lint + typecheck + targeted dev run.
 
-## Exemple: action Discord depuis API
+## Example: Discord Action from API
 
-Objectif: ne pas appeler Discord directement.
+Goal: do not call Discord directly.
 
-1. Ajouter le schéma job/reply dans `packages/schema/src/bullmq.ts`.
-2. Ajouter l’adapter dans `packages/infra-bullmq/src/discordQueueAdapters.ts`.
-3. Implémenter le worker dans `apps/discord/src/discord/workers/discordQueueWorkers.ts`.
-4. Remplacer les anciens appels directs dans `apps/api` / `packages/core`.
+1. Add the job/reply schema in `packages/schema/src/bullmq.ts`.
+2. Add the adapter in `packages/infra-bullmq/src/discordQueueAdapters.ts`.
+3. Implement the worker in `apps/discord/src/discord/workers/discordQueueWorkers.ts`.
+4. Replace previous direct calls in `apps/api` / `packages/core`.
 
-## Exemple: ajout d’un champ sur `req`
+## Example: Add a field to `req`
 
-1. Déclarer le champ dans `packages/core/src/types/express.d.ts`.
-2. S’assurer que le `tsconfig` inclut bien ce dossier de types.
-3. Setter la valeur dans middleware.
-4. Consommer sans cast unsafe dans controllers/models.
+1. Declare the field in `packages/core/src/types/express.d.ts`.
+2. Ensure `tsconfig` includes this types directory.
+3. Set the value in middleware.
+4. Consume it without unsafe casts in controllers/models.
 
-## Gestion des cycles
+## Cycle Management
 
-Si Turbo signale un cycle entre domain packages:
+If Turbo reports a cycle between domain packages:
 
-1. Sortir les types/fonctions partagés vers un package neutre (`core` ou nouveau package dédié).
-2. Éviter la dépendance réciproque domain A <-> domain B.
-3. Remplacer les appels directs par un contrat (schema + event/job) quand nécessaire.
+1. Move shared types/functions to a neutral package (`core` or a new dedicated package).
+2. Avoid reciprocal dependencies (domain A <-> domain B).
+3. Replace direct calls with contracts (schema + event/job) when needed.
 
-## Definition of done (DoD)
+## Definition of Done (DoD)
 
-- Les imports pointent vers `@gmod/*`, pas vers des chemins d’app.
-- Les controllers sont minces, logique extraite.
-- Pas de cycle package.
-- `lint`, `typecheck`, et lancement dev de l’app concernée passent.
+- Imports point to `@gmod/*`, not app file paths.
+- Controllers are thin, with extracted logic.
+- No package cycle remains.
+- `lint`, `typecheck`, and targeted dev startup pass.

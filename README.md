@@ -1,42 +1,42 @@
 # Gmod Integration Monorepo
 
-Backend monorepo pour Gmod Integration:
+Backend monorepo for Gmod Integration:
 
-- API HTTP (`apps/api`)
-- Bot Discord (`apps/discord`)
+- HTTP API (`apps/api`)
+- Discord bot (`apps/discord`)
 - WebSocket gateway (`apps/websocket`)
 - Website (`apps/website`)
-- Packages partagés (`packages/*`: domain, infra, core, config, schema)
+- Shared packages (`packages/*`: domain, infra, core, config, schema)
 
-## Présentation rapide
+## Overview
 
-Le projet connecte des serveurs Gmod, Discord et un panel web:
+This project connects Gmod servers, Discord, and a web panel:
 
-- synchronisation utilisateur/rôles,
-- logs serveur,
-- webhook relay,
-- queues BullMQ,
-- persistance MariaDB + MongoDB + Redis + MinIO.
+- user/role synchronization
+- server logs
+- webhook relay
+- BullMQ queues
+- MariaDB + MongoDB + Redis + MinIO persistence
 
-## Stack technique
+## Tech Stack
 
 - Runtime: Bun (`bun@1.3.9`)
-- Langage: TypeScript (ESM, NodeNext)
+- Language: TypeScript (ESM, NodeNext)
 - API: Express
 - Queue: BullMQ + Redis
-- DB relationnelle: MariaDB (Prisma)
-- DB documents: MongoDB
-- Storage: MinIO (S3 compatible)
-- Orchestration locale: Docker Compose
-- Orchestration prod: Docker Swarm
+- Relational DB: MariaDB (Prisma)
+- Document DB: MongoDB
+- Storage: MinIO (S3-compatible)
+- Local orchestration: Docker Compose
+- Production orchestration: Docker Swarm
 
-## Prérequis
+## Requirements
 
 - Bun `1.3.9`
 - Docker + Docker Compose v2
 - (Prod) Docker Swarm
 
-Vérifier:
+Check versions:
 
 ```bash
 bun --version
@@ -55,26 +55,26 @@ cp .env.example .env
 
 Important:
 
-- Les secrets `.env` doivent respecter la validation Zod (ex: longueur minimale sur certains champs).
-- Ne jamais commiter `.env`.
+- `.env` secrets must pass Zod validation (for example minimum length on some fields).
+- Never commit `.env`.
 
-## Démarrage Dev (natif Bun)
+## Native Dev Setup (Bun)
 
-### 1) Démarrer les requirements
+### 1) Start requirements
 
 ```bash
 docker compose --env-file .env -f docker-compose.requirements.yml up -d
 ```
 
-### 2) Initialiser la base MariaDB
+### 2) Initialize MariaDB schema
 
-Méthode A (standard Prisma):
+Method A (standard Prisma):
 
 ```bash
 bunx prisma migrate deploy
 ```
 
-Si Prisma CLI échoue dans ton contexte local, fallback SQL:
+If Prisma CLI fails in your local environment, SQL fallback:
 
 ```bash
 DB_PASS=$(grep -E '^MARIA_ROOT_PASSWORD=' .env | sed -E 's/^MARIA_ROOT_PASSWORD=//')
@@ -83,15 +83,15 @@ for f in $(find packages/infra-prisma/migrations -mindepth 2 -maxdepth 2 -name m
 done
 ```
 
-### 3) Lancer les apps
+### 3) Run apps
 
-Commande unique (recommandé):
+Single command (recommended):
 
 ```bash
 bun run turbo:dev
 ```
 
-Si tu veux lancer service par service:
+If you want service-by-service:
 
 ```bash
 bun run dev
@@ -99,15 +99,15 @@ bun run websocket:dev
 bun run discord:dev
 ```
 
-Optionnel website:
+Optional website:
 
 ```bash
 bun run website:dev
 ```
 
-## Docker Compose (apps indépendantes)
+## Docker Compose (independent apps)
 
-### Build images séparées
+### Build separate images
 
 ```bash
 docker build --target api -t gmod-integration/api:local .
@@ -115,27 +115,27 @@ docker build --target websocket -t gmod-integration/websocket:local .
 docker build --target discord -t gmod-integration/discord:local .
 ```
 
-### Lancer requirements + une seule app
+### Run requirements + one app
 
-API seule:
+API only:
 
 ```bash
 docker compose --env-file .env -f docker-compose.requirements.yml -f docker-compose.apps.yml up -d api
 ```
 
-WebSocket seul:
+WebSocket only:
 
 ```bash
 docker compose --env-file .env -f docker-compose.requirements.yml -f docker-compose.apps.yml up -d websocket
 ```
 
-Discord seul:
+Discord only:
 
 ```bash
 docker compose --env-file .env -f docker-compose.requirements.yml -f docker-compose.apps.yml up -d discord
 ```
 
-Tout lancer:
+Run everything:
 
 ```bash
 docker compose --env-file .env -f docker-compose.requirements.yml -f docker-compose.apps.yml up -d
@@ -153,15 +153,15 @@ Stop:
 docker compose -f docker-compose.requirements.yml -f docker-compose.apps.yml down
 ```
 
-## Prod Docker Swarm
+## Production with Docker Swarm
 
-### 1) Init swarm (une fois)
+### 1) Initialize swarm (once)
 
 ```bash
 docker swarm init
 ```
 
-### 2) Build (ou pull depuis registry)
+### 2) Build (or pull from registry)
 
 ```bash
 docker build --target api -t gmod-integration/api:latest .
@@ -169,7 +169,7 @@ docker build --target websocket -t gmod-integration/websocket:latest .
 docker build --target discord -t gmod-integration/discord:latest .
 ```
 
-### 3) Déployer stack
+### 3) Deploy stack
 
 ```bash
 API_IMAGE=gmod-integration/api:latest \
@@ -178,7 +178,7 @@ DISCORD_IMAGE=gmod-integration/discord:latest \
 docker stack deploy -c docker-stack.swarm.yml gmod
 ```
 
-### 4) Vérifier
+### 4) Verify
 
 ```bash
 docker stack services gmod
@@ -187,31 +187,31 @@ docker service ps gmod_websocket
 docker service ps gmod_discord
 ```
 
-### 5) Scale manuel
+### 5) Manual scaling
 
 ```bash
 docker service scale gmod_api=2 gmod_websocket=2 gmod_discord=2
 ```
 
-## Workflow fork + branches (dev)
+## Fork + Branch Workflow (dev)
 
-### Setup fork
+### Fork setup
 
 ```bash
-git clone git@github.com:gmod-integration/api.git
+git clone git@github.com:<your-user>/api.git
 cd api
 git remote add upstream git@github.com:gmod-integration/api.git
 git fetch upstream
 ```
 
-### Branching recommandé
+### Recommended branching
 
 ```bash
 git checkout -b dev upstream/main
 git push -u origin dev
 ```
 
-Pour une feature:
+For a feature:
 
 ```bash
 git checkout dev
@@ -219,13 +219,13 @@ git pull --rebase upstream main
 git checkout -b feat/<short-topic>
 ```
 
-Exemples:
+Examples:
 
 - `feat/docker-swarm-split-images`
 - `fix/prisma-trigger-adminids`
 - `chore/readme-dev-onboarding`
 
-### Avant PR
+### Before PR
 
 ```bash
 bun run lint
@@ -233,18 +233,18 @@ bun run typecheck
 bun run test
 ```
 
-Puis:
+Then:
 
 ```bash
 git push -u origin feat/<short-topic>
 ```
 
-Créer une PR vers `upstream/main`.
+Open a PR to `upstream/main`.
 
-## Commandes utiles
+## Useful Commands
 
 ```bash
-# qualité
+# quality
 bun run lint
 bun run format:check
 bun run typecheck
@@ -255,7 +255,7 @@ bun run turbo:dev
 bun run turbo:build
 ```
 
-## Ports par défaut
+## Default Ports
 
 - API: `53136`
 - WebSocket: `53139`
@@ -265,10 +265,10 @@ bun run turbo:build
 - MinIO S3: `9060`
 - MinIO Console: `9065`
 
-## Troubleshooting rapide
+## Quick Troubleshooting
 
-- `Invalid environment variables`: vérifier `.env` (longueur secrets, URLs, IDs).
-- `Table ... does not exist`: appliquer migrations Prisma.
-- Container qui crash au boot:
+- `Invalid environment variables`: check `.env` (secret length, URLs, IDs).
+- `Table ... does not exist`: apply Prisma migrations.
+- Container crashes at boot:
   - `docker compose ... logs --tail=200 <service>`
-  - vérifier connectivité `mariadb/redis/mongo/minio`.
+  - verify connectivity to `mariadb/redis/mongo/minio`.

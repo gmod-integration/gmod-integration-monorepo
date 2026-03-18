@@ -1,80 +1,80 @@
 # Architecture
 
-## Vue d’ensemble
+## Overview
 
-Ce repo est un monorepo Turbo + Bun.
+This repository is a Turbo + Bun monorepo.
 
-- Exécution: `apps/*`
-- Partage et réutilisation: `packages/*`
+- Runtime: `apps/*`
+- Shared and reusable code: `packages/*`
 
 ```text
 apps/
   api        -> HTTP API (Express)
-  discord    -> Bot Discord + workers BullMQ
+  discord    -> Discord bot + BullMQ workers
   websocket  -> WebSocket gateway + workers BullMQ
   website    -> Frontend
 
 packages/
-  config     -> env loading + validation Zod
-  schema     -> contrats Zod (BullMQ + schemas métier)
-  infra-*    -> adaptateurs techniques (Redis, Prisma, BullMQ, etc.)
-  domain-*   -> logique métier orientée domaine
-  core       -> logique transverse / services applicatifs
+  config     -> env loading + Zod validation
+  schema     -> Zod contracts (BullMQ + business schemas)
+  infra-*    -> technical adapters (Redis, Prisma, BullMQ, etc.)
+  domain-*   -> domain-oriented business logic
+  core       -> cross-cutting logic / application services
 ```
 
-## Dépendances autorisées
+## Allowed Dependencies
 
-Règle générale: dépendances “vers le bas” seulement.
+General rule: only “downward” dependencies.
 
-- `apps/*` peut dépendre de `packages/*`.
-- `core` peut dépendre de `domain-*`, `infra-*`, `config`, `schema`.
-- `domain-*` peut dépendre de `infra-*`, `config`, `schema`.
-- `infra-*` ne dépend pas de `apps/*`.
-- `schema` ne dépend que de libs de validation (`zod`).
+- `apps/*` can depend on `packages/*`.
+- `core` can depend on `domain-*`, `infra-*`, `config`, and `schema`.
+- `domain-*` can depend on `infra-*`, `config`, and `schema`.
+- `infra-*` must not depend on `apps/*`.
+- `schema` should only depend on validation libraries (`zod`).
 
-## Boundaries critiques
+## Critical Boundaries
 
-### Discord boundary
+### Discord Boundary
 
-- Toute action Discord déclenchée hors `apps/discord` doit passer par BullMQ.
-- Utiliser `@gmod/infra-bullmq/discordQueueAdapters.js`.
-- Déclarer/mettre à jour les payloads dans `packages/schema/src/bullmq.ts`.
-- Implémenter le worker côté `apps/discord/src/discord/workers/discordQueueWorkers.ts`.
+- Any Discord action triggered outside `apps/discord` must go through BullMQ.
+- Use `@gmod/infra-bullmq/discordQueueAdapters.js`.
+- Define/update payloads in `packages/schema/src/bullmq.ts`.
+- Implement worker handlers in `apps/discord/src/discord/workers/discordQueueWorkers.ts`.
 
-### Config boundary
+### Config Boundary
 
-- Source unique: `@gmod/config`.
-- `@gmod/config` charge `.env` workspace + valide via Zod.
-- Éviter la lecture directe de `process.env` dans les modules métiers.
+- Single source of truth: `@gmod/config`.
+- `@gmod/config` loads workspace `.env` files and validates with Zod.
+- Avoid reading `process.env` directly in business modules.
 
-### Data boundary
+### Data Boundary
 
-- Prisma généré dans `packages/infra-prisma/generated/prisma`.
-- Import client Prisma via `@gmod/infra-prisma`.
-- Ne pas dupliquer de client Prisma dans les apps.
+- Prisma client is generated in `packages/infra-prisma/generated/prisma`.
+- Import Prisma client through `@gmod/infra-prisma`.
+- Do not duplicate Prisma clients in apps.
 
-## Patterns de composition
+## Composition Patterns
 
-### API endpoint pattern
+### API Endpoint Pattern
 
 1. Route (`apps/api/src/routes/*`)
-2. Middleware validation/auth (`apps/api/src/middleware/*`)
-3. Controller mince (`apps/api/src/controllers/*`)
-4. Logique extraite vers `packages/core/src/models/*` ou `packages/domain-*`
+2. Validation/Auth middleware (`apps/api/src/middleware/*`)
+3. Thin controller (`apps/api/src/controllers/*`)
+4. Extracted logic in `packages/core/src/models/*` or `packages/domain-*`
 
-### Websocket pattern
+### WebSocket Pattern
 
-- Envoi asynchrone via queues BullMQ (`@gmod/infra-websocket/queues.js`).
-- Traitement côté app websocket via workers.
+- Asynchronous sending through BullMQ queues (`@gmod/infra-websocket/queues.js`).
+- Processing in the websocket app via workers.
 
-### Typage Express global
+### Global Express Typing
 
-- Les extensions de `Request` (`req.server`, `req.panelUser`, etc.) sont centralisées dans:
+- `Request` extensions (`req.server`, `req.panelUser`, etc.) are centralized in:
   - `packages/core/src/types/express.d.ts`
 
-## Anti-patterns à éviter
+## Anti-Patterns to Avoid
 
-- Import `apps/discord/...` depuis API/core/domain.
-- Logique métier lourde dans controllers/routes.
-- Duplication des schémas de payload hors `packages/schema`.
-- Nouveaux cycles entre packages domain.
+- Importing `apps/discord/...` from API/core/domain.
+- Heavy business logic in controllers/routes.
+- Duplicating payload schemas outside `packages/schema`.
+- Introducing new cycles between domain packages.

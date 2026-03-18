@@ -1,19 +1,19 @@
 # AI Docs
 
-Guide rapide pour agents IA contribuant à ce monorepo.
+Quick guide for AI agents contributing to this monorepo.
 
-## Ordre de lecture recommandé
+## Recommended Reading Order
 
 1. `AGENT.md`
 2. `docs/ai/ARCHITECTURE.md`
 3. `docs/ai/BEST_PRACTICES.md`
 4. `docs/ai/MIGRATION_PLAYBOOK.md`
 
-## Résumé en 20 secondes
+## 20-Second Summary
 
 - `apps/*` = runtime/entrypoints.
-- `packages/*` = logique partagée.
-- Pas d’import direct entre apps.
-- Discord = BullMQ (`@gmod/infra-bullmq`) + schémas `@gmod/schema`.
-- Env centralisée dans `@gmod/config`.
-- Prisma centralisé dans `@gmod/infra-prisma`.
+- `packages/*` = shared logic.
+- No direct imports between apps.
+- Discord = BullMQ (`@gmod/infra-bullmq`) + schemas in `@gmod/schema`.
+- Env is centralized in `@gmod/config`.
+- Prisma is centralized in `@gmod/infra-prisma`.

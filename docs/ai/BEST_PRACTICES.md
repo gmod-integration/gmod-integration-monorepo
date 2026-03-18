@@ -2,47 +2,47 @@
 
 ## 1) Import/Export
 
-- En NodeNext ESM, utiliser les imports locaux avec extension `.js`.
-- Préférer les imports directs de package:
+- In NodeNext ESM, use local imports with the `.js` extension.
+- Prefer direct package imports:
   - `@gmod/config`
   - `@gmod/infra-bullmq/discordQueueAdapters.js`
   - `@gmod/domain-server/Server.js`
-- Éviter les fichiers “proxy” inutiles qui ne font que re-exporter 1 symbole.
-- Si un import est seulement typé, utiliser `import type`.
+- Avoid unnecessary “proxy” files that only re-export one symbol.
+- If an import is type-only, use `import type`.
 
-## 2) Placement de logique
+## 2) Logic Placement
 
-- Controller > 10 lignes: extraire dans `packages/core/src/models/*` ou `packages/domain-*`.
-- Middleware: garder seulement validation/auth/context.
-- Domain package: logique métier pure et cohérente par domaine.
-- Infra package: SDK clients, queues, DB adapters, cache adapters.
+- Controller > 10 lines: extract logic into `packages/core/src/models/*` or `packages/domain-*`.
+- Middleware: keep only validation/auth/context logic.
+- Domain packages: pure, domain-focused business logic.
+- Infra packages: SDK clients, queues, DB adapters, cache adapters.
 
-## 3) Contrats et validation
+## 3) Contracts and Validation
 
-- Tout payload inter-app (BullMQ, websocket data critique) doit avoir un schéma Zod dans `@gmod/schema`.
-- Parse au point d’entrée (producer/consumer), pas “au milieu”.
+- Every inter-app payload (BullMQ, critical websocket data) must have a Zod schema in `@gmod/schema`.
+- Parse at entry points (producer/consumer), not “in the middle.”
 
-## 4) Résilience
+## 4) Resilience
 
-- Pour les appels BullMQ avec réponse, gérer timeout explicitement (`BullMQReplyTimeoutError`).
-- En cas de dépendance externe indisponible (Discord), fallback propre (log + skip contrôlé).
-- Utiliser Redis pour cache court/moyen TTL sur données fréquentes (ex: locale guild).
+- For BullMQ calls expecting replies, handle timeouts explicitly (`BullMQReplyTimeoutError`).
+- When external dependencies are unavailable (Discord), use clean fallback behavior (log + controlled skip).
+- Use Redis for short/medium TTL caching on high-frequency data (for example guild locale).
 
 ## 5) TypeScript
 
-- Éviter `as string` brut sur des paramètres HTTP potentiellement `string | string[]`.
-- Normaliser les params via helper partagé avant usage.
-- Ne pas abuser de non-null assertion (`!`) sans garde en amont.
+- Avoid raw `as string` casts on HTTP params that may be `string | string[]`.
+- Normalize params with a shared helper before usage.
+- Avoid overusing non-null assertions (`!`) without upstream guards.
 
-## 6) Qualité
+## 6) Quality
 
-Avant merge:
+Before merge:
 
 - `bun run lint`
 - `bun run typecheck`
 - `bun run format:check`
 
-En cas de migration structurelle:
+For structural migrations:
 
-- lancer l’app touchée en dev (`turbo run dev --parallel` ou script ciblé),
-- vérifier qu’aucune import graph cycle n’apparaît.
+- run the affected app in dev (`turbo run dev --parallel` or targeted script),
+- verify no dependency graph cycle is introduced.
