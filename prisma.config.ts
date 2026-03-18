@@ -8,6 +8,6 @@ export default defineConfig({
     seed: 'tsx apps/api/src/test/seed/index.ts',
   },
   datasource: {
-    url: env('DATABASE_URL'),
+    url: env('MARIA_URL'),
   },
 })

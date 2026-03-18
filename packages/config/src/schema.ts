@@ -4,10 +4,10 @@ export const ConfigSchema = z.object({
   DEV: z.enum(['true', 'false']).default('false'),
   SENTRY_DSN: z.string().url().optional(),
 
-  DATABASE_HOST: z.string().min(1),
-  DATABASE_USER: z.string().min(1),
-  DATABASE_PASSWORD: z.string().min(1),
-  DATABASE_NAME: z.string().min(1),
+  MARIA_HOST: z.string().min(1),
+  MARIA_USER: z.string().min(1),
+  MARIA_PASSWORD: z.string().min(1),
+  MARIA_NAME: z.string().min(1),
 
   SCREENSHOTS_CHANNEL_ID: z.string().min(1),
 

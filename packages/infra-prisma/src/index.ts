@@ -3,11 +3,11 @@ import { PrismaMariaDb } from '@prisma/adapter-mariadb'
 import { connectToMongoDB } from '@gmod/infra-mongo'
 
 const adapter = new PrismaMariaDb({
-  host: process.env.DATABASE_HOST,
-  user: process.env.DATABASE_USER,
-  password: process.env.DATABASE_PASSWORD,
-  database: process.env.DATABASE_NAME,
-  connectionLimit: 50,
+  host: process.env.MARIA_HOST,
+  user: process.env.MARIA_USER,
+  password: process.env.MARIA_PASSWORD,
+  database: process.env.MARIA_NAME,
+  connectionLimit: parseInt(process.env.MARIA_CONNECTION_LIMIT || '50', 50),
 })
 
 const prisma = new PrismaClient({ adapter })

@@ -1,0 +1,56 @@
+services:
+    mariadb:
+        image: mariadb:latest
+        container_name: gmod_integration_api_dev_mariadb
+        environment:
+            MYSQL_ROOT_PASSWORD: ${MARIA_ROOT_PASSWORD}
+            MYSQL_DATABASE: ${MARIA_NAME}
+            MYSQL_USER: ${MARIA_USER}
+            MYSQL_PASSWORD: ${MARIA_PASSWORD}
+        volumes:
+            - gmod_integration_api_dev_mariadb_data:/var/lib/mysql
+        ports:
+            - "3306:3306"
+        env_file:
+            - .env
+
+    redis:
+        image: redis:latest
+        container_name: gmod_integration_api_dev_redis
+        volumes:
+            - gmod_integration_api_dev_redis_data:/data
+        ports:
+            - "6379:6379"
+
+    mongo:
+        image: mongo:latest
+        container_name: gmod_integration_api_dev_mongo
+        volumes:
+            - gmod_integration_api_dev_mongo_data:/data/db
+        ports:
+            - "27017:27017"
+
+    minio:
+        image: quay.io/minio/minio:latest
+        container_name: gmod_integration_api_dev_minio
+        command: server /data --console-address ":9001"
+        environment:
+            MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+            MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+        volumes:
+            - gmod_integration_api_dev_minio_data:/data
+        ports:
+            - "9060:9000"
+            - "9065:9001"
+        env_file:
+            - .env
+
+volumes:
+    gmod_integration_api_dev_mariadb_data:
+        driver: local
+    gmod_integration_api_dev_redis_data:
+        driver: local
+    gmod_integration_api_dev_mongo_data:
+        driver: local
+    gmod_integration_api_dev_minio_data:
+        driver: local

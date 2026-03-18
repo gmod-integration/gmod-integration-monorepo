@@ -61,7 +61,6 @@ const WebsiteConfigSchema = z.object({
   DOMAIN_URL: z.string().url().default('https://api.gmod-integration.com'),
   WEBSITE_URL: z.string().url().default('https://gmod-integration.com'),
   DISCORD_CLIENT_ID: z.string().optional(),
-  WEBSITE_API_URL: z.string().url().optional(),
   WEBSITE_WS_URL: z.string().url().optional(),
   WEBSITE_DEV_SHOW_MISSING_TRANSLATIONS: z.enum(['true', 'false']).default('false'),
 })
@@ -78,7 +77,7 @@ export const ConfigWebsite = {
   dev: parsed.DEV === 'true',
   devShowMissingTranslations: parsed.WEBSITE_DEV_SHOW_MISSING_TRANSLATIONS === 'true',
   websiteUrl: parsed.WEBSITE_URL,
-  apiUrl: parsed.WEBSITE_API_URL || (parsed.DEV === 'true' ? 'http://localhost:53136' : parsed.DOMAIN_URL),
+  apiUrl: parsed.DOMAIN_URL || (parsed.DEV === 'true' ? 'http://localhost:53136' : parsed.DOMAIN_URL),
   wsUrl: parsed.WEBSITE_WS_URL || (parsed.DEV === 'true' ? 'ws://localhost:53139' : `wss://ws.${websiteHost}`),
   discordClientId: parsed.DISCORD_CLIENT_ID || (parsed.DEV === 'true' ? devClientIdFallback : prodClientIdFallback),
 }
