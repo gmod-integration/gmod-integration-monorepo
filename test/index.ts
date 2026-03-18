@@ -1,6 +1,6 @@
 // Config
 import { ConfigServer } from '@gmod/config'
-import { testUser } from './config.test.js'
+import { testUser } from '../scripts/seed/config.js'
 
 export function testURL(path: string): string {
   // remplace :discordID by testUser.discordID

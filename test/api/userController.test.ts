@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'assert'
 import { testURL } from '../index.js'
-import { testUser } from '../config.test.js'
+import { testUser } from '../../scripts/seed/config.js'
 
 // User
 test('GET /v3/users/:discordID', async (t) => {

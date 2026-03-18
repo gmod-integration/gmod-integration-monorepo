@@ -1,5 +1,5 @@
 import prisma from '@gmod/infra-prisma'
-import { testGuild, testServer } from '../config.test.js'
+import { testGuild, testServer } from './config.js'
 
 export async function testSeedServer() {
   await prisma.gm_server.create({

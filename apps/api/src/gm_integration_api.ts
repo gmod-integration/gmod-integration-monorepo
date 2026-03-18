@@ -136,11 +136,6 @@ process.on('unhandledRejection', (error: Error) => {
   console.error(error)
 })
 
-// Run Tests
-if (ConfigServer.dev) {
-  // import('./test/index.js');
-}
-
 async function gracefulShutdown() {
   gmLog('shutdown', 'Gracefully shutting down...')
   inShutdown = true

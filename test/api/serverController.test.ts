@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'assert'
 import prisma from '@gmod/infra-prisma'
 import { testURL } from '../index.js'
-import { testServer } from '../config.test.js'
+import { testServer } from '../../scripts/seed/config.js'
 
 // Server Info
 test('GET /v3/servers/:serverID', async (t) => {
