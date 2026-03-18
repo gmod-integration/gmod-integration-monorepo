@@ -1,6 +1,48 @@
-version: "3.9"
-
 services:
+  traefik:
+    image: traefik:v2.11
+    command:
+      - --providers.docker=true
+      - --providers.docker.swarmMode=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=gmod_net
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --entrypoints.metrics.address=:9100
+      - --api.dashboard=true
+      - --api.insecure=false
+      - --accesslog=true
+      - --metrics.prometheus=true
+      - --metrics.prometheus.entryPoint=metrics
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: ingress
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: ingress
+      - target: 9100
+        published: 9100
+        protocol: tcp
+        mode: ingress
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - gmod_net
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=gmod_net
+        - traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DASHBOARD_HOST:-traefik.localhost}`)
+        - traefik.http.routers.traefik.entrypoints=web
+        - traefik.http.routers.traefik.service=api@internal
+
   api:
     image: ${API_IMAGE:-gmod-integration/api:latest}
     env_file:
@@ -15,11 +57,6 @@ services:
       BULLMQ_PORT: 6379
       MONGO_URI: mongodb://mongo:27017
       MINIO_ENDPOINT: http://minio:9000
-    ports:
-      - target: 53136
-        published: 53136
-        protocol: tcp
-        mode: ingress
     networks:
       - gmod_net
     deploy:
@@ -31,6 +68,12 @@ services:
       update_config:
         parallelism: 1
         order: start-first
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=gmod_net
+        - traefik.http.routers.api.rule=Host(`${API_HOST:-api.localhost}`)
+        - traefik.http.routers.api.entrypoints=web
+        - traefik.http.services.api.loadbalancer.server.port=53136
 
   websocket:
     image: ${WEBSOCKET_IMAGE:-gmod-integration/websocket:latest}
@@ -46,11 +89,6 @@ services:
       BULLMQ_PORT: 6379
       MONGO_URI: mongodb://mongo:27017
       MINIO_ENDPOINT: http://minio:9000
-    ports:
-      - target: 53139
-        published: 53139
-        protocol: tcp
-        mode: ingress
     networks:
       - gmod_net
     deploy:
@@ -62,6 +100,12 @@ services:
       update_config:
         parallelism: 1
         order: start-first
+      labels:
+        - traefik.enable=true
+        - traefik.docker.network=gmod_net
+        - traefik.http.routers.websocket.rule=Host(`${WS_HOST:-ws.localhost}`)
+        - traefik.http.routers.websocket.entrypoints=web
+        - traefik.http.services.websocket.loadbalancer.server.port=53139
 
   discord:
     image: ${DISCORD_IMAGE:-gmod-integration/discord:latest}

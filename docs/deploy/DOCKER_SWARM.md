@@ -5,6 +5,7 @@ This guide covers:
 - starting required services (DB/Redis/Mongo/MinIO) with `docker compose`
 - building app images (`api`, `websocket`, `discord`)
 - Swarm deployment with **2 replicas** for `api`, `websocket`, and `discord`
+- Traefik ingress in front of services for load balancing and runtime stats
 
 ## Files
 
@@ -60,6 +61,9 @@ Then deploy with:
 API_IMAGE=registry.example.com/gmod-integration/api:latest \
 WEBSOCKET_IMAGE=registry.example.com/gmod-integration/websocket:latest \
 DISCORD_IMAGE=registry.example.com/gmod-integration/discord:latest \
+API_HOST=api.example.com \
+WS_HOST=ws.example.com \
+TRAEFIK_DASHBOARD_HOST=traefik.example.com \
 docker stack deploy -c docker-stack.swarm.yml gmod
 ```
 
@@ -74,6 +78,9 @@ docker swarm init
 Deploy:
 
 ```bash
+API_HOST=api.localhost \
+WS_HOST=ws.localhost \
+TRAEFIK_DASHBOARD_HOST=traefik.localhost \
 docker stack deploy -c docker-stack.swarm.yml gmod
 ```
 
@@ -105,6 +112,7 @@ docker service ls
 docker service ps gmod_api
 docker service ps gmod_websocket
 docker service ps gmod_discord
+docker service ps gmod_traefik
 ```
 
 Logs:
@@ -113,6 +121,7 @@ Logs:
 docker service logs -f gmod_api
 docker service logs -f gmod_websocket
 docker service logs -f gmod_discord
+docker service logs -f gmod_traefik
 ```
 
 Remove:
@@ -124,6 +133,12 @@ docker stack rm gmod
 ## 5) Important notes
 
 - `api`, `websocket`, and `discord` are configured with `replicas: 2`.
+- `traefik` is the ingress and load-balances requests to `api` and `websocket`.
+- Public routes are host-based:
+  - `http://$API_HOST` -> API service
+  - `ws://$WS_HOST` -> WebSocket service
+  - `http://$TRAEFIK_DASHBOARD_HOST/dashboard/` -> Traefik dashboard
+- Prometheus metrics are exposed on `:9100/metrics`.
 - Stateful services (`mariadb`, `redis`, `mongo`, `minio`) run with `replicas: 1` and local volumes.
 - In multi-node mode, `local` volumes are not shared. Use a distributed volume driver if needed.
 - With multiple `websocket`/`discord` replicas, some features may require leader-election or singleton behavior depending on your business logic.

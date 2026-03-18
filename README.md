@@ -29,6 +29,7 @@ This project connects Gmod servers, Discord, and a web panel:
 - Storage: MinIO (S3-compatible)
 - Local orchestration: Docker Compose
 - Production orchestration: Docker Swarm
+- Ingress / load balancing: Traefik (Swarm provider)
 
 ## Requirements
 
@@ -175,6 +176,9 @@ docker build --target discord -t gmod-integration/discord:latest .
 API_IMAGE=gmod-integration/api:latest \
 WEBSOCKET_IMAGE=gmod-integration/websocket:latest \
 DISCORD_IMAGE=gmod-integration/discord:latest \
+API_HOST=api.localhost \
+WS_HOST=ws.localhost \
+TRAEFIK_DASHBOARD_HOST=traefik.localhost \
 docker stack deploy -c docker-stack.swarm.yml gmod
 ```
 
@@ -185,12 +189,26 @@ docker stack services gmod
 docker service ps gmod_api
 docker service ps gmod_websocket
 docker service ps gmod_discord
+docker service ps gmod_traefik
 ```
 
 ### 5) Manual scaling
 
 ```bash
 docker service scale gmod_api=2 gmod_websocket=2 gmod_discord=2
+```
+
+### 6) Access routes (Traefik)
+
+- API: `http://api.localhost`
+- WebSocket: `ws://ws.localhost`
+- Traefik dashboard: `http://traefik.localhost/dashboard/`
+- Traefik Prometheus metrics: `http://<swarm-node-ip>:9100/metrics`
+
+If needed, add local host entries:
+
+```bash
+echo "127.0.0.1 api.localhost ws.localhost traefik.localhost" | sudo tee -a /etc/hosts
 ```
 
 ## Fork + Branch Workflow (dev)
@@ -257,8 +275,11 @@ bun run turbo:build
 
 ## Default Ports
 
-- API: `53136`
-- WebSocket: `53139`
+- Traefik HTTP ingress: `80`
+- Traefik HTTPS ingress: `443`
+- Traefik metrics: `9100`
+- API (internal service port): `53136`
+- WebSocket (internal service port): `53139`
 - MariaDB: `3306`
 - Redis: `6379`
 - MongoDB: `27017`
