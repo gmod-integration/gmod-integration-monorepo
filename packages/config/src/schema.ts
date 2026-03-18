@@ -1,13 +1,25 @@
 import { z } from 'zod'
 
+const MIN_SECRET_LENGTH = 17
+const forbiddenSecretValues = new Set(['secret', 'root'])
+
+function strongSecretSchema(key: string) {
+  return z
+    .string()
+    .trim()
+    .min(MIN_SECRET_LENGTH, `${key} must be longer than 16 characters`)
+    .refine((value) => !forbiddenSecretValues.has(value.toLowerCase()), `${key} cannot be "SECRET" or "root"`)
+}
+
 export const ConfigSchema = z.object({
   DEV: z.enum(['true', 'false']).default('false'),
   SENTRY_DSN: z.string().url().optional(),
 
   MARIA_HOST: z.string().min(1),
   MARIA_USER: z.string().min(1),
-  MARIA_PASSWORD: z.string().min(1),
+  MARIA_PASSWORD: strongSecretSchema('MARIA_PASSWORD'),
   MARIA_NAME: z.string().min(1),
+  MARIA_ROOT_PASSWORD: strongSecretSchema('MARIA_ROOT_PASSWORD'),
 
   SCREENSHOTS_CHANNEL_ID: z.string().min(1),
 
@@ -38,7 +50,7 @@ export const ConfigSchema = z.object({
   MINIO_ENDPOINT: z.string().url(),
   MINIO_REGION: z.string().min(1),
   MINIO_ACCESS_KEY: z.string().min(1),
-  MINIO_SECRET_KEY: z.string().min(1),
+  MINIO_SECRET_KEY: strongSecretSchema('MINIO_SECRET_KEY'),
 })
 
 export type ConfigInput = z.infer<typeof ConfigSchema>
