@@ -1,6 +1,14 @@
 import { A } from '@solidjs/router'
 import { Component, createResource, createSignal, For, onMount, ParentProps, Show } from 'solid-js'
-import { discordUser, isAdmin, isLogged, setDiscordUser, setIsAdmin, setIsLogged } from '../../utils/event'
+import {
+  discordUser,
+  isAdmin,
+  isLogged,
+  normalizeDiscordUserPayload,
+  setDiscordUser,
+  setIsAdmin,
+  setIsLogged,
+} from '../../utils/event'
 import logo from '../../assets/brand/logo.png'
 import { useI18n } from '../../i18n'
 import { createStore } from 'solid-js/store'
@@ -255,21 +263,23 @@ export const Header: Component = () => {
         console.log('Failed to get the user data from the API')
       })
 
-    const discordUser = JSON.parse(localStorage.getItem('discordUser')!)
-    if (!discordUser) {
+    const storedDiscordUser = JSON.parse(localStorage.getItem('discordUser')!)
+    if (!storedDiscordUser) {
       setIsLogged(false)
       console.log('Failed to get the user data from the local storage')
       return
     }
 
-    if (discordUser && discordUser.error) {
+    if (storedDiscordUser && storedDiscordUser.error) {
       localStorage.removeItem('discordUser')
       setIsLogged(false)
       console.log('The user data is invalid')
       return
     }
 
-    setDiscordUser(discordUser)
+    const normalizedUser = normalizeDiscordUserPayload(storedDiscordUser)
+    localStorage.setItem('discordUser', JSON.stringify(normalizedUser))
+    setDiscordUser(normalizedUser)
     setIsLogged(true)
     initWebSocket()
 
@@ -285,7 +295,7 @@ export const Header: Component = () => {
         console.error('Failed to load notification count:', error)
       })
 
-    fetch(`${API_FQDN}/users?discordID=${discordUser.id}`, {
+    fetch(`${API_FQDN}/users?discordID=${normalizedUser.id}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -412,9 +422,11 @@ export const Header: Component = () => {
                 onClick={() => setIsOpen(true)}
               >
                 <div class="w-10 rounded-full overflow-hidden">
-                  <img alt="Tailwind CSS Navbar component" src={discordUser().displayAvatarURL} />
+                  <img alt="Discord avatar" src={discordUser().displayAvatarURL || discordUser().avatarURL} />
                 </div>
-                <p class="text-[1.3em] text-secondary mx-2">{discordUser().globalName}</p>
+                <p class="text-[1.3em] text-secondary mx-2">
+                  {discordUser().globalName || discordUser().displayName || discordUser().username}
+                </p>
                 <div class="flex justify-center items-center min-w-6 min-h-6">
                   <i class={`fa-solid ${isOpen() ? 'fa-angle-up' : 'fa-angle-down'}`}></i>
                 </div>

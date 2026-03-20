@@ -1,5 +1,5 @@
 import { Component, onMount } from 'solid-js'
-import { setDiscordUser, setIsLogged } from '../utils/event'
+import { normalizeDiscordUserPayload, setDiscordUser, setIsLogged } from '../utils/event'
 import { useNavigate } from '@solidjs/router'
 import { useI18n } from '../i18n'
 import { fetchAPI } from '../utils/api'
@@ -12,14 +12,7 @@ const Logout: Component = () => {
     await fetchAPI(`/users/:discordID/logout`, 'POST')
     localStorage.clear()
     setIsLogged(false)
-    setDiscordUser({
-      id: '',
-      username: '',
-      globalName: '',
-      discriminator: '',
-      avatarURL: '',
-      displayAvatarURL: '',
-    })
+    setDiscordUser(normalizeDiscordUserPayload({}))
     navigate('/')
   })
 

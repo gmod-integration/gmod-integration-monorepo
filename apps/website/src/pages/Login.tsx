@@ -1,5 +1,5 @@
 import { Component, createEffect } from 'solid-js'
-import { isLogged, setDiscordUser, setIsLogged } from '../utils/event'
+import { isLogged, normalizeDiscordUserPayload, setDiscordUser, setIsLogged } from '../utils/event'
 import { useLocation, useNavigate } from '@solidjs/router'
 import { useI18n } from '../i18n'
 import { getAPIUrl } from '../utils/api'
@@ -38,8 +38,9 @@ const Login: Component = () => {
         }
 
         const data = await res.json()
-        localStorage.setItem('discordUser', JSON.stringify(data))
-        setDiscordUser(data)
+        const normalizedUser = normalizeDiscordUserPayload(data)
+        localStorage.setItem('discordUser', JSON.stringify(normalizedUser))
+        setDiscordUser(normalizedUser)
         setIsLogged(true)
 
         const redirect = urlParams.get('redirect')
