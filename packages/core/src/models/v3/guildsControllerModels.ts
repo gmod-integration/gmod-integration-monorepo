@@ -5,6 +5,7 @@ import { ActionRowBuilder, type Message, type MessageActionRowComponentBuilder }
 import { ButtonPremium } from '@gmod/domain-guild/discordMessages.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
 import prisma from '@gmod/infra-prisma'
+import { ensureAvatarStored } from '@gmod/infra-minio'
 
 export async function processDiscordMessageToGmod(message: Message) {
   if (message.author.bot || !message.guild) return
@@ -44,7 +45,7 @@ export async function processDiscordMessageToGmod(message: Message) {
         method: 'wsPlayerSay',
         name: message.author.username,
         content: message.content,
-        avatar: message.author.displayAvatarURL({ extension: 'png' }),
+        avatar: await ensureAvatarStored('discord', message.author.id, message.author.displayAvatarURL()),
       },
     } as WSSendToServerData)
   }

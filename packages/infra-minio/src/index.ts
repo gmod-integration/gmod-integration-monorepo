@@ -1,5 +1,12 @@
-import { CreateBucketCommand, HeadBucketCommand, S3Client, S3ServiceException } from '@aws-sdk/client-s3'
-import { ConfigMinIO } from '@gmod/config'
+import {
+  CreateBucketCommand,
+  HeadBucketCommand,
+  HeadObjectCommand,
+  PutObjectCommand,
+  S3Client,
+  S3ServiceException,
+} from '@aws-sdk/client-s3'
+import { ConfigMinIO, ConfigServer } from '@gmod/config'
 
 export const s3 = new S3Client({
   endpoint: ConfigMinIO.endpoint,
@@ -56,5 +63,97 @@ export async function createBucketIfNotExists(bucketName: string) {
       console.error('❌ Unknown error when checking bucket:', err)
       throw err
     }
+  }
+}
+
+export const AVATAR_BUCKET = 'gmi-user-avatars'
+
+export type AvatarProvider = 'discord' | 'steam'
+
+function getAvatarObjectKey(provider: AvatarProvider, id: string): string {
+  return `${provider}/${id}`
+}
+
+export function getStoredAvatarUrl(provider: AvatarProvider, id: string): string {
+  return `${ConfigServer.domain}/avatars/${provider}/${encodeURIComponent(id)}`
+}
+
+async function avatarExists(provider: AvatarProvider, id: string): Promise<boolean> {
+  try {
+    await s3.send(
+      new HeadObjectCommand({
+        Bucket: AVATAR_BUCKET,
+        Key: getAvatarObjectKey(provider, id),
+      }),
+    )
+    return true
+  } catch (error: any) {
+    const httpCode = error?.$metadata?.httpStatusCode
+    if (error?.name === 'NotFound' || error?.name === 'NoSuchKey' || httpCode === 404) {
+      return false
+    }
+
+    throw error
+  }
+}
+
+async function uploadRemoteAvatar(provider: AvatarProvider, id: string, remoteUrl: string): Promise<void> {
+  await createBucketIfNotExists(AVATAR_BUCKET)
+
+  const response = await fetch(remoteUrl)
+  if (!response.ok) {
+    throw new Error(`Failed to fetch remote avatar: ${response.status} ${response.statusText}`)
+  }
+
+  const body = Buffer.from(await response.arrayBuffer())
+  const contentType = response.headers.get('content-type') || 'image/webp'
+
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: AVATAR_BUCKET,
+      Key: getAvatarObjectKey(provider, id),
+      Body: body,
+      ContentType: contentType,
+      CacheControl: 'public, max-age=3600',
+    }),
+  )
+}
+
+export async function ensureAvatarStored(
+  provider: AvatarProvider,
+  id: string,
+  remoteUrl: string | null | undefined,
+): Promise<string | null> {
+  if (!remoteUrl) {
+    return null
+  }
+
+  try {
+    if (!(await avatarExists(provider, id))) {
+      await uploadRemoteAvatar(provider, id, remoteUrl)
+    }
+
+    return getStoredAvatarUrl(provider, id)
+  } catch (error) {
+    console.error(`Failed to cache ${provider} avatar for ${id}:`, error)
+    return remoteUrl
+  }
+}
+
+export async function replaceStoredAvatar(
+  provider: AvatarProvider,
+  id: string,
+  remoteUrl: string | null | undefined,
+): Promise<string | null> {
+  if (!remoteUrl) {
+    return null
+  }
+
+  try {
+    await uploadRemoteAvatar(provider, id, remoteUrl)
+    return getStoredAvatarUrl(provider, id)
+  } catch (error) {
+    console.error(`Failed to refresh ${provider} avatar for ${id}:`, error)
+    return remoteUrl
   }
 }

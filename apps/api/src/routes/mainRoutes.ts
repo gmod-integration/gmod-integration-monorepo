@@ -5,11 +5,42 @@ import steamRoutes from './steamRoutes.js'
 import asyncHandler from '@/middleware/asyncHandler.js'
 import prisma from '@gmod/infra-prisma'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
-import { s3 } from '@gmod/infra-minio'
+import { AVATAR_BUCKET, s3 } from '@gmod/infra-minio'
 import { Readable } from 'node:stream'
 import { getSingleParam } from '@/utils/requestParams.js'
 
 const router = express.Router()
+
+router.get('/avatars/:provider/:id', async (req, res) => {
+  const provider = getSingleParam(req.params.provider)
+  const id = getSingleParam(req.params.id)
+
+  if (provider !== 'discord' && provider !== 'steam') {
+    return res.status(400).send('Invalid avatar provider')
+  }
+
+  try {
+    const command = new GetObjectCommand({
+      Bucket: AVATAR_BUCKET,
+      Key: `${provider}/${id}`,
+    })
+
+    const response = await s3.send(command)
+
+    res.setHeader('Content-Type', response.ContentType || 'image/webp')
+    res.setHeader('Cache-Control', 'public, max-age=3600')
+    res.status(200)
+
+    if (response.Body instanceof Readable) {
+      response.Body.pipe(res)
+    } else {
+      res.end('Error: no stream returned')
+    }
+  } catch (error) {
+    console.error('Error loading avatar from S3:', error)
+    res.status(404).send('Avatar not found')
+  }
+})
 
 router.get('/screenshots/:filename', async (req, res) => {
   const filename = getSingleParam(req.params.filename)

@@ -1,6 +1,6 @@
 import steamApi from 'steamapi'
 import { ConfigSteam } from '@gmod/config'
-import redis from '@gmod/infra-redis'
+import { ensureAvatarStored } from '@gmod/infra-minio'
 
 const steam = new steamApi(ConfigSteam.apiKey!)
 
@@ -24,14 +24,7 @@ export function getSteamUserAvatars(steamID64: string) {
 
 export function getSteamUserAvatarLarge(steamID64: string) {
   return new Promise(async (resolve, reject) => {
-    const redisKey = `steam:${steamID64}:avatar`
-    const redisValue = await redis.get(redisKey)
-    if (redisValue) {
-      return resolve(redisValue)
-    }
-
     const summary = await steam.getUserSummary(steamID64)
-    await redis.set(redisKey, summary.avatar.large, 'EX', 60 * 60 * 24 * 7)
-    resolve(summary.avatar.large)
+    resolve(await ensureAvatarStored('steam', steamID64, summary.avatar.large))
   })
 }

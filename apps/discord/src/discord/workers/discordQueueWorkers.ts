@@ -1,6 +1,6 @@
 import { Worker, type Job } from 'bullmq'
 import { connection } from '@gmod/infra-bullmq'
-import { s3 } from '@gmod/infra-minio'
+import { ensureAvatarStored, s3 } from '@gmod/infra-minio'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import {
   type UpdateGuildUserPseudoJob,
@@ -449,7 +449,7 @@ export const discordMainClientOpsWorker = new Worker<
               id: user.id,
               username: user.username,
               displayName: user.displayName,
-              avatarURL: user.displayAvatarURL(),
+              avatarURL: await ensureAvatarStored('discord', user.id, user.displayAvatarURL()),
             }
           : null,
       })
@@ -917,13 +917,15 @@ export const discordGuildOpsWorker = new Worker<
 
       const admins = members
         .filter((member) => member.permissions.has('Administrator') && !member.user.bot)
-        .map((member) => ({
+      const adminsWithAvatar = await Promise.all(
+        admins.map(async (member) => ({
           id: member.id,
           name: member.displayName,
-          avatar: member.user.displayAvatarURL(),
-        }))
+          avatar: await ensureAvatarStored('discord', member.user.id, member.user.displayAvatarURL()),
+        })),
+      )
 
-      await writeReply(payload.correlationId, { correlationId: payload.correlationId, admins })
+      await writeReply(payload.correlationId, { correlationId: payload.correlationId, admins: adminsWithAvatar })
       return
     }
 
