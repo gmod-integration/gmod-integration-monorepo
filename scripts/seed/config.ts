@@ -1,5 +1,5 @@
 export const devGuild = {
-  id: '1299172406169960458', // @dev-dev
+  id: '1051881514020917408', // @dev-dev
   name: 'Dev Server',
 }
 
@@ -48,4 +48,19 @@ export const devGuildVerifyAddRoles = [
 
 export const devGuildVerifyRemoveRoles = [
   '1245463981641175112', // 'not verif'
+]
+
+export const devGuildLinks = [
+  {
+    name: 'Github',
+    url: 'https://gmod-integration.com/github',
+  },
+  {
+    name: 'Workshop Content',
+    url: 'https://gmod-integration.com/workshop',
+  },
+  {
+    name: 'Documentation',
+    url: 'https://gmod-integration.com/docs',
+  },
 ]
