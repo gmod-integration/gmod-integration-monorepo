@@ -15,7 +15,7 @@ router.get('/avatars/:provider/:id', async (req, res) => {
   const provider = getSingleParam(req.params.provider)
   const id = getSingleParam(req.params.id)
 
-  if (provider !== 'discord' && provider !== 'steam') {
+  if (provider !== 'discord' && provider !== 'steam' && provider !== 'guild') {
     return res.status(400).send('Invalid avatar provider')
   }
 

@@ -1,5 +1,6 @@
 import {
   CreateBucketCommand,
+  DeleteObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
   PutObjectCommand,
@@ -68,7 +69,7 @@ export async function createBucketIfNotExists(bucketName: string) {
 
 export const AVATAR_BUCKET = 'gmi-user-avatars'
 
-export type AvatarProvider = 'discord' | 'steam'
+export type AvatarProvider = 'discord' | 'steam' | 'guild'
 
 function getAvatarObjectKey(provider: AvatarProvider, id: string): string {
   return `${provider}/${id}`
@@ -155,5 +156,18 @@ export async function replaceStoredAvatar(
   } catch (error) {
     console.error(`Failed to refresh ${provider} avatar for ${id}:`, error)
     return remoteUrl
+  }
+}
+
+export async function deleteStoredAvatar(provider: AvatarProvider, id: string): Promise<void> {
+  try {
+    await s3.send(
+      new DeleteObjectCommand({
+        Bucket: AVATAR_BUCKET,
+        Key: getAvatarObjectKey(provider, id),
+      }),
+    )
+  } catch (error) {
+    console.error(`Failed to delete ${provider} avatar for ${id}:`, error)
   }
 }

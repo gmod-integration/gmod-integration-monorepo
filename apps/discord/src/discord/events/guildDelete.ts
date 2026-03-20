@@ -4,12 +4,14 @@ import { getGuildClient, killGuildClient } from '../index.js'
 import { type Guild } from 'discord.js'
 import prisma from '@gmod/infra-prisma'
 import { deleteCachedGuildPreferredLocale } from '@gmod/core/utils/guildLocaleCache.js'
+import { deleteStoredAvatar } from '@gmod/infra-minio'
 
 export default {
   name: 'guildDelete',
   async execute(guild: Guild) {
     gmLog('event', `Bot left guild: ${guild.name}`)
     await deleteCachedGuildPreferredLocale(guild.id)
+    await deleteStoredAvatar('guild', guild.id)
 
     const guildBotInstance = await getGuildClient(guild.id, false)
     if (!guildBotInstance.user) return

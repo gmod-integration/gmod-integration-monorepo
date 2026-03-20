@@ -628,7 +628,7 @@ export const discordGuildOpsWorker = new Worker<
         guild: {
           id: guild.id,
           name: guild.name,
-          icon: guild.icon,
+          icon: await ensureAvatarStored('guild', guild.id, guild.iconURL({ extension: 'png', size: 256 })),
           ownerID: guild.ownerId,
           preferredLocale: guild.preferredLocale,
           channels: guild.channels.cache.map((channel) => ({

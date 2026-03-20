@@ -10,10 +10,19 @@ import type { PanelUser } from '@gmod/domain-user/PanelUser.js'
 import { v4 as uuidv4 } from 'uuid'
 import { gmLog } from '@gmod/core/utils/logger.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
+import { ensureAvatarStored } from '@gmod/infra-minio'
 import {
   enqueueMainClientFetchUser,
   enqueueMainClientSyncPremiumRoles,
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+
+function getDiscordGuildIconCdnUrl(guildID: string, icon: string | null | undefined): string | null {
+  if (!icon) {
+    return null
+  }
+
+  return `https://cdn.discordapp.com/icons/${guildID}/${icon}.png?size=256`
+}
 
 export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMember, newMember: GuildMember) {
   const addedRoles = newMember.roles.cache.filter((role) => !oldMember.roles.cache.has(role.id))
@@ -252,10 +261,12 @@ export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
       continue
     }
 
+    const icon = await ensureAvatarStored('guild', guildID, getDiscordGuildIconCdnUrl(guildID, guildData.icon))
+
     guilds.push({
       id: guildID,
       name: guildData.name,
-      icon: guildData.icon,
+      icon,
       hasBot: hasBotGuildsID.includes(guildID),
       isOwner: guildData.owner,
       isPremium: hasBotGuildsID.includes(guildID) ? await isGuildPremium(guildID) : false,

@@ -75,7 +75,7 @@ const GuildsSelector: Component = () => {
                   >
                     {guild.isPremium && <i class="fa-solid fa-crown absolute top-5 left-5 text-2xl text-amber-400"></i>}
                     <img
-                      src={guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png` : defaultGuild}
+                      src={guild.icon || defaultGuild}
                       alt={guild.name}
                       class="h-[96px] w-[96px] rounded-full mx-auto mt-4"
                     />
