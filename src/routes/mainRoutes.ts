@@ -11,7 +11,7 @@ import { Readable } from 'node:stream';
 const router = express.Router();
 
 router.get('/screenshots/:filename', async (req, res) => {
-  const filename = req.params.filename;
+  const filename = (req.params as Record<string, string>).filename;
 
   try {
     const command = new GetObjectCommand({
@@ -39,8 +39,8 @@ router.get('/screenshots/:filename', async (req, res) => {
 router.get(
   '/gdpr-request/:uuid',
   asyncHandler(async (req, res) => {
-    const { code } = req.query;
-    const { uuid } = req.params;
+    const code = Array.isArray(req.query.code) ? req.query.code[0] : req.query.code;
+    const { uuid } = req.params as Record<string, string>;
 
     if (!code) return res.status(400).json({ error: 'missing_code' });
 

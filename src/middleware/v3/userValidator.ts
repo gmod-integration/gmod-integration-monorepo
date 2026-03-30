@@ -5,11 +5,12 @@ import { getServerFromID } from '../../classes/v3/Server.js';
 import { Guild } from '../../classes/v3/Guild.js';
 import { getUserFromDiscordID } from '../../classes/v3/User.js';
 import { NextFunction, Request, Response } from 'express';
+import { firstString } from '../../utils/http.js';
 
 export async function userValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { discordID } = req.params;
-    const { authorization } = req.headers;
+    const { discordID } = req.params as Record<string, string>;
+    const authorization = firstString(req.headers.authorization);
 
     if (badArgument([discordID])) {
       res.status(400).json({
@@ -56,7 +57,7 @@ export async function userValidator(req: Request, res: Response, next: NextFunct
 export async function userAdminGuildValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const panelUser = req.panelUser!;
-    const { guildID } = req.params;
+    const { guildID } = req.params as Record<string, string>;
 
     if (!(await panelUser.isAdminOfGuild(guildID))) {
       res.status(403).json({
@@ -92,7 +93,7 @@ export async function userAdminGuildValidator(req: Request, res: Response, next:
 
 export async function userServerValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const { serverID } = req.params;
+    const { serverID } = req.params as Record<string, string>;
 
     const server = await getServerFromID(serverID);
     if (!server) {

@@ -3,7 +3,7 @@ import { Query } from '../../classes/db/Query.js';
 import { getErrorsByServer } from '../../classes/gmod/GmodErrors.js';
 
 export async function getServerErrors(req: Request, res: Response) {
-  const { serverID } = req.params;
+  const { serverID } = req.params as Record<string, string>;
 
   let query: Query;
   try {

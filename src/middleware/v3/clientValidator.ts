@@ -3,11 +3,12 @@ import crypto from 'crypto';
 import { NextFunction, Request, Response } from 'express';
 import { badArgument } from '../../utils/tools.js';
 import redis from '../../services/redis/index.js';
+import { firstString } from '../../utils/http.js';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { serverID, clientID64 } = req.params;
-    const { authorization } = req.headers;
+    const { serverID, clientID64 } = req.params as Record<string, string>;
+    const authorization = firstString(req.headers.authorization);
 
     if (badArgument([serverID, authorization, clientID64])) {
       res.status(400).json({

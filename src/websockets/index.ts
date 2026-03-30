@@ -1,13 +1,14 @@
-import { WebSocketServer } from 'ws';
+import WebSocket, { RawData, WebSocketServer } from 'ws';
 import { ConfigServer } from '../classes/config/Config.js';
 import { gmLog } from '../utils/logger.js';
 import { getServerFromID, getServersFromDiscordGuildID } from '../classes/v3/Server.js';
 import { getPanelUserFromDiscordID, PanelUser } from '../classes/v3/PanelUser.js';
 import redis from '../services/redis/index.js';
 import { lastGmodIntegrationTag, versionComparator } from '../utils/tools.js';
+import { firstString } from '../utils/http.js';
 
 interface wsClientClient {
-  ws: any;
+  ws: WebSocket;
   panelUser: PanelUser;
   guildAdminListID: string[];
   serverAdminListID: string[];
@@ -15,7 +16,7 @@ interface wsClientClient {
 
 interface wsClientServer {
   id: string;
-  ws: any;
+  ws: WebSocket;
 }
 
 let clients = {
@@ -27,11 +28,12 @@ const wss = new WebSocketServer({
   port: ConfigServer.ports.websocket,
   clientTracking: true,
   verifyClient: async (info, cb) => {
-    const { id, token } = info.req.headers;
+    const id = firstString(info.req.headers.id);
+    const token = firstString(info.req.headers.token);
 
     if (id && token) {
-      const server = await getServerFromID(id as string);
-      if (server && server.isValidToken(token as string)) {
+      const server = await getServerFromID(id);
+      if (server && server.isValidToken(token)) {
         gmLog('websocket', 'Authorized server ' + id);
         return cb(true);
       }
@@ -58,7 +60,8 @@ const wss = new WebSocketServer({
 });
 
 wss.on('connection', async function connection(ws, req) {
-  const { id, token } = req.headers;
+  const id = firstString(req.headers.id);
+  const token = firstString(req.headers.token);
 
   if (id && token) {
     // Find existing client with same id and close its socket if present
@@ -77,9 +80,9 @@ wss.on('connection', async function connection(ws, req) {
       clients.server = clients.server.filter((client) => client.ws !== ws);
       gmLog('websocket', 'Server disconnected: ' + id);
     });
-    ws.on('message', async (message: string) => {
+    ws.on('message', async (message: RawData) => {
       try {
-        const wsInfo = JSON.parse(message);
+        const wsInfo = JSON.parse(message.toString());
 
         if (!wsInfo.action) {
           return;
@@ -133,9 +136,9 @@ wss.on('connection', async function connection(ws, req) {
       clients.client.push({ ws, panelUser: user, guildAdminListID, serverAdminListID });
       gmLog('websocket', 'Client connected: ' + discordID);
 
-      ws.on('message', async (message: string) => {
+      ws.on('message', async (message: RawData) => {
         try {
-          const wsInfo = JSON.parse(message);
+          const wsInfo = JSON.parse(message.toString());
 
           if (!wsInfo.action) {
             return;

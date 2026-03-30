@@ -1237,6 +1237,7 @@ export class Server extends BaseClass {
         action: newAction,
         compare,
         channelID,
+        adminIDS: JSON.stringify([]),
         value,
         operator: newOperator,
         message,

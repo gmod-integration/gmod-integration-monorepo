@@ -166,17 +166,18 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
   });
 
   if (user) {
-    let IPArray = user.IPS;
-    if (!Array.isArray(IPArray)) {
+    let IPArray: string[] = [];
+    if (user.IPS) {
       try {
-        IPArray = JSON.parse(IPArray as string);
-        if (!Array.isArray(IPArray)) {
-          IPArray = [];
+        const parsedIPS = JSON.parse(user.IPS);
+        if (Array.isArray(parsedIPS)) {
+          IPArray = parsedIPS.filter((ip): ip is string => typeof ip === 'string');
         }
-      } catch (e) {
+      } catch {
         IPArray = [];
       }
     }
+
     if (!IPArray.includes(IP)) IPArray.push(IP);
 
     await prisma.users.update({

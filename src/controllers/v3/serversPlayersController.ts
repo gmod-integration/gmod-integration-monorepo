@@ -11,7 +11,7 @@ import prisma from '../../services/prisma/index.js';
 import { logServer } from '../../utils/logger.js';
 
 export async function getPlayer(req: Request, res: Response) {
-  const { steamID64 } = req.params;
+  const { steamID64 } = req.params as Record<string, string>;
   const server = req.server!;
   return res.send((await server.getPlayerStats(steamID64)) || {});
 }
@@ -83,7 +83,7 @@ export async function playerChangeName(req: Request, res: Response) {
 
 export async function playerChangeGroup(req: Request, res: Response) {
   const server = req.server!;
-  const { steamID64 } = req.params;
+  const { steamID64 } = req.params as Record<string, string>;
   await logServer(server, 'player_change_group', { steamID64, ...req.body });
 
   const { oldGroup, newGroup } = req.body;
@@ -103,7 +103,7 @@ export async function playerChangeGroup(req: Request, res: Response) {
 
 export async function playerChangeTeam(req: Request, res: Response) {
   const server = req.server!;
-  const { steamID64 } = req.params;
+  const { steamID64 } = req.params as Record<string, string>;
   await logServer(server, 'player_change_team', { steamID64, ...req.body });
 
   const { oldTeam, newTeam } = req.body;
@@ -129,7 +129,7 @@ export async function playerChangeTeam(req: Request, res: Response) {
 
 export async function playerConnect(req: Request, res: Response) {
   const server = req.server!;
-  const { steamID64 } = req.params;
+  const { steamID64 } = req.params as Record<string, string>;
   const { address, name, networkid } = req.body;
   await logServer(server, 'player_connect', { steamID64, ...req.body });
 
@@ -207,14 +207,14 @@ export async function playerInitialSpawn(req: Request, res: Response) {
 
 export async function playerSpawnObject(req: Request, res: Response) {
   const server = req.server!;
-  const { object } = req.params;
+  const { object } = req.params as Record<string, string>;
   await logServer(server, 'player_spawn_object', { object, ...req.body });
   return res.status(200).json({ success: true });
 }
 
 export async function playerWarn(req: Request, res: Response) {
   const server = req.server!;
-  const { steamID64 } = req.params;
+  const { steamID64 } = req.params as Record<string, string>;
   const { admin, player, adminSteamID64, reason, date } = req.body;
   await logServer(server, 'player_warned', req.body);
 

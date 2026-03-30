@@ -12,6 +12,7 @@ import {
   verifyUser,
 } from '../../models/v3/discordModels.js';
 import { badArgument, generateToken, todoControllers } from '../../utils/tools.js';
+import { firstString } from '../../utils/http.js';
 import { getVerificationGuildMessage } from '../../discord/utils/messages.js';
 import moment from 'moment';
 import { getUserDataGRPD } from '../../models/v3/gdrp.js';
@@ -51,7 +52,7 @@ export async function getProfile(req: Request, res: Response) {
 }
 
 export async function getUserSessions(req: Request, res: Response) {
-  const { discordID } = req.params;
+  const { discordID } = req.params as Record<string, string>;
   const sessions = await prisma.gm_panelToken.findMany({
     where: {
       revoke: false,
@@ -63,7 +64,7 @@ export async function getUserSessions(req: Request, res: Response) {
 }
 
 export async function deleteUserSession(req: Request, res: Response) {
-  const { discordID, sessionID } = req.params;
+  const { discordID, sessionID } = req.params as Record<string, string>;
   const session = await prisma.gm_panelToken.findFirst({
     where: {
       discordID,
@@ -115,21 +116,20 @@ export async function logOut(req: Request, res: Response) {
 }
 
 export async function findCurrentUser(req: Request, res: Response) {
-  return res.send((await getDiscordUserFromID(req.params.discordID)) || {});
+  return res.send((await getDiscordUserFromID((req.params as Record<string, string>).discordID)) || {});
 }
 
 export async function oauthLogin(req: Request, res: Response) {
-  const { code } = req.query;
+  const code = firstString(req.query.code);
 
   if (!code) {
-    const { redirect } = req.query;
+    const redirect = firstString(req.query.redirect);
     return res.redirect(ConfigDiscord.oauthPanel + (redirect ? `&state=redirect:${redirect}` : ''));
   }
 
   const redirect = typeof req.query.state === 'string' ? req.query.state.split('redirect:')[1] : null;
-  const codeString = typeof code === 'string' ? code : '';
   const discordUserToken = await getUserTokenFromCode(
-    codeString,
+    code,
     `${req.protocol}://${req.headers.host}${req.originalUrl.split('?')[0]}`,
   );
   if (!discordUserToken) {
@@ -176,8 +176,8 @@ export async function oauthLogin(req: Request, res: Response) {
       });
   }
 
-  const userIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
-  const userCountry = req.headers['cf-ipcountry'] || 'XX';
+  const userIP = firstString(req.headers['x-forwarded-for']) || req.connection.remoteAddress;
+  const userCountry = firstString(req.headers['cf-ipcountry']) || 'XX';
   const userUA = req.useragent;
 
   const panelAccessToken = await saveUserPanel(discordUser.id, discordUserToken, {
@@ -310,7 +310,7 @@ export async function postGuildLinks(req: Request, res: Response) {
 }
 
 export async function putGuildLinks(req: Request, res: Response) {
-  const { linkID } = req.params;
+  const { linkID } = req.params as Record<string, string>;
   const guild = req.guild!;
   const { url, alias, active } = req.body;
 
@@ -337,7 +337,7 @@ export async function putGuildLinks(req: Request, res: Response) {
 }
 
 export async function deleteGuildLinks(req: Request, res: Response) {
-  const { linkID } = req.params;
+  const { linkID } = req.params as Record<string, string>;
   const guild = req.guild!;
 
   const link = await guild.getLink(linkID);
@@ -396,7 +396,7 @@ export async function getGuildVerificationsRoles(req: Request, res: Response) {
 
 export async function putGuildVerificationsRoles(req: Request, res: Response) {
   const guild = req.guild!;
-  const { roleID } = req.params;
+  const { roleID } = req.params as Record<string, string>;
   const { isGiveRole, enabled } = req.body;
 
   const verificationRole = await guild.getVerificationRole(roleID);
@@ -422,7 +422,7 @@ export async function putGuildVerificationsRoles(req: Request, res: Response) {
 
 export async function deleteGuildVerificationsRoles(req: Request, res: Response) {
   const guild = req.guild!;
-  const { roleID } = req.params;
+  const { roleID } = req.params as Record<string, string>;
 
   const verificationRole = await guild.getVerificationRole(roleID);
   if (!verificationRole) {
@@ -441,7 +441,7 @@ export async function deleteGuildVerificationsRoles(req: Request, res: Response)
 
 export async function createGuildVerificationsRoles(req: Request, res: Response) {
   const guild = req.guild!;
-  const { roleID } = req.params;
+  const { roleID } = req.params as Record<string, string>;
   const isPremium = await guild.isPremium();
 
   const verificationRoles = await guild.getVerificationRoles();
@@ -487,7 +487,7 @@ export async function getServerStatusButtons(req: Request, res: Response) {
 
 export async function putServerStatusButtons(req: Request, res: Response) {
   const server = req.server!;
-  const { buttonID } = req.params;
+  const { buttonID } = req.params as Record<string, string>;
   const { name, emoji, url, enable } = req.body;
 
   const button = await server.findStatusButton(Number(buttonID));
@@ -525,7 +525,7 @@ export async function createServerStatusButtons(req: Request, res: Response) {
 
 export async function deleteServerStatusButtons(req: Request, res: Response) {
   const server = req.server!;
-  const { buttonID } = req.params;
+  const { buttonID } = req.params as Record<string, string>;
 
   const button = await server.findStatusButton(Number(buttonID));
   if (!button) {
@@ -756,7 +756,7 @@ export async function getServerPlayers(req: Request, res: Response) {
 
 export async function putPlayerBypassMaintenance(req: Request, res: Response) {
   const server = req.server!;
-  const { playerID } = req.params;
+  const { playerID } = req.params as Record<string, string>;
   const { bypassMaintenance } = req.body;
 
   if (badArgument([bypassMaintenance])) {
@@ -789,7 +789,7 @@ export async function putPlayerBypassMaintenance(req: Request, res: Response) {
 }
 
 export async function postUserStartVerification(req: Request, res: Response) {
-  const { discordID } = req.params;
+  const { discordID } = req.params as Record<string, string>;
   const user = await prisma.gm_user.findFirst({
     where: {
       id: discordID,
@@ -819,7 +819,7 @@ export async function postUserStartVerification(req: Request, res: Response) {
 }
 
 export async function postAutoRoles(req: Request, res: Response) {
-  const { guildID, roleID } = req.params;
+  const { guildID, roleID } = req.params as Record<string, string>;
   const existingAutoRole = await prisma.gm_guild_auto_roles.findFirst({
     where: {
       guildID,
@@ -844,7 +844,7 @@ export async function postAutoRoles(req: Request, res: Response) {
 }
 
 export async function deleteAutoRoles(req: Request, res: Response) {
-  const { guildID, roleID } = req.params;
+  const { guildID, roleID } = req.params as Record<string, string>;
   const autoRole = await prisma.gm_guild_auto_roles.findFirst({
     where: {
       guildID,
@@ -868,7 +868,7 @@ export async function deleteAutoRoles(req: Request, res: Response) {
 }
 
 export async function getAutoRoles(req: Request, res: Response) {
-  const { guildID } = req.params;
+  const { guildID } = req.params as Record<string, string>;
   const autoRoles = await prisma.gm_guild_auto_roles.findMany({
     where: {
       guildID,
@@ -1133,7 +1133,7 @@ export async function getGuildSetting(req: Request, res: Response) {
   //   }) || {},
   // );
   const guild = req.guild!;
-  const { setting } = req.params;
+  const { setting } = req.params as Record<string, string>;
 
   try {
     return res.send({
@@ -1148,7 +1148,7 @@ export async function getGuildSetting(req: Request, res: Response) {
 
 export async function putGuildSetting(req: Request, res: Response) {
   const guild = req.guild!;
-  const { setting } = req.params;
+  const { setting } = req.params as Record<string, string>;
   const { value } = req.body;
 
   if (badArgument([value])) {
@@ -1172,7 +1172,7 @@ export async function getServerSettings(req: Request, res: Response) {
 }
 
 export async function getServerSetting(req: Request, res: Response) {
-  const { setting } = req.params;
+  const { setting } = req.params as Record<string, string>;
   const server = req.server!;
 
   try {
@@ -1187,7 +1187,7 @@ export async function getServerSetting(req: Request, res: Response) {
 }
 
 export async function putServerSetting(req: Request, res: Response) {
-  const { setting } = req.params;
+  const { setting } = req.params as Record<string, string>;
   const server = req.server!;
   const { value } = req.body;
 
@@ -1255,7 +1255,7 @@ export async function getAdminInformations(req: Request, res: Response) {
 }
 
 export async function getServerRoles(req: Request, res: Response) {
-  const { serverID } = req.params;
+  const { serverID } = req.params as Record<string, string>;
 
   const roles = await prisma.gm_server_sync_roles.findMany({
     where: {
@@ -1267,7 +1267,7 @@ export async function getServerRoles(req: Request, res: Response) {
 }
 
 export async function postServerRoles(req: Request, res: Response) {
-  const { serverID, roleID } = req.params;
+  const { serverID, roleID } = req.params as Record<string, string>;
 
   const role = await prisma.gm_server_sync_roles.create({
     data: {
@@ -1280,7 +1280,7 @@ export async function postServerRoles(req: Request, res: Response) {
 }
 
 export async function putServerRoles(req: Request, res: Response) {
-  const { serverID, roleID } = req.params;
+  const { serverID, roleID } = req.params as Record<string, string>;
 
   const role = await prisma.gm_server_sync_roles.findFirst({
     where: {
@@ -1314,7 +1314,7 @@ export async function putServerRoles(req: Request, res: Response) {
 }
 
 export async function deleteServerRoles(req: Request, res: Response) {
-  const { serverID, roleID } = req.params;
+  const { serverID, roleID } = req.params as Record<string, string>;
 
   const role = await prisma.gm_server_sync_roles.findFirst({
     where: {
@@ -1341,7 +1341,7 @@ export async function deleteServerRoles(req: Request, res: Response) {
 }
 
 export async function getServerTeams(req: Request, res: Response) {
-  const { serverID } = req.params;
+  const { serverID } = req.params as Record<string, string>;
 
   const roles = await prisma.gm_server_sync_team_roles.findMany({
     where: {
@@ -1353,7 +1353,7 @@ export async function getServerTeams(req: Request, res: Response) {
 }
 
 export async function postServerTeams(req: Request, res: Response) {
-  const { serverID, roleID } = req.params;
+  const { serverID, roleID } = req.params as Record<string, string>;
 
   const role = await prisma.gm_server_sync_team_roles.create({
     data: {
@@ -1366,7 +1366,7 @@ export async function postServerTeams(req: Request, res: Response) {
 }
 
 export async function putServerTeams(req: Request, res: Response) {
-  const { serverID, id } = req.params;
+  const { serverID, id } = req.params as Record<string, string>;
 
   const role = await prisma.gm_server_sync_team_roles.findFirst({
     where: {
@@ -1397,7 +1397,7 @@ export async function putServerTeams(req: Request, res: Response) {
 }
 
 export async function deleteServerTeams(req: Request, res: Response) {
-  const { serverID, id } = req.params;
+  const { serverID, id } = req.params as Record<string, string>;
 
   const role = await prisma.gm_server_sync_team_roles.findFirst({
     where: {
@@ -1451,7 +1451,7 @@ export async function patchGuildBotInstance(req: Request, res: Response) {
 }
 
 export async function postGmodPurchase(req: Request, res: Response) {
-  const { guildID, discordID } = req.params;
+  const { guildID, discordID } = req.params as Record<string, string>;
   const user = await getUserFromDiscordID(discordID);
   if (!user || !user.getSteamID64()) {
     return res.status(404).send({
@@ -1484,7 +1484,7 @@ export async function postGmodPurchase(req: Request, res: Response) {
 }
 
 export async function deleteGmodPurchase(req: Request, res: Response) {
-  const { discordID } = req.params;
+  const { discordID } = req.params as Record<string, string>;
   const guild = req.guild!;
   if (!(await guild.mainBotOnGuild())) {
     return res.status(400).send({
@@ -1546,7 +1546,7 @@ export async function deleteGuildBotInstance(req: Request, res: Response) {
 }
 
 export async function getUserGmodStorePurchases(req: Request, res: Response) {
-  const { discordID } = req.params;
+  const { discordID } = req.params as Record<string, string>;
   const user = await getUserFromDiscordID(discordID);
   if (!user || !user.getSteamID64()) {
     return res.status(404).send({
@@ -1580,7 +1580,7 @@ export async function getServerPseudo(req: Request, res: Response) {
 }
 
 export async function postServerPseudo(req: Request, res: Response) {
-  const { serverID } = req.params;
+  const { serverID } = req.params as Record<string, string>;
 
   const pseudo = await prisma.gm_server_pseudo.create({
     data: {
@@ -1592,7 +1592,7 @@ export async function postServerPseudo(req: Request, res: Response) {
 }
 
 export async function putServerPseudo(req: Request, res: Response) {
-  const { serverID, roleID } = req.params;
+  const { serverID, roleID } = req.params as Record<string, string>;
 
   const pseudo = await prisma.gm_server_pseudo.findFirst({
     where: {
@@ -1626,7 +1626,7 @@ export async function putServerPseudo(req: Request, res: Response) {
 }
 
 export async function deleteServerPseudo(req: Request, res: Response) {
-  const { serverID, roleID } = req.params;
+  const { serverID, roleID } = req.params as Record<string, string>;
 
   const pseudo = await prisma.gm_server_pseudo.findFirst({
     where: {
@@ -1651,7 +1651,7 @@ export async function deleteServerPseudo(req: Request, res: Response) {
 }
 
 export async function getUserNotifications(req: Request, res: Response) {
-  const { discordID } = req.params;
+  const { discordID } = req.params as Record<string, string>;
   return res.json(
     await prisma.gm_users_notifications.findMany({
       where: { discordID },
@@ -1660,7 +1660,7 @@ export async function getUserNotifications(req: Request, res: Response) {
 }
 
 export async function patchUserNotifications(req: Request, res: Response) {
-  const { discordID, notificationID } = req.params;
+  const { discordID, notificationID } = req.params as Record<string, string>;
   const notification = await prisma.gm_users_notifications.findFirst({
     where: {
       id: Number(notificationID),
@@ -1686,7 +1686,7 @@ export async function patchUserNotifications(req: Request, res: Response) {
 }
 
 export async function getUserDataRequest(req: Request, res: Response) {
-  const { discordID } = req.params;
+  const { discordID } = req.params as Record<string, string>;
   return res.json(
     await prisma.gm_users_data_request.findMany({
       where: { discordID },
@@ -1695,7 +1695,7 @@ export async function getUserDataRequest(req: Request, res: Response) {
 }
 
 export async function postUserDataRequest(req: Request, res: Response) {
-  const { discordID } = req.params;
+  const { discordID } = req.params as Record<string, string>;
   const lastRequest = await prisma.gm_users_data_request.findFirst({
     where: {
       discordID,
@@ -1722,7 +1722,7 @@ export async function postUserDataRequest(req: Request, res: Response) {
 }
 
 export async function getServerReportBugs(req: Request, res: Response) {
-  const { serverID } = req.params;
+  const { serverID } = req.params as Record<string, string>;
   return res.json(
     await prisma.gm_server_report_bugs.findMany({
       where: { serverID },
@@ -1731,7 +1731,7 @@ export async function getServerReportBugs(req: Request, res: Response) {
 }
 
 export async function getServerLogs(req: Request, res: Response) {
-  const { serverID } = req.params;
+  const { serverID } = req.params as Record<string, string>;
 
   const rawOffset = req.query.offset?.toString() || '0';
   const rawLimit = req.query.limit?.toString() || '50';
@@ -1941,7 +1941,7 @@ export async function putServerLogsTrigger(req: Request, res: Response) {
     });
   }
 
-  const { triggerID } = req.params;
+  const { triggerID } = req.params as Record<string, string>;
   let trigger_number = Number(triggerID);
   const { action, compare, channelID, value, operator, message, log_type } = req.body;
 
@@ -1964,7 +1964,7 @@ export async function deleteServerLogsTrigger(req: Request, res: Response) {
     });
   }
 
-  const { triggerID } = req.params;
+  const { triggerID } = req.params as Record<string, string>;
   let trigger_number = Number(triggerID);
   return res.send(await server.deleteLogsTrigger(trigger_number));
 }

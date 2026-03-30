@@ -1,11 +1,12 @@
 import { getServerFromID } from '../../classes/v3/Server.js';
 import { NextFunction, Request, Response } from 'express';
 import redis from '../../services/redis/index.js';
+import { firstString } from '../../utils/http.js';
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { serverID } = req.params;
-    const { authorization } = req.headers;
+    const { serverID } = req.params as Record<string, string>;
+    const authorization = firstString(req.headers.authorization);
 
     if (!authorization || !authorization.startsWith('Bearer ')) {
       res.status(400).json({ error: 'invalid_authorization' });
@@ -24,7 +25,7 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
       return;
     }
 
-    const version = req.headers['gmod-integrations-version'];
+    const version = firstString(req.headers['gmod-integrations-version']);
     const redisKeyServerVersion = `server:${serverID}:version`;
     redis.set(redisKeyServerVersion, version);
     const redisKeyServerLastRequest = `server:${serverID}:last_request`;
