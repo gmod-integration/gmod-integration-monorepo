@@ -12,7 +12,7 @@ import useragent from 'express-useragent'
 // import * as Sentry from '@sentry/node';
 import errorMiddleware from '@/middleware/errorMiddleware.js'
 import { gracefulShutdownRedis } from '@gmod/infra-redis'
-import { gracefulShutdownPrisma } from '@gmod/infra-prisma'
+import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import { gracefulShutdownMongo } from '@gmod/core/database/gm_server_logs.js'
 import '@gmod/infra-bullmq'
 
@@ -122,6 +122,8 @@ app.all(/.*/, (req: Request, res: Response, next: NextFunction) => {
 
 // Errors
 app.use(errorMiddleware)
+
+await connectPrisma()
 
 // Listen
 app.listen(ConfigServer.ports.api, () => {

@@ -5,6 +5,7 @@ import { gmLog } from '@gmod/core/utils/logger.js'
 import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { getPanelUserFromDiscordID, type PanelUser } from '@gmod/domain-user/PanelUser.js'
 import { getUserGuildsWithPermsForPanel } from '@gmod/domain-guild/discordModels.js'
+import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import redis from '@gmod/infra-redis'
 import { lastGmodIntegrationTag, versionComparator } from '@gmod/core/utils/tools.js'
 import { connection } from '@gmod/infra-bullmq'
@@ -26,6 +27,8 @@ interface wsClientServer {
   id: string
   ws: any
 }
+
+await connectPrisma()
 
 const clients = {
   server: [] as wsClientServer[],
@@ -276,6 +279,7 @@ async function gracefulShutdown() {
     wss.close(() => resolve())
   })
 
+  await gracefulShutdownPrisma()
   process.exit(0)
 }
 

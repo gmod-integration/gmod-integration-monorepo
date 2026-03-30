@@ -1,7 +1,7 @@
 import '@gmod/core/utils/update-log.js'
 import { gmLog } from '@gmod/core/utils/logger.js'
 import { gracefulShutdownMongo } from '@gmod/core/database/gm_server_logs.js'
-import { gracefulShutdownPrisma } from '@gmod/infra-prisma'
+import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import { gracefulShutdownRedis } from '@gmod/infra-redis'
 import '@gmod/infra-bullmq'
 import { gracefulShutdownDiscord, getGuildClient, loadDiscordMain, loadDiscordSlave } from './discord/index.js'
@@ -17,6 +17,7 @@ setDiscordGuildClientResolver(async (guildID: string, forcePresenceOnGuild = tru
 setDiscordStatusMessageBuilder(getStatusMessage)
 
 async function runDiscord() {
+  await connectPrisma()
   await loadDiscordMain()
   await loadDiscordSlave()
   await initializeDiscordQueueWorkers()
