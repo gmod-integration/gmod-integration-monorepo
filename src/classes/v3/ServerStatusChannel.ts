@@ -1,4 +1,4 @@
-import prisma from 'src/services/prisma/index.js';
+import prisma from '../../services/prisma/index.js';
 import { ServerStatusChannelInput, ServerStatusChannelSchema } from '../../schemas/server/ServerStatusChannelSchema.js';
 import { Server } from './Server.js';
 
@@ -30,14 +30,16 @@ export class ServerStatusChannel {
         serverID: server.id,
       },
     });
-    return statusChannel ? ServerStatusChannel.from(statusChannel) : {
-      id: '',
-      serverID: server.id,
-      channelID: '',
-      format: '',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    return statusChannel
+      ? ServerStatusChannel.from(statusChannel)
+      : {
+          id: '',
+          serverID: server.id,
+          channelID: '',
+          format: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
   }
 
   public static async create(server: Server, channelID: string, format: string): Promise<ServerStatusChannel> {
