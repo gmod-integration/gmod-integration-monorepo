@@ -6,3 +6,5 @@ qodana.yaml
 dist
 .sentryclirc
 .turbo
+.codex
+**/logs/*
