@@ -1,0 +1,30 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+:root {
+	--ifm-color-primary: #e76f51; /* Orange standard */
+	--ifm-color-primary-dark: #e85d04; /* Orange plus foncé */
+	--ifm-color-primary-darker: #dc2f02; /* Orange encore plus foncé */
+	--ifm-color-primary-darkest: #ba181b; /* Orange très foncé */
+	--ifm-color-primary-light: #f4a261; /* Orange clair */
+	--ifm-color-primary-lighter: #f48c06; /* Orange très clair */
+	--ifm-color-primary-lightest: #faa307; /* Orange le plus clair */
+	--ifm-code-font-size: 95%;
+	--docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+
+[data-theme='dark'] {
+	--ifm-color-primary: #ffba08; /* Orange pour le mode sombre */
+	--ifm-color-primary-dark: #faa307; /* Orange foncé pour le mode sombre */
+	--ifm-color-primary-darker: #f48c06; /* Orange encore plus foncé pour le mode sombre */
+	--ifm-color-primary-darkest: #e85d04; /* Orange très foncé pour le mode sombre */
+	--ifm-color-primary-light: #ffcb69; /* Orange clair pour le mode sombre */
+	--ifm-color-primary-lighter: #ffddaf; /* Orange très clair pour le mode sombre */
+	--ifm-color-primary-lightest: #ffe5d9; /* Orange le plus clair pour le mode sombre */
+	--docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
