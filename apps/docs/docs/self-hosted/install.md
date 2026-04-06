@@ -1,6 +1,6 @@
 # Install
 
-In this section you'll find a step-by-step guide to set up your own instance of Gmod Integration. Whether you want to run it in production or development, we've got you covered. The production setup is still a work in progress, but the development setup is ready and will allow you to test your changes in a production-like environment.
+In this section you'll find a step-by-step guide to run your own production instance of Gmod Integration with Docker Swarm and Traefik.
 
 ## Requirements
 
@@ -10,26 +10,84 @@ Before you begin, make sure you have the following installed on your prod machin
 - Git
 - Curl
 - A domain name
-- Cloudflare account (for tunnels and pages)
+- Cloudflare account (for Tunnel and Pages)
 
 ## Fork 'gmod-integration-monorepo'
 
 To get started, you need to fork the 'gmod-integration-monorepo' repository on GitHub. This will create a copy of the repository under your own GitHub account, allowing you to make changes and deploy your own instance of Gmod Integration.
 
-## Get docker compose file
+## Clone and Prepare Environment
 
-TODO
+```bash
+git clone git@github.com:<your-account>/gmod-integration-monorepo.git
+cd gmod-integration-monorepo
+cp .env.example .env
+```
+
+Edit `.env` and set your production values.
+
+Important production FQDN values used by Traefik routing:
+
+```bash
+API_HOST=api.your-domain.com
+WS_HOST=ws.your-domain.com
+TRAEFIK_DASHBOARD_HOST=traefik.your-domain.com
+```
+
+If your GHCR images are private, login first:
+
+```bash
+docker login ghcr.io
+```
+
+## Deploy with Docker Swarm
+
+Initialize Swarm (once per host):
+
+```bash
+docker swarm init
+```
+
+Deploy stack:
+
+```bash
+docker stack deploy -c docker-stack.swarm.yml --with-registry-auth --prune gmod
+```
+
+Check services:
+
+```bash
+docker stack services gmod
+docker service logs -f gmod_prisma-migrate
+```
+
+For detailed Swarm operations (rollback, logs, troubleshooting), see [Swarm Start Guide](../technical/SWARM_START.md).
 
 ## Cloudflare Tunnels
 
-To protect your environment, we can use Cloudflare Tunnels to securely expose our environment to the internet.
+To protect your environment, use Cloudflare Tunnel to expose only Traefik.
 
-Expose the following ports using Cloudflare Tunnels:
+In Swarm mode, do not route directly to `53136` / `53139`.
+Both API and WebSocket FQDNs should target local Traefik (`localhost:80`), and Traefik will dispatch by hostname.
 
-| Protocol | Local Endpoint  | Public Endpoint     |
-| -------- | --------------- | ------------------- |
-| http     | localhost:53136 | api.your-domain.com |
-| http     | localhost:53139 | ws.your-domain.com  |
+| Protocol | Local Endpoint | Public Endpoint         |
+| -------- | -------------- | ----------------------- |
+| http     | localhost:80   | api.your-domain.com     |
+| http     | localhost:80   | ws.your-domain.com      |
+| http     | localhost:80   | traefik.your-domain.com |
+
+Example `cloudflared` config:
+
+```yaml
+ingress:
+  - hostname: api.your-domain.com
+    service: http://localhost:80
+  - hostname: ws.your-domain.com
+    service: http://localhost:80
+  - hostname: traefik.your-domain.com
+    service: http://localhost:80
+  - service: http_status:404
+```
 
 ## Cloudflare Pages (Frontend)
 
