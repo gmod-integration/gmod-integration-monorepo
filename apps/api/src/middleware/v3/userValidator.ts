@@ -6,11 +6,12 @@ import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { type NextFunction, type Request, type Response } from 'express'
 import { enqueueDiscordGuildSnapshot } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { getSingleParam } from '@/utils/requestParams.js'
-
 export async function userValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const discordID = getSingleParam(req.params.discordID)
-    const { authorization } = req.headers
+    const authorization = Array.isArray(req.headers.authorization)
+      ? req.headers.authorization[0]
+      : req.headers.authorization
 
     if (badArgument([discordID])) {
       res.status(400).json({

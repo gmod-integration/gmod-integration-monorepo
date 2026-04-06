@@ -168,13 +168,15 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
   if (user) {
     let IPArray: string[] = []
 
-    try {
-      const parsed = JSON.parse(user.IPS)
-      if (Array.isArray(parsed)) {
-        IPArray = parsed.filter((item): item is string => typeof item === 'string')
+    if (user.IPS) {
+      try {
+        const parsedIPS = JSON.parse(user.IPS)
+        if (Array.isArray(parsedIPS)) {
+          IPArray = parsedIPS.filter((ip): ip is string => typeof ip === 'string')
+        }
+      } catch {
+        IPArray = []
       }
-    } catch {
-      IPArray = []
     }
 
     if (!IPArray.includes(IP)) IPArray.push(IP)
