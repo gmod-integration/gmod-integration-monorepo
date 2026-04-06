@@ -4,10 +4,9 @@
     "module": "NodeNext",
     "outDir": "./dist",
     "rootDir": "./apps/api/src",
-    "baseUrl": "./",
     "paths": {
-      "@/*": ["apps/api/src/*"],
-      "src/*": ["apps/api/src/*"]
+      "@/*": ["./apps/api/src/*"],
+      "src/*": ["./apps/api/src/*"]
     },
     "moduleResolution": "nodenext",
     "allowSyntheticDefaultImports": true,
