@@ -87,6 +87,10 @@ function parseConfig(): ConfigInput {
 
 export const config = parseConfig()
 
+export const ConfigInstance = {
+  isSelfHosted: config.DEV === 'true' ? false : !config.DOMAIN_URL.includes('gmod-integration.com'),
+}
+
 export const ConfigServer = {
   dev: config.DEV === 'true',
   bodyLimit: '10mb',
