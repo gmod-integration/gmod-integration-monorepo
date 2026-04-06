@@ -17,7 +17,7 @@ import { fork } from 'child_process'
 
 import { fileURLToPath } from 'url'
 import path, { join } from 'path'
-import { readdirSync } from 'fs'
+import { existsSync, readdirSync } from 'fs'
 import {
   routinePremiumRoleOfMainGuild,
   routineServerStatusRefresh,
@@ -31,11 +31,13 @@ import { getServersFromDiscordGuildID, type Server } from '@gmod/domain-server/S
 import { type PlayerGmod } from '@gmod/core/classes/v3/PlayerGmod.js'
 import { Guild, guildSettingExists } from '@gmod/domain-guild/Guild.js'
 
-const envExtension = ConfigServer.dev ? '.ts' : '.js'
-
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const appRuntimePath = ConfigServer.dev ? path.join(__dirname, '..') : path.join(process.cwd(), 'dist')
+const distRuntimePath = path.join(process.cwd(), 'dist')
+const sourceRuntimePath = path.join(__dirname, '..')
+const hasBuiltDiscordRuntime = existsSync(path.join(distRuntimePath, 'discord'))
+const envExtension = hasBuiltDiscordRuntime ? '.js' : '.ts'
+const appRuntimePath = hasBuiltDiscordRuntime ? distRuntimePath : sourceRuntimePath
 
 const clientList = new Collection<string, Client>()
 
