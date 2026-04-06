@@ -52,6 +52,18 @@ const discordUpdateTeamRoleQueue = new Queue('discord-updateTeamRole', { connect
 const discordMainClientOpsQueue = new Queue('discord-mainClientOps', { connection })
 const discordGuildOpsQueue = new Queue('discord-guildOps', { connection })
 
+const GUILD_SNAPSHOT_CACHE_TTL_MS = 10_000
+const GUILD_SNAPSHOT_NULL_CACHE_TTL_MS = 3_000
+const guildSnapshotCache = new Map<
+  string,
+  {
+    value: DiscordGuildSummary | null
+    expiresAt: number
+  }
+>()
+const guildSnapshotInFlight = new Map<string, Promise<DiscordGuildSummary | null>>()
+const GUILD_SNAPSHOT_CACHE_MAX_ENTRIES = 500
+
 export class BullMQReplyTimeoutError extends Error {
   public readonly correlationId: string
   public readonly timeoutMs: number
@@ -72,6 +84,39 @@ export function isBullMQReplyTimeoutError(error: unknown): error is BullMQReplyT
 
 function getReplyKey(correlationId: string): string {
   return `bullmq:reply:${correlationId}`
+}
+
+function getCachedGuildSnapshot(guildID: string): DiscordGuildSummary | null | undefined {
+  const cached = guildSnapshotCache.get(guildID)
+  if (!cached) {
+    return undefined
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    guildSnapshotCache.delete(guildID)
+    return undefined
+  }
+
+  return cached.value
+}
+
+function pruneGuildSnapshotCache(now = Date.now()): void {
+  for (const [cachedGuildID, cached] of guildSnapshotCache.entries()) {
+    if (cached.expiresAt <= now) {
+      guildSnapshotCache.delete(cachedGuildID)
+    }
+  }
+}
+
+function setCachedGuildSnapshot(guildID: string, value: DiscordGuildSummary | null): void {
+  if (guildSnapshotCache.size >= GUILD_SNAPSHOT_CACHE_MAX_ENTRIES) {
+    pruneGuildSnapshotCache()
+  }
+
+  guildSnapshotCache.set(guildID, {
+    value,
+    expiresAt: Date.now() + (value ? GUILD_SNAPSHOT_CACHE_TTL_MS : GUILD_SNAPSHOT_NULL_CACHE_TTL_MS),
+  })
 }
 
 async function waitForReply<T>(correlationId: string, parser: (value: unknown) => T, timeoutMs = 5000): Promise<T> {
@@ -281,24 +326,45 @@ export async function enqueueMainClientSetPresence(
 
 export async function enqueueDiscordGuildSnapshot(
   guildID: string,
-  timeoutMs = 6000,
+  timeoutMs = 12000,
 ): Promise<DiscordGuildSummary | null> {
-  const correlationId = uuidv4()
-  const payload = DiscordGuildSnapshotJobSchema.parse({
-    guildID,
-    correlationId,
-    timestamp: new Date(),
-  })
+  const cached = getCachedGuildSnapshot(guildID)
+  if (cached !== undefined) {
+    return cached
+  }
 
-  await discordGuildOpsQueue.add('guildSnapshot', payload, {
-    priority: 9,
-    attempts: 2,
-    backoff: { type: 'exponential', delay: 1000 },
-    removeOnComplete: true,
-  })
+  const inFlight = guildSnapshotInFlight.get(guildID)
+  if (inFlight) {
+    return await inFlight
+  }
 
-  const reply = await waitForReply(correlationId, (value) => DiscordGuildSnapshotReplySchema.parse(value), timeoutMs)
-  return reply.guild
+  const requestPromise = (async () => {
+    const correlationId = uuidv4()
+    const payload = DiscordGuildSnapshotJobSchema.parse({
+      guildID,
+      correlationId,
+      timestamp: new Date(),
+    })
+
+    await discordGuildOpsQueue.add('guildSnapshot', payload, {
+      priority: 9,
+      attempts: 2,
+      backoff: { type: 'exponential', delay: 1000 },
+      removeOnComplete: true,
+    })
+
+    const reply = await waitForReply(correlationId, (value) => DiscordGuildSnapshotReplySchema.parse(value), timeoutMs)
+    setCachedGuildSnapshot(guildID, reply.guild)
+    return reply.guild
+  })()
+
+  guildSnapshotInFlight.set(guildID, requestPromise)
+
+  try {
+    return await requestPromise
+  } finally {
+    guildSnapshotInFlight.delete(guildID)
+  }
 }
 
 export async function enqueueDiscordGuildVerifyUser(

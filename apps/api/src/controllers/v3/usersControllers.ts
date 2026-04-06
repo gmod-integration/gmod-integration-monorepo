@@ -1058,8 +1058,17 @@ export async function getGuildBotInstance(req: Request, res: Response) {
 }
 
 export async function getGuildBotRoleSubordination(req: Request, res: Response) {
-  const guild = req.guild!
-  return res.send((await guild.getBotRoleSubordination()) || {})
+  const dscGuild = req.dscGuild!
+  const roles: Record<string, { name: string; editable: boolean }> = {}
+
+  dscGuild.roles.forEach((role: any) => {
+    roles[role.id] = {
+      name: role.name,
+      editable: role.editable,
+    }
+  })
+
+  return res.send(roles)
 }
 
 export async function patchGuildBotInstance(req: Request, res: Response) {
