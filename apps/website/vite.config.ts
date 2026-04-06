@@ -2,7 +2,7 @@ import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { defineConfig } from 'vite'
 import solidPlugin from 'vite-plugin-solid'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
-import { ConfigWebsite } from '@gmod/config/website.js'
+import { ConfigWebsite } from '@gmod/config/website-runtime.js'
 
 export default defineConfig(() => {
   const websiteConfig = {
