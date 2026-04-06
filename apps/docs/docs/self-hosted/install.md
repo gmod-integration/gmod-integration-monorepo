@@ -61,7 +61,7 @@ docker stack services gmod
 docker service logs -f gmod_prisma-migrate
 ```
 
-For detailed Swarm operations (rollback, logs, troubleshooting), see [Swarm Start Guide](../technical/SWARM_START.md).
+For detailed Swarm operations (rollback, logs, troubleshooting), see [Swarm Start Guide](/technical/swarm_start.md).
 
 ## Cloudflare Tunnels
 

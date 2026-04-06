@@ -37,7 +37,7 @@ Goal: do not call Discord directly.
 If Turbo reports a cycle between domain packages:
 
 1. Move shared types/functions to a neutral package (`core` or a new dedicated package).
-2. Avoid reciprocal dependencies (domain A <-> domain B).
+2. Avoid reciprocal dependencies (domain A `<->` domain B).
 3. Replace direct calls with contracts (schema + event/job) when needed.
 
 ## Definition of Done (DoD)
