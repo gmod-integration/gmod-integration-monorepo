@@ -3,6 +3,20 @@ import { z } from 'zod'
 const MIN_SECRET_LENGTH = 17
 const forbiddenSecretValues = new Set(['secret', 'root'])
 
+function unquoteString(value: unknown) {
+  if (typeof value !== 'string') {
+    return value
+  }
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1)
+  }
+  return trimmed
+}
+
 function strongSecretSchema(key: string) {
   return z
     .string()
@@ -16,7 +30,7 @@ export const ConfigSchema = z.object({
   SENTRY_DSN: z.string().url().optional(),
   SENTRY_AUTH_TOKEN: z.string().min(1).optional(),
 
-  MARIA_URL: z.string().url().optional(),
+  MARIA_URL: z.preprocess(unquoteString, z.string().url().optional()),
   MARIA_HOST: z.string().min(1),
   MARIA_PORT: z.coerce.number().int().min(1).max(65535).optional(),
   MARIA_USER: z.string().min(1),
