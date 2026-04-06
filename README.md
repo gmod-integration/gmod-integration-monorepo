@@ -40,14 +40,51 @@ None of those ports should ever be exposed to the public, use a reverse proxy li
 
 ## Cloudflare Tunnel
 
-If ur not runing the dev gmod server on the same machine as your dev environment, you can use Cloudflare Tunnel to expose your API, WebSocket, Website and Relay ports securely to the internet.
+Use different routing depending on your runtime mode.
+
+### Development (docker-compose / turbo dev)
+
+If your GMod server is not on the same machine, expose dev ports directly:
 
 | Protocol | Local Endpoint  | Public Endpoint             |
-| -------- | --------------- | ----------------------------|
+| -------- | --------------- | --------------------------- |
 | http     | localhost:53136 | api-dev.your-domain.com     |
 | http     | localhost:53139 | ws-dev.your-domain.com      |
 | http     | localhost:3000  | website-dev.your-domain.com |
 | http     | localhost:xxxx  | relay-dev.your-domain.com   |
+
+### Production (Docker Swarm + Traefik)
+
+In Swarm mode, API/WebSocket are routed by Traefik, so Cloudflare Tunnel should target Traefik (port `80`), not internal app ports.
+
+Set FQDN env values in `.env` before deploy:
+
+```bash
+API_HOST=api.your-domain.com
+WS_HOST=ws.your-domain.com
+TRAEFIK_DASHBOARD_HOST=traefik.your-domain.com
+```
+
+Cloudflare Tunnel example:
+
+```yaml
+ingress:
+  - hostname: api.your-domain.com
+    service: http://localhost:80
+  - hostname: ws.your-domain.com
+    service: http://localhost:80
+  - hostname: traefik.your-domain.com
+    service: http://localhost:80
+  - service: http_status:404
+```
+
+Prod routing summary:
+
+| Protocol | Local Endpoint | Public Endpoint           |
+| -------- | -------------- | ------------------------- |
+| http     | localhost:80   | api.your-domain.com       |
+| http     | localhost:80   | ws.your-domain.com        |
+| http     | localhost:80   | traefik.your-domain.com   |
 
 ## Set FQDN in Garry's Mod
 

@@ -128,6 +128,39 @@ docker service rollback gmod_discord
 docker stack rm gmod
 ```
 
+## 7. Production FQDN (Cloudflare Tunnel)
+
+In Swarm, app services are behind Traefik. Do not route Cloudflare directly to `53136` or `53139`.
+
+Set production hosts in `.env`:
+
+```bash
+API_HOST=api.your-domain.com
+WS_HOST=ws.your-domain.com
+TRAEFIK_DASHBOARD_HOST=traefik.your-domain.com
+```
+
+Deploy/redeploy:
+
+```bash
+docker stack deploy -c docker-stack.swarm.yml --with-registry-auth --prune gmod
+```
+
+Cloudflare Tunnel example (`config.yml`):
+
+```yaml
+ingress:
+  - hostname: api.your-domain.com
+    service: http://localhost:80
+  - hostname: ws.your-domain.com
+    service: http://localhost:80
+  - hostname: traefik.your-domain.com
+    service: http://localhost:80
+  - service: http_status:404
+```
+
+Local-only defaults like `api.localhost` and `ws.localhost` are intended for local testing, not production DNS.
+
 ## Troubleshooting
 
 ### `table does not exist`
