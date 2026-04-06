@@ -34,12 +34,6 @@ WS_HOST=ws.your-domain.com
 TRAEFIK_DASHBOARD_HOST=traefik.your-domain.com
 ```
 
-If your GHCR images are private, login first:
-
-```bash
-docker login ghcr.io
-```
-
 ## Deploy with Docker Swarm
 
 Initialize Swarm (once per host):
