@@ -23,7 +23,7 @@ const config: Config = {
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
   organizationName: 'gmod-integration', // Usually your GitHub org/user name.
-  projectName: 'gmod-integration-monorepo/apps/docs', // Usually your repo name.
+  projectName: 'gmod-integration-monorepo', // Usually your repo name.
 
   onBrokenLinks: 'warn',
 
@@ -44,7 +44,7 @@ const config: Config = {
           sidebarPath: './sidebars.ts',
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
-          editUrl: 'https://github.com/gmod-integration/docs/tree/main/',
+          editUrl: 'https://github.com/gmod-integration/gmod-integration-monorepo/tree/main/apps/docs/',
         },
         theme: {
           customCss: './src/css/custom.css',
