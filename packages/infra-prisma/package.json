@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@gmod/infra-mongo": "workspace:*",
-    "@prisma/adapter-mariadb": "^7.5.0",
-    "@prisma/client": "^7.5.0"
+    "@prisma/adapter-mariadb": "^7.6.0",
+    "@prisma/client": "^7.6.0"
   }
 }
