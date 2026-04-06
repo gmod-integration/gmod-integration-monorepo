@@ -8,6 +8,7 @@ services:
       - --providers.docker.network=gmod_net
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
+      - --entrypoints.traefik.address=:8080
       - --entrypoints.metrics.address=:9100
       - --api.dashboard=true
       - --api.insecure=false
@@ -21,6 +22,10 @@ services:
         mode: ingress
       - target: 443
         published: 443
+        protocol: tcp
+        mode: ingress
+      - target: 8080
+        published: 8080
         protocol: tcp
         mode: ingress
       - target: 9100
@@ -42,9 +47,14 @@ services:
         - traefik.http.routers.traefik.rule=Host(`${TRAEFIK_DASHBOARD_HOST:-traefik.localhost}`)
         - traefik.http.routers.traefik.entrypoints=web
         - traefik.http.routers.traefik.service=api@internal
+        - traefik.http.routers.traefik-insecure.rule=PathPrefix(`/api`) || PathPrefix(`/dashboard`)
+        - traefik.http.routers.traefik-insecure.entrypoints=traefik
+        - traefik.http.routers.traefik-insecure.service=api@internal
+        # Swarm: required to avoid "port is missing" on the Traefik service itself.
+        - traefik.http.services.traefik-dummy.loadbalancer.server.port=9999
 
   api:
-    image: ${API_IMAGE:-gmod-integration/api:latest}
+    image: ${API_IMAGE:-ghcr.io/gmod-integration/gmod-integration-api:latest}
     env_file:
       - .env
     environment:
@@ -55,8 +65,27 @@ services:
       REDIS_PORT: 6379
       BULLMQ_HOST: redis
       BULLMQ_PORT: 6379
+      MARIA_CONNECTION_LIMIT: 10
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
       MONGO_URI: mongodb://mongo:27017
       MINIO_ENDPOINT: http://minio:9000
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        i=1
+        while [ "$$i" -le 120 ]; do
+          if bun -e "import * as mariadb from 'mariadb'; (async () => { try { const c = await mariadb.createConnection({ host: process.env.MARIA_HOST || 'mariadb', port: Number(process.env.MARIA_PORT || 3306), user: process.env.MARIA_USER, password: process.env.MARIA_PASSWORD, database: process.env.MARIA_NAME }); const rows = await c.query(\"SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users' LIMIT 1\"); await c.end(); process.exit(Array.isArray(rows) && rows.length > 0 ? 0 : 1); } catch { process.exit(1); } })();"; then
+            echo "MariaDB schema ready, starting API"
+            exec bun apps/api/src/gm_integration_api.ts
+          fi
+          echo "Waiting for MariaDB schema (users table) before API start ($$i/120)..."
+          i=$$(($$i+1))
+          sleep 5
+        done
+        echo "MariaDB schema not ready for API after 120 attempts"
+        exit 1
     networks:
       - gmod_net
     deploy:
@@ -65,9 +94,21 @@ services:
       restart_policy:
         condition: any
         delay: 5s
+        max_attempts: 3
+        window: 30s
       update_config:
         parallelism: 1
+        delay: 10s
         order: start-first
+        monitor: 120s
+        failure_action: rollback
+        max_failure_ratio: 0
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+        monitor: 30s
+        failure_action: pause
       labels:
         - traefik.enable=true
         - traefik.docker.network=gmod_net
@@ -76,7 +117,7 @@ services:
         - traefik.http.services.api.loadbalancer.server.port=53136
 
   websocket:
-    image: ${WEBSOCKET_IMAGE:-gmod-integration/websocket:latest}
+    image: ${WEBSOCKET_IMAGE:-ghcr.io/gmod-integration/gmod-integration-websocket:latest}
     env_file:
       - .env
     environment:
@@ -87,8 +128,27 @@ services:
       REDIS_PORT: 6379
       BULLMQ_HOST: redis
       BULLMQ_PORT: 6379
+      MARIA_CONNECTION_LIMIT: 10
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
       MONGO_URI: mongodb://mongo:27017
       MINIO_ENDPOINT: http://minio:9000
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        i=1
+        while [ "$$i" -le 120 ]; do
+          if bun -e "import * as mariadb from 'mariadb'; (async () => { try { const c = await mariadb.createConnection({ host: process.env.MARIA_HOST || 'mariadb', port: Number(process.env.MARIA_PORT || 3306), user: process.env.MARIA_USER, password: process.env.MARIA_PASSWORD, database: process.env.MARIA_NAME }); const rows = await c.query(\"SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users' LIMIT 1\"); await c.end(); process.exit(Array.isArray(rows) && rows.length > 0 ? 0 : 1); } catch { process.exit(1); } })();"; then
+            echo "MariaDB schema ready, starting WebSocket"
+            exec bun apps/websocket/src/index.ts
+          fi
+          echo "Waiting for MariaDB schema (users table) before WebSocket start ($$i/120)..."
+          i=$$(($$i+1))
+          sleep 5
+        done
+        echo "MariaDB schema not ready for WebSocket after 120 attempts"
+        exit 1
     networks:
       - gmod_net
     deploy:
@@ -97,9 +157,21 @@ services:
       restart_policy:
         condition: any
         delay: 5s
+        max_attempts: 3
+        window: 30s
       update_config:
         parallelism: 1
+        delay: 10s
         order: start-first
+        monitor: 120s
+        failure_action: rollback
+        max_failure_ratio: 0
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+        monitor: 30s
+        failure_action: pause
       labels:
         - traefik.enable=true
         - traefik.docker.network=gmod_net
@@ -108,7 +180,7 @@ services:
         - traefik.http.services.websocket.loadbalancer.server.port=53139
 
   discord:
-    image: ${DISCORD_IMAGE:-gmod-integration/discord:latest}
+    image: ${DISCORD_IMAGE:-ghcr.io/gmod-integration/gmod-integration-discord:latest}
     env_file:
       - .env
     environment:
@@ -119,8 +191,27 @@ services:
       REDIS_PORT: 6379
       BULLMQ_HOST: redis
       BULLMQ_PORT: 6379
+      MARIA_CONNECTION_LIMIT: 10
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
       MONGO_URI: mongodb://mongo:27017
       MINIO_ENDPOINT: http://minio:9000
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        i=1
+        while [ "$$i" -le 120 ]; do
+          if bun -e "import * as mariadb from 'mariadb'; (async () => { try { const c = await mariadb.createConnection({ host: process.env.MARIA_HOST || 'mariadb', port: Number(process.env.MARIA_PORT || 3306), user: process.env.MARIA_USER, password: process.env.MARIA_PASSWORD, database: process.env.MARIA_NAME }); const rows = await c.query(\"SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users' LIMIT 1\"); await c.end(); process.exit(Array.isArray(rows) && rows.length > 0 ? 0 : 1); } catch { process.exit(1); } })();"; then
+            echo "MariaDB schema ready, starting Discord"
+            exec bun apps/discord/src/main.ts
+          fi
+          echo "Waiting for MariaDB schema (users table) before Discord start ($$i/120)..."
+          i=$$(($$i+1))
+          sleep 5
+        done
+        echo "MariaDB schema not ready for Discord after 120 attempts"
+        exit 1
     networks:
       - gmod_net
     deploy:
@@ -129,19 +220,31 @@ services:
       restart_policy:
         condition: any
         delay: 5s
+        max_attempts: 3
+        window: 30s
       update_config:
         parallelism: 1
+        delay: 10s
         order: start-first
+        monitor: 120s
+        failure_action: rollback
+        max_failure_ratio: 0
+      rollback_config:
+        parallelism: 1
+        delay: 5s
+        order: start-first
+        monitor: 30s
+        failure_action: pause
 
   mariadb:
     image: mariadb:11
     env_file:
       - .env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MARIA_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MARIA_NAME}
-      MYSQL_USER: ${MARIA_USER}
-      MYSQL_PASSWORD: ${MARIA_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-${MARIA_ROOT_PASSWORD}}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-${MARIA_NAME}}
+      MARIADB_USER: ${MARIADB_USER:-${MARIA_USER}}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-${MARIA_PASSWORD}}
     ports:
       - target: 3306
         published: 3306
@@ -159,6 +262,55 @@ services:
       start_period: 20s
     deploy:
       replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+
+  prisma-migrate:
+    image: ${API_IMAGE:-ghcr.io/gmod-integration/gmod-integration-api:latest}
+    env_file:
+      - .env
+    environment:
+      DEV: ${DEV:-false}
+      MARIA_HOST: mariadb
+      MARIA_PORT: 3306
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        i=1
+        while [ "$$i" -le 120 ]; do
+          if bun -e "import * as mariadb from 'mariadb'; (async () => { try { const c = await mariadb.createConnection({ host: 'mariadb', port: Number(process.env.MARIA_PORT || 3306), user: process.env.MARIA_USER, password: process.env.MARIA_PASSWORD, database: process.env.MARIA_NAME }); await c.query('SELECT 1'); await c.end(); process.exit(0); } catch { process.exit(1); } })();"; then
+            break
+          fi
+          echo "Waiting for MariaDB TCP/auth readiness ($$i/120)..."
+          i=$$(($$i+1))
+          sleep 5
+        done
+        if [ "$$i" -gt 120 ]; then
+          echo "MariaDB not reachable after 120 attempts"
+          exit 1
+        fi
+        export MARIA_URL="mysql://$${MARIA_USER}:$${MARIA_PASSWORD}@mariadb:$${MARIA_PORT:-3306}/$${MARIA_NAME}"
+        echo "Running prisma db push against mariadb"
+        i=1
+        while [ "$$i" -le 30 ]; do
+          bunx prisma db push --schema packages/infra-prisma/schema.prisma && exit 0
+          echo "prisma db push failed (attempt $$i/30), retrying in 5s..."
+          i=$$(($$i+1))
+          sleep 5
+        done
+        echo "prisma db push failed after 30 attempts"
+        exit 1
+    networks:
+      - gmod_net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 30s
       placement:
         constraints:
           - node.role == manager

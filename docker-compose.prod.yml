@@ -5,10 +5,10 @@ services:
     env_file:
       - .env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MARIA_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MARIA_NAME}
-      MYSQL_USER: ${MARIA_USER}
-      MYSQL_PASSWORD: ${MARIA_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-${MARIA_ROOT_PASSWORD}}
+      MARIADB_DATABASE: ${MARIADB_DATABASE:-${MARIA_NAME}}
+      MARIADB_USER: ${MARIADB_USER:-${MARIA_USER}}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-${MARIA_PASSWORD}}
     volumes:
       - gmod_mariadb_data:/var/lib/mysql
     healthcheck:
@@ -68,6 +68,7 @@ services:
       REDIS_PORT: 6379
       BULLMQ_HOST: redis
       BULLMQ_PORT: 6379
+      MARIA_CONNECTION_LIMIT: 10
       MONGO_HOST: mongo
       MONGO_PORT: 27017
       MONGO_URI: mongodb://mongo:27017
@@ -97,6 +98,7 @@ services:
       REDIS_PORT: 6379
       BULLMQ_HOST: redis
       BULLMQ_PORT: 6379
+      MARIA_CONNECTION_LIMIT: 10
       MONGO_HOST: mongo
       MONGO_PORT: 27017
       MONGO_URI: mongodb://mongo:27017
@@ -126,6 +128,7 @@ services:
       REDIS_PORT: 6379
       BULLMQ_HOST: redis
       BULLMQ_PORT: 6379
+      MARIA_CONNECTION_LIMIT: 10
       MONGO_HOST: mongo
       MONGO_PORT: 27017
       MONGO_URI: mongodb://mongo:27017
