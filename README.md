@@ -22,8 +22,10 @@ cd gmod-integration-monorepo
 bun install
 # Set up environment variables
 cp .env.example .env
-# Docker Compose
+# Docker Compose for db, redis, minio, etc.
 docker compose --env-file .env -f docker-compose.dev.yml up -d
+# Turborepo to run all services in development mode
+turbo dev
 ```
 
 ## Default Ports
