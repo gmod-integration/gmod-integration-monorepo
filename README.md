@@ -39,3 +39,5 @@ turbo dev
 | MongoDB                           | 27017 |
 | MinIO S3                          | 9060  |
 | MinIO Console                     | 9065  |
+
+None of those ports should ever be exposed to the public, use a reverse proxy like Cloudflare Tunnel to expose only the API and WebSocket ports securely.
