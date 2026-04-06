@@ -1,0 +1,147 @@
+services:
+  mariadb:
+    image: mariadb:11
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MARIA_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MARIA_NAME}
+      MYSQL_USER: ${MARIA_USER}
+      MYSQL_PASSWORD: ${MARIA_PASSWORD}
+    volumes:
+      - gmod_mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "127.0.0.1", "-u", "${MARIA_USER}", "-p${MARIA_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - gmod_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - gmod_mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ ping: 1 }).ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: quay.io/minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ':9001'
+    env_file:
+      - .env
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - gmod_minio_data:/data
+    ports:
+      - "9060:9000"
+      - "9065:9001"
+
+  api:
+    image: ${API_IMAGE:-ghcr.io/gmod-integration/gmod-integration-api:latest}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DEV: "false"
+      MARIA_HOST: mariadb
+      MARIA_PORT: 3306
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      BULLMQ_HOST: redis
+      BULLMQ_PORT: 6379
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      MONGO_URI: mongodb://mongo:27017
+      MINIO_ENDPOINT: http://minio:9000
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    ports:
+      - "53136:53136"
+
+  websocket:
+    image: ${WEBSOCKET_IMAGE:-ghcr.io/gmod-integration/gmod-integration-websocket:latest}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DEV: "false"
+      MARIA_HOST: mariadb
+      MARIA_PORT: 3306
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      BULLMQ_HOST: redis
+      BULLMQ_PORT: 6379
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      MONGO_URI: mongodb://mongo:27017
+      MINIO_ENDPOINT: http://minio:9000
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    ports:
+      - "53139:53139"
+
+  discord:
+    image: ${DISCORD_IMAGE:-ghcr.io/gmod-integration/gmod-integration-discord:latest}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DEV: "false"
+      MARIA_HOST: mariadb
+      MARIA_PORT: 3306
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      BULLMQ_HOST: redis
+      BULLMQ_PORT: 6379
+      MONGO_HOST: mongo
+      MONGO_PORT: 27017
+      MONGO_URI: mongodb://mongo:27017
+      MINIO_ENDPOINT: http://minio:9000
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+volumes:
+  gmod_mariadb_data:
+  gmod_redis_data:
+  gmod_mongo_data:
+  gmod_minio_data:

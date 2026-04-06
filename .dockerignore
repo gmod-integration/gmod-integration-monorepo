@@ -2,6 +2,9 @@
 .github
 .turbo
 .vscode
+.env
+.env.local
+.env.*
 node_modules
 dist
 logs
@@ -11,4 +14,7 @@ apps/website/node_modules
 apps/website/dist
 apps/website/.solid
 apps/website/.output
+apps/docs/node_modules
+apps/docs/build
+apps/docs/.docusaurus
 docs
