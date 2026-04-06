@@ -1,6 +1,8 @@
 import { Component, createEffect, createResource, createSignal, Show } from 'solid-js'
-import { preview } from 'vite'
-import z from 'zod'
+import {
+  type ServerStatusChannelInput,
+  ServerStatusChannelSchema,
+} from '@gmod/schema/server/ServerStatusChannelSchema.js'
 import AdminPanel from '../../../../../components/AdminPanel'
 import DiscordChannel from '../../../../../components/discord/DiscordChannel'
 import { linkBadge } from '../../../../../components/layout/menu/DashboardMenu'
@@ -9,43 +11,28 @@ import { guildChannelsRefetch } from '../../GuildInformations'
 import { useI18n } from '../../../../../i18n'
 import AdminChannelSelector from '../../../../../components/AdminChannelSelector'
 
-export const ServerStatusChannelSchema = z.object({
-  id: z.string(),
-  serverID: z.string(),
-  channelID: z.string(),
-  format: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-})
-
-export type ServerStatusChannelInput = z.infer<typeof ServerStatusChannelSchema>
+const EMPTY_STATUS_CHANNEL: ServerStatusChannelInput = {
+  id: '',
+  serverID: '',
+  channelID: '',
+  format: '',
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+}
 
 const fetchStatusChannel = async (): Promise<ServerStatusChannelInput> => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status/channel', 'GET')
-  if (!res.ok)
-    return {
-      id: '',
-      serverID: '',
-      channelID: '',
-      format: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    } as ServerStatusChannelInput
-  return (await res.json()) as ServerStatusChannelInput
+  if (!res.ok) return EMPTY_STATUS_CHANNEL
+
+  const parsed = ServerStatusChannelSchema.safeParse(await res.json())
+  return parsed.success ? parsed.data : EMPTY_STATUS_CHANNEL
 }
 
 const ServerStatusChannel: Component = () => {
   const { t } = useI18n()
 
   const [statusChannel, { mutate: statusChannelIDMutate }] = createResource('statusChannel', fetchStatusChannel, {
-    initialValue: {
-      id: '',
-      serverID: '',
-      channelID: '',
-      format: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    } as ServerStatusChannelInput,
+    initialValue: EMPTY_STATUS_CHANNEL,
   })
 
   async function sendStatusChannel(channelID: string, format: string) {
@@ -56,7 +43,8 @@ const ServerStatusChannel: Component = () => {
     if (!res.ok) {
       return
     }
-    const statusChannel = await res.json()
+    const parsed = ServerStatusChannelSchema.safeParse(await res.json())
+    const statusChannel = parsed.success ? parsed.data : EMPTY_STATUS_CHANNEL
     statusChannelIDMutate(statusChannel)
     return statusChannel
   }

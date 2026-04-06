@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@gmod/config": "workspace:*",
+    "@gmod/schema": "workspace:*",
     "@sentry/solid": "^10.42.0",
     "@sentry/vite-plugin": "^5.1.1",
     "@solid-primitives/i18n": "^2.2.1",
@@ -34,8 +35,7 @@
     "emoji-picker-element": "^1.29.1",
     "highlight.js": "^11.11.1",
     "prettier": "^3.8.1",
-    "solid-js": "^1.9.11",
-    "zod": "^4.3.6"
+    "solid-js": "^1.9.11"
   },
   "module": "src/index.tsx",
   "type": "module",

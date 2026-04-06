@@ -113,6 +113,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@gmod/config": "workspace:*",
+        "@gmod/schema": "workspace:*",
         "@sentry/solid": "^10.42.0",
         "@sentry/vite-plugin": "^5.1.1",
         "@solid-primitives/i18n": "^2.2.1",
@@ -123,7 +124,6 @@
         "highlight.js": "^11.11.1",
         "prettier": "^3.8.1",
         "solid-js": "^1.9.11",
-        "zod": "^4.3.6",
       },
       "devDependencies": {
         "@tailwindcss/postcss": "^4.2.1",
@@ -2400,8 +2400,6 @@
     "@discordjs/ws/discord-api-types": ["discord-api-types@0.38.42", "", {}, "sha512-qs1kya7S84r5RR8m9kgttywGrmmoHaRifU1askAoi+wkoSefLpZP6aGXusjNw5b0jD3zOg3LTwUa3Tf2iHIceQ=="],
 
     "@eslint-community/eslint-utils/eslint-visitor-keys": ["eslint-visitor-keys@3.4.3", "", {}, "sha512-wpc+LXeiyiisxPlEkUzU6svyS1frIO3Mgxj1fdy7Pm8Ygzguax2N3Fa/D/ag1WqbOprdI+uY6wMUl8/a2G+iag=="],
-
-    "@gmod/app-website/zod": ["zod@4.3.6", "", {}, "sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg=="],
 
     "@jridgewell/gen-mapping/@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
