@@ -128,7 +128,34 @@ docker service rollback gmod_discord
 docker stack rm gmod
 ```
 
-## 7. Production FQDN (Cloudflare Tunnel)
+## 7. Backup (Swarm)
+
+Full backup (MariaDB + MongoDB + Redis + MinIO):
+
+```bash
+bash ./scripts/swarm-backup.sh --all
+```
+
+Partial backup examples:
+
+```bash
+bash ./scripts/swarm-backup.sh --mariadb
+bash ./scripts/swarm-backup.sh --mongo --minio
+```
+
+Custom stack/env path:
+
+```bash
+bash ./scripts/swarm-backup.sh --stack-name gmod --env-file .env
+```
+
+Cron example (daily at 03:30):
+
+```bash
+30 3 * * * cd /path/to/gmod-integration-monorepo && bash ./scripts/swarm-backup.sh --all >> backup/cron.log 2>&1
+```
+
+## 8. Production FQDN (Cloudflare Tunnel)
 
 In Swarm, app services are behind Traefik. Do not route Cloudflare directly to `53136` or `53139`.
 

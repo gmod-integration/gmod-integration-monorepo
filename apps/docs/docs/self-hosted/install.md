@@ -55,6 +55,12 @@ docker stack services gmod
 docker service logs -f gmod_prisma-migrate
 ```
 
+Create a full production backup:
+
+```bash
+bash ./scripts/swarm-backup.sh --all
+```
+
 For detailed Swarm operations (rollback, logs, troubleshooting), see [Swarm Start Guide](/technical/swarm_start.md).
 
 ## Cloudflare Tunnels
