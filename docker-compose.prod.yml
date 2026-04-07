@@ -1,6 +1,6 @@
 services:
   mariadb:
-    image: mariadb:11
+    image: mariadb:latest
     restart: unless-stopped
     env_file:
       - .env
@@ -19,7 +19,7 @@ services:
       start_period: 20s
 
   redis:
-    image: redis:7
+    image: redis:latest
     restart: unless-stopped
     volumes:
       - gmod_redis_data:/data
@@ -30,7 +30,7 @@ services:
       retries: 10
 
   mongo:
-    image: mongo:7
+    image: mongo:latest
     restart: unless-stopped
     volumes:
       - gmod_mongo_data:/data/db
