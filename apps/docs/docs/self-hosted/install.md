@@ -26,12 +26,12 @@ cp .env.example .env
 
 Edit `.env` and set your production values.
 
-Important production FQDN values used by Traefik routing:
+Run the following commands to verify your environment variables are correctly set up:
 
 ```bash
-API_HOST=api.your-domain.com
-WS_HOST=ws.your-domain.com
-TRAEFIK_DASHBOARD_HOST=traefik.your-domain.com
+CONFIG_ENV_FILE=.env bun -e "import '@gmod/config'; console.log('ENV API OK')"
+
+CONFIG_ENV_FILE=.env bun -e "import '@gmod/config/website.js'; console.log('ENV WEBSITE OK')"
 ```
 
 ## Deploy with Docker Swarm
