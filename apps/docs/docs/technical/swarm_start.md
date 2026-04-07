@@ -199,14 +199,6 @@ Note:
 docker service logs --tail 200 gmod_mariadb
 ```
 
-### Leftover Compose containers
-
-If old Compose containers still run:
-
-```bash
-docker compose -p gmod-integration-monorepo -f docker-compose.prod.yml down --remove-orphans
-```
-
 ### MariaDB env names (`MARIA_*` vs `MARIADB_*`)
 
 You can keep your existing `MARIA_*` variables.
