@@ -76,19 +76,6 @@ Both API and WebSocket FQDNs should target local Traefik (`localhost:80`), and T
 | http     | localhost:80   | ws.your-domain.com      |
 | http     | localhost:80   | traefik.your-domain.com |
 
-Example `cloudflared` config:
-
-```yaml
-ingress:
-  - hostname: api.your-domain.com
-    service: http://localhost:80
-  - hostname: ws.your-domain.com
-    service: http://localhost:80
-  - hostname: traefik.your-domain.com
-    service: http://localhost:80
-  - service: http_status:404
-```
-
 ## Cloudflare Pages (Frontend)
 
 The docs & website are static sites, so we can use Cloudflare Pages to host them. This is a free service that allows us to deploy our static sites with ease.
