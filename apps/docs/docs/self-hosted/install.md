@@ -45,7 +45,7 @@ docker swarm init
 Deploy stack:
 
 ```bash
-docker stack deploy -c docker-stack.swarm.yml --with-registry-auth --prune gmod
+./scripts/swarm-deploy.sh
 ```
 
 Check services:

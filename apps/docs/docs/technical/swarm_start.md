@@ -21,7 +21,7 @@ If Swarm is already initialized, Docker will tell you and you can continue.
 From repository root:
 
 ```bash
-docker stack deploy -c docker-stack.swarm.yml --with-registry-auth --prune gmod
+./scripts/swarm-deploy.sh
 ```
 
 What this does:
@@ -111,7 +111,7 @@ docker service ps gmod_mariadb
 After changing images or stack config:
 
 ```bash
-docker stack deploy -c docker-stack.swarm.yml --with-registry-auth --prune gmod
+./scripts/swarm-deploy.sh
 ```
 
 ## 5. Rollback a Service
@@ -143,7 +143,7 @@ TRAEFIK_DASHBOARD_HOST=traefik.your-domain.com
 Deploy/redeploy:
 
 ```bash
-docker stack deploy -c docker-stack.swarm.yml --with-registry-auth --prune gmod
+./scripts/swarm-deploy.sh
 ```
 
 Cloudflare Tunnel example (`config.yml`):
@@ -174,7 +174,13 @@ docker service logs --tail 200 gmod_prisma-migrate
 Then redeploy stack:
 
 ```bash
-docker stack deploy -c docker-stack.swarm.yml --with-registry-auth --prune gmod
+./scripts/swarm-deploy.sh
+```
+
+If you need a different env file:
+
+```bash
+./scripts/swarm-deploy.sh --env-file .env.prod
 ```
 
 Note:
