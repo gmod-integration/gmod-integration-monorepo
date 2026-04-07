@@ -124,10 +124,43 @@ load_optional() {
   fi
 }
 
+load_required_with_fallback() {
+  local primary_key="$1"
+  local fallback_key="$2"
+  local value
+
+  if value="$(read_env_var "$primary_key" "$ENV_FILE")" && [[ -n "$value" ]]; then
+    export "$primary_key=$value"
+    return 0
+  fi
+
+  if value="$(read_env_var "$fallback_key" "$ENV_FILE")" && [[ -n "$value" ]]; then
+    export "$primary_key=$value"
+    return 0
+  fi
+
+  echo "Missing required key in $ENV_FILE: ${primary_key} (or ${fallback_key})" >&2
+  exit 1
+}
+
 # Required for Traefik host-rule interpolation in docker-stack.swarm.yml
 load_required API_HOST
 load_required WS_HOST
 load_required TRAEFIK_DASHBOARD_HOST
+
+# Required for stateful services interpolation in docker-stack.swarm.yml
+load_required_with_fallback MARIA_USER MARIADB_USER
+load_required_with_fallback MARIA_PASSWORD MARIADB_PASSWORD
+load_required_with_fallback MARIA_NAME MARIADB_DATABASE
+load_required_with_fallback MARIA_ROOT_PASSWORD MARIADB_ROOT_PASSWORD
+load_required MINIO_ACCESS_KEY
+load_required MINIO_SECRET_KEY
+
+# Export compatibility aliases for templates and tools.
+export MARIADB_USER="$MARIA_USER"
+export MARIADB_PASSWORD="$MARIA_PASSWORD"
+export MARIADB_DATABASE="$MARIA_NAME"
+export MARIADB_ROOT_PASSWORD="$MARIA_ROOT_PASSWORD"
 
 # Optional image overrides
 load_optional API_IMAGE

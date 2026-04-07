@@ -241,10 +241,10 @@ services:
     env_file:
       - .env
     environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:-${MARIA_ROOT_PASSWORD}}
-      MARIADB_DATABASE: ${MARIADB_DATABASE:-${MARIA_NAME}}
-      MARIADB_USER: ${MARIADB_USER:-${MARIA_USER}}
-      MARIADB_PASSWORD: ${MARIADB_PASSWORD:-${MARIA_PASSWORD}}
+      MARIADB_ROOT_PASSWORD: ${MARIA_ROOT_PASSWORD}
+      MARIADB_DATABASE: ${MARIA_NAME}
+      MARIADB_USER: ${MARIA_USER}
+      MARIADB_PASSWORD: ${MARIA_PASSWORD}
     ports:
       - target: 3306
         published: 3306
@@ -258,7 +258,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "mariadb-admin ping -h 127.0.0.1 -u\"$${MARIADB_USER:-$${MARIA_USER}}\" -p\"$${MARIADB_PASSWORD:-$${MARIA_PASSWORD}}\" --silent",
+          "mariadb-admin ping -h 127.0.0.1 -u\"$${MARIA_USER}\" -p\"$${MARIA_PASSWORD}\" --silent",
         ]
       interval: 10s
       timeout: 5s
