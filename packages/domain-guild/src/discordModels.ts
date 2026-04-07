@@ -294,6 +294,10 @@ export async function getUserTokenFromCode(code: string, redirectURI: string) {
   })
 
   if (!discordRequest.ok) {
+    const errorBody = await discordRequest.text().catch(() => '')
+    console.error(
+      `[discord oauth] token exchange failed: status=${discordRequest.status} body=${errorBody.slice(0, 500)}`,
+    )
     return null
   }
 
@@ -385,6 +389,10 @@ export async function getUserFromToken(token: string) {
   })
 
   if (!discordRequest.ok) {
+    const errorBody = await discordRequest.text().catch(() => '')
+    console.error(
+      `[discord oauth] users/@me failed: status=${discordRequest.status} body=${errorBody.slice(0, 500)}`,
+    )
     return null
   }
 

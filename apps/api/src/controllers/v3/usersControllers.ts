@@ -90,9 +90,18 @@ export async function oauthLogin(req: Request, res: Response) {
 
   const redirect = typeof req.query.state === 'string' ? req.query.state.split('redirect:')[1] : null
   const codeString = typeof code === 'string' ? code : ''
+  let oauthRedirectUri = `${req.protocol}://${req.headers.host}${req.originalUrl.split('?')[0]}`
+  try {
+    const configuredRedirectUri = new URL(ConfigDiscord.oauthPanel).searchParams.get('redirect_uri')
+    if (configuredRedirectUri) {
+      oauthRedirectUri = configuredRedirectUri
+    }
+  } catch {
+    // Keep runtime-derived URI fallback when oauthPanel is malformed.
+  }
   const discordUserToken = await getUserTokenFromCode(
     codeString,
-    `${req.protocol}://${req.headers.host}${req.originalUrl.split('?')[0]}`,
+    oauthRedirectUri,
   )
   if (!discordUserToken) {
     return res.status(401).send({
