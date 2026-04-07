@@ -234,7 +234,7 @@ services:
         failure_action: pause
 
   mariadb:
-    image: mariadb:11
+    image: mariadb:latest
     env_file:
       - .env
     environment:
@@ -312,7 +312,7 @@ services:
           - node.role == manager
 
   redis:
-    image: redis:7
+    image: redis:latest
     ports:
       - target: 6379
         published: 6379
@@ -334,7 +334,7 @@ services:
           - node.role == manager
 
   mongo:
-    image: mongo:7
+    image: mongo:latest
     ports:
       - target: 27017
         published: 27017
