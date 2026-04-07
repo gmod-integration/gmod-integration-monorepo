@@ -20,6 +20,15 @@ import '@gmod/infra-bullmq'
 const app = express()
 app.set('trust proxy', true)
 
+const allowedCorsOrigins = new Set<string>()
+for (const candidate of [ConfigServer.websiteUrl, ConfigServer.domain]) {
+  try {
+    allowedCorsOrigins.add(new URL(candidate).origin)
+  } catch {
+    // Ignore invalid URLs: config validation should already prevent this.
+  }
+}
+
 // User Agent
 app.use(useragent.express())
 
@@ -36,10 +45,16 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(
   cors((req: Request, callback: any) => {
     const origin = req.headers.origin
+    const normalizedOrigin = typeof origin === 'string' ? origin.toLowerCase() : ''
+    const isConfiguredOrigin = typeof origin === 'string' && allowedCorsOrigins.has(origin)
+    const isOfficialDomain = normalizedOrigin.includes('gmod-integration.com')
+    const isLocalOrigin = normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')
+
     if (
       !origin ||
-      origin.includes('gmod-integration.com') ||
-      (ConfigServer.dev && (origin.includes('localhost') || origin.includes('127.0.0.1')))
+      isOfficialDomain ||
+      isConfiguredOrigin ||
+      (ConfigServer.dev && isLocalOrigin)
     ) {
       callback(null, true)
     } else {

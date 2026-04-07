@@ -58,7 +58,6 @@ services:
     env_file:
       - .env
     environment:
-      DEV: ${DEV:-false}
       MARIA_HOST: mariadb
       MARIA_PORT: 3306
       REDIS_HOST: redis
@@ -121,7 +120,6 @@ services:
     env_file:
       - .env
     environment:
-      DEV: ${DEV:-false}
       MARIA_HOST: mariadb
       MARIA_PORT: 3306
       REDIS_HOST: redis
@@ -184,7 +182,6 @@ services:
     env_file:
       - .env
     environment:
-      DEV: ${DEV:-false}
       MARIA_HOST: mariadb
       MARIA_PORT: 3306
       REDIS_HOST: redis
@@ -271,7 +268,6 @@ services:
     env_file:
       - .env
     environment:
-      DEV: ${DEV:-false}
       MARIA_HOST: mariadb
       MARIA_PORT: 3306
     command:
