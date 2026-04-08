@@ -22,4 +22,8 @@ FROM base AS websocket
 CMD ["bun", "apps/websocket/src/index.ts"]
 
 FROM base AS discord
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends fontconfig fonts-roboto \
+  && rm -rf /var/lib/apt/lists/*
+
 CMD ["bun", "apps/discord/src/main.ts"]

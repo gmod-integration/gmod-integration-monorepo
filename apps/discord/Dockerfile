@@ -13,6 +13,10 @@ FROM deps AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends fontconfig fonts-roboto \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY . .
 
 CMD ["bun", "apps/discord/src/main.ts"]
