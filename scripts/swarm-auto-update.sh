@@ -10,6 +10,7 @@ RESOLVE_IMAGE="changed"
 CHECK_ONLY="false"
 DRY_RUN="false"
 GIT_PULL="true"
+PIN_DIGESTS="true"
 LOCK_FILE="/tmp/gmod-swarm-auto-update.lock"
 
 DEFAULT_API_IMAGE="ghcr.io/gmod-integration/gmod-integration-api:latest"
@@ -30,6 +31,8 @@ Options:
   --resolve-image <mode>    Deploy resolve-image: always|changed|never (default: changed)
   --git-pull                Run git pull --ff-only before image checks (default: enabled)
   --no-git-pull             Disable git pull step
+  --pin-digests             Deploy using pulled image digests (default: enabled)
+  --no-pin-digests          Deploy using tag references from .env/defaults
   --check-only              Check and pull images only; do not deploy
   --dry-run                 Print actions only; do not pull/deploy
   --lock-file <path>        Lock file for concurrent runs (default: /tmp/gmod-swarm-auto-update.lock)
@@ -65,6 +68,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --no-git-pull)
       GIT_PULL="false"
+      shift
+      ;;
+    --pin-digests)
+      PIN_DIGESTS="true"
+      shift
+      ;;
+    --no-pin-digests)
+      PIN_DIGESTS="false"
       shift
       ;;
     --check-only)
@@ -168,12 +179,14 @@ DISCORD_IMAGE="${DISCORD_IMAGE:-$DEFAULT_DISCORD_IMAGE}"
 SERVICES=("api" "websocket" "discord")
 IMAGES=("$API_IMAGE" "$WEBSOCKET_IMAGE" "$DISCORD_IMAGE")
 CHANGED_SERVICES=()
+PINNED_IMAGES=("$API_IMAGE" "$WEBSOCKET_IMAGE" "$DISCORD_IMAGE")
 
 echo "===== SWARM AUTO UPDATE CHECK START ====="
 echo "stack: ${STACK_NAME}"
 echo "env:   ${ENV_FILE}"
 echo "mode:  resolve-image=${RESOLVE_IMAGE}"
 echo "git:   pull=${GIT_PULL}"
+echo "pin:   digests=${PIN_DIGESTS}"
 
 if [[ "$GIT_PULL" == "true" ]]; then
   if ! command -v git >/dev/null 2>&1; then
@@ -207,6 +220,9 @@ for i in "${!SERVICES[@]}"; do
 
   docker pull "$image" >/dev/null
   after="$(local_digest "$image" || true)"
+  if [[ -n "$after" ]]; then
+    PINNED_IMAGES[$i]="$after"
+  fi
 
   if [[ -n "$after" && "$before" != "$after" ]]; then
     echo "   updated: ${before:-<none>} -> ${after}"
@@ -233,10 +249,28 @@ if [[ "$CHECK_ONLY" == "true" ]]; then
   exit 0
 fi
 
-"$DEPLOY_SCRIPT" \
-  --env-file "$ENV_FILE" \
-  --compose-file "$STACK_FILE" \
-  --stack-name "$STACK_NAME" \
-  --resolve-image "$RESOLVE_IMAGE"
+DEPLOY_RESOLVE_IMAGE="$RESOLVE_IMAGE"
+if [[ "$PIN_DIGESTS" == "true" ]]; then
+  DEPLOY_RESOLVE_IMAGE="never"
+  echo "Deploying with pinned digests:"
+  echo "  API_IMAGE=${PINNED_IMAGES[0]}"
+  echo "  WEBSOCKET_IMAGE=${PINNED_IMAGES[1]}"
+  echo "  DISCORD_IMAGE=${PINNED_IMAGES[2]}"
+
+  API_IMAGE="${PINNED_IMAGES[0]}" \
+  WEBSOCKET_IMAGE="${PINNED_IMAGES[1]}" \
+  DISCORD_IMAGE="${PINNED_IMAGES[2]}" \
+  "$DEPLOY_SCRIPT" \
+    --env-file "$ENV_FILE" \
+    --compose-file "$STACK_FILE" \
+    --stack-name "$STACK_NAME" \
+    --resolve-image "$DEPLOY_RESOLVE_IMAGE"
+else
+  "$DEPLOY_SCRIPT" \
+    --env-file "$ENV_FILE" \
+    --compose-file "$STACK_FILE" \
+    --stack-name "$STACK_NAME" \
+    --resolve-image "$DEPLOY_RESOLVE_IMAGE"
+fi
 
 echo "===== SWARM AUTO UPDATE CHECK FINISHED ====="
