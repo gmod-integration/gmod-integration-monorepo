@@ -1,0 +1,21 @@
+# Example merged crontab for Gmod Integration swarm maintenance.
+# - Keeps previous recommended backup cadence
+# - Adds automatic image update/redeploy checker
+#
+# Install:
+#   crontab -e
+#   (paste lines below, adapted to your machine)
+
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+# Auto-detect project path from the cron user home (ex: /home/ubuntu/gmod-integration-monorepo)
+PROJECT_DIR=${HOME}/gmod-integration-monorepo
+
+# Backup every 6h : MariaDB / Redis
+5 */6 * * * cd "$PROJECT_DIR" && /usr/bin/flock -n /tmp/gmod-swarm-backup-maria-redis.lock ./scripts/swarm-backup.sh --mariadb --redis >> "$PROJECT_DIR/backup/cron_backup.log" 2>&1
+
+# Backup every 24h : everything (including volumes)
+40 0 * * * cd "$PROJECT_DIR" && /usr/bin/flock -n /tmp/gmod-swarm-backup-full.lock ./scripts/swarm-backup.sh --all >> "$PROJECT_DIR/backup/cron_backup.log" 2>&1
+
+# Every 15 minutes - check for newly published images and deploy only on digest changes
+*/15 * * * * cd "$PROJECT_DIR" && /usr/bin/flock -n /tmp/gmod-swarm-update.lock ./scripts/swarm-auto-update.sh >> "$PROJECT_DIR/logs/cron-update.log" 2>&1

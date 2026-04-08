@@ -44,10 +44,48 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Detect changed paths
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            shared:
+              - 'packages/**'
+              - 'bun.lock'
+              - 'package.json'
+              - 'turbo.json'
+              - 'tsconfig.json'
+              - 'prisma.config.ts'
+              - 'Dockerfile'
+            api:
+              - 'apps/api/**'
+            discord:
+              - 'apps/discord/**'
+            websocket:
+              - 'apps/websocket/**'
+
+      - name: Decide whether to build this image
+        id: should_build
+        shell: bash
+        run: |
+          SHOULD_BUILD="false"
+          if [[ "${{ steps.changes.outputs.shared }}" == "true" ]]; then
+            SHOULD_BUILD="true"
+          elif [[ "${{ matrix.service }}" == "api" && "${{ steps.changes.outputs.api }}" == "true" ]]; then
+            SHOULD_BUILD="true"
+          elif [[ "${{ matrix.service }}" == "discord" && "${{ steps.changes.outputs.discord }}" == "true" ]]; then
+            SHOULD_BUILD="true"
+          elif [[ "${{ matrix.service }}" == "websocket" && "${{ steps.changes.outputs.websocket }}" == "true" ]]; then
+            SHOULD_BUILD="true"
+          fi
+          echo "value=${SHOULD_BUILD}" >> "$GITHUB_OUTPUT"
+
       - name: Set up Docker Buildx
+        if: steps.should_build.outputs.value == 'true'
         uses: docker/setup-buildx-action@v3
 
       - name: Login to GHCR
+        if: steps.should_build.outputs.value == 'true'
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -55,6 +93,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Docker metadata
+        if: steps.should_build.outputs.value == 'true'
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -64,6 +103,7 @@ jobs:
             type=sha,format=long,prefix=sha-
 
       - name: Build and push
+        if: steps.should_build.outputs.value == 'true'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -71,3 +111,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Skip unchanged service
+        if: steps.should_build.outputs.value != 'true'
+        run: echo "No relevant changes for '${{ matrix.service }}'; skipping image build."

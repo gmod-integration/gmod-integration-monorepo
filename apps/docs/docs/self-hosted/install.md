@@ -63,6 +63,26 @@ bash ./scripts/swarm-backup.sh --all
 
 For detailed Swarm operations (rollback, logs, troubleshooting), see [Swarm Start Guide](/technical/swarm_start.md).
 
+## Swarm Automation (optional)
+
+### Auto update from published images
+
+Use `scripts/swarm-auto-update.sh` to:
+
+1. Pull configured images (`API_IMAGE`, `WEBSOCKET_IMAGE`, `DISCORD_IMAGE` from `.env`, with defaults to GHCR `:latest`)
+2. Compare local digest before/after pull
+3. Deploy stack only if at least one digest changed
+
+Example:
+
+```bash
+./scripts/swarm-auto-update.sh --env-file .env --stack-name gmod
+```
+
+### Cron example (backup + updater)
+
+See [`scripts/crontab.example`](https://github.com/gmod-integration/gmod-integration-monorepo/blob/main/scripts/crontab.example) for ready-to-adapt entries.
+
 ## Cloudflare Tunnels
 
 To protect your environment, use Cloudflare Tunnel to expose only Traefik.
