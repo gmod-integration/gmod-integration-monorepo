@@ -1,9 +1,11 @@
 export type TypeDiscordChannel = {
   id: string
   name: string
-  type: number
-  position: number
-  parentID: string
+  type: string | number
+  position: number | null
+  parentID: string | null
+  sendable?: boolean
+  textBased?: boolean
 }
 
 export type TypeDiscordRole = {
