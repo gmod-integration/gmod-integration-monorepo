@@ -3,6 +3,7 @@ import { logServer } from '../../utils/logger.js'
 import prisma from '@gmod/infra-prisma'
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js'
 import { type Server } from '@gmod/domain-server/Server.js'
+import { enqueueDiscordServerStatusRefreshAsync } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 
 type EndpointResult = {
   status: number
@@ -53,6 +54,12 @@ export async function processPostStatus(server: Server, body: any): Promise<Endp
   }
 
   await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime, playersList || [])
+
+  // Status refresh is handled by the Discord worker. Do not block API response here.
+  enqueueDiscordServerStatusRefreshAsync(server.getID()).catch((error) => {
+    console.error(`[status] Failed to enqueue status refresh for server ${server.getID()}:`, error)
+  })
+
   return ok()
 }
 

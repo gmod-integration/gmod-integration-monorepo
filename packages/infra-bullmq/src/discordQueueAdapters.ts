@@ -731,6 +731,24 @@ export async function enqueueDiscordServerStatusRefresh(serverID: string, timeou
   return reply.refreshed
 }
 
+export async function enqueueDiscordServerStatusRefreshAsync(serverID: string): Promise<string> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerStatusRefreshJobSchema.parse({
+    serverID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('serverStatusRefresh', payload, {
+    priority: 7,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  return correlationId
+}
+
 export {
   discordUpdatePseudoQueue,
   discordUpdateGroupQueue,

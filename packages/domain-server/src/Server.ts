@@ -745,18 +745,6 @@ export class Server extends BaseClass {
         players,
       },
     })
-
-    await this.editStatusChannelAndMessage({
-      ip,
-      port,
-      hostname,
-      map,
-      gameMode,
-      players,
-      maxPlayers,
-      uptime,
-      playersList,
-    })
   }
 
   async getSyncChatChannel() {
