@@ -53,12 +53,32 @@ export async function processPostStatus(server: Server, body: any): Promise<Endp
     })
   }
 
+  const previousStatus = await prisma.gm_server_status.findFirst({
+    where: {
+      id: server.getID(),
+    },
+    select: {
+      players: true,
+      updatedAt: true,
+    },
+  })
+
+  const incomingPlayers = Number(players)
+  const isIncomingZeroPlayers = Number.isFinite(incomingPlayers) && incomingPlayers === 0
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
+  const shouldSkipDiscordRefresh =
+    isIncomingZeroPlayers &&
+    previousStatus?.players === 0 &&
+    previousStatus.updatedAt > fiveMinutesAgo
+
   await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime, playersList || [])
 
-  // Status refresh is handled by the Discord worker. Do not block API response here.
-  enqueueDiscordServerStatusRefreshAsync(server.getID()).catch((error) => {
-    console.error(`[status] Failed to enqueue status refresh for server ${server.getID()}:`, error)
-  })
+  if (!shouldSkipDiscordRefresh) {
+    // Status refresh is handled by the Discord worker. Do not block API response here.
+    void enqueueDiscordServerStatusRefreshAsync(server.getID()).catch((error) => {
+      console.error(`[status] Failed to enqueue status refresh for server ${server.getID()}:`, error)
+    })
+  }
 
   return ok()
 }
