@@ -305,7 +305,7 @@ const GuildVerification: Component = () => {
             <button
               class="btn btn-base-200"
               onClick={() => {
-                // @ts-ignore
+                // @ts-expect-error -- intentional: legacy typing gap
                 select_channel_modal.showModal()
                 guildChannelsRefetch()
               }}
@@ -391,7 +391,7 @@ const GuildVerification: Component = () => {
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              // @ts-ignore
+                              // @ts-expect-error -- intentional: legacy typing gap
                               edit_role_modal.showModal()
                               setSelectedRole(role)
                             }}
@@ -437,7 +437,7 @@ const GuildVerification: Component = () => {
             <button
               class="btn btn-base-200"
               onClick={() => {
-                // @ts-ignore
+                // @ts-expect-error -- intentional: legacy typing gap
                 select_role_modal.showModal()
                 guildRolesRefetch()
               }}

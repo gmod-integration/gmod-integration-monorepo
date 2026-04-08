@@ -25,7 +25,7 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
           class="w-full aspect-video rounded-lg object-cover"
           onClick={() => {
             props.setFocusImg(props.screenshot)
-            // @ts-ignore
+            // @ts-expect-error -- intentional: legacy typing gap
             focusImgModal.showModal()
           }}
         />
@@ -42,7 +42,7 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
             aria-label="View Screenshot"
             onClick={() => {
               props.setFocusImg(props.screenshot)
-              // @ts-ignore
+              // @ts-expect-error -- intentional: legacy typing gap
               focusImgModal.showModal()
             }}
           >

@@ -75,7 +75,7 @@ export const ServerScreenshotsParameters: Component = () => {
             class="btn btn-base-200"
             disabled={screenshots.loading}
             onClick={() => {
-              // @ts-ignore
+              // @ts-expect-error -- intentional: legacy typing gap
               select_channel_modal.showModal()
               guildChannelsRefetch()
             }}

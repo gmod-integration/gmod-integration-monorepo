@@ -169,7 +169,7 @@ const ServerPlayer: Component = () => {
           class="btn btn-base-200 mt-2"
           disabled={playersList.loading}
           onClick={async () => {
-            // @ts-ignore
+            // @ts-expect-error -- intentional: legacy typing gap
             edit_player.close()
             await savePlayer()
           }}
@@ -279,7 +279,7 @@ const ServerPlayer: Component = () => {
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
                               setCurrentPlayers(player)
-                              // @ts-ignore
+                              // @ts-expect-error -- intentional: legacy typing gap
                               edit_player.showModal()
                             }}
                           />

@@ -6,7 +6,7 @@ import ServerStatusButtons from './ServerStatusButtons'
 import ServerStatusMessage from './ServerStatusMessage'
 
 const ServerStatus: Component = () => {
-  // @ts-ignore
+  // @ts-expect-error -- intentional: legacy typing gap
   return (
     <>
       <ServerStatusMessage />

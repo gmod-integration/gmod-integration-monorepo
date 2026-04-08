@@ -73,7 +73,7 @@ export const ChannelSelector: Component<ChannelSelectorProps> = (props) => {
             class="select"
             onChange={async (e) => {
               if (hasModal) {
-                // @ts-ignore
+                // @ts-expect-error -- intentional: legacy typing gap
                 select_channel_modal.close()
               }
               props.callback && props.callback(e.currentTarget.value)

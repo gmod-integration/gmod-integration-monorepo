@@ -5,7 +5,7 @@ import { useI18n } from '../../../i18n'
 const SecondFooter: Component = () => {
   const { t } = useI18n()
 
-  // @ts-ignore
+  // @ts-expect-error -- intentional: legacy typing gap
   const lastBuildDate = new Date(__BUILD_DATE__).toLocaleString() || localChained.unknown()
 
   return (

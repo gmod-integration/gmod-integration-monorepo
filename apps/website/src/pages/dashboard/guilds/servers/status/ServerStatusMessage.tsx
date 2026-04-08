@@ -96,7 +96,7 @@ const ServerStatusMessage: Component = () => {
       })
       .then((data) => {
         statusPlayerListFormatMutate(data)
-        // @ts-ignore
+        // @ts-expect-error -- intentional: legacy typing gap
         edit_format.close()
       })
   }
@@ -149,7 +149,7 @@ const ServerStatusMessage: Component = () => {
       })
   }
 
-  // @ts-ignore
+  // @ts-expect-error -- intentional: legacy typing gap
   return (
     <>
       <AdminChannelSelector id="select_channel_modal" callback={sendStatus} />
@@ -199,7 +199,7 @@ const ServerStatusMessage: Component = () => {
           <button
             class="btn btn-base-200 mt-2"
             onClick={async () => {
-              // @ts-ignore
+              // @ts-expect-error -- intentional: legacy typing gap
               edit_format.close()
               updateStatusPlayerListFormat(format())
             }}
@@ -225,7 +225,7 @@ const ServerStatusMessage: Component = () => {
                     class="btn btn-sm hover:cursor-pointer fa-solid fa-plus"
                     disabled={status_player_list_format.loading}
                     onClick={() => {
-                      // @ts-ignore
+                      // @ts-expect-error -- intentional: legacy typing gap
                       select_channel_modal.showModal()
                       guildChannelsRefetch()
                     }}
@@ -240,7 +240,7 @@ const ServerStatusMessage: Component = () => {
                 class="btn btn-sm hover:cursor-pointer fa-solid fa-xmark text-error"
                 disabled={status_player_list_format.loading}
                 onClick={async () => {
-                  // @ts-ignore
+                  // @ts-expect-error -- intentional: legacy typing gap
                   await removeStatus()
                 }}
               ></button>
@@ -269,7 +269,7 @@ const ServerStatusMessage: Component = () => {
               class="btn btn-sm hover:cursor-pointer fa-solid fa-edit"
               disabled={status_player_list_format.loading}
               onClick={() => {
-                // @ts-ignore
+                // @ts-expect-error -- intentional: legacy typing gap
                 edit_format.showModal()
               }}
             ></button>

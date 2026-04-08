@@ -188,7 +188,7 @@ const GuildAutoRole: Component = () => {
             <button
               class="btn btn-base-200"
               onClick={() => {
-                // @ts-ignore
+                // @ts-expect-error -- intentional: legacy typing gap
                 select_role_modal.showModal()
                 guildRolesRefetch()
               }}

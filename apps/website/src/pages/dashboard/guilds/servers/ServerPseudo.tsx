@@ -77,7 +77,7 @@ const ServerPseudo: Component = () => {
       })
       .then((data) => {
         mutatePseudoFormat(data)
-        // @ts-ignore
+        // @ts-expect-error -- intentional: legacy typing gap
         edit_format.close()
       })
   }
@@ -199,7 +199,7 @@ const ServerPseudo: Component = () => {
           class="btn btn-base-200 mt-2"
           disabled={pseudoRoles.loading}
           onClick={async () => {
-            // @ts-ignore
+            // @ts-expect-error -- intentional: legacy typing gap
             edit_role_modal.close()
             await editRole()
           }}
@@ -246,7 +246,7 @@ const ServerPseudo: Component = () => {
             class="btn btn-base-200 mt-2"
             disabled={pseudoFormat.loading}
             onClick={async () => {
-              // @ts-ignore
+              // @ts-expect-error -- intentional: legacy typing gap
               edit_server.close()
               updatePseudoFormat(pseudoFormat().value)
             }}
@@ -300,7 +300,7 @@ const ServerPseudo: Component = () => {
           <button
             class="btn btn-base-200"
             onClick={() => {
-              // @ts-ignore
+              // @ts-expect-error -- intentional: legacy typing gap
               edit_format.showModal()
             }}
           >
@@ -360,7 +360,7 @@ const ServerPseudo: Component = () => {
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              // @ts-ignore
+                              // @ts-expect-error -- intentional: legacy typing gap
                               edit_role_modal.showModal()
                               setActiveRole(role)
                             }}

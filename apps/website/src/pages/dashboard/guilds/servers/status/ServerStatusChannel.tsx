@@ -87,7 +87,7 @@ const ServerStatusChannel: Component = () => {
                     class="btn btn-sm hover:cursor-pointer fa-solid fa-plus"
                     disabled={statusChannel.loading}
                     onClick={() => {
-                      // @ts-ignore
+                      // @ts-expect-error -- intentional: legacy typing gap
                       select_channel_modal_channel.showModal()
                       guildChannelsRefetch()
                     }}
@@ -105,7 +105,7 @@ const ServerStatusChannel: Component = () => {
                 class="btn btn-sm hover:cursor-pointer fa-solid fa-xmark text-error"
                 disabled={statusChannel.loading}
                 onClick={async () => {
-                  // @ts-ignore
+                  // @ts-expect-error -- intentional: legacy typing gap
                   await removeStatus()
                 }}
               ></button>
@@ -121,7 +121,7 @@ const ServerStatusChannel: Component = () => {
               class="btn btn-sm hover:cursor-pointer fa-solid fa-edit"
               disabled={statusChannel.loading}
               onClick={() => {
-                // @ts-ignore
+                // @ts-expect-error -- intentional: legacy typing gap
                 edit_status_button.showModal()
               }}
             ></button>

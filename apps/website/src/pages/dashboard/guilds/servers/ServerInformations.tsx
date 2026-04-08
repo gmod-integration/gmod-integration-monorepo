@@ -158,7 +158,7 @@ const ServerInformations: Component = () => {
           class="btn btn-base-200 mt-2"
           disabled={/* no specific loading state available */ false}
           onClick={async () => {
-            // @ts-ignore
+            // @ts-expect-error -- intentional: legacy typing gap
             edit_server.close()
             await editServer()
           }}
@@ -237,7 +237,7 @@ const ServerInformations: Component = () => {
           <button
             class="btn btn-base-200"
             onClick={() => {
-              // @ts-ignore
+              // @ts-expect-error -- intentional: legacy typing gap
               edit_server.showModal()
             }}
           >

@@ -303,7 +303,7 @@ const ServerChats: Component = () => {
           class="btn btn-base-200 mt-2"
           disabled={gmToDscFilters.loading}
           onClick={async () => {
-            // @ts-ignore
+            // @ts-expect-error -- intentional: legacy typing gap
             edit_rule_modal.close()
             editGmToDscFilter()
           }}
@@ -377,7 +377,7 @@ const ServerChats: Component = () => {
           <button
             class="btn btn-base-200"
             onClick={() => {
-              // @ts-ignore
+              // @ts-expect-error -- intentional: legacy typing gap
               select_channel_modal.showModal()
               guildChannelsRefetch()
             }}
@@ -465,7 +465,7 @@ const ServerChats: Component = () => {
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              // @ts-ignore
+                              // @ts-expect-error -- intentional: legacy typing gap
                               edit_rule_modal.showModal()
                               setSelectFilter(rule)
                             }}

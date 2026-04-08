@@ -72,7 +72,7 @@ const ServerVote: Component = () => {
             class="btn btn-base-200"
             disabled={votes.loading}
             onClick={() => {
-              // @ts-ignore
+              // @ts-expect-error -- intentional: legacy typing gap
               select_channel_modal.showModal()
               guildChannelsRefetch()
             }}

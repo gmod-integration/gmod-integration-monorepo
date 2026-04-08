@@ -152,7 +152,7 @@ const ServerTeam: Component = () => {
             disabled={guildRoles.loading || rolesSync.loading}
             class="btn btn-base-200 mt-2"
             onClick={async () => {
-              // @ts-ignore
+              // @ts-expect-error -- intentional: legacy typing gap
               edit_role_modal.close()
               editRole()
             }}
@@ -216,7 +216,7 @@ const ServerTeam: Component = () => {
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              // @ts-ignore
+                              // @ts-expect-error -- intentional: legacy typing gap
                               edit_role_modal.showModal()
                               setSelectRole(roleSync)
                             }}
@@ -244,7 +244,7 @@ const ServerTeam: Component = () => {
           <button
             class="btn btn-base-200"
             onClick={() => {
-              // @ts-ignore
+              // @ts-expect-error -- intentional: legacy typing gap
               select_role_modal.showModal()
             }}
             disabled={!premium()}

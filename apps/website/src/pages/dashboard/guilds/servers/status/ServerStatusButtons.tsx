@@ -93,7 +93,7 @@ const ServerStatusButtons: Component = () => {
             {selectStatusButton().emoji}
           </button>
           <Show when={visibleEmojiPicker()}>
-            {/*// @ts-ignore*/}
+            {/*// @ts-expect-error -- intentional: legacy typing gap*/}
             <emoji-picker emoji-version="12.0" onEmoji-click={handleEmojiClick}></emoji-picker>
           </Show>
         </div>
@@ -141,7 +141,7 @@ const ServerStatusButtons: Component = () => {
         <button
           class="btn btn-base-200 mt-2"
           onClick={async () => {
-            // @ts-ignore
+            // @ts-expect-error -- intentional: legacy typing gap
             edit_status_button.close()
             await editStatusButton(selectStatusButton())
           }}
@@ -195,7 +195,7 @@ const ServerStatusButtons: Component = () => {
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              // @ts-ignore
+                              // @ts-expect-error -- intentional: legacy typing gap
                               edit_status_button.showModal()
                               setSelectStatusButton(button)
                             }}
