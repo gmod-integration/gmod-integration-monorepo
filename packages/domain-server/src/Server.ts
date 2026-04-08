@@ -400,7 +400,13 @@ export class Server extends BaseClass {
 
     await redis.del(`server:${this.id}:setting:${setting}`)
 
-    if (serverSettings[setting].onChange) {
+    const isDashboardStatusSetting =
+      source === 'dashboard' &&
+      (setting === 'show_player_list_status' ||
+        setting === 'status_player_list_format' ||
+        setting === 'show_status_chart')
+
+    if (serverSettings[setting].onChange && !isDashboardStatusSetting) {
       await serverSettings[setting].onChange(this, previousValue, value)
     }
 

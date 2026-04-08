@@ -22,6 +22,9 @@ import {
   DiscordGuildSyncBanJobSchema,
   DiscordGuildAdminsJobSchema,
   DiscordGuildSendLogMessageJobSchema,
+  DiscordServerStatusCreateJobSchema,
+  DiscordServerStatusDeleteJobSchema,
+  DiscordServerStatusRefreshJobSchema,
   type MainClientHasGuildJob,
   type MainClientUploadScreenshotJob,
   type MainClientFetchUserJob,
@@ -38,6 +41,9 @@ import {
   type DiscordGuildSyncBanJob,
   type DiscordGuildAdminsJob,
   type DiscordGuildSendLogMessageJob,
+  type DiscordServerStatusCreateJob,
+  type DiscordServerStatusDeleteJob,
+  type DiscordServerStatusRefreshJob,
 } from '@gmod/infra-bullmq/schemas.js'
 import { gmLog } from '@gmod/core/utils/logger.js'
 import prisma from '@gmod/infra-prisma'
@@ -593,6 +599,9 @@ export const discordGuildOpsWorker = new Worker<
   | DiscordGuildSyncBanJob
   | DiscordGuildAdminsJob
   | DiscordGuildSendLogMessageJob
+  | DiscordServerStatusCreateJob
+  | DiscordServerStatusDeleteJob
+  | DiscordServerStatusRefreshJob
 >(
   'discord-guildOps',
   async (
@@ -608,6 +617,9 @@ export const discordGuildOpsWorker = new Worker<
       | DiscordGuildSyncBanJob
       | DiscordGuildAdminsJob
       | DiscordGuildSendLogMessageJob
+      | DiscordServerStatusCreateJob
+      | DiscordServerStatusDeleteJob
+      | DiscordServerStatusRefreshJob
     >,
   ) => {
     if (job.name === 'guildSnapshot') {
@@ -969,6 +981,92 @@ export const discordGuildOpsWorker = new Worker<
           error: (error as Error).message,
         })
       }
+      return
+    }
+
+    if (job.name === 'serverStatusCreate') {
+      const payload = DiscordServerStatusCreateJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            status: null,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        await server.deleteStatus()
+        const created = await server.createStatus(payload.channelID)
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          status: created,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          status: null,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'serverStatusDelete') {
+      const payload = DiscordServerStatusDeleteJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            status: null,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        const status = await server.deleteStatus()
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          status: status || null,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          status: null,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'serverStatusRefresh') {
+      const payload = DiscordServerStatusRefreshJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            refreshed: false,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        await server.editStatusChannelAndMessage(await server.getStatusData())
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          refreshed: true,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          refreshed: false,
+          error: (error as Error).message,
+        })
+      }
+      return
     }
   },
   { connection, concurrency: 2 },

@@ -393,3 +393,60 @@ export const DiscordGuildSendLogMessageReplySchema = z.object({
 })
 
 export type DiscordGuildSendLogMessageReply = z.infer<typeof DiscordGuildSendLogMessageReplySchema>
+
+export const DiscordServerStatusRecordSchema = z.object({
+  server: z.string().min(1, 'server required'),
+  channel: z.string().min(1, 'channel required'),
+  message: z.string().min(1, 'message required'),
+})
+
+export type DiscordServerStatusRecord = z.infer<typeof DiscordServerStatusRecordSchema>
+
+export const DiscordServerStatusCreateJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  channelID: z.string().min(1, 'channelID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerStatusCreateJob = z.infer<typeof DiscordServerStatusCreateJobSchema>
+
+export const DiscordServerStatusCreateReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  status: DiscordServerStatusRecordSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerStatusCreateReply = z.infer<typeof DiscordServerStatusCreateReplySchema>
+
+export const DiscordServerStatusDeleteJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerStatusDeleteJob = z.infer<typeof DiscordServerStatusDeleteJobSchema>
+
+export const DiscordServerStatusDeleteReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  status: DiscordServerStatusRecordSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerStatusDeleteReply = z.infer<typeof DiscordServerStatusDeleteReplySchema>
+
+export const DiscordServerStatusRefreshJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerStatusRefreshJob = z.infer<typeof DiscordServerStatusRefreshJobSchema>
+
+export const DiscordServerStatusRefreshReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  refreshed: z.boolean(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerStatusRefreshReply = z.infer<typeof DiscordServerStatusRefreshReplySchema>

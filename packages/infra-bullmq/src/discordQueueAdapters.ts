@@ -36,11 +36,18 @@ import {
   DiscordGuildAdminsReplySchema,
   DiscordGuildSendLogMessageJobSchema,
   DiscordGuildSendLogMessageReplySchema,
+  DiscordServerStatusCreateJobSchema,
+  DiscordServerStatusCreateReplySchema,
+  DiscordServerStatusDeleteJobSchema,
+  DiscordServerStatusDeleteReplySchema,
+  DiscordServerStatusRefreshJobSchema,
+  DiscordServerStatusRefreshReplySchema,
   type UpdateGuildUserPseudoJob,
   type UpdatePlayerUserGroupJob,
   type UpdateDiscordTeamRoleJob,
   type MainClientUploadScreenshotJob,
   type DiscordGuildSummary,
+  type DiscordServerStatusRecord,
 } from './schemas.js'
 import { v4 as uuidv4 } from 'uuid'
 import redis from '@gmod/infra-redis'
@@ -633,6 +640,95 @@ export async function enqueueDiscordGuildSendLogMessage(
     timeoutMs,
   )
   return reply.sent
+}
+
+export async function enqueueDiscordServerStatusCreate(
+  serverID: string,
+  channelID: string,
+  timeoutMs = 10000,
+): Promise<DiscordServerStatusRecord | null> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerStatusCreateJobSchema.parse({
+    serverID,
+    channelID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('serverStatusCreate', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerStatusCreateReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.status
+}
+
+export async function enqueueDiscordServerStatusDelete(
+  serverID: string,
+  timeoutMs = 10000,
+): Promise<DiscordServerStatusRecord | null> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerStatusDeleteJobSchema.parse({
+    serverID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('serverStatusDelete', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerStatusDeleteReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.status
+}
+
+export async function enqueueDiscordServerStatusRefresh(serverID: string, timeoutMs = 10000): Promise<boolean> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerStatusRefreshJobSchema.parse({
+    serverID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('serverStatusRefresh', payload, {
+    priority: 7,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerStatusRefreshReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.refreshed
 }
 
 export {

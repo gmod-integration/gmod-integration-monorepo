@@ -50,6 +50,9 @@ import {
   enqueueDiscordDeleteVerificationMessage,
   enqueueDiscordGuildRunVerificationCheck,
   enqueueDiscordGuildSnapshot,
+  enqueueDiscordServerStatusCreate,
+  enqueueDiscordServerStatusDelete,
+  enqueueDiscordServerStatusRefresh,
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { getSingleParam } from '@/utils/requestParams.js'
 
@@ -406,14 +409,18 @@ export async function createGuildVerificationsRoles(req: Request, res: Response)
 
 export async function deleteServerStatus(req: Request, res: Response) {
   const server = req.server!
-  return res.send(await server.deleteStatus())
+  return res.send((await enqueueDiscordServerStatusDelete(server.id)) || {})
 }
 
 export async function postServerStatus(req: Request, res: Response) {
   const server = req.server!
   const { channelID } = req.body
-  await server.deleteStatus()
-  return res.send(await server.createStatus(channelID))
+  if (badArgument([channelID])) {
+    return res.status(400).send({
+      error: 'Missing required arguments',
+    })
+  }
+  return res.send(await enqueueDiscordServerStatusCreate(server.id, channelID))
 }
 
 export async function getServerStatusButtons(req: Request, res: Response) {
@@ -446,8 +453,8 @@ export async function putServerStatusButtons(req: Request, res: Response) {
     },
   })
 
-  if (button.enable) {
-    await server.editStatusChannelAndMessage(await server.getStatusData())
+  if (updateButton.enable) {
+    await enqueueDiscordServerStatusRefresh(server.id)
   }
 
   return res.send(updateButton)
@@ -473,7 +480,7 @@ export async function deleteServerStatusButtons(req: Request, res: Response) {
   await server.destroyStatusButton(Number(buttonID))
 
   if (button.enable) {
-    await server.editStatusChannelAndMessage(await server.getStatusData())
+    await enqueueDiscordServerStatusRefresh(server.id)
   }
 
   return res.send(button)
@@ -863,6 +870,7 @@ export async function putServerSetting(req: Request, res: Response) {
   const setting = getSingleParam(req.params.setting)
   const server = req.server!
   const { value } = req.body
+  const statusRefreshSettings = new Set(['show_player_list_status', 'status_player_list_format', 'show_status_chart'])
 
   if (badArgument([value])) {
     return res.status(400).send({
@@ -870,13 +878,26 @@ export async function putServerSetting(req: Request, res: Response) {
     })
   }
 
+  let updatedSetting
   try {
-    return res.send(await server.setSetting(setting, value, 'dashboard'))
+    updatedSetting = await server.setSetting(setting, value, 'dashboard')
   } catch (error) {
     return res.status(404).send({
       error: 'Setting not found or not allowed',
     })
   }
+
+  if (statusRefreshSettings.has(setting)) {
+    try {
+      await enqueueDiscordServerStatusRefresh(server.id)
+    } catch (error) {
+      return res.status(502).send({
+        error: 'Setting updated but status refresh dispatch failed',
+      })
+    }
+  }
+
+  return res.send(updatedSetting)
 }
 
 export async function getAdminGuilds(req: Request, res: Response) {
