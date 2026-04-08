@@ -14,7 +14,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends fontconfig fonts-roboto \
+  && apt-get install -y --no-install-recommends fontconfig fonts-roboto fonts-dejavu-core fonts-noto-core \
+  && fc-cache -f \
   && rm -rf /var/lib/apt/lists/*
 
 COPY . .

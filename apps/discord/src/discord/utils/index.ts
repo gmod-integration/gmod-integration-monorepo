@@ -9,6 +9,8 @@ import { createBucketIfNotExists, s3 } from '@gmod/infra-minio'
 import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { type Readable } from 'node:stream'
 
+const CHART_FONT_FAMILY = 'Roboto, "DejaVu Sans", "Noto Sans", sans-serif'
+
 const trust_ranks: Record<number, string> = {
   0: 'dangerous',
   15: 'untrusted',
@@ -143,7 +145,11 @@ export async function getServerChart(server: Server) {
 
   const dom = new JSDOM(`<!DOCTYPE html><html><body></body></html>`)
   const body = d3.select(dom.window.document).select('body')
-  const svg = body.append('svg').attr('width', width).attr('height', height)
+  const svg = body
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .attr('font-family', CHART_FONT_FAMILY)
 
   const xScale = d3
     .scaleTime()
@@ -179,6 +185,7 @@ export async function getServerChart(server: Server) {
       g.call(d3.axisBottom(xScale).tickFormat(relativeTimeFormat))
     })
     .style('font-size', '16px')
+    .style('font-family', CHART_FONT_FAMILY)
 
   svg
     .append('g')
@@ -187,6 +194,7 @@ export async function getServerChart(server: Server) {
     .call(d3.axisLeft(yScale))
     .selectAll('text')
     .style('font-size', '16px')
+    .style('font-family', CHART_FONT_FAMILY)
 
   svg
     .append('path')
@@ -330,7 +338,11 @@ export async function playerConnectionChart(
   const body = d3.select(dom.window.document).select('body')
 
   // Create the SVG container
-  const svg = body.append('svg').attr('width', width).attr('height', height)
+  const svg = body
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .attr('font-family', CHART_FONT_FAMILY)
 
   // (Optional) fetch the player's name
   const playerInfo = await prisma.gm_server_stat.findFirst({
@@ -355,7 +367,7 @@ export async function playerConnectionChart(
         await getTranslate(stat, lang),
       ]),
     )
-    .attr('font-family', 'Roboto')
+    .attr('font-family', CHART_FONT_FAMILY)
 
   // Define scales
   const xScale = d3
@@ -533,7 +545,11 @@ export async function playerTeamTimeChat(server: Server, steamID64: string, lang
   const body = d3.select(dom.window.document).select('body')
 
   // Create the SVG container
-  const svg = body.append('svg').attr('width', width).attr('height', height)
+  const svg = body
+    .append('svg')
+    .attr('width', width)
+    .attr('height', height)
+    .attr('font-family', CHART_FONT_FAMILY)
 
   // Add chart title
   svg
@@ -549,7 +565,7 @@ export async function playerTeamTimeChat(server: Server, steamID64: string, lang
         `${(duration !== 0 ? duration : 'max') + ' ' + (duration !== 0 ? await getTranslate('days', lang) : '')}`,
       ]),
     )
-    .attr('font-family', 'Roboto')
+    .attr('font-family', CHART_FONT_FAMILY)
 
   // Calculate the radius for the pie
   const radius = Math.min(width - margin.left - margin.right, height - margin.top - margin.bottom) / 2
@@ -603,7 +619,7 @@ export async function playerTeamTimeChat(server: Server, steamID64: string, lang
     .append('text')
     .attr('transform', (d) => `translate(${arc.centroid(d)})`)
     .attr('text-anchor', 'middle')
-    .attr('font-family', 'Roboto')
+    .attr('font-family', CHART_FONT_FAMILY)
     .attr('fill', 'white')
     .call((text) => {
       // First line: team name
