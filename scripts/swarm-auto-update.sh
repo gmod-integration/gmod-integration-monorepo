@@ -9,6 +9,7 @@ DEPLOY_SCRIPT="${ROOT_DIR}/scripts/swarm-deploy.sh"
 RESOLVE_IMAGE="changed"
 CHECK_ONLY="false"
 DRY_RUN="false"
+GIT_PULL="true"
 LOCK_FILE="/tmp/gmod-swarm-auto-update.lock"
 
 DEFAULT_API_IMAGE="ghcr.io/gmod-integration/gmod-integration-api:latest"
@@ -27,6 +28,8 @@ Options:
   --stack-name <name>       Swarm stack name (default: gmod)
   --deploy-script <path>    Deploy script path (default: ./scripts/swarm-deploy.sh)
   --resolve-image <mode>    Deploy resolve-image: always|changed|never (default: changed)
+  --git-pull                Run git pull --ff-only before image checks (default: enabled)
+  --no-git-pull             Disable git pull step
   --check-only              Check and pull images only; do not deploy
   --dry-run                 Print actions only; do not pull/deploy
   --lock-file <path>        Lock file for concurrent runs (default: /tmp/gmod-swarm-auto-update.lock)
@@ -55,6 +58,14 @@ while [[ $# -gt 0 ]]; do
     --resolve-image)
       RESOLVE_IMAGE="$2"
       shift 2
+      ;;
+    --git-pull)
+      GIT_PULL="true"
+      shift
+      ;;
+    --no-git-pull)
+      GIT_PULL="false"
+      shift
       ;;
     --check-only)
       CHECK_ONLY="true"
@@ -162,6 +173,26 @@ echo "===== SWARM AUTO UPDATE CHECK START ====="
 echo "stack: ${STACK_NAME}"
 echo "env:   ${ENV_FILE}"
 echo "mode:  resolve-image=${RESOLVE_IMAGE}"
+echo "git:   pull=${GIT_PULL}"
+
+if [[ "$GIT_PULL" == "true" ]]; then
+  if ! command -v git >/dev/null 2>&1; then
+    echo "git command not found in PATH (required for --git-pull)" >&2
+    exit 1
+  fi
+
+  if ! git -C "$ROOT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Not a git repository: $ROOT_DIR" >&2
+    exit 1
+  fi
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    echo "[dry-run] would run: git -C \"$ROOT_DIR\" pull --ff-only"
+  else
+    echo "-> git pull --ff-only"
+    git -C "$ROOT_DIR" pull --ff-only
+  fi
+fi
 
 for i in "${!SERVICES[@]}"; do
   service="${SERVICES[$i]}"

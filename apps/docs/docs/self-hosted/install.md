@@ -69,9 +69,16 @@ For detailed Swarm operations (rollback, logs, troubleshooting), see [Swarm Star
 
 Use `scripts/swarm-auto-update.sh` to:
 
-1. Pull configured images (`API_IMAGE`, `WEBSOCKET_IMAGE`, `DISCORD_IMAGE` from `.env`, with defaults to GHCR `:latest`)
-2. Compare local digest before/after pull
-3. Deploy stack only if at least one digest changed
+1. Run `git pull --ff-only` on the repo (enabled by default)
+2. Pull configured images (`API_IMAGE`, `WEBSOCKET_IMAGE`, `DISCORD_IMAGE` from `.env`, with defaults to GHCR `:latest`)
+3. Compare local digest before/after pull
+4. Deploy stack only if at least one digest changed
+
+If you want to skip repository updates:
+
+```bash
+./scripts/swarm-auto-update.sh --no-git-pull
+```
 
 Example:
 

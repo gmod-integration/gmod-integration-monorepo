@@ -17,5 +17,5 @@ PROJECT_DIR=${HOME}/gmod-integration-monorepo
 # Backup every 24h : everything (including volumes)
 40 0 * * * cd "$PROJECT_DIR" && /usr/bin/flock -n /tmp/gmod-swarm-backup-full.lock ./scripts/swarm-backup.sh --all >> "$PROJECT_DIR/backup/cron_backup.log" 2>&1
 
-# Every 15 minutes - check for newly published images and deploy only on digest changes
+# Every 15 minutes - git pull, then check images and deploy only on digest changes
 */15 * * * * cd "$PROJECT_DIR" && /usr/bin/flock -n /tmp/gmod-swarm-update.lock ./scripts/swarm-auto-update.sh >> "$PROJECT_DIR/logs/cron-update.log" 2>&1
