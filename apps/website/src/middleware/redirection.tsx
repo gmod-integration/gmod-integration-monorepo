@@ -2,6 +2,38 @@ import { createEffect, createSignal } from 'solid-js'
 import { useLocation, useNavigate } from '@solidjs/router'
 import { INVITE_URL } from '../utils/utils'
 
+const ALLOWED_REDIRECT_PROTOCOLS = new Set(['http:', 'https:'])
+
+function getSafeRedirectTarget(rawPathWithQuery: string): string | null {
+  const queryIndex = rawPathWithQuery.indexOf('?')
+  if (queryIndex === -1) {
+    return null
+  }
+
+  const query = rawPathWithQuery.slice(queryIndex + 1)
+  const rawLink = new URLSearchParams(query).get('link')
+  if (!rawLink) {
+    return null
+  }
+
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(rawLink)
+  } catch {
+    return null
+  }
+
+  try {
+    const parsed = new URL(decoded, window.location.origin)
+    if (!ALLOWED_REDIRECT_PROTOCOLS.has(parsed.protocol)) {
+      return null
+    }
+    return parsed.toString()
+  } catch {
+    return null
+  }
+}
+
 const redirections = [
   {
     url: '/invite',
@@ -14,11 +46,15 @@ const redirections = [
   {
     url: '/open',
     func: (url: string) => {
-      const link = url.split('?link=')[1]
-      if (!link) return
-      const decoded = decodeURIComponent(link)
-      window.location.href = decoded
-      setRedirecting(decoded)
+      const safeTarget = getSafeRedirectTarget(url)
+      if (!safeTarget) {
+        setRedirecting('/')
+        window.location.href = '/'
+        return
+      }
+
+      window.location.href = safeTarget
+      setRedirecting(safeTarget)
     },
   },
   {
