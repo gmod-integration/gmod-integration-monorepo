@@ -1,12 +1,13 @@
 import { WebSocketServer } from 'ws'
 import { Worker } from 'bullmq'
+import { randomUUID } from 'node:crypto'
 import { ConfigServer } from '@gmod/config'
 import { gmLog } from '@gmod/core/utils/logger.js'
 import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { getPanelUserFromDiscordID, type PanelUser } from '@gmod/domain-user/PanelUser.js'
 import { getUserGuildsWithPermsForPanel } from '@gmod/domain-guild/discordModels.js'
 import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
-import redis from '@gmod/infra-redis'
+import redis, { gracefulShutdownRedis } from '@gmod/infra-redis'
 import { lastGmodIntegrationTag, versionComparator } from '@gmod/core/utils/tools.js'
 import { connection } from '@gmod/infra-bullmq'
 import {
@@ -34,6 +35,69 @@ const clients = {
   server: [] as wsClientServer[],
   client: [] as wsClientClient[],
 }
+
+const WS_SEND_TO_SERVER_BROADCAST_CHANNEL = 'ws:send-to-server:broadcast'
+const WS_SEND_TO_SERVER_ACK_PREFIX = 'ws:send-to-server:ack:'
+const WS_SEND_TO_SERVER_ACK_WAIT_MS = 600
+const WS_SEND_TO_SERVER_ACK_TTL_SECONDS = 5
+const WS_SEND_TO_SERVER_ACK_POLL_MS = 60
+
+function getWsSendToServerAckKey(requestId: string) {
+  return `${WS_SEND_TO_SERVER_ACK_PREFIX}${requestId}`
+}
+
+async function waitForRemoteWsDispatchAck(requestId: string, timeoutMs = WS_SEND_TO_SERVER_ACK_WAIT_MS) {
+  const ackKey = getWsSendToServerAckKey(requestId)
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    const ackCount = Number((await redis.get(ackKey)) || '0')
+    if (Number.isFinite(ackCount) && ackCount > 0) {
+      await redis.del(ackKey)
+      return true
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, WS_SEND_TO_SERVER_ACK_POLL_MS))
+  }
+
+  await redis.del(ackKey)
+  return false
+}
+
+const wsSendToServerSubscriber = redis.duplicate()
+wsSendToServerSubscriber.on('error', (error) => {
+  gmLog('websocket', `Subscriber error: ${error.message}`, true)
+})
+
+wsSendToServerSubscriber.on('message', async (channel, payload) => {
+  if (channel !== WS_SEND_TO_SERVER_BROADCAST_CHANNEL) {
+    return
+  }
+
+  try {
+    const parsed = JSON.parse(payload)
+    const serverID = parsed?.id
+    const messageData = parsed?.data
+    const requestId = parsed?.requestId
+
+    if (!serverID || !requestId) {
+      return
+    }
+
+    const sent = wsSendToServer(serverID, messageData)
+    if (!sent) {
+      return
+    }
+
+    const ackKey = getWsSendToServerAckKey(requestId)
+    await redis.incr(ackKey)
+    await redis.expire(ackKey, WS_SEND_TO_SERVER_ACK_TTL_SECONDS)
+  } catch (error: any) {
+    gmLog('websocket', `Failed to process remote ws dispatch payload: ${error.message}`, true)
+  }
+})
+
+await wsSendToServerSubscriber.subscribe(WS_SEND_TO_SERVER_BROADCAST_CHANNEL)
 
 const wss = new WebSocketServer({
   port: ConfigServer.ports.websocket,
@@ -220,7 +284,24 @@ function wsSendToServer(id: string, data: any) {
 const wsSendToServerWorker = new Worker(
   wsSendToServerQueue.name,
   async (job) => {
-    return wsSendToServer(job.data.id, job.data.data)
+    const sentLocally = wsSendToServer(job.data.id, job.data.data)
+    if (sentLocally) {
+      return true
+    }
+
+    const requestId = randomUUID()
+    const ackKey = getWsSendToServerAckKey(requestId)
+    await redis.set(ackKey, '0', 'EX', WS_SEND_TO_SERVER_ACK_TTL_SECONDS)
+    await redis.publish(
+      WS_SEND_TO_SERVER_BROADCAST_CHANNEL,
+      JSON.stringify({
+        id: job.data.id,
+        data: job.data.data,
+        requestId,
+      }),
+    )
+
+    return await waitForRemoteWsDispatchAck(requestId)
   },
   {
     connection,
@@ -274,11 +355,14 @@ async function gracefulShutdown() {
 
   await wsSendToServerWorker.close()
   await wsSendToAllClientsOfServerWorker.close()
+  await wsSendToServerSubscriber.unsubscribe(WS_SEND_TO_SERVER_BROADCAST_CHANNEL).catch(() => {})
+  await wsSendToServerSubscriber.quit().catch(() => {})
 
   await new Promise<void>((resolve) => {
     wss.close(() => resolve())
   })
 
+  await gracefulShutdownRedis()
   await gracefulShutdownPrisma()
   process.exit(0)
 }
