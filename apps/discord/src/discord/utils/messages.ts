@@ -26,6 +26,23 @@ export function getEmptyEmbedBuilderField(lineBreak: number = 1) {
   return emptyField
 }
 
+function normalizePlayersList(rawPlayersList: unknown): any[] {
+  if (Array.isArray(rawPlayersList)) {
+    return rawPlayersList
+  }
+
+  if (typeof rawPlayersList === 'string' && rawPlayersList.trim().length > 0) {
+    try {
+      const parsed = JSON.parse(rawPlayersList)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
+  return []
+}
+
 export async function getStatusMessage(server: Server, data: any, lang: string) {
   gmLog('status', 'refresh server status message for ' + server.getID())
 
@@ -38,7 +55,7 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   maxPlayers = maxPlayers === undefined ? 0 : maxPlayers
   ip = ip === undefined ? '' : ip
   port = port === undefined ? '' : port
-  playersList = Array.isArray(playersList) ? playersList : []
+  playersList = normalizePlayersList(playersList)
 
   const showChar = await server.getSetting('show_status_chart')
   let bufferChart: Buffer | null = null
