@@ -9,3 +9,4 @@ dist
 .env.sentry-build-plugin
 .codex
 **/logs/*
+backup
