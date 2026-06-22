@@ -1,7 +1,10 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js'
 import { generateToken, badArgument } from '../../utils/tools.js'
 import { createServer } from '@gmod/domain-server/Server.js'
-import { enqueueMainClientHasGuild } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import {
+  enqueueDiscordGuildReloadBotInstance,
+  enqueueMainClientHasGuild,
+} from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import redis from '@gmod/infra-redis'
 import prisma from '@gmod/infra-prisma'
 import { getLogsByServer, getTotalLogsByServer } from '../../database/gm_server_logs.js'
@@ -501,6 +504,47 @@ export async function processDeleteGmodPurchase(discordID: string, guild: any): 
   })
 
   await guild.reloadBotInstance()
+  return ok(savedPurchase)
+}
+
+export async function processDeleteUserGmodPurchase(discordID: string, guildID: string): Promise<EndpointResult> {
+  const user = await getUserFromDiscordID(discordID)
+  if (!user || !user.getSteamID64()) {
+    return notFound({ error: 'User not found or not linked' })
+  }
+
+  const purchase = await prisma.gm_gmodstore_purchases.findFirst({
+    where: {
+      steamID64: user.getSteamID64()!,
+    },
+  })
+
+  if (!purchase) {
+    return notFound({ error: 'Purchase not found' })
+  }
+
+  if (!purchase.guild) {
+    return conflict({ error: 'Purchase is not linked to a guild' })
+  }
+
+  if (purchase.guild !== guildID) {
+    return notFound({ error: 'Guild is not linked to this purchase' })
+  }
+
+  const savedPurchase = await prisma.gm_gmodstore_purchases.update({
+    where: {
+      steamID64: user.getSteamID64()!,
+    },
+    data: {
+      guild: '',
+      token: '',
+    },
+  })
+
+  // The purchase is already unlinked at this point. A Discord worker failure must
+  // not prevent users from recovering a purchase attached to an inaccessible guild.
+  await enqueueDiscordGuildReloadBotInstance(guildID).catch(() => false)
+
   return ok(savedPurchase)
 }
 

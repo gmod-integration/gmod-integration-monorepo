@@ -6,6 +6,7 @@ import {
   createVerificationMessage,
   deleteAutoRoles,
   deleteGmodPurchase,
+  deleteUserGmodPurchase,
   deleteGmodToDiscordFilter,
   deleteGuildBotInstance,
   deleteGuildLinks,
@@ -126,6 +127,7 @@ router.get('/:discordID/sessions', asyncHandler(getUserSessions))
 router.delete('/:discordID/sessions/:sessionID', asyncHandler(deleteUserSession))
 router.get('/:discordID/guilds', asyncHandler(getUserGuildsOwnOrAdmins))
 router.get('/:discordID/gmod-store', asyncHandler(getUserGmodStorePurchases))
+router.delete('/:discordID/gmod-store/:guildID', asyncHandler(deleteUserGmodPurchase))
 router.get('/:discordID/verifications/token', asyncHandler(postUserStartVerification))
 router.get('/:discordID/servers', asyncHandler(getPublicServers))
 router.get('/:discordID/notifications', asyncHandler(getUserNotifications))

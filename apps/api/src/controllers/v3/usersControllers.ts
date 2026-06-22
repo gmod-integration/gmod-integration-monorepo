@@ -20,6 +20,7 @@ import {
   processCreateNewServer,
   processDeleteAutoRoles,
   processDeleteGmodPurchase,
+  processDeleteUserGmodPurchase,
   processDeleteGmodToDiscordFilter,
   processDeleteServerLogsTrigger,
   processDeleteServerPseudo,
@@ -1129,6 +1130,20 @@ export async function postGmodPurchase(req: Request, res: Response) {
 
 export async function deleteGmodPurchase(req: Request, res: Response) {
   const result = await processDeleteGmodPurchase(String(req.params.discordID), req.guild!)
+  return res.status(result.status).send(result.body)
+}
+
+export async function deleteUserGmodPurchase(req: Request, res: Response) {
+  const guildID = getSingleParam(req.params.guildID)
+  const dscGuild = await enqueueDiscordGuildSnapshot(guildID)
+
+  if (dscGuild && !(await req.panelUser!.isAdminOfGuild(guildID))) {
+    return res.status(403).send({
+      error: 'not_admin_of_guild',
+    })
+  }
+
+  const result = await processDeleteUserGmodPurchase(getSingleParam(req.params.discordID), guildID)
   return res.status(result.status).send(result.body)
 }
 

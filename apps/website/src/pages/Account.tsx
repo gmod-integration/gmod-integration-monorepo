@@ -17,6 +17,7 @@ const Account: Component = () => {
   const [localUser] = createSignal<any>(getDiscordUser())
   const [user, { refetch: refetchUser }] = createResource('steamUser', fetchUser)
   const [showRequestLoading, setShowRequestLoading] = createSignal(false)
+  const [unlinkingGmodStorePurchase, setUnlinkingGmodStorePurchase] = createSignal(false)
 
   const getVerificationToken = async () => {
     const response = await fetchAPI('/users/:discordID/verifications/token', 'GET')
@@ -36,6 +37,31 @@ const Account: Component = () => {
   const [userSessions, { mutate: mutateUserSessions }] = createResource('userSessions', async () => {
     return await fetchAPI('/users/:discordID/sessions', 'GET').then((res) => res.json() || {})
   })
+
+  async function unlinkGmodStorePurchase() {
+    if (
+      !window.confirm(
+        t(
+          'account.unlink_guild_confirmation',
+          'Are you sure you want to unlink this guild from your Gmod Store Premium?',
+        ),
+      )
+    ) {
+      return
+    }
+
+    setUnlinkingGmodStorePurchase(true)
+    const response = await fetchAPI(`/users/:discordID/gmod-store/${gmodStorePurchase().guild}`, 'DELETE')
+    const json = await response.json().catch(() => ({}))
+    setUnlinkingGmodStorePurchase(false)
+
+    if (!response.ok) {
+      Errors(json.error || t('account.unlink_guild_error', 'Failed to unlink the guild'))
+      return
+    }
+
+    await refetchGmodStorePurchase()
+  }
 
   function deleteUserSession(sessionID: string) {
     fetchAPI(`/users/:discordID/sessions/${sessionID}`, 'DELETE').then(async (res) => {
@@ -132,10 +158,24 @@ const Account: Component = () => {
                       </A>
                     }
                   >
-                    <p class="text-base-content/50">
-                      {t('account.activate_on_guild', 'Activate on Guild')}:{' '}
-                      <span class="font-bold">{gmodStorePurchase().guild}</span>
-                    </p>
+                    <div class="flex flex-wrap items-center gap-4">
+                      <p class="text-base-content/50">
+                        {t('account.activate_on_guild', 'Activate on Guild')}:{' '}
+                        <span class="font-bold">{gmodStorePurchase().guild}</span>
+                      </p>
+                      <button
+                        class="btn btn-warning"
+                        disabled={unlinkingGmodStorePurchase()}
+                        onClick={unlinkGmodStorePurchase}
+                      >
+                        <Show
+                          when={!unlinkingGmodStorePurchase()}
+                          fallback={<span class="loading loading-spinner"></span>}
+                        >
+                          {t('account.unlink_guild', 'Unlink Guild')}
+                        </Show>
+                      </button>
+                    </div>
                   </Show>
                 </Show>
               </div>
