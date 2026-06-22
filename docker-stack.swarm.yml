@@ -320,6 +320,12 @@ services:
 
   redis:
     image: redis:latest
+    command:
+      - redis-server
+      - --maxmemory
+      - 11gb
+      - --maxmemory-policy
+      - noeviction
     ports:
       - target: 6379
         published: 6379
@@ -336,6 +342,11 @@ services:
       retries: 10
     deploy:
       replicas: 1
+      resources:
+        limits:
+          memory: 12G
+        reservations:
+          memory: 9G
       placement:
         constraints:
           - node.role == manager

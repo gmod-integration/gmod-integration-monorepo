@@ -36,4 +36,11 @@ export async function enqueueWSSendToServerAndWait(data: WSSendToServerData, tim
 
 export const wsSendToAllClientsOfServerQueue = new Queue<wsSendToAllClientsOfServerData>('wsSendToAllClientsOfServer', {
   connection,
+  defaultJobOptions: {
+    removeOnComplete: true,
+    removeOnFail: {
+      age: 24 * 60 * 60,
+      count: 1000,
+    },
+  },
 })
