@@ -323,7 +323,7 @@ services:
     command:
       - redis-server
       - --maxmemory
-      - 11gb
+      - 4gb
       - --maxmemory-policy
       - noeviction
     ports:
@@ -344,9 +344,9 @@ services:
       replicas: 1
       resources:
         limits:
-          memory: 12G
+          memory: 5G
         reservations:
-          memory: 9G
+          memory: 1G
       placement:
         constraints:
           - node.role == manager
