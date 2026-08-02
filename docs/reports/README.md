@@ -42,3 +42,4 @@ gets fixed, the recommendation gets rejected, the architecture moves on):
 | --- | --- | --- |
 | 2026-08-02 | Technical documentation was scattered, partly wrong, and mixed with the public product docs | [2026-08-02-documentation-audit.md](./2026-08-02-documentation-audit.md) |
 | 2026-08-02 | Real test coverage is ~0%; the only existing test suite is broken and untested in CI | [2026-08-02-test-coverage-audit.md](./2026-08-02-test-coverage-audit.md) |
+| 2026-08-02 | Should the production stack move from Docker Swarm to Kubernetes | [2026-08-02-swarm-vs-kubernetes.md](./2026-08-02-swarm-vs-kubernetes.md) |
