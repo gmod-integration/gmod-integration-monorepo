@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import '@gmod/core/utils/update-log.js'
 import { gmLog } from '@gmod/core/utils/logger.js'
 import { gracefulShutdownMongo } from '@gmod/core/database/gm_server_logs.js'
@@ -11,26 +12,7 @@ import { getStatusMessage } from './discord/utils/messages.js'
 
 let inShutdown = false
 
-setDiscordGuildClientResolver(async (guildID: string, forcePresenceOnGuild = true) => {
-  return await getGuildClient(guildID, forcePresenceOnGuild)
-})
-setDiscordStatusMessageBuilder(getStatusMessage)
-
-async function runDiscord() {
-  await connectPrisma()
-  await loadDiscordMain()
-  await loadDiscordSlave()
-  await initializeDiscordQueueWorkers()
-}
-
-await runDiscord()
-
-process.on('unhandledRejection', (error: Error) => {
-  gmLog('unhandledRejection', error.message, true)
-  console.error(error)
-})
-
-async function gracefulShutdown() {
+export async function gracefulShutdown() {
   if (inShutdown) return
   inShutdown = true
   gmLog('shutdown', 'Gracefully shutting down discord app...')
@@ -41,5 +23,26 @@ async function gracefulShutdown() {
   process.exit(0)
 }
 
-process.on('SIGINT', gracefulShutdown)
-process.on('SIGTERM', gracefulShutdown)
+export async function main() {
+  setDiscordGuildClientResolver(async (guildID: string, forcePresenceOnGuild = true) => {
+    return await getGuildClient(guildID, forcePresenceOnGuild)
+  })
+  setDiscordStatusMessageBuilder(getStatusMessage)
+
+  await connectPrisma()
+  await loadDiscordMain()
+  await loadDiscordSlave()
+  await initializeDiscordQueueWorkers()
+
+  process.on('unhandledRejection', (error: Error) => {
+    gmLog('unhandledRejection', error.message, true)
+    console.error(error)
+  })
+
+  process.on('SIGINT', gracefulShutdown)
+  process.on('SIGTERM', gracefulShutdown)
+}
+
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  await main()
+}

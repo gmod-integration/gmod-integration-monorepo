@@ -1,5 +1,6 @@
 *.log
 node_modules
+coverage
 .idea
 qodana.yaml
 .env

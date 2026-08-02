@@ -1,4 +1,5 @@
 // import '@gmod/core/utils/instrument.js';
+import { fileURLToPath } from 'node:url'
 import { ConfigServer } from '@gmod/config'
 import '@gmod/core/utils/update-log.js'
 import express, { type NextFunction, type Request, type Response } from 'express'
@@ -17,7 +18,7 @@ import { gracefulShutdownMongo } from '@gmod/core/database/gm_server_logs.js'
 import '@gmod/infra-bullmq'
 
 // Express
-const app = express()
+export const app = express()
 app.set('trust proxy', true)
 
 const allowedCorsOrigins = new Set<string>()
@@ -138,22 +139,7 @@ app.all(/.*/, (req: Request, res: Response, next: NextFunction) => {
 // Errors
 app.use(errorMiddleware)
 
-await connectPrisma()
-
-// Listen
-app.listen(ConfigServer.ports.api, () => {
-  gmLog('express', '- - - - - - - - - - - - - - - - - - -')
-  gmLog('express', `Server started and listening on port ${ConfigServer.ports.api}`)
-  gmLog('express', '- - - - - - - - - - - - - - - - - - -')
-})
-
-// Unhandled Errors
-process.on('unhandledRejection', (error: Error) => {
-  gmLog('unhandledRejection', error.message, true)
-  console.error(error)
-})
-
-async function gracefulShutdown() {
+export async function gracefulShutdown() {
   gmLog('shutdown', 'Gracefully shutting down...')
   inShutdown = true
   // await Sentry.flush(2000);
@@ -163,6 +149,27 @@ async function gracefulShutdown() {
   process.exit(0)
 }
 
-// Capture termination signals
-process.on('SIGINT', gracefulShutdown)
-process.on('SIGTERM', gracefulShutdown)
+export async function main() {
+  await connectPrisma()
+
+  // Listen
+  app.listen(ConfigServer.ports.api, () => {
+    gmLog('express', '- - - - - - - - - - - - - - - - - - -')
+    gmLog('express', `Server started and listening on port ${ConfigServer.ports.api}`)
+    gmLog('express', '- - - - - - - - - - - - - - - - - - -')
+  })
+
+  // Unhandled Errors
+  process.on('unhandledRejection', (error: Error) => {
+    gmLog('unhandledRejection', error.message, true)
+    console.error(error)
+  })
+
+  // Capture termination signals
+  process.on('SIGINT', gracefulShutdown)
+  process.on('SIGTERM', gracefulShutdown)
+}
+
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
+  await main()
+}
