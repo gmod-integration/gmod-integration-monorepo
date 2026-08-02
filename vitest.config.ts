@@ -34,6 +34,13 @@ export default defineConfig({
       thresholds: {
         'packages/schema/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
         'packages/config/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        'packages/infra-redis/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        'packages/infra-mongo/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        'packages/infra-bullmq/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        'packages/infra-websocket/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        'packages/infra-steam/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        'packages/infra-prisma/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        'packages/infra-minio/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
       },
     },
   },
