@@ -7,7 +7,7 @@ import { z } from 'zod'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-function findWorkspaceRoot(startDir: string): string {
+export function findWorkspaceRoot(startDir: string): string {
   let current = startDir
 
   while (true) {
@@ -77,7 +77,8 @@ export const ConfigWebsite = {
   dev: parsed.DEV === 'true',
   devShowMissingTranslations: parsed.WEBSITE_DEV_SHOW_MISSING_TRANSLATIONS === 'true',
   websiteUrl: parsed.WEBSITE_URL,
-  apiUrl: parsed.DOMAIN_URL || (parsed.DEV === 'true' ? 'http://localhost:53136' : parsed.DOMAIN_URL),
+  // DOMAIN_URL has a Zod .default(), so it is never falsy once parsing succeeds — no fallback needed.
+  apiUrl: parsed.DOMAIN_URL,
   wsUrl: parsed.WEBSITE_WS_URL || (parsed.DEV === 'true' ? 'ws://localhost:53139' : `wss://ws.${websiteHost}`),
   discordClientId: parsed.DISCORD_CLIENT_ID || (parsed.DEV === 'true' ? devClientIdFallback : prodClientIdFallback),
 }

@@ -8,7 +8,7 @@ import { ConfigSchema, type ConfigInput } from './schema.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-function findWorkspaceRoot(startDir: string): string {
+export function findWorkspaceRoot(startDir: string): string {
   let current = startDir
 
   while (true) {
@@ -59,7 +59,7 @@ function loadEnvFiles() {
 
 let parsedConfig: ConfigInput | null = null
 
-function parseConfig(): ConfigInput {
+export function parseConfig(): ConfigInput {
   if (parsedConfig) {
     return parsedConfig
   }

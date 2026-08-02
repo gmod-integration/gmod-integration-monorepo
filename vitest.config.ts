@@ -6,6 +6,9 @@ import { defineConfig } from 'vitest/config'
 // option in Vitest's projects mode — see docs/reports/ (test coverage plan) for the phased
 // rollout and why 100% coverage thresholds are added per-project as each phase lands, not here.
 export default defineConfig({
+  // See vitest.config.base.ts for why this is disabled: Vite auto-loading a developer's real
+  // .env would otherwise silently leak into every project's tests.
+  envDir: false,
   test: {
     passWithNoTests: true,
     projects: ['apps/*', 'packages/*'],
@@ -30,6 +33,7 @@ export default defineConfig({
       // (the ratchet from the Phase-0 plan) — see docs/reports/ for the phase list.
       thresholds: {
         'packages/schema/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        'packages/config/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
       },
     },
   },

@@ -9,6 +9,13 @@ const repoRoot = dirname(fileURLToPath(import.meta.url))
 // `vitest.config.ts` instead. This file only holds the options that genuinely are
 // per-project (environment, setupFiles, passWithNoTests, ...).
 const baseConfig = defineConfig({
+  // Vite auto-loads .env/.env.local from the detected workspace root into process.env before
+  // any test code (including setupFiles) runs. In this repo that means a developer's real,
+  // gitignored .env — with real secrets — silently wins over test/setup.ts's .env.test
+  // whenever @gmod/config's own `override: false` loading sees the var already set. Disabling
+  // Vite's auto-load makes test/setup.ts + .env.test the only source of env for tests, with
+  // identical behavior locally and in CI (where no real .env exists anyway).
+  envDir: false,
   test: {
     environment: 'node',
     globals: false,
