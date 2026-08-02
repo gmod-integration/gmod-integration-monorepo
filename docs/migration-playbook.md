@@ -2,9 +2,9 @@
 
 Guide to move code from `apps/*` to `packages/*` without breaking architecture.
 
-## Migration Checklist
+## Migration checklist
 
-1. Identify “shared” code (reusable by api/discord/ws).
+1. Identify "shared" code (reusable by api/discord/ws).
 2. Choose the target package:
    - business logic -> `domain-*`
    - cross-cutting application logic -> `core`
@@ -16,9 +16,9 @@ Guide to move code from `apps/*` to `packages/*` without breaking architecture.
 6. Check Turbo for dependency cycles.
 7. Run lint + typecheck + targeted dev run.
 
-## Example: Discord Action from API
+## Example: Discord action from API
 
-Goal: do not call Discord directly.
+Goal: do not call Discord directly (see [architecture.md](./architecture.md#why-go-through-bullmq-instead-of-calling-discord-directly-from-api) for why).
 
 1. Add the job/reply schema in `packages/schema/src/bullmq.ts`.
 2. Add the adapter in `packages/infra-bullmq/src/discordQueueAdapters.ts`.
@@ -32,7 +32,7 @@ Goal: do not call Discord directly.
 3. Set the value in middleware.
 4. Consume it without unsafe casts in controllers/models.
 
-## Cycle Management
+## Cycle management
 
 If Turbo reports a cycle between domain packages:
 

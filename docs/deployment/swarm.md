@@ -1,4 +1,4 @@
-# Swarm Start Guide
+# Swarm Deployment Guide
 
 This guide explains how to start and operate the `gmod` stack with Docker Swarm.
 
@@ -16,7 +16,7 @@ docker swarm init
 
 If Swarm is already initialized, Docker will tell you and you can continue.
 
-## 2. Deploy the Stack
+## 2. Deploy the stack
 
 From repository root:
 
@@ -31,7 +31,7 @@ What this does:
 - runs `prisma-migrate` service to execute `prisma db push` with retries
 - `api`, `websocket`, and `discord` now wait for MariaDB schema readiness (`users` table) before starting
 
-## 3. Check Health
+## 3. Check health
 
 ```bash
 docker stack services gmod
@@ -106,7 +106,7 @@ docker service ps gmod_discord
 docker service ps gmod_mariadb
 ```
 
-## 4. Update the Stack
+## 4. Update the stack
 
 After changing images or stack config:
 
@@ -114,7 +114,7 @@ After changing images or stack config:
 ./scripts/swarm-deploy.sh
 ```
 
-## 5. Rollback a Service
+## 5. Rollback a service
 
 ```bash
 docker service rollback gmod_api
@@ -122,7 +122,7 @@ docker service rollback gmod_websocket
 docker service rollback gmod_discord
 ```
 
-## 6. Stop Everything (Swarm)
+## 6. Stop everything (Swarm)
 
 ```bash
 docker stack rm gmod
@@ -232,5 +232,5 @@ You can keep your existing `MARIA_*` variables.
 
 - App services (`api/websocket/discord`) use `MARIA_*`
 - MariaDB service now supports both:
-- if `MARIADB_*` is set, it is used
-- if not, Swarm/Compose fallback automatically to `MARIA_*`
+  - if `MARIADB_*` is set, it is used
+  - if not, Swarm/Compose fallback automatically to `MARIA_*`
