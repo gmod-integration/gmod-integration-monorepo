@@ -55,6 +55,11 @@ export default defineConfig({
         // undefined-guard + string-operator branches in handleLogsTrigger - both unreachable
         // given the current hardcoded config data, not exclusions of real behavior.
         'packages/core/src/**': { statements: 99, branches: 98, functions: 100, lines: 99 },
+        // Phase 5 (apps/api). One documented, structurally-unreachable-under-Vitest line: the
+        // `if (fileURLToPath(import.meta.url) === process.argv[1]) { await main() }` entrypoint
+        // guard at the bottom of gm_integration_api.ts only evaluates true when the file is run
+        // directly as the process entrypoint (same pattern as apps/discord and apps/websocket).
+        'apps/api/src/**': { statements: 99, branches: 99, functions: 100, lines: 99 },
       },
     },
   },

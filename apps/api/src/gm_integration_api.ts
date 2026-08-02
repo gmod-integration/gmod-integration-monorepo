@@ -43,24 +43,35 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 })
 
 // CORS
+//
+// IMPORTANT: cors() interprets a bare function argument as an *options delegate* -
+// `(req, cb) => cb(err, corsOptions)` - not as an origin-check callback. Passing
+// `callback(null, true)` from that position used to mean "here are your cors options: `true`",
+// which Object.assign silently discards (a boolean has no own enumerable properties), so every
+// request actually fell back to the package default of `origin: '*'` - meaning the entire
+// allowlist below was being computed and then ignored, and every allowed request got a wildcard
+// Access-Control-Allow-Origin instead of being scoped to its actual origin. Wrapping the check in
+// `{ origin: (origin, cb) => cb(err, allow) }` uses the correct, documented per-origin callback
+// signature, so `callback(null, true)` now genuinely reflects the request's own Origin header.
 app.use(
-  cors((req: Request, callback: any) => {
-    const origin = req.headers.origin
-    const normalizedOrigin = typeof origin === 'string' ? origin.toLowerCase() : ''
-    const isConfiguredOrigin = typeof origin === 'string' && allowedCorsOrigins.has(origin)
-    const isOfficialDomain = normalizedOrigin.includes('gmod-integration.com')
-    const isLocalOrigin = normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')
+  cors({
+    origin: (origin: string | undefined, callback: any) => {
+      const normalizedOrigin = typeof origin === 'string' ? origin.toLowerCase() : ''
+      const isConfiguredOrigin = typeof origin === 'string' && allowedCorsOrigins.has(origin)
+      const isOfficialDomain = normalizedOrigin.includes('gmod-integration.com')
+      const isLocalOrigin = normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')
 
-    if (
-      !origin ||
-      isOfficialDomain ||
-      isConfiguredOrigin ||
-      (ConfigServer.dev && isLocalOrigin)
-    ) {
-      callback(null, true)
-    } else {
-      callback(new Error('Not allowed by CORS'))
-    }
+      if (
+        !origin ||
+        isOfficialDomain ||
+        isConfiguredOrigin ||
+        (ConfigServer.dev && isLocalOrigin)
+      ) {
+        callback(null, true)
+      } else {
+        callback(new Error('Not allowed by CORS'))
+      }
+    },
   }),
 )
 

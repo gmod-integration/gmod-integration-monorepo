@@ -239,7 +239,8 @@ export async function createNewServer(req: Request, res: Response) {
 
 export async function getGuildLinks(req: Request, res: Response) {
   const guild = req.guild!
-  return res.send((await guild.getLinks()) || [])
+  // getLinks() always resolves to an array (never null), so no falsy fallback is needed here.
+  return res.send(await guild.getLinks())
 }
 
 export async function postGuildLinks(req: Request, res: Response) {
@@ -338,7 +339,8 @@ export async function postGuildServerToken(req: Request, res: Response) {
 
 export async function getGuildVerificationsRoles(req: Request, res: Response) {
   const guild = req.guild!
-  return res.send((await guild.getVerificationRoles()) || [])
+  // getVerificationRoles() always resolves to an array (never null), so no fallback is needed.
+  return res.send(await guild.getVerificationRoles())
 }
 
 export async function putGuildVerificationsRoles(req: Request, res: Response) {
@@ -434,7 +436,8 @@ export async function postServerStatus(req: Request, res: Response) {
 
 export async function getServerStatusButtons(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await server.findStatusButtons()) || [])
+  // findStatusButtons() always resolves to an array (never null), so no fallback is needed.
+  return res.send(await server.findStatusButtons())
 }
 
 export async function putServerStatusButtons(req: Request, res: Response) {
@@ -529,12 +532,13 @@ export async function deleteServerSyncChat(req: Request, res: Response) {
 
 export async function getGmodToDiscordFilter(req: Request, res: Response) {
   const server = req.server!
+  // findMany() always resolves to an array (never null), so no fallback is needed here.
   return res.send(
-    (await prisma.gm_server_sync_chat_filter.findMany({
+    await prisma.gm_server_sync_chat_filter.findMany({
       where: {
         serverID: server.id,
       },
-    })) || [],
+    }),
   )
 }
 
@@ -809,7 +813,8 @@ export async function deleteLogsChannel(req: Request, res: Response) {
 
 export async function getGuildSettings(req: Request, res: Response) {
   const guild = req.guild!
-  return res.send((await guild.getAllSettings()) || [])
+  // getAllSettings() always resolves to an object (never null), so no fallback is needed here.
+  return res.send(await guild.getAllSettings())
 }
 
 export async function getGuildSetting(req: Request, res: Response) {
@@ -857,7 +862,8 @@ export async function putGuildSetting(req: Request, res: Response) {
 
 export async function getServerSettings(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await server.getAllSettings()) || [])
+  // getAllSettings() always resolves to an object (never null), so no fallback is needed here.
+  return res.send(await server.getAllSettings())
 }
 
 export async function getServerSetting(req: Request, res: Response) {
@@ -910,7 +916,8 @@ export async function putServerSetting(req: Request, res: Response) {
 }
 
 export async function getAdminGuilds(req: Request, res: Response) {
-  return res.send((await prisma.gm_guild.findMany()) || [])
+  // findMany() always resolves to an array (never null), so no fallback is needed here.
+  return res.send(await prisma.gm_guild.findMany())
 }
 
 export async function getAdminInformations(req: Request, res: Response) {
@@ -921,13 +928,14 @@ export async function getAdminInformations(req: Request, res: Response) {
 export async function getServerRoles(req: Request, res: Response) {
   const serverID = getSingleParam(req.params.serverID)
 
+  // findMany() always resolves to an array (never null), so no fallback is needed here.
   const roles = await prisma.gm_server_sync_roles.findMany({
     where: {
       serverID,
     },
   })
 
-  return res.send(roles || [])
+  return res.send(roles)
 }
 
 export async function postServerRoles(req: Request, res: Response) {
@@ -1010,13 +1018,14 @@ export async function deleteServerRoles(req: Request, res: Response) {
 export async function getServerTeams(req: Request, res: Response) {
   const serverID = getSingleParam(req.params.serverID)
 
+  // findMany() always resolves to an array (never null), so no fallback is needed here.
   const roles = await prisma.gm_server_sync_team_roles.findMany({
     where: {
       serverID,
     },
   })
 
-  return res.send(roles || [])
+  return res.send(roles)
 }
 
 export async function postServerTeams(req: Request, res: Response) {
@@ -1093,7 +1102,9 @@ export async function deleteServerTeams(req: Request, res: Response) {
 
 export async function getGuildBotInstance(req: Request, res: Response) {
   const guild = req.guild!
-  return res.send((await guild.getBotClientInfo(req.panelUser!.user)) || {})
+  // getBotClientInfo() always resolves to an object (or throws), never falsy, so no
+  // fallback is needed here.
+  return res.send(await guild.getBotClientInfo(req.panelUser!.user))
 }
 
 export async function getGuildBotRoleSubordination(req: Request, res: Response) {
@@ -1121,7 +1132,9 @@ export async function patchGuildBotInstance(req: Request, res: Response) {
   const guild = req.guild!
   try {
     await guild.updateBotInstanceToken(token)
-    return res.send((await guild.getBotClientInfo(req.panelUser!.user)) || {})
+    // getBotClientInfo() always resolves to an object (or throws), never falsy, so no
+    // fallback is needed here.
+    return res.send(await guild.getBotClientInfo(req.panelUser!.user))
   } catch (error: any) {
     return res.status(400).send({
       error: error.message,
@@ -1166,14 +1179,16 @@ export async function putGuildBotInstance(req: Request, res: Response) {
   }
 
   await guild.updateBotInstanceInfo({ username, avatar, token, status })
-  return res.send((await guild.getBotClientInfo(req.panelUser!.user)) || {})
+  // getBotClientInfo() always resolves to an object (or throws), never falsy, so no
+  // fallback is needed here.
+  return res.send(await guild.getBotClientInfo(req.panelUser!.user))
 }
 
 export async function deleteGuildBotInstance(req: Request, res: Response) {
   return todoControllers(req, res)
   // const guild = req.guild!;
   // await guild.deleteBotInstance();
-  // return res.send((await guild.getBotClientInfo(req.panelUser!.user)) || {});
+  // return res.send(await guild.getBotClientInfo(req.panelUser!.user));
 }
 
 export async function getUserGmodStorePurchases(req: Request, res: Response) {
@@ -1183,12 +1198,13 @@ export async function getUserGmodStorePurchases(req: Request, res: Response) {
 
 export async function getServerPseudo(req: Request, res: Response) {
   const server = req.server!
+  // findMany() always resolves to an array (never null), so no fallback is needed here.
   return res.send(
-    (await prisma.gm_server_pseudo.findMany({
+    await prisma.gm_server_pseudo.findMany({
       where: {
         serverID: server.id,
       },
-    })) || [],
+    }),
   )
 }
 
@@ -1303,7 +1319,8 @@ export async function getServerLogsTrigger(req: Request, res: Response) {
       error: 'Server is not premium',
     })
   }
-  return res.send((await server.getLogsTrigger()) || {})
+  // getLogsTrigger() always resolves to an array (never null), so no fallback is needed here.
+  return res.send(await server.getLogsTrigger())
 }
 
 export async function postServerLogsTrigger(req: Request, res: Response) {

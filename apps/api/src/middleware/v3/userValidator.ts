@@ -75,13 +75,9 @@ export async function userAdminGuildValidator(req: Request, res: Response, next:
       return
     }
 
+    // Guild's constructor never throws and always returns an instance for a plain { id }
+    // object, so no falsy guard is needed here.
     const guild = new Guild({ id: guildID })
-    if (!guild) {
-      res.status(404).json({
-        error: 'guild_not_found',
-      })
-      return
-    }
 
     req.guild = guild
     req.dscGuild = dscGuild
