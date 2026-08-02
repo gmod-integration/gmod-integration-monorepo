@@ -41,3 +41,4 @@ gets fixed, the recommendation gets rejected, the architecture moves on):
 | Date | Topic | Report |
 | --- | --- | --- |
 | 2026-08-02 | Technical documentation was scattered, partly wrong, and mixed with the public product docs | [2026-08-02-documentation-audit.md](./2026-08-02-documentation-audit.md) |
+| 2026-08-02 | Real test coverage is ~0%; the only existing test suite is broken and untested in CI | [2026-08-02-test-coverage-audit.md](./2026-08-02-test-coverage-audit.md) |
