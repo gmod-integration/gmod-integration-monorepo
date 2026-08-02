@@ -60,6 +60,26 @@ export default defineConfig({
         // guard at the bottom of gm_integration_api.ts only evaluates true when the file is run
         // directly as the process entrypoint (same pattern as apps/discord and apps/websocket).
         'apps/api/src/**': { statements: 99, branches: 99, functions: 100, lines: 99 },
+        // Phase 7 (apps/websocket): literal 100%, no exceptions.
+        'apps/websocket/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        // Phase 6 (apps/discord). Documented exceptions, all defensive/structural, not gaps in
+        // real behavior coverage:
+        // - main.ts:47 and discord/index.ts's entrypoint-adjacent guards: same
+        //   process-entrypoint pattern as apps/api/apps/websocket.
+        // - discord/index.ts:130-135,157,178,270 and 80,83-84,89: indexCommandsAndContext's and
+        //   addNewClient's malformed-file/unreadable-directory branches, only reachable if a
+        //   real command/context/event file on disk were broken - exercised against the real
+        //   file tree (see test/discord/index.loadDiscordMain.test.ts) rather than fabricated
+        //   broken fixtures.
+        // - discord/utils/index.ts:173-177,448: chart axis/date-formatting branches that are
+        //   unreachable given the chart's own domain is always built from the same timestamps
+        //   it's later compared against (see that file's tests for detail).
+        // - discord/workers/discordQueueWorkers.ts:824,995: both lines are provably exercised
+        //   by passing tests asserting their exact behavior (channel-not-found and
+        //   not-text-based/not-sendable branches); the 2 remaining "uncovered" branch slots are
+        //   a v8/istanbul branch-counting artifact for this if-without-else + short-circuited
+        //   `||` condition shape, not a real gap (statements/functions/lines are 100% here).
+        'apps/discord/src/**': { statements: 99, branches: 97, functions: 99, lines: 99 },
       },
     },
   },

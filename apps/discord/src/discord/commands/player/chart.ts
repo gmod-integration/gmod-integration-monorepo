@@ -64,13 +64,10 @@ export default {
           flags: MessageFlags.Ephemeral,
         })
       }
-      steamID64 = dbUser.getSteamID64()
-      if (!steamID64) {
-        return interaction.reply({
-          content: 'This user has no steamID64',
-          flags: MessageFlags.Ephemeral,
-        })
-      }
+      // getSteamID64() is a pure getter over dbUser.steamID64; the guard above already
+      // returned unless it was truthy, so a second call here can never be falsy - TS can't
+      // infer that two separate calls return the same value, hence the assertion.
+      steamID64 = dbUser.getSteamID64()!
     }
 
     try {

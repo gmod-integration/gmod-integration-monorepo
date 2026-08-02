@@ -29,7 +29,7 @@ import redis from '@gmod/infra-redis'
 import prisma from '@gmod/infra-prisma'
 import { getServersFromDiscordGuildID, type Server } from '@gmod/domain-server/Server.js'
 import { type PlayerGmod } from '@gmod/core/classes/v3/PlayerGmod.js'
-import { Guild, guildSettingExists } from '@gmod/domain-guild/Guild.js'
+import { guildSettingExists } from '@gmod/domain-guild/Guild.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -449,9 +449,6 @@ setInterval(async () => {
       const dscGuild = client.guilds.cache.get(key)
       if (!dscGuild) continue
 
-      const guild = new Guild(dscGuild)
-      if (!guild) continue
-
       let totalPlayers = 0
       let maxPlayers = 0
 
@@ -469,8 +466,10 @@ setInterval(async () => {
       }
 
       async function setPresence(str: string) {
-        if (!client || !client.user) return
-        client.user!.setPresence({
+        // Only called after the `if (!client || !client.user) continue` guard above already
+        // passed for this iteration, so client/client.user are always defined here - TS can't
+        // see that narrowing across the closure boundary, hence the non-null assertions.
+        client!.user!.setPresence({
           activities: [
             {
               name: str,

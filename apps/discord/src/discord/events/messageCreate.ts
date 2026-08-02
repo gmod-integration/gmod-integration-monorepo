@@ -41,7 +41,10 @@ export default {
           if (!channel || !channel.isVoiceBased())
             return await message.reply({ content: 'Invalid channel ID provided' })
           const member = message.guild.members.cache.get(message.author.id)
-          if (channel && member) await member.voice.setChannel(channel)
+          // `channel` is guaranteed truthy here (the `!channel` guard above already returned),
+          // so the old `channel &&` conjunct was dead code that only left a phantom uncovered
+          // branch.
+          if (member) await member.voice.setChannel(channel)
           break
         case 'giveMe':
           if (!message.member || !message.guild) return
@@ -54,8 +57,12 @@ export default {
         case 'deleteMessage':
           const messageID = args[0]
           if (!messageID) return await message.reply({ content: 'No message ID provided' })
+          // MessageManager#fetch(id) always resolves to a Message or rejects (caught below) -
+          // it never resolves to a falsy value, so the old `if (fetchedMessage)` guard was dead
+          // code. Also added the missing `await`: without it, a rejected delete() would surface
+          // as an unhandled rejection instead of being caught by the try/catch below.
           const fetchedMessage = await message.channel.messages.fetch(messageID)
-          if (fetchedMessage) fetchedMessage.delete()
+          await fetchedMessage.delete()
           break
         case 'verifyAll':
           if (!message.guild) return
