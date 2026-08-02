@@ -24,6 +24,13 @@ export default defineConfig({
         '**/node_modules/**',
         '**/*.config.{ts,js}',
       ],
+      // `thresholds` (like the rest of `coverage`) is a root-only option in Vitest's projects
+      // mode, so per-package gates live here, not in each package's own vitest.config.ts.
+      // One glob entry gets added per package/app as its test-implementation phase lands
+      // (the ratchet from the Phase-0 plan) — see docs/reports/ for the phase list.
+      thresholds: {
+        'packages/schema/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+      },
     },
   },
 })
