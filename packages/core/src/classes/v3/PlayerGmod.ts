@@ -4,17 +4,15 @@ import prisma from '@gmod/infra-prisma'
 import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js'
 import { getServerFromID, type Server } from '@gmod/domain-server/Server.js'
 import redis from '@gmod/infra-redis'
-import { gmLog, LogLevel } from '../../utils/logger.js'
+import { LogLevel } from '../../utils/logger.js'
 import { Position } from './Position.js'
 import { Angle } from './Angle.js'
 import { CustomValues } from './CustomValues.js'
 import { getTranslate } from '../../utils/localizations.js'
 import { secToTime } from '../../utils/discordFormat.js'
-import { Guild } from '@gmod/domain-guild/Guild.js'
-import { addAutoRoleToUser } from '@gmod/domain-guild/discordModels.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
-import { type Role } from 'discord.js'
 import {
+  enqueueDiscordGuildRemoveSyncRoles,
   enqueueDiscordGuildSyncBan,
   enqueueUpdateDiscordTeamRole,
   enqueueUpdatePlayerUserGroup,
@@ -287,18 +285,11 @@ export async function removeDiscordSync(discordID: string) {
       const server = await getServerFromID(serverStat.server_id)
       if (!server) continue
 
+      const guildID = server.getGuildID()
+
       // don't do the same guild twice
-      if (guildsDone.includes(server.getGuildID())) continue
-      guildsDone.push(server.getGuildID())
-
-      const dscGuild = await server.getDiscordGuild()
-      if (!dscGuild) return
-
-      const gmGuild = new Guild(dscGuild)
-      if (!gmGuild) return
-
-      const member = await dscGuild.members.fetch(discordID).catch(() => null)
-      if (!member) return
+      if (guildsDone.includes(guildID)) continue
+      guildsDone.push(guildID)
 
       // get team roles
       const teamRoles = await server.getSyncTeamRoles()
@@ -307,31 +298,22 @@ export async function removeDiscordSync(discordID: string) {
       const syncRoles = await server.getSyncRoles()
 
       // get verif roles
-      const verifyRole = await prisma.gm_guild_verify_role.findMany({
+      const verifyRoles = await prisma.gm_guild_verify_role.findMany({
         where: {
-          guildID: dscGuild.id,
+          guildID,
         },
       })
 
-      const userRoles = member.roles.cache
+      const candidateRoleIDs = [
+        ...new Set([
+          ...teamRoles.map((role) => role.roleID),
+          ...syncRoles.map((role) => role.roleID),
+          ...verifyRoles.map((role) => role.roleID),
+        ]),
+      ]
 
-      const rolesToRemove = userRoles.filter(
-        (role: Role) =>
-          syncRoles.some((syncRole) => syncRole.roleID === role.id) ||
-          teamRoles.some((teamRole) => teamRole.roleID === role.id) ||
-          verifyRole.some((verifyRole) => verifyRole.roleID === role.id),
-      )
-
-      if (rolesToRemove.size > 0) {
-        gmLog(
-          'sync-team-role',
-          `Removing roles from ${member.user.tag}: ${rolesToRemove.map((role: Role) => role.name).join(', ')}`,
-        )
-        await member.roles.remove(rolesToRemove)
-      }
-
-      // regive default role
-      await addAutoRoleToUser(dscGuild, member)
+      // remove synced roles and regive default role, done inside the discord bot process
+      await enqueueDiscordGuildRemoveSyncRoles(guildID, discordID, candidateRoleIDs)
     }
   } catch (error) {
     console.error(error)

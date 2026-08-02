@@ -46,6 +46,20 @@ import {
   DiscordServerLogsChannelCreateReplySchema,
   DiscordServerLogsChannelDeleteJobSchema,
   DiscordServerLogsChannelDeleteReplySchema,
+  DiscordServerScreenshotChannelCreateJobSchema,
+  DiscordServerScreenshotChannelCreateReplySchema,
+  DiscordServerScreenshotChannelDeleteJobSchema,
+  DiscordServerScreenshotChannelDeleteReplySchema,
+  DiscordServerVoteChannelCreateJobSchema,
+  DiscordServerVoteChannelCreateReplySchema,
+  DiscordServerVoteChannelDeleteJobSchema,
+  DiscordServerVoteChannelDeleteReplySchema,
+  DiscordServerSyncChatCreateJobSchema,
+  DiscordServerSyncChatCreateReplySchema,
+  DiscordServerSyncChatDeleteJobSchema,
+  DiscordServerSyncChatDeleteReplySchema,
+  DiscordGuildRemoveSyncRolesJobSchema,
+  DiscordGuildRemoveSyncRolesReplySchema,
   type UpdateGuildUserPseudoJob,
   type UpdatePlayerUserGroupJob,
   type UpdateDiscordTeamRoleJob,
@@ -53,6 +67,9 @@ import {
   type DiscordGuildSummary,
   type DiscordServerStatusRecord,
   type DiscordServerLogsChannelRecord,
+  type DiscordServerScreenshotChannelRecord,
+  type DiscordServerVoteChannelRecord,
+  type DiscordServerSyncChatRecord,
 } from './schemas.js'
 import { v4 as uuidv4 } from 'uuid'
 import redis from '@gmod/infra-redis'
@@ -769,6 +786,226 @@ export async function enqueueDiscordServerLogsChannelDelete(
   }
 
   return reply.logsChannel
+}
+
+export async function enqueueDiscordServerScreenshotChannelCreate(
+  serverID: string,
+  channelID: string,
+  timeoutMs = 10000,
+): Promise<DiscordServerScreenshotChannelRecord | null> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerScreenshotChannelCreateJobSchema.parse({
+    serverID,
+    channelID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('screenshotChannelCreate', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerScreenshotChannelCreateReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.screenshotChannel
+}
+
+export async function enqueueDiscordServerScreenshotChannelDelete(
+  serverID: string,
+  timeoutMs = 10000,
+): Promise<DiscordServerScreenshotChannelRecord | null> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerScreenshotChannelDeleteJobSchema.parse({
+    serverID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('screenshotChannelDelete', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerScreenshotChannelDeleteReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.screenshotChannel
+}
+
+export async function enqueueDiscordServerVoteChannelCreate(
+  serverID: string,
+  channelID: string,
+  timeoutMs = 10000,
+): Promise<DiscordServerVoteChannelRecord | null> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerVoteChannelCreateJobSchema.parse({
+    serverID,
+    channelID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('voteChannelCreate', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerVoteChannelCreateReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.voteChannel
+}
+
+export async function enqueueDiscordServerVoteChannelDelete(
+  serverID: string,
+  timeoutMs = 10000,
+): Promise<DiscordServerVoteChannelRecord | null> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerVoteChannelDeleteJobSchema.parse({
+    serverID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('voteChannelDelete', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerVoteChannelDeleteReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.voteChannel
+}
+
+export async function enqueueDiscordServerSyncChatCreate(
+  serverID: string,
+  channelID: string,
+  timeoutMs = 10000,
+): Promise<DiscordServerSyncChatRecord | null> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerSyncChatCreateJobSchema.parse({
+    serverID,
+    channelID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('syncChatCreate', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerSyncChatCreateReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.syncChat
+}
+
+export async function enqueueDiscordServerSyncChatDelete(
+  serverID: string,
+  timeoutMs = 10000,
+): Promise<DiscordServerSyncChatRecord | null> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerSyncChatDeleteJobSchema.parse({
+    serverID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('syncChatDelete', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerSyncChatDeleteReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.syncChat
+}
+
+export async function enqueueDiscordGuildRemoveSyncRoles(
+  guildID: string,
+  discordID: string,
+  candidateRoleIDs: string[],
+  timeoutMs = 10000,
+): Promise<boolean> {
+  const correlationId = uuidv4()
+  const payload = DiscordGuildRemoveSyncRolesJobSchema.parse({
+    guildID,
+    discordID,
+    candidateRoleIDs,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('guildRemoveSyncRoles', payload, {
+    priority: 6,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordGuildRemoveSyncRolesReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.processed
 }
 
 export async function enqueueDiscordServerStatusRefresh(serverID: string, timeoutMs = 10000): Promise<boolean> {

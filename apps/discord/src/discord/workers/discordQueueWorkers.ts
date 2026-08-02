@@ -27,6 +27,13 @@ import {
   DiscordServerStatusRefreshJobSchema,
   DiscordServerLogsChannelCreateJobSchema,
   DiscordServerLogsChannelDeleteJobSchema,
+  DiscordServerScreenshotChannelCreateJobSchema,
+  DiscordServerScreenshotChannelDeleteJobSchema,
+  DiscordServerVoteChannelCreateJobSchema,
+  DiscordServerVoteChannelDeleteJobSchema,
+  DiscordServerSyncChatCreateJobSchema,
+  DiscordServerSyncChatDeleteJobSchema,
+  DiscordGuildRemoveSyncRolesJobSchema,
   type MainClientHasGuildJob,
   type MainClientUploadScreenshotJob,
   type MainClientFetchUserJob,
@@ -48,6 +55,13 @@ import {
   type DiscordServerStatusRefreshJob,
   type DiscordServerLogsChannelCreateJob,
   type DiscordServerLogsChannelDeleteJob,
+  type DiscordServerScreenshotChannelCreateJob,
+  type DiscordServerScreenshotChannelDeleteJob,
+  type DiscordServerVoteChannelCreateJob,
+  type DiscordServerVoteChannelDeleteJob,
+  type DiscordServerSyncChatCreateJob,
+  type DiscordServerSyncChatDeleteJob,
+  type DiscordGuildRemoveSyncRolesJob,
 } from '@gmod/infra-bullmq/schemas.js'
 import { gmLog } from '@gmod/core/utils/logger.js'
 import prisma from '@gmod/infra-prisma'
@@ -608,6 +622,13 @@ export const discordGuildOpsWorker = new Worker<
   | DiscordServerStatusRefreshJob
   | DiscordServerLogsChannelCreateJob
   | DiscordServerLogsChannelDeleteJob
+  | DiscordServerScreenshotChannelCreateJob
+  | DiscordServerScreenshotChannelDeleteJob
+  | DiscordServerVoteChannelCreateJob
+  | DiscordServerVoteChannelDeleteJob
+  | DiscordServerSyncChatCreateJob
+  | DiscordServerSyncChatDeleteJob
+  | DiscordGuildRemoveSyncRolesJob
 >(
   'discord-guildOps',
   async (
@@ -628,6 +649,13 @@ export const discordGuildOpsWorker = new Worker<
       | DiscordServerStatusRefreshJob
       | DiscordServerLogsChannelCreateJob
       | DiscordServerLogsChannelDeleteJob
+      | DiscordServerScreenshotChannelCreateJob
+      | DiscordServerScreenshotChannelDeleteJob
+      | DiscordServerVoteChannelCreateJob
+      | DiscordServerVoteChannelDeleteJob
+      | DiscordServerSyncChatCreateJob
+      | DiscordServerSyncChatDeleteJob
+      | DiscordGuildRemoveSyncRolesJob
     >,
   ) => {
     if (job.name === 'guildSnapshot') {
@@ -1127,6 +1155,223 @@ export const discordGuildOpsWorker = new Worker<
         await writeReply(payload.correlationId, {
           correlationId: payload.correlationId,
           logsChannel: null,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'screenshotChannelCreate') {
+      const payload = DiscordServerScreenshotChannelCreateJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            screenshotChannel: null,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        const created = await server.createScreenshotChannel(payload.channelID)
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          screenshotChannel: created,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          screenshotChannel: null,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'screenshotChannelDelete') {
+      const payload = DiscordServerScreenshotChannelDeleteJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            screenshotChannel: null,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        const deleted = await server.destroyScreenshotChannel()
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          screenshotChannel: deleted || null,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          screenshotChannel: null,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'voteChannelCreate') {
+      const payload = DiscordServerVoteChannelCreateJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            voteChannel: null,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        const created = await server.createVoteChannel(payload.channelID)
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          voteChannel: created,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          voteChannel: null,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'voteChannelDelete') {
+      const payload = DiscordServerVoteChannelDeleteJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            voteChannel: null,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        const deleted = await server.destroyVoteChannel()
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          voteChannel: deleted || null,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          voteChannel: null,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'syncChatCreate') {
+      const payload = DiscordServerSyncChatCreateJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            syncChat: null,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        const created = await server.createSyncChat(payload.channelID)
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          syncChat: created,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          syncChat: null,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'syncChatDelete') {
+      const payload = DiscordServerSyncChatDeleteJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            syncChat: null,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        const deleted = await server.destroySyncChat()
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          syncChat: deleted || null,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          syncChat: null,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'guildRemoveSyncRoles') {
+      const payload = DiscordGuildRemoveSyncRolesJobSchema.parse(job.data)
+      try {
+        const client = await getGuildClient(payload.guildID, false)
+        const guild = await client.guilds.fetch(payload.guildID).catch(() => null)
+        if (!guild) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            processed: false,
+            error: 'Guild not found',
+          })
+          return
+        }
+
+        const member = await guild.members.fetch(payload.discordID).catch(() => null)
+        if (!member) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            processed: false,
+            error: 'Member not found',
+          })
+          return
+        }
+
+        const rolesToRemove = member.roles.cache.filter((role: Role) => payload.candidateRoleIDs.includes(role.id))
+        if (rolesToRemove.size > 0) {
+          gmLog(
+            'sync-team-role',
+            `Removing roles from ${member.user.tag}: ${rolesToRemove.map((role: Role) => role.name).join(', ')}`,
+          )
+          await member.roles.remove(rolesToRemove)
+        }
+
+        await addAutoRoleToUser(guild, member)
+
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          processed: true,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          processed: false,
           error: (error as Error).message,
         })
       }

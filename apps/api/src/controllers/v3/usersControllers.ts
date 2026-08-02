@@ -56,6 +56,12 @@ import {
   enqueueDiscordServerStatusRefresh,
   enqueueDiscordServerLogsChannelCreate,
   enqueueDiscordServerLogsChannelDelete,
+  enqueueDiscordServerScreenshotChannelCreate,
+  enqueueDiscordServerScreenshotChannelDelete,
+  enqueueDiscordServerVoteChannelCreate,
+  enqueueDiscordServerVoteChannelDelete,
+  enqueueDiscordServerSyncChatCreate,
+  enqueueDiscordServerSyncChatDelete,
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { getSingleParam } from '@/utils/requestParams.js'
 
@@ -497,12 +503,12 @@ export async function findServerScreenshots(req: Request, res: Response) {
 export async function postServerScreenshots(req: Request, res: Response) {
   const server = req.server!
   const { channelID } = req.body
-  return res.send(await server.createScreenshotChannel(channelID))
+  return res.send((await enqueueDiscordServerScreenshotChannelCreate(server.id, channelID)) || {})
 }
 
 export async function deleteServerScreenshots(req: Request, res: Response) {
   const server = req.server!
-  return res.send(await server.destroyScreenshotChannel())
+  return res.send((await enqueueDiscordServerScreenshotChannelDelete(server.id)) || {})
 }
 
 export async function findServerSyncChat(req: Request, res: Response) {
@@ -513,12 +519,12 @@ export async function findServerSyncChat(req: Request, res: Response) {
 export async function postServerSyncChat(req: Request, res: Response) {
   const server = req.server!
   const { channelID } = req.body
-  return res.send(await server.createSyncChat(channelID))
+  return res.send((await enqueueDiscordServerSyncChatCreate(server.id, channelID)) || {})
 }
 
 export async function deleteServerSyncChat(req: Request, res: Response) {
   const server = req.server!
-  return res.send(await server.destroySyncChat())
+  return res.send((await enqueueDiscordServerSyncChatDelete(server.id)) || {})
 }
 
 export async function getGmodToDiscordFilter(req: Request, res: Response) {
@@ -770,12 +776,12 @@ export async function postVoteChannels(req: Request, res: Response) {
     })
   }
 
-  return res.send(await server.createVoteChannel(channelID))
+  return res.send((await enqueueDiscordServerVoteChannelCreate(server.id, channelID)) || {})
 }
 
 export async function deleteVoteChannels(req: Request, res: Response) {
   const server = req.server!
-  return res.send(await server.destroyVoteChannel())
+  return res.send((await enqueueDiscordServerVoteChannelDelete(server.id)) || {})
 }
 
 export async function getLogsChannel(req: Request, res: Response) {

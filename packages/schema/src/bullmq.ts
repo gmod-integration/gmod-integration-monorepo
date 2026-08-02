@@ -492,3 +492,149 @@ export const DiscordServerLogsChannelDeleteReplySchema = z.object({
 })
 
 export type DiscordServerLogsChannelDeleteReply = z.infer<typeof DiscordServerLogsChannelDeleteReplySchema>
+
+export const DiscordServerScreenshotChannelRecordSchema = z.object({
+  server: z.string().min(1, 'server required'),
+  adminCmd: z.boolean(),
+  channelID: z.string(),
+  webhook: z.string(),
+  token: z.string(),
+})
+
+export type DiscordServerScreenshotChannelRecord = z.infer<typeof DiscordServerScreenshotChannelRecordSchema>
+
+export const DiscordServerScreenshotChannelCreateJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  channelID: z.string().min(1, 'channelID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerScreenshotChannelCreateJob = z.infer<typeof DiscordServerScreenshotChannelCreateJobSchema>
+
+export const DiscordServerScreenshotChannelCreateReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  screenshotChannel: DiscordServerScreenshotChannelRecordSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerScreenshotChannelCreateReply = z.infer<typeof DiscordServerScreenshotChannelCreateReplySchema>
+
+export const DiscordServerScreenshotChannelDeleteJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerScreenshotChannelDeleteJob = z.infer<typeof DiscordServerScreenshotChannelDeleteJobSchema>
+
+export const DiscordServerScreenshotChannelDeleteReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  screenshotChannel: DiscordServerScreenshotChannelRecordSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerScreenshotChannelDeleteReply = z.infer<typeof DiscordServerScreenshotChannelDeleteReplySchema>
+
+export const DiscordServerVoteChannelRecordSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  channelID: z.string().min(1, 'channelID required'),
+  webhookID: z.string().min(1, 'webhookID required'),
+  webhookToken: z.string().min(1, 'webhookToken required'),
+})
+
+export type DiscordServerVoteChannelRecord = z.infer<typeof DiscordServerVoteChannelRecordSchema>
+
+export const DiscordServerVoteChannelCreateJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  channelID: z.string().min(1, 'channelID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerVoteChannelCreateJob = z.infer<typeof DiscordServerVoteChannelCreateJobSchema>
+
+export const DiscordServerVoteChannelCreateReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  voteChannel: DiscordServerVoteChannelRecordSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerVoteChannelCreateReply = z.infer<typeof DiscordServerVoteChannelCreateReplySchema>
+
+export const DiscordServerVoteChannelDeleteJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerVoteChannelDeleteJob = z.infer<typeof DiscordServerVoteChannelDeleteJobSchema>
+
+export const DiscordServerVoteChannelDeleteReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  voteChannel: DiscordServerVoteChannelRecordSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerVoteChannelDeleteReply = z.infer<typeof DiscordServerVoteChannelDeleteReplySchema>
+
+export const DiscordServerSyncChatRecordSchema = z.object({
+  guild: z.string().min(1, 'guild required'),
+  channel: z.string(),
+  server: z.string(),
+  id: z.string(),
+  token: z.string(),
+})
+
+export type DiscordServerSyncChatRecord = z.infer<typeof DiscordServerSyncChatRecordSchema>
+
+export const DiscordServerSyncChatCreateJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  channelID: z.string().min(1, 'channelID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerSyncChatCreateJob = z.infer<typeof DiscordServerSyncChatCreateJobSchema>
+
+export const DiscordServerSyncChatCreateReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  syncChat: DiscordServerSyncChatRecordSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerSyncChatCreateReply = z.infer<typeof DiscordServerSyncChatCreateReplySchema>
+
+export const DiscordServerSyncChatDeleteJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerSyncChatDeleteJob = z.infer<typeof DiscordServerSyncChatDeleteJobSchema>
+
+export const DiscordServerSyncChatDeleteReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  syncChat: DiscordServerSyncChatRecordSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerSyncChatDeleteReply = z.infer<typeof DiscordServerSyncChatDeleteReplySchema>
+
+export const DiscordGuildRemoveSyncRolesJobSchema = z.object({
+  guildID: z.string().min(1, 'guildID required'),
+  discordID: z.string().min(1, 'discordID required'),
+  candidateRoleIDs: z.array(z.string().min(1)),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordGuildRemoveSyncRolesJob = z.infer<typeof DiscordGuildRemoveSyncRolesJobSchema>
+
+export const DiscordGuildRemoveSyncRolesReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  processed: z.boolean(),
+  error: z.string().optional(),
+})
+
+export type DiscordGuildRemoveSyncRolesReply = z.infer<typeof DiscordGuildRemoveSyncRolesReplySchema>
