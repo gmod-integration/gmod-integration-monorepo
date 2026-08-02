@@ -1,0 +1,24 @@
+sequenceDiagram
+    participant Producer as any app/package (e.g. domain-guild)
+    participant Q as wsSendToServerQueue (BullMQ)
+    participant W1 as apps/websocket replica A
+    participant W2 as apps/websocket replica B
+    participant PubSub as Redis pub/sub broadcast channel
+    participant Server as GMod server socket
+
+    Producer->>Q: enqueue id and data
+    Q->>W1: job delivered to replica A
+    W1->>W1: wsSendToServer(id, data)<br/>check local clients.server
+
+    alt server connected to replica A (local hit)
+        W1->>Server: ws.send(data)
+        W1-->>Q: job resolves true
+    else server connected to a different replica
+        W1->>PubSub: publish id, data, requestId<br/>SET ack key (TTL 5s)
+        PubSub->>W2: message received
+        W2->>W2: check local clients.server
+        W2->>Server: ws.send(data)
+        W2->>PubSub: INCR ack key for requestId
+        W1->>W1: poll ack key every 60ms, up to 600ms
+        W1-->>Q: job resolves true/false based on ack
+    end

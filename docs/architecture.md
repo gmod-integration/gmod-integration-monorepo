@@ -101,6 +101,10 @@ every app and package.
 
 ## End-to-end data flow
 
+More diagrams (system overview, the BullMQ request/reply bridge in detail, WebSocket cross-replica delivery,
+package dependency layers, production deployment topology) live in
+[docs/architectures/](./architectures/README.md), each with a standalone `.mmd` source file.
+
 ```mermaid
 sequenceDiagram
     participant Lua as GMod addon (submodule)

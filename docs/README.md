@@ -15,9 +15,11 @@ of everything else.
 | Doc | Answers |
 | --- | --- |
 | [architecture.md](./architecture.md) | What are the moving pieces, why this split, how does a request flow end to end? |
+| [architectures/](./architectures/README.md) | Same thing, as diagrams — `.mmd` sources + rendered Mermaid (system overview, BullMQ bridge, WS delivery, dependency layers, deployment topology). |
 | [best-practices.md](./best-practices.md) | Where do I put new code, how do I keep it consistent with the rest? |
 | [migration-playbook.md](./migration-playbook.md) | How do I move code from an `app` into a shared `package` safely? |
 | [deployment/swarm.md](./deployment/swarm.md) | How do I deploy/operate the production Docker Swarm stack? |
+| [reports/](./reports/README.md) | Where do AI-generated audits/investigation reports get saved, and how? |
 
 ## Repo map
 

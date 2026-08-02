@@ -1,0 +1,20 @@
+sequenceDiagram
+    participant Lua as GMod addon (submodule)
+    participant API as apps/api
+    participant WS as apps/websocket
+    participant DB as MariaDB / Mongo (infra-prisma / infra-mongo)
+    participant BullMQ as packages/infra-bullmq (Redis)
+    participant Discord as apps/discord
+    participant Web as apps/website (dashboard)
+
+    Lua->>API: HTTP request (server token/ID auth)
+    Lua->>WS: persistent WebSocket (server id/token)
+    API->>DB: read/write via domain-* classes
+    API->>BullMQ: enqueue job (e.g. sync role, post log)
+    BullMQ->>Discord: worker consumes job
+    Discord-->>BullMQ: reply written to Redis key (if a result is needed)
+    BullMQ-->>API: reply polled back (or timeout)
+    Web->>API: HTTP (dashboard CRUD)
+    Web->>WS: WebSocket (discordID + token auth)
+    WS-->>Web: live push (server status, ack)
+    WS->>BullMQ: wsSendToServerQueue / wsSendToAllClientsOfServerQueue

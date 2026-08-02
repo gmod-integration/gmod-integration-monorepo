@@ -76,6 +76,17 @@ avec un lien vers le détail), puis:
 - [`docs/deployment/swarm.md`](./docs/deployment/swarm.md) — déploiement/exploitation prod (Docker Swarm).
 - [`docs/apps/*.md`](./docs/apps) et [`docs/packages/*.md`](./docs/packages) — un fichier par app/package.
 - [`docs/submodules/gmod-integration.md`](./docs/submodules/gmod-integration.md) — l'addon GMod.
+- [`docs/architectures/`](./docs/architectures/README.md) — les mêmes flux en schémas Mermaid (`.mmd`).
 
 La doc **produit** (installation, commandes Discord, guides dashboard) est ailleurs: `apps/docs/docs/`,
 publiée sur docs.gmod-integration.com. Ne pas y mettre de contenu destiné aux agents/ingénieurs.
+
+## 8) Rapports / audits demandés par l'utilisateur
+
+Si on te demande d'auditer, d'investiguer ou de "faire un rapport" sur un sujet (et que la réponse dépasse une
+simple réponse de chat), enregistre-le dans **[`docs/reports/`](./docs/reports/README.md)** au lieu de le
+laisser uniquement dans la conversation — un fichier par rapport, nommé `YYYY-MM-DD-sujet-en-kebab-case.md`,
+en partant de [`docs/reports/TEMPLATE.md`](./docs/reports/TEMPLATE.md), avec une ligne ajoutée à l'index dans
+`docs/reports/README.md`. Ces rapports sont figés dans le temps (ne pas réécrire les constats après coup, voir
+la règle dans `docs/reports/README.md`) — à ne pas confondre avec la doc vivante (`docs/architecture.md`,
+`docs/packages/*`, ...), qui décrit l'état actuel.

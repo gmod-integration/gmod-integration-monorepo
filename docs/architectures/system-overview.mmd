@@ -1,0 +1,43 @@
+graph TD
+  subgraph Clients
+    Lua["GMod Addon (Lua)<br/>submodules/gmod-integration"]
+    Dash["Website Dashboard<br/>apps/website"]
+  end
+
+  subgraph Apps["apps/*"]
+    API["apps/api<br/>Express HTTP"]
+    WS["apps/websocket<br/>WS gateway"]
+    DISCORD["apps/discord<br/>bot + BullMQ workers"]
+  end
+
+  subgraph Data["Data stores (packages/infra-*)"]
+    Maria[("MariaDB<br/>infra-prisma")]
+    Mongo[("MongoDB<br/>infra-mongo")]
+    Redis[("Redis<br/>infra-redis / infra-bullmq")]
+    Minio[("MinIO S3<br/>infra-minio")]
+  end
+
+  subgraph External
+    DiscordAPI["Discord Gateway/API"]
+    SteamAPI["Steam Web API<br/>infra-steam"]
+  end
+
+  Lua -->|"HTTP (server token/id)"| API
+  Lua <-->|"WebSocket (server token/id)"| WS
+  Dash -->|"HTTP (panel session)"| API
+  Dash <-->|"WebSocket (discordID + token)"| WS
+
+  API --> Maria
+  API --> Mongo
+  API --> Minio
+  API --> SteamAPI
+  API -->|"enqueue BullMQ job"| Redis
+
+  WS --> Redis
+  WS -->|"enqueue push job"| Redis
+
+  Redis -->|"BullMQ queues"| DISCORD
+  DISCORD --> Maria
+  DISCORD --> Minio
+  DISCORD -->|"reply key bullmq:reply:*"| Redis
+  DISCORD <--> DiscordAPI

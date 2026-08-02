@@ -1,0 +1,23 @@
+sequenceDiagram
+    participant Caller as apps/api or packages/domain-*
+    participant Adapter as infra-bullmq discordQueueAdapters
+    participant Queue as BullMQ queue (Redis)
+    participant Worker as apps/discord worker
+    participant ReplyKey as Redis reply key
+
+    Caller->>Adapter: enqueueDiscordGuildX(data)
+    Adapter->>Adapter: validate payload (Zod JobSchema) + generate correlationId
+    Adapter->>Queue: queue.add(jobName, payload)
+    Queue->>Worker: job delivered
+    Worker->>Worker: execute Discord action (live discord.js client)
+    Worker->>ReplyKey: SET bullmq:reply:correlationId (Zod ReplySchema, short TTL)
+
+    loop poll every 100ms until timeoutMs
+        Adapter->>ReplyKey: GET bullmq:reply:correlationId
+    end
+
+    ReplyKey-->>Adapter: reply JSON found
+    Adapter->>Adapter: parse against ReplySchema, DEL key
+    Adapter-->>Caller: typed result
+
+    Note over Adapter,ReplyKey: if no reply before timeoutMs,<br/>throws BullMQReplyTimeoutError instead

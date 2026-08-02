@@ -1,0 +1,70 @@
+graph TD
+  subgraph Apps["apps/*"]
+    API[api]
+    DISCORD[discord]
+    WS[websocket]
+    WEBSITE[website]
+  end
+
+  subgraph CoreLayer["packages/core"]
+    CORE[core]
+  end
+
+  subgraph DomainLayer["packages/domain-*"]
+    DS[domain-server]
+    DG[domain-guild]
+    DU[domain-user]
+    DM[domain-moderation]
+    DC[domain-compliance]
+    DGM[domain-gmod]
+  end
+
+  subgraph InfraLayer["packages/infra-*"]
+    IP[infra-prisma]
+    IM[infra-mongo]
+    IR[infra-redis]
+    IB[infra-bullmq]
+    IW[infra-websocket]
+    IMN[infra-minio]
+    IS[infra-steam]
+  end
+
+  subgraph BaseLayer["packages/schema + config"]
+    SCHEMA[schema]
+    CONFIG[config]
+  end
+
+  API --> CORE
+  API --> DS
+  API --> DG
+  DISCORD --> CORE
+  DISCORD --> DG
+  WS --> DS
+  WS --> DU
+
+  CORE --> DS
+  CORE --> DG
+  CORE --> DU
+  CORE --> IB
+  CORE --> IP
+
+  DS --> IP
+  DS --> IR
+  DS --> IW
+  DS --> SCHEMA
+  DS --> CONFIG
+
+  DG --> DS
+  DG --> DU
+  DG --> IB
+  DG --> CONFIG
+
+  DM --> DS
+  DC --> DGM
+  DC --> DU
+  DGM --> IM
+  DGM --> SCHEMA
+
+  IB --> SCHEMA
+  IW --> IB
+  IS --> IMN

@@ -1,0 +1,44 @@
+graph TD
+  CF["Cloudflare Tunnel"]
+
+  subgraph Swarm["Docker Swarm stack: gmod"]
+    TRAEFIK["Traefik (1 replica)<br/>ports 80 / 443 / 8080"]
+
+    subgraph AppsReplicated["apps, 2 replicas each"]
+      API["gmod_api x2"]
+      WSVC["gmod_websocket x2"]
+      DISCORDSVC["gmod_discord x2"]
+    end
+
+    subgraph Stateful["stateful services, 1 replica each"]
+      MARIADB[("gmod_mariadb")]
+      REDIS[("gmod_redis")]
+      MONGO[("gmod_mongo")]
+      MINIO[("gmod_minio")]
+    end
+
+    MIGRATE["gmod_prisma-migrate<br/>runs db push, then exits"]
+  end
+
+  CF -->|api.your-domain.com| TRAEFIK
+  CF -->|ws.your-domain.com| TRAEFIK
+  CF -->|traefik.your-domain.com| TRAEFIK
+
+  TRAEFIK --> API
+  TRAEFIK --> WSVC
+
+  API --> MARIADB
+  API --> REDIS
+  API --> MONGO
+  API --> MINIO
+
+  WSVC --> REDIS
+  WSVC --> MARIADB
+
+  DISCORDSVC --> MARIADB
+  DISCORDSVC --> REDIS
+  DISCORDSVC --> MONGO
+
+  MIGRATE --> MARIADB
+
+  API -.BullMQ jobs via REDIS.-> DISCORDSVC
