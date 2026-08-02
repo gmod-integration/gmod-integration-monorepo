@@ -42,12 +42,17 @@ import {
   DiscordServerStatusDeleteReplySchema,
   DiscordServerStatusRefreshJobSchema,
   DiscordServerStatusRefreshReplySchema,
+  DiscordServerLogsChannelCreateJobSchema,
+  DiscordServerLogsChannelCreateReplySchema,
+  DiscordServerLogsChannelDeleteJobSchema,
+  DiscordServerLogsChannelDeleteReplySchema,
   type UpdateGuildUserPseudoJob,
   type UpdatePlayerUserGroupJob,
   type UpdateDiscordTeamRoleJob,
   type MainClientUploadScreenshotJob,
   type DiscordGuildSummary,
   type DiscordServerStatusRecord,
+  type DiscordServerLogsChannelRecord,
 } from './schemas.js'
 import { v4 as uuidv4 } from 'uuid'
 import redis from '@gmod/infra-redis'
@@ -702,6 +707,68 @@ export async function enqueueDiscordServerStatusDelete(
   }
 
   return reply.status
+}
+
+export async function enqueueDiscordServerLogsChannelCreate(
+  serverID: string,
+  channelID: string,
+  timeoutMs = 10000,
+): Promise<DiscordServerLogsChannelRecord | null> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerLogsChannelCreateJobSchema.parse({
+    serverID,
+    channelID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('logsChannelCreate', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerLogsChannelCreateReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.logsChannel
+}
+
+export async function enqueueDiscordServerLogsChannelDelete(
+  serverID: string,
+  timeoutMs = 10000,
+): Promise<DiscordServerLogsChannelRecord | null> {
+  const correlationId = uuidv4()
+  const payload = DiscordServerLogsChannelDeleteJobSchema.parse({
+    serverID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('logsChannelDelete', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerLogsChannelDeleteReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) {
+    throw new Error(reply.error)
+  }
+
+  return reply.logsChannel
 }
 
 export async function enqueueDiscordServerStatusRefresh(serverID: string, timeoutMs = 10000): Promise<boolean> {

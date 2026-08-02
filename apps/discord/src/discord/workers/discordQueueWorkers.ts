@@ -25,6 +25,8 @@ import {
   DiscordServerStatusCreateJobSchema,
   DiscordServerStatusDeleteJobSchema,
   DiscordServerStatusRefreshJobSchema,
+  DiscordServerLogsChannelCreateJobSchema,
+  DiscordServerLogsChannelDeleteJobSchema,
   type MainClientHasGuildJob,
   type MainClientUploadScreenshotJob,
   type MainClientFetchUserJob,
@@ -44,6 +46,8 @@ import {
   type DiscordServerStatusCreateJob,
   type DiscordServerStatusDeleteJob,
   type DiscordServerStatusRefreshJob,
+  type DiscordServerLogsChannelCreateJob,
+  type DiscordServerLogsChannelDeleteJob,
 } from '@gmod/infra-bullmq/schemas.js'
 import { gmLog } from '@gmod/core/utils/logger.js'
 import prisma from '@gmod/infra-prisma'
@@ -602,6 +606,8 @@ export const discordGuildOpsWorker = new Worker<
   | DiscordServerStatusCreateJob
   | DiscordServerStatusDeleteJob
   | DiscordServerStatusRefreshJob
+  | DiscordServerLogsChannelCreateJob
+  | DiscordServerLogsChannelDeleteJob
 >(
   'discord-guildOps',
   async (
@@ -620,6 +626,8 @@ export const discordGuildOpsWorker = new Worker<
       | DiscordServerStatusCreateJob
       | DiscordServerStatusDeleteJob
       | DiscordServerStatusRefreshJob
+      | DiscordServerLogsChannelCreateJob
+      | DiscordServerLogsChannelDeleteJob
     >,
   ) => {
     if (job.name === 'guildSnapshot') {
@@ -1063,6 +1071,62 @@ export const discordGuildOpsWorker = new Worker<
         await writeReply(payload.correlationId, {
           correlationId: payload.correlationId,
           refreshed: false,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'logsChannelCreate') {
+      const payload = DiscordServerLogsChannelCreateJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            logsChannel: null,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        const created = await server.createLogsChannel(payload.channelID)
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          logsChannel: created,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          logsChannel: null,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'logsChannelDelete') {
+      const payload = DiscordServerLogsChannelDeleteJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) {
+          await writeReply(payload.correlationId, {
+            correlationId: payload.correlationId,
+            logsChannel: null,
+            error: 'Server not found',
+          })
+          return
+        }
+
+        const deleted = await server.destroyLogsChannel()
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          logsChannel: deleted || null,
+        })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          logsChannel: null,
           error: (error as Error).message,
         })
       }

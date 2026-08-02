@@ -54,6 +54,8 @@ import {
   enqueueDiscordServerStatusCreate,
   enqueueDiscordServerStatusDelete,
   enqueueDiscordServerStatusRefresh,
+  enqueueDiscordServerLogsChannelCreate,
+  enqueueDiscordServerLogsChannelDelete,
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { getSingleParam } from '@/utils/requestParams.js'
 
@@ -791,12 +793,12 @@ export async function postLogsChannel(req: Request, res: Response) {
     })
   }
 
-  return res.send(await server.createLogsChannel(channelID))
+  return res.send((await enqueueDiscordServerLogsChannelCreate(server.id, channelID)) || {})
 }
 
 export async function deleteLogsChannel(req: Request, res: Response) {
   const server = req.server!
-  return res.send(await server.destroyLogsChannel())
+  return res.send((await enqueueDiscordServerLogsChannelDelete(server.id)) || {})
 }
 
 export async function getGuildSettings(req: Request, res: Response) {

@@ -450,3 +450,45 @@ export const DiscordServerStatusRefreshReplySchema = z.object({
 })
 
 export type DiscordServerStatusRefreshReply = z.infer<typeof DiscordServerStatusRefreshReplySchema>
+
+export const DiscordServerLogsChannelRecordSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  channelID: z.string().min(1, 'channelID required'),
+  webhookID: z.string().min(1, 'webhookID required'),
+  webhookToken: z.string().min(1, 'webhookToken required'),
+})
+
+export type DiscordServerLogsChannelRecord = z.infer<typeof DiscordServerLogsChannelRecordSchema>
+
+export const DiscordServerLogsChannelCreateJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  channelID: z.string().min(1, 'channelID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerLogsChannelCreateJob = z.infer<typeof DiscordServerLogsChannelCreateJobSchema>
+
+export const DiscordServerLogsChannelCreateReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  logsChannel: DiscordServerLogsChannelRecordSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerLogsChannelCreateReply = z.infer<typeof DiscordServerLogsChannelCreateReplySchema>
+
+export const DiscordServerLogsChannelDeleteJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerLogsChannelDeleteJob = z.infer<typeof DiscordServerLogsChannelDeleteJobSchema>
+
+export const DiscordServerLogsChannelDeleteReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  logsChannel: DiscordServerLogsChannelRecordSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerLogsChannelDeleteReply = z.infer<typeof DiscordServerLogsChannelDeleteReplySchema>
