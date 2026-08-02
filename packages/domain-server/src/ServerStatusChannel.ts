@@ -19,8 +19,10 @@ export class ServerStatusChannel {
     this.serverID = parsed.serverID
     this.channelID = parsed.channelID
     this.format = parsed.format
-    this.updatedAt = parsed.updatedAt ? new Date(parsed.updatedAt) : new Date()
-    this.createdAt = parsed.createdAt ? new Date(parsed.createdAt) : new Date()
+    // createdAt/updatedAt are required strings in ServerStatusChannelSchema, so they are always
+    // present once parsing succeeds - no fallback needed.
+    this.updatedAt = new Date(parsed.updatedAt)
+    this.createdAt = new Date(parsed.createdAt)
   }
 
   public static from(data: unknown): ServerStatusChannel {
@@ -57,7 +59,11 @@ export class ServerStatusChannel {
   }
 
   public static async update(server: Server, channelID: string, format: string): Promise<ServerStatusChannel> {
-    const updatedChannel = await prisma.gm_server_status_channel.updateMany({
+    // serverID isn't a unique field on this model (only `id` is), so a single-record `update()`
+    // isn't possible here - updateMany() is correct, but it resolves to {count}, not the
+    // updated row. Re-fetch the row afterward so ServerStatusChannel.from() gets a real record
+    // instead of failing to parse {count} against the schema.
+    await prisma.gm_server_status_channel.updateMany({
       where: {
         serverID: server.id,
       },
@@ -65,6 +71,11 @@ export class ServerStatusChannel {
         channelID,
         format,
         updatedAt: new Date(),
+      },
+    })
+    const updatedChannel = await prisma.gm_server_status_channel.findFirst({
+      where: {
+        serverID: server.id,
       },
     })
     return ServerStatusChannel.from(updatedChannel)

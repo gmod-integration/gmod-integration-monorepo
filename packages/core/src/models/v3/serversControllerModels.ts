@@ -146,7 +146,10 @@ export async function processDarkRPDropMoney(server: Server, body: any): Promise
     })
   }
 
-  const ply = new PlayerGmod(player)
+  // throwMissing=false (here and at every other `new PlayerGmod(...)` in this file): an invalid
+  // payload should produce a graceful player_bad_format response via isValid() below, not an
+  // uncaught throw from the constructor itself.
+  const ply = new PlayerGmod(player, false)
   if (!ply.isValid()) {
     return invalidPlayerResult(ply)
   }
@@ -173,7 +176,7 @@ export async function processDarkRPPickedUpMoney(server: Server, body: any): Pro
     })
   }
 
-  const ply = new PlayerGmod(player)
+  const ply = new PlayerGmod(player, false)
   if (!ply.isValid()) {
     return invalidPlayerResult(ply)
   }
@@ -201,8 +204,8 @@ export async function processDarkRPPickedUpCheque(server: Server, body: any): Pr
     })
   }
 
-  const plyWriter = new PlayerGmod(playerChequeWriter)
-  const plyTarget = new PlayerGmod(playerChequeTarget)
+  const plyWriter = new PlayerGmod(playerChequeWriter, false)
+  const plyTarget = new PlayerGmod(playerChequeTarget, false)
   if (!plyWriter.isValid() || !plyTarget.isValid()) {
     return invalidPlayerResult(plyWriter)
   }
@@ -229,7 +232,7 @@ export async function processCHATMTakeMoney(server: Server, body: any): Promise<
     })
   }
 
-  const ply = new PlayerGmod(player)
+  const ply = new PlayerGmod(player, false)
   if (!ply.isValid()) {
     return invalidPlayerResult(ply)
   }
@@ -256,7 +259,7 @@ export async function processCHATMReceiveMoney(server: Server, body: any): Promi
     })
   }
 
-  const ply = new PlayerGmod(player)
+  const ply = new PlayerGmod(player, false)
   if (!ply.isValid()) {
     return invalidPlayerResult(ply)
   }
@@ -283,8 +286,8 @@ export async function processCHATMSendMoney(server: Server, body: any): Promise<
     })
   }
 
-  const ply = new PlayerGmod(player)
-  const plyReceiver = new PlayerGmod(receiver)
+  const ply = new PlayerGmod(player, false)
+  const plyReceiver = new PlayerGmod(receiver, false)
   if (!ply.isValid() || !plyReceiver.isValid()) {
     return invalidPlayerResult(ply)
   }
@@ -310,7 +313,7 @@ export async function processCHATMWithdrawMoney(server: Server, body: any): Prom
     })
   }
 
-  const ply = new PlayerGmod(player)
+  const ply = new PlayerGmod(player, false)
   if (!ply.isValid()) {
     return invalidPlayerResult(ply)
   }
@@ -335,7 +338,7 @@ export async function processCHATMDepositMoney(server: Server, body: any): Promi
     })
   }
 
-  const ply = new PlayerGmod(player)
+  const ply = new PlayerGmod(player, false)
   if (!ply.isValid()) {
     return invalidPlayerResult(ply)
   }

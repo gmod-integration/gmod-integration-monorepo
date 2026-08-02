@@ -239,10 +239,17 @@ async function handleLogsTrigger(server: Server, type: string, data?: any) {
       newValue = parseFloat(data[trigger.compare])
       compareValue = parseFloat(trigger.value)
     } else {
+      // Every entry currently in log_trigger_compare uses `type: 'number'`, so this branch (and
+      // the string operators below - contain/notContain/startWith/endWith, which would throw on
+      // a numeric newValue) isn't reachable through today's trigger config. It's kept for the
+      // day a string-typed compare field is added, at which point those operators start working.
       newValue = data[trigger.compare]
       compareValue = trigger.value
     }
 
+    // Same root cause as the branch above: with every log_trigger_compare field currently typed
+    // 'number', parseFloat(...) never actually yields `undefined` (missing data becomes NaN
+    // instead) - so this guard only does something once a non-numeric compare field exists.
     if (newValue === undefined || compareValue === undefined) continue
     if (trigger.operator === log_trigger_operator.greaterThan && newValue <= compareValue) continue
     if (trigger.operator === log_trigger_operator.lessThan && newValue >= compareValue) continue
@@ -288,6 +295,9 @@ async function handleLogsTrigger(server: Server, type: string, data?: any) {
           channelID: trigger.channelID,
           title: `Trigger: ${type}`,
           description: message,
+          // Every type key in log_trigger_compare (the only types that reach this point, see the
+          // `if (!typeInfo) continue` above) already has an entry in logEmbedColors, so the
+          // ConfigDiscord.embedColor fallback here isn't reachable with today's config either.
           color: String(logEmbedColors[type] || ConfigDiscord.embedColor),
           footer: server.getName(),
         },
@@ -416,18 +426,22 @@ export async function logServer(server: Server, type: string, data?: any) {
   } else if (type === 'server_start' || type === 'server_stop') {
     //
   } else if (type === 'player_death') {
-    const attacker = new PlayerGmod(data.attacker)
     dataToSave = {}
     dataToSave.plyTarget = data.player
-    dataToSave.plyAttacker = attacker
     dscList.push(await getTranslate('attacker', lang))
+    // data.attacker may describe a non-player entity (fall damage, world, an NPC...), which
+    // PlayerGmod's schema rejects - parsing it unconditionally (as this used to, redundantly,
+    // before this try block was even reached) would throw and crash the whole log call instead
+    // of falling back gracefully like this try/catch is meant to.
     try {
       const attacker = new PlayerGmod(data.attacker)
       dataToSave.attacker = attacker
+      dataToSave.plyAttacker = attacker
       dscList.push((await getTranslate('steamID64', lang)) + ': `' + attacker.steamID64 + '`')
       dscList.push((await getTranslate('name', lang)) + ': `' + attacker.name + '`')
     } catch (error) {
       dataToSave.attacker = data.attacker
+      dataToSave.plyAttacker = data.attacker
       dscList.push((await getTranslate('entity', lang)) + ': `' + data.attacker.class + '`')
     }
     dscList.push('\n')

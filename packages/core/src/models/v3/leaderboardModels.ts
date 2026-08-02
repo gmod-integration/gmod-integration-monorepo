@@ -60,11 +60,10 @@ export async function getServerLeaderboardCategories(serverID: string) {
     },
   })
 
-  if (categories) {
-    categories.forEach((category) => {
-      serverCategories.push(category.valueName)
-    })
-  }
+  // findMany() always resolves to an array (never null), so no falsy guard is needed here.
+  categories.forEach((category) => {
+    serverCategories.push(category.valueName)
+  })
 
   return serverCategories
 }
@@ -198,71 +197,75 @@ export async function getLeaderboardMessageEmbed(
 
   const leaderboardStat = await getServerLeaderboard(server.getID(), category, limit, offset, order)
 
-  if (leaderboardStat) {
-    for (const stat of leaderboardStat.rows) {
-      const index = leaderboardStat.rows.indexOf(stat)
-      let rank: any = index + 1 + offset
+  // getServerLeaderboard() always resolves to a { rows, query, total } object (never null),
+  // so no falsy guard is needed here.
+  for (const stat of leaderboardStat.rows) {
+    const index = leaderboardStat.rows.indexOf(stat)
+    let rank: any = index + 1 + offset
 
-      let inTop = false
-      if (offset === 0) {
-        switch (rank) {
-          case 1:
-            rank = '🥇'
-            inTop = true
-            break
-          case 2:
-            rank = '🥈'
-            inTop = true
-            break
-          case 3:
-            rank = '🥉'
-            inTop = true
-            break
-        }
-      }
-
-      const fieldValue =
-        (await getCatFormat(
-          category,
-          (stat as any)[category] || (stat.custom_values && (stat.custom_values as any)[category]) || 'total_time',
-          lang,
-        )) || '0'
-
-      if (fieldValue.trim().length > 0) {
-        embed.addFields({
-          name: '**' + rank + '**' + ' - ' + stat.name,
-          value: fieldValue.toString() + (inTop && leaderboardStat.total > 4 ? '  \n \u200b' : ''),
-          inline: true,
-        })
+    let inTop = false
+    if (offset === 0) {
+      switch (rank) {
+        case 1:
+          rank = '🥇'
+          inTop = true
+          break
+        case 2:
+          rank = '🥈'
+          inTop = true
+          break
+        case 3:
+          rank = '🥉'
+          inTop = true
+          break
       }
     }
 
-    const actualPage = Math.ceil((offset + 1) / limit)
-    const totalPages = Math.ceil(leaderboardStat.total / limit)
+    // getCatFormat() can't actually return a falsy value here: the value fed into it already
+    // falls back to the truthy literal 'total_time' at worst (line above), and every case in
+    // getCatFormat's switch either concatenates a non-empty string or formats that non-empty
+    // input - so the `|| '0'` fallback below is not reachable with today's category set.
+    const fieldValue =
+      (await getCatFormat(
+        category,
+        (stat as any)[category] || (stat.custom_values && (stat.custom_values as any)[category]) || 'total_time',
+        lang,
+      )) || '0'
 
-    embed.setDescription(
-      await getTranslate('leaderboard_desc', lang, [
-        '**' + (await getTranslate(category, lang)) + '**',
-        '**' + actualPage + '**',
-        '**' + totalPages + '**',
-      ]),
-    )
-
-    const options = {
-      serverID: server.getID(),
-      category: category,
-      limit: limit,
-      offset: offset,
-      order: order,
-      total: leaderboardStat.total,
-      page: actualPage,
-      totalPages: totalPages,
+    if (fieldValue.trim().length > 0) {
+      embed.addFields({
+        name: '**' + rank + '**' + ' - ' + stat.name,
+        value: fieldValue.toString() + (inTop && leaderboardStat.total > 4 ? '  \n \u200b' : ''),
+        inline: true,
+      })
     }
+  }
 
-    return {
-      embed,
-      options,
-    }
+  const actualPage = Math.ceil((offset + 1) / limit)
+  const totalPages = Math.ceil(leaderboardStat.total / limit)
+
+  embed.setDescription(
+    await getTranslate('leaderboard_desc', lang, [
+      '**' + (await getTranslate(category, lang)) + '**',
+      '**' + actualPage + '**',
+      '**' + totalPages + '**',
+    ]),
+  )
+
+  const options = {
+    serverID: server.getID(),
+    category: category,
+    limit: limit,
+    offset: offset,
+    order: order,
+    total: leaderboardStat.total,
+    page: actualPage,
+    totalPages: totalPages,
+  }
+
+  return {
+    embed,
+    options,
   }
 }
 
@@ -300,11 +303,9 @@ export async function handleLeaderboardInteraction(interaction: ButtonInteractio
     if (offset < 0) offset = 0
   }
 
+  // getLeaderboardMessageEmbed() always resolves to { embed, options } (it throws instead of
+  // returning falsy when the server can't be found), so no falsy guard is needed here.
   const leaderboardMessage = await getLeaderboardMessageEmbed(options.serverID, options.category, lang, limit, offset)
-  if (!leaderboardMessage) {
-    return interaction.reply({ content: 'Failed to retrieve leaderboard data.', ephemeral: true })
-  }
-
   const { embed, options: options2nd } = leaderboardMessage
   if (interaction.channel) {
     interaction.channel.messages.fetch(messageID).then((message) => {

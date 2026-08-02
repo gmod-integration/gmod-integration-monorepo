@@ -76,7 +76,9 @@ export async function getServerErrorsPayload(rawQuery: unknown, serverID: string
     throw new InvalidQueryParametersError()
   }
 
-  return (await getErrorsByServer(query, serverID)) || []
+  // getErrorsByServer() always resolves to a { errors, query } object (never null/undefined),
+  // so no fallback is needed here.
+  return await getErrorsByServer(query, serverID)
 }
 
 export async function getServerErrorsPayloadSafe(rawQuery: unknown, serverID: string) {

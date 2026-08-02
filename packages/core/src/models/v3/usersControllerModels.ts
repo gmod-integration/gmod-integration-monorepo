@@ -80,7 +80,8 @@ export async function processGetUserSessions(discordID: string): Promise<Endpoin
     },
   })
 
-  return ok(sessions || [])
+  // findMany() always resolves to an array (never null), so no falsy fallback is needed here.
+  return ok(sessions)
 }
 
 export async function processDeleteUserSession(discordID: string, sessionID: string): Promise<EndpointResult> {
@@ -105,7 +106,8 @@ export async function processDeleteUserSession(discordID: string, sessionID: str
     },
   })
 
-  return ok(session || {})
+  // session was already null-checked above (returning 404), so it's always truthy here.
+  return ok(session)
 }
 
 export async function processLogOut(discordID: string, accessToken: string): Promise<EndpointResult> {
@@ -393,7 +395,8 @@ export async function processGetAutoRoles(guildID: string): Promise<EndpointResu
     },
   })
 
-  return ok(autoRoles || [])
+  // findMany() always resolves to an array (never null), so no falsy fallback is needed here.
+  return ok(autoRoles)
 }
 
 export async function processGetAdminInformations(): Promise<EndpointResult> {

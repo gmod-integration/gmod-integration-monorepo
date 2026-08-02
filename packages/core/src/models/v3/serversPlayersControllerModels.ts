@@ -48,7 +48,9 @@ export async function processPlayerSay(server: Server, steamID64Param: unknown, 
     })
   }
 
-  const ply = new PlayerGmod(player)
+  // throwMissing=false: an invalid payload should produce a graceful player_bad_format response
+  // via isValid() below, not an uncaught throw from the constructor itself.
+  const ply = new PlayerGmod(player, false)
   if (!ply.isValid()) {
     return getInvalidPlayerResult(ply)
   }
@@ -69,7 +71,7 @@ export async function processPlayerChangeName(server: Server, body: any): Promis
     })
   }
 
-  const ply = new PlayerGmod(player)
+  const ply = new PlayerGmod(player, false)
   if (!ply.isValid()) {
     return getInvalidPlayerResult(ply)
   }
@@ -126,7 +128,7 @@ export async function processPlayerChangeTeam(
     })
   }
 
-  const ply = new PlayerGmod(player)
+  const ply = new PlayerGmod(player, false)
   if (ply.isValid()) {
     await ply.saveTeamTime(server.getID())
   }
@@ -177,7 +179,7 @@ export async function processPlayerDisconnect(server: Server, body: any): Promis
     })
   }
 
-  const ply = new PlayerGmod(player)
+  const ply = new PlayerGmod(player, false)
   if (!ply.isValid()) {
     return getInvalidPlayerResult(ply)
   }
@@ -227,11 +229,13 @@ export async function processPlayerWarn(server: Server, steamID64Param: unknown,
   const plyAdmin = new PlayerGmod(admin)
   const plyUser = new PlayerGmod(player)
 
+  // `new PlayerGmod(...)` above either succeeds (returning a truthy instance) or throws, so
+  // plyUser/plyAdmin are always truthy here - no existence check is needed on them.
   const warn = await prisma.gm_server_warn.create({
     data: {
       serverID: server.getID(),
-      userSteamID64: (plyUser && plyUser.steamID64) || steamID64,
-      adminSteamID64: (plyAdmin && plyAdmin.steamID64) || adminSteamID64,
+      userSteamID64: plyUser.steamID64 || steamID64,
+      adminSteamID64: plyAdmin.steamID64 || adminSteamID64,
       reason,
       createdAt: validDate,
     },

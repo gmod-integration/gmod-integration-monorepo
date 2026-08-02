@@ -273,10 +273,10 @@ export class Server extends BaseClass {
     const data: Record<string, any> = {}
 
     if (evenNotSet) {
+      // `data` was just created empty and each key of serverSettings is only visited once in
+      // this loop, so `data[setting]` is always unset here - no existence check is needed.
       for (const setting in serverSettings) {
-        if (!data[setting]) {
-          data[setting] = serverSettings[setting].defaultValue
-        }
+        data[setting] = serverSettings[setting].defaultValue
       }
     }
 
@@ -426,7 +426,7 @@ export class Server extends BaseClass {
     }
   }
 
-  async getGmodToDiscordFilter(): Promise<gm_server_sync_chat_filter[] | null> {
+  async getGmodToDiscordFilter(): Promise<gm_server_sync_chat_filter[]> {
     const redisKey = `server:${this.id}:gmodToDiscordFilter`
     const redisData = await redis.get(redisKey)
 
@@ -434,18 +434,15 @@ export class Server extends BaseClass {
       return JSON.parse(redisData)
     }
 
+    // findMany() always resolves to an array (never null), so no falsy fallback is needed here.
     const result = await prisma.gm_server_sync_chat_filter.findMany({
       where: {
         serverID: this.id,
       },
     })
 
-    if (result) {
-      await redis.set(redisKey, JSON.stringify(result), 'EX', 60)
-      return result
-    }
-
-    return null
+    await redis.set(redisKey, JSON.stringify(result), 'EX', 60)
+    return result
   }
 
   async getStatusChannelAndMessage() {
@@ -542,8 +539,8 @@ export class Server extends BaseClass {
     if (!status) return
 
     try {
+      // getDiscordGuild() either returns a truthy guild or throws - never returns falsy.
       const guild = await this.getDiscordGuild()
-      if (!guild) return
 
       const channel = guild.channels.cache.get(status.channel)
       if (!channel) return
@@ -774,23 +771,20 @@ export class Server extends BaseClass {
   }
 
   async getSyncRoles() {
-    return (
-      (await prisma.gm_server_sync_roles.findMany({
-        where: {
-          serverID: this.id,
-        },
-      })) || []
-    )
+    // findMany() always resolves to an array (never null), so no falsy fallback is needed here.
+    return await prisma.gm_server_sync_roles.findMany({
+      where: {
+        serverID: this.id,
+      },
+    })
   }
 
   async getSyncTeamRoles() {
-    return (
-      (await prisma.gm_server_sync_team_roles.findMany({
-        where: {
-          serverID: this.id,
-        },
-      })) || []
-    )
+    return await prisma.gm_server_sync_team_roles.findMany({
+      where: {
+        serverID: this.id,
+      },
+    })
   }
 
   async saveUserConnectionInfo(steamID64: string, name: string) {
@@ -951,7 +945,6 @@ export class Server extends BaseClass {
     if (screenshotChannel) {
       try {
         const guild = await this.getDiscordGuild()
-        if (!guild) throw new Error('Guild not found')
 
         const webhooks = await guild.fetchWebhooks()
         const webhookToDelete = webhooks.find((webhook: Webhook) => webhook.id === screenshotChannel.webhook)
@@ -1002,7 +995,6 @@ export class Server extends BaseClass {
     if (logsChannel) {
       try {
         const guild = await this.getDiscordGuild()
-        if (!guild) throw new Error('Guild not found')
 
         const webhooks = await guild.fetchWebhooks()
         const webhookToDelete = webhooks.find((webhook: Webhook) => webhook.id === logsChannel.webhookID)
@@ -1025,7 +1017,6 @@ export class Server extends BaseClass {
     await this.destroyLogsChannel()
 
     const guild = await this.getDiscordGuild()
-    if (!guild) throw new Error('Guild not found')
 
     const channel = guild.channels.cache.get(channelID)
     if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found')
@@ -1075,7 +1066,6 @@ export class Server extends BaseClass {
     if (voteChannel) {
       try {
         const guild = await this.getDiscordGuild()
-        if (!guild) throw new Error('Guild not found')
 
         const webhooks = await guild.fetchWebhooks()
         const webhookToDelete = webhooks.find((webhook: Webhook) => webhook.id === voteChannel.webhookID)
@@ -1099,7 +1089,6 @@ export class Server extends BaseClass {
     await this.destroyVoteChannel()
 
     const guild = await this.getDiscordGuild()
-    if (!guild) throw new Error('Guild not found')
 
     const channel = guild.channels.cache.get(channelID)
     if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found')
@@ -1141,7 +1130,6 @@ export class Server extends BaseClass {
     await this.destroyScreenshotChannel()
 
     const guild = await this.getDiscordGuild()
-    if (!guild) throw new Error('Guild not found')
 
     const channel = guild.channels.cache.get(channelID)
     if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found')
@@ -1176,7 +1164,6 @@ export class Server extends BaseClass {
     if (syncChat) {
       try {
         const guild = await this.getDiscordGuild()
-        if (!guild) throw new Error('Guild not found')
 
         const webhooks = await guild.fetchWebhooks()
         const webhookToDelete = webhooks.find((webhook: Webhook) => webhook.id === syncChat.id)
@@ -1200,7 +1187,6 @@ export class Server extends BaseClass {
     await this.destroySyncChat()
 
     const guild = await this.getDiscordGuild()
-    if (!guild) throw new Error('Guild not found')
 
     const channel = guild.channels.cache.get(channelID)
     if (!channel || channel.type !== ChannelType.GuildText) throw new Error('Channel not found')
@@ -1285,7 +1271,6 @@ export class Server extends BaseClass {
         action: newAction,
         compare,
         channelID,
-        adminIDS: JSON.stringify([]),
         value,
         operator: newOperator,
         adminIDS: '[]',
@@ -1333,11 +1318,10 @@ export class Server extends BaseClass {
   async resetRedisLogsTrigger() {
     const redisKey = `server:${this.id}:logsTrigger`
     await redis.del(redisKey)
+    // findMany() always resolves to an array (never null), so no falsy guard is needed here.
     const triggers = await this.getLogsTrigger()
-    if (triggers) {
-      for (const trigger of triggers) {
-        await redis.del(`${redisKey}:${trigger.log_type}`)
-      }
+    for (const trigger of triggers) {
+      await redis.del(`${redisKey}:${trigger.log_type}`)
     }
     await this.getLogsTriggerFromRedis()
   }
@@ -1365,7 +1349,8 @@ export class Server extends BaseClass {
       }
 
       // save list
-      const trigger_types = Object.keys(triggersByType) || []
+      // Object.keys() always resolves to an array (never null), so no falsy fallback is needed.
+      const trigger_types = Object.keys(triggersByType)
       await redis.set(redisKey, JSON.stringify(trigger_types), 'EX', 60 * 60 * 24)
 
       //

@@ -40,7 +40,9 @@ export class GmodPlayer {
     this.team = GmodTeam.from(parsed.team)
     this.position = GmodPosition.from(parsed.position)
     this.angle = GmodAngle.from(parsed.angle)
-    this.customValues = parsed.customValues || {}
+    // customValues is a required field in GmodPlayerSchema (z.record), so it is always present
+    // and never falsy once parsing succeeds — no fallback needed.
+    this.customValues = parsed.customValues
     this.weapon = GmodWeapon.from(parsed.weapon)
   }
 

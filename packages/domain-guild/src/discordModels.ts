@@ -163,15 +163,12 @@ export async function updateGuildStat(guild: Guild) {
 }
 
 export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
+  // findMany() always resolves to an array (never null), so no falsy guard is needed here.
   const roles = await prisma.gm_guild_auto_roles.findMany({
     where: {
       guildID: guild.id,
     },
   })
-
-  if (!roles) {
-    return
-  }
 
   for (const roleData of roles) {
     const roleDiscord = guild.roles.cache.get(roleData.roleID)
@@ -193,15 +190,12 @@ export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
 }
 
 export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
+  // findMany() always resolves to an array (never null), so no falsy guard is needed here.
   const role = await prisma.gm_guild_verify_role.findMany({
     where: {
       guildID: guild.id,
     },
   })
-
-  if (!role) {
-    return
-  }
 
   for (const roleData of role) {
     const roleDiscord = guild.roles.cache.get(roleData.roleID)
@@ -257,10 +251,8 @@ export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
   for (const guildData of permGuilds) {
     const guildID = guildData.id
 
-    if (!permGuildsID.includes(guildID)) {
-      continue
-    }
-
+    // guildID was derived from permGuilds itself (permGuildsID is permGuilds.map(g => g.id)),
+    // so it is always present in permGuildsID - no filtering is needed here.
     const icon = await ensureAvatarStored('guild', guildID, getDiscordGuildIconCdnUrl(guildID, guildData.icon))
 
     guilds.push({
@@ -509,7 +501,10 @@ export async function updatePseudoToGmod(member: GuildMember, oldMember: GuildMe
 
     const redisKey = `sync-pseudo:gmod:server:${server.id}:user:${user.getSteamID64()}`
     const redisData = await redis.get(redisKey)
-    if (redisData === newMember.nickname || redisData === newMember.user.username) return
+    // redisData === null means "never synced yet", not "cached value is empty" - without this
+    // guard, a member with no nickname (also null) would false-positive match on the first sync
+    // and the username fallback would never get pushed.
+    if (redisData !== null && (redisData === newMember.nickname || redisData === newMember.user.username)) return
 
     const pseudo = newMember.nickname || newMember.user.username
     await wsSendToServerQueue.add('wsSendToServer', {

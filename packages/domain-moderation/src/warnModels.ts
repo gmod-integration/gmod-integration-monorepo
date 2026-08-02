@@ -114,19 +114,39 @@ export async function getWarnMessageEmbed(
   let totalPages = Math.ceil(warnList.total / limit)
   totalPages = totalPages < 1 ? 1 : totalPages
 
-  if (warnList) {
-    embed.setDescription(
-      `${await getTranslate('total_warns', lang)}: **${warnList.total}** , ${await getTranslate('pages', lang)}: **${actualPage} / ${totalPages}**`,
-    )
+  // getServerUserWarn() always resolves to a {rows, query, total} object (or throws), so
+  // warnList is never falsy here — no guard needed.
+  embed.setDescription(
+    `${await getTranslate('total_warns', lang)}: **${warnList.total}** , ${await getTranslate('pages', lang)}: **${actualPage} / ${totalPages}**`,
+  )
+  embed.addFields(
+    {
+      name: await getTranslate('date', lang),
+      value: '\n',
+      inline: true,
+    },
+    {
+      name: await getTranslate('reason', lang),
+      value: '\n',
+      inline: true,
+    },
+    {
+      name: ' ',
+      value: ' ',
+      inline: true,
+    },
+  )
+
+  for (const data of warnList.rows) {
     embed.addFields(
       {
-        name: await getTranslate('date', lang),
-        value: '\n',
+        name: '\n',
+        value: new Date(data.createdAt).toLocaleDateString(lang),
         inline: true,
       },
       {
-        name: await getTranslate('reason', lang),
-        value: '\n',
+        name: '\n',
+        value: data.reason || (await getTranslate('no_reason', lang)),
         inline: true,
       },
       {
@@ -135,26 +155,6 @@ export async function getWarnMessageEmbed(
         inline: true,
       },
     )
-
-    for (const data of warnList.rows) {
-      embed.addFields(
-        {
-          name: '\n',
-          value: new Date(data.createdAt).toLocaleDateString(lang),
-          inline: true,
-        },
-        {
-          name: '\n',
-          value: data.reason || (await getTranslate('no_reason', lang)),
-          inline: true,
-        },
-        {
-          name: ' ',
-          value: ' ',
-          inline: true,
-        },
-      )
-    }
   }
 
   const disabledPrevious = offset === 0

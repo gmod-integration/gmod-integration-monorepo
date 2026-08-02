@@ -186,8 +186,15 @@ export async function getUserDataGRPD(user: User) {
   const output = fs.createWriteStream(zipFilePath)
   const archive = archiver('zip', { zlib: { level: 9 } })
 
-  output.on('close', () => {
-    gmLog('rgpd', `Data for user ${discordID} zipped to ${zipFilePath} (${archive.pointer()} bytes)`)
+  // archive.finalize() resolves once entries are queued/flushed to the archive stream, but not
+  // necessarily once `output` has actually finished writing to disk (a real race: without this,
+  // the immediately-following fs.createReadStream(zipFilePath) can hit ENOENT/a truncated file).
+  // Wait for the destination stream's own 'close' event before reading it back.
+  const outputClosed = new Promise<void>((resolve) => {
+    output.on('close', () => {
+      gmLog('rgpd', `Data for user ${discordID} zipped to ${zipFilePath} (${archive.pointer()} bytes)`)
+      resolve()
+    })
   })
 
   archive.on('error', (err) => {
@@ -213,6 +220,7 @@ export async function getUserDataGRPD(user: User) {
   addFilesRecursively(tempPath, archive, tempPath)
 
   await archive.finalize()
+  await outputClosed
 
   await createBucketIfNotExists('gmi-gdpr-exports')
   const zipStream = fs.createReadStream(zipFilePath)

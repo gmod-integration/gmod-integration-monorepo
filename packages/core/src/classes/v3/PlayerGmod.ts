@@ -131,7 +131,10 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
         dscList.push((await getTranslate('team', lang)) + ': `' + this.team.getName() + '`')
         break
       case LogLevel.CUSTOM:
-        for (const arg in listArg) {
+        // listArg holds field names to log (e.g. ['kills', 'deaths']) - `for...of` is required to
+        // iterate its values; `for...in` would iterate array indices ('0', '1', ...) instead,
+        // which never match a real field on this instance.
+        for (const arg of listArg) {
           dscList.push((await getTranslate(arg, lang)) + ': `' + this[arg] + '`')
         }
         break

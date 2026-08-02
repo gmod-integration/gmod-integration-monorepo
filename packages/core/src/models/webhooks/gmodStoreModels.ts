@@ -20,10 +20,20 @@ export async function verifyWebhookSignature(headers: any, payload: any) {
 
   const signatures = webhookSignature.split(' ')
 
+  const expectedSignatureBuffer = Buffer.from(expectedSignature)
+
   for (let signature of signatures) {
     signature = signature.replace(/^v1,/, '')
+    const signatureBuffer = Buffer.from(signature)
 
-    if (crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+    // timingSafeEqual throws (rather than returning false) on a byte-length mismatch, which
+    // would otherwise let one malformed candidate crash verification instead of just failing
+    // that candidate and moving on to the next one.
+    if (signatureBuffer.length !== expectedSignatureBuffer.length) {
+      continue
+    }
+
+    if (crypto.timingSafeEqual(signatureBuffer, expectedSignatureBuffer)) {
       const currentTimestamp = Math.floor(Date.now() / 1000)
       const timeDifference = Math.abs(currentTimestamp - webhookTimestamp)
       if (timeDifference <= 300) {

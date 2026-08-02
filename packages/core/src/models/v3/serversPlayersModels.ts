@@ -111,12 +111,12 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
     }
   }
 
+  // getGmodToDiscordFilter() always resolves to an array (never null), so no falsy guard is
+  // needed here.
   const chatRules = await server.getGmodToDiscordFilter()
-  if (chatRules) {
-    chatRules.forEach((rule) => {
-      verifyRule(rule)
-    })
-  }
+  chatRules.forEach((rule) => {
+    verifyRule(rule)
+  })
 
   if (!relayMessage) {
     return { skip: true, message: 'Message blocked' }
