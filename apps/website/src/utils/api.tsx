@@ -1,5 +1,4 @@
 import { WEBSITE_CONFIG } from '../config'
-import { ClientQuery } from './types/QueryTypes'
 
 export const Api = 'v3'
 const apiBaseUrl = WEBSITE_CONFIG.apiUrl
@@ -23,15 +22,6 @@ export function getUrlWithActualParams(url: string) {
 }
 
 export function fetchAPI(endpoint: string, method: string, body?: any) {
-  function setQueryParams(clQr: ClientQuery) {
-    // if endpoint contains "?" then we need to add query params after "&" if not add "?" before query params
-    if (endpoint.includes('?')) {
-      endpoint += `&offset=${clQr.offset}&limit=${clQr.limit}&sort=${clQr.sort}&orderBy=${clQr.orderBy}`
-    } else {
-      endpoint += `?offset=${clQr.offset}&limit=${clQr.limit}&sort=${clQr.sort}&orderBy=${clQr.orderBy}`
-    }
-  }
-
   endpoint = getUrlWithActualParams(endpoint)
   return fetch(`${API_FQDN}${endpoint}`, {
     method,

@@ -13,11 +13,13 @@ export const AppDashboard = (props: ParentProps) => (
         <ShowErrorList />
 
         <ErrorBoundary
-          fallback={(err, reset) => (
-            <>
-              <AddErrorComponent message={err.message} />
-              {props.children}
-            </>
+          fallback={(err) => (
+            // Deliberately not re-rendering `props.children` here: `children` is a live getter
+            // that re-invokes the same page component that just threw, which throws again
+            // synchronously during the fallback's own render - uncaught, since the fallback isn't
+            // itself wrapped in a boundary. That defeats the whole purpose of this ErrorBoundary
+            // (crashing the tree instead of showing the error). Confirmed with a minimal repro.
+            <AddErrorComponent message={err.message} />
           )}
         >
           {props.children}

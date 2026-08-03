@@ -47,11 +47,11 @@ export const FocusImg: Component<FocusImgProps> = (props) => {
             </p>
             <p class="text-sm text-base-content/50">
               {t('dashboard.server.screenshots_list.player', 'Player')} :{' '}
-              {props.focusImg()!.player.name || t('dashboard.server.screenshots_list.no_name', 'No Name')}
+              {props.focusImg()!.player?.name || t('dashboard.server.screenshots_list.no_name', 'No Name')}
             </p>
             <p class="text-sm text-base-content/50">
               {t('dashboard.server.screenshots_list.steamID64', 'Steam ID 64')} :{' '}
-              {props.focusImg()!.player.steamID64 ||
+              {props.focusImg()!.player?.steamID64 ||
                 t('dashboard.server.screenshots_list.no_steamID64', 'No Steam ID 64')}
             </p>
           </div>

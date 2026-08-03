@@ -35,9 +35,18 @@ let idxLog = 0
 const AddErrorComponent: Component<AddErrorProps> = (props) => {
   const { t } = useI18n()
 
-  props.error.stack = JSON.parse(props.error.stack || '[]')
+  // Bug fix: this used to mutate `props.error.stack` in place. Solid's dev/HMR wrapper can
+  // re-invoke a component's function body for the same props object, and on that second pass
+  // `props.error.stack` would already be the parsed array/object (not a JSON string) -
+  // `JSON.parse(anArray)` implicitly stringifies it via `Array#toString` (comma-joined, not valid
+  // JSON) and throws, an unhandled rejection since nothing downstream awaits/catches this render.
+  // Building a separate object instead of reassigning the prop makes this idempotent.
+  const parsedError = {
+    ...props.error,
+    stack: typeof props.error.stack === 'string' ? JSON.parse(props.error.stack || '[]') : (props.error.stack ?? []),
+  }
 
-  const errorContentStr = JSON.stringify(props.error, null, 2).split('\n')
+  const errorContentStr = JSON.stringify(parsedError, null, 2).split('\n')
   idxLog++
 
   const localIdxLog = idxLog
@@ -105,7 +114,7 @@ const AddErrorComponent: Component<AddErrorProps> = (props) => {
         <tr>
           <td colSpan="6" class="p-0">
             <pre class="hljs p-4">
-              <JsonViewer data={props.error} />
+              <JsonViewer data={parsedError} />
             </pre>
           </td>
         </tr>

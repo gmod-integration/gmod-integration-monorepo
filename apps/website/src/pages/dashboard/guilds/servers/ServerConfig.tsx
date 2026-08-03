@@ -20,56 +20,6 @@ const ServerConfig: Component = () => {
     Array.isArray(info.acceptedValues) &&
     (info.acceptedValues as Array<unknown>).includes(true) &&
     (info.acceptedValues as Array<unknown>).includes(false)
-  const toAdminRankObject = (ranks: string[]) =>
-    ranks
-      .map((rank) => rank.trim())
-      .filter((rank) => rank.length > 0)
-      .reduce(
-        (acc, rank) => {
-          acc[rank] = true
-          return acc
-        },
-        {} as Record<string, boolean>,
-      )
-  // Fix duplication issue and ensure proper updates on remove
-  const toAdminRankObjectWithEmpty = (ranks: string[]) =>
-    ranks.reduce(
-      (acc, rank, index) => {
-        const trimmed = rank.trim()
-        if (trimmed.length > 0 && !acc[trimmed]) {
-          acc[trimmed] = true
-        } else if (trimmed.length === 0 && !acc[`__empty_${index}`]) {
-          acc[`__empty_${index}`] = true
-        }
-        return acc
-      },
-      {} as Record<string, boolean>,
-    )
-  const getAdminRankList = (value: unknown) => {
-    if (Array.isArray(value)) return value as string[]
-    // Handle string that might be "[object Object]" or stringified JSON
-    if (typeof value === 'string') {
-      if (value === '[object Object]' || value === '') return []
-      try {
-        const parsed = JSON.parse(value)
-        if (parsed && typeof parsed === 'object') {
-          return Object.keys(parsed).map((key) => {
-            if (key.startsWith('__empty_')) return ''
-            return key
-          })
-        }
-      } catch {
-        return []
-      }
-    }
-    if (value && typeof value === 'object') {
-      return Object.keys(value as Record<string, boolean>).map((key) => {
-        if (key.startsWith('__empty_')) return ''
-        return key
-      })
-    }
-    return [] as string[]
-  }
   const configInfo = {
     // in game settings
     // Punishment
@@ -197,7 +147,7 @@ const ServerConfig: Component = () => {
     },
   }
 
-  const [serverConfig, { refetch: refetchConfig }] = createResource('serverConfig', async () => {
+  const [serverConfig] = createResource('serverConfig', async () => {
     return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/config', 'GET').then(async (res) => {
       if (!res.ok)
         throw new Error(
@@ -268,6 +218,7 @@ const ServerConfig: Component = () => {
         }
         setConfig(setting, value)
       })
+      .catch((error) => console.error(error))
   }
 
   function updateAdminRank(newList: string[]) {
@@ -393,7 +344,7 @@ const ServerConfig: Component = () => {
                             <input
                               type="checkbox"
                               class="toggle toggle-md"
-                              checked={Boolean(serverConfig()?.[key] ?? info.defaultValue)}
+                              checked={Boolean(config[key] ?? info.defaultValue)}
                               disabled={serverConfig.loading}
                               onChange={(e) => {
                                 updateSetting(key, e.currentTarget.checked)

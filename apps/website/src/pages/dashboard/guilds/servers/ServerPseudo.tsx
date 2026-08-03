@@ -50,6 +50,7 @@ const ServerPseudo: Component = () => {
       .then((data) => {
         mutatePseudoDirection(data)
       })
+      .catch((error) => console.error(error))
   }
 
   const [pseudoFormat, { mutate: mutatePseudoFormat }] = createResource('pseudoFormat', async () => {
@@ -59,7 +60,7 @@ const ServerPseudo: Component = () => {
         return (await res.json()) || { value: '' }
       })
       .then((data) => {
-        setFormat(data.value)
+        setFormat(data.value || '')
         return data
       })
   })
@@ -80,6 +81,7 @@ const ServerPseudo: Component = () => {
         // @ts-expect-error -- intentional: legacy typing gap
         edit_format.close()
       })
+      .catch((error) => console.error(error))
   }
 
   const [activeRole, setActiveRole] = createSignal({ id: 0, enabled: false, role: '', name: '', prefix: '' })
@@ -103,6 +105,7 @@ const ServerPseudo: Component = () => {
       .then((data) => {
         mutatePseudoRoles((prev) => [...prev, data])
       })
+      .catch((error) => console.error(error))
   }
 
   async function editRole() {
@@ -117,6 +120,7 @@ const ServerPseudo: Component = () => {
       .then((data) => {
         mutatePseudoRoles((prev) => prev.map((r) => (r.id === data.id ? data : r)))
       })
+      .catch((error) => console.error(error))
   }
 
   async function deleteRole(id: number) {
@@ -131,6 +135,7 @@ const ServerPseudo: Component = () => {
       .then((data) => {
         mutatePseudoRoles((prev) => prev.filter((r) => r.id !== data.id))
       })
+      .catch((error) => console.error(error))
   }
 
   return (
@@ -247,7 +252,7 @@ const ServerPseudo: Component = () => {
             disabled={pseudoFormat.loading}
             onClick={async () => {
               // @ts-expect-error -- intentional: legacy typing gap
-              edit_server.close()
+              edit_format.close()
               updatePseudoFormat(pseudoFormat().value)
             }}
           >

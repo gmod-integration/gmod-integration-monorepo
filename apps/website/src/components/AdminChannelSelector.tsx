@@ -7,6 +7,7 @@ import { TypeDiscordChannel } from '../utils/types/DiscordTypes'
 interface ChannelSelectorProps extends ParentProps {
   callback?: (channelID: string) => void
   hasModal?: boolean
+  modalId?: string
   idSelect?: string
   onlyTextChannel?: boolean
 }
@@ -72,11 +73,15 @@ export const ChannelSelector: Component<ChannelSelectorProps> = (props) => {
           <select
             class="select"
             onChange={async (e) => {
-              if (hasModal) {
-                // @ts-expect-error -- intentional: legacy typing gap
-                select_channel_modal.close()
+              if (hasModal && props.modalId) {
+                // Look the dialog up by its actual id instead of a hardcoded `select_channel_modal`
+                // global - the previous version always closed the literal `select_channel_modal`
+                // element regardless of which id was actually passed in, which was wrong for any
+                // caller using a different modal id (e.g. `select_channel_modal_channel`).
+                const modal = document.getElementById(props.modalId) as (HTMLDialogElement & { close?: () => void }) | null
+                modal?.close?.()
               }
-              props.callback && props.callback(e.currentTarget.value)
+              if (props.callback) props.callback(e.currentTarget.value)
             }}
           >
             <option value="0">{t('tools.select_channel', 'Select a Channel')}</option>
@@ -126,7 +131,12 @@ const AdminChannelSelector: Component<AdminChannelSelectorProps> = (props) => {
     <>
       <AdminModal title={props.title || t('tools.select_channel', 'Select a Channel')} id={props.id}>
         <div class="fieldset">
-          <ChannelSelector callback={props.callback || (() => {})} hasModal={true} onlyTextChannel={onlyTextChannel} />
+          <ChannelSelector
+            callback={props.callback || (() => {})}
+            hasModal={true}
+            modalId={props.id}
+            onlyTextChannel={onlyTextChannel}
+          />
         </div>
       </AdminModal>
     </>

@@ -180,7 +180,12 @@ const GuildLinks: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show when={!links.loading}>
+            {/* Bug fix: also gate on !links.error - `links()` is read unguarded below (via
+                <For each={links()}>), and reading a resource accessor while it's in an error
+                state re-throws that error, which crashed the render (leaving it stuck on the
+                loading state forever) and made the `Match when={links.error}` message below
+                unreachable. Mirrors the same fix already applied to ServerPlayers.tsx. */}
+            <Show when={!links.loading && !links.error}>
               <For each={links()}>
                 {(link) => (
                   <tr>
@@ -237,7 +242,10 @@ const GuildLinks: Component = () => {
           </Match>
         </Switch>
 
-        <Show when={!links.loading}>
+        {/* Bug fix: also gate on !links.error - see the tbody Show above for why reading
+            links() unguarded (via subCondition below) crashes the render when the resource
+            errored. */}
+        <Show when={!links.loading && !links.error}>
           <div class="flex gap-4 p-4">
             <BuyPremiumBtn
               subCondition={links()?.length < 2}

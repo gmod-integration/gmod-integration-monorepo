@@ -132,7 +132,7 @@ const ServerBugs: Component = () => {
     return await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/bugs', 'GET')
       .then(async (res) => {
         if (!res.ok) {
-          return {} as Bugs[]
+          return [] as Bugs[]
         }
         return (await res.json()) as Bugs[]
       })

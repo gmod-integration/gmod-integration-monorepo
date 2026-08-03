@@ -13,7 +13,9 @@ interface Log {
   id: number;
   serverID: string;
   type: string;
-  data: string;
+  // The API returns this already parsed (a JSON object), not a string - see AddLogComponent's
+  // usage (props.data.ply, etc.) which reads it directly without JSON.parse.
+  data: Record<string, any>;
   createdAt: string;
 }
 

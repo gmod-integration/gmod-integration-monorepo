@@ -27,15 +27,17 @@ const Account: Component = () => {
   }
 
   const [gmodStorePurchase, { refetch: refetchGmodStorePurchase }] = createResource('gmodStorePurchase', async () => {
-    return await fetchAPI('/users/:discordID/gmod-store', 'GET').then((res) => res.json() || {})
+    // `res.json()` returns a Promise, which is always truthy - the fallback needs the await to
+    // ever actually apply to a falsy response body instead of being permanently dead code.
+    return await fetchAPI('/users/:discordID/gmod-store', 'GET').then(async (res) => (await res.json()) || {})
   })
 
   const [userDataRequest, { mutate: mutateUserDataRequest }] = createResource('userDataRequest', async () => {
-    return await fetchAPI('/users/:discordID/data-requests', 'GET').then((res) => res.json() || {})
+    return await fetchAPI('/users/:discordID/data-requests', 'GET').then(async (res) => (await res.json()) || {})
   })
 
   const [userSessions, { mutate: mutateUserSessions }] = createResource('userSessions', async () => {
-    return await fetchAPI('/users/:discordID/sessions', 'GET').then((res) => res.json() || {})
+    return await fetchAPI('/users/:discordID/sessions', 'GET').then(async (res) => (await res.json()) || {})
   })
 
   async function unlinkGmodStorePurchase() {

@@ -79,6 +79,7 @@ const ServerChats: Component = () => {
       .then((data) => {
         mutateGmToDscFilterRelayAll(data)
       })
+      .catch((error) => console.error(error))
   }
 
   const [preventChatPing, { mutate: mutatePreventChatPing }] = createResource('preventChatPing', async () => {
@@ -104,6 +105,7 @@ const ServerChats: Component = () => {
       .then((data) => {
         mutatePreventChatPing(data)
       })
+      .catch((error) => console.error(error))
   }
 
   const [gmToDscFilters, { mutate: mutateGmToDscFilters }] = createResource('gmToDscFilters', async () => {
@@ -125,6 +127,7 @@ const ServerChats: Component = () => {
       .then((data) => {
         mutateGmToDscFilters((prev) => [...prev, data])
       })
+      .catch((error) => console.error(error))
   }
 
   function deleteGmToDscFilter(roleID: string) {
@@ -139,6 +142,7 @@ const ServerChats: Component = () => {
       .then((data) => {
         mutateGmToDscFilters((prev) => prev.filter((r) => r.id !== data.id))
       })
+      .catch((error) => console.error(error))
   }
 
   const [selectFilter, setSelectFilter] = createSignal({})
@@ -160,6 +164,7 @@ const ServerChats: Component = () => {
         mutateGmToDscFilters((prev) => prev.map((r) => (r.id === data.id ? data : r)))
         setSelectFilter({})
       })
+      .catch((error) => console.error(error))
   }
 
   function updateSyncPseudoDirection(direction: string) {
@@ -176,6 +181,7 @@ const ServerChats: Component = () => {
       .then((data) => {
         mutatePseudoDirection(data)
       })
+      .catch((error) => console.error(error))
   }
 
   function getSelectorClassList(direction: string) {

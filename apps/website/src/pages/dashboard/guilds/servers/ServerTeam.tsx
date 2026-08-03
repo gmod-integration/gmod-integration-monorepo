@@ -50,6 +50,7 @@ const ServerTeam: Component = () => {
       .then((data) => {
         mutateRolesSync((prev) => [...prev, data])
       })
+      .catch((error) => console.error(error))
   }
 
   function editRole() {
@@ -64,6 +65,7 @@ const ServerTeam: Component = () => {
       .then((data) => {
         mutateRolesSync((prev) => prev.map((r) => (r.id === data.id ? data : r)))
       })
+      .catch((error) => console.error(error))
   }
 
   function deleteRole(id: string) {
@@ -78,6 +80,7 @@ const ServerTeam: Component = () => {
       .then((data) => {
         mutateRolesSync((prev) => prev.filter((r) => r.id !== data.id))
       })
+      .catch((error) => console.error(error))
   }
 
   return (

@@ -6,13 +6,13 @@ import { fetchAPI } from '../../../utils/api'
 const AdminInformations: Component = () => {
   const [adminData, { refetch }] = createResource('adminData', async () => {
     const res = await fetchAPI('/users/:discordID/admins/informations', 'GET')
-    if (!res.ok) return []
+    if (!res.ok) return null
     return await res.json()
   })
 
   return (
     <>
-      <Show when={!adminData.loading} fallback={<div className="skeleton h-[96px]"></div>}>
+      <Show when={!adminData.loading && adminData()} fallback={<div className="skeleton h-[96px]"></div>}>
         <button className="btn btn-outline border-base-200 hover:bg-base-100 hover:border-base-200" onClick={refetch}>
           Refresh Admin Data
         </button>
@@ -78,7 +78,7 @@ const AdminInformations: Component = () => {
         {/*</AdminChart>*/}
 
         <AdminChart name="Guilds by Language">
-          <Show when={!adminData.loading} fallback={<div class="skeleton h-[96px]"></div>}>
+          <Show when={!adminData.loading && adminData()} fallback={<div class="skeleton h-[96px]"></div>}>
             <PieChart data={adminData().guild.language} />
           </Show>
         </AdminChart>

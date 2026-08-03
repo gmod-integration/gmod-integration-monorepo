@@ -11,12 +11,14 @@ export default [
       '**/coverage/**',
       '**/logs/**',
       'packages/infra-prisma/generated/**',
+      'apps/docs/build/**',
+      'apps/docs/.docusaurus/**',
     ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['**/*.ts'],
+    files: ['**/*.ts', '**/*.tsx'],
     rules: {
       '@typescript-eslint/consistent-type-imports': [
         'warn',

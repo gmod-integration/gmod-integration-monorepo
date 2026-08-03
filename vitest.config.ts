@@ -80,6 +80,15 @@ export default defineConfig({
         //   a v8/istanbul branch-counting artifact for this if-without-else + short-circuited
         //   `||` condition shape, not a real gap (statements/functions/lines are 100% here).
         'apps/discord/src/**': { statements: 99, branches: 97, functions: 99, lines: 99 },
+        // Phase 8 (apps/website, the SolidJS dashboard - the largest single chunk of this whole
+        // initiative at ~12,000 lines and previously 0% covered). Statements/functions/lines are
+        // effectively 100%; branches sit at 89% mainly because of a recurring v8/istanbul
+        // instrumentation artifact where a bare `export default X` line at the bottom of a file
+        // gets counted as a 2-way branch it isn't (documented per-file in this phase's test
+        // files), plus a handful of genuinely-unreachable branches given this app's own
+        // hardcoded/static data (e.g. Premium.tsx's pricing table). See individual test files
+        // under apps/website/test/ for the specific reasoning behind each remaining gap.
+        'apps/website/src/**': { statements: 99, branches: 88, functions: 99, lines: 99 },
       },
     },
   },

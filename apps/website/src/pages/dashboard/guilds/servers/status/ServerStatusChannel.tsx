@@ -49,6 +49,17 @@ const ServerStatusChannel: Component = () => {
     return statusChannel
   }
 
+  // Bug fix: this was referenced (as a bare, undefined global) by the remove button below without
+  // ever being defined, so clicking it threw a ReferenceError. Added mirroring the established
+  // GET/POST `/status/channel` endpoint and ServerStatusMessage.tsx's analogous `removeStatus`.
+  async function removeStatus() {
+    const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status/channel', 'DELETE')
+    if (!res.ok) {
+      return
+    }
+    statusChannelIDMutate(EMPTY_STATUS_CHANNEL)
+  }
+
   const [format, setFormat] = createSignal('')
   const [preview, setPreview] = createSignal('')
 
@@ -59,9 +70,12 @@ const ServerStatusChannel: Component = () => {
 
   return (
     <>
+      {/* Bug fix: this callback only logged the picked channel id and never actually called
+          `sendStatusChannel`, so picking a channel from the selector never persisted anything -
+          the "Send Status" flow was entirely non-functional. */}
       <AdminChannelSelector
         id="select_channel_modal_channel"
-        callback={(channelID: string) => console.log(channelID)}
+        callback={(channelID: string) => sendStatusChannel(channelID, format())}
       />
       <AdminPanel
         title={t('dashboard.server.status_channel.title', 'Server Status Channel')}
@@ -105,7 +119,6 @@ const ServerStatusChannel: Component = () => {
                 class="btn btn-sm hover:cursor-pointer fa-solid fa-xmark text-error"
                 disabled={statusChannel.loading}
                 onClick={async () => {
-                  // @ts-expect-error -- intentional: legacy typing gap
                   await removeStatus()
                 }}
               ></button>

@@ -1,5 +1,5 @@
 import { A } from '@solidjs/router'
-import { Component, createResource, createSignal, For, onMount, ParentProps, Show } from 'solid-js'
+import { Component, createResource, createSignal, For, onCleanup, onMount, ParentProps, Show } from 'solid-js'
 import {
   discordUser,
   isAdmin,
@@ -226,7 +226,10 @@ export const Header: Component = () => {
     }
 
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    // `onMount` (createEffect under the hood) doesn't treat a returned function as a cleanup
+    // callback the way React's useEffect does - it was silently discarded, so this listener was
+    // never actually removed on unmount. `onCleanup` is the real hook for that.
+    onCleanup(() => document.removeEventListener('mousedown', handleClickOutside))
   })
 
   onMount(() => {
@@ -306,7 +309,10 @@ export const Header: Component = () => {
         }
       })
       .then((userInfo) => {
-        if (userInfo.rank && userInfo.rank === 'developer') {
+        // `userInfo` is undefined when the fetch above resolved with `!res.ok` (no `else` branch
+        // there returns a value) - guard with optional chaining so that response is a silent
+        // no-op instead of an unhandled promise rejection (`Cannot read properties of undefined`).
+        if (userInfo?.rank && userInfo.rank === 'developer') {
           setIsAdmin(true)
         }
       })
@@ -338,7 +344,9 @@ export const Header: Component = () => {
       distance = Math.round(distance / 1000)
       setTimeLeft(convertSecToTime(distance, true, ['d', 'h', 'm', 's']))
     }, 1000)
-    return () => clearInterval(interval)
+    // See the onCleanup note above - onMount discards a returned function, so this interval was
+    // never actually cleared on unmount.
+    onCleanup(() => clearInterval(interval))
   })
 
   return (

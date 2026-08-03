@@ -260,9 +260,8 @@ export const ServerLogsTriggers: Component = () => {
         <div class="fieldset">
           <label class="label">
             <span>{t("dashboard.server.logs_trigger.reply_action", "Reply Action")}</span>
-          </label>{" "}
-          disabled={logTriggers.loading}
-          <select class="select">
+          </label>
+          <select class="select" disabled={logTriggers.loading}>
             <For each={Object.keys(log_trigger_action)}>
               {(action) => (
                 <option value={action} selected={editedTrigger().action === action}>

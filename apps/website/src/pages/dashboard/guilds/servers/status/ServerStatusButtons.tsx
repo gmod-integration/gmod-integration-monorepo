@@ -44,11 +44,13 @@ const ServerStatusButtons: Component = () => {
       return
     }
     const button = await res.json()
-    mutate((prevButtons) =>
-      prevButtons
-        ? [...prevButtons, new StatusButton(button.id, button.emoji, button.name, button.url, button.enable)]
-        : [],
-    )
+    const newButton = new StatusButton(button.id, button.emoji, button.name, button.url, button.enable)
+    // Bug fix: `prevButtons` can be a non-array (e.g. `{}`, from fetchStatusButtons' error-path
+    // fallback) if the initial GET failed. The old `prevButtons ? [...prevButtons, newButton] : []`
+    // both threw (spreading a non-iterable object is a TypeError, surfacing as an unhandled
+    // rejection since this onClick handler never awaits/catches this promise) and, even in its
+    // intended "no previous list" fallback, discarded the just-created button instead of keeping it.
+    mutate((prevButtons) => (Array.isArray(prevButtons) ? [...prevButtons, newButton] : [newButton]))
     return button
   }
 
@@ -169,7 +171,11 @@ const ServerStatusButtons: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show when={!statusButtons.loading}>
+            {/* Bug fix: `!statusButtons.loading` alone is also true once the fetch settles into an
+                error, so reading `statusButtons()` below would throw (a resource re-throws its
+                stored error when read) before the `<Match when={statusButtons.error}>` below ever
+                gets a chance to render - crashing the whole page instead of showing that message. */}
+            <Show when={!statusButtons.loading && !statusButtons.error}>
               <For each={statusButtons()}>
                 {(button) => (
                   <tr>

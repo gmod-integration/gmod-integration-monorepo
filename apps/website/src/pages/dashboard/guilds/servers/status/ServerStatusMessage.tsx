@@ -79,7 +79,9 @@ const ServerStatusMessage: Component = () => {
       return {}
     }
     const data = await res.json()
-    setFormat(data.value)
+    // A malformed/empty response body (e.g. `{}`) would otherwise set format() to undefined,
+    // crashing the createEffect below at `format().replace(...)`.
+    setFormat(data.value || '')
     return data
   })
 
@@ -99,6 +101,11 @@ const ServerStatusMessage: Component = () => {
         // @ts-expect-error -- intentional: legacy typing gap
         edit_format.close()
       })
+      // Bug fix: a failed PUT threw inside the first .then() with nothing downstream to catch it -
+      // an unhandled promise rejection, since this function is called fire-and-forget from its
+      // onClick handler below (matches the .catch pattern already used by e.g. ServerChats.tsx's
+      // analogous update functions).
+      .catch((error) => console.error(error))
   }
 
   const [show_status_chart, { mutate: showStatusChartMutate }] = createResource(async () => {
@@ -123,6 +130,7 @@ const ServerStatusMessage: Component = () => {
       .then((data) => {
         showStatusChartMutate(data)
       })
+      .catch((error) => console.error(error))
   }
 
   const removeStatus = async () => {
@@ -147,6 +155,7 @@ const ServerStatusMessage: Component = () => {
       .then((data) => {
         showPlayerListMutate(data)
       })
+      .catch((error) => console.error(error))
   }
 
   // @ts-expect-error -- intentional: legacy typing gap

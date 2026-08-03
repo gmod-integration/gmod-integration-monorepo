@@ -1,4 +1,4 @@
-import { Component, createEffect, createResource, onCleanup, Show } from 'solid-js'
+import { Component, createEffect, createResource, on, onCleanup, Show } from 'solid-js'
 import { getGuild } from '../../../utils/utils'
 import AdminPanel from '../../../components/AdminPanel'
 import { A, useLocation, useNavigate } from '@solidjs/router'
@@ -109,14 +109,27 @@ const GuildInformations: Component = () => {
   }
 
   const [gmodStorePurchase, { refetch: refetchGmodStorePurchase }] = createResource('gmodStorePurchase', async () => {
-    return await fetchAPI('/users/:discordID/gmod-store', 'GET').then((res) => res.json() || {})
+    // Bug fix: was `res.json() || {}` - res.json() returns a Promise, which is always truthy, so
+    // the `|| {}` fallback was dead code and never ran. Await first so a falsy/malformed JSON body
+    // (e.g. `null`) actually falls back to `{}` instead of propagating into the render below.
+    return await fetchAPI('/users/:discordID/gmod-store', 'GET').then(async (res) => (await res.json()) || {})
   })
 
   const location = useLocation()
-  createEffect(async () => {
-    await guildRolesRefetch()
-    await guildChannelsRefetch()
-  }, [location.pathname])
+  // Bug fix: `createEffect(fn, [location.pathname])` looked like a React-style dependency array,
+  // but Solid's createEffect second argument is just the initial value passed to `fn` on the
+  // first call, not a dependency list, and `fn`'s body never reads `location.pathname` - so this
+  // effect only ever ran once, on mount, and roles/channels were never refetched on navigation
+  // between guilds. Wrapped with `on()` so it explicitly tracks the path and re-runs on change.
+  createEffect(
+    on(
+      () => location.pathname,
+      async () => {
+        await guildRolesRefetch()
+        await guildChannelsRefetch()
+      },
+    ),
+  )
 
   return (
     <>
@@ -162,9 +175,14 @@ const GuildInformations: Component = () => {
             )}
           </span>
         </div>
+        {/* Bug fix: also gate on !bot.error - `bot()` is read unguarded below (`!bot().active`),
+            and the bot resource's fetcher throws on a non-ok response, so once `bot.loading`
+            settles to false in an error state, evaluating `bot()` re-throws and crashes the whole
+            page. Mirrors the `!adminData.loading && adminData()` fix in AdminInformations.tsx. */}
         <Show
           when={
             !bot.loading &&
+            !bot.error &&
             !gmodStorePurchase.loading &&
             gmodStorePurchase().steamID64 &&
             !gmodStorePurchase().guild &&

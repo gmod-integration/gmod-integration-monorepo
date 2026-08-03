@@ -13,7 +13,10 @@ import { fetchAPI } from '../../../utils/api'
 const fetchVerifyRoles = async () => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/verifications/roles', 'GET')
   if (!res.ok) {
-    return {}
+    // Bug fix: was `return {}` - the result is always treated as an array below (`.map`,
+    // `.find`, `<For each>`), and `{}` doesn't support those, so a non-ok response used to crash
+    // the render the same way an error-state resource did (see fixes further down this file).
+    return []
   }
   return await res.json()
 }
@@ -53,9 +56,14 @@ const fetchLastVerify = async () => {
 const GuildVerification: Component = () => {
   const [verifyRoles, { mutate }] = createResource('verifyRole', fetchVerifyRoles)
   createEffect(() => {
+    // Bug fix: was `const roles = verifyRoles(); if (roles) { if (roles.loading) return ... }` -
+    // `roles.loading` checked the returned array/data, not the resource itself, so it was always
+    // undefined and never actually short-circuited; worse, verifyRoles() was being called
+    // unconditionally, which re-throws while the resource is in an error state. Check the
+    // resource's own .loading/.error before reading it, same as the auto-roles effect above.
+    if (verifyRoles.loading || verifyRoles.error) return
     const roles = verifyRoles()
     if (roles) {
-      if (roles.loading) return
       const rolesToCheck = roles.map((role) => role.roleID)
       setRolesToCheck(rolesToCheck)
     }
@@ -131,20 +139,34 @@ const GuildVerification: Component = () => {
   }
 
   async function editVerificationDontMP(value: boolean) {
+    const previous = verificationDontMP()
     const res = await fetchAPI(`/users/:discordID/guilds/:guildID/settings/verification_dont_mp`, 'PUT', {
       value,
     })
-    if (!res.ok) {
-      verificationDontMPMutate({})
+    // Bug fix: was `if (!res.ok) verificationDontMPMutate({})` - the toggle's `checked` prop is
+    // bound straight to this resource with no local/optimistic state, so on a *successful* PUT the
+    // checkbox never picked up the new value and just snapped back to the old one; on failure it
+    // was reset to `{}` (unchecked) instead of reverting to the actual prior value. Mutate with the
+    // saved value on success; on failure, re-mutate with a fresh copy of the pre-toggle value so
+    // Solid re-applies `checked` and the native checkbox (already flipped by the click itself)
+    // snaps back to what's actually persisted server-side.
+    if (res.ok) {
+      verificationDontMPMutate({ value })
+    } else {
+      verificationDontMPMutate({ ...previous })
     }
   }
 
   async function editVerificationDontJoinSupport(value: boolean) {
+    const previous = verificationDontJoinSupport()
     const res = await fetchAPI(`/users/:discordID/guilds/:guildID/settings/verification_dont_join_support`, 'PUT', {
       value,
     })
-    if (!res.ok) {
-      verificationDontJoinSupportMutate({})
+    // Bug fix: same inverted-condition issue as editVerificationDontMP above.
+    if (res.ok) {
+      verificationDontJoinSupportMutate({ value })
+    } else {
+      verificationDontJoinSupportMutate({ ...previous })
     }
   }
 
@@ -155,8 +177,11 @@ const GuildVerification: Component = () => {
         title={t('dashboard.guild.verification.select_role_modal_title', 'Select Role')}
         id="select_role_modal"
       >
+        {/* Bug fix: also gate on !verifyRoles.error - verifyRoles() is read unguarded below (via
+            the <For each={guildRoles()}> body calling verifyRoles().find(...)), so reading it
+            while errored used to re-throw and crash the render (see the tbody fix further down). */}
         <Show
-          when={!guildRoles.loading && !verifyRoles.loading}
+          when={!guildRoles.loading && !verifyRoles.loading && !verifyRoles.error}
           fallback={<div>{t('dashboard.guild.verification.loading', 'Loading...')}</div>}
         >
           <div class="fieldset">
@@ -272,7 +297,11 @@ const GuildVerification: Component = () => {
               type="checkbox"
               class="toggle toggle || verificationDontMP.loading-md"
               disabled={!premium()}
-              checked={verificationDontMP() ? verificationDontMP().value : false}
+              // Bug fix: was `verificationDontMP() ? verificationDontMP().value : false` - when
+              // the resource resolves to a truthy-but-valueless object (e.g. `{}`, the fallback
+              // for a non-ok response), `.value` is `undefined`, not `false`, leaving the checkbox
+              // in a non-boolean `checked` state instead of unchecked.
+              checked={verificationDontMP()?.value ?? false}
               onChange={async (e) => {
                 await editVerificationDontMP(e.currentTarget.checked)
               }}
@@ -293,7 +322,8 @@ const GuildVerification: Component = () => {
               type="checkbox"
               class="toggle toggle || verificationDontJoinSupport.loading-md"
               disabled={!premium()}
-              checked={verificationDontJoinSupport() ? verificationDontJoinSupport().value : false}
+              // Bug fix: same undefined-checked issue as verificationDontMP above.
+              checked={verificationDontJoinSupport()?.value ?? false}
               onChange={async (e) => {
                 await editVerificationDontJoinSupport(e.currentTarget.checked)
               }}
@@ -361,7 +391,12 @@ const GuildVerification: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show when={!verifyRoles.loading}>
+            {/* Bug fix: also gate on !verifyRoles.error - `verifyRoles()` is read unguarded below
+                (via <For each={verifyRoles()}>), and reading a resource accessor while it's in an
+                error state re-throws that error, which crashed the render (leaving it stuck on
+                the loading state forever) and made the `Match when={verifyRoles.error}` message
+                below unreachable. Mirrors the same fix already applied to ServerPlayers.tsx. */}
+            <Show when={!verifyRoles.loading && !verifyRoles.error}>
               <For each={verifyRoles()}>
                 {(role) => (
                   <tr>
@@ -429,8 +464,12 @@ const GuildVerification: Component = () => {
         </Switch>
 
         <div class="flex gap-4 p-4">
+          {/* Bug fix: subCondition below short-circuits before calling verifyRoles() - this
+              expression isn't wrapped in any loading/error Show at all, so reading verifyRoles()
+              while the resource is errored used to re-throw and crash the render (see the tbody
+              fix above for the full explanation). */}
           <BuyPremiumBtn
-            subCondition={verifyRoles()?.length < 2}
+            subCondition={!verifyRoles.error && verifyRoles()?.length < 2}
             btnText={t('dashboard.guild.verification.premium_limit', 'Limited to 2 roles for free users.')}
             hidden={verifyRoles.loading}
           >

@@ -233,7 +233,15 @@ const ServerPlayer: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show when={!playersList.loading}>
+            {/* Bug fix: also gate on !playersList.error - `playersList().rows` is read unguarded
+                below (via <For each={playersList().rows}>). On a fetch failure there's no
+                previously-loaded value to fall back to, so `playersList()` is `undefined` and
+                `.rows` throws a TypeError. Without this guard, the tbody's render effect threw on
+                every fetch failure, which the dev @solid-refresh wrapper caught and silently
+                retried forever, meaning `playersList.loading` never visibly settled and the
+                `Match when={playersList.error}` failed-to-load message below was unreachable dead
+                code. */}
+            <Show when={!playersList.loading && !playersList.error}>
               <Show when={loadSearch()}>
                 <tr>
                   <td colSpan="6">
@@ -289,7 +297,12 @@ const ServerPlayer: Component = () => {
                   </tr>
                 )}
               </For>
-              <Pagination query={query()} total={playersList().query.total} onChange={handleQueryChange} colSpan={6} />
+              <Pagination
+                query={query()}
+                total={playersList().query?.total ?? 0}
+                onChange={handleQueryChange}
+                colSpan={6}
+              />
             </Show>
           </tbody>
         </table>

@@ -68,6 +68,7 @@ const ServerRoles: Component = () => {
       .then((data) => {
         mutatePseudoDirection(data)
       })
+      .catch((error) => console.error(error))
   }
 
   async function addRole(roleID: string) {
@@ -82,6 +83,7 @@ const ServerRoles: Component = () => {
       .then((data) => {
         mutateRolesSync((prev) => [...prev, data])
       })
+      .catch((error) => console.error(error))
   }
 
   function editRole() {
@@ -96,6 +98,7 @@ const ServerRoles: Component = () => {
       .then((data) => {
         mutateRolesSync((prev) => prev.map((r) => (r.roleID === data.roleID ? data : r)))
       })
+      .catch((error) => console.error(error))
   }
 
   function deleteRole(roleID: string) {
@@ -110,6 +113,7 @@ const ServerRoles: Component = () => {
       .then((data) => {
         mutateRolesSync((prev) => prev.filter((r) => r.roleID !== data.roleID))
       })
+      .catch((error) => console.error(error))
   }
 
   return (

@@ -5,8 +5,10 @@ import { useI18n } from '../../../i18n'
 const SecondFooter: Component = () => {
   const { t } = useI18n()
 
-  // @ts-expect-error -- intentional: legacy typing gap
-  const lastBuildDate = new Date(__BUILD_DATE__).toLocaleString() || localChained.unknown()
+  // toLocaleString() on a Date always returns a non-empty string (even "Invalid Date"), so the
+  // `localChained.unknown()` fallback this used to have was unreachable dead code referencing an
+  // undefined identifier - removed.
+  const lastBuildDate = new Date(__BUILD_DATE__).toLocaleString()
 
   return (
     <footer class="footer md:footer-horizontal px-10 py-4 bg-base-100 text-base-content max-w-(--breakpoint-2xl) mx-auto">
