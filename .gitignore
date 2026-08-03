@@ -9,5 +9,8 @@ dist
 .turbo
 .env.sentry-build-plugin
 .codex
-**/logs/*
+# Runtime pm2 log output only (not source/test directories that happen to be named "logs", e.g.
+# apps/website/src/pages/.../servers/logs/ and its test mirror - **/logs/* used to match those too).
+/logs/*
+/apps/discord/logs/*
 backup
