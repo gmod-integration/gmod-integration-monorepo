@@ -76,6 +76,11 @@ export const DashboardMenu: Component = () => {
           url: '/dashboard/guilds/:guildID/config/verification',
         },
         {
+          emoji: 'fa-ban',
+          label: t('dashboard.menu.guilds.bans', 'Bans'),
+          url: '/dashboard/guilds/:guildID/config/bans',
+        },
+        {
           emoji: 'fa-solid fa-wand-magic-sparkles',
           label: t('dashboard.menu.guilds.auto_role', 'Auto-Role'),
           url: '/dashboard/guilds/:guildID/config/auto-role',
@@ -193,12 +198,6 @@ export const DashboardMenu: Component = () => {
           label: t('dashboard.menu.servers.streams', 'Streams'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/streams',
           badge: linkBadge.TODO,
-        },
-        {
-          emoji: 'fa-ban',
-          label: t('dashboard.menu.servers.bans', 'Bans'),
-          url: '/dashboard/guilds/:guildID/config/servers/:serverID/bans',
-          badge: linkBadge.SOON,
         },
         {
           emoji: 'fa-ticket',

@@ -111,7 +111,14 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
 
     it('builds a full guild summary (channels/roles/emojis), tolerating fetch failures', async () => {
       const channelWithPosition = makeChannel('chan1', { position: 3, parent: { id: 'parent1' } })
-      const channelWithoutPosition = { id: 'chan2', name: 'no-pos', type: 2, isSendable: vi.fn().mockReturnValue(false), isTextBased: vi.fn().mockReturnValue(false), parent: null }
+      const channelWithoutPosition = {
+        id: 'chan2',
+        name: 'no-pos',
+        type: 2,
+        isSendable: vi.fn().mockReturnValue(false),
+        isTextBased: vi.fn().mockReturnValue(false),
+        parent: null,
+      }
       const channelsCache = new FakeCollection<string, any>([
         ['chan1', channelWithPosition],
         ['chan2', channelWithoutPosition],
@@ -136,11 +143,27 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
       expect(payload.guild.id).toBe('g1')
       expect(payload.guild.icon).toBe('https://stored/icon.png')
       expect(payload.guild.channels).toEqual([
-        { id: 'chan1', name: 'channel-chan1', type: '0', position: 3, parentID: 'parent1', sendable: true, textBased: true },
+        {
+          id: 'chan1',
+          name: 'channel-chan1',
+          type: '0',
+          position: 3,
+          parentID: 'parent1',
+          sendable: true,
+          textBased: true,
+        },
         { id: 'chan2', name: 'no-pos', type: '2', position: null, parentID: null, sendable: false, textBased: false },
       ])
       expect(payload.guild.roles).toEqual([
-        { id: 'role1', name: 'role-role1', position: 1, color: 255, colorHex: '#0000ff', managed: false, editable: true },
+        {
+          id: 'role1',
+          name: 'role-role1',
+          position: 1,
+          color: 255,
+          colorHex: '#0000ff',
+          managed: false,
+          editable: true,
+        },
       ])
       expect(payload.guild.emojis).toEqual([{ id: 'emoji1', name: 'pepe', url: 'https://cdn.discord/emoji1.png' }])
     })
@@ -156,7 +179,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
     })
 
     it('replies verified=false when the member cannot be fetched', async () => {
-      const guild = makeGuild('g1', { members: { fetch: vi.fn().mockRejectedValueOnce(new Error('nope')), cache: new FakeCollection() } })
+      const guild = makeGuild('g1', {
+        members: { fetch: vi.fn().mockRejectedValueOnce(new Error('nope')), cache: new FakeCollection() },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('guildVerifyUser', { guildID: 'g1', userID: 'u1', correlationId: 'c1' }))
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', verified: false })
@@ -165,7 +190,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
 
     it('replies verified=true when verifyUser resolves truthy', async () => {
       const member = makeMember('u1')
-      const guild = makeGuild('g1', { members: { fetch: vi.fn().mockResolvedValueOnce(member), cache: new FakeCollection() } })
+      const guild = makeGuild('g1', {
+        members: { fetch: vi.fn().mockResolvedValueOnce(member), cache: new FakeCollection() },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       verifyUserMock.mockResolvedValueOnce(true)
       await processor()(makeJob('guildVerifyUser', { guildID: 'g1', userID: 'u1', correlationId: 'c1' }))
@@ -175,7 +202,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
 
     it('replies verified=false when verifyUser resolves falsy', async () => {
       const member = makeMember('u1')
-      const guild = makeGuild('g1', { members: { fetch: vi.fn().mockResolvedValueOnce(member), cache: new FakeCollection() } })
+      const guild = makeGuild('g1', {
+        members: { fetch: vi.fn().mockResolvedValueOnce(member), cache: new FakeCollection() },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       verifyUserMock.mockResolvedValueOnce(false)
       await processor()(makeJob('guildVerifyUser', { guildID: 'g1', userID: 'u1', correlationId: 'c1' }))
@@ -193,7 +222,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
     })
 
     it('replies processed=0 when members cannot be fetched', async () => {
-      const guild = makeGuild('g1', { members: { fetch: vi.fn().mockRejectedValueOnce(new Error('nope')), cache: new FakeCollection() } })
+      const guild = makeGuild('g1', {
+        members: { fetch: vi.fn().mockRejectedValueOnce(new Error('nope')), cache: new FakeCollection() },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('guildRunVerificationCheck', { guildID: 'g1', correlationId: 'c1' }))
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', processed: 0 })
@@ -206,7 +237,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
         ['m1', member1],
         ['m2', member2],
       ])
-      const guild = makeGuild('g1', { members: { fetch: vi.fn().mockResolvedValueOnce(membersMap), cache: new FakeCollection() } })
+      const guild = makeGuild('g1', {
+        members: { fetch: vi.fn().mockResolvedValueOnce(membersMap), cache: new FakeCollection() },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('guildRunVerificationCheck', { guildID: 'g1', correlationId: 'c1' }))
       expect(addAutoRoleToUserMock).toHaveBeenCalledTimes(2)
@@ -221,7 +254,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
     }
 
     it('replies with an error when the channel is not found/sendable', async () => {
-      const guild = makeGuild('g1', { channels: { cache: new FakeCollection(), fetch: vi.fn().mockResolvedValueOnce(undefined) } })
+      const guild = makeGuild('g1', {
+        channels: { cache: new FakeCollection(), fetch: vi.fn().mockResolvedValueOnce(undefined) },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('createVerificationMessage', baseData()))
       expect(lastReplyPayload()).toEqual({
@@ -241,10 +276,18 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
       ])
       const guild = makeGuild('g1', { channels: { cache: channelsCache, fetch: vi.fn() } })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
-      prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce({ guildID: 'g1', channelID: 'old-chan', messageID: 'old-msg' })
+      prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce({
+        guildID: 'g1',
+        channelID: 'old-chan',
+        messageID: 'old-msg',
+      })
       getVerificationGuildMessageMock.mockResolvedValueOnce({ content: 'verify here' })
       newChannel.send = vi.fn().mockResolvedValueOnce({ id: 'new-msg' })
-      prismaMock.gm_guild_verify_msg.create.mockResolvedValueOnce({ guildID: 'g1', channelID: 'chan1', messageID: 'new-msg' })
+      prismaMock.gm_guild_verify_msg.create.mockResolvedValueOnce({
+        guildID: 'g1',
+        channelID: 'chan1',
+        messageID: 'new-msg',
+      })
 
       await processor()(makeJob('createVerificationMessage', baseData()))
 
@@ -257,7 +300,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
     })
 
     it('swallows a failure to fetch the old verification message and still sends a new one', async () => {
-      const oldChannel = makeChannel('old-chan', { messages: { fetch: vi.fn().mockRejectedValueOnce(new Error('fetch fail')) } })
+      const oldChannel = makeChannel('old-chan', {
+        messages: { fetch: vi.fn().mockRejectedValueOnce(new Error('fetch fail')) },
+      })
       const newChannel = makeChannel('chan1')
       const channelsCache = new FakeCollection<string, any>([
         ['old-chan', oldChannel],
@@ -265,10 +310,18 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
       ])
       const guild = makeGuild('g1', { channels: { cache: channelsCache, fetch: vi.fn() } })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
-      prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce({ guildID: 'g1', channelID: 'old-chan', messageID: 'old-msg' })
+      prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce({
+        guildID: 'g1',
+        channelID: 'old-chan',
+        messageID: 'old-msg',
+      })
       getVerificationGuildMessageMock.mockResolvedValueOnce({ content: 'verify here' })
       newChannel.send = vi.fn().mockResolvedValueOnce({ id: 'new-msg' })
-      prismaMock.gm_guild_verify_msg.create.mockResolvedValueOnce({ guildID: 'g1', channelID: 'chan1', messageID: 'new-msg' })
+      prismaMock.gm_guild_verify_msg.create.mockResolvedValueOnce({
+        guildID: 'g1',
+        channelID: 'chan1',
+        messageID: 'new-msg',
+      })
 
       await processor()(makeJob('createVerificationMessage', baseData()))
 
@@ -284,10 +337,18 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
       ])
       const guild = makeGuild('g1', { channels: { cache: channelsCache, fetch: vi.fn() } })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
-      prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce({ guildID: 'g1', channelID: 'old-chan', messageID: 'old-msg' })
+      prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce({
+        guildID: 'g1',
+        channelID: 'old-chan',
+        messageID: 'old-msg',
+      })
       getVerificationGuildMessageMock.mockResolvedValueOnce({ content: 'verify here' })
       newChannel.send = vi.fn().mockResolvedValueOnce({ id: 'new-msg' })
-      prismaMock.gm_guild_verify_msg.create.mockResolvedValueOnce({ guildID: 'g1', channelID: 'chan1', messageID: 'new-msg' })
+      prismaMock.gm_guild_verify_msg.create.mockResolvedValueOnce({
+        guildID: 'g1',
+        channelID: 'chan1',
+        messageID: 'new-msg',
+      })
 
       await processor()(makeJob('createVerificationMessage', baseData()))
 
@@ -304,7 +365,11 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
       prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce(null)
       getVerificationGuildMessageMock.mockResolvedValueOnce({ content: 'verify here' })
       newChannel.send = vi.fn().mockResolvedValueOnce({ id: 'new-msg' })
-      prismaMock.gm_guild_verify_msg.create.mockResolvedValueOnce({ guildID: 'g1', channelID: 'chan1', messageID: 'new-msg' })
+      prismaMock.gm_guild_verify_msg.create.mockResolvedValueOnce({
+        guildID: 'g1',
+        channelID: 'chan1',
+        messageID: 'new-msg',
+      })
 
       await processor()(makeJob('createVerificationMessage', baseData()))
 
@@ -343,7 +408,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
     })
 
     it('swallows a failure to fetch the message and still replies deleted=true', async () => {
-      const channel = makeChannel('chan1', { messages: { fetch: vi.fn().mockRejectedValueOnce(new Error('fetch fail')) } })
+      const channel = makeChannel('chan1', {
+        messages: { fetch: vi.fn().mockRejectedValueOnce(new Error('fetch fail')) },
+      })
       const guild = makeGuild('g1', { channels: { cache: new FakeCollection([['chan1', channel]]), fetch: vi.fn() } })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('deleteVerificationMessage', baseData()))
@@ -352,7 +419,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
 
     it('falls back to fetching the channel and skips deletion when message is not found', async () => {
       const channel = makeChannel('chan1', { messages: { fetch: vi.fn().mockResolvedValueOnce(null) } })
-      const guild = makeGuild('g1', { channels: { cache: new FakeCollection(), fetch: vi.fn().mockResolvedValueOnce(channel) } })
+      const guild = makeGuild('g1', {
+        channels: { cache: new FakeCollection(), fetch: vi.fn().mockResolvedValueOnce(channel) },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('deleteVerificationMessage', baseData()))
       expect(guild.channels.fetch).toHaveBeenCalledWith('chan1')
@@ -369,7 +438,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
     })
 
     it('skips deletion entirely when the channel cannot be found at all', async () => {
-      const guild = makeGuild('g1', { channels: { cache: new FakeCollection(), fetch: vi.fn().mockResolvedValueOnce(undefined) } })
+      const guild = makeGuild('g1', {
+        channels: { cache: new FakeCollection(), fetch: vi.fn().mockResolvedValueOnce(undefined) },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('deleteVerificationMessage', baseData()))
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', deleted: true })
@@ -457,9 +528,7 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
           setAvatar,
         },
       })
-      await processor()(
-        makeJob('guildUpdateBotProfile', baseData({ username: 'NewName', avatar: 'new-avatar-data' })),
-      )
+      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'NewName', avatar: 'new-avatar-data' })))
       expect(setUsername).toHaveBeenCalledWith('NewName')
       expect(setAvatar).toHaveBeenCalledWith('new-avatar-data')
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', updated: true })
@@ -469,7 +538,13 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
       const setUsername = vi.fn().mockResolvedValue(undefined)
       const setAvatar = vi.fn().mockResolvedValue(undefined)
       getGuildClientMock.mockResolvedValueOnce({
-        user: { id: 'custom-bot', username: 'SameName', avatarURL: vi.fn().mockReturnValue('same-avatar'), setUsername, setAvatar },
+        user: {
+          id: 'custom-bot',
+          username: 'SameName',
+          avatarURL: vi.fn().mockReturnValue('same-avatar'),
+          setUsername,
+          setAvatar,
+        },
       })
       await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'SameName', avatar: 'same-avatar' })))
       expect(setUsername).not.toHaveBeenCalled()
@@ -547,7 +622,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
     })
 
     it('replies admins=[] when members cannot be fetched', async () => {
-      const guild = makeGuild('g1', { members: { fetch: vi.fn().mockRejectedValueOnce(new Error('nope')), cache: new FakeCollection() } })
+      const guild = makeGuild('g1', {
+        members: { fetch: vi.fn().mockRejectedValueOnce(new Error('nope')), cache: new FakeCollection() },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('guildAdmins', { guildID: 'g1', correlationId: 'c1' }))
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', admins: [] })
@@ -562,7 +639,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
         ['a2', botAdmin],
         ['a3', nonAdmin],
       ])
-      const guild = makeGuild('g1', { members: { fetch: vi.fn().mockResolvedValueOnce(membersMap), cache: new FakeCollection() } })
+      const guild = makeGuild('g1', {
+        members: { fetch: vi.fn().mockResolvedValueOnce(membersMap), cache: new FakeCollection() },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       ensureAvatarStoredMock.mockResolvedValue('stored-avatar')
 
@@ -571,6 +650,42 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
       expect(lastReplyPayload()).toEqual({
         correlationId: 'c1',
         admins: [{ id: 'a1', name: 'Member a1', avatar: 'stored-avatar' }],
+      })
+    })
+  })
+
+  describe('guildBans', () => {
+    it('replies bans=[] when the guild cannot be fetched', async () => {
+      const client = makeGuildClient(null)
+      client.guilds.fetch = vi.fn().mockRejectedValueOnce(new Error('nope'))
+      getGuildClientMock.mockResolvedValueOnce(client)
+      await processor()(makeJob('guildBans', { guildID: 'g1', correlationId: 'c1' }))
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', bans: [] })
+    })
+
+    it('replies bans=[] when the ban list cannot be fetched', async () => {
+      const guild = makeGuild('g1', { bans: { fetch: vi.fn().mockRejectedValueOnce(new Error('nope')) } })
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+      await processor()(makeJob('guildBans', { guildID: 'g1', correlationId: 'c1' }))
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', bans: [] })
+    })
+
+    it('maps the fetched ban list to id/tag/reason', async () => {
+      const bansMap = new FakeCollection<string, any>([
+        ['u1', { user: { id: 'u1', tag: 'Cheater#0001' }, reason: 'cheating' }],
+        ['u2', { user: { id: 'u2', tag: 'Griefer#0002' }, reason: null }],
+      ])
+      const guild = makeGuild('g1', { bans: { fetch: vi.fn().mockResolvedValueOnce(bansMap) } })
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+
+      await processor()(makeJob('guildBans', { guildID: 'g1', correlationId: 'c1' }))
+
+      expect(lastReplyPayload()).toEqual({
+        correlationId: 'c1',
+        bans: [
+          { id: 'u1', tag: 'Cheater#0001', reason: 'cheating' },
+          { id: 'u2', tag: 'Griefer#0002', reason: null },
+        ],
       })
     })
   })
@@ -605,7 +720,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
     })
 
     it('replies sent=false with error when the channel cannot be found at all', async () => {
-      const guild = makeGuild('g1', { channels: { cache: new FakeCollection(), fetch: vi.fn().mockResolvedValueOnce(undefined) } })
+      const guild = makeGuild('g1', {
+        channels: { cache: new FakeCollection(), fetch: vi.fn().mockResolvedValueOnce(undefined) },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('guildSendLogMessage', baseData()))
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: false, error: 'Channel is not sendable' })
@@ -622,7 +739,9 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
 
     it('sends the embed without a description and falls back to channel fetch', async () => {
       const channel = makeChannel('chan1')
-      const guild = makeGuild('g1', { channels: { cache: new FakeCollection(), fetch: vi.fn().mockResolvedValueOnce(channel) } })
+      const guild = makeGuild('g1', {
+        channels: { cache: new FakeCollection(), fetch: vi.fn().mockResolvedValueOnce(channel) },
+      })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('guildSendLogMessage', baseData()))
       expect(guild.channels.fetch).toHaveBeenCalledWith('chan1')

@@ -37,6 +37,7 @@ import {
   getAutoRoles,
   getGmodToDiscordFilter,
   getGuildAdmins,
+  getGuildBans,
   getGuildBotInstance,
   getGuildBotRoleSubordination,
   getGuildEmojis,
@@ -152,6 +153,7 @@ router.delete('/:discordID/guilds/:guildID/gmod-store', asyncHandler(deleteGmodP
 router.get('/:discordID/guilds/:guildID/channels', asyncHandler(findGuildChannels))
 router.get('/:discordID/guilds/:guildID/roles', asyncHandler(getGuildRoles))
 router.get('/:discordID/guilds/:guildID/admins', asyncHandler(getGuildAdmins))
+router.get('/:discordID/guilds/:guildID/bans', asyncHandler(getGuildBans))
 router.get('/:discordID/guilds/:guildID/emojis', asyncHandler(getGuildEmojis))
 
 // Settings

@@ -259,6 +259,18 @@ const cases: Case[] = [
     requiredKeys: ['correlationId', 'admins'],
   },
   {
+    name: 'DiscordGuildBansJobSchema',
+    schema: bullmq.DiscordGuildBansJobSchema,
+    valid: { guildID: 'g1', correlationId: 'c1' },
+    requiredKeys: ['guildID', 'correlationId'],
+  },
+  {
+    name: 'DiscordGuildBansReplySchema',
+    schema: bullmq.DiscordGuildBansReplySchema,
+    valid: { correlationId: 'c1', bans: [{ id: 'u1', tag: 'User#0001', reason: 'cheating' }] },
+    requiredKeys: ['correlationId', 'bans'],
+  },
+  {
     name: 'DiscordGuildSendLogMessageJobSchema',
     schema: bullmq.DiscordGuildSendLogMessageJobSchema,
     valid: { guildID: 'g1', channelID: 'ch1', title: 'Title', color: '#fff', footer: 'Footer', correlationId: 'c1' },

@@ -16,6 +16,7 @@ import prisma from '@gmod/infra-prisma'
 import { type User } from '@gmod/domain-user/User.js'
 import {
   enqueueDiscordGuildAdmins,
+  enqueueDiscordGuildBans,
   enqueueDiscordGuildBotClientInfo,
   enqueueDiscordGuildReloadBotInstance,
   enqueueDiscordGuildSnapshot,
@@ -354,6 +355,10 @@ export class Guild {
 
   async getAdmins() {
     return await enqueueDiscordGuildAdmins(this.id)
+  }
+
+  async getDiscordBans() {
+    return await enqueueDiscordGuildBans(this.id)
   }
 
   async getLinks() {

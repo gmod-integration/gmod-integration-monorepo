@@ -38,6 +38,7 @@ vi.mock('@/controllers/v3/usersControllers.js', () => ({
   getAutoRoles: vi.fn(),
   getGmodToDiscordFilter: vi.fn(),
   getGuildAdmins: vi.fn(),
+  getGuildBans: vi.fn(),
   getGuildBotInstance: vi.fn(),
   getGuildBotRoleSubordination: vi.fn(),
   getGuildEmojis: vi.fn(),
@@ -125,9 +126,8 @@ describe('usersRoutes', () => {
     expect(paths).toContain('/login')
     expect(paths).toContain('/:discordID')
     expect(paths).toContain('/:discordID/guilds/:guildID/servers/:serverID/status/buttons/:buttonID')
-    expect(paths).toContain(
-      '/:discordID/guilds/:guildID/servers/:serverID/chats/filters/:filterID',
-    )
+    expect(paths).toContain('/:discordID/guilds/:guildID/bans')
+    expect(paths).toContain('/:discordID/guilds/:guildID/servers/:serverID/chats/filters/:filterID')
     expect(paths.length).toBeGreaterThan(80)
   })
 })

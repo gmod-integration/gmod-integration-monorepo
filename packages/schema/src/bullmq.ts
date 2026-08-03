@@ -373,6 +373,27 @@ export const DiscordGuildAdminsReplySchema = z.object({
 
 export type DiscordGuildAdminsReply = z.infer<typeof DiscordGuildAdminsReplySchema>
 
+export const DiscordGuildBansJobSchema = z.object({
+  guildID: z.string().min(1, 'guildID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordGuildBansJob = z.infer<typeof DiscordGuildBansJobSchema>
+
+export const DiscordGuildBansReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  bans: z.array(
+    z.object({
+      id: z.string(),
+      tag: z.string(),
+      reason: z.string().nullable(),
+    }),
+  ),
+})
+
+export type DiscordGuildBansReply = z.infer<typeof DiscordGuildBansReplySchema>
+
 export const DiscordGuildSendLogMessageJobSchema = z.object({
   guildID: z.string().min(1, 'guildID required'),
   channelID: z.string().min(1, 'channelID required'),

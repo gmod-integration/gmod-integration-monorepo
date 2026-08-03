@@ -34,6 +34,8 @@ import {
   DiscordGuildSyncBanReplySchema,
   DiscordGuildAdminsJobSchema,
   DiscordGuildAdminsReplySchema,
+  DiscordGuildBansJobSchema,
+  DiscordGuildBansReplySchema,
   DiscordGuildSendLogMessageJobSchema,
   DiscordGuildSendLogMessageReplySchema,
   DiscordServerStatusCreateJobSchema,
@@ -629,6 +631,28 @@ export async function enqueueDiscordGuildAdmins(
 
   const reply = await waitForReply(correlationId, (value) => DiscordGuildAdminsReplySchema.parse(value), timeoutMs)
   return reply.admins
+}
+
+export async function enqueueDiscordGuildBans(
+  guildID: string,
+  timeoutMs = 7000,
+): Promise<Array<{ id: string; tag: string; reason: string | null }>> {
+  const correlationId = uuidv4()
+  const payload = DiscordGuildBansJobSchema.parse({
+    guildID,
+    correlationId,
+    timestamp: new Date(),
+  })
+
+  await discordGuildOpsQueue.add('guildBans', payload, {
+    priority: 8,
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 1000 },
+    removeOnComplete: true,
+  })
+
+  const reply = await waitForReply(correlationId, (value) => DiscordGuildBansReplySchema.parse(value), timeoutMs)
+  return reply.bans
 }
 
 export async function enqueueDiscordGuildSendLogMessage(

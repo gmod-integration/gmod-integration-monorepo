@@ -21,6 +21,7 @@ import {
   DiscordGuildUpdateBotProfileJobSchema,
   DiscordGuildSyncBanJobSchema,
   DiscordGuildAdminsJobSchema,
+  DiscordGuildBansJobSchema,
   DiscordGuildSendLogMessageJobSchema,
   DiscordServerStatusCreateJobSchema,
   DiscordServerStatusDeleteJobSchema,
@@ -49,6 +50,7 @@ import {
   type DiscordGuildUpdateBotProfileJob,
   type DiscordGuildSyncBanJob,
   type DiscordGuildAdminsJob,
+  type DiscordGuildBansJob,
   type DiscordGuildSendLogMessageJob,
   type DiscordServerStatusCreateJob,
   type DiscordServerStatusDeleteJob,
@@ -616,6 +618,7 @@ export const discordGuildOpsWorker = new Worker<
   | DiscordGuildUpdateBotProfileJob
   | DiscordGuildSyncBanJob
   | DiscordGuildAdminsJob
+  | DiscordGuildBansJob
   | DiscordGuildSendLogMessageJob
   | DiscordServerStatusCreateJob
   | DiscordServerStatusDeleteJob
@@ -963,8 +966,7 @@ export const discordGuildOpsWorker = new Worker<
         return
       }
 
-      const admins = members
-        .filter((member) => member.permissions.has('Administrator') && !member.user.bot)
+      const admins = members.filter((member) => member.permissions.has('Administrator') && !member.user.bot)
       const adminsWithAvatar = await Promise.all(
         admins.map(async (member) => ({
           id: member.id,
@@ -974,6 +976,27 @@ export const discordGuildOpsWorker = new Worker<
       )
 
       await writeReply(payload.correlationId, { correlationId: payload.correlationId, admins: adminsWithAvatar })
+      return
+    }
+
+    if (job.name === 'guildBans') {
+      const payload = DiscordGuildBansJobSchema.parse(job.data)
+      const client = await getGuildClient(payload.guildID, false)
+      const guild = await client.guilds.fetch(payload.guildID).catch(() => null)
+      if (!guild) {
+        await writeReply(payload.correlationId, { correlationId: payload.correlationId, bans: [] })
+        return
+      }
+
+      const discordBans = await guild.bans.fetch().catch(() => null)
+      if (!discordBans) {
+        await writeReply(payload.correlationId, { correlationId: payload.correlationId, bans: [] })
+        return
+      }
+
+      const bans = discordBans.map((ban) => ({ id: ban.user.id, tag: ban.user.tag, reason: ban.reason ?? null }))
+
+      await writeReply(payload.correlationId, { correlationId: payload.correlationId, bans })
       return
     }
 

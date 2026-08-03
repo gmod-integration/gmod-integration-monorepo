@@ -47,6 +47,7 @@ describe('components/layout/menu/DashboardMenu.tsx', () => {
       'Custom Bot',
       'Links',
       'Verification',
+      'Bans',
       'Auto-Role',
       'Suggestions',
       'Tickets',
@@ -95,7 +96,6 @@ describe('components/layout/menu/DashboardMenu.tsx', () => {
       'Screenshots',
       'Vote',
       'Streams',
-      'Bans',
       'Tickets',
     ]) {
       expect(screen.getByText(label)).toBeInTheDocument()
