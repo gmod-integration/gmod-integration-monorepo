@@ -38,3 +38,14 @@ gmod-integration config set token JbKuA0goRKQO6cYg
  | 14:13:04 | Gmod Integration | Server Name: New Gmod Server
  | 14:13:04 | Gmod Integration | Server ID: lZWbHrHJk3
 ```
+
+### Manually Try Config
+
+If you want to manually try to connect your server to Gmod Integration, you can run the following command in the server console:
+
+```bash
+gmod-integration config try
+ | 14:13:04 | Gmod Integration | Congratulations your server is now connected to Gmod Integration
+ | 14:13:04 | Gmod Integration | Server Name: New Gmod Server
+ | 14:13:04 | Gmod Integration | Server ID: lZWbHrHJk3
+```
