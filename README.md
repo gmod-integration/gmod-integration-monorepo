@@ -2,6 +2,8 @@
 
 This monorepo contains the backend services for Gmod Integration, including an HTTP API, Discord bot, WebSocket gateway, and website, along with shared packages for domain logic, infrastructure, core utilities, configuration, and schema definitions.
 
+Contributing? See [CONTRIBUTING.md](./CONTRIBUTING.md) for the branch/PR workflow and [docs/best-practices.md](./docs/best-practices.md) for code conventions.
+
 ## Production Setup
 
 For prod setup, please refer to the [self-hosted documentation](https://docs.gmod-integration.com/self-hosted/install-prod).
@@ -80,11 +82,11 @@ ingress:
 
 Prod routing summary:
 
-| Protocol | Local Endpoint | Public Endpoint           |
-| -------- | -------------- | ------------------------- |
-| http     | localhost:80   | api.your-domain.com       |
-| http     | localhost:80   | ws.your-domain.com        |
-| http     | localhost:80   | traefik.your-domain.com   |
+| Protocol | Local Endpoint | Public Endpoint         |
+| -------- | -------------- | ----------------------- |
+| http     | localhost:80   | api.your-domain.com     |
+| http     | localhost:80   | ws.your-domain.com      |
+| http     | localhost:80   | traefik.your-domain.com |
 
 ## Set FQDN in Garry's Mod
 

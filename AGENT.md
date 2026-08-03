@@ -38,6 +38,9 @@ Carte complète, détaillée dossier par dossier: **[`docs/README.md`](./docs/RE
 - Utiliser `import type` dès qu'un import est uniquement typé.
 - Ne jamais modifier `submodules/gmod-integration` sans lire son propre `AGENTS.md` d'abord (conventions GLua,
   realms `sv_`/`cl_`/`sh_`, sécurité réseau — très différentes des règles TypeScript ci-dessus).
+- Ne jamais committer directement sur `main`: créer une branche (`feat/…`, `fix/…`, `test/…`, `chore/…` — voir
+  [`CONTRIBUTING.md`](./CONTRIBUTING.md)) et ouvrir une PR, sauf instruction explicite de l'utilisateur pour la
+  session en cours.
 
 ## 4) Où placer le code
 
