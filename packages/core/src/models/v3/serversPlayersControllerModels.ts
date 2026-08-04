@@ -55,7 +55,13 @@ export async function processPlayerSay(server: Server, steamID64Param: unknown, 
     return getInvalidPlayerResult(ply)
   }
 
-  await sendPlayerSay(server, player, text, teamOnly)
+  const result = await sendPlayerSay(server, player, text, teamOnly)
+  if (result && 'failed' in result && result.failed) {
+    // A genuine relay failure (e.g. the configured Discord webhook was deleted/invalid) is
+    // silently swallowed by the GMod addon's fire-and-forget http.post, so log it server-side -
+    // otherwise nobody finds out the sync is broken until an admin notices chat isn't relaying.
+    console.error(`[chat sync] gmod->discord relay failed for server ${server.getID()}: ${result.message}`)
+  }
   return ok()
 }
 
