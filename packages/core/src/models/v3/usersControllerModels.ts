@@ -1,6 +1,7 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js'
 import { generateToken, badArgument } from '../../utils/tools.js'
-import { createServer } from '@gmod/domain-server/Server.js'
+import { createServer, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
+import { type Guild } from '@gmod/domain-guild/Guild.js'
 import {
   enqueueDiscordGuildReloadBotInstance,
   enqueueMainClientHasGuild,
@@ -766,6 +767,55 @@ export async function processGetServerWarns(
       total,
     },
   })
+}
+
+// Capped rather than paginated: a paginated view can't correctly flag "also banned on the other
+// platform" without loading the full Discord ban list to cross-check against anyway, and per-guild
+// ban counts are realistically in the dozens-to-low-hundreds range.
+const GUILD_BANS_ROW_CAP = 1000
+
+export async function processGetGuildBans(guild: Guild): Promise<EndpointResult> {
+  const servers = await getServersFromDiscordGuildID(guild.id)
+  const serverIDs = servers.map((server) => server.getID())
+
+  const gmodBansRaw = serverIDs.length
+    ? await prisma.gm_server_ban.findMany({
+        where: { serverID: { in: serverIDs } },
+        orderBy: { createdAt: 'desc' },
+        take: GUILD_BANS_ROW_CAP,
+      })
+    : []
+
+  const discordBansRaw = await guild.getDiscordBans()
+
+  const discordBannedIDs = new Set(discordBansRaw.map((ban) => ban.id))
+  const gmodBannedSteamIDs = new Set(gmodBansRaw.map((ban) => ban.userSteamID64))
+
+  const gmodBans = await Promise.all(
+    gmodBansRaw.map(async (ban) => {
+      const linkedUser = await getUserFromSteamID64(ban.userSteamID64)
+      const linkedDiscordID = linkedUser?.getDiscordID() || null
+      return {
+        ...ban,
+        linkedDiscordID,
+        discordAlsoBanned: linkedDiscordID ? discordBannedIDs.has(linkedDiscordID) : false,
+      }
+    }),
+  )
+
+  const discordBans = await Promise.all(
+    discordBansRaw.map(async (ban) => {
+      const linkedUser = await getUserFromDiscordID(ban.id)
+      const linkedSteamID64 = linkedUser?.getSteamID64() || null
+      return {
+        ...ban,
+        linkedSteamID64,
+        gmodAlsoBanned: linkedSteamID64 ? gmodBannedSteamIDs.has(linkedSteamID64) : false,
+      }
+    }),
+  )
+
+  return ok({ gmodBans, discordBans })
 }
 
 export async function processGetScreenshotsList(

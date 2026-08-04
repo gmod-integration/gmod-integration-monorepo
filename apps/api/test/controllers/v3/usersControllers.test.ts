@@ -91,6 +91,7 @@ const modelMocks = {
   processDeleteUserSession: vi.fn(),
   processGetAdminInformations: vi.fn(),
   processGetAutoRoles: vi.fn(),
+  processGetGuildBans: vi.fn(),
   processGetProfile: vi.fn(),
   processGetScreenshotsList: vi.fn(),
   processGetServerLogs: vi.fn(),
@@ -365,10 +366,7 @@ describe('usersControllers', () => {
       saveUserPanelMock.mockResolvedValueOnce('panel-token')
       saveUserMock.mockResolvedValueOnce(true)
 
-      await c.oauthLogin(
-        makeReq({ query: { code: 'code1' }, connection: { remoteAddress: '9.9.9.9' } }),
-        makeRes(),
-      )
+      await c.oauthLogin(makeReq({ query: { code: 'code1' }, connection: { remoteAddress: '9.9.9.9' } }), makeRes())
 
       expect(saveUserPanelMock).toHaveBeenCalledWith(
         'd1',
@@ -554,11 +552,17 @@ describe('usersControllers', () => {
     })
 
     it('updates only the given fields', async () => {
-      const guild = { getLink: vi.fn().mockResolvedValueOnce({ id: 1, url: 'old', alias: 'a', active: true }), id: 'g1' }
+      const guild = {
+        getLink: vi.fn().mockResolvedValueOnce({ id: 1, url: 'old', alias: 'a', active: true }),
+        id: 'g1',
+      }
       prismaMock.gm_server_links.update.mockResolvedValueOnce({ id: 1 })
       const res = makeRes()
 
-      await c.putGuildLinks({ params: { linkID: '1' }, guild, body: { url: 'new', alias: undefined, active: undefined } } as any, res)
+      await c.putGuildLinks(
+        { params: { linkID: '1' }, guild, body: { url: 'new', alias: undefined, active: undefined } } as any,
+        res,
+      )
 
       expect(prismaMock.gm_server_links.update).toHaveBeenCalledWith({
         where: { id: 1, guild: 'g1' },
@@ -567,7 +571,10 @@ describe('usersControllers', () => {
     })
 
     it('keeps url when omitted, overwrites alias/active when given', async () => {
-      const guild = { getLink: vi.fn().mockResolvedValueOnce({ id: 1, url: 'old', alias: 'a', active: true }), id: 'g1' }
+      const guild = {
+        getLink: vi.fn().mockResolvedValueOnce({ id: 1, url: 'old', alias: 'a', active: true }),
+        id: 'g1',
+      }
       prismaMock.gm_server_links.update.mockResolvedValueOnce({ id: 1 })
       const res = makeRes()
 
@@ -593,7 +600,10 @@ describe('usersControllers', () => {
 
     it('deletes and returns the link', async () => {
       const link = { id: 1 }
-      const guild = { getLink: vi.fn().mockResolvedValueOnce(link), deleteLink: vi.fn().mockResolvedValueOnce(undefined) }
+      const guild = {
+        getLink: vi.fn().mockResolvedValueOnce(link),
+        deleteLink: vi.fn().mockResolvedValueOnce(undefined),
+      }
       const res = makeRes()
       await c.deleteGuildLinks({ params: { linkID: '1' }, guild } as any, res)
       expect(guild.deleteLink).toHaveBeenCalledWith('1')
@@ -603,7 +613,15 @@ describe('usersControllers', () => {
 
   it('putGuildServer updates only the given fields', async () => {
     prismaMock.gm_server.update.mockResolvedValueOnce({ id: 's1' })
-    const server = { id: 's1', name: 'old', image: 'img', ip: '1.1.1.1', port: '27015', isPublic: true, description: 'd' }
+    const server = {
+      id: 's1',
+      name: 'old',
+      image: 'img',
+      ip: '1.1.1.1',
+      port: '27015',
+      isPublic: true,
+      description: 'd',
+    }
     const res = makeRes()
 
     await c.putGuildServer({ server, body: { name: 'new' } } as any, res)
@@ -616,7 +634,15 @@ describe('usersControllers', () => {
 
   it('putGuildServer overwrites every field when all are given', async () => {
     prismaMock.gm_server.update.mockResolvedValueOnce({ id: 's1' })
-    const server = { id: 's1', name: 'old', image: 'img', ip: '1.1.1.1', port: '27015', isPublic: true, description: 'd' }
+    const server = {
+      id: 's1',
+      name: 'old',
+      image: 'img',
+      ip: '1.1.1.1',
+      port: '27015',
+      isPublic: true,
+      description: 'd',
+    }
     const res = makeRes()
 
     await c.putGuildServer(
@@ -655,6 +681,16 @@ describe('usersControllers', () => {
       await c.getGuildAdmins({ guild } as any, res)
       expect(res.send).toHaveBeenCalledWith([])
     })
+  })
+
+  it('getGuildBans delegates to processGetGuildBans', async () => {
+    const guild = { id: 'g1' }
+    modelMocks.processGetGuildBans.mockResolvedValueOnce({ status: 200, body: { gmodBans: [], discordBans: [] } })
+    const res = makeRes()
+    await c.getGuildBans({ guild } as any, res)
+    expect(modelMocks.processGetGuildBans).toHaveBeenCalledWith(guild)
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.json).toHaveBeenCalledWith({ gmodBans: [], discordBans: [] })
   })
 
   it('postGuildServerToken regenerates and returns the server', async () => {
@@ -829,7 +865,10 @@ describe('usersControllers', () => {
       })
 
       it('updates the button and refreshes status when enabled', async () => {
-        const server = { id: 's1', findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: false }) }
+        const server = {
+          id: 's1',
+          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: false }),
+        }
         prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: true })
         const res = makeRes()
 
@@ -840,7 +879,10 @@ describe('usersControllers', () => {
       })
 
       it('overwrites name/emoji/url when given, keeping the existing enable value', async () => {
-        const server = { id: 's1', findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'old', emoji: 'oe', url: 'ou', enable: true }) }
+        const server = {
+          id: 's1',
+          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'old', emoji: 'oe', url: 'ou', enable: true }),
+        }
         prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: true })
         const res = makeRes()
 
@@ -856,7 +898,10 @@ describe('usersControllers', () => {
       })
 
       it('does not refresh status when the updated button is disabled', async () => {
-        const server = { id: 's1', findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: true }) }
+        const server = {
+          id: 's1',
+          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: true }),
+        }
         prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: false })
         const res = makeRes()
 
@@ -983,10 +1028,7 @@ describe('usersControllers', () => {
     modelMocks.processGetServerPlayers.mockResolvedValueOnce({ status: 200, body: {} })
     const res = makeRes()
     await c.getServerPlayers({ server: { id: 's1' }, query: { limit: '10' } } as any, res)
-    expect(modelMocks.processGetServerPlayers).toHaveBeenCalledWith(
-      's1',
-      expect.objectContaining({ limit: '10' }),
-    )
+    expect(modelMocks.processGetServerPlayers).toHaveBeenCalledWith('s1', expect.objectContaining({ limit: '10' }))
   })
 
   it('putPlayerBypassMaintenance delegates to processPutPlayerBypassMaintenance', async () => {
@@ -1526,10 +1568,7 @@ describe('usersControllers', () => {
         getBotClientInfo: vi.fn().mockResolvedValueOnce({ id: 'bot1' }),
       }
       const res = makeRes()
-      await c.patchGuildBotInstance(
-        { guild, panelUser: { user: {} }, body: { token: 'newtok' } } as any,
-        res,
-      )
+      await c.patchGuildBotInstance({ guild, panelUser: { user: {} }, body: { token: 'newtok' } } as any, res)
       expect(guild.updateBotInstanceToken).toHaveBeenCalledWith('newtok')
       expect(res.send).toHaveBeenCalledWith({ id: 'bot1' })
     })
@@ -1537,10 +1576,7 @@ describe('usersControllers', () => {
     it('returns 400 with the error message when updateBotInstanceToken throws', async () => {
       const guild = { updateBotInstanceToken: vi.fn().mockRejectedValueOnce(new Error('bad token')) }
       const res = makeRes()
-      await c.patchGuildBotInstance(
-        { guild, panelUser: { user: {} }, body: { token: 'newtok' } } as any,
-        res,
-      )
+      await c.patchGuildBotInstance({ guild, panelUser: { user: {} }, body: { token: 'newtok' } } as any, res)
       expect(res.status).toHaveBeenCalledWith(400)
       expect(res.send).toHaveBeenCalledWith({ error: 'bad token' })
     })
@@ -1548,10 +1584,7 @@ describe('usersControllers', () => {
 
   it('postGmodPurchase delegates to processPostGmodPurchase', async () => {
     modelMocks.processPostGmodPurchase.mockResolvedValueOnce({ status: 200, body: {} })
-    await c.postGmodPurchase(
-      { params: { guildID: 'g1', discordID: 'd1' }, guild: {}, panelUser: {} } as any,
-      makeRes(),
-    )
+    await c.postGmodPurchase({ params: { guildID: 'g1', discordID: 'd1' }, guild: {}, panelUser: {} } as any, makeRes())
     expect(modelMocks.processPostGmodPurchase).toHaveBeenCalledWith('g1', 'd1', {}, {})
   })
 
@@ -1566,10 +1599,7 @@ describe('usersControllers', () => {
       bullmqMocks.enqueueDiscordGuildSnapshot.mockResolvedValueOnce({ id: 'g1' })
       const panelUser = { isAdminOfGuild: vi.fn().mockResolvedValueOnce(false) }
       const res = makeRes()
-      await c.deleteUserGmodPurchase(
-        { params: { guildID: 'g1', discordID: 'd1' }, panelUser } as any,
-        res,
-      )
+      await c.deleteUserGmodPurchase({ params: { guildID: 'g1', discordID: 'd1' }, panelUser } as any, res)
       expect(res.status).toHaveBeenCalledWith(403)
     })
 
@@ -1619,7 +1649,12 @@ describe('usersControllers', () => {
         } as any,
         res,
       )
-      expect(guild.updateBotInstanceInfo).toHaveBeenCalledWith({ username: 'n', avatar: 'a', token: 't', status: 'rotate' })
+      expect(guild.updateBotInstanceInfo).toHaveBeenCalledWith({
+        username: 'n',
+        avatar: 'a',
+        token: 't',
+        status: 'rotate',
+      })
       expect(res.send).toHaveBeenCalledWith({ id: 'bot1' })
     })
   })
@@ -1673,10 +1708,7 @@ describe('usersControllers', () => {
 
   it('patchUserNotifications delegates to processPatchUserNotifications', async () => {
     modelMocks.processPatchUserNotifications.mockResolvedValueOnce({ status: 200, body: {} })
-    await c.patchUserNotifications(
-      { params: { discordID: 'd1', notificationID: '1' } } as any,
-      makeRes(),
-    )
+    await c.patchUserNotifications({ params: { discordID: 'd1', notificationID: '1' } } as any, makeRes())
     expect(modelMocks.processPatchUserNotifications).toHaveBeenCalledWith('d1', '1')
   })
 
@@ -1760,7 +1792,10 @@ describe('usersControllers', () => {
     })
 
     it('getServerLogsTrigger sends the triggers for a premium server', async () => {
-      const server = { isPremium: vi.fn().mockResolvedValueOnce(true), getLogsTrigger: vi.fn().mockResolvedValueOnce([{ id: 1 }]) }
+      const server = {
+        isPremium: vi.fn().mockResolvedValueOnce(true),
+        getLogsTrigger: vi.fn().mockResolvedValueOnce([{ id: 1 }]),
+      }
       const res = makeRes()
       await c.getServerLogsTrigger({ server } as any, res)
       expect(res.send).toHaveBeenCalledWith([{ id: 1 }])

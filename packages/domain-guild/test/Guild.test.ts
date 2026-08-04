@@ -20,6 +20,7 @@ const axiosGetMock = vi.fn()
 vi.mock('axios', () => ({ default: { get: axiosGetMock } }))
 
 const enqueueDiscordGuildAdminsMock = vi.fn()
+const enqueueDiscordGuildBansMock = vi.fn()
 const enqueueDiscordGuildBotClientInfoMock = vi.fn()
 const enqueueDiscordGuildReloadBotInstanceMock = vi.fn()
 const enqueueDiscordGuildSnapshotMock = vi.fn()
@@ -27,6 +28,7 @@ const enqueueDiscordGuildUpdateBotProfileMock = vi.fn()
 const enqueueMainClientHasGuildMock = vi.fn()
 vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
   enqueueDiscordGuildAdmins: enqueueDiscordGuildAdminsMock,
+  enqueueDiscordGuildBans: enqueueDiscordGuildBansMock,
   enqueueDiscordGuildBotClientInfo: enqueueDiscordGuildBotClientInfoMock,
   enqueueDiscordGuildReloadBotInstance: enqueueDiscordGuildReloadBotInstanceMock,
   enqueueDiscordGuildSnapshot: enqueueDiscordGuildSnapshotMock,
@@ -62,6 +64,7 @@ function resetAllMocks() {
   getServersFromDiscordGuildIDMock.mockReset()
   axiosGetMock.mockReset()
   enqueueDiscordGuildAdminsMock.mockReset()
+  enqueueDiscordGuildBansMock.mockReset()
   enqueueDiscordGuildBotClientInfoMock.mockReset()
   enqueueDiscordGuildReloadBotInstanceMock.mockReset()
   enqueueDiscordGuildSnapshotMock.mockReset()
@@ -547,6 +550,13 @@ describe('Guild', () => {
     it('delegates to the bullmq adapter', async () => {
       enqueueDiscordGuildAdminsMock.mockResolvedValueOnce([{ id: 'a1' }])
       await expect(makeGuild().getAdmins()).resolves.toEqual([{ id: 'a1' }])
+    })
+  })
+
+  describe('getDiscordBans', () => {
+    it('delegates to the bullmq adapter', async () => {
+      enqueueDiscordGuildBansMock.mockResolvedValueOnce([{ id: 'u1', tag: 'User#0001', reason: 'cheating' }])
+      await expect(makeGuild().getDiscordBans()).resolves.toEqual([{ id: 'u1', tag: 'User#0001', reason: 'cheating' }])
     })
   })
 

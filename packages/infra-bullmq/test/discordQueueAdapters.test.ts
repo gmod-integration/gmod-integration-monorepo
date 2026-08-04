@@ -71,7 +71,11 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
     })
 
     it('enqueueUpdatePlayerUserGroup adds a job to the group queue', async () => {
-      await adapters.enqueueUpdatePlayerUserGroup({ serverID: 's1', steamID64: '76561198219049673', userGroup: 'admin' })
+      await adapters.enqueueUpdatePlayerUserGroup({
+        serverID: 's1',
+        steamID64: '76561198219049673',
+        userGroup: 'admin',
+      })
       expect(queueInstances.get('discord-updateGroup')!.add).toHaveBeenCalledWith(
         'updateGroup',
         expect.objectContaining({ userGroup: 'admin' }),
@@ -89,7 +93,11 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
     })
 
     it('enqueueUpdateDiscordTeamRole adds a job to the team role queue', async () => {
-      await adapters.enqueueUpdateDiscordTeamRole({ serverID: 's1', steamID64: '76561198219049673', teamName: 'Police' })
+      await adapters.enqueueUpdateDiscordTeamRole({
+        serverID: 's1',
+        steamID64: '76561198219049673',
+        teamName: 'Police',
+      })
       expect(queueInstances.get('discord-updateTeamRole')!.add).toHaveBeenCalledWith(
         'updateTeamRole',
         expect.objectContaining({ teamName: 'Police' }),
@@ -101,9 +109,7 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
       const boom = new Error('down')
       queueInstances.get('discord-updateTeamRole')!.add.mockRejectedValueOnce(boom)
       vi.spyOn(console, 'error').mockImplementation(() => {})
-      await expect(
-        adapters.enqueueUpdateDiscordTeamRole({ serverID: 's1', steamID64: '1' }),
-      ).rejects.toBe(boom)
+      await expect(adapters.enqueueUpdateDiscordTeamRole({ serverID: 's1', steamID64: '1' })).rejects.toBe(boom)
     })
   })
 
@@ -207,6 +213,12 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
       call: () => adapters.enqueueDiscordGuildAdmins('g1'),
       reply: { correlationId: 'x', admins: [{ id: 'a1', name: 'Admin', avatar: null }] },
       expected: [{ id: 'a1', name: 'Admin', avatar: null }],
+    },
+    {
+      name: 'enqueueDiscordGuildBans',
+      call: () => adapters.enqueueDiscordGuildBans('g1'),
+      reply: { correlationId: 'x', bans: [{ id: 'u1', tag: 'User#0001', reason: 'cheating' }] },
+      expected: [{ id: 'u1', tag: 'User#0001', reason: 'cheating' }],
     },
     {
       name: 'enqueueDiscordGuildSendLogMessage',
@@ -320,24 +332,80 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
     // null - otherwise reply parsing itself fails before the `if (reply.error)` branch is ever
     // reached.
     const errorCases: Array<{ name: string; call: () => Promise<unknown>; nullField: string }> = [
-      { name: 'enqueueDiscordCreateVerificationMessage', call: () => adapters.enqueueDiscordCreateVerificationMessage('g1', 'ch1'), nullField: 'verifyMessage' },
-      { name: 'enqueueDiscordServerStatusCreate', call: () => adapters.enqueueDiscordServerStatusCreate('s1', 'ch1'), nullField: 'status' },
-      { name: 'enqueueDiscordServerStatusDelete', call: () => adapters.enqueueDiscordServerStatusDelete('s1'), nullField: 'status' },
-      { name: 'enqueueDiscordServerLogsChannelCreate', call: () => adapters.enqueueDiscordServerLogsChannelCreate('s1', 'ch1'), nullField: 'logsChannel' },
-      { name: 'enqueueDiscordServerLogsChannelDelete', call: () => adapters.enqueueDiscordServerLogsChannelDelete('s1'), nullField: 'logsChannel' },
-      { name: 'enqueueDiscordServerScreenshotChannelCreate', call: () => adapters.enqueueDiscordServerScreenshotChannelCreate('s1', 'ch1'), nullField: 'screenshotChannel' },
-      { name: 'enqueueDiscordServerScreenshotChannelDelete', call: () => adapters.enqueueDiscordServerScreenshotChannelDelete('s1'), nullField: 'screenshotChannel' },
-      { name: 'enqueueDiscordServerVoteChannelCreate', call: () => adapters.enqueueDiscordServerVoteChannelCreate('s1', 'ch1'), nullField: 'voteChannel' },
-      { name: 'enqueueDiscordServerVoteChannelDelete', call: () => adapters.enqueueDiscordServerVoteChannelDelete('s1'), nullField: 'voteChannel' },
-      { name: 'enqueueDiscordServerSyncChatCreate', call: () => adapters.enqueueDiscordServerSyncChatCreate('s1', 'ch1'), nullField: 'syncChat' },
-      { name: 'enqueueDiscordServerSyncChatDelete', call: () => adapters.enqueueDiscordServerSyncChatDelete('s1'), nullField: 'syncChat' },
-      { name: 'enqueueDiscordGuildRemoveSyncRoles', call: () => adapters.enqueueDiscordGuildRemoveSyncRoles('g1', 'd1', ['r1']), nullField: 'processed' },
-      { name: 'enqueueDiscordServerStatusRefresh', call: () => adapters.enqueueDiscordServerStatusRefresh('s1'), nullField: 'refreshed' },
+      {
+        name: 'enqueueDiscordCreateVerificationMessage',
+        call: () => adapters.enqueueDiscordCreateVerificationMessage('g1', 'ch1'),
+        nullField: 'verifyMessage',
+      },
+      {
+        name: 'enqueueDiscordServerStatusCreate',
+        call: () => adapters.enqueueDiscordServerStatusCreate('s1', 'ch1'),
+        nullField: 'status',
+      },
+      {
+        name: 'enqueueDiscordServerStatusDelete',
+        call: () => adapters.enqueueDiscordServerStatusDelete('s1'),
+        nullField: 'status',
+      },
+      {
+        name: 'enqueueDiscordServerLogsChannelCreate',
+        call: () => adapters.enqueueDiscordServerLogsChannelCreate('s1', 'ch1'),
+        nullField: 'logsChannel',
+      },
+      {
+        name: 'enqueueDiscordServerLogsChannelDelete',
+        call: () => adapters.enqueueDiscordServerLogsChannelDelete('s1'),
+        nullField: 'logsChannel',
+      },
+      {
+        name: 'enqueueDiscordServerScreenshotChannelCreate',
+        call: () => adapters.enqueueDiscordServerScreenshotChannelCreate('s1', 'ch1'),
+        nullField: 'screenshotChannel',
+      },
+      {
+        name: 'enqueueDiscordServerScreenshotChannelDelete',
+        call: () => adapters.enqueueDiscordServerScreenshotChannelDelete('s1'),
+        nullField: 'screenshotChannel',
+      },
+      {
+        name: 'enqueueDiscordServerVoteChannelCreate',
+        call: () => adapters.enqueueDiscordServerVoteChannelCreate('s1', 'ch1'),
+        nullField: 'voteChannel',
+      },
+      {
+        name: 'enqueueDiscordServerVoteChannelDelete',
+        call: () => adapters.enqueueDiscordServerVoteChannelDelete('s1'),
+        nullField: 'voteChannel',
+      },
+      {
+        name: 'enqueueDiscordServerSyncChatCreate',
+        call: () => adapters.enqueueDiscordServerSyncChatCreate('s1', 'ch1'),
+        nullField: 'syncChat',
+      },
+      {
+        name: 'enqueueDiscordServerSyncChatDelete',
+        call: () => adapters.enqueueDiscordServerSyncChatDelete('s1'),
+        nullField: 'syncChat',
+      },
+      {
+        name: 'enqueueDiscordGuildRemoveSyncRoles',
+        call: () => adapters.enqueueDiscordGuildRemoveSyncRoles('g1', 'd1', ['r1']),
+        nullField: 'processed',
+      },
+      {
+        name: 'enqueueDiscordServerStatusRefresh',
+        call: () => adapters.enqueueDiscordServerStatusRefresh('s1'),
+        nullField: 'refreshed',
+      },
     ]
 
     for (const { name, call, nullField } of errorCases) {
       it(`${name} throws with the reply's error message`, async () => {
-        mockReply({ correlationId: 'x', error: `${name} failed upstream`, [nullField]: nullField === 'processed' || nullField === 'refreshed' ? false : null })
+        mockReply({
+          correlationId: 'x',
+          error: `${name} failed upstream`,
+          [nullField]: nullField === 'processed' || nullField === 'refreshed' ? false : null,
+        })
         await expect(call()).rejects.toThrow(`${name} failed upstream`)
       })
     }

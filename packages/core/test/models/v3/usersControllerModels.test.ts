@@ -12,7 +12,11 @@ const badArgumentMock = vi.fn()
 vi.mock('../../../src/utils/tools.js', () => ({ generateToken: generateTokenMock, badArgument: badArgumentMock }))
 
 const createServerMock = vi.fn()
-vi.mock('@gmod/domain-server/Server.js', () => ({ createServer: createServerMock }))
+const getServersFromDiscordGuildIDMock = vi.fn()
+vi.mock('@gmod/domain-server/Server.js', () => ({
+  createServer: createServerMock,
+  getServersFromDiscordGuildID: getServersFromDiscordGuildIDMock,
+}))
 
 const enqueueDiscordGuildReloadBotInstanceMock = vi.fn()
 const enqueueMainClientHasGuildMock = vi.fn()
@@ -45,6 +49,7 @@ const prismaMock: any = {
   gm_users_notifications: { findFirst: vi.fn(), update: vi.fn() },
   gm_server_warn: { count: vi.fn(), findMany: vi.fn() },
   gm_server_screenshots: { findMany: vi.fn(), count: vi.fn() },
+  gm_server_ban: { findMany: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
@@ -72,6 +77,7 @@ const {
   processPatchUserNotifications,
   processGetServerLogs,
   processGetServerWarns,
+  processGetGuildBans,
   processGetScreenshotsList,
   processPostServerLogsTrigger,
   processPutServerLogsTrigger,
@@ -84,6 +90,7 @@ function resetAllMocks() {
   generateTokenMock.mockClear()
   badArgumentMock.mockReset().mockReturnValue(false)
   createServerMock.mockReset()
+  getServersFromDiscordGuildIDMock.mockReset()
   enqueueDiscordGuildReloadBotInstanceMock.mockReset()
   enqueueMainClientHasGuildMock.mockReset()
   redisMock.get.mockReset()
@@ -178,20 +185,32 @@ describe('usersControllerModels', () => {
 
   describe('processCreateNewServer', () => {
     it('forbids creating a second server on a non-premium guild', async () => {
-      const guild = { id: 'g1', isPremium: vi.fn().mockResolvedValueOnce(false), getServers: vi.fn().mockResolvedValueOnce([{ id: 's1' }]) }
+      const guild = {
+        id: 'g1',
+        isPremium: vi.fn().mockResolvedValueOnce(false),
+        getServers: vi.fn().mockResolvedValueOnce([{ id: 's1' }]),
+      }
       const result = await processCreateNewServer(guild)
       expect(result.status).toBe(403)
     })
 
     it('creates a server for a premium guild even if it already has one', async () => {
-      const guild = { id: 'g1', isPremium: vi.fn().mockResolvedValueOnce(true), getServers: vi.fn().mockResolvedValueOnce([{ id: 's1' }]) }
+      const guild = {
+        id: 'g1',
+        isPremium: vi.fn().mockResolvedValueOnce(true),
+        getServers: vi.fn().mockResolvedValueOnce([{ id: 's1' }]),
+      }
       createServerMock.mockResolvedValueOnce({ id: 's2' })
       const result = await processCreateNewServer(guild)
       expect(result).toEqual({ status: 200, body: { id: 's2' } })
     })
 
     it('creates the first server for a non-premium guild', async () => {
-      const guild = { id: 'g1', isPremium: vi.fn().mockResolvedValueOnce(false), getServers: vi.fn().mockResolvedValueOnce([]) }
+      const guild = {
+        id: 'g1',
+        isPremium: vi.fn().mockResolvedValueOnce(false),
+        getServers: vi.fn().mockResolvedValueOnce([]),
+      }
       createServerMock.mockResolvedValueOnce({ id: 's1' })
       const result = await processCreateNewServer(guild)
       expect(result).toEqual({ status: 200, body: { id: 's1' } })
@@ -303,7 +322,10 @@ describe('usersControllerModels', () => {
       )
       expect(result).toEqual({
         status: 200,
-        body: { rows: [{ id: 1 }], query: { limit: 50, offset: 0, order: 'desc', total: 1, searchColum: 'total_time' } },
+        body: {
+          rows: [{ id: 1 }],
+          query: { limit: 50, offset: 0, order: 'desc', total: 1, searchColum: 'total_time' },
+        },
       })
     })
 
@@ -429,7 +451,10 @@ describe('usersControllerModels', () => {
 
     it('generates and persists a verification token', async () => {
       prismaMock.gm_user.findFirst.mockResolvedValueOnce({ id: 'd1' })
-      prismaMock.gm_user.update.mockResolvedValueOnce({ token: 'generated-token', token_expires: new Date('2026-01-01') })
+      prismaMock.gm_user.update.mockResolvedValueOnce({
+        token: 'generated-token',
+        token_expires: new Date('2026-01-01'),
+      })
 
       const result = await processPostUserStartVerification('d1')
 
@@ -486,7 +511,7 @@ describe('usersControllerModels', () => {
 
       const result = await processGetAdminInformations()
 
-      const body = (result.body as any)
+      const body = result.body as any
       expect(body.guild.total).toBe(10)
       expect(body.guild.language).toEqual([{ label: 'en', value: 8 }])
       expect(body.server.total).toBe(5)
@@ -761,7 +786,12 @@ describe('usersControllerModels', () => {
 
       const result = await processGetServerLogs('s1', {})
 
-      expect(getLogsByServerMock).toHaveBeenCalledWith('s1', { offset: 0, limit: 50, orderBy: 'desc', sort: 'createdAt' })
+      expect(getLogsByServerMock).toHaveBeenCalledWith('s1', {
+        offset: 0,
+        limit: 50,
+        orderBy: 'desc',
+        sort: 'createdAt',
+      })
       expect(result).toEqual({
         status: 200,
         body: { logs: [{ id: 1 }], query: { offset: 0, limit: 50, sort: 'createdAt', orderBy: 'DESC', total: 3 } },
@@ -838,6 +868,111 @@ describe('usersControllerModels', () => {
     })
   })
 
+  describe('processGetGuildBans', () => {
+    function makeGuild(overrides: Record<string, any> = {}) {
+      return {
+        id: 'g1',
+        getDiscordBans: vi.fn().mockResolvedValue([]),
+        ...overrides,
+      } as any
+    }
+
+    it('returns empty lists when the guild has no servers and no Discord bans', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([])
+      const guild = makeGuild()
+
+      const result = await processGetGuildBans(guild)
+
+      expect(prismaMock.gm_server_ban.findMany).not.toHaveBeenCalled()
+      expect(result).toEqual({ status: 200, body: { gmodBans: [], discordBans: [] } })
+    })
+
+    it('aggregates gm_server_ban across every server of the guild, capped at 1000', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ getID: () => 's1' }, { getID: () => 's2' }])
+      prismaMock.gm_server_ban.findMany.mockResolvedValueOnce([])
+      const guild = makeGuild()
+
+      await processGetGuildBans(guild)
+
+      expect(prismaMock.gm_server_ban.findMany).toHaveBeenCalledWith({
+        where: { serverID: { in: ['s1', 's2'] } },
+        orderBy: { createdAt: 'desc' },
+        take: 1000,
+      })
+    })
+
+    it('flags a GMod ban as also-banned-on-Discord when the linked account is in the Discord ban list', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ getID: () => 's1' }])
+      prismaMock.gm_server_ban.findMany.mockResolvedValueOnce([{ userSteamID64: '765', reason: 'cheating' }])
+      getUserFromSteamID64Mock.mockResolvedValueOnce({ getDiscordID: () => 'd1' })
+      const guild = makeGuild({
+        getDiscordBans: vi.fn().mockResolvedValue([{ id: 'd1', tag: 'Cheater#0001', reason: null }]),
+      })
+
+      const result = await processGetGuildBans(guild)
+
+      expect(result.body.gmodBans).toEqual([
+        { userSteamID64: '765', reason: 'cheating', linkedDiscordID: 'd1', discordAlsoBanned: true },
+      ])
+    })
+
+    it('does not flag a GMod ban whose linked Discord account is not banned', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ getID: () => 's1' }])
+      prismaMock.gm_server_ban.findMany.mockResolvedValueOnce([{ userSteamID64: '765', reason: 'cheating' }])
+      getUserFromSteamID64Mock.mockResolvedValueOnce({ getDiscordID: () => 'd1' })
+      const guild = makeGuild()
+
+      const result = await processGetGuildBans(guild)
+
+      expect(result.body.gmodBans).toEqual([
+        { userSteamID64: '765', reason: 'cheating', linkedDiscordID: 'd1', discordAlsoBanned: false },
+      ])
+    })
+
+    it('does not flag a GMod ban whose SteamID64 has no linked Discord account', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ getID: () => 's1' }])
+      prismaMock.gm_server_ban.findMany.mockResolvedValueOnce([{ userSteamID64: '765', reason: 'cheating' }])
+      getUserFromSteamID64Mock.mockResolvedValueOnce(null)
+      const guild = makeGuild()
+
+      const result = await processGetGuildBans(guild)
+
+      expect(result.body.gmodBans).toEqual([
+        { userSteamID64: '765', reason: 'cheating', linkedDiscordID: null, discordAlsoBanned: false },
+      ])
+    })
+
+    it('flags a Discord ban as also-banned-on-GMod when the linked account is in the GMod ban list', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ getID: () => 's1' }])
+      prismaMock.gm_server_ban.findMany.mockResolvedValueOnce([{ userSteamID64: '765', reason: 'cheating' }])
+      getUserFromSteamID64Mock.mockResolvedValueOnce({ getDiscordID: () => 'd1' })
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      const guild = makeGuild({
+        getDiscordBans: vi.fn().mockResolvedValue([{ id: 'd1', tag: 'Cheater#0001', reason: null }]),
+      })
+
+      const result = await processGetGuildBans(guild)
+
+      expect(result.body.discordBans).toEqual([
+        { id: 'd1', tag: 'Cheater#0001', reason: null, linkedSteamID64: '765', gmodAlsoBanned: true },
+      ])
+    })
+
+    it('does not flag a Discord ban with no linked GMod account', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([])
+      getUserFromDiscordIDMock.mockResolvedValueOnce(null)
+      const guild = makeGuild({
+        getDiscordBans: vi.fn().mockResolvedValue([{ id: 'd1', tag: 'Rando#0002', reason: null }]),
+      })
+
+      const result = await processGetGuildBans(guild)
+
+      expect(result.body.discordBans).toEqual([
+        { id: 'd1', tag: 'Rando#0002', reason: null, linkedSteamID64: null, gmodAlsoBanned: false },
+      ])
+    })
+  })
+
   describe('processGetScreenshotsList', () => {
     it('queries with defaults', async () => {
       prismaMock.gm_server_screenshots.findMany.mockResolvedValueOnce([{ id: 1 }])
@@ -850,7 +985,10 @@ describe('usersControllerModels', () => {
       )
       expect(result).toEqual({
         status: 200,
-        body: { screenshots: [{ id: 1 }], query: { offset: 0, limit: 50, sort: 'createdAt', orderBy: 'DESC', total: 1 } },
+        body: {
+          screenshots: [{ id: 1 }],
+          query: { offset: 0, limit: 50, sort: 'createdAt', orderBy: 'DESC', total: 1 },
+        },
       })
     })
 
@@ -936,7 +1074,16 @@ describe('usersControllerModels', () => {
         updateLogsTrigger: vi.fn().mockResolvedValueOnce({ id: 1 }),
       }
       const result = await processPutServerLogsTrigger(server, '1', payload)
-      expect(server.updateLogsTrigger).toHaveBeenCalledWith(1, 'sendMessageInChannel', 'amount', 'ch1', '50', 'equal', 'msg', 'chat')
+      expect(server.updateLogsTrigger).toHaveBeenCalledWith(
+        1,
+        'sendMessageInChannel',
+        'amount',
+        'ch1',
+        '50',
+        'equal',
+        'msg',
+        'chat',
+      )
       expect(result).toEqual({ status: 200, body: { id: 1 } })
     })
 

@@ -132,11 +132,12 @@ describe('serversPlayersModels', () => {
       expect(body.data.content).toContain('@​everyone')
     })
 
-    it('returns a skip result when the relay responds not-ok', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+    it('returns a failed skip result when the relay responds not-ok', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
       await expect(sendPlayerSay(makeServer(), makePlayer(), 'hi', false)).resolves.toEqual({
         skip: true,
-        message: 'Webhook not found',
+        failed: true,
+        message: 'Webhook relay failed with status 404',
       })
     })
 

@@ -1010,6 +1010,23 @@
         "save": "Save",
         "yes": "Yes",
         "no": "No"
+      },
+      "bans": {
+        "gmod_title": "GMod Bans",
+        "gmod_description": "Bans across every server in this guild.",
+        "discord_title": "Discord Bans",
+        "discord_description": "Bans on this Discord server.",
+        "steam_id": "SteamID64",
+        "admin": "Admin",
+        "user": "User",
+        "reason": "Reason",
+        "also_banned_discord_column": "Also on Discord",
+        "also_banned_gmod_column": "Also on GMod",
+        "also_banned_discord": "Also banned on Discord",
+        "also_banned_gmod": "Also banned on GMod",
+        "failed_to_load": "Failed to load bans",
+        "gmod_empty": "No GMod bans found.",
+        "discord_empty": "No Discord bans found."
       }
     },
     "menu": {
@@ -1020,6 +1037,7 @@
         "custom_bot": "Custom Bot",
         "links": "Links",
         "verification": "Verification",
+        "bans": "Bans",
         "auto_role": "Auto-Role",
         "suggestions": "Suggestions",
         "tickets": "Tickets",
@@ -1042,7 +1060,6 @@
         "screenshots": "Screenshots",
         "vote": "Vote",
         "streams": "Streams",
-        "bans": "Bans",
         "tickets": "Tickets",
         "teams": "Teams"
       }

@@ -15,6 +15,7 @@ import GuildsSelector from './pages/dashboard/guilds/GuildsSelector'
 import GuildInformations from './pages/dashboard/guilds/GuildInformations'
 import ServerList from './pages/dashboard/guilds/servers/ServersSelector'
 import GuildLinks from './pages/dashboard/guilds/GuildLinks'
+import GuildBans from './pages/dashboard/guilds/GuildBans'
 import GuildVerification from './pages/dashboard/guilds/GuildVerifications'
 import ServerInformations from './pages/dashboard/guilds/servers/ServerInformations'
 import ServerStatus from './pages/dashboard/guilds/servers/status/ServerStatus'
@@ -75,6 +76,7 @@ render(
         <Route path="/config" component={GuildInformations} />
         <Route path="/config/bot" component={GuildBot} />
         <Route path="/config/links" component={GuildLinks} />
+        <Route path="/config/bans" component={GuildBans} />
         <Route path="/config/verification" component={GuildVerification} />
         <Route path="/config/auto-role" component={GuildAutoRole} />
         <Route path="/config/servers" component={ServerList} />

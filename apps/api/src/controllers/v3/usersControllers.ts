@@ -27,6 +27,7 @@ import {
   processDeleteUserSession,
   processGetAdminInformations,
   processGetAutoRoles,
+  processGetGuildBans,
   processGetProfile,
   processGetScreenshotsList,
   processGetServerLogs,
@@ -111,10 +112,7 @@ export async function oauthLogin(req: Request, res: Response) {
   } catch {
     // Keep runtime-derived URI fallback when oauthPanel is malformed.
   }
-  const discordUserToken = await getUserTokenFromCode(
-    codeString,
-    oauthRedirectUri,
-  )
+  const discordUserToken = await getUserTokenFromCode(codeString, oauthRedirectUri)
   if (!discordUserToken) {
     return res.status(401).send({
       error: 'unauthorized',
@@ -329,6 +327,12 @@ export async function deleteGuildServer(req: Request, res: Response) {
 export async function getGuildAdmins(req: Request, res: Response) {
   const guild = req.guild!
   return res.send((await guild.getAdmins()) || [])
+}
+
+export async function getGuildBans(req: Request, res: Response) {
+  const guild = req.guild!
+  const result = await processGetGuildBans(guild)
+  return res.status(result.status).json(result.body)
 }
 
 export async function postGuildServerToken(req: Request, res: Response) {

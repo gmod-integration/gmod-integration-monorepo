@@ -93,6 +93,15 @@ async function indexCommandsAndContext(dirPath: string, type: string) {
 async function addNewClient(guildInstance: string, token: string) {
   if (!token || !guildInstance) return
 
+  // Guard against a leftover/leaked client for this guild - without this, every restart or
+  // re-provisioning that adds a client for a guild that already has one leaves both instances
+  // logged in and both handling the same Gateway events (e.g. duplicated chat-sync messages).
+  const existingClient = clientList.get(guildInstance)
+  if (existingClient) {
+    await existingClient.destroy()
+    clientList.delete(guildInstance)
+  }
+
   const hasValidIntents = await checkTokenAndIntents(token)
   if (!hasValidIntents) {
     throw new Error('The given token is invalid or missing required intents')
@@ -299,8 +308,12 @@ export async function loadDiscordSlave() {
     },
   })
 
+  const processedGuilds = new Set<string>()
   for (const instanceInfo of gmodStorePurchases) {
     if (!instanceInfo.guild || !instanceInfo.token) continue
+    // A guild can have several purchase rows (e.g. renewals); only ever spin up one client per guild.
+    if (processedGuilds.has(instanceInfo.guild)) continue
+    processedGuilds.add(instanceInfo.guild)
 
     await addNewClient(instanceInfo.guild, instanceInfo.token).catch(() => {
       console.error(`Error starting bot instance for guild ${instanceInfo.guild}`)

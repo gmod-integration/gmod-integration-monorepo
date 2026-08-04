@@ -32,7 +32,6 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
   const action = ['relay', 'block', 'anonymize']
 
   let relayMessage = await server.getSetting('chat_sync_relay_all')
-  console.log('relayMessage', relayMessage)
   let outputStr = text
 
   // prevent size overflow
@@ -152,7 +151,7 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
   })
 
   if (!webhookRelay.ok) {
-    return { skip: true, message: 'Webhook not found' }
+    return { skip: true, failed: true, message: `Webhook relay failed with status ${webhookRelay.status}` }
   }
 
   return { success: true }
