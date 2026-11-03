@@ -31,7 +31,10 @@ services:
             - "27017:27017"
 
     minio:
-        image: quay.io/minio/minio:latest
+        # MinIO no longer publishes pullable images; Chainguard ships a free build of the same server.
+        # Run as root like the old image so existing root-owned data stays readable without a chown.
+        image: cgr.dev/chainguard/minio:latest
+        user: "0:0"
         container_name: gmod_integration_api_dev_minio
         command: server /data --console-address ":9001"
         environment:

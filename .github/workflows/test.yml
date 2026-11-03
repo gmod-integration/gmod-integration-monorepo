@@ -59,12 +59,16 @@ jobs:
 
       # MinIO needs `server /data` as a command, which the declarative `services:` block above
       # can't express (no `command` override there) - run it by hand instead.
+      # MinIO no longer publishes pullable images (quay.io/minio and Docker Hub minio/minio both
+      # deny access), so use Chainguard's free build of the same upstream server. It runs as uid
+      # 65532 and needs a writable /data mount, hence the tmpfs.
       - name: Start MinIO
         run: |
           docker run -d --name minio -p 9060:9000 \
+            --tmpfs /data:uid=65532,gid=65532 \
             -e MINIO_ROOT_USER=test-minio-access-key \
             -e MINIO_ROOT_PASSWORD=test-minio-secret-key-not-a-real-secret \
-            quay.io/minio/minio:latest server /data
+            cgr.dev/chainguard/minio:latest server /data
           for i in $(seq 1 30); do
             curl -sf http://127.0.0.1:9060/minio/health/live && break
             sleep 2
