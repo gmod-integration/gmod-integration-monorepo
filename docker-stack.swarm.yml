@@ -374,7 +374,11 @@ services:
           - node.role == manager
 
   minio:
-    image: quay.io/minio/minio:latest
+    # MinIO no longer publishes pullable images (quay.io/minio is private, Docker Hub minio/minio
+    # is gone); Chainguard ships a free build of the same server. Run as root like the old image
+    # so the existing root-owned data in gmod_minio_data stays readable without a chown.
+    image: cgr.dev/chainguard/minio:latest
+    user: "0:0"
     command: server /data --console-address ':9001'
     env_file:
       - .env
