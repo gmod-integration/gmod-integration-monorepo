@@ -213,7 +213,7 @@ export type Gm_server_screenshotsGroupByOutputType = {
   _max: Gm_server_screenshotsMaxAggregateOutputType | null
 }
 
-type GetGm_server_screenshotsGroupByPayload<T extends gm_server_screenshotsGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_screenshotsGroupByPayload<T extends gm_server_screenshotsGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_screenshotsGroupByOutputType, T['by']> &
       {

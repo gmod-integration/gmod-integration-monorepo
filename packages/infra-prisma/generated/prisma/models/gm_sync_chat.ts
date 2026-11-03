@@ -172,7 +172,7 @@ export type Gm_sync_chatGroupByOutputType = {
   _max: Gm_sync_chatMaxAggregateOutputType | null
 }
 
-type GetGm_sync_chatGroupByPayload<T extends gm_sync_chatGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_sync_chatGroupByPayload<T extends gm_sync_chatGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_sync_chatGroupByOutputType, T['by']> &
       {

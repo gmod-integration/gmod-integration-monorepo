@@ -206,7 +206,7 @@ export type Gm_server_linksGroupByOutputType = {
   _max: Gm_server_linksMaxAggregateOutputType | null
 }
 
-type GetGm_server_linksGroupByPayload<T extends gm_server_linksGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_linksGroupByPayload<T extends gm_server_linksGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_linksGroupByOutputType, T['by']> &
       {

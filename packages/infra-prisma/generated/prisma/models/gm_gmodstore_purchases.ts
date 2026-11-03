@@ -172,7 +172,7 @@ export type Gm_gmodstore_purchasesGroupByOutputType = {
   _max: Gm_gmodstore_purchasesMaxAggregateOutputType | null
 }
 
-type GetGm_gmodstore_purchasesGroupByPayload<T extends gm_gmodstore_purchasesGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_gmodstore_purchasesGroupByPayload<T extends gm_gmodstore_purchasesGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_gmodstore_purchasesGroupByOutputType, T['by']> &
       {

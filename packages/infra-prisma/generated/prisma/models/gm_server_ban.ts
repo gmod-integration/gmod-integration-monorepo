@@ -217,7 +217,7 @@ export type Gm_server_banGroupByOutputType = {
   _max: Gm_server_banMaxAggregateOutputType | null
 }
 
-type GetGm_server_banGroupByPayload<T extends gm_server_banGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_banGroupByPayload<T extends gm_server_banGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_banGroupByOutputType, T['by']> &
       {

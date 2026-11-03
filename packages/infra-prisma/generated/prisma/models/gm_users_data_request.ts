@@ -179,7 +179,7 @@ export type Gm_users_data_requestGroupByOutputType = {
   _max: Gm_users_data_requestMaxAggregateOutputType | null
 }
 
-type GetGm_users_data_requestGroupByPayload<T extends gm_users_data_requestGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_users_data_requestGroupByPayload<T extends gm_users_data_requestGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_users_data_requestGroupByOutputType, T['by']> &
       {

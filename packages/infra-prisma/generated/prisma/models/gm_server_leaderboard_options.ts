@@ -275,7 +275,7 @@ export type Gm_server_leaderboard_optionsGroupByOutputType = {
   _max: Gm_server_leaderboard_optionsMaxAggregateOutputType | null
 }
 
-type GetGm_server_leaderboard_optionsGroupByPayload<T extends gm_server_leaderboard_optionsGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_leaderboard_optionsGroupByPayload<T extends gm_server_leaderboard_optionsGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_leaderboard_optionsGroupByOutputType, T['by']> &
       {

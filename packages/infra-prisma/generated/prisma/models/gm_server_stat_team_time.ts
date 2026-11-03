@@ -221,7 +221,7 @@ export type Gm_server_stat_team_timeGroupByOutputType = {
   _max: Gm_server_stat_team_timeMaxAggregateOutputType | null
 }
 
-type GetGm_server_stat_team_timeGroupByPayload<T extends gm_server_stat_team_timeGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_stat_team_timeGroupByPayload<T extends gm_server_stat_team_timeGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_stat_team_timeGroupByOutputType, T['by']> &
       {

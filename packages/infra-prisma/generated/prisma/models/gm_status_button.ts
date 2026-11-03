@@ -213,7 +213,7 @@ export type Gm_status_buttonGroupByOutputType = {
   _max: Gm_status_buttonMaxAggregateOutputType | null
 }
 
-type GetGm_status_buttonGroupByPayload<T extends gm_status_buttonGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_status_buttonGroupByPayload<T extends gm_status_buttonGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_status_buttonGroupByOutputType, T['by']> &
       {

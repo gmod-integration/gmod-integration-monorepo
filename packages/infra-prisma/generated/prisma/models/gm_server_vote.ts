@@ -192,7 +192,7 @@ export type Gm_server_voteGroupByOutputType = {
   _max: Gm_server_voteMaxAggregateOutputType | null
 }
 
-type GetGm_server_voteGroupByPayload<T extends gm_server_voteGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_voteGroupByPayload<T extends gm_server_voteGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_voteGroupByOutputType, T['by']> &
       {

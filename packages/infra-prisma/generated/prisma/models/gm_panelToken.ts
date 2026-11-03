@@ -207,7 +207,7 @@ export type Gm_panelTokenGroupByOutputType = {
   _max: Gm_panelTokenMaxAggregateOutputType | null
 }
 
-type GetGm_panelTokenGroupByPayload<T extends gm_panelTokenGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_panelTokenGroupByPayload<T extends gm_panelTokenGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_panelTokenGroupByOutputType, T['by']> &
       {

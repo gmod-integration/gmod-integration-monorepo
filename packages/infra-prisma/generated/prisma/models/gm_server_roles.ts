@@ -234,7 +234,7 @@ export type Gm_server_rolesGroupByOutputType = {
   _max: Gm_server_rolesMaxAggregateOutputType | null
 }
 
-type GetGm_server_rolesGroupByPayload<T extends gm_server_rolesGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_rolesGroupByPayload<T extends gm_server_rolesGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_rolesGroupByOutputType, T['by']> &
       {

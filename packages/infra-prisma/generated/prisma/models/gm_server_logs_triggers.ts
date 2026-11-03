@@ -241,7 +241,7 @@ export type Gm_server_logs_triggersGroupByOutputType = {
   _max: Gm_server_logs_triggersMaxAggregateOutputType | null
 }
 
-type GetGm_server_logs_triggersGroupByPayload<T extends gm_server_logs_triggersGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_logs_triggersGroupByPayload<T extends gm_server_logs_triggersGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_logs_triggersGroupByOutputType, T['by']> &
       {

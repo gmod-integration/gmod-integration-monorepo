@@ -239,7 +239,7 @@ export type Gm_user_steamGroupByOutputType = {
   _max: Gm_user_steamMaxAggregateOutputType | null
 }
 
-type GetGm_user_steamGroupByPayload<T extends gm_user_steamGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_user_steamGroupByPayload<T extends gm_user_steamGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_user_steamGroupByOutputType, T['by']> &
       {
