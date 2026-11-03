@@ -165,7 +165,7 @@ export type Gm_server_customValuesGroupByOutputType = {
   _max: Gm_server_customValuesMaxAggregateOutputType | null
 }
 
-type GetGm_server_customValuesGroupByPayload<T extends gm_server_customValuesGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_customValuesGroupByPayload<T extends gm_server_customValuesGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_customValuesGroupByOutputType, T['by']> &
       {

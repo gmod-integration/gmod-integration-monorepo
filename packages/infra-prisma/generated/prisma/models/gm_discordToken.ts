@@ -172,7 +172,7 @@ export type Gm_discordTokenGroupByOutputType = {
   _max: Gm_discordTokenMaxAggregateOutputType | null
 }
 
-type GetGm_discordTokenGroupByPayload<T extends gm_discordTokenGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_discordTokenGroupByPayload<T extends gm_discordTokenGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_discordTokenGroupByOutputType, T['by']> &
       {

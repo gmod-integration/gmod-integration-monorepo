@@ -196,7 +196,7 @@ export type Gm_server_status_historyGroupByOutputType = {
   _max: Gm_server_status_historyMaxAggregateOutputType | null
 }
 
-type GetGm_server_status_historyGroupByPayload<T extends gm_server_status_historyGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_status_historyGroupByPayload<T extends gm_server_status_historyGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_status_historyGroupByOutputType, T['by']> &
       {

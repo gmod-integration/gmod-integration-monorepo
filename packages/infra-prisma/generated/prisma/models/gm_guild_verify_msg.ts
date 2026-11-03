@@ -158,7 +158,7 @@ export type Gm_guild_verify_msgGroupByOutputType = {
   _max: Gm_guild_verify_msgMaxAggregateOutputType | null
 }
 
-type GetGm_guild_verify_msgGroupByPayload<T extends gm_guild_verify_msgGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_guild_verify_msgGroupByPayload<T extends gm_guild_verify_msgGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_guild_verify_msgGroupByOutputType, T['by']> &
       {

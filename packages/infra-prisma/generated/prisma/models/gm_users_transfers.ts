@@ -172,7 +172,7 @@ export type Gm_users_transfersGroupByOutputType = {
   _max: Gm_users_transfersMaxAggregateOutputType | null
 }
 
-type GetGm_users_transfersGroupByPayload<T extends gm_users_transfersGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_users_transfersGroupByPayload<T extends gm_users_transfersGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_users_transfersGroupByOutputType, T['by']> &
       {

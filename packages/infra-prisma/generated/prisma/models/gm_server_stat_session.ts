@@ -239,7 +239,7 @@ export type Gm_server_stat_sessionGroupByOutputType = {
   _max: Gm_server_stat_sessionMaxAggregateOutputType | null
 }
 
-type GetGm_server_stat_sessionGroupByPayload<T extends gm_server_stat_sessionGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_stat_sessionGroupByPayload<T extends gm_server_stat_sessionGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_stat_sessionGroupByOutputType, T['by']> &
       {

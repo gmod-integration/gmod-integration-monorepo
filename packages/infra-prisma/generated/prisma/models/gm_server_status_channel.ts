@@ -165,7 +165,7 @@ export type Gm_server_status_channelGroupByOutputType = {
   _max: Gm_server_status_channelMaxAggregateOutputType | null
 }
 
-type GetGm_server_status_channelGroupByPayload<T extends gm_server_status_channelGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_status_channelGroupByPayload<T extends gm_server_status_channelGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_status_channelGroupByOutputType, T['by']> &
       {

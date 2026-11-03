@@ -206,7 +206,7 @@ export type Gm_guild_webooksGroupByOutputType = {
   _max: Gm_guild_webooksMaxAggregateOutputType | null
 }
 
-type GetGm_guild_webooksGroupByPayload<T extends gm_guild_webooksGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_guild_webooksGroupByPayload<T extends gm_guild_webooksGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_guild_webooksGroupByOutputType, T['by']> &
       {

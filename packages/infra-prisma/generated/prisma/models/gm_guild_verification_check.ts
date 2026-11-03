@@ -192,7 +192,7 @@ export type Gm_guild_verification_checkGroupByOutputType = {
   _max: Gm_guild_verification_checkMaxAggregateOutputType | null
 }
 
-type GetGm_guild_verification_checkGroupByPayload<T extends gm_guild_verification_checkGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_guild_verification_checkGroupByPayload<T extends gm_guild_verification_checkGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_guild_verification_checkGroupByOutputType, T['by']> &
       {

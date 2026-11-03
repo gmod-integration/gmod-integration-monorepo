@@ -206,7 +206,7 @@ export type Gm_guild_verify_roleGroupByOutputType = {
   _max: Gm_guild_verify_roleMaxAggregateOutputType | null
 }
 
-type GetGm_guild_verify_roleGroupByPayload<T extends gm_guild_verify_roleGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_guild_verify_roleGroupByPayload<T extends gm_guild_verify_roleGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_guild_verify_roleGroupByOutputType, T['by']> &
       {

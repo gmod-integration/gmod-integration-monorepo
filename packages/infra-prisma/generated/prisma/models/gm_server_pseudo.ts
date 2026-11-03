@@ -213,7 +213,7 @@ export type Gm_server_pseudoGroupByOutputType = {
   _max: Gm_server_pseudoMaxAggregateOutputType | null
 }
 
-type GetGm_server_pseudoGroupByPayload<T extends gm_server_pseudoGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_pseudoGroupByPayload<T extends gm_server_pseudoGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_pseudoGroupByOutputType, T['by']> &
       {

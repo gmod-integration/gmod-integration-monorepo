@@ -228,7 +228,7 @@ export type Gm_server_warn_optionsGroupByOutputType = {
   _max: Gm_server_warn_optionsMaxAggregateOutputType | null
 }
 
-type GetGm_server_warn_optionsGroupByPayload<T extends gm_server_warn_optionsGroupByArgs> = Prisma.PrismaPromise<
+export type GetGm_server_warn_optionsGroupByPayload<T extends gm_server_warn_optionsGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<Gm_server_warn_optionsGroupByOutputType, T['by']> &
       {

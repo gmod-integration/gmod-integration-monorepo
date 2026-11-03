@@ -252,7 +252,7 @@ export type BanUsersGroupByOutputType = {
   _max: BanUsersMaxAggregateOutputType | null
 }
 
-type GetBanUsersGroupByPayload<T extends banUsersGroupByArgs> = Prisma.PrismaPromise<
+export type GetBanUsersGroupByPayload<T extends banUsersGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<BanUsersGroupByOutputType, T['by']> &
       {
