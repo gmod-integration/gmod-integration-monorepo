@@ -19,6 +19,7 @@ of everything else.
 | [best-practices.md](./best-practices.md) | Where do I put new code, how do I keep it consistent with the rest? |
 | [migration-playbook.md](./migration-playbook.md) | How do I move code from an `app` into a shared `package` safely? |
 | [deployment/swarm.md](./deployment/swarm.md) | How do I deploy/operate the production Docker Swarm stack? |
+| [deployment/proxmox.md](./deployment/proxmox.md) | How do I deploy the same stack into a Proxmox LXC with Terraform (`infra/proxmox/`)? |
 | [reports/](./reports/README.md) | Where do AI-generated audits/investigation reports get saved, and how? |
 
 ## Repo map

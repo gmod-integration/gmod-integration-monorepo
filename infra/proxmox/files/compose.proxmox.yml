@@ -1,0 +1,111 @@
+# Runs docker-stack.swarm.yml with plain Docker Compose inside an unprivileged Proxmox LXC.
+#
+#   docker compose -f docker-stack.swarm.yml -f compose.proxmox.yml up -d
+#
+# Why not Swarm: the routing mesh and service VIPs rely on IPVS, which an unprivileged container cannot
+# program. Everything else (images, startup wait loops, healthchecks, volumes) comes from the Swarm stack
+# file unchanged, so there is still a single definition of the production services to maintain.
+#
+# What this file changes for a single Compose host:
+# - no published ports except Traefik on 127.0.0.1 (Cloudflare Tunnel connects locally; databases stay
+#   private, see docs/reports/2026-09-18-audit-complet.md about Redis/Mongo exposure);
+# - Traefik uses the plain Docker provider, so routing labels move from deploy.labels to container labels;
+# - deploy.* blocks are replaced: Compose turns `restart_policy: {condition: any, max_attempts: 3}` into
+#   "always" + a retry count, which the Docker engine rejects. Services use `restart:` instead.
+#
+# Interpolated values (API_HOST, *_REPLICAS, ...) come from the .env written by Terraform.
+
+name: gmod
+
+services:
+  traefik:
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=gmod_net
+      - --entrypoints.web.address=:80
+      # Dashboard + Prometheus metrics on :8080, published on 127.0.0.1 only (not routed through the tunnel).
+      - --entrypoints.traefik.address=:8080
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --metrics.prometheus=true
+      - --accesslog=true
+    ports: !override
+      - "127.0.0.1:80:80"
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+    deploy: !reset {}
+
+  api:
+    restart: unless-stopped
+    deploy: !override
+      replicas: ${API_REPLICAS:-2}
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=gmod_net
+      - traefik.http.routers.api.rule=Host(`${API_HOST:?API_HOST must be set in .env}`)
+      - traefik.http.routers.api.entrypoints=web
+      - traefik.http.services.api.loadbalancer.server.port=53136
+
+  websocket:
+    restart: unless-stopped
+    deploy: !override
+      replicas: ${WEBSOCKET_REPLICAS:-2}
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=gmod_net
+      - traefik.http.routers.websocket.rule=Host(`${WS_HOST:?WS_HOST must be set in .env}`)
+      - traefik.http.routers.websocket.entrypoints=web
+      - traefik.http.services.websocket.loadbalancer.server.port=53139
+
+  discord:
+    restart: unless-stopped
+    deploy: !override
+      # 1 by default: the bot code does not deduplicate gateway events across replicas
+      # (docs/reports/2026-09-18-audit-complet.md, docker-stack.swarm.yml:219).
+      replicas: ${DISCORD_REPLICAS:-1}
+
+  prisma-migrate:
+    # One-shot: its own loop already retries the DB connection and `prisma db push`.
+    restart: "no"
+    deploy: !reset {}
+
+  mariadb:
+    ports: !reset []
+    restart: unless-stopped
+    deploy: !reset {}
+
+  redis:
+    ports: !reset []
+    restart: unless-stopped
+    deploy: !override
+      resources:
+        limits:
+          memory: 5G
+
+  mongo:
+    ports: !reset []
+    restart: unless-stopped
+    deploy: !reset {}
+
+  minio:
+    ports: !reset []
+    restart: unless-stopped
+    deploy: !reset {}
+
+  # Outbound-only Cloudflare Tunnel. Host networking so the tunnel's public hostnames can target
+  # http://localhost:80, exactly like the Swarm setup in README.md. Enabled with COMPOSE_PROFILES=tunnel.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    env_file:
+      - cloudflared.env
+    network_mode: host
+    restart: unless-stopped
+    profiles:
+      - tunnel
+
+networks:
+  gmod_net: !override
+    name: gmod_net
+    driver: bridge

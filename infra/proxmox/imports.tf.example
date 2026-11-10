@@ -1,0 +1,44 @@
+# Adopt the host resources already created by ~/terraform-test instead of recreating them.
+#
+#   1. In ~/terraform-test: remove the test container, then forget (not destroy) the rest:
+#        terraform destroy -target=proxmox_virtual_environment_container.nginx_hello \
+#                          -target=proxmox_virtual_environment_file.provision_hook
+#        terraform state rm proxmox_virtual_environment_pool.gmod_integration \
+#                           proxmox_virtual_environment_storage_directory.dir_gmi \
+#                           proxmox_virtual_environment_network_linux_bridge.vmbr1 \
+#                           proxmox_virtual_environment_acl.gmod_pool \
+#                           proxmox_virtual_environment_acl.gmod_storage \
+#                           proxmox_virtual_environment_acl.gmod_sdn
+#   2. Here: cp imports.tf.example imports.tf && terraform plan
+#      The plan must show "N to import" and no destroy/replace on these resources.
+#   3. terraform apply, then delete imports.tf (import blocks are only needed once).
+
+import {
+  to = proxmox_virtual_environment_pool.gmod[0]
+  id = "gmod-integration"
+}
+
+import {
+  to = proxmox_storage_directory.gmod[0]
+  id = "dir-gmi"
+}
+
+import {
+  to = proxmox_network_linux_bridge.gmod[0]
+  id = "pve-colloc:vmbr1"
+}
+
+import {
+  to = proxmox_acl.delegated["pool"]
+  id = "/pool/gmod-integration?gmod-integration@pam?PVEAdmin"
+}
+
+import {
+  to = proxmox_acl.delegated["storage"]
+  id = "/storage/dir-gmi?gmod-integration@pam?PVEAdmin"
+}
+
+import {
+  to = proxmox_acl.delegated["bridges"]
+  id = "/sdn/zones/localnetwork?gmod-integration@pam?PVESDNUser"
+}

@@ -1,0 +1,83 @@
+# cp terraform.tfvars.example terraform.tfvars   (gitignored)
+# Secrets can also come from the environment instead: TF_VAR_proxmox_api_token, TF_VAR_cloudflare_tunnel_token…
+
+###############################################################################
+# Proxmox
+###############################################################################
+proxmox_endpoint = "https://pve-colloc.linv.dev/"
+# ssh_host/ssh_port: `cloudflared access tcp --hostname pve-colloc.linv.dev/ssh --url 127.0.0.1:2222`
+# proxmox_api_token_id = "root@pam!terraform"
+# proxmox_api_token    = "…"            # prefer TF_VAR_proxmox_api_token
+node_name = "pve-colloc"
+ssh_host  = "127.0.0.1"
+ssh_port  = 2222
+
+###############################################################################
+# Host resources: same values as ~/terraform-test, so they can be imported (imports.tf.example)
+###############################################################################
+# manage_host_resources = true
+# pool_id               = "gmod-integration"
+# datastore_id          = "dir-gmi"
+# bridge                = "vmbr1"
+# bridge_address        = "10.10.10.1/24"
+delegated_user_id = "gmod-integration@pam"
+
+# The template is already on the storage: use it instead of downloading it again.
+template_file_id = "dir-gmi:vztmpl/ubuntu-24.04-standard_24.04-2_amd64.tar.zst"
+
+###############################################################################
+# Container
+###############################################################################
+# vm_id               = 110
+# ipv4_address        = "10.10.10.20/24"
+# cores               = 4
+# memory_mb           = 8192
+# docker_disk_size_gb = 64
+# protection          = true            # false while experimenting, so destroy works
+
+# Nightly vzdump; the storage needs the `backup` content type.
+# backup_storage = "local"
+
+###############################################################################
+# Application
+###############################################################################
+api_host = "api.example.com"
+ws_host  = "ws.example.com"
+
+# Either point at an existing .env (e.g. production's)…
+# env_file = "/home/me/secrets/gmod-integration.env"
+
+# …and/or set the variables here (they win over env_file). See .env.example for what each one is.
+app_env = {
+  WEBSITE_URL = "https://example.com"
+  # DOMAIN_URL defaults to https://<api_host>
+
+  DISCORD_GUILD_ID                        = ""
+  SCREENSHOTS_CHANNEL_ID                  = ""
+  DISCORD_CLIENT_ID                       = ""
+  DISCORD_CLIENT_SECRET                   = ""
+  OAUTH_PANEL_URL                         = ""
+  OAUTH_REDIRECT_URL                      = ""
+  DISCORD_BOT_TOKEN                       = ""
+  DISCORD_BOT_INVITE_URL                  = ""
+  DISCORD_GUILD_PREMIUM_ROLE_ID           = ""
+  DISCORD_GUILD_GMODSTORE_PREMIUM_ROLE_ID = ""
+  DISCORD_GUILD_DISCORD_PREMIUM_ROLE_ID   = ""
+  DISCORD_SUBSCRIPTION_SKU_ID             = ""
+
+  SIGNING_SECRET_WEBHOOK   = ""
+  GMODSTORE_API_KEY        = ""
+  GMODSTORE_SECRET_WEBHOOK = ""
+
+  BARER_DISCORD_RELAY = ""
+  STEAM_API_KEY       = ""
+
+  # Optional
+  # SENTRY_DSN = ""
+}
+
+# cloudflare_tunnel_token = "…"         # prefer TF_VAR_cloudflare_tunnel_token
+
+# image_tag = "sha-<commit>"            # pin instead of latest
+# replicas  = { api = 2, websocket = 2, discord = 1 }
+# auto_update = true
