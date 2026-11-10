@@ -80,6 +80,7 @@ apps/
   api        -> HTTP API (Express). Entry point for the GMod addon, the website, and webhooks.
   discord    -> Discord bot(s) (main + per-guild custom) + BullMQ workers that execute Discord actions.
   websocket  -> WebSocket gateway: live connections to GMod servers and dashboard clients.
+  webhook-relay -> standalone service posting to Discord webhooks for core (own image/env, no @gmod/*).
   website    -> Frontend (React/Vite): public site + dashboard.
   docs       -> Docusaurus site that publishes the PUBLIC product documentation (not this ./docs folder).
 

@@ -32,6 +32,7 @@ turbo dev
 | --------------------------------- | ----- |
 | API (internal service port)       | 53136 |
 | WebSocket (internal service port) | 53139 |
+| Webhook relay (standalone)        | 3000  |
 | MariaDB                           | 3306  |
 | Redis                             | 6379  |
 | MongoDB                           | 27017 |
