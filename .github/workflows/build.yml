@@ -45,6 +45,8 @@ jobs:
             dockerfile: apps/discord/Dockerfile
           - service: websocket
             dockerfile: apps/websocket/Dockerfile
+          - service: webhook-relay
+            dockerfile: apps/webhook-relay/Dockerfile
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -68,13 +70,21 @@ jobs:
               - 'apps/discord/**'
             websocket:
               - 'apps/websocket/**'
+            webhook_relay:
+              - 'apps/webhook-relay/**'
+              - 'bun.lock'
 
       - name: Decide whether to build this image
         id: should_build
         shell: bash
         run: |
           SHOULD_BUILD="false"
-          if [[ "${{ steps.changes.outputs.shared }}" == "true" ]]; then
+          if [[ "${{ matrix.service }}" == "webhook-relay" ]]; then
+            # Standalone app (no @gmod/* dependency): packages/** changes can't affect its image.
+            if [[ "${{ steps.changes.outputs.webhook_relay }}" == "true" ]]; then
+              SHOULD_BUILD="true"
+            fi
+          elif [[ "${{ steps.changes.outputs.shared }}" == "true" ]]; then
             SHOULD_BUILD="true"
           elif [[ "${{ matrix.service }}" == "api" && "${{ steps.changes.outputs.api }}" == "true" ]]; then
             SHOULD_BUILD="true"
