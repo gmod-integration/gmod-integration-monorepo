@@ -17,6 +17,8 @@
     "dev": "tsx watch apps/api/src/gm_integration_api.ts --env DEV=true",
     "websocket:dev": "bun run --cwd apps/websocket dev",
     "websocket:start": "bun run --cwd apps/websocket start",
+    "webhook-relay:dev": "bun run --cwd apps/webhook-relay dev",
+    "webhook-relay:start": "bun run --cwd apps/webhook-relay start",
     "website:dev": "bun run --cwd apps/website dev",
     "website:start": "bun run --cwd apps/website start",
     "docs:dev": "bun run --cwd apps/docs start",

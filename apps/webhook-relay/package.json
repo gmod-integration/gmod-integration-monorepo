@@ -1,0 +1,19 @@
+{
+  "name": "@gmod/app-webhook-relay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun src/index.ts",
+    "build": "bun build src/index.ts --target=bun --outfile=dist/relay.js",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@hono/prometheus": "^1.0.2",
+    "discord.js": "^14.27.0",
+    "hono": "^4.12.11",
+    "prom-client": "^15.1.3",
+    "zod": "^3.25.76"
+  }
+}

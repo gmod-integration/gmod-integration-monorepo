@@ -43,5 +43,24 @@ export default [
       'no-async-promise-executor': 'warn',
     },
   },
+  {
+    // apps/webhook-relay ships as its own image with its own three env vars (see
+    // docs/apps/webhook-relay.md). One @gmod/* import would drag in @gmod/config's whole-stack env
+    // validation and break that.
+    files: ['apps/webhook-relay/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@gmod/*'],
+              message: 'apps/webhook-relay must stay standalone: no workspace packages.',
+            },
+          ],
+        },
+      ],
+    },
+  },
   prettier,
 ]
