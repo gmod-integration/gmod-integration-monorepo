@@ -14,6 +14,9 @@ Ce document définit les règles opérationnelles pour les agents IA qui modifie
 - `apps/api`: API Express (controllers, routes, middleware HTTP).
 - `apps/discord`: bot Discord (principal + bots custom par guilde) + workers BullMQ.
 - `apps/websocket`: passerelle WebSocket + workers BullMQ côté WS.
+- `apps/webhook-relay`: service HTTP **autonome** qui poste sur les webhooks Discord pour `core`. Exception
+  voulue aux règles ci-dessous: aucun import `@gmod/*` (bloqué par ESLint), env propre (pas `@gmod/config`),
+  image propre. Voir [`docs/apps/webhook-relay.md`](./docs/apps/webhook-relay.md).
 - `apps/website`: frontend (site public + dashboard).
 - `apps/docs`: site Docusaurus qui publie la doc **produit** publique (pas ce dossier `docs/`).
 - `packages/config`: chargement `.env` global + validation Zod.

@@ -62,6 +62,8 @@ export default defineConfig({
         'apps/api/src/**': { statements: 99, branches: 99, functions: 100, lines: 99 },
         // Phase 7 (apps/websocket): literal 100%, no exceptions.
         'apps/websocket/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
+        // apps/webhook-relay (migrated from gmod-integration/webhook_relay): literal 100%.
+        'apps/webhook-relay/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
         // Phase 6 (apps/discord). Documented exceptions, all defensive/structural, not gaps in
         // real behavior coverage:
         // - main.ts:47 and discord/index.ts's entrypoint-adjacent guards: same

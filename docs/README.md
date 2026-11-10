@@ -33,6 +33,7 @@ responsibilities, gotchas, what depends on it and what it depends on).
 | `api` | Express HTTP API. Entry point for the GMod addon, the website/dashboard, and outside webhooks (GmodStore). | [docs/apps/api.md](./apps/api.md) |
 | `discord` | The Discord bot(s) (one main bot + per-guild custom bots) and the BullMQ workers that execute Discord actions requested by other apps. | [docs/apps/discord.md](./apps/discord.md) |
 | `websocket` | Real-time WebSocket gateway. Keeps a live connection to each GMod server and to connected dashboard clients. | [docs/apps/websocket.md](./apps/websocket.md) |
+| `webhook-relay` | Standalone HTTP service that posts chat sync, screenshot and log messages to Discord webhooks for the API. Own image, own env, no `@gmod/*` imports. | [docs/apps/webhook-relay.md](./apps/webhook-relay.md) |
 | `website` | React/Vite frontend: public site + user/guild dashboard, talks to `api` and `websocket`. | [docs/apps/website.md](./apps/website.md) |
 | `docs` | The Docusaurus site that publishes the **product** documentation (this `./docs` folder is not part of it). | [docs/apps/docs.md](./apps/docs.md) |
 
