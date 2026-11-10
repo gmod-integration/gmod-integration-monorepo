@@ -1,0 +1,8 @@
+.terraform/
+# Local state holds every generated credential and the rendered .env values.
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+imports.tf
+crash.log
