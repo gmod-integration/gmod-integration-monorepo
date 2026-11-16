@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./index.js": "./src/index.ts",
     "./schemas.js": "./src/schemas.ts",
-    "./discordQueueAdapters.js": "./src/discordQueueAdapters.ts"
+    "./discordQueueAdapters.js": "./src/discordQueueAdapters.ts",
+    "./priorities.js": "./src/priorities.ts"
   },
   "dependencies": {
     "@gmod/schema": "workspace:*",

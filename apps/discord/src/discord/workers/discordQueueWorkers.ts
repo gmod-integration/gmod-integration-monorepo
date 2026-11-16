@@ -1101,30 +1101,8 @@ export const discordGuildOpsWorker = new Worker<
     }
 
     if (job.name === 'serverStatusRefresh') {
-      const payload = DiscordServerStatusRefreshJobSchema.parse(job.data)
-      try {
-        const server = await getServerFromID(payload.serverID)
-        if (!server) {
-          await writeReply(payload.correlationId, {
-            correlationId: payload.correlationId,
-            refreshed: false,
-            error: 'Server not found',
-          })
-          return
-        }
-
-        await server.editStatusChannelAndMessage(await server.getStatusData())
-        await writeReply(payload.correlationId, {
-          correlationId: payload.correlationId,
-          refreshed: true,
-        })
-      } catch (error) {
-        await writeReply(payload.correlationId, {
-          correlationId: payload.correlationId,
-          refreshed: false,
-          error: (error as Error).message,
-        })
-      }
+      // Legacy route: jobs enqueued by an API that predates discord-statusRefresh.
+      await processServerStatusRefresh(job)
       return
     }
 
@@ -1404,6 +1382,44 @@ export const discordGuildOpsWorker = new Worker<
   { connection, concurrency: 2 },
 )
 
+async function processServerStatusRefresh(job: Job) {
+  const payload = DiscordServerStatusRefreshJobSchema.parse(job.data)
+  try {
+    const server = await getServerFromID(payload.serverID)
+    if (!server) {
+      await writeReply(payload.correlationId, {
+        correlationId: payload.correlationId,
+        refreshed: false,
+        error: 'Server not found',
+      })
+      return
+    }
+
+    await server.editStatusChannelAndMessage(await server.getStatusData())
+    await writeReply(payload.correlationId, {
+      correlationId: payload.correlationId,
+      refreshed: true,
+    })
+  } catch (error) {
+    await writeReply(payload.correlationId, {
+      correlationId: payload.correlationId,
+      refreshed: false,
+      error: (error as Error).message,
+    })
+  }
+}
+
+/**
+ * Worker: refresh Discord status messages. Kept apart from guildOps because each
+ * refresh can take a long time (Discord rate limits) and must never block the
+ * interactive jobs the API is waiting on.
+ */
+export const discordStatusRefreshWorker = new Worker<DiscordServerStatusRefreshJob>(
+  'discord-statusRefresh',
+  processServerStatusRefresh,
+  { connection, concurrency: 2 },
+)
+
 /**
  * Initialize all Discord queue workers
  */
@@ -1448,6 +1464,10 @@ export async function initializeDiscordQueueWorkers() {
 
   discordGuildOpsWorker.on('failed', (job, err) => {
     gmLog('bullmq-worker', `[guildOps] Job failed: ${job?.id} - ${err.message}`)
+  })
+
+  discordStatusRefreshWorker.on('failed', (job, err) => {
+    gmLog('bullmq-worker', `[statusRefresh] Job failed: ${job?.id} - ${err.message}`)
   })
 
   gmLog('bullmq', 'Discord queue workers initialized')

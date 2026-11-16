@@ -17,9 +17,11 @@ vi.mock('bullmq', () => {
 
 const redisGetMock = vi.fn()
 const redisDelMock = vi.fn().mockResolvedValue(1)
-vi.mock('@gmod/infra-redis', () => ({ default: { get: redisGetMock, del: redisDelMock } }))
+const redisSetMock = vi.fn().mockResolvedValue('OK')
+vi.mock('@gmod/infra-redis', () => ({ default: { get: redisGetMock, del: redisDelMock, set: redisSetMock } }))
 
 const adapters = await import('../src/discordQueueAdapters.js')
+const { JobPriority } = await import('../src/priorities.js')
 
 function mockReply(payload: Record<string, unknown>) {
   redisGetMock.mockResolvedValueOnce(JSON.stringify(payload))
@@ -29,6 +31,7 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
   beforeEach(() => {
     redisGetMock.mockReset()
     redisDelMock.mockClear()
+    redisSetMock.mockReset().mockResolvedValue('OK')
     for (const queue of queueInstances.values()) {
       queue.add.mockClear()
     }
@@ -50,7 +53,7 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
       expect(queueInstances.get('discord-updatePseudo')!.add).toHaveBeenCalledWith(
         'updatePseudo',
         expect.objectContaining({ serverID: 's1' }),
-        expect.objectContaining({ priority: 5 }),
+        expect.objectContaining({ priority: JobPriority.NORMAL }),
       )
     })
 
@@ -79,7 +82,7 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
       expect(queueInstances.get('discord-updateGroup')!.add).toHaveBeenCalledWith(
         'updateGroup',
         expect.objectContaining({ userGroup: 'admin' }),
-        expect.objectContaining({ priority: 8 }),
+        expect.objectContaining({ priority: JobPriority.NORMAL }),
       )
     })
 
@@ -101,7 +104,7 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
       expect(queueInstances.get('discord-updateTeamRole')!.add).toHaveBeenCalledWith(
         'updateTeamRole',
         expect.objectContaining({ teamName: 'Police' }),
-        expect.objectContaining({ priority: 8 }),
+        expect.objectContaining({ priority: JobPriority.NORMAL }),
       )
     })
 
@@ -423,16 +426,53 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
     expect(result).toEqual({ updated: true, error: undefined })
   })
 
-  it('enqueueDiscordServerStatusRefreshAsync enqueues and returns the correlationId without waiting for a reply', async () => {
-    const correlationId = await adapters.enqueueDiscordServerStatusRefreshAsync('s1')
+  describe('server status refresh', () => {
+    it('enqueueDiscordServerStatusRefresh uses the dedicated queue at interactive priority', async () => {
+      mockReply({ correlationId: 'x', refreshed: true })
+      await adapters.enqueueDiscordServerStatusRefresh('s1')
 
-    expect(typeof correlationId).toBe('string')
+      expect(queueInstances.get('discord-statusRefresh')!.add).toHaveBeenCalledWith(
+        'serverStatusRefresh',
+        expect.objectContaining({ serverID: 's1' }),
+        expect.objectContaining({ priority: JobPriority.INTERACTIVE }),
+      )
+      expect(queueInstances.get('discord-guildOps')!.add).not.toHaveBeenCalled()
+    })
+
+    it('enqueueDiscordServerStatusRefreshAsync enqueues a deduplicated background job without waiting for a reply', async () => {
+      const correlationId = await adapters.enqueueDiscordServerStatusRefreshAsync('s1')
+
+      expect(typeof correlationId).toBe('string')
+      expect(redisSetMock).toHaveBeenCalledWith('bullmq:statusRefresh:throttle:s1', '1', 'PX', 60_000, 'NX')
+      expect(queueInstances.get('discord-statusRefresh')!.add).toHaveBeenCalledWith(
+        'serverStatusRefresh',
+        expect.objectContaining({ serverID: 's1', correlationId }),
+        expect.objectContaining({
+          priority: JobPriority.BACKGROUND,
+          deduplication: { id: 'server-s1' },
+        }),
+      )
+      expect(queueInstances.get('discord-guildOps')!.add).not.toHaveBeenCalled()
+      expect(redisGetMock).not.toHaveBeenCalled()
+    })
+
+    it('enqueueDiscordServerStatusRefreshAsync skips the enqueue while the server is throttled', async () => {
+      redisSetMock.mockResolvedValueOnce(null)
+
+      await expect(adapters.enqueueDiscordServerStatusRefreshAsync('s1')).resolves.toBeNull()
+      expect(queueInstances.get('discord-statusRefresh')!.add).not.toHaveBeenCalled()
+    })
+  })
+
+  it('awaited guildOps jobs are enqueued at interactive priority', async () => {
+    mockReply({ correlationId: 'x', verified: true })
+    await adapters.enqueueDiscordGuildVerifyUser('g1', 'u1')
+
     expect(queueInstances.get('discord-guildOps')!.add).toHaveBeenCalledWith(
-      'serverStatusRefresh',
-      expect.objectContaining({ serverID: 's1', correlationId }),
+      'guildVerifyUser',
       expect.anything(),
+      expect.objectContaining({ priority: JobPriority.INTERACTIVE }),
     )
-    expect(redisGetMock).not.toHaveBeenCalled()
   })
 
   describe('waitForReply polling behavior', () => {

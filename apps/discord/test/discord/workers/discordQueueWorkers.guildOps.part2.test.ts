@@ -65,7 +65,8 @@ const s3SendMock = vi.fn()
 vi.mock('@gmod/infra-minio', () => ({ ensureAvatarStored: ensureAvatarStoredMock, s3: { send: s3SendMock } }))
 vi.mock('@aws-sdk/client-s3', () => ({ GetObjectCommand: vi.fn().mockImplementation((input) => ({ input })) }))
 
-const { discordGuildOpsWorker } = await import('../../../src/discord/workers/discordQueueWorkers.js')
+const { discordGuildOpsWorker, discordStatusRefreshWorker } =
+  await import('../../../src/discord/workers/discordQueueWorkers.js')
 
 function processor() {
   return (discordGuildOpsWorker as unknown as FakeWorker).processor
@@ -268,6 +269,26 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 2: server CRUD job p
       getServerFromIDMock.mockRejectedValueOnce(new Error('db down'))
       await processor()(makeJob('serverStatusRefresh', { serverID: 's1', correlationId: 'c1' }))
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', refreshed: false, error: 'db down' })
+    })
+  })
+
+  describe('discordStatusRefreshWorker (dedicated queue)', () => {
+    const statusWorker = () => discordStatusRefreshWorker as unknown as FakeWorker
+
+    it('consumes the discord-statusRefresh queue, not guildOps', () => {
+      expect(statusWorker().name).toBe('discord-statusRefresh')
+    })
+
+    it('refreshes the status message and replies refreshed=true', async () => {
+      const statusData = { players: 3 }
+      const server = {
+        getStatusData: vi.fn().mockResolvedValue(statusData),
+        editStatusChannelAndMessage: vi.fn().mockResolvedValue(undefined),
+      }
+      getServerFromIDMock.mockResolvedValueOnce(server)
+      await statusWorker().processor(makeJob('serverStatusRefresh', { serverID: 's1', correlationId: 'c2' }))
+      expect(server.editStatusChannelAndMessage).toHaveBeenCalledWith(statusData)
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c2', refreshed: true })
     })
   })
 
