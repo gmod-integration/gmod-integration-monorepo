@@ -68,6 +68,39 @@ describe('main (apps/discord)', () => {
   })
 
   describe('main()', () => {
+    it('starts the queue workers before loadDiscordMain (its routines wait on queue replies)', async () => {
+      const listenersBefore = {
+        SIGINT: process.listenerCount('SIGINT'),
+        SIGTERM: process.listenerCount('SIGTERM'),
+        unhandledRejection: process.listenerCount('unhandledRejection'),
+      }
+
+      // Reproduces the boot deadlock: loadDiscordMain only completes once the workers run,
+      // like the presence routine waiting for its mainClientOps reply.
+      let workersRunning!: () => void
+      const workersStarted = new Promise<void>((resolve) => (workersRunning = resolve))
+      initializeDiscordQueueWorkersMock.mockReturnValueOnce(workersStarted)
+      loadDiscordMainMock.mockImplementationOnce(async () => {
+        setTimeout(workersRunning, 0)
+        await workersStarted
+      })
+
+      try {
+        await main()
+        expect(initializeDiscordQueueWorkersMock.mock.invocationCallOrder[0]).toBeLessThan(
+          loadDiscordMainMock.mock.invocationCallOrder[0],
+        )
+        expect(loadDiscordSlaveMock).toHaveBeenCalled()
+      } finally {
+        for (const [event, before] of Object.entries(listenersBefore)) {
+          const listeners = process.listeners(event as any)
+          for (let i = before; i < listeners.length; i++) {
+            process.removeListener(event as any, listeners[i] as any)
+          }
+        }
+      }
+    })
+
     it('wires the discord bridge resolvers, connects prisma, and boots discord + workers', async () => {
       const listenersBefore = {
         SIGINT: process.listenerCount('SIGINT'),

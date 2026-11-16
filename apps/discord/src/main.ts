@@ -30,9 +30,13 @@ export async function main() {
   setDiscordStatusMessageBuilder(getStatusMessage)
 
   await connectPrisma()
+  // Start the queue workers before loadDiscordMain: they wait for the main client on their
+  // own, and loadDiscordMain's startup routines (e.g. the presence update) round-trip through
+  // these queues - awaiting the workers after it would deadlock the boot.
+  const workersStarted = initializeDiscordQueueWorkers()
   await loadDiscordMain()
+  await workersStarted
   await loadDiscordSlave()
-  await initializeDiscordQueueWorkers()
 
   process.on('unhandledRejection', (error: Error) => {
     gmLog('unhandledRejection', error.message, true)

@@ -1478,7 +1478,7 @@ export async function initializeDiscordQueueWorkers() {
       break
     } catch (error) {
       gmLog('bullmq', `Main Discord client not ready, workers not started yet: ${(error as Error).message}`)
-      await new Promise((resolve) => setTimeout(resolve, 5000))
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     }
   }
 

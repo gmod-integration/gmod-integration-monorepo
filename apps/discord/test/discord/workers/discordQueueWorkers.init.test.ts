@@ -112,7 +112,7 @@ describe('initializeDiscordQueueWorkers', () => {
       )
       for (const worker of allWorkers()) expect(worker.run).not.toHaveBeenCalled()
 
-      await vi.advanceTimersByTimeAsync(5000)
+      await vi.advanceTimersByTimeAsync(1000)
       await init
       for (const worker of allWorkers()) expect(worker.run).toHaveBeenCalledTimes(1)
     } finally {
