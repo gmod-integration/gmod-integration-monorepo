@@ -82,6 +82,23 @@ describe('initializeDiscordQueueWorkers', () => {
     for (const worker of allWorkers()) expect(worker.run).toHaveBeenCalledTimes(1)
   })
 
+  it('logs failed status refresh jobs', async () => {
+    await initializeDiscordQueueWorkers()
+    gmLogMock.mockClear()
+    ;(discordStatusRefreshWorker as unknown as EventEmitter).emit('failed', { id: 'job-3' }, new Error('discord down'))
+    expect(gmLogMock).toHaveBeenCalledWith('bullmq-worker', '[statusRefresh] Job failed: job-3 - discord down')
+  })
+
+  it('logs when a worker loop stops with an error', async () => {
+    const worker = discordGuildOpsWorker as unknown as FakeWorker
+    worker.run.mockRejectedValueOnce(new Error('redis gone'))
+
+    await initializeDiscordQueueWorkers()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(gmLogMock).toHaveBeenCalledWith('bullmq-worker', '[discord-guildOps] Worker stopped: redis gone', true)
+  })
+
   it('keeps waiting (without starting workers) while the main client is not ready', async () => {
     vi.useFakeTimers()
     try {
