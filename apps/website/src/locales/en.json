@@ -32,7 +32,11 @@
     "badge_Updated": "Updated"
   },
   "header": {
-    "login": "Login with Discord"
+    "login": "Login with Discord",
+    "theme": "Theme",
+    "theme_auto": "Automatic",
+    "theme_light": "Light",
+    "theme_dark": "Dark"
   },
   "footer": {
     "disclaimer": "This service is not affiliated with Discord, Steam, or any other platform or games.",

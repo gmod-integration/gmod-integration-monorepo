@@ -32,7 +32,11 @@
     "badge_Updated": "Aktualisiert"
   },
   "header": {
-    "login": "Anmeldung mit Discord"
+    "login": "Anmeldung mit Discord",
+    "theme": "Design",
+    "theme_auto": "Automatisch",
+    "theme_light": "Hell",
+    "theme_dark": "Dunkel"
   },
   "footer": {
     "disclaimer": "Dieser Service ist nicht mit Discord, Steam oder einer anderen Plattform oder Spiele verbunden.",

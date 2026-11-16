@@ -32,7 +32,11 @@
     "badge_Updated": "Bijgewerkt"
   },
   "header": {
-    "login": "Aanmelden met Discord"
+    "login": "Aanmelden met Discord",
+    "theme": "Thema",
+    "theme_auto": "Automatisch",
+    "theme_light": "Licht",
+    "theme_dark": "Donker"
   },
   "footer": {
     "disclaimer": "Deze service is niet aangesloten bij Discord, Steam, of enig ander platform of spel.",
