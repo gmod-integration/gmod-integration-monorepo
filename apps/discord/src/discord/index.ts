@@ -324,20 +324,39 @@ export async function loadDiscordSlave() {
   await routineServerStatusRefresh()
 }
 
+const MAIN_CLIENT_READY_TIMEOUT_MS = 30_000
+const GUILD_CLIENT_READY_TIMEOUT_MS = 10_000
+
+/**
+ * Resolves true once the client is ready, false if it is still not ready after timeoutMs.
+ * Never waits forever: a bot that cannot (re)connect must not hold a caller - typically a
+ * queue worker slot - indefinitely.
+ */
+export async function waitForClientReady(client: Client, timeoutMs: number): Promise<boolean> {
+  if (client.readyAt) return true
+
+  return await new Promise<boolean>((resolve) => {
+    const onReady = () => {
+      clearTimeout(timer)
+      resolve(true)
+    }
+    const timer = setTimeout(() => {
+      client.off('clientReady', onReady)
+      resolve(Boolean(client.readyAt))
+    }, timeoutMs)
+    client.once('clientReady', onReady)
+  })
+}
+
 export async function getMainClient() {
   const mainClient = clientList.get('main')
-  if (mainClient && mainClient.readyAt) {
-    return mainClient
-  } else if (mainClient) {
-    await new Promise<void>((resolve) => {
-      mainClient.on('clientReady', () => {
-        resolve()
-      })
-    })
-    return mainClient
-  } else {
+  if (!mainClient) {
     throw new Error('Main client is not defined')
   }
+  if (!(await waitForClientReady(mainClient, MAIN_CLIENT_READY_TIMEOUT_MS))) {
+    throw new Error(`Main client not ready after ${MAIN_CLIENT_READY_TIMEOUT_MS}ms`)
+  }
+  return mainClient
 }
 
 export async function killGuildClient(guildID: string) {
@@ -356,24 +375,19 @@ export async function getGuildClient(guildID: string, forcePresenceOnGuild = tru
   const guildClient = clientList.get(guildID)
   if (!guildClient) return getMainClient()
 
-  if (guildClient.readyAt) {
-    if (forcePresenceOnGuild) {
-      const guild = guildClient.guilds.cache.get(guildID)
-      if (!guild) return getMainClient()
-    }
-    return guildClient
-  } else {
-    await new Promise<void>((resolve) => {
-      guildClient.on('clientReady', () => {
-        resolve()
-      })
-    })
-    if (forcePresenceOnGuild) {
-      const guild = guildClient.guilds.cache.get(guildID)
-      if (!guild) return getMainClient()
-    }
-    return guildClient
+  if (!(await waitForClientReady(guildClient, GUILD_CLIENT_READY_TIMEOUT_MS))) {
+    gmLog(
+      'discord',
+      `Custom bot for guild ${guildID} not ready after ${GUILD_CLIENT_READY_TIMEOUT_MS}ms, using main bot`,
+    )
+    return getMainClient()
   }
+
+  if (forcePresenceOnGuild) {
+    const guild = guildClient.guilds.cache.get(guildID)
+    if (!guild) return getMainClient()
+  }
+  return guildClient
 }
 
 export async function updateGuildUserPseudo(server: Server, player: PlayerGmod, forceName?: string) {
@@ -434,7 +448,9 @@ export async function loadGuildBotInstance(guildID: string) {
       revoke: false,
     },
   })
-  if (!instanceInfo) return
+  // A purchase can be active with no token (bot not configured yet, or token removed):
+  // the guild then simply uses the main bot.
+  if (!instanceInfo?.token) return
   await addNewClient(guildID, instanceInfo.token)
 }
 

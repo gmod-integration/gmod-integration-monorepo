@@ -192,7 +192,7 @@ export const discordUpdatePseudoWorker = new Worker<UpdateGuildUserPseudoJob>(
       throw error
     }
   },
-  { connection, concurrency: 2 },
+  { connection, concurrency: 2, autorun: false },
 )
 
 /**
@@ -284,7 +284,7 @@ export const discordUpdateGroupWorker = new Worker<UpdatePlayerUserGroupJob>(
       throw error
     }
   },
-  { connection, concurrency: 2 },
+  { connection, concurrency: 2, autorun: false },
 )
 
 /**
@@ -386,7 +386,7 @@ export const discordUpdateTeamRoleWorker = new Worker<UpdateDiscordTeamRoleJob>(
       throw error
     }
   },
-  { connection, concurrency: 2 },
+  { connection, concurrency: 2, autorun: false },
 )
 
 export const discordMainClientOpsWorker = new Worker<
@@ -604,7 +604,7 @@ export const discordMainClientOpsWorker = new Worker<
       await writeReply(payload.correlationId, { correlationId: payload.correlationId, updated })
     }
   },
-  { connection, concurrency: 2 },
+  { connection, concurrency: 2, autorun: false },
 )
 
 export const discordGuildOpsWorker = new Worker<
@@ -1101,30 +1101,8 @@ export const discordGuildOpsWorker = new Worker<
     }
 
     if (job.name === 'serverStatusRefresh') {
-      const payload = DiscordServerStatusRefreshJobSchema.parse(job.data)
-      try {
-        const server = await getServerFromID(payload.serverID)
-        if (!server) {
-          await writeReply(payload.correlationId, {
-            correlationId: payload.correlationId,
-            refreshed: false,
-            error: 'Server not found',
-          })
-          return
-        }
-
-        await server.editStatusChannelAndMessage(await server.getStatusData())
-        await writeReply(payload.correlationId, {
-          correlationId: payload.correlationId,
-          refreshed: true,
-        })
-      } catch (error) {
-        await writeReply(payload.correlationId, {
-          correlationId: payload.correlationId,
-          refreshed: false,
-          error: (error as Error).message,
-        })
-      }
+      // Legacy route: jobs enqueued by an API that predates discord-statusRefresh.
+      await processServerStatusRefresh(job)
       return
     }
 
@@ -1401,7 +1379,45 @@ export const discordGuildOpsWorker = new Worker<
       return
     }
   },
-  { connection, concurrency: 2 },
+  { connection, concurrency: 2, autorun: false },
+)
+
+async function processServerStatusRefresh(job: Job) {
+  const payload = DiscordServerStatusRefreshJobSchema.parse(job.data)
+  try {
+    const server = await getServerFromID(payload.serverID)
+    if (!server) {
+      await writeReply(payload.correlationId, {
+        correlationId: payload.correlationId,
+        refreshed: false,
+        error: 'Server not found',
+      })
+      return
+    }
+
+    await server.editStatusChannelAndMessage(await server.getStatusData())
+    await writeReply(payload.correlationId, {
+      correlationId: payload.correlationId,
+      refreshed: true,
+    })
+  } catch (error) {
+    await writeReply(payload.correlationId, {
+      correlationId: payload.correlationId,
+      refreshed: false,
+      error: (error as Error).message,
+    })
+  }
+}
+
+/**
+ * Worker: refresh Discord status messages. Kept apart from guildOps because each
+ * refresh can take a long time (Discord rate limits) and must never block the
+ * interactive jobs the API is waiting on.
+ */
+export const discordStatusRefreshWorker = new Worker<DiscordServerStatusRefreshJob>(
+  'discord-statusRefresh',
+  processServerStatusRefresh,
+  { connection, concurrency: 2, autorun: false },
 )
 
 /**
@@ -1449,6 +1465,36 @@ export async function initializeDiscordQueueWorkers() {
   discordGuildOpsWorker.on('failed', (job, err) => {
     gmLog('bullmq-worker', `[guildOps] Job failed: ${job?.id} - ${err.message}`)
   })
+
+  discordStatusRefreshWorker.on('failed', (job, err) => {
+    gmLog('bullmq-worker', `[statusRefresh] Job failed: ${job?.id} - ${err.message}`)
+  })
+
+  // Workers are created with autorun: false. Only start consuming once the main bot is
+  // connected, otherwise jobs picked up during a restart fail with "Main client is not defined".
+  for (;;) {
+    try {
+      await getMainClient()
+      break
+    } catch (error) {
+      gmLog('bullmq', `Main Discord client not ready, workers not started yet: ${(error as Error).message}`)
+      await new Promise((resolve) => setTimeout(resolve, 5000))
+    }
+  }
+
+  for (const worker of [
+    discordUpdatePseudoWorker,
+    discordUpdateGroupWorker,
+    discordUpdateTeamRoleWorker,
+    discordMainClientOpsWorker,
+    discordGuildOpsWorker,
+    discordStatusRefreshWorker,
+  ]) {
+    // run() resolves only when the worker closes: start it without awaiting.
+    worker.run().catch((error: Error) => {
+      gmLog('bullmq-worker', `[${worker.name}] Worker stopped: ${error.message}`, true)
+    })
+  }
 
   gmLog('bullmq', 'Discord queue workers initialized')
 }

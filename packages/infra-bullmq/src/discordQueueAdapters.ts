@@ -75,6 +75,7 @@ import {
 } from './schemas.js'
 import { v4 as uuidv4 } from 'uuid'
 import redis from '@gmod/infra-redis'
+import { JobPriority } from './priorities.js'
 
 // Queues
 const discordUpdatePseudoQueue = new Queue('discord-updatePseudo', { connection })
@@ -82,6 +83,13 @@ const discordUpdateGroupQueue = new Queue('discord-updateGroup', { connection })
 const discordUpdateTeamRoleQueue = new Queue('discord-updateTeamRole', { connection })
 const discordMainClientOpsQueue = new Queue('discord-mainClientOps', { connection })
 const discordGuildOpsQueue = new Queue('discord-guildOps', { connection })
+// Status refreshes are slow (several Discord calls each) and high-volume (every server
+// status post). They get their own queue so they can never occupy the guildOps worker
+// slots that the API is waiting on.
+const discordStatusRefreshQueue = new Queue('discord-statusRefresh', { connection })
+
+/** Minimum delay between two automatic status refreshes of the same server. */
+const STATUS_REFRESH_THROTTLE_MS = 60_000
 
 const GUILD_SNAPSHOT_CACHE_TTL_MS = 10_000
 const GUILD_SNAPSHOT_NULL_CACHE_TTL_MS = 3_000
@@ -180,7 +188,7 @@ export async function enqueueUpdateGuildUserPseudo(
     })
 
     await discordUpdatePseudoQueue.add('updatePseudo', payload, {
-      priority: 5, // Normal priority
+      priority: JobPriority.NORMAL,
       attempts: 2,
       backoff: { type: 'exponential', delay: 2000 },
       removeOnComplete: true,
@@ -205,7 +213,7 @@ export async function enqueueUpdatePlayerUserGroup(
     })
 
     await discordUpdateGroupQueue.add('updateGroup', payload, {
-      priority: 8, // Slightly higher priority than pseudo
+      priority: JobPriority.NORMAL,
       attempts: 3,
       backoff: { type: 'exponential', delay: 2000 },
       removeOnComplete: true,
@@ -230,7 +238,7 @@ export async function enqueueUpdateDiscordTeamRole(
     })
 
     await discordUpdateTeamRoleQueue.add('updateTeamRole', payload, {
-      priority: 8, // Slightly higher priority than pseudo
+      priority: JobPriority.NORMAL,
       attempts: 2,
       backoff: { type: 'exponential', delay: 2000 },
       removeOnComplete: true,
@@ -250,7 +258,7 @@ export async function enqueueMainClientHasGuild(guildID: string, timeoutMs = 500
   })
 
   await discordMainClientOpsQueue.add('mainClientHasGuild', payload, {
-    priority: 10,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -273,7 +281,7 @@ export async function enqueueMainClientUploadScreenshot(
   })
 
   await discordMainClientOpsQueue.add('mainClientUploadScreenshot', payload, {
-    priority: 6,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -300,7 +308,7 @@ export async function enqueueMainClientFetchUser(
   })
 
   await discordMainClientOpsQueue.add('mainClientFetchUser', payload, {
-    priority: 9,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -318,7 +326,7 @@ export async function enqueueMainClientSyncPremiumRoles(timeoutMs = 10000): Prom
   })
 
   await discordMainClientOpsQueue.add('mainClientSyncPremiumRoles', payload, {
-    priority: 5,
+    priority: JobPriority.BACKGROUND,
     attempts: 1,
     removeOnComplete: true,
   })
@@ -345,7 +353,7 @@ export async function enqueueMainClientSetPresence(
   })
 
   await discordMainClientOpsQueue.add('mainClientSetPresence', payload, {
-    priority: 5,
+    priority: JobPriority.BACKGROUND,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -378,7 +386,7 @@ export async function enqueueDiscordGuildSnapshot(
     })
 
     await discordGuildOpsQueue.add('guildSnapshot', payload, {
-      priority: 9,
+      priority: JobPriority.INTERACTIVE,
       attempts: 2,
       backoff: { type: 'exponential', delay: 1000 },
       removeOnComplete: true,
@@ -412,7 +420,7 @@ export async function enqueueDiscordGuildVerifyUser(
   })
 
   await discordGuildOpsQueue.add('guildVerifyUser', payload, {
-    priority: 7,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -431,7 +439,7 @@ export async function enqueueDiscordGuildRunVerificationCheck(guildID: string, t
   })
 
   await discordGuildOpsQueue.add('guildRunVerificationCheck', payload, {
-    priority: 6,
+    priority: JobPriority.INTERACTIVE,
     attempts: 1,
     removeOnComplete: true,
   })
@@ -458,7 +466,7 @@ export async function enqueueDiscordCreateVerificationMessage(
   })
 
   await discordGuildOpsQueue.add('createVerificationMessage', payload, {
-    priority: 7,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -493,7 +501,7 @@ export async function enqueueDiscordDeleteVerificationMessage(
   })
 
   await discordGuildOpsQueue.add('deleteVerificationMessage', payload, {
-    priority: 7,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -519,7 +527,7 @@ export async function enqueueDiscordGuildBotClientInfo(
   })
 
   await discordGuildOpsQueue.add('guildBotClientInfo', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -542,7 +550,7 @@ export async function enqueueDiscordGuildReloadBotInstance(guildID: string, time
   })
 
   await discordGuildOpsQueue.add('guildReloadBotInstance', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -568,7 +576,7 @@ export async function enqueueDiscordGuildUpdateBotProfile(
   })
 
   await discordGuildOpsQueue.add('guildUpdateBotProfile', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -601,7 +609,7 @@ export async function enqueueDiscordGuildSyncBan(
   })
 
   await discordGuildOpsQueue.add('guildSyncBan', payload, {
-    priority: 7,
+    priority: JobPriority.NORMAL,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -623,7 +631,7 @@ export async function enqueueDiscordGuildAdmins(
   })
 
   await discordGuildOpsQueue.add('guildAdmins', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -645,7 +653,7 @@ export async function enqueueDiscordGuildBans(
   })
 
   await discordGuildOpsQueue.add('guildBans', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -674,7 +682,7 @@ export async function enqueueDiscordGuildSendLogMessage(
   })
 
   await discordGuildOpsQueue.add('guildSendLogMessage', payload, {
-    priority: 6,
+    priority: JobPriority.NORMAL,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -702,7 +710,7 @@ export async function enqueueDiscordServerStatusCreate(
   })
 
   await discordGuildOpsQueue.add('serverStatusCreate', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -732,7 +740,7 @@ export async function enqueueDiscordServerStatusDelete(
   })
 
   await discordGuildOpsQueue.add('serverStatusDelete', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -764,7 +772,7 @@ export async function enqueueDiscordServerLogsChannelCreate(
   })
 
   await discordGuildOpsQueue.add('logsChannelCreate', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -794,7 +802,7 @@ export async function enqueueDiscordServerLogsChannelDelete(
   })
 
   await discordGuildOpsQueue.add('logsChannelDelete', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -826,7 +834,7 @@ export async function enqueueDiscordServerScreenshotChannelCreate(
   })
 
   await discordGuildOpsQueue.add('screenshotChannelCreate', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -856,7 +864,7 @@ export async function enqueueDiscordServerScreenshotChannelDelete(
   })
 
   await discordGuildOpsQueue.add('screenshotChannelDelete', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -888,7 +896,7 @@ export async function enqueueDiscordServerVoteChannelCreate(
   })
 
   await discordGuildOpsQueue.add('voteChannelCreate', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -918,7 +926,7 @@ export async function enqueueDiscordServerVoteChannelDelete(
   })
 
   await discordGuildOpsQueue.add('voteChannelDelete', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -950,7 +958,7 @@ export async function enqueueDiscordServerSyncChatCreate(
   })
 
   await discordGuildOpsQueue.add('syncChatCreate', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -980,7 +988,7 @@ export async function enqueueDiscordServerSyncChatDelete(
   })
 
   await discordGuildOpsQueue.add('syncChatDelete', payload, {
-    priority: 8,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -1014,7 +1022,7 @@ export async function enqueueDiscordGuildRemoveSyncRoles(
   })
 
   await discordGuildOpsQueue.add('guildRemoveSyncRoles', payload, {
-    priority: 6,
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -1032,6 +1040,10 @@ export async function enqueueDiscordGuildRemoveSyncRoles(
   return reply.processed
 }
 
+/**
+ * Explicit refresh requested from the dashboard: the API waits for the result,
+ * so it jumps ahead of the automatic refreshes in the status queue.
+ */
 export async function enqueueDiscordServerStatusRefresh(serverID: string, timeoutMs = 10000): Promise<boolean> {
   const correlationId = uuidv4()
   const payload = DiscordServerStatusRefreshJobSchema.parse({
@@ -1040,8 +1052,8 @@ export async function enqueueDiscordServerStatusRefresh(serverID: string, timeou
     timestamp: new Date(),
   })
 
-  await discordGuildOpsQueue.add('serverStatusRefresh', payload, {
-    priority: 7,
+  await discordStatusRefreshQueue.add('serverStatusRefresh', payload, {
+    priority: JobPriority.INTERACTIVE,
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
@@ -1059,7 +1071,27 @@ export async function enqueueDiscordServerStatusRefresh(serverID: string, timeou
   return reply.refreshed
 }
 
-export async function enqueueDiscordServerStatusRefreshAsync(serverID: string): Promise<string> {
+/**
+ * Automatic refresh after a server status post. Nobody waits on it, and the worker
+ * always renders the server's latest status, so only one pending job per server is
+ * ever useful:
+ *  - throttled to one enqueue per server every STATUS_REFRESH_THROTTLE_MS;
+ *  - deduplicated per server while a job is still pending or running.
+ *
+ * Returns the correlationId, or null when the refresh was skipped.
+ */
+export async function enqueueDiscordServerStatusRefreshAsync(serverID: string): Promise<string | null> {
+  const throttled = await redis.set(
+    `bullmq:statusRefresh:throttle:${serverID}`,
+    '1',
+    'PX',
+    STATUS_REFRESH_THROTTLE_MS,
+    'NX',
+  )
+  if (throttled !== 'OK') {
+    return null
+  }
+
   const correlationId = uuidv4()
   const payload = DiscordServerStatusRefreshJobSchema.parse({
     serverID,
@@ -1067,11 +1099,14 @@ export async function enqueueDiscordServerStatusRefreshAsync(serverID: string): 
     timestamp: new Date(),
   })
 
-  await discordGuildOpsQueue.add('serverStatusRefresh', payload, {
-    priority: 7,
+  await discordStatusRefreshQueue.add('serverStatusRefresh', payload, {
+    priority: JobPriority.BACKGROUND,
+    // No ttl: the key is released as soon as the job completes or fails.
+    deduplication: { id: `server-${serverID}` },
     attempts: 2,
     backoff: { type: 'exponential', delay: 1000 },
     removeOnComplete: true,
+    removeOnFail: 100,
   })
 
   return correlationId
@@ -1083,4 +1118,5 @@ export {
   discordUpdateTeamRoleQueue,
   discordMainClientOpsQueue,
   discordGuildOpsQueue,
+  discordStatusRefreshQueue,
 }

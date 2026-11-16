@@ -419,6 +419,7 @@ model gm_server_status_history {
   gm_server gm_server @relation(fields: [serverID], references: [id], onDelete: Cascade, map: "gm_server_status_history_ibfk_1")
 
   @@index([serverID], map: "gm_server_status_history_ibfk_1")
+  @@index([serverID, createdAt], map: "gm_server_status_history_serverID_createdAt_idx")
 }
 
 model gm_server_sync_chat_filter {
