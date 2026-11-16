@@ -329,6 +329,29 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
     }
   })
 
+  describe('priorities of awaited jobs', () => {
+    // The API blocks on these replies, so they must not queue behind background work.
+    // Only routines (BACKGROUND) and high-volume server-triggered work (NORMAL) may opt out.
+    const NOT_INTERACTIVE: Record<string, number> = {
+      enqueueMainClientSyncPremiumRoles: JobPriority.BACKGROUND,
+      enqueueMainClientSetPresence: JobPriority.BACKGROUND,
+      enqueueDiscordGuildSendLogMessage: JobPriority.NORMAL,
+      enqueueDiscordGuildSyncBan: JobPriority.NORMAL,
+    }
+
+    for (const { name, call, reply } of requestReplyCases) {
+      const expectedPriority = NOT_INTERACTIVE[name] ?? JobPriority.INTERACTIVE
+      it(`${name} is enqueued with priority ${expectedPriority}`, async () => {
+        mockReply(reply)
+        await call()
+
+        const addCalls = [...queueInstances.values()].flatMap((queue) => queue.add.mock.calls)
+        expect(addCalls).toHaveLength(1)
+        expect(addCalls[0][2]).toEqual(expect.objectContaining({ priority: expectedPriority }))
+      })
+    }
+  })
+
   describe('adapters that throw when the reply carries an error', () => {
     // Each of these reply schemas requires its data field to be *present* (nullable, not
     // optional) even on an error reply, so the error-case payload must still include it as

@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  # Manual run rebuilds every image. Path filtering only looks at the last push, so a push
+  # whose build failed (e.g. on tests) is never caught up by the next push: use this then.
+  workflow_dispatch:
 
 jobs:
   sonar:
@@ -79,7 +82,9 @@ jobs:
         shell: bash
         run: |
           SHOULD_BUILD="false"
-          if [[ "${{ matrix.service }}" == "webhook-relay" ]]; then
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            SHOULD_BUILD="true"
+          elif [[ "${{ matrix.service }}" == "webhook-relay" ]]; then
             # Standalone app (no @gmod/* dependency): packages/** changes can't affect its image.
             if [[ "${{ steps.changes.outputs.webhook_relay }}" == "true" ]]; then
               SHOULD_BUILD="true"
