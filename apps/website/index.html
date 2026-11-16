@@ -4,6 +4,19 @@
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1" name="viewport" />
     <meta content="#000000" name="theme-color" />
+    <script>
+      // Apply the saved theme before the first paint. Same logic as src/utils/theme.ts, which then takes over
+      // (and follows changes of the desktop preference in `auto` mode).
+      ;(function () {
+        try {
+          var mode = localStorage.getItem('theme')
+          if (mode !== 'light' && mode !== 'dark') {
+            mode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+          }
+          document.documentElement.setAttribute('data-theme', mode)
+        } catch (e) {}
+      })()
+    </script>
     <meta
       content="Gmod Integration is a powerful Discord Bot that connects your Garry's Mod server to Discord. It syncs player nicknames, chat, verification systems, and server status. Enhance community engagement and streamline management. Join 215,00+ users benefiting from this easy-to-use, customizable service."
       name="description"

@@ -32,7 +32,11 @@
     "badge_Updated": "Mise à jour"
   },
   "header": {
-    "login": "Connexion avec le discorde"
+    "login": "Connexion avec le discorde",
+    "theme": "Motyw",
+    "theme_auto": "Automatyczny",
+    "theme_light": "Jasny",
+    "theme_dark": "Ciemny"
   },
   "footer": {
     "disclaimer": "Ce service n'est pas affilié à Discord, Steam, ou à toute autre plateforme ou jeux.",
