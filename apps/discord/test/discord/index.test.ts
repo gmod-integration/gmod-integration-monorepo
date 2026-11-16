@@ -262,6 +262,43 @@ describe('discord/index', () => {
       await expect(pending).resolves.toBe(client)
     })
 
+    it('getMainClient rejects instead of hanging when the main client never becomes ready', async () => {
+      await bootOneClient('main')
+      const client = await getMainClient()
+      client.readyAt = null
+      const baselineListeners = client.listenerCount('clientReady')
+      vi.useFakeTimers()
+      try {
+        const pending = getMainClient()
+        const assertion = expect(pending).rejects.toThrow('Main client not ready after 30000ms')
+        await vi.advanceTimersByTimeAsync(30_000)
+        await assertion
+        expect(client.listenerCount('clientReady')).toBe(baselineListeners)
+      } finally {
+        vi.useRealTimers()
+        client.readyAt = new Date()
+      }
+    })
+
+    it('getGuildClient falls back to the main client when the custom bot never becomes ready', async () => {
+      await bootOneClient('main')
+      await bootOneClient('g-stuck')
+      const stuck = await getGuildClient('g-stuck', false)
+      stuck.readyAt = null
+      const baselineListeners = stuck.listenerCount('clientReady')
+      vi.useFakeTimers()
+      try {
+        const pending = getGuildClient('g-stuck', false)
+        await vi.advanceTimersByTimeAsync(10_000)
+        const resolved = await pending
+        expect(resolved).not.toBe(stuck)
+        expect(resolved.user.id).toBe('bot1')
+        expect(stuck.listenerCount('clientReady')).toBe(baselineListeners)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     it('getGuildClient falls back to main when not-yet-ready and forcePresenceOnGuild finds the guild missing', async () => {
       await bootOneClient('main')
       await bootOneClient('g-notready2')
@@ -430,12 +467,7 @@ describe('discord/index', () => {
         await updateGuildUserPseudo(makeServer(), makePlayer({ name: 'Alice' }))
 
         expect(setNicknameSpy).toHaveBeenCalledWith('Alice')
-        expect(redisMock.set).toHaveBeenCalledWith(
-          'sync-pseudo:gmod:server:s1:user:765',
-          'Alice',
-          'EX',
-          120,
-        )
+        expect(redisMock.set).toHaveBeenCalledWith('sync-pseudo:gmod:server:s1:user:765', 'Alice', 'EX', 120)
       })
     })
 

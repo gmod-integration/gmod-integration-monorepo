@@ -5,6 +5,7 @@ class FakeWorker extends EventEmitter {
   name: string
   processor: (job: any) => any
   opts: any
+  run = vi.fn().mockResolvedValue(undefined)
   constructor(name: string, processor: (job: any) => any, opts: any) {
     super()
     this.name = name
@@ -22,9 +23,10 @@ vi.mock('@gmod/infra-prisma', () => ({ default: {} }))
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromSteamID64: vi.fn() }))
 vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: vi.fn() }))
 vi.mock('@gmod/infra-redis', () => ({ default: { set: vi.fn() } }))
+const getMainClientMock = vi.fn()
 vi.mock('../../../src/discord/index.js', () => ({
   getGuildClient: vi.fn(),
-  getMainClient: vi.fn(),
+  getMainClient: getMainClientMock,
   loadGuildBotInstance: vi.fn(),
 }))
 vi.mock('@gmod/domain-guild/discordModels.js', () => ({ addAutoRoleToUser: vi.fn(), verifyUser: vi.fn() }))
@@ -40,12 +42,65 @@ const {
   discordUpdateTeamRoleWorker,
   discordMainClientOpsWorker,
   discordGuildOpsWorker,
+  discordStatusRefreshWorker,
   initializeDiscordQueueWorkers,
 } = await import('../../../src/discord/workers/discordQueueWorkers.js')
 
 describe('initializeDiscordQueueWorkers', () => {
+  const allWorkers = () =>
+    [
+      discordUpdatePseudoWorker,
+      discordUpdateGroupWorker,
+      discordUpdateTeamRoleWorker,
+      discordMainClientOpsWorker,
+      discordGuildOpsWorker,
+      discordStatusRefreshWorker,
+    ] as unknown as FakeWorker[]
+
   beforeEach(() => {
     gmLogMock.mockClear()
+    getMainClientMock.mockReset().mockResolvedValue({})
+    for (const worker of allWorkers()) worker.run.mockClear()
+  })
+
+  it('creates every worker with autorun disabled', () => {
+    for (const worker of allWorkers()) {
+      expect(worker.opts).toEqual(expect.objectContaining({ autorun: false }))
+    }
+  })
+
+  it('starts every worker only after the main client is ready', async () => {
+    let ready!: () => void
+    getMainClientMock.mockReturnValueOnce(new Promise((resolve) => (ready = () => resolve({}))))
+
+    const init = initializeDiscordQueueWorkers()
+    await Promise.resolve()
+    for (const worker of allWorkers()) expect(worker.run).not.toHaveBeenCalled()
+
+    ready()
+    await init
+    for (const worker of allWorkers()) expect(worker.run).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps waiting (without starting workers) while the main client is not ready', async () => {
+    vi.useFakeTimers()
+    try {
+      getMainClientMock.mockRejectedValueOnce(new Error('Main client is not defined')).mockResolvedValueOnce({})
+
+      const init = initializeDiscordQueueWorkers()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(gmLogMock).toHaveBeenCalledWith(
+        'bullmq',
+        'Main Discord client not ready, workers not started yet: Main client is not defined',
+      )
+      for (const worker of allWorkers()) expect(worker.run).not.toHaveBeenCalled()
+
+      await vi.advanceTimersByTimeAsync(5000)
+      await init
+      for (const worker of allWorkers()) expect(worker.run).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('wires completed/failed listeners onto every worker and logs the completion', async () => {
