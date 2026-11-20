@@ -117,6 +117,11 @@ vi.mock('@gmod/core/models/v3/publicServerRankingModels.js', () => ({
   processGetPublicServerRanking: processGetPublicServerRankingMock,
 }))
 
+const processPreviewServerStatusMock = vi.fn()
+vi.mock('@gmod/core/models/v3/statusMessagePreviewModels.js', () => ({
+  processPreviewServerStatus: processPreviewServerStatusMock,
+}))
+
 class FakeGuild {
   id: string
   constructor(obj: { id: string }) {
@@ -169,6 +174,7 @@ function resetAllMocks() {
   todoControllersMock.mockReset()
   getUserDataGRPDMock.mockReset()
   processGetPublicServerRankingMock.mockReset()
+  processPreviewServerStatusMock.mockReset()
   redisMock.del.mockReset()
   for (const table of Object.values(prismaMock)) {
     for (const fn of Object.values(table as Record<string, any>)) {
@@ -910,7 +916,7 @@ describe('usersControllers', () => {
         })
       })
 
-      it('does not refresh status when the updated button is disabled', async () => {
+      it('refreshes the message when a previously enabled button is disabled', async () => {
         const server = {
           id: 's1',
           findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: true }),
@@ -920,6 +926,16 @@ describe('usersControllers', () => {
 
         await c.putServerStatusButtons({ params: { buttonID: '1' }, server, body: { enable: false } } as any, res)
 
+        expect(bullmqMocks.enqueueDiscordServerStatusRefresh).toHaveBeenCalledWith('s1')
+      })
+
+      it('does not refresh while editing a button that remains inactive', async () => {
+        const server = {
+          id: 's1',
+          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: false }),
+        }
+        prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: false })
+        await c.putServerStatusButtons({ params: { buttonID: '1' }, server, body: { name: 'Draft' } } as any, makeRes())
         expect(bullmqMocks.enqueueDiscordServerStatusRefresh).not.toHaveBeenCalled()
       })
     })
@@ -1247,6 +1263,20 @@ describe('usersControllers', () => {
 
       expect(res.status).toHaveBeenCalledWith(400)
       expect(res.send).toHaveBeenCalledWith(body)
+    })
+  })
+
+  describe('previewServerStatus', () => {
+    it('uses the authorized server and preserves preview validation results', async () => {
+      const server = { id: 'authorized-server' }
+      const body = { settings: { show_status_chart: true } }
+      const response = { error: 'Status charts require Premium.' }
+      processPreviewServerStatusMock.mockResolvedValueOnce({ status: 403, body: response })
+      const res = makeRes()
+      await c.previewServerStatus({ server, body } as any, res)
+      expect(processPreviewServerStatusMock).toHaveBeenCalledWith(server, body)
+      expect(res.status).toHaveBeenCalledWith(403)
+      expect(res.send).toHaveBeenCalledWith(response)
     })
   })
 

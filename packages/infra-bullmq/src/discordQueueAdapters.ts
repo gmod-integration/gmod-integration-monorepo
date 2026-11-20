@@ -43,6 +43,8 @@ import {
   DiscordGuildSendLogMessageReplySchema,
   DiscordServerStatusCreateJobSchema,
   DiscordServerStatusCreateReplySchema,
+  DiscordServerStatusPreviewJobSchema,
+  DiscordServerStatusPreviewReplySchema,
   DiscordServerStatusDeleteJobSchema,
   DiscordServerStatusDeleteReplySchema,
   DiscordServerStatusRefreshJobSchema,
@@ -79,6 +81,7 @@ import {
 import { randomUUID } from 'node:crypto'
 import redis from '@gmod/infra-redis'
 import { JobPriority } from './priorities.js'
+import type { StatusMessagePreviewInput, StatusMessagePreview } from '@gmod/schema/server/StatusMessagePreviewSchema.js'
 
 // Queues
 const discordUpdatePseudoQueue = new Queue('discord-updatePseudo', { connection })
@@ -740,6 +743,29 @@ export async function enqueueDiscordGuildSendLogMessage(
     timeoutMs,
   )
   return reply.sent
+}
+
+/** Build the actual Discord payload without posting or persisting the draft. */
+export async function enqueueDiscordServerStatusPreview(
+  serverID: string,
+  draft: StatusMessagePreviewInput,
+  timeoutMs = 10000,
+): Promise<StatusMessagePreview> {
+  const correlationId = randomUUID()
+  const payload = DiscordServerStatusPreviewJobSchema.parse({ serverID, draft, correlationId, timestamp: new Date() })
+  await discordGuildOpsQueue.add('serverStatusPreview', payload, {
+    priority: JobPriority.INTERACTIVE,
+    attempts: 1,
+    removeOnComplete: true,
+  })
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerStatusPreviewReplySchema.parse(value),
+    timeoutMs,
+  )
+  if (reply.error) throw new Error(reply.error)
+  if (!reply.preview) throw new Error('Status preview is unavailable')
+  return reply.preview
 }
 
 export async function enqueueDiscordServerStatusCreate(

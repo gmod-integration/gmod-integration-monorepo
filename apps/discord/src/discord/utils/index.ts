@@ -106,12 +106,13 @@ async function getServerData(serverID: string, duration = 24 * 60 * 60, interval
   return result
 }
 
-export async function getServerChart(server: Server) {
+export async function getServerChart(server: Server, options: { persist?: boolean } = {}) {
+  const persist = options.persist !== false
   const key = `server:${server.getID()}:chart`
-  const cacheChart = await redis.get(key)
+  const cacheChart = persist ? await redis.get(key) : null
 
   try {
-    await createBucketIfNotExists('gmi-servers-status')
+    if (persist) await createBucketIfNotExists('gmi-servers-status')
     if (cacheChart) {
       const resul = await s3.send(
         new GetObjectCommand({
@@ -145,11 +146,7 @@ export async function getServerChart(server: Server) {
 
   const dom = new JSDOM(`<!DOCTYPE html><html><body></body></html>`)
   const body = d3.select(dom.window.document).select('body')
-  const svg = body
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .attr('font-family', CHART_FONT_FAMILY)
+  const svg = body.append('svg').attr('width', width).attr('height', height).attr('font-family', CHART_FONT_FAMILY)
 
   const xScale = d3
     .scaleTime()
@@ -205,21 +202,22 @@ export async function getServerChart(server: Server) {
     .attr('d', line)
 
   const svgString = (body.select('svg').node() as Element)?.outerHTML
-  await redis.set(key, 'true', 'EX', 60 * 4)
+  if (persist) await redis.set(key, 'true', 'EX', 60 * 4)
   const pngImg = await sharp(Buffer.from(svgString)).png().toBuffer()
 
-  await s3
-    .send(
-      new PutObjectCommand({
-        Bucket: 'gmi-servers-status',
-        Key: `${server.getID()}.png`,
-        Body: pngImg,
-        ContentType: 'image/png',
-      }),
-    )
-    .catch((err) => {
-      console.error('Error uploading server chart to MinIO:', err)
-    })
+  if (persist)
+    await s3
+      .send(
+        new PutObjectCommand({
+          Bucket: 'gmi-servers-status',
+          Key: `${server.getID()}.png`,
+          Body: pngImg,
+          ContentType: 'image/png',
+        }),
+      )
+      .catch((err) => {
+        console.error('Error uploading server chart to MinIO:', err)
+      })
 
   return pngImg
 }
@@ -338,11 +336,7 @@ export async function playerConnectionChart(
   const body = d3.select(dom.window.document).select('body')
 
   // Create the SVG container
-  const svg = body
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .attr('font-family', CHART_FONT_FAMILY)
+  const svg = body.append('svg').attr('width', width).attr('height', height).attr('font-family', CHART_FONT_FAMILY)
 
   // (Optional) fetch the player's name
   const playerInfo = await prisma.gm_server_stat.findFirst({
@@ -545,11 +539,7 @@ export async function playerTeamTimeChat(server: Server, steamID64: string, lang
   const body = d3.select(dom.window.document).select('body')
 
   // Create the SVG container
-  const svg = body
-    .append('svg')
-    .attr('width', width)
-    .attr('height', height)
-    .attr('font-family', CHART_FONT_FAMILY)
+  const svg = body.append('svg').attr('width', width).attr('height', height).attr('font-family', CHART_FONT_FAMILY)
 
   // Add chart title
   svg

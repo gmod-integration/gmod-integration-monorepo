@@ -10,9 +10,10 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 }))
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
-const { default: ServerStatusButtons } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/status/ServerStatusButtons.js'
-)
+const { default: ServerStatusButtons } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/status/ServerStatusButtons.js')
+const { StatusPreviewProvider } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/status/StatusPreviewContext.js')
 
 const BUTTONS_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/status/buttons'
 
@@ -27,11 +28,21 @@ function statusButton(overrides: Partial<Record<string, unknown>> = {}) {
   }
 }
 
-function renderPage() {
-  return renderWithProviders(() => <ServerStatusButtons />, {
-    path: '/dashboard/guilds/:guildID/config/servers/:serverID/status',
-    history: historyAt('/dashboard/guilds/g1/config/servers/s1/status'),
-  })
+function renderPage(withPreview = false) {
+  return renderWithProviders(
+    () =>
+      withPreview ? (
+        <StatusPreviewProvider>
+          <ServerStatusButtons />
+        </StatusPreviewProvider>
+      ) : (
+        <ServerStatusButtons />
+      ),
+    {
+      path: '/dashboard/guilds/:guildID/config/servers/:serverID/status',
+      history: historyAt('/dashboard/guilds/g1/config/servers/s1/status'),
+    },
+  )
 }
 
 afterEach(() => {
@@ -84,6 +95,189 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
   })
 
   describe('edit modal', () => {
+    it('requires a successful current preview before saving a button to Discord', async () => {
+      let resolvePreview!: (response: ReturnType<typeof okJson>) => void
+      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string, body: any) => {
+        if (endpoint === BUTTONS_URL && method === 'GET') return Promise.resolve(okJson([statusButton()]))
+        if (endpoint.endsWith('/status/preview') && method === 'POST')
+          return new Promise((resolve) => {
+            resolvePreview = resolve
+          })
+        if (endpoint === `${BUTTONS_URL}/1` && method === 'PUT') return Promise.resolve(okJson(body))
+        return Promise.resolve(okJson({}))
+      })
+      const { container } = renderPage(true)
+      await vi.waitFor(() => expect(container.querySelector('tbody')?.textContent).toContain('Website'))
+      stubDialogGlobal(container, 'edit_status_button')
+      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+      const modal = container.querySelector('#edit_status_button') as HTMLDialogElement
+      const save = within(modal).getByRole('button', { name: 'Save' })
+      expect(save).toBeDisabled()
+      await fireEvent.click(save)
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
+      await vi.waitFor(() => expect(resolvePreview).toBeTypeOf('function'))
+      resolvePreview(errJson())
+      await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+      expect(save).toBeDisabled()
+      await fireEvent.click(save)
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Try again' }))
+      resolvePreview(
+        okJson({
+          bot: { name: 'Preview bot', avatarUrl: null },
+          online: true,
+          embeds: [
+            { title: 'Ready status', color: 0, fields: [], timestamp: '2026-11-20T12:00:00.000Z', imageUrl: null },
+          ],
+          buttonRows: [[{ label: 'Website', emoji: '🎮', url: 'https://example.com' }]],
+        }),
+      )
+      await vi.waitFor(() => expect(save).not.toBeDisabled())
+      await fireEvent.click(save)
+      await vi.waitFor(() =>
+        expect(fetchAPI).toHaveBeenCalledWith(`${BUTTONS_URL}/1`, 'PUT', expect.objectContaining({ name: 'Website' })),
+      )
+      await vi.waitFor(() => expect(modal.open).toBe(false))
+    })
+
+    it('keeps edits local and updates the complete preview before Save, then discards them on Cancel', async () => {
+      const original = statusButton({ server: 's1', createdAt: new Date().toISOString() })
+      const untouched = statusButton({ id: 2, name: 'Community', url: 'https://community.example.test' })
+      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string, body: any) => {
+        if (endpoint === BUTTONS_URL && method === 'GET') return Promise.resolve(okJson([original, untouched]))
+        if (endpoint.endsWith('/status/preview') && method === 'POST')
+          return Promise.resolve(
+            okJson({
+              bot: { name: 'Preview bot', avatarUrl: null },
+              online: true,
+              embeds: [
+                {
+                  title: 'Server status',
+                  color: 0x393a41,
+                  fields: [],
+                  timestamp: '2026-11-20T12:00:00.000Z',
+                  imageUrl: null,
+                },
+              ],
+              buttonRows: [
+                body.buttons
+                  .filter((button: any) => button.enable)
+                  .map((button: any) => ({ label: button.name, emoji: button.emoji, url: button.url })),
+              ],
+            }),
+          )
+        return Promise.resolve(okJson({}))
+      })
+      const { container } = renderPage(true)
+      await vi.waitFor(() => expect(container.querySelector('tbody')?.textContent).toContain('Website'))
+      stubDialogGlobal(container, 'edit_status_button')
+      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+      const modal = container.querySelector('#edit_status_button') as HTMLDialogElement
+      await vi.waitFor(() => expect(within(modal).getByRole('button', { name: 'Website' })).toBeInTheDocument())
+      await fireEvent.input(within(modal).getByDisplayValue('Website'), { target: { value: 'Live draft' } })
+      await fireEvent.input(within(modal).getByDisplayValue('https://example.com'), {
+        target: { value: 'https://draft.example.test' },
+      })
+      await vi.waitFor(() =>
+        expect(within(modal).getByRole('button', { name: 'Live draft' })).toHaveAttribute(
+          'title',
+          'https://draft.example.test',
+        ),
+      )
+      await fireEvent.click(modal.querySelector('button.input')!)
+      modal.querySelector('emoji-picker')!.dispatchEvent(new CustomEvent('emoji-click', { detail: { unicode: '😀' } }))
+      const previews = () => (fetchAPI as Mock).mock.calls.filter(([endpoint]) => endpoint.endsWith('/status/preview'))
+      await vi.waitFor(() => expect(previews().at(-1)![2].buttons[0].emoji).toBe('😀'))
+      expect(previews().at(-1)![2].buttons).toEqual([
+        { id: 1, name: 'Live draft', emoji: '😀', url: 'https://draft.example.test', enable: true },
+        untouched,
+      ])
+      expect(container.querySelector('tbody')?.textContent).toContain('Website')
+      expect(original).toMatchObject({ name: 'Website', url: 'https://example.com', enable: true })
+      expect(container.querySelector('tbody')?.textContent).toContain('Community')
+      await fireEvent.change(within(modal).getByRole('combobox'), { target: { value: 'false' } })
+      await vi.waitFor(() => expect(previews().at(-1)![2].buttons).toEqual([untouched]))
+      expect(within(modal).queryByRole('button', { name: 'Live draft' })).not.toBeInTheDocument()
+      expect(container.querySelector('tbody .fa-check')).toBeInTheDocument()
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+      expect(modal.open).toBe(false)
+      await vi.waitFor(() => expect(previews().at(-1)![2].buttons[0]).toMatchObject({ name: 'Website', enable: true }))
+      expect(
+        (fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT' || method === 'DELETE'),
+      ).toHaveLength(0)
+    })
+
+    it('falls back to stored server buttons for preview when the button list request fails', async () => {
+      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
+        if (endpoint === BUTTONS_URL && method === 'GET') return Promise.reject(new Error('Buttons unavailable'))
+        if (endpoint.endsWith('/status/preview') && method === 'POST')
+          return Promise.resolve(
+            okJson({
+              bot: { name: 'Preview bot', avatarUrl: null },
+              online: false,
+              embeds: [
+                { title: 'Stored status', color: 0, fields: [], timestamp: '2026-11-20T12:00:00.000Z', imageUrl: null },
+              ],
+              buttonRows: [],
+            }),
+          )
+        return Promise.resolve(okJson({}))
+      })
+      renderPage(true)
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Failed to load'))
+      await vi.waitFor(() =>
+        expect((fetchAPI as Mock).mock.calls.some(([endpoint]) => endpoint.endsWith('/status/preview'))).toBe(true),
+      )
+      const previewCall = (fetchAPI as Mock).mock.calls.find(([endpoint]) => endpoint.endsWith('/status/preview'))!
+      expect(previewCall[2]).not.toHaveProperty('buttons')
+      expect(
+        (fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT' || method === 'DELETE'),
+      ).toHaveLength(0)
+    })
+
+    it('restores persisted buttons when the dialog is closed or canceled by the browser', async () => {
+      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string, body: any) => {
+        if (endpoint === BUTTONS_URL && method === 'GET') return Promise.resolve(okJson([statusButton()]))
+        if (endpoint.endsWith('/status/preview') && method === 'POST')
+          return Promise.resolve(
+            okJson({
+              bot: { name: 'Preview bot', avatarUrl: null },
+              online: true,
+              embeds: [
+                { title: 'Status', color: 0, fields: [], timestamp: '2026-11-20T12:00:00.000Z', imageUrl: null },
+              ],
+              buttonRows: [
+                body.buttons.map((button: any) => ({ label: button.name, emoji: button.emoji, url: button.url })),
+              ],
+            }),
+          )
+        return Promise.resolve(okJson({}))
+      })
+      const { container } = renderPage(true)
+      await vi.waitFor(() => expect(container.querySelector('tbody')?.textContent).toContain('Website'))
+      const modal = stubDialogGlobal(container, 'edit_status_button')
+      for (const eventName of ['close', 'cancel']) {
+        await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+        await fireEvent.input(within(modal).getByDisplayValue('Website'), { target: { value: 'Unpublished' } })
+        await vi.waitFor(() =>
+          expect(
+            (fetchAPI as Mock).mock.calls.filter(([endpoint]) => endpoint.endsWith('/status/preview')).at(-1)![2]
+              .buttons[0].name,
+          ).toBe('Unpublished'),
+        )
+        modal.dispatchEvent(new Event(eventName))
+        await vi.waitFor(() =>
+          expect(
+            (fetchAPI as Mock).mock.calls.filter(([endpoint]) => endpoint.endsWith('/status/preview')).at(-1)![2]
+              .buttons[0].name,
+          ).toBe('Website'),
+        )
+        modal.close()
+      }
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
+    })
+
     it('prefills the modal with the selected button and saves changes', async () => {
       ;(fetchAPI as Mock).mockResolvedValue(okJson([statusButton()]))
       const { container } = renderPage()
@@ -97,9 +291,9 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       expect(within(modal).getByDisplayValue('https://example.com')).toBeInTheDocument()
 
       const nameInput = within(modal).getByDisplayValue('Website') as HTMLInputElement
-      await fireEvent.change(nameInput, { target: { value: 'Renamed' } })
+      await fireEvent.input(nameInput, { target: { value: 'Renamed' } })
       const urlInput = within(modal).getByDisplayValue('https://example.com') as HTMLInputElement
-      await fireEvent.change(urlInput, { target: { value: 'https://new.example.com' } })
+      await fireEvent.input(urlInput, { target: { value: 'https://new.example.com' } })
       const actionSelect = within(modal).getByRole('combobox') as HTMLSelectElement
       await fireEvent.change(actionSelect, { target: { value: 'false' } })
 
@@ -134,6 +328,39 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       const modal = container.querySelector('#edit_status_button') as HTMLElement
       await fireEvent.click(within(modal).getByText('Save'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${BUTTONS_URL}/1`, 'PUT', expect.anything()))
+      expect(screen.getByText('Website')).toBeInTheDocument()
+      expect(modal).toHaveAttribute('open')
+      expect(within(modal).getByRole('alert')).toHaveTextContent('Unable to save this button. Try again.')
+    })
+
+    it('keeps a failed network draft editable and prevents duplicate saves while a request is pending', async () => {
+      ;(fetchAPI as Mock).mockResolvedValue(okJson([statusButton()]))
+      const { container } = renderPage()
+      await vi.waitFor(() => expect(screen.getByText('Website')).toBeInTheDocument())
+      stubDialogGlobal(container, 'edit_status_button')
+      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+      const modal = container.querySelector('#edit_status_button') as HTMLDialogElement
+      const input = within(modal).getByDisplayValue('Website')
+      await fireEvent.input(input, { target: { value: 'Retry me' } })
+      let rejectSave!: (reason: Error) => void
+      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
+        if (endpoint === `${BUTTONS_URL}/1` && method === 'PUT')
+          return new Promise((_, reject) => {
+            rejectSave = reject
+          })
+        return Promise.resolve(okJson([statusButton()]))
+      })
+      const save = within(modal).getByRole('button', { name: 'Save' })
+      await fireEvent.click(save)
+      expect(save).toBeDisabled()
+      expect(input).toBeDisabled()
+      await fireEvent.click(save)
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
+      rejectSave(new Error('Connection lost'))
+      await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+      expect(modal.open).toBe(true)
+      expect(input).toHaveValue('Retry me')
+      expect(save).not.toBeDisabled()
       expect(screen.getByText('Website')).toBeInTheDocument()
     })
 
@@ -220,7 +447,8 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       // discarded the newly created button. Now fixed to check Array.isArray and keep the button.
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === BUTTONS_URL && method === 'GET') return Promise.resolve(errJson())
-        if (endpoint === BUTTONS_URL && method === 'POST') return Promise.resolve(okJson(statusButton({ id: 3, name: 'First' })))
+        if (endpoint === BUTTONS_URL && method === 'POST')
+          return Promise.resolve(okJson(statusButton({ id: 3, name: 'First' })))
         return Promise.resolve(okJson([]))
       })
       renderPage()
@@ -259,9 +487,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
         okJson([statusButton({ id: 1 }), statusButton({ id: 2 }), statusButton({ id: 3 })]),
       )
       renderPage()
-      await vi.waitFor(() =>
-        expect(screen.getByText('Limited to 3 buttons for free users.')).toBeInTheDocument(),
-      )
+      await vi.waitFor(() => expect(screen.getByText('Limited to 3 buttons for free users.')).toBeInTheDocument())
       expect(screen.queryByText('Add Button')).not.toBeInTheDocument()
     })
 

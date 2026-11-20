@@ -15,6 +15,18 @@ interface Case {
 // hand-written blocks here.
 const cases: Case[] = [
   {
+    name: 'DiscordServerStatusPreviewJobSchema',
+    schema: bullmq.DiscordServerStatusPreviewJobSchema,
+    valid: { serverID: 's1', draft: {}, correlationId: 'c1' },
+    requiredKeys: ['serverID', 'draft', 'correlationId'],
+  },
+  {
+    name: 'DiscordServerStatusPreviewReplySchema',
+    schema: bullmq.DiscordServerStatusPreviewReplySchema,
+    valid: { correlationId: 'c1', preview: null, error: 'Unavailable' },
+    requiredKeys: ['correlationId', 'preview'],
+  },
+  {
     name: 'DiscordGuildPublicInviteJobSchema',
     schema: bullmq.DiscordGuildPublicInviteJobSchema,
     valid: { guildID: 'g1', correlationId: 'c1' },

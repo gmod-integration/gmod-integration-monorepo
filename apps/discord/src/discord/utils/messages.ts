@@ -43,7 +43,12 @@ function normalizePlayersList(rawPlayersList: unknown): any[] {
   return []
 }
 
-export async function getStatusMessage(server: Server, data: any, lang: string) {
+export async function getStatusMessage(
+  server: Server,
+  data: any,
+  lang: string,
+  options: { persistChart?: boolean } = {},
+) {
   gmLog('status', 'refresh server status message for ' + server.getID())
 
   let { servOnline, hostname, map, gameMode, players, maxPlayers, ip, port, playersList } = data || {}
@@ -60,7 +65,8 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   const showChar = await server.getSetting('show_status_chart')
   let bufferChart: Buffer | null = null
   if (showChar) {
-    bufferChart = await getServerChart(server)
+    bufferChart =
+      options.persistChart === false ? await getServerChart(server, { persist: false }) : await getServerChart(server)
   }
 
   const embed = new EmbedBuilder()
@@ -138,9 +144,10 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
       }
     }
 
+    const playerListValue = playersListString.join('\n')
     embed.addFields({
       name: '👤⠀' + (await getTranslate('player_list', lang)),
-      value: playersListString.join('\n'),
+      value: playerListValue.trim() ? playerListValue : '\u200b',
     })
   }
 

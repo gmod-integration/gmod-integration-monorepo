@@ -86,6 +86,7 @@ vi.mock('@/controllers/v3/usersControllers.js', () => ({
   postServerRoles: vi.fn(),
   postServerScreenshots: vi.fn(),
   postServerStatus: vi.fn(),
+  previewServerStatus: vi.fn(),
   postServerSyncChat: vi.fn(),
   postServerTeams: vi.fn(),
   postUserDataRequest: vi.fn(),
@@ -119,7 +120,7 @@ vi.mock('@/controllers/v3/serversControllers.js', () => ({ getIGSettings: vi.fn(
 vi.mock('@/controllers/v3/users/ServerStatusChannelControllers.js', () => ({ putServerStatusChannel: vi.fn() }))
 
 const { default: router } = await import('../../../src/routes/v3/usersRoutes.js')
-const { userValidator, userAdminGuildValidator } = await import('@/middleware/v3/userValidator.js')
+const { userValidator, userAdminGuildValidator, userServerValidator } = await import('@/middleware/v3/userValidator.js')
 
 describe('usersRoutes', () => {
   it('registers a representative sample of routes across the whole file', () => {
@@ -140,5 +141,16 @@ describe('usersRoutes', () => {
     expect(ranking).toBeGreaterThan(authentication)
     expect(ranking).toBeLessThan(guildAdministration)
     expect(router.stack[ranking].route.methods.get).toBe(true)
+  })
+
+  it('protects draft previews with both guild-administrator and server access checks', () => {
+    const preview = router.stack.findIndex(
+      (layer: any) => layer.route?.path === '/:discordID/guilds/:guildID/servers/:serverID/status/preview',
+    )
+    const guild = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+    const server = router.stack.findIndex((layer: any) => layer.handle === userServerValidator)
+    expect(preview).toBeGreaterThan(guild)
+    expect(preview).toBeGreaterThan(server)
+    expect(router.stack[preview].route.methods.post).toBe(true)
   })
 })

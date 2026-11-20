@@ -11,9 +11,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { default: ServerStatusChannel } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/status/ServerStatusChannel.js'
-)
+const { default: ServerStatusChannel } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/status/ServerStatusChannel.js')
 
 const STATUS_CHANNEL_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/status/channel'
 
@@ -97,7 +96,8 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
   it('opens the channel selector modal and refetches guild channels when clicking the add button', async () => {
     const CHANNELS_URL = '/users/:discordID/guilds/:guildID/channels'
     ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-      if (endpoint === CHANNELS_URL) return Promise.resolve(okJson([{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }]))
+      if (endpoint === CHANNELS_URL)
+        return Promise.resolve(okJson([{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }]))
       return Promise.resolve(okJson(channelPayload({ channelID: '' })))
     })
     const { container } = renderPage()
@@ -125,8 +125,10 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
 
   it('sends a POST with the channel and current format, and mutates the resource on success', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint === STATUS_CHANNEL_URL && method === 'GET') return Promise.resolve(okJson(channelPayload({ channelID: '' })))
-      if (endpoint === STATUS_CHANNEL_URL && method === 'POST') return Promise.resolve(okJson(channelPayload({ channelID: 'c1' })))
+      if (endpoint === STATUS_CHANNEL_URL && method === 'GET')
+        return Promise.resolve(okJson(channelPayload({ channelID: '' })))
+      if (endpoint === STATUS_CHANNEL_URL && method === 'POST')
+        return Promise.resolve(okJson(channelPayload({ channelID: 'c1' })))
       return Promise.resolve(okJson({}))
     })
     renderPage()
@@ -138,7 +140,8 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
 
   it('does not mutate the resource when sending the status channel fails', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint === STATUS_CHANNEL_URL && method === 'GET') return Promise.resolve(okJson(channelPayload({ channelID: '' })))
+      if (endpoint === STATUS_CHANNEL_URL && method === 'GET')
+        return Promise.resolve(okJson(channelPayload({ channelID: '' })))
       if (endpoint === STATUS_CHANNEL_URL && method === 'POST') return Promise.resolve(errJson())
       return Promise.resolve(okJson({}))
     })
@@ -146,7 +149,9 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
     await vi.waitFor(() => expect(screen.getByText('No status Channel')).toBeInTheDocument())
     const select = document.querySelector('select.select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
-    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(STATUS_CHANNEL_URL, 'POST', { channelID: 'c1', format: '' }))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(STATUS_CHANNEL_URL, 'POST', { channelID: 'c1', format: '' }),
+    )
     expect(screen.getByText('No status Channel')).toBeInTheDocument()
   })
 
@@ -178,7 +183,8 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
 
   it('falls back to the empty status channel when the POST response fails schema validation', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint === STATUS_CHANNEL_URL && method === 'GET') return Promise.resolve(okJson(channelPayload({ channelID: '' })))
+      if (endpoint === STATUS_CHANNEL_URL && method === 'GET')
+        return Promise.resolve(okJson(channelPayload({ channelID: '' })))
       if (endpoint === STATUS_CHANNEL_URL && method === 'POST') return Promise.resolve(okJson({ not: 'valid' }))
       return Promise.resolve(okJson({}))
     })

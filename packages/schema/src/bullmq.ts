@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { StatusMessagePreviewInputSchema, StatusMessagePreviewSchema } from './server/StatusMessagePreviewSchema.js'
 
 export const DiscordPublicInviteUrlSchema = z.string().regex(/^https:\/\/discord\.gg\/[A-Za-z0-9_-]{1,100}$/)
 
@@ -437,6 +438,23 @@ export const DiscordServerStatusRecordSchema = z.object({
 })
 
 export type DiscordServerStatusRecord = z.infer<typeof DiscordServerStatusRecordSchema>
+
+export const DiscordServerStatusPreviewJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  draft: StatusMessagePreviewInputSchema,
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerStatusPreviewJob = z.infer<typeof DiscordServerStatusPreviewJobSchema>
+
+export const DiscordServerStatusPreviewReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  preview: StatusMessagePreviewSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerStatusPreviewReply = z.infer<typeof DiscordServerStatusPreviewReplySchema>
 
 export const DiscordServerStatusCreateJobSchema = z.object({
   serverID: z.string().min(1, 'serverID required'),

@@ -85,6 +85,7 @@ import {
   postServerRoles,
   postServerScreenshots,
   postServerStatus,
+  previewServerStatus,
   postServerSyncChat,
   postServerTeams,
   postUserDataRequest,
@@ -281,6 +282,7 @@ router.get('/:discordID/guilds/:guildID/servers/:serverID/warns', asyncHandler(g
 // Status
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(findServerStatus))
 router.post('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(postServerStatus))
+router.post('/:discordID/guilds/:guildID/servers/:serverID/status/preview', asyncHandler(previewServerStatus))
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(deleteServerStatus))
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status/buttons', asyncHandler(getServerStatusButtons))
 router.put(

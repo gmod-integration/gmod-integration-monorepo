@@ -66,6 +66,7 @@ import {
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { getSingleParam } from '@/utils/requestParams.js'
 import { processGetPublicServerRanking } from '@gmod/core/models/v3/publicServerRankingModels.js'
+import { processPreviewServerStatus } from '@gmod/core/models/v3/statusMessagePreviewModels.js'
 
 export async function getProfile(req: Request, res: Response) {
   const result = await processGetProfile(req.query.steamID64, req.query.discordID)
@@ -439,6 +440,11 @@ export async function postServerStatus(req: Request, res: Response) {
   return res.send(await enqueueDiscordServerStatusCreate(server.id, channelID))
 }
 
+export async function previewServerStatus(req: Request, res: Response) {
+  const result = await processPreviewServerStatus(req.server!, req.body)
+  return res.status(result.status).send(result.body)
+}
+
 export async function getServerStatusButtons(req: Request, res: Response) {
   const server = req.server!
   // findStatusButtons() always resolves to an array (never null), so no fallback is needed.
@@ -470,7 +476,7 @@ export async function putServerStatusButtons(req: Request, res: Response) {
     },
   })
 
-  if (updateButton.enable) {
+  if (button.enable || updateButton.enable) {
     await enqueueDiscordServerStatusRefresh(server.id)
   }
 

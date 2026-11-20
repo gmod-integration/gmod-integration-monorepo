@@ -26,6 +26,7 @@ import {
   DiscordGuildBansJobSchema,
   DiscordGuildSendLogMessageJobSchema,
   DiscordServerStatusCreateJobSchema,
+  DiscordServerStatusPreviewJobSchema,
   DiscordServerStatusDeleteJobSchema,
   DiscordServerStatusRefreshJobSchema,
   DiscordServerLogsChannelCreateJobSchema,
@@ -55,6 +56,7 @@ import {
   type DiscordGuildBansJob,
   type DiscordGuildSendLogMessageJob,
   type DiscordServerStatusCreateJob,
+  type DiscordServerStatusPreviewJob,
   type DiscordServerStatusDeleteJob,
   type DiscordServerStatusRefreshJob,
   type DiscordServerLogsChannelCreateJob,
@@ -79,6 +81,7 @@ import { getVerificationGuildMessage } from '../utils/messages.js'
 import { ConfigDiscord } from '@gmod/config'
 import { getDiscordEntitlements } from '@gmod/domain-guild/Guild.js'
 import { getPublicGuildInvite } from '../utils/publicInvite.js'
+import { renderStatusPreview } from '../utils/statusPreview.js'
 
 async function writeReply(correlationId: string, payload: unknown) {
   await redis.set(`bullmq:reply:${correlationId}`, JSON.stringify(payload), 'EX', 30)
@@ -653,6 +656,7 @@ export const discordGuildOpsWorker = new Worker<
       | DiscordGuildAdminsJob
       | DiscordGuildSendLogMessageJob
       | DiscordServerStatusCreateJob
+      | DiscordServerStatusPreviewJob
       | DiscordServerStatusDeleteJob
       | DiscordServerStatusRefreshJob
       | DiscordServerLogsChannelCreateJob
@@ -1056,6 +1060,26 @@ export const discordGuildOpsWorker = new Worker<
         await writeReply(payload.correlationId, {
           correlationId: payload.correlationId,
           sent: false,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'serverStatusPreview') {
+      const payload = DiscordServerStatusPreviewJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) throw new Error('Server not found')
+        const client = await getGuildClient(server.getGuildID(), false)
+        const guild = await client.guilds.fetch(server.getGuildID())
+        if (!guild) throw new Error('Guild not found')
+        const preview = await renderStatusPreview(server, payload.draft, guild)
+        await writeReply(payload.correlationId, { correlationId: payload.correlationId, preview })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          preview: null,
           error: (error as Error).message,
         })
       }

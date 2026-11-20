@@ -9,7 +9,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 }))
 
 const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { default: ServerStatus } = await import('../../../../../../src/pages/dashboard/guilds/servers/status/ServerStatus.js')
+const { default: ServerStatus } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/status/ServerStatus.js')
 
 afterEach(() => cleanup())
 
@@ -24,5 +25,6 @@ describe('pages/dashboard/guilds/servers/status/ServerStatus.tsx', () => {
     })
     await vi.waitFor(() => expect(screen.getByText('Server Status')).toBeInTheDocument())
     expect(screen.getByText('Status Buttons')).toBeInTheDocument()
+    expect(screen.getByRole('complementary', { name: 'Simulation' })).toBeInTheDocument()
   })
 })
