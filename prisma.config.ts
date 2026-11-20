@@ -5,7 +5,7 @@ export default defineConfig({
   schema: 'packages/infra-prisma/schema.prisma',
   migrations: {
     path: 'packages/infra-prisma/migrations',
-    seed: 'tsx apps/api/src/test/seed/index.ts',
+    seed: 'bun scripts/seed-dev.ts',
   },
   datasource: {
     url: env('MARIA_URL'),

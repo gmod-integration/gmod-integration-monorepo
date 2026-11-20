@@ -42,7 +42,10 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "turbo:build": "turbo run build",
-    "turbo:dev": "turbo run dev --parallel"
+    "turbo:dev": "turbo run dev --parallel",
+    "seed:dev": "bun scripts/seed-dev.ts",
+    "prisma:seed": "bun scripts/seed-dev.ts",
+    "test:seed:dev": "bun test scripts/dev-seed/*.test.ts apps/discord/scripts/*.test.ts"
   },
   "workspaces": [
     ".",
