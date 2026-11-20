@@ -23,6 +23,12 @@ of everything else.
 Audit and investigation reports are private local files in `docs/reports/`, excluded by `.gitignore`.
 Do not commit their contents or link to them from public documentation, commits, pull requests or issues.
 
+## Planning
+
+- [GMI v6 specification](./v6-specification.md) — proposed product scope, API and WebSocket contracts,
+  promised features, remote administration, script fixes, modular purchases, Premium and migration.
+  This proposal does not describe currently available v6 functionality.
+
 ## Repo map
 
 Everything below is a short description with a link to a dedicated file that goes into detail (key files,
@@ -36,7 +42,7 @@ responsibilities, gotchas, what depends on it and what it depends on).
 | `discord`       | The Discord bot(s) (one main bot + per-guild custom bots) and the BullMQ workers that execute Discord actions requested by other apps.               | [docs/apps/discord.md](./apps/discord.md)             |
 | `websocket`     | Real-time WebSocket gateway. Keeps a live connection to each GMod server and to connected dashboard clients.                                         | [docs/apps/websocket.md](./apps/websocket.md)         |
 | `webhook-relay` | Standalone HTTP service that posts chat sync, screenshot and log messages to Discord webhooks for the API. Own image, own env, no `@gmod/*` imports. | [docs/apps/webhook-relay.md](./apps/webhook-relay.md) |
-| `website`       | React/Vite frontend: public site + user/guild dashboard, talks to `api` and `websocket`.                                                             | [docs/apps/website.md](./apps/website.md)             |
+| `website`       | SolidJS/Vite frontend: public site + user/guild dashboard, talks to `api` and `websocket`.                                                           | [docs/apps/website.md](./apps/website.md)             |
 | `docs`          | The Docusaurus site that publishes the **product** documentation (this `./docs` folder is not part of it).                                           | [docs/apps/docs.md](./apps/docs.md)                   |
 
 ### `packages/*` — shared code
@@ -47,6 +53,7 @@ Nothing in `apps/*` should contain business logic that another app also needs �
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `config`            | Loads and validates all environment variables (Zod). Single source of truth for config.                                      | [docs/packages/config.md](./packages/config.md)                       |
 | `schema`            | Zod schemas shared across apps: BullMQ job/reply payloads, GMod entities, DB-facing shapes.                                  | [docs/packages/schema.md](./packages/schema.md)                       |
+| `shared`            | Runtime primitives with direct imports: object validation, secure tokens and operational logging.                            | [docs/packages/shared.md](./packages/shared.md)                       |
 | `core`              | Cross-cutting application logic: v3 API models, DB helpers, formatting/localization/logging utilities, shared Express types. | [docs/packages/core.md](./packages/core.md)                           |
 | `domain-server`     | Everything about a registered GMod server: settings, status channel, Discord bridge.                                         | [docs/packages/domain-server.md](./packages/domain-server.md)         |
 | `domain-guild`      | Everything about a Discord guild: settings, verification, custom bot, links to servers.                                      | [docs/packages/domain-guild.md](./packages/domain-guild.md)           |
