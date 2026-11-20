@@ -321,7 +321,7 @@ const Account: Component = () => {
               <button class="btn btn-base-200" onClick={userDataRequestCreate}>
                 {t('account.request_my_data', 'Request my Data')}
               </button>
-              <a href="mailto:contact@gmod-integration.com" class="btn btn-warning">
+              <a href="mailto:gmod-integration@linv.dev" class="btn btn-warning">
                 {t('account.delete_my_data', 'Delete my Data')}
               </a>
             </div>

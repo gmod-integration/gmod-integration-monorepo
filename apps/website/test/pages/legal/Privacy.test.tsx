@@ -1,35 +1,59 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../testUtils.js'
+import { useI18n } from '../../../src/i18n.js'
 import Privacy from '../../../src/pages/legal/Privacy.js'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  localStorage.removeItem('locale')
+})
 
 describe('pages/legal/Privacy.tsx', () => {
-  it('renders the title and every numbered section', () => {
+  it('falls back to English and provides dated, accessible data tables and rights links', () => {
+    localStorage.setItem('locale', 'de')
     renderWithProviders(() => <Privacy />)
-    expect(screen.getByText('Privacy Policy')).toBeInTheDocument()
-    expect(screen.getByText('1. Introduction')).toBeInTheDocument()
-    expect(screen.getByText('7. Amendments to the Privacy Policy')).toBeInTheDocument()
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument()
+    expect(screen.getByRole('article')).toHaveAttribute('lang', 'en')
+    expect(screen.getByText('20 November 2026')).toHaveAttribute('datetime', '2026-11-20')
+    expect(screen.getByRole('table', { name: 'Data processed according to the features used' })).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Retention criteria and access limits' })).toBeInTheDocument()
+    screen.getAllByRole('columnheader').forEach((heading) => expect(heading).toHaveAttribute('scope', 'col'))
+    expect(screen.getByRole('link', { name: 'Account — Manage Data' })).toHaveAttribute('href', '/account')
+    expect(screen.getByRole('link', { name: 'Make a complaint to the CNIL' })).toHaveAttribute(
+      'href',
+      'https://www.cnil.fr/fr/adresser-une-plainte',
+    )
+    screen
+      .getAllByRole('link', { name: 'gmod-integration@linv.dev' })
+      .forEach((link) => expect(link).toHaveAttribute('href', 'mailto:gmod-integration@linv.dev'))
   })
 
-  it('renders numbered sub-sections with a data table for sub-entries that have one', () => {
-    renderWithProviders(() => <Privacy />)
-    expect(screen.getByText('2.1. Data Collected from Discord')).toBeInTheDocument()
-    expect(screen.getByText('Discord User ID')).toBeInTheDocument()
-    expect(screen.getAllByText('Type of Data').length).toBeGreaterThan(0)
-  })
+  it('loads French and updates both the document and tables when the language changes', () => {
+    localStorage.setItem('locale', 'fr')
+    const Page = () => {
+      const { updateLocale } = useI18n()
+      return (
+        <>
+          <button onClick={() => updateLocale('en')}>English</button>
+          <Privacy />
+        </>
+      )
+    }
+    renderWithProviders(Page)
 
-  it('renders a sub-entry without a table using linkified content instead', () => {
-    renderWithProviders(() => <Privacy />)
-    // "Log Data" sub-entry has content but no table.
-    expect(screen.getByText('2.4. Log Data')).toBeInTheDocument()
-  })
+    expect(screen.getByRole('heading', { level: 1, name: 'Politique de confidentialité' })).toBeInTheDocument()
+    expect(screen.getByRole('article')).toHaveAttribute('lang', 'fr')
+    expect(screen.getByText('20 novembre 2026')).toHaveAttribute('datetime', '2026-11-20')
+    expect(screen.getByRole('table', { name: 'Critères de conservation et limites d’accès' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Conditions d’utilisation' })).toHaveAttribute('href', '/legal/terms')
 
-  it('linkifies email addresses in section content', () => {
-    renderWithProviders(() => <Privacy />)
-    const mailLinks = screen.getAllByText('contact@gmod-integration.com')
-    expect(mailLinks.length).toBeGreaterThan(0)
-    mailLinks.forEach((link) => expect(link).toHaveAttribute('href', 'mailto:contact@gmod-integration.com'))
+    fireEvent.click(screen.getByRole('button', { name: 'English' }))
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument()
+    expect(screen.getByRole('article')).toHaveAttribute('lang', 'en')
+    expect(screen.getByRole('table', { name: 'Retention criteria and access limits' })).toBeInTheDocument()
+    expect(screen.queryByRole('table', { name: 'Critères de conservation et limites d’accès' })).not.toBeInTheDocument()
   })
 })

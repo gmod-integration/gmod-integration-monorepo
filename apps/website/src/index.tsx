@@ -2,7 +2,6 @@
 import { render } from 'solid-js/web'
 
 import './index.css'
-import './sentry'
 import { Route, Router } from '@solidjs/router'
 import NotFound from './pages/NotFound'
 import Premium from './pages/Premium'
