@@ -1,17 +1,11 @@
 import { PrismaClient } from '../generated/prisma/client.js'
 import { PrismaMariaDb } from '@prisma/adapter-mariadb'
+import { getMariaDbConfig } from '@gmod/config/infrastructure.js'
 
-const isDev = process.env.DEV === 'true'
-const configuredConnectionLimit = Number.parseInt(process.env.MARIA_CONNECTION_LIMIT || (isDev ? '10' : '50'), 10)
-const connectionLimit = isDev ? Math.min(configuredConnectionLimit, 10) : configuredConnectionLimit
+const config = getMariaDbConfig()
+const { connectionLimit } = config
 
-const adapter = new PrismaMariaDb({
-  host: process.env.MARIA_HOST,
-  user: process.env.MARIA_USER,
-  password: process.env.MARIA_PASSWORD,
-  database: process.env.MARIA_NAME,
-  connectionLimit,
-})
+const adapter = new PrismaMariaDb(config)
 
 const prisma = new PrismaClient({ adapter })
 let connectPromise: Promise<void> | null = null

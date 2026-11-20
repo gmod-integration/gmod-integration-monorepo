@@ -10,6 +10,7 @@
     ".": "./src/index.ts",
     "./index.js": "./src/index.ts",
     "./schema.js": "./src/schema.ts",
+    "./infrastructure.js": "./src/infrastructure.ts",
     "./website.js": "./src/website.ts",
     "./website-runtime.js": "./dist/website.js"
   },
