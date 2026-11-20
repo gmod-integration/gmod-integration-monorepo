@@ -15,6 +15,18 @@ interface Case {
 // hand-written blocks here.
 const cases: Case[] = [
   {
+    name: 'DiscordGuildPublicInviteJobSchema',
+    schema: bullmq.DiscordGuildPublicInviteJobSchema,
+    valid: { guildID: 'g1', correlationId: 'c1' },
+    requiredKeys: ['guildID', 'correlationId'],
+  },
+  {
+    name: 'DiscordGuildPublicInviteReplySchema',
+    schema: bullmq.DiscordGuildPublicInviteReplySchema,
+    valid: { correlationId: 'c1', inviteUrl: 'https://discord.gg/valid-Code' },
+    requiredKeys: ['correlationId', 'inviteUrl'],
+  },
+  {
     name: 'UpdateGuildUserPseudoJobSchema',
     schema: bullmq.UpdateGuildUserPseudoJobSchema,
     valid: { serverID: 's1', steamID64: '76561198219049673', playerName: 'Bob', userGroup: 'user' },
@@ -484,6 +496,22 @@ describe('bullmq job/reply/record schemas', () => {
 })
 
 describe('bullmq schemas: extra constraints beyond required-field presence', () => {
+  it('only accepts canonical Discord public invitation links or an unavailable result', () => {
+    expect(
+      bullmq.DiscordGuildPublicInviteReplySchema.parse({ correlationId: 'c1', inviteUrl: null }).inviteUrl,
+    ).toBeNull()
+    for (const inviteUrl of [
+      'javascript:alert(1)',
+      'http://discord.gg/code',
+      'https://discord.gg.evil.example/code',
+      'https://discord.gg/code/extra',
+      'https://discord.gg/',
+    ]) {
+      expect(bullmq.DiscordGuildPublicInviteReplySchema.safeParse({ correlationId: 'c1', inviteUrl }).success).toBe(
+        false,
+      )
+    }
+  })
   it('DiscordGuildSyncBanJobSchema rejects an empty oldDiscordIDs array', () => {
     const result = bullmq.DiscordGuildSyncBanJobSchema.safeParse({
       guildID: 'g1',

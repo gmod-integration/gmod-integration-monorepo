@@ -50,6 +50,7 @@ vi.mock('@/controllers/v3/usersControllers.js', () => ({
   getLogsChannel: vi.fn(),
   getProfile: vi.fn(),
   getPublicServers: vi.fn(),
+  getPublicServerRanking: vi.fn(),
   getScreenshotsList: vi.fn(),
   getServerLogs: vi.fn(),
   getServerLogsTrigger: vi.fn(),
@@ -118,6 +119,7 @@ vi.mock('@/controllers/v3/serversControllers.js', () => ({ getIGSettings: vi.fn(
 vi.mock('@/controllers/v3/users/ServerStatusChannelControllers.js', () => ({ putServerStatusChannel: vi.fn() }))
 
 const { default: router } = await import('../../../src/routes/v3/usersRoutes.js')
+const { userValidator, userAdminGuildValidator } = await import('@/middleware/v3/userValidator.js')
 
 describe('usersRoutes', () => {
   it('registers a representative sample of routes across the whole file', () => {
@@ -129,5 +131,14 @@ describe('usersRoutes', () => {
     expect(paths).toContain('/:discordID/guilds/:guildID/bans')
     expect(paths).toContain('/:discordID/guilds/:guildID/servers/:serverID/chats/filters/:filterID')
     expect(paths.length).toBeGreaterThan(80)
+  })
+
+  it('registers ranking after session authentication and before guild administration restrictions', () => {
+    const ranking = router.stack.findIndex((layer: any) => layer.route?.path === '/:discordID/servers/ranking')
+    const authentication = router.stack.findIndex((layer: any) => layer.handle === userValidator)
+    const guildAdministration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+    expect(ranking).toBeGreaterThan(authentication)
+    expect(ranking).toBeLessThan(guildAdministration)
+    expect(router.stack[ranking].route.methods.get).toBe(true)
   })
 })

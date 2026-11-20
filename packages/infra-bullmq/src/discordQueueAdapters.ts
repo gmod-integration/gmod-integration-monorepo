@@ -1,6 +1,9 @@
 import { Queue } from 'bullmq'
 import { connection } from './index.js'
 import {
+  DiscordPublicInviteUrlSchema,
+  DiscordGuildPublicInviteJobSchema,
+  DiscordGuildPublicInviteReplySchema,
   UpdateGuildUserPseudoJobSchema,
   UpdatePlayerUserGroupJobSchema,
   UpdateDiscordTeamRoleJobSchema,
@@ -101,6 +104,7 @@ const guildSnapshotCache = new Map<
   }
 >()
 const guildSnapshotInFlight = new Map<string, Promise<DiscordGuildSummary | null>>()
+const guildPublicInviteInFlight = new Map<string, Promise<string | null>>()
 const GUILD_SNAPSHOT_CACHE_MAX_ENTRIES = 500
 
 export class BullMQReplyTimeoutError extends Error {
@@ -361,6 +365,48 @@ export async function enqueueMainClientSetPresence(
 
   const reply = await waitForReply(correlationId, (value) => MainClientSetPresenceReplySchema.parse(value), timeoutMs)
   return reply.updated
+}
+
+/** Resolve one public invitation per community, shared by all its listed game servers. */
+export async function enqueueDiscordGuildPublicInvite(guildID: string, timeoutMs = 7000): Promise<string | null> {
+  const cacheKey = `discord:publicInvite:${guildID}`
+  const cached = await redis.get(cacheKey)
+  if (cached !== null) {
+    try {
+      const parsed: unknown = JSON.parse(cached)
+      if (parsed === null) return null
+      const validated = DiscordPublicInviteUrlSchema.safeParse(parsed)
+      if (validated.success) return validated.data
+    } catch {
+      // Malformed cache values are replaced by a validated worker reply.
+    }
+  }
+
+  const pending = guildPublicInviteInFlight.get(guildID)
+  if (pending) return await pending
+
+  const request = (async () => {
+    const correlationId = randomUUID()
+    const payload = DiscordGuildPublicInviteJobSchema.parse({ guildID, correlationId, timestamp: new Date() })
+    await discordGuildOpsQueue.add('guildPublicInvite', payload, {
+      priority: JobPriority.INTERACTIVE,
+      attempts: 1,
+      removeOnComplete: true,
+    })
+    const reply = await waitForReply(
+      correlationId,
+      (value) => DiscordGuildPublicInviteReplySchema.parse(value),
+      timeoutMs,
+    )
+    await redis.set(cacheKey, JSON.stringify(reply.inviteUrl), 'EX', reply.inviteUrl ? 3600 : 60)
+    return reply.inviteUrl
+  })()
+  guildPublicInviteInFlight.set(guildID, request)
+  try {
+    return await request
+  } finally {
+    guildPublicInviteInFlight.delete(guildID)
+  }
 }
 
 export async function enqueueDiscordGuildSnapshot(

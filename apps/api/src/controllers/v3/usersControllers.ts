@@ -65,6 +65,7 @@ import {
   enqueueDiscordServerSyncChatDelete,
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { getSingleParam } from '@/utils/requestParams.js'
+import { processGetPublicServerRanking } from '@gmod/core/models/v3/publicServerRankingModels.js'
 
 export async function getProfile(req: Request, res: Response) {
   const result = await processGetProfile(req.query.steamID64, req.query.discordID)
@@ -724,6 +725,11 @@ export async function deleteVerificationMessage(req: Request, res: Response) {
     },
   })
   return res.send(msg)
+}
+
+export async function getPublicServerRanking(req: Request, res: Response) {
+  const result = await processGetPublicServerRanking(req.query)
+  return res.status(result.status).send(result.body)
 }
 
 export async function getPublicServers(req: Request, res: Response) {

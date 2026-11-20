@@ -3,6 +3,8 @@ import { connection } from '@gmod/infra-bullmq'
 import { ensureAvatarStored, s3 } from '@gmod/infra-minio'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import {
+  DiscordGuildPublicInviteJobSchema,
+  type DiscordGuildPublicInviteJob,
   type UpdateGuildUserPseudoJob,
   type UpdatePlayerUserGroupJob,
   type UpdateDiscordTeamRoleJob,
@@ -76,6 +78,7 @@ import { addAutoRoleToUser, verifyUser } from '@gmod/domain-guild/discordModels.
 import { getVerificationGuildMessage } from '../utils/messages.js'
 import { ConfigDiscord } from '@gmod/config'
 import { getDiscordEntitlements } from '@gmod/domain-guild/Guild.js'
+import { getPublicGuildInvite } from '../utils/publicInvite.js'
 
 async function writeReply(correlationId: string, payload: unknown) {
   await redis.set(`bullmq:reply:${correlationId}`, JSON.stringify(payload), 'EX', 30)
@@ -608,6 +611,7 @@ export const discordMainClientOpsWorker = new Worker<
 )
 
 export const discordGuildOpsWorker = new Worker<
+  | DiscordGuildPublicInviteJob
   | DiscordGuildSnapshotJob
   | DiscordGuildVerifyUserJob
   | DiscordGuildRunVerificationCheckJob
@@ -636,6 +640,7 @@ export const discordGuildOpsWorker = new Worker<
   'discord-guildOps',
   async (
     job: Job<
+      | DiscordGuildPublicInviteJob
       | DiscordGuildSnapshotJob
       | DiscordGuildVerifyUserJob
       | DiscordGuildRunVerificationCheckJob
@@ -661,6 +666,20 @@ export const discordGuildOpsWorker = new Worker<
       | DiscordGuildRemoveSyncRolesJob
     >,
   ) => {
+    if (job.name === 'guildPublicInvite') {
+      const payload = DiscordGuildPublicInviteJobSchema.parse(job.data)
+      let inviteUrl: string | null = null
+      try {
+        const client = await getGuildClient(payload.guildID, false)
+        const guild = await client.guilds.fetch(payload.guildID)
+        if (guild) inviteUrl = await getPublicGuildInvite(guild)
+      } catch {
+        // A missing guild or invite permission must not prevent browsing public servers.
+      }
+      await writeReply(payload.correlationId, { correlationId: payload.correlationId, inviteUrl })
+      return
+    }
+
     if (job.name === 'guildSnapshot') {
       const payload = DiscordGuildSnapshotJobSchema.parse(job.data)
       const client = await getGuildClient(payload.guildID, false)

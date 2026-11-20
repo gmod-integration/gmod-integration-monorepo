@@ -49,6 +49,7 @@ import {
   getLogsChannel,
   getProfile,
   getPublicServers,
+  getPublicServerRanking,
   getScreenshotsList,
   getServerLogs,
   getServerLogsTrigger,
@@ -131,6 +132,7 @@ router.get('/:discordID/gmod-store', asyncHandler(getUserGmodStorePurchases))
 router.delete('/:discordID/gmod-store/:guildID', asyncHandler(deleteUserGmodPurchase))
 router.get('/:discordID/verifications/token', asyncHandler(postUserStartVerification))
 router.get('/:discordID/servers', asyncHandler(getPublicServers))
+router.get('/:discordID/servers/ranking', asyncHandler(getPublicServerRanking))
 router.get('/:discordID/notifications', asyncHandler(getUserNotifications))
 router.patch('/:discordID/notifications/:notificationID', asyncHandler(patchUserNotifications))
 router.get('/:discordID/data-requests', asyncHandler(getUserDataRequest))

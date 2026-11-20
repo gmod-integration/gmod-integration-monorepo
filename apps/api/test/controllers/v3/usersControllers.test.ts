@@ -112,6 +112,11 @@ const modelMocks = {
 }
 vi.mock('@gmod/core/models/v3/usersControllerModels.js', () => modelMocks)
 
+const processGetPublicServerRankingMock = vi.fn()
+vi.mock('@gmod/core/models/v3/publicServerRankingModels.js', () => ({
+  processGetPublicServerRanking: processGetPublicServerRankingMock,
+}))
+
 class FakeGuild {
   id: string
   constructor(obj: { id: string }) {
@@ -163,6 +168,7 @@ function resetAllMocks() {
   badArgumentMock.mockReset().mockReturnValue(false)
   todoControllersMock.mockReset()
   getUserDataGRPDMock.mockReset()
+  processGetPublicServerRankingMock.mockReset()
   redisMock.del.mockReset()
   for (const table of Object.values(prismaMock)) {
     for (const fn of Object.values(table as Record<string, any>)) {
@@ -1215,6 +1221,32 @@ describe('usersControllers', () => {
 
       const sent = res.send.mock.calls[0][0]
       expect(sent[0].status).toBeUndefined()
+    })
+  })
+
+  describe('getPublicServerRanking', () => {
+    it('passes the ranking query and sends the model response without changing the legacy route', async () => {
+      const query = { limit: '10', offset: '20', gameMode: 'darkrp', status: 'offline', search: 'community' }
+      const body = { servers: [], pagination: { total: 24, offset: 20, limit: 10 }, filters: { gameModes: ['darkrp'] } }
+      processGetPublicServerRankingMock.mockResolvedValueOnce({ status: 200, body })
+      const res = makeRes()
+
+      await c.getPublicServerRanking({ query } as any, res)
+
+      expect(processGetPublicServerRankingMock).toHaveBeenCalledWith(query)
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(res.send).toHaveBeenCalledWith(body)
+    })
+
+    it('preserves a query validation error returned by the model', async () => {
+      const body = { error: 'Invalid server ranking query' }
+      processGetPublicServerRankingMock.mockResolvedValueOnce({ status: 400, body })
+      const res = makeRes()
+
+      await c.getPublicServerRanking({ query: { limit: '-1' } } as any, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(res.send).toHaveBeenCalledWith(body)
     })
   })
 

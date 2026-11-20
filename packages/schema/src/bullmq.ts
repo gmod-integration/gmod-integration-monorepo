@@ -1,5 +1,20 @@
 import { z } from 'zod'
 
+export const DiscordPublicInviteUrlSchema = z.string().regex(/^https:\/\/discord\.gg\/[A-Za-z0-9_-]{1,100}$/)
+
+export const DiscordGuildPublicInviteJobSchema = z.object({
+  guildID: z.string().min(1, 'guildID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+export type DiscordGuildPublicInviteJob = z.infer<typeof DiscordGuildPublicInviteJobSchema>
+
+export const DiscordGuildPublicInviteReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  inviteUrl: DiscordPublicInviteUrlSchema.nullable(),
+})
+export type DiscordGuildPublicInviteReply = z.infer<typeof DiscordGuildPublicInviteReplySchema>
+
 /**
  * Job: Synchroniser le pseudo Discord d'un joueur Gmod
  * Source: Gmod server -> Discord pseudonyme/nickname

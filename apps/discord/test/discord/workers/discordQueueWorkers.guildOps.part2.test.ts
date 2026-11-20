@@ -50,6 +50,8 @@ vi.mock('@gmod/domain-guild/discordModels.js', () => ({
 }))
 
 const getVerificationGuildMessageMock = vi.fn()
+const getPublicGuildInviteMock = vi.fn()
+vi.mock('../../../src/discord/utils/publicInvite.js', () => ({ getPublicGuildInvite: getPublicGuildInviteMock }))
 vi.mock('../../../src/discord/utils/messages.js', () => ({
   getVerificationGuildMessage: getVerificationGuildMessageMock,
 }))
@@ -77,6 +79,7 @@ function resetAllMocks() {
   getServerFromIDMock.mockReset()
   redisMock.set.mockReset().mockResolvedValue(undefined)
   getGuildClientMock.mockReset()
+  getPublicGuildInviteMock.mockReset()
   addAutoRoleToUserMock.mockReset().mockResolvedValue(undefined)
   verifyUserMock.mockReset()
 }
@@ -88,6 +91,29 @@ function lastReplyPayload() {
 
 describe('discordQueueWorkers - discordGuildOpsWorker (part 2: server CRUD job pairs)', () => {
   beforeEach(() => resetAllMocks())
+
+  it('resolves a public guild invite through the guild client and writes a correlated reply', async () => {
+    const guild = { id: 'g1' }
+    getGuildClientMock.mockResolvedValueOnce({ guilds: { fetch: vi.fn().mockResolvedValueOnce(guild) } })
+    getPublicGuildInviteMock.mockResolvedValueOnce('https://discord.gg/public-Code')
+    await processor()(makeJob('guildPublicInvite', { guildID: 'g1', correlationId: 'c1' }))
+    expect(getGuildClientMock).toHaveBeenCalledWith('g1', false)
+    expect(getPublicGuildInviteMock).toHaveBeenCalledWith(guild)
+    expect(lastReplyPayload()).toEqual({ correlationId: 'c1', inviteUrl: 'https://discord.gg/public-Code' })
+  })
+
+  it('replies with an unavailable invite for absent guilds and Discord permission failures', async () => {
+    getGuildClientMock.mockResolvedValueOnce({ guilds: { fetch: vi.fn().mockResolvedValueOnce(null) } })
+    await processor()(makeJob('guildPublicInvite', { guildID: 'missing', correlationId: 'c2' }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'c2', inviteUrl: null })
+    getGuildClientMock.mockRejectedValueOnce(new Error('Bot not present'))
+    await processor()(makeJob('guildPublicInvite', { guildID: 'denied', correlationId: 'c3' }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'c3', inviteUrl: null })
+    getGuildClientMock.mockResolvedValueOnce({ guilds: { fetch: vi.fn().mockResolvedValueOnce({ id: 'g1' }) } })
+    getPublicGuildInviteMock.mockRejectedValueOnce(new Error('Missing CreateInstantInvite permission'))
+    await processor()(makeJob('guildPublicInvite', { guildID: 'denied', correlationId: 'c4' }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'c4', inviteUrl: null })
+  })
 
   const crudCases = [
     {
