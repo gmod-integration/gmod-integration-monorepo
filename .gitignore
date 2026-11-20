@@ -14,3 +14,6 @@ dist
 /logs/*
 /apps/discord/logs/*
 backup
+
+# Private local audit and investigation reports.
+/docs/reports/

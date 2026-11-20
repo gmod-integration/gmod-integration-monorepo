@@ -535,7 +535,7 @@ describe('pages/Account.tsx', () => {
       await waitForLoaded()
       expect(screen.getByRole('link', { name: 'Delete my Data' })).toHaveAttribute(
         'href',
-        'mailto:contact@gmod-integration.com',
+        'mailto:gmod-integration@linv.dev',
       )
     })
   })
