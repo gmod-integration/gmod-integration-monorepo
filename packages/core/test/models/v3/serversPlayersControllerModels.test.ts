@@ -170,16 +170,12 @@ describe('serversPlayersControllerModels', () => {
 
     it('extracts steamID64 from an array-valued route param', async () => {
       await processPlayerChangeGroup(makeServer(), ['765'], { oldGroup: 'user', newGroup: 'admin' })
-      expect(enqueueUpdatePlayerUserGroupMock).toHaveBeenCalledWith(
-        expect.objectContaining({ steamID64: '765' }),
-      )
+      expect(enqueueUpdatePlayerUserGroupMock).toHaveBeenCalledWith(expect.objectContaining({ steamID64: '765' }))
     })
 
     it('defaults steamID64 to an empty string for an unrecognized param type', async () => {
       await processPlayerChangeGroup(makeServer(), 12345, { oldGroup: 'user', newGroup: 'admin' })
-      expect(enqueueUpdatePlayerUserGroupMock).toHaveBeenCalledWith(
-        expect.objectContaining({ steamID64: '' }),
-      )
+      expect(enqueueUpdatePlayerUserGroupMock).toHaveBeenCalledWith(expect.objectContaining({ steamID64: '' }))
     })
   })
 
@@ -220,9 +216,7 @@ describe('serversPlayersControllerModels', () => {
         newTeam: {},
         player: validPlayerPayload(),
       })
-      expect(enqueueUpdateDiscordTeamRoleMock).toHaveBeenCalledWith(
-        expect.objectContaining({ teamName: null }),
-      )
+      expect(enqueueUpdateDiscordTeamRoleMock).toHaveBeenCalledWith(expect.objectContaining({ teamName: null }))
     })
   })
 

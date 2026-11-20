@@ -13,7 +13,9 @@ const getUserFromDiscordIDMock = vi.fn()
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromDiscordID: getUserFromDiscordIDMock }))
 
 const buttonVerificationWebsiteMock = vi.fn(async () => ({ type: 'button' }))
-vi.mock('../../../../src/discord/utils/buttons.js', () => ({ ButtonVerificationWebsite: buttonVerificationWebsiteMock }))
+vi.mock('../../../../src/discord/utils/buttons.js', () => ({
+  ButtonVerificationWebsite: buttonVerificationWebsiteMock,
+}))
 
 const getWarnMessageEmbedMock = vi.fn()
 const saveWarnListOptionsMock = vi.fn()

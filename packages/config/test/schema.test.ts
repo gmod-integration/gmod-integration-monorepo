@@ -118,9 +118,7 @@ describe('ConfigSchema', () => {
     })
 
     it('rejects the forbidden value "secret" case-insensitively', () => {
-      expect(ConfigSchema.safeParse(validEnv({ MARIA_PASSWORD: 'SECRETSECRETSECRET'.slice(0, 17) })).success).toBe(
-        true,
-      )
+      expect(ConfigSchema.safeParse(validEnv({ MARIA_PASSWORD: 'SECRETSECRETSECRET'.slice(0, 17) })).success).toBe(true)
       expect(ConfigSchema.safeParse(validEnv({ MARIA_PASSWORD: 'SeCrEt' })).success).toBe(false)
     })
 
@@ -130,9 +128,9 @@ describe('ConfigSchema', () => {
 
     it('trims surrounding whitespace before checking length/forbidden values', () => {
       expect(ConfigSchema.safeParse(validEnv({ MINIO_SECRET_KEY: '   root   ' })).success).toBe(false)
-      expect(
-        ConfigSchema.safeParse(validEnv({ MINIO_SECRET_KEY: '   a-valid-secret-value-here   ' })).success,
-      ).toBe(true)
+      expect(ConfigSchema.safeParse(validEnv({ MINIO_SECRET_KEY: '   a-valid-secret-value-here   ' })).success).toBe(
+        true,
+      )
     })
   })
 

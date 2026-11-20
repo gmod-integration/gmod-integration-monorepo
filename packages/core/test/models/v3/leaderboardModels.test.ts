@@ -96,9 +96,7 @@ describe('leaderboardModels', () => {
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(0)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
       await getServerLeaderboard('s1', 'total_kill', 0, 0)
-      expect(prismaMock.gm_server_stat.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ take: 10, skip: 0 }),
-      )
+      expect(prismaMock.gm_server_stat.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 10, skip: 0 }))
     })
   })
 
@@ -181,9 +179,7 @@ describe('leaderboardModels', () => {
       expect(embedJson.fields).toHaveLength(4)
       expect(embedJson.fields![0].name).toContain('🥇')
       expect(embedJson.fields![3].name).not.toContain('🥇')
-      expect(result!.options).toEqual(
-        expect.objectContaining({ serverID: 's1', category: 'total_kill', total: 5 }),
-      )
+      expect(result!.options).toEqual(expect.objectContaining({ serverID: 's1', category: 'total_kill', total: 5 }))
     })
 
     it('does not award medal ranks when offset is not 0', async () => {
@@ -200,9 +196,7 @@ describe('leaderboardModels', () => {
     it('falls back to custom_values when the category is not a direct field', async () => {
       getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'My Server', getID: () => 's1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(1)
-      prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([
-        { name: 'P1', custom_values: { money: 500 } },
-      ])
+      prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([{ name: 'P1', custom_values: { money: 500 } }])
 
       const result = await getLeaderboardMessageEmbed('s1', 'money', 'en')
 
@@ -232,7 +226,6 @@ describe('leaderboardModels', () => {
 
       expect(result!.embed.toJSON().fields ?? []).toHaveLength(0)
     })
-
   })
 
   describe('handleLeaderboardInteraction', () => {

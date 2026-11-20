@@ -25,12 +25,8 @@ vi.mock('@gmod/core/utils/localizations.js', () => ({ getTranslate: getTranslate
 const getServerFromIDMock = vi.fn()
 vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: getServerFromIDMock }))
 
-const {
-  getServerUserWarn,
-  saveWarnListOptions,
-  getWarnMessageEmbed,
-  handleWarnInteraction,
-} = await import('../src/warnModels.js')
+const { getServerUserWarn, saveWarnListOptions, getWarnMessageEmbed, handleWarnInteraction } =
+  await import('../src/warnModels.js')
 
 function fakeServer() {
   return { getName: () => 'My Server', getID: () => 's1' }

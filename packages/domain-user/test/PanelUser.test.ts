@@ -104,10 +104,7 @@ describe('PanelUser', () => {
     it('acquires the lock, fetches from Discord, caches, and releases the lock', async () => {
       redisGetMock.mockResolvedValueOnce(null).mockResolvedValueOnce(null)
       redisSetnxMock.mockResolvedValueOnce(true)
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({ ok: true, json: async () => [{ id: 'g1' }] }),
-      )
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [{ id: 'g1' }] }))
 
       const guilds = await buildPanelUser().findGuilds()
 

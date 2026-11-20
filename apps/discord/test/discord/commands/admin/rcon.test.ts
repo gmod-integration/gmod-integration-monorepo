@@ -13,7 +13,9 @@ const getUserFromDiscordIDMock = vi.fn()
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromDiscordID: getUserFromDiscordIDMock }))
 
 const buttonVerificationWebsiteMock = vi.fn(async () => ({ type: 'button' }))
-vi.mock('../../../../src/discord/utils/buttons.js', () => ({ ButtonVerificationWebsite: buttonVerificationWebsiteMock }))
+vi.mock('../../../../src/discord/utils/buttons.js', () => ({
+  ButtonVerificationWebsite: buttonVerificationWebsiteMock,
+}))
 
 const isGuildPremiumMock = vi.fn()
 const replyNeedPremiumMock = vi.fn()
@@ -108,9 +110,7 @@ describe('commands/admin/rcon execute', () => {
     getServerFromIDMock.mockResolvedValueOnce(makeServer())
     getUserFromDiscordIDMock.mockResolvedValueOnce(makeUser({ steamID64: null }))
     await rcon.execute(interaction)
-    expect(interaction.reply).toHaveBeenCalledWith(
-      expect.objectContaining({ content: 'rcon_steam_link' }),
-    )
+    expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ content: 'rcon_steam_link' }))
   })
 
   it('replies rcon_superadmin when the player cannot be found on the server', async () => {

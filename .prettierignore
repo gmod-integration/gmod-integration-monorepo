@@ -2,7 +2,19 @@ node_modules
 dist
 .turbo
 coverage
-logs
+/logs/
+/apps/discord/logs/
+
+# Local tool settings, private reports and independent repositories
+.claude/
+docs/reports/
+submodules/
+**/.terraform/
+**/*.tfstate*
+
+# Generated documentation output
+apps/docs/.docusaurus/
+apps/docs/build/
 
 # package manager locks
 bun.lock

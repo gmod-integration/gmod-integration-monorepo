@@ -69,7 +69,9 @@ describe('discord_push_context script', () => {
     )
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Pushed Command valid-cmd from'))
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[WARNING] The Command at'))
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('[ERROR] Failed to load Command from brokenCommand.ts'))
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[ERROR] Failed to load Command from brokenCommand.ts'),
+    )
     expect(setTokenMock).toHaveBeenCalledWith('bot-token')
     expect(putMock).toHaveBeenCalledWith(`/applications/client-1/commands`, {
       body: [{ name: 'valid-cmd' }],

@@ -14,9 +14,8 @@ const prismaMock: any = {
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
-const { sendPlayerSay, saveConnectionGlobalInfo, saveConnectionSteamInfo } = await import(
-  '../../../src/models/v3/serversPlayersModels.js'
-)
+const { sendPlayerSay, saveConnectionGlobalInfo, saveConnectionSteamInfo } =
+  await import('../../../src/models/v3/serversPlayersModels.js')
 
 function makePlayer(overrides: Record<string, any> = {}) {
   return {
@@ -72,7 +71,9 @@ describe('serversPlayersModels', () => {
 
     it('skips when the sync direction is discord-to-gmod only', async () => {
       const server = makeServer({
-        getSetting: vi.fn().mockImplementation(async (key: string) => (key === 'syncChatDirection' ? 'discordToGmod' : true)),
+        getSetting: vi
+          .fn()
+          .mockImplementation(async (key: string) => (key === 'syncChatDirection' ? 'discordToGmod' : true)),
       })
       await expect(sendPlayerSay(server, makePlayer(), 'hi', false)).resolves.toEqual({
         skip: true,
@@ -351,7 +352,9 @@ describe('serversPlayersModels', () => {
 
       it('skips when the final output string is emptied out by a "startWith" rule', async () => {
         const server = makeServer({
-          getGmodToDiscordFilter: vi.fn().mockResolvedValue([{ ...baseRule, operator: 'startWith', trigger: 'stop', action: 'relay' }]),
+          getGmodToDiscordFilter: vi
+            .fn()
+            .mockResolvedValue([{ ...baseRule, operator: 'startWith', trigger: 'stop', action: 'relay' }]),
         })
         await expect(sendPlayerSay(server, makePlayer(), 'stop', false)).resolves.toEqual({
           skip: true,
@@ -383,7 +386,13 @@ describe('serversPlayersModels', () => {
       prismaMock.users.findFirst.mockResolvedValueOnce(null)
       await saveConnectionGlobalInfo('765', 'STEAM_0:1:1', '1.2.3.4', 'Bob')
       expect(prismaMock.users.create).toHaveBeenCalledWith({
-        data: { steamID64: '765', steamID: 'STEAM_0:1:1', name: 'Bob', lastIP: '1.2.3.4', IPS: JSON.stringify(['1.2.3.4']) },
+        data: {
+          steamID64: '765',
+          steamID: 'STEAM_0:1:1',
+          name: 'Bob',
+          lastIP: '1.2.3.4',
+          IPS: JSON.stringify(['1.2.3.4']),
+        },
       })
     })
 

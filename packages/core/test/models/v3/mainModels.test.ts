@@ -24,9 +24,8 @@ const prismaMock: any = {
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
-const { getStats, routineUpdateStatus, routineServerStatusRefresh, routinePremiumRoleOfMainGuild } = await import(
-  '../../../src/models/v3/mainModels.js'
-)
+const { getStats, routineUpdateStatus, routineServerStatusRefresh, routinePremiumRoleOfMainGuild } =
+  await import('../../../src/models/v3/mainModels.js')
 
 function resetAllMocks() {
   redisMock.get.mockReset()

@@ -15,7 +15,13 @@ describe('User', () => {
   })
 
   it('isDeveloper() is true only for rank "developer"', () => {
-    const dev = new User({ steamID64: null, discordID: 'd1', rank: 'developer', lastVerification: null, trustLevel: 50 })
+    const dev = new User({
+      steamID64: null,
+      discordID: 'd1',
+      rank: 'developer',
+      lastVerification: null,
+      trustLevel: 50,
+    })
     const notDev = new User({ steamID64: null, discordID: 'd1', rank: 'user', lastVerification: null, trustLevel: 50 })
     expect(dev.isDeveloper()).toBe(true)
     expect(notDev.isDeveloper()).toBe(false)

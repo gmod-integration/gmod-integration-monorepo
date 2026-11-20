@@ -32,8 +32,7 @@ describe('discord/utils/buttons', () => {
     expect(json.label).toBe('⠀verify_yourself')
     expect(json.emoji.name).toBe('🛡️')
     expect(json.url).toBe(
-      'https://panel.example/oauth&state=' +
-        encodeURIComponent('redirect:/account?startVerification=true'),
+      'https://panel.example/oauth&state=' + encodeURIComponent('redirect:/account?startVerification=true'),
     )
     expect(getTranslateMock).toHaveBeenCalledWith('verify_yourself', 'en')
   })

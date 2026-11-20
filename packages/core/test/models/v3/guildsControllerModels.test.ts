@@ -97,9 +97,7 @@ describe('processDiscordMessageToGmod', () => {
 
     await processDiscordMessageToGmod(message)
 
-    expect(message.reply).toHaveBeenCalledWith(
-      expect.objectContaining({ content: 'premium_required' }),
-    )
+    expect(message.reply).toHaveBeenCalledWith(expect.objectContaining({ content: 'premium_required' }))
     expect(wsAddMock).not.toHaveBeenCalled()
   })
 
@@ -120,7 +118,12 @@ describe('processDiscordMessageToGmod', () => {
       'wsSendToServer',
       expect.objectContaining({
         id: 's1',
-        data: expect.objectContaining({ method: 'wsPlayerSay', name: 'Bob', content: 'hello', avatar: 'stored-avatar-url' }),
+        data: expect.objectContaining({
+          method: 'wsPlayerSay',
+          name: 'Bob',
+          content: 'hello',
+          avatar: 'stored-avatar-url',
+        }),
       }),
     )
   })

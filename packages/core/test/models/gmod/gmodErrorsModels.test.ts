@@ -33,7 +33,13 @@ describe('gmodErrorsModels', () => {
       )
 
       expect(gmodErrorsFromMock).toHaveBeenCalledWith(
-        expect.objectContaining({ error: 'boom', stack: '["line1"]', workshopID: 'w1', serverID: 's1', steamID64: '765' }),
+        expect.objectContaining({
+          error: 'boom',
+          stack: '["line1"]',
+          workshopID: 'w1',
+          serverID: 's1',
+          steamID64: '765',
+        }),
       )
       expect(result).toEqual({ id: 1 })
     })

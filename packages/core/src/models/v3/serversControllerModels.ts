@@ -67,9 +67,7 @@ export async function processPostStatus(server: Server, body: any): Promise<Endp
   const isIncomingZeroPlayers = Number.isFinite(incomingPlayers) && incomingPlayers === 0
   const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
   const shouldSkipDiscordRefresh =
-    isIncomingZeroPlayers &&
-    previousStatus?.players === 0 &&
-    previousStatus.updatedAt > fiveMinutesAgo
+    isIncomingZeroPlayers && previousStatus?.players === 0 && previousStatus.updatedAt > fiveMinutesAgo
 
   await server.saveStatus(ip, port, hostname, map, gameMode, players, maxPlayers, uptime, playersList || [])
 

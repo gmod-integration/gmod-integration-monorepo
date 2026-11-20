@@ -46,8 +46,14 @@ const prismaMock: any = {
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
-const { PlayerGmod, updateDiscordTeamRole, updatePlayerUserGroup, removeDiscordSync, removeServerSync, changeLinkCheckDiscordBan } =
-  await import('../../../src/classes/v3/PlayerGmod.js')
+const {
+  PlayerGmod,
+  updateDiscordTeamRole,
+  updatePlayerUserGroup,
+  removeDiscordSync,
+  removeServerSync,
+  changeLinkCheckDiscordBan,
+} = await import('../../../src/classes/v3/PlayerGmod.js')
 
 function resetAllMocks() {
   getTranslateMock.mockClear()
@@ -254,7 +260,11 @@ describe('PlayerGmod', () => {
     it('delegates to the bullmq adapter', async () => {
       const server = { getID: () => 's1' } as any
       await updateDiscordTeamRole(server, '765', 'Red')
-      expect(enqueueUpdateDiscordTeamRoleMock).toHaveBeenCalledWith({ serverID: 's1', steamID64: '765', teamName: 'Red' })
+      expect(enqueueUpdateDiscordTeamRoleMock).toHaveBeenCalledWith({
+        serverID: 's1',
+        steamID64: '765',
+        teamName: 'Red',
+      })
     })
   })
 
@@ -272,7 +282,11 @@ describe('PlayerGmod', () => {
       const server = { getID: () => 's1' } as any
       await updatePlayerUserGroup(server, '765', 'admin')
       expect(prismaMock.gm_server_stat.update).toHaveBeenCalled()
-      expect(enqueueUpdatePlayerUserGroupMock).toHaveBeenCalledWith({ serverID: 's1', steamID64: '765', userGroup: 'admin' })
+      expect(enqueueUpdatePlayerUserGroupMock).toHaveBeenCalledWith({
+        serverID: 's1',
+        steamID64: '765',
+        userGroup: 'admin',
+      })
     })
 
     it('rethrows and logs on failure', async () => {
@@ -350,9 +364,7 @@ describe('PlayerGmod', () => {
 
       await removeServerSync('765')
 
-      expect(prismaMock.gm_server_stat.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { rank: 'user' } }),
-      )
+      expect(prismaMock.gm_server_stat.update).toHaveBeenCalledWith(expect.objectContaining({ data: { rank: 'user' } }))
       expect(wsAddMock).toHaveBeenCalledWith(
         'wsSendToServer',
         expect.objectContaining({ data: expect.objectContaining({ method: 'wsPlayerUpdateGroup', add: false }) }),

@@ -124,9 +124,17 @@ describe('serversControllerModels', () => {
 
       const result = await processPostStatus(server, validBody)
 
-      expect(server.saveStatus).toHaveBeenCalledWith('1.2.3.4', '27015', 'My Server', 'gm_construct', 'sandbox', 5, 10, 1000, [
-        { name: 'Bob' },
-      ])
+      expect(server.saveStatus).toHaveBeenCalledWith(
+        '1.2.3.4',
+        '27015',
+        'My Server',
+        'gm_construct',
+        'sandbox',
+        5,
+        10,
+        1000,
+        [{ name: 'Bob' }],
+      )
       expect(enqueueDiscordServerStatusRefreshAsyncMock).toHaveBeenCalledWith('s1')
       expect(result).toEqual({ status: 200, body: { success: true } })
     })
@@ -222,9 +230,7 @@ describe('serversControllerModels', () => {
     })
 
     it('skips a warn entry with an unparseable date', async () => {
-      await processServerImportWarns(makeServer(), [
-        { adminSteamID64: 'a1', playerSteamID64: 'p1', date: {} },
-      ])
+      await processServerImportWarns(makeServer(), [{ adminSteamID64: 'a1', playerSteamID64: 'p1', date: {} }])
       expect(prismaMock.gm_server_warn.create).not.toHaveBeenCalled()
     })
 
@@ -240,9 +246,7 @@ describe('serversControllerModels', () => {
 
     it('accepts a numeric epoch-seconds date and defaults the reason', async () => {
       prismaMock.gm_server_warn.findFirst.mockResolvedValueOnce(null)
-      await processServerImportWarns(makeServer(), [
-        { adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 },
-      ])
+      await processServerImportWarns(makeServer(), [{ adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 }])
       expect(prismaMock.gm_server_warn.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ reason: 'No reason provided' }) }),
       )
@@ -250,9 +254,7 @@ describe('serversControllerModels', () => {
 
     it('skips a warn that already exists', async () => {
       prismaMock.gm_server_warn.findFirst.mockResolvedValueOnce({ id: 1 })
-      await processServerImportWarns(makeServer(), [
-        { adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 },
-      ])
+      await processServerImportWarns(makeServer(), [{ adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 }])
       expect(prismaMock.gm_server_warn.create).not.toHaveBeenCalled()
     })
 
@@ -466,14 +468,15 @@ describe('serversControllerModels', () => {
 
   describe('processMultiLog', () => {
     it('skips a log entry missing endpoint or data', async () => {
-      await processMultiLog(makeServer(), [{ endpoint: '', data: {} }, { endpoint: '/x', data: null }])
+      await processMultiLog(makeServer(), [
+        { endpoint: '', data: {} },
+        { endpoint: '/x', data: null },
+      ])
       expect(logServerMock).not.toHaveBeenCalled()
     })
 
     it('logs directly for an endpoint mapped to a log type', async () => {
-      await processMultiLog(makeServer(), [
-        { endpoint: '/servers/s1/players/765/ready', data: { steamID64: '765' } },
-      ])
+      await processMultiLog(makeServer(), [{ endpoint: '/servers/s1/players/765/ready', data: { steamID64: '765' } }])
       expect(logServerMock).toHaveBeenCalledWith(expect.anything(), 'player_ready', { steamID64: '765' })
     })
 

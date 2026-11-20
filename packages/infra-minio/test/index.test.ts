@@ -284,7 +284,10 @@ describe('packages/infra-minio src/index.ts', () => {
       const { deleteStoredAvatar } = await import('../src/index.js')
 
       await expect(deleteStoredAvatar('discord', 'u1')).resolves.toBeUndefined()
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to delete discord avatar'), expect.any(Error))
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to delete discord avatar'),
+        expect.any(Error),
+      )
     })
   })
 })

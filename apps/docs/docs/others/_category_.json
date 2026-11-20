@@ -1,7 +1,7 @@
 {
-	"label": "Others",
-	"position": 60,
-	"link": {
-		"description": "Others useful information."
-	}
+  "label": "Others",
+  "position": 60,
+  "link": {
+    "description": "Others useful information."
+  }
 }

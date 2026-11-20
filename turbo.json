@@ -1,9 +1,9 @@
 {
-  "$schema": "https://v2-9-4.turborepo.dev/schema.json",
+  "$schema": "https://turborepo.dev/schema.json",
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**", "build/**"]
     },
     "dev": {
       "cache": false,
@@ -21,5 +21,6 @@
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
     }
-  }
+  },
+  "globalDependencies": ["tsconfig.json", "tsconfig.typecheck.json", "eslint.config.mjs", "vitest.config.base.ts"]
 }
