@@ -17,3 +17,10 @@ backup
 
 # Private local audit and investigation reports.
 /docs/reports/
+
+# Local Terraform configuration, state and downloaded providers.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
