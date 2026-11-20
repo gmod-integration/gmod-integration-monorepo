@@ -1,17 +1,25 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../testUtils.js'
 import { Header } from '../../../src/components/layout/Header.js'
-import { discordUser, isAdmin, isLogged, normalizeDiscordUserPayload, setDiscordUser, setIsAdmin, setIsLogged } from '../../../src/utils/event.js'
-import { updateNotificationCount } from '../../../src/utils/notificationStore.js'
+import {
+  discordUser,
+  isAdmin,
+  isLogged,
+  normalizeDiscordUserPayload,
+  setDiscordUser,
+  setIsAdmin,
+  setIsLogged,
+} from '../../../src/utils/event.js'
+import { notificationCount, updateNotificationCount } from '../../../src/utils/notificationStore.js'
 import { initWebSocket } from '../../../src/utils/websocket.js'
+import { setThemeMode } from '../../../src/utils/theme.js'
 
-vi.mock('../../../src/utils/websocket.js', () => ({
-  initWebSocket: vi.fn(),
-}))
+vi.mock('../../../src/utils/websocket.js', () => ({ initWebSocket: vi.fn() }))
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   vi.useRealTimers()
 })
@@ -23,8 +31,8 @@ beforeEach(() => {
   setDiscordUser(normalizeDiscordUserPayload({}))
   setIsAdmin(false)
   updateNotificationCount(0)
+  setThemeMode('auto')
   vi.mocked(initWebSocket).mockClear()
-  // Every onMount auth branch logs to console - keep test output clean.
   vi.spyOn(console, 'log').mockImplementation(() => {})
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.spyOn(console, 'warn').mockImplementation(() => {})
@@ -33,42 +41,37 @@ beforeEach(() => {
 type FetchMockConfig = {
   userValidation?: 'ok' | 'notOk' | 'reject'
   unreadCount?: number | 'notOk' | 'reject'
-  rank?: string | 'notOk'
+  rank?: string
 }
 
 function makeFetchMock(config: FetchMockConfig = {}) {
+  const response = (data: unknown, status = 200) => Promise.resolve(new Response(JSON.stringify(data), { status }))
   return vi.fn((url: string) => {
     if (url.includes('/notifications/count')) {
-      if (config.unreadCount === 'reject') {
-        return Promise.reject(new Error('network down'))
-      }
-      if (config.unreadCount === 'notOk') {
-        return Promise.resolve({ ok: false, json: async () => ({}) })
-      }
-      return Promise.resolve({ ok: true, json: async () => ({ unreadCount: config.unreadCount ?? 0 }) })
+      if (config.unreadCount === 'reject') return Promise.reject(new Error('network down'))
+      if (config.unreadCount === 'notOk') return response({}, 503)
+      return response({ unreadCount: config.unreadCount ?? 0 })
     }
     if (url.includes('/users?discordID=')) {
-      if (config.rank === 'notOk') {
-        return Promise.resolve({ ok: false, json: async () => ({}) })
-      }
-      return Promise.resolve({ ok: true, json: async () => ({ rank: config.rank ?? 'member' }) })
+      if (config.rank === 'reject') return Promise.reject(new Error('rank unavailable'))
+      if (config.rank === 'notOk') return response({}, 403)
+      return response({ rank: config.rank ?? 'member' })
     }
-    // Plain `/users/:discordID` validation fetch.
-    if (config.userValidation === 'reject') {
-      return Promise.reject(new Error('network down'))
-    }
-    return Promise.resolve({ ok: config.userValidation !== 'notOk', json: async () => ({}) })
+    if (config.userValidation === 'reject') return Promise.reject(new Error('network down'))
+    return response({}, config.userValidation === 'notOk' ? 401 : 200)
   })
 }
 
-function setValidAuth(overrides: Partial<{ discordID: string; accessToken: string; expired: boolean; user: any }> = {}) {
+function setValidAuth(
+  overrides: Partial<{ discordID: string; accessToken: string; expired: boolean; user: unknown }> = {},
+) {
   const discordID = overrides.discordID ?? 'd1'
   window.localStorage.setItem('discordID', discordID)
   window.localStorage.setItem('accessToken', overrides.accessToken ?? 'tok1')
-  const expirationDate = overrides.expired
-    ? new Date(Date.now() - 60_000).toISOString()
-    : new Date(Date.now() + 60_000_000).toISOString()
-  window.localStorage.setItem('expirationDate', expirationDate)
+  window.localStorage.setItem(
+    'expirationDate',
+    new Date(Date.now() + (overrides.expired ? -60_000 : 60_000_000)).toISOString(),
+  )
   window.localStorage.setItem(
     'discordUser',
     JSON.stringify(
@@ -83,275 +86,329 @@ function setValidAuth(overrides: Partial<{ discordID: string; accessToken: strin
   )
 }
 
-describe('components/layout/Header.tsx', () => {
-  it('renders the logo, top nav links, and a Login link when logged out', () => {
-    vi.stubGlobal('fetch', makeFetchMock())
+function openUserMenu() {
+  const trigger = screen.getByRole('button', { name: /Bobby/ })
+  fireEvent.click(trigger)
+  return trigger
+}
+
+describe('Header navigation', () => {
+  it('provides the brand, main destinations and sign-in link when logged out', () => {
+    const fetchMock = makeFetchMock()
+    vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(() => <Header />)
 
     expect(screen.getByAltText('logo')).toBeInTheDocument()
-    expect(screen.getByText('Gmod Integration')).toHaveAttribute('href', '/')
-
-    expect(screen.getByText('Invite the Bot').closest('a')).toHaveAttribute('href', '/invite')
-    expect(screen.getByText('Support').closest('a')).toHaveAttribute('href', '/discord')
-    expect(screen.getByText('Premium').closest('a')).toHaveAttribute('href', '/premium')
-    expect(screen.getByText('Documentation').closest('a')).toHaveAttribute('href', '/docs')
-
-    const login = screen.getByText('Login with Discord')
-    expect(login.closest('a')).toHaveAttribute('href', '/login')
+    expect(screen.getByRole('link', { name: 'Gmod Integration' })).toHaveAttribute('href', '/')
+    const navigation = screen.getByRole('navigation', { name: 'Main navigation' })
+    for (const [name, href] of [
+      ['Invite the Bot', '/invite'],
+      ['Support', '/discord'],
+      ['Premium', '/premium'],
+      ['Documentation', '/docs'],
+    ]) {
+      expect(within(navigation).getByRole('link', { name })).toHaveAttribute('href', href)
+    }
+    expect(screen.getByRole('link', { name: 'Login with Discord' })).toHaveAttribute('href', '/login')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('renders the locale flag dropdown, remapping "en" to the GB flag for both the trigger and the list item', () => {
+  it('offers all nine languages in the original flag dropdown', () => {
     vi.stubGlobal('fetch', makeFetchMock())
     const { container } = renderWithProviders(() => <Header />)
-
-    expect(container.querySelectorAll('img[alt="gb"]')).toHaveLength(2)
-    expect(container.querySelector('img[alt="fr"]')).toBeInTheDocument()
-    expect(container.querySelector('img[alt="de"]')).toBeInTheDocument()
+    const selector = screen.getByRole('button', { name: 'Language' })
+    expect(selector).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(selector)
+    expect(selector).toHaveAttribute('aria-expanded', 'true')
+    const languageMenu = container.querySelector<HTMLUListElement>('#language-navigation')!
+    expect(languageMenu).not.toHaveAttribute('hidden')
+    const choices = within(languageMenu).getAllByRole('button')
+    expect(choices.map((choice) => choice.textContent?.trim())).toEqual([
+      'English',
+      'Français',
+      'Deutsch',
+      'Español',
+      'Italiano',
+      'Nederlands',
+      'Polski',
+      'Русский',
+      'Türkçe',
+    ])
+    expect(selector.querySelector('img')).toHaveAttribute('src', 'https://flagcdn.com/20x15/gb.png')
   })
 
-  it('updates the locale and reloads the page when a language is chosen', () => {
+  it('switches the visible navigation language without reloading or losing the selected community', () => {
     vi.stubGlobal('fetch', makeFetchMock())
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
     const reloadSpy = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
     renderWithProviders(() => <Header />)
 
-    fireEvent.click(screen.getByText('Français'))
+    fireEvent.click(screen.getByRole('button', { name: 'Language' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Français' }))
 
     expect(window.localStorage.getItem('locale')).toBe('fr')
-    expect(reloadSpy).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('link', { name: 'Inviter le Bot' })).toHaveAttribute('href', '/invite')
+    expect(screen.getByRole('link', { name: 'Se Connecter' })).toBeInTheDocument()
+    expect(window.localStorage.getItem('guilds')).toBe(JSON.stringify({ id: 'g1' }))
+    expect(reloadSpy).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Langue' })).toHaveAttribute('aria-expanded', 'false')
   })
 
-  describe('auth bootstrap (onMount)', () => {
-    it('stays logged out when localStorage is missing discordID/accessToken/expirationDate', () => {
-      vi.stubGlobal('fetch', makeFetchMock())
-      renderWithProviders(() => <Header />)
-      expect(isLogged()).toBe(false)
-      expect(screen.getByText('Login with Discord')).toBeInTheDocument()
-    })
-
-    it('stays logged out when the stored token has already expired', () => {
-      setValidAuth({ expired: true })
-      vi.stubGlobal('fetch', makeFetchMock())
-      renderWithProviders(() => <Header />)
-      expect(isLogged()).toBe(false)
-    })
-
-    it('stays logged out when the stored discordUser is null', () => {
-      window.localStorage.setItem('discordID', 'd1')
-      window.localStorage.setItem('accessToken', 'tok1')
-      window.localStorage.setItem('expirationDate', new Date(Date.now() + 60_000_000).toISOString())
-      // no 'discordUser' key at all -> JSON.parse(null) -> null
-      vi.stubGlobal('fetch', makeFetchMock())
-      renderWithProviders(() => <Header />)
-      expect(isLogged()).toBe(false)
-    })
-
-    it('stays logged out and clears discordUser when the stored payload has an error field', () => {
-      setValidAuth({ user: { error: 'invalid session' } })
-      vi.stubGlobal('fetch', makeFetchMock())
-      renderWithProviders(() => <Header />)
-      expect(isLogged()).toBe(false)
-      expect(window.localStorage.getItem('discordUser')).toBeNull()
-    })
-
-    it('logs in synchronously, normalizes+persists the user, opens the websocket, and renders the avatar/name', () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock())
-      renderWithProviders(() => <Header />)
-
-      expect(isLogged()).toBe(true)
-      expect(discordUser().globalName).toBe('Bobby')
-      expect(JSON.parse(window.localStorage.getItem('discordUser')!)).toMatchObject({ globalName: 'Bobby' })
-      expect(initWebSocket).toHaveBeenCalledTimes(1)
-
-      expect(screen.getByAltText('Discord avatar')).toHaveAttribute('src', 'https://cdn/b.png')
-      expect(screen.getByText('Bobby')).toBeInTheDocument()
-    })
-
-    it('sets isLogged false asynchronously when the background user-validation fetch fails', async () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock({ userValidation: 'notOk' }))
-      renderWithProviders(() => <Header />)
-
-      // Synchronously true first (the storedDiscordUser branch doesn't await the validation fetch)...
-      expect(isLogged()).toBe(true)
-      // ...then flipped false once the fire-and-forget validation fetch resolves as not-ok.
-      await vi.waitFor(() => expect(isLogged()).toBe(false))
-    })
-
-    it('sets isLogged false asynchronously when the background user-validation fetch rejects', async () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock({ userValidation: 'reject' }))
-      renderWithProviders(() => <Header />)
-
-      expect(isLogged()).toBe(true)
-      await vi.waitFor(() => expect(isLogged()).toBe(false))
-    })
-
-    it('grants admin when the rank lookup reports "developer"', async () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock({ rank: 'developer' }))
-      renderWithProviders(() => <Header />)
-
-      await vi.waitFor(() => expect(isAdmin()).toBe(true))
-      await vi.waitFor(() => expect(screen.getByText('Admin Dashboard')).toBeInTheDocument())
-    })
-
-    it('does not grant admin, and does not throw an unhandled rejection, when the rank lookup response is not ok', async () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock({ rank: 'notOk' }))
-      renderWithProviders(() => <Header />)
-
-      await vi.waitFor(() => expect(initWebSocket).toHaveBeenCalled())
-      // Give the rank-lookup promise chain a tick to settle.
-      await new Promise((r) => setTimeout(r, 0))
-      expect(isAdmin()).toBe(false)
-      expect(screen.queryByText('Admin Dashboard')).not.toBeInTheDocument()
-    })
-
-    it('does not grant admin for a non-developer rank', async () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock({ rank: 'member' }))
-      renderWithProviders(() => <Header />)
-      await new Promise((r) => setTimeout(r, 0))
-      expect(isAdmin()).toBe(false)
-    })
-  })
-
-  describe('notifications', () => {
-    it('shows no badge when unreadCount is 0', () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock({ unreadCount: 0 }))
-      renderWithProviders(() => <Header />)
-      const notifLink = screen.getByText('Notifications').closest('a')
-      expect(notifLink!.querySelector('.badge-warning')).not.toBeInTheDocument()
-    })
-
-    it('shows the exact count when between 1 and 9', async () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock({ unreadCount: 5 }))
-      renderWithProviders(() => <Header />)
-      const notifLink = screen.getByText('Notifications').closest('a')
-      await vi.waitFor(() => expect(notifLink!.querySelector('.badge-warning')).toHaveTextContent('5'))
-    })
-
-    it('shows "9+" when the count exceeds 9', async () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock({ unreadCount: 42 }))
-      renderWithProviders(() => <Header />)
-      const notifLink = screen.getByText('Notifications').closest('a')
-      await vi.waitFor(() => expect(notifLink!.querySelector('.badge-warning')).toHaveTextContent('9+'))
-    })
-
-    it('treats a failed notifications-count fetch as zero', async () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock({ unreadCount: 'notOk' }))
-      renderWithProviders(() => <Header />)
-      await new Promise((r) => setTimeout(r, 0))
-      const notifLink = screen.getByText('Notifications').closest('a')
-      expect(notifLink!.querySelector('.badge-warning')).not.toBeInTheDocument()
-    })
-
-    it('logs an error instead of throwing when the onMount notifications-count fetch rejects', async () => {
-      setValidAuth()
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      vi.stubGlobal('fetch', makeFetchMock({ unreadCount: 'reject' }))
-      renderWithProviders(() => <Header />)
-      await vi.waitFor(() =>
-        expect(errorSpy).toHaveBeenCalledWith('Failed to load notification count:', expect.any(Error)),
-      )
-    })
-  })
-
-  describe('avatar dropdown open state', () => {
-    it('opens on click and closes on an outside mousedown, but stays open for an inside click', () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock())
-      const { container } = renderWithProviders(() => <Header />)
-
-      const avatarButton = screen.getByAltText('Discord avatar').closest('[role="button"]')!
-      expect(container.querySelector('.fa-angle-down')).toBeInTheDocument()
-
-      fireEvent.click(avatarButton)
-      expect(container.querySelector('.fa-angle-up')).toBeInTheDocument()
-
-      // Inside click (still within .dropdown) must not close it.
-      fireEvent.mouseDown(avatarButton)
-      expect(container.querySelector('.fa-angle-up')).toBeInTheDocument()
-
-      // Outside mousedown closes it.
-      fireEvent.mouseDown(document.body)
-      expect(container.querySelector('.fa-angle-down')).toBeInTheDocument()
-    })
-
-    it('removes the mousedown listener on unmount without throwing', () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock())
-      const { unmount } = renderWithProviders(() => <Header />)
-      expect(() => unmount()).not.toThrow()
-      expect(() => fireEvent.mouseDown(document.body)).not.toThrow()
-    })
-  })
-
-  describe('Stop Impersonate', () => {
-    it('is hidden with no oldAccessToken, and restores the previous session + redirects when pressed', () => {
-      setValidAuth()
-      window.localStorage.setItem('oldAccessToken', 'oldTok')
-      window.localStorage.setItem('oldDiscordID', 'oldD1')
-      window.localStorage.setItem('oldExpirationDate', '2030-01-01T00:00:00.000Z')
-      vi.stubGlobal('fetch', makeFetchMock())
-      renderWithProviders(() => <Header />)
-
-      const stopLink = screen.getByText('Stop Impersonate').closest('a') as HTMLAnchorElement
-      fireEvent.click(stopLink)
-
-      expect(window.localStorage.getItem('accessToken')).toBe('oldTok')
-      expect(window.localStorage.getItem('discordID')).toBe('oldD1')
-      expect(window.localStorage.getItem('expirationDate')).toBe('2030-01-01T00:00:00.000Z')
-      expect(window.localStorage.getItem('oldAccessToken')).toBeNull()
-      expect(window.location.href).toContain('/login/?discordID=oldD1&accessToken=oldTok')
-    })
-
-    it('is absent when there is no oldAccessToken in localStorage', () => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock())
-      renderWithProviders(() => <Header />)
-      expect(screen.queryByText('Stop Impersonate')).not.toBeInTheDocument()
-    })
-  })
-
-  it('clicking a dropdown link with no onPress (e.g. Account) does not invoke any custom handler', () => {
+  it('closes the language dropdown with Escape, outside clicks and when opening the user menu', () => {
     setValidAuth()
     vi.stubGlobal('fetch', makeFetchMock())
     renderWithProviders(() => <Header />)
-    const accountLink = screen.getByText('Account').closest('a') as HTMLAnchorElement
-    expect(() => fireEvent.click(accountLink)).not.toThrow()
+    const toggle = screen.getByRole('button', { name: 'Language' })
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(toggle)
+    fireEvent.mouseDown(document.body)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(toggle)
+    openUserMenu()
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
   })
 
-  describe('anniversary promo banner (date-gated)', () => {
-    it('is absent once the cutoff date (2024-09-22) has passed (the real-world default)', () => {
+  it('cycles the theme preference with an accessible button and persists the choice', () => {
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+    const theme = screen.getByRole('button', { name: 'Theme: Automatic' })
+    fireEvent.click(theme)
+    expect(screen.getByRole('button', { name: 'Theme: Light' })).toBe(theme)
+    expect(window.localStorage.getItem('theme')).toBe('light')
+    fireEvent.click(theme)
+    expect(screen.getByRole('button', { name: 'Theme: Dark' })).toBe(theme)
+    expect(window.localStorage.getItem('theme')).toBe('dark')
+    fireEvent.click(theme)
+    expect(screen.getByRole('button', { name: 'Theme: Automatic' })).toBe(theme)
+  })
+
+  it('does not start an obsolete promotion countdown', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-09-20T00:00:00.000Z'))
+    const intervalSpy = vi.spyOn(window, 'setInterval')
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+    expect(screen.queryByText(/I just turned 20/)).not.toBeInTheDocument()
+    expect(intervalSpy).not.toHaveBeenCalled()
+  })
+})
+
+describe('Header authentication bootstrap', () => {
+  it('stays signed out without stored credentials and does not request notification counts', () => {
+    const fetchMock = makeFetchMock()
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(() => <Header />)
+    expect(isLogged()).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(initWebSocket).not.toHaveBeenCalled()
+  })
+
+  it.each(['expired', 'invalid'] as const)('rejects an %s expiration date', (expiration) => {
+    setValidAuth({ expired: expiration === 'expired' })
+    if (expiration === 'invalid') window.localStorage.setItem('expirationDate', 'invalid-date')
+    const fetchMock = makeFetchMock()
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(() => <Header />)
+    expect(isLogged()).toBe(false)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each(['null', '{invalid JSON', '{"error":"invalid session"}'])(
+    'handles unusable cached user data: %s',
+    (cached) => {
+      setValidAuth()
+      window.localStorage.setItem('discordUser', cached)
+      vi.stubGlobal('fetch', makeFetchMock())
+      expect(() => renderWithProviders(() => <Header />)).not.toThrow()
+      expect(isLogged()).toBe(false)
+      expect(initWebSocket).not.toHaveBeenCalled()
+    },
+  )
+
+  it('restores and normalizes the cached user synchronously and opens the websocket once', () => {
+    setValidAuth()
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+    expect(isLogged()).toBe(true)
+    expect(discordUser().globalName).toBe('Bobby')
+    expect(JSON.parse(window.localStorage.getItem('discordUser')!)).toMatchObject({ id: 'd1', globalName: 'Bobby' })
+    expect(initWebSocket).toHaveBeenCalledTimes(1)
+    expect(screen.getByAltText('Discord avatar')).toHaveAttribute('src', 'https://cdn/b.png')
+  })
+
+  it('restores an existing session cached with a millisecond expiration and migrates it to ISO', () => {
+    setValidAuth()
+    const expirationDate = Date.now() + 60_000_000
+    window.localStorage.setItem('expirationDate', String(expirationDate))
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+
+    expect(isLogged()).toBe(true)
+    expect(discordUser().id).toBe('d1')
+    expect(window.localStorage.getItem('expirationDate')).toBe(new Date(expirationDate).toISOString())
+    expect(initWebSocket).toHaveBeenCalledTimes(1)
+  })
+
+  it.each(['notOk', 'reject'] as const)(
+    'clears the signed-in state after a %s validation response',
+    async (userValidation) => {
+      setValidAuth()
+      vi.stubGlobal('fetch', makeFetchMock({ userValidation }))
+      renderWithProviders(() => <Header />)
+      expect(isLogged()).toBe(true)
+      await vi.waitFor(() => expect(isLogged()).toBe(false))
+      expect(screen.getByRole('link', { name: 'Login with Discord' })).toBeInTheDocument()
+    },
+  )
+
+  it('grants the admin destination only for a developer account', async () => {
+    setValidAuth()
+    vi.stubGlobal('fetch', makeFetchMock({ rank: 'developer' }))
+    renderWithProviders(() => <Header />)
+    await vi.waitFor(() => expect(isAdmin()).toBe(true))
+    openUserMenu()
+    expect(screen.getByRole('link', { name: 'Admin Dashboard' })).toHaveAttribute(
+      'href',
+      '/dashboard/admins/informations',
+    )
+  })
+
+  it.each(['member', 'notOk', 'reject'])(
+    'keeps a %s rank lookup non-admin without an unhandled rejection',
+    async (rank) => {
+      setValidAuth()
+      const fetchMock = makeFetchMock({ rank })
+      vi.stubGlobal('fetch', fetchMock)
+      renderWithProviders(() => <Header />)
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(isAdmin()).toBe(false)
+      openUserMenu()
+      expect(screen.queryByRole('link', { name: 'Admin Dashboard' })).not.toBeInTheDocument()
+    },
+  )
+})
+
+describe('Header notifications', () => {
+  it.each([0, 5, 42])('shows the unread count %s with one authenticated count request', async (unreadCount) => {
+    setValidAuth()
+    const fetchMock = makeFetchMock({ unreadCount })
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(() => <Header />)
+    await vi.waitFor(() => expect(notificationCount()).toBe(unreadCount))
+    openUserMenu()
+    const notifications = screen.getByRole('link', { name: /^Notifications/ })
+    expect(notifications).toHaveTextContent(
+      unreadCount === 0 ? /^Notifications$/ : unreadCount > 9 ? '9+' : String(unreadCount),
+    )
+    expect(fetchMock.mock.calls.filter(([url]) => url.includes('/notifications/count'))).toHaveLength(1)
+  })
+
+  it.each(['notOk', 'reject'] as const)(
+    'handles a %s notifications response without breaking the menu',
+    async (unreadCount) => {
+      setValidAuth()
+      vi.stubGlobal('fetch', makeFetchMock({ unreadCount }))
+      renderWithProviders(() => <Header />)
+      if (unreadCount === 'reject') {
+        await vi.waitFor(() =>
+          expect(console.error).toHaveBeenCalledWith('Failed to load notification count:', expect.any(Error)),
+        )
+      }
+      openUserMenu()
+      expect(screen.getByRole('link', { name: 'Notifications' })).toBeInTheDocument()
+      expect(notificationCount()).toBe(0)
+    },
+  )
+})
+
+describe('Header user menu', () => {
+  it('opens by button activation, stays open for inside clicks and closes outside', () => {
+    setValidAuth()
+    vi.stubGlobal('fetch', makeFetchMock())
+    const { container } = renderWithProviders(() => <Header />)
+    const trigger = screen.getByRole('button', { name: /Bobby/ })
+    const menu = container.querySelector<HTMLUListElement>('#user-navigation')!
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(menu).toHaveAttribute('hidden')
+    trigger.focus()
+    expect(trigger).toHaveFocus()
+    fireEvent.click(trigger, { detail: 0 })
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    expect(menu).not.toHaveAttribute('hidden')
+    fireEvent.mouseDown(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.mouseDown(document.body)
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+    expect(menu).toHaveAttribute('hidden')
+  })
+
+  it('closes after following a user destination', () => {
+    setValidAuth()
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+    const trigger = openUserMenu()
+    fireEvent.click(screen.getByRole('link', { name: 'Account' }))
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('removes its document listener on unmount', () => {
+    vi.stubGlobal('fetch', makeFetchMock())
+    const removeListener = vi.spyOn(document, 'removeEventListener')
+    const { unmount } = renderWithProviders(() => <Header />)
+    unmount()
+    expect(removeListener).toHaveBeenCalledWith('mousedown', expect.any(Function))
+    expect(() => fireEvent.mouseDown(document.body)).not.toThrow()
+  })
+
+  it.each(['ISO', 'milliseconds'])(
+    'restores the previous session with an %s expiration when stopping impersonation',
+    (format) => {
+      setValidAuth()
+      const expirationDate = Date.now() + 60_000_000
+      const expirationISO = new Date(expirationDate).toISOString()
+      window.localStorage.setItem('oldAccessToken', 'oldTok')
+      window.localStorage.setItem('oldDiscordID', 'oldD1')
+      window.localStorage.setItem('oldExpirationDate', format === 'ISO' ? expirationISO : String(expirationDate))
       vi.stubGlobal('fetch', makeFetchMock())
       renderWithProviders(() => <Header />)
-      expect(screen.queryByText(/I just turned 20/)).not.toBeInTheDocument()
-    })
+      openUserMenu()
+      fireEvent.click(screen.getByRole('link', { name: 'Stop Impersonate' }))
+      expect(window.localStorage.getItem('accessToken')).toBe('oldTok')
+      expect(window.localStorage.getItem('discordID')).toBe('oldD1')
+      expect(window.localStorage.getItem('expirationDate')).toBe(expirationISO)
+      expect(window.localStorage.getItem('oldAccessToken')).toBeNull()
+      expect(window.location.href).toContain('/login/?discordID=oldD1&accessToken=oldTok')
+      expect(new URL(window.location.href).searchParams.get('expirationDate')).toBe(String(expirationDate))
+    },
+  )
 
-    it('renders the countdown and updates it every second before the cutoff date, clearing the interval on unmount', () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(new Date('2024-09-20T00:00:00.000Z'))
+  it.each(['invalid-date', String(Date.now() - 60_000)])(
+    'requires sign-in when the previous expiration is %s',
+    (expirationDate) => {
+      setValidAuth()
+      window.localStorage.setItem('oldAccessToken', 'oldTok')
+      window.localStorage.setItem('oldDiscordID', 'oldD1')
+      window.localStorage.setItem('oldExpirationDate', expirationDate)
       vi.stubGlobal('fetch', makeFetchMock())
-      const clearIntervalSpy = vi.spyOn(window, 'clearInterval')
+      renderWithProviders(() => <Header />)
+      openUserMenu()
+      fireEvent.click(screen.getByRole('link', { name: 'Stop Impersonate' }))
 
-      const { unmount } = renderWithProviders(() => <Header />)
+      expect(window.location.pathname).toBe('/login')
+      expect(window.localStorage.getItem('accessToken')).toBeNull()
+      expect(window.localStorage.getItem('oldAccessToken')).toBeNull()
+    },
+  )
 
-      const banner = screen.getByText(/I just turned 20/)
-      expect(banner).toBeInTheDocument()
-      expect(banner.textContent).toMatch(/\d{2}d \d{2}h \d{2}m \d{2}s/)
-      const firstText = banner.textContent
-
-      vi.advanceTimersByTime(1000)
-      expect(banner.textContent).not.toBe(firstText)
-
-      unmount()
-      expect(clearIntervalSpy).toHaveBeenCalled()
-    })
+  it('does not offer stop impersonation for a regular session', () => {
+    setValidAuth()
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+    openUserMenu()
+    expect(screen.queryByRole('link', { name: 'Stop Impersonate' })).not.toBeInTheDocument()
   })
 })

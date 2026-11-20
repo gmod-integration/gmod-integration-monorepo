@@ -39,7 +39,10 @@ describe('components/discord/DiscordMessage.tsx', () => {
 
   it('uses the channel prop directly when provided, bypassing guildChannels lookup', () => {
     render(() => (
-      <DiscordMessage channel={{ id: 'c2', name: 'other-channel', type: 0, position: 1, parentID: null }} messageID="m2" />
+      <DiscordMessage
+        channel={{ id: 'c2', name: 'other-channel', type: 0, position: 1, parentID: null }}
+        messageID="m2"
+      />
     ))
     expect(screen.getByText(/#other-channel/)).toBeInTheDocument()
   })

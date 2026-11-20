@@ -1,38 +1,38 @@
-import { Component, createEffect, createResource, createSignal, For, onMount, Show } from "solid-js";
-import { fetchAPI } from "../../../../../utils/api";
-import { useI18n } from "../../../../../i18n";
-import AdminPanel from "../../../../../components/AdminPanel";
-import { setWebSocketLogsMessages, webSocketLogsMessages } from "../../../../../utils/websocket";
-import { AddLogComponent } from "./ListLog";
+import { Component, createEffect, createResource, createSignal, For, onMount, Show } from 'solid-js'
+import { fetchAPI } from '../../../../../utils/api'
+import { useI18n } from '../../../../../i18n'
+import AdminPanel from '../../../../../components/AdminPanel'
+import { setWebSocketLogsMessages, webSocketLogsMessages } from '../../../../../utils/websocket'
+import { AddLogComponent } from './ListLog'
 
-import { ClientQuery, QuerySort, ServerQuery } from "../../../../../utils/types/QueryTypes";
-import Pagination from "../../../../../components/Pagination";
-import { premium } from "../../../../../utils/premium";
+import { ClientQuery, QuerySort, ServerQuery } from '../../../../../utils/types/QueryTypes'
+import Pagination from '../../../../../components/Pagination'
+import { premium } from '../../../../../utils/premium'
 
 interface Log {
-  id: number;
-  serverID: string;
-  type: string;
+  id: number
+  serverID: string
+  type: string
   // The API returns this already parsed (a JSON object), not a string - see AddLogComponent's
   // usage (props.data.ply, etc.) which reads it directly without JSON.parse.
-  data: Record<string, any>;
-  createdAt: string;
+  data: Record<string, any>
+  createdAt: string
 }
 
 interface LogsData {
-  logs: Log[];
-  query: ServerQuery;
+  logs: Log[]
+  query: ServerQuery
 }
 
 export const ServerLogsList: Component = () => {
-  const { t } = useI18n();
+  const { t } = useI18n()
 
   const [query, setQuery] = createSignal<ClientQuery>({
     limit: 25,
     offset: 0,
-    sort: "createdAt",
+    sort: 'createdAt',
     orderBy: QuerySort.DESC,
-  });
+  })
 
   async function fetchLogs(q: ClientQuery) {
     const res = await fetchAPI(
@@ -41,22 +41,22 @@ export const ServerLogsList: Component = () => {
         `&limit=${q.limit}` +
         `&sort=${q.sort}` +
         `&orderBy=${q.orderBy}`,
-      "GET",
-    );
+      'GET',
+    )
 
     if (!res.ok) {
-      throw new Error("Failed to fetch logs");
+      throw new Error('Failed to fetch logs')
     }
 
-    let data = (await res.json()) as LogsData;
+    let data = (await res.json()) as LogsData
     if (!premium()) {
       if (data.query.total > 500) {
-        data.query.total = 500;
-        data.logs = data.logs.slice(0, 500);
+        data.query.total = 500
+        data.logs = data.logs.slice(0, 500)
       }
     }
 
-    return data;
+    return data
   }
 
   const [logs] = createResource(query, fetchLogs, {
@@ -68,33 +68,33 @@ export const ServerLogsList: Component = () => {
         total: 0,
       },
     },
-  });
+  })
 
   // reset wslogsmessage on page display setWebSocketLogsMessages([]);
   onMount(() => {
-    setWebSocketLogsMessages([]);
-  });
+    setWebSocketLogsMessages([])
+  })
 
   // on change of query reset wslogsmessage
   createEffect(() => {
-    query();
-    setWebSocketLogsMessages([]);
-  });
+    query()
+    setWebSocketLogsMessages([])
+  })
 
   return (
     <AdminPanel
-      title={t("dashboard.server.logs.title.logs", "Logs")}
-      description={t("dashboard.server.logs.description.logs", "Watch the logs of your server.")}
+      title={t('dashboard.server.logs.title.logs', 'Logs')}
+      description={t('dashboard.server.logs.description.logs', 'Watch the logs of your server.')}
       type="none"
-      premium={t("dashboard.server.logs.premium", "Limited to 500 last logs for free users.")}
+      premium={t('dashboard.server.logs.premium', 'Limited to 500 last logs for free users.')}
     >
       <table class="table">
         <thead>
           <tr class="text-l">
-            <th class="w-1/5">{t("dashboard.server.logs.table_headers.date", "Date")}</th>
-            <th class="w-1/5">{t("dashboard.server.logs.table_headers.category", "Category")}</th>
-            <th>{t("dashboard.server.logs.table_headers.log", "Log")}</th>
-            <th class="w-1/6 text-center">{t("dashboard.server.logs.table_headers.actions", "Actions")}</th>
+            <th class="w-1/5">{t('dashboard.server.logs.table_headers.date', 'Date')}</th>
+            <th class="w-1/5">{t('dashboard.server.logs.table_headers.category', 'Category')}</th>
+            <th>{t('dashboard.server.logs.table_headers.log', 'Log')}</th>
+            <th class="w-1/6 text-center">{t('dashboard.server.logs.table_headers.actions', 'Actions')}</th>
           </tr>
         </thead>
         <tbody class="max-w-40">
@@ -102,7 +102,7 @@ export const ServerLogsList: Component = () => {
             <Show when={query().offset === 0}>
               <For each={webSocketLogsMessages()}>
                 {(parsedMsg) => {
-                  return <AddLogComponent data={parsedMsg.data} category={parsedMsg.type} createAt={new Date()} />;
+                  return <AddLogComponent data={parsedMsg.data} category={parsedMsg.type} createAt={new Date()} />
                 }}
               </For>
             </Show>
@@ -114,5 +114,5 @@ export const ServerLogsList: Component = () => {
         </tbody>
       </table>
     </AdminPanel>
-  );
-};
+  )
+}

@@ -11,9 +11,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { ServerLogsParameters } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/logs/ServerLogsParameters.js'
-)
+const { ServerLogsParameters } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/logs/ServerLogsParameters.js')
 
 const LOGS_CHANNEL_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/logs/channels'
 const HIDE_IP_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/log_hide_ip'
@@ -130,9 +129,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
     })
     const select = document.querySelector('#select_channel_modal select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
-    await vi.waitFor(() =>
-      expect(fetchAPI).toHaveBeenCalledWith(LOGS_CHANNEL_URL, 'POST', { channelID: 'c1' }),
-    )
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LOGS_CHANNEL_URL, 'POST', { channelID: 'c1' }))
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
   })
 

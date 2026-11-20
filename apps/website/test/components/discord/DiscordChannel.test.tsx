@@ -18,9 +18,7 @@ describe('components/discord/DiscordChannel.tsx', () => {
   beforeEach(() => {
     window.localStorage.clear()
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
-    guildChannelsMutate([
-      { id: 'c1', name: 'general', type: 0, position: 0, parentID: null },
-    ])
+    guildChannelsMutate([{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }])
   })
 
   it('renders nothing when neither channelID nor channel is provided', () => {

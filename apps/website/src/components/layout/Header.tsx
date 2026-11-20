@@ -1,5 +1,5 @@
 import { A } from '@solidjs/router'
-import { Component, createResource, createSignal, For, onCleanup, onMount, ParentProps, Show } from 'solid-js'
+import { createSignal, For, onCleanup, onMount, Show, type Component } from 'solid-js'
 import {
   discordUser,
   isAdmin,
@@ -11,34 +11,26 @@ import {
 } from '../../utils/event'
 import logo from '../../assets/brand/logo.png'
 import { useI18n } from '../../i18n'
-import { createStore } from 'solid-js/store'
-import { convertSecToTime } from '../../utils/convertSecToTime'
 import { initWebSocket } from '../../utils/websocket'
 import { API_FQDN, fetchAPI } from '../../utils/api'
 import { notificationCount, updateNotificationCount } from '../../utils/notificationStore'
-import { setThemeMode, ThemeMode, themeMode } from '../../utils/theme'
+import { setThemeMode, type ThemeMode, themeMode } from '../../utils/theme'
+import { parseSessionExpiration } from '../../utils/sessionExpiration.js'
 
-interface GetFlagImgProps extends ParentProps {
-  locale: string
-  size?: number
-}
+type FlagProps = { locale: string; size: number }
 
-const GetFlagImg: Component<GetFlagImgProps> = (props) => {
-  const size = props.size || 16
-  let flag = props.locale.toLowerCase()
-  if (flag === 'en') {
-    flag = 'gb' // Use GB for English flag
-  }
+const GetFlagImg: Component<FlagProps> = (props) => {
+  const size = () => props.size
+  const flag = () => (props.locale.toLowerCase() === 'en' ? 'gb' : props.locale.toLowerCase())
   return (
     <img
-      src={`https://flagcdn.com/${size}x${Math.round(size * 0.75)}/${flag}.png`}
-      srcSet={`https://flagcdn.com/${size * 2}x${Math.round(size * 1.5)}/${flag}.png 2x, https://flagcdn.com/${size * 3}x${Math.round(size * 2.25)}/${flag}.png 3x`}
-      width={size}
-      height={Math.round(size * 0.75)}
-      alt={flag}
-    >
-      {props.children}
-    </img>
+      src={`https://flagcdn.com/${size()}x${Math.round(size() * 0.75)}/${flag()}.png`}
+      srcSet={`https://flagcdn.com/${size() * 2}x${Math.round(size() * 1.5)}/${flag()}.png 2x, https://flagcdn.com/${size() * 3}x${Math.round(size() * 2.25)}/${flag()}.png 3x`}
+      width={size()}
+      height={Math.round(size() * 0.75)}
+      alt=""
+      aria-hidden="true"
+    />
   )
 }
 
@@ -112,6 +104,7 @@ const cycleTheme = () => {
 
 export const Header: Component = () => {
   const [isOpen, setIsOpen] = createSignal(false)
+  const [languageOpen, setLanguageOpen] = createSignal(false)
   const { t, locale, updateLocale } = useI18n()
 
   type NavLink = {
@@ -122,7 +115,7 @@ export const Header: Component = () => {
     hoverColor?: string
   }
 
-  const [navLinks] = createStore<NavLink[]>([
+  const navLinks = (): NavLink[] => [
     {
       title: t('main.documentation', 'Documentation'),
       fontAwesomeIcon: 'fa-solid fa-book',
@@ -145,7 +138,7 @@ export const Header: Component = () => {
       color: 'text-amber-400',
       hoverColor: 'hover:text-amber-300',
     },
-  ])
+  ]
 
   type DropdownLink = {
     title: string
@@ -158,7 +151,7 @@ export const Header: Component = () => {
     }[]
   }
 
-  const [navDropdownLinks] = createStore<DropdownLink[]>([
+  const navDropdownLinks = (): DropdownLink[] => [
     {
       title: 'User',
       content: [
@@ -182,18 +175,20 @@ export const Header: Component = () => {
           onPress: () => {
             const oldToken = localStorage.getItem('oldAccessToken') || ''
             const oldDiscordID = localStorage.getItem('oldDiscordID') || ''
-            const oldExpirationDate = localStorage.getItem('oldExpirationDate') || ''
+            const oldExpirationDate = parseSessionExpiration(localStorage.getItem('oldExpirationDate') || '')
             // 1 clear all cookies
             localStorage.clear()
             sessionStorage.clear()
+            if (!oldExpirationDate || oldExpirationDate.getTime() <= Date.now()) {
+              window.location.href = '/login'
+              return
+            }
             // set accessTokens & oldAccessToken
             localStorage.setItem('accessToken', oldToken)
             localStorage.setItem('discordID', oldDiscordID)
-            localStorage.setItem('expirationDate', oldExpirationDate)
+            localStorage.setItem('expirationDate', oldExpirationDate.toISOString())
             // redirect to home
-            window.location.href = `/login/?discordID=${oldDiscordID}&accessToken=${oldToken}&expirationDate=${new Date(
-              oldExpirationDate,
-            ).getTime()}`
+            window.location.href = `/login/?discordID=${oldDiscordID}&accessToken=${oldToken}&expirationDate=${oldExpirationDate.getTime()}`
           },
         },
       ],
@@ -231,20 +226,28 @@ export const Header: Component = () => {
         },
       ],
     },
-  ])
+  ]
 
   onMount(() => {
-    const handleClickOutside = (event: { target: any }) => {
-      if (isOpen() && !event.target.closest('.dropdown')) {
-        setIsOpen(false)
-      }
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!(event.target instanceof Element)) return
+      if (!event.target.closest('[data-header-menu="user"]')) setIsOpen(false)
+      if (!event.target.closest('[data-header-menu="language"]')) setLanguageOpen(false)
     }
 
     document.addEventListener('mousedown', handleClickOutside)
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false)
+        setLanguageOpen(false)
+      }
+    }
+    document.addEventListener('keydown', handleEscape)
     // `onMount` (createEffect under the hood) doesn't treat a returned function as a cleanup
     // callback the way React's useEffect does - it was silently discarded, so this listener was
     // never actually removed on unmount. `onCleanup` is the real hook for that.
     onCleanup(() => document.removeEventListener('mousedown', handleClickOutside))
+    onCleanup(() => document.removeEventListener('keydown', handleEscape))
   })
 
   onMount(() => {
@@ -258,12 +261,14 @@ export const Header: Component = () => {
       return
     }
 
-    const expirationDateParsed = new Date(expirationDate)
-    if (expirationDateParsed <= new Date()) {
+    setIsAdmin(false)
+    const expirationDateParsed = parseSessionExpiration(expirationDate)
+    if (!expirationDateParsed || expirationDateParsed.getTime() <= Date.now()) {
       setIsLogged(false)
       console.log('The token has expired')
       return
     }
+    localStorage.setItem('expirationDate', expirationDateParsed.toISOString())
 
     fetch(`${API_FQDN}/users/${discordID}`, {
       headers: {
@@ -281,14 +286,21 @@ export const Header: Component = () => {
         console.log('Failed to get the user data from the API')
       })
 
-    const storedDiscordUser = JSON.parse(localStorage.getItem('discordUser')!)
-    if (!storedDiscordUser) {
+    let storedDiscordUser: unknown
+    try {
+      storedDiscordUser = JSON.parse(localStorage.getItem('discordUser') || 'null')
+    } catch {
+      localStorage.removeItem('discordUser')
+      setIsLogged(false)
+      return
+    }
+    if (!storedDiscordUser || typeof storedDiscordUser !== 'object') {
       setIsLogged(false)
       console.log('Failed to get the user data from the local storage')
       return
     }
 
-    if (storedDiscordUser && storedDiscordUser.error) {
+    if ('error' in storedDiscordUser && storedDiscordUser.error) {
       localStorage.removeItem('discordUser')
       setIsLogged(false)
       console.log('The user data is invalid')
@@ -331,97 +343,90 @@ export const Header: Component = () => {
           setIsAdmin(true)
         }
       })
-  })
-
-  const [userNotifications, { refetch: refetchUserNotifications }] = createResource('userNotifications', async () => {
-    return await fetchAPI('/users/:discordID/notifications/count', 'GET')
-      .then((res) => {
-        if (!res.ok) {
-          return 0
-        } else {
-          return res.json()
-        }
-      })
-      .then((json) => {
-        const unreadCount = json.unreadCount || 0
-        // Update the global store
-        updateNotificationCount(unreadCount)
-        return unreadCount > 9 ? '9+' : unreadCount
-      })
-  })
-
-  const [timeLeft, setTimeLeft] = createSignal('00d 00h 00m 00s')
-  onMount(() => {
-    const interval = setInterval(() => {
-      const now = new Date()
-      const end = new Date('2024-09-22T23:59:59')
-      let distance = end.getTime() - now.getTime()
-      distance = Math.round(distance / 1000)
-      setTimeLeft(convertSecToTime(distance, true, ['d', 'h', 'm', 's']))
-    }, 1000)
-    // See the onCleanup note above - onMount discards a returned function, so this interval was
-    // never actually cleared on unmount.
-    onCleanup(() => clearInterval(interval))
+      .catch(() => setIsAdmin(false))
   })
 
   return (
     <>
-      <div class="navbar bg-base-100 max-w-(--breakpoint-2xl) mx-auto p-4">
-        <div class="flex flex-1 items-center">
+      <header class="navbar bg-base-100 max-w-(--breakpoint-2xl) mx-auto p-4 flex-wrap gap-y-4">
+        <div class="flex flex-1 flex-wrap items-center gap-y-4 min-w-0">
           <img src={logo} alt="logo" width="60" height="60" />
-          <A href="/" class="text-2xl font-bold ml-4 text-base-content whitespace-nowrap">
+          <A
+            href="/"
+            class="text-2xl font-bold ml-4 text-base-content whitespace-nowrap max-sm:whitespace-normal max-sm:ml-2"
+          >
             Gmod Integration
           </A>
-
-          <For each={navLinks}>
-            {({ title, fontAwesomeIcon, href, color, hoverColor }) => (
-              <A
-                href={href}
-                class={
-                  'ml-6 whitespace-nowrap ' +
-                  (color ? color : 'text-base-content/70') +
-                  ' ' +
-                  (hoverColor ? hoverColor : 'hover:text-base-content')
-                }
-              >
-                <i class={fontAwesomeIcon + ' mr-1'}></i> {title}
-              </A>
-            )}
-          </For>
+          <nav class="contents" aria-label={t('ui.primary_navigation', 'Main navigation')}>
+            <For each={navLinks()}>
+              {({ title, fontAwesomeIcon, href, color, hoverColor }) => (
+                <A
+                  href={href}
+                  class={
+                    'ml-6 whitespace-nowrap ' +
+                    (color ? color : 'text-base-content/70') +
+                    ' ' +
+                    (hoverColor ? hoverColor : 'hover:text-base-content')
+                  }
+                >
+                  <i aria-hidden="true" class={fontAwesomeIcon + ' mr-1'} /> {title}
+                </A>
+              )}
+            </For>
+          </nav>
         </div>
 
         <div class="flex">
-          <div class="dropdown dropdown-end">
-            <div tabIndex="0" role="button" class="btn btn-ghost hover:bg-transparent text-lg input-ghost">
+          <div
+            class="dropdown dropdown-end"
+            data-header-menu="language"
+            classList={{ 'dropdown-open': languageOpen() }}
+          >
+            <button
+              type="button"
+              class="btn btn-ghost hover:bg-transparent text-lg input-ghost"
+              aria-label={t('ui.language', 'Language')}
+              aria-controls="language-navigation"
+              aria-expanded={languageOpen()}
+              onClick={() => {
+                setLanguageOpen(!languageOpen())
+                setIsOpen(false)
+              }}
+            >
               <span class="text-base-content">
                 <GetFlagImg locale={locale()} size={20} />
               </span>
               <div class="flex justify-center items-center min-w-6 min-h-6">
-                <i class="fa-solid fa-angle-down"></i>
+                <i aria-hidden="true" class="fa-solid fa-angle-down" />
               </div>
-            </div>
-            <ul class="menu dropdown-content mt-3 z-1 p-4 gap-4 shadow-sm bg-base-200 rounded-md w-40">
+            </button>
+            <ul
+              id="language-navigation"
+              hidden={!languageOpen()}
+              classList={{ hidden: !languageOpen() }}
+              class="menu dropdown-content mt-3 z-1 p-4 gap-4 shadow-sm bg-base-200 rounded-md w-40 max-sm:fixed max-sm:left-4 max-sm:right-auto"
+            >
               <For each={lang}>
-                {(lang) => (
+                {(language) => (
                   <li class="flex">
                     <button
-                      class="p-0 gap-4 m-0 hover:font-bold  whitespace-nowrap hover:bg-transparent"
+                      type="button"
+                      class="p-0 gap-4 m-0 hover:font-bold whitespace-nowrap hover:bg-transparent"
                       onClick={() => {
-                        updateLocale(lang.code)
-                        window.location.reload()
+                        updateLocale(language.code)
+                        setLanguageOpen(false)
                       }}
                     >
                       <span class="flex justify-center w-6 items-center text-base-content">
-                        <GetFlagImg locale={lang.code} size={16} />
+                        <GetFlagImg locale={language.code} size={16} />
                       </span>
-                      {lang.title}
+                      {language.title}
                     </button>
                   </li>
                 )}
               </For>
             </ul>
           </div>
-
           <button
             type="button"
             class="btn btn-ghost hover:bg-transparent text-lg input-ghost text-base-content"
@@ -429,18 +434,22 @@ export const Header: Component = () => {
             title={`${t('header.theme', 'Theme')}: ${t(currentThemeOption().labelKey, currentThemeOption().fallback)}`}
             onClick={cycleTheme}
           >
-            <i class={`fa-solid ${currentThemeOption().icon}`}></i>
+            <i aria-hidden="true" class={`fa-solid ${currentThemeOption().icon}`} />
           </button>
         </div>
 
         <Show when={isLogged()}>
-          <div class="flex-none">
-            <div class="dropdown dropdown-end">
-              <div
-                tabIndex="0"
-                role="button"
-                class="btn btn-ghost hover:bg-transparent input-ghost"
-                onClick={() => setIsOpen(true)}
+          <div class="flex-none max-sm:ml-auto">
+            <div class="dropdown dropdown-end" data-header-menu="user" classList={{ 'dropdown-open': isOpen() }}>
+              <button
+                type="button"
+                class="btn btn-ghost hover:bg-transparent input-ghost user-menu-trigger"
+                aria-controls="user-navigation"
+                aria-expanded={isOpen()}
+                onClick={() => {
+                  setIsOpen(!isOpen())
+                  setLanguageOpen(false)
+                }}
               >
                 <div class="w-10 rounded-full overflow-hidden">
                   <img alt="Discord avatar" src={discordUser().displayAvatarURL || discordUser().avatarURL} />
@@ -449,47 +458,49 @@ export const Header: Component = () => {
                   {discordUser().globalName || discordUser().displayName || discordUser().username}
                 </p>
                 <div class="flex justify-center items-center min-w-6 min-h-6">
-                  <i class={`fa-solid ${isOpen() ? 'fa-angle-up' : 'fa-angle-down'}`}></i>
+                  <i aria-hidden="true" class={`fa-solid ${isOpen() ? 'fa-angle-up' : 'fa-angle-down'}`} />
                 </div>
-              </div>
+              </button>
               <ul
-                tabIndex="0"
+                id="user-navigation"
+                hidden={!isOpen()}
+                classList={{ hidden: !isOpen() }}
+                tabIndex={-1}
                 class="menu dropdown-content mt-3 z-1 p-4 gap-4 shadow-sm bg-base-200 rounded-md min-w-50"
               >
-                <For each={navDropdownLinks}>
-                  {({ title, content }, index) => (
+                <For each={navDropdownLinks()}>
+                  {({ content }, index) => (
                     <>
                       <For each={content}>
                         {({ title, fontAwesomeIcon, href, condition, onPress }) => (
-                          <>
-                            <Show when={!condition || condition()}>
-                              <li class="flex">
-                                <A
-                                  href={href}
-                                  class="p-0 m-0 hover:font-bold whitespace-nowrap hover:bg-transparent flex items-center gap-2"
-                                  onClick={(e) => {
-                                    if (onPress) {
-                                      e.preventDefault()
-                                      onPress()
-                                    }
-                                  }}
-                                >
-                                  <div class="flex justify-center items-center min-w-6 min-h-6">
-                                    <i class={fontAwesomeIcon}></i>
-                                  </div>
-                                  {title}
-                                  <Show when={title === 'Notifications' && notificationCount() > 0}>
-                                    <span class="badge badge-warning ml-2">
-                                      {notificationCount() > 9 ? '9+' : notificationCount()}
-                                    </span>
-                                  </Show>
-                                </A>
-                              </li>
-                            </Show>
-                          </>
+                          <Show when={!condition || condition()}>
+                            <li class="flex">
+                              <A
+                                href={href}
+                                class="p-0 m-0 hover:font-bold whitespace-nowrap hover:bg-transparent flex items-center gap-2"
+                                onClick={(event) => {
+                                  if (onPress) {
+                                    event.preventDefault()
+                                    onPress()
+                                  }
+                                  setIsOpen(false)
+                                }}
+                              >
+                                <div class="flex justify-center items-center min-w-6 min-h-6">
+                                  <i aria-hidden="true" class={fontAwesomeIcon} />
+                                </div>
+                                {title}
+                                <Show when={href === '/notifications' && notificationCount() > 0}>
+                                  <span class="badge badge-warning ml-2">
+                                    {notificationCount() > 9 ? '9+' : notificationCount()}
+                                  </span>
+                                </Show>
+                              </A>
+                            </li>
+                          </Show>
                         )}
                       </For>
-                      {index() < navDropdownLinks.length - 1 && <hr class="border border-[#6d6d6d]" />}
+                      {index() < navDropdownLinks().length - 1 && <hr class="border border-[#6d6d6d]" />}
                     </>
                   )}
                 </For>
@@ -497,7 +508,6 @@ export const Header: Component = () => {
             </div>
           </div>
         </Show>
-
         <Show when={!isLogged()}>
           <div class="flex-none pl-4">
             <A href="/login" class="btn btn-base-200">
@@ -505,17 +515,8 @@ export const Header: Component = () => {
             </A>
           </div>
         </Show>
-      </div>
-
+      </header>
       <hr class="border border-base-200" />
-      <Show when={new Date() < new Date('2024-09-22T23:59:59')}>
-        <A class="bg-sky-700 text-center p-2 hover:cursor-pointer" href={'/gmodstore'}>
-          <span class="text-lg">
-            {`🎉 I just turned 20! 🎉 And to celebrate, I'm offering a 15% discount on the GmodStore Premium plan for the next ${timeLeft()}!`}
-          </span>
-        </A>
-        <hr class="border border-base-200" />
-      </Show>
     </>
   )
 }

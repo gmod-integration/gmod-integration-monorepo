@@ -22,7 +22,7 @@ const ServerVote = (await import('../../../../../src/pages/dashboard/guilds/serv
 const VOTE_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/votes'
 
 function defaultChannels() {
-  return [{ id: 'c1', name: 'general', type: 0, textBased: true }]
+  return [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
 }
 
 function setupFetchAPI(votes: unknown = {}) {
@@ -112,9 +112,7 @@ describe('pages/dashboard/guilds/servers/ServerVote.tsx', () => {
     const modal = container.querySelector('#select_channel_modal') as HTMLElement
     const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
-    await vi.waitFor(() =>
-      expect(fetchAPI).toHaveBeenCalledWith(VOTE_URL, 'POST', { channelID: 'c1' }),
-    )
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VOTE_URL, 'POST', { channelID: 'c1' }))
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
   })
 

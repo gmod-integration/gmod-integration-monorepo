@@ -11,7 +11,7 @@ describe('components/AdminChart.tsx', () => {
         <div data-testid="child">chart body</div>
       </AdminChart>
     ))
-    expect(screen.getByText('My Chart')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 2, name: 'My Chart' })).toBeInTheDocument()
     expect(screen.getByTestId('child')).toHaveTextContent('chart body')
   })
 })

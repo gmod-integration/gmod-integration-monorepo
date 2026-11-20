@@ -1,4 +1,5 @@
-import { Component, createResource, createSignal, For, Show } from 'solid-js'
+import { closeDialog, showDialog } from '../../../../utils/dialog.js'
+import { type Component, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel'
 import { guildChannelsRefetch } from '../GuildInformations'
 import AdminChannelSelector from '../../../../components/AdminChannelSelector'
@@ -18,6 +19,17 @@ const fetchScreenshot = async () => {
   }
   return await res.json()
 }
+
+type ChatFilter = {
+  id: number
+  element: string
+  operator: string
+  trigger: string
+  action: string
+  active: boolean
+}
+
+const emptyFilter = (): ChatFilter => ({ id: 0, element: '', operator: '', trigger: '', action: '', active: false })
 
 const ServerChats: Component = () => {
   const [syncChats, { mutate: syncChatsMutate }] = createResource('screenshot', fetchScreenshot)
@@ -108,12 +120,16 @@ const ServerChats: Component = () => {
       .catch((error) => console.error(error))
   }
 
-  const [gmToDscFilters, { mutate: mutateGmToDscFilters }] = createResource('gmToDscFilters', async () => {
-    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters', 'GET').then(async (res) => {
-      if (!res.ok) throw new Error('An error occurred while fetching the pseudo direction.')
-      return (await res.json()) || {}
-    })
-  })
+  const [gmToDscFilters, { mutate: mutateGmToDscFilters }] = createResource(
+    'gmToDscFilters',
+    async (): Promise<ChatFilter[]> => {
+      return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters', 'GET').then(async (res) => {
+        if (!res.ok) throw new Error('An error occurred while fetching the pseudo direction.')
+        return (await res.json()) || []
+      })
+    },
+    { initialValue: [] },
+  )
 
   function addGmToDscFilter() {
     fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters', 'POST')
@@ -130,7 +146,7 @@ const ServerChats: Component = () => {
       .catch((error) => console.error(error))
   }
 
-  function deleteGmToDscFilter(roleID: string) {
+  function deleteGmToDscFilter(roleID: number) {
     fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters/${roleID}`, 'DELETE')
       .then((res) => {
         if (res.ok) {
@@ -145,7 +161,7 @@ const ServerChats: Component = () => {
       .catch((error) => console.error(error))
   }
 
-  const [selectFilter, setSelectFilter] = createSignal({})
+  const [selectFilter, setSelectFilter] = createSignal<ChatFilter>(emptyFilter())
 
   function editGmToDscFilter() {
     fetchAPI(
@@ -162,7 +178,7 @@ const ServerChats: Component = () => {
       })
       .then((data) => {
         mutateGmToDscFilters((prev) => prev.map((r) => (r.id === data.id ? data : r)))
-        setSelectFilter({})
+        setSelectFilter(emptyFilter())
       })
       .catch((error) => console.error(error))
   }
@@ -202,7 +218,7 @@ const ServerChats: Component = () => {
             class="select"
             disabled={gmToDscFilters.loading}
             onChange={(e) => {
-              selectFilter().element = e.currentTarget.value
+              setSelectFilter((previous) => ({ ...previous, element: e.currentTarget.value }))
             }}
           >
             <option value="message" selected={selectFilter().element === 'message'}>
@@ -227,7 +243,7 @@ const ServerChats: Component = () => {
             disabled={gmToDscFilters.loading}
             class="select"
             onChange={(e) => {
-              selectFilter().operator = e.currentTarget.value
+              setSelectFilter((previous) => ({ ...previous, operator: e.currentTarget.value }))
             }}
           >
             <option value="contain" selected={selectFilter().operator === 'contain'}>
@@ -260,7 +276,7 @@ const ServerChats: Component = () => {
             class="input"
             value={selectFilter().trigger}
             onInput={(e) => {
-              selectFilter().trigger = e.currentTarget.value
+              setSelectFilter((previous) => ({ ...previous, trigger: e.currentTarget.value }))
             }}
           />
         </div>
@@ -272,7 +288,7 @@ const ServerChats: Component = () => {
             disabled={gmToDscFilters.loading}
             class="select"
             onChange={(e) => {
-              selectFilter().action = e.currentTarget.value
+              setSelectFilter((previous) => ({ ...previous, action: e.currentTarget.value }))
             }}
           >
             <option value="block" selected={selectFilter().action === 'block'}>
@@ -294,7 +310,7 @@ const ServerChats: Component = () => {
             disabled={gmToDscFilters.loading}
             class="select"
             onChange={(e) => {
-              selectFilter().active = e.currentTarget.value === 'true'
+              setSelectFilter((previous) => ({ ...previous, active: e.currentTarget.value === 'true' }))
             }}
           >
             <option value="true" selected={selectFilter().active === true}>
@@ -309,8 +325,7 @@ const ServerChats: Component = () => {
           class="btn btn-base-200 mt-2"
           disabled={gmToDscFilters.loading}
           onClick={async () => {
-            // @ts-expect-error -- intentional: legacy typing gap
-            edit_rule_modal.close()
+            closeDialog('edit_rule_modal')
             editGmToDscFilter()
           }}
         >
@@ -383,8 +398,7 @@ const ServerChats: Component = () => {
           <button
             class="btn btn-base-200"
             onClick={() => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              select_channel_modal.showModal()
+              showDialog('select_channel_modal')
               guildChannelsRefetch()
             }}
           >
@@ -471,9 +485,8 @@ const ServerChats: Component = () => {
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              // @ts-expect-error -- intentional: legacy typing gap
-                              edit_rule_modal.showModal()
-                              setSelectFilter(rule)
+                              showDialog('edit_rule_modal')
+                              setSelectFilter({ ...rule })
                             }}
                           ></i>
                         </div>

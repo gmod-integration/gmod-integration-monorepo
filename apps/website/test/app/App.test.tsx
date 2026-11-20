@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, screen } from '@solidjs/testing-library'
+import { lazy, type Component } from 'solid-js'
 import { historyAt, renderWithProviders } from '../testUtils.js'
 import { App } from '../../src/app/App.js'
 import { setDiscordUser, setIsAdmin, setIsLogged, normalizeDiscordUserPayload } from '../../src/utils/event.js'
@@ -25,10 +26,7 @@ beforeEach(() => {
   setDiscordUser(normalizeDiscordUserPayload({}))
   setIsAdmin(false)
   updateNotificationCount(0)
-  vi.stubGlobal(
-    'fetch',
-    vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }),
-  )
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }))
   vi.spyOn(console, 'log').mockImplementation(() => {})
 })
 
@@ -42,10 +40,13 @@ describe('app/App.tsx', () => {
 
     // Header content (the nav-bar brand link specifically; SecondFooter repeats the brand name).
     expect(screen.getByRole('link', { name: 'Gmod Integration' })).toHaveAttribute('href', '/')
-    // children, wrapped in the grow/shrink layout div.
     const content = screen.getByTestId('page-content')
     expect(content).toBeInTheDocument()
-    expect(content.closest('div.grow.shrink-0.flex-auto.flex.flex-col')).not.toBeNull()
+    const main = screen.getByRole('main')
+    expect(main).toContainElement(content)
+    expect(main).toHaveAttribute('id', 'main-content')
+    expect(main).toHaveAttribute('tabindex', '-1')
+    expect(screen.getByRole('link', { name: 'Skip to content' })).toHaveAttribute('href', '#main-content')
     // Footer content (FirstFooter renders this footer category title).
     expect(screen.getByText('Services')).toBeInTheDocument()
   })
@@ -63,6 +64,28 @@ describe('app/App.tsx', () => {
       )),
     ).not.toThrow()
     expect(screen.getByTestId('child-translation')).toHaveTextContent('Login with Discord')
+  })
+
+  it('keeps navigation available and announces a pending page in the selected language', async () => {
+    window.localStorage.setItem('locale', 'fr')
+    let resolvePage!: (module: { default: Component }) => void
+    const pageModule = new Promise<{ default: Component }>((resolve) => {
+      resolvePage = resolve
+    })
+    const PendingPage = lazy(() => pageModule)
+    renderWithProviders(() => (
+      <App>
+        <PendingPage />
+      </App>
+    ))
+
+    expect(screen.getByRole('status')).toHaveTextContent('Chargement…')
+    expect(screen.getByRole('link', { name: 'Gmod Integration' })).toHaveAttribute('href', '/')
+    expect(screen.getByRole('main')).toContainElement(screen.getByRole('status'))
+
+    resolvePage({ default: () => <h1>Page ready</h1> })
+    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'Page ready' })).toBeInTheDocument())
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('runs RedirectMiddleware: /dashboard redirects to /dashboard/guilds', async () => {

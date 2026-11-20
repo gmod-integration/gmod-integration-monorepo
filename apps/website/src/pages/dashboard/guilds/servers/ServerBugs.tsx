@@ -1,4 +1,4 @@
-import { Component, createResource, createSignal, For, Show } from 'solid-js'
+import { type Component, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel'
 import { useI18n } from '../../../../i18n'
 import { fetchAPI, getAPIUrl } from '../../../../utils/api'
@@ -25,7 +25,7 @@ interface AddReportBugs {
   expected: string
   screenshot: string
   steps: string
-  id: string
+  id: number
   createAt: Date
 }
 
@@ -117,11 +117,11 @@ type Bugs = {
   serverID: string
   steamID64: string
   description: string
-  status: string
+  status: Status
   steps: string
   expected: string
   actual: string
-  importance: string
+  importance: Importance
   screenshot: string
   createdAt: string
   updatedAt: string

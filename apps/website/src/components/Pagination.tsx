@@ -1,5 +1,6 @@
-import { Component } from 'solid-js'
-import { ClientQuery, QuerySort } from '../utils/types/QueryTypes'
+import type { Component } from 'solid-js'
+import { type ClientQuery } from '../utils/types/QueryTypes.js'
+import { useI18n } from '../i18n.js'
 
 interface PaginationProps {
   query: ClientQuery
@@ -9,17 +10,20 @@ interface PaginationProps {
 }
 
 const Pagination: Component<PaginationProps> = (props) => {
-  const currentPage = () => Math.floor(props.query.offset / props.query.limit) + 1
-  const totalPages = () => Math.ceil(props.total / props.query.limit) || 1
+  const { t } = useI18n()
+  const limit = () => (Number.isFinite(props.query.limit) && props.query.limit > 0 ? props.query.limit : 25)
+  const offset = () => Math.max(0, props.query.offset)
+  const currentPage = () => Math.floor(offset() / limit()) + 1
+  const totalPages = () => Math.max(1, Math.ceil(props.total / limit()))
 
-  const canPrev = () => props.query.offset > 0
-  const canNext = () => props.query.offset + props.query.limit < props.total
+  const canPrev = () => offset() > 0
+  const canNext = () => offset() + limit() < props.total
 
   const handlePrev = () => {
     if (!canPrev()) return
     props.onChange({
       ...props.query,
-      offset: props.query.offset - props.query.limit,
+      offset: Math.max(0, offset() - limit()),
     })
   }
 
@@ -27,7 +31,7 @@ const Pagination: Component<PaginationProps> = (props) => {
     if (!canNext()) return
     props.onChange({
       ...props.query,
-      offset: props.query.offset + props.query.limit,
+      offset: offset() + limit(),
     })
   }
 
@@ -38,15 +42,9 @@ const Pagination: Component<PaginationProps> = (props) => {
     })
   }
 
-  const toggleSort = () => {
-    props.onChange({
-      ...props.query,
-      orderBy: props.query.orderBy === QuerySort.ASC ? QuerySort.DESC : QuerySort.ASC,
-    })
-  }
-
   const handleLimitChange = (event: Event) => {
     const newLimit = parseInt((event.target as HTMLSelectElement).value, 10)
+    if (![25, 50, 250, 500].includes(newLimit)) return
     props.onChange({
       ...props.query,
       limit: newLimit,
@@ -57,33 +55,51 @@ const Pagination: Component<PaginationProps> = (props) => {
   return (
     <tr>
       <td colSpan={props.colSpan ?? 6}>
-        <div
-          class="
-    join flex justify-center
-    [&>.join-item]:border-2
-    [&>.join-item]:border-base-200
-    [&>.join-item:not(:first-child)]:border-l-0
-  "
+        <nav
+          class="join flex justify-center [&>.join-item]:border-2 [&>.join-item]:border-base-200 [&>.join-item:not(:first-child)]:border-l-0"
+          aria-label={t('ui.pagination', 'Pagination')}
         >
-          <button class="btn btn-sm join-item bg-base-200/20" onClick={handlePrev} disabled={!canPrev()}>
-            <i class="fa-solid fa-chevron-left"></i>
+          <button
+            type="button"
+            class="btn btn-sm join-item bg-base-200/20"
+            aria-label={t('ui.previous_page', 'Previous page')}
+            onClick={handlePrev}
+            disabled={!canPrev()}
+          >
+            <i aria-hidden="true" class="fa-solid fa-chevron-left"></i>
           </button>
 
-          <button class="btn btn-sm join-item bg-base-200/20" onClick={handleReset}>
+          <button
+            type="button"
+            class="btn btn-sm join-item bg-base-200/20"
+            title={t('ui.first_page', 'Back to the first page')}
+            onClick={handleReset}
+          >
             {`${currentPage()} / ${totalPages()}`}
           </button>
 
-          <select class="btn btn-sm join-item bg-base-200/20" onChange={handleLimitChange} value={props.query.limit}>
+          <select
+            class="btn btn-sm join-item bg-base-200/20"
+            aria-label={t('ui.rows_per_page', 'Rows per page')}
+            onChange={handleLimitChange}
+            value={limit()}
+          >
             <option value={25}>25</option>
             <option value={50}>50</option>
             <option value={250}>250</option>
             <option value={500}>500</option>
           </select>
 
-          <button class="btn btn-sm join-item bg-base-200/20" onClick={handleNext} disabled={!canNext()}>
-            <i class="fa-solid fa-chevron-right"></i>
+          <button
+            type="button"
+            class="btn btn-sm join-item bg-base-200/20"
+            aria-label={t('ui.next_page', 'Next page')}
+            onClick={handleNext}
+            disabled={!canNext()}
+          >
+            <i aria-hidden="true" class="fa-solid fa-chevron-right"></i>
           </button>
-        </div>
+        </nav>
       </td>
     </tr>
   )

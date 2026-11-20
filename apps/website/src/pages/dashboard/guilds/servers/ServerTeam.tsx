@@ -1,4 +1,5 @@
-import { Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
+import { closeDialog, showDialog } from '../../../../utils/dialog.js'
+import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel'
 import { guildRoles } from '../GuildInformations'
 import AdminModal from '../../../../components/AdminModal'
@@ -10,6 +11,7 @@ import { fetchAPI } from '../../../../utils/api'
 import { TextValue } from '../../../../components/popup/TextValue'
 
 interface RoleSync {
+  id: number
   serverID: string
   roleID: string
   teamName: string
@@ -19,21 +21,31 @@ interface RoleSync {
 const ServerTeam: Component = () => {
   const { t } = useI18n()
 
-  const [selectRole, setSelectRole] = createSignal({} as RoleSync)
-
-  const [rolesSync, { mutate: mutateRolesSync }] = createResource('rolesSync', async () => {
-    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/teams', 'GET').then(async (res) => {
-      if (!res.ok)
-        throw new Error(
-          t('dashboard.server.team_roles.error_occurred', 'An error occurred while fetching the roles sync.'),
-        )
-      return (await res.json()) || {}
-    })
+  const [selectRole, setSelectRole] = createSignal<RoleSync>({
+    id: 0,
+    serverID: '',
+    roleID: '',
+    teamName: '',
+    enable: false,
   })
+
+  const [rolesSync, { mutate: mutateRolesSync }] = createResource(
+    'rolesSync',
+    async (): Promise<RoleSync[]> => {
+      return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/teams', 'GET').then(async (res) => {
+        if (!res.ok)
+          throw new Error(
+            t('dashboard.server.team_roles.error_occurred', 'An error occurred while fetching the roles sync.'),
+          )
+        return (await res.json()) || []
+      })
+    },
+    { initialValue: [] },
+  )
 
   // when roles list change call setRolesToCheck([roleID<string>])
   createEffect(() => {
-    if (rolesSync.loading) return
+    if (rolesSync.loading || rolesSync.error) return
     const roles = rolesSync().map((role: RoleSync) => role.roleID)
     setRolesToCheck(roles)
   })
@@ -68,7 +80,7 @@ const ServerTeam: Component = () => {
       .catch((error) => console.error(error))
   }
 
-  function deleteRole(id: string) {
+  function deleteRole(id: number) {
     fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/teams/${id}`, 'DELETE')
       .then((res) => {
         if (res.ok) {
@@ -95,8 +107,9 @@ const ServerTeam: Component = () => {
             <select
               class="select"
               disabled={guildRoles.loading || rolesSync.loading}
-              onchange="select_role_modal.close()"
+
               onChange={async (e) => {
+                closeDialog('select_role_modal')
                 await addRole(e.currentTarget.value)
               }}
             >
@@ -131,7 +144,7 @@ const ServerTeam: Component = () => {
               disabled={guildRoles.loading || rolesSync.loading}
               value={selectRole().teamName}
               onInput={(e) => {
-                selectRole().teamName = e.currentTarget.value
+                setSelectRole((previous) => ({ ...previous, teamName: e.currentTarget.value }))
               }}
             />
           </div>
@@ -144,7 +157,7 @@ const ServerTeam: Component = () => {
               disabled={guildRoles.loading || rolesSync.loading}
               value={selectRole().enable ? 'true' : 'false'}
               onChange={(e) => {
-                selectRole().enable = e.currentTarget.value === 'true'
+                setSelectRole((previous) => ({ ...previous, enable: e.currentTarget.value === 'true' }))
               }}
             >
               <option value="true">{t('dashboard.server.team_roles.yes', 'Yes')}</option>
@@ -155,8 +168,7 @@ const ServerTeam: Component = () => {
             disabled={guildRoles.loading || rolesSync.loading}
             class="btn btn-base-200 mt-2"
             onClick={async () => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              edit_role_modal.close()
+              closeDialog('edit_role_modal')
               editRole()
             }}
           >
@@ -219,9 +231,8 @@ const ServerTeam: Component = () => {
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              // @ts-expect-error -- intentional: legacy typing gap
-                              edit_role_modal.showModal()
-                              setSelectRole(roleSync)
+                              showDialog('edit_role_modal')
+                              setSelectRole({ ...roleSync })
                             }}
                           ></i>
                         </div>
@@ -247,8 +258,7 @@ const ServerTeam: Component = () => {
           <button
             class="btn btn-base-200"
             onClick={() => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              select_role_modal.showModal()
+              showDialog('select_role_modal')
             }}
             disabled={!premium()}
           >

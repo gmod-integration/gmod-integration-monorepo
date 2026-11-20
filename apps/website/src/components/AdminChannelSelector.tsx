@@ -78,7 +78,8 @@ export const ChannelSelector: Component<ChannelSelectorProps> = (props) => {
                 // global - the previous version always closed the literal `select_channel_modal`
                 // element regardless of which id was actually passed in, which was wrong for any
                 // caller using a different modal id (e.g. `select_channel_modal_channel`).
-                const modal = document.getElementById(props.modalId) as (HTMLDialogElement & { close?: () => void }) | null
+                const modal = document.getElementById(props.modalId) as
+                  (HTMLDialogElement & { close?: () => void }) | null
                 modal?.close?.()
               }
               if (props.callback) props.callback(e.currentTarget.value)

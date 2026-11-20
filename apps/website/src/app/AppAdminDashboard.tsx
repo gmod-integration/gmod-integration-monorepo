@@ -1,20 +1,22 @@
-import { AdminMenu } from '../components/layout/menu/AdminMenu'
-import { ErrorBoundary } from 'solid-js/web'
-import { ParentProps } from 'solid-js'
+import { ErrorBoundary, type ParentComponent } from 'solid-js'
+import { AdminMenu } from '../components/layout/menu/AdminMenu.js'
+import { AddErrorComponent, ShowErrorList } from '../components/layout/Errors.js'
+import { useI18n } from '../i18n.js'
 
-export const AppAdminDashboard = (props: ParentProps) => (
-  <>
-    <div class="grow shrink-0 flex-auto flex h-full w-full">
+export const AppAdminDashboard: ParentComponent = (props) => {
+  const { t } = useI18n()
+  return (
+    <div class="grow shrink-0 flex-auto flex flex-col md:flex-row h-full w-full min-w-0">
       <AdminMenu />
-      <div class="flex flex-col w-full max-w-(--breakpoint-2xl) mx-auto p-4 gap-4">
+      <div class="flex flex-col w-full min-w-0 max-w-(--breakpoint-2xl) mx-auto p-4 gap-4">
+        <ShowErrorList />
         <ErrorBoundary
-          fallback={(err) => (
-            // See AppDashboard.tsx for why `props.children` is deliberately not re-rendered here:
-            // it's a live getter that re-invokes the same throwing child, uncaught, during the
-            // fallback's own render.
-            <div class="text-error flex h-12 items-center rounded-lg border-error border p-4 gap-4">
-              <i class="fa-regular fa-circle-xmark"></i>
-              <span>Error : {err.message}</span>
+          fallback={(error, reset) => (
+            <div class="flex flex-col gap-2">
+              <AddErrorComponent message={error instanceof Error ? error.message : String(error)} />
+              <button type="button" class="btn btn-outline self-start" onClick={reset}>
+                {t('ui.retry', 'Try again')}
+              </button>
             </div>
           )}
         >
@@ -22,5 +24,5 @@ export const AppAdminDashboard = (props: ParentProps) => (
         </ErrorBoundary>
       </div>
     </div>
-  </>
-)
+  )
+}

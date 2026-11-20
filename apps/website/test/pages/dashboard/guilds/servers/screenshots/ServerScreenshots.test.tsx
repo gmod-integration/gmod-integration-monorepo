@@ -25,9 +25,8 @@ vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
   () => ({ top: 999999, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON() {} }) as DOMRect,
 )
 
-const { default: ServerScreenshots } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshots.js'
-)
+const { default: ServerScreenshots } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshots.js')
 
 afterEach(() => cleanup())
 

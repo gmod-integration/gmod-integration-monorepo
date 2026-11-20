@@ -1,4 +1,5 @@
-import { Component, createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
+import { closeDialog, showDialog } from '../../../../utils/dialog.js'
+import { type Component, createEffect, createSignal, onCleanup, onMount, Show } from 'solid-js'
 import { getServer } from '../../../../utils/utils'
 import { sendWebSocketMessage, webSocketServerStatus } from '../../../../utils/websocket'
 import { useNavigate } from '@solidjs/router'
@@ -78,7 +79,7 @@ const ServerInformations: Component = () => {
             disabled={/* no specific loading state available */ false}
             value={server().name}
             onInput={(e) => {
-              server().name = e.currentTarget.value
+              setServer((previous) => ({ ...previous, name: e.currentTarget.value }))
             }}
           />
         </div>
@@ -92,7 +93,7 @@ const ServerInformations: Component = () => {
             disabled={/* no specific loading state available */ false}
             value={server().description}
             onInput={(e) => {
-              server().description = e.currentTarget.value
+              setServer((previous) => ({ ...previous, description: e.currentTarget.value }))
             }}
           />
         </div>
@@ -106,7 +107,7 @@ const ServerInformations: Component = () => {
             disabled={/* no specific loading state available */ false}
             value={server().image}
             onInput={(e) => {
-              server().image = e.currentTarget.value
+              setServer((previous) => ({ ...previous, image: e.currentTarget.value }))
             }}
           />
         </div>
@@ -120,7 +121,7 @@ const ServerInformations: Component = () => {
             class="input"
             value={server().ip}
             onInput={(e) => {
-              server().ip = e.currentTarget.value
+              setServer((previous) => ({ ...previous, ip: e.currentTarget.value }))
             }}
           />
         </div>
@@ -134,7 +135,7 @@ const ServerInformations: Component = () => {
             class="input"
             value={server().port}
             onInput={(e) => {
-              server().port = e.currentTarget.value
+              setServer((previous) => ({ ...previous, port: e.currentTarget.value }))
             }}
           />
         </div>
@@ -147,7 +148,7 @@ const ServerInformations: Component = () => {
             class="select"
             value={server().isPublic ? 'true' : 'false'}
             onChange={(e) => {
-              server().isPublic = e.currentTarget.value === 'true'
+              setServer((previous) => ({ ...previous, isPublic: e.currentTarget.value === 'true' }))
             }}
           >
             <option value="true">{t('dashboard.server.server_informations.yes', 'Yes')}</option>
@@ -158,8 +159,7 @@ const ServerInformations: Component = () => {
           class="btn btn-base-200 mt-2"
           disabled={/* no specific loading state available */ false}
           onClick={async () => {
-            // @ts-expect-error -- intentional: legacy typing gap
-            edit_server.close()
+            closeDialog('edit_server')
             await editServer()
           }}
         >
@@ -237,8 +237,7 @@ const ServerInformations: Component = () => {
           <button
             class="btn btn-base-200"
             onClick={() => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              edit_server.showModal()
+              showDialog('edit_server')
             }}
           >
             {t('dashboard.server.server_informations.edit_server', 'Edit Server')}

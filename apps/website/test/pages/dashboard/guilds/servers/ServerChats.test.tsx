@@ -187,7 +187,9 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
       defaultFetch({ [PSEUDO_DIRECTION_URL]: { value: 'both' } })
       const { container } = renderPage()
       await vi.waitFor(() => {
-        const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole('combobox')[0] as HTMLSelectElement
+        const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole(
+          'combobox',
+        )[0] as HTMLSelectElement
         expect(within(select).getByText('Both Ways', { exact: false })).toHaveProperty('selected', true)
       })
     })
@@ -196,7 +198,9 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
       window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
       const { container } = renderPage()
       await waitForLoaded(container)
-      const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole('combobox')[0] as HTMLSelectElement
+      const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole(
+        'combobox',
+      )[0] as HTMLSelectElement
       const options = within(select).getAllByRole('option') as HTMLOptionElement[]
       expect(options.find((o) => o.value === 'discordToGmod')).toBeDisabled()
       expect(options.find((o) => o.value === 'both')).toBeDisabled()
@@ -206,7 +210,9 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
     it('sends the new direction on change and mutates on success', async () => {
       const { container } = renderPage()
       await waitForLoaded(container)
-      const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole('combobox')[0] as HTMLSelectElement
+      const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole(
+        'combobox',
+      )[0] as HTMLSelectElement
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(okJson({ value: 'both' }))
         return Promise.resolve(okJson({}))
@@ -219,7 +225,9 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const { container } = renderPage()
       await waitForLoaded(container)
-      const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole('combobox')[0] as HTMLSelectElement
+      const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole(
+        'combobox',
+      )[0] as HTMLSelectElement
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
@@ -240,9 +248,7 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
 
     it('sends the new value on toggle and mutates on success', async () => {
       const { container } = renderPage()
-      await vi.waitFor(() =>
-        expect(container.querySelectorAll('input[type=checkbox]')[0]).not.toBeDisabled(),
-      )
+      await vi.waitFor(() => expect(container.querySelectorAll('input[type=checkbox]')[0]).not.toBeDisabled())
       const checkbox = container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement
       expect(checkbox.checked).toBe(false)
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
@@ -257,9 +263,7 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
     it('logs and does not throw when updating fails', async () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const { container } = renderPage()
-      await vi.waitFor(() =>
-        expect(container.querySelectorAll('input[type=checkbox]')[0]).not.toBeDisabled(),
-      )
+      await vi.waitFor(() => expect(container.querySelectorAll('input[type=checkbox]')[0]).not.toBeDisabled())
       const checkbox = container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === PREVENT_PING_URL && method === 'PUT') return Promise.resolve(errJson())

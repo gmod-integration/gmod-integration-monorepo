@@ -10,9 +10,8 @@ vi.mock('../../src/utils/api.js', async (importActual) => {
   }
 })
 
-const { guildChannels, guildChannelsMutate, guildChannelsRefetch } = await import(
-  '../../src/pages/dashboard/guilds/GuildInformations.js'
-)
+const { guildChannels, guildChannelsMutate, guildChannelsRefetch } =
+  await import('../../src/pages/dashboard/guilds/GuildInformations.js')
 const { ChannelSelector, default: AdminChannelSelector } = await import('../../src/components/AdminChannelSelector.js')
 const { fetchAPI } = await import('../../src/utils/api.js')
 

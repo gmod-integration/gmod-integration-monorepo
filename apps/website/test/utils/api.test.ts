@@ -35,6 +35,14 @@ describe('utils/api.tsx', () => {
     it('substitutes empty strings when nothing is stored', () => {
       expect(getUrlWithActualParams(':guildID-:serverID-:userID-:discordID')).toBe('---')
     })
+
+    it('escapes identifiers, replaces repeated parameters and tolerates damaged stored selections', () => {
+      window.localStorage.setItem('guilds', JSON.stringify({ id: 'guild/with space' }))
+      window.localStorage.setItem('server', '{invalid')
+      expect(getUrlWithActualParams('/guilds/:guildID/copy/:guildID/server/:serverID')).toBe(
+        '/guilds/guild%2Fwith%20space/copy/guild%2Fwith%20space/server/',
+      )
+    })
   })
 
   describe('fetchAPI', () => {

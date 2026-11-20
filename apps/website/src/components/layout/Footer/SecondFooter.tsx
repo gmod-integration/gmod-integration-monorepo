@@ -1,4 +1,4 @@
-import { Component } from 'solid-js'
+import type { Component } from 'solid-js'
 import logo from '../../../assets/brand/logo.png'
 import { useI18n } from '../../../i18n'
 

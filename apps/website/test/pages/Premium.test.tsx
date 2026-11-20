@@ -131,9 +131,7 @@ describe('pages/Premium.tsx', () => {
       expect(
         screen.getByText('What are the differences between the free and the premium version ?'),
       ).toBeInTheDocument()
-      expect(
-        screen.getByText('Why so many features are in development ?'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('Why so many features are in development ?')).toBeInTheDocument()
     })
   })
 })

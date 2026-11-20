@@ -1,4 +1,5 @@
-import { Component, createEffect, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
+import { closeDialog, showDialog } from '../../../utils/dialog.js'
+import { type Component, createEffect, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
 import { guildRoles, guildRolesRefetch } from './GuildInformations'
 import AdminPanel from '../../../components/AdminPanel'
 import AdminModal from '../../../components/AdminModal'
@@ -9,7 +10,9 @@ import MissingRolePermission, { setRolesToCheck } from '../../../components/popu
 import { BuyPremiumBtn } from '../../../utils/premium'
 import { fetchAPI } from '../../../utils/api'
 
-const fetchVerifyRoles = async () => {
+type AutoRole = { roleID: string; enabled: boolean }
+
+const fetchVerifyRoles = async (): Promise<AutoRole[]> => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/auto-roles', 'GET')
   if (!res.ok) {
     // Bug fix: was `return {}` - the result is always treated as an array below (`.map`,
@@ -20,16 +23,8 @@ const fetchVerifyRoles = async () => {
   return await res.json()
 }
 
-const fetchNotVerifyRoles = async () => {
-  const res = await fetchAPI('/users/:discordID/guilds/:guildID/verifications/roles/', 'GET')
-  if (!res.ok) {
-    return {}
-  }
-  return await res.json()
-}
-
 const GuildAutoRole: Component = () => {
-  const [autoRoles, { mutate }] = createResource('verifyRole', fetchVerifyRoles)
+  const [autoRoles, { mutate }] = createResource('verifyRole', fetchVerifyRoles, { initialValue: [] })
   createEffect(() => {
     // Bug fix: also bail out on autoRoles.error - reading autoRoles() while errored re-throws.
     if (autoRoles.loading || autoRoles.error) return
@@ -37,10 +32,10 @@ const GuildAutoRole: Component = () => {
     setRolesToCheck(roles)
   })
 
-  const [selectedRole, setSelectedRole] = createSignal({})
+  const [selectedRole, setSelectedRole] = createSignal<AutoRole>({ roleID: '', enabled: false })
   const { t } = useI18n()
 
-  const deleteAutoRole = async (role: string) => {
+  const deleteAutoRole = async (role: AutoRole) => {
     const res = await fetchAPI(`/users/:discordID/guilds/:guildID/auto-roles/${role.roleID}`, 'DELETE')
     if (!res.ok) {
       return
@@ -63,7 +58,8 @@ const GuildAutoRole: Component = () => {
   // this file (a leftover from copying GuildVerifications.tsx, which does define one), throwing a
   // ReferenceError. Added the missing function, mirroring the PUT-and-mutate pattern used by
   // deleteAutoRole/createVerifyRole above and by GuildVerifications.tsx's own editVerifyRole.
-  const editVerifyRole = async (role: string) => {
+  const editVerifyRole = async (role: AutoRole) => {
+    if (!role.roleID) return
     const res = await fetchAPI(`/users/:discordID/guilds/:guildID/auto-roles/${role.roleID}`, 'PUT', {
       enabled: role.enabled,
     })
@@ -92,8 +88,9 @@ const GuildAutoRole: Component = () => {
             <select
               class="select"
               disabled={guildRoles.loading || autoRoles.loading}
-              onchange="select_role_modal.close()"
+
               onChange={async (e) => {
+                closeDialog('select_role_modal')
                 await createVerifyRole(e.currentTarget.value)
               }}
             >
@@ -131,7 +128,7 @@ const GuildAutoRole: Component = () => {
               disabled={guildRoles.loading || autoRoles.loading}
               value={selectedRole().enabled ? 'true' : 'false'}
               onChange={(e) => {
-                selectedRole().enabled = e.currentTarget.value === 'true'
+                setSelectedRole((previous) => ({ ...previous, enabled: e.currentTarget.value === 'true' }))
               }}
             >
               <option value="true">{t('dashboard.guild.auto_role.yes', 'Yes')}</option>
@@ -141,8 +138,9 @@ const GuildAutoRole: Component = () => {
           <button
             class="btn btn-base-200 mt-2"
             disabled={guildRoles.loading || autoRoles.loading}
-            onclick="edit_role_modal.close()"
+
             onClick={async () => {
+              closeDialog('edit_role_modal')
               await editVerifyRole(selectedRole())
             }}
           >
@@ -181,6 +179,17 @@ const GuildAutoRole: Component = () => {
                     </td>
                     <td>
                       <div class="flex gap-2 justify-center">
+                        <button
+                          type="button"
+                          class="btn btn-ghost btn-sm"
+                          aria-label={t('dashboard.guild.auto_role.edit', 'Edit')}
+                          onClick={() => {
+                            setSelectedRole({ ...role })
+                            showDialog('edit_role_modal')
+                          }}
+                        >
+                          <i class="fa-solid fa-edit" aria-hidden="true"></i>
+                        </button>
                         <div class="tooltip tooltip-error" data-tip={t('dashboard.guild.auto_role.delete', 'Delete')}>
                           <i
                             class="hover:cursor-pointer fa-solid fa-trash text-error"
@@ -222,8 +231,7 @@ const GuildAutoRole: Component = () => {
             <button
               class="btn btn-base-200"
               onClick={() => {
-                // @ts-expect-error -- intentional: legacy typing gap
-                select_role_modal.showModal()
+                showDialog('select_role_modal')
                 guildRolesRefetch()
               }}
             >

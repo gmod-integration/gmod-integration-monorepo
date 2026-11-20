@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../../../../testUtils.js'
 import { Screenshot } from '../../../../../../src/pages/dashboard/guilds/servers/screenshots/Screenshot.js'
@@ -6,7 +6,6 @@ import type { ScreenshotStructure } from '../../../../../../src/pages/dashboard/
 
 afterEach(() => {
   cleanup()
-  delete (globalThis as Record<string, unknown>).focusImgModal
 })
 
 const baseShot: ScreenshotStructure = {
@@ -20,14 +19,18 @@ const baseShot: ScreenshotStructure = {
 }
 
 function renderShot(shot: ScreenshotStructure, setFocusImg = vi.fn()) {
-  return { setFocusImg, ...renderWithProviders(() => <Screenshot screenshot={shot} setFocusImg={setFocusImg} />) }
+  return {
+    setFocusImg,
+    ...renderWithProviders(() => (
+      <>
+        <dialog id="focusImgModal"></dialog>
+        <Screenshot screenshot={shot} setFocusImg={setFocusImg} />
+      </>
+    )),
+  }
 }
 
 describe('pages/dashboard/guilds/servers/screenshots/Screenshot.tsx', () => {
-  beforeEach(() => {
-    ;(globalThis as Record<string, unknown>).focusImgModal = { showModal: vi.fn() }
-  })
-
   it('renders the title, image, and date/player metadata', () => {
     const { container } = renderShot(baseShot)
     expect(screen.getByText('My Screenshot')).toBeInTheDocument()
@@ -68,7 +71,7 @@ describe('pages/dashboard/guilds/servers/screenshots/Screenshot.tsx', () => {
     const { container, setFocusImg } = renderShot(baseShot)
     await fireEvent.click(container.querySelector('img') as HTMLImageElement)
     expect(setFocusImg).toHaveBeenCalledWith(baseShot)
-    expect((globalThis as Record<string, { showModal: () => void }>).focusImgModal.showModal).toHaveBeenCalled()
+    expect(container.querySelector<HTMLDialogElement>('#focusImgModal')?.open).toBe(true)
   })
 
   it('calls setFocusImg and opens the modal via the View button', async () => {

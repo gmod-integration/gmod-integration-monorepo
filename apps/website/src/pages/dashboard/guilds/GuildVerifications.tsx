@@ -1,4 +1,5 @@
-import { Component, createEffect, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
+import { closeDialog, showDialog } from '../../../utils/dialog.js'
+import { type Component, createEffect, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
 import { guildChannelsRefetch, guildRoles, guildRolesRefetch } from './GuildInformations'
 import AdminPanel from '../../../components/AdminPanel'
 import AdminModal from '../../../components/AdminModal'
@@ -10,7 +11,9 @@ import MissingRolePermission, { setRolesToCheck } from '../../../components/popu
 import { BuyPremiumBtn, premium, PremiumBadge } from '../../../utils/premium'
 import { fetchAPI } from '../../../utils/api'
 
-const fetchVerifyRoles = async () => {
+type VerificationRole = { roleID: string; enabled: boolean; isGiveRole: boolean }
+
+const fetchVerifyRoles = async (): Promise<VerificationRole[]> => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/verifications/roles', 'GET')
   if (!res.ok) {
     // Bug fix: was `return {}` - the result is always treated as an array below (`.map`,
@@ -54,7 +57,7 @@ const fetchLastVerify = async () => {
 }
 
 const GuildVerification: Component = () => {
-  const [verifyRoles, { mutate }] = createResource('verifyRole', fetchVerifyRoles)
+  const [verifyRoles, { mutate }] = createResource('verifyRole', fetchVerifyRoles, { initialValue: [] })
   createEffect(() => {
     // Bug fix: was `const roles = verifyRoles(); if (roles) { if (roles.loading) return ... }` -
     // `roles.loading` checked the returned array/data, not the resource itself, so it was always
@@ -69,7 +72,11 @@ const GuildVerification: Component = () => {
     }
   })
 
-  const [selectedRole, setSelectedRole] = createSignal({})
+  const [selectedRole, setSelectedRole] = createSignal<VerificationRole>({
+    roleID: '',
+    enabled: false,
+    isGiveRole: true,
+  })
   const [verifyMessage, { mutate: verifyMessageMutate }] = createResource('verifyMessage', fetchVerifyMessage)
   const [lastVerify, { mutate: lastVerifyMutate }] = createResource('lastVerify', fetchLastVerify)
   const [verificationDontMP, { mutate: verificationDontMPMutate }] = createResource(
@@ -83,7 +90,7 @@ const GuildVerification: Component = () => {
 
   const { t } = useI18n()
 
-  async function deleteVerifyRole(role: string) {
+  async function deleteVerifyRole(role: VerificationRole) {
     const res = await fetchAPI(`/users/:discordID/guilds/:guildID/verifications/roles/${role.roleID}`, 'DELETE')
     if (!res.ok) {
       return
@@ -92,7 +99,7 @@ const GuildVerification: Component = () => {
     return role
   }
 
-  async function editVerifyRole(role: string) {
+  async function editVerifyRole(role: VerificationRole) {
     const res = await fetchAPI(`/users/:discordID/guilds/:guildID/verifications/roles/${role.roleID}`, 'PUT', {
       isGiveRole: role.isGiveRole,
       enabled: role.enabled,
@@ -188,8 +195,9 @@ const GuildVerification: Component = () => {
             <select
               class="select"
               disabled={guildRoles.loading || verifyRoles.loading}
-              onchange="select_role_modal.close()"
+
               onChange={async (e) => {
+                closeDialog('select_role_modal')
                 await createVerifyRole(e.currentTarget.value)
               }}
             >
@@ -227,7 +235,7 @@ const GuildVerification: Component = () => {
               disabled={guildRoles.loading || verifyRoles.loading}
               value={selectedRole().isGiveRole ? 'true' : 'false'}
               onChange={(e) => {
-                selectedRole().isGiveRole = e.currentTarget.value === 'true'
+                setSelectedRole((previous) => ({ ...previous, isGiveRole: e.currentTarget.value === 'true' }))
               }}
             >
               <option value="true">{t('dashboard.guild.verification.give_role', 'Give Role')}</option>
@@ -243,7 +251,7 @@ const GuildVerification: Component = () => {
               disabled={guildRoles.loading || verifyRoles.loading}
               value={selectedRole().enabled ? 'true' : 'false'}
               onChange={(e) => {
-                selectedRole().enabled = e.currentTarget.value === 'true'
+                setSelectedRole((previous) => ({ ...previous, enabled: e.currentTarget.value === 'true' }))
               }}
             >
               <option value="true">{t('dashboard.guild.verification.yes', 'Yes')}</option>
@@ -253,8 +261,9 @@ const GuildVerification: Component = () => {
           <button
             disabled={guildRoles.loading || verifyRoles.loading}
             class="btn btn-base-200 mt-2"
-            onclick="edit_role_modal.close()"
+
             onClick={async () => {
+              closeDialog('edit_role_modal')
               await editVerifyRole(selectedRole())
             }}
           >
@@ -335,8 +344,7 @@ const GuildVerification: Component = () => {
             <button
               class="btn btn-base-200"
               onClick={() => {
-                // @ts-expect-error -- intentional: legacy typing gap
-                select_channel_modal.showModal()
+                showDialog('select_channel_modal')
                 guildChannelsRefetch()
               }}
             >
@@ -426,9 +434,8 @@ const GuildVerification: Component = () => {
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              // @ts-expect-error -- intentional: legacy typing gap
-                              edit_role_modal.showModal()
-                              setSelectedRole(role)
+                              showDialog('edit_role_modal')
+                              setSelectedRole({ ...role })
                             }}
                           ></i>
                         </div>
@@ -476,8 +483,7 @@ const GuildVerification: Component = () => {
             <button
               class="btn btn-base-200"
               onClick={() => {
-                // @ts-expect-error -- intentional: legacy typing gap
-                select_role_modal.showModal()
+                showDialog('select_role_modal')
                 guildRolesRefetch()
               }}
             >
@@ -491,7 +497,3 @@ const GuildVerification: Component = () => {
 }
 
 export default GuildVerification
-
-function mutate(arg0: (prevVerifyRole: any) => any[]) {
-  throw new Error('Function not implemented.')
-}

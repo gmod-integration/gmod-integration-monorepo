@@ -17,9 +17,8 @@ vi.mock('../../../../src/utils/api.js', async (importActual) => {
   }
 })
 
-const { guildRolesMutate, guildChannelsMutate } = await import(
-  '../../../../src/pages/dashboard/guilds/GuildInformations.js'
-)
+const { guildRolesMutate, guildChannelsMutate } =
+  await import('../../../../src/pages/dashboard/guilds/GuildInformations.js')
 const { fetchAPI } = await import('../../../../src/utils/api.js')
 const GuildVerification = (await import('../../../../src/pages/dashboard/guilds/GuildVerifications.js')).default
 
@@ -65,7 +64,7 @@ function defaultVerifyRolesRaw() {
 
 // All roles editable by default so MissingRolePermission's warning banner stays empty and doesn't
 // add extra "@RoleName" text to the DOM.
-function subordinationFor(roles: { id: string }[]) {
+function subordinationFor(roles: { id: string; name: string }[]) {
   return Object.fromEntries(roles.map((r) => [r.id, { name: r.name, editable: true }]))
 }
 
@@ -169,7 +168,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     })
 
     it('renders the DiscordMessage link and the Delete button when a message exists', async () => {
-      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true }]
+      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
       guildChannelsMutate(channels)
       setupFetchAPI({ verifyMessage: { messageID: 'm1', channelID: 'c1' }, channels })
       renderWithProviders(() => <GuildVerification />)
@@ -181,7 +180,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     })
 
     it('sends a verification message for the selected channel and shows it once created', async () => {
-      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true }]
+      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
       guildChannelsMutate(channels)
       setupFetchAPI({ channels })
       const { container } = renderWithProviders(() => <GuildVerification />)
@@ -203,14 +202,12 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       const select = within(modal).getByRole('combobox') as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'c1' } })
 
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(VERIFY_MESSAGE_URL, 'POST', { channelID: 'c1' }),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VERIFY_MESSAGE_URL, 'POST', { channelID: 'c1' }))
       await vi.waitFor(() => expect(screen.getByText(/#general/)).toBeInTheDocument())
     })
 
     it('does not create a verification message when the POST fails', async () => {
-      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true }]
+      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
       guildChannelsMutate(channels)
       setupFetchAPI({ channels })
       const { container } = renderWithProviders(() => <GuildVerification />)
@@ -228,14 +225,12 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       const select = within(modal).getByRole('combobox') as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'c1' } })
 
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(VERIFY_MESSAGE_URL, 'POST', { channelID: 'c1' }),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VERIFY_MESSAGE_URL, 'POST', { channelID: 'c1' }))
       expect(screen.getByText('No verification message')).toBeInTheDocument()
     })
 
     it('deletes the verification message and falls back to "No verification message"', async () => {
-      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true }]
+      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
       setupFetchAPI({ verifyMessage: { messageID: 'm1', channelID: 'c1' }, channels })
       guildChannelsMutate(channels)
       renderWithProviders(() => <GuildVerification />)
@@ -250,7 +245,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     })
 
     it('keeps the message shown when deletion fails', async () => {
-      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true }]
+      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
       setupFetchAPI({ verifyMessage: { messageID: 'm1', channelID: 'c1' }, channels })
       guildChannelsMutate(channels)
       renderWithProviders(() => <GuildVerification />)
@@ -267,7 +262,8 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
 
   it('falls back to {} (not a crash) when verifyMessage/dontMP/dontJoinSupport/lastVerify all respond non-ok', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson(subordinationFor(defaultGuildRoles())))
+      if (endpoint.includes(SUBORDINATION_URL_PART))
+        return Promise.resolve(okJson(subordinationFor(defaultGuildRoles())))
       if (endpoint === VERIFY_ROLES_URL && method === 'GET') return Promise.resolve(okJson(defaultVerifyRolesRaw()))
       if (endpoint === GUILD_ROLES_URL && method === 'GET') return Promise.resolve(okJson(defaultGuildRoles()))
       if (method === 'GET' && [VERIFY_MESSAGE_URL, DONT_MP_URL, DONT_JOIN_SUPPORT_URL, CHECK_URL].includes(endpoint)) {
@@ -359,9 +355,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
         return Promise.resolve(okJson([]))
       })
       await fireEvent.click(dontJoinSupportToggle)
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(DONT_JOIN_SUPPORT_URL, 'PUT', { value: true }),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(DONT_JOIN_SUPPORT_URL, 'PUT', { value: true }))
       expect(dontJoinSupportToggle.checked).toBe(false)
     })
 
@@ -395,9 +389,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
         return Promise.resolve(okJson([]))
       })
       await fireEvent.click(dontJoinSupportToggle)
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(DONT_JOIN_SUPPORT_URL, 'PUT', { value: true }),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(DONT_JOIN_SUPPORT_URL, 'PUT', { value: true }))
       await vi.waitFor(() => expect(dontJoinSupportToggle.checked).toBe(true))
     })
   })
@@ -407,7 +399,8 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       const { container } = renderWithProviders(() => <GuildVerification />)
       await waitForLoaded()
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${VERIFY_ROLES_URL}/r2` && method === 'DELETE') return Promise.resolve(okJson({ roleID: 'r2' }))
+        if (endpoint === `${VERIFY_ROLES_URL}/r2` && method === 'DELETE')
+          return Promise.resolve(okJson({ roleID: 'r2' }))
         return Promise.resolve(okJson([]))
       })
       const deleteIcons = container.querySelectorAll('.fa-trash')

@@ -20,7 +20,13 @@ function renderAdminInformations() {
 }
 
 const adminData = {
-  guild: { total: 120, language: [{ label: 'en', value: 80 }, { label: 'fr', value: 40 }] },
+  guild: {
+    total: 120,
+    language: [
+      { label: 'en', value: 80 },
+      { label: 'fr', value: 40 },
+    ],
+  },
   server: { total: 45 },
   user: {
     total: 1000,

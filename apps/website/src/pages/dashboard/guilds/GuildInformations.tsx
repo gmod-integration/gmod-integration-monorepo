@@ -1,4 +1,5 @@
-import { Component, createEffect, createResource, on, onCleanup, Show } from 'solid-js'
+import type { TypeDiscordChannel, TypeDiscordRole } from '../../../utils/types/DiscordTypes.js'
+import { type Component, createEffect, createResource, on, onCleanup, Show } from 'solid-js'
 import { getGuild } from '../../../utils/utils'
 import AdminPanel from '../../../components/AdminPanel'
 import { A, useLocation, useNavigate } from '@solidjs/router'
@@ -6,23 +7,25 @@ import { useI18n } from '../../../i18n'
 import { Errors } from '../../../components/layout/Errors'
 import { fetchAPI } from '../../../utils/api'
 
-async function fetchGuildRoles() {
+async function fetchGuildRoles(): Promise<TypeDiscordRole[]> {
   return await fetchAPI('/users/:discordID/guilds/:guildID/roles', 'GET')
     .then(async (res) => {
       if (!res.ok) throw new Error('An error occurred while fetching the roles.')
-      return await res.json()
+      const roles: TypeDiscordRole[] = await res.json()
+      return roles
     })
     .then((data) => {
-      return data.sort((a, b) => a.position + b.position)
+      return data.sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
     })
 }
 
 export const [guildRoles, { mutate: guildRolesMutate, refetch: guildRolesRefetch }] = createResource(
   'guilds-roles',
   fetchGuildRoles,
+  { initialValue: [] },
 )
 
-async function fetchGuildChannels() {
+async function fetchGuildChannels(): Promise<TypeDiscordChannel[]> {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/channels', 'GET')
   if (!res.ok) {
     return []
@@ -33,6 +36,7 @@ async function fetchGuildChannels() {
 export const [guildChannels, { mutate: guildChannelsMutate, refetch: guildChannelsRefetch }] = createResource(
   'guilds-channels',
   fetchGuildChannels,
+  { initialValue: [] },
 )
 
 // async function fetchGuildEmoji() {
@@ -74,7 +78,7 @@ async function fetchAdmins() {
 }
 
 const GuildInformations: Component = () => {
-  const [guildAdmins] = createResource('guilds-admins', fetchAdmins)
+  const [guildAdmins] = createResource('guilds-admins', fetchAdmins, { initialValue: [] })
   const [bot, { mutate: setBot, refetch: refreshBot }] = createResource('bot', async () => {
     return await fetchAPI('/users/:discordID/guilds/:guildID/bot', 'GET').then(async (res) => {
       if (!res.ok) throw new Error('An error occurred while fetching the bot.')

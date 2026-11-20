@@ -12,9 +12,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { ServerLogsTriggers } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/logs/ServerLogsTriggers.js'
-)
+const { ServerLogsTriggers } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/logs/ServerLogsTriggers.js')
 
 const TRIGGERS_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/logs/triggers'
 
@@ -103,7 +102,9 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
         },
       )
       await vi.waitFor(() =>
-        expect(screen.getByTestId('boundary-error')).toHaveTextContent('An error occurred while fetching the log triggers.'),
+        expect(screen.getByTestId('boundary-error')).toHaveTextContent(
+          'An error occurred while fetching the log triggers.',
+        ),
       )
     })
 
@@ -142,7 +143,8 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === TRIGGERS_URL && method === 'GET') return Promise.resolve(okJson([trigger()]))
-        if (endpoint === `${TRIGGERS_URL}/1` && method === 'DELETE') return Promise.resolve({ ok: false, json: async () => ({}) })
+        if (endpoint === `${TRIGGERS_URL}/1` && method === 'DELETE')
+          return Promise.resolve({ ok: false, json: async () => ({}) })
         return Promise.resolve(okJson([]))
       })
       const { container } = renderPage()

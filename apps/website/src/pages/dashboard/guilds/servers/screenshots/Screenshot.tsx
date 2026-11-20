@@ -1,5 +1,6 @@
-import { Component, ParentProps, Show } from 'solid-js'
-import { ScreenshotStructure } from './ServerScreenshotList'
+import { showDialog } from '../../../../../utils/dialog.js'
+import { type Component, type ParentProps, Show } from 'solid-js'
+import { type ScreenshotStructure } from './ServerScreenshotList'
 import { SteamID64 } from '../../../../../components/SteamID64'
 import { A } from '@solidjs/router'
 import { useI18n } from '../../../../../i18n'
@@ -25,8 +26,7 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
           class="w-full aspect-video rounded-lg object-cover"
           onClick={() => {
             props.setFocusImg(props.screenshot)
-            // @ts-expect-error -- intentional: legacy typing gap
-            focusImgModal.showModal()
+            showDialog('focusImgModal')
           }}
         />
 
@@ -42,8 +42,7 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
             aria-label="View Screenshot"
             onClick={() => {
               props.setFocusImg(props.screenshot)
-              // @ts-expect-error -- intentional: legacy typing gap
-              focusImgModal.showModal()
+              showDialog('focusImgModal')
             }}
           >
             <i class="fa-solid fa-eye"></i>

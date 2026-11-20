@@ -1,4 +1,5 @@
-import { Component, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
+import { closeDialog, showDialog } from '../../../utils/dialog.js'
+import { type Component, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
 import AdminPanel from '../../../components/AdminPanel'
 import AdminModal from '../../../components/AdminModal'
 import { useI18n } from '../../../i18n'
@@ -63,7 +64,7 @@ const fetchLinks = async () => {
 }
 
 const GuildLinks: Component = () => {
-  const [links, { mutate }] = createResource('links', fetchLinks)
+  const [links, { mutate }] = createResource('links', fetchLinks, { initialValue: [] })
   const [selectedLink, setSelectedLink] = createSignal<Link>(new Link(0, '', '', false))
   const { t } = useI18n()
 
@@ -156,8 +157,9 @@ const GuildLinks: Component = () => {
         <button
           disabled={links.loading}
           class="btn btn-base-200 mt-2"
-          onclick="edit_select_link.close()"
+
           onClick={async () => {
+            closeDialog('edit_select_link')
             await editLink(selectedLink())
           }}
         >
@@ -210,8 +212,7 @@ const GuildLinks: Component = () => {
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              // @ts-expect-error -- intentional: legacy typing gap
-                              edit_select_link.showModal()
+                              showDialog('edit_select_link')
                               setSelectedLink(link)
                             }}
                           ></i>

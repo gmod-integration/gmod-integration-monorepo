@@ -11,9 +11,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 }))
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
-const { default: ServerErrors } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/errors/ServerErrors.js'
-)
+const { default: ServerErrors } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/errors/ServerErrors.js')
 
 const ERRORS_URL_PREFIX = '/users/:discordID/guilds/:guildID/servers/:serverID/errors?'
 
@@ -68,10 +67,7 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([])))
     renderPage()
     await vi.waitFor(() =>
-      expect(fetchAPI).toHaveBeenCalledWith(
-        `${ERRORS_URL_PREFIX}offset=0&limit=25&sort=createdAt&orderBy=DESC`,
-        'GET',
-      ),
+      expect(fetchAPI).toHaveBeenCalledWith(`${ERRORS_URL_PREFIX}offset=0&limit=25&sort=createdAt&orderBy=DESC`, 'GET'),
     )
   })
 

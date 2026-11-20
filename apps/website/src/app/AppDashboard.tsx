@@ -1,30 +1,32 @@
-import DashboardMiddleware from '../middleware/DashboardMiddleware'
-import { DashboardMenu } from '../components/layout/menu/DashboardMenu'
-import { AddErrorComponent, ShowErrorList } from '../components/layout/Errors'
-import { ErrorBoundary } from 'solid-js/web'
-import { ParentProps } from 'solid-js'
+import { ErrorBoundary, type ParentComponent } from 'solid-js'
+import DashboardMiddleware from '../middleware/DashboardMiddleware.js'
+import { DashboardMenu } from '../components/layout/menu/DashboardMenu.js'
+import { AddErrorComponent, ShowErrorList } from '../components/layout/Errors.js'
+import { useI18n } from '../i18n.js'
 
-export const AppDashboard = (props: ParentProps) => (
-  <>
-    <DashboardMiddleware />
-    <div class="grow shrink-0 flex-auto flex h-full w-full">
-      <DashboardMenu />
-      <div class="flex flex-col w-full max-w-(--breakpoint-2xl) mx-auto p-4 gap-4">
-        <ShowErrorList />
-
-        <ErrorBoundary
-          fallback={(err) => (
-            // Deliberately not re-rendering `props.children` here: `children` is a live getter
-            // that re-invokes the same page component that just threw, which throws again
-            // synchronously during the fallback's own render - uncaught, since the fallback isn't
-            // itself wrapped in a boundary. That defeats the whole purpose of this ErrorBoundary
-            // (crashing the tree instead of showing the error). Confirmed with a minimal repro.
-            <AddErrorComponent message={err.message} />
-          )}
-        >
-          {props.children}
-        </ErrorBoundary>
+export const AppDashboard: ParentComponent = (props) => {
+  const { t } = useI18n()
+  return (
+    <>
+      <DashboardMiddleware />
+      <div class="grow shrink-0 flex-auto flex flex-col md:flex-row h-full w-full min-w-0">
+        <DashboardMenu />
+        <div class="flex flex-col w-full min-w-0 max-w-(--breakpoint-2xl) mx-auto p-4 gap-4">
+          <ShowErrorList />
+          <ErrorBoundary
+            fallback={(error, reset) => (
+              <div class="flex flex-col gap-2">
+                <AddErrorComponent message={error instanceof Error ? error.message : String(error)} />
+                <button type="button" class="btn btn-outline self-start" onClick={reset}>
+                  {t('ui.retry', 'Try again')}
+                </button>
+              </div>
+            )}
+          >
+            {props.children}
+          </ErrorBoundary>
+        </div>
       </div>
-    </div>
-  </>
-)
+    </>
+  )
+}

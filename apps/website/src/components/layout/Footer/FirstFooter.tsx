@@ -1,4 +1,4 @@
-import { Component, For } from 'solid-js'
+import { For, type Component } from 'solid-js'
 import { A } from '@solidjs/router'
 import { useI18n } from '../../../i18n'
 
@@ -15,7 +15,7 @@ interface footerCategory {
 const FirstFooter: Component = () => {
   const { t } = useI18n()
 
-  const footerLinks: footerCategory[] = [
+  const footerLinks = (): footerCategory[] => [
     {
       title: t('main.services', 'Services'),
       links: [
@@ -47,7 +47,7 @@ const FirstFooter: Component = () => {
       ],
     },
     {
-      title: 'Legal',
+      title: t('ui.legal', 'Legal'),
       links: [
         {
           title: t('main.terms', 'Terms of Service'),
@@ -63,7 +63,7 @@ const FirstFooter: Component = () => {
 
   return (
     <footer class="footer md:footer-horizontal p-10 bg-base-100 text-base-content justify-around max-w-(--breakpoint-2xl) mx-auto">
-      <For each={footerLinks}>
+      <For each={footerLinks()}>
         {({ title, links }) => (
           <nav>
             <h6 class="footer-title opacity-100">{title}</h6>

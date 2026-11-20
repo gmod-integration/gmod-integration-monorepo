@@ -143,16 +143,12 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       const nameHeader = findHeader(container, 'Name')
 
       await fireEvent.click(nameHeader)
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('order=ASC'), 'GET'),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('order=ASC'), 'GET'))
       expect(nameHeader.querySelector('i')).toHaveClass('fa-sort-up')
       expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('searchColum=name'), 'GET')
 
       await fireEvent.click(nameHeader)
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('order=DESC'), 'GET'),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('order=DESC'), 'GET'))
       expect(nameHeader.querySelector('i')).toHaveClass('fa-sort-down')
     })
 
@@ -217,9 +213,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       const nextBtn = container.querySelector('.fa-chevron-right')?.closest('button') as HTMLButtonElement
       await fireEvent.click(nextBtn)
 
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=50'), 'GET'),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=50'), 'GET'))
       await vi.waitFor(() => expect(screen.getByText('2 / 3')).toBeInTheDocument())
     })
 
@@ -233,9 +227,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
 
       const prevBtn = container.querySelector('.fa-chevron-left')?.closest('button') as HTMLButtonElement
       await fireEvent.click(prevBtn)
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=0'), 'GET'),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=0'), 'GET'))
       await vi.waitFor(() => expect(screen.getByText('1 / 3')).toBeInTheDocument())
     })
   })
@@ -329,7 +321,9 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
         return Promise.resolve(okJson({}))
       })
       await fireEvent.click(within(modal).getByText('Save'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${PLAYERS_URL}/76500000000000001`, 'PUT', expect.anything()))
+      await vi.waitFor(() =>
+        expect(fetchAPI).toHaveBeenCalledWith(`${PLAYERS_URL}/76500000000000001`, 'PUT', expect.anything()),
+      )
       const rows = container.querySelectorAll('tbody tr')
       const aliceRow = Array.from(rows).find((r) => r.textContent?.includes('Alice')) as HTMLElement
       expect(aliceRow.querySelector('.fa-check.text-success')).toBeInTheDocument()

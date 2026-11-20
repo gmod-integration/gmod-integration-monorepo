@@ -1,6 +1,7 @@
 import { Component, createResource, For, Show } from 'solid-js'
 
 import { fetchAPI } from '../../../utils/api'
+import { parseSessionExpiration } from '../../../utils/sessionExpiration.js'
 
 const Impersonate: Component = () => {
   const [panelUser] = createResource('panelUser', async () => {
@@ -19,6 +20,8 @@ const Impersonate: Component = () => {
                 <div
                   class="card shadow-md border border-base-200 w-[400px]"
                   onClick={() => {
+                    const expirationDate = parseSessionExpiration(user.expirationDate)
+                    if (!expirationDate) return
                     const oldToken = localStorage.getItem('accessToken') || ''
                     const oldDiscordID = localStorage.getItem('discordID') || ''
                     const oldExpirationDate = localStorage.getItem('expirationDate') || ''
@@ -30,9 +33,7 @@ const Impersonate: Component = () => {
                     localStorage.setItem('oldDiscordID', oldDiscordID)
                     localStorage.setItem('oldExpirationDate', oldExpirationDate)
                     // redirect to home
-                    window.location.href = `/login/?discordID=${user.discordID}&accessToken=${user.accessToken}&expirationDate=${new Date(
-                      user.expirationDate,
-                    ).getTime()}`
+                    window.location.href = `/login/?discordID=${user.discordID}&accessToken=${user.accessToken}&expirationDate=${expirationDate.getTime()}`
                   }}
                 >
                   <div class="card-body">

@@ -104,7 +104,9 @@ describe('components/popup/MissingRolePermission.tsx', () => {
         <MissingRolePermission />
       </ErrorBoundary>
     ))
-    await vi.waitFor(() => expect(errorSpy).toHaveBeenCalledWith('Error fetching bot role subordination:', expect.any(Error)))
+    await vi.waitFor(() =>
+      expect(errorSpy).toHaveBeenCalledWith('Error fetching bot role subordination:', expect.any(Error)),
+    )
     errorSpy.mockRestore()
   })
 })

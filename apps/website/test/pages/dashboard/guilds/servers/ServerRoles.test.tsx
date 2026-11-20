@@ -16,9 +16,8 @@ vi.mock('../../../../../src/utils/api.js', () => ({
   getUrlWithActualParams: vi.fn((s: string) => s),
 }))
 
-const { guildRolesMutate, guildChannelsMutate } = await import(
-  '../../../../../src/pages/dashboard/guilds/GuildInformations.js'
-)
+const { guildRolesMutate, guildChannelsMutate } =
+  await import('../../../../../src/pages/dashboard/guilds/GuildInformations.js')
 const { fetchAPI } = await import('../../../../../src/utils/api.js')
 const ServerRoles = (await import('../../../../../src/pages/dashboard/guilds/servers/ServerRoles.js')).default
 
@@ -46,7 +45,7 @@ function defaultRolesSync() {
 
 // All roles editable by default so MissingRolePermission's warning banner stays empty and doesn't
 // add extra "@RoleName" text to the DOM.
-function subordinationFor(roles: { id: string }[]) {
+function subordinationFor(roles: { id: string; name: string }[]) {
   return Object.fromEntries(roles.map((r) => [r.id, { name: r.name, editable: true }]))
 }
 

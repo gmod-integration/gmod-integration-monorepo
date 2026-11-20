@@ -17,16 +17,10 @@ export function historyAt(initialPath: string): MemoryHistory {
  * `useParams()`, e.g. `:guildID`/`:serverID`); `history` (see `historyAt`) controls the actual
  * starting URL, which defaults to `/` otherwise.
  */
-export function renderWithProviders(
-  ui: () => JSX.Element,
-  options: { path?: string; history?: MemoryHistory } = {},
-) {
+export function renderWithProviders(ui: () => JSX.Element, options: { path?: string; history?: MemoryHistory } = {}) {
   const path = options.path ?? '/'
   return render(() => (
-    <MemoryRouter
-      history={options.history}
-      root={(props) => <I18nProvider>{props.children}</I18nProvider>}
-    >
+    <MemoryRouter history={options.history} root={(props) => <I18nProvider>{props.children}</I18nProvider>}>
       <Route path={path} component={ui} />
     </MemoryRouter>
   ))

@@ -16,9 +16,7 @@ function findErrorText(message: string) {
 }
 
 function queryErrorText(message: string) {
-  return screen.queryByText(
-    (_, element) => element?.tagName === 'SPAN' && element.textContent === `Error : ${message}`,
-  )
+  return screen.queryByText((_, element) => element?.tagName === 'SPAN' && element.textContent === `Error : ${message}`)
 }
 
 describe('components/layout/Errors.tsx', () => {

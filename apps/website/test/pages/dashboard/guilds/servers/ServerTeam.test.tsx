@@ -16,9 +16,8 @@ vi.mock('../../../../../src/utils/api.js', () => ({
   getUrlWithActualParams: vi.fn((s: string) => s),
 }))
 
-const { guildRolesMutate, guildChannelsMutate } = await import(
-  '../../../../../src/pages/dashboard/guilds/GuildInformations.js'
-)
+const { guildRolesMutate, guildChannelsMutate } =
+  await import('../../../../../src/pages/dashboard/guilds/GuildInformations.js')
 const { fetchAPI } = await import('../../../../../src/utils/api.js')
 const ServerTeam = (await import('../../../../../src/pages/dashboard/guilds/servers/ServerTeam.js')).default
 
@@ -43,7 +42,7 @@ function defaultTeams() {
   ]
 }
 
-function subordinationFor(roles: { id: string }[]) {
+function subordinationFor(roles: { id: string; name: string }[]) {
   return Object.fromEntries(roles.map((r) => [r.id, { name: r.name, editable: true }]))
 }
 

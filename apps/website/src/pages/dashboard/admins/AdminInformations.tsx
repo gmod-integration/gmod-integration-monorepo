@@ -1,4 +1,4 @@
-import { Component, createResource, Show } from 'solid-js'
+import { type Component, createResource, Show } from 'solid-js'
 import PieChart from './pieChart'
 import AdminChart from '../../../components/AdminChart'
 import { fetchAPI } from '../../../utils/api'
@@ -12,12 +12,12 @@ const AdminInformations: Component = () => {
 
   return (
     <>
-      <Show when={!adminData.loading && adminData()} fallback={<div className="skeleton h-[96px]"></div>}>
-        <button className="btn btn-outline border-base-200 hover:bg-base-100 hover:border-base-200" onClick={refetch}>
+      <Show when={!adminData.loading && adminData()} fallback={<div class="skeleton h-[96px]"></div>}>
+        <button class="btn btn-outline border-base-200 hover:bg-base-100 hover:border-base-200" onClick={refetch}>
           Refresh Admin Data
         </button>
 
-        <h1 className="text-2xl font-semibold text-zinc-500">General</h1>
+        <h1 class="text-2xl font-semibold text-zinc-500">General</h1>
         <div class="stats shadow-sm border-base-200 border">
           <div class="stat">
             <div class="stat-title">Total Guilds</div>

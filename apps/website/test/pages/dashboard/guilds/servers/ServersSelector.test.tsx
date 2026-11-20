@@ -47,16 +47,15 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
     ;(fetchAPI as any).mockResolvedValue(okJson([]))
     renderList()
-    expect(
-      screen.getByText('The free plan only allows you to manage one server.'),
-    ).toBeInTheDocument()
+    expect(screen.getByText('The free plan only allows you to manage one server.')).toBeInTheDocument()
   })
 
   it('renders each server card with name, address, and image, falling back to the default image', async () => {
     ;(fetchAPI as any).mockResolvedValue(okJson(servers))
     renderList()
-    await vi.waitFor(() => expect(screen.getByText('Select a Server to manage')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
 
+    expect(screen.getByText('Select a Server to manage')).toBeInTheDocument()
     expect(screen.getByText('Alpha')).toBeInTheDocument()
     expect(screen.getByText('1.2.3.4:27015')).toBeInTheDocument()
     expect(screen.getByText('Beta')).toBeInTheDocument()
@@ -87,23 +86,25 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
     ;(fetchAPI as any).mockResolvedValue(okJson([servers[0]]))
     renderList()
-    await vi.waitFor(() => expect(screen.getByText('Create Server')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
     expect(screen.getByText('Create Server')).toHaveClass('btn-disabled')
+    expect(screen.getByRole('button', { name: 'Create Server' })).toBeDisabled()
   })
 
   it('leaves the create-server button enabled for a free guild with no servers yet', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
     ;(fetchAPI as any).mockResolvedValue(okJson([]))
     renderList()
-    await vi.waitFor(() => expect(screen.getByText('Create Server')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
     expect(screen.getByText('Create Server')).not.toHaveClass('btn-disabled')
+    expect(screen.getByRole('status')).toHaveTextContent('No servers yet. Connect your first server to get started.')
   })
 
   it('leaves the create-server button enabled for a premium guild regardless of server count', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
     ;(fetchAPI as any).mockResolvedValue(okJson([servers[0]]))
     renderList()
-    await vi.waitFor(() => expect(screen.getByText('Create Server')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
     expect(screen.getByText('Create Server')).not.toHaveClass('btn-disabled')
   })
 
@@ -113,11 +114,12 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
       return okJson([])
     })
     const history = renderList()
-    await vi.waitFor(() => expect(screen.getByText('Create Server')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
 
     fireEvent.click(screen.getByText('Create Server'))
 
     await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/:guildID/config/servers/new1'))
+    expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers', 'POST')
     expect(JSON.parse(window.localStorage.getItem('server') || '{}')).toEqual({
       id: 'new1',
       name: 'New',
@@ -126,18 +128,77 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     })
   })
 
-  it('does nothing when creating a server fails', async () => {
+  it('prevents duplicate creation while the first request is still pending', async () => {
+    let resolveCreation!: (response: Response) => void
+    const creating = new Promise<Response>((resolve) => {
+      resolveCreation = resolve
+    })
+    vi.mocked(fetchAPI).mockImplementation((_endpoint: string, method: string) =>
+      method === 'POST' ? creating : Promise.resolve(okJson([]) as Response),
+    )
+    const history = renderList()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
+    const button = screen.getByRole('button', { name: 'Create Server' })
+    fireEvent.click(button)
+    fireEvent.click(button)
+
+    expect(button).toBeDisabled()
+    expect(button).toHaveAttribute('aria-busy', 'true')
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(1)
+
+    resolveCreation(okJson({ id: 'one-server', name: 'Only one server' }) as Response)
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/:guildID/config/servers/one-server'))
+  })
+
+  it('shows an error and preserves the selection and location when creating a server fails', async () => {
     ;(fetchAPI as any).mockImplementation(async (endpoint: string, method: string) => {
       if (method === 'POST') return okJson({}, false)
       return okJson([])
     })
     const history = renderList()
-    await vi.waitFor(() => expect(screen.getByText('Create Server')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
 
     fireEvent.click(screen.getByText('Create Server'))
 
-    await new Promise((r) => setTimeout(r, 10))
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('The server could not be created. Please try again.'),
+    )
+    expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers', 'POST')
+    expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled()
     expect(history.get()).toBe('/dashboard/guilds/g1/config/servers')
     expect(window.localStorage.getItem('server')).toBeNull()
+  })
+
+  it.each(['network', 'http', 'invalid payload'])(
+    'recovers from a %s server-list failure without exposing creation before the list is known',
+    async (failure) => {
+      const mock = vi.mocked(fetchAPI)
+      if (failure === 'network') mock.mockRejectedValueOnce(new Error('offline'))
+      else if (failure === 'http') mock.mockResolvedValueOnce(okJson({}, false) as Response)
+      else mock.mockResolvedValueOnce(okJson({ invalid: true }) as Response)
+      mock.mockResolvedValue(okJson(servers) as Response)
+      renderList()
+
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Your servers could not be loaded.'))
+      expect(screen.queryByRole('button', { name: 'Create Server' })).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    },
+  )
+
+  it('rejects a malformed created server without replacing a previous selection', async () => {
+    window.localStorage.setItem('server', JSON.stringify({ id: 'previous-server' }))
+    vi.mocked(fetchAPI).mockImplementation(
+      async (_endpoint: string, method: string) =>
+        (method === 'POST' ? okJson({ name: 'Missing identifier' }) : okJson([])) as Response,
+    )
+    const history = renderList()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Create Server' }))
+
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('The server could not be created.'))
+    expect(history.get()).toBe('/dashboard/guilds/g1/config/servers')
+    expect(JSON.parse(window.localStorage.getItem('server')!)).toEqual({ id: 'previous-server' })
   })
 })

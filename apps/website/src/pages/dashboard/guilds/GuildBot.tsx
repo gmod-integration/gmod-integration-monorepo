@@ -1,4 +1,5 @@
-import { Component, createResource, createSignal, onCleanup, Show } from 'solid-js'
+import { closeDialog, showDialog } from '../../../utils/dialog.js'
+import { type Component, createResource, createSignal, onCleanup, Show } from 'solid-js'
 import AdminPanel from '../../../components/AdminPanel'
 import { A } from '@solidjs/router'
 import AdminModal from '../../../components/AdminModal'
@@ -119,8 +120,9 @@ const GuildBot: Component = () => {
           <button
             disabled={bot.loading}
             class="btn btn-base-200 mt-2"
-            onClick="edit_bot.close()"
+
             onClick={async () => {
+              closeDialog('edit_bot')
               await saveBot()
             }}
           >
@@ -171,8 +173,9 @@ const GuildBot: Component = () => {
           <button
             disabled={bot.loading}
             class="btn btn-base-200 mt-2"
-            onClick="setup_bot.close()"
+
             onClick={async () => {
+              closeDialog('setup_bot')
               await setupBot()
             }}
           >
@@ -206,7 +209,7 @@ const GuildBot: Component = () => {
           <div class="flex w-fit items-center gap-4">
             <button
               class="btn btn-base-200"
-              onClick="edit_bot.showModal()"
+              onClick={() => showDialog('edit_bot')}
               classList={{
                 hidden: !bot().custom || !bot().onGuild,
               }}
@@ -239,7 +242,7 @@ const GuildBot: Component = () => {
             </button>
             <button
               class="btn btn-base-200"
-              onClick="setup_bot.showModal()"
+              onClick={() => showDialog('setup_bot')}
               classList={{
                 hidden: !bot().active,
               }}

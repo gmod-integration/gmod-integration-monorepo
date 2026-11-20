@@ -17,9 +17,8 @@ vi.mock('../../../../src/utils/api.js', async (importActual) => {
   }
 })
 
-const { guildRolesMutate, guildChannelsMutate, guildRolesRefetch, guildRoles } = await import(
-  '../../../../src/pages/dashboard/guilds/GuildInformations.js'
-)
+const { guildRolesMutate, guildChannelsMutate, guildRolesRefetch, guildRoles } =
+  await import('../../../../src/pages/dashboard/guilds/GuildInformations.js')
 const { fetchAPI } = await import('../../../../src/utils/api.js')
 const GuildAutoRoles = (await import('../../../../src/pages/dashboard/guilds/GuildAutoRoles.js')).default
 
@@ -50,7 +49,7 @@ function defaultAutoRolesRaw() {
 
 // All roles editable by default so MissingRolePermission's warning banner (which also renders a
 // DiscordRole per flagged role) stays empty and doesn't add extra "@RoleName" text to the DOM.
-function subordinationFor(roles: { id: string }[]) {
+function subordinationFor(roles: { id: string; name: string }[]) {
   return Object.fromEntries(roles.map((r) => [r.id, { name: r.name, editable: true }]))
 }
 
@@ -194,7 +193,10 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
     it('shows the loading fallback while guildRoles is (re)loading', async () => {
       let resolveFetch: (value: unknown) => void = () => {}
       ;(fetchAPI as Mock).mockImplementationOnce(
-        () => new Promise((resolve) => { resolveFetch = resolve }),
+        () =>
+          new Promise((resolve) => {
+            resolveFetch = resolve
+          }),
       )
       const refetchPromise = guildRolesRefetch()
       const { container } = renderWithProviders(() => <GuildAutoRoles />)
@@ -208,34 +210,25 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
   })
 
   describe('edit role modal', () => {
-    // Nothing in the current UI opens this modal (no edit icon in the auto-role table, unlike
-    // GuildVerifications.tsx's equivalent) - it's reachable only by calling showModal() directly,
-    // same as we do here. Exercised anyway for coverage of the Save flow (and the previously
-    // missing editVerifyRole function - see the bug-fix comment in the source file).
     it('saves the enabled flag for the selected role via editVerifyRole', async () => {
-      // `selectedRole` (the signal read by this modal) is never populated by `setSelectedRole`
-      // anywhere in the component - matching the comment above, there's genuinely no UI path
-      // that selects a role before this modal opens, so `selectedRole().roleID` stays undefined
-      // here exactly as it would in the real (dead) UI flow.
       const { container } = renderWithProviders(() => <GuildAutoRoles />)
       await waitForLoaded()
       const modal = stubDialogGlobal(container, 'edit_role_modal')
-      modal.showModal()
+      await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
+      expect(modal.showModal).toHaveBeenCalled()
 
       const selects = within(modal).getAllByRole('combobox', { hidden: true }) as HTMLSelectElement[]
       const activeSelect = selects.find((select) => !select.disabled)!
       await fireEvent.change(activeSelect, { target: { value: 'false' } })
 
-      const updated = { roleID: undefined, enabled: false }
+      const updated = { roleID: 'r1', enabled: false }
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${AUTO_ROLES_URL}/undefined` && method === 'PUT') return Promise.resolve(okJson(updated))
+        if (endpoint === `${AUTO_ROLES_URL}/r1` && method === 'PUT') return Promise.resolve(okJson(updated))
         return Promise.resolve(okJson({}))
       })
       const saveBtn = within(modal).getByText('Save')
       await fireEvent.click(saveBtn)
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(`${AUTO_ROLES_URL}/undefined`, 'PUT', { enabled: false }),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${AUTO_ROLES_URL}/r1`, 'PUT', { enabled: false }))
     })
   })
 

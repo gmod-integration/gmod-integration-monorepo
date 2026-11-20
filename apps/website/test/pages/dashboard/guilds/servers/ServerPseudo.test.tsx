@@ -118,11 +118,11 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
         if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(okJson(updated))
         return Promise.resolve(okJson({}))
       })
-      const select = screen.getAllByRole('combobox').find((el) => el.className.includes('w-full max-w-xs')) as HTMLSelectElement
+      const select = screen
+        .getAllByRole('combobox')
+        .find((el) => el.className.includes('w-full max-w-xs')) as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'both' } })
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_DIRECTION_URL, 'PUT', { value: 'both' }),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_DIRECTION_URL, 'PUT', { value: 'both' }))
       await vi.waitFor(() => expect((screen.getByDisplayValue('Both Ways') as HTMLSelectElement).value).toBe('both'))
     })
 
@@ -131,10 +131,13 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
       await waitForLoaded()
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(errJson())
-        if (endpoint === PSEUDO_DIRECTION_URL && method === 'GET') return Promise.resolve(okJson({ value: 'gmod-to-discord' }))
+        if (endpoint === PSEUDO_DIRECTION_URL && method === 'GET')
+          return Promise.resolve(okJson({ value: 'gmod-to-discord' }))
         return Promise.resolve(okJson({}))
       })
-      const select = screen.getAllByRole('combobox').find((el) => el.className.includes('w-full max-w-xs')) as HTMLSelectElement
+      const select = screen
+        .getAllByRole('combobox')
+        .find((el) => el.className.includes('w-full max-w-xs')) as HTMLSelectElement
       const callsBeforeChange = (fetchAPI as Mock).mock.calls.length
       await fireEvent.change(select, { target: { value: 'disable' } })
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_DIRECTION_URL, 'PUT', { value: 'disable' }))
@@ -332,9 +335,7 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
       renderPage()
       await vi.waitFor(() => expect(screen.getByText('A')).toBeInTheDocument())
       expect(screen.queryByText('Add Role')).not.toBeInTheDocument()
-      expect(
-        screen.getByText('Limited to 3 roles customization for free users.'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('Limited to 3 roles customization for free users.')).toBeInTheDocument()
     })
   })
 })

@@ -1,4 +1,4 @@
-import { createContext, createSignal, useContext } from 'solid-js'
+import { createContext, createEffect, createSignal, useContext, type Accessor, type ParentComponent } from 'solid-js'
 
 import en from './locales/en.json'
 import fr from './locales/fr.json'
@@ -9,7 +9,7 @@ import pl from './locales/pl.json'
 import nl from './locales/nl.json'
 import ru from './locales/ru.json'
 import tr from './locales/tr.json'
-import { DEV_SHOW_MISSING_TRANSLATIONS, isDevEnvironment } from './utils/utils'
+import { DEV_SHOW_MISSING_TRANSLATIONS, isDevEnvironment } from './utils/utils.js'
 
 const translations = {
   en,
@@ -23,16 +23,41 @@ const translations = {
   tr,
 }
 
-const I18nContext = createContext()
+export type Locale = keyof typeof translations
 
-const getNestedTranslation = (obj, key) => {
-  return key.split('.').reduce((o, i) => (o ? o[i] : null), obj)
+type I18nContextValue = {
+  t: (key: string, defaultText?: string, ...args: unknown[]) => string
+  locale: Accessor<Locale>
+  updateLocale: (newLocale: string) => void
 }
 
-export const I18nProvider = (props) => {
-  const [locale, setLocale] = createSignal(localStorage.getItem('locale') || 'en')
+const I18nContext = createContext<I18nContextValue>()
 
-  const t = (key: string, defaultText: any, ...args: any) => {
+const isLocale = (value: string | null): value is Locale =>
+  value !== null && Object.prototype.hasOwnProperty.call(translations, value)
+
+const getNestedTranslation = (dictionary: unknown, key: string): string | undefined => {
+  let value: unknown = dictionary
+  for (const part of key.split('.')) {
+    if (!value || typeof value !== 'object' || !Object.prototype.hasOwnProperty.call(value, part)) return
+    value = Reflect.get(value, part)
+  }
+  return typeof value === 'string' ? value : undefined
+}
+
+export const I18nProvider: ParentComponent = (props) => {
+  let storedLocale: string | null = null
+  try {
+    storedLocale = localStorage.getItem('locale')
+  } catch {
+    // A browser that blocks storage still gets a usable default language.
+  }
+  const [locale, setLocale] = createSignal<Locale>(isLocale(storedLocale) ? storedLocale : 'en')
+  createEffect(() => {
+    document.documentElement.lang = locale()
+  })
+
+  const t: I18nContextValue['t'] = (key, defaultText, ...args) => {
     let translation = getNestedTranslation(translations[locale()], key)
     if (!translation && locale() !== 'en') {
       translation = getNestedTranslation(translations['en'], key)
@@ -42,7 +67,7 @@ export const I18nProvider = (props) => {
     } else {
       if (args.length) {
         args.forEach((arg, index) => {
-          translation = translation.replace(new RegExp(`\\{${index + 1}\\}`, 'g'), arg)
+          translation = translation?.replaceAll(`{${index + 1}}`, () => String(arg))
         })
       }
     }
@@ -52,11 +77,15 @@ export const I18nProvider = (props) => {
     return translation || defaultText || key
   }
 
-  const updateLocale = (newLocale) => {
-    if (!translations[newLocale]) {
+  const updateLocale = (newLocale: string) => {
+    if (!isLocale(newLocale)) {
       return
     }
-    localStorage.setItem('locale', newLocale)
+    try {
+      localStorage.setItem('locale', newLocale)
+    } catch {
+      // Keep the language choice active for this tab when it cannot be persisted.
+    }
     setLocale(newLocale)
   }
 
@@ -70,9 +99,5 @@ export const useI18n = () => {
     throw new Error('useI18n must be used within an I18nProvider')
   }
 
-  return context as {
-    t: (key: string, defaultText: any, ...args: any) => string
-    locale: any
-    updateLocale: (newLocale: string) => void
-  }
+  return context
 }

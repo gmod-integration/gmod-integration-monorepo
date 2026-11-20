@@ -116,10 +116,7 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
     it('requests the query string built from offset/limit/sort/orderBy', async () => {
       renderPage()
       await waitForLoaded()
-      expect(fetchAPI).toHaveBeenCalledWith(
-        `${WARNS_URL_PREFIX}?offset=0&limit=25&sort=createdAt&orderBy=DESC`,
-        'GET',
-      )
+      expect(fetchAPI).toHaveBeenCalledWith(`${WARNS_URL_PREFIX}?offset=0&limit=25&sort=createdAt&orderBy=DESC`, 'GET')
     })
 
     it('requests the next offset and reflects it in the page indicator', async () => {
@@ -131,9 +128,7 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
       const nextBtn = container.querySelector('.fa-chevron-right')?.closest('button') as HTMLButtonElement
       await fireEvent.click(nextBtn)
 
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=25'), 'GET'),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=25'), 'GET'))
       await vi.waitFor(() => expect(screen.getByText('2 / 3')).toBeInTheDocument())
     })
 
@@ -147,9 +142,7 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
 
       const limitSelect = container.querySelector('select') as HTMLSelectElement
       await fireEvent.change(limitSelect, { target: { value: '50' } })
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('limit=50'), 'GET'),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('limit=50'), 'GET'))
       expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=0'), 'GET')
     })
   })

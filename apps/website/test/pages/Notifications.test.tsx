@@ -81,9 +81,7 @@ describe('pages/Notifications.tsx', () => {
   })
 
   it('sorts notifications by createdAt descending, updates the count, and renders type badges', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(
-      jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }),
-    )
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
     renderWithProviders(() => <Notifications />)
     await waitForLoaded()
 
@@ -110,9 +108,7 @@ describe('pages/Notifications.tsx', () => {
   })
 
   it('shows the Mark All Read button only when there are unread notifications', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(
-      jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }),
-    )
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
     renderWithProviders(() => <Notifications />)
     await waitForLoaded()
     expect(screen.getByTitle('Mark All as Read')).toBeInTheDocument()
@@ -126,9 +122,7 @@ describe('pages/Notifications.tsx', () => {
   })
 
   it('marks a single notification as read on icon click', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(
-      jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }),
-    )
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
     renderWithProviders(() => <Notifications />)
     await waitForLoaded()
 
@@ -147,9 +141,7 @@ describe('pages/Notifications.tsx', () => {
   })
 
   it('falls back to a zero count when the mark-as-read response omits unreadCount', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(
-      jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }),
-    )
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
     renderWithProviders(() => <Notifications />)
     await waitForLoaded()
 
@@ -161,9 +153,7 @@ describe('pages/Notifications.tsx', () => {
   })
 
   it('shows an error and leaves state unchanged when marking a single notification fails', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(
-      jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }),
-    )
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
     renderWithProviders(() => <Notifications />)
     await waitForLoaded()
 
@@ -176,9 +166,7 @@ describe('pages/Notifications.tsx', () => {
   })
 
   it('marks all notifications as read on button click', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(
-      jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }),
-    )
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
     renderWithProviders(() => <Notifications />)
     await waitForLoaded()
 
@@ -189,15 +177,18 @@ describe('pages/Notifications.tsx', () => {
       expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/notifications/mark-all-read', 'PATCH'),
     )
     await vi.waitFor(() => expect(notificationCount()).toBe(0))
-    await vi.waitFor(() => expect(screen.queryAllByRole('row').slice(1).every(
-      (row) => row.querySelector('.fa-eye-slash'),
-    )).toBe(true))
+    await vi.waitFor(() =>
+      expect(
+        screen
+          .queryAllByRole('row')
+          .slice(1)
+          .every((row) => row.querySelector('.fa-eye-slash')),
+      ).toBe(true),
+    )
   })
 
   it('shows an error when marking all as read responds not ok', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(
-      jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }),
-    )
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
     renderWithProviders(() => <Notifications />)
     await waitForLoaded()
 
@@ -209,9 +200,7 @@ describe('pages/Notifications.tsx', () => {
   })
 
   it('shows an error and logs when marking all as read rejects', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(
-      jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }),
-    )
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
     renderWithProviders(() => <Notifications />)
     await waitForLoaded()
 

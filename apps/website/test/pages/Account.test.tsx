@@ -93,7 +93,8 @@ async function waitForLoaded() {
 function stubLocation(href = 'http://localhost:3000/account') {
   const originalLocation = window.location
   Object.defineProperty(window, 'location', { configurable: true, value: { href }, writable: true })
-  return () => Object.defineProperty(window, 'location', { configurable: true, value: originalLocation, writable: true })
+  return () =>
+    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation, writable: true })
 }
 
 describe('pages/Account.tsx', () => {
@@ -162,9 +163,7 @@ describe('pages/Account.tsx', () => {
       })
       fireEvent.click(screen.getByRole('button', { name: 'Link Steam Account' }))
 
-      await vi.waitFor(() =>
-        expect(window.location.href).toBe('http://localhost:5001/steam?verificationCode=tok123'),
-      )
+      await vi.waitFor(() => expect(window.location.href).toBe('http://localhost:5001/steam?verificationCode=tok123'))
       restore()
     })
 
@@ -194,9 +193,7 @@ describe('pages/Account.tsx', () => {
       })
       renderAccount()
 
-      await vi.waitFor(() =>
-        expect(window.location.href).toBe('http://localhost:5001/steam?verificationCode=auto-tok'),
-      )
+      await vi.waitFor(() => expect(window.location.href).toBe('http://localhost:5001/steam?verificationCode=auto-tok'))
       restore()
     })
   })
@@ -313,7 +310,7 @@ describe('pages/Account.tsx', () => {
 
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === `${GMODSTORE_URL}/My Guild` && method === 'DELETE') {
-          return Promise.resolve({ ok: false, json: async () => Promise.reject(new Error('bad json')) } as Response)
+          return Promise.resolve(new Response('invalid JSON', { status: 500 }))
         }
         return Promise.resolve(jsonResponse({}))
       })
@@ -366,9 +363,7 @@ describe('pages/Account.tsx', () => {
       const otherRow = screen.getAllByRole('row').find((r) => r.textContent?.includes('5.6.7.8'))!
       fireEvent.click(otherRow.querySelector('.fa-trash')!)
 
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(`${SESSIONS_URL}/session-other-456`, 'DELETE'),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${SESSIONS_URL}/session-other-456`, 'DELETE'))
       await vi.waitFor(() => expect(screen.queryByText(/5\.6\.7\.8/)).not.toBeInTheDocument())
       expect(screen.getByText('1.2.3.4')).toBeInTheDocument()
     })
@@ -388,9 +383,7 @@ describe('pages/Account.tsx', () => {
       const otherRow = screen.getAllByRole('row').find((r) => r.textContent?.includes('5.6.7.8'))!
       fireEvent.click(otherRow.querySelector('.fa-trash')!)
 
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(`${SESSIONS_URL}/session-other-456`, 'DELETE'),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${SESSIONS_URL}/session-other-456`, 'DELETE'))
       expect(screen.getByText('5.6.7.8')).toBeInTheDocument()
     })
   })
@@ -435,9 +428,7 @@ describe('pages/Account.tsx', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Request my Data' }))
 
       await vi.waitFor(() => expect(screen.getByText('Active')).toBeInTheDocument())
-      expect(
-        screen.queryByText('Depends on your data size, this can take a while.'),
-      ).not.toBeInTheDocument()
+      expect(screen.queryByText('Depends on your data size, this can take a while.')).not.toBeInTheDocument()
     })
 
     it('does not show the loading message when the 500ms timer fires after the request already resolved', async () => {
@@ -525,9 +516,7 @@ describe('pages/Account.tsx', () => {
       })
       fireEvent.click(screen.getByRole('button', { name: 'Request my Data' }))
 
-      await vi.waitFor(() =>
-        expect(screen.getByText(/Failed to create the data request/)).toBeInTheDocument(),
-      )
+      await vi.waitFor(() => expect(screen.getByText(/Failed to create the data request/)).toBeInTheDocument())
     })
 
     it('renders the delete-my-data mailto link', async () => {

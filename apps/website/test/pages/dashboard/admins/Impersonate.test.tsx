@@ -35,9 +35,9 @@ describe('pages/dashboard/admins/Impersonate.tsx', () => {
 
   it('excludes the current user from the panel-user list', async () => {
     window.localStorage.setItem('discordID', 'me')
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify([{ discordID: 'me' }, { discordID: 'other' }])),
-    )
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify([{ discordID: 'me' }, { discordID: 'other' }])))
     vi.stubGlobal('fetch', fetchMock)
 
     renderWithProviders(() => <Impersonate />)
@@ -46,41 +46,77 @@ describe('pages/dashboard/admins/Impersonate.tsx', () => {
     expect(screen.queryByText('me')).not.toBeInTheDocument()
   })
 
-  it('impersonating a user swaps localStorage tokens and redirects to /login with the target user', async () => {
+  it.each(['ISO', 'milliseconds'])(
+    'impersonating a user supports an %s expiration in the login redirect',
+    async (format) => {
+      const expirationDate = Date.now() + 60_000_000
+      window.localStorage.setItem('discordID', 'me')
+      window.localStorage.setItem('accessToken', 'my-token')
+      window.localStorage.setItem('expirationDate', '123')
+      window.sessionStorage.setItem('someSessionKey', 'x')
+
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify([
+            {
+              discordID: 'other',
+              accessToken: 'other-token',
+              expirationDate: format === 'ISO' ? new Date(expirationDate).toISOString() : String(expirationDate),
+            },
+          ]),
+        ),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      const originalLocation = window.location
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { href: 'http://localhost:3000/' },
+        writable: true,
+      })
+
+      renderWithProviders(() => <Impersonate />)
+      await vi.waitFor(() => expect(screen.getByText('other')).toBeInTheDocument())
+
+      screen
+        .getByText('other')
+        .closest('.card')!
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+      expect(window.sessionStorage.getItem('someSessionKey')).toBeNull()
+      expect(window.localStorage.getItem('oldAccessToken')).toBe('my-token')
+      expect(window.localStorage.getItem('oldDiscordID')).toBe('me')
+      expect(window.localStorage.getItem('oldExpirationDate')).toBe('123')
+      expect(window.location.href).toBe(
+        `/login/?discordID=other&accessToken=other-token&expirationDate=${expirationDate}`,
+      )
+
+      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation, writable: true })
+    },
+  )
+
+  it('preserves the current session when the target session has an invalid expiration', async () => {
     window.localStorage.setItem('discordID', 'me')
     window.localStorage.setItem('accessToken', 'my-token')
-    window.localStorage.setItem('expirationDate', '123')
-    window.sessionStorage.setItem('someSessionKey', 'x')
-
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          { discordID: 'other', accessToken: 'other-token', expirationDate: '2024-06-01T00:00:00.000Z' },
-        ]),
-      ),
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify([{ discordID: 'other', accessToken: 'other-token', expirationDate: 'invalid-date' }]),
+          ),
+        ),
     )
-    vi.stubGlobal('fetch', fetchMock)
-
-    const originalLocation = window.location
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      value: { href: 'http://localhost:3000/' },
-      writable: true,
-    })
-
     renderWithProviders(() => <Impersonate />)
     await vi.waitFor(() => expect(screen.getByText('other')).toBeInTheDocument())
+    screen
+      .getByText('other')
+      .closest('.card')!
+      .dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
-    screen.getByText('other').closest('.card')!.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-
-    expect(window.sessionStorage.getItem('someSessionKey')).toBeNull()
-    expect(window.localStorage.getItem('oldAccessToken')).toBe('my-token')
-    expect(window.localStorage.getItem('oldDiscordID')).toBe('me')
-    expect(window.localStorage.getItem('oldExpirationDate')).toBe('123')
-    expect(window.location.href).toBe(
-      `/login/?discordID=other&accessToken=other-token&expirationDate=${new Date('2024-06-01T00:00:00.000Z').getTime()}`,
-    )
-
-    Object.defineProperty(window, 'location', { configurable: true, value: originalLocation, writable: true })
+    expect(window.localStorage.getItem('discordID')).toBe('me')
+    expect(window.localStorage.getItem('accessToken')).toBe('my-token')
+    expect(window.localStorage.getItem('oldAccessToken')).toBeNull()
   })
 })

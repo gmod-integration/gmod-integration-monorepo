@@ -1,10 +1,10 @@
 import { getGuild } from './utils'
-import { Component, ParentProps, Show } from 'solid-js'
+import { type Component, type ParentProps, Show } from 'solid-js'
 import { useI18n } from '../i18n'
 import { A } from '@solidjs/router'
 
 export function premium() {
-  return getGuild().isPremium
+  return getGuild().isPremium === true
 }
 
 interface PremiumBadgeProps {

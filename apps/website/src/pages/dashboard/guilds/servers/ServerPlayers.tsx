@@ -1,16 +1,19 @@
-import { Component, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
+import { closeDialog, showDialog } from '../../../../utils/dialog.js'
+import { type Component, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel'
 import AdminModal from '../../../../components/AdminModal'
 import Pagination from '../../../../components/Pagination'
 import { useI18n } from '../../../../i18n'
 import { convertSecToTime } from '../../../../utils/convertSecToTime'
 import { fetchAPI } from '../../../../utils/api'
-import { ClientQuery, QuerySort } from '../../../../utils/types/QueryTypes'
+import { QuerySort, type ClientQuery, type ServerQuery } from '../../../../utils/types/QueryTypes.js'
 
-const fetchPlayers = async () => {
+type PlayerList = { rows: Player[]; query?: ServerQuery }
+
+const fetchPlayers = async (): Promise<PlayerList> => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/players', 'GET')
   if (!res.ok) {
-    return {}
+    return { rows: [] }
   }
   return await res.json()
 }
@@ -41,7 +44,9 @@ class Player {
 }
 
 const ServerPlayer: Component = () => {
-  const [playersList, { mutate }] = createResource('playersList', fetchPlayers)
+  const [playersList, { mutate }] = createResource('playersList', fetchPlayers, {
+    initialValue: { rows: [], query: undefined },
+  })
   const [currentPlayers, setCurrentPlayers] = createSignal(new Player('', '', 0, 0, 0, false))
   const [sortInfo, setSortInfo] = createSignal({
     dsc: true,
@@ -89,9 +94,9 @@ const ServerPlayer: Component = () => {
     }
 
     // transform the object into a query string
-    const queryString = Object.keys(params)
-      .map((k) => `${k}=${(params as Record<string, any>)[k]}`)
-      .join('&')
+    const queryString = new URLSearchParams(
+      Object.entries(params).map(([key, value]) => [key, String(value)]),
+    ).toString()
 
     setLoadSearch(true)
     mutate(() => {
@@ -169,8 +174,7 @@ const ServerPlayer: Component = () => {
           class="btn btn-base-200 mt-2"
           disabled={playersList.loading}
           onClick={async () => {
-            // @ts-expect-error -- intentional: legacy typing gap
-            edit_player.close()
+            closeDialog('edit_player')
             await savePlayer()
           }}
         >
@@ -287,8 +291,8 @@ const ServerPlayer: Component = () => {
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
                               setCurrentPlayers(player)
-                              // @ts-expect-error -- intentional: legacy typing gap
-                              edit_player.showModal()
+
+                              showDialog('edit_player')
                             }}
                           />
                         </div>

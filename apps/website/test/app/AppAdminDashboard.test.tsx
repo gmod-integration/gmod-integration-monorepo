@@ -1,38 +1,41 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { renderWithProviders } from '../testUtils.js'
 import { AppAdminDashboard } from '../../src/app/AppAdminDashboard.js'
 
 afterEach(() => cleanup())
+beforeEach(() => window.localStorage.clear())
 
-function Boom(): never {
-  throw new Error('admin page crashed')
-}
-
-describe('app/AppAdminDashboard.tsx', () => {
-  it('renders the AdminMenu and children in the layout', () => {
+describe('Admin dashboard shell', () => {
+  it('composes the named admin navigation and page content', () => {
     renderWithProviders(() => (
       <AppAdminDashboard>
         <div data-testid="page">Admin page</div>
       </AppAdminDashboard>
     ))
-
-    expect(screen.getByText('Admin')).toBeInTheDocument() // AdminMenu header
-    expect(screen.getByTestId('page')).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Admin' })).toBeInTheDocument()
+    expect(screen.getByTestId('page')).toHaveTextContent('Admin page')
   })
 
-  it("catches a throwing child in the ErrorBoundary without re-throwing from the fallback's own render", () => {
+  it('contains page failures and recovers through the same retry control as the guild dashboard', () => {
+    let shouldFail = true
+    function FailablePage() {
+      if (shouldFail) throw new Error('admin page crashed')
+      return <div>Recovered admin page</div>
+    }
     expect(() =>
       renderWithProviders(() => (
         <AppAdminDashboard>
-          <Boom />
+          <FailablePage />
         </AppAdminDashboard>
       )),
     ).not.toThrow()
+    expect(screen.getByRole('alert')).toHaveTextContent('admin page crashed')
+    expect(screen.getByRole('navigation', { name: 'Admin' })).toBeInTheDocument()
 
-    expect(
-      screen.getByText((_, el) => el?.tagName === 'SPAN' && el.textContent === 'Error : admin page crashed'),
-    ).toBeInTheDocument()
-    expect(document.querySelector('.fa-circle-xmark')).toBeInTheDocument()
+    shouldFail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Recovered admin page')).toBeInTheDocument()
   })
 })

@@ -73,5 +73,14 @@ describe('utils/utils.tsx', () => {
       expect(getServer()).toEqual({})
       expect(getDiscordUser()).toEqual({})
     })
+
+    it('recovers from invalid JSON and non-object cache values', () => {
+      window.localStorage.setItem('guilds', '{invalid')
+      window.localStorage.setItem('server', 'null')
+      window.localStorage.setItem('discordUser', '[]')
+      expect(getGuild()).toEqual({})
+      expect(getServer()).toEqual({})
+      expect(getDiscordUser()).toEqual({})
+    })
   })
 })

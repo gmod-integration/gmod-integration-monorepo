@@ -3,6 +3,7 @@ import { isLogged, normalizeDiscordUserPayload, setDiscordUser, setIsLogged } fr
 import { useLocation, useNavigate } from '@solidjs/router'
 import { useI18n } from '../i18n'
 import { getAPIUrl } from '../utils/api'
+import { parseSessionExpiration } from '../utils/sessionExpiration.js'
 
 const Login: Component = () => {
   const navigate = useNavigate()
@@ -19,9 +20,14 @@ const Login: Component = () => {
     const accessToken = urlParams.get('accessToken')
 
     if (discordID && expirationDate && accessToken) {
+      const expiresAt = parseSessionExpiration(expirationDate)
+      if (!expiresAt || expiresAt.getTime() <= Date.now()) {
+        setIsLogged(false)
+        return navigate('/')
+      }
       // Store the necessary information in localStorage
       localStorage.setItem('discordID', discordID)
-      localStorage.setItem('expirationDate', expirationDate)
+      localStorage.setItem('expirationDate', expiresAt.toISOString())
       localStorage.setItem('accessToken', accessToken)
 
       try {

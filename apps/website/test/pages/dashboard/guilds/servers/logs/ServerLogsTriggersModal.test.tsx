@@ -11,9 +11,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { ServerLogsTriggers } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/logs/ServerLogsTriggers.js'
-)
+const { ServerLogsTriggers } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/logs/ServerLogsTriggers.js')
 
 const TRIGGERS_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/logs/triggers'
 
@@ -91,7 +90,9 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
     stubDialogGlobal(container, 'edit_log_trigger')
     await fireEvent.click(saveBtn)
 
-    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(TRIGGERS_URL, 'POST', expect.objectContaining({ channelID: 'c1' })))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(TRIGGERS_URL, 'POST', expect.objectContaining({ channelID: 'c1' })),
+    )
     await vi.waitFor(() => expect(container.querySelectorAll('tbody tr')).toHaveLength(1))
   })
 

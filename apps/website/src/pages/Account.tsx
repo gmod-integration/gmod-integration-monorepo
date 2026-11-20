@@ -1,10 +1,28 @@
-import { Component, createResource, createSignal, For, onMount, Show } from 'solid-js'
+import { type Component, createResource, createSignal, For, onMount, Show } from 'solid-js'
 import { A } from '@solidjs/router'
 import { getDiscordUser } from '../utils/utils'
 import DashboardMiddleware from '../middleware/DashboardMiddleware'
 import { useI18n } from '../i18n'
 import { Errors, ShowErrorList } from '../components/layout/Errors'
 import { fetchAPI, getAPIUrl, getUrlWithActualParams } from '../utils/api'
+
+type UserSession = {
+  id: string
+  updatedAt: string
+  ip: string
+  os: string
+  browser: string
+  country: string
+  accessToken: string
+}
+
+type UserDataRequest = {
+  id: string
+  createdAt: string
+  expirationDate: string
+  downloadLink: string
+  code: string
+}
 
 const fetchUser = async () => {
   const response = await fetchAPI('/users?discordID=' + getDiscordUser().id, 'GET')
@@ -14,7 +32,7 @@ const fetchUser = async () => {
 const Account: Component = () => {
   const { t } = useI18n()
 
-  const [localUser] = createSignal<any>(getDiscordUser())
+  const [localUser] = createSignal(getDiscordUser())
   const [user, { refetch: refetchUser }] = createResource('steamUser', fetchUser)
   const [showRequestLoading, setShowRequestLoading] = createSignal(false)
   const [unlinkingGmodStorePurchase, setUnlinkingGmodStorePurchase] = createSignal(false)
@@ -32,13 +50,21 @@ const Account: Component = () => {
     return await fetchAPI('/users/:discordID/gmod-store', 'GET').then(async (res) => (await res.json()) || {})
   })
 
-  const [userDataRequest, { mutate: mutateUserDataRequest }] = createResource('userDataRequest', async () => {
-    return await fetchAPI('/users/:discordID/data-requests', 'GET').then(async (res) => (await res.json()) || {})
-  })
+  const [userDataRequest, { mutate: mutateUserDataRequest }] = createResource(
+    'userDataRequest',
+    async (): Promise<UserDataRequest[]> => {
+      return await fetchAPI('/users/:discordID/data-requests', 'GET').then(async (res) => (await res.json()) || [])
+    },
+    { initialValue: [] },
+  )
 
-  const [userSessions, { mutate: mutateUserSessions }] = createResource('userSessions', async () => {
-    return await fetchAPI('/users/:discordID/sessions', 'GET').then(async (res) => (await res.json()) || {})
-  })
+  const [userSessions, { mutate: mutateUserSessions }] = createResource(
+    'userSessions',
+    async (): Promise<UserSession[]> => {
+      return await fetchAPI('/users/:discordID/sessions', 'GET').then(async (res) => (await res.json()) || [])
+    },
+    { initialValue: [] },
+  )
 
   async function unlinkGmodStorePurchase() {
     if (

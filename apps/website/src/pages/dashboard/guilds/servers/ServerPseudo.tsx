@@ -1,4 +1,5 @@
-import { Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
+import { closeDialog, showDialog } from '../../../../utils/dialog.js'
+import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel'
 import AdminModal from '../../../../components/AdminModal'
 import { useI18n } from '../../../../i18n'
@@ -78,20 +79,24 @@ const ServerPseudo: Component = () => {
       })
       .then((data) => {
         mutatePseudoFormat(data)
-        // @ts-expect-error -- intentional: legacy typing gap
-        edit_format.close()
+
+        closeDialog('edit_format')
       })
       .catch((error) => console.error(error))
   }
 
   const [activeRole, setActiveRole] = createSignal({ id: 0, enabled: false, role: '', name: '', prefix: '' })
 
-  const [pseudoRoles, { mutate: mutatePseudoRoles }] = createResource('pseudoRoles', async () => {
-    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/pseudo', 'GET').then(async (res) => {
-      if (!res.ok) throw new Error('An error occurred while fetching the pseudo roles.')
-      return (await res.json()) || []
-    })
-  })
+  const [pseudoRoles, { mutate: mutatePseudoRoles }] = createResource(
+    'pseudoRoles',
+    async (): Promise<ReturnType<typeof activeRole>[]> => {
+      return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/pseudo', 'GET').then(async (res) => {
+        if (!res.ok) throw new Error('An error occurred while fetching the pseudo roles.')
+        return (await res.json()) || []
+      })
+    },
+    { initialValue: [] },
+  )
 
   async function addRole() {
     fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/pseudo`, 'POST', activeRole())
@@ -152,7 +157,7 @@ const ServerPseudo: Component = () => {
             disabled={pseudoRoles.loading}
             value={activeRole().role}
             onInput={(e) => {
-              activeRole().role = e.currentTarget.value
+              setActiveRole((previous) => ({ ...previous, role: e.currentTarget.value }))
             }}
           />
         </div>
@@ -166,7 +171,7 @@ const ServerPseudo: Component = () => {
             class="input"
             value={activeRole().name}
             onInput={(e) => {
-              activeRole().name = e.currentTarget.value
+              setActiveRole((previous) => ({ ...previous, name: e.currentTarget.value }))
             }}
           />
         </div>
@@ -180,7 +185,7 @@ const ServerPseudo: Component = () => {
             class="input"
             value={activeRole().prefix}
             onInput={(e) => {
-              activeRole().prefix = e.currentTarget.value
+              setActiveRole((previous) => ({ ...previous, prefix: e.currentTarget.value }))
             }}
           />
         </div>
@@ -193,7 +198,7 @@ const ServerPseudo: Component = () => {
             disabled={pseudoRoles.loading}
             value={activeRole().enabled ? 'true' : 'false'}
             onChange={(e) => {
-              activeRole().enabled = e.currentTarget.value === 'true'
+              setActiveRole((previous) => ({ ...previous, enabled: e.currentTarget.value === 'true' }))
             }}
           >
             <option value="true">{t('dashboard.server.pseudo.yes', 'Yes')}</option>
@@ -204,8 +209,7 @@ const ServerPseudo: Component = () => {
           class="btn btn-base-200 mt-2"
           disabled={pseudoRoles.loading}
           onClick={async () => {
-            // @ts-expect-error -- intentional: legacy typing gap
-            edit_role_modal.close()
+            closeDialog('edit_role_modal')
             await editRole()
           }}
         >
@@ -251,8 +255,7 @@ const ServerPseudo: Component = () => {
             class="btn btn-base-200 mt-2"
             disabled={pseudoFormat.loading}
             onClick={async () => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              edit_format.close()
+              closeDialog('edit_format')
               updatePseudoFormat(pseudoFormat().value)
             }}
           >
@@ -305,8 +308,7 @@ const ServerPseudo: Component = () => {
           <button
             class="btn btn-base-200"
             onClick={() => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              edit_format.showModal()
+              showDialog('edit_format')
             }}
           >
             {t('dashboard.server.pseudo.editFormat', 'Edit Format')}
@@ -365,8 +367,7 @@ const ServerPseudo: Component = () => {
                           <i
                             class="hover:cursor-pointer fa-solid fa-edit"
                             onClick={() => {
-                              // @ts-expect-error -- intentional: legacy typing gap
-                              edit_role_modal.showModal()
+                              showDialog('edit_role_modal')
                               setActiveRole(role)
                             }}
                           ></i>

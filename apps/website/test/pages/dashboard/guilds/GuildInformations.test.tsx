@@ -290,14 +290,19 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       await waitForAdminsLoaded()
       const inviteBtn = await screen.findByText('Invite Main Bot')
 
-      const fakeWindow = { closed: false } as Window
+      let popupClosed = false
+      const fakeWindow = {
+        get closed() {
+          return popupClosed
+        },
+      } as Window
       const openSpy = vi.spyOn(window, 'open').mockReturnValue(fakeWindow)
       const callsBefore = (fetchAPI as Mock).mock.calls.length
 
       await fireEvent.click(inviteBtn)
       expect(openSpy).toHaveBeenCalledWith('/invite&guild_id=g1', '_blank', 'width=600,height=900')
 
-      fakeWindow.closed = true
+      popupClosed = true
       await vi.advanceTimersByTimeAsync(500)
 
       expect((fetchAPI as Mock).mock.calls.length).toBeGreaterThan(callsBefore)

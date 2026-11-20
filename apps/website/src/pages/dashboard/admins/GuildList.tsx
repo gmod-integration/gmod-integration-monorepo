@@ -1,11 +1,20 @@
-import { Component, createResource, For, Show } from 'solid-js'
+import { type Component, createResource, For, Show } from 'solid-js'
 
 import { fetchAPI } from '../../../utils/api'
 
-const fetchGuildList = async () => {
+type AdminGuild = {
+  name: string
+  guild: string
+  language: string
+  member: number
+  createdAt: string
+  updatedAt: string
+}
+
+const fetchGuildList = async (): Promise<AdminGuild[]> => {
   const res = await fetchAPI('/users/:discordID/admins/guilds', 'GET')
   if (!res.ok) return []
-  const data = await res.json()
+  const data: AdminGuild[] = await res.json()
   return data.sort((a, b) => b.member - a.member)
 }
 

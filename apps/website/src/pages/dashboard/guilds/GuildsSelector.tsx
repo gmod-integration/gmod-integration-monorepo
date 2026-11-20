@@ -1,39 +1,75 @@
-import { Component, createEffect, createResource, For, Match, onCleanup, Switch } from 'solid-js'
+import {
+  createEffect,
+  createResource,
+  createSignal,
+  For,
+  Match,
+  onCleanup,
+  onMount,
+  Show,
+  Switch,
+  type Component,
+} from 'solid-js'
 import { A, useNavigate } from '@solidjs/router'
 import defaultGuild from '../../../assets/defaultGuild.png'
-import { isLogged } from '../../../utils/event'
-import { useI18n } from '../../../i18n'
-import { fetchAPI } from '../../../utils/api'
+import { isLogged } from '../../../utils/event.js'
+import { useI18n } from '../../../i18n.js'
+import { INVITE_URL } from '../../../utils/utils.js'
+import { fetchAPI } from '../../../utils/api.js'
 
-const fetchGuilds = async () => {
-  const res = await fetchAPI('/users/:discordID/guilds', 'GET')
-  const guilds = await res.json()
+type GuildSummary = {
+  id: string
+  name: string
+  isPremium: boolean
+  hasBot: boolean
+  isOwner: boolean
+  icon: string | null
+}
 
-  guilds.sort((a: any, b: any) => {
-    if (a.isPremium === b.isPremium) {
-      if (a.hasBot === b.hasBot) {
-        return a.name.localeCompare(b.name)
-      }
-      return b.hasBot - a.hasBot
-    }
-    return b.isPremium - a.isPremium
-  })
-
-  return guilds
+const fetchGuilds = async (): Promise<GuildSummary[]> => {
+  const response = await fetchAPI('/users/:discordID/guilds', 'GET')
+  if (!response.ok) throw new Error('Communities unavailable')
+  const guilds: GuildSummary[] = await response.json()
+  if (!Array.isArray(guilds)) throw new Error('Invalid communities response')
+  return [...guilds].sort(
+    (a, b) =>
+      Number(b.isPremium) - Number(a.isPremium) || Number(b.hasBot) - Number(a.hasBot) || a.name.localeCompare(b.name),
+  )
 }
 
 const GuildsSelector: Component = () => {
-  const [guilds, { refetch }] = createResource('guilds', fetchGuilds)
+  const [guilds, { refetch }] = createResource(isLogged, fetchGuilds)
   const navigate = useNavigate()
   const { t } = useI18n()
+  const [popupBlocked, setPopupBlocked] = createSignal(false)
+  const inviteTimers = new Set<ReturnType<typeof setInterval>>()
 
   createEffect(() => {
-    if (!isLogged()) {
-      navigate('/login')
-    }
+    if (!isLogged()) navigate('/login')
+  })
+  onMount(() => {
     localStorage.removeItem('server')
     localStorage.removeItem('guilds')
-  }, [location.pathname])
+  })
+  onCleanup(() => inviteTimers.forEach((timer) => clearInterval(timer)))
+
+  const invite = (guild: GuildSummary) => {
+    setPopupBlocked(false)
+    const url = new URL(INVITE_URL)
+    url.searchParams.set('guild_id', guild.id)
+    const popup = window.open(url.toString(), '_blank', 'width=600,height=900')
+    if (!popup) {
+      setPopupBlocked(true)
+      return
+    }
+    const timer = setInterval(() => {
+      if (!popup.closed) return
+      clearInterval(timer)
+      inviteTimers.delete(timer)
+      void refetch()
+    }, 500)
+    inviteTimers.add(timer)
+  }
 
   return (
     <>
@@ -41,43 +77,56 @@ const GuildsSelector: Component = () => {
         <h2 class="text-2xl py-8 font-bold text-center">
           {t('dashboard.guild.select.select_guild', 'Select a Guild to manage / add the Bot to')}
         </h2>
-        <div class="flex flex-wrap justify-center gap-4">
+        <Show when={popupBlocked()}>
+          <p role="alert" class="text-error text-center">
+            {t('ui.popup_blocked', 'Allow pop-ups for this site to invite the bot.')}
+          </p>
+        </Show>
+        <div class="flex flex-wrap justify-center gap-4" aria-busy={guilds.loading}>
           <Switch>
             <Match when={guilds.loading}>
-              <span class="loading loading-spinner loading-lg py-12"></span>
+              <span role="status" class="loading loading-spinner loading-lg py-12">
+                <span class="sr-only">{t('ui.loading', 'Loading…')}</span>
+              </span>
             </Match>
             <Match when={guilds.error}>
-              <h2 class="text-2xl font-bold text-center text-secondary">
-                {t('dashboard.guild.select.failed_to_fetch_guilds', 'Error loading guilds')}
-              </h2>
+              <div role="alert" class="flex flex-col items-center gap-4">
+                <h2 class="text-2xl font-bold text-center text-secondary">
+                  {t('dashboard.guild.select.failed_to_fetch_guilds', 'Error loading guilds')}
+                </h2>
+                <button type="button" class="btn btn-base-200" onClick={() => refetch()}>
+                  {t('ui.retry', 'Try again')}
+                </button>
+              </div>
             </Match>
             <Match when={!guilds.loading}>
-              <For each={guilds()}>
+              <For
+                each={guilds() || []}
+                fallback={
+                  <p role="status" class="text-center text-base-content/70">
+                    {t('ui.no_guilds', 'No communities are available for this account.')}
+                  </p>
+                }
+              >
                 {(guild) => (
                   <A
-                    onClick={(e) => {
+                    onClick={(event) => {
                       if (!guild.hasBot) {
-                        e.preventDefault()
-                        const newWindow = window.open(`/invite&guild_id=${guild.id}`, '_blank', 'width=600,height=900')
-                        const timer = setInterval(function () {
-                          if (newWindow && newWindow.closed) {
-                            clearInterval(timer)
-                            refetch()
-                          }
-                        }, 500)
-                        onCleanup(() => clearInterval(timer))
-                      } else {
-                        localStorage.setItem('guilds', JSON.stringify(guild))
-                      }
+                        event.preventDefault()
+                        invite(guild)
+                      } else localStorage.setItem('guilds', JSON.stringify(guild))
                     }}
-                    href={`/dashboard/guilds/${guild.id}/config`}
-                    class="shadowHover relative flex flex-col border border-base-200 rounded-md min-w-[360px] p-5 gap-4 cursor-pointer"
+                    href={`/dashboard/guilds/${encodeURIComponent(guild.id)}/config`}
+                    class="shadowHover relative flex flex-col border border-base-200 rounded-md min-w-[360px] max-sm:min-w-0 max-sm:w-full p-5 gap-4 cursor-pointer"
                   >
-                    {guild.isPremium && <i class="fa-solid fa-crown absolute top-5 left-5 text-2xl text-amber-400"></i>}
+                    <Show when={guild.isPremium}>
+                      <i aria-label="Premium" class="fa-solid fa-crown absolute top-5 left-5 text-2xl text-amber-400" />
+                    </Show>
                     <img
                       src={guild.icon || defaultGuild}
                       alt={guild.name}
                       class="h-[96px] w-[96px] rounded-full mx-auto mt-4"
+                      loading="lazy"
                     />
                     <div>
                       <h3 class="font-bold text-lg">{guild.name}</h3>

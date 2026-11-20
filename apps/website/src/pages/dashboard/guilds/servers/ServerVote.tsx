@@ -1,4 +1,5 @@
-import { Component, createResource, Show } from 'solid-js'
+import { showDialog } from '../../../../utils/dialog.js'
+import { type Component, createResource, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel'
 import { guildChannelsRefetch } from '../GuildInformations'
 import AdminChannelSelector from '../../../../components/AdminChannelSelector'
@@ -72,8 +73,7 @@ const ServerVote: Component = () => {
             class="btn btn-base-200"
             disabled={votes.loading}
             onClick={() => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              select_channel_modal.showModal()
+              showDialog('select_channel_modal')
               guildChannelsRefetch()
             }}
           >

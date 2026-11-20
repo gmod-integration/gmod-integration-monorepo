@@ -1,66 +1,74 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import type { JSX } from 'solid-js'
 import { historyAt, renderWithProviders } from '../testUtils.js'
 import { AppDashboard } from '../../src/app/AppDashboard.js'
 import { setIsLogged } from '../../src/utils/event.js'
 import { Errors } from '../../src/components/layout/Errors.js'
 
-afterEach(() => cleanup())
-
+afterEach(() => {
+  vi.runOnlyPendingTimers()
+  cleanup()
+  vi.useRealTimers()
+})
 beforeEach(() => {
+  vi.useFakeTimers()
   window.localStorage.clear()
+  window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
   setIsLogged(true)
 })
 
-function renderAt(path: string, ui: () => any) {
-  const history = historyAt(path)
+function renderAt(ui: () => JSX.Element) {
+  const history = historyAt('/dashboard/guilds/g1/config')
   renderWithProviders(ui, { path: '*', history })
   return history
 }
 
-function Boom(): never {
-  throw new Error('page crashed')
-}
-
-describe('app/AppDashboard.tsx', () => {
-  it('renders DashboardMiddleware (no redirect on an already-resolved path), the DashboardMenu, and children', () => {
-    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
-    const history = renderAt('/dashboard/guilds/g1/config', () => (
+describe('Guild dashboard shell', () => {
+  it('composes the navigation and page without redirecting an authenticated user', () => {
+    const history = renderAt(() => (
       <AppDashboard>
         <div data-testid="page">Guild config page</div>
       </AppDashboard>
     ))
-
     expect(history.get()).toBe('/dashboard/guilds/g1/config')
-    expect(screen.getByText('Back')).toBeInTheDocument() // DashboardMenu
-    expect(screen.getByTestId('page')).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Guilds' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Back' })).toHaveAttribute('href', '/dashboard/guilds')
+    expect(screen.getByTestId('page')).toHaveTextContent('Guild config page')
   })
 
-  it('displays a pre-existing global error via ShowErrorList', () => {
-    // errorsList is a module-level signal outside any Solid root - populate it before mount (see
-    // Errors.test.tsx for why updating it post-mount doesn't propagate in this test harness).
+  it('displays and expires existing global errors without hiding the page', () => {
     Errors('boot failure', 100000)
-    renderAt('/dashboard/guilds/g1/config', () => (
+    renderAt(() => (
       <AppDashboard>
-        <div>content</div>
+        <div>Page content</div>
       </AppDashboard>
     ))
-    expect(
-      screen.getByText((_, el) => el?.tagName === 'SPAN' && el.textContent === 'Error : boot failure'),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('boot failure')
+    vi.advanceTimersByTime(100000)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Page content')).toBeInTheDocument()
   })
 
-  it("catches a throwing child in the ErrorBoundary and shows AddErrorComponent, without re-throwing from the fallback's own render", () => {
+  it('catches a page failure, keeps navigation available and retries rendering', () => {
+    let shouldFail = true
+    function FailablePage() {
+      if (shouldFail) throw new Error('page crashed')
+      return <div>Recovered guild page</div>
+    }
     expect(() =>
-      renderAt('/dashboard/guilds/g1/config', () => (
+      renderAt(() => (
         <AppDashboard>
-          <Boom />
+          <FailablePage />
         </AppDashboard>
       )),
     ).not.toThrow()
+    expect(screen.getByRole('alert')).toHaveTextContent('page crashed')
+    expect(screen.getByRole('navigation', { name: 'Guilds' })).toBeInTheDocument()
 
-    expect(
-      screen.getByText((_, el) => el?.tagName === 'SPAN' && el.textContent === 'Error : page crashed'),
-    ).toBeInTheDocument()
+    shouldFail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Recovered guild page')).toBeInTheDocument()
   })
 })

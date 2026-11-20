@@ -1,4 +1,4 @@
-import { Component, createResource, For } from 'solid-js'
+import { createResource, For, Show, type Component } from 'solid-js'
 import servers_status from '../assets/features/servers_status.png'
 import profile from '../assets/features/profile.png'
 import links from '../assets/features/links.png'
@@ -12,13 +12,23 @@ import chat from '../assets/features/chat.png'
 import { useI18n } from '../i18n'
 import { API_FQDN } from '../utils/api'
 
-const fetchStats = async () => {
-  const res = await fetch(`${API_FQDN}/stats`)
-  return res.json()
+type PublicStats = { guild: number; server: number; user: number; verifyUser: number }
+
+const fetchStats = async (): Promise<PublicStats> => {
+  const response = await fetch(`${API_FQDN}/stats`)
+  if (!response.ok) throw new Error('Statistics unavailable')
+  const payload: unknown = await response.json()
+  if (!payload || typeof payload !== 'object') throw new Error('Invalid statistics response')
+  const data = payload as Record<string, unknown>
+  const count = (key: keyof PublicStats): number => {
+    const value = data[key]
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0
+  }
+  return { guild: count('guild'), server: count('server'), user: count('user'), verifyUser: count('verifyUser') }
 }
 
 const Home: Component = () => {
-  const [stat] = createResource('mainStats', fetchStats)
+  const [stat, { refetch }] = createResource(fetchStats)
   const { t } = useI18n()
 
   type Feature = {
@@ -27,7 +37,7 @@ const Home: Component = () => {
     img: string
   }
 
-  const showFeatures: Feature[] = [
+  const showFeatures = (): Feature[] => [
     {
       title: t('home.features.server_status.title', 'Server Status'),
       description: t(
@@ -102,18 +112,31 @@ const Home: Component = () => {
     },
   ]
 
+  const metrics = () => [
+    { key: 'guild' as const, label: t('main.guilds', 'Guilds') },
+    { key: 'server' as const, label: t('main.servers', 'Servers') },
+    { key: 'user' as const, label: t('main.users', 'Users') },
+    { key: 'verifyUser' as const, label: t('main.verified_users', 'Verified Users') },
+  ]
+  const value = (key: keyof PublicStats) => (stat.loading || stat.error ? '—' : (stat()?.[key].toLocaleString() ?? '—'))
+
   return (
     <>
-      <div class="hero relative min-h-175 flex items-center justify-center overflow-hidden">
+      <section
+        class="hero relative min-h-175 flex items-center justify-center overflow-hidden"
+        aria-labelledby="home-title"
+      >
         <div
+          aria-hidden="true"
           class="absolute inset-0 bg-cover bg-center min-w-480 w-full max-w-640 h-175 object-cover object-bottom blur-[5px] opacity-60"
           style={`background-image: url(${wallpaper}); background-position: center; left: 50%; transform: translateX(-50%);`}
-        ></div>
-
-        <div class="relative z-10">
-          <div class="hero-content text-center">
-            <div>
-              <h1 class="mb-5 text-6xl font-bold whitespace-nowrap">Gmod Integration</h1>
+        />
+        <div class="relative z-10 w-full px-4">
+          <div class="hero-content text-center mx-auto">
+            <div class="min-w-0">
+              <h1 id="home-title" class="mb-5 text-4xl sm:text-6xl font-bold sm:whitespace-nowrap">
+                Gmod Integration
+              </h1>
               <p class="mb-5 text-lg">
                 {t('home.hero.title', "Improve your discord server with the most Advanced Garry's Mod bot")}
               </p>
@@ -123,41 +146,59 @@ const Home: Component = () => {
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <hr class="border border-base-200 w-full" />
 
-      <div class="flex flex-wrap items-center justify-center gap-16 w-full h-20">
-        <h2 class="text-2xl font-bold text-center text-secondary">
-          +{!stat.loading ? stat().guild.toLocaleString() : 0} {t('main.guilds', 'Guilds')}
-        </h2>
-        <h2 class="text-2xl font-bold text-center text-secondary">
-          +{!stat.loading ? stat().server.toLocaleString() : 0} {t('main.servers', 'Servers')}
-        </h2>
-        <h2 class="text-2xl font-bold text-center text-secondary">
-          +{!stat.loading ? stat().user.toLocaleString() : 0} {t('main.users', 'Users')}
-        </h2>
-        <h2 class="text-2xl font-bold text-center text-secondary">
-          +{!stat.loading ? stat().verifyUser.toLocaleString() : 0} {t('main.verified_users', 'Verified Users')}
-        </h2>
-      </div>
+      <section
+        class="flex flex-wrap items-center justify-center gap-x-16 gap-y-4 w-full min-h-20 px-4 py-5"
+        aria-label={t('ui.community_statistics', 'Community statistics')}
+        aria-busy={stat.loading}
+      >
+        <For each={metrics()}>
+          {(metric) => (
+            <h2 class="flex items-center gap-1 text-2xl font-bold text-center text-secondary">
+              <span aria-hidden="true">{stat.loading || stat.error ? '' : '+'}</span>
+              <span>{value(metric.key)}</span>
+              <span>{metric.label}</span>
+            </h2>
+          )}
+        </For>
+        <Show when={stat.error}>
+          <div
+            role="status"
+            class="w-full flex flex-wrap items-center justify-center gap-3 text-sm text-base-content/70"
+          >
+            {t('ui.statistics_unavailable', 'Community statistics are temporarily unavailable.')}
+            <button type="button" class="btn btn-sm btn-ghost" onClick={() => refetch()}>
+              {t('ui.retry', 'Try again')}
+            </button>
+          </div>
+        </Show>
+      </section>
 
       <hr class="border border-base-200 w-full" />
 
       <div class="container mx-auto">
-        <For each={showFeatures}>
+        <For each={showFeatures()}>
           {({ title, description, img }, index) => (
-            <div
-              class={`flex flex-row ${
+            <article
+              class={`flex flex-col ${
                 index() % 2 === 0 ? 'md:flex-row-reverse' : 'md:flex-row'
-              } items-center justify-around gap-8 pt-32 pb-32`}
+              } items-center justify-around gap-8 px-6 py-16 md:py-32`}
             >
-              <img src={img} alt={title} class="rounded-lg max-w-150 max-h-150 border-2 border-base-200 shrink-0" />
-              <div class="flex flex-col justify-center max-w-lg shrink-0">
+              <img
+                src={img}
+                alt={title}
+                class="rounded-lg w-full md:w-1/2 max-w-150 max-h-150 min-w-0 object-contain border-2 border-base-200"
+                loading="lazy"
+                decoding="async"
+              />
+              <div class="flex flex-col justify-center w-full md:w-1/2 max-w-lg min-w-0">
                 <h2 class="text-3xl font-bold mb-4 text-secondary">{title}</h2>
                 <p class="mb-4">{description}</p>
               </div>
-            </div>
+            </article>
           )}
         </For>
       </div>

@@ -314,7 +314,9 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       await vi.waitFor(() =>
         expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1/token', 'POST'),
       )
-      await vi.waitFor(() => expect(JSON.parse(window.localStorage.getItem('server') as string).token).toBe('new-token'))
+      await vi.waitFor(() =>
+        expect(JSON.parse(window.localStorage.getItem('server') as string).token).toBe('new-token'),
+      )
     })
 
     it('does not update localStorage when the reset request fails', async () => {

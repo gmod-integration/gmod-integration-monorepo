@@ -10,9 +10,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 }))
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
-const { ServerScreenshotList } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.js'
-)
+const { ServerScreenshotList } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.js')
 
 const SCREENSHOTS_URL_PREFIX = '/users/:discordID/guilds/:guildID/servers/:serverID/screenshots?'
 
@@ -149,9 +148,7 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.tsx', 
   it('loads a second page on scroll, appending items and advancing the offset', async () => {
     const firstPage = Array.from({ length: 20 }, (_, i) => shot({ id: i, title: `Shot ${i}` }))
     const secondPage = [shot({ id: 100, title: 'Shot 100' })]
-    ;(fetchAPI as Mock)
-      .mockResolvedValueOnce(okJson(page(firstPage)))
-      .mockResolvedValueOnce(okJson(page(secondPage)))
+    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson(page(firstPage))).mockResolvedValueOnce(okJson(page(secondPage)))
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('Shot 0')).toBeInTheDocument())
 
@@ -200,9 +197,7 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.tsx', 
 
     const firstPage = Array.from({ length: 20 }, (_, i) => shot({ id: i, title: `Shot ${i}` }))
     const secondPage = [shot({ id: 200, title: 'Shot 200' })]
-    ;(fetchAPI as Mock)
-      .mockResolvedValueOnce(okJson(page(firstPage)))
-      .mockResolvedValueOnce(okJson(page(secondPage)))
+    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson(page(firstPage))).mockResolvedValueOnce(okJson(page(secondPage)))
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('Shot 0')).toBeInTheDocument())
 

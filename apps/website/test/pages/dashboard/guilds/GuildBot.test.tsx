@@ -62,7 +62,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ custom: false, purchased: false })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await vi.waitFor(() =>
-      expect(container.querySelector('.text-indigo-300')?.textContent).toContain(
+      expect(container.querySelector<HTMLElement>('.text-indigo-300')?.textContent).toContain(
         "This feature is only available for GmodStore's custom bots.",
       ),
     )
@@ -73,14 +73,14 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ custom: true })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
-    expect(container.querySelector('.text-indigo-300')).not.toBeInTheDocument()
+    expect(container.querySelector<HTMLElement>('.text-indigo-300')).not.toBeInTheDocument()
   })
 
   it('renders bot summary fields and maps known status codes to their labels', async () => {
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ status: 'playerCount' })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await vi.waitFor(() => expect(screen.getByText('MyBot')).toBeInTheDocument())
-    const summaryPanel = container.querySelector('div.border.border-base-200.rounded-lg')!
+    const summaryPanel = container.querySelector<HTMLElement>('div.border.border-base-200.rounded-lg')!
     expect(within(summaryPanel).getByText('Show Player Count')).toBeInTheDocument()
   })
 
@@ -95,7 +95,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     const { container } = renderWithProviders(() => <GuildBot />)
     await vi.waitFor(() => expect(screen.getByText('OldName')).toBeInTheDocument())
 
-    const editModal = container.querySelector('#edit_bot')!
+    const editModal = container.querySelector<HTMLDialogElement>('#edit_bot')!
     const [nameInput, avatarInput] = within(editModal).getAllByRole('textbox', { hidden: true }) as HTMLInputElement[]
     expect(nameInput.value).toBe('OldName')
     fireEvent.change(nameInput, { target: { value: 'NewName' } })
@@ -124,12 +124,10 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     await vi.waitFor(() => expect(screen.getByText('OldName')).toBeInTheDocument())
 
     ;(fetchAPI as any).mockResolvedValue(jsonResponse({}, false))
-    const editModal = container.querySelector('#edit_bot')!
+    const editModal = container.querySelector<HTMLDialogElement>('#edit_bot')!
     fireEvent.click(within(editModal).getByRole('button', { name: 'Save', hidden: true }))
 
-    await vi.waitFor(() =>
-      expect(Errors).toHaveBeenCalledWith('An error occurred while saving the bot.'),
-    )
+    await vi.waitFor(() => expect(Errors).toHaveBeenCalledWith('An error occurred while saving the bot.'))
     expect(screen.getByText('OldName')).toBeInTheDocument()
   })
 
@@ -138,7 +136,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     const { container } = renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
 
-    const setupModal = container.querySelector('#setup_bot')!
+    const setupModal = container.querySelector<HTMLDialogElement>('#setup_bot')!
     const tokenInput = within(setupModal).getByRole('textbox', { hidden: true }) as HTMLInputElement
     fireEvent.change(tokenInput, { target: { value: 'secret-token' } })
 
@@ -158,12 +156,10 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     await waitForLoaded()
 
     ;(fetchAPI as any).mockResolvedValue(jsonResponse({}, false))
-    const setupModal = container.querySelector('#setup_bot')!
+    const setupModal = container.querySelector<HTMLDialogElement>('#setup_bot')!
     fireEvent.click(within(setupModal).getByRole('button', { name: 'Save', hidden: true }))
 
-    await vi.waitFor(() =>
-      expect(Errors).toHaveBeenCalledWith('The given token is invalid or intents are missing.'),
-    )
+    await vi.waitFor(() => expect(Errors).toHaveBeenCalledWith('The given token is invalid or intents are missing.'))
   })
 
   it('hides the whole action row when the bot has not been purchased', async () => {
@@ -216,7 +212,12 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     await waitForLoaded()
     expect(fetchAPI).toHaveBeenCalledTimes(1)
 
-    const fakeWindow = { closed: false } as Window
+    let popupClosed = false
+    const fakeWindow = {
+      get closed() {
+        return popupClosed
+      },
+    } as Window
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(fakeWindow)
 
     fireEvent.click(screen.getByRole('button', { name: 'Join Guild' }))
@@ -227,7 +228,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
       'width=600,height=900',
     )
 
-    fakeWindow.closed = true
+    popupClosed = true
     await vi.advanceTimersByTimeAsync(500)
 
     expect(fetchAPI).toHaveBeenCalledTimes(2)

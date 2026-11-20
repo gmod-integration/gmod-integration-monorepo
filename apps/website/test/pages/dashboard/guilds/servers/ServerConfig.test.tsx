@@ -313,7 +313,8 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
       const checkbox = findRow(container, 'Sync Timeouts').querySelector('input[type=checkbox]') as HTMLInputElement
       expect(checkbox.checked).toBe(false)
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === settingUrl('ig_syncTimeout') && method === 'PUT') return Promise.resolve(okJson({ value: true }))
+        if (endpoint === settingUrl('ig_syncTimeout') && method === 'PUT')
+          return Promise.resolve(okJson({ value: true }))
         return Promise.resolve(okJson({}))
       })
       await fireEvent.click(checkbox)
@@ -332,7 +333,9 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
         return Promise.resolve(okJson({}))
       })
       await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', expect.anything()))
+      await vi.waitFor(() =>
+        expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', expect.anything()),
+      )
     })
 
     it('parses a JSON-object-shaped string value back into an object once received', async () => {
@@ -347,7 +350,9 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
       // exercising this branch only for statement/branch coverage of the JSON.parse success path -
       // the parsed object isn't otherwise observable from this control.
       await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', expect.anything()))
+      await vi.waitFor(() =>
+        expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', expect.anything()),
+      )
     })
 
     it('keeps the value as a string when it looks like JSON but fails to parse', async () => {
@@ -360,7 +365,9 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
         return Promise.resolve(okJson({}))
       })
       await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', expect.anything()))
+      await vi.waitFor(() =>
+        expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', expect.anything()),
+      )
     })
   })
 
@@ -383,9 +390,7 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
       await waitForLoaded(container)
       const select = findRow(container, 'Addon Language').querySelector('select') as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'fr' } })
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_language'), 'PUT', { value: 'fr' }),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_language'), 'PUT', { value: 'fr' }))
     })
   })
 

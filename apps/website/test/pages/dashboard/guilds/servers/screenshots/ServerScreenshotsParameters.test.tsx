@@ -11,9 +11,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { ServerScreenshotsParameters } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters.js'
-)
+const { ServerScreenshotsParameters } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters.js')
 
 const SCREENSHOT_CHANNEL_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/screenshots/channel'
 
@@ -86,9 +85,7 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
     })
     const select = document.querySelector('#select_channel_modal select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
-    await vi.waitFor(() =>
-      expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'POST', { channelID: 'c1' }),
-    )
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'POST', { channelID: 'c1' }))
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
   })
 
