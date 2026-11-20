@@ -25,10 +25,7 @@ describe('isGlobalBanSomewhere', () => {
     isGlobalBanMock.mockResolvedValueOnce({ banned: true })
     const res = makeRes()
 
-    await isGlobalBanSomewhere(
-      { query: { IP: '1.2.3.4:27015', discordID: 'd1', steamID64: '765' } } as any,
-      res,
-    )
+    await isGlobalBanSomewhere({ query: { IP: '1.2.3.4:27015', discordID: 'd1', steamID64: '765' } } as any, res)
 
     expect(ipGetIPMock).toHaveBeenCalledWith('1.2.3.4:27015')
     expect(isGlobalBanMock).toHaveBeenCalledWith('1.2.3.4', 'd1', '765')

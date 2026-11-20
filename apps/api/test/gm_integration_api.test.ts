@@ -72,12 +72,16 @@ describe('gm_integration_api', () => {
     })
 
     it('allows the official gmod-integration.com domain', async () => {
-      const response = await request(app).get('/totally-unknown-route').set('Origin', 'https://app.gmod-integration.com')
+      const response = await request(app)
+        .get('/totally-unknown-route')
+        .set('Origin', 'https://app.gmod-integration.com')
       expect(response.headers['access-control-allow-origin']).toBe('https://app.gmod-integration.com')
     })
 
     it('sets Cross-Origin-Resource-Policy for *.gmod-integration.com origins', async () => {
-      const response = await request(app).get('/totally-unknown-route').set('Origin', 'https://app.gmod-integration.com')
+      const response = await request(app)
+        .get('/totally-unknown-route')
+        .set('Origin', 'https://app.gmod-integration.com')
       expect(response.headers['cross-origin-resource-policy']).toBe('cross-origin')
     })
 
@@ -96,6 +100,46 @@ describe('gm_integration_api', () => {
       try {
         const response = await request(app).get('/totally-unknown-route').set('Origin', 'http://localhost:3000')
         expect(response.headers['access-control-allow-origin']).toBe('http://localhost:3000')
+      } finally {
+        configServerMock.dev = false
+      }
+    })
+
+    it.each([
+      'https://gmod-integration.com.evil.example',
+      'https://fakegmod-integration.com',
+      'https://evil.example/gmod-integration.com',
+      'https://gmod-integration.com@evil.example',
+      'null',
+      'not an origin',
+    ])('does not trust lookalike or malformed origins: %s', async (origin) => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const response = await request(app).get('/totally-unknown-route').set('Origin', origin)
+
+      expect(response.headers['access-control-allow-origin']).toBeUndefined()
+      expect(response.status).toBe(500)
+    })
+
+    it.each(['http://localhost.evil.example:3000', 'http://127.0.0.1.evil.example'])(
+      'rejects lookalike local hosts in dev: %s',
+      async (origin) => {
+        configServerMock.dev = true
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+        try {
+          const response = await request(app).get('/totally-unknown-route').set('Origin', origin)
+          expect(response.headers['access-control-allow-origin']).toBeUndefined()
+          expect(response.status).toBe(500)
+        } finally {
+          configServerMock.dev = false
+        }
+      },
+    )
+
+    it('allows IPv6 loopback for local development', async () => {
+      configServerMock.dev = true
+      try {
+        const response = await request(app).get('/totally-unknown-route').set('Origin', 'http://[::1]:3000')
+        expect(response.headers['access-control-allow-origin']).toBe('http://[::1]:3000')
       } finally {
         configServerMock.dev = false
       }

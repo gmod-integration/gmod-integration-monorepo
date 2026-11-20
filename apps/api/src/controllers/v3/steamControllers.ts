@@ -2,8 +2,7 @@ import { type Request, type Response } from 'express'
 import { processSteamVerification, processSteamVerificationReturn } from '@gmod/core/models/v3/steamControllerModels.js'
 
 type SteamResult =
-  | ReturnType<typeof processSteamVerification>
-  | Awaited<ReturnType<typeof processSteamVerificationReturn>>
+  ReturnType<typeof processSteamVerification> | Awaited<ReturnType<typeof processSteamVerificationReturn>>
 
 function sendSteamResult(res: Response, result: SteamResult): void {
   if (result.kind === 'redirect') {

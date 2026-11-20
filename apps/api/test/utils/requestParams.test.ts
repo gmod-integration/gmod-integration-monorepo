@@ -10,6 +10,10 @@ describe('getSingleParam', () => {
     expect(getSingleParam([])).toBe('')
   })
 
+  it('returns an empty string for a missing optional parameter or header', () => {
+    expect(getSingleParam(undefined)).toBe('')
+  })
+
   it('returns the value unchanged when it is already a string', () => {
     expect(getSingleParam('a')).toBe('a')
   })

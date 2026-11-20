@@ -11,7 +11,7 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
     const clientID64 = getSingleParam(req.params.clientID64)
     const { authorization } = req.headers
 
-    if (badArgument([serverID, authorization, clientID64])) {
+    if (!serverID || !clientID64 || badArgument([serverID, authorization, clientID64])) {
       res.status(400).json({
         error: 'missing_arguments',
         args: {
@@ -31,6 +31,11 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
     const token = authorization.split(' ')[1]
     const userID = authorization.split(' ')[2]
 
+    if (!token || !userID || authorization.split(' ').length !== 3) {
+      res.status(400).json({ error: 'invalid_authorization' })
+      return
+    }
+
     const server = await getServerFromID(serverID)
     if (!server) {
       res.status(404).json({ error: 'server_not_found' })
@@ -42,17 +47,17 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
 
     const tokenHash = hash.digest('hex')
     if (tokenHash !== token) {
-      console.error('Unauthorized', tokenHash, token)
+      console.error('Unauthorized client request')
       res.status(401).json({ error: 'unauthorized' })
       return
     }
 
-    // if user send more than 1 request per second we block him for 5 seconds and if he continue we block him for 24 hours
-    const keyClientRequestCount5s = `client_request_count_1s_${clientID64}`
+    // Short bursts trigger a one-minute block; sustained requests trigger a one-day block.
+    const keyClientRequestCount1s = `client_request_count_1s_${clientID64}`
     const keyClientRequestCount60s = `client_request_count_60s_${clientID64}`
     const keyClientRequestBlock = `client_request_block_${clientID64}`
 
-    const count5s = await redis.get(keyClientRequestCount5s)
+    const count1s = await redis.get(keyClientRequestCount1s)
     const count60s = await redis.get(keyClientRequestCount60s)
     const block = await redis.get(keyClientRequestBlock)
 
@@ -61,10 +66,10 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
       return
     }
 
-    if (!count5s) {
-      await redis.set(keyClientRequestCount5s, 1, 'EX', 1)
+    if (!count1s) {
+      await redis.set(keyClientRequestCount1s, 1, 'EX', 1)
     } else {
-      await redis.incr(keyClientRequestCount5s)
+      await redis.incr(keyClientRequestCount1s)
     }
 
     if (!count60s) {
@@ -73,13 +78,13 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
       await redis.incr(keyClientRequestCount60s)
     }
 
-    if (parseInt(count5s) > 3) {
+    if (Number.parseInt(count1s ?? '0', 10) > 3) {
       await redis.set(keyClientRequestBlock, 1, 'EX', 60)
       res.status(429).json({ error: 'too_many_requests' })
       return
     }
 
-    if (parseInt(count60s) > 10) {
+    if (Number.parseInt(count60s ?? '0', 10) > 10) {
       await redis.set(keyClientRequestBlock, 1, 'EX', 60 * 60 * 24)
       res.status(429).json({ error: 'too_many_requests' })
       return

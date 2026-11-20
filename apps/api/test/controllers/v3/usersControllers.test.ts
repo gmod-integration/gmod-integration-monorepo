@@ -192,6 +192,13 @@ describe('usersControllers', () => {
     expect(modelMocks.processGetUserSessions).toHaveBeenCalledWith('d1')
   })
 
+  it('normalizes array route IDs instead of comma-joining identifiers passed to a model', async () => {
+    modelMocks.processGetUserSessions.mockResolvedValueOnce({ status: 200, body: [] })
+    await c.getUserSessions({ params: { discordID: ['d1', 'd2'] } } as any, makeRes())
+
+    expect(modelMocks.processGetUserSessions).toHaveBeenCalledWith('d1')
+  })
+
   it('deleteUserSession delegates to processDeleteUserSession', async () => {
     modelMocks.processDeleteUserSession.mockResolvedValueOnce({ status: 200, body: {} })
     await c.deleteUserSession({ params: { discordID: 'd1', sessionID: 's1' } } as any, makeRes())

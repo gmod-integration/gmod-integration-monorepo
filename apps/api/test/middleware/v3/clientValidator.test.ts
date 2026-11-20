@@ -60,6 +60,28 @@ describe('clientValidator', () => {
     expect(res.json).toHaveBeenCalledWith({ error: 'invalid_authorization' })
   })
 
+  it.each(['Bearer ', 'Bearer token', 'Bearer token user extra'])(
+    'rejects malformed credentials: %s',
+    async (authorization) => {
+      const res = makeRes()
+      const next = vi.fn()
+      await clientValidator(makeReq({ headers: { authorization } }), res, next)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(res.json).toHaveBeenCalledWith({ error: 'invalid_authorization' })
+      expect(getServerFromIDMock).not.toHaveBeenCalled()
+      expect(next).not.toHaveBeenCalled()
+    },
+  )
+
+  it('rejects a missing route identifier before looking up a server', async () => {
+    const res = makeRes()
+    await clientValidator(makeReq({ params: { serverID: 's1' } }), res, vi.fn())
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(getServerFromIDMock).not.toHaveBeenCalled()
+  })
+
   it('returns 404 when the server is not found', async () => {
     getServerFromIDMock.mockResolvedValueOnce(null)
     const res = makeRes()
@@ -79,23 +101,21 @@ describe('clientValidator', () => {
     await clientValidator(makeReq({ headers: { authorization: 'Bearer wrong-token userid1' } }), res, vi.fn())
 
     expect(res.status).toHaveBeenCalledWith(401)
-    expect(errorSpy).toHaveBeenCalled()
+    expect(errorSpy).toHaveBeenCalledWith('Unauthorized client request')
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(tokenFor('765', 'pub1', 'tok1', 'userid1'))
+    expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('wrong-token')
   })
 
   it('returns 429 when the client is currently blocked', async () => {
     const validToken = tokenFor('765', 'pub1', 'tok1', 'userid1')
     getServerFromIDMock.mockResolvedValueOnce({ getPublicToken: () => 'pub1', getToken: () => 'tok1', guild: 'g1' })
     redisMock.get
-      .mockResolvedValueOnce(null) // count5s
+      .mockResolvedValueOnce(null) // count1s
       .mockResolvedValueOnce(null) // count60s
       .mockResolvedValueOnce('1') // block
 
     const res = makeRes()
-    await clientValidator(
-      makeReq({ headers: { authorization: `Bearer ${validToken} userid1` } }),
-      res,
-      vi.fn(),
-    )
+    await clientValidator(makeReq({ headers: { authorization: `Bearer ${validToken} userid1` } }), res, vi.fn())
 
     expect(res.status).toHaveBeenCalledWith(429)
   })
@@ -128,7 +148,7 @@ describe('clientValidator', () => {
     expect(redisMock.incr).toHaveBeenCalledWith('client_request_count_60s_765')
   })
 
-  it('blocks for 60s and returns 429 when the 5s count exceeds 3', async () => {
+  it('blocks for 60s and returns 429 when the one-second count exceeds 3', async () => {
     const validToken = tokenFor('765', 'pub1', 'tok1', 'userid1')
     getServerFromIDMock.mockResolvedValueOnce({ getPublicToken: () => 'pub1', getToken: () => 'tok1', guild: 'g1' })
     redisMock.get.mockResolvedValueOnce('4').mockResolvedValueOnce('1').mockResolvedValueOnce(null)

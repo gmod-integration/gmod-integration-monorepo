@@ -72,7 +72,7 @@ export async function getProfile(req: Request, res: Response) {
 }
 
 export async function getUserSessions(req: Request, res: Response) {
-  const result = await processGetUserSessions(String(req.params.discordID))
+  const result = await processGetUserSessions(getSingleParam(req.params.discordID))
   return res.status(result.status).send(result.body)
 }
 
@@ -593,7 +593,7 @@ export async function putPlayerBypassMaintenance(req: Request, res: Response) {
 }
 
 export async function postUserStartVerification(req: Request, res: Response) {
-  const result = await processPostUserStartVerification(String(req.params.discordID))
+  const result = await processPostUserStartVerification(getSingleParam(req.params.discordID))
   return res.status(result.status).json(result.body)
 }
 
@@ -612,7 +612,7 @@ export async function deleteAutoRoles(req: Request, res: Response) {
 }
 
 export async function getAutoRoles(req: Request, res: Response) {
-  const result = await processGetAutoRoles(String(req.params.guildID))
+  const result = await processGetAutoRoles(getSingleParam(req.params.guildID))
   return res.status(result.status).send(result.body)
 }
 
@@ -1154,7 +1154,7 @@ export async function postGmodPurchase(req: Request, res: Response) {
 }
 
 export async function deleteGmodPurchase(req: Request, res: Response) {
-  const result = await processDeleteGmodPurchase(String(req.params.discordID), req.guild!)
+  const result = await processDeleteGmodPurchase(getSingleParam(req.params.discordID), req.guild!)
   return res.status(result.status).send(result.body)
 }
 
@@ -1196,7 +1196,7 @@ export async function deleteGuildBotInstance(req: Request, res: Response) {
 }
 
 export async function getUserGmodStorePurchases(req: Request, res: Response) {
-  const result = await processGetUserGmodStorePurchases(String(req.params.discordID))
+  const result = await processGetUserGmodStorePurchases(getSingleParam(req.params.discordID))
   return res.status(result.status).send(result.body)
 }
 
@@ -1300,7 +1300,7 @@ export async function getServerReportBugs(req: Request, res: Response) {
 }
 
 export async function getServerLogs(req: Request, res: Response) {
-  const result = await processGetServerLogs(String(req.params.serverID), req.query)
+  const result = await processGetServerLogs(getSingleParam(req.params.serverID), req.query)
   return res.status(result.status).send(result.body)
 }
 

@@ -1,12 +1,13 @@
 import { type NextFunction, type Request, type Response } from 'express'
 import { gmLog } from '@gmod/shared/logger.js'
+import { redactLogData } from '@/utils/redactLogData.js'
 
 export default (req: Request, res: Response, next: NextFunction) => {
   const method = req.method
-  const url = req.url
+  const url = req.url.split('?')[0]
   const ip = req.headers['cf-connecting-ip'] || req.ip
   const id = url.split('/')[2]
-  const query = JSON.stringify(req.query)
+  const query = JSON.stringify(redactLogData(req.query))
 
   const cpBody = structuredClone(req.body)
 
@@ -18,7 +19,7 @@ export default (req: Request, res: Response, next: NextFunction) => {
 
   gmLog(
     'api',
-    `Method: ${method} URL: ${url} IP: ${ip} Server ID: ${id} Body: ${JSON.stringify(cpBody)} Query: ${query}`,
+    `Method: ${method} URL: ${url} IP: ${ip} Server ID: ${id} Body: ${JSON.stringify(redactLogData(cpBody))} Query: ${query}`,
   )
 
   next()

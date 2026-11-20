@@ -25,9 +25,8 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
   enqueueDiscordGuildSnapshot: enqueueDiscordGuildSnapshotMock,
 }))
 
-const { userValidator, userAdminGuildValidator, userServerValidator, userAdminValidator } = await import(
-  '../../../src/middleware/v3/userValidator.js'
-)
+const { userValidator, userAdminGuildValidator, userServerValidator, userAdminValidator } =
+  await import('../../../src/middleware/v3/userValidator.js')
 
 function makeRes() {
   const res: any = {}

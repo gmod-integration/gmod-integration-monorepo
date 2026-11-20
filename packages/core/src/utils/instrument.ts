@@ -5,6 +5,7 @@ import { nodeProfilingIntegration } from '@sentry/profiling-node'
 if (!ConfigServer.dev) {
   Sentry.init({
     dsn: ConfigServer.sentryDSN,
+    sendDefaultPii: false,
     integrations: [nodeProfilingIntegration()],
     tracesSampleRate: 1.0,
     profilesSampleRate: 1.0,

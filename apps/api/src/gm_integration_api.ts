@@ -56,17 +56,27 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 app.use(
   cors({
     origin: (origin: string | undefined, callback: any) => {
-      const normalizedOrigin = typeof origin === 'string' ? origin.toLowerCase() : ''
-      const isConfiguredOrigin = typeof origin === 'string' && allowedCorsOrigins.has(origin)
-      const isOfficialDomain = normalizedOrigin.includes('gmod-integration.com')
-      const isLocalOrigin = normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')
+      if (!origin) {
+        callback(null, true)
+        return
+      }
 
-      if (
-        !origin ||
-        isOfficialDomain ||
-        isConfiguredOrigin ||
-        (ConfigServer.dev && isLocalOrigin)
-      ) {
+      let parsedOrigin: URL
+      try {
+        parsedOrigin = new URL(origin)
+      } catch {
+        callback(new Error('Not allowed by CORS'))
+        return
+      }
+
+      // Match the serialized origin and hostname; substring checks also admit lookalike domains.
+      const isWebOrigin = ['http:', 'https:'].includes(parsedOrigin.protocol) && parsedOrigin.origin === origin
+      const isConfiguredOrigin = allowedCorsOrigins.has(origin)
+      const hostname = parsedOrigin.hostname
+      const isOfficialDomain = hostname === 'gmod-integration.com' || hostname.endsWith('.gmod-integration.com')
+      const isLocalOrigin = ['localhost', '127.0.0.1', '[::1]'].includes(hostname)
+
+      if (isWebOrigin && (isOfficialDomain || isConfiguredOrigin || (ConfigServer.dev && isLocalOrigin))) {
         callback(null, true)
       } else {
         callback(new Error('Not allowed by CORS'))

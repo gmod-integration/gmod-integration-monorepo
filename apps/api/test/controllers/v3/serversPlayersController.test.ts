@@ -110,6 +110,14 @@ describe('serversPlayersController', () => {
     expect(res.status).toHaveBeenCalledWith(200)
   })
 
+  it('normalizes array-valued player identifiers before passing them into domain logic', async () => {
+    modelMocks.processPlayerSay.mockResolvedValueOnce({ status: 200, body: { success: true } })
+    const server = {}
+    await playerSay({ server, params: { steamID64: ['765', '111'] }, body: { text: 'hi' } } as any, makeRes())
+
+    expect(modelMocks.processPlayerSay).toHaveBeenCalledWith(server, '765', { text: 'hi' })
+  })
+
   it('playerChangeName logs then delegates to processPlayerChangeName', async () => {
     modelMocks.processPlayerChangeName.mockResolvedValueOnce({ status: 200, body: { success: true } })
     const server = {}

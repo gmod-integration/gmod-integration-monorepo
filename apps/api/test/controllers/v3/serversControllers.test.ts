@@ -61,12 +61,27 @@ describe('serversControllers', () => {
     { name: 'postIGSettings', controller: postIGSettings, model: 'processPostIGSettings', body: {} },
     { name: 'postStatus', controller: postStatus, model: 'processPostStatus', body: {} },
     { name: 'postDarkRPDropMoney', controller: postDarkRPDropMoney, model: 'processDarkRPDropMoney', body: {} },
-    { name: 'postDarkRPPickedUpMoney', controller: postDarkRPPickedUpMoney, model: 'processDarkRPPickedUpMoney', body: {} },
-    { name: 'postDarkRPPickedUpCheque', controller: postDarkRPPickedUpCheque, model: 'processDarkRPPickedUpCheque', body: {} },
+    {
+      name: 'postDarkRPPickedUpMoney',
+      controller: postDarkRPPickedUpMoney,
+      model: 'processDarkRPPickedUpMoney',
+      body: {},
+    },
+    {
+      name: 'postDarkRPPickedUpCheque',
+      controller: postDarkRPPickedUpCheque,
+      model: 'processDarkRPPickedUpCheque',
+      body: {},
+    },
     { name: 'postCHATMTakeMoney', controller: postCHATMTakeMoney, model: 'processCHATMTakeMoney', body: {} },
     { name: 'postCHATMReceiveMoney', controller: postCHATMReceiveMoney, model: 'processCHATMReceiveMoney', body: {} },
     { name: 'postCHATMSendMoney', controller: postCHATMSendMoney, model: 'processCHATMSendMoney', body: {} },
-    { name: 'postCHATMWithdrawMoney', controller: postCHATMWithdrawMoney, model: 'processCHATMWithdrawMoney', body: {} },
+    {
+      name: 'postCHATMWithdrawMoney',
+      controller: postCHATMWithdrawMoney,
+      model: 'processCHATMWithdrawMoney',
+      body: {},
+    },
     { name: 'postCHATMDepositMoney', controller: postCHATMDepositMoney, model: 'processCHATMDepositMoney', body: {} },
   ]
 
