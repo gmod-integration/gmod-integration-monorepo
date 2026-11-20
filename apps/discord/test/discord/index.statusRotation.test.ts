@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.useFakeTimers()
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 vi.mock('@gmod/config', () => ({
   ConfigServer: { dev: true },
@@ -167,10 +167,7 @@ describe('discord/index status-rotation setInterval', () => {
     const secondCall = client.user.setPresence.mock.calls[1][0]
     expect(secondCall.activities[0].name).toContain('members')
 
-    expect(gmLogMock).toHaveBeenCalledWith(
-      'discord',
-      expect.stringContaining('Updated custom status for'),
-    )
+    expect(gmLogMock).toHaveBeenCalledWith('discord', expect.stringContaining('Updated custom status for'))
   })
 
   it('sets a named custom status directly when it matches a known key', async () => {

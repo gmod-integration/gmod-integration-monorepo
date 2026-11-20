@@ -2,7 +2,7 @@ import { getRandomDiscordRelay } from '../../utils/tools.js'
 import { ConfigDiscord, ConfigServer } from '@gmod/config'
 import { EmbedBuilder } from 'discord.js'
 import { getSteamUserAvatarLarge } from '@gmod/infra-steam'
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'node:crypto'
 import { type Server } from '@gmod/domain-server/Server.js'
 import prisma from '@gmod/infra-prisma'
 import { type PlayerGmod } from '../../classes/v3/PlayerGmod.js'
@@ -43,7 +43,7 @@ export async function saveScreenshot(
 ) {
   const format = captureData.format || 'jpeg'
   const dateFormatted = new Date().toISOString().replace(/T/g, '_').replace(/\..+/, '').replace(/:/g, '-')
-  const filename = `${dateFormatted}_${player.steamID64}_${uuidv4()}.${format}`
+  const filename = `${dateFormatted}_${player.steamID64}_${randomUUID()}.${format}`
 
   // Save screenshot to be usable in the website
   const base64Data = screenshot.replace(/^data:image\/\w+;base64,/, '')

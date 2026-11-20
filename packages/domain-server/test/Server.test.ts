@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChannelType } from 'discord.js'
 
-vi.mock('@gmod/core/utils/tools.js', () => ({ generateToken: vi.fn(() => 'generated-token') }))
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: vi.fn() }))
+vi.mock('@gmod/shared/generateToken.js', () => ({ generateToken: vi.fn(() => 'generated-token') }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: vi.fn() }))
 vi.mock('@gmod/config', () => ({
   ConfigDiscord: { clientID: 'client1', botToken: 'bot-token' },
 }))
@@ -149,10 +149,7 @@ describe('Server', () => {
       prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
       prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
       redisMock.get.mockResolvedValueOnce(null)
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({ ok: true, json: async () => [{ guild_id: 'g1' }] }),
-      )
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [{ guild_id: 'g1' }] }))
 
       await expect(makeServer().isPremium()).resolves.toBe(true)
       expect(redisMock.set).toHaveBeenCalledWith('guild:g1:premium', 'true', 'EX', 60)
@@ -191,7 +188,10 @@ describe('Server', () => {
   describe('saveIGSettings', () => {
     it('sets each setting with the ig_ prefix, swallowing individual failures', async () => {
       const server = makeServer()
-      const spy = vi.spyOn(server, 'setSetting').mockResolvedValueOnce({} as any).mockRejectedValueOnce(new Error('x'))
+      const spy = vi
+        .spyOn(server, 'setSetting')
+        .mockResolvedValueOnce({} as any)
+        .mockRejectedValueOnce(new Error('x'))
 
       await server.saveIGSettings({ debug: true, maintenance: false })
 
@@ -410,7 +410,10 @@ describe('Server', () => {
 
       expect(wsAddMock).toHaveBeenCalledWith(
         'wsSendToServer',
-        expect.objectContaining({ id: 's1', data: expect.objectContaining({ method: 'wsEditSetting', setting: 'ig_debug' }) }),
+        expect.objectContaining({
+          id: 's1',
+          data: expect.objectContaining({ method: 'wsEditSetting', setting: 'ig_debug' }),
+        }),
       )
     })
 
@@ -461,9 +464,7 @@ describe('Server', () => {
 
     it('getPublicInformations returns the public-safe fields', async () => {
       const info = await makeServer().getPublicInformations()
-      expect(info).toEqual(
-        expect.objectContaining({ id: 's1', name: 'My Server', guild: 'g1', verified: true }),
-      )
+      expect(info).toEqual(expect.objectContaining({ id: 's1', name: 'My Server', guild: 'g1', verified: true }))
     })
 
     it('getDBPlayers/getPlayerStats query gm_server_stat', async () => {
@@ -548,7 +549,9 @@ describe('Server', () => {
       prismaMock.gm_status.findFirst.mockResolvedValueOnce({ channel: 'ch1', message: 'm1' })
       resolveDiscordGuildClientMock.mockResolvedValueOnce({
         guilds: {
-          fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
+          fetch: vi
+            .fn()
+            .mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
         },
       })
 
@@ -599,13 +602,19 @@ describe('Server', () => {
 
   describe('createStatus', () => {
     it('throws when channelID is falsy', async () => {
-      resolveDiscordGuildClientMock.mockResolvedValueOnce({ guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn() } } }) } })
+      resolveDiscordGuildClientMock.mockResolvedValueOnce({
+        guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn() } } }) },
+      })
       await expect(makeServer().createStatus('')).rejects.toThrow('Channel ID is required')
     })
 
     it('throws when the channel is not found', async () => {
       resolveDiscordGuildClientMock.mockResolvedValueOnce({
-        guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }) },
+        guilds: {
+          fetch: vi
+            .fn()
+            .mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
+        },
       })
       await expect(makeServer().createStatus('ch1')).rejects.toThrow('Channel not found')
     })
@@ -838,9 +847,7 @@ describe('Server', () => {
 
     it('silently returns when the discord bridge is not configured', async () => {
       prismaMock.gm_status.findFirst.mockResolvedValueOnce({ channel: 'ch1', message: 'm1' })
-      resolveDiscordGuildClientMock.mockRejectedValueOnce(
-        new Error('Discord guild client resolver is not configured'),
-      )
+      resolveDiscordGuildClientMock.mockRejectedValueOnce(new Error('Discord guild client resolver is not configured'))
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await makeServer().editStatusChannelAndMessage({})
@@ -860,9 +867,7 @@ describe('Server', () => {
           }),
         },
       })
-      buildDiscordStatusMessageMock.mockRejectedValueOnce(
-        new Error('Discord status message builder is not configured'),
-      )
+      buildDiscordStatusMessageMock.mockRejectedValueOnce(new Error('Discord status message builder is not configured'))
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await makeServer().editStatusChannelAndMessage({})
@@ -1137,7 +1142,9 @@ describe('Server', () => {
 
     it('createScreenshotChannel throws when the channel is missing or not a text channel', async () => {
       resolveDiscordGuildClientMock.mockResolvedValue({
-        guilds: { fetch: vi.fn().mockResolvedValue({ channels: { cache: { get: vi.fn().mockReturnValue(undefined) } } }) },
+        guilds: {
+          fetch: vi.fn().mockResolvedValue({ channels: { cache: { get: vi.fn().mockReturnValue(undefined) } } }),
+        },
       })
       await expect(makeServer().createScreenshotChannel('ch1')).rejects.toThrow('Channel not found')
     })
@@ -1261,7 +1268,11 @@ describe('Server', () => {
     it('createLogsChannel destroys any existing channel, throws when the target channel is invalid', async () => {
       prismaMock.gm_server_logs_channel.findFirst.mockResolvedValueOnce(null)
       resolveDiscordGuildClientMock.mockResolvedValueOnce({
-        guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }) },
+        guilds: {
+          fetch: vi
+            .fn()
+            .mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
+        },
       })
       await expect(makeServer().createLogsChannel('ch1')).rejects.toThrow('Channel not found')
     })
@@ -1368,7 +1379,11 @@ describe('Server', () => {
     it('createVoteChannel throws when the channel is missing or not a text channel', async () => {
       prismaMock.gm_server_vote_channels.findFirst.mockResolvedValueOnce(null)
       resolveDiscordGuildClientMock.mockResolvedValueOnce({
-        guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }) },
+        guilds: {
+          fetch: vi
+            .fn()
+            .mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
+        },
       })
       await expect(makeServer().createVoteChannel('ch1')).rejects.toThrow('Channel not found')
     })
@@ -1475,7 +1490,11 @@ describe('Server', () => {
     it('createSyncChat throws when the channel is missing or not a text channel', async () => {
       prismaMock.gm_sync_chat.findFirst.mockResolvedValueOnce(null)
       resolveDiscordGuildClientMock.mockResolvedValueOnce({
-        guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }) },
+        guilds: {
+          fetch: vi
+            .fn()
+            .mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
+        },
       })
       await expect(makeServer().createSyncChat('ch1')).rejects.toThrow('Channel not found')
     })

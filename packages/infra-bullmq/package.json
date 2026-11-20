@@ -14,6 +14,6 @@
     "@gmod/schema": "workspace:*",
     "@gmod/infra-redis": "workspace:*",
     "bullmq": "^5.71.0",
-    "uuid": "^9.0.1"
+    "@gmod/config": "workspace:*"
   }
 }

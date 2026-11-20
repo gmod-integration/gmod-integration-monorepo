@@ -1,4 +1,4 @@
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { updateGuildStat } from '@gmod/domain-guild/discordModels.js'
 import { type Guild } from 'discord.js'
 import { setCachedGuildPreferredLocale } from '@gmod/core/utils/guildLocaleCache.js'
@@ -15,7 +15,9 @@ export default {
     if (iconChanged) {
       gmLog('event', `Guild icon changed for ${newGuild.id}`)
       if (newGuild.icon) {
-        await replaceStoredAvatar('guild', newGuild.id, newGuild.iconURL({ extension: 'png', size: 256 })).catch(() => null)
+        await replaceStoredAvatar('guild', newGuild.id, newGuild.iconURL({ extension: 'png', size: 256 })).catch(
+          () => null,
+        )
       } else {
         await deleteStoredAvatar('guild', newGuild.id)
       }

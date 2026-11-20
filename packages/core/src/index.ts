@@ -1,7 +1,6 @@
 export * from './classes/db/Query.js'
 export * from './classes/db/Server.js'
 export * from './classes/v3/Angle.js'
-export * from './classes/v3/BaseClass.js'
 export * from './classes/v3/CustomValues.js'
 export * from './classes/v3/PlayerGmod.js'
 export * from './classes/v3/Position.js'

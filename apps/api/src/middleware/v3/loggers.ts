@@ -1,5 +1,5 @@
 import { type NextFunction, type Request, type Response } from 'express'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 
 export default (req: Request, res: Response, next: NextFunction) => {
   const method = req.method

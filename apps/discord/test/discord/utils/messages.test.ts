@@ -6,7 +6,7 @@ const getTranslateMock = vi.fn(async (key: string, _lang?: string, args?: string
 vi.mock('@gmod/core/utils/localizations.js', () => ({ getTranslate: getTranslateMock }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 vi.mock('@gmod/config', () => ({
   ConfigDiscord: { embedColor: 0x393a41, oauthPanel: 'https://panel.example/oauth' },
@@ -73,9 +73,7 @@ function resetAllMocks() {
   }
 }
 
-function makeServer(
-  overrides: { settings?: Record<string, any>; getServerStatusButtons?: any; name?: string } = {},
-) {
+function makeServer(overrides: { settings?: Record<string, any>; getServerStatusButtons?: any; name?: string } = {}) {
   const settings: Record<string, any> = {
     show_status_chart: false,
     show_player_list_status: false,
@@ -220,7 +218,11 @@ describe('discord/utils/messages', () => {
 
     it.each([
       ['array input', [{ steamID64: '1', name: 'A', connectTime: 1, userGroup: 'user' }], true],
-      ['valid JSON array string', JSON.stringify([{ steamID64: '1', name: 'A', connectTime: 1, userGroup: 'user' }]), true],
+      [
+        'valid JSON array string',
+        JSON.stringify([{ steamID64: '1', name: 'A', connectTime: 1, userGroup: 'user' }]),
+        true,
+      ],
       ['valid JSON non-array string', '{"a":1}', false],
       ['invalid JSON string', 'not-json{{{', false],
       ['empty string', '', false],
@@ -450,24 +452,14 @@ describe('discord/utils/messages', () => {
 
     it('returns server_not_found for a non-global scope when the server does not exist', async () => {
       prismaMock.gm_server.findFirst.mockResolvedValueOnce(null)
-      const result = await getUserStatisticMessage(
-        { id: 'u1' } as any,
-        'srv1',
-        { preferredLocale: 'en' } as any,
-        '765',
-      )
+      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'srv1', { preferredLocale: 'en' } as any, '765')
       expect(result).toEqual({ content: 'server_not_found', ephemeral: true })
     })
 
     it('returns user_or_server_not_found for a non-global scope when there is no per-server stat row', async () => {
       prismaMock.gm_server.findFirst.mockResolvedValueOnce({ id: 'srv1', name: 'Server One' })
       prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce(null)
-      const result = await getUserStatisticMessage(
-        { id: 'u1' } as any,
-        'srv1',
-        { preferredLocale: 'en' } as any,
-        '765',
-      )
+      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'srv1', { preferredLocale: 'en' } as any, '765')
       expect(result).toEqual({ content: 'user_or_server_not_found', ephemeral: true })
     })
 

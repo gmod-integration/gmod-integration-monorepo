@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 // never assigned - this only happens if it's called before main() ever runs, so this file
 // imports main.js fresh (without calling main()) to exercise that branch in isolation.
 
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: vi.fn() }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: vi.fn() }))
 vi.mock('@gmod/config', () => ({ ConfigServer: { ports: { websocket: 9999 } } }))
 vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: vi.fn(), getServersFromDiscordGuildID: vi.fn() }))
 vi.mock('@gmod/domain-user/PanelUser.js', () => ({ getPanelUserFromDiscordID: vi.fn() }))

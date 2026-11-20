@@ -8,7 +8,7 @@ const axiosPostMock = vi.fn()
 vi.mock('axios', () => ({ default: { post: axiosPostMock } }))
 
 const gmLogMock = vi.fn()
-vi.mock('../../../src/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const removeDiscordSyncMock = vi.fn()
 const removeServerSyncMock = vi.fn()
@@ -32,9 +32,8 @@ const prismaMock: any = {
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
-const { processSteamVerification, processSteamVerificationReturn } = await import(
-  '../../../src/models/v3/steamControllerModels.js'
-)
+const { processSteamVerification, processSteamVerificationReturn } =
+  await import('../../../src/models/v3/steamControllerModels.js')
 
 function resetAllMocks() {
   axiosPostMock.mockReset()
@@ -69,7 +68,11 @@ describe('steamControllerModels', () => {
     it('returns a redirect to the Steam OpenID login URL', () => {
       const result = processSteamVerification({ verificationCode: 'code1' })
       expect(result).toEqual(
-        expect.objectContaining({ kind: 'redirect', status: 302, url: expect.stringContaining('steamcommunity.com/openid/login') }),
+        expect.objectContaining({
+          kind: 'redirect',
+          status: 302,
+          url: expect.stringContaining('steamcommunity.com/openid/login'),
+        }),
       )
       expect((result as any).url).toContain('code1')
     })

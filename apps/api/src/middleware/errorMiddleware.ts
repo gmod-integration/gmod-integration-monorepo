@@ -1,5 +1,5 @@
-import { v4 as uuidv4 } from 'uuid'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { randomUUID } from 'node:crypto'
+import { gmLog } from '@gmod/shared/logger.js'
 import { type NextFunction, type Request, type Response } from 'express'
 import { isBullMQReplyTimeoutError } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 
@@ -10,7 +10,7 @@ export default async (err: Error, req: Request, res: Response, _next: NextFuncti
     return
   }
 
-  const error_uuid = uuidv4()
+  const error_uuid = randomUUID()
   gmLog('error', `Error UUID: ${error_uuid}`)
   console.error(err)
   res.status(500).json({ error: 'internal_server_error', error_uuid })

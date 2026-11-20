@@ -1,4 +1,4 @@
-import { ConfigDiscord, ConfigServer } from '@gmod/config'
+import { ConfigDiscord } from '@gmod/config'
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js'
 import { getRandomDiscordRelay, ipGetIP } from './tools.js'
 import { getTranslate } from './localizations.js'
@@ -17,11 +17,6 @@ export enum LogLevel {
   VERBOSE = 'verbose',
   ALL = 'all',
   CUSTOM = 'custom',
-}
-
-export function gmLog(type: string, message: string, debug: boolean = false) {
-  if (debug && !ConfigServer.dev) return
-  console.log(`[${new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')}] [${type.toUpperCase()}] ${message}`)
 }
 
 const logEmbedColors: Record<string, ColorResolvable> = {

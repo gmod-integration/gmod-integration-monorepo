@@ -17,7 +17,7 @@ vi.mock('bullmq', () => ({ Worker: FakeWorker }))
 vi.mock('@gmod/infra-bullmq', () => ({ connection: {} }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const prismaMock: any = {
   gm_server_pseudo: { findFirst: vi.fn() },
@@ -56,7 +56,13 @@ vi.mock('../../../src/discord/utils/messages.js', () => ({
 }))
 
 vi.mock('@gmod/config', () => ({
-  ConfigDiscord: { guildID: 'main-guild', premiumRoleID: 'p1', gmodStorePremiumRoleID: 'g1', discordPremiumRoleID: 'd1', clientID: 'main-client' },
+  ConfigDiscord: {
+    guildID: 'main-guild',
+    premiumRoleID: 'p1',
+    gmodStorePremiumRoleID: 'g1',
+    discordPremiumRoleID: 'd1',
+    clientID: 'main-client',
+  },
 }))
 
 const getDiscordEntitlementsMock = vi.fn()
@@ -67,11 +73,8 @@ const s3SendMock = vi.fn()
 vi.mock('@gmod/infra-minio', () => ({ ensureAvatarStored: ensureAvatarStoredMock, s3: { send: s3SendMock } }))
 vi.mock('@aws-sdk/client-s3', () => ({ GetObjectCommand: vi.fn().mockImplementation((input) => ({ input })) }))
 
-const {
-  discordUpdatePseudoWorker,
-  discordUpdateGroupWorker,
-  discordUpdateTeamRoleWorker,
-} = await import('../../../src/discord/workers/discordQueueWorkers.js')
+const { discordUpdatePseudoWorker, discordUpdateGroupWorker, discordUpdateTeamRoleWorker } =
+  await import('../../../src/discord/workers/discordQueueWorkers.js')
 
 function pseudoProcessor() {
   return (discordUpdatePseudoWorker as unknown as FakeWorker).processor
@@ -182,7 +185,9 @@ describe('discordQueueWorkers - discordUpdatePseudoWorker', () => {
   })
 
   it('returns early when the bot instance has no user', async () => {
-    const server = makeServer({ getBotInstance: vi.fn().mockResolvedValueOnce({ user: null, guilds: { cache: new FakeCollection() } }) })
+    const server = makeServer({
+      getBotInstance: vi.fn().mockResolvedValueOnce({ user: null, guilds: { cache: new FakeCollection() } }),
+    })
     getServerFromIDMock.mockResolvedValueOnce(server)
     prismaMock.gm_server_pseudo.findFirst.mockResolvedValueOnce(null)
     getUserFromSteamID64Mock.mockResolvedValueOnce({ getDiscordID: () => 'd1' })

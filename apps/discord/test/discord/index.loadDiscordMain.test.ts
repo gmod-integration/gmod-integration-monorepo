@@ -10,7 +10,7 @@ import { describe, expect, it, vi } from 'vitest'
 // real command/context/event module still loads without error and exposes the expected shape.
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 vi.mock('@gmod/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@gmod/config')>()

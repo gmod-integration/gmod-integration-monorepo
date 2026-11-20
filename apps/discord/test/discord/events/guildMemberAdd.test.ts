@@ -17,7 +17,7 @@ vi.mock('@gmod/domain-guild/discordModels.js', () => ({
 }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const getNotVerifiedMessageMock = vi.fn()
 vi.mock('../../../src/discord/utils/messages.js', () => ({
@@ -32,7 +32,10 @@ vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 function makeAddInfo(overrides: any = {}) {
   const guildID = overrides.guildID ?? 'guild1'
   const userID = overrides.userID ?? 'user1'
-  const guild = overrides.guild ?? { id: guildID, members: { cache: new Map([[userID, { id: userID, send: vi.fn() }]]) } }
+  const guild = overrides.guild ?? {
+    id: guildID,
+    members: { cache: new Map([[userID, { id: userID, send: vi.fn() }]]) },
+  }
   return {
     user: { id: userID },
     guild: { id: guildID, name: 'Test Guild' },

@@ -2,13 +2,13 @@ import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { isGuildPremium } from './Guild.js'
 import { ConfigDiscord } from '@gmod/config'
-import { generateToken } from '@gmod/core/utils/tools.js'
+import { generateToken } from '@gmod/shared/generateToken.js'
 import redis from '@gmod/infra-redis'
 import prisma from '@gmod/infra-prisma'
 import { type Guild, type GuildMember } from 'discord.js'
 import type { PanelUser } from '@gmod/domain-user/PanelUser.js'
-import { v4 as uuidv4 } from 'uuid'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { randomUUID } from 'node:crypto'
+import { gmLog } from '@gmod/shared/logger.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
 import { ensureAvatarStored } from '@gmod/infra-minio'
 import {
@@ -382,9 +382,7 @@ export async function getUserFromToken(token: string) {
 
   if (!discordRequest.ok) {
     const errorBody = await discordRequest.text().catch(() => '')
-    console.error(
-      `[discord oauth] users/@me failed: status=${discordRequest.status} body=${errorBody.slice(0, 500)}`,
-    )
+    console.error(`[discord oauth] users/@me failed: status=${discordRequest.status} body=${errorBody.slice(0, 500)}`)
     return null
   }
 
@@ -454,7 +452,7 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
 
   await prisma.gm_panelToken.create({
     data: {
-      id: uuidv4(),
+      id: randomUUID(),
       discordID,
       accessToken: panelAccessToken,
       creationDate: discordUserToken.creationDate,

@@ -1,5 +1,5 @@
 import { getTranslate } from '@gmod/core/utils/localizations.js'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import {
   ActionRowBuilder,
   ButtonBuilder,

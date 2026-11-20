@@ -1,5 +1,6 @@
 import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js'
-import { generateToken, badArgument } from '../../utils/tools.js'
+import { generateToken } from '@gmod/shared/generateToken.js'
+import { badArgument } from '../../utils/tools.js'
 import { createServer, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { type Guild } from '@gmod/domain-guild/Guild.js'
 import {

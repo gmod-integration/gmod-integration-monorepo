@@ -9,7 +9,8 @@ vi.mock('@gmod/domain-user/User.js', () => ({
 
 const generateTokenMock = vi.fn(() => 'generated-token')
 const badArgumentMock = vi.fn()
-vi.mock('../../../src/utils/tools.js', () => ({ generateToken: generateTokenMock, badArgument: badArgumentMock }))
+vi.mock('@gmod/shared/generateToken.js', () => ({ generateToken: generateTokenMock }))
+vi.mock('../../../src/utils/tools.js', () => ({ badArgument: badArgumentMock }))
 
 const createServerMock = vi.fn()
 const getServersFromDiscordGuildIDMock = vi.fn()

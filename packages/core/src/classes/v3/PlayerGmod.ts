@@ -1,4 +1,4 @@
-import { BaseClass } from './BaseClass.js'
+import { BaseClass } from '@gmod/shared/BaseClass.js'
 import { Team } from './Team.js'
 import prisma from '@gmod/infra-prisma'
 import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js'

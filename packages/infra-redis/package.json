@@ -8,6 +8,7 @@
     "./index.js": "./src/index.ts"
   },
   "dependencies": {
-    "ioredis": "^5.10.0"
+    "ioredis": "^5.10.0",
+    "@gmod/config": "workspace:*"
   }
 }

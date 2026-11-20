@@ -1,6 +1,6 @@
 import { ConfigServer } from '@gmod/config'
 import axios from 'axios'
-import { gmLog } from '../../utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import prisma from '@gmod/infra-prisma'
 import { removeDiscordSync, removeServerSync } from '../../classes/v3/PlayerGmod.js'
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js'

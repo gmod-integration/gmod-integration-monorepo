@@ -1,6 +1,6 @@
 import crypto from 'crypto'
 import { ConfigGmodStore } from '@gmod/config'
-import { gmLog } from '../../utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { getUserFromSteamID64 } from '@gmod/domain-user/User.js'
 import prisma from '@gmod/infra-prisma'
 import { addNotification } from '../../utils/tools.js'

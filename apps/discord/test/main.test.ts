@@ -4,7 +4,7 @@ vi.mock('@gmod/core/utils/update-log.js', () => ({}))
 vi.mock('@gmod/infra-bullmq', () => ({}))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const gracefulShutdownMongoMock = vi.fn()
 vi.mock('@gmod/core/database/gm_server_logs.js', () => ({ gracefulShutdownMongo: gracefulShutdownMongoMock }))

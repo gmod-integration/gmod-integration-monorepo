@@ -19,6 +19,8 @@ const baseConfig = defineConfig({
   test: {
     environment: 'node',
     globals: false,
+    // Preserve the existing explicit per-suite mock lifecycle when using Vitest 5.
+    clearMocks: false,
     passWithNoTests: true,
     setupFiles: [resolve(repoRoot, 'test/setup.ts')],
   },

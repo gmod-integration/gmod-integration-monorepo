@@ -11,7 +11,10 @@ vi.mock('@gmod/config', () => ({
 const getSteamUserAvatarLargeMock = vi.fn(async () => 'https://avatar.example')
 vi.mock('@gmod/infra-steam', () => ({ getSteamUserAvatarLarge: getSteamUserAvatarLargeMock }))
 
-vi.mock('uuid', () => ({ v4: vi.fn(() => 'uuid-1') }))
+vi.mock('node:crypto', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('node:crypto')>()),
+  randomUUID: vi.fn(() => 'uuid-1'),
+}))
 
 const createBucketIfNotExistsMock = vi.fn()
 const s3SendMock = vi.fn()
@@ -34,9 +37,8 @@ const prismaMock: any = {
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
-const { saveScreenshot, sendScreenshotToDiscord, uploadScreenshotPayload, reportBugPayload } = await import(
-  '../../../src/models/v3/clientsModels.js'
-)
+const { saveScreenshot, sendScreenshotToDiscord, uploadScreenshotPayload, reportBugPayload } =
+  await import('../../../src/models/v3/clientsModels.js')
 
 const fakePlayer = { steamID64: '765', name: 'Bob' } as any
 
@@ -161,7 +163,14 @@ describe('clientsModels', () => {
       vi.stubGlobal('fetch', fetchMock)
       const server = makeServer()
 
-      const result = await sendScreenshotToDiscord('https://cdn.example/durl.png', 'https://gmod-integration.com/iurl', 'file.jpeg', fakePlayer, server, 'My title')
+      const result = await sendScreenshotToDiscord(
+        'https://cdn.example/durl.png',
+        'https://gmod-integration.com/iurl',
+        'file.jpeg',
+        fakePlayer,
+        server,
+        'My title',
+      )
 
       expect(fetchMock).toHaveBeenCalledWith('https://relay.example', expect.objectContaining({ method: 'POST' }))
       expect(result).toEqual({ success: true })
@@ -172,7 +181,14 @@ describe('clientsModels', () => {
       vi.stubGlobal('fetch', fetchMock)
       const server = makeServer()
 
-      await sendScreenshotToDiscord('https://cdn.example/durl.png', 'https://gmod-integration.com/iurl', 'file.jpeg', fakePlayer, server, undefined)
+      await sendScreenshotToDiscord(
+        'https://cdn.example/durl.png',
+        'https://gmod-integration.com/iurl',
+        'file.jpeg',
+        fakePlayer,
+        server,
+        undefined,
+      )
 
       expect(getTranslateMock).toHaveBeenCalledWith('discord.screenshot.no_title', 'No title')
     })
@@ -215,9 +231,7 @@ describe('clientsModels', () => {
   describe('reportBugPayload', () => {
     it('returns a missing_arguments error when required fields are absent', async () => {
       const result = await reportBugPayload(makeServer(), { player: fakePlayer })
-      expect(result).toEqual(
-        expect.objectContaining({ error: 'missing_arguments' }),
-      )
+      expect(result).toEqual(expect.objectContaining({ error: 'missing_arguments' }))
     })
 
     it('creates the bug report without a screenshot when none is given', async () => {

@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('uuid', () => ({ v4: vi.fn(() => 'uuid-1') }))
+vi.mock('node:crypto', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('node:crypto')>()),
+  randomUUID: vi.fn(() => 'uuid-1'),
+}))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const isBullMQReplyTimeoutErrorMock = vi.fn()
 vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({

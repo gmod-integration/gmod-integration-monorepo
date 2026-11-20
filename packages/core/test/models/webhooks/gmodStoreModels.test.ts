@@ -7,7 +7,7 @@ vi.mock('@gmod/config', () => ({
 }))
 
 const gmLogMock = vi.fn()
-vi.mock('../../../src/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const getUserFromSteamID64Mock = vi.fn()
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromSteamID64: getUserFromSteamID64Mock }))
@@ -20,12 +20,8 @@ const prismaMock: any = {
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
-const {
-  verifyWebhookSignature,
-  getUser,
-  saveGmodStorePurchase,
-  processGmodStoreWebhook,
-} = await import('../../../src/models/webhooks/gmodStoreModels.js')
+const { verifyWebhookSignature, getUser, saveGmodStorePurchase, processGmodStoreWebhook } =
+  await import('../../../src/models/webhooks/gmodStoreModels.js')
 
 function computeSignature(webhookId: string, webhookTimestamp: number, payload: any) {
   const rawSecret = signingSecretKey.replace('whsec_', '')

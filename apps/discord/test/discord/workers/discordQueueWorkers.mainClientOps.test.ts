@@ -17,7 +17,7 @@ vi.mock('bullmq', () => ({ Worker: FakeWorker }))
 vi.mock('@gmod/infra-bullmq', () => ({ connection: {} }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const prismaMock: any = {
   gm_gmodstore_purchases: { findMany: vi.fn() },
@@ -301,7 +301,10 @@ describe('discordQueueWorkers - discordMainClientOpsWorker', () => {
               return { id: 'buyer-discord-id', roles: { cache: new Map(), add: vi.fn().mockResolvedValue(undefined) } }
             }
             if (id === 'sub-user') {
-              return { id: 'sub-user', roles: { cache: new Map([['premium-role', {}]]), add: vi.fn().mockResolvedValue(undefined) } }
+              return {
+                id: 'sub-user',
+                roles: { cache: new Map([['premium-role', {}]]), add: vi.fn().mockResolvedValue(undefined) },
+              }
             }
             return null
           }),

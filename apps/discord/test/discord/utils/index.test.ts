@@ -143,7 +143,7 @@ describe('discord/utils/index', () => {
 
       expect(errorSpy).toHaveBeenCalledWith('Error fetching server chart from MinIO:', expect.any(Error))
       expect(result).toEqual(Buffer.from('fake-png-bytes'))
-      expect(redisMock.set).toHaveBeenCalledWith('server:srv1:chart', true, 'EX', 240)
+      expect(redisMock.set).toHaveBeenCalledWith('server:srv1:chart', 'true', 'EX', 240)
     })
 
     it('regenerates the chart when there is no cache entry, defaulting maxPlayers when absent', async () => {

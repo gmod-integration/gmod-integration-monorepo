@@ -11,7 +11,7 @@ import {
   REST,
   Routes,
 } from 'discord.js'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { ConfigDiscord, ConfigServer } from '@gmod/config'
 import { fork } from 'child_process'
 

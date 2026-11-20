@@ -205,7 +205,7 @@ export async function getServerChart(server: Server) {
     .attr('d', line)
 
   const svgString = (body.select('svg').node() as Element)?.outerHTML
-  await redis.set(key, true, 'EX', 60 * 4)
+  await redis.set(key, 'true', 'EX', 60 * 4)
   const pngImg = await sharp(Buffer.from(svgString)).png().toBuffer()
 
   await s3
@@ -462,7 +462,7 @@ export async function playerConnectionChart(
   // Convert the finished SVG to PNG
   const svgString = (body.select('svg').node() as Element)?.outerHTML
   const pngImg = await sharp(Buffer.from(svgString)).png().toBuffer()
-  await redis.set(`server:${server.getID()}:connection:${steamID64}:${stat}:${duration}`, true, 'EX', 60 * 10)
+  await redis.set(`server:${server.getID()}:connection:${steamID64}:${stat}:${duration}`, 'true', 'EX', 60 * 10)
   await s3
     .send(
       new PutObjectCommand({
@@ -642,7 +642,7 @@ export async function playerTeamTimeChat(server: Server, steamID64: string, lang
   // Convert SVG to PNG and return buffer
   const svgString = (body.select('svg').node() as Element)?.outerHTML
   const pngImg = await sharp(Buffer.from(svgString)).png().toBuffer()
-  await redis.set(key, true, 'EX', 60 * 10)
+  await redis.set(key, 'true', 'EX', 60 * 10)
   await s3
     .send(
       new PutObjectCommand({

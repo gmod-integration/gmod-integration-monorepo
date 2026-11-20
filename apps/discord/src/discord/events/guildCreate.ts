@@ -1,4 +1,4 @@
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { updateGuildStat } from '@gmod/domain-guild/discordModels.js'
 import { type Guild } from 'discord.js'
 import { setCachedGuildPreferredLocale } from '@gmod/core/utils/guildLocaleCache.js'

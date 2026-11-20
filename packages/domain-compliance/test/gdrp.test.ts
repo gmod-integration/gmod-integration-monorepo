@@ -30,7 +30,7 @@ vi.mock('@gmod/config', () => ({
 }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const addNotificationMock = vi.fn().mockResolvedValue(undefined)
 vi.mock('@gmod/core/utils/tools.js', () => ({ addNotification: addNotificationMock }))

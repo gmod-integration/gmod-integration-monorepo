@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BaseClass } from '../../../src/classes/v3/BaseClass.js'
+import { BaseClass } from '../src/BaseClass.js'
 
 describe('BaseClass', () => {
   describe('isValid', () => {

@@ -3,9 +3,12 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 vi.mock('@gmod/config', () => ({
   ConfigDiscord: { clientID: 'client1', clientSecret: 'secret1', botToken: 'bot-token' },
 }))
-vi.mock('@gmod/core/utils/tools.js', () => ({ generateToken: vi.fn(() => 'generated-token') }))
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: vi.fn() }))
-vi.mock('uuid', () => ({ v4: vi.fn(() => 'uuid-1') }))
+vi.mock('@gmod/shared/generateToken.js', () => ({ generateToken: vi.fn(() => 'generated-token') }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: vi.fn() }))
+vi.mock('node:crypto', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('node:crypto')>()),
+  randomUUID: vi.fn(() => 'uuid-1'),
+}))
 
 const getUserFromDiscordIDMock = vi.fn()
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromDiscordID: getUserFromDiscordIDMock }))
@@ -194,7 +197,9 @@ describe('discordModels', () => {
       expect(rolesRemove).toHaveBeenCalled()
       expect(wsAddMock).toHaveBeenCalledWith(
         'wsSendToServer',
-        expect.objectContaining({ data: expect.objectContaining({ method: 'wsPlayerUpdateGroup', group: 'vip', add: true }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ method: 'wsPlayerUpdateGroup', group: 'vip', add: true }),
+        }),
       )
     })
 
@@ -227,7 +232,9 @@ describe('discordModels', () => {
       expect(rolesRemove).not.toHaveBeenCalled()
       expect(wsAddMock).toHaveBeenCalledWith(
         'wsSendToServer',
-        expect.objectContaining({ data: expect.objectContaining({ method: 'wsPlayerUpdateGroup', group: 'vip', add: true }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ method: 'wsPlayerUpdateGroup', group: 'vip', add: true }),
+        }),
       )
     })
 
@@ -296,7 +303,9 @@ describe('discordModels', () => {
 
       expect(wsAddMock).toHaveBeenCalledWith(
         'wsSendToServer',
-        expect.objectContaining({ data: expect.objectContaining({ method: 'wsPlayerUpdateGroup', group: 'vip', add: false }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ method: 'wsPlayerUpdateGroup', group: 'vip', add: false }),
+        }),
       )
     })
 
@@ -633,10 +642,7 @@ describe('discordModels', () => {
     })
 
     it('getUserTokenFromCode returns null and logs on failure', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValueOnce({ ok: false, status: 400, text: async () => 'bad request' }),
-      )
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false, status: 400, text: async () => 'bad request' }))
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       await expect(getUserTokenFromCode('code1', 'https://redirect')).resolves.toBeNull()
       expect(errorSpy).toHaveBeenCalled()

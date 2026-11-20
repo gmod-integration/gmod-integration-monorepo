@@ -2,7 +2,7 @@ import { processDiscordMessageToGmod } from '@gmod/core/models/v3/guildsControll
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { addAutoRoleToUser, givePremiumRoleOfMainGuild, verifyUser } from '@gmod/domain-guild/discordModels.js'
 import { type Message } from 'discord.js'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
 
 export default {

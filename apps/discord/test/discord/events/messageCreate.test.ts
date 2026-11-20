@@ -18,7 +18,7 @@ vi.mock('@gmod/domain-guild/discordModels.js', () => ({
 }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const wsSendToServerQueueAddMock = vi.fn()
 vi.mock('@gmod/infra-websocket/queues.js', () => ({

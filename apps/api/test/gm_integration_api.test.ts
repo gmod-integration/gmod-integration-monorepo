@@ -8,7 +8,7 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
 }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 // A pass-through no-op is enough here: this file's own tests only care about its own
 // middleware/CORS/shutdown-gate/error-handling wiring, not the mounted routes' behavior

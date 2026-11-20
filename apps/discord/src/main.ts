@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import '@gmod/core/utils/update-log.js'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { gracefulShutdownMongo } from '@gmod/core/database/gm_server_logs.js'
 import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import { gracefulShutdownRedis } from '@gmod/infra-redis'

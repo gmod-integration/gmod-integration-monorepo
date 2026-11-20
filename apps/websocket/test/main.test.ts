@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 vi.mock('@gmod/config', () => ({ ConfigServer: { ports: { websocket: 9999 } } }))
 
@@ -262,9 +262,7 @@ describe('apps/websocket main()', () => {
 
     it('does nothing when the url mentions discordID/token but one resolves empty', () => {
       const ws = makeFakeWs()
-      expect(() =>
-        capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=/token=tok' }),
-      ).not.toThrow()
+      expect(() => capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=/token=tok' })).not.toThrow()
       expect(getPanelUserFromDiscordIDMock).not.toHaveBeenCalledWith('')
     })
 

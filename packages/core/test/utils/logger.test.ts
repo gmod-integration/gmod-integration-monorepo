@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-let configServerMock: { dev: boolean }
 vi.mock('@gmod/config', () => ({
-  get ConfigServer() {
-    return configServerMock
-  },
   ConfigDiscord: { embedColor: '#ffffff', barerTokenRelay: 'relay-token' },
 }))
 
@@ -55,9 +51,7 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
   enqueueDiscordGuildSendLogMessage: enqueueDiscordGuildSendLogMessageMock,
 }))
 
-configServerMock = { dev: false }
-
-const { gmLog, logServer } = await import('../../src/utils/logger.js')
+const { logServer } = await import('../../src/utils/logger.js')
 
 function resetAllMocks() {
   getRandomDiscordRelayMock.mockClear()
@@ -99,29 +93,6 @@ describe('logger', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
-  })
-
-  describe('gmLog', () => {
-    it('logs when debug is false', () => {
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      gmLog('status', 'hello')
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[STATUS] hello'))
-    })
-
-    it('logs when debug is true and dev mode is on', () => {
-      configServerMock.dev = true
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      gmLog('status', 'debug message', true)
-      expect(logSpy).toHaveBeenCalled()
-      configServerMock.dev = false
-    })
-
-    it('skips logging when debug is true and dev mode is off', () => {
-      configServerMock.dev = false
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      gmLog('status', 'debug message', true)
-      expect(logSpy).not.toHaveBeenCalled()
-    })
   })
 
   describe('logServer', () => {
@@ -370,7 +341,9 @@ describe('logger', () => {
       it('dark_rp_picked_up_money: defaults amount to 0 when missing', async () => {
         const server = makeServer()
         await logServer(server, 'dark_rp_picked_up_money', { player: { steamID64: '765', name: 'Bob' } })
-        expect(addLogMock).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ amount: 0 }) }))
+        expect(addLogMock).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ amount: 0 }) }),
+        )
       })
 
       it('dark_rp_picked_up_cheque: reads writer and target players', async () => {
@@ -473,10 +446,7 @@ describe('logger', () => {
           address: '1.2.3.4',
         })
 
-        expect(fetchMock).toHaveBeenCalledWith(
-          'https://relay.example',
-          expect.objectContaining({ method: 'POST' }),
-        )
+        expect(fetchMock).toHaveBeenCalledWith('https://relay.example', expect.objectContaining({ method: 'POST' }))
         const body = JSON.parse((fetchMock.mock.calls[0][1] as any).body)
         expect(body.data.filesToAdd).toHaveLength(1)
         expect(result).toBeUndefined()
@@ -662,9 +632,7 @@ describe('logger', () => {
         const server = makeServer({
           getLogsTriggerFromRedis: vi.fn().mockResolvedValue(['dark_rp_drop_money']),
         })
-        redisMock.get.mockResolvedValueOnce(
-          JSON.stringify([{ compare: 'amount', operator: 'equal', value: '50' }]),
-        )
+        redisMock.get.mockResolvedValueOnce(JSON.stringify([{ compare: 'amount', operator: 'equal', value: '50' }]))
 
         await logServer(server, 'dark_rp_drop_money', { player: { steamID64: '765', name: 'Bob' } })
         await flushMicrotasks()
@@ -686,7 +654,14 @@ describe('logger', () => {
           })
           redisMock.get.mockResolvedValueOnce(
             JSON.stringify([
-              { compare: 'amount', operator, value: '50', action: 'sendMessageInChannel', channelID: 'ch1', message: 'hit' },
+              {
+                compare: 'amount',
+                operator,
+                value: '50',
+                action: 'sendMessageInChannel',
+                channelID: 'ch1',
+                message: 'hit',
+              },
             ]),
           )
           await logServer(server, 'dark_rp_drop_money', {
@@ -699,7 +674,14 @@ describe('logger', () => {
           enqueueDiscordGuildSendLogMessageMock.mockClear()
           redisMock.get.mockResolvedValueOnce(
             JSON.stringify([
-              { compare: 'amount', operator, value: '50', action: 'sendMessageInChannel', channelID: 'ch1', message: 'hit' },
+              {
+                compare: 'amount',
+                operator,
+                value: '50',
+                action: 'sendMessageInChannel',
+                channelID: 'ch1',
+                message: 'hit',
+              },
             ]),
           )
           await logServer(server, 'dark_rp_drop_money', {
@@ -723,7 +705,14 @@ describe('logger', () => {
         })
         redisMock.get.mockResolvedValueOnce(
           JSON.stringify([
-            { compare: 'amount', operator: 'contain', value: '5', action: 'sendMessageInChannel', channelID: 'ch1', message: 'hit' },
+            {
+              compare: 'amount',
+              operator: 'contain',
+              value: '5',
+              action: 'sendMessageInChannel',
+              channelID: 'ch1',
+              message: 'hit',
+            },
           ]),
         )
 

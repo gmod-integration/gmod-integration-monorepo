@@ -12,6 +12,7 @@
     "@gmod/config": "workspace:*",
     "@gmod/domain-server": "workspace:*",
     "@gmod/infra-prisma": "workspace:*",
-    "discord.js": "^14.25.1"
+    "discord.js": "^14.28.1",
+    "@gmod/core": "workspace:*"
   }
 }

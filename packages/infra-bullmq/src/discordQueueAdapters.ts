@@ -73,7 +73,7 @@ import {
   type DiscordServerVoteChannelRecord,
   type DiscordServerSyncChatRecord,
 } from './schemas.js'
-import { v4 as uuidv4 } from 'uuid'
+import { randomUUID } from 'node:crypto'
 import redis from '@gmod/infra-redis'
 import { JobPriority } from './priorities.js'
 
@@ -183,7 +183,7 @@ export async function enqueueUpdateGuildUserPseudo(
   try {
     const payload = UpdateGuildUserPseudoJobSchema.parse({
       ...data,
-      correlationId: uuidv4(),
+      correlationId: randomUUID(),
       timestamp: new Date(),
     })
 
@@ -208,7 +208,7 @@ export async function enqueueUpdatePlayerUserGroup(
   try {
     const payload = UpdatePlayerUserGroupJobSchema.parse({
       ...data,
-      correlationId: uuidv4(),
+      correlationId: randomUUID(),
       timestamp: new Date(),
     })
 
@@ -233,7 +233,7 @@ export async function enqueueUpdateDiscordTeamRole(
   try {
     const payload = UpdateDiscordTeamRoleJobSchema.parse({
       ...data,
-      correlationId: uuidv4(),
+      correlationId: randomUUID(),
       timestamp: new Date(),
     })
 
@@ -250,7 +250,7 @@ export async function enqueueUpdateDiscordTeamRole(
 }
 
 export async function enqueueMainClientHasGuild(guildID: string, timeoutMs = 5000): Promise<boolean> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = MainClientHasGuildJobSchema.parse({
     guildID,
     correlationId,
@@ -273,7 +273,7 @@ export async function enqueueMainClientUploadScreenshot(
   data: Omit<MainClientUploadScreenshotJob, 'correlationId' | 'timestamp'>,
   timeoutMs = 7000,
 ): Promise<string> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = MainClientUploadScreenshotJobSchema.parse({
     ...data,
     correlationId,
@@ -300,7 +300,7 @@ export async function enqueueMainClientFetchUser(
   discordID: string,
   timeoutMs = 5000,
 ): Promise<{ id: string; username: string; displayName: string; avatarURL: string | null } | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = MainClientFetchUserJobSchema.parse({
     discordID,
     correlationId,
@@ -319,7 +319,7 @@ export async function enqueueMainClientFetchUser(
 }
 
 export async function enqueueMainClientSyncPremiumRoles(timeoutMs = 10000): Promise<boolean> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = MainClientSyncPremiumRolesJobSchema.parse({
     correlationId,
     timestamp: new Date(),
@@ -344,7 +344,7 @@ export async function enqueueMainClientSetPresence(
   activityType = 3,
   timeoutMs = 7000,
 ): Promise<boolean> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = MainClientSetPresenceJobSchema.parse({
     activityName,
     activityType,
@@ -378,7 +378,7 @@ export async function enqueueDiscordGuildSnapshot(
   }
 
   const requestPromise = (async () => {
-    const correlationId = uuidv4()
+    const correlationId = randomUUID()
     const payload = DiscordGuildSnapshotJobSchema.parse({
       guildID,
       correlationId,
@@ -411,7 +411,7 @@ export async function enqueueDiscordGuildVerifyUser(
   userID: string,
   timeoutMs = 7000,
 ): Promise<boolean> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordGuildVerifyUserJobSchema.parse({
     guildID,
     userID,
@@ -431,7 +431,7 @@ export async function enqueueDiscordGuildVerifyUser(
 }
 
 export async function enqueueDiscordGuildRunVerificationCheck(guildID: string, timeoutMs = 15000): Promise<number> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordGuildRunVerificationCheckJobSchema.parse({
     guildID,
     correlationId,
@@ -457,7 +457,7 @@ export async function enqueueDiscordCreateVerificationMessage(
   channelID: string,
   timeoutMs = 10000,
 ): Promise<{ guildID: string; channelID: string; messageID: string } | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordCreateVerificationMessageJobSchema.parse({
     guildID,
     channelID,
@@ -491,7 +491,7 @@ export async function enqueueDiscordDeleteVerificationMessage(
   messageID: string,
   timeoutMs = 7000,
 ): Promise<boolean> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordDeleteVerificationMessageJobSchema.parse({
     guildID,
     channelID,
@@ -519,7 +519,7 @@ export async function enqueueDiscordGuildBotClientInfo(
   guildID: string,
   timeoutMs = 7000,
 ): Promise<{ id: string; username: string; avatar: string | null; custom: boolean; onGuild: boolean } | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordGuildBotClientInfoJobSchema.parse({
     guildID,
     correlationId,
@@ -542,7 +542,7 @@ export async function enqueueDiscordGuildBotClientInfo(
 }
 
 export async function enqueueDiscordGuildReloadBotInstance(guildID: string, timeoutMs = 10000): Promise<boolean> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordGuildReloadBotInstanceJobSchema.parse({
     guildID,
     correlationId,
@@ -568,7 +568,7 @@ export async function enqueueDiscordGuildUpdateBotProfile(
   data: { guildID: string; username?: string; avatar?: string },
   timeoutMs = 10000,
 ): Promise<{ updated: boolean; error?: string }> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordGuildUpdateBotProfileJobSchema.parse({
     ...data,
     correlationId,
@@ -599,7 +599,7 @@ export async function enqueueDiscordGuildSyncBan(
   newDiscordID: string,
   timeoutMs = 7000,
 ): Promise<boolean> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordGuildSyncBanJobSchema.parse({
     guildID,
     oldDiscordIDs,
@@ -623,7 +623,7 @@ export async function enqueueDiscordGuildAdmins(
   guildID: string,
   timeoutMs = 7000,
 ): Promise<Array<{ id: string; name: string; avatar: string | null }>> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordGuildAdminsJobSchema.parse({
     guildID,
     correlationId,
@@ -645,7 +645,7 @@ export async function enqueueDiscordGuildBans(
   guildID: string,
   timeoutMs = 7000,
 ): Promise<Array<{ id: string; tag: string; reason: string | null }>> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordGuildBansJobSchema.parse({
     guildID,
     correlationId,
@@ -674,7 +674,7 @@ export async function enqueueDiscordGuildSendLogMessage(
   },
   timeoutMs = 5000,
 ): Promise<boolean> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordGuildSendLogMessageJobSchema.parse({
     ...data,
     correlationId,
@@ -701,7 +701,7 @@ export async function enqueueDiscordServerStatusCreate(
   channelID: string,
   timeoutMs = 10000,
 ): Promise<DiscordServerStatusRecord | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerStatusCreateJobSchema.parse({
     serverID,
     channelID,
@@ -732,7 +732,7 @@ export async function enqueueDiscordServerStatusDelete(
   serverID: string,
   timeoutMs = 10000,
 ): Promise<DiscordServerStatusRecord | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerStatusDeleteJobSchema.parse({
     serverID,
     correlationId,
@@ -763,7 +763,7 @@ export async function enqueueDiscordServerLogsChannelCreate(
   channelID: string,
   timeoutMs = 10000,
 ): Promise<DiscordServerLogsChannelRecord | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerLogsChannelCreateJobSchema.parse({
     serverID,
     channelID,
@@ -794,7 +794,7 @@ export async function enqueueDiscordServerLogsChannelDelete(
   serverID: string,
   timeoutMs = 10000,
 ): Promise<DiscordServerLogsChannelRecord | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerLogsChannelDeleteJobSchema.parse({
     serverID,
     correlationId,
@@ -825,7 +825,7 @@ export async function enqueueDiscordServerScreenshotChannelCreate(
   channelID: string,
   timeoutMs = 10000,
 ): Promise<DiscordServerScreenshotChannelRecord | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerScreenshotChannelCreateJobSchema.parse({
     serverID,
     channelID,
@@ -856,7 +856,7 @@ export async function enqueueDiscordServerScreenshotChannelDelete(
   serverID: string,
   timeoutMs = 10000,
 ): Promise<DiscordServerScreenshotChannelRecord | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerScreenshotChannelDeleteJobSchema.parse({
     serverID,
     correlationId,
@@ -887,7 +887,7 @@ export async function enqueueDiscordServerVoteChannelCreate(
   channelID: string,
   timeoutMs = 10000,
 ): Promise<DiscordServerVoteChannelRecord | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerVoteChannelCreateJobSchema.parse({
     serverID,
     channelID,
@@ -918,7 +918,7 @@ export async function enqueueDiscordServerVoteChannelDelete(
   serverID: string,
   timeoutMs = 10000,
 ): Promise<DiscordServerVoteChannelRecord | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerVoteChannelDeleteJobSchema.parse({
     serverID,
     correlationId,
@@ -949,7 +949,7 @@ export async function enqueueDiscordServerSyncChatCreate(
   channelID: string,
   timeoutMs = 10000,
 ): Promise<DiscordServerSyncChatRecord | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerSyncChatCreateJobSchema.parse({
     serverID,
     channelID,
@@ -980,7 +980,7 @@ export async function enqueueDiscordServerSyncChatDelete(
   serverID: string,
   timeoutMs = 10000,
 ): Promise<DiscordServerSyncChatRecord | null> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerSyncChatDeleteJobSchema.parse({
     serverID,
     correlationId,
@@ -1012,7 +1012,7 @@ export async function enqueueDiscordGuildRemoveSyncRoles(
   candidateRoleIDs: string[],
   timeoutMs = 10000,
 ): Promise<boolean> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordGuildRemoveSyncRolesJobSchema.parse({
     guildID,
     discordID,
@@ -1045,7 +1045,7 @@ export async function enqueueDiscordGuildRemoveSyncRoles(
  * so it jumps ahead of the automatic refreshes in the status queue.
  */
 export async function enqueueDiscordServerStatusRefresh(serverID: string, timeoutMs = 10000): Promise<boolean> {
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerStatusRefreshJobSchema.parse({
     serverID,
     correlationId,
@@ -1092,7 +1092,7 @@ export async function enqueueDiscordServerStatusRefreshAsync(serverID: string): 
     return null
   }
 
-  const correlationId = uuidv4()
+  const correlationId = randomUUID()
   const payload = DiscordServerStatusRefreshJobSchema.parse({
     serverID,
     correlationId,
