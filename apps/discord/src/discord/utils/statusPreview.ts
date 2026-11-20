@@ -69,7 +69,9 @@ export async function renderStatusPreview(
         ) as Awaited<ReturnType<Server['getServerStatusButtons']>>)
 
   const data = draft.simulation ? await simulationData(server) : await server.getStatusData()
-  const message = await getStatusMessage(view, structuredClone(data), guild.preferredLocale, { persistChart: false })
+  const message = await getStatusMessage(view, structuredClone(data), draft.locale ?? guild.preferredLocale, {
+    persistChart: false,
+  })
   const imageUrl = message.files.length
     ? `data:image/png;base64,${message.files[0].attachment.toString('base64')}`
     : null

@@ -162,7 +162,11 @@ describe('status message editor draft workflow', () => {
     const send = within(modal).getByRole('button', { name: 'Send to Discord', hidden: true })
     expect(send).toBeDisabled()
     await vi.waitFor(() => expect(send).not.toBeDisabled())
-    expect(fetchAPI).toHaveBeenCalledWith(PREVIEW, 'POST', { simulation: true, settings: { ...settingValues } })
+    expect(fetchAPI).toHaveBeenCalledWith(PREVIEW, 'POST', {
+      simulation: true,
+      locale: 'en',
+      settings: { ...settingValues },
+    })
     expect(writeCalls()).toHaveLength(0)
   })
 
@@ -189,6 +193,7 @@ describe('status message editor draft workflow', () => {
     await vi.waitFor(() =>
       expect(fetchAPI).toHaveBeenCalledWith(PREVIEW, 'POST', {
         simulation: true,
+        locale: 'en',
         settings: { ...settingValues, status_player_list_format: '**{name}** - {team}' },
       }),
     )
@@ -266,6 +271,7 @@ describe('status message editor draft workflow', () => {
     await vi.waitFor(() =>
       expect(fetchAPI).toHaveBeenCalledWith(PREVIEW, 'POST', {
         simulation: true,
+        locale: 'en',
         settings: { ...settingValues, show_player_list_status: true },
       }),
     )

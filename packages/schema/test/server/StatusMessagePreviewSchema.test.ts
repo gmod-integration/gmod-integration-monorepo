@@ -37,6 +37,16 @@ describe('status message preview contract', () => {
     }
   })
 
+  it('accepts the website languages as optional preview overrides and rejects unsupported values', () => {
+    for (const locale of ['en', 'fr', 'de', 'es', 'it', 'nl', 'pl', 'ru', 'tr']) {
+      expect(StatusMessagePreviewInputSchema.parse({ locale })).toEqual({ settings: {}, locale })
+    }
+    expect(StatusMessagePreviewInputSchema.parse({})).not.toHaveProperty('locale')
+    for (const locale of ['', 'fr-FR', 'unsupported', '../fr', null, 1]) {
+      expect(StatusMessagePreviewInputSchema.safeParse({ locale }).success).toBe(false)
+    }
+  })
+
   it('validates serialized Discord content and only accepts embedded PNG chart images', () => {
     const response = {
       bot: { name: 'Bot', avatarUrl: null },

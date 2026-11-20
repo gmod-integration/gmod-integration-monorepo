@@ -38,6 +38,7 @@ describe('status message draft preview', () => {
     expect(await processPreviewServerStatus(server, {})).toEqual({ status: 200, body: preview })
     expect(enqueue).toHaveBeenCalledWith('server-1', { settings: {} }, 15000)
     const draft = {
+      locale: 'en',
       settings: { show_player_list_status: false, status_player_list_format: '{name} {name}' },
       buttons: [],
     }

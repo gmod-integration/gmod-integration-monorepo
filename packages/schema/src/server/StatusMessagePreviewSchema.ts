@@ -24,6 +24,7 @@ export const StatusMessagePreviewInputSchema = z
     settings: StatusPreviewSettingsSchema.default({}),
     buttons: z.array(StatusPreviewButtonSchema).max(25).optional(),
     simulation: z.boolean().optional(),
+    locale: z.enum(['en', 'fr', 'de', 'es', 'it', 'nl', 'pl', 'ru', 'tr']).optional(),
   })
   .strict()
 

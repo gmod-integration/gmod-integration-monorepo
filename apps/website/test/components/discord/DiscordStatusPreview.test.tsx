@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { createSignal } from 'solid-js'
 import type { StatusMessagePreview } from '@gmod/schema/server/StatusMessagePreviewSchema.js'
 import { renderWithProviders } from '../../testUtils.js'
 import DiscordStatusPreview from '../../../src/components/discord/DiscordStatusPreview.js'
+import { useI18n } from '../../../src/i18n.js'
 
 const preview: StatusMessagePreview = {
   bot: { name: 'Development bot', avatarUrl: 'https://cdn.discordapp.com/avatar.png' },
@@ -30,8 +31,11 @@ const preview: StatusMessagePreview = {
   ],
 }
 
+beforeEach(() => window.localStorage.clear())
+
 afterEach(() => {
   cleanup()
+  window.localStorage.clear()
   vi.restoreAllMocks()
 })
 
@@ -114,5 +118,46 @@ describe('DiscordStatusPreview', () => {
     expect(screen.getByText('Simulation')).toBeInTheDocument()
     expect(screen.getByText(/fictional players/i)).toBeInTheDocument()
     expect(screen.getByText(/real server data|server.s real data/i)).toBeInTheDocument()
+  })
+
+  it('follows the website language for simulation guidance and dates, including after a language change', async () => {
+    window.localStorage.setItem('locale', 'fr')
+    const { container } = renderWithProviders(() => {
+      const { updateLocale } = useI18n()
+      return (
+        <>
+          <button onClick={() => updateLocale('en')}>English</button>
+          <DiscordStatusPreview data={{ ...preview, simulation: true }} />
+        </>
+      )
+    })
+    expect(screen.getByRole('heading', { name: 'Prévisualisation Discord en direct' })).toBeInTheDocument()
+    expect(
+      screen.getByText('L’aperçu suit vos modifications. Rien n’est envoyé avant l’enregistrement ou l’envoi.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Joueurs fictifs pour tester le rendu. L’envoi utilise les données réelles du serveur.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Les boutons de l’aperçu ne sont pas interactifs.')).toBeInTheDocument()
+    expect(container.querySelector('time')).toHaveTextContent(
+      new Intl.DateTimeFormat('fr', { dateStyle: 'short', timeStyle: 'short' }).format(
+        new Date(preview.embeds[0].timestamp),
+      ),
+    )
+
+    await fireEvent.click(screen.getByRole('button', { name: 'English' }))
+    expect(screen.getByRole('heading', { name: 'Live Discord preview' })).toBeInTheDocument()
+    expect(
+      screen.getByText('The preview follows your edits. Nothing is sent until you save or send the message.'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('Fictional players help you test the layout. Sending uses the server’s real data.'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Preview buttons are not interactive.')).toBeInTheDocument()
+    expect(container.querySelector('time')).toHaveTextContent(
+      new Intl.DateTimeFormat('en', { dateStyle: 'short', timeStyle: 'short' }).format(
+        new Date(preview.embeds[0].timestamp),
+      ),
+    )
   })
 })

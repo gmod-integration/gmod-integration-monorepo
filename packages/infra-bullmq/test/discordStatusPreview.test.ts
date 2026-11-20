@@ -23,12 +23,12 @@ describe('read-only status preview adapter', () => {
   afterEach(() => vi.useRealTimers())
   it('validates the draft and returns the exact worker payload', async () => {
     redis.get.mockResolvedValueOnce(JSON.stringify({ correlationId: 'reply', preview }))
-    expect(await enqueueDiscordServerStatusPreview('s1', { settings: { show_player_list_status: true } })).toEqual(
-      preview,
-    )
+    expect(
+      await enqueueDiscordServerStatusPreview('s1', { locale: 'en', settings: { show_player_list_status: true } }),
+    ).toEqual(preview)
     expect(add).toHaveBeenCalledWith(
       'serverStatusPreview',
-      expect.objectContaining({ serverID: 's1', draft: { settings: { show_player_list_status: true } } }),
+      expect.objectContaining({ serverID: 's1', draft: { locale: 'en', settings: { show_player_list_status: true } } }),
       expect.objectContaining({ attempts: 1, removeOnComplete: true }),
     )
     await expect(enqueueDiscordServerStatusPreview('s1', { settings: { unexpected: true } } as any)).rejects.toThrow()

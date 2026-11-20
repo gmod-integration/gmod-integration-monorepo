@@ -29,7 +29,7 @@ export type StatusPreviewContextValue = {
 const StatusPreviewContext = createContext<StatusPreviewContextValue>()
 
 export const StatusPreviewProvider: ParentComponent = (props) => {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [settings, updateSettings] = createSignal<StatusPreviewSettings>({})
   const [buttons, updateButtons] = createSignal<StatusPreviewButton[] | undefined>()
   const [preview, setPreview] = createSignal<StatusMessagePreview>()
@@ -41,6 +41,7 @@ export const StatusPreviewProvider: ParentComponent = (props) => {
 
   const input = (): StatusMessagePreviewInput => ({
     simulation: true,
+    locale: locale(),
     settings: settings(),
     ...(buttons() === undefined
       ? {}

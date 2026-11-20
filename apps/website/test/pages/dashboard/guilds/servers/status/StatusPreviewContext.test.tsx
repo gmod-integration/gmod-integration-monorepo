@@ -8,6 +8,7 @@ const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const { StatusPreviewProvider, useStatusPreview } =
   await import('../../../../../../src/pages/dashboard/guilds/servers/status/StatusPreviewContext.js')
 import type { StatusPreviewContextValue } from '../../../../../../src/pages/dashboard/guilds/servers/status/StatusPreviewContext.js'
+import { useI18n } from '../../../../../../src/i18n.js'
 
 const url = '/users/:discordID/guilds/:guildID/servers/:serverID/status/preview'
 const result = (title: string) => ({
@@ -24,11 +25,14 @@ function renderProvider() {
     <StatusPreviewProvider>
       {(() => {
         context = useStatusPreview()!
+        const { updateLocale } = useI18n()
         return (
           <div>
             <span data-testid="title">{context.preview()?.embeds[0].title}</span>
             <span data-testid="loading">{String(context.loading())}</span>
             <span data-testid="error">{context.error()}</span>
+            <button onClick={() => updateLocale('fr')}>Français</button>
+            <button onClick={() => updateLocale('en')}>English</button>
           </div>
         )
       })()}
@@ -37,6 +41,7 @@ function renderProvider() {
 }
 const tick = () => vi.advanceTimersByTimeAsync(250)
 beforeEach(() => {
+  window.localStorage.clear()
   vi.useFakeTimers()
   ;(fetchAPI as Mock).mockReset()
   ;(fetchAPI as Mock).mockResolvedValue(ok('Stored status'))
@@ -60,6 +65,7 @@ describe('StatusPreviewProvider read-only live rendering', () => {
     expect(fetchAPI).toHaveBeenCalledTimes(1)
     expect(fetchAPI).toHaveBeenCalledWith(url, 'POST', {
       simulation: true,
+      locale: 'en',
       settings: { show_player_list_status: true, status_player_list_format: '{name} {name}' },
     })
     expect(screen.getByTestId('title')).toHaveTextContent('Stored status')
@@ -69,13 +75,44 @@ describe('StatusPreviewProvider read-only live rendering', () => {
   it('requests simulation only for previews and preserves its response metadata', async () => {
     renderProvider()
     await tick()
-    expect(fetchAPI).toHaveBeenCalledWith(url, 'POST', { simulation: true, settings: {} })
+    expect(fetchAPI).toHaveBeenCalledWith(url, 'POST', { simulation: true, locale: 'en', settings: {} })
     expect(context.preview()!.simulation).toBe(true)
     expect((fetchAPI as Mock).mock.calls.every(([endpoint, method]) => endpoint === url && method === 'POST')).toBe(
       true,
     )
     expect(context.preview()!.online).toBe(false)
     expect(context.error()).toBeUndefined()
+  })
+
+  it('uses the saved website language and discards an old-language response after switching', async () => {
+    window.localStorage.setItem('locale', 'fr')
+    let resolveFrench!: (value: unknown) => void
+    ;(fetchAPI as Mock)
+      .mockReturnValueOnce(new Promise((resolve) => (resolveFrench = resolve)))
+      .mockResolvedValueOnce(ok('English status'))
+    renderProvider()
+    context.setSettings({ status_player_list_format: '**{name}**' })
+    await tick()
+    expect(fetchAPI).toHaveBeenLastCalledWith(url, 'POST', {
+      simulation: true,
+      locale: 'fr',
+      settings: { status_player_list_format: '**{name}**' },
+    })
+
+    screen.getByRole('button', { name: 'English' }).click()
+    expect(context.loading()).toBe(true)
+    resolveFrench(ok('Statut français'))
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(context.preview()).toBeUndefined()
+    await tick()
+    expect(fetchAPI).toHaveBeenLastCalledWith(url, 'POST', {
+      simulation: true,
+      locale: 'en',
+      settings: { status_player_list_format: '**{name}**' },
+    })
+    expect(screen.getByTestId('title')).toHaveTextContent('English status')
+    expect(context.loading()).toBe(false)
   })
 
   it('discards stale responses even when they resolve during the next debounce window', async () => {

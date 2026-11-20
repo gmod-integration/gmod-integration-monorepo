@@ -129,6 +129,40 @@ describe('read-only Discord status preview', () => {
     expect(source.getServerStatusButtons).toHaveBeenCalledOnce()
   })
 
+  it.each([
+    ['en', 'fr'],
+    ['fr', 'en-US'],
+  ] as const)('renders a %s simulation even when the guild language is %s', async (locale, guildLocale) => {
+    const source = server()
+    source.getName = () => 'Mon serveur'
+    const community = guild()
+    community.preferredLocale = guildLocale
+    const preview = await renderStatusPreview(
+      source,
+      { simulation: true, locale, settings: {}, buttons: [{ ...button, name: 'Mon guide' }] },
+      community,
+    )
+
+    expect(preview.embeds[0].title).toBe(`${locale}:status_of:Mon serveur`)
+    expect(preview.embeds[0].fields).toContainEqual({ name: `💾⠀${locale}:name`, value: 'Mon serveur', inline: true })
+    expect(preview.embeds[0].fields).toContainEqual({
+      name: `📡⠀${locale}:status`,
+      value: `${locale}:online`,
+      inline: true,
+    })
+    expect(preview.embeds[0].fields).toContainEqual({ name: `🗺️⠀${locale}:map`, value: 'gm_construct', inline: true })
+    expect(preview.buttonRows[0][0].label).toBe(`⠀${locale}:server-connect`)
+    expect(preview.buttonRows[0][1].label).toBe('⠀Mon Guide')
+    expect(community.preferredLocale).toBe(guildLocale)
+    expect(source.setSetting).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the guild language when a simulation has no website language override', async () => {
+    const preview = await renderStatusPreview(server(), { simulation: true, settings: {} }, guild())
+    expect(preview.embeds[0].title).toBe('fr:status_of:Actual server')
+    expect(preview.buttonRows[0][0].label).toBe('⠀fr:server-connect')
+  })
+
   it('uses the same renderer as publishing and serializes charts without storage', async () => {
     const source = server()
     chart.mockResolvedValue(Buffer.from('actual-png'))
