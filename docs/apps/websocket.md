@@ -22,7 +22,7 @@ Both sides get a 1s `ws.ping()` keepalive.
 [deployment/swarm.md](../deployment/swarm.md)). A given GMod server's socket lives in the memory of exactly one
 replica. When another app wants to push to that server (`@gmod/infra-websocket/queues.js` →
 `wsSendToServerQueue`), a BullMQ worker here first tries local delivery; if the client isn't connected to
-*this* replica, it re-publishes the payload on the Redis pub/sub channel `ws:send-to-server:broadcast` with a
+_this_ replica, it re-publishes the payload on the Redis pub/sub channel `ws:send-to-server:broadcast` with a
 `requestId`, and every replica that owns that connection tries to deliver it and increments a short-TTL Redis
 ack key (`ws:send-to-server:ack:<requestId>`) that the original worker polls for up to 600ms.
 

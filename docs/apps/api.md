@@ -38,6 +38,33 @@ Controllers should stay thin (rule of thumb: extract past ~10 lines, see
 [best-practices.md](../best-practices.md)); the actual server/guild/user logic lives in `@gmod/domain-*`
 classes, not in the controller.
 
+## Paginated public ranking
+
+`GET /v3/users/:discordID/servers/ranking` uses panel-user authentication and the shared
+`PublicServerRankingSchema` contract. It accepts `limit` (10, 25 or 50), `offset`, `search`, `gameMode`
+and `status` (`all`, `online`, `offline`). The response contains `servers`, `pagination` and the known
+public game modes in `filters`. The existing `/servers` endpoint retains its array response.
+
+The core model aggregates votes from the last thirty days, applies filters and stable ordering, and
+paginates in MariaDB. Only the selected page's server details and seven-day daily-maximum histories
+are loaded. A status is online when its snapshot is at most five minutes old; stale metadata and
+historical points remain available. Invitations are resolved once per displayed community through
+the Discord queue adapter, with cached successful/unavailable results.
+
+## Status message drafts
+
+`POST /v3/users/:discordID/guilds/:guildID/servers/:serverID/status/preview` requires the normal session,
+guild-administrator and server checks. Its shared `StatusMessagePreviewSchema` contract accepts
+optional draft settings and buttons, then returns the bot identity, embed fields, button rows and an
+optional PNG image. An explicitly enabled chart requires the existing Premium entitlement.
+The optional `simulation` flag uses five temporary fictional players and returns `simulation:true`.
+Without that flag, the endpoint continues to preview the actual server state. The flag is not a
+stored setting and is never used by the publication endpoints.
+
+The endpoint enqueues `serverStatusPreview`; it does not save settings or create/edit a message.
+Invalid drafts return 400 and worker timeouts return 503, allowing the editor to retry without
+publishing partial changes.
+
 ## Discord side effects
 
 `api` never imports `discord.js` directly. Anything Discord-related is enqueued via

@@ -50,6 +50,18 @@ status/logs/vote channels, ...) enqueues a job instead of calling Discord direct
 See [architecture.md — Discord boundary](../architecture.md#discord-boundary) and
 [migration-playbook.md](../migration-playbook.md#example-discord-action-from-api) for adding a new job type.
 
+## Status preview rendering
+
+`serverStatusPreview` creates a temporary server view with in-memory settings/button overrides and
+calls the same `getStatusMessage` renderer used for publication. It uses the guild's preferred locale,
+player formatting/truncation and button layout. The reply serializes embeds and buttons and converts
+any chart buffer to a PNG data URL.
+
+Preview rendering uses `getStatusMessage(..., { persistChart: false })`, which calls
+`getServerChart(server, { persist: false })`. This mode renders the chart without reading/writing its
+Redis cache, accessing MinIO or uploading files. The default publication path retains its cache.
+The preview handler does not save settings or call Discord message send/edit/delete methods.
+
 ## Run it
 
 ```bash

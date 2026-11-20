@@ -1,13 +1,13 @@
-# Voice Transcript Documentation
+# Gmod Integration Documentation
 
-## Install
+Run commands from the monorepo root. Dependencies are installed once using the root `bun.lock`.
 
 ```bash
 bun install
+bun run docs:dev
+bun run typecheck:docs
+bun run docs:build
 ```
 
-## Run
-
-```bash
-bun start
-```
+The Docusaurus product guides live in `apps/docs/docs/`. Architecture and contributor documentation
+belong in the root `docs/` directory.

@@ -21,6 +21,7 @@ Two things live outside plain "web app" territory and shape most of the design d
 ### Why separate `apps/api`, `apps/discord`, `apps/websocket`?
 
 Each has a different runtime profile:
+
 - `api` is stateless HTTP — trivially horizontally scaled (target `2/2` replicas in prod, see
   [deployment/swarm.md](./deployment/swarm.md)).
 - `discord` holds the one live `discord.js` client (main bot) plus per-guild custom bot clients — it is not
@@ -50,7 +51,7 @@ trigger Discord-side effects without a heavier synchronous RPC framework.
 
 GMod servers keep a persistent WebSocket open to receive push messages (config changes, live status) and to
 push events up without polling. Because `websocket` can run multiple replicas, a message addressed to a given
-server might need to be delivered by a *different* replica than the one that owns that server's socket — that's
+server might need to be delivered by a _different_ replica than the one that owns that server's socket — that's
 why `wsSendToServerQueue` messages that aren't found locally are re-broadcast over a Redis pub/sub channel with
 a short-lived ack key, instead of assuming the local process has the connection.
 
@@ -81,12 +82,13 @@ apps/
   discord    -> Discord bot(s) (main + per-guild custom) + BullMQ workers that execute Discord actions.
   websocket  -> WebSocket gateway: live connections to GMod servers and dashboard clients.
   webhook-relay -> standalone service posting to Discord webhooks for core (own image/env, no @gmod/*).
-  website    -> Frontend (React/Vite): public site + dashboard.
+  website    -> Frontend (SolidJS/Vite): public site + dashboard.
   docs       -> Docusaurus site that publishes the PUBLIC product documentation (not this ./docs folder).
 
 packages/
   config       -> env loading + Zod validation, single source of truth for config.
   schema       -> Zod contracts (BullMQ payloads, GMod entities, DB-facing shapes).
+  shared       -> low-level BaseClass validation, secure token generation and operational logging.
   core         -> cross-cutting application logic: v3 API models, DB helpers, logging/localization/format utils,
                   shared Express request types.
   domain-*     -> domain-oriented business logic (server, guild, user, moderation, compliance, gmod entities).
@@ -146,10 +148,14 @@ In words:
 General rule: only "downward" dependencies.
 
 - `apps/*` can depend on `packages/*`.
-- `core` can depend on `domain-*`, `infra-*`, `config`, and `schema`.
-- `domain-*` can depend on `infra-*`, `config`, and `schema`.
+- `shared` has no domain, core, infrastructure-client or app dependencies. Only its logger reads `config`.
+- `core` can depend on `domain-*`, `infra-*`, `shared`, `config`, and `schema`.
+- `domain-*` can depend on `infra-*`, `shared`, `config`, and `schema`. Compliance exports and moderation localization currently use specific core modules; their actual and declared dependencies must remain acyclic.
 - `infra-*` must not depend on `apps/*`.
 - `schema` should only depend on validation libraries (`zod`).
+
+The architecture check (`bun run check:architecture`) examines workspace manifests and source imports
+together. It rejects cross-application imports, undeclared workspace imports and dependency cycles.
 
 ## Critical boundaries
 
@@ -164,7 +170,8 @@ General rule: only "downward" dependencies.
 
 - Single source of truth: `@gmod/config`.
 - `@gmod/config` loads workspace `.env` files and validates with Zod.
-- Avoid reading `process.env` directly in business modules.
+- Avoid reading `process.env` directly outside config (except the standalone webhook relay).
+- Infrastructure adapters use `@gmod/config/infrastructure.js` getters, which accept an explicit environment for isolated tests and do not bootstrap unrelated service credentials.
 
 ### Data boundary
 

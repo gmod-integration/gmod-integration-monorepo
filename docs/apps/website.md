@@ -24,6 +24,45 @@ src/
   i18n.tsx
 ```
 
+## Navigation and loading
+
+`App.tsx` provides the original header and footer with a skip link and main landmark. Guild/server and
+admin views use their original dashboard menus and layout. The community and server selectors retain
+their original presentation while handling loading, empty results and request failures.
+
+The public home, authentication pages and layouts are available immediately. The remaining route pages
+use Solid's `lazy` imports, with a translated `Suspense` fallback inside the main content area so the
+header and footer remain available while a page loads. Home statistics show placeholders during their
+request without suspending the landing page. `JsonViewer` registers only the JSON syntax highlighter,
+keeping unrelated language definitions out of the generated chunks.
+
+## Server ranking
+
+`/servers` requests the authenticated, paginated `/v3/users/:discordID/servers/ranking` endpoint.
+It displays 10 servers by default (25 and 50 are available), with search, game-mode and online-state
+filters. Changing a filter resets the page. The first three results on page one are highlighted without
+duplicating them in the remaining list; ranks use votes from the last thirty days.
+
+Each card includes a seven-day chart of daily peak player counts. Historical activity and the last-known
+map/mode remain visible after the server goes offline. Missing days remain gaps, and an empty history
+has an explicit placeholder. Discord buttons use validated invitations returned by the worker; missing
+permissions disable the invitation button without hiding the server.
+
+## Discord status preview
+
+The server status page shares a draft between its settings and button editors. A 250 ms debounce
+requests the bot's serialized status render, with stale responses ignored after edits or navigation.
+The preview is also visible inside the format/button dialogs and the channel-send confirmation.
+On wide screens the settings and buttons sit on the left and the preview stays on the right; smaller
+screens stack them. The editor requests simulation mode with five clearly marked fictional players,
+so the player-list format can be tested even when the game server is offline. These players exist
+only in the preview; publication always reads the actual game-server status.
+
+Typing, toggling options and selecting a destination do not publish the draft. Settings and buttons
+are applied only after an explicit save, and creating the message requires the separate send action.
+These actions wait for the current preview to finish successfully. Canceling a dialog restores its
+previous draft, and preview buttons cannot open links or launch the game.
+
 ## Privacy controls
 
 The legal documents at `/legal/terms` and `/legal/privacy` follow the selected UI language for French,
@@ -48,3 +87,8 @@ using `discordID` + token, scoped server-side to the guilds/servers that user ad
 ```bash
 bun run website:dev   # vite --host
 ```
+
+Vite uses the port configured in `WEBSITE_URL` (3000 when the URL has no explicit port), with
+`strictPort` enabled. It fails on a collision instead of silently moving the website away from the
+OAuth return URL. `OAUTH_REDIRECT_URL` must point to `/login` on that website origin. For concurrent
+local development, set `APP_PORT=3002` in `apps/webhook-relay/.env` to keep the relay separate.

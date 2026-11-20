@@ -1,7 +1,8 @@
 # `@gmod/core`
 
-Cross-cutting application logic that doesn't belong to one specific domain. The catch-all for shared
-utilities, v3 API request/response models, and shared Express types.
+Cross-cutting application logic: v3 API request/response models, server event logging, localization,
+database helpers and shared Express types. Small runtime primitives live in
+[`@gmod/shared`](./shared.md) so domain packages do not import application workflows to use them.
 
 ## Layout
 
@@ -9,7 +10,7 @@ utilities, v3 API request/response models, and shared Express types.
 src/
   classes/
     db/          Query.js, Server.js — low-level query/DB helper classes
-    v3/          Angle, BaseClass, CustomValues, PlayerGmod, Position, Team — shared v3 API value classes
+    v3/          Angle, CustomValues, PlayerGmod, Position, Team — v3 API value classes
   database/
     gm_server_logs.js   MongoDB-backed server logs (chat/kill/event history), used by apps/api and by
                          domain-compliance for GDPR export/erasure
@@ -28,14 +29,18 @@ src/
 
 ## When to put logic here vs. `domain-*`
 
-- `core`: applies across domains (logging, localization, formatting, generic DB/query helpers, Express
+- `core`: applies across domains (server event logging, localization, formatting, DB/query helpers, Express
   typing) or is the v3 API's own request/response modeling.
 - `domain-*`: business logic tied to one concept (a server, a guild, a user, a ban).
+- `shared`: object validation (`BaseClass`), secure token generation and simple operational logging
+  (`gmLog`). Import these modules directly from `@gmod/shared`; they do not load core workflows.
 
-`core` is allowed to depend on every `domain-*` and `infra-*` package (see
-[architecture.md — Allowed dependencies](../architecture.md#allowed-dependencies)); the reverse is not true.
+`core` depends on domain and infrastructure packages. Do not introduce a reverse dependency that creates
+a cycle. Existing compliance exports and moderation localization consume specific core modules; the
+workspace architecture check verifies their actual imports and declared dependencies.
 
 ## Used by
 
-`apps/api` most heavily (v3 models, Express types, DB logging); `logger.js`/`tools.js` are used from almost
-every app and package.
+`apps/api` most heavily (v3 models, Express types, DB logging), and Discord/WebSocket workflows where
+shared application logic is needed. `utils/logger.js` owns server event logging; operational messages
+come from `@gmod/shared/logger.js`.

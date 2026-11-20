@@ -2,7 +2,8 @@
 
 Small HTTP service that posts messages to Discord **webhooks** on behalf of the API. Entry point:
 [`src/index.ts`](../../apps/webhook-relay/src/index.ts) → [`src/main.ts`](../../apps/webhook-relay/src/main.ts).
-Default port `3000`.
+Standalone default port `3000`. The local `.env.example` sets `APP_PORT=3002` so it can run alongside
+the website and its OAuth callback on port 3000.
 
 Migrated from the standalone repo `gmod-integration/webhook_relay` (last commit there: `7df59c6`).
 
