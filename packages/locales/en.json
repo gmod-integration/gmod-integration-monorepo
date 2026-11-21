@@ -235,5 +235,6 @@
   "ch_atm_receive_money": "ATM receive money",
   "ch_atm_deposit_money": "ATM deposit money",
   "ch_atm_withdraw_money": "ATM withdraw money",
-  "ammount": "Amount"
+  "ammount": "Amount",
+  "access_verification_unavailable": "Access could not be verified right now. Please try again shortly."
 }

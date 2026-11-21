@@ -1,4 +1,20 @@
+import type * as AccessDomain from '@gmod/domain-access/index.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof AccessDomain>()),
+  resolveGuildAccess: accessMock,
+}))
+const accessSnapshot = (premium = true) => ({
+  guildID: 'g1',
+  premium,
+  customBot: premium,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'test',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
 import type { Server } from '@gmod/domain-server/Server.js'
 import type { Guild } from '@gmod/domain-guild/Guild.js'
 
@@ -14,12 +30,18 @@ vi.mock('@gmod/infra-redis', () => ({ default: { del: mocks.del } }))
 vi.mock('@gmod/infra-websocket/queues.js', () => ({ wsSendToServerQueue: { add: mocks.enqueue } }))
 const { saveServerDashboardSettings, saveGuildDashboardSettings } =
   await import('../../../src/models/v6/dashboardSettings.js')
-const server = (premium = false) =>
-  ({ id: 'server', isPremium: vi.fn().mockResolvedValue(premium) }) as unknown as Server
-const guild = (premium = true) => ({ id: 'guild', isPremium: vi.fn().mockResolvedValue(premium) }) as unknown as Guild
+const server = (premium = false) => {
+  accessMock.mockResolvedValue(accessSnapshot(premium))
+  return { id: 'server', guild: 'g1', getSetting: vi.fn().mockResolvedValue(false) } as unknown as Server
+}
+const guild = (premium = true) => {
+  accessMock.mockResolvedValue(accessSnapshot(premium))
+  return { id: 'guild', getSetting: vi.fn().mockResolvedValue(false) } as unknown as Guild
+}
 
 beforeEach(() => {
   vi.resetAllMocks()
+  accessMock.mockResolvedValue(accessSnapshot())
   mocks.transaction.mockImplementation((operation) =>
     operation({ gm_server_settings: { upsert: mocks.serverUpsert }, gm_guild_settings: { upsert: mocks.guildUpsert } }),
   )
@@ -73,7 +95,7 @@ describe('atomic dashboard settings', () => {
   it('enforces premium permissions before any section writes', async () => {
     await expect(
       saveServerDashboardSettings(server(), { sync_role_direction: 'both', log_hide_ip: true }),
-    ).rejects.toMatchObject({ code: 'settings_forbidden' })
+    ).rejects.toMatchObject({ code: 'upgrade_required' })
     expect(mocks.transaction).not.toHaveBeenCalled()
   })
   it('commits related server-side settings together without dispatching addon configuration', async () => {
@@ -97,7 +119,7 @@ describe('atomic dashboard settings', () => {
   })
   it('saves verification preferences together and enforces guild entitlements', async () => {
     const input = { verification_dont_mp: true, verification_dont_join_support: false }
-    await expect(saveGuildDashboardSettings(guild(false), input)).rejects.toMatchObject({ code: 'settings_forbidden' })
+    await expect(saveGuildDashboardSettings(guild(false), input)).rejects.toMatchObject({ code: 'upgrade_required' })
     expect(mocks.transaction).not.toHaveBeenCalled()
     expect(await saveGuildDashboardSettings(guild(), input)).toEqual({ settings: input, sync: 'applied' })
     expect(mocks.transaction).toHaveBeenCalledOnce()

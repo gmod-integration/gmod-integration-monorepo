@@ -1301,5 +1301,25 @@
     "apply_draft": "Appliquer au brouillon",
     "delete_trigger": "Supprimer le déclencheur ?",
     "delete_trigger_help": "L’action liée à cet événement ne sera plus exécutée. Cette action est irréversible."
+  },
+  "access": {
+    "unavailable": "Les droits n’ont pas pu être vérifiés. Votre configuration enregistrée est conservée.",
+    "quota": "{1} / {2} utilisés",
+    "upgrade_required": "Cette fonctionnalité nécessite Premium.",
+    "quota_reached": "La limite de cette fonctionnalité est atteinte.",
+    "historical_bot": "Nécessite un achat GmodStore",
+    "suspended": "Cette fonctionnalité enregistrée est suspendue. Vous pouvez toujours désactiver ou supprimer sa configuration.",
+    "count_buttons": "{1} boutons",
+    "count_links": "{1} liens",
+    "history_count": "Les {1} dernières entrées",
+    "permission_denied": "Vous n’avez pas la permission de gérer cette communauté.",
+    "status_chart": "Graphique d’activité du statut",
+    "auto_roles_limit": "Rôles automatiques - Limite",
+    "nickname_rules_limit": "Règles de pseudonyme - Limite",
+    "chat_filters": "Filtres du chat",
+    "log_triggers": "Actions sur les événements des logs",
+    "reverse_sync": "Synchronisation de Discord vers le jeu",
+    "errors_history": "Historique des erreurs",
+    "verification_preferences": "Préférences de vérification"
   }
 }

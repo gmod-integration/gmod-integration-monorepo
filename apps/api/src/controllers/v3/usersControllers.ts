@@ -1,3 +1,4 @@
+import { AccessDeniedError, assertCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js'
 import { ConfigDiscord } from '@gmod/config'
@@ -13,7 +14,6 @@ import {
 import { badArgument, todoControllers } from '@gmod/core/utils/tools.js'
 import moment from 'moment'
 import { getUserDataGRPD } from '@gmod/domain-compliance/gdrp.js'
-import redis from '@gmod/infra-redis'
 import prisma from '@gmod/infra-prisma'
 import { type NextFunction, type Request, type Response } from 'express'
 import {
@@ -151,7 +151,7 @@ export async function oauthLogin(req: Request, res: Response) {
 
     const guild = new Guild({ id: dscGuild.id })
 
-    skipGuidJoin = await guild.getSetting('verification_dont_join_support')
+    skipGuidJoin = await guild.getEffectiveSetting('verification_dont_join_support')
   }
 
   if (!skipGuidJoin) {
@@ -249,21 +249,8 @@ export async function getGuildLinks(req: Request, res: Response) {
 }
 
 export async function postGuildLinks(req: Request, res: Response) {
-  const guild = req.guild!
-  const isPremium = await guild.isPremium()
-
-  const links = await guild.getLinks()
-  if (links.length >= 2 && !isPremium) {
-    return res.status(403).send({
-      error: 'max links reached',
-    })
-  }
-
-  if (req.body && Object.keys(req.body).length) {
-    const result = await createDashboardLink(guild, req.body)
-    return res.status(result.status).send(result.body)
-  }
-  return res.send(await guild.createNewLink())
+  const result = await createDashboardLink(req.guild!, req.body, !req.body || Object.keys(req.body).length === 0)
+  return res.status(result.status).send(result.body)
 }
 
 export async function putGuildLinks(req: Request, res: Response) {
@@ -404,35 +391,16 @@ export async function deleteGuildVerificationsRoles(req: Request, res: Response)
 }
 
 export async function createGuildVerificationsRoles(req: Request, res: Response) {
-  const guild = req.guild!
   const roleID = getSingleParam(req.params.roleID)
-  const isPremium = await guild.isPremium()
-
-  const verificationRoles = await guild.getVerificationRoles()
-  if (verificationRoles.length >= 2 && !isPremium) {
-    return res.status(403).send({
-      error: 'max verification roles reached',
-    })
-  }
-
-  if (verificationRoles.find((role) => role.roleID === roleID)) {
-    return res.status(409).send({
-      error: 'role already exists',
-    })
-  }
-
-  const dscGuild = req.dscGuild!
-  if (!dscGuild.roles.some((role: any) => role.id === roleID)) {
-    return res.status(404).send({
-      error: 'role not found',
-    })
-  }
-
-  if (req.body && Object.keys(req.body).length) {
-    const result = await createDashboardVerificationRole(guild, roleID, req.body)
-    return res.status(result.status).send(result.body)
-  }
-  return res.send(await guild.createVerificationRole(roleID))
+  if (!req.dscGuild!.roles.some((role: any) => role.id === roleID))
+    return res.status(404).send({ error: 'role not found' })
+  const result = await createDashboardVerificationRole(
+    req.guild!,
+    roleID,
+    req.body,
+    !req.body || Object.keys(req.body).length === 0,
+  )
+  return res.status(result.status).send(result.body)
 }
 
 // Status Buttons
@@ -567,21 +535,14 @@ export async function getGmodToDiscordFilter(req: Request, res: Response) {
 }
 
 export async function postGmodToDiscordFilter(req: Request, res: Response) {
-  const server = req.server!
-
-  if (req.body && Object.keys(req.body).length) {
-    const result = await createDashboardServerEntity(server, 'chatFilter', req.body)
-    return res.status(result.status).send(result.body)
-  }
-
-  const filter = await prisma.gm_server_sync_chat_filter.create({
-    data: {
-      serverID: server.id,
-    },
-  })
-
-  await redis.del(`server:${server.id}:gmodToDiscordFilter`)
-  return res.send(filter)
+  const result = await createDashboardServerEntity(
+    req.server!,
+    'chatFilter',
+    req.body,
+    undefined,
+    !req.body || Object.keys(req.body).length === 0,
+  )
+  return res.status(result.status).send(result.body)
 }
 
 export async function putGmodToDiscordFilter(req: Request, res: Response) {
@@ -888,6 +849,7 @@ export async function putGuildSetting(req: Request, res: Response) {
   try {
     return res.send(await guild.setSetting(setting, value))
   } catch (error) {
+    if (error instanceof AccessDeniedError) throw error
     return res.status(404).json({
       error: 'Setting not found or not allowed',
     })
@@ -931,6 +893,7 @@ export async function putServerSetting(req: Request, res: Response) {
   try {
     updatedSetting = await server.setSetting(setting, value, 'dashboard')
   } catch (error) {
+    if (error instanceof AccessDeniedError) throw error
     return res.status(404).send({
       error: 'Setting not found or not allowed',
     })
@@ -973,22 +936,14 @@ export async function getServerRoles(req: Request, res: Response) {
 }
 
 export async function postServerRoles(req: Request, res: Response) {
-  const serverID = getSingleParam(req.params.serverID)
-  const roleID = getSingleParam(req.params.roleID)
-
-  if (req.body && Object.keys(req.body).length) {
-    const result = await createDashboardServerEntity(req.server!, 'role', req.body, roleID)
-    return res.status(result.status).send(result.body)
-  }
-
-  const role = await prisma.gm_server_sync_roles.create({
-    data: {
-      serverID,
-      roleID,
-    },
-  })
-
-  return res.send(role)
+  const result = await createDashboardServerEntity(
+    req.server!,
+    'role',
+    req.body,
+    getSingleParam(req.params.roleID),
+    !req.body || Object.keys(req.body).length === 0,
+  )
+  return res.status(result.status).send(result.body)
 }
 
 export async function putServerRoles(req: Request, res: Response) {
@@ -1068,22 +1023,14 @@ export async function getServerTeams(req: Request, res: Response) {
 }
 
 export async function postServerTeams(req: Request, res: Response) {
-  const serverID = getSingleParam(req.params.serverID)
-  const roleID = getSingleParam(req.params.roleID)
-
-  if (req.body && Object.keys(req.body).length) {
-    const result = await createDashboardServerEntity(req.server!, 'team', req.body, roleID)
-    return res.status(result.status).send(result.body)
-  }
-
-  const role = await prisma.gm_server_sync_team_roles.create({
-    data: {
-      serverID,
-      roleID,
-    },
-  })
-
-  return res.send(role)
+  const result = await createDashboardServerEntity(
+    req.server!,
+    'team',
+    req.body,
+    getSingleParam(req.params.roleID),
+    !req.body || Object.keys(req.body).length === 0,
+  )
+  return res.status(result.status).send(result.body)
 }
 
 export async function putServerTeams(req: Request, res: Response) {
@@ -1104,6 +1051,8 @@ export async function putServerTeams(req: Request, res: Response) {
   }
 
   const { teamName, enable } = req.body
+  const disableOnly = enable === false && (teamName === undefined || teamName === role.teamName)
+  if (!disableOnly) assertCapability(await resolveGuildAccess(req.server!.guild), 'sync.teams')
   return res.send(
     await prisma.gm_server_sync_team_roles.update({
       where: {
@@ -1253,20 +1202,14 @@ export async function getServerPseudo(req: Request, res: Response) {
 }
 
 export async function postServerPseudo(req: Request, res: Response) {
-  const serverID = getSingleParam(req.params.serverID)
-
-  if (req.body && Object.keys(req.body).length) {
-    const result = await createDashboardServerEntity(req.server!, 'pseudo', req.body)
-    return res.status(result.status).send(result.body)
-  }
-
-  const pseudo = await prisma.gm_server_pseudo.create({
-    data: {
-      serverID,
-    },
-  })
-
-  return res.send(pseudo)
+  const result = await createDashboardServerEntity(
+    req.server!,
+    'pseudo',
+    req.body,
+    undefined,
+    !req.body || Object.keys(req.body).length === 0,
+  )
+  return res.status(result.status).send(result.body)
 }
 
 export async function putServerPseudo(req: Request, res: Response) {
@@ -1345,7 +1288,7 @@ export async function getServerReportBugs(req: Request, res: Response) {
 }
 
 export async function getServerLogs(req: Request, res: Response) {
-  const result = await processGetServerLogs(getSingleParam(req.params.serverID), req.query)
+  const result = await processGetServerLogs(req.server!.id, req.query, req.server!.guild)
   return res.status(result.status).send(result.body)
 }
 
@@ -1362,14 +1305,7 @@ export async function getScreenshotsList(req: Request, res: Response) {
 }
 
 export async function getServerLogsTrigger(req: Request, res: Response) {
-  const server = req.server!
-  if (!(await server.isPremium())) {
-    return res.status(403).send({
-      error: 'Server is not premium',
-    })
-  }
-  // getLogsTrigger() always resolves to an array (never null), so no fallback is needed here.
-  return res.send(await server.getLogsTrigger())
+  return res.send(await req.server!.getLogsTrigger())
 }
 
 export async function postServerLogsTrigger(req: Request, res: Response) {

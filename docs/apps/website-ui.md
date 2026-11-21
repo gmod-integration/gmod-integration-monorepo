@@ -41,20 +41,65 @@ selector artwork, while action icons remain in the Lucide registry.
 
 Paths below are relative to `apps/website/src`.
 
-| Component                                         | Source                                            | Purpose                                                                                                                                                                                                                                           |
-| ------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AdminPanel`                                      | `components/AdminPanel.tsx`                       | Section heading, description, premium/badge/info, optional header `actions` and `footer`. `type="none"` leaves the body unpadded for tables.                                                                                                      |
-| `AdminModal`                                      | `components/AdminModal.tsx`                       | Named dialog: `id`, `title`, optional `description`, `busy`, `onClose`, `onCancel`, `size="wide"`, `footer`. Busy blocks user dismissal.                                                                                                          |
-| `ConfirmActionDialog`                             | `components/ConfirmActionDialog.tsx`              | Confirm a named target and consequence before an async command. `id`, `title`, optional `description`, `confirmLabel`, `variant`, `onSuccess`; `onConfirm` rejects on failure. Blocks duplicate requests, dismissal and navigation while pending. |
-| `AdminChannelSelector`                            | `components/AdminChannelSelector.tsx`             | Channel dialog with local choice and explicit Save/Cancel. Callback returns its request promise and rejects on failure. `idSelect` seeds the current choice.                                                                                      |
-| `ChannelSelector`                                 | `components/AdminChannelSelector.tsx`             | Local channel choice inside a larger form; does not save or close the dialog.                                                                                                                                                                     |
-| `AdminRoleSelector`                               | `components/AdminRoleSelector.tsx`                | Role choice and explicit confirmation: `id`, `title`, filtered `roles`, optional `loading`/`error`, async `onConfirm`. Shares pending/error/cancel behavior with the channel selector.                                                            |
-| `Pagination`                                      | `components/Pagination.tsx`                       | Existing query, total and page-size controls. Keep its query contract.                                                                                                                                                                            |
-| `DiscordStatusPreview`                            | `components/discord/DiscordStatusPreview.tsx`     | Shared status rendering for the page and its editors.                                                                                                                                                                                             |
-| `DiscordChannel`, `DiscordRole`, `DiscordMessage` | `components/discord/`                             | Discord entity display and message links.                                                                                                                                                                                                         |
-| `TextValue`, `LinkValue`, `SteamID64`             | `components/popup/`, `components/SteamID64.tsx`   | Long-value, link and player identifier display.                                                                                                                                                                                                   |
-| `PremiumBadge`, `BuyPremiumBtn`, `PremiumOnly`    | `utils/premium.tsx`, `components/PremiumOnly.tsx` | Shared premium access presentation.                                                                                                                                                                                                               |
-| `ServerActivityChart`, `AdminChart`, `JsonViewer` | `components/`                                     | Charts and structured data display.                                                                                                                                                                                                               |
+| Component                                         | Source                                            | Purpose                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AdminPanel`                                      | `components/AdminPanel.tsx`                       | Section heading, description, premium/badge/info, optional header `actions` and `footer`. `type="none"` leaves the body unpadded for tables.                                                                                                                                                    |
+| `AdminModal`                                      | `components/AdminModal.tsx`                       | Named dialog: `id`, `title`, optional `description`, `busy`, `onClose`, `onCancel`, `size="wide"`, `footer`. Busy blocks user dismissal.                                                                                                                                                        |
+| `ConfirmActionDialog`                             | `components/ConfirmActionDialog.tsx`              | Confirm a named target and consequence before an async command. `id`, `title`, optional `description`, `confirmLabel`, `variant`, `onSuccess`; `onConfirm` rejects on failure. Blocks duplicate requests, dismissal and navigation while pending.                                               |
+| `AdminChannelSelector`                            | `components/AdminChannelSelector.tsx`             | Channel dialog with local choice and explicit Save/Cancel. Callback returns its request promise and rejects on failure. `idSelect` seeds the current choice.                                                                                                                                    |
+| `ChannelSelector`                                 | `components/AdminChannelSelector.tsx`             | Local channel choice inside a larger form; does not save or close the dialog.                                                                                                                                                                                                                   |
+| `AdminRoleSelector`                               | `components/AdminRoleSelector.tsx`                | Role choice and explicit confirmation: `id`, `title`, filtered `roles`, optional `loading`/`error`, async `onConfirm`. `confirmDisabled` blocks submission while preserving selection; `children` composes contextual feedback. Shares pending/error/cancel behavior with the channel selector. |
+| `Pagination`                                      | `components/Pagination.tsx`                       | Existing query, total and page-size controls. Keep its query contract.                                                                                                                                                                                                                          |
+| `DiscordStatusPreview`                            | `components/discord/DiscordStatusPreview.tsx`     | Shared status rendering for the page and its editors.                                                                                                                                                                                                                                           |
+| `DiscordChannel`, `DiscordRole`, `DiscordMessage` | `components/discord/`                             | Discord entity display and message links.                                                                                                                                                                                                                                                       |
+| `TextValue`, `LinkValue`, `SteamID64`             | `components/popup/`, `components/SteamID64.tsx`   | Long-value, link and player identifier display.                                                                                                                                                                                                                                                 |
+| `PremiumBadge`, `BuyPremiumBtn`, `PremiumOnly`    | `utils/premium.tsx`, `components/PremiumOnly.tsx` | Shared premium access presentation.                                                                                                                                                                                                                                                             |
+| `ServerActivityChart`, `AdminChart`, `JsonViewer` | `components/`                                     | Charts and structured data display.                                                                                                                                                                                                                                                             |
+
+## Capability and quota controls
+
+Business access comes from the authenticated v6 access snapshot, with policy metadata from
+`@gmod/schema/server/AccessPolicySchema.js`. `localStorage.isPremium` is a display cache from community
+selection and grants no capability. Keep actor permissions, commercial access, load failures and
+configuration availability distinct.
+
+| Component/hook     | Source                          | Contract                                                                                                                                                                                                                                                                                                                      |
+| ------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AccessProvider`   | `components/AccessProvider.tsx` | Loads the current community/server access endpoint; refreshes on writes, denied requests, focus, visibility, storage and WebSocket reconnect, as well as periodically. Verifies scope and expiry. An optional controlled snapshot is for explicit embedding/testing; the production app never seeds rights from localStorage. |
+| `useFeatureAccess` | `components/AccessProvider.tsx` | Named `CapabilityKey`; `allowed()`, `limit()`, `canCreate(used)`, snapshot/loading/error and refresh. `null` limit means no commercial count limit. A fresh `unknown` entitlement still permits free capabilities within their free quota.                                                                                    |
+| `FeatureGate`      | `components/FeatureGate.tsx`    | Keeps children mounted and visible. Shows shared quota, reason and contextual upgrade link. Pass the list's `loading` and `error`; failed/unknown data never becomes an upgrade demand. Disable the action using the matching hook.                                                                                           |
+| `SuspendedFeature` | `components/FeatureGate.tsx`    | Explains that a stored paid configuration is suspended after verified loss of access. It does not discard or persist data.                                                                                                                                                                                                    |
+
+```tsx
+const access = useFeatureAccess('sync.roles.rules')
+<FeatureGate capability="sync.roles.rules" used={rows().length} loading={rows.loading} error={rows.error}>
+  <Button disabled={rows.loading || !!rows.error || !access.canCreate(rows().length)} onClick={add}>
+    {t('ui.create')}
+  </Button>
+</FeatureGate>
+```
+
+The API enforces every capability and quota independently of the UI. A feature gate is not an
+authorization boundary. Keep names/limits out of page-local conditionals. The public plan comparison
+uses the same typed policy, including four free role mappings and three custom status buttons.
+History windows come from the API response; never truncate rows or rewrite pagination to implement
+commercial access in the browser.
+
+After expiry, retain saved data and drafts. Keep configuration readable and permit authorized cleanup:
+disabling a paid option, restoring its free default, or deleting a rule. Prevent new paid activations;
+make suspended stored values clear. A provider outage is distinct from a verified free plan and must
+not generate an upsell. Preserve the existing draft, validation and navigation contracts during access
+refreshes. Custom bot eligibility is a separate GmodStore capability, not general Premium.
+
+Creation and editing dialogs recheck the same capability and quota when applying the draft. Keep the
+matching `FeatureGate` inside the dialog so a loss of access has a visible explanation. A refresh,
+expiry or verification failure disables the affected confirmation without closing the dialog or
+clearing its values; restored access allows the same draft to continue. An unavailable access snapshot
+uses the verification message rather than a Premium or quota claim. Cleanup remains available.
+
+`PremiumBadge`, `PremiumOnly` and `AdminPanel.premium` remain presentation adapters.
+`BuyPremiumBtn` is deprecated: it keeps content visible beside a link, but new code uses `FeatureGate`
+with a named capability. The icon-only badge has an accessible link name.
 
 ## Interaction contracts
 

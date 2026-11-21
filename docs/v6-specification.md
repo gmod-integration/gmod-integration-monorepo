@@ -422,6 +422,12 @@ de révision. L’interface utilise des brouillons explicites et sépare sauvega
 [catalogue des composants](./apps/website-ui.md#interaction-contracts). Les lectures et créations restantes
 conservent encore leurs routes historiques pendant cette migration.
 
+Le moteur commun de capacités et de quotas est également implémenté pour les offres actuelles :
+résolution des droits historiques, GmodStore et Discord, contrôles partagés entre anciennes/nouvelles
+routes, traitements et dashboard, et configuration effective après expiration. Voir le
+[domaine d’accès](./packages/domain-access.md) et le [contrat API](./apps/api.md#community-access-and-capabilities).
+Le catalogue commercial de modules à la carte et son parcours d’achat restent à réaliser.
+
 | Lot                     | Résultat attendu                                                                                                      | Dépendance principale                                              |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | 1 Contrats et périmètre | Inventaire des parcours, contrats HTTP et WSS v6, définitions de Forwards et Streams, grille de migration des droits. | Arbitrages produit et commerciaux.                                 |

@@ -113,13 +113,13 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsList.tsx', () => {
     expect(screen.queryByText('LiveBob')).not.toBeInTheDocument()
   })
 
-  it('truncates to 500 logs/total for non-premium users when the server reports more than 500', async () => {
+  it('preserves the pagination window acknowledged by the API without local truncation', async () => {
     setPremium(false)
     vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(true, logsBody(600, 3)) as never)
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('Player0')).toBeInTheDocument())
-    // total pages = ceil(500/25) = 20
-    expect(screen.getByText('1 / 20')).toBeInTheDocument()
+    // The service now owns the allowed window and acknowledged total.
+    expect(screen.getByText('1 / 24')).toBeInTheDocument()
   })
 
   it('does not truncate for premium users even when the server reports more than 500', async () => {

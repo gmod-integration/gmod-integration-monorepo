@@ -1,3 +1,4 @@
+import { FeatureGate } from '../../../../../components/FeatureGate.js'
 import { Component, createEffect, createResource, createSignal, For, onMount, Show } from 'solid-js'
 import { fetchAPI } from '../../../../../utils/api'
 import { useI18n } from '../../../../../i18n'
@@ -7,7 +8,6 @@ import { AddLogComponent } from './ListLog'
 
 import { ClientQuery, QuerySort, ServerQuery } from '../../../../../utils/types/QueryTypes'
 import Pagination from '../../../../../components/Pagination'
-import { premium } from '../../../../../utils/premium'
 import { TableState } from '../../../../../components/ui/index.js'
 
 interface Log {
@@ -49,13 +49,7 @@ export const ServerLogsList: Component = () => {
       throw new Error('Failed to fetch logs')
     }
 
-    let data = (await res.json()) as LogsData
-    if (!premium()) {
-      if (data.query.total > 500) {
-        data.query.total = 500
-        data.logs = data.logs.slice(0, 500)
-      }
-    }
+    const data = (await res.json()) as LogsData
 
     return data
   }
@@ -87,8 +81,13 @@ export const ServerLogsList: Component = () => {
       title={t('dashboard.server.logs.title.logs', 'Logs')}
       description={t('dashboard.server.logs.description.logs', 'Watch the logs of your server.')}
       type="none"
-      premium={t('dashboard.server.logs.premium', 'Limited to 500 last logs for free users.')}
     >
+      <FeatureGate
+        capability="logs.history"
+        used={!logs.loading && !logs.error ? logs().query.total : undefined}
+        loading={logs.loading}
+        error={logs.error}
+      />
       <table class="table">
         <thead>
           <tr class="text-l">

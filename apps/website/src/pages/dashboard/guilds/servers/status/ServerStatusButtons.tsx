@@ -1,3 +1,5 @@
+import { FeatureGate } from '../../../../../components/FeatureGate.js'
+import { useFeatureAccess } from '../../../../../components/AccessProvider.js'
 import { createEffect, createSignal, For, Show, type Component } from 'solid-js'
 import {
   StatusConfigurationButtonSchema,
@@ -7,7 +9,6 @@ import AdminPanel from '../../../../../components/AdminPanel.js'
 import AdminModal from '../../../../../components/AdminModal.js'
 import { Button, FormActions, FormField, Icon, IconButton, TableState } from '../../../../../components/ui/index.js'
 import { LinkValue } from '../../../../../components/popup/LinkValue.js'
-import { BuyPremiumBtn, premium } from '../../../../../utils/premium.js'
 import { createDraftForm } from '../../../../../hooks/createDraftForm.js'
 import { showDialog, closeDialog } from '../../../../../utils/dialog.js'
 import { useI18n } from '../../../../../i18n.js'
@@ -29,6 +30,7 @@ declare module 'solid-js' {
 const emptyButton = (): StatusConfigurationButton => ({ name: '', emoji: '', url: '', enable: false })
 const ServerStatusButtons: Component = () => {
   const { t } = useI18n()
+  const quotaAccess = useFeatureAccess('status.buttons')
   const editor = useStatusConfiguration()
   const preview = useStatusPreview()
   const [open, setOpen] = createSignal(false)
@@ -61,7 +63,7 @@ const ServerStatusButtons: Component = () => {
     editor.stageButton(undefined)
   }
   function edit(button?: StatusConfigurationButton, row?: number) {
-    if (unavailable()) return
+    if (unavailable() || (row === undefined && !quotaAccess.canCreate(editor.form.draft().buttons.length))) return
     setIndex(row)
     buttonForm.reset(button ?? emptyButton())
     setEmojiPicker(false)
@@ -69,7 +71,13 @@ const ServerStatusButtons: Component = () => {
     showDialog('edit_status_button')
   }
   function apply() {
-    if (!buttonForm.valid() || !buttonForm.dirty() || unavailable()) return
+    if (
+      !buttonForm.valid() ||
+      !buttonForm.dirty() ||
+      unavailable() ||
+      (index() === undefined && !quotaAccess.canCreate(editor.form.draft().buttons.length))
+    )
+      return
     const button = StatusConfigurationButtonSchema.parse(buttonForm.draft())
     const buttons = [...editor.form.draft().buttons]
     const row = index()
@@ -172,9 +180,22 @@ const ServerStatusButtons: Component = () => {
             onRetry={preview!.refetch}
           />
         </Show>
+        <Show when={open() && index() === undefined}>
+          <FeatureGate
+            capability="status.buttons"
+            used={editor.form.draft().buttons.length}
+            loading={editor.loading()}
+            error={editor.loadError()}
+            showQuota={false}
+          />
+        </Show>
         <FormActions
           dirty={buttonForm.dirty()}
-          disabled={unavailable() || !buttonForm.valid()}
+          disabled={
+            unavailable() ||
+            !buttonForm.valid() ||
+            (index() === undefined && !quotaAccess.canCreate(editor.form.draft().buttons.length))
+          }
           saveLabel={t('editing.apply_draft', 'Apply to draft')}
           onSave={apply}
           onCancel={() => {
@@ -191,20 +212,21 @@ const ServerStatusButtons: Component = () => {
         )}
         type="none"
         actions={
-          <BuyPremiumBtn
-            subCondition={editor.form.draft().buttons.length < 3}
-            btnText={t('dashboard.server.status.premium', 'Limited to 3 buttons for free users.')}
-            hidden={editor.loading()}
+          <FeatureGate
+            capability="status.buttons"
+            used={editor.form.draft().buttons.length}
+            loading={editor.loading()}
+            error={editor.loadError()}
           >
             <Button
               variant="primary"
-              disabled={unavailable() || editor.form.draft().buttons.length >= (premium() ? 25 : 3)}
+              disabled={unavailable() || !quotaAccess.canCreate(editor.form.draft().buttons.length)}
               onClick={() => edit()}
             >
               <Icon name="plus" size={17} />
               {t('dashboard.server.status.add_button', 'Add Button')}
             </Button>
-          </BuyPremiumBtn>
+          </FeatureGate>
         }
       >
         <div class="min-w-0 w-full overflow-x-auto">

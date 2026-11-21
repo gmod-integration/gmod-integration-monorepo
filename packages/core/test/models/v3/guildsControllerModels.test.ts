@@ -75,7 +75,7 @@ describe('processDiscordMessageToGmod', () => {
     findManyMock.mockResolvedValueOnce([{ id: 1 }])
     const server = {
       getSyncChatChannel: vi.fn().mockResolvedValueOnce({}),
-      getSetting: vi.fn().mockResolvedValueOnce('gmodToDiscord'),
+      getEffectiveSetting: vi.fn().mockResolvedValueOnce('gmodToDiscord'),
     }
     getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
 
@@ -84,28 +84,25 @@ describe('processDiscordMessageToGmod', () => {
     expect(wsAddMock).not.toHaveBeenCalled()
   })
 
-  it('replies with a premium-required prompt and returns when the guild is not premium', async () => {
+  it('does not relay when the effective direction falls back to the free setting after expiry', async () => {
     findManyMock.mockResolvedValueOnce([{ id: 1 }])
     const server = {
       getSyncChatChannel: vi.fn().mockResolvedValueOnce({}),
-      getSetting: vi.fn().mockResolvedValueOnce('both'),
+      getEffectiveSetting: vi.fn().mockResolvedValueOnce('gmodToDiscord'),
       getID: () => 's1',
     }
     getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
-    isGuildPremiumMock.mockResolvedValueOnce(false)
     const message = makeMessage()
-
     await processDiscordMessageToGmod(message)
-
-    expect(message.reply).toHaveBeenCalledWith(expect.objectContaining({ content: 'premium_required' }))
     expect(wsAddMock).not.toHaveBeenCalled()
+    expect(message.reply).not.toHaveBeenCalled()
   })
 
   it('pushes a wsPlayerSay update for a premium guild', async () => {
     findManyMock.mockResolvedValueOnce([{ id: 1 }])
     const server = {
       getSyncChatChannel: vi.fn().mockResolvedValueOnce({}),
-      getSetting: vi.fn().mockResolvedValueOnce('both'),
+      getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
       getID: () => 's1',
     }
     getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])

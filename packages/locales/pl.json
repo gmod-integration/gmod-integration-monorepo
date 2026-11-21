@@ -235,5 +235,6 @@
   "ch_atm_deposit_money": "ATM wpłacił pieniądze",
   "ch_atm_withdraw_money": "ATM wypłacił pieniądze",
   "ammount": "Kwota",
-  "discord.screenshot.no_title": "Brak tytułu"
+  "discord.screenshot.no_title": "Brak tytułu",
+  "access_verification_unavailable": "Nie można teraz zweryfikować uprawnień dostępu. Spróbuj ponownie za chwilę."
 }

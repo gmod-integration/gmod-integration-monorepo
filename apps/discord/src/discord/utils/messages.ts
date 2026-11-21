@@ -62,7 +62,7 @@ export async function getStatusMessage(
   port = port === undefined ? '' : port
   playersList = normalizePlayersList(playersList)
 
-  const showChar = await server.getSetting('show_status_chart')
+  const showChar = await server.getEffectiveSetting('show_status_chart')
   let bufferChart: Buffer | null = null
   if (showChar) {
     bufferChart =
@@ -121,12 +121,12 @@ export async function getStatusMessage(
     )
     .setTimestamp(new Date())
 
-  if (servOnline && playersList.length > 0 && (await server.getSetting('show_player_list_status'))) {
+  if (servOnline && playersList.length > 0 && (await server.getEffectiveSetting('show_player_list_status'))) {
     playersList.sort((a: any, b: any) => {
       return b.connectTime - a.connectTime
     })
 
-    const status_player_list_format = await server.getSetting('status_player_list_format')
+    const status_player_list_format = await server.getEffectiveSetting('status_player_list_format')
 
     const playersListString = playersList.map((player: any) => {
       player = new PlayerGmod(player)
@@ -161,12 +161,22 @@ export async function getStatusMessage(
   const row3 = new ActionRowBuilder<ButtonBuilder>()
   const row4 = new ActionRowBuilder<ButtonBuilder>()
   const row5 = new ActionRowBuilder<ButtonBuilder>()
+  const buttons = await server.getEffectiveStatusButtons()
 
   if (servOnline) {
-    row1.addComponents(await ButtonConnect(lang, ip, port))
+    const connect = await ButtonConnect(lang, ip, port)
+    if (buttons.length >= 25) {
+      // Discord permits 25 buttons total. Preserve all 25 paid custom buttons and offer
+      // the same connection link in the embed when its button row is full.
+      const component = connect.toJSON()
+      if ('url' in component)
+        embed.addFields({
+          name: component.label || (await getTranslate('server-connect', lang)),
+          value: `[${ip}:${port}](${component.url})`,
+          inline: false,
+        })
+    } else row1.addComponents(connect)
   }
-
-  const buttons = await server.getServerStatusButtons()
 
   function addButtons(
     button: {

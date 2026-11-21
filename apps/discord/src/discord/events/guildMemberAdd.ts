@@ -3,7 +3,7 @@ import { addAutoRoleToUser, updateGuildStat, verifyUser } from '@gmod/domain-gui
 import { gmLog } from '@gmod/shared/logger.js'
 import { getNotVerifiedMessage } from '../utils/messages.js'
 import { type GuildMember } from 'discord.js'
-import prisma from '@gmod/infra-prisma'
+import { Guild } from '@gmod/domain-guild/Guild.js'
 
 export default {
   name: 'guildMemberAdd',
@@ -21,12 +21,7 @@ export default {
       await addAutoRoleToUser(guild, member).catch(() => {})
 
       if (!(await verifyUser(guild, member))) {
-        const dontMp = await prisma.gm_guild_settings.findFirst({
-          where: {
-            guildID: guild.id,
-            setting: 'verification_dont_mp',
-          },
-        })
+        const dontMp = await new Guild({ id: guild.id }).getEffectiveSetting('verification_dont_mp')
 
         if (dontMp) {
           return

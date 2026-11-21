@@ -1,3 +1,5 @@
+import { useFeatureAccess } from '../../../components/AccessProvider.js'
+import { FeatureGate, SuspendedFeature } from '../../../components/FeatureGate.js'
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
 import { type Component, createResource, createSignal, onCleanup, Show } from 'solid-js'
 import AdminPanel from '../../../components/AdminPanel.js'
@@ -34,6 +36,8 @@ const emptyDraft = (): BotDraft => ({ username: '', avatar: '', status: 'disable
 
 const GuildBot: Component = () => {
   const { t } = useI18n()
+  const customAccess = useFeatureAccess('bot.custom')
+  const presenceAccess = useFeatureAccess('bot.presence')
   const [bot, { mutate: setBot, refetch: refreshBot }] = createResource(async (): Promise<Bot> => {
     const response = await fetchAPI(BOT_URL, 'GET')
     if (!response.ok) throw new Error('Bot request failed')
@@ -85,7 +89,7 @@ const GuildBot: Component = () => {
   useDraftGuard({ dirty, pending: editAction.pending, discard: discardEdit })
   useDraftGuard({ dirty: () => !!token(), pending: setupAction.pending, discard: discardSetup })
   const openEditor = () => {
-    if (bot.loading || bot.error || busy()) return
+    if (bot.loading || bot.error || busy() || !customAccess.allowed()) return
     const current = bot()!
     const next = { username: current.username, avatar: current.avatar, status: current.status }
     setOriginalDraft(next)
@@ -94,13 +98,21 @@ const GuildBot: Component = () => {
     showDialog('edit_bot')
   }
   const openSetup = () => {
-    if (bot.loading || bot.error || busy()) return
+    if (bot.loading || bot.error || busy() || !customAccess.allowed()) return
     discardSetup()
     showDialog('setup_bot')
   }
 
   async function saveBot() {
-    if (bot.loading || bot.error || !dirty() || !valid()) return
+    if (
+      bot.loading ||
+      bot.error ||
+      !dirty() ||
+      !valid() ||
+      !customAccess.allowed() ||
+      (!presenceAccess.allowed() && draft().status !== 'disabled' && draft().status !== originalDraft().status)
+    )
+      return
     const submitted = { ...draft() }
     const saved = await editAction.run(async () => {
       const response = await fetchAPI(BOT_URL, 'PUT', { ...bot()!, ...submitted })
@@ -114,7 +126,7 @@ const GuildBot: Component = () => {
   }
 
   async function setupBot() {
-    if (bot.loading || bot.error || !token().trim()) return
+    if (bot.loading || bot.error || !token().trim() || !customAccess.allowed()) return
     const submittedToken = token()
     const saved = await setupAction.run(async () => {
       const response = await fetchAPI(BOT_URL, 'PATCH', { token: submittedToken })
@@ -160,7 +172,7 @@ const GuildBot: Component = () => {
 
   return (
     <>
-      <Show when={!bot.loading && !bot.error && !bot()!.custom}>
+      <Show when={!bot.loading && !bot.error && !bot()!.custom && !customAccess.allowed() && !bot()!.purchased}>
         <div class="text-indigo-300 flex items-center rounded-lg border-indigo-400 border p-4 gap-4">
           <Icon name="bot" aria-hidden="true" />
           <span>
@@ -229,15 +241,29 @@ const GuildBot: Component = () => {
             onChange={(event) => updateDraft({ status: event.currentTarget.value })}
           >
             <option value="disabled">{getNameOf('disabled')}</option>
-            <option value="guildMemberCount">{getNameOf('guildMemberCount')}</option>
-            <option value="playerCount">{getNameOf('playerCount')}</option>
-            <option value="rotate">{getNameOf('rotate')}</option>
+            <option value="guildMemberCount" disabled={!presenceAccess.allowed()}>
+              {getNameOf('guildMemberCount')}
+            </option>
+            <option value="playerCount" disabled={!presenceAccess.allowed()}>
+              {getNameOf('playerCount')}
+            </option>
+            <option value="rotate" disabled={!presenceAccess.allowed()}>
+              {getNameOf('rotate')}
+            </option>
           </select>
         </FormField>
+        <FeatureGate capability="bot.presence" showQuota={false} />
+        <SuspendedFeature capability="bot.presence" active={originalDraft().status !== 'disabled'} />
         <FormActions
           dirty={dirty()}
           pending={editAction.pending()}
-          disabled={bot.loading || !!bot.error || !valid()}
+          disabled={
+            bot.loading ||
+            !!bot.error ||
+            !valid() ||
+            !customAccess.allowed() ||
+            (!presenceAccess.allowed() && draft().status !== 'disabled' && draft().status !== originalDraft().status)
+          }
           onSave={saveBot}
           onCancel={() => {
             discardEdit()
@@ -282,10 +308,11 @@ const GuildBot: Component = () => {
             onInput={(event) => setToken(event.currentTarget.value)}
           />
         </FormField>
+        <FeatureGate capability="bot.custom" loading={bot.loading} error={bot.error} showQuota={false} />
         <FormActions
           dirty={!!token().trim()}
           pending={setupAction.pending()}
-          disabled={bot.loading || !!bot.error}
+          disabled={bot.loading || !!bot.error || !customAccess.allowed()}
           onSave={setupBot}
           onCancel={() => {
             discardSetup()
@@ -301,16 +328,17 @@ const GuildBot: Component = () => {
         icon="bot"
         type="none"
         actions={
-          <Show when={!bot.loading && !bot.error && bot()!.purchased}>
+          <FeatureGate capability="bot.custom" loading={bot.loading} error={bot.error} showQuota={false}>
             <Button
               variant="primary"
-              disabled={busy()}
+              disabled={
+                busy() || !customAccess.allowed() || bot.loading || !!bot.error || !bot()?.custom || !bot()?.onGuild
+              }
               onClick={openEditor}
-              classList={{ hidden: !bot()!.custom || !bot()!.onGuild }}
             >
               {t('dashboard.guild.bot.edit_custom_bot', 'Edit Custom Bot')}
             </Button>
-          </Show>
+          </FeatureGate>
         }
       >
         <AsyncState
@@ -336,7 +364,7 @@ const GuildBot: Component = () => {
                 <dd>{getNameOf(bot()!.status)}</dd>
               </dl>
             </SettingGroup>
-            <Show when={bot()!.purchased}>
+            <Show when={customAccess.allowed() || bot()!.purchased}>
               <SettingGroup title={t('settings.bot_connection', 'Connection and credentials')} icon="link">
                 <SettingRow
                   title={t('settings.bot_membership', 'Discord server')}
@@ -358,7 +386,11 @@ const GuildBot: Component = () => {
                   title={t('dashboard.guild.bot.token', 'Token')}
                   description={t('settings.bot_token_hint', 'Use setup to configure or replace the custom bot token.')}
                 >
-                  <Button disabled={busy()} onClick={openSetup} classList={{ hidden: !bot()!.active }}>
+                  <Button
+                    disabled={busy() || !customAccess.allowed()}
+                    onClick={openSetup}
+                    classList={{ hidden: !bot()!.active }}
+                  >
                     {t('dashboard.guild.bot.setup_custom_bot', 'Setup Custom Bot')}
                   </Button>
                 </SettingRow>

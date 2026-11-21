@@ -42,6 +42,7 @@ function baseBot(overrides: Record<string, unknown> = {}) {
 describe('pages/dashboard/guilds/GuildBot.tsx', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true, customBot: true }))
     ;(fetchAPI as any).mockReset()
     ;(getUrlWithActualParams as any).mockReset()
     ;(getUrlWithActualParams as any).mockImplementation((s: string) => s)
@@ -53,7 +54,8 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     expect(screen.getAllByText('Loading...').length).toBeGreaterThan(0)
   })
 
-  it('shows a banner pointing to a custom bot when the bot is not custom', async () => {
+  it('shows the historical purchase requirement when the community has no custom-bot entitlement', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true, customBot: false }))
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ custom: false, purchased: false })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await vi.waitFor(() =>
@@ -263,11 +265,12 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     expect(within(setupModal).getByLabelText(/Token/)).toHaveValue('rejected-token')
   })
 
-  it('hides the whole action row when the bot has not been purchased', async () => {
+  it('keeps the custom bot action visible but disabled without its historical entitlement', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true, customBot: false }))
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ purchased: false })))
     renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
-    expect(screen.queryByRole('button', { name: 'Edit Custom Bot' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit Custom Bot' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Join Guild' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Setup Custom Bot' })).not.toBeInTheDocument()
   })
@@ -289,7 +292,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     )
     renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
-    expect(screen.getByRole('button', { name: 'Edit Custom Bot' })).toHaveClass('hidden')
+    expect(screen.getByRole('button', { name: 'Edit Custom Bot' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Join Guild' })).not.toHaveClass('hidden')
     expect(screen.getByRole('button', { name: 'Setup Custom Bot' })).toHaveClass('hidden')
   })
@@ -300,7 +303,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     )
     renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
-    expect(screen.getByRole('button', { name: 'Edit Custom Bot' })).toHaveClass('hidden')
+    expect(screen.getByRole('button', { name: 'Edit Custom Bot' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Join Guild' })).toHaveClass('hidden')
   })
 

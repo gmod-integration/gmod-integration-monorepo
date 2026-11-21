@@ -1232,5 +1232,25 @@
     "apply_draft": "Auf den Entwurf anwenden",
     "delete_trigger": "Auslöser löschen?",
     "delete_trigger_help": "Die ausgewählte Ereignisaktion wird nicht mehr ausgeführt. Dies kann nicht rückgängig gemacht werden."
+  },
+  "access": {
+    "unavailable": "Die Zugriffsrechte konnten nicht geprüft werden. Deine gespeicherte Konfiguration bleibt erhalten.",
+    "quota": "{1} / {2} verwendet",
+    "upgrade_required": "Diese Funktion erfordert Premium.",
+    "quota_reached": "Das Limit für diese Funktion ist erreicht.",
+    "historical_bot": "Erfordert einen GmodStore-Kauf",
+    "suspended": "Diese gespeicherte Funktion ist ausgesetzt. Du kannst ihre Konfiguration weiterhin deaktivieren oder entfernen.",
+    "count_buttons": "{1} Schaltflächen",
+    "count_links": "{1} Links",
+    "history_count": "Die letzten {1} Einträge",
+    "permission_denied": "Du hast keine Berechtigung, diese Community zu verwalten.",
+    "status_chart": "Aktivitätsdiagramm im Status",
+    "auto_roles_limit": "Automatische Rollen - Limit",
+    "nickname_rules_limit": "Spitznamenregeln - Limit",
+    "chat_filters": "Chatfilter",
+    "log_triggers": "Aktionen bei Log-Ereignissen",
+    "reverse_sync": "Synchronisierung von Discord zum Spiel",
+    "errors_history": "Fehlerverlauf",
+    "verification_preferences": "Verifizierungseinstellungen"
   }
 }

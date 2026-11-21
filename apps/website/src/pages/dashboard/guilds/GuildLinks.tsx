@@ -1,3 +1,5 @@
+import { FeatureGate } from '../../../components/FeatureGate.js'
+import { useFeatureAccess } from '../../../components/AccessProvider.js'
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
 import { type Component, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../components/AdminPanel.js'
@@ -6,7 +8,6 @@ import ConfirmActionDialog from '../../../components/ConfirmActionDialog.js'
 import { AsyncState, Button, FormActions, FormField, IconButton, Icon } from '../../../components/ui/index.js'
 import { createDraftForm } from '../../../hooks/createDraftForm.js'
 import { useI18n } from '../../../i18n.js'
-import { BuyPremiumBtn } from '../../../utils/premium.js'
 import { fetchAPI } from '../../../utils/api.js'
 import { LinkValue } from '../../../components/popup/LinkValue.js'
 import { TextValue } from '../../../components/popup/TextValue.js'
@@ -25,6 +26,7 @@ const fetchLinks = async (): Promise<Link[]> => {
 
 const GuildLinks: Component = () => {
   const { t } = useI18n()
+  const quotaAccess = useFeatureAccess('guild.links')
   const [links, { mutate, refetch }] = createResource(fetchLinks)
   const [deleteTarget, setDeleteTarget] = createSignal<Link>()
   const form = createDraftForm<Link>({
@@ -52,13 +54,13 @@ const GuildLinks: Component = () => {
     closeDialog('edit_select_link')
   }
   const openEditor = (link: Link) => {
-    if (busy()) return
+    if (busy() || (!link.id && !quotaAccess.canCreate(links()?.length ?? 0))) return
     form.reset(link)
     showDialog('edit_select_link')
   }
 
   async function saveLink() {
-    if (links.loading || links.error) return
+    if (links.loading || links.error || (!selectedLink().id && !quotaAccess.canCreate(links()?.length ?? 0))) return
     const saved = await form.save(async (draft) => {
       const response = await fetchAPI(draft.id ? `${LINKS_URL}/${draft.id}` : LINKS_URL, draft.id ? 'PUT' : 'POST', {
         alias: draft.alias,
@@ -147,10 +149,24 @@ const GuildLinks: Component = () => {
             <option value="false">{t('dashboard.guild.links.no', 'No')}</option>
           </select>
         </FormField>
+        <Show when={!selectedLink().id}>
+          <FeatureGate
+            capability="guild.links"
+            used={!links.loading && !links.error ? links()?.length : undefined}
+            loading={links.loading}
+            error={links.error}
+            showQuota={false}
+          />
+        </Show>
         <FormActions
           dirty={form.dirty()}
           pending={form.pending()}
-          disabled={links.loading || !!links.error || !form.valid()}
+          disabled={
+            links.loading ||
+            !!links.error ||
+            !form.valid() ||
+            (!selectedLink().id && !quotaAccess.canCreate(links()?.length ?? 0))
+          }
           saveLabel={selectedLink().id ? t('ui.save', 'Save') : t('ui.create', 'Create')}
           onSave={saveLink}
           onCancel={cancelEdit}
@@ -234,14 +250,19 @@ const GuildLinks: Component = () => {
         />
         <Show when={!links.loading && !links.error}>
           <div class="flex gap-4 p-4">
-            <BuyPremiumBtn
-              subCondition={(links()?.length ?? 0) < 2}
-              btnText={t('dashboard.guild.links.premium', 'Limited to 2 links for free users.')}
+            <FeatureGate
+              capability="guild.links"
+              used={!links.loading && !links.error ? links()?.length : undefined}
+              loading={links.loading}
+              error={links.error}
             >
-              <Button disabled={busy()} onClick={() => openEditor(emptyLink())}>
+              <Button
+                disabled={busy() || !quotaAccess.canCreate(links()?.length ?? 0)}
+                onClick={() => openEditor(emptyLink())}
+              >
                 {t('dashboard.guild.links.add_link', 'Add Link')}
               </Button>
-            </BuyPremiumBtn>
+            </FeatureGate>
           </div>
         </Show>
       </AdminPanel>

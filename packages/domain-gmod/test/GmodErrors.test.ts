@@ -14,6 +14,7 @@ const countDocumentsMock = vi.fn()
 const toArrayMock = vi.fn()
 const skipMock = vi.fn(() => ({ toArray: toArrayMock }))
 const limitMock = vi.fn(() => ({ skip: skipMock }))
+const aggregateMock = vi.fn()
 const findMock = vi.fn(() => ({ limit: limitMock }))
 
 const deleteOneMock = vi.fn()
@@ -22,6 +23,7 @@ const collectionMock = {
   insertOne: insertOneMock,
   countDocuments: countDocumentsMock,
   find: findMock,
+  aggregate: aggregateMock,
 }
 
 vi.mock('@gmod/infra-mongo', () => ({
@@ -51,6 +53,7 @@ describe('GmodErrors', () => {
     insertOneMock.mockReset().mockResolvedValue({ insertedId: 'id1' })
     countDocumentsMock.mockReset().mockResolvedValue(0)
     toArrayMock.mockReset().mockResolvedValue([])
+    aggregateMock.mockReset().mockReturnValue({ toArray: toArrayMock })
   })
 
   it('parses valid data, defaulting optional fields to empty strings', () => {
@@ -130,5 +133,32 @@ describe('GmodErrors', () => {
 
     expect(findMock).toHaveBeenCalledWith({ serverID: 's1' })
     expect(result).toEqual({ errors: [{ error: 'e2' }], query: { offset: 5, limit: 10, total: 3 } })
+  })
+})
+
+describe('error history commercial window', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    countDocumentsMock.mockResolvedValue(1000)
+    aggregateMock.mockReturnValue({ toArray: vi.fn().mockResolvedValue([{ id: 'latest' }]) })
+  })
+  it('selects the latest 50 before sorting and paging', async () => {
+    const result = await getErrorsByServer({ offset: 40, limit: 25, sort: 'count', orderBy: 'ASC' }, 's1', 50)
+    expect(result).toMatchObject({ errors: [{ id: 'latest' }], query: { total: 50 } })
+    expect(aggregateMock).toHaveBeenCalledWith([
+      { $match: { serverID: 's1' } },
+      { $sort: { createdAt: -1, _id: -1 } },
+      { $limit: 50 },
+      { $sort: { count: 1, _id: -1 } },
+      { $skip: 40 },
+      { $limit: 10 },
+    ])
+  })
+  it('returns no rows outside the accessible window', async () => {
+    expect(await getErrorsByServer({ offset: 50, limit: 25 }, 's1', 50)).toMatchObject({
+      errors: [],
+      query: { total: 50 },
+    })
+    expect(aggregateMock).not.toHaveBeenCalled()
   })
 })

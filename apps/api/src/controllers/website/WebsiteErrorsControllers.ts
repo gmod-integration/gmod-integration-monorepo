@@ -4,6 +4,6 @@ import { getServerErrorsPayloadSafe } from '@gmod/core/models/gmod/gmodErrorsMod
 
 export async function getServerErrors(req: Request, res: Response) {
   const serverID = getSingleParam(req.params.serverID)
-  const result = await getServerErrorsPayloadSafe(req.query, serverID)
+  const result = await getServerErrorsPayloadSafe(req.query, serverID, req.server!.guild)
   return res.status(result.status).json(result.body)
 }

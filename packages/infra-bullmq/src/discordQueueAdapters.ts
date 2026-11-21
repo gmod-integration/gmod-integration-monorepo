@@ -720,6 +720,7 @@ export async function enqueueDiscordGuildSendLogMessage(
     description?: string | null
     color: string
     footer: string
+    requiredCapability?: 'logs.triggers'
   },
   timeoutMs = 5000,
 ): Promise<boolean> {

@@ -1,6 +1,23 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async () => {
+  const policy = await import('@gmod/schema/server/AccessPolicySchema.js')
+  return { ...policy, resolveGuildAccess: accessMock }
+})
+beforeEach(() =>
+  accessMock.mockImplementation(async (guildID: string) => ({
+    guildID,
+    premium: true,
+    customBot: true,
+    state: 'ready',
+    sources: ['gmodstore'],
+    revision: 'test',
+    validUntil: '2030-01-01T00:00:00.000Z',
+  })),
+)
+
 // This file exercises discord/index.ts's module-level `setInterval(..., 30000)` bot-status-
 // rotation block in isolation, since it isn't exported - it's only reachable by advancing fake
 // timers past its 30s period after populating the module's internal clientList via a real boot.
@@ -117,6 +134,18 @@ describe('discord/index status-rotation setInterval', () => {
     guildSettingExistsMock.mockResolvedValueOnce(false)
     await tick(30000)
     expect(gmGuildSettingsFindManyMock).not.toHaveBeenCalled()
+  })
+
+  it('clears a previous custom presence when its stored preference is explicitly disabled', async () => {
+    const mod = await import('../../src/discord/index.js')
+    prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([{ guild: 'disabled-presence', token: 'tok' }])
+    await mod.loadDiscordSlave()
+    const client = await mod.getGuildClient('disabled-presence', false)
+    client.guilds.cache.set('disabled-presence', { memberCount: 7 })
+    guildSettingExistsMock.mockResolvedValue(true)
+    gmGuildSettingsFindManyMock.mockResolvedValue([{ guildID: 'disabled-presence', value: 'disabled' }])
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(client.user.setPresence).toHaveBeenCalledWith({ activities: [] })
   })
 
   it('skips a guild with no tracked client', async () => {

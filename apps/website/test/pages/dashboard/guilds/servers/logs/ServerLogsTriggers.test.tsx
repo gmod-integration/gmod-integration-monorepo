@@ -74,15 +74,15 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
       expect(row.getByText('Send Message In Channel')).toBeInTheDocument()
     })
 
-    it('renders an empty state and no error when the server returns 403 (not premium)', async () => {
+    it('shows a real access refusal as an error instead of a false empty list', async () => {
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === TRIGGERS_URL && method === 'GET') return Promise.resolve({ status: 403, ok: false })
         return Promise.resolve(okJson([]))
       })
       const { container } = renderPage()
       await vi.waitFor(() => expect(container.querySelector('.loading')).not.toBeInTheDocument())
-      expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.')
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load')
+      expect(screen.queryByText('Nothing to display yet.')).not.toBeInTheDocument()
     })
 
     it('shows a recoverable error when the fetch fails for a reason other than 403', async () => {
@@ -100,7 +100,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
       ;(fetchAPI as Mock).mockImplementation(() => Promise.resolve(okJson([])))
       renderPage()
       await vi.waitFor(() => expect(screen.getByText('Logs Trigger')).toBeInTheDocument())
-      expect(screen.getByText('This feature is only available to premium users.')).toBeInTheDocument()
+      await vi.waitFor(() => expect(screen.getByRole('note')).toHaveTextContent('This feature requires Premium.'))
     })
 
     it('disables the Add Trigger button when not premium', async () => {

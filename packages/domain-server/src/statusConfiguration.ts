@@ -3,6 +3,12 @@ import prisma from '@gmod/infra-prisma'
 import type { Prisma } from '@gmod/infra-prisma/client.js'
 import redis from '@gmod/infra-redis'
 import {
+  resolveGuildAccess,
+  assertQuota,
+  assertServerSettingChange,
+  capabilityLimit,
+} from '@gmod/domain-access/index.js'
+import {
   StatusConfigurationSaveSchema,
   type StatusConfiguration,
   type StatusConfigurationSnapshot,
@@ -15,7 +21,7 @@ const defaults: StatusConfiguration['settings'] = {
   show_status_chart: false,
 }
 type Store = Pick<Prisma.TransactionClient, 'gm_server_settings' | 'gm_status_button'>
-type StatusServer = { id: string; isPremium: () => Promise<boolean> }
+type StatusServer = { id: string; guild: string }
 
 export class StatusConfigurationError extends Error {
   constructor(public readonly code: 'conflict' | 'premium_required' | 'invalid_button' | 'invalid_configuration') {
@@ -56,21 +62,26 @@ export async function saveStatusConfiguration(
   const parsed = StatusConfigurationSaveSchema.safeParse(input)
   if (!parsed.success) throw new StatusConfigurationError('invalid_configuration')
   input = parsed.data
-  const premium = await server.isPremium()
+  const access = await resolveGuildAccess(server.guild)
   const committed = await prisma.$transaction(async (tx) => {
     // A row lock serializes aggregate edits, making the revision check reliable between instances.
     await tx.gm_server.update({ where: { id: server.id }, data: { updatedAt: new Date() } })
     const current = await readConfiguration(server.id, tx)
     if (current.revision !== input.revision) throw new StatusConfigurationError('conflict')
-    if (!premium && input.configuration.settings.show_status_chart && !current.configuration.settings.show_status_chart)
-      throw new StatusConfigurationError('premium_required')
+    assertServerSettingChange(
+      access,
+      'show_status_chart',
+      input.configuration.settings.show_status_chart,
+      current.configuration.settings.show_status_chart,
+    )
+    const buttonLimit = capabilityLimit(access, 'status.buttons')
     if (
-      !premium &&
-      input.configuration.buttons.length > 3 &&
+      buttonLimit !== null &&
+      input.configuration.buttons.length > buttonLimit &&
       (input.configuration.buttons.length > current.configuration.buttons.length ||
         input.configuration.buttons.some((button) => button.id === undefined))
     )
-      throw new StatusConfigurationError('premium_required')
+      assertQuota(access, 'status.buttons', input.configuration.buttons.length - 1)
     const owned = new Set(current.configuration.buttons.map((button) => button.id))
     if (input.configuration.buttons.some((button) => button.id !== undefined && !owned.has(button.id)))
       throw new StatusConfigurationError('invalid_button')

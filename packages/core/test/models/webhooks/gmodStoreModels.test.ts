@@ -1,6 +1,11 @@
 import crypto from 'crypto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const invalidateAccess = vi.hoisted(() => vi.fn())
+const reloadBot = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', () => ({ invalidateGuildAccess: invalidateAccess }))
+vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({ enqueueDiscordGuildReloadBotInstance: reloadBot }))
+
 const signingSecretKey = 'whsec_' + Buffer.from('super-secret-signing-key').toString('base64')
 vi.mock('@gmod/config', () => ({
   ConfigGmodStore: { signingSecretKey, apiKey: 'api-key-1' },
@@ -45,6 +50,8 @@ function computeSignature(webhookId: string, webhookTimestamp: number, payload: 
 }
 
 function resetAllMocks() {
+  invalidateAccess.mockReset().mockResolvedValue(undefined)
+  reloadBot.mockReset().mockResolvedValue(undefined)
   gmLogMock.mockClear()
   getUserFromSteamID64Mock.mockReset()
   addNotificationMock.mockReset()
@@ -218,7 +225,8 @@ describe('gmodStoreModels', () => {
       expect(getUserFromSteamID64Mock).not.toHaveBeenCalled()
       expect(addNotificationMock).not.toHaveBeenCalled()
       expect(gmLogMock.mock.calls.flat().join(' ')).not.toContain('765')
-      expect(redisDelMock).toHaveBeenCalledWith('guild:community:premium')
+      expect(invalidateAccess).toHaveBeenCalledWith('community')
+      expect(reloadBot).toHaveBeenCalledWith('community')
     })
 
     it('keeps a historical erasure private after OAuth reactivation, even if no purchase row existed during erasure', async () => {
@@ -268,6 +276,26 @@ describe('gmodStoreModels', () => {
       expect(prismaMock.gm_gmodstore_purchases.upsert).not.toHaveBeenCalled()
       expect(prismaMock.gm_gmodstore_purchases.deleteMany).not.toHaveBeenCalled()
     })
+
+    it.each(['cache', 'reload'])(
+      'acknowledges a committed revocation when post-commit %s synchronization fails',
+      async (failure) => {
+        prismaMock.gm_gmodstore_purchases.findUnique.mockImplementation(
+          async ({ where }: { where: { steamID64: string } }) =>
+            where.steamID64 === '765' ? { steamID64: '765', guild: 'community' } : null,
+        )
+        getUserFromSteamID64Mock.mockResolvedValue({ getDiscordID: () => 'discord-user' })
+        if (failure === 'cache') invalidateAccess.mockRejectedValueOnce(new Error('Cache unavailable'))
+        else reloadBot.mockRejectedValueOnce(new Error('Queue unavailable'))
+        await expect(saveGmodStorePurchase('765', 'store-user', true)).resolves.toBeUndefined()
+        expect(prismaMock.gm_gmodstore_purchases.update).toHaveBeenCalledWith({
+          where: { steamID64: '765' },
+          data: { revoke: true, userID: 'store-user' },
+        })
+        expect(invalidateAccess).toHaveBeenCalledWith('community')
+        expect(addNotificationMock).toHaveBeenCalledTimes(1)
+      },
+    )
 
     it('retries a serialization conflict without sending duplicate notifications', async () => {
       prismaMock.$transaction.mockRejectedValueOnce({ code: 'P2034' })

@@ -1,5 +1,6 @@
 import { Worker, type Job } from 'bullmq'
 import { connection } from '@gmod/infra-bullmq'
+import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { ensureAvatarStored, s3 } from '@gmod/infra-minio'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import {
@@ -106,27 +107,23 @@ export const discordUpdatePseudoWorker = new Worker<UpdateGuildUserPseudoJob>(
       }
 
       // Check sync direction
-      const pseudoDirection = await server.getSetting('sync_pseudo_direction')
+      const pseudoDirection = await server.getEffectiveSetting('sync_pseudo_direction')
       if (pseudoDirection !== 'both' && pseudoDirection !== 'gmod-to-discord') {
         gmLog('bullmq-worker', `[updatePseudo] Sync disabled for server ${serverID}`)
         return
       }
 
       // Get pseudo format
-      const pseudoFormat = await server.getSetting('pseudoFormat')
+      const pseudoFormat = await server.getEffectiveSetting('pseudoFormat')
       if (!pseudoFormat) {
         gmLog('bullmq-worker', `[updatePseudo] No pseudo format configured for server ${serverID}`)
         return
       }
 
       // Get role format
-      const rolesFormat = await prisma.gm_server_pseudo.findFirst({
-        where: {
-          serverID,
-          role: userGroup,
-          enabled: true,
-        },
-      })
+      const rolesFormat = (await server.getEffectivePseudoRules()).find(
+        (rule) => rule.role === userGroup && rule.enabled,
+      )
 
       // Build pseudo
       const newPseudo = pseudoFormat
@@ -242,8 +239,10 @@ export const discordUpdateGroupWorker = new Worker<UpdatePlayerUserGroupJob>(
         gmLog('bullmq-worker', `[updateGroup] Updated DB for ${steamID64} to group ${userGroup}`)
       }
 
-      // Sync roles to Discord (if applicable)
-      const syncRoles = await server.getSyncRoles()
+      // The direction and effective quota are rechecked when the queued job runs.
+      const direction = await server.getEffectiveSetting('sync_role_direction')
+      if (direction !== 'both' && direction !== 'gmod-to-discord') return
+      const syncRoles = await server.getEffectiveSyncRoles()
       if (syncRoles && syncRoles.length > 0) {
         const user = await getUserFromSteamID64(steamID64)
         if (user && user.getDiscordID()) {
@@ -340,7 +339,7 @@ export const discordUpdateTeamRoleWorker = new Worker<UpdateDiscordTeamRoleJob>(
       }
 
       // Get sync team roles
-      const syncRoles = await server.getSyncTeamRoles()
+      const syncRoles = await server.getEffectiveSyncTeamRoles()
       if (!syncRoles || syncRoles.length === 0) {
         gmLog('bullmq-worker', `[updateTeamRole] No team roles configured for server ${serverID}`)
         return
@@ -499,7 +498,7 @@ export const discordMainClientOpsWorker = new Worker<
           return
         }
 
-        const gmodStoreBuyers = await prisma.gm_gmodstore_purchases.findMany()
+        const gmodStoreBuyers = await prisma.gm_gmodstore_purchases.findMany({ where: { revoke: false } })
         const dscEntitlements = await getDiscordEntitlements()
 
         const subscriptionBuyers: string[] = []
@@ -1026,6 +1025,20 @@ export const discordGuildOpsWorker = new Worker<
     if (job.name === 'guildSendLogMessage') {
       const payload = DiscordGuildSendLogMessageJobSchema.parse(job.data)
       try {
+        const mayDeliver = async () => {
+          if (!payload.requiredCapability) return true
+          const access = await resolveGuildAccess(payload.guildID)
+          if (!hasCapability(access, payload.requiredCapability)) {
+            await writeReply(payload.correlationId, {
+              correlationId: payload.correlationId,
+              sent: false,
+              error: access.state === 'unknown' ? 'entitlement_unknown' : 'upgrade_required',
+            })
+            return false
+          }
+          return true
+        }
+        if (!(await mayDeliver())) return
         const client = await getGuildClient(payload.guildID, false)
         const guild = await client.guilds.fetch(payload.guildID).catch(() => null)
         if (!guild) {
@@ -1054,6 +1067,8 @@ export const discordGuildOpsWorker = new Worker<
           .setFooter({ text: payload.footer })
           .setTimestamp()
 
+        // Readiness and channel lookup may wait across an entitlement's expiry.
+        if (!(await mayDeliver())) return
         await channel.send({ embeds: [embed] })
         await writeReply(payload.correlationId, { correlationId: payload.correlationId, sent: true })
       } catch (error) {

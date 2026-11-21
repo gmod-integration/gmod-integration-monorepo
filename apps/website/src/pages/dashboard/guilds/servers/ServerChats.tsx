@@ -8,7 +8,8 @@ import { guildChannels } from '../GuildInformations.js'
 import { useI18n } from '../../../../i18n.js'
 import DiscordChannel from '../../../../components/discord/DiscordChannel.js'
 import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket.js'
-import { premium } from '../../../../utils/premium.js'
+import { useFeatureAccess } from '../../../../components/AccessProvider.js'
+import { FeatureGate, SuspendedFeature } from '../../../../components/FeatureGate.js'
 import { fetchAPI } from '../../../../utils/api.js'
 import { TextValue } from '../../../../components/popup/TextValue.js'
 import {
@@ -40,6 +41,9 @@ const asBoolean = (value: unknown) => value === true || value === 'true' || valu
 
 const ServerChats: Component = () => {
   const { t } = useI18n()
+  const reverseAccess = useFeatureAccess('chat.reverse')
+  const relayAccess = useFeatureAccess('chat.relay_default')
+  const filterAccess = useFeatureAccess('chat.filters')
   const [creating, setCreating] = createSignal(false)
   const [removing, setRemoving] = createSignal<ChatFilter>()
   const [syncPending, setSyncPending] = createSignal(false)
@@ -92,8 +96,12 @@ const ServerChats: Component = () => {
   createEffect(() => {
     if (!storedBehavior.loading && !storedBehavior.error) behavior.reset(storedBehavior()!)
   })
+  const directionWriteAllowed = () =>
+    reverseAccess.allowed() ||
+    behavior.draft().direction === behavior.saved().direction ||
+    behavior.draft().direction === 'gmodToDiscord'
   async function saveBehavior() {
-    if (storedBehavior.loading || storedBehavior.error) return
+    if (storedBehavior.loading || storedBehavior.error || !directionWriteAllowed()) return
     await behavior.save(async (snapshot) => {
       const changed: Record<string, unknown> = {}
       if (snapshot.direction !== behavior.saved().direction) changed.syncChatDirection = snapshot.direction
@@ -121,7 +129,7 @@ const ServerChats: Component = () => {
     if (!storedRelay.loading && !storedRelay.error) relay.reset({ all: asBoolean(storedRelay()?.value) })
   })
   async function saveRelay() {
-    if (!premium() || storedRelay.loading || storedRelay.error) return
+    if (storedRelay.loading || storedRelay.error || (!relayAccess.allowed() && !relay.draft().all)) return
     await relay.save(async (snapshot) => {
       const result = await saveDashboardSettings('server', { chat_sync_relay_all: snapshot.all })
       setRelayPending(result.sync === 'pending')
@@ -157,13 +165,13 @@ const ServerChats: Component = () => {
     errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
   })
   function begin(row?: ChatFilter) {
-    if (!premium() || rules.loading || rules.error || editor.pending()) return
+    if (rules.loading || rules.error || editor.pending() || (!row && !filterAccess.allowed())) return
     setCreating(!row)
     editor.reset(row ? { ...row } : emptyFilter())
     showDialog('edit_rule_modal')
   }
   async function saveRule() {
-    if (!premium() || rules.loading || rules.error) return
+    if (rules.loading || rules.error || (!filterAccess.allowed() && (creating() || editor.draft().active))) return
     const isNew = creating()
     const saved = await editor.save(async (snapshot) => {
       const payload = {
@@ -268,7 +276,7 @@ const ServerChats: Component = () => {
               <select
                 id={field.id}
                 class="select w-full"
-                disabled={editor.pending()}
+                disabled={editor.pending() || !filterAccess.allowed()}
                 value={editor.draft()[field.key]}
                 onChange={(event) => editor.patch({ [field.key]: event.currentTarget.value })}
               >
@@ -286,7 +294,7 @@ const ServerChats: Component = () => {
             id="chat-rule-trigger"
             class="input w-full"
             value={editor.draft().trigger}
-            disabled={editor.pending()}
+            disabled={editor.pending() || !filterAccess.allowed()}
             aria-invalid={!!editor.errors().trigger}
             onInput={(event) => editor.patch({ trigger: event.currentTarget.value })}
           />
@@ -300,7 +308,7 @@ const ServerChats: Component = () => {
             id="chat-rule-action"
             class="select w-full"
             value={editor.draft().action}
-            disabled={editor.pending()}
+            disabled={editor.pending() || !filterAccess.allowed()}
             onChange={(event) => editor.patch({ action: event.currentTarget.value })}
           >
             <For each={['block', 'relay', 'anonymize']}>{(value) => <option value={value}>{label(value)}</option>}</For>
@@ -312,15 +320,21 @@ const ServerChats: Component = () => {
             type="checkbox"
             class="toggle"
             checked={editor.draft().active}
-            disabled={editor.pending()}
+            disabled={editor.pending() || (!filterAccess.allowed() && !editor.draft().active)}
             onChange={(event) => editor.patch({ active: event.currentTarget.checked })}
           />
         </FormField>
+        <FeatureGate capability="chat.filters" loading={rules.loading} error={rules.error} showQuota={false} />
         <FormActions
           dirty={editor.dirty()}
           pending={editor.pending()}
           error={editor.error()}
-          disabled={!premium() || rules.loading || !!rules.error || !editor.valid()}
+          disabled={
+            rules.loading ||
+            !!rules.error ||
+            !editor.valid() ||
+            (!filterAccess.allowed() && (creating() || editor.draft().active))
+          }
           saveLabel={creating() ? t('ui.create', 'Create') : t('ui.save', 'Save')}
           onSave={() => void saveRule()}
           onCancel={() => {
@@ -403,10 +417,10 @@ const ServerChats: Component = () => {
               <option value="gmodToDiscord">
                 {t('dashboard.server.chat.from_gmod_to_discord', 'From Gmod to Discord')}
               </option>
-              <option value="discordToGmod" disabled={!premium()}>
+              <option value="discordToGmod" disabled={!reverseAccess.allowed()}>
                 {t('dashboard.server.chat.from_discord_to_gmod', 'From Discord to Gmod')}
               </option>
-              <option value="both" disabled={!premium()}>
+              <option value="both" disabled={!reverseAccess.allowed()}>
                 {t('dashboard.server.chat.both_ways', 'Both Ways')}
               </option>
             </select>
@@ -434,7 +448,7 @@ const ServerChats: Component = () => {
             pending={behavior.pending()}
             error={behavior.error()}
             success={behavior.success()}
-            disabled={storedBehavior.loading || !!storedBehavior.error || !behavior.valid()}
+            disabled={storedBehavior.loading || !!storedBehavior.error || !behavior.valid() || !directionWriteAllowed()}
             onSave={() => void saveBehavior()}
             onCancel={() => {
               behavior.discard()
@@ -446,12 +460,11 @@ const ServerChats: Component = () => {
                 : undefined
             }
           />
-          <Show when={!premium()}>
-            <p class="settings-notice">
-              <Icon name="crown" size={16} />
-              {t('settings.sync_premium_help', 'Discord to game and two-way synchronization require Premium.')}
-            </p>
-          </Show>
+          <FeatureGate capability="chat.reverse" showQuota={false} />
+          <SuspendedFeature
+            capability="chat.reverse"
+            active={['both', 'discordToGmod'].includes(behavior.saved().direction)}
+          />
         </SettingGroup>
       </AdminPanel>
       <AdminPanel
@@ -461,8 +474,17 @@ const ServerChats: Component = () => {
           'Choose whether game messages are relayed or blocked by default. Configure exceptions in the rules below.',
         )}
         icon="sliders-horizontal"
-        premium={true}
       >
+        <FeatureGate
+          capability="chat.relay_default"
+          loading={storedRelay.loading}
+          error={storedRelay.error}
+          showQuota={false}
+        />
+        <SuspendedFeature
+          capability="chat.relay_default"
+          active={!storedRelay.loading && !storedRelay.error && storedRelay()?.value === false}
+        />
         <AsyncState loading={storedRelay.loading} error={storedRelay.error} onRetry={() => void refetchRelay()} />
         <SettingRow
           controlId="chat-default-behavior"
@@ -472,7 +494,12 @@ const ServerChats: Component = () => {
             id="chat-default-behavior"
             class="select w-full"
             value={String(relay.draft().all)}
-            disabled={!premium() || storedRelay.loading || !!storedRelay.error || relay.pending()}
+            disabled={
+              storedRelay.loading ||
+              !!storedRelay.error ||
+              relay.pending() ||
+              (!relayAccess.allowed() && relay.draft().all)
+            }
             onChange={(event) => relay.patch({ all: event.currentTarget.value === 'true' })}
           >
             <option value="true">{t('dashboard.server.chat.relay_all_messages', 'Relay All Messages')}</option>
@@ -484,7 +511,7 @@ const ServerChats: Component = () => {
           pending={relay.pending()}
           error={relay.error()}
           success={relay.success()}
-          disabled={!premium() || storedRelay.loading || !!storedRelay.error}
+          disabled={storedRelay.loading || !!storedRelay.error || (!relayAccess.allowed() && !relay.draft().all)}
           onSave={() => void saveRelay()}
           onCancel={() => {
             relay.discard()
@@ -504,11 +531,21 @@ const ServerChats: Component = () => {
         icon="list"
         type="none"
         actions={
-          <Button variant="primary" disabled={!premium() || rules.loading || !!rules.error} onClick={() => begin()}>
-            {t('dashboard.server.chat.add_rule', 'Add Rule')}
-          </Button>
+          <FeatureGate capability="chat.filters" loading={rules.loading} error={rules.error} showQuota={false}>
+            <Button
+              variant="primary"
+              disabled={!filterAccess.allowed() || rules.loading || !!rules.error}
+              onClick={() => begin()}
+            >
+              {t('dashboard.server.chat.add_rule', 'Add Rule')}
+            </Button>
+          </FeatureGate>
         }
       >
+        <SuspendedFeature
+          capability="chat.filters"
+          active={!rules.loading && !rules.error && rules().some((row) => row.active)}
+        />
         <div class="settings-table">
           <table class="table w-full">
             <thead>
@@ -546,14 +583,14 @@ const ServerChats: Component = () => {
                           <IconButton
                             icon="pencil"
                             label={t('dashboard.server.chat.edit', 'Edit')}
-                            disabled={!premium() || editor.pending()}
+                            disabled={editor.pending()}
                             onClick={() => begin(row)}
                           />
                           <IconButton
                             icon="trash-2"
                             variant="danger"
                             label={t('dashboard.server.chat.delete', 'Delete')}
-                            disabled={!premium()}
+                            disabled={editor.pending()}
                             onClick={() => {
                               setRemoving(row)
                               showDialog('remove-chat-filter')

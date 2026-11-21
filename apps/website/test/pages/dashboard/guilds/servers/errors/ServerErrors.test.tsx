@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { ErrorBoundary } from 'solid-js/web'
 import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
 import { okJson } from '../testHelpers.js'
@@ -119,15 +119,15 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  describe('non-premium truncation', () => {
-    it('truncates the errors list and total to 50 for non-premium users when the server reports more', async () => {
+  describe('API-owned history window', () => {
+    it('does not rewrite the pagination acknowledged by the service', async () => {
       window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
       const errors = Array.from({ length: 60 }, (_, i) => errorEntry({ name: `addon${i}` }))
       ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage(errors, 80)))
       renderPage()
       await vi.waitFor(() => expect(screen.getByText('addon0')).toBeInTheDocument())
-      // total pages = ceil(50/25) = 2
-      expect(screen.getByText('1 / 2')).toBeInTheDocument()
+      // The service owns the allowed window; no separate client quota is applied.
+      expect(screen.getByText('1 / 4')).toBeInTheDocument()
     })
 
     it('does not truncate for premium users even when the server reports more than 50', async () => {

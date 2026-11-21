@@ -1,4 +1,21 @@
+import type * as NodeCrypto from 'node:crypto'
+import type * as DomainAccess from '@gmod/domain-access/index.js'
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof DomainAccess>()),
+  resolveGuildAccess: accessMock,
+}))
+const freeAccess = () => ({
+  guildID: 'g1',
+  premium: false,
+  customBot: false,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'rev',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
 
 const assertPersonalDataAllowedMock = vi.fn().mockResolvedValue(undefined)
 const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
@@ -22,7 +39,7 @@ vi.mock('@gmod/config', () => ({
 vi.mock('@gmod/shared/generateToken.js', () => ({ generateToken: vi.fn(() => 'generated-token') }))
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: vi.fn() }))
 vi.mock('node:crypto', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('node:crypto')>()),
+  ...(await importOriginal<typeof NodeCrypto>()),
   randomUUID: vi.fn(() => 'uuid-1'),
 }))
 
@@ -69,6 +86,7 @@ const prismaMock: any = {
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
 function resetAllMocks() {
+  accessMock.mockReset().mockResolvedValue({ ...freeAccess(), premium: true })
   assertPersonalDataAllowedMock.mockReset().mockResolvedValue(undefined)
   isErasureBlockedMock.mockReset().mockResolvedValue(false)
   getRetainedTrustMock.mockReset().mockResolvedValue(null)
@@ -162,21 +180,24 @@ describe('discordModels', () => {
     })
 
     it('skips servers whose sync direction excludes discord-to-gmod', async () => {
-      const server = { getSetting: vi.fn().mockResolvedValueOnce('gmod-to-discord'), getSyncRoles: vi.fn() }
+      const server = {
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('gmod-to-discord'),
+        getEffectiveSyncRoles: vi.fn(),
+      }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
       const member = { guild: { id: 'g1' }, id: 'u1', roles: { cache: makeRoleCollection([]) } }
 
       await updateRolesToGmod(member as any, member as any, member as any)
 
-      expect(server.getSyncRoles).not.toHaveBeenCalled()
+      expect(server.getEffectiveSyncRoles).not.toHaveBeenCalled()
     })
 
     it('skips servers with no sync roles configured', async () => {
       const server = {
         id: 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce([]),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce([]),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -195,8 +216,8 @@ describe('discordModels', () => {
       const server = {
         id: 's1',
         getID: () => 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -235,8 +256,8 @@ describe('discordModels', () => {
       const server = {
         id: 's1',
         getID: () => 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -270,8 +291,8 @@ describe('discordModels', () => {
       const server = {
         id: 's1',
         getID: () => 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -291,8 +312,8 @@ describe('discordModels', () => {
       const syncRoles = [{ roleID: 'r1', enable: false, userGroup: 'vip' }]
       const server = {
         id: 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -313,8 +334,8 @@ describe('discordModels', () => {
       const server = {
         id: 's1',
         getID: () => 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -341,8 +362,8 @@ describe('discordModels', () => {
       const server = {
         id: 's1',
         getID: () => 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -368,8 +389,8 @@ describe('discordModels', () => {
       const syncRoles = [{ roleID: 'r1', enable: true, userGroup: 'vip' }]
       const server = {
         id: 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -390,8 +411,8 @@ describe('discordModels', () => {
       const syncRoles = [{ roleID: 'r1', enable: false, userGroup: 'vip' }]
       const server = {
         id: 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -412,8 +433,8 @@ describe('discordModels', () => {
       const syncRoles = [{ roleID: 'r-user', enable: true, userGroup: 'user' }]
       const server = {
         id: 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -434,8 +455,8 @@ describe('discordModels', () => {
       const syncRoles = [{ roleID: 'r-vip', enable: true, userGroup: 'vip' }]
       const server = {
         id: 's1',
-        getSetting: vi.fn().mockResolvedValueOnce('both'),
-        getSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce(syncRoles),
       }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
@@ -519,6 +540,37 @@ describe('discordModels', () => {
 
       expect(rolesAdd).toHaveBeenCalledWith(roleDiscord)
     })
+  })
+
+  it('suspends excess autoroles after expiry without deleting their saved configuration', async () => {
+    accessMock.mockResolvedValueOnce(freeAccess())
+    const rows = Array.from({ length: 4 }, (_, index) => ({ roleID: `r${index}` }))
+    prismaMock.gm_guild_auto_roles.findMany.mockResolvedValueOnce(rows)
+    const guild = { id: 'g1', roles: { cache: new Map(rows.map((row) => [row.roleID, { id: row.roleID }])) } }
+    const add = vi.fn()
+    await addAutoRoleToUser(guild as any, { roles: { cache: { has: () => false }, add } } as any)
+    expect(add.mock.calls.map(([role]) => role.id)).toEqual(['r0', 'r1', 'r2'])
+    expect(prismaMock.gm_guild_auto_roles.delete).not.toHaveBeenCalled()
+    expect(prismaMock.gm_guild_auto_roles.findMany).toHaveBeenCalledWith({
+      where: { guildID: 'g1' },
+      orderBy: [{ createdAt: 'asc' }, { roleID: 'asc' }],
+    })
+  })
+
+  it('uses only the free verification role quota after expiry while retaining additional rules', async () => {
+    accessMock.mockResolvedValueOnce(freeAccess())
+    const rows = Array.from({ length: 3 }, (_, index) => ({
+      id: index + 1,
+      roleID: `r${index}`,
+      enabled: true,
+      isGiveRole: true,
+    }))
+    prismaMock.gm_guild_verify_role.findMany.mockResolvedValueOnce(rows)
+    const guild = { id: 'g1', roles: { cache: new Map(rows.map((row) => [row.roleID, { id: row.roleID }])) } }
+    const add = vi.fn()
+    await addVerifyRoleToUser(guild as any, { roles: { cache: { has: () => false }, add } } as any)
+    expect(add.mock.calls.map(([role]) => role.id)).toEqual(['r0', 'r1'])
+    expect(prismaMock.gm_guild_verify_role.delete).not.toHaveBeenCalled()
   })
 
   describe('addVerifyRoleToUser', () => {
@@ -860,7 +912,11 @@ describe('discordModels', () => {
     })
 
     it('returns early when the sync direction excludes discord-to-gmod', async () => {
-      const server = { id: 's1', getID: () => 's1', getSetting: vi.fn().mockResolvedValueOnce('gmod-to-discord') }
+      const server = {
+        id: 's1',
+        getID: () => 's1',
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('gmod-to-discord'),
+      }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
       const member = { guild: { id: 'g1' }, id: 'u1' }
@@ -868,8 +924,30 @@ describe('discordModels', () => {
       expect(wsAddMock).not.toHaveBeenCalled()
     })
 
+    it('continues to eligible servers when another server has nickname synchronization disabled', async () => {
+      const disabled = {
+        id: 'disabled',
+        getID: () => 'disabled',
+        getEffectiveSetting: vi.fn().mockResolvedValue('disable'),
+      }
+      const eligible = {
+        id: 'eligible',
+        getID: () => 'eligible',
+        getEffectiveSetting: vi.fn().mockResolvedValue('discord-to-gmod'),
+      }
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([disabled, eligible])
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      redisMock.get.mockResolvedValueOnce(null)
+      const member = { guild: { id: 'g1' }, id: 'u1' }
+      await updatePseudoToGmod(member as any, member as any, { nickname: 'Nick', user: { username: 'User' } } as any)
+      expect(wsAddMock).toHaveBeenCalledExactlyOnceWith('wsSendToServer', {
+        id: 'eligible',
+        data: { method: 'wsSyncName', steamID64: '765', name: 'Nick' },
+      })
+    })
+
     it('returns early when the nickname is unchanged from the last synced value', async () => {
-      const server = { id: 's1', getID: () => 's1', getSetting: vi.fn().mockResolvedValueOnce('both') }
+      const server = { id: 's1', getID: () => 's1', getEffectiveSetting: vi.fn().mockResolvedValueOnce('both') }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
       redisMock.get.mockResolvedValueOnce('nick')
@@ -880,7 +958,11 @@ describe('discordModels', () => {
     })
 
     it('continues (does not return early) when the sync direction is exactly discord-to-gmod', async () => {
-      const server = { id: 's1', getID: () => 's1', getSetting: vi.fn().mockResolvedValueOnce('discord-to-gmod') }
+      const server = {
+        id: 's1',
+        getID: () => 's1',
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('discord-to-gmod'),
+      }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
       redisMock.get.mockResolvedValueOnce(null)
@@ -891,7 +973,7 @@ describe('discordModels', () => {
     })
 
     it('pushes a wsSyncName update using the nickname when set', async () => {
-      const server = { id: 's1', getID: () => 's1', getSetting: vi.fn().mockResolvedValueOnce('both') }
+      const server = { id: 's1', getID: () => 's1', getEffectiveSetting: vi.fn().mockResolvedValueOnce('both') }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
       redisMock.get.mockResolvedValueOnce(null)
@@ -905,7 +987,7 @@ describe('discordModels', () => {
     })
 
     it('pushes an update when the cached value is stale (matches neither nickname nor username)', async () => {
-      const server = { id: 's1', getID: () => 's1', getSetting: vi.fn().mockResolvedValueOnce('both') }
+      const server = { id: 's1', getID: () => 's1', getEffectiveSetting: vi.fn().mockResolvedValueOnce('both') }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
       redisMock.get.mockResolvedValueOnce('old-nick')
@@ -919,7 +1001,7 @@ describe('discordModels', () => {
     })
 
     it('falls back to the username when there is no nickname', async () => {
-      const server = { id: 's1', getID: () => 's1', getSetting: vi.fn().mockResolvedValueOnce('both') }
+      const server = { id: 's1', getID: () => 's1', getEffectiveSetting: vi.fn().mockResolvedValueOnce('both') }
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
       redisMock.get.mockResolvedValueOnce(null)

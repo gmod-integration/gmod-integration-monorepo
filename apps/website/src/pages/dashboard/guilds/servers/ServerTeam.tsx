@@ -9,7 +9,8 @@ import { createDraftForm } from '../../../../hooks/createDraftForm.js'
 import { useI18n } from '../../../../i18n.js'
 import DiscordRole from '../../../../components/discord/DiscordRole.js'
 import MissingRolePermission, { setRolesToCheck } from '../../../../components/popup/MissingRolePermission.js'
-import { premium } from '../../../../utils/premium.js'
+import { useFeatureAccess } from '../../../../components/AccessProvider.js'
+import { FeatureGate, SuspendedFeature } from '../../../../components/FeatureGate.js'
 import { fetchAPI } from '../../../../utils/api.js'
 import { TextValue } from '../../../../components/popup/TextValue.js'
 
@@ -25,6 +26,7 @@ const emptyRule = (): TeamRule => ({ id: 0, serverID: '', roleID: '', teamName: 
 
 const ServerTeam: Component = () => {
   const { t } = useI18n()
+  const featureAccess = useFeatureAccess('sync.teams')
   const [creating, setCreating] = createSignal(false)
   const [removing, setRemoving] = createSignal<TeamRule>()
   const editor = createDraftForm<TeamRule>({
@@ -46,7 +48,7 @@ const ServerTeam: Component = () => {
     { initialValue: [] },
   )
   const available = () => !guildRoles.loading && !guildRoles.error && !rules.loading && !rules.error
-  const canCreate = () => available() && premium()
+  const canCreate = () => available() && featureAccess.allowed()
   createEffect(() => {
     if (!rules.loading && !rules.error) setRolesToCheck(rules().map((rule) => rule.roleID))
   })
@@ -58,7 +60,7 @@ const ServerTeam: Component = () => {
     showDialog('edit_role_modal')
   }
   async function submit() {
-    if (!available() || (creating() && !canCreate())) return
+    if (!available() || (creating() && !canCreate()) || (!featureAccess.allowed() && editor.draft().enable)) return
     const isNew = creating()
     const saved = await editor.save(async (snapshot) => {
       const response = await fetchAPI(`${URL}/${isNew ? snapshot.roleID : snapshot.id}`, isNew ? 'POST' : 'PUT', {
@@ -117,7 +119,7 @@ const ServerTeam: Component = () => {
             id="teams-mapping"
             class="input w-full"
             value={editor.draft().teamName}
-            disabled={!available() || editor.pending()}
+            disabled={!available() || editor.pending() || !featureAccess.allowed()}
             aria-invalid={!!editor.errors().teamName}
             onInput={(event) => editor.patch({ teamName: event.currentTarget.value })}
           />
@@ -128,14 +130,20 @@ const ServerTeam: Component = () => {
             type="checkbox"
             class="toggle"
             checked={editor.draft().enable}
-            disabled={editor.pending()}
+            disabled={editor.pending() || (!featureAccess.allowed() && !editor.draft().enable)}
             onChange={(event) => editor.patch({ enable: event.currentTarget.checked })}
           />
         </FormField>
+        <FeatureGate capability="sync.teams" loading={rules.loading} error={rules.error} showQuota={false} />
         <FormActions
           dirty={editor.dirty()}
           pending={editor.pending()}
-          disabled={!available() || !editor.valid() || (creating() && !canCreate())}
+          disabled={
+            !available() ||
+            !editor.valid() ||
+            (creating() && !canCreate()) ||
+            (!featureAccess.allowed() && editor.draft().enable)
+          }
           error={editor.error()}
           saveLabel={creating() ? t('ui.create', 'Create') : t('ui.save', 'Save')}
           onSave={() => void submit()}
@@ -165,13 +173,14 @@ const ServerTeam: Component = () => {
           'Add temporary roles to your Discord members when they join a specific team in your game server.',
         )}
         type="none"
-        premium={true}
         icon="users"
         actions={
           <>
-            <Button variant="primary" disabled={!canCreate()} onClick={() => begin()}>
-              {t('dashboard.server.team_roles.add_role_sync', 'Add Team Role')}
-            </Button>
+            <FeatureGate capability="sync.teams" loading={rules.loading} error={rules.error} showQuota={false}>
+              <Button variant="primary" disabled={!canCreate()} onClick={() => begin()}>
+                {t('dashboard.server.team_roles.add_role_sync', 'Add Team Role')}
+              </Button>
+            </FeatureGate>
           </>
         }
       >
@@ -179,6 +188,10 @@ const ServerTeam: Component = () => {
           <Icon name="info" size={16} />
           {t('settings.rule_setup_help', 'Create a complete rule, then save it to start synchronization.')}
         </p>
+        <SuspendedFeature
+          capability="sync.teams"
+          active={!rules.loading && !rules.error && rules().some((row) => row.enable)}
+        />
         <div class="settings-table">
           <table class="table w-full">
             <thead>

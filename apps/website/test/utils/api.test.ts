@@ -4,6 +4,7 @@ import { API_FQDN, Api, fetchAPI, getAPIUrl, getUrlWithActualParams } from '../.
 describe('utils/api.tsx', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    window.history.replaceState(null, '', '/')
   })
 
   it('builds API_FQDN from the configured apiUrl + version', () => {
@@ -30,6 +31,26 @@ describe('utils/api.tsx', () => {
       expect(getUrlWithActualParams('/guilds/:guildID/servers/:serverID/users/:userID/discord/:discordID')).toBe(
         '/guilds/g1/servers/s1/users/u1/discord/d1',
       )
+    })
+
+    it('uses the current route scope instead of a stale stored community and server', () => {
+      localStorage.setItem('guilds', JSON.stringify({ id: 'old-guild' }))
+      localStorage.setItem('server', JSON.stringify({ id: 'old-server' }))
+      window.history.replaceState(null, '', '/dashboard/guilds/current-guild/config/servers/current-server/roles')
+      expect(getUrlWithActualParams('/guilds/:guildID/servers/:serverID')).toBe(
+        '/guilds/current-guild/servers/current-server',
+      )
+    })
+
+    it('retains the stored scope when an embedded location has no pathname', () => {
+      const originalLocation = window.location
+      Object.defineProperty(window, 'location', { configurable: true, value: { href: '/account' }, writable: true })
+      localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
+      try {
+        expect(getUrlWithActualParams('/guilds/:guildID')).toBe('/guilds/g1')
+      } finally {
+        Object.defineProperty(window, 'location', { configurable: true, value: originalLocation, writable: true })
+      }
     })
 
     it('substitutes empty strings when nothing is stored', () => {

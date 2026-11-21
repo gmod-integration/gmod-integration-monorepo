@@ -1,6 +1,23 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async () => {
+  const policy = await import('@gmod/schema/server/AccessPolicySchema.js')
+  return { ...policy, resolveGuildAccess: accessMock }
+})
+beforeEach(() =>
+  accessMock.mockImplementation(async (guildID: string) => ({
+    guildID,
+    premium: true,
+    customBot: true,
+    state: 'ready',
+    sources: ['gmodstore'],
+    revision: 'test',
+    validUntil: '2030-01-01T00:00:00.000Z',
+  })),
+)
+
 const gmLogMock = vi.fn()
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
@@ -225,6 +242,24 @@ describe('discord/index', () => {
       expect(client).toBeDefined()
     })
 
+    it('retires an already connected custom bot after its historical entitlement is revoked', async () => {
+      await bootOneClient('main')
+      await bootOneClient('revoked-guild')
+      const custom = await getGuildClient('revoked-guild', false)
+      accessMock.mockResolvedValueOnce({
+        guildID: 'revoked-guild',
+        premium: true,
+        customBot: false,
+        state: 'ready',
+        sources: ['discord'],
+        revision: 'revoked',
+        validUntil: '2030-01-01T00:00:00.000Z',
+      })
+      const fallback = await getGuildClient('revoked-guild', false)
+      expect(custom.destroy).toHaveBeenCalledOnce()
+      expect(fallback).not.toBe(custom)
+    })
+
     it('killGuildClient does nothing for an empty guildID', async () => {
       await expect(killGuildClient('')).resolves.toBeUndefined()
     })
@@ -257,7 +292,9 @@ describe('discord/index', () => {
       await bootOneClient('g-notready')
       const client = await getGuildClient('g-notready', false)
       client.readyAt = null
+      const baselineListeners = client.listenerCount('clientReady')
       const pending = getGuildClient('g-notready', false)
+      await vi.waitFor(() => expect(client.listenerCount('clientReady')).toBeGreaterThan(baselineListeners))
       client.emit('clientReady')
       await expect(pending).resolves.toBe(client)
     })
@@ -304,7 +341,9 @@ describe('discord/index', () => {
       await bootOneClient('g-notready2')
       const client = await getGuildClient('g-notready2', false)
       client.readyAt = null
+      const baselineListeners = client.listenerCount('clientReady')
       const pending = getGuildClient('g-notready2', true)
+      await vi.waitFor(() => expect(client.listenerCount('clientReady')).toBeGreaterThan(baselineListeners))
       client.emit('clientReady')
       const resolved = await pending
       // g-notready2's fake client never has itself in its own guilds.cache, so this exercises
@@ -316,9 +355,13 @@ describe('discord/index', () => {
   describe('updateGuildUserPseudo', () => {
     function makeServer(overrides: Record<string, any> = {}) {
       return {
+        getEffectivePseudoRules: vi.fn(async () => {
+          const row = await prismaMock.gm_server_pseudo.findFirst()
+          return row ? [{ role: 'user', enabled: true, ...row }] : []
+        }),
         getID: () => 's1',
         getGuildID: () => 'g1',
-        getSetting: vi.fn().mockImplementation(async (key: string) => {
+        getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
           if (key === 'sync_pseudo_direction') return 'both'
           if (key === 'pseudoFormat') return '{plyName}'
           return undefined
@@ -332,7 +375,7 @@ describe('discord/index', () => {
 
     it('returns early when sync direction excludes gmod-to-discord', async () => {
       const server = makeServer({
-        getSetting: vi.fn().mockResolvedValueOnce('discordToGmod'),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('discordToGmod'),
       })
       await updateGuildUserPseudo(server, makePlayer())
       expect(getUserFromSteamID64Mock).not.toHaveBeenCalled()
@@ -340,7 +383,7 @@ describe('discord/index', () => {
 
     it('returns early when pseudoFormat is empty', async () => {
       const server = makeServer({
-        getSetting: vi.fn().mockResolvedValueOnce('both').mockResolvedValueOnce(''),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both').mockResolvedValueOnce(''),
       })
       await updateGuildUserPseudo(server, makePlayer())
       expect(getUserFromSteamID64Mock).not.toHaveBeenCalled()
@@ -473,7 +516,7 @@ describe('discord/index', () => {
 
     it('swallows and logs any unexpected error', async () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const server = makeServer({ getSetting: vi.fn().mockRejectedValueOnce(new Error('boom')) })
+      const server = makeServer({ getEffectiveSetting: vi.fn().mockRejectedValueOnce(new Error('boom')) })
       await updateGuildUserPseudo(server, makePlayer())
       expect(errorSpy).toHaveBeenCalled()
     })

@@ -1,4 +1,21 @@
+import type * as DomainAccess from '@gmod/domain-access/index.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const accessMocks = vi.hoisted(() => ({ resolve: vi.fn(), entitlements: vi.fn() }))
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof DomainAccess>()),
+  resolveGuildAccess: accessMocks.resolve,
+  getDiscordEntitlements: accessMocks.entitlements,
+}))
+const access = (premium = true) => ({
+  guildID: 'g1',
+  premium,
+  customBot: false,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'rev',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
 
 const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
 const getErasedSteamIDsMock = vi.fn().mockResolvedValue(new Set())
@@ -44,7 +61,7 @@ const prismaMock: any = {
   gm_server_status: { updateMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
   gm_server_status_history: { create: vi.fn() },
   gm_server: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn(), delete: vi.fn(), create: vi.fn() },
-  gm_status_button: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
+  gm_status_button: { count: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
   gm_server_stat: { deleteMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), findMany: vi.fn() },
   gm_server_screenshot_channels: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_server_logs_channel: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
@@ -52,6 +69,8 @@ const prismaMock: any = {
   gm_sync_chat: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_server_sync_roles: { findMany: vi.fn() },
   gm_server_sync_team_roles: { findMany: vi.fn() },
+  gm_server_pseudo: { findMany: vi.fn() },
+  $transaction: vi.fn(),
   gm_server_logs_triggers: { findMany: vi.fn(), findFirst: vi.fn(), delete: vi.fn(), create: vi.fn(), update: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
@@ -60,6 +79,8 @@ const { Server, getServerFromID, getServersFromDiscordGuildID, createServer, gen
   await import('../src/Server.js')
 
 function resetAllMocks() {
+  accessMocks.resolve.mockReset().mockResolvedValue(access())
+  accessMocks.entitlements.mockReset()
   isErasureBlockedMock.mockReset().mockResolvedValue(false)
   getErasedSteamIDsMock.mockReset().mockResolvedValue(new Set())
   redisMock.get.mockReset()
@@ -73,10 +94,16 @@ function resetAllMocks() {
   resolveDiscordGuildClientMock.mockReset()
   buildDiscordStatusMessageMock.mockReset()
   for (const table of Object.values(prismaMock)) {
+    if (vi.isMockFunction(table)) {
+      table.mockReset()
+      continue
+    }
     for (const fn of Object.values(table as Record<string, any>)) {
       ;(fn as ReturnType<typeof vi.fn>).mockReset()
     }
   }
+  prismaMock.$transaction.mockImplementation((operation: (tx: unknown) => unknown) => operation(prismaMock))
+  prismaMock.gm_status_button.count.mockResolvedValue(0)
   vi.stubGlobal('fetch', vi.fn())
 }
 
@@ -121,76 +148,66 @@ describe('Server', () => {
     })
   })
 
-  describe('isPremium / isGuildPremiumForServer', () => {
-    it('is true when a gm_guild_premium record exists', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce({ guildID: 'g1' })
+  describe('isPremium delegates to the authoritative resolver', () => {
+    it('uses the same community identity for both positive and negative access', async () => {
+      accessMocks.resolve.mockResolvedValueOnce(access(true)).mockResolvedValueOnce(access(false))
       await expect(makeServer().isPremium()).resolves.toBe(true)
-    })
-
-    it('is true when an active gmodstore purchase exists', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ guild: 'g1' })
-      await expect(makeServer().isPremium()).resolves.toBe(true)
-    })
-
-    it('returns the cached value from redis when present', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce('true')
-      await expect(makeServer().isPremium()).resolves.toBe(true)
-    })
-
-    it('is false when Discord client credentials are not configured', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce(null)
-      const { ConfigDiscord } = await import('@gmod/config')
-      const original = ConfigDiscord.clientID
-      ;(ConfigDiscord as any).clientID = ''
-      try {
-        await expect(makeServer().isPremium()).resolves.toBe(false)
-      } finally {
-        ;(ConfigDiscord as any).clientID = original
-      }
-    })
-
-    it('fetches Discord entitlements and caches a positive result', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce(null)
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [{ guild_id: 'g1' }] }))
-
-      await expect(makeServer().isPremium()).resolves.toBe(true)
-      expect(redisMock.set).toHaveBeenCalledWith('guild:g1:premium', 'true', 'EX', 60)
-    })
-
-    it('is false when the entitlements response does not include the guild', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce(null)
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }))
-
       await expect(makeServer().isPremium()).resolves.toBe(false)
+      expect(accessMocks.resolve).toHaveBeenCalledWith('g1')
     })
+  })
 
-    it('is false when the Discord API responds with a non-ok status', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce(null)
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
-
-      await expect(makeServer().isPremium()).resolves.toBe(false)
+  describe('effective access leaves the saved configuration available to its editor', () => {
+    it('uses safe values after expiry and keeps raw stored values intact', async () => {
+      accessMocks.resolve.mockResolvedValue(access(false))
+      redisMock.get.mockResolvedValue(null)
+      prismaMock.gm_server_settings.findFirst.mockResolvedValue({ value: 'both' })
+      const server = makeServer()
+      expect(await server.getEffectiveSetting('sync_role_direction')).toBe('gmod-to-discord')
+      expect(await server.getSetting('sync_role_direction')).toBe('both')
+      expect(prismaMock.gm_server_settings.update).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_settings.create).not.toHaveBeenCalled()
     })
-
-    it('is false and logs when the fetch throws', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce(null)
-      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      await expect(makeServer().isPremium()).resolves.toBe(false)
-      expect(errorSpy).toHaveBeenCalledWith('Error getting entitlements:', expect.any(Error))
+    it('caps runtime mappings in saved order without hiding excess rules from raw reads', async () => {
+      accessMocks.resolve.mockResolvedValue(access(false))
+      const rows = Array.from({ length: 6 }, (_, index) => ({ roleID: `role-${index}`, id: index + 1 }))
+      prismaMock.gm_server_sync_roles.findMany.mockResolvedValue(rows)
+      prismaMock.gm_server_sync_team_roles.findMany.mockResolvedValue(rows)
+      prismaMock.gm_server_pseudo.findMany.mockResolvedValue(rows)
+      const server = makeServer()
+      expect(await server.getEffectiveSyncRoles()).toEqual(rows.slice(0, 4))
+      expect(await server.getEffectiveSyncTeamRoles()).toEqual([])
+      expect(await server.getEffectivePseudoRules()).toEqual(rows.slice(0, 3))
+      expect(await server.getSyncRoles()).toEqual(rows)
+      expect(prismaMock.gm_server_sync_roles.findMany).toHaveBeenCalledWith({
+        where: { serverID: 's1' },
+        orderBy: [{ createdAt: 'asc' }, { roleID: 'asc' }],
+      })
+    })
+    it('counts disabled status entries toward quota before selecting enabled buttons', async () => {
+      accessMocks.resolve.mockResolvedValue(access(false))
+      prismaMock.gm_status_button.findMany.mockResolvedValue([
+        { id: 1, enable: false },
+        { id: 2, enable: true },
+        { id: 3, enable: true },
+        { id: 4, enable: true },
+      ])
+      expect(await makeServer().getEffectiveStatusButtons()).toEqual([
+        { id: 2, enable: true },
+        { id: 3, enable: true },
+      ])
+    })
+    it('applies the same quota to historical status creation and permits cleanup after expiry', async () => {
+      accessMocks.resolve.mockResolvedValue(access(false))
+      prismaMock.gm_status_button.count.mockResolvedValue(3)
+      await expect(makeServer().createStatusButton()).rejects.toMatchObject({ code: 'quota_reached', limit: 3 })
+      expect(prismaMock.gm_status_button.create).not.toHaveBeenCalled()
+      redisMock.get.mockResolvedValue(null)
+      prismaMock.gm_server_settings.findFirst.mockResolvedValue({ value: 'true' })
+      await expect(makeServer().setSetting('show_status_chart', false, 'dashboard')).resolves.toBeDefined()
+      expect(prismaMock.gm_server_settings.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { value: 'false' } }),
+      )
     })
   })
 
@@ -321,7 +338,10 @@ describe('Server', () => {
       prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
       prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
 
-      await expect(makeServer().setSetting('show_status_chart', true)).rejects.toThrow('Premium setting')
+      accessMocks.resolve.mockResolvedValue(access(false))
+      await expect(makeServer().setSetting('show_status_chart', true)).rejects.toMatchObject({
+        code: 'upgrade_required',
+      })
     })
 
     it('throws for a value outside acceptedValues', async () => {

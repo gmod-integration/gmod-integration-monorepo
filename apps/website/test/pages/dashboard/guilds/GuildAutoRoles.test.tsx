@@ -238,14 +238,14 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
       expect(screen.getByText('Add Role')).toBeInTheDocument()
     })
 
-    it('shows the premium upsell instead of Add Role when free and at the 3-role limit', async () => {
+    it('keeps Add Role visible and disabled with its quota when free and at the 3-role limit', async () => {
       setupFetchAPI({
         autoRoles: [{ roleID: 'r1' }, { roleID: 'r2', enabled: true }, { roleID: 'r3', enabled: true }],
       })
       renderWithProviders(() => <GuildAutoRoles />)
       await waitForLoaded()
-      expect(screen.queryByText('Add Role')).not.toBeInTheDocument()
-      expect(screen.getByText('Limited to 3 auto roles for free users.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add Role' })).toBeDisabled()
+      expect(screen.getByText('3 / 3 used')).toBeInTheDocument()
     })
 
     it('shows Add Role when free and under the 3-role limit', async () => {

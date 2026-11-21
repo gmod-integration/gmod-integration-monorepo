@@ -72,6 +72,29 @@ Origin checks, conflict handling, receipt-scoped follow-up after session revocat
 states, secret stripping and parser failures. Schema and logger tests cover the shared contract and
 receipt redaction. `/v6` is mounted separately from `/v3`; it does not alias historical routes.
 
+## Community access and capabilities
+
+`GET /v6/guilds/:guildID/access` and
+`GET /v6/guilds/:guildID/servers/:serverID/access` use the same authenticated administration and
+server-ownership checks as settings saves. They return `guildID`, `premium`, `customBot`, `state`,
+`sources`, `revision`, `validUntil`, `usages` keyed by capability, and `serverID` for a server scope.
+They expose no purchaser identity or provider credentials and use `Cache-Control: no-store`.
+
+The shared [access domain](../packages/domain-access.md) resolves historical grants, assigned GmodStore
+purchases and valid Discord entitlements. `state: unknown` distinguishes verification failure from
+a confirmed free plan. The browser uses the server snapshot and the shared capability catalogue;
+each command still rechecks access on the server.
+
+Access failures use stable codes: `upgrade_required` and `quota_reached` return 403;
+`entitlement_unknown` returns 503. v6 errors contain `{error: {code, message, capability, limit?, used?}}`.
+Historical v3 callers retain a string `error` code with capability/count details alongside it.
+Authentication and administration errors remain separate.
+
+Both old and complete creation payloads enforce the same quotas through transactionally locked
+commands. Free history queries select the latest 500 logs or 50 errors before sorting and pagination;
+the limit is not merely a page size or a browser-side display restriction. Cleanup and disabling a
+paid configuration remain available after its entitlement expires.
+
 ## Dashboard section saves under v6
 
 `PUT /v6/guilds/:guildID/settings` and
@@ -132,7 +155,9 @@ the Discord queue adapter, with cached successful/unavailable results.
 `POST /v3/users/:discordID/guilds/:guildID/servers/:serverID/status/preview` requires the normal session,
 guild-administrator and server checks. Its shared `StatusMessagePreviewSchema` contract accepts
 optional draft settings and buttons, then returns the bot identity, embed fields, button rows and an
-optional PNG image. An explicitly enabled chart requires the existing Premium entitlement.
+optional PNG image. Preview settings and buttons use the effective access policy, including a disabled
+chart and the free custom-button limit after entitlement expiry. The worker rechecks access when
+rendering a queued preview; the saved configuration remains unchanged.
 The optional `simulation` flag uses five temporary fictional players and returns `simulation:true`.
 Without that flag, the endpoint continues to preview the actual server state. The flag is not a
 stored setting and is never used by the publication endpoints.

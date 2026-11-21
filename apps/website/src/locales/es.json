@@ -1232,5 +1232,25 @@
     "apply_draft": "Aplicar al borrador",
     "delete_trigger": "¿Eliminar el activador?",
     "delete_trigger_help": "La acción del evento seleccionado dejará de ejecutarse. Esta acción no se puede deshacer."
+  },
+  "access": {
+    "unavailable": "No se pudieron verificar los permisos. Tu configuración guardada se conserva.",
+    "quota": "{1} / {2} utilizados",
+    "upgrade_required": "Esta función requiere Premium.",
+    "quota_reached": "Has alcanzado el límite de esta función.",
+    "historical_bot": "Requiere una compra de GmodStore",
+    "suspended": "Esta función guardada está suspendida. Puedes desactivar o eliminar su configuración.",
+    "count_buttons": "{1} botones",
+    "count_links": "{1} enlaces",
+    "history_count": "Las últimas {1} entradas",
+    "permission_denied": "No tienes permiso para administrar esta comunidad.",
+    "status_chart": "Gráfico de actividad del estado",
+    "auto_roles_limit": "Roles automáticos - Límite",
+    "nickname_rules_limit": "Reglas de apodos - Límite",
+    "chat_filters": "Filtros de chat",
+    "log_triggers": "Acciones de eventos del registro",
+    "reverse_sync": "Sincronización de Discord al juego",
+    "errors_history": "Historial de errores",
+    "verification_preferences": "Preferencias de verificación"
   }
 }

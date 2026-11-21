@@ -33,3 +33,10 @@ Generic shared exports live in `src/components/ui/index.ts`; extend them when a 
 - Reuse the light/dark tokens and shared controls in `src/styles/dashboard.css` under `.site-shell`.
   Public page layouts live in `src/styles/site.css`; keep navigation responsive and avoid page-wide overflow.
 - Test changed interactions: cancel, failed request, retry and pending state.
+
+- Use `AccessProvider` and `useFeatureAccess` with a named capability for business access. The server
+  snapshot and shared AccessPolicy catalogue determine rights/quotas; localStorage flags do not.
+- Keep actions visible with `FeatureGate`, an explicit reason and shared quota count. Loading/fetch
+  errors and uncertain provider rights are not upgrade prompts. Existing cleanup remains accessible.
+- Preserve drafts when access refreshes or expires. Explain suspended saved values and let authorized
+  users disable/remove them. Custom bots require their distinct historical GmodStore capability.

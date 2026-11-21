@@ -417,6 +417,7 @@ export const DiscordGuildSendLogMessageJobSchema = z.object({
   description: z.string().nullable().optional(),
   color: z.string().min(1, 'color required'),
   footer: z.string().min(1, 'footer required'),
+  requiredCapability: z.literal('logs.triggers').optional(),
   correlationId: z.string().min(1, 'correlationId required'),
   timestamp: z.coerce.date().optional(),
 })

@@ -1,3 +1,4 @@
+import { useFeatureAccess } from '../../../../../components/AccessProvider.js'
 import {
   createContext,
   createEffect,
@@ -15,6 +16,7 @@ import {
   type StatusConfigurationButton,
 } from '@gmod/schema/server/StatusConfigurationSchema.js'
 import { createDraftForm } from '../../../../../hooks/createDraftForm.js'
+import { refreshAccess } from '../../../../../utils/accessEvents.js'
 import { getAPIUrl, getUrlWithActualParams } from '../../../../../utils/api.js'
 import { useI18n } from '../../../../../i18n.js'
 import { useStatusPreview } from './StatusPreviewContext.js'
@@ -34,6 +36,8 @@ function configurationURL() {
 
 function createStatusConfiguration() {
   const { t } = useI18n()
+  const chartAccess = useFeatureAccess('status.chart')
+  const buttonAccess = useFeatureAccess('status.buttons')
   const preview = useStatusPreview()
   const [revision, setRevision] = createSignal('')
   const [saveError, setSaveError] = createSignal('')
@@ -80,8 +84,27 @@ function createStatusConfiguration() {
     preview?.setButtons(buttons)
   })
   const ready = () => !configuration.loading && !configuration.error && !!configuration()
+  const accessError = () => {
+    if (form.draft().settings.show_status_chart && !form.saved().settings.show_status_chart && !chartAccess.allowed())
+      return !chartAccess.ready() || chartAccess.snapshot()?.state !== 'ready'
+        ? t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')
+        : t('access.upgrade_required', 'This feature requires Premium.')
+    const limit = buttonAccess.limit()
+    const buttons = form.draft().buttons
+    const savedIDs = new Set(form.saved().buttons.map((button) => button.id))
+    const createsButtons =
+      buttons.length > form.saved().buttons.length ||
+      buttons.some((button) => button.id === undefined || !savedIDs.has(button.id))
+    if (createsButtons && !buttonAccess.ready())
+      return t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')
+    if (createsButtons && limit !== null && buttons.length > limit)
+      return buttonAccess.snapshot()?.state !== 'ready'
+        ? t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')
+        : t('access.quota_reached', 'You have reached the limit for this feature.')
+    return undefined
+  }
   async function save() {
-    if (!ready() || stagedButton()) return false
+    if (!ready() || stagedButton() || accessError()) return false
     setSaveError('')
     return form.save(async (draft) => {
       const response = await fetch(configurationURL(), {
@@ -89,6 +112,7 @@ function createStatusConfiguration() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
         body: JSON.stringify({ configuration: StatusConfigurationSchema.parse(draft), revision: revision() }),
       })
+      if (response.status === 403 || response.ok) refreshAccess()
       if (!response.ok) {
         if (response.status === 409) {
           setConflict(true)
@@ -107,6 +131,7 @@ function createStatusConfiguration() {
   return {
     form,
     ready,
+    accessError,
     loading: () => configuration.loading,
     loadError: () => configuration.error,
     refetch,

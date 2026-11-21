@@ -1,3 +1,5 @@
+import { FeatureGate } from '../../../components/FeatureGate.js'
+import { useFeatureAccess } from '../../../components/AccessProvider.js'
 import { showDialog } from '../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
 import { guildRoles, guildRolesRefetch } from './GuildInformations.js'
@@ -8,7 +10,6 @@ import { Button, IconButton, TableState, Icon } from '../../../components/ui/ind
 import { useI18n } from '../../../i18n.js'
 import DiscordRole from '../../../components/discord/DiscordRole.js'
 import MissingRolePermission, { setRolesToCheck } from '../../../components/popup/MissingRolePermission.js'
-import { BuyPremiumBtn } from '../../../utils/premium.js'
 import { fetchAPI } from '../../../utils/api.js'
 
 type AutoRole = { roleID: string }
@@ -30,6 +31,7 @@ const GuildAutoRole: Component = () => {
   })
 
   const { t } = useI18n()
+  const quotaAccess = useFeatureAccess('guild.auto_roles')
   const [deleteTarget, setDeleteTarget] = createSignal<AutoRole>()
   const roleName = (roleID: string) =>
     !guildRoles.loading && !guildRoles.error
@@ -42,6 +44,7 @@ const GuildAutoRole: Component = () => {
   }
 
   const createVerifyRole = async (roleID: string) => {
+    if (!quotaAccess.canCreate(autoRoles().length)) throw new Error('Role limit reached')
     const newLink = await fetchAPI(`/users/:discordID/guilds/:guildID/auto-roles/${roleID}`, 'POST')
     if (!newLink.ok) throw new Error('Role creation failed')
     const verifyRole = await newLink.json()
@@ -63,8 +66,17 @@ const GuildAutoRole: Component = () => {
         loading={guildRoles.loading || autoRoles.loading}
         error={guildRoles.error || autoRoles.error}
         loadingLabel={t('dashboard.guild.auto_role.loading', 'Loading...')}
+        confirmDisabled={!quotaAccess.canCreate(!autoRoles.error ? autoRoles().length : 0)}
         onConfirm={createVerifyRole}
-      />
+      >
+        <FeatureGate
+          capability="guild.auto_roles"
+          used={!autoRoles.loading && !autoRoles.error ? autoRoles().length : undefined}
+          loading={autoRoles.loading}
+          error={autoRoles.error}
+          showQuota={false}
+        />
+      </AdminRoleSelector>
 
       <ConfirmActionDialog
         id="delete_auto_role"
@@ -89,14 +101,21 @@ const GuildAutoRole: Component = () => {
         icon="users"
         actions={
           <>
-            <BuyPremiumBtn
-              subCondition={!autoRoles.error && autoRoles()?.length < 3}
-              btnText={t('dashboard.guild.auto_role.premium', 'Limited to 3 auto roles for free users.')}
-              hidden={autoRoles.loading}
+            <FeatureGate
+              capability="guild.auto_roles"
+              used={!autoRoles.loading && !autoRoles.error ? autoRoles().length : undefined}
+              loading={autoRoles.loading}
+              error={autoRoles.error}
             >
               <Button
                 variant="primary"
-                disabled={autoRoles.loading || !!autoRoles.error || guildRoles.loading || !!guildRoles.error}
+                disabled={
+                  autoRoles.loading ||
+                  !!autoRoles.error ||
+                  guildRoles.loading ||
+                  !!guildRoles.error ||
+                  !quotaAccess.canCreate(autoRoles().length)
+                }
                 onClick={() => {
                   showDialog('select_role_modal')
                   guildRolesRefetch()
@@ -104,7 +123,7 @@ const GuildAutoRole: Component = () => {
               >
                 {t('dashboard.guild.auto_role.add_role', 'Add Role')}
               </Button>
-            </BuyPremiumBtn>
+            </FeatureGate>
           </>
         }
       >

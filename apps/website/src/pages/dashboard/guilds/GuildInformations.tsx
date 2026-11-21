@@ -1,3 +1,4 @@
+import { useAccess } from '../../../components/AccessProvider.js'
 import { Button, Icon } from '../../../components/ui/index.js'
 import type { TypeDiscordChannel, TypeDiscordRole } from '../../../utils/types/DiscordTypes.js'
 import { type Component, createEffect, createResource, on, onCleanup, Show } from 'solid-js'
@@ -79,6 +80,7 @@ async function fetchAdmins() {
 }
 
 const GuildInformations: Component = () => {
+  const access = useAccess()
   const [guildAdmins] = createResource('guilds-admins', fetchAdmins, { initialValue: [] })
   const [bot, { mutate: setBot, refetch: refreshBot }] = createResource('bot', async () => {
     return await fetchAPI('/users/:discordID/guilds/:guildID/bot', 'GET').then(async (res) => {
@@ -165,7 +167,22 @@ const GuildInformations: Component = () => {
         </div>
         <div class="flex w-fit items-center">
           <span class="mr-2">{t('dashboard.guild.information.premium', 'Premium')}:</span>
-          {getGuild().isPremium ? <Icon name="check" class="text-success" /> : <Icon name="x" class="text-error" />}
+          <Show
+            when={access.ready() && access.snapshot()?.state === 'ready'}
+            fallback={
+              <span class="text-base-content/60">
+                {access.loading()
+                  ? t('ui.loading', 'Loading…')
+                  : t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')}
+              </span>
+            }
+          >
+            {access.snapshot()?.premium ? (
+              <Icon name="check" class="text-success" />
+            ) : (
+              <Icon name="x" class="text-error" />
+            )}
+          </Show>
         </div>
         <div>
           <Icon name="triangle-alert" class="text-warning mr-2" />

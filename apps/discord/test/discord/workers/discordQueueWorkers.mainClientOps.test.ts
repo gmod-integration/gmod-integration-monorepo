@@ -266,12 +266,12 @@ describe('discordQueueWorkers - discordMainClientOpsWorker', () => {
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', synced: false })
     })
 
-    it('reconciles premium roles across gmodstore buyers and discord entitlement subscribers', async () => {
+    it('reconciles active purchases and subscriptions while removing revoked purchase roles', async () => {
       const premiumRole = { id: 'premium-role', members: new Map() }
       const gmodStorePremiumRole = { id: 'gmodstore-role', members: new Map() }
       const discordPremiumRole = { id: 'discord-role', members: new Map() }
 
-      // Existing premium-role holder who should be *removed* (no subscription, no purchase match).
+      // A revoked purchase must no longer preserve or grant Premium roles.
       const staleMemberRemove = vi.fn().mockResolvedValue(undefined)
       premiumRole.members.set('stale-user', { id: 'stale-user', roles: { remove: staleMemberRemove } })
       // Existing premium-role holder who is a current entitlement subscriber -> kept.
@@ -312,10 +312,16 @@ describe('discordQueueWorkers - discordMainClientOpsWorker', () => {
       })
 
       getMainClientMock.mockResolvedValueOnce({ guilds: { cache: { get: vi.fn().mockReturnValue(guild) } } })
-      prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([{ steamID64: '765' }])
+      const purchases = [
+        { steamID64: '765', revoke: false },
+        { steamID64: 'revoked', revoke: true },
+      ]
+      prismaMock.gm_gmodstore_purchases.findMany.mockImplementationOnce(async ({ where }: any = {}) =>
+        purchases.filter((purchase) => where?.revoke === undefined || purchase.revoke === where.revoke),
+      )
       getDiscordEntitlementsMock.mockResolvedValueOnce([{ user_id: 'sub-user' }, { user_id: 'sub-user' }])
       prismaMock.gm_user.findFirst.mockImplementation(async ({ where }: any) => {
-        if (where.id === 'stale-user') return { id: 'stale-user', steam: null }
+        if (where.id === 'stale-user') return { id: 'stale-user', steam: 'revoked' }
         if (where.id === 'sub-user') return { id: 'sub-user', steam: '765' }
         if (where.id === 'gs-stale') return null
         return null
@@ -328,6 +334,7 @@ describe('discordQueueWorkers - discordMainClientOpsWorker', () => {
       expect(keptMemberRemove).not.toHaveBeenCalled()
       expect(gmodStoreStaleRemove).toHaveBeenCalledWith(gmodStorePremiumRole)
       expect(discordStaleRemove).toHaveBeenCalledWith(discordPremiumRole)
+      expect(getUserFromSteamID64Mock).not.toHaveBeenCalledWith('revoked')
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', synced: true })
     })
 

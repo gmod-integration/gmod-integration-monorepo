@@ -200,4 +200,20 @@ describe('ServerTeam unified editing', () => {
     expect(screen.getByRole('button', { name: 'Add Team Role' })).toBeDisabled()
     expect(writes()).toHaveLength(0)
   })
+  it('keeps an expired team mapping readable and allows disabling it without a paid entitlement', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
+    renderPage()
+    await loaded()
+    expect(screen.getByRole('button', { name: 'Add Team Role' })).toBeDisabled()
+    expect(screen.getAllByRole('button', { name: 'Delete Role Sync' })[0]).toBeEnabled()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit Role' })[0])
+    expect(input('teams-mapping')).toBeDisabled()
+    expect(input('teams-enabled')).toBeEnabled()
+    await fireEvent.click(input('teams-enabled'))
+    write = () => okJson({ ...rows()[0], enable: false })
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(URL + '/1', 'PUT', { teamName: 'admins', enable: false }),
+    )
+  })
 })

@@ -121,8 +121,8 @@ describe('status buttons share the status draft', () => {
     })
     renderStatus()
     await vi.waitFor(() => expect(screen.getByText('Link 3')).toBeInTheDocument())
-    expect(screen.queryByRole('button', { name: 'Add Button' })).not.toBeInTheDocument()
-    expect(screen.getByText('Limited to 3 buttons for free users.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add Button' })).toBeDisabled()
+    expect(screen.getByText('3 / 3 used')).toBeInTheDocument()
   })
   it('renders a legacy unsupported URL as text while the user repairs it', async () => {
     installNetwork(api, {

@@ -1,3 +1,5 @@
+import { FeatureGate, SuspendedFeature } from '../../../../components/FeatureGate.js'
+import { useFeatureAccess } from '../../../../components/AccessProvider.js'
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel.js'
@@ -5,7 +7,6 @@ import AdminModal from '../../../../components/AdminModal.js'
 import ConfirmActionDialog from '../../../../components/ConfirmActionDialog.js'
 import { useI18n } from '../../../../i18n.js'
 import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket.js'
-import { BuyPremiumBtn, premium } from '../../../../utils/premium.js'
 import { fetchAPI } from '../../../../utils/api.js'
 import { TextValue } from '../../../../components/popup/TextValue.js'
 import {
@@ -34,6 +35,8 @@ const renderFormat = (value: string) =>
 
 const ServerPseudo: Component = () => {
   const { t } = useI18n()
+  const reverseAccess = useFeatureAccess('sync.nicknames.reverse')
+  const quotaAccess = useFeatureAccess('sync.nicknames.rules')
   const [syncPending, setSyncPending] = createSignal(false)
   const [creating, setCreating] = createSignal(false)
   const [removing, setRemoving] = createSignal<PseudoRule>()
@@ -76,15 +79,19 @@ const ServerPseudo: Component = () => {
     validate: (draft) => (!draft.role.trim() ? { role: t('ui.required', 'This field is required.') } : {}),
     errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
   })
-  const canCreate = () => !rules.loading && !rules.error && (premium() || rules().length < 3)
+  const canCreate = () => !rules.loading && !rules.error && quotaAccess.canCreate(rules().length)
   function begin(row?: PseudoRule) {
     if (editor.pending() || rules.loading || rules.error || (!row && !canCreate())) return
     setCreating(!row)
     editor.reset(row ? { ...row } : emptyRule())
     showDialog('edit_role_modal')
   }
+  const directionWriteAllowed = () =>
+    reverseAccess.allowed() ||
+    settings.draft().direction === settings.saved().direction ||
+    ['disable', 'gmod-to-discord'].includes(settings.draft().direction)
   async function saveSettings() {
-    if (configuration.loading || configuration.error) return
+    if (configuration.loading || configuration.error || !directionWriteAllowed()) return
     await settings.save(async (snapshot) => {
       const changed: Record<string, unknown> = {}
       if (snapshot.direction !== settings.saved().direction) changed.sync_pseudo_direction = snapshot.direction
@@ -176,6 +183,15 @@ const ServerPseudo: Component = () => {
             onChange={(event) => editor.patch({ enabled: event.currentTarget.checked })}
           />
         </FormField>
+        <Show when={creating()}>
+          <FeatureGate
+            capability="sync.nicknames.rules"
+            used={!rules.loading && !rules.error ? rules().length : undefined}
+            loading={rules.loading}
+            error={rules.error}
+            showQuota={false}
+          />
+        </Show>
         <FormActions
           dirty={editor.dirty()}
           pending={editor.pending()}
@@ -236,10 +252,10 @@ const ServerPseudo: Component = () => {
               <option value="gmod-to-discord">
                 {t('dashboard.server.pseudo.fromGmodToDiscord', 'From Gmod to Discord')}
               </option>
-              <option value="discord-to-gmod" disabled={!premium()}>
+              <option value="discord-to-gmod" disabled={!reverseAccess.allowed()}>
                 {t('dashboard.server.pseudo.fromDiscordToGmod', 'From Discord to Gmod')}
               </option>
-              <option value="both" disabled={!premium()}>
+              <option value="both" disabled={!reverseAccess.allowed()}>
                 {t('dashboard.server.pseudo.bothWays', 'Both Ways')}
               </option>
             </select>
@@ -291,7 +307,7 @@ const ServerPseudo: Component = () => {
             pending={settings.pending()}
             error={settings.error()}
             success={settings.success()}
-            disabled={configuration.loading || !!configuration.error || !settings.valid()}
+            disabled={configuration.loading || !!configuration.error || !settings.valid() || !directionWriteAllowed()}
             onSave={() => void saveSettings()}
             onCancel={() => {
               settings.discard()
@@ -303,12 +319,11 @@ const ServerPseudo: Component = () => {
                 : undefined
             }
           />
-          <Show when={!premium()}>
-            <p class="settings-notice">
-              <Icon name="crown" size={16} />
-              {t('settings.sync_premium_help', 'Discord to game and two-way synchronization require Premium.')}
-            </p>
-          </Show>
+          <FeatureGate capability="sync.nicknames.reverse" showQuota={false} />
+          <SuspendedFeature
+            capability="sync.nicknames.reverse"
+            active={['both', 'discord-to-gmod'].includes(settings.saved().direction)}
+          />
         </SettingGroup>
       </AdminPanel>
       <AdminPanel
@@ -317,15 +332,16 @@ const ServerPseudo: Component = () => {
         type="none"
         icon="list"
         actions={
-          <BuyPremiumBtn
-            subCondition={!rules.error && rules().length < 3}
-            btnText={t('dashboard.server.pseudo.rolePrefixPremium', 'Limited to 3 roles customization for free users.')}
-            hidden={rules.loading}
+          <FeatureGate
+            capability="sync.nicknames.rules"
+            used={!rules.loading && !rules.error ? rules().length : undefined}
+            loading={rules.loading}
+            error={rules.error}
           >
             <Button variant="primary" disabled={!canCreate()} onClick={() => begin()}>
               {t('dashboard.server.pseudo.addRole', 'Add Role')}
             </Button>
-          </BuyPremiumBtn>
+          </FeatureGate>
         }
       >
         <p class="settings-notice">

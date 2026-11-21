@@ -3,7 +3,6 @@ import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 
 const db = mongoClient.db('gmod_integration')
 const collectionLogs = db.collection('logs')
-const collectionErrors = db.collection('errors')
 
 interface Log {
   serverID: string
@@ -73,8 +72,24 @@ export async function getLogsByServer(
     offset: number | 0
     orderBy: 'asc' | 'desc'
     sort: string
+    readLimit?: number | null
   },
 ) {
+  if (options.readLimit !== undefined && options.readLimit !== null) {
+    if (options.offset >= options.readLimit) return []
+    // Select the entitled latest window before applying any client-selected sort or page.
+    const sort = options.sort === 'id' ? '_id' : options.sort
+    return collectionLogs
+      .aggregate([
+        { $match: { serverID } },
+        { $sort: { createdAt: -1, _id: -1 } },
+        { $limit: options.readLimit },
+        { $sort: { [sort]: options.orderBy === 'asc' ? 1 : -1, ...(sort === '_id' ? {} : { _id: -1 }) } },
+        { $skip: options.offset },
+        { $limit: Math.min(options.limit || options.readLimit, options.readLimit - options.offset) },
+      ])
+      .toArray()
+  }
   return await collectionLogs
     .find({
       serverID,

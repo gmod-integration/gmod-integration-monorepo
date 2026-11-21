@@ -5,6 +5,8 @@ import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 interface OffsetLimitQuery {
   offset: number
   limit: number
+  sort?: string
+  orderBy?: 'ASC' | 'DESC'
 }
 
 const db = mongoClient.db('gmod_integration')
@@ -91,7 +93,24 @@ export async function getErrorsBySteamID(steamID64: string, query: OffsetLimitQu
   }
 }
 
-export async function getErrorsByServer(query: OffsetLimitQuery, serverID: string) {
+export async function getErrorsByServer(query: OffsetLimitQuery, serverID: string, readLimit?: number | null) {
+  if (readLimit !== undefined && readLimit !== null) {
+    const total = Math.min(await collection.countDocuments({ serverID }), readLimit)
+    if (query.offset >= total) return { errors: [], query: { ...query, total } }
+    const allowedSort = new Set(['createdAt', 'updatedAt', 'count', 'name', 'realm', 'uptime', 'error', 'workshopID'])
+    const sort = query.sort && allowedSort.has(query.sort) ? query.sort : 'createdAt'
+    const errors = await collection
+      .aggregate([
+        { $match: { serverID } },
+        { $sort: { createdAt: -1, _id: -1 } },
+        { $limit: readLimit },
+        { $sort: { [sort]: query.orderBy === 'ASC' ? 1 : -1, _id: -1 } },
+        { $skip: query.offset },
+        { $limit: Math.min(query.limit, total - query.offset) },
+      ])
+      .toArray()
+    return { errors, query: { ...query, total } }
+  }
   return {
     errors: await collection
       .find({

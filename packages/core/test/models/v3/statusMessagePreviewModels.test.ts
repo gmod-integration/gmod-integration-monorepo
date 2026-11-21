@@ -1,6 +1,12 @@
+import type * as DomainAccess from '@gmod/domain-access/index.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Server } from '@gmod/domain-server/Server.js'
 
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof DomainAccess>()),
+  resolveGuildAccess: accessMock,
+}))
 const enqueue = vi.fn()
 const isTimeout = vi.fn()
 vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
@@ -9,9 +15,18 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
 }))
 const { processPreviewServerStatus } = await import('../../../src/models/v3/statusMessagePreviewModels.js')
 const isPremium = vi.fn()
-const server = { id: 'server-1', isPremium } as unknown as Server
+const server = { id: 'server-1', guild: 'g1', isPremium } as unknown as Server
 
 beforeEach(() => {
+  accessMock.mockReset().mockResolvedValue({
+    guildID: 'g1',
+    premium: false,
+    customBot: false,
+    state: 'ready',
+    sources: [],
+    revision: 'rev',
+    validUntil: '2030-01-01T00:00:00.000Z',
+  })
   enqueue.mockReset()
   isTimeout.mockReset().mockReturnValue(false)
   isPremium.mockReset().mockResolvedValue(false)
@@ -47,12 +62,35 @@ describe('status message draft preview', () => {
     expect(isPremium).not.toHaveBeenCalled()
   })
 
-  it('checks premium before rendering an explicitly requested chart', async () => {
-    expect((await processPreviewServerStatus(server, { settings: { show_status_chart: true } })).status).toBe(403)
-    expect(enqueue).not.toHaveBeenCalled()
-    isPremium.mockResolvedValue(true)
+  it('previews the effective free configuration after a subscription expires without discarding the saved draft', async () => {
     enqueue.mockResolvedValue({ embeds: [] })
-    expect((await processPreviewServerStatus(server, { settings: { show_status_chart: true } })).status).toBe(200)
+    const draft = {
+      settings: { show_status_chart: true },
+      buttons: Array.from({ length: 4 }, (_, i) => ({
+        name: `Button ${i}`,
+        emoji: '',
+        url: 'https://example.test',
+        enable: true,
+      })),
+    }
+    expect((await processPreviewServerStatus(server, draft)).status).toBe(200)
+    expect(enqueue).toHaveBeenLastCalledWith(
+      'server-1',
+      { settings: { show_status_chart: false }, buttons: draft.buttons.slice(0, 3) },
+      15000,
+    )
+    expect(draft.settings.show_status_chart).toBe(true)
+    accessMock.mockResolvedValueOnce({
+      guildID: 'g1',
+      premium: true,
+      customBot: false,
+      state: 'ready',
+      sources: [],
+      revision: 'rev',
+      validUntil: '2030-01-01T00:00:00.000Z',
+    })
+    await processPreviewServerStatus(server, draft)
+    expect(enqueue).toHaveBeenLastCalledWith('server-1', draft, 15000)
   })
 
   it('reports worker unavailability and invalid rendering without publishing the draft', async () => {

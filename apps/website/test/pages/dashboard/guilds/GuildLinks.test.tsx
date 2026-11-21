@@ -298,11 +298,11 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       expect(screen.getByRole('button', { name: 'Add Link' })).toBeInTheDocument()
     })
 
-    it('shows the premium upsell instead of Add Link when free and at the 2-link limit', async () => {
+    it('keeps Add Link visible and disabled with its quota when free and at the 2-link limit', async () => {
       renderWithProviders(() => <GuildLinks />)
       await waitForLoaded()
-      expect(screen.queryByRole('button', { name: 'Add Link' })).not.toBeInTheDocument()
-      expect(screen.getByText('Limited to 2 links for free users.')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add Link' })).toBeDisabled()
+      expect(screen.getByText('2 / 2 used')).toBeInTheDocument()
     })
   })
 })

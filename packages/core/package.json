@@ -33,6 +33,7 @@
     "sharp": "^0.35.5",
     "unicode-emoji": "^2.6.0",
     "@gmod/shared": "workspace:*",
-    "@gmod/schema": "workspace:*"
+    "@gmod/schema": "workspace:*",
+    "@gmod/domain-access": "workspace:*"
   }
 }

@@ -1,3 +1,5 @@
+import { FeatureGate, SuspendedFeature } from '../../../../components/FeatureGate.js'
+import { useFeatureAccess } from '../../../../components/AccessProvider.js'
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel.js'
@@ -21,7 +23,6 @@ import { useI18n } from '../../../../i18n.js'
 import DiscordRole from '../../../../components/discord/DiscordRole.js'
 import MissingRolePermission, { setRolesToCheck } from '../../../../components/popup/MissingRolePermission.js'
 import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket.js'
-import { BuyPremiumBtn, premium } from '../../../../utils/premium.js'
 import { fetchAPI } from '../../../../utils/api.js'
 import { TextValue } from '../../../../components/popup/TextValue.js'
 
@@ -36,6 +37,8 @@ const emptyRule = (): RoleRule => ({ serverID: '', roleID: '', userGroup: '', en
 
 const ServerRoles: Component = () => {
   const { t } = useI18n()
+  const reverseAccess = useFeatureAccess('sync.roles.reverse')
+  const quotaAccess = useFeatureAccess('sync.roles.rules')
   const [creating, setCreating] = createSignal(false)
   const [removing, setRemoving] = createSignal<RoleRule>()
   const [syncPending, setSyncPending] = createSignal(false)
@@ -58,7 +61,7 @@ const ServerRoles: Component = () => {
     { initialValue: [] },
   )
   const available = () => !guildRoles.loading && !guildRoles.error && !rules.loading && !rules.error
-  const canCreate = () => available() && (premium() || rules().length < 3)
+  const canCreate = () => available() && quotaAccess.canCreate(rules().length)
   createEffect(() => {
     if (!rules.loading && !rules.error) setRolesToCheck(rules().map((rule) => rule.roleID))
   })
@@ -90,7 +93,7 @@ const ServerRoles: Component = () => {
     initial: { value: 'gmod-to-discord' },
     validate: (draft) =>
       !['discord-to-gmod', 'gmod-to-discord', 'both'].includes(draft.value) ||
-      (!premium() && draft.value !== 'gmod-to-discord')
+      (!reverseAccess.allowed() && draft.value !== 'gmod-to-discord')
         ? { value: t('ui.invalid_value', 'Check this value.') }
         : {},
     errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
@@ -182,6 +185,15 @@ const ServerRoles: Component = () => {
             onChange={(event) => editor.patch({ enable: event.currentTarget.checked })}
           />
         </FormField>
+        <Show when={creating()}>
+          <FeatureGate
+            capability="sync.roles.rules"
+            used={!rules.loading && !rules.error ? rules().length : undefined}
+            loading={rules.loading}
+            error={rules.error}
+            showQuota={false}
+          />
+        </Show>
         <FormActions
           dirty={editor.dirty()}
           pending={editor.pending()}
@@ -237,13 +249,13 @@ const ServerRoles: Component = () => {
               disabled={storedDirection.loading || !!storedDirection.error || direction.pending()}
               onChange={(event) => direction.patch({ value: event.currentTarget.value })}
             >
-              <option value="discord-to-gmod" disabled={!premium()}>
+              <option value="discord-to-gmod" disabled={!reverseAccess.allowed()}>
                 {t('dashboard.server.roles.discord_to_server', 'From Discord to Gmod')}
               </option>
               <option value="gmod-to-discord">
                 {t('dashboard.server.roles.server_to_discord', 'From Gmod to Discord')}
               </option>
-              <option value="both" disabled={!premium()}>
+              <option value="both" disabled={!reverseAccess.allowed()}>
                 {t('dashboard.server.roles.both_directions', 'Both Ways')}
               </option>
             </select>
@@ -265,12 +277,11 @@ const ServerRoles: Component = () => {
                 : undefined
             }
           />
-          <Show when={!premium()}>
-            <p class="settings-notice">
-              <Icon name="crown" size={16} />
-              {t('settings.sync_premium_help', 'Discord to game and two-way synchronization require Premium.')}
-            </p>
-          </Show>
+          <FeatureGate capability="sync.roles.reverse" showQuota={false} />
+          <SuspendedFeature
+            capability="sync.roles.reverse"
+            active={['both', 'discord-to-gmod'].includes(direction.saved().value)}
+          />
         </SettingGroup>
       </AdminPanel>
       <AdminPanel
@@ -282,19 +293,16 @@ const ServerRoles: Component = () => {
         type="none"
         icon="shield-check"
         actions={
-          <BuyPremiumBtn
-            subCondition={!rules.error && rules().length < 3}
-            btnText={t(
-              'dashboard.server.roles.premium_feature_3',
-              'Limited to 3 synchronized roles for free users.',
-              3,
-            )}
-            hidden={rules.loading}
+          <FeatureGate
+            capability="sync.roles.rules"
+            used={!rules.loading && !rules.error ? rules().length : undefined}
+            loading={rules.loading}
+            error={rules.error}
           >
             <Button variant="primary" disabled={!canCreate()} onClick={() => begin()}>
               {t('dashboard.server.roles.add_role_sync', 'Add Role')}
             </Button>
-          </BuyPremiumBtn>
+          </FeatureGate>
         }
       >
         <p class="settings-notice">

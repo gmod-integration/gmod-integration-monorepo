@@ -19,6 +19,7 @@
     "axios": "^1.13.6",
     "discord.js": "^14.28.1",
     "@gmod/shared": "workspace:*",
-    "@gmod/infra-minio": "workspace:*"
+    "@gmod/infra-minio": "workspace:*",
+    "@gmod/domain-access": "workspace:*"
   }
 }

@@ -1,3 +1,5 @@
+import { FeatureGate, SuspendedFeature } from '../../../components/FeatureGate.js'
+import { useFeatureAccess } from '../../../components/AccessProvider.js'
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For, on, Show } from 'solid-js'
 import { guildChannels, guildChannelsRefetch, guildRoles, guildRolesRefetch } from './GuildInformations.js'
@@ -22,7 +24,7 @@ import { useI18n } from '../../../i18n.js'
 import DiscordMessage from '../../../components/discord/DiscordMessage.js'
 import DiscordRole from '../../../components/discord/DiscordRole.js'
 import MissingRolePermission, { setRolesToCheck } from '../../../components/popup/MissingRolePermission.js'
-import { BuyPremiumBtn, premium, PremiumBadge } from '../../../utils/premium.js'
+import { PremiumBadge } from '../../../utils/premium.js'
 import { fetchAPI } from '../../../utils/api.js'
 import { getGuild } from '../../../utils/utils.js'
 
@@ -40,6 +42,8 @@ async function readJSON<T>(url: string): Promise<T> {
 
 const GuildVerification: Component = () => {
   const { t } = useI18n()
+  const quotaAccess = useFeatureAccess('verification.roles')
+  const preferenceAccess = useFeatureAccess('verification.preferences')
   const [verifyRoles, { mutate, refetch: refetchRoles }] = createResource(
     () => readJSON<VerificationRole[]>(`${VERIFICATIONS_URL}/roles`),
     { initialValue: [] },
@@ -70,9 +74,16 @@ const GuildVerification: Component = () => {
       },
     ),
   )
-  const preferencesUnavailable = () => preferences.loading || !!preferences.error || !premium()
+  const preferencesUnavailable = () => preferences.loading || !!preferences.error
   async function savePreferences() {
-    if (preferencesUnavailable()) return
+    if (
+      preferencesUnavailable() ||
+      (!preferenceAccess.allowed() &&
+        Object.entries(prefs.draft()).some(
+          ([key, value]) => value && value !== prefs.saved()[key as keyof Preferences],
+        ))
+    )
+      return
     await prefs.save(async (draft) => {
       const changed = Object.fromEntries(
         Object.entries(draft).filter(([key, value]) => value !== prefs.saved()[key as keyof Preferences]),
@@ -115,14 +126,21 @@ const GuildVerification: Component = () => {
   const [deleteRoleTarget, setDeleteRoleTarget] = createSignal<VerificationRole>()
   const [publishTarget, setPublishTarget] = createSignal('')
   const openRole = (role?: VerificationRole) => {
-    if (roleForm.pending()) return
+    if (roleForm.pending() || (!role && !quotaAccess.canCreate(verifyRoles().length))) return
     setEditingRoleID(role?.roleID ?? '')
     roleForm.reset(role ?? emptyRole())
     showDialog('edit_role_modal')
     if (!role) void guildRolesRefetch()
   }
   async function saveRole() {
-    if (verifyRoles.loading || verifyRoles.error || guildRoles.loading || guildRoles.error) return
+    if (
+      verifyRoles.loading ||
+      verifyRoles.error ||
+      guildRoles.loading ||
+      guildRoles.error ||
+      (!editingRoleID() && !quotaAccess.canCreate(verifyRoles().length))
+    )
+      return
     if (
       await roleForm.save(async (draft) => {
         const response = await fetchAPI(
@@ -291,11 +309,25 @@ const GuildVerification: Component = () => {
             <option value="false">{t('dashboard.guild.verification.no', 'No')}</option>
           </select>
         </FormField>
+        <Show when={!editingRoleID()}>
+          <FeatureGate
+            capability="verification.roles"
+            used={!verifyRoles.loading && !verifyRoles.error ? verifyRoles().length : undefined}
+            loading={verifyRoles.loading}
+            error={verifyRoles.error}
+            showQuota={false}
+          />
+        </Show>
         <FormActions
           dirty={roleForm.dirty()}
           pending={roleForm.pending()}
           disabled={
-            !roleForm.valid() || guildRoles.loading || !!guildRoles.error || verifyRoles.loading || !!verifyRoles.error
+            !roleForm.valid() ||
+            guildRoles.loading ||
+            !!guildRoles.error ||
+            verifyRoles.loading ||
+            !!verifyRoles.error ||
+            (!editingRoleID() && !quotaAccess.canCreate(verifyRoles().length))
           }
           saveLabel={editingRoleID() ? t('ui.save', 'Save') : t('ui.create', 'Create')}
           error={roleForm.error()}
@@ -373,6 +405,13 @@ const GuildVerification: Component = () => {
           description={t('settings.explicit_save', 'Changes apply only when you save this section.')}
           icon="user-round"
         >
+          <FeatureGate
+            capability="verification.preferences"
+            loading={preferences.loading}
+            error={preferences.error}
+            showQuota={false}
+          />
+          <SuspendedFeature capability="verification.preferences" active={Object.values(prefs.saved()).some(Boolean)} />
           <AsyncState loading={preferences.loading} error={preferences.error} onRetry={() => void refetchPreferences()}>
             <SettingRow
               controlId="verification-dm"
@@ -387,7 +426,11 @@ const GuildVerification: Component = () => {
                   id="verification-dm"
                   type="checkbox"
                   class="toggle toggle-md"
-                  disabled={preferencesUnavailable() || prefs.pending()}
+                  disabled={
+                    preferencesUnavailable() ||
+                    prefs.pending() ||
+                    (!preferenceAccess.allowed() && !prefs.draft().verification_dont_mp)
+                  }
                   checked={prefs.draft().verification_dont_mp}
                   onChange={(event) => prefs.patch({ verification_dont_mp: event.currentTarget.checked })}
                 />
@@ -406,7 +449,11 @@ const GuildVerification: Component = () => {
                   id="verification-support"
                   type="checkbox"
                   class="toggle toggle-md"
-                  disabled={preferencesUnavailable() || prefs.pending()}
+                  disabled={
+                    preferencesUnavailable() ||
+                    prefs.pending() ||
+                    (!preferenceAccess.allowed() && !prefs.draft().verification_dont_join_support)
+                  }
                   checked={prefs.draft().verification_dont_join_support}
                   onChange={(event) => prefs.patch({ verification_dont_join_support: event.currentTarget.checked })}
                 />
@@ -417,7 +464,13 @@ const GuildVerification: Component = () => {
             <FormActions
               dirty={prefs.dirty()}
               pending={prefs.pending()}
-              disabled={preferencesUnavailable()}
+              disabled={
+                preferencesUnavailable() ||
+                (!preferenceAccess.allowed() &&
+                  Object.entries(prefs.draft()).some(
+                    ([key, value]) => value && value !== prefs.saved()[key as keyof Preferences],
+                  ))
+              }
               error={prefs.error()}
               success={prefs.success()}
               message={
@@ -446,21 +499,28 @@ const GuildVerification: Component = () => {
               expression isn't wrapped in any loading/error Show at all, so reading verifyRoles()
               while the resource is errored used to re-throw and crash the render (see the tbody
               fix above for the full explanation). */}
-            <BuyPremiumBtn
-              subCondition={!verifyRoles.error && verifyRoles()?.length < 2}
-              btnText={t('dashboard.guild.verification.premium_limit', 'Limited to 2 roles for free users.')}
-              hidden={verifyRoles.loading}
+            <FeatureGate
+              capability="verification.roles"
+              used={!verifyRoles.loading && !verifyRoles.error ? verifyRoles().length : undefined}
+              loading={verifyRoles.loading}
+              error={verifyRoles.error}
             >
               <Button
                 variant="primary"
-                disabled={verifyRoles.loading || !!verifyRoles.error || guildRoles.loading || !!guildRoles.error}
+                disabled={
+                  verifyRoles.loading ||
+                  !!verifyRoles.error ||
+                  guildRoles.loading ||
+                  !!guildRoles.error ||
+                  !quotaAccess.canCreate(verifyRoles().length)
+                }
                 onClick={() => {
                   openRole()
                 }}
               >
                 {t('dashboard.guild.verification.add_role_button', 'Add Role')}
               </Button>
-            </BuyPremiumBtn>
+            </FeatureGate>
           </>
         }
         footer={

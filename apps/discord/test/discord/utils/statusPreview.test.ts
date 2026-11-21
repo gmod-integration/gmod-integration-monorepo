@@ -1,5 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GmodPlayersListSchema } from '@gmod/schema/gmod/GmodPlayerSchema.js'
+import type * as AccessModule from '@gmod/domain-access/index.js'
+
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof AccessModule>()
+  return { ...actual, resolveGuildAccess: accessMock }
+})
+beforeEach(() =>
+  accessMock.mockImplementation(async (guildID: string) => ({
+    guildID,
+    premium: true,
+    customBot: true,
+    state: 'ready',
+    sources: ['gmodstore'],
+    revision: 'test',
+    validUntil: '2030-01-01T00:00:00.000Z',
+  })),
+)
 
 vi.mock('@gmod/core/utils/localizations.js', () => ({
   getTranslate: vi.fn(
@@ -59,7 +77,8 @@ function server(
     ],
   },
 ) {
-  return {
+  const result = {
+    getGuildID: () => 'guild',
     getID: () => 's1',
     getName: () => 'Actual server',
     getStatusData: vi.fn(async () => data),
@@ -72,6 +91,9 @@ function server(
     createStatus: vi.fn(),
     editStatusChannelAndMessage: vi.fn(),
   } as any
+  result.getEffectiveSetting = result.getSetting
+  result.getEffectiveStatusButtons = result.getServerStatusButtons
+  return result
 }
 const button = { name: 'DOCS', emoji: '📘', url: 'https://example.com/docs', enable: true }
 
@@ -113,6 +135,31 @@ describe('read-only Discord status preview', () => {
     expect(source.createStatus).not.toHaveBeenCalled()
     expect(source.editStatusChannelAndMessage).not.toHaveBeenCalled()
     expect(await source.getSetting('show_player_list_status')).toBe(false)
+  })
+
+  it('rechecks access at execution so a queued preview cannot keep a paid chart after expiry', async () => {
+    accessMock.mockResolvedValueOnce({
+      guildID: 'guild',
+      premium: false,
+      customBot: false,
+      state: 'ready',
+      sources: [],
+      revision: 'expired',
+      validUntil: '2030-01-01T00:00:00.000Z',
+    })
+    const source = server()
+    const preview = await renderStatusPreview(
+      source,
+      {
+        settings: { show_status_chart: true },
+        buttons: Array.from({ length: 4 }, (_, index) => ({ ...button, name: 'Link ' + index })),
+      },
+      guild(),
+    )
+    expect(chart).not.toHaveBeenCalled()
+    expect(preview.embeds[0].imageUrl).toBeNull()
+    expect(preview.buttonRows.flat().filter((entry) => entry.label.includes('Link'))).toHaveLength(3)
+    expect(source.setSetting).not.toHaveBeenCalled()
   })
 
   it('retains stored values when no draft override exists and renders offline custom buttons', async () => {
@@ -171,7 +218,8 @@ describe('read-only Discord status preview', () => {
     expect(chart).toHaveBeenCalledWith(expect.anything(), { persist: false })
     expect(preview.embeds[0].imageUrl).toBe('data:image/png;base64,YWN0dWFsLXBuZw==')
     const publishedView = Object.create(source)
-    publishedView.getSetting = async (key: string) => (key === 'show_status_chart' ? true : source.getSetting(key))
+    publishedView.getEffectiveSetting = async (key: string) =>
+      key === 'show_status_chart' ? true : source.getSetting(key)
     const rendered = await getStatusMessage(publishedView, await source.getStatusData(), 'fr', { persistChart: false })
     const embed = rendered.embeds[0].toJSON()
     expect(preview.embeds[0]).toMatchObject({

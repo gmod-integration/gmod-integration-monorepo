@@ -1,3 +1,5 @@
+import { useFeatureAccess } from '../../../../../components/AccessProvider.js'
+import { FeatureGate, SuspendedFeature } from '../../../../../components/FeatureGate.js'
 import { type Component, createResource, createSignal, For, Show } from 'solid-js'
 import { closeDialog, showDialog } from '../../../../../utils/dialog.js'
 import AdminPanel from '../../../../../components/AdminPanel.js'
@@ -8,7 +10,7 @@ import { ChannelSelector } from '../../../../../components/AdminChannelSelector.
 import { guildChannelsRefetch } from '../../GuildInformations.js'
 import DiscordMessage from '../../../../../components/discord/DiscordMessage.js'
 import DiscordStatusPreview from '../../../../../components/discord/DiscordStatusPreview.js'
-import { premium, PremiumBadge } from '../../../../../utils/premium.js'
+import { PremiumBadge } from '../../../../../utils/premium.js'
 import { fetchAPI } from '../../../../../utils/api.js'
 import { createAsyncAction } from '../../../../../hooks/createAsyncAction.js'
 import { useI18n } from '../../../../../i18n.js'
@@ -20,6 +22,7 @@ type PublishedStatus = { channel?: string; message?: string }
 
 const ServerStatusMessage: Component = () => {
   const { t } = useI18n()
+  const chartAccess = useFeatureAccess('status.chart')
   const editor = useStatusConfiguration()
   const preview = useStatusPreview()
   const [selectedChannel, setSelectedChannel] = createSignal('')
@@ -290,7 +293,7 @@ const ServerStatusMessage: Component = () => {
               type="checkbox"
               class="toggle toggle-sm"
               checked={editor.form.draft().settings.show_status_chart}
-              disabled={unavailable() || (!premium() && !editor.form.draft().settings.show_status_chart)}
+              disabled={unavailable() || (!chartAccess.allowed() && !editor.form.draft().settings.show_status_chart)}
               onChange={(event) =>
                 editor.form.patch({
                   settings: { ...editor.form.draft().settings, show_status_chart: event.currentTarget.checked },
@@ -298,6 +301,8 @@ const ServerStatusMessage: Component = () => {
               }
             />
           </SettingRow>
+          <FeatureGate capability="status.chart" showQuota={false} />
+          <SuspendedFeature capability="status.chart" active={editor.form.saved().settings.show_status_chart} />
         </SettingGroup>
       </AdminPanel>
     </>

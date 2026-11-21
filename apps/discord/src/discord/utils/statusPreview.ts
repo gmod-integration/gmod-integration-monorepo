@@ -8,6 +8,7 @@ import {
   type StatusMessagePreviewInput,
 } from '@gmod/schema/server/StatusMessagePreviewSchema.js'
 import { getStatusMessage } from './messages.js'
+import { effectiveServerSetting, limitResources, resolveGuildAccess } from '@gmod/domain-access/index.js'
 
 /** Deterministic examples exist only in the returned preview, never in player or status tables. */
 async function simulationData(server: Server) {
@@ -56,15 +57,18 @@ export async function renderStatusPreview(
   draft: StatusMessagePreviewInput,
   guild: Guild,
 ): Promise<StatusMessagePreview> {
+  const access = await resolveGuildAccess(server.getGuildID())
   const view = Object.create(server) as Server
   view.getSetting = async (setting: string) => {
     const key = setting as keyof typeof draft.settings
     return draft.settings[key] !== undefined ? draft.settings[key] : server.getSetting(setting)
   }
-  view.getServerStatusButtons = async () =>
+  view.getEffectiveSetting = async (setting: string) =>
+    effectiveServerSetting(access, setting, await view.getSetting(setting))
+  view.getEffectiveStatusButtons = async () =>
     draft.buttons === undefined
-      ? server.getServerStatusButtons()
-      : (draft.buttons.filter(
+      ? server.getEffectiveStatusButtons()
+      : (limitResources(access, 'status.buttons', draft.buttons).filter(
           (button) => button.enable && button.name.trim() && button.emoji.trim() && button.url.trim(),
         ) as Awaited<ReturnType<Server['getServerStatusButtons']>>)
 

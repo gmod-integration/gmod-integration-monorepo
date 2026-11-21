@@ -1,9 +1,15 @@
+import type * as DomainAccess from '@gmod/domain-access/index.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StatusConfiguration } from '@gmod/schema/server/StatusConfigurationSchema.js'
 
 const mocks = vi.hoisted(() => ({
+  access: vi.fn(),
   db: { $transaction: vi.fn(), gm_server_settings: { findMany: vi.fn() }, gm_status_button: { findMany: vi.fn() } },
   del: vi.fn(),
+}))
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof DomainAccess>()),
+  resolveGuildAccess: mocks.access,
 }))
 vi.mock('@gmod/infra-prisma', () => ({ default: mocks.db }))
 vi.mock('@gmod/infra-redis', () => ({ default: { del: mocks.del } }))
@@ -16,7 +22,16 @@ let failSetting: string | undefined
 let commitCount: number
 let failButton: boolean
 const refresh = vi.fn()
-const server = { id: 's1', isPremium: vi.fn() }
+const server = { id: 's1', guild: 'g1' }
+const access = (premium = true) => ({
+  guildID: 'g1',
+  premium,
+  customBot: false,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'rev',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
 
 beforeEach(() => {
   vi.resetAllMocks()
@@ -63,7 +78,7 @@ beforeEach(() => {
     commitCount++
     return accepted
   })
-  server.isPremium.mockResolvedValue(true)
+  mocks.access.mockResolvedValue(access())
   mocks.del.mockResolvedValue(1)
   refresh.mockResolvedValue(true)
 })
@@ -149,18 +164,18 @@ describe('aggregate status configuration', () => {
     expect(state.buttons[0]?.id).toBe(1)
   })
   it('enforces premium chart and button limits on the backend', async () => {
-    server.isPremium.mockResolvedValue(false)
+    mocks.access.mockResolvedValue(access(false))
     const input = await edited()
     input.configuration.settings.show_status_chart = true
-    await expect(saveStatusConfiguration(server, input, refresh)).rejects.toMatchObject({ code: 'premium_required' })
+    await expect(saveStatusConfiguration(server, input, refresh)).rejects.toMatchObject({ code: 'upgrade_required' })
     input.configuration.settings.show_status_chart = false
     input.configuration.buttons = Array.from({ length: 4 }, () => input.configuration.buttons[0]!)
-    await expect(saveStatusConfiguration(server, input, refresh)).rejects.toMatchObject({ code: 'premium_required' })
+    await expect(saveStatusConfiguration(server, input, refresh)).rejects.toMatchObject({ code: 'quota_reached' })
     expect(commitCount).toBe(0)
   })
   it('permits disabling a previously saved premium chart after premium expires', async () => {
     state.settings.show_status_chart = 'true'
-    server.isPremium.mockResolvedValue(false)
+    mocks.access.mockResolvedValue(access(false))
     const input = await edited()
     input.configuration.settings.show_status_chart = false
     expect((await saveStatusConfiguration(server, input, refresh)).configuration.settings.show_status_chart).toBe(false)

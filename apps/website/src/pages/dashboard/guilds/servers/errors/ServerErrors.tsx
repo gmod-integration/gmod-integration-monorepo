@@ -1,3 +1,4 @@
+import { FeatureGate } from '../../../../../components/FeatureGate.js'
 import { type Component, createResource, createSignal, For, type ParentProps, Show } from 'solid-js'
 import { IconButton, TableState, Icon } from '../../../../../components/ui/index.js'
 import AdminPanel from '../../../../../components/AdminPanel'
@@ -6,7 +7,6 @@ import JsonViewer from '../../../../../components/JsonViewer'
 import { fetchAPI } from '../../../../../utils/api'
 import { type ClientQuery, QuerySort, type ServerQuery } from '../../../../../utils/types/QueryTypes'
 import Pagination from '../../../../../components/Pagination'
-import { premium } from '../../../../../utils/premium'
 
 interface ErrorsSchema {
   serverID: string
@@ -154,13 +154,6 @@ const ServerErrors: Component = () => {
 
     const data = (await res.json()) as ErrorsData
 
-    if (!premium()) {
-      if (data.query.total > 50) {
-        data.query.total = 50
-        data.errors = data.errors.slice(0, 50)
-      }
-    }
-
     return data
   }
 
@@ -182,8 +175,13 @@ const ServerErrors: Component = () => {
         title={t('dashboard.server.errors.title', 'Errors')}
         description={t('dashboard.server.errors.description', 'Watch the errors of your server.')}
         type="none"
-        premium={t('dashboard.server.errors.premium', 'Limited to 50 last errors for free users.')}
       >
+        <FeatureGate
+          capability="errors.history"
+          used={!errors.loading && !errors.error ? errors().query.total : undefined}
+          loading={errors.loading}
+          error={errors.error}
+        />
         <table class="table">
           <thead>
             <tr class="text-l">

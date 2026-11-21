@@ -1,5 +1,11 @@
 import { EventEmitter } from 'node:events'
 
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async () => {
+  const policy = await import('@gmod/schema/server/AccessPolicySchema.js')
+  return { ...policy, resolveGuildAccess: accessMock }
+})
+
 const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
 vi.mock('@gmod/domain-user/privacy.js', () => ({
   isErasureBlocked: isErasureBlockedMock,
@@ -396,6 +402,47 @@ describe('apps/websocket main()', () => {
       })
       expect(result).toBe(true)
       expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ hello: 'world' }))
+    })
+
+    it.each([
+      [{ method: 'wsSyncName' }, 'gmod-to-discord'],
+      [{ method: 'wsPlayerSay' }, 'gmodToDiscord'],
+      [{ method: 'wsPlayerUpdateGroup', add: true }, 'gmod-to-discord'],
+    ])(
+      'does not dispatch or broadcast paid synchronization after effective access expires: %j',
+      async (data, direction) => {
+        getServerFromIDMock.mockResolvedValueOnce({ getEffectiveSetting: vi.fn().mockResolvedValue(direction) })
+        redisMock.publish.mockClear()
+        const result = await capturedWorkers.wsSendToServer.processor({ data: { id: 'expired', data } })
+        expect(result).toBe(false)
+        expect(redisMock.publish).not.toHaveBeenCalled()
+      },
+    )
+
+    it('does not execute RCON queued before the paid capability expired', async () => {
+      getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'community' })
+      accessMock.mockResolvedValueOnce({
+        guildID: 'community',
+        premium: false,
+        customBot: false,
+        state: 'ready',
+        sources: [],
+        revision: 'expired',
+        validUntil: '2030-01-01T00:00:00.000Z',
+      })
+      redisMock.publish.mockClear()
+      const result = await capturedWorkers.wsSendToServer.processor({
+        data: { id: 'expired', data: { method: 'wsRcon', command: 'status' } },
+      })
+      expect(result).toBe(false)
+      expect(redisMock.publish).not.toHaveBeenCalled()
+    })
+
+    it('still allows role removal commands used for cleanup after expiry', async () => {
+      redisMock.get.mockResolvedValueOnce('1')
+      const data = { method: 'wsPlayerUpdateGroup', add: false }
+      const result = await capturedWorkers.wsSendToServer.processor({ data: { id: 'cleanup', data } })
+      expect(result).toBe(true)
     })
 
     it('broadcasts and resolves true when a remote replica acks in time', async () => {

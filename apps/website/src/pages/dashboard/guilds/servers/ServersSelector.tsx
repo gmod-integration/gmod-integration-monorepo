@@ -3,8 +3,8 @@ import { createResource, createSignal, For, Match, Switch, type Component } from
 import { A, useNavigate } from '@solidjs/router'
 import defaultServer from '../../../../assets/defaultServer.png'
 import { useI18n } from '../../../../i18n.js'
-import { PremiumFeature } from '../../../../components/popup/NeedPremium.js'
-import { premium } from '../../../../utils/premium.js'
+import { FeatureGate } from '../../../../components/FeatureGate.js'
+import { useFeatureAccess } from '../../../../components/AccessProvider.js'
 import { fetchAPI, getUrlWithActualParams } from '../../../../utils/api.js'
 
 type ServerSummary = { id: string; name: string; ip: string; port: number; image?: string }
@@ -23,6 +23,7 @@ const ServerList: Component = () => {
   const [createFailed, setCreateFailed] = createSignal(false)
   const navigate = useNavigate()
   const { t } = useI18n()
+  const quotaAccess = useFeatureAccess('guild.servers')
   const [search, setSearch] = createSignal('')
   const filteredServers = () => {
     const term = search().trim().toLocaleLowerCase()
@@ -31,7 +32,7 @@ const ServerList: Component = () => {
     )
   }
   const cannotCreate = () =>
-    creating() || servers.loading || Boolean(servers.error) || (!premium() && (servers()?.length || 0) >= 1)
+    creating() || servers.loading || Boolean(servers.error) || !quotaAccess.canCreate(servers()?.length || 0)
 
   const createServer = async () => {
     if (cannotCreate()) return
@@ -53,12 +54,6 @@ const ServerList: Component = () => {
 
   return (
     <>
-      <PremiumFeature
-        message={t(
-          'dashboard.server.servers_selector.premium_feature_message',
-          'The free plan only allows you to manage one server.',
-        )}
-      />
       <Switch>
         <Match when={servers.loading}>
           <div
@@ -88,17 +83,24 @@ const ServerList: Component = () => {
                   {t('dashboard.server.servers_selector.select_server', 'Select a Server to manage')}
                 </h2>
               </div>
-              <Button
-                type="button"
-                variant="primary"
-                classList={{ 'btn-disabled': cannotCreate() }}
-                disabled={cannotCreate()}
-                loading={creating()}
-                onClick={createServer}
+              <FeatureGate
+                capability="guild.servers"
+                used={servers()?.length || 0}
+                loading={servers.loading}
+                error={servers.error}
               >
-                <Icon name="plus" size={17} />
-                {t('dashboard.server.servers_selector.create_server', 'Create Server')}
-              </Button>
+                <Button
+                  type="button"
+                  variant="primary"
+                  classList={{ 'btn-disabled': cannotCreate() }}
+                  disabled={cannotCreate()}
+                  loading={creating()}
+                  onClick={createServer}
+                >
+                  <Icon name="plus" size={17} />
+                  {t('dashboard.server.servers_selector.create_server', 'Create Server')}
+                </Button>
+              </FeatureGate>
             </div>
             <label class="dashboard-selection-toolbar flex w-full max-w-md items-center gap-3 rounded-xl border border-base-content/10 bg-base-100 px-4 py-3 text-base-content/45 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10">
               <Icon name="search" size={18} />

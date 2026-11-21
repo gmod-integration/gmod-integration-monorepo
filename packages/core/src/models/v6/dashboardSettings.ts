@@ -1,3 +1,4 @@
+import { assertServerSettingChange, assertGuildSettingChange, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import prisma from '@gmod/infra-prisma'
 import redis from '@gmod/infra-redis'
 import { wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
@@ -7,10 +8,6 @@ import {
   ServerDashboardSettingsSchema,
   GuildDashboardSettingsSchema,
 } from '@gmod/schema/server/DashboardSettingsSchema.js'
-
-export class SettingsPermissionError extends Error {
-  readonly code = 'settings_forbidden'
-}
 
 const encoded = (value: unknown) =>
   typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value)
@@ -22,15 +19,9 @@ function checkStorage(settings: Record<string, unknown>) {
 export async function saveServerDashboardSettings(server: Server, input: unknown) {
   const settings = ServerDashboardSettingsSchema.parse(input)
   checkStorage(settings)
-  if (
-    !(await server.isPremium()) &&
-    ((settings.sync_role_direction !== undefined && settings.sync_role_direction !== 'gmod-to-discord') ||
-      (settings.sync_pseudo_direction !== undefined &&
-        !['gmod-to-discord', 'disable'].includes(settings.sync_pseudo_direction)) ||
-      (settings.syncChatDirection !== undefined && settings.syncChatDirection !== 'gmodToDiscord') ||
-      settings.chat_sync_relay_all !== undefined)
-  )
-    throw new SettingsPermissionError('A premium entitlement is required for these settings.')
+  const access = await resolveGuildAccess(server.guild)
+  for (const [key, value] of Object.entries(settings))
+    assertServerSettingChange(access, key, value, await server.getSetting(key))
   // Commit every validated value before dispatching external updates.
   await prisma.$transaction(async (tx) => {
     for (const [setting, value] of Object.entries(settings))
@@ -62,8 +53,9 @@ export async function saveServerDashboardSettings(server: Server, input: unknown
 
 export async function saveGuildDashboardSettings(guild: Guild, input: unknown) {
   const settings = GuildDashboardSettingsSchema.parse(input)
-  if (!(await guild.isPremium()))
-    throw new SettingsPermissionError('A premium entitlement is required for these settings.')
+  const access = await resolveGuildAccess(guild.id)
+  for (const [key, value] of Object.entries(settings))
+    assertGuildSettingChange(access, key, value, await guild.getSetting(key))
   await prisma.$transaction(async (tx) => {
     for (const [setting, value] of Object.entries(settings))
       await tx.gm_guild_settings.upsert({

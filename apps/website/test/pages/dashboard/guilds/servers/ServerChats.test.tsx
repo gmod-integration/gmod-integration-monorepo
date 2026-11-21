@@ -307,14 +307,34 @@ describe('ServerChats unified editing', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await loaded()
   })
-  it('blocks paid behavior and filter commands on a free guild', async () => {
+  it('blocks paid activation while keeping existing filter cleanup available', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
     renderPage()
     await loaded()
     expect(screen.getByRole('button', { name: 'Add Rule' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled()
     expect(input('chat-default-behavior')).toBeDisabled()
     expect(input('chat-direction').querySelector('option[value="both"]')).toBeDisabled()
+  })
+  it('allows a free community to deactivate an existing filter while keeping its paid fields read-only', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(input('chat-rule-trigger')).toBeDisabled()
+    expect(input('chat-rule-active')).toBeEnabled()
+    await fireEvent.click(input('chat-rule-active'))
+    write = () => okJson({ ...filter(), active: false })
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(URL + '/filters/1', 'PUT', {
+        element: 'message',
+        operator: 'contain',
+        trigger: 'hello',
+        action: 'relay',
+        active: false,
+      }),
+    )
   })
 })

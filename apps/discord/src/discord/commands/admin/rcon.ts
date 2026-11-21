@@ -1,3 +1,4 @@
+import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import {
   ActionRowBuilder,
   type AutocompleteInteraction,
@@ -10,7 +11,7 @@ import { getServerList } from '@gmod/domain-server/serversModels.js'
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { ButtonVerificationWebsite } from '../../utils/buttons.js'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
-import { isGuildPremium, replyNeedPremium } from '@gmod/domain-guild/Guild.js'
+import { replyNeedPremium } from '@gmod/domain-guild/Guild.js'
 import { enqueueWSSendToServerAndWait } from '@gmod/infra-websocket/queues.js'
 import { getTranslate } from '@gmod/core/utils/localizations.js'
 
@@ -44,7 +45,7 @@ export default {
     }
 
     const server = await getServerFromID(serverID)
-    if (!server) {
+    if (!server || server.getGuildID() !== interaction.guild.id) {
       return interaction.reply({
         content: await getTranslate('server_not_found', lang),
         ephemeral: true,
@@ -70,7 +71,13 @@ export default {
       })
     }
 
-    if (!(await isGuildPremium(interaction.guild.id))) {
+    const access = await resolveGuildAccess(server.getGuildID())
+    if (!hasCapability(access, 'console.rcon')) {
+      if (access.state === 'unknown')
+        return interaction.reply({
+          content: await getTranslate('access_verification_unavailable', lang),
+          ephemeral: true,
+        })
       return replyNeedPremium(interaction)
     }
 

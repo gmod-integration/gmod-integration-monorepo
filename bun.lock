@@ -8,6 +8,7 @@
         "@aws-sdk/client-s3": "^3.1157.0",
         "@discordjs/builders": "^1.14.1",
         "@gmod/config": "workspace:*",
+        "@gmod/domain-access": "workspace:*",
         "@gmod/core": "workspace:*",
         "@gmod/domain-compliance": "workspace:*",
         "@gmod/domain-gmod": "workspace:*",
@@ -93,6 +94,7 @@
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1009.0",
         "@gmod/config": "workspace:*",
+        "@gmod/domain-access": "workspace:*",
         "@gmod/core": "workspace:*",
         "@gmod/domain-guild": "workspace:*",
         "@gmod/domain-moderation": "workspace:*",
@@ -174,6 +176,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@gmod/config": "workspace:*",
+        "@gmod/domain-access": "workspace:*",
         "@gmod/core": "workspace:*",
         "@gmod/domain-guild": "workspace:*",
         "@gmod/domain-server": "workspace:*",
@@ -201,6 +204,7 @@
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1009.0",
         "@gmod/config": "workspace:*",
+        "@gmod/domain-access": "workspace:*",
         "@gmod/domain-gmod": "workspace:*",
         "@gmod/domain-guild": "workspace:*",
         "@gmod/domain-server": "workspace:*",
@@ -225,6 +229,17 @@
         "sharp": "^0.35.5",
         "unicode-emoji": "^2.6.0",
       },
+    },
+    "packages/domain-access": {
+      "name": "@gmod/domain-access",
+      "version": "1.0.0",
+      "dependencies": {
+        "@gmod/config": "workspace:*",
+        "@gmod/infra-prisma": "workspace:*",
+        "@gmod/infra-redis": "workspace:*",
+        "@gmod/schema": "workspace:*",
+        "zod": "^3.25.76"
+      }
     },
     "packages/domain-compliance": {
       "name": "@gmod/domain-compliance",
@@ -257,6 +272,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@gmod/config": "workspace:*",
+        "@gmod/domain-access": "workspace:*",
         "@gmod/domain-server": "workspace:*",
         "@gmod/domain-user": "workspace:*",
         "@gmod/infra-bullmq": "workspace:*",
@@ -285,6 +301,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@gmod/config": "workspace:*",
+        "@gmod/domain-access": "workspace:*",
         "@gmod/infra-prisma": "workspace:*",
         "@gmod/infra-redis": "workspace:*",
         "@gmod/infra-websocket": "workspace:*",
@@ -944,6 +961,8 @@
     "@gmod/config": ["@gmod/config@workspace:packages/config"],
 
     "@gmod/core": ["@gmod/core@workspace:packages/core"],
+
+    "@gmod/domain-access": ["@gmod/domain-access@workspace:packages/domain-access"],
 
     "@gmod/domain-compliance": ["@gmod/domain-compliance@workspace:packages/domain-compliance"],
 

@@ -8,6 +8,7 @@ import {
 } from '@gmod/domain-user/privacy.js'
 import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { isGuildPremium } from './Guild.js'
+import { limitResources, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { ConfigDiscord } from '@gmod/config'
 import { generateToken } from '@gmod/shared/generateToken.js'
 import redis from '@gmod/infra-redis'
@@ -46,12 +47,12 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
   }
 
   for (const server of servers) {
-    const syncDirection = await server.getSetting('sync_role_direction')
+    const syncDirection = await server.getEffectiveSetting('sync_role_direction')
     if (syncDirection !== 'both' && syncDirection !== 'discord-to-gmod') {
       continue
     }
 
-    const syncRoles = await server.getSyncRoles()
+    const syncRoles = await server.getEffectiveSyncRoles()
     if (!syncRoles || syncRoles.length === 0) {
       continue
     }
@@ -175,9 +176,11 @@ export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
     where: {
       guildID: guild.id,
     },
+    orderBy: [{ createdAt: 'asc' }, { roleID: 'asc' }],
   })
 
-  for (const roleData of roles) {
+  const effectiveRoles = limitResources(await resolveGuildAccess(guild.id), 'guild.auto_roles', roles)
+  for (const roleData of effectiveRoles) {
     const roleDiscord = guild.roles.cache.get(roleData.roleID)
     if (!roleDiscord) {
       await prisma.gm_guild_auto_roles.delete({
@@ -202,9 +205,11 @@ export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
     where: {
       guildID: guild.id,
     },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
   })
 
-  for (const roleData of role) {
+  const effectiveRoles = limitResources(await resolveGuildAccess(guild.id), 'verification.roles', role)
+  for (const roleData of effectiveRoles) {
     const roleDiscord = guild.roles.cache.get(roleData.roleID)
     if (!roleDiscord) {
       await prisma.gm_guild_verify_role.delete({
@@ -523,8 +528,8 @@ export async function updatePseudoToGmod(member: GuildMember, oldMember: GuildMe
   if (!user || !user.getSteamID64()) return
 
   for (const server of servers) {
-    const pseudoDirection = await server.getSetting('sync_pseudo_direction')
-    if (pseudoDirection !== 'both' && pseudoDirection !== 'discord-to-gmod') return
+    const pseudoDirection = await server.getEffectiveSetting('sync_pseudo_direction')
+    if (pseudoDirection !== 'both' && pseudoDirection !== 'discord-to-gmod') continue
 
     const redisKey = `sync-pseudo:gmod:server:${server.id}:user:${user.getSteamID64()}`
     const redisData = await redis.get(redisKey)

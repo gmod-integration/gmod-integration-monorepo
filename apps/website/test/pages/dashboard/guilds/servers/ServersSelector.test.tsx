@@ -43,11 +43,12 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     expect(screen.getByText('Loading...')).toBeInTheDocument()
   })
 
-  it('shows the premium-feature notice for a free guild', async () => {
+  it('shows the shared quota for a loaded free guild', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
     ;(fetchAPI as any).mockResolvedValue(okJson([]))
     renderList()
-    expect(screen.getByText('The free plan only allows you to manage one server.')).toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getByText('0 / 1 used')).toBeInTheDocument())
+    expect(screen.queryByRole('link', { name: 'Upgrade Now' })).not.toBeInTheDocument()
   })
 
   it('renders each server card with name, address, and image, falling back to the default image', async () => {

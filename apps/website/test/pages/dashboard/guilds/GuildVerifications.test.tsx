@@ -386,7 +386,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
   it('keeps free-tier creation limited to two verification roles', async () => {
     renderWithProviders(() => <GuildVerification />)
     await waitForLoaded()
-    expect(screen.queryByRole('button', { name: 'Add Role' })).not.toBeInTheDocument()
-    expect(screen.getByText('Limited to 2 roles for free users.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add Role' })).toBeDisabled()
+    expect(screen.getByText('2 / 2 used')).toBeInTheDocument()
   })
 })

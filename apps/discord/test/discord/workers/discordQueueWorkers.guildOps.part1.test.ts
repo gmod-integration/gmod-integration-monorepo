@@ -1,6 +1,22 @@
+import type * as DomainAccess from '@gmod/domain-access/index.js'
 import { EventEmitter } from 'node:events'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FakeCollection, makeChannel, makeGuild, makeGuildClient, makeJob, makeMember, makeRole } from './fixtures.js'
+
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof DomainAccess>()),
+  resolveGuildAccess: accessMock,
+}))
+const access = (premium = true) => ({
+  guildID: 'g1',
+  premium,
+  customBot: false,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'rev',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
 
 class FakeWorker extends EventEmitter {
   name: string
@@ -72,6 +88,7 @@ function processor() {
 }
 
 function resetAllMocks() {
+  accessMock.mockReset().mockResolvedValue(access())
   gmLogMock.mockClear()
   prismaMock.gm_guild_verify_msg.findFirst.mockReset()
   prismaMock.gm_guild_verify_msg.delete.mockReset().mockResolvedValue(undefined)
@@ -702,6 +719,53 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
         ...overrides,
       }
     }
+
+    it('rechecks a queued trigger after expiry and acknowledges a skipped delivery without calling Discord', async () => {
+      const queued = makeJob('guildSendLogMessage', baseData({ requiredCapability: 'logs.triggers' }))
+      accessMock.mockResolvedValueOnce(access(false))
+      await processor()(queued)
+      expect(accessMock).toHaveBeenCalledWith('g1')
+      expect(getGuildClientMock).not.toHaveBeenCalled()
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: false, error: 'upgrade_required' })
+    })
+
+    it('keeps unknown entitlement verification distinct from Free and skips the queued trigger', async () => {
+      accessMock.mockResolvedValueOnce({ ...access(false), state: 'unknown' })
+      await processor()(makeJob('guildSendLogMessage', baseData({ requiredCapability: 'logs.triggers' })))
+      expect(getGuildClientMock).not.toHaveBeenCalled()
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: false, error: 'entitlement_unknown' })
+    })
+
+    it('delivers an entitled trigger through the existing Discord queue adapter path', async () => {
+      const channel = makeChannel('chan1')
+      const guild = makeGuild('g1', { channels: { cache: new FakeCollection([['chan1', channel]]), fetch: vi.fn() } })
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+      await processor()(makeJob('guildSendLogMessage', baseData({ requiredCapability: 'logs.triggers' })))
+      expect(channel.send).toHaveBeenCalledOnce()
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: true })
+    })
+
+    it('rechecks a trigger when access expires while Discord becomes ready', async () => {
+      accessMock.mockResolvedValueOnce(access(true)).mockResolvedValueOnce(access(false))
+      const channel = makeChannel('chan1')
+      const guild = makeGuild('g1', { channels: { cache: new FakeCollection([['chan1', channel]]), fetch: vi.fn() } })
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+      await processor()(makeJob('guildSendLogMessage', baseData({ requiredCapability: 'logs.triggers' })))
+      expect(accessMock).toHaveBeenCalledTimes(2)
+      expect(channel.send).not.toHaveBeenCalled()
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: false, error: 'upgrade_required' })
+    })
+
+    it('keeps ordinary log deliveries free and does not require an entitlement lookup', async () => {
+      accessMock.mockResolvedValueOnce(access(false))
+      const channel = makeChannel('chan1')
+      const guild = makeGuild('g1', { channels: { cache: new FakeCollection([['chan1', channel]]), fetch: vi.fn() } })
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+      await processor()(makeJob('guildSendLogMessage', baseData()))
+      expect(accessMock).not.toHaveBeenCalled()
+      expect(channel.send).toHaveBeenCalledOnce()
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: true })
+    })
 
     it('replies sent=false with error when the guild cannot be fetched', async () => {
       const client = makeGuildClient(null)

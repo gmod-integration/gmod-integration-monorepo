@@ -15,6 +15,7 @@
     "@gmod/infra-websocket": "workspace:*",
     "@gmod/schema": "workspace:*",
     "discord.js": "^14.28.1",
-    "@gmod/shared": "workspace:*"
+    "@gmod/shared": "workspace:*",
+    "@gmod/domain-access": "workspace:*"
   }
 }

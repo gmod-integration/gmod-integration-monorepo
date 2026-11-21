@@ -1,3 +1,4 @@
+import { refreshAccess } from './accessEvents.js'
 import { isLogged } from './event'
 import { createSignal } from 'solid-js'
 import { getUrlWithActualParams } from './api'
@@ -46,6 +47,7 @@ export function initWebSocket(forceClose = false) {
   const ws = new WebSocket(websocket())
 
   ws.onopen = () => {
+    refreshAccess()
     console.log('WebSocket connection opened')
   }
 
@@ -53,6 +55,9 @@ export function initWebSocket(forceClose = false) {
     const eventData = JSON.parse(event.data)
     if (!eventData || !eventData.action) return
     switch (eventData.action) {
+      case 'access_changed':
+        refreshAccess()
+        break
       case 'server_logs':
         if (eventData.serverID !== getUrlWithActualParams(':serverID')) return
         setWebSocketLogsMessages((prev) => [eventData.data, ...prev])

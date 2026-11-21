@@ -1,3 +1,4 @@
+import { limitResources, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import {
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
@@ -9,6 +10,12 @@ import {
 import { getTranslate } from '@gmod/core/utils/localizations.js'
 import { ConfigServer } from '@gmod/config'
 import prisma from '@gmod/infra-prisma'
+
+async function effectiveLinks(guildID: string) {
+  const access = await resolveGuildAccess(guildID)
+  const links = await prisma.gm_server_links.findMany({ where: { guild: guildID }, orderBy: { id: 'asc' } })
+  return limitResources(access, 'guild.links', links).filter((link) => link.active)
+}
 
 export default {
   data: new SlashCommandBuilder()
@@ -26,11 +33,7 @@ export default {
     const linkID = interaction.options.getString('link')
     if (!linkID) return
 
-    const linkInfo = await prisma.gm_server_links.findFirst({
-      where: {
-        id: Number(linkID),
-      },
-    })
+    const linkInfo = (await effectiveLinks(interaction.guild.id)).find((link) => link.id === Number(linkID))
 
     const member = interaction.member as GuildMember
     if (!linkInfo) {
@@ -64,11 +67,7 @@ export default {
     const focusedOption = interaction.options.getFocused(true)
     const choices: Record<string, string> = {}
 
-    const guildLinks = await prisma.gm_server_links.findMany({
-      where: {
-        guild: interaction.guild.id,
-      },
-    })
+    const guildLinks = await effectiveLinks(interaction.guild.id)
 
     guildLinks.forEach((link) => {
       if (!link.alias) return
@@ -77,7 +76,9 @@ export default {
       choices[link.id] = link.alias
     })
 
-    const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value))
+    const filtered = Object.keys(choices)
+      .filter((choice) => choice.startsWith(focusedOption.value))
+      .slice(0, 25)
     return await interaction.respond(filtered.map((choice) => ({ name: choices[choice], value: choice })))
   },
 }

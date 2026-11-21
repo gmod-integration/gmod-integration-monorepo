@@ -2,6 +2,7 @@ import { WebSocketServer } from 'ws'
 import { Worker } from 'bullmq'
 import { randomUUID } from 'node:crypto'
 import { ConfigServer } from '@gmod/config'
+import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { gmLog } from '@gmod/shared/logger.js'
 import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { getPanelUserFromDiscordID, type PanelUser } from '@gmod/domain-user/PanelUser.js'
@@ -67,6 +68,27 @@ async function waitForRemoteWsDispatchAck(requestId: string, timeoutMs = WS_SEND
 
   await redis.del(ackKey)
   return false
+}
+
+async function mayDispatchServerData(id: string, data: any) {
+  if (data?.method === 'wsRcon') {
+    const server = await getServerFromID(id)
+    return !!server && hasCapability(await resolveGuildAccess(server.getGuildID()), 'console.rcon')
+  }
+  // Recheck paid synchronization when a queued command is dispatched, also on remote instances.
+  const restriction =
+    data?.method === 'wsSyncName'
+      ? { setting: 'sync_pseudo_direction', directions: ['both', 'discord-to-gmod'] }
+      : data?.method === 'wsPlayerSay'
+        ? { setting: 'syncChatDirection', directions: ['both', 'discordToGmod'] }
+        : data?.method === 'wsPlayerUpdateGroup' && data.add === true
+          ? { setting: 'sync_role_direction', directions: ['both', 'discord-to-gmod'] }
+          : undefined
+  if (restriction) {
+    const server = await getServerFromID(id)
+    if (!server || !restriction.directions.includes(await server.getEffectiveSetting(restriction.setting))) return false
+  }
+  return true
 }
 
 function wsSendToServer(id: string, data: any) {
@@ -183,6 +205,7 @@ export async function main() {
         return
       }
 
+      if (!(await mayDispatchServerData(serverID, messageData))) return
       const sent = wsSendToServer(serverID, messageData)
       if (!sent) {
         return
@@ -374,6 +397,7 @@ export async function main() {
   wsSendToServerWorker = new Worker(
     wsSendToServerQueue.name,
     async (job) => {
+      if (!(await mayDispatchServerData(job.data.id, job.data.data))) return false
       const sentLocally = wsSendToServer(job.data.id, job.data.data)
       if (sentLocally) {
         return true

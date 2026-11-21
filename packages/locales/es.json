@@ -221,5 +221,6 @@
   "ch_atm_deposit_money": "Cajero depositar dinero",
   "ch_atm_withdraw_money": "Cajero retirar dinero",
   "ammount": "Monto",
-  "discord.screenshot.no_title": "Sin título"
+  "discord.screenshot.no_title": "Sin título",
+  "access_verification_unavailable": "No se pueden verificar los permisos de acceso en este momento. Vuelve a intentarlo dentro de unos instantes."
 }

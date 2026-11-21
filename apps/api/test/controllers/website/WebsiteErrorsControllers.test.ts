@@ -19,9 +19,9 @@ describe('getServerErrors', () => {
     getServerErrorsPayloadSafeMock.mockResolvedValueOnce({ status: 200, body: { errors: [] } })
     const res = makeRes()
 
-    await getServerErrors({ params: { serverID: 's1' }, query: {} } as any, res)
+    await getServerErrors({ server: { guild: 'g1' }, params: { serverID: 's1' }, query: {} } as any, res)
 
-    expect(getServerErrorsPayloadSafeMock).toHaveBeenCalledWith({}, 's1')
+    expect(getServerErrorsPayloadSafeMock).toHaveBeenCalledWith({}, 's1', 'g1')
     expect(res.status).toHaveBeenCalledWith(200)
   })
 
@@ -29,8 +29,8 @@ describe('getServerErrors', () => {
     getServerErrorsPayloadSafeMock.mockResolvedValueOnce({ status: 200, body: { errors: [] } })
     const res = makeRes()
 
-    await getServerErrors({ params: { serverID: ['s1', 's2'] }, query: {} } as any, res)
+    await getServerErrors({ server: { guild: 'g1' }, params: { serverID: ['s1', 's2'] }, query: {} } as any, res)
 
-    expect(getServerErrorsPayloadSafeMock).toHaveBeenCalledWith({}, 's1')
+    expect(getServerErrorsPayloadSafeMock).toHaveBeenCalledWith({}, 's1', 'g1')
   })
 })

@@ -1,5 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async () => {
+  const policy = await import('@gmod/schema/server/AccessPolicySchema.js')
+  return { ...policy, resolveGuildAccess: accessMock }
+})
+beforeEach(() =>
+  accessMock.mockImplementation(async (guildID: string) => ({
+    guildID,
+    premium: true,
+    customBot: true,
+    state: 'ready',
+    sources: ['gmodstore'],
+    revision: 'test',
+    validUntil: '2030-01-01T00:00:00.000Z',
+  })),
+)
+
 const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
 vi.mock('@gmod/domain-user/privacy.js', () => ({
   isErasureBlocked: isErasureBlockedMock,
@@ -38,8 +55,9 @@ function makePlayer(overrides: Record<string, any> = {}) {
 
 function makeServer(overrides: Record<string, any> = {}) {
   return {
+    getGuildID: () => 'guild',
     getSyncChatChannel: vi.fn().mockResolvedValue({ id: 'wh1', token: 'tok' }),
-    getSetting: vi.fn().mockImplementation(async (key: string) => {
+    getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
       if (key === 'syncChatDirection') return 'both'
       if (key === 'chat_sync_relay_all') return true
       if (key === 'sync_chat_prevent_ping') return false
@@ -87,7 +105,7 @@ describe('serversPlayersModels', () => {
 
     it('skips when the sync direction is discord-to-gmod only', async () => {
       const server = makeServer({
-        getSetting: vi
+        getEffectiveSetting: vi
           .fn()
           .mockImplementation(async (key: string) => (key === 'syncChatDirection' ? 'discordToGmod' : true)),
       })
@@ -104,9 +122,31 @@ describe('serversPlayersModels', () => {
       })
     })
 
+    it('ignores stored paid chat filters after the entitlement expires', async () => {
+      accessMock.mockResolvedValueOnce({
+        guildID: 'guild',
+        premium: false,
+        customBot: false,
+        state: 'ready',
+        sources: [],
+        revision: 'expired',
+        validUntil: '2030-01-01T00:00:00.000Z',
+      })
+      const server = makeServer({
+        getGmodToDiscordFilter: vi
+          .fn()
+          .mockResolvedValue([
+            { element: 'message', operator: 'contain', trigger: 'hello', action: 'block', active: true },
+          ]),
+      })
+      await sendPlayerSay(server, makePlayer(), 'hello', false)
+      expect(server.getGmodToDiscordFilter).not.toHaveBeenCalled()
+      expect(fetch).toHaveBeenCalledOnce()
+    })
+
     it('skips when chat_sync_relay_all is off and no filter rule turns it back on', async () => {
       const server = makeServer({
-        getSetting: vi.fn().mockImplementation(async (key: string) => {
+        getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
           if (key === 'syncChatDirection') return 'both'
           if (key === 'chat_sync_relay_all') return false
           return false
@@ -135,7 +175,7 @@ describe('serversPlayersModels', () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true })
       vi.stubGlobal('fetch', fetchMock)
       const server = makeServer({
-        getSetting: vi.fn().mockImplementation(async (key: string) => {
+        getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
           if (key === 'syncChatDirection') return 'both'
           if (key === 'chat_sync_relay_all') return true
           if (key === 'sync_chat_prevent_ping') return true
@@ -382,7 +422,7 @@ describe('serversPlayersModels', () => {
         const fetchMock = vi.fn().mockResolvedValue({ ok: true })
         vi.stubGlobal('fetch', fetchMock)
         const server = makeServer({
-          getSetting: vi.fn().mockImplementation(async (key: string) => {
+          getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
             if (key === 'syncChatDirection') return 'both'
             if (key === 'chat_sync_relay_all') return false
             return false

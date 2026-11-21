@@ -1,4 +1,20 @@
+import type * as AccessDomain from '@gmod/domain-access/index.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof AccessDomain>()),
+  resolveGuildAccess: accessMock,
+}))
+const accessSnapshot = (premium = true) => ({
+  guildID: 'g1',
+  premium,
+  customBot: premium,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'test',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
 
 const getUserFromDiscordIDMock = vi.fn()
 const getUserFromSteamID64Mock = vi.fn()
@@ -13,9 +29,11 @@ vi.mock('@gmod/shared/generateToken.js', () => ({ generateToken: generateTokenMo
 vi.mock('../../../src/utils/tools.js', () => ({ badArgument: badArgumentMock }))
 
 const createServerMock = vi.fn()
+const getServerFromIDMock = vi.fn()
 const getServersFromDiscordGuildIDMock = vi.fn()
 vi.mock('@gmod/domain-server/Server.js', () => ({
   createServer: createServerMock,
+  getServerFromID: getServerFromIDMock,
   getServersFromDiscordGuildID: getServersFromDiscordGuildIDMock,
 }))
 
@@ -41,8 +59,8 @@ const prismaMock: any = {
   gm_server_sync_chat_filter: { findFirst: vi.fn(), update: vi.fn(), delete: vi.fn() },
   gm_server_stat: { findMany: vi.fn(), count: vi.fn(), update: vi.fn() },
   gm_user: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
-  gm_guild_auto_roles: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
-  gm_guild: { count: vi.fn(), groupBy: vi.fn(), aggregate: vi.fn() },
+  gm_guild_auto_roles: { count: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
+  gm_guild: { update: vi.fn(), count: vi.fn(), groupBy: vi.fn(), aggregate: vi.fn() },
   gm_server: { count: vi.fn() },
   users: { count: vi.fn() },
   gm_gmodstore_purchases: { findFirst: vi.fn(), update: vi.fn() },
@@ -52,7 +70,8 @@ const prismaMock: any = {
   gm_server_screenshots: { findMany: vi.fn(), count: vi.fn() },
   gm_server_ban: { findMany: vi.fn() },
 }
-vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
+const transactionMock = vi.fn()
+vi.mock('@gmod/infra-prisma', () => ({ default: { ...prismaMock, $transaction: transactionMock } }))
 
 const {
   processGetProfile,
@@ -108,7 +127,13 @@ function resetAllMocks() {
 
 describe('usersControllerModels', () => {
   beforeEach(() => {
+    accessMock.mockReset().mockResolvedValue(accessSnapshot())
     resetAllMocks()
+    getServerFromIDMock.mockReset().mockResolvedValue({ id: 's1', guild: 'g1' })
+    transactionMock.mockReset().mockImplementation((operation) => operation(prismaMock))
+    prismaMock.gm_guild.update.mockResolvedValue({})
+    prismaMock.gm_server.count.mockResolvedValue(0)
+    prismaMock.gm_guild_auto_roles.count.mockResolvedValue(0)
   })
 
   describe('processGetProfile', () => {
@@ -191,8 +216,12 @@ describe('usersControllerModels', () => {
         isPremium: vi.fn().mockResolvedValueOnce(false),
         getServers: vi.fn().mockResolvedValueOnce([{ id: 's1' }]),
       }
-      const result = await processCreateNewServer(guild)
-      expect(result.status).toBe(403)
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      prismaMock.gm_server.count.mockResolvedValueOnce(1)
+      await expect(processCreateNewServer(guild)).rejects.toMatchObject({
+        code: 'quota_reached',
+        capability: 'guild.servers',
+      })
     })
 
     it('creates a server for a premium guild even if it already has one', async () => {
@@ -225,6 +254,40 @@ describe('usersControllerModels', () => {
       badArgumentMock.mockReturnValueOnce(true)
       const result = await processPutGmodToDiscordFilter({ id: 's1' }, '1', payload)
       expect(result.status).toBe(400)
+    })
+
+    it('allows a partial disable after expiration but rejects edits and activation', async () => {
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      const existing = { id: 1, element: 'message', operator: 'contain', trigger: 'old', action: 'relay', active: true }
+      prismaMock.gm_server_sync_chat_filter.findFirst.mockResolvedValue(existing)
+      prismaMock.gm_server_sync_chat_filter.update.mockResolvedValue({ ...existing, active: false })
+      badArgumentMock.mockReturnValueOnce('0, 1, 2, 3')
+      expect(
+        (
+          await processPutGmodToDiscordFilter({ id: 's1', guild: 'g1' }, '1', {
+            element: undefined,
+            operator: undefined,
+            trigger: undefined,
+            action: undefined,
+            active: false,
+          })
+        ).status,
+      ).toBe(200)
+      expect(prismaMock.gm_server_sync_chat_filter.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { element: 'message', operator: 'contain', trigger: 'old', action: 'relay', active: false },
+      })
+      await expect(processPutGmodToDiscordFilter({ id: 's1', guild: 'g1' }, '1', payload)).rejects.toMatchObject({
+        code: 'upgrade_required',
+      })
+      await expect(
+        processPutGmodToDiscordFilter({ id: 's1', guild: 'g1' }, '1', {
+          ...payload,
+          active: false,
+          trigger: 'changed',
+        }),
+      ).rejects.toMatchObject({ code: 'upgrade_required' })
+      expect(prismaMock.gm_server_sync_chat_filter.update).toHaveBeenCalledOnce()
     })
 
     it('returns 404 when the filter is not found', async () => {
@@ -792,11 +855,23 @@ describe('usersControllerModels', () => {
         limit: 50,
         orderBy: 'desc',
         sort: 'createdAt',
+        readLimit: null,
       })
       expect(result).toEqual({
         status: 200,
         body: { logs: [{ id: 1 }], query: { offset: 0, limit: 50, sort: 'createdAt', orderBy: 'DESC', total: 3 } },
       })
+    })
+
+    it('bounds the total and passes a latest-window restriction for Free', async () => {
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      getTotalLogsByServerMock.mockResolvedValueOnce(5000)
+      getLogsByServerMock.mockResolvedValueOnce([])
+      expect(await processGetServerLogs('s1', { offset: 600, orderBy: 'asc' }, 'g1')).toMatchObject({
+        body: { query: { total: 500 } },
+      })
+      expect(getLogsByServerMock).toHaveBeenCalledWith('s1', expect.objectContaining({ offset: 600, readLimit: 500 }))
+      expect(accessMock).toHaveBeenCalledWith('g1')
     })
 
     it('clamps negative/NaN offset and out-of-range limit', async () => {
@@ -1027,8 +1102,8 @@ describe('usersControllerModels', () => {
 
     it('post: forbids on a non-premium server', async () => {
       const server = { isPremium: vi.fn().mockResolvedValueOnce(false) }
-      const result = await processPostServerLogsTrigger(server, payload)
-      expect(result.status).toBe(403)
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      await expect(processPostServerLogsTrigger(server, payload)).rejects.toMatchObject({ code: 'upgrade_required' })
     })
 
     it('post: returns 400 when required fields are missing', async () => {
@@ -1058,8 +1133,10 @@ describe('usersControllerModels', () => {
 
     it('put: forbids on a non-premium server', async () => {
       const server = { isPremium: vi.fn().mockResolvedValueOnce(false) }
-      const result = await processPutServerLogsTrigger(server, '1', payload)
-      expect(result.status).toBe(403)
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      await expect(processPutServerLogsTrigger(server, '1', payload)).rejects.toMatchObject({
+        code: 'upgrade_required',
+      })
     })
 
     it('put: returns 400 when required fields are missing', async () => {
@@ -1088,10 +1165,11 @@ describe('usersControllerModels', () => {
       expect(result).toEqual({ status: 200, body: { id: 1 } })
     })
 
-    it('delete: forbids on a non-premium server', async () => {
-      const server = { isPremium: vi.fn().mockResolvedValueOnce(false) }
-      const result = await processDeleteServerLogsTrigger(server, '1')
-      expect(result.status).toBe(403)
+    it('delete: permits stopping a saved trigger after expiration', async () => {
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      const server = { deleteLogsTrigger: vi.fn().mockResolvedValueOnce({ id: 1 }) }
+      expect(await processDeleteServerLogsTrigger(server, '1')).toEqual({ status: 200, body: { id: 1 } })
+      expect(server.deleteLogsTrigger).toHaveBeenCalledWith(1)
     })
 
     it('delete: deletes the trigger', async () => {

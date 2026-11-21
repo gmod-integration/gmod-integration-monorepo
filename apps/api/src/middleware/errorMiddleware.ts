@@ -2,8 +2,27 @@ import { randomUUID } from 'node:crypto'
 import { gmLog } from '@gmod/shared/logger.js'
 import { type NextFunction, type Request, type Response } from 'express'
 import { isBullMQReplyTimeoutError } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { AccessDeniedError } from '@gmod/domain-access/index.js'
 
 export default async (err: Error, req: Request, res: Response, _next: NextFunction) => {
+  if (err instanceof AccessDeniedError) {
+    res.setHeader('Cache-Control', 'no-store')
+    const detail = {
+      code: err.code,
+      message: err.message,
+      capability: err.capability,
+      limit: err.limit,
+      used: err.used,
+    }
+    res
+      .status(err.status)
+      .json(
+        req.path?.startsWith('/v6')
+          ? { error: detail }
+          : { error: err.code, capability: err.capability, limit: err.limit, used: err.used },
+      )
+    return
+  }
   if ('code' in err && err.code === 'personal_data_erasure_blocked') {
     res.setHeader('Cache-Control', 'no-store')
     res.status(409).json({

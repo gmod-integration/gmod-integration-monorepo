@@ -11,6 +11,7 @@ import { type wsSendToAllClientsOfServerData, wsSendToAllClientsOfServerQueue } 
 import { resolveGuildPreferredLocale } from './guildLocaleCache.js'
 import { enqueueDiscordGuildSendLogMessage } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
+import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 
 export enum LogLevel {
   MINIMAL = 'minimal',
@@ -215,6 +216,7 @@ data: {
  */
 
 async function handleLogsTrigger(server: Server, type: string, data?: any) {
+  if (!hasCapability(await resolveGuildAccess(server.getGuildID()), 'logs.triggers')) return
   const availableTriggers = await server.getLogsTriggerFromRedis()
   if (!availableTriggers || availableTriggers.length === 0 || !availableTriggers.includes(type)) return
   const redisKey = `server:${server.id}:logsTrigger:${type}`
@@ -290,6 +292,7 @@ async function handleLogsTrigger(server: Server, type: string, data?: any) {
           guildID: server.getGuildID(),
           channelID: trigger.channelID,
           title: `Trigger: ${type}`,
+          requiredCapability: 'logs.triggers',
           description: message,
           // Every type key in log_trigger_compare (the only types that reach this point, see the
           // `if (!typeInfo) continue` above) already has an entry in logEmbedColors, so the

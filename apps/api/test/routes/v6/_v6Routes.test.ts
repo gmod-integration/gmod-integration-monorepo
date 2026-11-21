@@ -3,6 +3,7 @@ import request from 'supertest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../../../src/routes/v6/dashboardSettingsRoutes.js', () => ({ default: express.Router() }))
 vi.mock('../../../src/routes/v6/statusSettingsRoutes.js', () => ({ default: express.Router() }))
+vi.mock('../../../src/routes/v6/accessRoutes.js', () => ({ default: express.Router() }))
 
 const mocks = vi.hoisted(() => ({
   findSessions: vi.fn(),

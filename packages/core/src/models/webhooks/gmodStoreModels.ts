@@ -7,7 +7,8 @@ import { addNotification } from '../../utils/tools.js'
 import JSONbig from 'json-bigint'
 import { privacySubject } from '@gmod/domain-user/privacy.js'
 import { erasedPurchaseKey } from '@gmod/domain-user/purchasePrivacy.js'
-import redis from '@gmod/infra-redis'
+import { invalidateGuildAccess } from '@gmod/domain-access/index.js'
+import { enqueueDiscordGuildReloadBotInstance } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 
 export async function verifyWebhookSignature(headers: any, payload: any) {
   const webhookSignature = headers['webhook-signature']
@@ -113,7 +114,24 @@ export async function saveGmodStorePurchase(steamID64: string, userID: string, r
     }
   }
   if (!saved) throw new Error('Purchase event was not persisted')
-  if (saved.guild) await redis.del(`guild:${saved.guild}:premium`)
+  if (saved.guild) {
+    // The purchase is already committed. Delivery failure must not reject its acknowledgement;
+    // active clients also reconcile their access periodically.
+    let waitingForSync = false
+    try {
+      await invalidateGuildAccess(saved.guild)
+    } catch {
+      waitingForSync = true
+    }
+    if (revoke) {
+      try {
+        await enqueueDiscordGuildReloadBotInstance(saved.guild)
+      } catch {
+        waitingForSync = true
+      }
+    }
+    if (waitingForSync) gmLog('gmodStore', 'Collective access update is waiting for synchronization')
+  }
   if (saved.retained) {
     gmLog('gmodStore', `Updated retained collective entitlement; revoked: ${revoke}`)
     return

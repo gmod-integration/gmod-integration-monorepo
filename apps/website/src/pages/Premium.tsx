@@ -1,9 +1,16 @@
+import { capabilityLimit, hasCapability, type CapabilityKey } from '@gmod/schema/server/AccessPolicySchema.js'
 import { Icon } from '../components/ui/index.js'
 import { type Component, For, Show } from 'solid-js'
 import { useI18n } from '../i18n.js'
 
 const Premium: Component = () => {
   const { t } = useI18n()
+  const identity = (premium: boolean) => ({ premium, customBot: false, state: 'ready' as const })
+  const included = (key: CapabilityKey, premium: boolean) => hasCapability(identity(premium), key)
+  const limit = (key: CapabilityKey, premium: boolean, label: string) => {
+    const count = capabilityLimit(identity(premium), key)
+    return count === null ? t('premium.infinite', 'infinite') : t(label, '{1}', count)
+  }
 
   type Feature = {
     name: string
@@ -20,18 +27,53 @@ const Premium: Component = () => {
     },
     ['sync_chat_customisation']: {
       ['name']: t('premium.sync_chat_customisation', 'Sync Chat - Customisation'),
-      ['free_value']: false,
-      ['premium_value']: true,
+      ['free_value']: included('chat.filters', false),
+      ['premium_value']: included('chat.filters', true),
     },
     ['server_status']: {
       ['name']: t('premium.server_status', 'Server Status'),
       ['free_value']: true,
       ['premium_value']: true,
     },
+    ['status_chart']: {
+      name: t('access.status_chart', 'Status activity chart'),
+      free_value: included('status.chart', false),
+      premium_value: included('status.chart', true),
+    },
+    ['auto_roles_limit']: {
+      name: t('access.auto_roles_limit', 'Automatic roles - Limit'),
+      free_value: limit('guild.auto_roles', false, 'premium.guild_roles'),
+      premium_value: limit('guild.auto_roles', true, 'premium.guild_roles'),
+    },
+    ['nickname_rules_limit']: {
+      name: t('access.nickname_rules_limit', 'Nickname rules - Limit'),
+      free_value: limit('sync.nicknames.rules', false, 'premium.guild_roles'),
+      premium_value: limit('sync.nicknames.rules', true, 'premium.guild_roles'),
+    },
+    ['chat_filters']: {
+      name: t('access.chat_filters', 'Chat filters'),
+      free_value: included('chat.filters', false),
+      premium_value: included('chat.filters', true),
+    },
+    ['log_triggers']: {
+      name: t('access.log_triggers', 'Log event actions'),
+      free_value: included('logs.triggers', false),
+      premium_value: included('logs.triggers', true),
+    },
+    ['reverse_sync']: {
+      name: t('access.reverse_sync', 'Discord to game synchronization'),
+      free_value: included('sync.roles.reverse', false),
+      premium_value: included('sync.roles.reverse', true),
+    },
+    ['errors_history']: {
+      name: t('access.errors_history', 'Error history'),
+      free_value: limit('errors.history', false, 'access.history_count'),
+      premium_value: limit('errors.history', true, 'access.history_count'),
+    },
     ['server_status_buttons_limit']: {
       ['name']: t('premium.server_status_buttons_limit', 'Server Status - Buttons Limit'),
-      ['free_value']: '2 buttons',
-      ['premium_value']: '25 buttons',
+      ['free_value']: limit('status.buttons', false, 'access.count_buttons'),
+      ['premium_value']: limit('status.buttons', true, 'access.count_buttons'),
     },
     ['sync_player_name']: {
       ['name']: t('premium.sync_player_name', 'Sync Player Name'),
@@ -40,8 +82,8 @@ const Premium: Component = () => {
     },
     ['sync_player_name_customisation']: {
       ['name']: t('premium.sync_player_name_customisation', 'Sync Player Name - Customisation'),
-      ['free_value']: false,
-      ['premium_value']: true,
+      ['free_value']: included('sync.nicknames.format', false),
+      ['premium_value']: included('sync.nicknames.format', true),
     },
     ['player_stats']: {
       ['name']: t('premium.player_stats', 'Player Stats'),
@@ -77,7 +119,7 @@ const Premium: Component = () => {
     },
     ['guild_link']: {
       ['name']: t('premium.guild_link', 'Guild Links'),
-      ['free_value']: '2 links',
+      ['free_value']: limit('guild.links', false, 'access.count_links'),
       ['premium_value']: true,
     },
     ['logs_relay']: {
@@ -87,7 +129,7 @@ const Premium: Component = () => {
     },
     ['logs']: {
       ['name']: t('premium.logs', 'WebPanel Logs'),
-      ['free_value']: t('premium.guild_hours', '{1} hours', 24),
+      ['free_value']: limit('logs.history', false, 'access.history_count'),
       ['premium_value']: t('premium.infinite', 'infinite'),
     },
     ['players']: {
@@ -117,7 +159,7 @@ const Premium: Component = () => {
     },
     ['servers']: {
       ['name']: t('premium.servers', 'Servers'),
-      ['free_value']: t('premium.guild_server', '{1} server', 1),
+      ['free_value']: limit('guild.servers', false, 'premium.guild_server'),
       ['premium_value']: t('premium.infinite', 'infinite'),
     },
     ['sync_bans']: {
@@ -132,7 +174,7 @@ const Premium: Component = () => {
     },
     ['sync_roles_limit']: {
       ['name']: t('premium.sync_roles_limit', 'Sync Role - Limit'),
-      ['free_value']: t('premium.guild_roles', '{1} roles', 4),
+      ['free_value']: limit('sync.roles.rules', false, 'premium.guild_roles'),
       ['premium_value']: t('premium.infinite', 'infinite'),
     },
     ['sync_kicks']: {
@@ -148,8 +190,8 @@ const Premium: Component = () => {
     },
     ['sync_team']: {
       ['name']: t('premium.sync_team', 'Sync Teams Roles'),
-      ['free_value']: false,
-      ['premium_value']: true,
+      ['free_value']: included('sync.teams', false),
+      ['premium_value']: included('sync.teams', true),
     },
     ['guild_tickets']: {
       ['name']: t('premium.guild_tickets', 'Guild Tickets'),
@@ -165,12 +207,22 @@ const Premium: Component = () => {
     },
     ['guild_verification']: {
       ['name']: t('premium.guild_verification', 'Guild Verification'),
-      ['free_value']: t('premium.guild_verification_free_value', 'Default Message'),
-      ['premium_value']: t('premium.guild_verification_premium_value', 'Custom Message'),
+      ['free_value']: included('verification.roles', false),
+      ['premium_value']: included('verification.roles', true),
+    },
+    ['verification_preferences']: {
+      name: t('access.verification_preferences', 'Verification preferences'),
+      free_value: included('verification.preferences', false),
+      premium_value: included('verification.preferences', true),
+    },
+    ['custom_bot']: {
+      name: t('premium.custom_bot', 'Custom Bot'),
+      free_value: false,
+      premium_value: t('access.historical_bot', 'Requires a GmodStore purchase'),
     },
     ['guild_verification_role_limit']: {
       ['name']: t('premium.guild_verification_role_limit', 'Guild Verification - Role Limit'),
-      ['free_value']: t('premium.guild_roles', '{1} roles', 2),
+      ['free_value']: limit('verification.roles', false, 'premium.guild_roles'),
       ['premium_value']: t('premium.infinite', 'infinite'),
     },
     ['force_ply_link']: {
@@ -185,8 +237,8 @@ const Premium: Component = () => {
     },
     ['rcon']: {
       ['name']: t('premium.rcon', 'RCON Execution'),
-      ['free_value']: false,
-      ['premium_value']: true,
+      ['free_value']: included('console.rcon', false),
+      ['premium_value']: included('console.rcon', true),
     },
     ['reward']: {
       ['name']: t('premium.reward', 'Reward'),
@@ -279,8 +331,11 @@ const Premium: Component = () => {
         features['servers'],
         features['server_status'],
         features['server_status_buttons_limit'],
+        features['status_chart'],
         features['server_status_alert'],
         features['logs'],
+        features['errors_history'],
+        features['log_triggers'],
         features['logs_relay'],
         features['players'],
         features['reward'],
@@ -290,6 +345,7 @@ const Premium: Component = () => {
       ['name']: t('premium.utility', 'Utility'),
       ['features']: [
         features['guild_link'],
+        features['custom_bot'],
         features['screenshots'],
         features['guild_tickets'],
         features['guild_suggestions'],
@@ -313,6 +369,8 @@ const Premium: Component = () => {
       ['features']: [
         features['guild_verification'],
         features['guild_verification_role_limit'],
+        features['verification_preferences'],
+        features['auto_roles_limit'],
         features['force_ply_link'],
         features['sync_bans'],
         features['sync_kicks'],
@@ -326,6 +384,9 @@ const Premium: Component = () => {
         features['sync_chat_customisation'],
         features['sync_player_name'],
         features['sync_player_name_customisation'],
+        features['nickname_rules_limit'],
+        features['chat_filters'],
+        features['reverse_sync'],
         features['sync_roles'],
         features['sync_roles_limit'],
         features['sync_team'],

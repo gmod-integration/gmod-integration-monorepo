@@ -235,5 +235,6 @@
   "ch_atm_deposit_money": "ATM deposita denaro",
   "ch_atm_withdraw_money": "ATM ritira denaro",
   "ammount": "Importo",
-  "discord.screenshot.no_title": "Nessun titolo"
+  "discord.screenshot.no_title": "Nessun titolo",
+  "access_verification_unavailable": "Al momento non è possibile verificare i diritti di accesso. Riprova tra poco."
 }

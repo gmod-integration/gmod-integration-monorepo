@@ -1,5 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async () => {
+  const policy = await import('@gmod/schema/server/AccessPolicySchema.js')
+  return { ...policy, resolveGuildAccess: accessMock }
+})
+beforeEach(() =>
+  accessMock.mockImplementation(async (guildID: string) => ({
+    guildID,
+    premium: true,
+    customBot: true,
+    state: 'ready',
+    sources: ['gmodstore'],
+    revision: 'test',
+    validUntil: '2030-01-01T00:00:00.000Z',
+  })),
+)
+
 const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
 vi.mock('@gmod/domain-user/privacy.js', () => ({
   isErasureBlocked: isErasureBlockedMock,
@@ -561,6 +578,23 @@ describe('logger', () => {
         expect(enqueueDiscordGuildSendLogMessageMock).not.toHaveBeenCalled()
       })
 
+      it('does not execute cached paid triggers after the entitlement expires', async () => {
+        accessMock.mockResolvedValueOnce({
+          guildID: 'g1',
+          premium: false,
+          customBot: false,
+          state: 'ready',
+          sources: [],
+          revision: 'expired',
+          validUntil: '2030-01-01T00:00:00.000Z',
+        })
+        const server = makeServer({ getLogsTriggerFromRedis: vi.fn().mockResolvedValue(['dark_rp_drop_money']) })
+        await logServer(server, 'dark_rp_drop_money', { player: { steamID64: '765', name: 'Bob' }, amount: 100 })
+        await flushMicrotasks()
+        expect(server.getLogsTriggerFromRedis).not.toHaveBeenCalled()
+        expect(enqueueDiscordGuildSendLogMessageMock).not.toHaveBeenCalled()
+      })
+
       it('sends a templated message when a numeric-compare trigger matches (greaterThan)', async () => {
         const server = makeServer({
           getLogsTriggerFromRedis: vi.fn().mockResolvedValue(['dark_rp_drop_money']),
@@ -586,6 +620,7 @@ describe('logger', () => {
           expect.objectContaining({
             guildID: 'g1',
             channelID: 'ch1',
+            requiredCapability: 'logs.triggers',
             description: 'Dropped 100 by Bob',
           }),
           5000,

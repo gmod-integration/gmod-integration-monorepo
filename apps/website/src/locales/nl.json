@@ -1232,5 +1232,25 @@
     "apply_draft": "Toepassen op concept",
     "delete_trigger": "Trigger verwijderen?",
     "delete_trigger_help": "De geselecteerde gebeurtenisactie wordt niet meer uitgevoerd. Dit kan niet ongedaan worden gemaakt."
+  },
+  "access": {
+    "unavailable": "De toegangsrechten konden niet worden gecontroleerd. Je opgeslagen configuratie blijft behouden.",
+    "quota": "{1} / {2} gebruikt",
+    "upgrade_required": "Voor deze functie is Premium vereist.",
+    "quota_reached": "Je hebt de limiet voor deze functie bereikt.",
+    "historical_bot": "Vereist een GmodStore-aankoop",
+    "suspended": "Deze opgeslagen functie is opgeschort. Je kunt de configuratie nog steeds uitschakelen of verwijderen.",
+    "count_buttons": "{1} knoppen",
+    "count_links": "{1} links",
+    "history_count": "De laatste {1} vermeldingen",
+    "permission_denied": "Je hebt geen toestemming om deze community te beheren.",
+    "status_chart": "Activiteitsgrafiek in status",
+    "auto_roles_limit": "Automatische rollen - Limiet",
+    "nickname_rules_limit": "Bijnaamregels - Limiet",
+    "chat_filters": "Chatfilters",
+    "log_triggers": "Acties op loggebeurtenissen",
+    "reverse_sync": "Synchronisatie van Discord naar het spel",
+    "errors_history": "Foutgeschiedenis",
+    "verification_preferences": "Verificatievoorkeuren"
   }
 }

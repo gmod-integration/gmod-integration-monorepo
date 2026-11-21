@@ -221,5 +221,6 @@
   "ch_atm_receive_money": "Geld von Geldautomat erhalten",
   "ch_atm_deposit_money": "Geld auf Geldautomat einzahlen",
   "ch_atm_withdraw_money": "Geld von Geldautomat abheben",
-  "ammount": "Betrag"
+  "ammount": "Betrag",
+  "access_verification_unavailable": "Die Zugriffsrechte können derzeit nicht überprüft werden. Bitte versuche es in Kürze erneut."
 }

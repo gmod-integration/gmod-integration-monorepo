@@ -590,6 +590,22 @@ describe('bullmq schemas: extra constraints beyond required-field presence', () 
     expect(result.success).toBe(true)
   })
 
+  it('preserves the explicit trigger requirement while rejecting unknown capability labels', () => {
+    const job = {
+      guildID: 'g',
+      channelID: 'c',
+      title: 'Trigger',
+      color: '#fff',
+      footer: 'Server',
+      correlationId: 'r',
+      requiredCapability: 'logs.triggers',
+    }
+    expect(bullmq.DiscordGuildSendLogMessageJobSchema.parse(job).requiredCapability).toBe('logs.triggers')
+    expect(bullmq.DiscordGuildSendLogMessageJobSchema.safeParse({ ...job, requiredCapability: 'typo' }).success).toBe(
+      false,
+    )
+  })
+
   it('DiscordGuildSendLogMessageJobSchema accepts a null description', () => {
     const result = bullmq.DiscordGuildSendLogMessageJobSchema.safeParse({
       guildID: 'g1',

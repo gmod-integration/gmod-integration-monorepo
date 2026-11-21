@@ -12,6 +12,7 @@ vi.mock('@gmod/domain-user/privacy.js', () => ({
 const insertOneMock = vi.fn()
 const countDocumentsMock = vi.fn()
 const findMock = vi.fn()
+const aggregateMock = vi.fn()
 const closeMock = vi.fn()
 
 const deleteOneMock = vi.fn()
@@ -20,6 +21,7 @@ const collectionLogs = {
   insertOne: insertOneMock,
   countDocuments: countDocumentsMock,
   find: findMock,
+  aggregate: aggregateMock,
 }
 const collectionErrors = {}
 
@@ -43,6 +45,7 @@ describe('gm_server_logs', () => {
     insertOneMock.mockReset()
     countDocumentsMock.mockReset()
     findMock.mockReset()
+    aggregateMock.mockReset()
     closeMock.mockReset()
   })
 
@@ -143,5 +146,27 @@ describe('gm_server_logs', () => {
   it('gracefulShutdownMongo closes the mongo client', async () => {
     await gracefulShutdownMongo()
     expect(closeMock).toHaveBeenCalled()
+  })
+  it('restricts free history to the latest 500 before user sorting and pagination', async () => {
+    aggregateMock.mockReturnValueOnce({ toArray: vi.fn().mockResolvedValue([{ id: 'latest' }]) })
+    expect(
+      await getLogsByServer('s1', { offset: 475, limit: 100, sort: 'createdAt', orderBy: 'asc', readLimit: 500 }),
+    ).toEqual([{ id: 'latest' }])
+    expect(aggregateMock).toHaveBeenCalledExactlyOnceWith([
+      { $match: { serverID: 's1' } },
+      { $sort: { createdAt: -1, _id: -1 } },
+      { $limit: 500 },
+      { $sort: { createdAt: 1, _id: -1 } },
+      { $skip: 475 },
+      { $limit: 25 },
+    ])
+    expect(findMock).not.toHaveBeenCalled()
+  })
+  it('never turns a zero remaining free page into an unbounded Mongo limit', async () => {
+    expect(
+      await getLogsByServer('s1', { offset: 500, limit: 50, sort: 'createdAt', orderBy: 'desc', readLimit: 500 }),
+    ).toEqual([])
+    expect(aggregateMock).not.toHaveBeenCalled()
+    expect(findMock).not.toHaveBeenCalled()
   })
 })

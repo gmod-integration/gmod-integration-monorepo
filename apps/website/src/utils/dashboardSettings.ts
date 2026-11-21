@@ -1,3 +1,4 @@
+import { refreshAccess } from './accessEvents.js'
 import { getAPIUrl, getUrlWithActualParams } from './api.js'
 
 /** A section is validated and persisted together by the versioned API. */
@@ -11,6 +12,7 @@ export async function saveDashboardSettings(
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
     body: JSON.stringify({ settings }),
   })
+  if (response.status === 403 || response.ok) refreshAccess()
   if (!response.ok) throw new Error('The settings could not be saved')
   const data: unknown = await response.json()
   if (

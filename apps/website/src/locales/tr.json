@@ -1232,5 +1232,25 @@
     "apply_draft": "Taslağa uygula",
     "delete_trigger": "Tetikleyici silinsin mi?",
     "delete_trigger_help": "Seçili olay eylemi artık çalışmaz. Bu işlem geri alınamaz."
+  },
+  "access": {
+    "unavailable": "Erişim hakları doğrulanamadı. Kaydedilmiş yapılandırmanız korunur.",
+    "quota": "{1} / {2} kullanıldı",
+    "upgrade_required": "Bu özellik Premium gerektirir.",
+    "quota_reached": "Bu özellik için sınıra ulaştınız.",
+    "historical_bot": "GmodStore satın alımı gerektirir",
+    "suspended": "Kaydedilen bu özellik askıya alındı. Yapılandırmasını yine de devre dışı bırakabilir veya kaldırabilirsiniz.",
+    "count_buttons": "{1} düğme",
+    "count_links": "{1} bağlantı",
+    "history_count": "Son {1} kayıt",
+    "permission_denied": "Bu topluluğu yönetme izniniz yok.",
+    "status_chart": "Durum etkinlik grafiği",
+    "auto_roles_limit": "Otomatik roller - Sınır",
+    "nickname_rules_limit": "Takma ad kuralları - Sınır",
+    "chat_filters": "Sohbet filtreleri",
+    "log_triggers": "Günlük olayı eylemleri",
+    "reverse_sync": "Discord’dan oyuna eşitleme",
+    "errors_history": "Hata geçmişi",
+    "verification_preferences": "Doğrulama tercihleri"
   }
 }

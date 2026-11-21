@@ -1232,5 +1232,25 @@
     "apply_draft": "Applica alla bozza",
     "delete_trigger": "Eliminare il trigger?",
     "delete_trigger_help": "L’azione dell’evento selezionato non verrà più eseguita. Questa azione non può essere annullata."
+  },
+  "access": {
+    "unavailable": "Impossibile verificare i diritti di accesso. La configurazione salvata viene conservata.",
+    "quota": "{1} / {2} utilizzati",
+    "upgrade_required": "Questa funzione richiede Premium.",
+    "quota_reached": "Hai raggiunto il limite per questa funzione.",
+    "historical_bot": "Richiede un acquisto GmodStore",
+    "suspended": "Questa funzione salvata è sospesa. Puoi ancora disattivare o rimuovere la configurazione.",
+    "count_buttons": "{1} pulsanti",
+    "count_links": "{1} collegamenti",
+    "history_count": "Le ultime {1} voci",
+    "permission_denied": "Non hai il permesso di gestire questa comunità.",
+    "status_chart": "Grafico attività dello stato",
+    "auto_roles_limit": "Ruoli automatici - Limite",
+    "nickname_rules_limit": "Regole soprannomi - Limite",
+    "chat_filters": "Filtri chat",
+    "log_triggers": "Azioni sugli eventi dei log",
+    "reverse_sync": "Sincronizzazione da Discord al gioco",
+    "errors_history": "Cronologia errori",
+    "verification_preferences": "Preferenze di verifica"
   }
 }

@@ -19,6 +19,7 @@
     "ws": "^8.19.0",
     "@gmod/shared": "workspace:*",
     "@gmod/domain-guild": "workspace:*",
-    "@gmod/infra-prisma": "workspace:*"
+    "@gmod/infra-prisma": "workspace:*",
+    "@gmod/domain-access": "workspace:*"
   }
 }

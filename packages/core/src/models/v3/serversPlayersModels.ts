@@ -7,6 +7,7 @@ import prisma from '@gmod/infra-prisma'
 import { gm_server_sync_chat_filter_element } from '@gmod/infra-prisma/enums.js'
 import type { gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js'
 import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
+import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 
 export async function sendPlayerSay(server: Server, player: PlayerGmod, text: string, onlyTeam: boolean) {
   if (await isErasureBlocked(undefined, player.steamID64))
@@ -25,7 +26,7 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
     return { skip: true, message: 'Sync chat channel not found or not set' }
   }
 
-  const syncChatDirection = await server.getSetting('syncChatDirection')
+  const syncChatDirection = await server.getEffectiveSetting('syncChatDirection')
   if (syncChatDirection !== 'both' && syncChatDirection !== 'gmodToDiscord') {
     return { skip: true, message: 'Sync chat direction is discord to gmod' }
   }
@@ -34,7 +35,7 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
   const operator = ['equal', 'notEqual', 'contain', 'notContain', 'startWith', 'endWith']
   const action = ['relay', 'block', 'anonymize']
 
-  let relayMessage = await server.getSetting('chat_sync_relay_all')
+  let relayMessage = await server.getEffectiveSetting('chat_sync_relay_all')
   let outputStr = text
 
   // prevent size overflow
@@ -115,7 +116,8 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
 
   // getGmodToDiscordFilter() always resolves to an array (never null), so no falsy guard is
   // needed here.
-  const chatRules = await server.getGmodToDiscordFilter()
+  const access = await resolveGuildAccess(server.getGuildID())
+  const chatRules = hasCapability(access, 'chat.filters') ? await server.getGmodToDiscordFilter() : []
   chatRules.forEach((rule) => {
     verifyRule(rule)
   })
@@ -129,7 +131,7 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
   }
 
   // prevent ping, @everyone, @here or <@&ID>
-  const syncChatPreventPing = await server.getSetting('sync_chat_prevent_ping')
+  const syncChatPreventPing = await server.getEffectiveSetting('sync_chat_prevent_ping')
   if (syncChatPreventPing) {
     outputStr = outputStr.replace(/@/g, '@\u200B')
   }

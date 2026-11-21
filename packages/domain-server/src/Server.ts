@@ -1,16 +1,23 @@
 import { BaseClass } from '@gmod/shared/BaseClass.js'
 import { generateToken } from '@gmod/shared/generateToken.js'
-import { ConfigDiscord } from '@gmod/config'
 import redis from '@gmod/infra-redis'
 import { gmLog } from '@gmod/shared/logger.js'
 import { ChannelType, type Webhook } from 'discord.js'
 import prisma from '@gmod/infra-prisma'
 import { getErasedSteamIDs, isErasureBlocked } from '@gmod/infra-prisma/privacy.js'
 import { gm_server_logs_triggers_action, gm_server_logs_triggers_operator } from '@gmod/infra-prisma/enums.js'
-import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js'
+import type { Prisma, gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
 import { ServerStatusChannel } from './ServerStatusChannel.js'
 import { buildDiscordStatusMessage, resolveDiscordGuildClient } from './discordBridge.js'
+import {
+  resolveGuildAccess,
+  assertQuota,
+  assertServerSettingChange,
+  effectiveServerSetting,
+  limitResources,
+  serverSettingCapability,
+} from '@gmod/domain-access/index.js'
 
 const serverSettings: Record<string, any> = {
   sync_role_direction: {
@@ -62,7 +69,6 @@ const serverSettings: Record<string, any> = {
   show_status_chart: {
     defaultValue: false,
     acceptedValues: [true, false],
-    premium: true,
     onChange: async (server: Server) => {
       await server.editStatusChannelAndMessage(await server.getStatusData())
     },
@@ -161,55 +167,6 @@ const serverSettings: Record<string, any> = {
   },
 }
 
-async function isGuildPremiumForServer(guildID: string): Promise<boolean> {
-  const hasPremium =
-    (await prisma.gm_guild_premium.findFirst({
-      where: {
-        guildID,
-      },
-    })) ||
-    (await prisma.gm_gmodstore_purchases.findFirst({
-      where: {
-        guild: guildID,
-        revoke: false,
-      },
-    }))
-
-  if (hasPremium) {
-    return true
-  }
-
-  const redisKey = `guild:${guildID}:premium`
-  const cachedPremiumStatus = await redis.get(redisKey)
-  if (cachedPremiumStatus !== null) {
-    return JSON.parse(cachedPremiumStatus)
-  }
-
-  if (!ConfigDiscord.clientID || !ConfigDiscord.botToken) {
-    return false
-  }
-
-  try {
-    const response = await fetch(`https://discord.com/api/v10/applications/${ConfigDiscord.clientID}/entitlements`, {
-      headers: {
-        Authorization: `Bot ${ConfigDiscord.botToken}`,
-      },
-    })
-
-    if (!response.ok) {
-      return false
-    }
-
-    const entitlementGuilds = (await response.json()) as Array<{ guild_id?: string }>
-    const isPremium = entitlementGuilds.some((entitlement) => entitlement.guild_id === guildID)
-    await redis.set(redisKey, JSON.stringify(isPremium), 'EX', 60)
-    return isPremium
-  } catch (error) {
-    console.error('Error getting entitlements:', error)
-    return false
-  }
-}
-
 export class Server extends BaseClass {
   public token: string
   public id: string
@@ -239,7 +196,7 @@ export class Server extends BaseClass {
   }
 
   async isPremium() {
-    return await isGuildPremiumForServer(this.guild)
+    return (await resolveGuildAccess(this.guild)).premium
   }
 
   async saveIGSettings(settings: Record<string, any>) {
@@ -345,16 +302,19 @@ export class Server extends BaseClass {
     return serverSettings[setting].defaultValue
   }
 
+  async getEffectiveSetting(setting: string) {
+    const stored = await this.getSetting(setting)
+    return serverSettingCapability(setting)
+      ? effectiveServerSetting(await resolveGuildAccess(this.guild), setting, stored)
+      : stored
+  }
+
   async setSetting(setting: string, value: any, source: string = 'unknow') {
     if (!serverSettings[setting]) {
       throw new Error('Setting not found')
     }
 
     const previousValue = await this.getSetting(setting)
-
-    if (serverSettings[setting].premium && !(await this.isPremium())) {
-      throw new Error('Premium setting')
-    }
 
     if (
       !serverSettings.freeValues &&
@@ -363,6 +323,9 @@ export class Server extends BaseClass {
     ) {
       throw new Error('Invalid value')
     }
+
+    if (serverSettingCapability(setting))
+      assertServerSettingChange(await resolveGuildAccess(this.guild), setting, value, previousValue)
 
     const result = await prisma.gm_server_settings.findFirst({
       where: {
@@ -520,6 +483,14 @@ export class Server extends BaseClass {
         enable: true,
       },
     })
+  }
+
+  async getEffectiveStatusButtons() {
+    const [access, buttons] = await Promise.all([
+      resolveGuildAccess(this.guild),
+      prisma.gm_status_button.findMany({ where: { server: this.id }, orderBy: { id: 'asc' } }),
+    ])
+    return limitResources(access, 'status.buttons', buttons).filter((button) => button.enable)
   }
 
   async getBotInstance() {
@@ -806,6 +777,39 @@ export class Server extends BaseClass {
     })
   }
 
+  async getEffectiveSyncRoles() {
+    const [access, rows] = await Promise.all([
+      resolveGuildAccess(this.guild),
+      prisma.gm_server_sync_roles.findMany({
+        where: { serverID: this.id },
+        orderBy: [{ createdAt: 'asc' }, { roleID: 'asc' }],
+      }),
+    ])
+    return limitResources(access, 'sync.roles.rules', rows)
+  }
+
+  async getEffectiveSyncTeamRoles() {
+    const [access, rows] = await Promise.all([
+      resolveGuildAccess(this.guild),
+      prisma.gm_server_sync_team_roles.findMany({
+        where: { serverID: this.id },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+    ])
+    return limitResources(access, 'sync.teams', rows)
+  }
+
+  async getEffectivePseudoRules() {
+    const [access, rows] = await Promise.all([
+      resolveGuildAccess(this.guild),
+      prisma.gm_server_pseudo.findMany({
+        where: { serverID: this.id },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+    ])
+    return limitResources(access, 'sync.nicknames.rules', rows)
+  }
+
   async saveUserConnectionInfo(steamID64: string, name: string) {
     if (await isErasureBlocked(undefined, steamID64)) return
     try {
@@ -929,10 +933,12 @@ export class Server extends BaseClass {
   }
 
   async createStatusButton() {
-    return prisma.gm_status_button.create({
-      data: {
-        server: this.id,
-      },
+    const access = await resolveGuildAccess(this.guild)
+    return prisma.$transaction(async (tx) => {
+      await tx.gm_server.update({ where: { id: this.id }, data: { updatedAt: new Date() } })
+      const used = await tx.gm_status_button.count({ where: { server: this.id } })
+      assertQuota(access, 'status.buttons', used)
+      return tx.gm_status_button.create({ data: { server: this.id } })
     })
   }
 
@@ -1414,9 +1420,9 @@ export async function getServersFromDiscordGuildID(guildID: string) {
   return servers.map((server) => new Server(server))
 }
 
-export async function createServer(guildID: string) {
+export async function createServer(guildID: string, store: Pick<Prisma.TransactionClient, 'gm_server'> = prisma) {
   const serverID = await generateServerUniqueID()
-  const server = await prisma.gm_server.create({
+  const server = await store.gm_server.create({
     data: {
       id: serverID,
       token: generateToken(16),

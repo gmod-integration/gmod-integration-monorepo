@@ -13,6 +13,8 @@ import {
 import asyncHandler from '../../middleware/asyncHandler.js'
 import dashboardSettingsRoutes from './dashboardSettingsRoutes.js'
 import statusSettingsRoutes from './statusSettingsRoutes.js'
+import accessRoutes from './accessRoutes.js'
+import { AccessDeniedError } from '@gmod/domain-access/index.js'
 
 const router = express.Router()
 const expectedOrigin = new URL(ConfigServer.websiteUrl).origin
@@ -36,6 +38,7 @@ router.get('/', (_req, res) => {
 
 router.use(dashboardSettingsRoutes)
 router.use(statusSettingsRoutes)
+router.use(accessRoutes)
 
 router.post(
   '/account/erasure-requests',
@@ -99,6 +102,18 @@ router.use((_req, res) => {
 })
 
 const handleError: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
+  if (error instanceof AccessDeniedError) {
+    res.status(error.status).json({
+      error: {
+        code: error.code,
+        message: error.message,
+        capability: error.capability,
+        limit: error.limit,
+        used: error.used,
+      },
+    })
+    return
+  }
   if (error && typeof error === 'object' && 'code' in error && error.code === 'settings_forbidden') {
     errorResponse(res, 403, 'settings_forbidden', 'These settings require a premium entitlement.')
     return

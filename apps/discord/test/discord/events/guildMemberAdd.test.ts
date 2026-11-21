@@ -24,6 +24,13 @@ vi.mock('../../../src/discord/utils/messages.js', () => ({
   getNotVerifiedMessage: getNotVerifiedMessageMock,
 }))
 
+const effectiveSettingMock = vi.fn()
+vi.mock('@gmod/domain-guild/Guild.js', () => ({
+  Guild: class {
+    getEffectiveSetting = effectiveSettingMock
+  },
+}))
+
 const prismaMock = {
   gm_guild_settings: { findFirst: vi.fn() },
 }
@@ -53,6 +60,7 @@ describe('guildMemberAdd event', () => {
     verifyUserMock.mockResolvedValue(true)
     getNotVerifiedMessageMock.mockResolvedValue({ content: 'please verify' })
     prismaMock.gm_guild_settings.findFirst.mockResolvedValue(null)
+    effectiveSettingMock.mockResolvedValue(false)
   })
 
   it('returns immediately when the bot itself joins', async () => {
@@ -100,15 +108,14 @@ describe('guildMemberAdd event', () => {
 
   it('returns without messaging when verification_dont_mp setting is set', async () => {
     verifyUserMock.mockResolvedValue(false)
+    effectiveSettingMock.mockResolvedValue(true)
     prismaMock.gm_guild_settings.findFirst.mockResolvedValue({ setting: 'verification_dont_mp' })
     const mod = await import('../../../src/discord/events/guildMemberAdd.js')
     const addInfo = makeAddInfo()
 
     await mod.default.execute(addInfo as any)
 
-    expect(prismaMock.gm_guild_settings.findFirst).toHaveBeenCalledWith({
-      where: { guildID: 'guild1', setting: 'verification_dont_mp' },
-    })
+    expect(effectiveSettingMock).toHaveBeenCalledWith('verification_dont_mp')
     expect(getNotVerifiedMessageMock).not.toHaveBeenCalled()
   })
 

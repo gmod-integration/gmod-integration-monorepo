@@ -73,7 +73,9 @@ function resetAllMocks() {
   }
 }
 
-function makeServer(overrides: { settings?: Record<string, any>; getServerStatusButtons?: any; name?: string } = {}) {
+function makeServer(
+  overrides: { settings?: Record<string, any>; getEffectiveStatusButtons?: any; name?: string } = {},
+) {
   const settings: Record<string, any> = {
     show_status_chart: false,
     show_player_list_status: false,
@@ -83,8 +85,8 @@ function makeServer(overrides: { settings?: Record<string, any>; getServerStatus
   return {
     getID: () => 's1',
     getName: () => overrides.name ?? 'My Server',
-    getSetting: vi.fn(async (key: string) => settings[key]),
-    getServerStatusButtons: overrides.getServerStatusButtons ?? vi.fn(async () => []),
+    getEffectiveSetting: vi.fn(async (key: string) => settings[key]),
+    getEffectiveStatusButtons: overrides.getEffectiveStatusButtons ?? vi.fn(async () => []),
   } as any
 }
 
@@ -251,13 +253,32 @@ describe('discord/utils/messages', () => {
       expect(result.files).toEqual([])
     })
 
+    it('renders all 25 paid custom buttons and preserves connection as an embed link when online', async () => {
+      const buttons = Array.from({ length: 25 }, (_, index) => ({
+        name: 'Custom ' + index,
+        emoji: '😀',
+        url: 'https://example.com/' + index,
+      }))
+      const result = await getStatusMessage(
+        makeServer({ getEffectiveStatusButtons: vi.fn(async () => buttons) }),
+        { hostname: 'Online', ip: '192.0.2.1', port: 27015 },
+        'en',
+      )
+      const rendered = result.components.flatMap((row) => row.toJSON().components)
+      expect(rendered).toHaveLength(25)
+      expect(rendered.every((button) => button.label?.includes('Custom'))).toBe(true)
+      expect(result.embeds[0].toJSON().fields).toEqual(
+        expect.arrayContaining([expect.objectContaining({ value: expect.stringContaining('[192.0.2.1:27015](') })]),
+      )
+    })
+
     it('fills rows across the 5-button-per-row limit and drops overflow buttons', async () => {
       const buttons = Array.from({ length: 27 }, (_, i) => ({
         name: `button ${i}`,
         emoji: '😀',
         url: `https://example.com/${i}`,
       }))
-      const server = makeServer({ getServerStatusButtons: vi.fn(async () => buttons) })
+      const server = makeServer({ getEffectiveStatusButtons: vi.fn(async () => buttons) })
       const result = await getStatusMessage(server, {}, 'en')
 
       expect(result.components).toHaveLength(5)
@@ -274,7 +295,7 @@ describe('discord/utils/messages', () => {
         { name: 'unknown emoji', emoji: 'not-an-emoji', url: 'd' }, // no version found -> replaced
         { name: 'classic smile', emoji: '😀', url: 'e' }, // version 1.0 <= 12 -> kept
       ]
-      const server = makeServer({ getServerStatusButtons: vi.fn(async () => buttons) })
+      const server = makeServer({ getEffectiveStatusButtons: vi.fn(async () => buttons) })
       const result = await getStatusMessage(server, {}, 'en')
 
       expect(result.components).toHaveLength(1)

@@ -90,17 +90,17 @@ describe('pages/Premium.tsx', () => {
       expect(row.querySelector('svg[data-icon="infinity"].text-primary')).toBeInTheDocument() // premium_value: infinite
     })
 
-    it('renders raw string values as-is for both free and premium columns', () => {
+    it('uses the shared button limits for both plans', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('Server Status - Buttons Limit').closest('tr')!
-      expect(within(row).getByText('2 buttons')).toBeInTheDocument()
+      expect(within(row).getByText('3 buttons')).toBeInTheDocument()
       expect(within(row).getByText('25 buttons')).toBeInTheDocument()
     })
 
-    it('renders an interpolated translation value (e.g. "{1} hours" -> "24 hours")', () => {
+    it('uses the shared history window instead of a conflicting duration', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('WebPanel Logs').closest('tr')!
-      expect(within(row).getByText('24 hours')).toBeInTheDocument()
+      expect(within(row).getByText('Latest 500 entries')).toBeInTheDocument()
       expect(row.querySelector('svg[data-icon="infinity"].text-primary')).toBeInTheDocument()
     })
 

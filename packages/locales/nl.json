@@ -8,5 +8,6 @@
   "map": "Kaart",
   "gamemode": "Spelmodus",
   "player_list": "Verbonden spelers",
-  "server-connect": "Verbinden"
+  "server-connect": "Verbinden",
+  "access_verification_unavailable": "De toegangsrechten kunnen momenteel niet worden gecontroleerd. Probeer het over enkele ogenblikken opnieuw."
 }

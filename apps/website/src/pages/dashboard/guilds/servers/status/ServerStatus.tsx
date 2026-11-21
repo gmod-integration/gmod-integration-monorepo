@@ -41,18 +41,19 @@ const StatusSaveActions: Component = () => {
       <FormActions
         dirty={editor.form.dirty()}
         pending={editor.form.pending()}
-        disabled={!editor.ready() || !editor.form.valid()}
+        disabled={!editor.ready() || !editor.form.valid() || !!editor.accessError()}
         error={editor.form.error()}
         success={editor.form.success()}
         onSave={() => void editor.save()}
         onCancel={editor.form.discard}
         saveLabel={t('editing.save_status', 'Save status configuration')}
         message={
-          !editor.form.valid() && editor.ready()
+          editor.accessError() ||
+          (!editor.form.valid() && editor.ready()
             ? t('editing.invalid_status', 'Check the button names and URLs before saving.')
             : editor.form.dirty()
               ? t('editing.status_scope', 'Changes to the message and its buttons are saved together.')
-              : undefined
+              : undefined)
         }
       />
     </div>

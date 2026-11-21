@@ -5,7 +5,8 @@ import { ColorsLogsType } from './ColorLogsType.js'
 import AdminModal from '../../../../../components/AdminModal.js'
 import { ChannelSelector } from '../../../../../components/AdminChannelSelector.js'
 import { fetchAPI } from '../../../../../utils/api.js'
-import { premium } from '../../../../../utils/premium.js'
+import { useFeatureAccess } from '../../../../../components/AccessProvider.js'
+import { FeatureGate, SuspendedFeature } from '../../../../../components/FeatureGate.js'
 import { TextValue } from '../../../../../components/popup/TextValue.js'
 import { Button, FormActions, FormField, IconButton, TableState } from '../../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../../hooks/createDraftForm.js'
@@ -117,12 +118,11 @@ const exampleLogTriggers: log_trigger = {
 
 export const ServerLogsTriggers: Component = () => {
   const { t } = useI18n()
+  const featureAccess = useFeatureAccess('logs.triggers')
 
   async function fetchLogTriggers() {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/logs/triggers', 'GET')
-    if (res.status === 403) {
-      return [] as log_trigger[]
-    } else if (!res.ok) {
+    if (!res.ok) {
       throw new Error('An error occurred while fetching the log triggers.')
     }
     return (await res.json()) as log_trigger[]
@@ -157,7 +157,7 @@ export const ServerLogsTriggers: Component = () => {
     },
   })
   const editedTrigger = form.draft
-  const unavailable = () => logTriggers.loading || !!logTriggers.error || form.pending() || !premium()
+  const unavailable = () => logTriggers.loading || !!logTriggers.error || form.pending() || !featureAccess.allowed()
   function discard() {
     if (form.pending()) return
     form.reset(freshTrigger())
@@ -364,6 +364,12 @@ export const ServerLogsTriggers: Component = () => {
             </Show>
           </div>
         </Show>
+        <FeatureGate
+          capability="logs.triggers"
+          loading={logTriggers.loading}
+          error={logTriggers.error}
+          showQuota={false}
+        />
         <FormActions
           pending={form.pending()}
           dirty={form.dirty()}
@@ -405,8 +411,11 @@ export const ServerLogsTriggers: Component = () => {
           'Define custom actions for specific events in your server. You can customize the actions to suit your needs.',
         )}
         type="none"
-        premium={true}
       >
+        <SuspendedFeature
+          capability="logs.triggers"
+          active={!logTriggers.loading && !logTriggers.error && logTriggers().length > 0}
+        />
         <table class="table border-b border-base-300 rounded-none">
           <thead>
             <tr class="text-l">
@@ -465,7 +474,7 @@ export const ServerLogsTriggers: Component = () => {
                           variant="danger"
                           label={t('dashboard.server.pseudo.delete', 'Delete')}
                           icon="trash-2"
-                          disabled={unavailable()}
+                          disabled={logTriggers.loading || !!logTriggers.error || form.pending()}
                           onClick={() => {
                             setDeleting(trigger)
                             showDialog('delete-log-trigger')
@@ -481,15 +490,22 @@ export const ServerLogsTriggers: Component = () => {
         </table>
 
         <div class="flex gap-4 p-4">
-          <Button
-            disabled={unavailable()}
-            onClick={() => {
-              discard()
-              showDialog('edit_log_trigger')
-            }}
+          <FeatureGate
+            capability="logs.triggers"
+            loading={logTriggers.loading}
+            error={logTriggers.error}
+            showQuota={false}
           >
-            {t('dashboard.server.logs_trigger.addTrigger', 'Add Trigger')}
-          </Button>
+            <Button
+              disabled={unavailable()}
+              onClick={() => {
+                discard()
+                showDialog('edit_log_trigger')
+              }}
+            >
+              {t('dashboard.server.logs_trigger.addTrigger', 'Add Trigger')}
+            </Button>
+          </FeatureGate>
         </div>
       </AdminPanel>
     </>

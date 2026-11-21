@@ -1,5 +1,22 @@
+import type * as AccessDomain from '@gmod/domain-access/index.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof AccessDomain>()),
+  resolveGuildAccess: accessMock,
+}))
+const accessSnapshot = (premium = true) => ({
+  guildID: 'g1',
+  premium,
+  customBot: premium,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'test',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
+
+vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: vi.fn().mockResolvedValue({ guild: 'g1' }) }))
 const gmodErrorsFromMock = vi.fn()
 const getErrorsByServerMock = vi.fn()
 vi.mock('@gmod/domain-gmod/GmodErrors.js', () => ({
@@ -18,6 +35,7 @@ const {
 
 describe('gmodErrorsModels', () => {
   beforeEach(() => {
+    accessMock.mockReset().mockResolvedValue(accessSnapshot())
     gmodErrorsFromMock.mockReset()
     getErrorsByServerMock.mockReset()
   })

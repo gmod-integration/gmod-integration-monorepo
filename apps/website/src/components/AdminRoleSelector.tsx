@@ -1,4 +1,4 @@
-import { createSignal, For } from 'solid-js'
+import { createSignal, For, type JSX } from 'solid-js'
 import AdminModal from './AdminModal.js'
 import { AsyncState, FormActions, FormField } from './ui/index.js'
 import { createAsyncAction } from '../hooks/createAsyncAction.js'
@@ -13,6 +13,8 @@ interface AdminRoleSelectorProps {
   loading?: boolean
   error?: unknown
   loadingLabel?: string
+  confirmDisabled?: boolean
+  children?: JSX.Element
   onConfirm: (roleID: string) => Promise<unknown>
 }
 
@@ -28,7 +30,7 @@ export default function AdminRoleSelector(props: AdminRoleSelectorProps) {
     action.reset()
   }
   const save = async () => {
-    if (props.loading || props.error || !valid()) return
+    if (props.loading || props.error || props.confirmDisabled || !valid()) return
     if (await action.run(() => props.onConfirm(selected()))) closeDialog(props.id)
   }
   useDraftGuard({ dirty: () => !!selected(), pending: action.pending, discard: reset })
@@ -48,9 +50,10 @@ export default function AdminRoleSelector(props: AdminRoleSelectorProps) {
           </select>
         </FormField>
       </AsyncState>
+      {props.children}
       <FormActions
         dirty={!!selected()}
-        disabled={props.loading || !!props.error || !valid()}
+        disabled={props.loading || !!props.error || props.confirmDisabled || !valid()}
         pending={action.pending()}
         error={action.error()}
         onSave={save}

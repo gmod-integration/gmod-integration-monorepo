@@ -2,6 +2,8 @@ import { Show, type Component, type JSX } from 'solid-js'
 import { A } from '@solidjs/router'
 import type { linkBadge } from './layout/menu/DashboardMenu.js'
 import { useI18n } from '../i18n.js'
+import { useAccess } from './AccessProvider.js'
+import { upgradeHref } from './FeatureGate.js'
 import { premium, PremiumBadge } from '../utils/premium.js'
 import { Icon, type IconName } from './ui/index.js'
 
@@ -20,6 +22,7 @@ interface AdminPanelProps {
 
 const AdminPanel: Component<AdminPanelProps> = (props) => {
   const { t } = useI18n()
+  const access = useAccess()
   return (
     <>
       <div class="dashboard-panel border border-base-200 rounded-lg flex flex-col min-w-0">
@@ -35,7 +38,7 @@ const AdminPanel: Component<AdminPanelProps> = (props) => {
               <Show when={props.badge}>
                 <div class="badge badge-outline">{t('main.badge_' + props.badge, props.badge)}</div>
               </Show>
-              <Show when={props.premium && !premium()}>
+              <Show when={props.premium && access.ready() && access.snapshot()?.state === 'ready' && !premium()}>
                 <PremiumBadge />
               </Show>
             </div>
@@ -43,12 +46,12 @@ const AdminPanel: Component<AdminPanelProps> = (props) => {
               <div class="flex flex-wrap gap-2 items-center">{props.actions}</div>
             </Show>
           </div>
-          <Show when={props.premium && !premium()}>
+          <Show when={props.premium && access.ready() && access.snapshot()?.state === 'ready' && !premium()}>
             <p class="text-amber-400">
               {props.premium === true
                 ? t('main.buy_premium', 'This feature is only available to premium users.')
                 : props.premium}{' '}
-              <A class="link" href="/premium">
+              <A class="link" href={upgradeHref()}>
                 {t('tools.upgrade_now', 'Upgrade Now')}
               </A>
             </p>

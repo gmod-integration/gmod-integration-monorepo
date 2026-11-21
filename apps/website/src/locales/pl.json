@@ -1232,5 +1232,25 @@
     "apply_draft": "Zastosuj do wersji roboczej",
     "delete_trigger": "Usunąć wyzwalacz?",
     "delete_trigger_help": "Wybrana akcja zdarzenia nie będzie już wykonywana. Tej czynności nie można cofnąć."
+  },
+  "access": {
+    "unavailable": "Nie udało się zweryfikować uprawnień. Zapisana konfiguracja zostaje zachowana.",
+    "quota": "Wykorzystano {1} / {2}",
+    "upgrade_required": "Ta funkcja wymaga Premium.",
+    "quota_reached": "Osiągnięto limit tej funkcji.",
+    "historical_bot": "Wymaga zakupu w GmodStore",
+    "suspended": "Ta zapisana funkcja jest zawieszona. Nadal możesz wyłączyć lub usunąć jej konfigurację.",
+    "count_buttons": "{1} przycisków",
+    "count_links": "{1} linków",
+    "history_count": "Ostatnie {1} wpisów",
+    "permission_denied": "Nie masz uprawnień do zarządzania tą społecznością.",
+    "status_chart": "Wykres aktywności w statusie",
+    "auto_roles_limit": "Role automatyczne - Limit",
+    "nickname_rules_limit": "Reguły pseudonimów - Limit",
+    "chat_filters": "Filtry czatu",
+    "log_triggers": "Akcje zdarzeń dziennika",
+    "reverse_sync": "Synchronizacja z Discorda do gry",
+    "errors_history": "Historia błędów",
+    "verification_preferences": "Preferencje weryfikacji"
   }
 }

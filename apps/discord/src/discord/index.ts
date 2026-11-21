@@ -30,6 +30,7 @@ import prisma from '@gmod/infra-prisma'
 import { getServersFromDiscordGuildID, type Server } from '@gmod/domain-server/Server.js'
 import { type PlayerGmod } from '@gmod/core/classes/v3/PlayerGmod.js'
 import { guildSettingExists } from '@gmod/domain-guild/Guild.js'
+import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -374,6 +375,10 @@ export async function getGuildClient(guildID: string, forcePresenceOnGuild = tru
   if (!guildID) return getMainClient()
   const guildClient = clientList.get(guildID)
   if (!guildClient) return getMainClient()
+  if (!hasCapability(await resolveGuildAccess(guildID), 'bot.custom')) {
+    await killGuildClient(guildID)
+    return getMainClient()
+  }
 
   if (!(await waitForClientReady(guildClient, GUILD_CLIENT_READY_TIMEOUT_MS))) {
     gmLog(
@@ -392,19 +397,15 @@ export async function getGuildClient(guildID: string, forcePresenceOnGuild = tru
 
 export async function updateGuildUserPseudo(server: Server, player: PlayerGmod, forceName?: string) {
   try {
-    const pseudoDirection = await server.getSetting('sync_pseudo_direction')
+    const pseudoDirection = await server.getEffectiveSetting('sync_pseudo_direction')
     if (pseudoDirection !== 'both' && pseudoDirection !== 'gmod-to-discord') return
 
-    const pseudoFormat = await server.getSetting('pseudoFormat')
+    const pseudoFormat = await server.getEffectiveSetting('pseudoFormat')
     if (!pseudoFormat) return
 
-    const rolesFormat = await prisma.gm_server_pseudo.findFirst({
-      where: {
-        serverID: server.getID(),
-        role: player.userGroup,
-        enabled: true,
-      },
-    })
+    const rolesFormat = (await server.getEffectivePseudoRules()).find(
+      (rule) => rule.role === player.userGroup && rule.enabled,
+    )
 
     const newPseudo = pseudoFormat
       .replace(/{plyName}/g, forceName || player.name)
@@ -454,15 +455,25 @@ export async function loadGuildBotInstance(guildID: string) {
   await addNewClient(guildID, instanceInfo.token)
 }
 
+/** Reconcile even bots with custom presence disabled, including clients already connected at revocation. */
+export async function reconcileGuildClientAccess() {
+  for (const guildID of clientList.keys()) {
+    if (guildID === 'main') continue
+    try {
+      if (!hasCapability(await resolveGuildAccess(guildID), 'bot.custom')) await killGuildClient(guildID)
+    } catch {
+      gmLog('discord', 'Custom bot access reconciliation is temporarily unavailable')
+    }
+  }
+}
+
 const lastStatusID: Record<string, number> = {}
 setInterval(async () => {
+  await reconcileGuildClientAccess()
   if (!(await guildSettingExists('bot_status'))) return
   const guildsStatusNotDisable = await prisma.gm_guild_settings.findMany({
     where: {
       setting: 'bot_status',
-      value: {
-        not: 'disabled',
-      },
     },
   })
 
@@ -475,6 +486,14 @@ setInterval(async () => {
     if (!client || !client.user) continue
 
     try {
+      if (!hasCapability(await resolveGuildAccess(key), 'bot.custom')) {
+        await killGuildClient(key)
+        continue
+      }
+      if (customStatus === 'disabled' || !hasCapability(await resolveGuildAccess(key), 'bot.presence')) {
+        client.user.setPresence({ activities: [] })
+        continue
+      }
       const dscGuild = client.guilds.cache.get(key)
       if (!dscGuild) continue
 
