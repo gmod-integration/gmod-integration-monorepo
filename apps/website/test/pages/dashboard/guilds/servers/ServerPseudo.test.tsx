@@ -1,412 +1,210 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../testUtils.js'
-import ServerPseudo from '../../../../../src/pages/dashboard/guilds/servers/ServerPseudo.js'
-import { fetchAPI } from '../../../../../src/utils/api.js'
-import { okJson, errJson, stubDialogGlobal, clearDialogGlobals } from './testHelpers.js'
+import { okJson, errJson } from './testHelpers.js'
 
 vi.mock('../../../../../src/utils/api.js', () => ({
-  fetchAPI: vi.fn(),
+  fetchAPI: vi.fn(() => Promise.resolve({ ok: true, json: async () => [] })),
   getAPIUrl: vi.fn(),
-  getUrlWithActualParams: vi.fn((s: string) => s),
+  getUrlWithActualParams: vi.fn((value: string) => value),
 }))
-
-afterEach(() => {
-  cleanup()
-  clearDialogGlobals('edit_role_modal', 'edit_format')
-})
-
-const PSEUDO_DIRECTION_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_pseudo_direction'
-const PSEUDO_FORMAT_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/pseudoFormat'
-const PSEUDO_ROLES_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/pseudo'
-
-function defaultRoles() {
-  return [
-    { id: 1, role: 'admin', name: 'Admin', prefix: 'A', enabled: true },
-    { id: 2, role: 'mod', name: 'Moderator', prefix: 'M', enabled: false },
-  ]
-}
-
-function setupFetchAPI({
-  direction = { value: 'gmod-to-discord' },
-  format = { value: '{plyName}' },
-  roles = defaultRoles(),
-}: { direction?: unknown; format?: unknown; roles?: unknown } = {}) {
-  ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-    if (endpoint === PSEUDO_DIRECTION_URL && method === 'GET') return Promise.resolve(okJson(direction))
-    if (endpoint === PSEUDO_FORMAT_URL && method === 'GET') return Promise.resolve(okJson(format))
-    if (endpoint === PSEUDO_ROLES_URL && method === 'GET') return Promise.resolve(okJson(roles))
-    return Promise.resolve(okJson({}))
-  })
-}
-
+vi.mock('../../../../../src/utils/dashboardSettings.js', () => ({ saveDashboardSettings: vi.fn() }))
+const { fetchAPI } = await import('../../../../../src/utils/api.js')
+const { saveDashboardSettings } = await import('../../../../../src/utils/dashboardSettings.js')
+const Page = (await import('../../../../../src/pages/dashboard/guilds/servers/ServerPseudo.js')).default
+const URL = '/users/:discordID/guilds/:guildID/servers/:serverID/pseudo'
+const SETTING = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/'
+const rows = () => [
+  { id: 1, enabled: true, role: 'admins', name: 'Admin', prefix: '[A]' },
+  { id: 2, enabled: false, role: 'mods', name: 'Moderator', prefix: '[M]' },
+]
+let failure: string | undefined
+let write: (endpoint: string, method: string, body: unknown) => unknown
 function renderPage() {
-  return renderWithProviders(() => <ServerPseudo />, {
+  return renderWithProviders(() => <Page />, {
     path: '/dashboard/guilds/:guildID/config/servers/:serverID/pseudo',
     history: historyAt('/dashboard/guilds/g1/config/servers/s1/pseudo'),
   })
 }
-
-async function waitForLoaded() {
-  await vi.waitFor(() => expect(screen.getByText('Admin')).toBeInTheDocument())
+const input = (id: string) => document.getElementById(id) as HTMLInputElement
+const modal = () => within(document.getElementById('edit_role_modal')!)
+const writes = () => (fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')
+async function loaded() {
+  await vi.waitFor(() => {
+    expect(screen.getByText('admins')).toBeInTheDocument()
+    expect(input('pseudo-format')).toHaveValue('{rolePrefix} {plyName}')
+  })
 }
-
-describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
+async function createDraft() {
+  await fireEvent.click(screen.getByRole('button', { name: 'Add Role' }))
+  await fireEvent.input(input('pseudo-role-group'), { target: { value: 'vip' } })
+  await fireEvent.input(input('pseudo-role-name'), { target: { value: 'VIP' } })
+  await fireEvent.input(input('pseudo-role-prefix'), { target: { value: '[V]' } })
+  await fireEvent.click(input('pseudo-role-active'))
+}
+afterEach(cleanup)
+describe('ServerPseudo unified editing', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    vi.clearAllMocks()
+    failure = undefined
+    write = () => okJson({})
+    ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string, body: unknown) => {
+      if (method !== 'GET') return Promise.resolve(write(endpoint, method, body))
+      if (endpoint === failure) return Promise.resolve(errJson())
+      if (endpoint === URL) return Promise.resolve(okJson(rows()))
+      if (endpoint === SETTING + 'sync_pseudo_direction') return Promise.resolve(okJson({ value: 'gmod-to-discord' }))
+      if (endpoint === SETTING + 'pseudoFormat') return Promise.resolve(okJson({ value: '{rolePrefix} {plyName}' }))
+      return Promise.resolve(okJson([]))
+    })
+    ;(saveDashboardSettings as Mock).mockImplementation(async (_scope, settings) => ({ settings, sync: 'applied' }))
+  })
+  it('renders the saved rules and keeps the format preview beside its draft', async () => {
+    renderPage()
+    await loaded()
+    expect(screen.getByText('mods')).toBeInTheDocument()
+    expect(input('pseudo-format-preview')).toHaveValue('A John Doe')
+    expect(input('pseudo-format-preview')).toHaveAttribute('readonly')
+    expect(document.getElementById('edit_format')).not.toBeInTheDocument()
+  })
+  it('groups direction and format into one local draft and Cancel restores both', async () => {
+    renderPage()
+    await loaded()
+    const group = within(input('pseudo-format').closest('.settings-group')!)
+    await fireEvent.change(input('server-pseudo-direction'), { target: { value: 'both' } })
+    await fireEvent.input(input('pseudo-format'), { target: { value: '[{roleName}] {plyName}' } })
+    expect(input('pseudo-format-preview')).toHaveValue('[Admin] John Doe')
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    expect(writes()).toHaveLength(0)
+    await fireEvent.click(group.getByRole('button', { name: 'Cancel' }))
+    expect(input('server-pseudo-direction')).toHaveValue('gmod-to-discord')
+    expect(input('pseudo-format')).toHaveValue('{rolePrefix} {plyName}')
+  })
+  it('saves the whole settings section atomically and preserves the accepted baseline', async () => {
+    renderPage()
+    await loaded()
+    const group = within(input('pseudo-format').closest('.settings-group')!)
+    await fireEvent.change(input('server-pseudo-direction'), { target: { value: 'both' } })
+    await fireEvent.input(input('pseudo-format'), { target: { value: '{plyName}' } })
+    await fireEvent.click(group.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() =>
+      expect(saveDashboardSettings).toHaveBeenCalledWith('server', {
+        sync_pseudo_direction: 'both',
+        pseudoFormat: '{plyName}',
+      }),
+    )
+    await vi.waitFor(() => expect(group.getByRole('status')).toBeInTheDocument())
+    expect(input('server-pseudo-direction')).toHaveValue('both')
+    expect(input('pseudo-format')).toHaveValue('{plyName}')
+    expect(group.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+  it('validates the enabled format and keeps a failed settings draft available to retry', async () => {
+    renderPage()
+    await loaded()
+    const group = within(input('pseudo-format').closest('.settings-group')!)
+    await fireEvent.input(input('pseudo-format'), { target: { value: ' ' } })
+    expect(group.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await fireEvent.input(input('pseudo-format'), { target: { value: '{plyName}' } })
+    ;(saveDashboardSettings as Mock).mockRejectedValueOnce(new Error('offline'))
+    await fireEvent.click(group.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(group.getByRole('alert')).toBeInTheDocument())
+    expect(input('pseudo-format')).toHaveValue('{plyName}')
+    ;(saveDashboardSettings as Mock).mockResolvedValueOnce({ settings: { pseudoFormat: '{plyName}' }, sync: 'pending' })
+    await fireEvent.click(group.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(group.getByText('Saved. Synchronization is pending.')).toBeInTheDocument())
+  })
+  it('requires the group and creates a complete rule only on Create', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Role' }))
+    expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
+    await fireEvent.input(input('pseudo-role-name'), { target: { value: 'VIP' } })
+    expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    await createDraft()
+    expect(writes()).toHaveLength(0)
+    expect(screen.queryByText('vip')).not.toBeInTheDocument()
+    write = () => okJson({ id: 3, enabled: true, role: 'vip', name: 'VIP', prefix: '[V]' })
+    await fireEvent.click(modal().getByRole('button', { name: 'Create' }))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(URL, 'POST', { enabled: true, role: 'vip', name: 'VIP', prefix: '[V]' }),
+    )
+    await vi.waitFor(() => expect(screen.getByText('vip')).toBeInTheDocument())
+    expect(writes()).toHaveLength(1)
+  })
+  it('discards creation and edit drafts without changing the list', async () => {
+    renderPage()
+    await loaded()
+    await createDraft()
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Role' }))
+    expect(input('pseudo-role-group')).toHaveValue('')
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
+    await fireEvent.input(input('pseudo-role-group'), { target: { value: 'draft' } })
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText('admins')).toBeInTheDocument()
+    expect(writes()).toHaveLength(0)
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
+    expect(input('pseudo-role-group')).toHaveValue('admins')
+  })
+  it('keeps a failed rule open, then saves all edited values on retry', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
+    await fireEvent.input(input('pseudo-role-name'), { target: { value: 'Super Admin' } })
+    write = () => errJson()
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(modal().getByRole('alert')).toBeInTheDocument())
+    expect(document.getElementById('edit_role_modal')).toHaveAttribute('open')
+    expect(screen.getByText('Admin')).toBeInTheDocument()
+    write = () => okJson({ ...rows()[0], name: 'Super Admin' })
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(screen.getByText('Super Admin')).toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenLastCalledWith(URL + '/1', 'PUT', {
+      enabled: true,
+      role: 'admins',
+      name: 'Super Admin',
+      prefix: '[A]',
+    })
+  })
+  it('confirms a named deletion and preserves the row when the request fails', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[1])
+    const dialog = document.getElementById('delete-pseudo-rule')!
+    const confirm = within(dialog)
+    expect(confirm.getByText('mods — Moderator [M]')).toBeInTheDocument()
+    expect(writes()).toHaveLength(0)
+    write = () => errJson()
+    await fireEvent.click(confirm.getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(confirm.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByText('mods')).toBeInTheDocument()
+    expect(dialog).toHaveAttribute('open')
+    write = () => okJson({})
+    await fireEvent.click(confirm.getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(screen.queryByText('mods')).not.toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(URL + '/2', 'DELETE')
+    expect(screen.getByText('admins')).toBeInTheDocument()
+  })
+  it('disables settings when one part cannot load and allows a retry', async () => {
+    failure = SETTING + 'pseudoFormat'
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument())
+    expect(input('pseudo-format')).toBeDisabled()
+    expect(input('server-pseudo-direction')).toBeDisabled()
+    failure = undefined
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await loaded()
+    expect(input('pseudo-format')).not.toBeDisabled()
+  })
+  it('keeps paid direction choices disabled on a free guild', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
-    ;(fetchAPI as Mock).mockReset()
-    setupFetchAPI()
-  })
-
-  it('renders the loaded role list with enabled/disabled markers', async () => {
     renderPage()
-    await waitForLoaded()
-    expect(screen.getByText('Moderator')).toBeInTheDocument()
-    const rows = screen.getAllByRole('row').slice(1) // skip header row
-    expect(rows[0].querySelector('svg[data-icon="check"]')).toBeInTheDocument()
-    expect(rows[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
-  })
-
-  it('shows a loading spinner for the role table while pseudoRoles is loading', () => {
-    ;(fetchAPI as Mock).mockImplementation(() => new Promise(() => {}))
-    const { container } = renderPage()
-    expect(container.querySelector('.loading-spinner')).toBeInTheDocument()
-  })
-
-  it('computes the format preview by substituting every placeholder', async () => {
-    setupFetchAPI({ format: { value: '{plyName}-{plySteamID64}-{rolePrefix}-{roleName}' } })
-    renderPage()
-    await waitForLoaded()
-    await vi.waitFor(() => {
-      const previews = screen.getAllByDisplayValue('John Doe-76500000000000000-A-Admin')
-      expect(previews.length).toBeGreaterThan(0)
-    })
-  })
-
-  it('keeps the format and saved role rules available while synchronization is disabled', async () => {
-    setupFetchAPI({ direction: { value: 'disable' } })
-    renderPage()
-    await waitForLoaded()
-    expect(
-      screen.getByText('Synchronization is disabled. Your format and rules are kept for when you enable it again.'),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Edit Format' })).toBeEnabled()
-    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(2)
-    expect(screen.getByLabelText('Saved preview')).toHaveValue('John Doe')
-  })
-
-  describe('pseudo direction selector', () => {
-    it('marks the option matching the fetched direction as selected', async () => {
-      // The 'both' option is disabled unless the guild is premium (see ServerPseudo.tsx's
-      // `disabled={!premium()}` on that <option>) - a disabled option can't actually become the
-      // select's displayed value in a real browser, so this needs a premium guild to test it.
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      setupFetchAPI({ direction: { value: 'both' } })
-      renderPage()
-      await waitForLoaded()
-      const select = screen.getByDisplayValue('Both Ways') as HTMLSelectElement
-      expect(select.value).toBe('both')
-    })
-
-    it('disables the select while pseudoDirection is loading', () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-        if (endpoint === PSEUDO_DIRECTION_URL) return new Promise(() => {})
-        return Promise.resolve(okJson({}))
-      })
-      renderPage()
-      const selects = screen.getAllByRole('combobox')
-      const directionSelect = selects.find((el) => el.className.includes('w-full max-w-xs')) as HTMLSelectElement
-      expect(directionSelect).toBeDisabled()
-    })
-
-    it('sends the new direction on change and mutates the resource on success', async () => {
-      // 'both' is disabled unless premium (see the note on the previous test).
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      renderPage()
-      await waitForLoaded()
-      const updated = { value: 'both' }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(okJson(updated))
-        return Promise.resolve(okJson({}))
-      })
-      const select = screen
-        .getAllByRole('combobox')
-        .find((el) => el.className.includes('w-full max-w-xs')) as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'both' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_DIRECTION_URL, 'PUT', { value: 'both' }))
-      await vi.waitFor(() => expect((screen.getByDisplayValue('Both Ways') as HTMLSelectElement).value).toBe('both'))
-    })
-
-    it('does not mutate when the direction update request fails', async () => {
-      renderPage()
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(errJson())
-        if (endpoint === PSEUDO_DIRECTION_URL && method === 'GET')
-          return Promise.resolve(okJson({ value: 'gmod-to-discord' }))
-        return Promise.resolve(okJson({}))
-      })
-      const select = screen
-        .getAllByRole('combobox')
-        .find((el) => el.className.includes('w-full max-w-xs')) as HTMLSelectElement
-      const callsBeforeChange = (fetchAPI as Mock).mock.calls.length
-      await fireEvent.change(select, { target: { value: 'disable' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_DIRECTION_URL, 'PUT', { value: 'disable' }))
-      await vi.waitFor(() => expect(select).toHaveValue('gmod-to-discord'))
-      expect(screen.getByRole('alert')).toBeInTheDocument()
-      expect((fetchAPI as Mock).mock.calls.length).toBe(callsBeforeChange + 1)
-    })
-  })
-
-  describe('edit format modal', () => {
-    it('updates the format and closes the modal on save', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_format')
-      const updatedFormat = { value: '{plyName} new' }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PSEUDO_FORMAT_URL && method === 'PUT') return Promise.resolve(okJson(updatedFormat))
-        return Promise.resolve(okJson({}))
-      })
-
-      const formatInput = screen.getByDisplayValue('{plyName}') as HTMLInputElement
-      await fireEvent.input(formatInput, { target: { value: '{plyName} new' } })
-      const saveBtn = within(container.querySelector('#edit_format') as HTMLElement).getByText('Save')
-      await fireEvent.click(saveBtn)
-
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_FORMAT_URL, 'PUT', { value: '{plyName} new' }),
-      )
-    })
-
-    it('opens via the Edit Format button', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_format')
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Format' }))
-      expect(container.querySelector('#edit_format')?.hasAttribute('open')).toBe(true)
-    })
-
-    it('cancels a format draft without changing the saved preview', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_format')
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Format' }))
-      const modal = container.querySelector('#edit_format') as HTMLDialogElement
-      await fireEvent.input(within(modal).getByLabelText('Format'), { target: { value: 'Draft {plyName}' } })
-      expect(within(modal).getByLabelText('Preview')).toHaveValue('Draft John Doe')
-      expect(container.querySelector('input[readonly]:not(#pseudo-format-preview)')).toHaveValue('John Doe')
-      await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
-      expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'PUT')).toBe(false)
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Format' }))
-      expect(within(modal).getByLabelText('Format')).toHaveValue('{plyName}')
-    })
-
-    it('waits for format Save, blocks duplicate requests and retains the draft after a failed save', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      const modal = stubDialogGlobal(container, 'edit_format')
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Format' }))
-      await fireEvent.input(within(modal).getByLabelText('Format'), { target: { value: 'Draft {plyName}' } })
-      let resolveSave!: (response: ReturnType<typeof errJson>) => void
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PSEUDO_FORMAT_URL && method === 'PUT')
-          return new Promise((resolve) => {
-            resolveSave = resolve
-          })
-        return Promise.resolve(okJson({}))
-      })
-      const save = within(modal).getByRole('button', { name: 'Save' })
-      await fireEvent.click(save)
-      expect(save).toBeDisabled()
-      expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
-      expect(within(modal).getByRole('button', { name: 'Close' })).toBeDisabled()
-      await fireEvent.click(save)
-      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
-      expect(modal.close).not.toHaveBeenCalled()
-      resolveSave(errJson())
-      await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
-      expect(modal.open).toBe(true)
-      expect(within(modal).getByLabelText('Format')).toHaveValue('Draft {plyName}')
-      expect(save).not.toBeDisabled()
-    })
-  })
-
-  describe('role management', () => {
-    it('adds a role and appends it to the list', async () => {
-      renderPage()
-      await waitForLoaded()
-      const newRole = { id: 3, role: 'vip', name: 'VIP', prefix: 'V', enabled: true }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PSEUDO_ROLES_URL && method === 'POST') return Promise.resolve(okJson(newRole))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(screen.getByText('Add Role'))
-      await vi.waitFor(() => expect(screen.getByText('VIP')).toBeInTheDocument())
-    })
-
-    it('opens the edit-role modal with the selected role and saves the edit', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-
-      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
-      await fireEvent.click(edit)
-
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      const nameInput = within(modal).getAllByRole('textbox')[1] as HTMLInputElement
-      expect(nameInput.value).toBe('Admin')
-
-      const updatedRole = { id: 1, role: 'admin', name: 'Admin Renamed', prefix: 'A', enabled: true }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${PSEUDO_ROLES_URL}/1` && method === 'PUT') return Promise.resolve(okJson(updatedRole))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.input(nameInput, { target: { value: 'Admin Renamed' } })
-      const saveBtn = within(modal).getByText('Save')
-      await fireEvent.click(saveBtn)
-
-      await vi.waitFor(() => expect(screen.getByText('Admin Renamed')).toBeInTheDocument())
-    })
-
-    it('edits role, prefix and active fields in the modal', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
-      await fireEvent.click(edit)
-
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      const [roleInput, , prefixInput] = within(modal).getAllByRole('textbox') as HTMLInputElement[]
-      await fireEvent.input(roleInput, { target: { value: 'superadmin' } })
-      await fireEvent.input(prefixInput, { target: { value: 'SA' } })
-      const activeSelect = within(modal).getByRole('combobox') as HTMLSelectElement
-      await fireEvent.change(activeSelect, { target: { value: 'false' } })
-
-      const updated = { id: 1, role: 'superadmin', name: 'Admin', prefix: 'SA', enabled: false }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${PSEUDO_ROLES_URL}/1` && method === 'PUT') return Promise.resolve(okJson(updated))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(within(modal).getByText('Save'))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(`${PSEUDO_ROLES_URL}/1`, 'PUT', {
-          id: 1,
-          role: 'superadmin',
-          name: 'Admin',
-          prefix: 'SA',
-          enabled: false,
-        }),
-      )
-    })
-
-    it('deletes a role and removes it from the list', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${PSEUDO_ROLES_URL}/2` && method === 'DELETE') return Promise.resolve(okJson({ id: 2 }))
-        return Promise.resolve(okJson({}))
-      })
-      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
-      await fireEvent.click(deleteIcons[1])
-      await vi.waitFor(() => expect(screen.queryByText('Moderator')).not.toBeInTheDocument())
-      expect(screen.getByText('Admin')).toBeInTheDocument()
-    })
-
-    it('does not update the list when adding a role fails', async () => {
-      renderPage()
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PSEUDO_ROLES_URL && method === 'POST') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(screen.getByText('Add Role'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_ROLES_URL, 'POST', expect.anything()))
-      expect(screen.getAllByRole('row')).toHaveLength(3) // header + 2 unchanged rows
-    })
-
-    it('does not update the list when editing a role fails', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
-      await fireEvent.click(edit)
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${PSEUDO_ROLES_URL}/1` && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      await fireEvent.click(within(modal).getByText('Save'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${PSEUDO_ROLES_URL}/1`, 'PUT', expect.anything()))
-      expect(screen.getByText('Admin')).toBeInTheDocument()
-      expect(container.querySelector('#edit_role_modal')).toHaveAttribute('open')
-      expect(within(modal).getByRole('alert')).toBeInTheDocument()
-    })
-
-    it('discards role drafts on Cancel and restores the saved fields when reopened', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
-      await fireEvent.click(edit)
-      const modal = container.querySelector('#edit_role_modal') as HTMLDialogElement
-      await fireEvent.input(within(modal).getByLabelText('Name'), { target: { value: 'Changed name' } })
-      await fireEvent.input(within(modal).getByLabelText('Prefix'), { target: { value: 'Changed prefix' } })
-      expect(screen.getByText('Admin')).toBeInTheDocument()
-      await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
-      expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'PUT')).toBe(false)
-      await fireEvent.click(edit)
-      expect(within(modal).getByLabelText('Name')).toHaveValue('Admin')
-      expect(within(modal).getByLabelText('Prefix')).toHaveValue('A')
-    })
-
-    it('does not remove the row when deleting a role fails', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${PSEUDO_ROLES_URL}/2` && method === 'DELETE') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
-      await fireEvent.click(deleteIcons[1])
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${PSEUDO_ROLES_URL}/2`, 'DELETE'))
-      expect(screen.getByText('Moderator')).toBeInTheDocument()
-    })
-
-    it('disables the input fields in the role modal while pseudoRoles is loading', () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-        if (endpoint === PSEUDO_ROLES_URL) return new Promise(() => {})
-        return Promise.resolve(okJson({}))
-      })
-      const { container } = renderPage()
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      const inputs = within(modal).getAllByRole('textbox', { hidden: true }) as HTMLInputElement[]
-      inputs.forEach((input) => expect(input).toBeDisabled())
-    })
-  })
-
-  describe('premium gating for role customization', () => {
-    it('shows Add Role directly when premium', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      renderPage()
-      await waitForLoaded()
-      expect(screen.getByText('Add Role')).toBeInTheDocument()
-    })
-
-    it('shows the premium upsell instead of Add Role when free and at the 3-role limit', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
-      setupFetchAPI({
-        roles: [
-          { id: 1, role: 'a', name: 'A', prefix: '', enabled: true },
-          { id: 2, role: 'b', name: 'B', prefix: '', enabled: true },
-          { id: 3, role: 'c', name: 'C', prefix: '', enabled: true },
-        ],
-      })
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('A')).toBeInTheDocument())
-      expect(screen.queryByText('Add Role')).not.toBeInTheDocument()
-      expect(screen.getByText('Limited to 3 roles customization for free users.')).toBeInTheDocument()
-    })
+    await loaded()
+    const options = input('server-pseudo-direction').querySelectorAll('option')
+    expect(options[2]).toBeDisabled()
+    expect(options[3]).toBeDisabled()
   })
 })

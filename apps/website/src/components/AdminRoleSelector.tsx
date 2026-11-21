@@ -4,6 +4,7 @@ import { AsyncState, FormActions, FormField } from './ui/index.js'
 import { createAsyncAction } from '../hooks/createAsyncAction.js'
 import { useI18n } from '../i18n.js'
 import { closeDialog } from '../utils/dialog.js'
+import { useDraftGuard } from '../hooks/draftRegistry.js'
 
 interface AdminRoleSelectorProps {
   id: string
@@ -30,6 +31,7 @@ export default function AdminRoleSelector(props: AdminRoleSelectorProps) {
     if (props.loading || props.error || !valid()) return
     if (await action.run(() => props.onConfirm(selected()))) closeDialog(props.id)
   }
+  useDraftGuard({ dirty: () => !!selected(), pending: action.pending, discard: reset })
   return (
     <AdminModal id={props.id} title={props.title} busy={action.pending()} onClose={reset} onCancel={reset}>
       <AsyncState loading={props.loading} error={props.error} loadingLabel={props.loadingLabel}>

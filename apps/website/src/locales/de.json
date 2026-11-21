@@ -843,10 +843,10 @@
       },
       "config": {
         "title": "Configuration",
-        "description": "Manage the in game configuration of this server.",
+        "description": "Verwalte die Spieleinstellungen dieses Servers.",
         "error_occurred": "Beim Abrufen der Serverkonfiguration ist ein Fehler aufgetreten.",
         "default": "Standard",
-        "add_admin_rank": "Add rank",
+        "add_admin_rank": "Rang hinzufügen",
         "settings": {
           "ig_syncBan": {
             "title": "Verbote synchronisieren",
@@ -912,7 +912,8 @@
             "title": "Admin-Ränge",
             "description": "Ränge, die berechtigt sind, die Konfiguration zu bearbeiten oder den Wartungsmodus zu umgehen."
           }
-        }
+        },
+        "remove_admin_rank": "Rang entfernen"
       },
       "team_roles": {
         "error_occurred": "Beim Abrufen der Rollen ist ein Fehler aufgetreten.",
@@ -957,8 +958,12 @@
         "modal_title": "Automatische Rolle bearbeiten",
         "modal_description": "Bearbeiten Sie die Einstellungen für diese automatische Rolle.",
         "close_button": "Schließen",
-        "failed_to_load": "Die Links können nicht geladen werden",
-        "add_role": "Rolle hinzufügen"
+        "failed_to_load": "Rollen konnten nicht geladen werden.",
+        "add_role": "Rolle hinzufügen",
+        "delete_confirmation": "Neue Mitglieder erhalten diese Rolle nicht mehr automatisch. Bestehende Mitglieder behalten ihre Rolle.",
+        "delete": "Löschen",
+        "premium": "Für kostenlose Nutzer auf 3 automatische Rollen begrenzt.",
+        "active_help": "Alle hier aufgeführten Rollen werden neuen Mitgliedern automatisch zugewiesen."
       },
       "verification": {
         "check_button": "Alle Rollen überprüfen",
@@ -993,7 +998,13 @@
         "edit_tooltip": "Bearbeiten",
         "delete_tooltip": "Löschen",
         "failed_to_load_links": "Die Links können nicht geladen werden",
-        "add_role_button": "Rolle hinzufügen"
+        "add_role_button": "Rolle hinzufügen",
+        "publish_confirmation": "Verifizierung in #{1} veröffentlichen?",
+        "publish_consequence": "Mitglieder können über diese Nachricht ihre Konten verknüpfen.",
+        "delete_message_confirmation": "Verifizierung in #{1} löschen?",
+        "delete_message_consequence": "Mitglieder können die Verifizierung nicht mehr über diese Nachricht starten.",
+        "delete_role_consequence": "Diese Rolle wird bei der Verifizierung nicht mehr vergeben oder entfernt. Bestehende Mitglieder behalten ihre aktuellen Rollen.",
+        "check_confirmation": "Rollen der Mitglieder von {1} prüfen?"
       },
       "information": {
         "title": "Informationen",
@@ -1050,7 +1061,8 @@
         "edit_link": "Verknüpfung bearbeiten",
         "save": "Speichern",
         "yes": "Nein",
-        "no": "Nein"
+        "no": "Nein",
+        "delete_confirmation": "Diese Verknüpfung steht Mitgliedern danach nicht mehr zur Verfügung."
       }
     },
     "menu": {
@@ -1121,7 +1133,23 @@
     "back_home": "Zur Startseite",
     "contents": "Inhalt",
     "enabled": "Aktiviert",
-    "disabled": "Deaktiviert"
+    "disabled": "Deaktiviert",
+    "delete_target": "{1} löschen?",
+    "invalid_value": "Gib einen gültigen Wert ein.",
+    "publish": "Veröffentlichen",
+    "delete": "Löschen",
+    "create": "Erstellen",
+    "sync_pending": "Gespeichert. Die Synchronisierung steht noch aus.",
+    "required": "Dieses Feld ist erforderlich.",
+    "confirm_delete": "Diesen Eintrag löschen?",
+    "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein.",
+    "action_error": "Die Aktion ist fehlgeschlagen. Versuche es erneut.",
+    "confirm": "Bestätigen",
+    "leave_title": "Ohne Speichern verlassen?",
+    "wait_saving": "Warte, bis das Speichern abgeschlossen ist, bevor du die Seite verlässt.",
+    "leave_description": "Deine ungespeicherten Änderungen werden verworfen.",
+    "stay": "Auf dieser Seite bleiben",
+    "discard_leave": "Verwerfen und verlassen"
   },
   "settings": {
     "access": "Zugang und Verifizierung",
@@ -1142,7 +1170,7 @@
     "chat_default_help": "Lege fest, ob Spielnachrichten standardmäßig weitergeleitet oder blockiert werden. Ausnahmen legst du in den Regeln unten fest.",
     "chat_destination": "Discord-Ziel",
     "chat_destination_help": "Nachrichten werden über diesen Kanal weitergeleitet. Wähle einen Kanal, um die Weiterleitung zu verbinden.",
-    "chat_direction_help": "Lege fest, von welcher Seite Nachrichten weitergeleitet werden können. Änderungen werden automatisch gespeichert.",
+    "chat_direction_help": "Wähle, welche Seite Nachrichten über die Weiterleitung senden kann, und speichere diesen Abschnitt.",
     "chat_ping_help": "Verhindere, dass weitergeleitete Nachrichten Discord-Mitglieder und Rollen erwähnen.",
     "chat_rules": "Filterregeln",
     "general": "Allgemein",
@@ -1154,12 +1182,12 @@
     "message_content": "Nachrichteninhalt",
     "moderation": "Moderation",
     "moderation_description": "Synchronisiere Sanktionen zwischen Discord und dem Spielserver.",
-    "nickname_format_help": "Prüfe die Vorschau des gespeicherten Namensformats und bearbeite dann die Vorlage und ihre Variablen.",
+    "nickname_format_help": "Bearbeite das Spitznamenformat und seine Variablen und speichere diesen Abschnitt.",
     "no_results": "In dieser Kategorie entsprechen keine Einstellungen deiner Suche.",
     "pseudo_rules_help": "Präfixe und Rollennamen werden nur verwendet, wenn das Format {rolePrefix} oder {roleName} enthält.",
     "reset_filters": "Filter zurücksetzen",
     "results": "angezeigte Einstellungen",
-    "rule_setup_help": "Wähle eine Discord-Rolle, bearbeite ihre Zuordnung im Spiel und aktiviere die Regel.",
+    "rule_setup_help": "Erstelle eine vollständige Regel mit Discord-Rolle, Synchronisierungsoptionen und Aktivierungsstatus.",
     "saved_preview": "Gespeicherte Vorschau",
     "search": "Einstellungen suchen",
     "search_placeholder": "Nach Name oder Beschreibung suchen…",
@@ -1174,13 +1202,35 @@
     "status_content_help": "Lege den Nachrichteninhalt fest. Prüfe die Vorschau und speichere deine Änderungen.",
     "status_players_help": "Zeige verbundene Spieler an und passe die Informationen für jeden Spieler an.",
     "sync_behavior": "Synchronisierungsverhalten",
-    "sync_direction_help": "Diese Richtung gilt für alle Regeln unten. Änderungen werden automatisch gespeichert.",
+    "sync_direction_help": "Diese Richtung gilt für alle Regeln unten. Speichere den Abschnitt, um Änderungen anzuwenden.",
     "sync_disabled": "Die Synchronisierung ist deaktiviert. Format und Regeln bleiben für die nächste Aktivierung erhalten.",
     "sync_premium_help": "Die Synchronisierung von Discord zum Spiel und in beide Richtungen erfordert Premium.",
     "verification_dependency": "Diese Prüfung greift, wenn die Kontoverknüpfung verpflichtend ist.",
     "verification_existing_members": "Bestehende Mitglieder",
     "verification_message": "Einstieg in die Verifizierung",
     "verification_message_hint": "Veröffentliche in einem Discord-Kanal die Nachricht, über die Mitglieder ihre Konten verknüpfen.",
-    "verification_preferences": "Mitgliedererlebnis"
+    "verification_preferences": "Mitgliedererlebnis",
+    "explicit_save": "Änderungen werden erst angewendet, wenn du diesen Abschnitt speicherst.",
+    "channel_draft_help": "Wähle ein Ziel und speichere, um es anzuwenden.",
+    "server_port_invalid": "Gib einen Port zwischen 1 und 65535 ein.",
+    "image_url_invalid": "Gib eine HTTP- oder HTTPS-Bild-URL ein.",
+    "server_reset_confirm": "Das aktuelle Token funktioniert danach nicht mehr. Aktualisiere es nach dem Zurücksetzen in deiner Garry’s-Mod-Konfiguration.",
+    "server_delete_confirm": "Diesen Server und seine Dashboard-Daten entfernen. Dies kann nicht rückgängig gemacht werden.",
+    "server_edit_help": "Bearbeite die Identität und Verbindungsdaten des Servers und speichere alle Änderungen gemeinsam."
+  },
+  "editing": {
+    "remove_channel": "Dieses Ziel entfernen? Künftige Nachrichten werden nicht mehr an diesen Kanal gesendet.",
+    "section_help": "Bearbeite diese Einstellungen und speichere den Abschnitt, um sie anzuwenden.",
+    "remove_status_help": "Die veröffentlichte Discord-Statusnachricht entfernen. Die gespeicherte Konfiguration bleibt erhalten.",
+    "publish_saved_first": "Speichere oder verwirf deine Änderungen, bevor du eine Nachricht veröffentlichst.",
+    "status_scope": "Änderungen an der Nachricht und ihren Schaltflächen werden gemeinsam gespeichert.",
+    "conflict": "Die gespeicherten Werte wurden geändert. Lade sie vor dem erneuten Speichern neu.",
+    "sync_pending": "Die Konfiguration ist gespeichert. Die Discord-Aktualisierung wurde noch nicht bestätigt.",
+    "reload_saved": "Änderungen verwerfen und gespeicherte Werte neu laden",
+    "save_status": "Statuskonfiguration speichern",
+    "invalid_status": "Prüfe die Namen und URLs der Schaltflächen vor dem Speichern.",
+    "apply_draft": "Auf den Entwurf anwenden",
+    "delete_trigger": "Auslöser löschen?",
+    "delete_trigger_help": "Die ausgewählte Ereignisaktion wird nicht mehr ausgeführt. Dies kann nicht rückgängig gemacht werden."
   }
 }

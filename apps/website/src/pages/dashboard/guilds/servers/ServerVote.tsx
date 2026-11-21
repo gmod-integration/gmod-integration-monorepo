@@ -6,22 +6,21 @@ import AdminChannelSelector from '../../../../components/AdminChannelSelector'
 import { useI18n } from '../../../../i18n'
 import DiscordChannel from '../../../../components/discord/DiscordChannel'
 import { fetchAPI } from '../../../../utils/api'
-import { Button, SettingRow, SettingFeedback } from '../../../../components/ui/index.js'
+import { AsyncState, Button, SettingRow } from '../../../../components/ui/index.js'
 
-import { createAsyncAction } from '../../../../hooks/createAsyncAction.js'
+import ConfirmActionDialog from '../../../../components/ConfirmActionDialog.js'
 
 const fetchVote = async () => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/votes', 'GET')
   if (!res.ok) {
-    return {}
+    throw new Error('Channel configuration unavailable')
   }
   return await res.json()
 }
 
 const ServerVote: Component = () => {
   const { t } = useI18n()
-  const removal = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
-  const [votes, { mutate: votesMutate }] = createResource('vote', fetchVote)
+  const [votes, { mutate: votesMutate, refetch }] = createResource('vote', fetchVote)
 
   const sendScreenshots = async (channelID: string) => {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/votes', 'POST', {
@@ -52,52 +51,58 @@ const ServerVote: Component = () => {
         idSelect={!votes.loading && !votes.error ? votes()?.channelID : undefined}
       />
 
+      <ConfirmActionDialog
+        id="remove-channel"
+        title={t('dashboard.server.vote.delete_channel', 'Delete Channel')}
+        description={t(
+          'editing.remove_channel',
+          'Remove this destination? Future messages will no longer be sent to this channel.',
+        )}
+        confirmLabel={t('ui.delete', 'Delete')}
+        onConfirm={removeScreenshots}
+      />
       <AdminPanel
         title={t('dashboard.server.vote.title', 'Server Vote')}
         description={t('dashboard.server.vote.description', 'Configure voting notifications for your server')}
       >
-        <SettingRow
-          title={t('dashboard.server.vote.vote_channel', 'Vote Channel')}
-          description={t(
-            'settings.channel_confirmation',
-            'Choose a channel, then confirm your selection. Removing it stops future messages in that channel.',
-          )}
-          feedback={<SettingFeedback error={removal.error()} pending={removal.pending()} />}
-        >
-          <div class="flex w-full min-w-0 items-center gap-2">
-            <Show
-              when={!votes.loading && votes().channelID}
-              fallback={
-                <span class="text-base-content/60">
-                  {t('dashboard.server.vote.no_channel_selected', 'No channel selected')}
-                </span>
-              }
-            >
-              <DiscordChannel channelID={votes().channelID} />
-            </Show>
-          </div>
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={votes.loading || removal.pending()}
-            onClick={() => {
-              showDialog('select_channel_modal')
-              guildChannelsRefetch()
-            }}
+        <AsyncState loading={votes.loading} error={votes.error} onRetry={() => void refetch()}>
+          <SettingRow
+            title={t('dashboard.server.vote.vote_channel', 'Vote Channel')}
+            description={t(
+              'settings.channel_confirmation',
+              'Choose a channel, then confirm your selection. Removing it stops future messages in that channel.',
+            )}
           >
-            {t('dashboard.server.vote.select_channel', 'Select Channel')}
-          </Button>
-          <Show when={!votes.loading && votes().channelID}>
+            <div class="flex w-full min-w-0 items-center gap-2">
+              <Show
+                when={!votes.loading && votes().channelID}
+                fallback={
+                  <span class="text-base-content/60">
+                    {t('dashboard.server.vote.no_channel_selected', 'No channel selected')}
+                  </span>
+                }
+              >
+                <DiscordChannel channelID={votes().channelID} />
+              </Show>
+            </div>
             <Button
-              variant="ghost"
+              variant="primary"
               size="sm"
-              loading={removal.pending()}
-              onClick={() => void removal.run(removeScreenshots)}
+              disabled={votes.loading || !!votes.error}
+              onClick={() => {
+                showDialog('select_channel_modal')
+                guildChannelsRefetch()
+              }}
             >
-              {t('dashboard.server.vote.delete_channel', 'Delete Channel')}
+              {t('dashboard.server.vote.select_channel', 'Select Channel')}
             </Button>
-          </Show>
-        </SettingRow>
+            <Show when={!votes.loading && votes().channelID}>
+              <Button variant="ghost" size="sm" onClick={() => showDialog('remove-channel')}>
+                {t('dashboard.server.vote.delete_channel', 'Delete Channel')}
+              </Button>
+            </Show>
+          </SettingRow>
+        </AsyncState>
       </AdminPanel>
     </>
   )

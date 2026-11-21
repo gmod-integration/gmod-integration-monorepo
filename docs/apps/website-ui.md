@@ -21,7 +21,7 @@ Import from `apps/website/src/components/ui/index.ts`.
 | `PageState`       | Full-page authentication and status     | `icon`, `title`, optional `description`, `status` and action children. Provides a labelled section and one page heading; `status` announces redirect progress.                                 |
 | `SettingGroup`    | Related settings                        | `title`, optional `id`, `description` and `icon`. Use within an existing panel to group controls by user goal.                                                                                 |
 | `SettingRow`      | Setting, explanation and control        | `title`, optional `controlId`, `description`, `feedback`, `stacked`. Set the control's `id` to `controlId` and associate the description with `${controlId}-description`.                      |
-| `SettingFeedback` | Immediate-save feedback                 | `pending`, `error`, `success`; announces the active state without duplicating page-specific markup.                                                                                            |
+| `SettingFeedback` | Action feedback                         | `pending`, `error`, `success`; announces the active state without duplicating page-specific markup.                                                                                            |
 
 ## Existing components to reuse
 
@@ -41,51 +41,110 @@ selector artwork, while action icons remain in the Lucide registry.
 
 Paths below are relative to `apps/website/src`.
 
-| Component                                         | Source                                            | Purpose                                                                                                                                                                                |
-| ------------------------------------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AdminPanel`                                      | `components/AdminPanel.tsx`                       | Section heading, description, premium/badge/info, optional header `actions` and `footer`. `type="none"` leaves the body unpadded for tables.                                           |
-| `AdminModal`                                      | `components/AdminModal.tsx`                       | Named dialog: `id`, `title`, optional `description`, `busy`, `onClose`, `onCancel`, `size="wide"`, `footer`. Busy blocks user dismissal.                                               |
-| `AdminChannelSelector`                            | `components/AdminChannelSelector.tsx`             | Channel dialog with local choice and explicit Save/Cancel. Callback returns its request promise and rejects on failure. `idSelect` seeds the current choice.                           |
-| `ChannelSelector`                                 | `components/AdminChannelSelector.tsx`             | Local channel choice inside a larger form; does not save or close the dialog.                                                                                                          |
-| `AdminRoleSelector`                               | `components/AdminRoleSelector.tsx`                | Role choice and explicit confirmation: `id`, `title`, filtered `roles`, optional `loading`/`error`, async `onConfirm`. Shares pending/error/cancel behavior with the channel selector. |
-| `Pagination`                                      | `components/Pagination.tsx`                       | Existing query, total and page-size controls. Keep its query contract.                                                                                                                 |
-| `DiscordStatusPreview`                            | `components/discord/DiscordStatusPreview.tsx`     | Shared status rendering for the page and its editors.                                                                                                                                  |
-| `DiscordChannel`, `DiscordRole`, `DiscordMessage` | `components/discord/`                             | Discord entity display and message links.                                                                                                                                              |
-| `TextValue`, `LinkValue`, `SteamID64`             | `components/popup/`, `components/SteamID64.tsx`   | Long-value, link and player identifier display.                                                                                                                                        |
-| `PremiumBadge`, `BuyPremiumBtn`, `PremiumOnly`    | `utils/premium.tsx`, `components/PremiumOnly.tsx` | Shared premium access presentation.                                                                                                                                                    |
-| `ServerActivityChart`, `AdminChart`, `JsonViewer` | `components/`                                     | Charts and structured data display.                                                                                                                                                    |
+| Component                                         | Source                                            | Purpose                                                                                                                                                                                                                                           |
+| ------------------------------------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AdminPanel`                                      | `components/AdminPanel.tsx`                       | Section heading, description, premium/badge/info, optional header `actions` and `footer`. `type="none"` leaves the body unpadded for tables.                                                                                                      |
+| `AdminModal`                                      | `components/AdminModal.tsx`                       | Named dialog: `id`, `title`, optional `description`, `busy`, `onClose`, `onCancel`, `size="wide"`, `footer`. Busy blocks user dismissal.                                                                                                          |
+| `ConfirmActionDialog`                             | `components/ConfirmActionDialog.tsx`              | Confirm a named target and consequence before an async command. `id`, `title`, optional `description`, `confirmLabel`, `variant`, `onSuccess`; `onConfirm` rejects on failure. Blocks duplicate requests, dismissal and navigation while pending. |
+| `AdminChannelSelector`                            | `components/AdminChannelSelector.tsx`             | Channel dialog with local choice and explicit Save/Cancel. Callback returns its request promise and rejects on failure. `idSelect` seeds the current choice.                                                                                      |
+| `ChannelSelector`                                 | `components/AdminChannelSelector.tsx`             | Local channel choice inside a larger form; does not save or close the dialog.                                                                                                                                                                     |
+| `AdminRoleSelector`                               | `components/AdminRoleSelector.tsx`                | Role choice and explicit confirmation: `id`, `title`, filtered `roles`, optional `loading`/`error`, async `onConfirm`. Shares pending/error/cancel behavior with the channel selector.                                                            |
+| `Pagination`                                      | `components/Pagination.tsx`                       | Existing query, total and page-size controls. Keep its query contract.                                                                                                                                                                            |
+| `DiscordStatusPreview`                            | `components/discord/DiscordStatusPreview.tsx`     | Shared status rendering for the page and its editors.                                                                                                                                                                                             |
+| `DiscordChannel`, `DiscordRole`, `DiscordMessage` | `components/discord/`                             | Discord entity display and message links.                                                                                                                                                                                                         |
+| `TextValue`, `LinkValue`, `SteamID64`             | `components/popup/`, `components/SteamID64.tsx`   | Long-value, link and player identifier display.                                                                                                                                                                                                   |
+| `PremiumBadge`, `BuyPremiumBtn`, `PremiumOnly`    | `utils/premium.tsx`, `components/PremiumOnly.tsx` | Shared premium access presentation.                                                                                                                                                                                                               |
+| `ServerActivityChart`, `AdminChart`, `JsonViewer` | `components/`                                     | Charts and structured data display.                                                                                                                                                                                                               |
 
 ## Interaction contracts
 
-An editor owns a local draft copied from saved data when opened. Typing and selecting do not update the
-saved row. Cancel, Escape and the close button discard the draft. Opening again uses the saved value.
+Choose the editing surface by purpose:
+
+| Purpose                                                            | Surface                                | Persistence                                                              |
+| ------------------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------ |
+| Related business settings, including one switch or destination     | Inline `SettingGroup` and `SettingRow` | One local draft with Save/Cancel for that group.                         |
+| Independent entity creation/editing or a secret                    | Complete `AdminModal` form             | Add opens an empty local draft; Create/Save submits the complete object. |
+| Publication/removal, deletion, token reset or a bulk command       | `ConfirmActionDialog`                  | Name the target and consequence; execute only after confirmation.        |
+| Interface preferences such as theme, language, sorting and filters | Immediate control                      | Update immediately; they do not change business configuration.           |
+
+Business settings never autosave. Typing, selecting and toggling change only a local draft. A saved
+summary or row retains the last accepted data until Save succeeds. Do not POST a placeholder object
+when Add is clicked, or split creation into an initial request followed by a required edit.
+
+Save is available only when the draft differs from its saved snapshot and passes validation. Cancel
+restores the saved values for the entire group. Cancel, Escape and the close button discard a modal
+draft; opening again uses the saved values. Filtering, searching or collapsing a section must preserve
+its draft, so keep the form owner mounted outside conditional field rendering.
 
 Save starts one request, disables relevant controls and blocks dismissal while pending. Success updates
-saved data and closes the dialog. Failure leaves the draft open with an inline error and permits retry.
-`createAsyncAction` in `src/hooks/createAsyncAction.ts` shares this lifecycle:
+saved data and closes an entity dialog; inline groups show saved feedback. Failure preserves the draft
+with an inline error and permits retry. Cancel stays usable when validation disables Save.
+
+`createDraftForm` in `src/hooks/createDraftForm.ts` provides this lifecycle and registers navigation
+protection automatically:
 
 ```tsx
-const save = createAsyncAction({ errorMessage: () => t('ui.save_error') })
-const submit = async () => {
-  if (await save.run(() => persistDraft(draft()))) closeDialog('edit-item')
-}
+const form = createDraftForm({
+  initial: savedValues,
+  validate: validateValues,
+  errorMessage: () => t('ui.save_error'),
+})
+const submit = () => form.save((snapshot) => persistDraft(snapshot))
+
+<FormActions
+  dirty={form.dirty()}
+  disabled={!form.valid()}
+  pending={form.pending()}
+  error={form.error()}
+  success={form.success()}
+  onSave={submit}
+  onCancel={form.discard}
+/>
 ```
 
-It provides `pending()`, `error()`, `success()`, `run(operation)` and `reset()`. Reset before a new edit.
-`run` returns a success boolean. The operation must throw on an unsuccessful HTTP response; resolving
-`undefined` after a failed response would incorrectly count as success. The page owns API requests,
-validation and saved-data mutations.
+It exposes `draft()`, `saved()`, `dirty()`, `errors()`, `valid()`, `pending()`, `error()`, `success()`,
+`setDraft(valueOrUpdater)`, `patch(partial)`, `reset(values)`, `discard()` and `save(persist)`.
+`save` passes a cloned snapshot to persistence and returns a success boolean. Persistence can return
+the accepted snapshot; returning `void` accepts the submitted snapshot. `reset` establishes a new saved
+baseline; do not call it in response to ordinary draft edits.
+
+For commands or manual editors, `createAsyncAction` in `src/hooks/createAsyncAction.ts` provides
+`pending()`, `error()`, `success()`, `run(operation)` and `reset()`. Reset before a new operation.
+`run` returns a success boolean. Requests must throw on unsuccessful HTTP responses; resolving after
+a failed response would report false success. Pages own requests, validation and saved-data mutations.
+
+Manual editors register `useDraftGuard({ dirty, pending, discard })` from `src/hooks/draftRegistry.ts`.
+`DraftEditingProvider` protects route changes and browser unloads; pending operations cannot be
+discarded through the route dialog. Shared selectors and confirmation dialogs also register their state.
 
 Selectors follow the same explicit confirmation rule. Choosing an option alone does not publish or
 change the configured destination. Pass the current choice when available.
 
-Existing single-setting controls can save immediately when their purpose is clear. They disable while
-saving, show success/error feedback and restore the saved value on failure. Do not mix immediate
-persistence and a multi-field draft within one editor.
-
 Use primary for Save/Send, secondary for Cancel, ghost for compact editing and danger for removal.
 Publication/removal remain separate, explicitly labelled actions. Explain why Save is unavailable when
 it depends on validation, permissions or a current preview.
+
+### Persistence scopes
+
+`utils/dashboardSettings.ts` sends changed keys together through `saveDashboardSettings('server' | 'guild', settings)`:
+
+- `PUT /v6/guilds/:guildID/servers/:serverID/settings`
+- `PUT /v6/guilds/:guildID/settings`
+
+Each accepts `{ settings: { ...changedValues } }`, validates every supplied key before writing, and
+returns the accepted settings with `sync: 'applied' | 'pending'`. An accepted configuration and an
+externally confirmed update are different states: pending synchronization must remain visible without
+pretending the save failed or requiring the user to resubmit the same changes. Do not emulate atomic
+saves with unrelated per-key requests and then report the whole group as saved.
+
+Status settings and buttons share `StatusConfigurationProvider` and
+`GET/PUT /v6/guilds/:guildID/servers/:serverID/status/configuration`. The PUT includes the configuration
+and saved revision; conflicts preserve the draft and offer reloading the accepted values. A button
+modal applies changes to the status draft, then the page saves that configuration as one unit. The
+preview reads the draft without publishing. Publication requires a saved configuration.
+
+Autoroles have no separate activation flag: every stored autorole is active. Adding selects and
+confirms a role; deleting removes future automatic assignment without stripping existing members.
 
 ## Standard form
 

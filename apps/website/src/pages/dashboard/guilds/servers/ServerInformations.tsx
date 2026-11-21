@@ -1,28 +1,43 @@
-import { closeDialog, showDialog } from '../../../../utils/dialog.js'
+import { showDialog } from '../../../../utils/dialog.js'
 import { type Component, createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
-import { getServer } from '../../../../utils/utils'
-import { sendWebSocketMessage, webSocketServerStatus } from '../../../../utils/websocket'
-import { useNavigate } from '@solidjs/router'
-import AdminModal from '../../../../components/AdminModal'
-import AdminPanel from '../../../../components/AdminPanel'
+import { getServer } from '../../../../utils/utils.js'
+import { sendWebSocketMessage, webSocketServerStatus } from '../../../../utils/websocket.js'
+import { useNavigate, useParams } from '@solidjs/router'
+import ConfirmActionDialog from '../../../../components/ConfirmActionDialog.js'
+import AdminPanel from '../../../../components/AdminPanel.js'
 import defaultServer from '../../../../assets/defaultServer.png'
-import { useI18n } from '../../../../i18n'
-import { fetchAPI } from '../../../../utils/api'
-import { Button, FormActions, FormField, Icon, SettingGroup, SettingRow } from '../../../../components/ui/index.js'
-import { createAsyncAction } from '../../../../hooks/createAsyncAction.js'
+import { useI18n } from '../../../../i18n.js'
+import { fetchAPI } from '../../../../utils/api.js'
+import { Button, FormActions, Icon, SettingGroup, SettingRow } from '../../../../components/ui/index.js'
+import { createDraftForm } from '../../../../hooks/createDraftForm.js'
 
 const ServerInformations: Component = () => {
   const { t } = useI18n()
   const navigate = useNavigate()
+  const params = useParams()
   const [server, setServer] = createSignal(getServer())
-  const [draft, setDraft] = createSignal({ ...server() })
   const [showToken, setShowToken] = createSignal(false)
-  const save = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
-  const action = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
-  const discard = () => {
-    setDraft({ ...server() })
-    save.reset()
-  }
+  const editable = (value: ReturnType<typeof getServer>) => ({
+    name: value.name || '',
+    description: value.description || '',
+    image: value.image || '',
+    ip: value.ip || '',
+    port: String(value.port || ''),
+    isPublic: value.isPublic === true,
+  })
+  const editor = createDraftForm({
+    initial: editable(server()),
+    validate: (draft) => ({
+      ...(!draft.name.trim() ? { name: t('ui.required', 'This field is required.') } : {}),
+      ...(draft.port && (!/^\d+$/.test(draft.port) || Number(draft.port) < 1 || Number(draft.port) > 65535)
+        ? { port: t('settings.server_port_invalid', 'Enter a port between 1 and 65535.') }
+        : {}),
+      ...(draft.image && !/^https?:\/\/\S+$/i.test(draft.image)
+        ? { image: t('settings.image_url_invalid', 'Enter an HTTP or HTTPS image URL.') }
+        : {}),
+    }),
+    errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
+  })
   const fields = [
     ['name', 'server_name', 'Name'],
     ['description', 'server_description', 'Description'],
@@ -30,33 +45,33 @@ const ServerInformations: Component = () => {
     ['ip', 'server_ip', 'IP'],
     ['port', 'server_port', 'Port'],
   ] as const
-
+  const persistServer = (updated: ReturnType<typeof getServer>) => {
+    setServer(updated)
+    localStorage.setItem('server', JSON.stringify(updated))
+  }
   const deleteServer = async () => {
-    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/${server().id}`, 'DELETE')
-    if (!res.ok) {
-      throw new Error('Server deletion failed')
-    }
-    navigate('/dashboard/guilds/:guildID/config/servers')
+    const response = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/${server().id}`, 'DELETE')
+    if (!response.ok) throw new Error('Server deletion failed')
+    editor.discard()
+    localStorage.removeItem('server')
   }
-
   const editServer = async () => {
-    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/${server().id}`, 'PUT', { ...draft() })
-    if (!res.ok) {
-      throw new Error('Server update failed')
-    }
-    const newServer = await res.json()
-    setServer(newServer)
-    localStorage.setItem('server', JSON.stringify(newServer))
+    await editor.save(async (snapshot) => {
+      const response = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/${server().id}`, 'PUT', {
+        ...snapshot,
+        name: snapshot.name.trim(),
+      })
+      if (!response.ok) throw new Error('Server update failed')
+      const updated = { ...server(), ...(await response.json()) }
+      persistServer(updated)
+      return editable(updated)
+    })
   }
-
   const resetServerToken = async () => {
-    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/${server().id}/token`, 'POST')
-    if (!res.ok) {
-      throw new Error('Token reset failed')
-    }
-    const newServer = await res.json()
-    setServer(newServer)
-    localStorage.setItem('server', JSON.stringify(newServer))
+    const response = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/${server().id}/token`, 'POST')
+    if (!response.ok) throw new Error('Token reset failed')
+    persistServer({ ...server(), ...(await response.json()) })
+    setShowToken(false)
   }
 
   onMount(() => {
@@ -83,128 +98,111 @@ const ServerInformations: Component = () => {
 
   return (
     <>
-      <AdminModal
-        title={t('dashboard.server.server_informations.edit_server', 'Edit Server')}
-        id="edit_server"
-        busy={save.pending()}
-        onClose={discard}
-        onCancel={discard}
+      <ConfirmActionDialog
+        id="reset-server-token"
+        title={t('dashboard.server.server_informations.reset_server_token', 'Reset Server Token')}
+        description={`${server().name} — ${t('settings.server_reset_confirm', 'The current token will stop working. Update it in your Garry’s Mod configuration after resetting it.')}`}
+        confirmLabel={t('dashboard.server.server_informations.reset_server_token', 'Reset Server Token')}
+        variant="warning"
+        onConfirm={resetServerToken}
+      />
+      <ConfirmActionDialog
+        id="delete-server"
+        title={t('dashboard.server.server_informations.delete_server', 'Delete Server')}
+        description={`${server().name} — ${t('settings.server_delete_confirm', 'Remove this server and its dashboard data. This cannot be undone.')}`}
+        confirmLabel={t('dashboard.server.server_informations.delete_server', 'Delete Server')}
+        onConfirm={deleteServer}
+        onSuccess={() => navigate(`/dashboard/guilds/${params.guildID}/config/servers`)}
+      />
+      <AdminPanel
+        title={t('dashboard.server.server_informations.informations', 'Informations')}
+        description={t(
+          'settings.server_edit_help',
+          'Edit the server identity and connection details, then save your changes together.',
+        )}
+        icon="server"
       >
         <SettingGroup title={t('settings.server_identity', 'Identity and visibility')} icon="server">
           <For each={fields.slice(0, 3)}>
             {([key, label, fallback]) => (
-              <FormField id={`server-edit-${key}`} label={t(`dashboard.server.server_informations.${label}`, fallback)}>
+              <SettingRow
+                controlId={`server-edit-${key}`}
+                title={t(`dashboard.server.server_informations.${label}`, fallback)}
+                feedback={
+                  editor.errors()[key] && (
+                    <p role="alert" id={`server-edit-${key}-error`} class="text-error text-sm">
+                      {editor.errors()[key]}
+                    </p>
+                  )
+                }
+              >
                 <input
                   id={`server-edit-${key}`}
-                  type="text"
+                  type={key === 'image' ? 'url' : 'text'}
                   class="input w-full"
-                  disabled={save.pending()}
-                  value={draft()[key]}
-                  onInput={(event) => setDraft((previous) => ({ ...previous, [key]: event.currentTarget.value }))}
+                  disabled={editor.pending()}
+                  value={editor.draft()[key]}
+                  aria-invalid={!!editor.errors()[key]}
+                  aria-describedby={editor.errors()[key] ? `server-edit-${key}-error` : undefined}
+                  onInput={(event) => editor.patch({ [key]: event.currentTarget.value })}
                 />
-              </FormField>
+              </SettingRow>
             )}
           </For>
-          <FormField
-            id="server-edit-public"
-            label={t('dashboard.server.server_informations.server_public', 'Public')}
+          <SettingRow title={t('dashboard.server.server_informations.server_logo', 'Logo')}>
+            <img
+              class="w-10 h-10 rounded-lg object-cover"
+              src={editor.draft().image || defaultServer}
+              alt="Server Logo"
+            />
+          </SettingRow>
+          <SettingRow
+            controlId="server-edit-public"
+            title={t('dashboard.server.server_informations.server_public', 'Public')}
             description={t(
               'settings.server_public_hint',
               'Choose whether this server appears in the public server ranking.',
             )}
           >
-            <select
+            <input
               id="server-edit-public"
+              type="checkbox"
+              class="toggle"
+              disabled={editor.pending()}
+              checked={editor.draft().isPublic}
               aria-describedby="server-edit-public-description"
-              disabled={save.pending()}
-              class="select w-full"
-              value={draft().isPublic ? 'true' : 'false'}
-              onChange={(e) => {
-                setDraft((previous) => ({ ...previous, isPublic: e.currentTarget.value === 'true' }))
-              }}
-            >
-              <option value="true">{t('dashboard.server.server_informations.yes', 'Yes')}</option>
-              <option value="false">{t('dashboard.server.server_informations.no', 'No')}</option>
-            </select>
-          </FormField>
+              onChange={(event) => editor.patch({ isPublic: event.currentTarget.checked })}
+            />
+          </SettingRow>
         </SettingGroup>
         <SettingGroup title={t('settings.server_connection', 'Connection details')} icon="link">
           <For each={fields.slice(3)}>
             {([key, label, fallback]) => (
-              <FormField id={`server-edit-${key}`} label={t(`dashboard.server.server_informations.${label}`, fallback)}>
+              <SettingRow
+                controlId={`server-edit-${key}`}
+                title={t(`dashboard.server.server_informations.${label}`, fallback)}
+                feedback={
+                  editor.errors()[key] && (
+                    <p role="alert" id={`server-edit-${key}-error`} class="text-error text-sm">
+                      {editor.errors()[key]}
+                    </p>
+                  )
+                }
+              >
                 <input
                   id={`server-edit-${key}`}
-                  type="text"
                   class="input w-full"
-                  disabled={save.pending()}
-                  value={draft()[key]}
-                  onInput={(event) => setDraft((previous) => ({ ...previous, [key]: event.currentTarget.value }))}
+                  type="text"
+                  inputmode={key === 'port' ? 'numeric' : undefined}
+                  disabled={editor.pending()}
+                  value={editor.draft()[key]}
+                  aria-invalid={!!editor.errors()[key]}
+                  aria-describedby={editor.errors()[key] ? `server-edit-${key}-error` : undefined}
+                  onInput={(event) => editor.patch({ [key]: event.currentTarget.value })}
                 />
-              </FormField>
+              </SettingRow>
             )}
           </For>
-        </SettingGroup>
-        <FormActions
-          pending={save.pending()}
-          error={save.error()}
-          saveLabel={t('dashboard.server.server_informations.save_changes', 'Save')}
-          onSave={() => {
-            void save.run(editServer).then((saved) => {
-              if (saved) closeDialog('edit_server')
-            })
-          }}
-          onCancel={() => closeDialog('edit_server')}
-        />
-      </AdminModal>
-
-      <AdminPanel
-        title={t('dashboard.server.server_informations.informations', 'Informations')}
-        description={t(
-          'dashboard.server.server_informations.informations_description',
-          'Here you can see some informations about your server, and edit some of them.',
-        )}
-        icon="server"
-        actions={
-          <Button
-            variant="primary"
-            disabled={action.pending()}
-            onClick={() => {
-              discard()
-              showDialog('edit_server')
-            }}
-          >
-            {t('dashboard.server.server_informations.edit_server', 'Edit Server')}
-          </Button>
-        }
-      >
-        <SettingGroup title={t('settings.server_identity', 'Identity and visibility')} icon="server">
-          <SettingRow title={t('dashboard.server.server_informations.server_name', 'Name')}>
-            <span>{server().name}</span>
-          </SettingRow>
-          <SettingRow title={t('dashboard.server.server_informations.server_description', 'Description')}>
-            <span>{server().description}</span>
-          </SettingRow>
-          <SettingRow title={t('dashboard.server.server_informations.server_logo', 'Logo')}>
-            <img class="w-10 h-10 rounded-lg object-cover" src={server().image || defaultServer} alt="Server Logo" />
-          </SettingRow>
-          <SettingRow
-            title={t('dashboard.server.server_informations.server_public', 'Server Public') + ':'}
-            description={t(
-              'settings.server_public_hint',
-              'Choose whether this server appears in the public server ranking.',
-            )}
-          >
-            <span>
-              {server().isPublic
-                ? t('dashboard.server.server_informations.yes', 'Yes')
-                : t('dashboard.server.server_informations.no', 'No')}
-            </span>
-          </SettingRow>
-        </SettingGroup>
-        <SettingGroup title={t('settings.server_connection', 'Connection details')} icon="link">
-          <SettingRow title={t('dashboard.server.server_informations.server_ip', 'IP')}>
-            <code>{server().ip + ':' + server().port}</code>
-          </SettingRow>
           <SettingRow title={t('dashboard.server.server_informations.server_id', 'ID')}>
             <code>{server().id}</code>
           </SettingRow>
@@ -219,6 +217,15 @@ const ServerInformations: Component = () => {
             </Button>
           </SettingRow>
         </SettingGroup>
+        <FormActions
+          dirty={editor.dirty()}
+          pending={editor.pending()}
+          error={editor.error()}
+          success={editor.success()}
+          disabled={!editor.valid()}
+          onSave={() => void editServer()}
+          onCancel={editor.discard}
+        />
       </AdminPanel>
       <AdminPanel
         title={t('dashboard.server.server_informations.connection_status_title', 'Connection Status')}
@@ -380,7 +387,7 @@ const ServerInformations: Component = () => {
               'Generate a new token, then update it in your Garry’s Mod configuration.',
             )}
           >
-            <Button variant="warning" loading={action.pending()} onClick={() => void action.run(resetServerToken)}>
+            <Button variant="warning" disabled={editor.pending()} onClick={() => showDialog('reset-server-token')}>
               {t('dashboard.server.server_informations.reset_server_token', 'Reset Server Token')}
             </Button>
           </SettingRow>
@@ -388,16 +395,11 @@ const ServerInformations: Component = () => {
             title={t('settings.server_removal', 'Remove server')}
             description={t('settings.server_delete_hint', 'Remove this server from the community and its dashboard.')}
           >
-            <Button variant="danger" loading={action.pending()} onClick={() => void action.run(deleteServer)}>
+            <Button variant="danger" disabled={editor.pending()} onClick={() => showDialog('delete-server')}>
               {t('dashboard.server.server_informations.delete_server', 'Delete Server')}
             </Button>
           </SettingRow>
         </div>
-        <Show when={action.error()}>
-          <p role="alert" class="text-error">
-            {action.error()}
-          </p>
-        </Show>
       </AdminPanel>
     </>
   )

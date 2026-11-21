@@ -59,29 +59,30 @@ describe('pages/dashboard/guilds/servers/ServerVote.tsx', () => {
     expect(screen.getByText('Configure voting notifications for your server')).toBeInTheDocument()
   })
 
-  it('shows "No channel selected" and a disabled Select Channel button while votes is loading', () => {
+  it('shows loading without presenting a false empty destination', () => {
     ;(fetchAPI as Mock).mockImplementation(() => new Promise(() => {}))
     renderPage()
-    expect(screen.getByText('No channel selected')).toBeInTheDocument()
-    expect(screen.getByText('Select Channel')).toBeDisabled()
-    expect(screen.queryByText('Delete Channel')).not.toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText('No channel selected')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Select Channel' })).not.toBeInTheDocument()
   })
 
   it('shows "No channel selected" and no Delete button once loaded with no channel configured', async () => {
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('Select Channel')).not.toBeDisabled())
     expect(screen.getByText('No channel selected')).toBeInTheDocument()
-    expect(screen.queryByText('Delete Channel')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete Channel' })).not.toBeInTheDocument()
   })
 
-  it('renders gracefully with no channel when the initial votes GET is not ok', async () => {
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint === VOTE_URL && method === 'GET') return Promise.resolve(errJson())
-      return Promise.resolve(okJson([]))
-    })
+  it('shows a retryable loading error instead of an empty destination', async () => {
+    ;(fetchAPI as Mock).mockImplementation(() => Promise.resolve(errJson()))
     renderPage()
-    await vi.waitFor(() => expect(screen.getByText('Select Channel')).not.toBeDisabled())
-    expect(screen.getByText('No channel selected')).toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.queryByText('No channel selected')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Select Channel' })).not.toBeInTheDocument()
+    setupFetchAPI({ channelID: 'c1' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
   })
 
   it('renders the configured channel and a Delete Channel button once loaded with a channel', async () => {
@@ -89,7 +90,7 @@ describe('pages/dashboard/guilds/servers/ServerVote.tsx', () => {
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
     expect(screen.queryByText('No channel selected')).not.toBeInTheDocument()
-    expect(screen.getByText('Delete Channel')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete Channel' })).toBeInTheDocument()
   })
 
   it('opens the channel selector modal and refetches guild channels on Select Channel click', async () => {
@@ -138,27 +139,31 @@ describe('pages/dashboard/guilds/servers/ServerVote.tsx', () => {
   it('removes the channel via Delete Channel and mutates votes to empty', async () => {
     setupFetchAPI({ channelID: 'c1' })
     renderPage()
-    await vi.waitFor(() => expect(screen.getByText('Delete Channel')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Delete Channel' })).toBeInTheDocument())
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
       if (endpoint === VOTE_URL && method === 'DELETE') return Promise.resolve(okJson({}))
       return Promise.resolve(okJson([]))
     })
-    await fireEvent.click(screen.getByText('Delete Channel'))
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete Channel' }))
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'DELETE')).toBe(false)
+    await fireEvent.click(within(document.querySelector('#remove-channel')!).getByRole('button', { name: 'Delete' }))
     await vi.waitFor(() => expect(screen.getByText('No channel selected')).toBeInTheDocument())
-    expect(screen.queryByText('Delete Channel')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete Channel' })).not.toBeInTheDocument()
   })
 
   it('keeps the channel shown when the delete request fails', async () => {
     setupFetchAPI({ channelID: 'c1' })
     renderPage()
-    await vi.waitFor(() => expect(screen.getByText('Delete Channel')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Delete Channel' })).toBeInTheDocument())
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
       if (endpoint === VOTE_URL && method === 'DELETE') return Promise.resolve(errJson())
       return Promise.resolve(okJson([]))
     })
-    await fireEvent.click(screen.getByText('Delete Channel'))
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete Channel' }))
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'DELETE')).toBe(false)
+    await fireEvent.click(within(document.querySelector('#remove-channel')!).getByRole('button', { name: 'Delete' }))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VOTE_URL, 'DELETE'))
-    expect(screen.getByText('Delete Channel')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete Channel' })).toBeInTheDocument()
     expect(screen.getByText('#general')).toBeInTheDocument()
   })
 })

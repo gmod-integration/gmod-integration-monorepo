@@ -72,6 +72,48 @@ Origin checks, conflict handling, receipt-scoped follow-up after session revocat
 states, secret stripping and parser failures. Schema and logger tests cover the shared contract and
 receipt redaction. `/v6` is mounted separately from `/v3`; it does not alias historical routes.
 
+## Dashboard section saves under v6
+
+`PUT /v6/guilds/:guildID/settings` and
+`PUT /v6/guilds/:guildID/servers/:serverID/settings` accept `{settings: {...}}`. The strict, nonempty
+allowlists live in `DashboardSettingsSchema`: guild verification preferences, server configuration,
+synchronization directions, nickname format, chat preferences and log content. Unknown fields and invalid
+types return 400. Values must fit their existing storage limits. Premium requirements are enforced before
+writing, including when a request mixes restricted and unrestricted settings.
+
+The dashboard session middleware resolves exactly one valid Bearer session, revalidates authentication,
+checks community administration and confirms that the requested server belongs to that community.
+An Origin header must match the configured website. Responses use `Cache-Control: no-store`.
+
+All submitted settings are committed in one SQL transaction. The response is
+`{settings: {...}, sync: "applied" | "pending"}`. `settings` acknowledges durable storage; `pending`
+indicates that cache invalidation or external synchronization is not confirmed. Addon configuration
+remains `pending` after enqueueing because queue acceptance does not confirm application in the game.
+These section endpoints do not provide optimistic concurrency revisions.
+
+## Status configuration under v6
+
+`GET /v6/guilds/:guildID/servers/:serverID/status/configuration` returns
+`{configuration: {settings, buttons}, revision}`. The settings are player-list visibility, its format and
+chart visibility. Buttons contain their optional existing ID, name, emoji, HTTP(S) URL and enabled state.
+The endpoint can read incomplete legacy buttons so an administrator can repair them.
+
+`PUT` on the same path accepts that snapshot, validates the complete aggregate, checks button ownership,
+limits and Premium entitlements, then locks the server row and commits settings and buttons together.
+The SHA-256 revision must match the saved snapshot; a conflict returns 409 without changing either part.
+New buttons receive their IDs only during this transaction. Empty names, invalid URLs, duplicate IDs and
+foreign button IDs are rejected.
+
+The response returns the canonical configuration, its new revision and
+`sync: "applied" | "pending" | "not_published"`. An existing Discord message refresh occurs after commit
+through the queue adapter. A failed refresh leaves the stored configuration acknowledged as `pending`.
+Saving does not publish a new message; publication remains an explicit action using the saved values.
+
+The legacy v3 creation routes for links, synchronization roles/teams, nickname rules, chat filters and
+verification roles also accept complete creation payloads validated by `DashboardEntitiesSchema`.
+The dashboard sends these only when the creation form is confirmed. Historical empty-body calls remain
+compatible; the new dashboard no longer creates placeholder rows through them.
+
 ## Paginated public ranking
 
 `GET /v3/users/:discordID/servers/ranking` uses panel-user authentication and the shared

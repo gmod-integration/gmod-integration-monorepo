@@ -1,19 +1,17 @@
-import { closeDialog, showDialog } from '../../../utils/dialog.js'
+import { showDialog } from '../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
-import { guildRoles, guildRolesRefetch } from './GuildInformations'
-import AdminPanel from '../../../components/AdminPanel'
-import AdminModal from '../../../components/AdminModal'
+import { guildRoles, guildRolesRefetch } from './GuildInformations.js'
+import AdminPanel from '../../../components/AdminPanel.js'
+import ConfirmActionDialog from '../../../components/ConfirmActionDialog.js'
 import AdminRoleSelector from '../../../components/AdminRoleSelector.js'
-import { Button, IconButton, FormActions, FormField, TableState, Icon } from '../../../components/ui/index.js'
-import { createAsyncAction } from '../../../hooks/createAsyncAction.js'
-import AdminChannelSelector from '../../../components/AdminChannelSelector'
-import { useI18n } from '../../../i18n'
-import DiscordRole from '../../../components/discord/DiscordRole'
-import MissingRolePermission, { setRolesToCheck } from '../../../components/popup/MissingRolePermission'
-import { BuyPremiumBtn } from '../../../utils/premium'
-import { fetchAPI } from '../../../utils/api'
+import { Button, IconButton, TableState, Icon } from '../../../components/ui/index.js'
+import { useI18n } from '../../../i18n.js'
+import DiscordRole from '../../../components/discord/DiscordRole.js'
+import MissingRolePermission, { setRolesToCheck } from '../../../components/popup/MissingRolePermission.js'
+import { BuyPremiumBtn } from '../../../utils/premium.js'
+import { fetchAPI } from '../../../utils/api.js'
 
-type AutoRole = { roleID: string; enabled: boolean }
+type AutoRole = { roleID: string }
 
 const fetchVerifyRoles = async (): Promise<AutoRole[]> => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/auto-roles', 'GET')
@@ -26,30 +24,21 @@ const GuildAutoRole: Component = () => {
     initialValue: [],
   })
   createEffect(() => {
-    // Bug fix: also bail out on autoRoles.error - reading autoRoles() while errored re-throws.
     if (autoRoles.loading || autoRoles.error) return
     const roles = autoRoles().map((role) => role.roleID)
     setRolesToCheck(roles)
   })
 
-  const [selectedRole, setSelectedRole] = createSignal<AutoRole>({ roleID: '', enabled: false })
   const { t } = useI18n()
-  const editAction = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
-  const [originalRole, setOriginalRole] = createSignal<AutoRole>()
-  const roleDirty = () => !!originalRole() && selectedRole().enabled !== originalRole()!.enabled
-  const discardRole = () => {
-    if (editAction.pending()) return
-    if (originalRole()) setSelectedRole({ ...originalRole()! })
-    editAction.reset()
-  }
-
+  const [deleteTarget, setDeleteTarget] = createSignal<AutoRole>()
+  const roleName = (roleID: string) =>
+    !guildRoles.loading && !guildRoles.error
+      ? (guildRoles().find((role) => role.id === roleID)?.name ?? roleID)
+      : roleID
   const deleteAutoRole = async (role: AutoRole) => {
     const res = await fetchAPI(`/users/:discordID/guilds/:guildID/auto-roles/${role.roleID}`, 'DELETE')
-    if (!res.ok) {
-      return
-    }
-    mutate((prevVerifyRole) => (prevVerifyRole ? prevVerifyRole.filter((v) => v.roleID !== role.roleID) : []))
-    return role
+    if (!res.ok) throw new Error('Role deletion failed')
+    mutate((previous) => previous.filter((existing) => existing.roleID !== role.roleID))
   }
 
   const createVerifyRole = async (roleID: string) => {
@@ -58,29 +47,6 @@ const GuildAutoRole: Component = () => {
     const verifyRole = await newLink.json()
     mutate((prevVerifyRole) => (prevVerifyRole ? [...prevVerifyRole, verifyRole] : [verifyRole]))
     return verifyRole
-  }
-
-  // Bug fix: the Save button below called an `editVerifyRole` that was never defined anywhere in
-  // this file (a leftover from copying GuildVerifications.tsx, which does define one), throwing a
-  // ReferenceError. Added the missing function, mirroring the PUT-and-mutate pattern used by
-  // deleteAutoRole/createVerifyRole above and by GuildVerifications.tsx's own editVerifyRole.
-  const editVerifyRole = async (role: AutoRole) => {
-    if (!role.roleID) return
-    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/auto-roles/${role.roleID}`, 'PUT', {
-      enabled: role.enabled,
-    })
-    if (!res.ok) throw new Error('Role update failed')
-    const updatedRole = await res.json()
-    mutate((prevVerifyRole) =>
-      prevVerifyRole ? prevVerifyRole.map((v) => (v.roleID === updatedRole.roleID ? updatedRole : v)) : [],
-    )
-    return updatedRole
-  }
-
-  async function saveRole() {
-    if (!roleDirty()) return
-    const draft = { ...selectedRole() }
-    if (await editAction.run(() => editVerifyRole(draft))) closeDialog('edit_role_modal')
   }
 
   return (
@@ -100,48 +66,18 @@ const GuildAutoRole: Component = () => {
         onConfirm={createVerifyRole}
       />
 
-      <AdminChannelSelector id="select_channel_modal" />
-
-      <AdminModal
-        title={t('dashboard.guild.auto_role.modal_title', 'Edit Role')}
-        id="edit_role_modal"
-        busy={editAction.pending()}
-        onClose={discardRole}
-        onCancel={discardRole}
-      >
-        <Show when={!guildRoles.loading && !guildRoles.error && !autoRoles.loading && !autoRoles.error}>
-          <FormField id="guildautoroles-field-0" label={t('dashboard.guild.auto_role.role_name', 'Role')}>
-            <select id="guildautoroles-field-0" class="select" disabled>
-              <option selected>{guildRoles().find((r) => r.id === selectedRole().roleID)?.name}</option>
-            </select>
-          </FormField>
-          <FormField id="guildautoroles-field-1" label={t('dashboard.guild.links.active', 'Active')}>
-            <select
-              id="guildautoroles-field-1"
-              class="select"
-              disabled={guildRoles.loading || autoRoles.loading || editAction.pending()}
-              value={selectedRole().enabled ? 'true' : 'false'}
-              onChange={(e) => {
-                setSelectedRole((previous) => ({ ...previous, enabled: e.currentTarget.value === 'true' }))
-              }}
-            >
-              <option value="true">{t('dashboard.guild.auto_role.yes', 'Yes')}</option>
-              <option value="false">{t('dashboard.guild.auto_role.no', 'No')}</option>
-            </select>
-          </FormField>
-          <FormActions
-            dirty={roleDirty()}
-            pending={editAction.pending()}
-            disabled={guildRoles.loading || !!guildRoles.error || autoRoles.loading || !!autoRoles.error}
-            error={editAction.error()}
-            onSave={saveRole}
-            onCancel={() => {
-              discardRole()
-              closeDialog('edit_role_modal')
-            }}
-          />
-        </Show>
-      </AdminModal>
+      <ConfirmActionDialog
+        id="delete_auto_role"
+        title={t('ui.delete_target', 'Delete {1}?', roleName(deleteTarget()?.roleID ?? ''))}
+        description={t(
+          'dashboard.guild.auto_role.delete_confirmation',
+          'New members will no longer receive this role automatically. Existing members keep their role.',
+        )}
+        confirmLabel={t('dashboard.guild.auto_role.delete', 'Delete')}
+        onConfirm={async () => {
+          if (deleteTarget()) await deleteAutoRole(deleteTarget()!)
+        }}
+      />
 
       <AdminPanel
         title={t('dashboard.guild.auto_role.title', 'Auto Roles')}
@@ -153,10 +89,6 @@ const GuildAutoRole: Component = () => {
         icon="users"
         actions={
           <>
-            {/* Bug fix: subCondition below short-circuits before calling autoRoles() - this
-              expression isn't wrapped in any loading/error Show at all, so reading autoRoles()
-              while the resource is errored used to re-throw and crash the render (see the tbody
-              fix above for the full explanation). */}
             <BuyPremiumBtn
               subCondition={!autoRoles.error && autoRoles()?.length < 3}
               btnText={t('dashboard.guild.auto_role.premium', 'Limited to 3 auto roles for free users.')}
@@ -176,6 +108,12 @@ const GuildAutoRole: Component = () => {
           </>
         }
       >
+        <p class="px-4 pt-4 text-sm text-base-content/65">
+          {t(
+            'dashboard.guild.auto_role.active_help',
+            'Every role listed here is automatically assigned to new members.',
+          )}
+        </p>
         <div class="min-w-0 w-full overflow-x-auto">
           <table class="table border-b border-base-300 rounded-none">
             <thead>
@@ -194,11 +132,6 @@ const GuildAutoRole: Component = () => {
                 errorLabel={t('dashboard.guild.auto_role.failed_to_load', 'Unable to load this content.')}
                 onRetry={() => void refetchRoles()}
               />
-              {/* Bug fix: also gate on !autoRoles.error - `autoRoles()` is read unguarded below
-                (via <For each={autoRoles()}>), and reading a resource accessor while it's in an
-                error state re-throws that error, which crashed the render (leaving it stuck on
-                the loading state forever) and made the `Match when={autoRoles.error}` message
-                below unreachable. Mirrors the same fix already applied to ServerPlayers.tsx. */}
               <Show when={!autoRoles.loading && !autoRoles.error}>
                 <For each={autoRoles()}>
                   {(role) => (
@@ -207,33 +140,21 @@ const GuildAutoRole: Component = () => {
                         <DiscordRole roleID={role.roleID} />
                       </td>
                       <td class="text-center">
-                        <span
-                          class="inline-flex items-center gap-2"
-                          classList={{ 'text-success': role.enabled, 'text-base-content/50': !role.enabled }}
-                        >
-                          <Icon name={role.enabled ? 'check' : 'x'} size={15} />
-                          {role.enabled ? t('ui.enabled', 'Enabled') : t('ui.disabled', 'Disabled')}
+                        <span class="inline-flex items-center gap-2 text-success">
+                          <Icon name="check" size={15} />
+                          {t('ui.enabled', 'Enabled')}
                         </span>
                       </td>
                       <td>
                         <div class="flex gap-2 justify-center">
                           <IconButton
-                            label={t('dashboard.guild.links.edit', 'Edit')}
-                            icon="pencil"
-                            disabled={editAction.pending()}
-                            onClick={() => {
-                              setSelectedRole({ ...role })
-                              setOriginalRole({ ...role })
-                              editAction.reset()
-                              showDialog('edit_role_modal')
-                            }}
-                          />
-                          <IconButton
                             label={t('dashboard.guild.auto_role.delete', 'Delete')}
                             icon="trash-2"
                             variant="danger"
-                            disabled={editAction.pending()}
-                            onClick={() => deleteAutoRole(role)}
+                            onClick={() => {
+                              setDeleteTarget(role)
+                              showDialog('delete_auto_role')
+                            }}
                           />
                         </div>
                       </td>

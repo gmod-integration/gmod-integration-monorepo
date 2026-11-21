@@ -3,8 +3,10 @@ import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../testUtils.js'
 import ServerInformations from '../../../../../src/pages/dashboard/guilds/servers/ServerInformations.js'
 import { fetchAPI } from '../../../../../src/utils/api.js'
+import type * as WebSocketUtilities from '../../../../../src/utils/websocket.js'
 import { setWebSocketServerStatus, sendWebSocketMessage } from '../../../../../src/utils/websocket.js'
-import { okJson, errJson, stubDialogGlobal } from './testHelpers.js'
+import { okJson, errJson } from './testHelpers.js'
+import { DraftEditingProvider } from '../../../../../src/components/DraftEditingProvider.js'
 
 vi.mock('../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn(),
@@ -13,7 +15,7 @@ vi.mock('../../../../../src/utils/api.js', () => ({
 }))
 
 vi.mock('../../../../../src/utils/websocket.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../src/utils/websocket.js')>()
+  const actual = await importOriginal<typeof WebSocketUtilities>()
   return {
     ...actual,
     sendWebSocketMessage: vi.fn(),
@@ -42,10 +44,17 @@ function setServerLocalStorage(overrides: Partial<typeof baseServer> = {}) {
 
 function renderPage() {
   const history = historyAt('/dashboard/guilds/g1/config/servers/s1')
-  const result = renderWithProviders(() => <ServerInformations />, {
-    path: '/dashboard/guilds/:guildID/config/servers/:serverID',
-    history,
-  })
+  const result = renderWithProviders(
+    () => (
+      <DraftEditingProvider>
+        <ServerInformations />
+      </DraftEditingProvider>
+    ),
+    {
+      path: '/dashboard/guilds/:guildID/config/servers/:serverID',
+      history,
+    },
+  )
   return { ...result, history }
 }
 
@@ -69,9 +78,11 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
 
   it('renders server information from localStorage', () => {
     renderPage()
-    expect(screen.getByText('My Server')).toBeInTheDocument()
-    expect(screen.getByText('A cool server')).toBeInTheDocument()
-    expect(screen.getByText('1.2.3.4:27015')).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toHaveValue('My Server')
+    expect(screen.getByLabelText('Description')).toHaveValue('A cool server')
+    expect(screen.getByLabelText('IP')).toHaveValue('1.2.3.4')
+    expect(screen.getByLabelText('Port')).toHaveValue('27015')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(screen.getByText('s1')).toBeInTheDocument()
   })
 
@@ -106,13 +117,13 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     setServerLocalStorage({ isPublic: true })
     const { unmount } = renderPage()
     // "Public:" is the real en.json translation (differs from the JSX fallback "Server Public").
-    expect(screen.getByText('Public:').closest('.settings-row')).toHaveTextContent('Yes')
+    expect(screen.getByRole('checkbox', { name: 'Public' })).toBeChecked()
     unmount()
     cleanup()
 
     setServerLocalStorage({ isPublic: false })
     renderPage()
-    expect(screen.getByText('Public:').closest('.settings-row')).toHaveTextContent('No')
+    expect(screen.getByRole('checkbox', { name: 'Public' })).not.toBeChecked()
   })
 
   describe('connection status panel', () => {
@@ -213,157 +224,144 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     })
   })
 
-  describe('editing the server', () => {
-    it('keeps edits isolated and restores saved values after canceling', async () => {
-      const { container } = renderPage()
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
-      const modal = container.querySelector('#edit_server') as HTMLDialogElement
-      await fireEvent.input(within(modal).getByRole('textbox', { name: 'Name' }), { target: { value: 'Unsaved name' } })
-      expect(screen.getByText('My Server')).toBeInTheDocument()
-      expect(screen.queryByText('Unsaved name')).not.toBeInTheDocument()
-      await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+  describe('editing the server inline', () => {
+    it('keeps all edits local and Cancel restores the saved values', async () => {
+      renderPage()
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Unsaved name' } })
+      await fireEvent.input(screen.getByLabelText('Description'), { target: { value: 'Unsaved description' } })
+      await fireEvent.click(screen.getByRole('checkbox', { name: 'Public' }))
       expect(fetchAPI).not.toHaveBeenCalled()
-      expect(JSON.parse(window.localStorage.getItem('server')!).name).toBe('My Server')
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
-      expect(within(modal).getByRole('textbox', { name: 'Name' })).toHaveValue('My Server')
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('My Server')
+      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+      expect(screen.getByLabelText('Name')).toHaveValue('My Server')
+      expect(screen.getByLabelText('Description')).toHaveValue('A cool server')
+      expect(screen.getByRole('checkbox', { name: 'Public' })).toBeChecked()
+      expect(document.getElementById('edit_server')).not.toBeInTheDocument()
     })
-
-    it('prevents duplicate saves and keeps a failed draft open for correction', async () => {
+    it('validates the name, port and image URL before allowing Save', async () => {
+      renderPage()
+      const save = screen.getByRole('button', { name: 'Save' })
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: ' ' } })
+      expect(save).toBeDisabled()
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'New name' } })
+      await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '70000' } })
+      expect(save).toBeDisabled()
+      await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '27015' } })
+      await fireEvent.input(screen.getByLabelText('Image'), { target: { value: 'invalid' } })
+      expect(save).toBeDisabled()
+      await fireEvent.input(screen.getByLabelText('Image'), { target: { value: 'https://example.com/server.png' } })
+      expect(save).not.toBeDisabled()
+      expect(fetchAPI).not.toHaveBeenCalled()
+    })
+    it('locks the whole form, prevents duplicate saves and retains a failed draft', async () => {
       let finish!: (value: ReturnType<typeof errJson>) => void
-      ;(fetchAPI as Mock).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
-      const { container } = renderPage()
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
-      const modal = container.querySelector('#edit_server') as HTMLDialogElement
-      const name = within(modal).getByRole('textbox', { name: 'Name' })
+      ;(fetchAPI as Mock).mockReturnValueOnce(
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+      )
+      renderPage()
+      const name = screen.getByLabelText('Name')
+      const save = screen.getByRole('button', { name: 'Save' })
       await fireEvent.input(name, { target: { value: 'Draft name' } })
-      const save = within(modal).getByRole('button', { name: 'Save Changes' })
       await fireEvent.click(save)
       await fireEvent.click(save)
       expect(fetchAPI).toHaveBeenCalledTimes(1)
       expect(save).toBeDisabled()
-      expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
-      expect(modal).toHaveAttribute('open')
+      expect(name).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'Reset Server Token' })).toBeDisabled()
       finish(errJson())
-      await vi.waitFor(() => expect(within(modal).getByRole('alert')).toHaveTextContent('Unable to save'))
-      expect(modal).toHaveAttribute('open')
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
       expect(name).toHaveValue('Draft name')
-      expect(screen.getByText('My Server')).toBeInTheDocument()
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('My Server')
       expect(save).not.toBeDisabled()
     })
-
-    it('saves the edited fields and updates localStorage on success', async () => {
-      const updated = { ...baseServer, name: 'New Name' }
+    it('saves every editable field together, updates storage and accepts the server response', async () => {
+      const updated = {
+        ...baseServer,
+        name: 'New Name',
+        description: 'New Desc',
+        image: 'https://example.com/logo.png',
+        ip: '5.6.7.8',
+        port: '27016',
+        isPublic: false,
+      }
       ;(fetchAPI as Mock).mockResolvedValue(okJson(updated))
-
-      const { container } = renderPage()
-      stubDialogGlobal(container, 'edit_server')
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
-
-      const [nameInput] = screen.getAllByRole('textbox') as HTMLInputElement[]
-      await fireEvent.input(nameInput, { target: { value: 'New Name' } })
-
-      const saveBtn = screen.getByRole('button', { name: 'Save Changes' })
-      await fireEvent.click(saveBtn)
-
+      renderPage()
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'New Name' } })
+      await fireEvent.input(screen.getByLabelText('Description'), { target: { value: 'New Desc' } })
+      await fireEvent.input(screen.getByLabelText('Image'), { target: { value: 'https://example.com/logo.png' } })
+      await fireEvent.input(screen.getByLabelText('IP'), { target: { value: '5.6.7.8' } })
+      await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '27016' } })
+      await fireEvent.click(screen.getByRole('checkbox', { name: 'Public' }))
+      await fireEvent.click(screen.getByRole('button', { name: 'Save' }))
       await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(
-          '/users/:discordID/guilds/:guildID/servers/s1',
-          'PUT',
-          expect.objectContaining({ name: 'New Name' }),
-        ),
+        expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'PUT', {
+          name: 'New Name',
+          description: 'New Desc',
+          image: 'https://example.com/logo.png',
+          ip: '5.6.7.8',
+          port: '27016',
+          isPublic: false,
+        }),
       )
-      await vi.waitFor(() => expect(JSON.parse(window.localStorage.getItem('server') as string).name).toBe('New Name'))
-      expect(screen.getByText('New Name')).toBeInTheDocument()
-    })
-
-    it('does not update localStorage when the save request fails', async () => {
-      ;(fetchAPI as Mock).mockResolvedValue(errJson())
-      const { container } = renderPage()
-      stubDialogGlobal(container, 'edit_server')
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
-      const saveBtn = screen.getByRole('button', { name: 'Save Changes' })
-      await fireEvent.click(saveBtn)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalled())
-      expect(JSON.parse(window.localStorage.getItem('server') as string).name).toBe('My Server')
-    })
-
-    it('mutates description, image, ip, port and isPublic before saving', async () => {
-      const updated = { ...baseServer }
-      ;(fetchAPI as Mock).mockResolvedValue(okJson(updated))
-      const { container } = renderPage()
-      stubDialogGlobal(container, 'edit_server')
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
-      const [, descInput, imageInput, ipInput, portInput] = screen.getAllByRole('textbox') as HTMLInputElement[]
-      await fireEvent.input(descInput, { target: { value: 'New Desc' } })
-      await fireEvent.input(imageInput, { target: { value: 'http://img' } })
-      await fireEvent.input(ipInput, { target: { value: '5.6.7.8' } })
-      await fireEvent.input(portInput, { target: { value: '27016' } })
-      const publicSelect = screen.getByRole('combobox') as HTMLSelectElement
-      await fireEvent.change(publicSelect, { target: { value: 'false' } })
-
-      await fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(
-          '/users/:discordID/guilds/:guildID/servers/s1',
-          'PUT',
-          expect.objectContaining({
-            description: 'New Desc',
-            image: 'http://img',
-            ip: '5.6.7.8',
-            port: '27016',
-            isPublic: false,
-          }),
-        ),
-      )
+      await vi.waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument())
+      expect(JSON.parse(localStorage.getItem('server')!)).toEqual(updated)
+      expect(screen.getByLabelText('Name')).toHaveValue('New Name')
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     })
   })
-
-  describe('deleting the server', () => {
-    it('navigates away on successful deletion', async () => {
-      ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
-      const history = renderPage().history
+  describe('confirmed server commands', () => {
+    it('names the server before deletion and Cancel sends no request', async () => {
+      renderPage()
       await fireEvent.click(screen.getByRole('button', { name: 'Delete Server' }))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'DELETE'),
-      )
-      // DashboardMiddleware (mounted globally in the real app, not under test here) is what
-      // resolves the :guildID placeholder in this literal navigate target.
-      await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/:guildID/config/servers'))
+      const confirm = within(document.getElementById('delete-server')!)
+      expect(confirm.getByText(/My Server — Remove this server/)).toBeInTheDocument()
+      expect(fetchAPI).not.toHaveBeenCalled()
+      await fireEvent.click(confirm.getByRole('button', { name: 'Cancel' }))
+      expect(localStorage.getItem('server')).not.toBeNull()
     })
-
-    it('does not navigate when the deletion request fails', async () => {
-      ;(fetchAPI as Mock).mockResolvedValue(errJson())
+    it('only navigates away after confirmed deletion succeeds', async () => {
       const history = renderPage().history
       await fireEvent.click(screen.getByRole('button', { name: 'Delete Server' }))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'DELETE'),
-      )
+      const confirm = within(document.getElementById('delete-server')!)
+      ;(fetchAPI as Mock).mockResolvedValueOnce(errJson())
+      await fireEvent.click(confirm.getByRole('button', { name: 'Delete Server' }))
+      await vi.waitFor(() => expect(confirm.getByRole('alert')).toBeInTheDocument())
       expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1')
+      expect(localStorage.getItem('server')).not.toBeNull()
+      ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({}))
+      await fireEvent.click(confirm.getByRole('button', { name: 'Delete Server' }))
+      await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/g1/config/servers'))
+      expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'DELETE')
+      expect(localStorage.getItem('server')).toBeNull()
     })
-  })
-
-  describe('resetting the server token', () => {
-    it('updates the server and localStorage on success', async () => {
-      const updated = { ...baseServer, token: 'new-token' }
-      ;(fetchAPI as Mock).mockResolvedValue(okJson(updated))
+    it('explains token invalidation and preserves unsaved information while resetting', async () => {
+      ;(fetchAPI as Mock).mockResolvedValue(okJson({ ...baseServer, token: 'new-token' }))
       renderPage()
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Unsaved name' } })
       await fireEvent.click(screen.getByRole('button', { name: 'Reset Server Token' }))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1/token', 'POST'),
-      )
-      await vi.waitFor(() =>
-        expect(JSON.parse(window.localStorage.getItem('server') as string).token).toBe('new-token'),
-      )
+      const confirm = within(document.getElementById('reset-server-token')!)
+      expect(confirm.getByText(/My Server — The current token will stop working/)).toBeInTheDocument()
+      expect(fetchAPI).not.toHaveBeenCalled()
+      await fireEvent.click(confirm.getByRole('button', { name: 'Reset Server Token' }))
+      await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('server')!).token).toBe('new-token'))
+      expect(screen.getByLabelText('Name')).toHaveValue('Unsaved name')
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('My Server')
+      await fireEvent.click(screen.getByRole('button', { name: 'Show Token' }))
+      expect(screen.getByText('new-token')).toBeInTheDocument()
+      expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1/token', 'POST')
     })
-
-    it('does not update localStorage when the reset request fails', async () => {
+    it('keeps a failed token reset open and preserves the current token', async () => {
       ;(fetchAPI as Mock).mockResolvedValue(errJson())
       renderPage()
       await fireEvent.click(screen.getByRole('button', { name: 'Reset Server Token' }))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1/token', 'POST'),
-      )
-      expect(JSON.parse(window.localStorage.getItem('server') as string).token).toBe('secret-token')
+      const dialog = document.getElementById('reset-server-token')!
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Reset Server Token' }))
+      await vi.waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument())
+      expect(dialog).toHaveAttribute('open')
+      expect(JSON.parse(localStorage.getItem('server')!).token).toBe('secret-token')
     })
   })
 })

@@ -843,10 +843,10 @@
       },
       "config": {
         "title": "Configuration",
-        "description": "Manage the in game configuration of this server.",
+        "description": "Zarządzaj konfiguracją tego serwera w grze.",
         "error_occurred": "Wystąpił błąd podczas pobierania konfiguracji serwera.",
         "default": "Domyślnie",
-        "add_admin_rank": "Add rank",
+        "add_admin_rank": "Dodaj rangę",
         "settings": {
           "ig_syncBan": {
             "title": "Synchronizuj bany",
@@ -912,7 +912,8 @@
             "title": "Rangi admina",
             "description": "Rangi uprawnione do edycji konfiguracji lub obejścia trybu konserwacji."
           }
-        }
+        },
+        "remove_admin_rank": "Usuń rangę"
       },
       "team_roles": {
         "error_occurred": "Une erreur s'est produite lors de la recherche de la synchronisation des rôles.",
@@ -957,8 +958,12 @@
         "modal_title": "Modifier le rôle automatique",
         "modal_description": "Modifier les paramètres de ce rôle automatique.",
         "close_button": "Fermer",
-        "failed_to_load": "Impossible de charger les liens",
-        "add_role": "Ajouter un rôle"
+        "failed_to_load": "Nie można wczytać ról.",
+        "add_role": "Ajouter un rôle",
+        "delete_confirmation": "Nowi członkowie nie będą już automatycznie otrzymywać tej roli. Obecni członkowie zachowają swoją rolę.",
+        "delete": "Usuń",
+        "premium": "Limit 3 automatycznych ról dla użytkowników bezpłatnych.",
+        "active_help": "Wszystkie role na tej liście są automatycznie przypisywane nowym członkom."
       },
       "verification": {
         "check_button": "Vérifier tous les rôles",
@@ -993,7 +998,13 @@
         "edit_tooltip": "Modifier",
         "delete_tooltip": "Supprimer",
         "failed_to_load_links": "Impossible de charger les liens",
-        "add_role_button": "Ajouter un rôle"
+        "add_role_button": "Ajouter un rôle",
+        "publish_confirmation": "Opublikować weryfikację na #{1}?",
+        "publish_consequence": "Członkowie będą mogli użyć tej wiadomości do połączenia swoich kont.",
+        "delete_message_confirmation": "Usunąć weryfikację z #{1}?",
+        "delete_message_consequence": "Członkowie nie będą już mogli rozpocząć weryfikacji z tej wiadomości.",
+        "delete_role_consequence": "Weryfikacja nie będzie już nadawać ani odbierać tej roli. Obecni członkowie zachowają swoje role.",
+        "check_confirmation": "Sprawdzić role członków {1}?"
       },
       "information": {
         "title": "Informations",
@@ -1050,7 +1061,8 @@
         "edit_link": "Modifier le lien",
         "save": "Enregistrer",
         "yes": "Oui",
-        "no": "Numéro"
+        "no": "Numéro",
+        "delete_confirmation": "Ten skrót nie będzie już dostępny dla członków."
       }
     },
     "menu": {
@@ -1121,7 +1133,23 @@
     "back_home": "Powrót na stronę główną",
     "contents": "Spis treści",
     "enabled": "Włączone",
-    "disabled": "Wyłączone"
+    "disabled": "Wyłączone",
+    "delete_target": "Usunąć {1}?",
+    "invalid_value": "Wprowadź prawidłową wartość.",
+    "publish": "Opublikuj",
+    "delete": "Usuń",
+    "create": "Utwórz",
+    "sync_pending": "Zapisano. Synchronizacja oczekuje.",
+    "required": "To pole jest wymagane.",
+    "confirm_delete": "Usunąć ten element?",
+    "invalid_url": "Wprowadź prawidłowy adres URL HTTP lub HTTPS.",
+    "action_error": "Działanie nie powiodło się. Spróbuj ponownie.",
+    "confirm": "Potwierdź",
+    "leave_title": "Wyjść bez zapisywania?",
+    "wait_saving": "Poczekaj na zakończenie zapisywania, zanim wyjdziesz.",
+    "leave_description": "Niezapisane zmiany zostaną odrzucone.",
+    "stay": "Zostań na tej stronie",
+    "discard_leave": "Odrzuć i wyjdź"
   },
   "settings": {
     "access": "Dostęp i weryfikacja",
@@ -1142,7 +1170,7 @@
     "chat_default_help": "Wybierz, czy wiadomości z gry mają być domyślnie przekazywane, czy blokowane. Ustaw wyjątki w regułach poniżej.",
     "chat_destination": "Kanał docelowy Discord",
     "chat_destination_help": "Wiadomości są przekazywane przez ten kanał. Wybierz kanał, aby uruchomić przekazywanie.",
-    "chat_direction_help": "Wybierz, z której strony można wysyłać wiadomości przez most czatu. Zmiany są zapisywane automatycznie.",
+    "chat_direction_help": "Wybierz, która strona może wysyłać wiadomości przez przekaźnik, a następnie zapisz tę sekcję.",
     "chat_ping_help": "Zapobiegaj oznaczaniu członków i ról Discord w przekazywanych wiadomościach.",
     "chat_rules": "Reguły filtrowania",
     "general": "Ogólne",
@@ -1154,12 +1182,12 @@
     "message_content": "Treść wiadomości",
     "moderation": "Moderacja",
     "moderation_description": "Synchronizuj kary między Discordem a serwerem gry.",
-    "nickname_format_help": "Sprawdź podgląd zapisanego formatu nazwy, a następnie edytuj szablon i jego zmienne.",
+    "nickname_format_help": "Zmień format pseudonimu i jego zmienne, a następnie zapisz tę sekcję.",
     "no_results": "Żadne ustawienia w tej kategorii nie pasują do wyszukiwania.",
     "pseudo_rules_help": "Prefiksy i nazwy ról są używane tylko wtedy, gdy format zawiera {rolePrefix} lub {roleName}.",
     "reset_filters": "Resetuj filtry",
     "results": "wyświetlonych ustawień",
-    "rule_setup_help": "Wybierz rolę Discord, ustaw jej powiązanie w grze i włącz regułę.",
+    "rule_setup_help": "Utwórz kompletną regułę z rolą Discorda, opcjami synchronizacji i stanem aktywacji.",
     "saved_preview": "Zapisany podgląd",
     "search": "Szukaj ustawień",
     "search_placeholder": "Szukaj według nazwy lub opisu…",
@@ -1174,13 +1202,35 @@
     "status_content_help": "Wybierz zawartość wiadomości. Sprawdź podgląd i zapisz zmiany.",
     "status_players_help": "Uwzględnij połączonych graczy i dostosuj informacje o każdym z nich.",
     "sync_behavior": "Działanie synchronizacji",
-    "sync_direction_help": "Ten kierunek dotyczy wszystkich reguł poniżej. Zmiany są zapisywane automatycznie.",
+    "sync_direction_help": "Ten kierunek dotyczy wszystkich poniższych reguł. Zapisz tę sekcję, aby zastosować zmiany.",
     "sync_disabled": "Synchronizacja jest wyłączona. Format i reguły pozostają zachowane do ponownego włączenia.",
     "sync_premium_help": "Synchronizacja z Discorda do gry i w obu kierunkach wymaga Premium.",
     "verification_dependency": "Ta kontrola działa, gdy łączenie kont jest obowiązkowe.",
     "verification_existing_members": "Obecni członkowie",
     "verification_message": "Początek weryfikacji",
     "verification_message_hint": "Opublikuj na kanale Discord wiadomość, której członkowie użyją do połączenia swoich kont.",
-    "verification_preferences": "Obsługa członków"
+    "verification_preferences": "Obsługa członków",
+    "explicit_save": "Zmiany zostaną zastosowane po zapisaniu tej sekcji.",
+    "channel_draft_help": "Wybierz miejsce docelowe, a następnie zapisz, aby je zastosować.",
+    "server_port_invalid": "Wprowadź port od 1 do 65535.",
+    "image_url_invalid": "Wprowadź adres URL obrazu HTTP lub HTTPS.",
+    "server_reset_confirm": "Obecny token przestanie działać. Po zresetowaniu zaktualizuj go w konfiguracji Garry’s Mod.",
+    "server_delete_confirm": "Usuń ten serwer i jego dane panelu. Tej czynności nie można cofnąć.",
+    "server_edit_help": "Zmień tożsamość i dane połączenia serwera, a następnie zapisz wszystkie zmiany razem."
+  },
+  "editing": {
+    "remove_channel": "Usunąć to miejsce docelowe? Przyszłe wiadomości nie będą już wysyłane na ten kanał.",
+    "section_help": "Zmień te ustawienia, a następnie zapisz sekcję, aby je zastosować.",
+    "remove_status_help": "Usuń opublikowaną wiadomość statusu na Discordzie. Zapisana konfiguracja zostanie zachowana.",
+    "publish_saved_first": "Zapisz lub anuluj zmiany przed opublikowaniem wiadomości.",
+    "status_scope": "Zmiany wiadomości i jej przycisków są zapisywane razem.",
+    "conflict": "Zapisane wartości uległy zmianie. Wczytaj je ponownie przed kolejnym zapisem.",
+    "sync_pending": "Konfiguracja została zapisana. Aktualizacja Discorda nie została jeszcze potwierdzona.",
+    "reload_saved": "Odrzuć zmiany i ponownie wczytaj zapisane wartości",
+    "save_status": "Zapisz konfigurację statusu",
+    "invalid_status": "Sprawdź nazwy i adresy URL przycisków przed zapisaniem.",
+    "apply_draft": "Zastosuj do wersji roboczej",
+    "delete_trigger": "Usunąć wyzwalacz?",
+    "delete_trigger_help": "Wybrana akcja zdarzenia nie będzie już wykonywana. Tej czynności nie można cofnąć."
   }
 }

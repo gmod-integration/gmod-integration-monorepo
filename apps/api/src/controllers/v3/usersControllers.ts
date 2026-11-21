@@ -67,6 +67,11 @@ import {
 import { getSingleParam } from '@/utils/requestParams.js'
 import { processGetPublicServerRanking } from '@gmod/core/models/v3/publicServerRankingModels.js'
 import { processPreviewServerStatus } from '@gmod/core/models/v3/statusMessagePreviewModels.js'
+import {
+  createDashboardServerEntity,
+  createDashboardLink,
+  createDashboardVerificationRole,
+} from '@gmod/core/models/v6/dashboardEntities.js'
 
 export async function getProfile(req: Request, res: Response) {
   const result = await processGetProfile(req.query.steamID64, req.query.discordID)
@@ -254,6 +259,10 @@ export async function postGuildLinks(req: Request, res: Response) {
     })
   }
 
+  if (req.body && Object.keys(req.body).length) {
+    const result = await createDashboardLink(guild, req.body)
+    return res.status(result.status).send(result.body)
+  }
   return res.send(await guild.createNewLink())
 }
 
@@ -419,6 +428,10 @@ export async function createGuildVerificationsRoles(req: Request, res: Response)
     })
   }
 
+  if (req.body && Object.keys(req.body).length) {
+    const result = await createDashboardVerificationRole(guild, roleID, req.body)
+    return res.status(result.status).send(result.body)
+  }
   return res.send(await guild.createVerificationRole(roleID))
 }
 
@@ -555,6 +568,11 @@ export async function getGmodToDiscordFilter(req: Request, res: Response) {
 
 export async function postGmodToDiscordFilter(req: Request, res: Response) {
   const server = req.server!
+
+  if (req.body && Object.keys(req.body).length) {
+    const result = await createDashboardServerEntity(server, 'chatFilter', req.body)
+    return res.status(result.status).send(result.body)
+  }
 
   const filter = await prisma.gm_server_sync_chat_filter.create({
     data: {
@@ -958,6 +976,11 @@ export async function postServerRoles(req: Request, res: Response) {
   const serverID = getSingleParam(req.params.serverID)
   const roleID = getSingleParam(req.params.roleID)
 
+  if (req.body && Object.keys(req.body).length) {
+    const result = await createDashboardServerEntity(req.server!, 'role', req.body, roleID)
+    return res.status(result.status).send(result.body)
+  }
+
   const role = await prisma.gm_server_sync_roles.create({
     data: {
       serverID,
@@ -1047,6 +1070,11 @@ export async function getServerTeams(req: Request, res: Response) {
 export async function postServerTeams(req: Request, res: Response) {
   const serverID = getSingleParam(req.params.serverID)
   const roleID = getSingleParam(req.params.roleID)
+
+  if (req.body && Object.keys(req.body).length) {
+    const result = await createDashboardServerEntity(req.server!, 'team', req.body, roleID)
+    return res.status(result.status).send(result.body)
+  }
 
   const role = await prisma.gm_server_sync_team_roles.create({
     data: {
@@ -1226,6 +1254,11 @@ export async function getServerPseudo(req: Request, res: Response) {
 
 export async function postServerPseudo(req: Request, res: Response) {
   const serverID = getSingleParam(req.params.serverID)
+
+  if (req.body && Object.keys(req.body).length) {
+    const result = await createDashboardServerEntity(req.server!, 'pseudo', req.body)
+    return res.status(result.status).send(result.body)
+  }
 
   const pseudo = await prisma.gm_server_pseudo.create({
     data: {

@@ -1,13 +1,13 @@
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
 import { type Component, createResource, createSignal, For, Show } from 'solid-js'
 import { FormActions, FormField, IconButton, TableState, Icon, type IconName } from '../../../../components/ui/index.js'
-import { createAsyncAction } from '../../../../hooks/createAsyncAction.js'
-import AdminPanel from '../../../../components/AdminPanel'
-import AdminModal from '../../../../components/AdminModal'
-import Pagination from '../../../../components/Pagination'
-import { useI18n } from '../../../../i18n'
-import { convertSecToTime } from '../../../../utils/convertSecToTime'
-import { fetchAPI } from '../../../../utils/api'
+import { createDraftForm } from '../../../../hooks/createDraftForm.js'
+import AdminPanel from '../../../../components/AdminPanel.js'
+import AdminModal from '../../../../components/AdminModal.js'
+import Pagination from '../../../../components/Pagination.js'
+import { useI18n } from '../../../../i18n.js'
+import { convertSecToTime } from '../../../../utils/convertSecToTime.js'
+import { fetchAPI } from '../../../../utils/api.js'
 import { QuerySort, type ClientQuery, type ServerQuery } from '../../../../utils/types/QueryTypes.js'
 
 type PlayerList = { rows: Player[]; query?: ServerQuery }
@@ -49,7 +49,6 @@ const ServerPlayer: Component = () => {
   const [playersList, { mutate, refetch }] = createResource('playersList', fetchPlayers, {
     initialValue: { rows: [], query: undefined },
   })
-  const [currentPlayers, setCurrentPlayers] = createSignal(new Player('', '', 0, 0, 0, false))
   const [sortInfo, setSortInfo] = createSignal({
     dsc: true,
     lastKey: '',
@@ -61,7 +60,14 @@ const ServerPlayer: Component = () => {
     orderBy: QuerySort.DESC,
   })
   const { t } = useI18n()
-  const save = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save the changes.') })
+  const editor = createDraftForm({
+    initial: new Player('', '', 0, 0, 0, false),
+    validate: (draft) =>
+      !/^\d{17}$/.test(draft.steam_id) || typeof draft.bypassMaintenance !== 'boolean'
+        ? { steam_id: t('ui.invalid_value', 'Check this value.') }
+        : {},
+    errorMessage: () => t('ui.save_error', 'Unable to save the changes.'),
+  })
 
   const [loadSearch, setLoadSearch] = createSignal(false)
   const [searchError, setSearchError] = createSignal(false)
@@ -133,26 +139,23 @@ const ServerPlayer: Component = () => {
   }
 
   async function savePlayer() {
-    const draft = { ...currentPlayers() }
-    const saved = await save.run(async () => {
-      const res = await fetchAPI(
-        `/users/:discordID/guilds/:guildID/servers/:serverID/players/${draft.steam_id}`,
+    if (playersList.loading || playersList.error || loadSearch() || searchError()) return
+    const saved = await editor.save(async (snapshot) => {
+      const response = await fetchAPI(
+        `/users/:discordID/guilds/:guildID/servers/:serverID/players/${snapshot.steam_id}`,
         'PUT',
-        draft,
+        { bypassMaintenance: snapshot.bypassMaintenance },
       )
-      if (!res.ok) {
-        throw new Error('Player update failed')
-      }
-      const ply = await res.json()
-      mutate((prevPlayers) => {
-        if (!prevPlayers) return prevPlayers
-        return {
-          ...prevPlayers,
-          rows: prevPlayers.rows.map((p) =>
-            p.steam_id === ply.steam_id ? { ...p, bypassMaintenance: ply.bypassMaintenance } : p,
-          ),
-        }
-      })
+      if (!response.ok) throw new Error('Player update failed')
+      const accepted = await response.json()
+      if (typeof accepted.bypassMaintenance !== 'boolean') throw new Error('Invalid player permission')
+      mutate((previous) => ({
+        ...previous,
+        rows: previous.rows.map((player) =>
+          player.steam_id === snapshot.steam_id ? { ...player, bypassMaintenance: accepted.bypassMaintenance } : player,
+        ),
+      }))
+      return { ...snapshot, bypassMaintenance: accepted.bypassMaintenance }
     })
     if (saved) closeDialog('edit_player')
   }
@@ -163,9 +166,10 @@ const ServerPlayer: Component = () => {
       <AdminModal
         title={t('dashboard.server.edit_player.title', 'Edit Player')}
         id="edit_player"
-        busy={save.pending()}
-        onClose={() => save.reset()}
-        onCancel={() => save.reset()}
+        description={editor.draft().steam_id ? `${editor.draft().name} · ${editor.draft().steam_id}` : undefined}
+        busy={editor.pending()}
+        onClose={editor.discard}
+        onCancel={editor.discard}
       >
         <FormField
           id="player-bypass-maintenance"
@@ -174,10 +178,10 @@ const ServerPlayer: Component = () => {
           <select
             id="player-bypass-maintenance"
             class="select"
-            disabled={playersList.loading || save.pending()}
-            value={currentPlayers().bypassMaintenance ? 'true' : 'false'}
+            disabled={playersList.loading || !!playersList.error || editor.pending()}
+            value={editor.draft().bypassMaintenance ? 'true' : 'false'}
             onChange={(e) => {
-              setCurrentPlayers((previous) => ({ ...previous, bypassMaintenance: e.currentTarget.value === 'true' }))
+              editor.patch({ bypassMaintenance: e.currentTarget.value === 'true' })
             }}
           >
             <option value="true">{t('dashboard.server.edit_player.yes', 'Yes')}</option>
@@ -185,11 +189,15 @@ const ServerPlayer: Component = () => {
           </select>
         </FormField>
         <FormActions
-          pending={save.pending()}
-          disabled={playersList.loading}
-          error={save.error()}
+          dirty={editor.dirty()}
+          pending={editor.pending()}
+          disabled={playersList.loading || !!playersList.error || loadSearch() || searchError() || !editor.valid()}
+          error={editor.error()}
           onSave={() => void savePlayer()}
-          onCancel={() => closeDialog('edit_player')}
+          onCancel={() => {
+            editor.discard()
+            closeDialog('edit_player')
+          }}
           saveLabel={t('dashboard.server.edit_player.save', 'Save')}
         />
       </AdminModal>
@@ -264,7 +272,7 @@ const ServerPlayer: Component = () => {
                 else void refetch()
               }}
             >
-              <For each={playersList().rows}>
+              <For each={!playersList.error ? playersList().rows : []}>
                 {(player) => (
                   <tr>
                     <td class="w-1/4 truncate overflow-hidden text-ellipsis whitespace-nowrap">
@@ -297,9 +305,9 @@ const ServerPlayer: Component = () => {
                           size="sm"
                           label={t('dashboard.server.players_database.edit', 'Edit')}
                           icon="pencil"
+                          disabled={editor.pending() || playersList.loading || loadSearch()}
                           onClick={() => {
-                            setCurrentPlayers({ ...player })
-                            save.reset()
+                            editor.reset({ ...player })
                             showDialog('edit_player')
                           }}
                         />

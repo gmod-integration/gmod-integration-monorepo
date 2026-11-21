@@ -56,13 +56,13 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
     renderPage()
     await waitForLoaded()
     expect(screen.getByText('#general')).toBeInTheDocument()
-    expect(screen.getByText('Delete Channel')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete Channel' })).toBeInTheDocument()
   })
 
   it('does not show Delete Channel when no channel is configured', async () => {
     renderPage()
     await waitForLoaded()
-    expect(screen.queryByText('Delete Channel')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete Channel' })).not.toBeInTheDocument()
   })
 
   it('opens the channel selector modal on Select Channel', async () => {
@@ -115,7 +115,9 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
       if (endpoint === SCREENSHOT_CHANNEL_URL && method === 'DELETE') return Promise.resolve(okJson({}))
       return Promise.resolve(okJson([]))
     })
-    await fireEvent.click(screen.getByText('Delete Channel'))
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete Channel' }))
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'DELETE')).toBe(false)
+    await fireEvent.click(within(document.querySelector('#remove-channel')!).getByRole('button', { name: 'Delete' }))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'DELETE'))
     await vi.waitFor(() => expect(screen.queryByText('#general')).not.toBeInTheDocument())
   })
@@ -129,7 +131,9 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
       if (endpoint === SCREENSHOT_CHANNEL_URL && method === 'DELETE') return Promise.resolve(errJson())
       return Promise.resolve(okJson([]))
     })
-    await fireEvent.click(screen.getByText('Delete Channel'))
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete Channel' }))
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'DELETE')).toBe(false)
+    await fireEvent.click(within(document.querySelector('#remove-channel')!).getByRole('button', { name: 'Delete' }))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'DELETE'))
     expect(screen.getByText('#general')).toBeInTheDocument()
   })

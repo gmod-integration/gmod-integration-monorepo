@@ -6,6 +6,7 @@ import { createAsyncAction } from '../hooks/createAsyncAction.js'
 import { useI18n } from '../i18n.js'
 import { closeDialog } from '../utils/dialog.js'
 import type { TypeDiscordChannel } from '../utils/types/DiscordTypes.js'
+import { useDraftGuard } from '../hooks/draftRegistry.js'
 
 interface ChannelSelectorProps extends ParentProps {
   callback?: (channelID: string) => void
@@ -139,9 +140,11 @@ const AdminChannelSelector: Component<AdminChannelSelectorProps> = (props) => {
     setSelected(props.idSelect || '0')
     save.reset()
   }
+  const dirty = () => selected() !== (props.idSelect || '0')
+  useDraftGuard({ dirty, pending: save.pending, discard })
 
   async function confirm() {
-    if (selected() === '0' || guildChannels.loading || guildChannels.error) return
+    if (!dirty() || selected() === '0' || guildChannels.loading || guildChannels.error) return
     if (await save.run(async () => props.callback?.(selected()))) closeDialog(props.id)
   }
 
@@ -163,6 +166,7 @@ const AdminChannelSelector: Component<AdminChannelSelectorProps> = (props) => {
           />
         </div>
         <FormActions
+          dirty={dirty()}
           pending={save.pending()}
           disabled={selected() === '0' || guildChannels.loading || !!guildChannels.error}
           error={save.error()}

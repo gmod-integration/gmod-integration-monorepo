@@ -1,10 +1,11 @@
+import type * as APIModule from '../../../../src/utils/api.js'
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../../testUtils.js'
-import { stubDialogGlobal, clearDialogGlobals, okJson, errJson } from './servers/testHelpers.js'
+import { clearDialogGlobals, okJson, errJson } from './servers/testHelpers.js'
 
 vi.mock('../../../../src/utils/api.js', async (importActual) => {
-  const actual = await importActual<typeof import('../../../../src/utils/api.js')>()
+  const actual = await importActual<typeof APIModule>()
   return {
     ...actual,
     // GuildInformations.tsx's module-level guildRoles/guildChannels resources, and
@@ -16,6 +17,9 @@ vi.mock('../../../../src/utils/api.js', async (importActual) => {
     }),
   }
 })
+
+vi.mock('../../../../src/utils/dashboardSettings.js', () => ({ saveDashboardSettings: vi.fn() }))
+const { saveDashboardSettings } = await import('../../../../src/utils/dashboardSettings.js')
 
 const { guildRolesMutate, guildChannelsMutate } =
   await import('../../../../src/pages/dashboard/guilds/GuildInformations.js')
@@ -43,7 +47,14 @@ function table(container: HTMLElement) {
 
 afterEach(() => {
   cleanup()
-  clearDialogGlobals('select_role_modal', 'edit_role_modal', 'select_channel_modal')
+  clearDialogGlobals(
+    'edit_role_modal',
+    'select_channel_modal',
+    'publish_verification',
+    'delete_verification_message',
+    'delete_verification_role',
+    'check_verification_roles',
+  )
   vi.restoreAllMocks()
 })
 
@@ -73,9 +84,9 @@ function setupFetchAPI({
   guildRolesList = defaultGuildRoles(),
   channels = [] as unknown[],
   verifyMessage = {},
-  lastVerify = {},
-  dontMP = {},
-  dontJoinSupport = {},
+  lastVerify = true,
+  dontMP = { value: false },
+  dontJoinSupport = { value: false },
 }: {
   verifyRoles?: unknown
   guildRolesList?: { id: string; name: string }[]
@@ -107,544 +118,275 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     window.localStorage.clear()
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
     ;(fetchAPI as Mock).mockReset()
+    ;(saveDashboardSettings as Mock).mockReset()
     setupFetchAPI()
     guildRolesMutate(defaultGuildRoles())
     guildChannelsMutate([])
   })
 
-  it('renders the loaded verify-role table with role, action and active markers', async () => {
+  it('renders stored roles with the action and real enabled state', async () => {
     const { container } = renderWithProviders(() => <GuildVerification />)
     await waitForLoaded()
     expect(within(table(container)).getByText('Give Role')).toBeInTheDocument()
-    expect(within(table(container)).getByText('@Moderator')).toBeInTheDocument()
     expect(within(table(container)).getByText('Remove Role')).toBeInTheDocument()
-    const rows = screen.getAllByRole('row').slice(1)
+    const rows = within(table(container)).getAllByRole('row').slice(1)
     expect(rows[0].querySelector('svg[data-icon="check"]')).toBeInTheDocument()
     expect(rows[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
   })
 
-  it('shows a loading spinner and hides the table body while verifyRoles is loading', () => {
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-      if (endpoint === VERIFY_ROLES_URL) return new Promise(() => {})
-      if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
-      return Promise.resolve(okJson([]))
-    })
+  it('shows loading and keeps table actions unavailable while roles load', () => {
+    ;(fetchAPI as Mock).mockImplementation(() => new Promise(() => {}))
     const { container } = renderWithProviders(() => <GuildVerification />)
     expect(container.querySelector('.loading-spinner')).toBeInTheDocument()
-    expect(screen.queryAllByRole('row')).toHaveLength(2) // header and loading state row
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
   })
 
-  it('shows a retryable error when the verify-roles GET responds with a non-ok status', async () => {
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-      if (endpoint === VERIFY_ROLES_URL) return Promise.resolve(errJson())
-      if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
-      return Promise.resolve(okJson([]))
-    })
-    renderWithProviders(() => <GuildVerification />)
-    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to load this content.'))
+  it('renders a retryable role error without reading the failed resource', async () => {
+    ;(fetchAPI as Mock).mockImplementation((url: string) =>
+      Promise.resolve(url === VERIFY_ROLES_URL ? errJson() : okJson({})),
+    )
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await vi.waitFor(() => expect(within(table(container)).getByRole('alert')).toBeInTheDocument())
+    setupFetchAPI()
+    await fireEvent.click(within(table(container)).getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
   })
 
-  it('shows the failed-to-load message (and does not crash) when the verify-roles fetch rejects', async () => {
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-      if (endpoint === VERIFY_ROLES_URL) return Promise.reject(new Error('network down'))
-      if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
-      return Promise.resolve(okJson([]))
-    })
-    renderWithProviders(() => <GuildVerification />)
-    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to load this content.'))
-    // The select-role modal and the Add Role upsell button both read verifyRoles() unguarded
-    // elsewhere in the file - confirm the whole page still rendered instead of crashing.
-    expect(screen.getByText('Verification Roles')).toBeInTheDocument()
+  it('requires all fields before creating a role and submits a complete object once', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Role' }))
+    const modal = container.querySelector<HTMLDialogElement>('#edit_role_modal')!
+    await vi.waitFor(() => expect(within(modal).getByLabelText(/^Role/)).not.toBeDisabled())
+    expect(within(modal).getByRole('button', { name: 'Create' })).toBeDisabled()
+    expect(
+      within(modal)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toContain('VIP')
+    expect(within(modal).queryByRole('option', { name: 'Admin' })).not.toBeInTheDocument()
+    await fireEvent.change(within(modal).getByLabelText(/^Role/), { target: { value: 'r3' } })
+    await fireEvent.change(within(modal).getByLabelText('Action on Verification'), { target: { value: 'false' } })
+    await fireEvent.change(within(modal).getByLabelText('Active'), { target: { value: 'false' } })
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+    ;(fetchAPI as Mock).mockResolvedValue(okJson({ roleID: 'r3', isGiveRole: false, enabled: false }))
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Create' }))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(`${VERIFY_ROLES_URL}/r3`, 'POST', { isGiveRole: false, enabled: false }),
+    )
+    await vi.waitFor(() => expect(modal.open).toBe(false))
+    expect(within(table(container)).getByText('@VIP')).toBeInTheDocument()
   })
 
-  describe('verification message', () => {
-    it('shows "No verification message" and the Send button when there is none', async () => {
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      expect(screen.getByText('No verification message')).toBeInTheDocument()
-      expect(screen.getByText('Send Verification Message')).toBeInTheDocument()
-      expect(screen.queryByText('Delete Verification Message')).not.toBeInTheDocument()
-    })
-
-    it('renders the DiscordMessage link and the Delete button when a message exists', async () => {
-      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
-      guildChannelsMutate(channels)
-      setupFetchAPI({ verifyMessage: { messageID: 'm1', channelID: 'c1' }, channels })
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      expect(screen.getByText(/#general/)).toBeInTheDocument()
-      expect(screen.getByText('Delete Verification Message')).toBeInTheDocument()
-      expect(screen.queryByText('Send Verification Message')).not.toBeInTheDocument()
-      expect(screen.queryByText('No verification message')).not.toBeInTheDocument()
-    })
-
-    it('sends a verification message for the selected channel and shows it once created', async () => {
-      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
-      guildChannelsMutate(channels)
-      setupFetchAPI({ channels })
-      const { container } = renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      stubDialogGlobal(container, 'select_channel_modal')
-      await fireEvent.click(screen.getByText('Send Verification Message'))
-
-      const created = { messageID: 'm1', channelID: 'c1' }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === VERIFY_MESSAGE_URL && method === 'POST') return Promise.resolve(okJson(created))
-        if (endpoint === CHANNELS_URL && method === 'GET') return Promise.resolve(okJson(channels))
-        return Promise.resolve(okJson([]))
-      })
-      const modal = container.querySelector('#select_channel_modal') as HTMLElement
-      // Clicking "Send Verification Message" also fires guildChannelsRefetch() (unawaited), which
-      // briefly puts guildChannels back into a loading state (showing ChannelSelector's "Loading..."
-      // fallback) before it resolves via the mock above.
-      await vi.waitFor(() => expect(within(modal).queryByRole('combobox')).toBeInTheDocument())
-      const select = within(modal).getByRole('combobox') as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'c1' } })
-      await fireEvent.click(within(select.closest('dialog')!).getByText('Save'))
-
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VERIFY_MESSAGE_URL, 'POST', { channelID: 'c1' }))
-      await vi.waitFor(() => expect(screen.getByText(/#general/)).toBeInTheDocument())
-    })
-
-    it('does not create a verification message when the POST fails', async () => {
-      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
-      guildChannelsMutate(channels)
-      setupFetchAPI({ channels })
-      const { container } = renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      stubDialogGlobal(container, 'select_channel_modal')
-      await fireEvent.click(screen.getByText('Send Verification Message'))
-
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === VERIFY_MESSAGE_URL && method === 'POST') return Promise.resolve(errJson())
-        if (endpoint === CHANNELS_URL && method === 'GET') return Promise.resolve(okJson(channels))
-        return Promise.resolve(okJson([]))
-      })
-      const modal = container.querySelector('#select_channel_modal') as HTMLElement
-      await vi.waitFor(() => expect(within(modal).queryByRole('combobox')).toBeInTheDocument())
-      const select = within(modal).getByRole('combobox') as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'c1' } })
-      await fireEvent.click(within(select.closest('dialog')!).getByText('Save'))
-
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VERIFY_MESSAGE_URL, 'POST', { channelID: 'c1' }))
-      expect(screen.getByText('No verification message')).toBeInTheDocument()
-    })
-
-    it('deletes the verification message and falls back to "No verification message"', async () => {
-      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
-      setupFetchAPI({ verifyMessage: { messageID: 'm1', channelID: 'c1' }, channels })
-      guildChannelsMutate(channels)
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === VERIFY_MESSAGE_URL && method === 'DELETE') return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(screen.getByText('Delete Verification Message'))
-      await vi.waitFor(() => expect(screen.getByText('No verification message')).toBeInTheDocument())
-      expect(screen.getByText('Send Verification Message')).toBeInTheDocument()
-    })
-
-    it('keeps the message shown when deletion fails', async () => {
-      const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
-      setupFetchAPI({ verifyMessage: { messageID: 'm1', channelID: 'c1' }, channels })
-      guildChannelsMutate(channels)
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === VERIFY_MESSAGE_URL && method === 'DELETE') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(screen.getByText('Delete Verification Message'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VERIFY_MESSAGE_URL, 'DELETE'))
-      expect(screen.getByText(/#general/)).toBeInTheDocument()
-    })
+  it('keeps a failed role draft for retry and blocks duplicate submissions and closing while saving', async () => {
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
+    const modal = container.querySelector<HTMLDialogElement>('#edit_role_modal')!
+    expect(within(modal).getByRole('button', { name: 'Save' })).toBeDisabled()
+    await fireEvent.change(within(modal).getByLabelText('Active'), { target: { value: 'false' } })
+    let resolveSave!: (value: ReturnType<typeof okJson>) => void
+    ;(fetchAPI as Mock).mockImplementation(() => new Promise((resolve) => (resolveSave = resolve)))
+    const save = within(modal).getByRole('button', { name: 'Save' })
+    await fireEvent.click(save)
+    await fireEvent.click(save)
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
+    expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    expect(within(modal).getByLabelText('Active')).toBeDisabled()
+    resolveSave(errJson())
+    await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+    expect(within(modal).getByLabelText('Active')).toHaveValue('false')
+    expect(modal.open).toBe(true)
+    ;(fetchAPI as Mock).mockResolvedValue(okJson({ roleID: 'r1', isGiveRole: true, enabled: false }))
+    await fireEvent.click(save)
+    await vi.waitFor(() => expect(modal.open).toBe(false))
+    expect(within(table(container)).getAllByRole('row')[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
   })
 
-  it('falls back to {} (not a crash) when verifyMessage/dontMP/dontJoinSupport/lastVerify all respond non-ok', async () => {
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint.includes(SUBORDINATION_URL_PART))
-        return Promise.resolve(okJson(subordinationFor(defaultGuildRoles())))
-      if (endpoint === VERIFY_ROLES_URL && method === 'GET') return Promise.resolve(okJson(defaultVerifyRolesRaw()))
-      if (endpoint === GUILD_ROLES_URL && method === 'GET') return Promise.resolve(okJson(defaultGuildRoles()))
-      if (method === 'GET' && [VERIFY_MESSAGE_URL, DONT_MP_URL, DONT_JOIN_SUPPORT_URL, CHECK_URL].includes(endpoint)) {
-        return Promise.resolve(errJson())
-      }
-      return Promise.resolve(okJson([]))
+  it('discards a role edit on Cancel and sends no request before Save', async () => {
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
+    await fireEvent.click(edit)
+    const modal = container.querySelector<HTMLDialogElement>('#edit_role_modal')!
+    await fireEvent.change(within(modal).getByLabelText('Active'), { target: { value: 'false' } })
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+    await fireEvent.click(edit)
+    expect(within(modal).getByLabelText('Active')).toHaveValue('true')
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')).toHaveLength(0)
+  })
+
+  it('confirms the named role before deleting and retains it after a failed request', async () => {
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[1])
+    const modal = container.querySelector<HTMLDialogElement>('#delete_verification_role')!
+    expect(within(modal).getByText('Delete Moderator?')).toBeInTheDocument()
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'DELETE')).toHaveLength(0)
+    ;(fetchAPI as Mock).mockResolvedValue(errJson())
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+    expect(within(table(container)).getByText('@Moderator')).toBeInTheDocument()
+    ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(within(table(container)).queryByText('@Moderator')).not.toBeInTheDocument())
+  })
+
+  it('saves member preferences together only on Save and restores saved values on Cancel', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    const group = screen.getByText('Member experience').closest('section')!
+    const dm = container.querySelector<HTMLInputElement>('#verification-dm')!
+    const support = container.querySelector<HTMLInputElement>('#verification-support')!
+    expect(within(group).getByRole('button', { name: 'Save' })).toBeDisabled()
+    await fireEvent.click(dm)
+    await fireEvent.click(support)
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    expect(dm).toBeChecked()
+    expect(support).toBeChecked()
+    await fireEvent.click(within(group).getByRole('button', { name: 'Cancel' }))
+    expect(dm).not.toBeChecked()
+    expect(support).not.toBeChecked()
+    await fireEvent.click(dm)
+    await fireEvent.click(support)
+    ;(saveDashboardSettings as Mock).mockResolvedValue({
+      settings: { verification_dont_mp: true, verification_dont_join_support: true },
+      sync: 'applied',
     })
-    renderWithProviders(() => <GuildVerification />)
+    await fireEvent.click(within(group).getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() =>
+      expect(saveDashboardSettings).toHaveBeenCalledWith('guild', {
+        verification_dont_mp: true,
+        verification_dont_join_support: true,
+      }),
+    )
+    await vi.waitFor(() => expect(within(group).getByRole('button', { name: 'Save' })).toBeDisabled())
+  })
+
+  it('keeps changed preferences on failure, permits retry and sends only changed keys', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    const group = screen.getByText('Member experience').closest('section')!
+    const dm = container.querySelector<HTMLInputElement>('#verification-dm')!
+    await fireEvent.click(dm)
+    ;(saveDashboardSettings as Mock).mockRejectedValue(new Error('network'))
+    await fireEvent.click(within(group).getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(within(group).getByRole('alert')).toBeInTheDocument())
+    expect(dm).toBeChecked()
+    ;(saveDashboardSettings as Mock).mockResolvedValue({ settings: { verification_dont_mp: true }, sync: 'pending' })
+    await fireEvent.click(within(group).getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() =>
+      expect(saveDashboardSettings).toHaveBeenLastCalledWith('guild', { verification_dont_mp: true }),
+    )
+    await vi.waitFor(() => expect(within(group).getByText('Saved. Synchronization is pending.')).toBeInTheDocument())
+  })
+
+  it('blocks preference changes and duplicate saves while awaiting the batch response', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    const group = screen.getByText('Member experience').closest('section')!
+    const dm = container.querySelector<HTMLInputElement>('#verification-dm')!
+    await fireEvent.click(dm)
+    let resolveSave!: (value: unknown) => void
+    ;(saveDashboardSettings as Mock).mockImplementation(() => new Promise((resolve) => (resolveSave = resolve)))
+    const save = within(group).getByRole('button', { name: 'Save' })
+    await fireEvent.click(save)
+    await fireEvent.click(save)
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    expect(dm).toBeDisabled()
+    expect(within(group).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    resolveSave({ settings: { verification_dont_mp: true }, sync: 'applied' })
+    await vi.waitFor(() => expect(save).toBeDisabled())
+    await vi.waitFor(() => expect(dm).not.toBeDisabled())
+  })
+
+  it('disables premium preferences for a free guild', async () => {
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    expect(container.querySelector('#verification-dm')).toBeDisabled()
+    expect(container.querySelector('#verification-support')).toBeDisabled()
+  })
+
+  it('shows a failed preference fetch and retries instead of editing default values', async () => {
+    const original = (fetchAPI as Mock).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((url: string, method: string) =>
+      url === DONT_MP_URL ? Promise.resolve(errJson()) : original(url, method),
+    )
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    const group = screen.getByText('Member experience').closest('section')!
+    await vi.waitFor(() => expect(within(group).getByRole('alert')).toBeInTheDocument())
+    expect(container.querySelector('#verification-dm')).not.toBeInTheDocument()
+    setupFetchAPI()
+    await fireEvent.click(within(group).getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(container.querySelector('#verification-dm')).toBeInTheDocument())
+  })
+
+  it('publishes only after selecting a channel and confirming the target', async () => {
+    const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
+    setupFetchAPI({ channels })
+    guildChannelsMutate(channels)
+    const { container } = renderWithProviders(() => <GuildVerification />)
     await waitForLoaded()
     expect(screen.getByText('No verification message')).toBeInTheDocument()
-    expect(screen.getByText('Check All Roles')).not.toHaveClass('btn-disabled')
-    const toggles = screen.getAllByRole('checkbox') as HTMLInputElement[]
-    toggles.forEach((toggle) => expect(toggle.checked).toBe(false))
+    await fireEvent.click(screen.getByRole('button', { name: 'Send Verification Message' }))
+    const selector = container.querySelector<HTMLDialogElement>('#select_channel_modal')!
+    await vi.waitFor(() => expect(within(selector).getByRole('combobox')).not.toBeDisabled())
+    await fireEvent.change(within(selector).getByRole('combobox'), { target: { value: 'c1' } })
+    await fireEvent.click(within(selector).getByRole('button', { name: 'Save' }))
+    const confirm = container.querySelector<HTMLDialogElement>('#publish_verification')!
+    expect(within(confirm).getByText('Publish verification in #general?')).toBeInTheDocument()
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+    ;(fetchAPI as Mock).mockResolvedValue(okJson({ channelID: 'c1', messageID: 'm1' }))
+    await fireEvent.click(within(confirm).getByRole('button', { name: 'Publish' }))
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VERIFY_MESSAGE_URL, 'POST', { channelID: 'c1' }))
+    await vi.waitFor(() => expect(screen.getByRole('link', { name: /#general/ })).toBeInTheDocument())
   })
 
-  describe('check all roles', () => {
-    it('disables the button while lastVerify is loading', () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-        if (endpoint === CHECK_URL) return new Promise(() => {})
-        if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson([]))
-      })
-      renderWithProviders(() => <GuildVerification />)
-      expect(screen.getByRole('button', { name: 'Check All Roles' })).toBeDisabled()
-    })
-
-    it('disables the button after a successful check (lastVerify becomes false)', async () => {
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      expect(screen.getByText('Check All Roles')).not.toHaveClass('btn-disabled')
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === CHECK_URL && method === 'POST') return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(screen.getByText('Check All Roles'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(CHECK_URL, 'POST'))
-      await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Check All Roles' })).toBeDisabled())
-    })
-
-    it('leaves the button enabled when the check request fails', async () => {
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === CHECK_URL && method === 'POST') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(screen.getByText('Check All Roles'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(CHECK_URL, 'POST'))
-      expect(screen.getByText('Check All Roles')).not.toHaveClass('btn-disabled')
-    })
+  it('requires confirmation to remove a published message and keeps it visible on failure', async () => {
+    const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
+    setupFetchAPI({ channels, verifyMessage: { channelID: 'c1', messageID: 'm1' } })
+    guildChannelsMutate(channels)
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete Verification Message' }))
+    const modal = container.querySelector<HTMLDialogElement>('#delete_verification_message')!
+    expect(within(modal).getByText('Delete verification in #general?')).toBeInTheDocument()
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'DELETE')).toHaveLength(0)
+    ;(fetchAPI as Mock).mockResolvedValue(errJson())
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: /#general/ })).toBeInTheDocument()
+    ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(screen.getByText('No verification message')).toBeInTheDocument())
   })
 
-  describe('"don\'t send DM" / "don\'t join support guild" premium toggles', () => {
-    it.each([
-      [0, DONT_MP_URL],
-      [1, DONT_JOIN_SUPPORT_URL],
-    ] as const)(
-      'blocks repeated changes to setting %s while pending, restores failures and permits retry',
-      async (index, endpoint) => {
-        window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-        renderWithProviders(() => <GuildVerification />)
-        await waitForLoaded()
-        const toggles = screen.getAllByRole('checkbox')
-        const toggle = toggles[index]
-        const otherToggle = toggles[1 - index]
-        let finish!: (response: ReturnType<typeof errJson>) => void
-        ;(fetchAPI as Mock).mockImplementation(() => new Promise((resolve) => (finish = resolve)))
-        await fireEvent.click(toggle)
-        await fireEvent.click(toggle)
-        expect(fetchAPI).toHaveBeenCalledWith(endpoint, 'PUT', { value: true })
-        expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
-        expect(toggle).toBeDisabled()
-        expect(toggle).toHaveAttribute('aria-busy', 'true')
-        expect(otherToggle).not.toBeDisabled()
-        finish(errJson())
-        await vi.waitFor(() => expect(toggle).not.toBeDisabled())
-        expect(toggle).not.toBeChecked()
-        expect(screen.getByRole('alert')).toHaveTextContent('Unable to save')
-        ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
-        await fireEvent.click(toggle)
-        await vi.waitFor(() => expect(toggle).not.toBeDisabled())
-        expect(toggle).toBeChecked()
-        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-        expect(screen.getByRole('status')).toHaveTextContent('Saved')
-      },
-    )
-
-    it('restores the saved DM setting and shows an error after a network failure', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      setupFetchAPI({ dontMP: { value: true } })
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      const toggle = screen.getAllByRole('checkbox')[0]
-      expect(toggle).toBeChecked()
-      ;(fetchAPI as Mock).mockRejectedValueOnce(new Error('Network unavailable'))
-      await fireEvent.click(toggle)
-      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
-      expect(toggle).toBeChecked()
-      expect(toggle).not.toBeDisabled()
-    })
-
-    it('disables both toggles for a free-tier guild', async () => {
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      const toggles = screen.getAllByRole('checkbox') as HTMLInputElement[]
-      toggles.forEach((toggle) => expect(toggle).toBeDisabled())
-    })
-
-    it('saves the new value and reflects it once the PUT succeeds (premium)', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      const [dontMPToggle] = screen.getAllByRole('checkbox') as HTMLInputElement[]
-      expect(dontMPToggle).not.toBeDisabled()
-      expect(dontMPToggle.checked).toBe(false)
-
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === DONT_MP_URL && method === 'PUT') return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(dontMPToggle)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(DONT_MP_URL, 'PUT', { value: true }))
-      await vi.waitFor(() => expect(dontMPToggle.checked).toBe(true))
-    })
-
-    it('reverts the toggle to its previous value when the PUT fails (premium)', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      setupFetchAPI({ dontJoinSupport: { value: false } })
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      const toggles = screen.getAllByRole('checkbox') as HTMLInputElement[]
-      const dontJoinSupportToggle = toggles[1]
-      expect(dontJoinSupportToggle.checked).toBe(false)
-
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === DONT_JOIN_SUPPORT_URL && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(dontJoinSupportToggle)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(DONT_JOIN_SUPPORT_URL, 'PUT', { value: true }))
-      await vi.waitFor(() => expect(dontJoinSupportToggle).not.toBeChecked())
-    })
-
-    it('reverts the "don\'t send DM" toggle when its PUT fails (premium)', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      setupFetchAPI({ dontMP: { value: false } })
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      const [dontMPToggle] = screen.getAllByRole('checkbox') as HTMLInputElement[]
-      expect(dontMPToggle.checked).toBe(false)
-
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === DONT_MP_URL && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(dontMPToggle)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(DONT_MP_URL, 'PUT', { value: true }))
-      await vi.waitFor(() => expect(dontMPToggle).not.toBeChecked())
-    })
-
-    it('saves the "don\'t join support guild" toggle when its PUT succeeds (premium)', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      const toggles = screen.getAllByRole('checkbox') as HTMLInputElement[]
-      const dontJoinSupportToggle = toggles[1]
-      expect(dontJoinSupportToggle.checked).toBe(false)
-
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === DONT_JOIN_SUPPORT_URL && method === 'PUT') return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(dontJoinSupportToggle)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(DONT_JOIN_SUPPORT_URL, 'PUT', { value: true }))
-      await vi.waitFor(() => expect(dontJoinSupportToggle.checked).toBe(true))
-    })
+  it('confirms the mass role check, reports failure and permits retry', async () => {
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    const button = screen.getByRole('button', { name: 'Check All Roles' })
+    await fireEvent.click(button)
+    const modal = container.querySelector<HTMLDialogElement>('#check_verification_roles')!
+    expect(within(modal).getByText(/1000 members max/)).toBeInTheDocument()
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+    ;(fetchAPI as Mock).mockResolvedValue(errJson())
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Check All Roles' }))
+    await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+    expect(button).not.toBeDisabled()
+    ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Check All Roles' }))
+    await vi.waitFor(() => expect(button).toBeDisabled())
   })
 
-  describe('delete verify role', () => {
-    it('deletes a role and removes it from the list on success', async () => {
-      const { container } = renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${VERIFY_ROLES_URL}/r2` && method === 'DELETE')
-          return Promise.resolve(okJson({ roleID: 'r2' }))
-        return Promise.resolve(okJson([]))
-      })
-      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
-      await fireEvent.click(deleteIcons[1])
-      await vi.waitFor(() => expect(screen.queryByText('@Moderator')).not.toBeInTheDocument())
-      expect(screen.getByText('@Admin')).toBeInTheDocument()
-    })
-
-    it('does not remove the row when deleting a role fails', async () => {
-      const { container } = renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${VERIFY_ROLES_URL}/r2` && method === 'DELETE') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
-      await fireEvent.click(deleteIcons[1])
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${VERIFY_ROLES_URL}/r2`, 'DELETE'))
-      expect(screen.getByText('@Moderator')).toBeInTheDocument()
-    })
-  })
-
-  describe('select role modal (add role)', () => {
-    it('lists only guild roles not already verified, and adds the chosen one only after Save', async () => {
-      // Free tier is at the 2-role limit with the default fixture, which hides "Add Role" behind
-      // the premium upsell (covered separately below) - go premium here so it's clickable.
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      const { container } = renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      stubDialogGlobal(container, 'select_role_modal')
-      await fireEvent.click(screen.getByText('Add Role'))
-      expect(fetchAPI).toHaveBeenCalledWith(GUILD_ROLES_URL, 'GET')
-
-      const modal = container.querySelector('#select_role_modal') as HTMLElement
-      await vi.waitFor(() => expect(within(modal).queryByRole('combobox')).toBeInTheDocument())
-      const optionTexts = within(modal)
-        .getAllByRole('option', { hidden: true })
-        .map((o) => o.textContent)
-      expect(optionTexts).toContain('VIP')
-      expect(optionTexts).not.toContain('Admin')
-      expect(optionTexts).not.toContain('Moderator')
-
-      const newRole = { roleID: 'r3', isGiveRole: true, enabled: true }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${VERIFY_ROLES_URL}/r3` && method === 'POST') return Promise.resolve(okJson(newRole))
-        return Promise.resolve(okJson([]))
-      })
-      const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'r3' } })
-      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
-      await fireEvent.click(within(modal).getByRole('button', { name: 'Save', hidden: true }))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${VERIFY_ROLES_URL}/r3`, 'POST'))
-      await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
-    })
-
-    it('does not add a role when the create request fails', async () => {
-      const { container } = renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      stubDialogGlobal(container, 'select_role_modal')
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${VERIFY_ROLES_URL}/r3` && method === 'POST') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      const modal = container.querySelector('#select_role_modal') as HTMLElement
-      const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'r3' } })
-      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
-      await fireEvent.click(within(modal).getByRole('button', { name: 'Save', hidden: true }))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${VERIFY_ROLES_URL}/r3`, 'POST'))
-      expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
-    })
-
-    it('shows the loading fallback while verifyRoles is loading', () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-        if (endpoint === VERIFY_ROLES_URL) return new Promise(() => {})
-        if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson([]))
-      })
-      const { container } = renderWithProviders(() => <GuildVerification />)
-      const modal = container.querySelector('#select_role_modal') as HTMLElement
-      expect(within(modal).getByText('Loading...')).toBeInTheDocument()
-    })
-  })
-
-  describe('edit role modal', () => {
-    it('is empty while guildRoles/verifyRoles are loading (whole body gated)', () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-        if (endpoint === VERIFY_ROLES_URL) return new Promise(() => {})
-        if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson([]))
-      })
-      const { container } = renderWithProviders(() => <GuildVerification />)
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      expect(within(modal).queryByText('Save')).not.toBeInTheDocument()
-    })
-
-    it('opens with the selected role and saves edits to action and active', async () => {
-      const { container } = renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-
-      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
-      await fireEvent.click(editIcons[0])
-
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      // There's no accessible name to disambiguate the three <select> elements in this modal, so
-      // find the disabled role-name select by its disabled state (like GuildAutoRoles.test.tsx).
-      const selects = within(modal).getAllByRole('combobox', { hidden: true }) as HTMLSelectElement[]
-      const nameSelect = selects.find((s) => s.disabled)!
-      expect(nameSelect.textContent).toContain('Admin')
-
-      const [actionSelect, activeSelect] = selects.filter((s) => !s.disabled)
-      expect(actionSelect.value).toBe('true') // isGiveRole: true -> "Give Role"
-      expect(activeSelect.value).toBe('true') // enabled: true
-
-      await fireEvent.change(actionSelect, { target: { value: 'false' } })
-      await fireEvent.change(activeSelect, { target: { value: 'false' } })
-
-      const updated = { roleID: 'r1', isGiveRole: false, enabled: false }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${VERIFY_ROLES_URL}/r1` && method === 'PUT') return Promise.resolve(okJson(updated))
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(within(modal).getByText('Save'))
-
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(`${VERIFY_ROLES_URL}/r1`, 'PUT', {
-          isGiveRole: false,
-          enabled: false,
-        }),
-      )
-      await vi.waitFor(() => expect(within(table(container)).getAllByText('Remove Role')).toHaveLength(2))
-      const rows = screen.getAllByRole('row').slice(1)
-      expect(rows[0].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
-    })
-
-    it('does not update the list when editing a role fails', async () => {
-      const { container } = renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
-      await fireEvent.click(editIcons[0])
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${VERIFY_ROLES_URL}/r1` && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      const editable = (within(modal).getAllByRole('combobox') as HTMLSelectElement[]).find(
-        (select) => !select.disabled,
-      )!
-      await fireEvent.change(editable, { target: { value: 'false' } })
-      await fireEvent.click(within(modal).getByText('Save'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${VERIFY_ROLES_URL}/r1`, 'PUT', expect.anything()))
-      expect(within(table(container)).getByText('Give Role')).toBeInTheDocument()
-    })
-  })
-
-  describe('premium gating for Add Role', () => {
-    it('shows Add Role directly when premium, even at the 2-role limit', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      expect(screen.getByText('Add Role')).toBeInTheDocument()
-    })
-
-    it('shows the premium upsell instead of Add Role when free and at the 2-role limit', async () => {
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      expect(screen.queryByText('Add Role')).not.toBeInTheDocument()
-      expect(screen.getByText('Limited to 2 roles for free users.')).toBeInTheDocument()
-    })
-
-    it('shows Add Role when free and under the 2-role limit', async () => {
-      setupFetchAPI({ verifyRoles: [defaultVerifyRolesRaw()[0]] })
-      renderWithProviders(() => <GuildVerification />)
-      await waitForLoaded()
-      expect(screen.getByText('Add Role')).toBeInTheDocument()
-    })
-  })
-
-  describe('MissingRolePermission banner integration', () => {
-    it('shows the warning banner for a verify role the bot cannot manage', async () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint.includes(SUBORDINATION_URL_PART)) {
-          // r1 is missing from the subordination map entirely -> flagged as unmanageable.
-          return Promise.resolve(okJson({ r2: { name: 'Moderator', editable: true } }))
-        }
-        if (endpoint === VERIFY_ROLES_URL && method === 'GET') return Promise.resolve(okJson(defaultVerifyRolesRaw()))
-        if (endpoint === GUILD_ROLES_URL && method === 'GET') return Promise.resolve(okJson(defaultGuildRoles()))
-        return Promise.resolve(okJson([]))
-      })
-      renderWithProviders(() => <GuildVerification />)
-      // Both the warning banner and the verify-role table render "@Admin" here, so waitForLoaded's
-      // single-match query would be ambiguous - wait for the banner text itself instead.
-      await vi.waitFor(() => expect(screen.getByText(/does not have the permission/)).toBeInTheDocument())
-    })
+  it('keeps free-tier creation limited to two verification roles', async () => {
+    renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    expect(screen.queryByRole('button', { name: 'Add Role' })).not.toBeInTheDocument()
+    expect(screen.getByText('Limited to 2 roles for free users.')).toBeInTheDocument()
   })
 })

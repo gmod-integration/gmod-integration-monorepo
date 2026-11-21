@@ -843,10 +843,10 @@
       },
       "config": {
         "title": "Configuration",
-        "description": "Manage the in game configuration of this server.",
+        "description": "Bu sunucunun oyun içi yapılandırmasını yönetin.",
         "error_occurred": "Sunucu yapılandırması alınırken bir hata oluştu.",
         "default": "Varsayılan",
-        "add_admin_rank": "Add rank",
+        "add_admin_rank": "Rütbe ekle",
         "settings": {
           "ig_syncBan": {
             "title": "Yasakları Senkronize Et",
@@ -912,7 +912,8 @@
             "title": "Yönetici Rütbeleri",
             "description": "Yapılandırmayı düzenlemesi veya bakım modunu atlaması izin verilen rütbeler."
           }
-        }
+        },
+        "remove_admin_rank": "Rütbeyi kaldır"
       },
       "team_roles": {
         "error_occurred": "Une erreur s'est produite lors de la recherche de la synchronisation des rôles.",
@@ -957,8 +958,12 @@
         "modal_title": "Modifier le rôle automatique",
         "modal_description": "Modifier les paramètres de ce rôle automatique.",
         "close_button": "Fermer",
-        "failed_to_load": "Impossible de charger les liens",
-        "add_role": "Ajouter un rôle"
+        "failed_to_load": "Roller yüklenemedi.",
+        "add_role": "Ajouter un rôle",
+        "delete_confirmation": "Yeni üyelere bu rol artık otomatik verilmez. Mevcut üyeler rollerini korur.",
+        "delete": "Sil",
+        "premium": "Ücretsiz kullanıcılar için 3 otomatik rolle sınırlıdır.",
+        "active_help": "Bu listedeki tüm roller yeni üyelere otomatik olarak atanır."
       },
       "verification": {
         "check_button": "Vérifier tous les rôles",
@@ -993,7 +998,13 @@
         "edit_tooltip": "Modifier",
         "delete_tooltip": "Supprimer",
         "failed_to_load_links": "Impossible de charger les liens",
-        "add_role_button": "Ajouter un rôle"
+        "add_role_button": "Ajouter un rôle",
+        "publish_confirmation": "Doğrulama #{1} kanalında yayımlansın mı?",
+        "publish_consequence": "Üyeler, hesaplarını bağlamak için bu mesajı kullanabilir.",
+        "delete_message_confirmation": "#{1} kanalındaki doğrulama silinsin mi?",
+        "delete_message_consequence": "Üyeler artık bu mesajdan doğrulama başlatamaz.",
+        "delete_role_consequence": "Doğrulama artık bu rolü vermez veya kaldırmaz. Mevcut üyeler geçerli rollerini korur.",
+        "check_confirmation": "{1} üyelerinin rolleri kontrol edilsin mi?"
       },
       "information": {
         "title": "Informations",
@@ -1050,7 +1061,8 @@
         "edit_link": "Modifier le lien",
         "save": "Enregistrer",
         "yes": "Oui",
-        "no": "Numéro"
+        "no": "Numéro",
+        "delete_confirmation": "Bu kısayol artık üyeler tarafından kullanılamaz."
       }
     },
     "menu": {
@@ -1121,7 +1133,23 @@
     "back_home": "Ana sayfaya dön",
     "contents": "İçindekiler",
     "enabled": "Etkin",
-    "disabled": "Devre dışı"
+    "disabled": "Devre dışı",
+    "delete_target": "{1} silinsin mi?",
+    "invalid_value": "Geçerli bir değer girin.",
+    "publish": "Yayımla",
+    "delete": "Sil",
+    "create": "Oluştur",
+    "sync_pending": "Kaydedildi. Eşitleme bekleniyor.",
+    "required": "Bu alan zorunludur.",
+    "confirm_delete": "Bu öğe silinsin mi?",
+    "invalid_url": "Geçerli bir HTTP veya HTTPS URL’si girin.",
+    "action_error": "İşlem başarısız oldu. Tekrar deneyin.",
+    "confirm": "Onayla",
+    "leave_title": "Kaydetmeden çıkılsın mı?",
+    "wait_saving": "Çıkmadan önce kaydetme işleminin bitmesini bekleyin.",
+    "leave_description": "Kaydedilmemiş değişiklikleriniz atılacak.",
+    "stay": "Bu sayfada kal",
+    "discard_leave": "Değişiklikleri at ve çık"
   },
   "settings": {
     "access": "Erişim ve doğrulama",
@@ -1142,7 +1170,7 @@
     "chat_default_help": "Oyun mesajlarının varsayılan olarak aktarılmasını veya engellenmesini seçin. İstisnaları aşağıdaki kurallarda ayarlayın.",
     "chat_destination": "Discord hedefi",
     "chat_destination_help": "Mesajlar bu kanal üzerinden aktarılır. Sohbet köprüsünü bağlamak için bir kanal seçin.",
-    "chat_direction_help": "Sohbet köprüsü üzerinden hangi taraftan mesaj gönderilebileceğini seçin. Değişiklikler otomatik kaydedilir.",
+    "chat_direction_help": "İleti aktarımı üzerinden hangi tarafın mesaj gönderebileceğini seçin, ardından bu bölümü kaydedin.",
     "chat_ping_help": "Aktarılan mesajların Discord üyelerinden ve rollerinden bahsetmesini engelleyin.",
     "chat_rules": "Filtre kuralları",
     "general": "Genel",
@@ -1154,12 +1182,12 @@
     "message_content": "Mesaj içeriği",
     "moderation": "Moderasyon",
     "moderation_description": "Yaptırımları Discord ile oyun sunucusu arasında eşitleyin.",
-    "nickname_format_help": "Kaydedilen takma ad biçimini önizleyin, ardından şablonu ve değişkenlerini düzenleyin.",
+    "nickname_format_help": "Takma ad biçimini ve değişkenlerini düzenleyin, ardından bu bölümü kaydedin.",
     "no_results": "Bu kategoride aramanızla eşleşen ayar yok.",
     "pseudo_rules_help": "Ön ekler ve rol adları yalnızca biçim {rolePrefix} veya {roleName} içeriyorsa kullanılır.",
     "reset_filters": "Filtreleri sıfırla",
     "results": "ayar gösteriliyor",
-    "rule_setup_help": "Bir Discord rolü seçin, oyundaki eşleştirmesini düzenleyin ve kuralı etkinleştirin.",
+    "rule_setup_help": "Discord rolü, eşitleme seçenekleri ve etkinleştirme durumuyla eksiksiz bir kural oluşturun.",
     "saved_preview": "Kaydedilen önizleme",
     "search": "Ayar ara",
     "search_placeholder": "Ada veya açıklamaya göre ara…",
@@ -1174,13 +1202,35 @@
     "status_content_help": "Mesajda neyin görüneceğini seçin. Önizlemeyi kontrol edip değişikliklerinizi kaydedin.",
     "status_players_help": "Bağlı oyuncuları gösterin ve her biri için görüntülenen bilgileri özelleştirin.",
     "sync_behavior": "Eşitleme davranışı",
-    "sync_direction_help": "Bu yön aşağıdaki tüm kurallar için geçerlidir. Değişiklikler otomatik kaydedilir.",
+    "sync_direction_help": "Bu yön aşağıdaki tüm kurallara uygulanır. Değişiklikleri uygulamak için bu bölümü kaydedin.",
     "sync_disabled": "Eşitleme devre dışı. Biçiminiz ve kurallarınız, yeniden etkinleştirdiğinizde kullanılmak üzere korunur.",
     "sync_premium_help": "Discord’dan oyuna ve iki yönlü eşitleme Premium gerektirir.",
     "verification_dependency": "Bu kontrol, hesap bağlantısı zorunlu olduğunda uygulanır.",
     "verification_existing_members": "Mevcut üyeler",
     "verification_message": "Doğrulamaya giriş",
     "verification_message_hint": "Üyelerin hesaplarını bağlamak için kullanacağı mesajı bir Discord kanalında yayımlayın.",
-    "verification_preferences": "Üye deneyimi"
+    "verification_preferences": "Üye deneyimi",
+    "explicit_save": "Değişiklikler bu bölümü kaydettiğinizde uygulanır.",
+    "channel_draft_help": "Bir hedef seçin, ardından uygulamak için kaydedin.",
+    "server_port_invalid": "1 ile 65535 arasında bir bağlantı noktası girin.",
+    "image_url_invalid": "HTTP veya HTTPS resim URL’si girin.",
+    "server_reset_confirm": "Geçerli belirteç çalışmayı durdurur. Sıfırladıktan sonra Garry’s Mod yapılandırmanızda güncelleyin.",
+    "server_delete_confirm": "Bu sunucuyu ve kontrol paneli verilerini kaldırın. Bu işlem geri alınamaz.",
+    "server_edit_help": "Sunucu kimliğini ve bağlantı bilgilerini düzenleyin, ardından tüm değişiklikleri birlikte kaydedin."
+  },
+  "editing": {
+    "remove_channel": "Bu hedef kaldırılsın mı? Sonraki mesajlar artık bu kanala gönderilmez.",
+    "section_help": "Bu ayarları düzenleyin, ardından uygulamak için bölümü kaydedin.",
+    "remove_status_help": "Discord’da yayımlanan durum mesajını kaldırın. Kaydedilen yapılandırma korunur.",
+    "publish_saved_first": "Mesaj yayımlamadan önce değişikliklerinizi kaydedin veya iptal edin.",
+    "status_scope": "Mesaj ve düğmelerindeki değişiklikler birlikte kaydedilir.",
+    "conflict": "Kaydedilen değerler değişti. Yeniden kaydetmeden önce bunları tekrar yükleyin.",
+    "sync_pending": "Yapılandırma kaydedildi. Discord güncellemesi henüz onaylanmadı.",
+    "reload_saved": "Değişiklikleri at ve kayıtlı değerleri yeniden yükle",
+    "save_status": "Durum yapılandırmasını kaydet",
+    "invalid_status": "Kaydetmeden önce düğme adlarını ve URL’lerini kontrol edin.",
+    "apply_draft": "Taslağa uygula",
+    "delete_trigger": "Tetikleyici silinsin mi?",
+    "delete_trigger_help": "Seçili olay eylemi artık çalışmaz. Bu işlem geri alınamaz."
   }
 }

@@ -902,7 +902,7 @@
       },
       "config": {
         "title": "Configuration",
-        "description": "Manage the in game configuration of this server.",
+        "description": "Manage this server’s in-game configuration.",
         "error_occurred": "An error occurred while fetching the server configuration.",
         "default": "Default",
         "add_admin_rank": "Add rank",
@@ -971,7 +971,8 @@
             "title": "Admin Ranks",
             "description": "Ranks allowed to edit config or bypass maintenance mode."
           }
-        }
+        },
+        "remove_admin_rank": "Remove rank"
       }
     },
     "guild": {
@@ -997,8 +998,12 @@
         "modal_title": "Edit Auto Role",
         "modal_description": "Edit the settings for this auto role.",
         "close_button": "Close",
-        "failed_to_load": "Failed to load the links",
-        "add_role": "Add Role"
+        "failed_to_load": "Unable to load roles.",
+        "add_role": "Add Role",
+        "delete_confirmation": "New members will no longer receive this role automatically. Existing members keep their role.",
+        "delete": "Delete",
+        "premium": "Limited to 3 auto roles for free users.",
+        "active_help": "Every role listed here is automatically assigned to new members."
       },
       "verification": {
         "check_button": "Check All Roles",
@@ -1033,7 +1038,13 @@
         "edit_tooltip": "Edit",
         "delete_tooltip": "Delete",
         "failed_to_load_links": "Failed to load the links",
-        "add_role_button": "Add Role"
+        "add_role_button": "Add Role",
+        "publish_confirmation": "Publish verification in #{1}?",
+        "publish_consequence": "Members will be able to use this message to link their accounts.",
+        "delete_message_confirmation": "Delete verification in #{1}?",
+        "delete_message_consequence": "Members will no longer be able to start verification from this message.",
+        "delete_role_consequence": "This role will no longer be given or removed by verification. Existing members keep their current roles.",
+        "check_confirmation": "Check roles for members of {1}?"
       },
       "information": {
         "title": "Informations",
@@ -1090,7 +1101,8 @@
         "edit_link": "Edit Link",
         "save": "Save",
         "yes": "Yes",
-        "no": "No"
+        "no": "No",
+        "delete_confirmation": "This shortcut will no longer be available to members."
       },
       "bans": {
         "gmod_title": "GMod Bans",
@@ -1207,7 +1219,23 @@
     "back_home": "Back to home",
     "contents": "Contents",
     "enabled": "Enabled",
-    "disabled": "Disabled"
+    "disabled": "Disabled",
+    "delete_target": "Delete {1}?",
+    "invalid_value": "Enter a valid value.",
+    "publish": "Publish",
+    "delete": "Delete",
+    "create": "Create",
+    "sync_pending": "Saved. Synchronization is pending.",
+    "required": "This field is required.",
+    "confirm_delete": "Delete this item?",
+    "invalid_url": "Enter a valid HTTP or HTTPS URL.",
+    "action_error": "The action failed. Please try again.",
+    "confirm": "Confirm",
+    "leave_title": "Leave without saving?",
+    "wait_saving": "Wait for saving to finish before leaving.",
+    "leave_description": "Your unsaved changes will be discarded.",
+    "stay": "Stay on this page",
+    "discard_leave": "Discard and leave"
   },
   "settings": {
     "access": "Access and verification",
@@ -1228,7 +1256,7 @@
     "chat_default_help": "Choose whether game messages are relayed or blocked by default. Configure exceptions in the rules below.",
     "chat_destination": "Discord destination",
     "chat_destination_help": "Messages are relayed through this channel. Select a channel to connect the relay.",
-    "chat_direction_help": "Choose which side can send messages through the relay. Changes are saved automatically.",
+    "chat_direction_help": "Choose which side can send messages through the relay, then save this section.",
     "chat_ping_help": "Prevent relayed messages from mentioning Discord members and roles.",
     "chat_rules": "Filter rules",
     "general": "General",
@@ -1240,12 +1268,12 @@
     "message_content": "Message content",
     "moderation": "Moderation",
     "moderation_description": "Synchronize sanctions between Discord and the game server.",
-    "nickname_format_help": "Preview the saved nickname format, then edit the template and its variables.",
+    "nickname_format_help": "Edit the nickname format and its variables, then save this section.",
     "no_results": "No settings match your search in this category.",
     "pseudo_rules_help": "Prefixes and role names are used only when the format contains {rolePrefix} or {roleName}.",
     "reset_filters": "Reset filters",
     "results": "settings shown",
-    "rule_setup_help": "Choose a Discord role, then edit its game mapping and enable the rule.",
+    "rule_setup_help": "Create a complete rule with a Discord role, its synchronization options and activation state.",
     "saved_preview": "Saved preview",
     "search": "Search settings",
     "search_placeholder": "Search by name or description…",
@@ -1260,13 +1288,35 @@
     "status_content_help": "Choose what appears in the message. Review the preview, then save your changes.",
     "status_players_help": "Include the connected players and customize the information shown for each one.",
     "sync_behavior": "Synchronization behavior",
-    "sync_direction_help": "This direction applies to every rule below. Changes are saved automatically.",
+    "sync_direction_help": "This direction applies to every rule below. Save this section to apply changes.",
     "sync_disabled": "Synchronization is disabled. Your format and rules are kept for when you enable it again.",
     "sync_premium_help": "Discord to game and two-way synchronization require Premium.",
     "verification_dependency": "This check applies when forced account linking is enabled.",
     "verification_existing_members": "Existing members",
     "verification_message": "Verification entry point",
     "verification_message_hint": "Publish the message members use to link their accounts in a Discord channel.",
-    "verification_preferences": "Member experience"
+    "verification_preferences": "Member experience",
+    "explicit_save": "Changes apply only when you save this section.",
+    "channel_draft_help": "Choose a destination, then save to apply it.",
+    "server_port_invalid": "Enter a port between 1 and 65535.",
+    "image_url_invalid": "Enter an HTTP or HTTPS image URL.",
+    "server_reset_confirm": "The current token will stop working. Update it in your Garry’s Mod configuration after resetting it.",
+    "server_delete_confirm": "Remove this server and its dashboard data. This cannot be undone.",
+    "server_edit_help": "Edit the server identity and connection details, then save your changes together."
+  },
+  "editing": {
+    "remove_channel": "Remove this destination? Future messages will no longer be sent to this channel.",
+    "section_help": "Edit these settings, then save this section to apply them.",
+    "remove_status_help": "Remove the published Discord status message. The saved configuration is kept.",
+    "publish_saved_first": "Save or cancel your changes before publishing a message.",
+    "status_scope": "Changes to the message and its buttons are saved together.",
+    "conflict": "The saved values changed. Reload them before saving again.",
+    "sync_pending": "The configuration is saved. The Discord update has not been confirmed yet.",
+    "reload_saved": "Discard changes and reload saved values",
+    "save_status": "Save status configuration",
+    "invalid_status": "Check the button names and URLs before saving.",
+    "apply_draft": "Apply to draft",
+    "delete_trigger": "Delete trigger?",
+    "delete_trigger_help": "The selected event action will stop running. This cannot be undone."
   }
 }

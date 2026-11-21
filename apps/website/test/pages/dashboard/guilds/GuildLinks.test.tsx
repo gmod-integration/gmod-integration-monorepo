@@ -15,7 +15,7 @@ const LINKS_URL = '/users/:discordID/guilds/:guildID/links'
 
 afterEach(() => {
   cleanup()
-  clearDialogGlobals('edit_select_link')
+  clearDialogGlobals('edit_select_link', 'delete_link')
   vi.restoreAllMocks()
 })
 
@@ -84,29 +84,60 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
     })
 
-    it('adds a link and appends it to the list on success', async () => {
-      renderWithProviders(() => <GuildLinks />)
+    it('opens an empty draft and sends all fields only on Create', async () => {
+      const { container } = renderWithProviders(() => <GuildLinks />)
       await waitForLoaded()
-      const newLink = { id: 3, alias: 'New', url: 'https://new.example.com', active: true }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === LINKS_URL && method === 'POST') return Promise.resolve(okJson(newLink))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(screen.getByText('Add Link'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LINKS_URL, 'POST'))
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Link' }))
+      const modal = container.querySelector<HTMLDialogElement>('#edit_select_link')!
+      expect(within(modal).getByLabelText(/^Alias/)).toHaveValue('')
+      expect(within(modal).getByRole('button', { name: 'Create' })).toBeDisabled()
+      await fireEvent.input(within(modal).getByLabelText(/^Alias/), { target: { value: 'New' } })
+      await fireEvent.input(within(modal).getByLabelText(/^URL/), { target: { value: 'https://new.example.com' } })
+      await fireEvent.change(within(modal).getByLabelText('Active'), { target: { value: 'true' } })
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+      ;(fetchAPI as Mock).mockResolvedValue(
+        okJson({ id: 3, alias: 'New', url: 'https://new.example.com', active: true }),
+      )
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Create' }))
+      await vi.waitFor(() =>
+        expect(fetchAPI).toHaveBeenCalledWith(LINKS_URL, 'POST', {
+          alias: 'New',
+          url: 'https://new.example.com',
+          active: true,
+        }),
+      )
       await vi.waitFor(() => expect(screen.getByText('New')).toBeInTheDocument())
+      await vi.waitFor(() => expect(modal.open).toBe(false))
     })
 
-    it('does not update the list when adding a link fails', async () => {
-      renderWithProviders(() => <GuildLinks />)
+    it('preserves a failed creation draft and permits retry', async () => {
+      const { container } = renderWithProviders(() => <GuildLinks />)
       await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === LINKS_URL && method === 'POST') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(screen.getByText('Add Link'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LINKS_URL, 'POST'))
-      expect(screen.getAllByRole('row')).toHaveLength(3) // header + 2 unchanged rows
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Link' }))
+      const modal = container.querySelector<HTMLDialogElement>('#edit_select_link')!
+      await fireEvent.input(within(modal).getByLabelText(/^Alias/), { target: { value: 'New' } })
+      await fireEvent.input(within(modal).getByLabelText(/^URL/), { target: { value: 'https://new.example.com' } })
+      ;(fetchAPI as Mock).mockResolvedValue(errJson())
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Create' }))
+      await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+      expect(within(modal).getByLabelText(/^Alias/)).toHaveValue('New')
+      expect(modal.open).toBe(true)
+      ;(fetchAPI as Mock).mockResolvedValue(
+        okJson({ id: 3, alias: 'New', url: 'https://new.example.com', active: false }),
+      )
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Create' }))
+      await vi.waitFor(() => expect(modal.open).toBe(false))
+    })
+
+    it('rejects empty aliases and unsafe URL schemes before any request', async () => {
+      const { container } = renderWithProviders(() => <GuildLinks />)
+      await waitForLoaded()
+      await fireEvent.click(screen.getByRole('button', { name: 'Add Link' }))
+      const modal = container.querySelector<HTMLDialogElement>('#edit_select_link')!
+      await fireEvent.input(within(modal).getByLabelText(/^Alias/), { target: { value: '   ' } })
+      await fireEvent.input(within(modal).getByLabelText(/^URL/), { target: { value: 'javascript:alert(1)' } })
+      expect(within(modal).getByRole('button', { name: 'Create' })).toBeDisabled()
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')).toHaveLength(0)
     })
   })
 
@@ -120,6 +151,10 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       })
       const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
+      const confirmation = container.querySelector<HTMLDialogElement>('#delete_link')!
+      expect(within(confirmation).getByText('Delete Docs?')).toBeInTheDocument()
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'DELETE')).toHaveLength(0)
+      await fireEvent.click(within(confirmation).getByRole('button', { name: 'Delete' }))
       await vi.waitFor(() => expect(screen.queryByText('Docs')).not.toBeInTheDocument())
       expect(screen.getByText('Site')).toBeInTheDocument()
     })
@@ -133,6 +168,10 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       })
       const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
+      const confirmation = container.querySelector<HTMLDialogElement>('#delete_link')!
+      expect(within(confirmation).getByText('Delete Docs?')).toBeInTheDocument()
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'DELETE')).toHaveLength(0)
+      await fireEvent.click(within(confirmation).getByRole('button', { name: 'Delete' }))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${LINKS_URL}/2`, 'DELETE'))
       expect(screen.getByText('Docs')).toBeInTheDocument()
     })
@@ -186,13 +225,13 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
         return Promise.resolve(okJson({}))
       })
       const modal = container.querySelector('#edit_select_link') as HTMLElement
-      await fireEvent.input(within(modal).getByLabelText('Alias'), { target: { value: 'Unsaved alias' } })
+      await fireEvent.input(within(modal).getByLabelText(/^Alias/), { target: { value: 'Unsaved alias' } })
       await fireEvent.click(within(modal).getByText('Save'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${LINKS_URL}/1`, 'PUT', expect.anything()))
       expect(screen.getByText('Site')).toBeInTheDocument()
       expect(modal).toHaveAttribute('open')
-      expect(within(modal).getByRole('alert')).toBeInTheDocument()
-      expect(within(modal).getByLabelText('Alias')).toHaveValue('Unsaved alias')
+      await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+      expect(within(modal).getByLabelText(/^Alias/)).toHaveValue('Unsaved alias')
     })
 
     it('discards changes on Cancel and restores the saved values when reopened', async () => {
@@ -201,15 +240,15 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
       await fireEvent.click(edit)
       const modal = container.querySelector<HTMLDialogElement>('#edit_select_link')!
-      await fireEvent.input(within(modal).getByLabelText('Alias'), { target: { value: 'Local draft' } })
-      await fireEvent.input(within(modal).getByLabelText('URL'), { target: { value: 'https://draft.example' } })
+      await fireEvent.input(within(modal).getByLabelText(/^Alias/), { target: { value: 'Local draft' } })
+      await fireEvent.input(within(modal).getByLabelText(/^URL/), { target: { value: 'https://draft.example' } })
       expect(screen.getByText('Site')).toBeInTheDocument()
       expect(screen.queryByText('Local draft')).not.toBeInTheDocument()
       await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
-      expect(modal.open).toBe(false)
+      await vi.waitFor(() => expect(modal.open).toBe(false))
       await fireEvent.click(edit)
-      expect(within(modal).getByLabelText('Alias')).toHaveValue('Site')
-      expect(within(modal).getByLabelText('URL')).toHaveValue('https://example.com/')
+      expect(within(modal).getByLabelText(/^Alias/)).toHaveValue('Site')
+      expect(within(modal).getByLabelText(/^URL/)).toHaveValue('https://example.com/')
       expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
     })
 
@@ -218,7 +257,7 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       await waitForLoaded()
       await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
       const modal = container.querySelector<HTMLDialogElement>('#edit_select_link')!
-      await fireEvent.input(within(modal).getByLabelText('Alias'), { target: { value: 'Saved alias' } })
+      await fireEvent.input(within(modal).getByLabelText(/^Alias/), { target: { value: 'Saved alias' } })
       let resolveSave!: (response: ReturnType<typeof okJson>) => void
       ;(fetchAPI as Mock).mockImplementation(() => new Promise((resolve) => (resolveSave = resolve)))
       const save = within(modal).getByRole('button', { name: 'Save' })
@@ -227,7 +266,7 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
       expect(save).toBeDisabled()
       expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
-      expect(within(modal).getByLabelText('Alias')).toBeDisabled()
+      expect(within(modal).getByLabelText(/^Alias/)).toBeDisabled()
       expect(modal.open).toBe(true)
       resolveSave(okJson({ ...defaultLinksRaw()[0], alias: 'Saved alias' }))
       await vi.waitFor(() => expect(modal.open).toBe(false))
@@ -249,20 +288,20 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
       renderWithProviders(() => <GuildLinks />)
       await waitForLoaded()
-      expect(screen.getByText('Add Link')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add Link' })).toBeInTheDocument()
     })
 
     it('shows Add Link when free and under the 2-link limit', async () => {
       setupFetchAPI([defaultLinksRaw()[0]])
       renderWithProviders(() => <GuildLinks />)
       await waitForLoaded()
-      expect(screen.getByText('Add Link')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Add Link' })).toBeInTheDocument()
     })
 
     it('shows the premium upsell instead of Add Link when free and at the 2-link limit', async () => {
       renderWithProviders(() => <GuildLinks />)
       await waitForLoaded()
-      expect(screen.queryByText('Add Link')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add Link' })).not.toBeInTheDocument()
       expect(screen.getByText('Limited to 2 links for free users.')).toBeInTheDocument()
     })
   })

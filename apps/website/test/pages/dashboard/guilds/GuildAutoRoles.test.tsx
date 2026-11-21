@@ -1,10 +1,11 @@
+import type * as APIModule from '../../../../src/utils/api.js'
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../../testUtils.js'
 import { stubDialogGlobal, clearDialogGlobals, okJson, errJson } from './servers/testHelpers.js'
 
 vi.mock('../../../../src/utils/api.js', async (importActual) => {
-  const actual = await importActual<typeof import('../../../../src/utils/api.js')>()
+  const actual = await importActual<typeof APIModule>()
   return {
     ...actual,
     // GuildInformations.tsx's module-level guildRoles/guildChannels resources, and
@@ -28,7 +29,7 @@ const GUILD_ROLES_URL = '/users/:discordID/guilds/:guildID/roles'
 
 afterEach(() => {
   cleanup()
-  clearDialogGlobals('select_role_modal', 'edit_role_modal')
+  clearDialogGlobals('select_role_modal', 'delete_auto_role')
   vi.restoreAllMocks()
 })
 
@@ -41,10 +42,7 @@ function defaultGuildRoles() {
 }
 
 function defaultAutoRolesRaw() {
-  return [
-    { roleID: 'r1', enabled: true },
-    { roleID: 'r2', enabled: false },
-  ]
+  return [{ roleID: 'r1' }, { roleID: 'r2' }]
 }
 
 // All roles editable by default so MissingRolePermission's warning banner (which also renders a
@@ -103,7 +101,7 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
       return Promise.resolve(okJson([]))
     })
     renderWithProviders(() => <GuildAutoRoles />)
-    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Failed to load the links'))
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to load roles.'))
   })
 
   it('shows the failed-to-load message when the auto-roles fetch rejects', async () => {
@@ -113,7 +111,7 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
       return Promise.resolve(okJson([]))
     })
     renderWithProviders(() => <GuildAutoRoles />)
-    await vi.waitFor(() => expect(screen.getByText('Failed to load the links')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByText('Unable to load roles.')).toBeInTheDocument())
   })
 
   describe('delete auto role', () => {
@@ -126,6 +124,10 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
       })
       const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
+      const confirmation = container.querySelector<HTMLDialogElement>('#delete_auto_role')!
+      expect(within(confirmation).getByText('Delete Moderator?')).toBeInTheDocument()
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'DELETE')).toHaveLength(0)
+      await fireEvent.click(within(confirmation).getByRole('button', { name: 'Delete' }))
       await vi.waitFor(() => expect(screen.queryByText('@Moderator')).not.toBeInTheDocument())
       expect(screen.getByText('@Admin')).toBeInTheDocument()
     })
@@ -139,6 +141,10 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
       })
       const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
+      const confirmation = container.querySelector<HTMLDialogElement>('#delete_auto_role')!
+      expect(within(confirmation).getByText('Delete Moderator?')).toBeInTheDocument()
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'DELETE')).toHaveLength(0)
+      await fireEvent.click(within(confirmation).getByRole('button', { name: 'Delete' }))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${AUTO_ROLES_URL}/r2`, 'DELETE'))
       expect(screen.getByText('@Moderator')).toBeInTheDocument()
     })
@@ -212,53 +218,20 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
     })
   })
 
-  describe('edit role modal', () => {
-    it('discards the local enabled flag on Cancel without writing to the server', async () => {
-      const { container } = renderWithProviders(() => <GuildAutoRoles />)
-      await waitForLoaded()
-      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
-      await fireEvent.click(edit)
-      const modal = container.querySelector<HTMLDialogElement>('#edit_role_modal')!
-      const active = within(modal).getByLabelText('Active')
-      await fireEvent.change(active, { target: { value: 'false' } })
-      await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
-      expect(modal.open).toBe(false)
-      await fireEvent.click(edit)
-      expect(within(modal).getByLabelText('Active')).toHaveValue('true')
-      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
-    })
-
-    it('saves the enabled flag for the selected role via editVerifyRole', async () => {
-      const { container } = renderWithProviders(() => <GuildAutoRoles />)
-      await waitForLoaded()
-      const modal = stubDialogGlobal(container, 'edit_role_modal')
-      await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
-      expect(modal.showModal).toHaveBeenCalled()
-
-      const selects = within(modal).getAllByRole('combobox', { hidden: true }) as HTMLSelectElement[]
-      const activeSelect = selects.find((select) => !select.disabled)!
-      await fireEvent.change(activeSelect, { target: { value: 'false' } })
-
-      const updated = { roleID: 'r1', enabled: false }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${AUTO_ROLES_URL}/r1` && method === 'PUT') return Promise.resolve(okJson(updated))
-        return Promise.resolve(okJson({}))
-      })
-      const saveBtn = within(modal).getByText('Save')
-      await fireEvent.click(saveBtn)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${AUTO_ROLES_URL}/r1`, 'PUT', { enabled: false }))
-    })
+  it('treats every stored role as active and offers no unsupported activation editor', async () => {
+    const { container } = renderWithProviders(() => <GuildAutoRoles />)
+    await waitForLoaded()
+    expect(within(container.querySelector('table')!).getAllByText('Enabled')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    expect(screen.getByText('Every role listed here is automatically assigned to new members.')).toBeInTheDocument()
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
   })
 
   describe('premium gating for Add Role', () => {
     it('shows Add Role directly when premium, even at the free limit', async () => {
       window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
       setupFetchAPI({
-        autoRoles: [
-          { roleID: 'r1', enabled: true },
-          { roleID: 'r2', enabled: true },
-          { roleID: 'r3', enabled: true },
-        ],
+        autoRoles: [{ roleID: 'r1' }, { roleID: 'r2', enabled: true }, { roleID: 'r3', enabled: true }],
       })
       renderWithProviders(() => <GuildAutoRoles />)
       await waitForLoaded()
@@ -267,11 +240,7 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
 
     it('shows the premium upsell instead of Add Role when free and at the 3-role limit', async () => {
       setupFetchAPI({
-        autoRoles: [
-          { roleID: 'r1', enabled: true },
-          { roleID: 'r2', enabled: true },
-          { roleID: 'r3', enabled: true },
-        ],
+        autoRoles: [{ roleID: 'r1' }, { roleID: 'r2', enabled: true }, { roleID: 'r3', enabled: true }],
       })
       renderWithProviders(() => <GuildAutoRoles />)
       await waitForLoaded()

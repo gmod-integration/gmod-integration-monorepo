@@ -9,6 +9,9 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
   getUrlWithActualParams: vi.fn((s: string) => s),
 }))
 
+vi.mock('../../../../../../src/utils/dashboardSettings.js', () => ({ saveDashboardSettings: vi.fn() }))
+const { saveDashboardSettings } = await import('../../../../../../src/utils/dashboardSettings.js')
+
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
 const { ServerLogsParameters } =
@@ -57,6 +60,9 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
     guildChannelsMutate([{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }])
     ;(fetchAPI as Mock).mockReset()
     setupFetchAPI()
+    vi.mocked(saveDashboardSettings)
+      .mockReset()
+      .mockImplementation(async (_scope, settings) => ({ settings, sync: 'applied' }))
   })
 
   it('shows "No Logs Channel" when no channel is configured', async () => {
@@ -70,68 +76,76 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
     renderPage()
     await waitForLoaded()
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
-    expect(screen.getByText('Remove Channel')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove Channel' })).toBeInTheDocument()
   })
 
   it('does not show Remove Channel when no channel is configured', async () => {
     renderPage()
     await waitForLoaded()
-    await vi.waitFor(() => expect(screen.queryByText('Remove Channel')).not.toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.queryByRole('button', { name: 'Remove Channel' })).not.toBeInTheDocument())
   })
 
-  it('toggles the hide-IP checkbox and updates on success', async () => {
+  it('keeps both content settings local and cancels the whole section', async () => {
     renderPage()
     await waitForLoaded()
-    const checkbox = screen.getByRole('checkbox', { name: 'Hide IP in discord logs:' }) as HTMLInputElement
-    expect(checkbox.checked).toBe(false)
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint === HIDE_IP_URL && method === 'PUT') return Promise.resolve(okJson({ value: true }))
-      return Promise.resolve(okJson([]))
-    })
-    await fireEvent.click(checkbox)
-    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(HIDE_IP_URL, 'PUT', { value: true }))
-    await vi.waitFor(() => expect(checkbox.checked).toBe(true))
-  })
-
-  it('toggles the attach-log-file checkbox and updates on success', async () => {
-    renderPage()
-    await waitForLoaded()
-    const checkbox = screen.getByRole('checkbox', { name: 'Attach log information file:' }) as HTMLInputElement
-    expect(checkbox.checked).toBe(false)
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint === LOG_FILE_URL && method === 'PUT') return Promise.resolve(okJson({ value: true }))
-      return Promise.resolve(okJson([]))
-    })
-    await fireEvent.click(checkbox)
-    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LOG_FILE_URL, 'PUT', { value: true }))
-    await vi.waitFor(() => expect(checkbox.checked).toBe(true))
-  })
-
-  it.each([
-    [HIDE_IP_URL, 'Hide IP in discord logs:'],
-    [LOG_FILE_URL, 'Attach log information file:'],
-  ])('blocks duplicate changes, restores failed values and allows retry for %s', async (url, label) => {
-    renderPage()
-    await waitForLoaded()
-    const checkbox = screen.getByRole('checkbox', { name: label })
-    let finish!: (value: ReturnType<typeof errJson>) => void
-    ;(fetchAPI as Mock).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
-    await fireEvent.click(checkbox)
-    expect(checkbox).toBeDisabled()
-    expect(checkbox).toHaveAttribute('aria-busy', 'true')
-    await fireEvent.click(checkbox)
-    expect(
-      (fetchAPI as Mock).mock.calls.filter(([endpoint, method]) => endpoint === url && method === 'PUT'),
-    ).toHaveLength(1)
-    finish(errJson())
-    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
-    expect(checkbox).not.toBeChecked()
-    expect(checkbox).not.toBeDisabled()
-    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({ value: true }))
-    await fireEvent.click(checkbox)
+    const hide = screen.getByRole('checkbox', { name: 'Hide IP in discord logs:' })
+    const file = screen.getByRole('checkbox', { name: 'Attach log information file:' })
+    const save = screen.getByRole('button', { name: 'Save' })
+    expect(save).toBeDisabled()
+    await fireEvent.click(hide)
+    await fireEvent.click(file)
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'PUT')).toBe(false)
+    await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(hide).not.toBeChecked()
+    expect(file).not.toBeChecked()
+    expect(save).toBeDisabled()
+    await fireEvent.click(hide)
+    await fireEvent.click(file)
+    await fireEvent.click(save)
+    await vi.waitFor(() =>
+      expect(saveDashboardSettings).toHaveBeenCalledWith('server', { log_hide_ip: true, log_include_file: true }),
+    )
     await vi.waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument())
+  })
+
+  it('retains the section after failure, permits retry and blocks duplicate pending saves', async () => {
+    renderPage()
+    await waitForLoaded()
+    const checkbox = screen.getByRole('checkbox', { name: 'Hide IP in discord logs:' })
+    await fireEvent.click(checkbox)
+    vi.mocked(saveDashboardSettings).mockRejectedValueOnce(new Error('Offline'))
+    const save = screen.getByRole('button', { name: 'Save' })
+    await fireEvent.click(save)
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
     expect(checkbox).toBeChecked()
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    let finish!: () => void
+    vi.mocked(saveDashboardSettings).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = () => resolve({ settings: { log_hide_ip: true, log_include_file: false }, sync: 'applied' })
+        }),
+    )
+    await fireEvent.click(save)
+    await fireEvent.click(save)
+    expect(checkbox).toBeDisabled()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
+    finish()
+    await vi.waitFor(() => expect(checkbox).toBeEnabled())
+    expect(checkbox).toBeChecked()
+    expect(save).toBeDisabled()
+  })
+
+  it('shows a retryable error when content fails to load and never presents false default settings', async () => {
+    ;(fetchAPI as Mock).mockImplementation((endpoint: string) =>
+      Promise.resolve(endpoint === HIDE_IP_URL ? errJson() : okJson({})),
+    )
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+    setupFetchAPI()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
   })
 
   it('opens the channel selector modal on Select Channel', async () => {
@@ -184,7 +198,11 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
       if (endpoint === LOGS_CHANNEL_URL && method === 'DELETE') return Promise.resolve(okJson({}))
       return Promise.resolve(okJson([]))
     })
-    await fireEvent.click(screen.getByText('Remove Channel'))
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove Channel' }))
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'DELETE')).toBe(false)
+    await fireEvent.click(
+      within(document.querySelector('#remove-logs-channel')!).getByRole('button', { name: 'Delete' }),
+    )
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LOGS_CHANNEL_URL, 'DELETE'))
     await vi.waitFor(() => expect(screen.queryByText('#general')).not.toBeInTheDocument())
   })
@@ -198,7 +216,11 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
       if (endpoint === LOGS_CHANNEL_URL && method === 'DELETE') return Promise.resolve(errJson())
       return Promise.resolve(okJson([]))
     })
-    await fireEvent.click(screen.getByText('Remove Channel'))
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove Channel' }))
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'DELETE')).toBe(false)
+    await fireEvent.click(
+      within(document.querySelector('#remove-logs-channel')!).getByRole('button', { name: 'Delete' }),
+    )
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LOGS_CHANNEL_URL, 'DELETE'))
     expect(screen.getByText('#general')).toBeInTheDocument()
   })

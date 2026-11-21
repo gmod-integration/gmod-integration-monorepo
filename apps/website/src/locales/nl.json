@@ -843,10 +843,10 @@
       },
       "config": {
         "title": "Configuration",
-        "description": "Manage the in game configuration of this server.",
+        "description": "Beheer de spelconfiguratie van deze server.",
         "error_occurred": "Er is een fout opgetreden bij het ophalen van de serverconfiguratie.",
         "default": "Standaard",
-        "add_admin_rank": "Add rank",
+        "add_admin_rank": "Rang toevoegen",
         "settings": {
           "ig_syncBan": {
             "title": "Bans synchroniseren",
@@ -912,7 +912,8 @@
             "title": "Admin-rangen",
             "description": "Rangen die gemachtigd zijn om de configuratie te bewerken of de onderhoudsmodus over te slaan."
           }
-        }
+        },
+        "remove_admin_rank": "Rang verwijderen"
       },
       "team_roles": {
         "error_occurred": "Er is een fout opgetreden bij het ophalen van de rollensynchronisatie.",
@@ -957,8 +958,12 @@
         "modal_title": "Automatisch bewerken",
         "modal_description": "Bewerk de instellingen voor deze autorol.",
         "close_button": "Sluiten",
-        "failed_to_load": "Kon de links niet laden",
-        "add_role": "Rol toevoegen"
+        "failed_to_load": "Rollen kunnen niet worden geladen.",
+        "add_role": "Rol toevoegen",
+        "delete_confirmation": "Nieuwe leden krijgen deze rol niet meer automatisch. Bestaande leden behouden hun rol.",
+        "delete": "Verwijderen",
+        "premium": "Beperkt tot 3 automatische rollen voor gratis gebruikers.",
+        "active_help": "Alle rollen in deze lijst worden automatisch aan nieuwe leden toegewezen."
       },
       "verification": {
         "check_button": "Alle rollen controleren",
@@ -993,7 +998,13 @@
         "edit_tooltip": "Bewerken",
         "delete_tooltip": "Verwijderen",
         "failed_to_load_links": "Kon de links niet laden",
-        "add_role_button": "Rol toevoegen"
+        "add_role_button": "Rol toevoegen",
+        "publish_confirmation": "Verificatie publiceren in #{1}?",
+        "publish_consequence": "Leden kunnen dit bericht gebruiken om hun accounts te koppelen.",
+        "delete_message_confirmation": "Verificatie verwijderen uit #{1}?",
+        "delete_message_consequence": "Leden kunnen de verificatie niet meer via dit bericht starten.",
+        "delete_role_consequence": "Verificatie zal deze rol niet meer toewijzen of verwijderen. Bestaande leden behouden hun huidige rollen.",
+        "check_confirmation": "Rollen van leden van {1} controleren?"
       },
       "information": {
         "title": "Informatie",
@@ -1050,7 +1061,8 @@
         "edit_link": "Verwijzing bewerken",
         "save": "Opslaan",
         "yes": "Ja.",
-        "no": "Nee"
+        "no": "Nee",
+        "delete_confirmation": "Deze snelkoppeling is niet meer beschikbaar voor leden."
       }
     },
     "menu": {
@@ -1121,7 +1133,23 @@
     "back_home": "Terug naar de startpagina",
     "contents": "Inhoud",
     "enabled": "Ingeschakeld",
-    "disabled": "Uitgeschakeld"
+    "disabled": "Uitgeschakeld",
+    "delete_target": "{1} verwijderen?",
+    "invalid_value": "Voer een geldige waarde in.",
+    "publish": "Publiceren",
+    "delete": "Verwijderen",
+    "create": "Aanmaken",
+    "sync_pending": "Opgeslagen. Synchronisatie is in behandeling.",
+    "required": "Dit veld is verplicht.",
+    "confirm_delete": "Dit item verwijderen?",
+    "invalid_url": "Voer een geldige HTTP- of HTTPS-URL in.",
+    "action_error": "De actie is mislukt. Probeer het opnieuw.",
+    "confirm": "Bevestigen",
+    "leave_title": "Verlaten zonder op te slaan?",
+    "wait_saving": "Wacht tot het opslaan is voltooid voordat je vertrekt.",
+    "leave_description": "Je niet-opgeslagen wijzigingen worden verworpen.",
+    "stay": "Op deze pagina blijven",
+    "discard_leave": "Verwerpen en verlaten"
   },
   "settings": {
     "access": "Toegang en verificatie",
@@ -1142,7 +1170,7 @@
     "chat_default_help": "Kies of spelberichten standaard worden doorgestuurd of geblokkeerd. Stel uitzonderingen in met de onderstaande regels.",
     "chat_destination": "Discord-bestemming",
     "chat_destination_help": "Berichten worden via dit kanaal doorgestuurd. Selecteer een kanaal om de koppeling te verbinden.",
-    "chat_direction_help": "Kies vanaf welke kant berichten kunnen worden doorgestuurd. Wijzigingen worden automatisch opgeslagen.",
+    "chat_direction_help": "Kies welke kant berichten via de doorsturing kan verzenden en sla deze sectie op.",
     "chat_ping_help": "Voorkom dat doorgestuurde berichten Discord-leden en rollen vermelden.",
     "chat_rules": "Filterregels",
     "general": "Algemeen",
@@ -1154,12 +1182,12 @@
     "message_content": "Berichtinhoud",
     "moderation": "Moderatie",
     "moderation_description": "Synchroniseer sancties tussen Discord en de spelserver.",
-    "nickname_format_help": "Bekijk het opgeslagen naamformaat en bewerk daarna de sjabloon en de variabelen.",
+    "nickname_format_help": "Bewerk de bijnaamindeling en variabelen en sla deze sectie op.",
     "no_results": "Geen instellingen komen overeen met je zoekopdracht in deze categorie.",
     "pseudo_rules_help": "Voorvoegsels en rolnamen worden alleen gebruikt als het formaat {rolePrefix} of {roleName} bevat.",
     "reset_filters": "Filters wissen",
     "results": "getoonde instellingen",
-    "rule_setup_help": "Kies een Discord-rol, bewerk de bijbehorende spelinstelling en schakel de regel in.",
+    "rule_setup_help": "Maak een volledige regel met een Discord-rol, synchronisatieopties en activeringsstatus.",
     "saved_preview": "Opgeslagen voorbeeld",
     "search": "Instellingen zoeken",
     "search_placeholder": "Zoeken op naam of beschrijving…",
@@ -1174,13 +1202,35 @@
     "status_content_help": "Kies de berichtinhoud. Bekijk het voorbeeld en sla je wijzigingen op.",
     "status_players_help": "Toon verbonden spelers en pas de informatie voor elke speler aan.",
     "sync_behavior": "Synchronisatiegedrag",
-    "sync_direction_help": "Deze richting geldt voor alle onderstaande regels. Wijzigingen worden automatisch opgeslagen.",
+    "sync_direction_help": "Deze richting geldt voor alle onderstaande regels. Sla deze sectie op om wijzigingen toe te passen.",
     "sync_disabled": "Synchronisatie is uitgeschakeld. Je formaat en regels blijven bewaard totdat je synchronisatie weer inschakelt.",
     "sync_premium_help": "Synchronisatie van Discord naar het spel en in beide richtingen vereist Premium.",
     "verification_dependency": "Deze controle geldt wanneer accountkoppeling verplicht is.",
     "verification_existing_members": "Bestaande leden",
     "verification_message": "Startpunt voor verificatie",
     "verification_message_hint": "Plaats in een Discord-kanaal het bericht waarmee leden hun accounts kunnen koppelen.",
-    "verification_preferences": "Ervaring voor leden"
+    "verification_preferences": "Ervaring voor leden",
+    "explicit_save": "Wijzigingen worden toegepast wanneer je deze sectie opslaat.",
+    "channel_draft_help": "Kies een bestemming en sla op om deze toe te passen.",
+    "server_port_invalid": "Voer een poort tussen 1 en 65535 in.",
+    "image_url_invalid": "Voer een HTTP- of HTTPS-afbeeldings-URL in.",
+    "server_reset_confirm": "Het huidige token werkt daarna niet meer. Werk het na de reset bij in je Garry’s Mod-configuratie.",
+    "server_delete_confirm": "Deze server en de dashboardgegevens verwijderen. Dit kan niet ongedaan worden gemaakt.",
+    "server_edit_help": "Bewerk de identiteit en verbindingsgegevens van de server en sla alle wijzigingen samen op."
+  },
+  "editing": {
+    "remove_channel": "Deze bestemming verwijderen? Toekomstige berichten worden niet meer naar dit kanaal verzonden.",
+    "section_help": "Bewerk deze instellingen en sla de sectie op om ze toe te passen.",
+    "remove_status_help": "Het gepubliceerde Discord-statusbericht verwijderen. De opgeslagen configuratie blijft behouden.",
+    "publish_saved_first": "Sla je wijzigingen op of annuleer ze voordat je een bericht publiceert.",
+    "status_scope": "Wijzigingen aan het bericht en de knoppen worden samen opgeslagen.",
+    "conflict": "De opgeslagen waarden zijn gewijzigd. Laad ze opnieuw voordat je weer opslaat.",
+    "sync_pending": "De configuratie is opgeslagen. De Discord-update is nog niet bevestigd.",
+    "reload_saved": "Wijzigingen verwerpen en opgeslagen waarden opnieuw laden",
+    "save_status": "Statusconfiguratie opslaan",
+    "invalid_status": "Controleer de knopnamen en URL’s voordat je opslaat.",
+    "apply_draft": "Toepassen op concept",
+    "delete_trigger": "Trigger verwijderen?",
+    "delete_trigger_help": "De geselecteerde gebeurtenisactie wordt niet meer uitgevoerd. Dit kan niet ongedaan worden gemaakt."
   }
 }

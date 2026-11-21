@@ -173,6 +173,10 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
       const { container } = renderPage()
       await vi.waitFor(() => expect(container.querySelector('tbody svg[data-icon="trash-2"]')).toBeInTheDocument())
       await fireEvent.click(container.querySelector('tbody svg[data-icon="trash-2"]') as HTMLElement)
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'DELETE')).toHaveLength(0)
+      await fireEvent.click(
+        within(screen.getByRole('dialog', { name: 'Delete trigger?' })).getByRole('button', { name: 'Delete' }),
+      )
       await vi.waitFor(() => expect(container.querySelector('tbody svg[data-icon="trash-2"]')).not.toBeInTheDocument())
       expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.')
     })
@@ -187,7 +191,11 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
       const { container } = renderPage()
       await vi.waitFor(() => expect(container.querySelector('tbody svg[data-icon="trash-2"]')).toBeInTheDocument())
       await fireEvent.click(container.querySelector('tbody svg[data-icon="trash-2"]') as HTMLElement)
-      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'DELETE')).toHaveLength(0)
+      await fireEvent.click(
+        within(screen.getByRole('dialog', { name: 'Delete trigger?' })).getByRole('button', { name: 'Delete' }),
+      )
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('The action failed'))
       expect(container.querySelectorAll('tbody tr')).toHaveLength(1)
     })
   })

@@ -1,18 +1,20 @@
-import { type Component, createResource, Show } from 'solid-js'
+import { type Component, createEffect, createResource, createSignal, Show } from 'solid-js'
 import { showDialog } from '../../../../../utils/dialog.js'
-import { Button, SettingRow, SettingGroup, SettingFeedback } from '../../../../../components/ui/index.js'
+import { AsyncState, Button, FormActions, SettingRow, SettingGroup } from '../../../../../components/ui/index.js'
 import AdminPanel from '../../../../../components/AdminPanel'
 import DiscordChannel from '../../../../../components/discord/DiscordChannel'
 import { guildChannelsRefetch } from '../../GuildInformations'
 import { useI18n } from '../../../../../i18n'
 import { fetchAPI } from '../../../../../utils/api'
 import AdminChannelSelector from '../../../../../components/AdminChannelSelector'
-import { createAsyncAction } from '../../../../../hooks/createAsyncAction.js'
+import { createDraftForm } from '../../../../../hooks/createDraftForm.js'
+import { saveDashboardSettings } from '../../../../../utils/dashboardSettings.js'
+import ConfirmActionDialog from '../../../../../components/ConfirmActionDialog.js'
 
 const fetchLogHideIP = async () => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/log_hide_ip', 'GET')
   if (!res.ok) {
-    return {}
+    throw new Error('Log configuration unavailable')
   }
   return await res.json()
 }
@@ -20,7 +22,7 @@ const fetchLogHideIP = async () => {
 const fetchLogFile = async () => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/log_include_file', 'GET')
   if (!res.ok) {
-    return {}
+    throw new Error('Log configuration unavailable')
   }
   return await res.json()
 }
@@ -28,21 +30,37 @@ const fetchLogFile = async () => {
 const fetchLogsChannel = async () => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/logs/channels', 'GET')
   if (!res.ok) {
-    return {}
+    throw new Error('Log configuration unavailable')
   }
   return await res.json()
 }
 
 export const ServerLogsParameters: Component = () => {
   const { t } = useI18n()
-  const hideIPSave = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
-  const fileSave = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
-  const channelRemoval = createAsyncAction({
+  const [syncPending, setSyncPending] = createSignal(false)
+  const [logsChannel, { mutate: logsChannelMutate, refetch: refetchChannel }] = createResource(
+    'logsChannel',
+    fetchLogsChannel,
+  )
+  const [content, { refetch: refetchContent }] = createResource(async () => {
+    const [hideIP, file] = await Promise.all([fetchLogHideIP(), fetchLogFile()])
+    return {
+      log_hide_ip: hideIP.value === true || hideIP.value === 'true',
+      log_include_file: file.value === true || file.value === 'true',
+    }
+  })
+  const form = createDraftForm({
+    initial: { log_hide_ip: false, log_include_file: false },
     errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
   })
-  const [logsChannel, { mutate: logsChannelMutate }] = createResource('logsChannel', fetchLogsChannel)
-  const [logHideIP, { mutate: logHideIPMutate }] = createResource('logHideIP', fetchLogHideIP)
-  const [logFile, { mutate: logFileMutate }] = createResource('logFile', fetchLogFile)
+  createEffect(() => {
+    if (!content.loading && !content.error && content()) form.reset(content()!)
+  })
+  const saveContent = () =>
+    form.save(async (snapshot) => {
+      const result = await saveDashboardSettings('server', snapshot)
+      setSyncPending(result.sync === 'pending')
+    })
 
   const sendLogChannel = async (channelID: string) => {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/logs/channels', 'POST', {
@@ -64,40 +82,6 @@ export const ServerLogsParameters: Component = () => {
     return {}
   }
 
-  async function editLogHideIP(value: boolean) {
-    if (hideIPSave.pending()) return
-    const previous = logHideIP()
-    logHideIPMutate({ ...previous, value })
-    if (
-      !(await hideIPSave.run(async () => {
-        const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/log_hide_ip', 'PUT', {
-          value,
-        })
-        if (!res.ok) throw new Error('Hide IP update failed')
-        logHideIPMutate(await res.json())
-      }))
-    )
-      logHideIPMutate(previous)
-  }
-
-  async function editLogFile(value: boolean) {
-    if (fileSave.pending()) return
-    const previous = logFile()
-    logFileMutate({ ...previous, value })
-    if (
-      !(await fileSave.run(async () => {
-        const res = await fetchAPI(
-          '/users/:discordID/guilds/:guildID/servers/:serverID/settings/log_include_file',
-          'PUT',
-          { value },
-        )
-        if (!res.ok) throw new Error('Log attachment update failed')
-        logFileMutate(await res.json())
-      }))
-    )
-      logFileMutate(previous)
-  }
-
   return (
     <>
       <AdminChannelSelector
@@ -106,6 +90,16 @@ export const ServerLogsParameters: Component = () => {
         idSelect={!logsChannel.loading && !logsChannel.error ? logsChannel()?.channelID : undefined}
       />
 
+      <ConfirmActionDialog
+        id="remove-logs-channel"
+        title={t('dashboard.server.logs.button.remove_channel', 'Remove Channel')}
+        description={t(
+          'settings.channel_confirmation',
+          'Choose a channel, then confirm your selection. Removing it stops future messages in that channel.',
+        )}
+        confirmLabel={t('ui.delete', 'Delete')}
+        onConfirm={removeLogChannel}
+      />
       <AdminPanel
         title={t('dashboard.server.logs.title.logs_channel', 'Logs Channel')}
         description={t(
@@ -113,99 +107,92 @@ export const ServerLogsParameters: Component = () => {
           'Set a channel to sync the logs between your server and Discord.',
         )}
       >
-        <SettingRow
-          title={t('dashboard.server.logs.label.chats_channels', 'Chats Channels:')}
-          description={t(
-            'settings.channel_confirmation',
-            'Choose a channel, then confirm your selection. Removing it stops future messages in that channel.',
-          )}
-          feedback={<SettingFeedback pending={channelRemoval.pending()} error={channelRemoval.error()} />}
-        >
-          <div class="flex w-full min-w-0 items-center gap-2">
-            <Show
-              when={!logsChannel.loading && logsChannel().channelID}
-              fallback={
-                <span class="text-base-content/60">
-                  {t('dashboard.server.logs.no_logs_channel', 'No Logs Channel')}
-                </span>
-              }
-            >
-              <DiscordChannel channelID={logsChannel().channelID} />
-            </Show>
-          </div>
-          <Button
-            variant="primary"
-            size="sm"
-            disabled={logsChannel.loading || channelRemoval.pending()}
-            onClick={() => {
-              showDialog('select_channel_modal')
-              guildChannelsRefetch()
-            }}
+        <AsyncState loading={logsChannel.loading} error={logsChannel.error} onRetry={() => void refetchChannel()}>
+          <SettingRow
+            title={t('dashboard.server.logs.label.chats_channels', 'Chats Channels:')}
+            description={t(
+              'settings.channel_confirmation',
+              'Choose a channel, then confirm your selection. Removing it stops future messages in that channel.',
+            )}
           >
-            {t('dashboard.server.logs.button.select_channel', 'Select Channel')}
-          </Button>
-          <Show when={!logsChannel.loading && logsChannel().channelID}>
+            <div class="flex w-full min-w-0 items-center gap-2">
+              <Show
+                when={!logsChannel.loading && logsChannel().channelID}
+                fallback={
+                  <span class="text-base-content/60">
+                    {t('dashboard.server.logs.no_logs_channel', 'No Logs Channel')}
+                  </span>
+                }
+              >
+                <DiscordChannel channelID={logsChannel().channelID} />
+              </Show>
+            </div>
             <Button
-              variant="ghost"
+              variant="primary"
               size="sm"
-              loading={channelRemoval.pending()}
-              onClick={() => void channelRemoval.run(removeLogChannel)}
+              disabled={logsChannel.loading || !!logsChannel.error}
+              onClick={() => {
+                showDialog('select_channel_modal')
+                guildChannelsRefetch()
+              }}
             >
-              {t('dashboard.server.logs.button.remove_channel', 'Remove Channel')}
+              {t('dashboard.server.logs.button.select_channel', 'Select Channel')}
             </Button>
-          </Show>
-        </SettingRow>
+            <Show when={!logsChannel.loading && logsChannel().channelID}>
+              <Button variant="ghost" size="sm" onClick={() => showDialog('remove-logs-channel')}>
+                {t('dashboard.server.logs.button.remove_channel', 'Remove Channel')}
+              </Button>
+            </Show>
+          </SettingRow>
+        </AsyncState>
         <SettingGroup
           title={t('settings.log_content', 'Log content')}
-          description={t('ui.autosave', 'Changes are saved automatically.')}
+          description={t('editing.section_help', 'Edit these settings, then save this section to apply them.')}
           icon="scroll-text"
         >
-          <Show when={!logHideIP.loading}>
+          <AsyncState loading={content.loading} error={content.error} onRetry={() => void refetchContent()}>
             <SettingRow
               controlId="logs-hide-ip"
               title={t('dashboard.server.logs.label.hide_ip', 'Hide IP in discord logs:')}
               description={t('settings.log_ip_help', 'Keep player IP addresses out of the logs published to Discord.')}
-              feedback={
-                <SettingFeedback
-                  pending={hideIPSave.pending()}
-                  error={hideIPSave.error()}
-                  success={hideIPSave.success()}
-                />
-              }
             >
               <input
                 id="logs-hide-ip"
                 aria-describedby="logs-hide-ip-description"
                 type="checkbox"
                 class="toggle toggle-md"
-                disabled={logHideIP.loading || hideIPSave.pending()}
-                aria-busy={hideIPSave.pending() || undefined}
-                checked={logHideIP() ? logHideIP().value : false}
-                onChange={(e) => void editLogHideIP(e.currentTarget.checked)}
+                disabled={form.pending()}
+                checked={form.draft().log_hide_ip}
+                onChange={(event) => form.patch({ log_hide_ip: event.currentTarget.checked })}
               />
             </SettingRow>
-          </Show>
-          <Show when={!logFile.loading}>
             <SettingRow
               controlId="logs-attach-file"
               title={t('dashboard.server.logs.label.attach_log_file', 'Attach log information file:')}
               description={t('settings.log_file_help', 'Include the log information as a file attachment in Discord.')}
-              feedback={
-                <SettingFeedback pending={fileSave.pending()} error={fileSave.error()} success={fileSave.success()} />
-              }
             >
               <input
                 id="logs-attach-file"
                 aria-describedby="logs-attach-file-description"
                 type="checkbox"
                 class="toggle toggle-md"
-                disabled={logFile.loading || fileSave.pending()}
-                aria-busy={fileSave.pending() || undefined}
-                checked={logFile() ? logFile().value : false}
-                onChange={(e) => void editLogFile(e.currentTarget.checked)}
+                disabled={form.pending()}
+                checked={form.draft().log_include_file}
+                onChange={(event) => form.patch({ log_include_file: event.currentTarget.checked })}
               />
             </SettingRow>
-          </Show>
+            <FormActions
+              dirty={form.dirty()}
+              pending={form.pending()}
+              error={form.error()}
+              success={form.success()}
+              message={
+                syncPending() && !form.dirty() ? t('ui.sync_pending', 'Saved. Synchronization is pending.') : undefined
+              }
+              onSave={() => void saveContent()}
+              onCancel={form.discard}
+            />
+          </AsyncState>
         </SettingGroup>
       </AdminPanel>
     </>

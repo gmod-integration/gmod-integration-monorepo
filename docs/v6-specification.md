@@ -414,6 +414,14 @@ Ce parcours nécessite sa migration de données et une clé de pseudonymisation 
 Il ne signifie pas que le transport WSS, la boutique ou les autres parcours v6 sont déjà migrés ; les lots
 ci-dessous restent la cible de réalisation et les conditions de sortie restent applicables.
 
+Les sauvegardes de sections du dashboard utilisent également des contrats indépendants v6 : réglages
+groupés du serveur/de la communauté et configuration complète du statut Discord. Les réglages d’une
+section sont persistés dans une transaction ; le statut associe message, formats et boutons avec contrôle
+de révision. L’interface utilise des brouillons explicites et sépare sauvegarde et publication. Voir les
+[contrats de sauvegarde](./apps/api.md#dashboard-section-saves-under-v6) et le
+[catalogue des composants](./apps/website-ui.md#interaction-contracts). Les lectures et créations restantes
+conservent encore leurs routes historiques pendant cette migration.
+
 | Lot                     | Résultat attendu                                                                                                      | Dépendance principale                                              |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | 1 Contrats et périmètre | Inventaire des parcours, contrats HTTP et WSS v6, définitions de Forwards et Streams, grille de migration des droits. | Arbitrages produit et commerciaux.                                 |

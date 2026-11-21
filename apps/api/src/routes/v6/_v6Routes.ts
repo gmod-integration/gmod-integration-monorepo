@@ -11,6 +11,8 @@ import {
   AccountErasureStatusResponseSchema,
 } from '@gmod/schema/user/AccountErasureSchema.js'
 import asyncHandler from '../../middleware/asyncHandler.js'
+import dashboardSettingsRoutes from './dashboardSettingsRoutes.js'
+import statusSettingsRoutes from './statusSettingsRoutes.js'
 
 const router = express.Router()
 const expectedOrigin = new URL(ConfigServer.websiteUrl).origin
@@ -31,6 +33,9 @@ function bearer(header: string | undefined): string | null {
 router.get('/', (_req, res) => {
   res.json({ status: 'ok', version: 'v6' })
 })
+
+router.use(dashboardSettingsRoutes)
+router.use(statusSettingsRoutes)
 
 router.post(
   '/account/erasure-requests',
@@ -94,11 +99,15 @@ router.use((_req, res) => {
 })
 
 const handleError: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
+  if (error && typeof error === 'object' && 'code' in error && error.code === 'settings_forbidden') {
+    errorResponse(res, 403, 'settings_forbidden', 'These settings require a premium entitlement.')
+    return
+  }
   if (error && typeof error === 'object' && 'code' in error && error.code === 'account_erasure_conflict') {
     errorResponse(res, 409, 'account_erasure_conflict', 'This erasure request could not be accepted.')
     return
   }
-  errorResponse(res, 503, 'service_unavailable', 'Account erasure is temporarily unavailable. Try again later.')
+  errorResponse(res, 503, 'service_unavailable', 'The service is temporarily unavailable. Try again later.')
 }
 router.use(handleError)
 

@@ -14,6 +14,7 @@ export interface FormActionsProps {
   message?: JSX.Element
   saveLabel?: string
   cancelLabel?: string
+  saveVariant?: 'primary' | 'danger' | 'warning'
 }
 
 export function FormActions(props: FormActionsProps) {
@@ -40,7 +41,7 @@ export function FormActions(props: FormActionsProps) {
           </Button>
         </Show>
         <Button
-          variant="primary"
+          variant={props.saveVariant ?? 'primary'}
           loading={props.pending}
           disabled={props.disabled || props.dirty === false}
           onClick={() => {

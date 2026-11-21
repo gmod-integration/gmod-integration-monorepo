@@ -883,10 +883,10 @@
       },
       "config": {
         "title": "Configuration",
-        "description": "Manage the in game configuration of this server.",
+        "description": "Gérez la configuration en jeu de ce serveur.",
         "error_occurred": "Une erreur s'est produite lors de la récupération de la configuration du serveur.",
         "default": "Par défaut",
-        "add_admin_rank": "Add rank",
+        "add_admin_rank": "Ajouter un rang",
         "settings": {
           "ig_syncBan": {
             "title": "Synchroniser les bannissements",
@@ -952,7 +952,8 @@
             "title": "Rangs administrateur",
             "description": "Rangs autorisés à éditer la config ou contourner le mode maintenance."
           }
-        }
+        },
+        "remove_admin_rank": "Retirer ce rang"
       },
       "team_roles": {
         "error_occurred": "Une erreur s'est produite lors de la récupération de la synchronisation des rôles.",
@@ -997,8 +998,12 @@
         "modal_title": "Modifier le Rôle Automatique",
         "modal_description": "Modifier les paramètres de ce rôle automatique.",
         "close_button": "Fermer",
-        "failed_to_load": "Échec du chargement des liens",
-        "add_role": "Ajouter un Rôle"
+        "failed_to_load": "Impossible de charger les rôles.",
+        "add_role": "Ajouter un Rôle",
+        "delete_confirmation": "Les nouveaux membres ne recevront plus ce rôle automatiquement. Les membres actuels conservent leur rôle.",
+        "delete": "Supprimer",
+        "premium": "Limité à 3 rôles automatiques pour les utilisateurs gratuits.",
+        "active_help": "Tous les rôles de cette liste sont attribués automatiquement aux nouveaux membres."
       },
       "verification": {
         "select_role_modal_title": "Sélectionner un rôle",
@@ -1031,7 +1036,13 @@
         "edit_tooltip": "Modifier",
         "delete_tooltip": "Supprimer",
         "failed_to_load_links": "Échec du chargement des liens",
-        "add_role_button": "Ajouter un rôle"
+        "add_role_button": "Ajouter un rôle",
+        "publish_confirmation": "Publier la vérification dans #{1} ?",
+        "publish_consequence": "Les membres pourront utiliser ce message pour lier leurs comptes.",
+        "delete_message_confirmation": "Supprimer la vérification dans #{1} ?",
+        "delete_message_consequence": "Les membres ne pourront plus lancer la vérification depuis ce message.",
+        "delete_role_consequence": "La vérification n’attribuera et ne retirera plus ce rôle. Les membres actuels conservent leurs rôles.",
+        "check_confirmation": "Vérifier les rôles des membres de {1} ?"
       },
       "information": {
         "title": "Informations",
@@ -1090,7 +1101,8 @@
         "edit_link": "Modifier le lien",
         "save": "Enregistrer",
         "yes": "Oui",
-        "no": "Non"
+        "no": "Non",
+        "delete_confirmation": "Ce raccourci ne sera plus disponible pour les membres."
       }
     },
     "menu": {
@@ -1190,7 +1202,23 @@
     "back_home": "Retour à l’accueil",
     "contents": "Sommaire",
     "enabled": "Activé",
-    "disabled": "Désactivé"
+    "disabled": "Désactivé",
+    "delete_target": "Supprimer {1} ?",
+    "invalid_value": "Saisissez une valeur valide.",
+    "publish": "Publier",
+    "delete": "Supprimer",
+    "create": "Créer",
+    "sync_pending": "Enregistré. La synchronisation est en attente.",
+    "required": "Ce champ est obligatoire.",
+    "confirm_delete": "Supprimer cet élément ?",
+    "invalid_url": "Saisissez une URL HTTP ou HTTPS valide.",
+    "action_error": "L’action a échoué. Réessayez.",
+    "confirm": "Confirmer",
+    "leave_title": "Quitter sans enregistrer ?",
+    "wait_saving": "Attendez la fin de l’enregistrement avant de quitter.",
+    "leave_description": "Vos modifications non enregistrées seront abandonnées.",
+    "stay": "Rester sur cette page",
+    "discard_leave": "Abandonner et quitter"
   },
   "settings": {
     "access": "Accès et vérification",
@@ -1211,7 +1239,7 @@
     "chat_default_help": "Choisissez si les messages du jeu sont relayés ou bloqués par défaut. Définissez les exceptions dans les règles ci-dessous.",
     "chat_destination": "Destination Discord",
     "chat_destination_help": "Les messages sont relayés dans ce salon. Sélectionnez un salon pour connecter la passerelle.",
-    "chat_direction_help": "Choisissez de quel côté les messages peuvent être envoyés via la passerelle. Les modifications sont enregistrées automatiquement.",
+    "chat_direction_help": "Choisissez de quel côté les messages peuvent être envoyés via la passerelle, puis enregistrez cette section.",
     "chat_ping_help": "Empêchez les messages relayés de mentionner les membres et les rôles Discord.",
     "chat_rules": "Règles de filtrage",
     "general": "Général",
@@ -1223,12 +1251,12 @@
     "message_content": "Contenu du message",
     "moderation": "Modération",
     "moderation_description": "Synchronisez les sanctions entre Discord et le serveur de jeu.",
-    "nickname_format_help": "Consultez l’aperçu du format enregistré, puis modifiez le modèle et ses variables.",
+    "nickname_format_help": "Modifiez le format du pseudo et ses variables, puis enregistrez cette section.",
     "no_results": "Aucun réglage ne correspond à votre recherche dans cette catégorie.",
     "pseudo_rules_help": "Les préfixes et les noms de rôles sont utilisés uniquement si le format contient {rolePrefix} ou {roleName}.",
     "reset_filters": "Réinitialiser les filtres",
     "results": "réglages affichés",
-    "rule_setup_help": "Choisissez un rôle Discord, puis définissez sa correspondance dans le jeu et activez la règle.",
+    "rule_setup_help": "Créez une règle complète avec un rôle Discord, ses options de synchronisation et son état d’activation.",
     "saved_preview": "Aperçu enregistré",
     "search": "Rechercher un réglage",
     "search_placeholder": "Rechercher par nom ou description…",
@@ -1243,13 +1271,35 @@
     "status_content_help": "Choisissez le contenu du message. Vérifiez l’aperçu, puis enregistrez vos modifications.",
     "status_players_help": "Affichez les joueurs connectés et personnalisez les informations de chacun.",
     "sync_behavior": "Fonctionnement de la synchronisation",
-    "sync_direction_help": "Ce sens s’applique à toutes les règles ci-dessous. Les modifications sont enregistrées automatiquement.",
+    "sync_direction_help": "Ce sens s’applique à toutes les règles ci-dessous. Enregistrez cette section pour appliquer les modifications.",
     "sync_disabled": "La synchronisation est désactivée. Votre format et vos règles sont conservés pour la prochaine activation.",
     "sync_premium_help": "La synchronisation de Discord vers le jeu et dans les deux sens nécessite Premium.",
     "verification_dependency": "Cette vérification s’applique lorsque la liaison des comptes est obligatoire.",
     "verification_existing_members": "Membres existants",
     "verification_message": "Point d’entrée de la vérification",
     "verification_message_hint": "Publiez dans un salon Discord le message permettant aux membres de lier leurs comptes.",
-    "verification_preferences": "Expérience des membres"
+    "verification_preferences": "Expérience des membres",
+    "explicit_save": "Les modifications s’appliquent lorsque vous enregistrez cette section.",
+    "channel_draft_help": "Choisissez une destination, puis enregistrez pour l’appliquer.",
+    "server_port_invalid": "Saisissez un port entre 1 et 65535.",
+    "image_url_invalid": "Saisissez une URL d’image HTTP ou HTTPS.",
+    "server_reset_confirm": "Le jeton actuel cessera de fonctionner. Après la réinitialisation, mettez-le à jour dans votre configuration Garry’s Mod.",
+    "server_delete_confirm": "Supprimer ce serveur et ses données du tableau de bord. Cette action est irréversible.",
+    "server_edit_help": "Modifiez l’identité et la connexion du serveur, puis enregistrez l’ensemble des modifications."
+  },
+  "editing": {
+    "remove_channel": "Retirer cette destination ? Les prochains messages ne seront plus envoyés dans ce salon.",
+    "section_help": "Modifiez ces réglages, puis enregistrez cette section pour les appliquer.",
+    "remove_status_help": "Supprimer le message de statut publié sur Discord. La configuration enregistrée est conservée.",
+    "publish_saved_first": "Enregistrez ou annulez vos modifications avant de publier un message.",
+    "status_scope": "Les modifications du message et de ses boutons sont enregistrées ensemble.",
+    "conflict": "Les valeurs enregistrées ont changé. Rechargez-les avant d’enregistrer à nouveau.",
+    "sync_pending": "La configuration est enregistrée. La mise à jour Discord n’a pas encore été confirmée.",
+    "reload_saved": "Abandonner les modifications et recharger les valeurs enregistrées",
+    "save_status": "Enregistrer la configuration du statut",
+    "invalid_status": "Vérifiez les noms et les URL des boutons avant d’enregistrer.",
+    "apply_draft": "Appliquer au brouillon",
+    "delete_trigger": "Supprimer le déclencheur ?",
+    "delete_trigger_help": "L’action liée à cet événement ne sera plus exécutée. Cette action est irréversible."
   }
 }

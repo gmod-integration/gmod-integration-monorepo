@@ -1,590 +1,320 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
-import { ErrorBoundary } from 'solid-js/web'
 import { historyAt, renderWithProviders } from '../../../../testUtils.js'
-import { okJson, errJson, stubDialogGlobal, clearDialogGlobals } from './testHelpers.js'
+import { okJson, errJson } from './testHelpers.js'
 
 vi.mock('../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn(() => Promise.resolve({ ok: true, json: async () => [] })),
   getAPIUrl: vi.fn(),
-  getUrlWithActualParams: vi.fn((s: string) => s),
+  getUrlWithActualParams: vi.fn((value: string) => value),
 }))
-
+vi.mock('../../../../../src/utils/dashboardSettings.js', () => ({ saveDashboardSettings: vi.fn() }))
 const { fetchAPI } = await import('../../../../../src/utils/api.js')
+const { saveDashboardSettings } = await import('../../../../../src/utils/dashboardSettings.js')
 const { guildChannelsMutate } = await import('../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { default: ServerChats } = await import('../../../../../src/pages/dashboard/guilds/servers/ServerChats.js')
-
-const CHATS_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/chats'
-const PSEUDO_DIRECTION_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/syncChatDirection'
-const RELAY_ALL_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/chat_sync_relay_all'
-const PREVENT_PING_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_chat_prevent_ping'
-const FILTERS_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters'
-const CHANNELS_URL = '/users/:discordID/guilds/:guildID/channels'
-
-function filterRule(overrides: Partial<Record<string, unknown>> = {}) {
-  return {
-    id: 1,
-    element: 'message',
-    operator: 'contain',
-    trigger: 'hello',
-    action: 'relay',
-    active: true,
-    ...overrides,
-  }
-}
-
-function defaultFetch(overrides: Record<string, unknown> = {}) {
-  const map: Record<string, unknown> = {
-    [CHATS_URL]: {},
-    [PSEUDO_DIRECTION_URL]: { value: 'gmodToDiscord' },
-    [RELAY_ALL_URL]: { value: true },
-    [PREVENT_PING_URL]: { value: false },
-    [FILTERS_URL]: [],
-    [CHANNELS_URL]: [{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }],
-    ...overrides,
-  }
-  ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-    if (method === 'GET' && Object.prototype.hasOwnProperty.call(map, endpoint)) {
-      return Promise.resolve(okJson(map[endpoint]))
-    }
-    return Promise.resolve(okJson({}))
-  })
-}
-
+const Page = (await import('../../../../../src/pages/dashboard/guilds/servers/ServerChats.js')).default
+const URL = '/users/:discordID/guilds/:guildID/servers/:serverID/chats'
+const SETTING = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/'
+const filter = () => ({
+  id: 1,
+  element: 'message',
+  operator: 'contain',
+  trigger: 'hello',
+  action: 'relay',
+  active: true,
+})
+const channels = [
+  { id: 'c1', name: 'general', type: 0, position: 0, parentID: null },
+  { id: 'c2', name: 'relay', type: 0, position: 1, parentID: null },
+]
+let failure: string | undefined
+let storedChannel: object
+let write: (endpoint: string, method: string, body: unknown) => unknown
 function renderPage() {
-  return renderWithProviders(() => <ServerChats />, {
+  return renderWithProviders(() => <Page />, {
     path: '/dashboard/guilds/:guildID/config/servers/:serverID/chats',
     history: historyAt('/dashboard/guilds/g1/config/servers/s1/chats'),
   })
 }
-
-async function waitForLoaded(_container: HTMLElement) {
+const input = (id: string) => document.getElementById(id) as HTMLInputElement
+const modal = () => within(document.getElementById('edit_rule_modal')!)
+const destinationSelect = () => screen.getByRole('combobox', { name: 'Select a Channel' }) as HTMLSelectElement
+const group = (control: Element) => within(control.closest('.settings-group')!)
+const writes = () => (fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')
+async function loaded() {
   await vi.waitFor(() => {
-    const select = screen.getAllByRole('combobox')[0]
-    expect(select).not.toBeDisabled()
+    expect(screen.getByText('hello')).toBeInTheDocument()
+    expect(input('chat-direction')).not.toBeDisabled()
+    expect(destinationSelect()).not.toBeDisabled()
   })
 }
-
-afterEach(() => {
-  cleanup()
-  clearDialogGlobals('select_channel_modal', 'edit_rule_modal')
-})
-
-describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
+async function createDraft() {
+  await fireEvent.click(screen.getByRole('button', { name: 'Add Rule' }))
+  await fireEvent.change(input('chat-rule-element'), { target: { value: 'userGroup' } })
+  await fireEvent.change(input('chat-rule-operator'), { target: { value: 'equal' } })
+  await fireEvent.input(input('chat-rule-trigger'), { target: { value: 'admins' } })
+  await fireEvent.change(input('chat-rule-action'), { target: { value: 'relay' } })
+  await fireEvent.click(input('chat-rule-active'))
+}
+afterEach(cleanup)
+describe('ServerChats unified editing', () => {
   beforeEach(() => {
     window.localStorage.clear()
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-    guildChannelsMutate([{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }])
-    ;(fetchAPI as Mock).mockReset()
-    defaultFetch()
+    vi.clearAllMocks()
+    failure = undefined
+    storedChannel = { channel: 'c1' }
+    write = () => okJson({})
+    ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string, body: unknown) => {
+      if (method !== 'GET') return Promise.resolve(write(endpoint, method, body))
+      if (endpoint === failure) return Promise.resolve(errJson())
+      if (endpoint === URL) return Promise.resolve(okJson(storedChannel))
+      if (endpoint === URL + '/filters') return Promise.resolve(okJson([filter()]))
+      if (endpoint === SETTING + 'syncChatDirection') return Promise.resolve(okJson({ value: 'gmodToDiscord' }))
+      if (endpoint === SETTING + 'sync_chat_prevent_ping') return Promise.resolve(okJson({ value: false }))
+      if (endpoint === SETTING + 'chat_sync_relay_all') return Promise.resolve(okJson({ value: true }))
+      return Promise.resolve(okJson([]))
+    })
+    ;(saveDashboardSettings as Mock).mockImplementation(async (_scope, settings) => ({ settings, sync: 'applied' }))
+    guildChannelsMutate(channels)
   })
-
-  it('renders the websocket notice and both panel titles', () => {
+  it('renders the saved channel and filter values', async () => {
     renderPage()
-    expect(screen.getByText('GWSocket')).toBeInTheDocument()
-    expect(screen.getByText('Chats')).toBeInTheDocument()
-    expect(screen.getByText('Gmod to Discord Filter')).toBeInTheDocument()
+    await loaded()
+    expect(group(destinationSelect()).getByText('#general')).toBeInTheDocument()
+    expect(within(screen.getByRole('table')).getByText('Contain')).toBeInTheDocument()
+    expect(input('chat-default-behavior')).toHaveValue('true')
+    expect(input('chat-prevent-ping')).not.toBeChecked()
   })
-
-  describe('sync chats channel', () => {
-    it('shows "No Sync Chats" when there is no configured channel', async () => {
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('No Sync Chats')).toBeInTheDocument())
-    })
-
-    it('falls back to an empty object (still shows "No Sync Chats") when the chats GET fails', async () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === CHATS_URL && method === 'GET') return Promise.resolve(errJson())
-        if (endpoint === CHANNELS_URL && method === 'GET') return Promise.resolve(okJson([]))
-        if (method === 'GET') return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson({}))
-      })
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('No Sync Chats')).toBeInTheDocument())
-    })
-
-    it('renders the discord channel once a chat channel is configured', async () => {
-      defaultFetch({ [CHATS_URL]: { channel: 'c1' } })
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
-      expect(screen.queryByText('No Sync Chats')).not.toBeInTheDocument()
-    })
-
-    it('shows the Remove Channel button only when a channel is configured', async () => {
-      defaultFetch({ [CHATS_URL]: { channel: 'c1' } })
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Remove Channel')).toBeInTheDocument())
-    })
-
-    it('does not show the Remove Channel button when there is no channel', async () => {
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('No Sync Chats')).toBeInTheDocument())
-      expect(screen.queryByText('Remove Channel')).not.toBeInTheDocument()
-    })
-
-    it('removes the channel on click and reverts to "No Sync Chats"', async () => {
-      defaultFetch({ [CHATS_URL]: { channel: 'c1' } })
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Remove Channel')).toBeInTheDocument())
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === CHATS_URL && method === 'DELETE') return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(screen.getByText('Remove Channel'))
-      await vi.waitFor(() => expect(screen.getByText('No Sync Chats')).toBeInTheDocument())
-    })
-
-    it('does not remove the channel when the DELETE fails', async () => {
-      defaultFetch({ [CHATS_URL]: { channel: 'c1' } })
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Remove Channel')).toBeInTheDocument())
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === CHATS_URL && method === 'DELETE') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(screen.getByText('Remove Channel'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(CHATS_URL, 'DELETE'))
-      expect(screen.getByText('Remove Channel')).toBeInTheDocument()
-    })
-
-    it('opens the select channel modal and refetches guild channels', async () => {
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(screen.getByText('No Sync Chats')).toBeInTheDocument())
-      stubDialogGlobal(container, 'select_channel_modal')
-      await fireEvent.click(screen.getByText('Select Channel'))
-      expect(container.querySelector('#select_channel_modal')?.hasAttribute('open')).toBe(true)
-    })
-
-    it('sends the selected channel and mutates on success', async () => {
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(screen.getByText('No Sync Chats')).toBeInTheDocument())
-      const select = container.querySelector('#select_channel_modal select.select') as HTMLSelectElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === CHATS_URL && method === 'POST') return Promise.resolve(okJson({ channel: 'c1' }))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.change(select, { target: { value: 'c1' } })
-      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
-      await fireEvent.click(
-        within(container.querySelector('#select_channel_modal') as HTMLElement).getByRole('button', {
-          name: 'Save',
-          hidden: true,
-        }),
-      )
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(CHATS_URL, 'POST', { channelID: 'c1' }))
-      await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
-    })
-
-    it('does not mutate when sending the selected channel fails', async () => {
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(screen.getByText('No Sync Chats')).toBeInTheDocument())
-      const select = container.querySelector('#select_channel_modal select.select') as HTMLSelectElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === CHATS_URL && method === 'POST') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.change(select, { target: { value: 'c1' } })
-      await fireEvent.click(
-        within(container.querySelector('#select_channel_modal') as HTMLElement).getByRole('button', {
-          name: 'Save',
-          hidden: true,
-        }),
-      )
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(CHATS_URL, 'POST', { channelID: 'c1' }))
-      expect(screen.getByText('No Sync Chats')).toBeInTheDocument()
-    })
+  it('edits the destination inline and Cancel keeps the saved channel', async () => {
+    renderPage()
+    await loaded()
+    const select = destinationSelect()
+    const actions = group(select)
+    await fireEvent.change(select, { target: { value: 'c2' } })
+    expect(writes()).toHaveLength(0)
+    expect(group(destinationSelect()).getByText('#general')).toBeInTheDocument()
+    await fireEvent.click(actions.getByRole('button', { name: 'Cancel' }))
+    expect(select).toHaveValue('c1')
+    expect(document.getElementById('select_channel_modal')).not.toBeInTheDocument()
   })
-
-  describe('sync direction selector', () => {
-    it('marks the selected option based on the fetched direction', async () => {
-      defaultFetch({ [PSEUDO_DIRECTION_URL]: { value: 'both' } })
-      renderPage()
-      await vi.waitFor(() => {
-        const select = screen.getAllByRole('combobox')[0] as HTMLSelectElement
-        expect(within(select).getByText('Both Ways', { exact: false })).toHaveProperty('selected', true)
-      })
-    })
-
-    it('disables discordToGmod and both options for non-premium guilds', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const select = screen.getAllByRole('combobox')[0] as HTMLSelectElement
-      const options = within(select).getAllByRole('option') as HTMLOptionElement[]
-      expect(options.find((o) => o.value === 'discordToGmod')).toBeDisabled()
-      expect(options.find((o) => o.value === 'both')).toBeDisabled()
-      expect(options.find((o) => o.value === 'gmodToDiscord')).not.toBeDisabled()
-    })
-
-    it('sends the new direction on change and mutates on success', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const select = screen.getAllByRole('combobox')[0] as HTMLSelectElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(okJson({ value: 'both' }))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.change(select, { target: { value: 'both' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_DIRECTION_URL, 'PUT', { value: 'both' }))
-    })
-
-    it('restores the previous direction after failure and allows retry', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const select = screen.getAllByRole('combobox')[0] as HTMLSelectElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.change(select, { target: { value: 'both' } })
-      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
-      expect(select).toHaveValue('gmodToDiscord')
-      expect(select).not.toBeDisabled()
-      ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({ value: 'both' }))
-      await fireEvent.change(select, { target: { value: 'both' } })
-      await vi.waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument())
-      expect(select).toHaveValue('both')
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    })
+  it('applies a valid destination only on Save', async () => {
+    storedChannel = {}
+    renderPage()
+    await loaded()
+    const select = destinationSelect()
+    const actions = group(select)
+    expect(actions.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await fireEvent.change(select, { target: { value: 'c2' } })
+    expect(writes()).toHaveLength(0)
+    write = () => okJson({ channel: 'c2' })
+    await fireEvent.click(actions.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(URL, 'POST', { channelID: 'c2' }))
+    await vi.waitFor(() => expect(group(destinationSelect()).getByText('#relay')).toBeInTheDocument())
+    expect(select).toHaveValue('c2')
+    expect(actions.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
-
-  describe('prevent chat ping toggle', () => {
-    it('reflects the fetched value and is disabled while loading', () => {
-      defaultFetch({ [PREVENT_PING_URL]: new Promise(() => {}) })
-      const { container } = renderPage()
-      const checkbox = container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement
-      expect(checkbox).toBeDisabled()
+  it('preserves the destination draft and saved channel on failure', async () => {
+    renderPage()
+    await loaded()
+    write = () => errJson()
+    const select = destinationSelect()
+    const actions = group(select)
+    await fireEvent.change(select, { target: { value: 'c2' } })
+    await fireEvent.click(actions.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(actions.getByRole('alert')).toBeInTheDocument())
+    expect(select).toHaveValue('c2')
+    expect(group(destinationSelect()).getByText('#general')).toBeInTheDocument()
+    await fireEvent.click(actions.getByRole('button', { name: 'Cancel' }))
+    expect(select).toHaveValue('c1')
+  })
+  it('confirms removal of the named channel and leaves it present after a failed request', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove Channel' }))
+    const confirm = within(document.getElementById('remove-chat-channel')!)
+    expect(confirm.getByText('#general')).toBeInTheDocument()
+    expect(writes()).toHaveLength(0)
+    write = () => errJson()
+    await fireEvent.click(confirm.getByRole('button', { name: 'Remove Channel' }))
+    await vi.waitFor(() => expect(confirm.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getAllByText('#general').length).toBeGreaterThan(0)
+    write = () => okJson({})
+    await fireEvent.click(confirm.getByRole('button', { name: 'Remove Channel' }))
+    await vi.waitFor(() => expect(screen.getByText('No Sync Chats')).toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(URL, 'DELETE')
+  })
+  it('groups direction and anti-ping into a local draft with one atomic Save', async () => {
+    renderPage()
+    await loaded()
+    const select = input('chat-direction')
+    const actions = group(select)
+    await fireEvent.change(select, { target: { value: 'both' } })
+    await fireEvent.click(input('chat-prevent-ping'))
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    expect(writes()).toHaveLength(0)
+    await fireEvent.click(actions.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() =>
+      expect(saveDashboardSettings).toHaveBeenCalledWith('server', {
+        syncChatDirection: 'both',
+        sync_chat_prevent_ping: true,
+      }),
+    )
+    await vi.waitFor(() => expect(actions.getByRole('status')).toBeInTheDocument())
+    expect(select).toHaveValue('both')
+    expect(input('chat-prevent-ping')).toBeChecked()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    expect(actions.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+  it('cancels all behavior fields together and retains them after a failed save', async () => {
+    renderPage()
+    await loaded()
+    const select = input('chat-direction')
+    const actions = group(select)
+    await fireEvent.change(select, { target: { value: 'both' } })
+    await fireEvent.click(input('chat-prevent-ping'))
+    await fireEvent.click(actions.getByRole('button', { name: 'Cancel' }))
+    expect(select).toHaveValue('gmodToDiscord')
+    expect(input('chat-prevent-ping')).not.toBeChecked()
+    await fireEvent.click(input('chat-prevent-ping'))
+    ;(saveDashboardSettings as Mock).mockRejectedValueOnce(new Error('offline'))
+    await fireEvent.click(actions.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(actions.getByRole('alert')).toBeInTheDocument())
+    expect(input('chat-prevent-ping')).toBeChecked()
+    ;(saveDashboardSettings as Mock).mockResolvedValueOnce({
+      settings: { sync_chat_prevent_ping: true },
+      sync: 'pending',
     })
-
-    it('sends the new value on toggle and mutates on success', async () => {
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(container.querySelectorAll('input[type=checkbox]')[0]).not.toBeDisabled())
-      const checkbox = container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement
-      expect(checkbox.checked).toBe(false)
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PREVENT_PING_URL && method === 'PUT') return Promise.resolve(okJson({ value: true }))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PREVENT_PING_URL, 'PUT', { value: true }))
-      await vi.waitFor(() => expect(checkbox.checked).toBe(true))
-    })
-
-    it('shows feedback and restores the saved toggle when updating fails', async () => {
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(container.querySelectorAll('input[type=checkbox]')[0]).not.toBeDisabled())
-      const checkbox = container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PREVENT_PING_URL && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
-      expect(checkbox).not.toBeChecked()
-      expect(checkbox).not.toBeDisabled()
+    await fireEvent.click(actions.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(actions.getByText('Saved. Synchronization is pending.')).toBeInTheDocument())
+  })
+  it('saves the default behavior separately and explicitly', async () => {
+    renderPage()
+    await loaded()
+    const select = input('chat-default-behavior')
+    const panel = within(select.closest('.dashboard-panel')!)
+    await fireEvent.change(select, { target: { value: 'false' } })
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    await fireEvent.click(panel.getByRole('button', { name: 'Cancel' }))
+    expect(select).toHaveValue('true')
+    await fireEvent.change(select, { target: { value: 'false' } })
+    await fireEvent.click(panel.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(saveDashboardSettings).toHaveBeenCalledWith('server', { chat_sync_relay_all: false }))
+    await vi.waitFor(() => expect(panel.getByRole('status')).toBeInTheDocument())
+    expect(select).toHaveValue('false')
+  })
+  it('requires a trigger and creates exactly one complete filter on Create', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Rule' }))
+    expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    await createDraft()
+    expect(writes()).toHaveLength(0)
+    write = () =>
+      okJson({ id: 2, element: 'userGroup', operator: 'equal', trigger: 'admins', action: 'relay', active: true })
+    await fireEvent.click(modal().getByRole('button', { name: 'Create' }))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(URL + '/filters', 'POST', {
+        element: 'userGroup',
+        operator: 'equal',
+        trigger: 'admins',
+        action: 'relay',
+        active: true,
+      }),
+    )
+    await vi.waitFor(() => expect(screen.getByText('admins')).toBeInTheDocument())
+    expect(writes()).toHaveLength(1)
+  })
+  it('discards filter drafts on Cancel without creating or mutating a saved row', async () => {
+    renderPage()
+    await loaded()
+    await createDraft()
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Rule' }))
+    expect(input('chat-rule-trigger')).toHaveValue('')
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(input('chat-rule-trigger')).toHaveValue('hello')
+    await fireEvent.input(input('chat-rule-trigger'), { target: { value: 'unsaved' } })
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText('hello')).toBeInTheDocument()
+    expect(writes()).toHaveLength(0)
+  })
+  it('keeps a failed filter edit open with the draft and allows retry', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    await fireEvent.input(input('chat-rule-trigger'), { target: { value: 'bye' } })
+    write = () => errJson()
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(modal().getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByText('hello')).toBeInTheDocument()
+    expect(input('chat-rule-trigger')).toHaveValue('bye')
+    write = () => okJson({ ...filter(), trigger: 'bye' })
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(screen.getByText('bye')).toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(URL + '/filters/1', 'PUT', {
+      element: 'message',
+      operator: 'contain',
+      trigger: 'bye',
+      action: 'relay',
+      active: true,
     })
   })
-
-  describe('gmod to discord filter default behavior', () => {
-    it('shows a loading message while relayAll is loading', () => {
-      defaultFetch({ [RELAY_ALL_URL]: new Promise(() => {}) })
-      renderPage()
-      expect(screen.getByText('Loading...')).toBeInTheDocument()
-    })
-
-    it('marks the relay-all option selected when true', async () => {
-      defaultFetch({ [RELAY_ALL_URL]: { value: true } })
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Relay All Messages')).toBeInTheDocument())
-      expect(within(screen.getByText('Relay All Messages') as HTMLOptionElement).getByText).toBeDefined()
-      expect((screen.getByText('Relay All Messages') as HTMLOptionElement).selected).toBe(true)
-    })
-
-    it('marks the block-all option selected when false', async () => {
-      defaultFetch({ [RELAY_ALL_URL]: { value: false } })
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Block All Messages')).toBeInTheDocument())
-      expect((screen.getByText('Block All Messages') as HTMLOptionElement).selected).toBe(true)
-    })
-
-    it('disables the select for non-premium guilds', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Relay All Messages')).toBeInTheDocument())
-      const select = screen.getByText('Relay All Messages').closest('select') as HTMLSelectElement
-      expect(select).toBeDisabled()
-    })
-
-    it('sends the new value on change and mutates on success', async () => {
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Relay All Messages')).toBeInTheDocument())
-      const select = screen.getByText('Relay All Messages').closest('select') as HTMLSelectElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === RELAY_ALL_URL && method === 'PUT') return Promise.resolve(okJson({ value: false }))
-        return Promise.resolve(okJson({}))
+  it('locks filter creation and prevents duplicate submissions while pending', async () => {
+    renderPage()
+    await loaded()
+    await createDraft()
+    let resolve!: (response: unknown) => void
+    write = () =>
+      new Promise((result) => {
+        resolve = result
       })
-      await fireEvent.change(select, { target: { value: 'false' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(RELAY_ALL_URL, 'PUT', { value: false }))
-    })
-
-    it('shows feedback and restores the saved default behavior when updating fails', async () => {
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Relay All Messages')).toBeInTheDocument())
-      const select = screen.getByText('Relay All Messages').closest('select') as HTMLSelectElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === RELAY_ALL_URL && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.change(select, { target: { value: 'false' } })
-      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
-      expect(select).toHaveValue('true')
-      expect(select).not.toBeDisabled()
-    })
+    const button = modal().getByRole('button', { name: 'Create' })
+    await fireEvent.click(button)
+    await fireEvent.click(button)
+    expect(button).toBeDisabled()
+    expect(modal().getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    expect(input('chat-rule-trigger')).toBeDisabled()
+    expect(writes()).toHaveLength(1)
+    resolve(
+      okJson({ id: 2, element: 'userGroup', operator: 'equal', trigger: 'admins', action: 'relay', active: true }),
+    )
+    await vi.waitFor(() => expect(screen.getByText('admins')).toBeInTheDocument())
   })
-
-  describe('filter rules table', () => {
-    it('shows a loading spinner while filters are loading', () => {
-      defaultFetch({ [FILTERS_URL]: new Promise(() => {}) })
-      const { container } = renderPage()
-      expect(container.querySelector('.loading-spinner')).toBeInTheDocument()
-    })
-
-    it('renders a fetched rule row with active marker', async () => {
-      defaultFetch({ [FILTERS_URL]: [filterRule()] })
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
-      expect(screen.getByRole('cell', { name: 'Message' })).toBeInTheDocument()
-      expect(screen.getByRole('cell', { name: 'Contain' })).toBeInTheDocument()
-      expect(screen.getByRole('cell', { name: 'Relay' })).toBeInTheDocument()
-      expect(container.querySelector('tbody svg[data-icon="check"]')).toBeInTheDocument()
-    })
-
-    it('shows an inactive marker for a disabled rule', async () => {
-      defaultFetch({ [FILTERS_URL]: [filterRule({ active: false })] })
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
-      expect(container.querySelector('tbody svg[data-icon="x"]')).toBeInTheDocument()
-    })
-
-    it('adds a rule and appends it to the list on success', async () => {
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Add Rule')).not.toBeDisabled())
-      const newRule = filterRule({ id: 2, trigger: 'new-trigger' })
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === FILTERS_URL && method === 'POST') return Promise.resolve(okJson(newRule))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(screen.getByText('Add Rule'))
-      await vi.waitFor(() => expect(screen.getByText('new-trigger')).toBeInTheDocument())
-    })
-
-    it('logs and does not throw, and does not add a row, when adding a rule fails', async () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Add Rule')).not.toBeDisabled())
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === FILTERS_URL && method === 'POST') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(screen.getByText('Add Rule'))
-      await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-      expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.')
-      errorSpy.mockRestore()
-    })
-
-    it('deletes a rule and removes it from the list on success', async () => {
-      defaultFetch({ [FILTERS_URL]: [filterRule()] })
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${FILTERS_URL}/1` && method === 'DELETE') return Promise.resolve(okJson({ id: 1 }))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(container.querySelector('tbody svg[data-icon="trash-2"]') as HTMLElement)
-      await vi.waitFor(() => expect(screen.queryByText('hello')).not.toBeInTheDocument())
-    })
-
-    it('logs and does not throw, and does not remove the row, when deleting fails', async () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      defaultFetch({ [FILTERS_URL]: [filterRule()] })
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${FILTERS_URL}/1` && method === 'DELETE') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(container.querySelector('tbody svg[data-icon="trash-2"]') as HTMLElement)
-      await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-      expect(screen.getByText('hello')).toBeInTheDocument()
-      errorSpy.mockRestore()
-    })
-
-    describe('premium gating for Add Rule', () => {
-      it('enables Add Rule when premium', async () => {
-        renderPage()
-        await vi.waitFor(() => expect(screen.getByText('Add Rule')).not.toBeDisabled())
-      })
-
-      it('disables Add Rule when not premium', async () => {
-        window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
-        renderPage()
-        await vi.waitFor(() => expect(screen.getByText('Add Rule')).toBeDisabled())
-      })
-    })
-
-    describe('edit rule modal', () => {
-      function renderWithRule() {
-        defaultFetch({ [FILTERS_URL]: [filterRule()] })
-        return renderPage()
-      }
-
-      it('blocks duplicate saves, keeps failed drafts local and restores the stored rule after cancel', async () => {
-        const { container } = renderWithRule()
-        await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
-        await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-        const modal = container.querySelector('#edit_rule_modal') as HTMLDialogElement
-        const input = within(modal).getByRole('textbox')
-        await fireEvent.input(input, { target: { value: 'Draft trigger' } })
-        expect(screen.getByText('hello')).toBeInTheDocument()
-        let finish!: (value: ReturnType<typeof errJson>) => void
-        ;(fetchAPI as Mock).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
-        const save = within(modal).getByRole('button', { name: 'Save' })
-        await fireEvent.click(save)
-        await fireEvent.click(save)
-        expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
-        expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
-        const escape = new Event('cancel', { cancelable: true })
-        modal.dispatchEvent(escape)
-        expect(escape.defaultPrevented).toBe(true)
-        finish(errJson())
-        await vi.waitFor(() => expect(within(modal).getByRole('alert')).toHaveTextContent('Unable to save'))
-        expect(modal).toHaveAttribute('open')
-        expect(input).toHaveValue('Draft trigger')
-        await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
-        await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
-        expect(within(modal).getByRole('textbox')).toHaveValue('hello')
-      })
-
-      it('prefills the modal fields from the selected rule and saves the edit, leaving other rows untouched', async () => {
-        defaultFetch({ [FILTERS_URL]: [filterRule(), filterRule({ id: 99, trigger: 'untouched' })] })
-        const { container } = renderPage()
-        await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
-        expect(screen.getByText('untouched')).toBeInTheDocument()
-        stubDialogGlobal(container, 'edit_rule_modal')
-        await fireEvent.click(container.querySelector('tbody svg[data-icon="pencil"]') as HTMLElement)
-
-        const modal = container.querySelector('#edit_rule_modal') as HTMLElement
-        expect(modal.hasAttribute('open')).toBe(true)
-        const triggerInput = within(modal).getByDisplayValue('hello') as HTMLInputElement
-        expect(triggerInput).toBeInTheDocument()
-
-        const selects = within(modal).getAllByRole('combobox') as HTMLSelectElement[]
-        const [elementSelect, operatorSelect, actionSelect, activeSelect] = selects
-        expect(elementSelect.value).toBe('message')
-        expect(operatorSelect.value).toBe('contain')
-        expect(actionSelect.value).toBe('relay')
-        expect(activeSelect.value).toBe('true')
-
-        await fireEvent.change(elementSelect, { target: { value: 'steamID64' } })
-        await fireEvent.change(operatorSelect, { target: { value: 'equal' } })
-        await fireEvent.input(triggerInput, { target: { value: 'updated-trigger' } })
-        await fireEvent.change(actionSelect, { target: { value: 'block' } })
-        await fireEvent.change(activeSelect, { target: { value: 'false' } })
-
-        const updated = filterRule({
-          element: 'steamID64',
-          operator: 'equal',
-          trigger: 'updated-trigger',
-          action: 'block',
-          active: false,
-        })
-        ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-          if (endpoint === `${FILTERS_URL}/1` && method === 'PUT') return Promise.resolve(okJson(updated))
-          return Promise.resolve(okJson({}))
-        })
-        await fireEvent.click(within(modal).getByText('Save'))
-        await vi.waitFor(() =>
-          expect(fetchAPI).toHaveBeenCalledWith(`${FILTERS_URL}/1`, 'PUT', {
-            id: 1,
-            element: 'steamID64',
-            operator: 'equal',
-            trigger: 'updated-trigger',
-            action: 'block',
-            active: false,
-          }),
-        )
-        await vi.waitFor(() => expect(screen.getByText('updated-trigger')).toBeInTheDocument())
-        expect(screen.getByText('untouched')).toBeInTheDocument()
-      })
-
-      it('shows an error and keeps the draft open without changing the row when saving fails', async () => {
-        const { container } = renderWithRule()
-        await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
-        stubDialogGlobal(container, 'edit_rule_modal')
-        await fireEvent.click(container.querySelector('tbody svg[data-icon="pencil"]') as HTMLElement)
-        const modal = container.querySelector('#edit_rule_modal') as HTMLElement
-        ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-          if (endpoint === `${FILTERS_URL}/1` && method === 'PUT') return Promise.resolve(errJson())
-          return Promise.resolve(okJson({}))
-        })
-        await fireEvent.click(within(modal).getByText('Save'))
-        await vi.waitFor(() => expect(within(modal).getByRole('alert')).toHaveTextContent('Unable to save'))
-        expect(screen.getByText('hello')).toBeInTheDocument()
-        expect(modal).toHaveAttribute('open')
-      })
-
-      it('disables the modal fields while filters are loading', () => {
-        defaultFetch({ [FILTERS_URL]: new Promise(() => {}) })
-        const { container } = renderPage()
-        const modal = container.querySelector('#edit_rule_modal') as HTMLElement
-        const selects = within(modal).getAllByRole('combobox', { hidden: true })
-        selects.forEach((s) => expect(s).toBeDisabled())
-        expect(within(modal).getByRole('textbox', { hidden: true })).toBeDisabled()
-        expect(within(modal).getByText('Save')).toBeDisabled()
-      })
-    })
+  it('only deletes a filter after confirmation of its target', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    const confirm = within(document.getElementById('remove-chat-filter')!)
+    expect(confirm.getByText('Message Contain hello')).toBeInTheDocument()
+    expect(writes()).toHaveLength(0)
+    await fireEvent.click(confirm.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText('hello')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    await fireEvent.click(confirm.getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(screen.queryByText('hello')).not.toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(URL + '/filters/1', 'DELETE')
   })
-
-  describe('falsy JSON body fallback', () => {
-    it('falls back to an empty object for pseudoDirection/relayAll/preventChatPing/filters when the response body is null', async () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (
-          method === 'GET' &&
-          [PSEUDO_DIRECTION_URL, RELAY_ALL_URL, PREVENT_PING_URL, FILTERS_URL].includes(endpoint)
-        ) {
-          return Promise.resolve({ ok: true, json: async () => null })
-        }
-        if (endpoint === CHANNELS_URL && method === 'GET') return Promise.resolve(okJson([]))
-        return Promise.resolve(okJson({}))
-      })
-      const { container } = renderPage()
-      // gmToDscFilters() falling back to {} (not an array) doesn't crash the <For> (see
-      // ServerStatusButtons.tsx's docs for why v8/Solid tolerate a non-array `each`), so the table
-      // just renders no rows instead of throwing.
-      await vi.waitFor(() => expect(container.querySelector('.loading-spinner')).not.toBeInTheDocument())
-      expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.')
-    })
+  it('disables a failed settings section until a successful retry', async () => {
+    failure = SETTING + 'sync_chat_prevent_ping'
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument())
+    expect(input('chat-direction')).toBeDisabled()
+    expect(input('chat-prevent-ping')).toBeDisabled()
+    failure = undefined
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await loaded()
   })
-
-  describe('resource fetch failures', () => {
-    it('throws to the app-level ErrorBoundary when a settings/filters GET fails', async () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === CHATS_URL && method === 'GET') return Promise.resolve(okJson({}))
-        if (endpoint === CHANNELS_URL && method === 'GET') return Promise.resolve(okJson([]))
-        return Promise.resolve(errJson())
-      })
-      renderWithProviders(
-        () => (
-          <ErrorBoundary fallback={(err) => <div data-testid="boundary-error">{err.message}</div>}>
-            <ServerChats />
-          </ErrorBoundary>
-        ),
-        {
-          path: '/dashboard/guilds/:guildID/config/servers/:serverID/chats',
-          history: historyAt('/dashboard/guilds/g1/config/servers/s1/chats'),
-        },
-      )
-      await vi.waitFor(() => expect(screen.getByTestId('boundary-error')).toBeInTheDocument())
-    })
+  it('blocks paid behavior and filter commands on a free guild', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
+    renderPage()
+    await loaded()
+    expect(screen.getByRole('button', { name: 'Add Rule' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled()
+    expect(input('chat-default-behavior')).toBeDisabled()
+    expect(input('chat-direction').querySelector('option[value="both"]')).toBeDisabled()
   })
 })

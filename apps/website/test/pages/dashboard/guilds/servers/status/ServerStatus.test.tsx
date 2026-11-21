@@ -1,108 +1,197 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
-import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
+import { configuration, installNetwork, puts, renderStatus, viewport } from './statusTestHelpers.js'
+import { okJson, errJson } from '../testHelpers.js'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
-  fetchAPI: vi.fn(() => Promise.resolve({ ok: true, json: async () => ({}) })),
-  getAPIUrl: vi.fn(),
-  getUrlWithActualParams: vi.fn((s: string) => s),
+  fetchAPI: vi.fn(),
+  getAPIUrl: () => '',
+  getUrlWithActualParams: (path: string) => path,
 }))
-
-const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { default: ServerStatus } =
-  await import('../../../../../../src/pages/dashboard/guilds/servers/status/ServerStatus.js')
+const { fetchAPI } = await import('../../../../../../src/utils/api.js')
+const api = fetchAPI as Mock
+const mainSave = () => screen.getByRole('button', { name: 'Save status configuration' })
+const mainCancel = () => mainSave().parentElement!.querySelector('button')!
+const players = () => screen.getByRole('checkbox', { name: /Show Player List/ })
+const ready = () => vi.waitFor(() => expect(players()).toBeEnabled())
+const panelFor = (tab: HTMLElement) => document.getElementById(tab.getAttribute('aria-controls')!)!
 
 beforeEach(() => {
-  window.localStorage.clear()
-  window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-  guildChannelsMutate([])
+  localStorage.clear()
+  localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+  api.mockReset()
+  viewport(true)
 })
 afterEach(() => {
   cleanup()
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
-function viewport(initialWide: boolean) {
-  let wide = initialWide
-  const query = Object.assign(new EventTarget(), {
-    get matches() {
-      return wide
-    },
-    media: '(min-width: 1280px)',
-  })
-  // Object.assign copies values; retain a reactive getter for simulated viewport changes.
-  Object.defineProperty(query, 'matches', { get: () => wide })
-  vi.spyOn(window, 'matchMedia').mockReturnValue(query as unknown as MediaQueryList)
-  return (nextWide: boolean) => {
-    wide = nextWide
-    query.dispatchEvent(new Event('change'))
-  }
-}
-
-function renderStatus() {
-  return renderWithProviders(() => <ServerStatus />, {
-    path: '/dashboard/guilds/:guildID/config/servers/:serverID/status',
-    history: historyAt('/dashboard/guilds/g1/config/servers/s1/status'),
-  })
-}
-
-const panelFor = (tab: HTMLElement) => document.getElementById(tab.getAttribute('aria-controls')!)!
-
-describe('pages/dashboard/guilds/servers/status/ServerStatus.tsx', () => {
-  it('keeps configuration and the preview visible together on desktop', async () => {
-    viewport(true)
+describe('aggregate status editing', () => {
+  it('keeps both desktop panels and a single Save/Cancel for the configuration', async () => {
+    installNetwork(api)
     const { container } = renderStatus()
-    await vi.waitFor(() => expect(screen.getByText('Server Status')).toBeInTheDocument())
+    await ready()
     expect(screen.getByText('Status Buttons')).toBeInTheDocument()
-    expect(screen.getByRole('complementary', { name: 'Simulation' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Save status configuration' })).toHaveLength(1)
+    expect(mainSave()).toBeDisabled()
     expect(container.querySelector('[data-status-configuration]')).not.toHaveAttribute('hidden')
     expect(container.querySelector('.status-preview-panel')).not.toHaveAttribute('hidden')
   })
-
-  it('switches mobile panels without remounting the preview or losing an edited setting', async () => {
-    viewport(false)
+  it('saves message settings, inline format and buttons in one request then marks the accepted draft clean', async () => {
+    const network = installNetwork(api)
     const { container } = renderStatus()
-    const configuration = screen.getByRole('tab', { name: 'Configuration' })
-    const preview = screen.getByRole('tab', { name: 'Live Discord preview' })
-    expect(configuration).toHaveAttribute('aria-selected', 'true')
-    expect(panelFor(preview)).toHaveAttribute('hidden')
-    const checkbox = screen.getByRole('checkbox', { name: /Show Player List/ })
-    await vi.waitFor(() => expect(checkbox).toBeEnabled())
-    await fireEvent.click(checkbox)
-    expect(checkbox).toBeChecked()
-    const renderedPreview = container.querySelector('[data-status-simulation] .discord-preview-card')
-    const previewCount = container.querySelectorAll('.discord-preview-card').length
-
-    await fireEvent.click(preview)
-    expect(preview).toHaveAttribute('aria-selected', 'true')
-    expect(panelFor(configuration)).toHaveAttribute('hidden')
-    expect(panelFor(preview)).not.toHaveAttribute('hidden')
-    expect(screen.getByRole('tabpanel', { name: 'Live Discord preview' })).toBeInTheDocument()
-    expect(container.querySelectorAll('.discord-preview-card')).toHaveLength(previewCount)
-    expect(container.querySelector('[data-status-simulation] .discord-preview-card')).toBe(renderedPreview)
-
-    await fireEvent.keyDown(preview, { key: 'Home' })
-    expect(configuration).toHaveFocus()
-    expect(configuration).toHaveAttribute('aria-selected', 'true')
-    expect(checkbox).toBeChecked()
-    await fireEvent.keyDown(configuration, { key: 'ArrowRight' })
-    expect(preview).toHaveFocus()
-    expect(preview).toHaveAttribute('aria-selected', 'true')
+    await ready()
+    await fireEvent.click(players())
+    await fireEvent.input(screen.getByLabelText('Player List Format'), { target: { value: '**{name}**' } })
+    await fireEvent.click(container.querySelector('tbody [aria-label="Delete"]')!)
+    expect(puts(network)).toHaveLength(0)
+    await fireEvent.click(mainSave())
+    await vi.waitFor(() => expect(mainSave()).toBeDisabled())
+    expect(puts(network)).toHaveLength(1)
+    expect(JSON.parse(String(puts(network)[0][1].body))).toEqual({
+      configuration: {
+        settings: { show_player_list_status: true, status_player_list_format: '**{name}**', show_status_chart: false },
+        buttons: [],
+      },
+      revision: 'a'.repeat(64),
+    })
   })
-
-  it('restores both panels when widening the viewport and retains the selected mobile tab', async () => {
-    const resize = viewport(false)
+  it('restores all settings and removed buttons when Cancel is clicked without any write', async () => {
+    const network = installNetwork(api)
+    const { container } = renderStatus()
+    await ready()
+    await fireEvent.click(players())
+    await fireEvent.click(container.querySelector('tbody [aria-label="Delete"]')!)
+    expect(container.querySelector('tbody')).not.toHaveTextContent('Website')
+    await fireEvent.click(mainCancel())
+    expect(players()).not.toBeChecked()
+    expect(container.querySelector('tbody')).toHaveTextContent('Website')
+    expect(mainSave()).toBeDisabled()
+    expect(puts(network)).toHaveLength(0)
+  })
+  it('retains failed changes for retry and deduplicates while Save is busy', async () => {
+    const network = installNetwork(api)
     renderStatus()
-    const configuration = screen.getByRole('tab', { name: 'Configuration' })
+    await ready()
+    await fireEvent.click(players())
+    network.mockResolvedValueOnce({ ...errJson(), status: 503 })
+    await fireEvent.click(mainSave())
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(players()).toBeChecked()
+    expect(mainSave()).toBeEnabled()
+    let resolve!: (value: any) => void
+    network.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done
+        }),
+    )
+    await fireEvent.click(mainSave())
+    await fireEvent.click(mainSave())
+    expect(mainSave()).toBeDisabled()
+    expect(mainCancel()).toBeDisabled()
+    expect(players()).toBeDisabled()
+    expect(puts(network)).toHaveLength(2)
+    resolve(
+      okJson({
+        configuration: configuration({
+          settings: { show_player_list_status: true, status_player_list_format: '{name}', show_status_chart: false },
+        }),
+        revision: 'b'.repeat(64),
+        sync: 'applied',
+      }),
+    )
+    await vi.waitFor(() => expect(mainCancel()).toBeEnabled())
+    expect(mainSave()).toBeDisabled()
+  })
+  it('reports a persisted update with pending Discord delivery as saved', async () => {
+    const network = installNetwork(api)
+    renderStatus()
+    await ready()
+    await fireEvent.click(players())
+    network.mockResolvedValueOnce(
+      okJson({
+        configuration: configuration({
+          settings: { show_player_list_status: true, status_player_list_format: '{name}', show_status_chart: false },
+        }),
+        revision: 'b'.repeat(64),
+        sync: 'pending',
+      }),
+    )
+    await fireEvent.click(mainSave())
+    await vi.waitFor(() => expect(screen.getByText(/Discord update has not been confirmed/)).toBeInTheDocument())
+    expect(mainSave()).toBeDisabled()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+  it('preserves a conflicting draft and offers an explicit discard and reload action', async () => {
+    const network = installNetwork(api)
+    renderStatus()
+    await ready()
+    await fireEvent.click(players())
+    network.mockResolvedValueOnce({ ...errJson(), status: 409 })
+    await fireEvent.click(mainSave())
+    await vi.waitFor(() => expect(screen.getByText(/saved values changed/)).toBeInTheDocument())
+    expect(players()).toBeChecked()
+    await fireEvent.click(screen.getByRole('button', { name: 'Discard changes and reload saved values' }))
+    await vi.waitFor(() => expect(players()).not.toBeChecked())
+    expect(mainSave()).toBeDisabled()
+  })
+  it('disables edits for failed initial loads and supports retry', async () => {
+    const network = installNetwork(api, { failGet: true })
+    renderStatus()
+    await vi.waitFor(() => expect(screen.getAllByRole('alert').length).toBeGreaterThan(0))
+    expect(players()).toBeDisabled()
+    expect(mainSave()).toBeDisabled()
+    network.mockResolvedValueOnce(okJson({ configuration: configuration(), revision: 'a'.repeat(64) }))
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Try again' })[0])
+    await ready()
+  })
+  it('guards leaving with unsaved changes and beforeunload, but Cancel clears the guard', async () => {
+    installNetwork(api)
+    renderStatus(true)
+    await ready()
+    await fireEvent.click(players())
+    const event = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+    await fireEvent.click(screen.getByRole('link', { name: 'Other page' }))
+    expect(screen.getByRole('dialog', { name: 'Leave without saving?' })).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Stay on this page' }))
+    await fireEvent.click(mainCancel())
+    const clean = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(clean)
+    expect(clean.defaultPrevented).toBe(false)
+  })
+  it('switches mobile tabs without losing the draft and supports keyboard navigation', async () => {
+    viewport(false)
+    installNetwork(api)
+    renderStatus()
+    await ready()
+    const config = screen.getByRole('tab', { name: 'Configuration' })
+    const preview = screen.getByRole('tab', { name: 'Live Discord preview' })
+    await fireEvent.click(players())
+    await fireEvent.click(preview)
+    expect(panelFor(config)).toHaveAttribute('hidden')
+    await fireEvent.keyDown(preview, { key: 'Home' })
+    expect(config).toHaveFocus()
+    expect(players()).toBeChecked()
+    await fireEvent.keyDown(config, { key: 'ArrowRight' })
+    expect(preview).toHaveFocus()
+  })
+  it('keeps a ready preview mounted when the viewport widens', async () => {
+    const resize = viewport(false)
+    installNetwork(api)
+    renderStatus()
+    const config = screen.getByRole('tab', { name: 'Configuration' })
     const preview = screen.getByRole('tab', { name: 'Live Discord preview' })
     await fireEvent.click(preview)
-    expect(panelFor(configuration)).toHaveAttribute('hidden')
+    expect(panelFor(config)).toHaveAttribute('hidden')
     resize(true)
-    expect(panelFor(configuration)).not.toHaveAttribute('hidden')
+    expect(panelFor(config)).not.toHaveAttribute('hidden')
     expect(panelFor(preview)).not.toHaveAttribute('hidden')
-    expect(panelFor(preview)).not.toHaveAttribute('role', 'tabpanel')
     resize(false)
-    expect(panelFor(configuration)).toHaveAttribute('hidden')
-    expect(preview).toHaveAttribute('aria-selected', 'true')
+    expect(panelFor(config)).toHaveAttribute('hidden')
   })
 })

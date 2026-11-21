@@ -54,9 +54,9 @@ const redisMock = { del: vi.fn() }
 vi.mock('@gmod/infra-redis', () => ({ default: redisMock }))
 
 const prismaMock: any = {
-  gm_server_links: { update: vi.fn() },
+  gm_server_links: { update: vi.fn(), create: vi.fn() },
   gm_server: { update: vi.fn(), findMany: vi.fn() },
-  gm_guild_verify_role: { update: vi.fn(), delete: vi.fn() },
+  gm_guild_verify_role: { update: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_status_button: { update: vi.fn() },
   gm_server_sync_chat_filter: { findMany: vi.fn(), create: vi.fn() },
   gm_guild_verification_check: { create: vi.fn(), update: vi.fn() },
@@ -78,7 +78,8 @@ const prismaMock: any = {
   gm_users_data_request: { findMany: vi.fn(), findFirst: vi.fn() },
   gm_server_report_bugs: { findMany: vi.fn() },
 }
-vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
+const dashboardTransactionMock = vi.fn()
+vi.mock('@gmod/infra-prisma', () => ({ default: { ...prismaMock, $transaction: dashboardTransactionMock } }))
 
 const modelMocks = {
   processCreateNewServer: vi.fn(),
@@ -161,6 +162,7 @@ function makeRes() {
 }
 
 function resetAllMocks() {
+  dashboardTransactionMock.mockReset().mockImplementation(async (operation) => operation(prismaMock))
   getUserFromDiscordIDMock.mockReset()
   getServersFromDiscordGuildIDMock.mockReset()
   addUserToGuildMock.mockReset()
@@ -1886,6 +1888,115 @@ describe('usersControllers', () => {
       modelMocks.processDeleteServerLogsTrigger.mockResolvedValueOnce({ status: 200, body: {} })
       await c.deleteServerLogsTrigger({ server: {}, params: { triggerID: '1' } } as any, makeRes())
       expect(modelMocks.processDeleteServerLogsTrigger).toHaveBeenCalledWith({}, '1')
+    })
+  })
+  describe('complete dashboard creation bodies', () => {
+    const serverCases = [
+      {
+        kind: 'role',
+        controller: c.postServerRoles,
+        table: 'gm_server_sync_roles',
+        input: { userGroup: 'admins', enable: true },
+        expected: { roleID: 'r1', userGroup: 'admins', enable: true },
+      },
+      {
+        kind: 'team',
+        controller: c.postServerTeams,
+        table: 'gm_server_sync_team_roles',
+        input: { teamName: 'Police', enable: false },
+        expected: { roleID: 'r1', teamName: 'Police', enable: false },
+      },
+      {
+        kind: 'pseudo',
+        controller: c.postServerPseudo,
+        table: 'gm_server_pseudo',
+        input: { role: 'admins', name: '', prefix: '[A]', enabled: true },
+        expected: { role: 'admins', name: '', prefix: '[A]', enabled: true },
+      },
+      {
+        kind: 'filter',
+        controller: c.postGmodToDiscordFilter,
+        table: 'gm_server_sync_chat_filter',
+        input: { element: 'message', operator: 'startWith', trigger: ' secret ', action: 'block', active: true },
+        expected: { element: 'message', operator: 'startWith', trigger: ' secret ', action: 'block', active: true },
+      },
+    ]
+    it.each(serverCases)(
+      'creates one complete $kind owned by the authorized server',
+      async ({ controller, table, input, expected }) => {
+        const owned = { id: 'owned-server', isPremium: vi.fn().mockResolvedValue(true) }
+        prismaMock[table].create.mockImplementationOnce(async ({ data }: { data: Record<string, unknown> }) => ({
+          id: 1,
+          ...data,
+        }))
+        const res = makeRes()
+        await controller({ server: owned, params: { serverID: 'owned-server', roleID: 'r1' }, body: input } as any, res)
+        expect(prismaMock[table].create).toHaveBeenCalledExactlyOnceWith({
+          data: { serverID: 'owned-server', ...expected },
+        })
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.send).toHaveBeenCalledWith({ id: 1, serverID: 'owned-server', ...expected })
+      },
+    )
+    it.each(serverCases)(
+      'rejects an incomplete $kind without falling back to a placeholder',
+      async ({ controller, table }) => {
+        const res = makeRes()
+        await controller(
+          {
+            server: { id: 's1', isPremium: vi.fn().mockResolvedValue(true) },
+            params: { serverID: 's1', roleID: 'r1' },
+            body: { active: true },
+          } as any,
+          res,
+        )
+        expect(res.status).toHaveBeenCalledWith(400)
+        expect(prismaMock[table].create).not.toHaveBeenCalled()
+        expect(dashboardTransactionMock).not.toHaveBeenCalled()
+      },
+    )
+    it.each(serverCases)('retains the historical empty-body $kind creation contract', async ({ controller, table }) => {
+      prismaMock[table].create.mockResolvedValueOnce({ id: 1 })
+      const res = makeRes()
+      await controller({ server: { id: 's1' }, params: { serverID: 's1', roleID: 'r1' }, body: {} } as any, res)
+      expect(prismaMock[table].create).toHaveBeenCalledOnce()
+      expect(dashboardTransactionMock).not.toHaveBeenCalled()
+      expect(res.send).toHaveBeenCalledWith({ id: 1 })
+    })
+    it('creates a full link in the authorized guild without calling placeholder creation', async () => {
+      const guild = {
+        id: 'g1',
+        isPremium: vi.fn().mockResolvedValue(true),
+        getLinks: vi.fn().mockResolvedValue([]),
+        createNewLink: vi.fn(),
+      }
+      const input = { alias: 'Forum', url: 'https://example.test/forum', active: true }
+      prismaMock.gm_server_links.create.mockResolvedValueOnce({ id: 1, guild: 'g1', ...input })
+      const res = makeRes()
+      await c.postGuildLinks({ guild, body: input } as any, res)
+      expect(prismaMock.gm_server_links.create).toHaveBeenCalledExactlyOnceWith({ data: { guild: 'g1', ...input } })
+      expect(guild.createNewLink).not.toHaveBeenCalled()
+      expect(res.send).toHaveBeenCalledWith({ id: 1, guild: 'g1', ...input })
+    })
+    it('creates a full verification rule after the existing guild and role checks', async () => {
+      const guild = {
+        id: 'g1',
+        isPremium: vi.fn().mockResolvedValue(true),
+        getVerificationRoles: vi.fn().mockResolvedValue([]),
+        createVerificationRole: vi.fn(),
+      }
+      const input = { isGiveRole: false, enabled: true }
+      prismaMock.gm_guild_verify_role.create.mockResolvedValueOnce({ id: 1, guildID: 'g1', roleID: 'r1', ...input })
+      const res = makeRes()
+      await c.createGuildVerificationsRoles(
+        { guild, params: { roleID: 'r1' }, dscGuild: { roles: [{ id: 'r1' }] }, body: input } as any,
+        res,
+      )
+      expect(prismaMock.gm_guild_verify_role.create).toHaveBeenCalledExactlyOnceWith({
+        data: { guildID: 'g1', roleID: 'r1', ...input },
+      })
+      expect(guild.createVerificationRole).not.toHaveBeenCalled()
+      expect(res.send).toHaveBeenCalledWith({ id: 1, guildID: 'g1', roleID: 'r1', ...input })
     })
   })
 })

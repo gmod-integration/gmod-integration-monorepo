@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vite
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
 import { okJson, errJson } from '../testHelpers.js'
+import { DraftEditingProvider } from '../../../../../../src/components/DraftEditingProvider.js'
+import { A } from '@solidjs/router'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn(() => Promise.resolve({ ok: true, json: async () => [] })),
@@ -37,11 +39,22 @@ function trigger(overrides: Partial<Record<string, unknown>> = {}) {
   }
 }
 
-function renderPage() {
-  return renderWithProviders(() => <ServerLogsTriggers />, {
-    path: '/dashboard/guilds/:guildID/config/servers/:serverID/logs',
-    history: historyAt('/dashboard/guilds/g1/config/servers/s1/logs'),
-  })
+function renderPage(guard = false) {
+  return renderWithProviders(
+    () =>
+      guard ? (
+        <DraftEditingProvider>
+          <ServerLogsTriggers />
+          <A href="/other">Other page</A>
+        </DraftEditingProvider>
+      ) : (
+        <ServerLogsTriggers />
+      ),
+    {
+      path: '/dashboard/guilds/:guildID/config/servers/:serverID/logs',
+      history: historyAt('/dashboard/guilds/g1/config/servers/s1/logs'),
+    },
+  )
 }
 
 function modal(container: HTMLElement) {
@@ -173,6 +186,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
       if (endpoint === `${TRIGGERS_URL}/1` && method === 'PUT') return Promise.resolve(errJson())
       return Promise.resolve(okJson([]))
     })
+    await fireEvent.input(m.getByPlaceholderText('Value'), { target: { value: '2000000' } })
     await fireEvent.click(m.getByText('Save'))
     await vi.waitFor(() => expect(m.getByRole('alert')).toHaveTextContent('Unable to save'))
     expect(within(container.querySelector('tbody tr') as HTMLElement).getByText('1000000')).toBeInTheDocument()
@@ -241,5 +255,54 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
     const m2 = within(modal(container))
     expect(m2.getByText('Add Trigger')).toBeInTheDocument()
     expect((m2.getByPlaceholderText('Value') as HTMLInputElement).value).toBe('1000000')
+  })
+  it('requires a change before saving an existing trigger and restores it after native cancellation', async () => {
+    ;(fetchAPI as Mock).mockImplementation((path: string, method: string) =>
+      Promise.resolve(okJson(path === TRIGGERS_URL && method === 'GET' ? [trigger()] : [])),
+    )
+    const { container } = renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Edit' })).toBeEnabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    const dialog = modal(container)
+    expect(within(dialog).getByRole('button', { name: 'Save' })).toBeDisabled()
+    await fireEvent.input(within(dialog).getByPlaceholderText('Value'), { target: { value: '42' } })
+    expect(within(dialog).getByRole('button', { name: 'Save' })).toBeEnabled()
+    dialog.dispatchEvent(new Event('cancel'))
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(within(dialog).getByPlaceholderText('Value')).toHaveValue('1000000')
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
+  })
+  it('validates numeric comparisons and nonempty messages before any write', async () => {
+    const { container } = renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Trigger' })).toBeEnabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Trigger' }))
+    const dialog = modal(container)
+    await fireEvent.change(within(dialog).getByRole('combobox', { name: 'Select a Channel' }), {
+      target: { value: 'c1' },
+    })
+    await fireEvent.input(within(dialog).getByPlaceholderText('Value'), { target: { value: 'invalid number' } })
+    expect(within(dialog).getByRole('button', { name: 'Add' })).toBeDisabled()
+    expect(within(dialog).getByPlaceholderText('Value')).toHaveAttribute('aria-invalid', 'true')
+    await fireEvent.input(within(dialog).getByPlaceholderText('Value'), { target: { value: '42' } })
+    await fireEvent.input(within(dialog).getByLabelText(/Message/), { target: { value: ' ' } })
+    expect(within(dialog).getByRole('button', { name: 'Add' })).toBeDisabled()
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+  })
+  it('registers modal edits with the global navigation and beforeunload guards', async () => {
+    const { container } = renderPage(true)
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Trigger' })).toBeEnabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Trigger' }))
+    const dialog = modal(container)
+    await fireEvent.input(within(dialog).getByPlaceholderText('Value'), { target: { value: '42' } })
+    const event = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+    await fireEvent.click(screen.getByRole('link', { name: 'Other page' }))
+    expect(screen.getByRole('dialog', { name: 'Leave without saving?' })).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Stay on this page' }))
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    const clean = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(clean)
+    expect(clean.defaultPrevented).toBe(false)
   })
 })

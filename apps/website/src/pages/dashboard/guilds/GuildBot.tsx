@@ -12,6 +12,7 @@ import {
   SettingRow,
 } from '../../../components/ui/index.js'
 import { createAsyncAction } from '../../../hooks/createAsyncAction.js'
+import { useDraftGuard } from '../../../hooks/draftRegistry.js'
 import { A } from '@solidjs/router'
 import { useI18n } from '../../../i18n.js'
 import { fetchAPI, getUrlWithActualParams } from '../../../utils/api.js'
@@ -51,10 +52,26 @@ const GuildBot: Component = () => {
     draft().username !== originalDraft().username ||
     draft().avatar !== originalDraft().avatar ||
     draft().status !== originalDraft().status
+  const avatarValid = () => {
+    if (!draft().avatar.trim()) return true
+    try {
+      return ['http:', 'https:'].includes(new URL(draft().avatar).protocol)
+    } catch {
+      return false
+    }
+  }
+  const valid = () =>
+    !!draft().username.trim() &&
+    avatarValid() &&
+    ['disabled', 'guildMemberCount', 'playerCount', 'rotate'].includes(draft().status)
   let popupTimer: ReturnType<typeof setInterval> | undefined
   onCleanup(() => clearInterval(popupTimer))
 
-  const updateDraft = (next: Partial<BotDraft>) => setDraft((previous) => ({ ...previous, ...next }))
+  const updateDraft = (next: Partial<BotDraft>) => {
+    if (editAction.pending()) return
+    editAction.reset()
+    setDraft((previous) => ({ ...previous, ...next }))
+  }
   const discardEdit = () => {
     if (editAction.pending()) return
     setDraft({ ...originalDraft() })
@@ -65,6 +82,8 @@ const GuildBot: Component = () => {
     setToken('')
     setupAction.reset()
   }
+  useDraftGuard({ dirty, pending: editAction.pending, discard: discardEdit })
+  useDraftGuard({ dirty: () => !!token(), pending: setupAction.pending, discard: discardSetup })
   const openEditor = () => {
     if (bot.loading || bot.error || busy()) return
     const current = bot()!
@@ -81,7 +100,7 @@ const GuildBot: Component = () => {
   }
 
   async function saveBot() {
-    if (bot.loading || bot.error || !dirty()) return
+    if (bot.loading || bot.error || !dirty() || !valid()) return
     const submitted = { ...draft() }
     const saved = await editAction.run(async () => {
       const response = await fetchAPI(BOT_URL, 'PUT', { ...bot()!, ...submitted })
@@ -163,23 +182,36 @@ const GuildBot: Component = () => {
         onClose={discardEdit}
         onCancel={discardEdit}
       >
-        <FormField id="bot-name" label={t('dashboard.guild.bot.name', 'Name')}>
+        <FormField
+          id="bot-name"
+          label={t('dashboard.guild.bot.name', 'Name')}
+          required
+          error={dirty() && !draft().username.trim() ? t('ui.invalid_value', 'Enter a valid value.') : undefined}
+        >
           <input
             id="bot-name"
             type="text"
             class="input w-full"
             disabled={bot.loading || editAction.pending()}
             value={draft().username}
+            aria-invalid={dirty() && !draft().username.trim()}
+            aria-describedby={dirty() && !draft().username.trim() ? 'bot-name-error' : undefined}
             onInput={(event) => updateDraft({ username: event.currentTarget.value })}
           />
         </FormField>
-        <FormField id="bot-avatar" label={t('dashboard.guild.bot.avatar', 'Avatar')}>
+        <FormField
+          id="bot-avatar"
+          label={t('dashboard.guild.bot.avatar', 'Avatar')}
+          error={!avatarValid() ? t('ui.invalid_value', 'Enter a valid value.') : undefined}
+        >
           <input
             id="bot-avatar"
             type="url"
             class="input w-full"
             disabled={bot.loading || editAction.pending()}
             value={draft().avatar}
+            aria-invalid={!avatarValid()}
+            aria-describedby={!avatarValid() ? 'bot-avatar-error' : undefined}
             onInput={(event) => updateDraft({ avatar: event.currentTarget.value })}
           />
         </FormField>
@@ -205,7 +237,7 @@ const GuildBot: Component = () => {
         <FormActions
           dirty={dirty()}
           pending={editAction.pending()}
-          disabled={bot.loading || !!bot.error}
+          disabled={bot.loading || !!bot.error || !valid()}
           onSave={saveBot}
           onCancel={() => {
             discardEdit()

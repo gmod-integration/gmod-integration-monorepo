@@ -13,9 +13,6 @@ vi.mock('../../../../../src/utils/api.js', () => ({
 
 const PLAYERS_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/players'
 
-// Fresh literal every call - the component does `currentPlayers().bypassMaintenance = ...`
-// (direct mutation, no setter) on whatever object is passed to setCurrentPlayers, so a shared
-// module-level fixture would get permanently corrupted across tests (okJson returns by reference).
 function defaultPlayersResponse(total = 2) {
   return {
     rows: [
@@ -297,11 +294,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       await fireEvent.click(saveBtn)
 
       await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(
-          `${PLAYERS_URL}/76500000000000001`,
-          'PUT',
-          expect.objectContaining({ steam_id: '76500000000000001', bypassMaintenance: false }),
-        ),
+        expect(fetchAPI).toHaveBeenCalledWith(`${PLAYERS_URL}/76500000000000001`, 'PUT', { bypassMaintenance: false }),
       )
       const rows = container.querySelectorAll('tbody tr')
       const aliceRow = Array.from(rows).find((r) => r.textContent?.includes('Alice')) as HTMLElement
@@ -319,13 +312,58 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
         if (endpoint === `${PLAYERS_URL}/76500000000000001` && method === 'PUT') return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
       })
+      await fireEvent.change(within(modal).getByRole('combobox'), { target: { value: 'false' } })
       await fireEvent.click(within(modal).getByText('Save'))
       await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(`${PLAYERS_URL}/76500000000000001`, 'PUT', expect.anything()),
+        expect(fetchAPI).toHaveBeenCalledWith(`${PLAYERS_URL}/76500000000000001`, 'PUT', { bypassMaintenance: false }),
       )
       const rows = container.querySelectorAll('tbody tr')
       const aliceRow = Array.from(rows).find((r) => r.textContent?.includes('Alice')) as HTMLElement
       expect(aliceRow.querySelector('svg[data-icon="check"].text-success')).toBeInTheDocument()
     })
+  })
+  it('names the selected player and requires a permission change before Save', async () => {
+    renderPage()
+    await waitForLoaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[1])
+    const modal = within(document.getElementById('edit_player')!)
+    expect(modal.getByText('Bob · 76500000000000002')).toBeInTheDocument()
+    expect(modal.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(modal.getByRole('combobox')).toHaveValue('false')
+    await fireEvent.change(modal.getByRole('combobox'), { target: { value: 'true' } })
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
+    await fireEvent.click(modal.getByRole('button', { name: 'Cancel' }))
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[1])
+    expect(modal.getByRole('combobox')).toHaveValue('false')
+    expect(modal.getByRole('button', { name: 'Save' })).toBeDisabled()
+  })
+  it('locks permission editing and avoids duplicate writes while a save is pending', async () => {
+    renderPage()
+    await waitForLoaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
+    const dialog = document.getElementById('edit_player')!
+    const modal = within(dialog)
+    await fireEvent.change(modal.getByRole('combobox'), { target: { value: 'false' } })
+    let finish!: (value: ReturnType<typeof errJson>) => void
+    ;(fetchAPI as Mock).mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+    )
+    const save = modal.getByRole('button', { name: 'Save' })
+    await fireEvent.click(save)
+    await fireEvent.click(save)
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
+    expect(modal.getByRole('combobox')).toBeDisabled()
+    expect(modal.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    expect(modal.getByRole('button', { name: 'Close' })).toBeDisabled()
+    finish(errJson())
+    await vi.waitFor(() => expect(modal.getByRole('alert')).toBeInTheDocument())
+    expect(dialog).toHaveAttribute('open')
+    expect(modal.getByRole('combobox')).toHaveValue('false')
+    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({ steam_id: '76500000000000001', bypassMaintenance: false }))
+    await fireEvent.click(save)
+    await vi.waitFor(() => expect(dialog).not.toHaveAttribute('open'))
+    expect(screen.getByText('Alice').closest('tr')?.querySelector('svg[data-icon="x"]')).toBeInTheDocument()
   })
 })
