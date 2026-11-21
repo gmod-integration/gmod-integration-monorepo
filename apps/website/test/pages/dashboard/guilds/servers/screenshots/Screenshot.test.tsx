@@ -6,6 +6,7 @@ import type { ScreenshotStructure } from '../../../../../../src/pages/dashboard/
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
 })
 
 const baseShot: ScreenshotStructure = {
@@ -87,11 +88,40 @@ describe('pages/dashboard/guilds/servers/screenshots/Screenshot.tsx', () => {
     expect(link).toHaveAttribute('target', '_blank')
   })
 
-  it('copies the screenshot url to the clipboard when the copy button is clicked', async () => {
-    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+  it('confirms the screenshot URL copy only after the clipboard write succeeds', async () => {
+    let finishCopy = () => {}
+    const pending = new Promise<void>((resolve) => {
+      finishCopy = resolve
+    })
+    const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockReturnValue(pending)
     renderShot(baseShot)
-    await fireEvent.click(screen.getByRole('button', { name: 'Copy URL' }))
+    const button = screen.getByRole('button', { name: 'Copy screenshot URL' })
+    await fireEvent.click(button)
     expect(writeText).toHaveBeenCalledWith(baseShot.url)
-    writeText.mockRestore()
+    expect(button).toBeDisabled()
+    expect(button.querySelector('svg[data-icon="check"]')).toBeNull()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    finishCopy()
+    await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/copied/i))
+    expect(button.querySelector('svg[data-icon="check"]')).not.toBeNull()
+    expect(button).toBeEnabled()
+  })
+
+  it('shows a clipboard failure and allows the same screenshot URL to be copied again', async () => {
+    const writeText = vi
+      .spyOn(navigator.clipboard, 'writeText')
+      .mockRejectedValueOnce(new Error('Clipboard unavailable'))
+      .mockResolvedValue(undefined)
+    renderShot(baseShot)
+    const button = screen.getByRole('button', { name: 'Copy screenshot URL' })
+    await fireEvent.click(button)
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent(/unable to copy/i))
+    expect(button.querySelector('svg[data-icon="check"]')).toBeNull()
+    expect(button).toBeEnabled()
+    await fireEvent.click(button)
+    await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/copied/i))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(writeText).toHaveBeenCalledTimes(2)
+    expect(writeText).toHaveBeenLastCalledWith(baseShot.url)
   })
 })

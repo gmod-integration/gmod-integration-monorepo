@@ -693,7 +693,8 @@
         "information": "Informatie",
         "player_metadata": "Spelermetadata",
         "end_of_list": "Einde lijst",
-        "capture_metadata": "Metadata vastleggen"
+        "capture_metadata": "Metadata vastleggen",
+        "copy_url": "Screenshot-URL kopiëren"
       },
       "edit_player": {
         "title": "Speler bewerken",
@@ -1149,7 +1150,10 @@
     "wait_saving": "Wacht tot het opslaan is voltooid voordat je vertrekt.",
     "leave_description": "Je niet-opgeslagen wijzigingen worden verworpen.",
     "stay": "Op deze pagina blijven",
-    "discard_leave": "Verwerpen en verlaten"
+    "discard_leave": "Verwerpen en verlaten",
+    "copy": "Kopiëren",
+    "copied": "Gekopieerd!",
+    "copy_error": "Kopiëren is niet gelukt. Probeer het opnieuw."
   },
   "settings": {
     "access": "Toegang en verificatie",
@@ -1252,5 +1256,26 @@
     "reverse_sync": "Synchronisatie van Discord naar het spel",
     "errors_history": "Foutgeschiedenis",
     "verification_preferences": "Verificatievoorkeuren"
+  },
+  "server_setup": {
+    "title": "De Gmod Integration-addon verbinden",
+    "description": "Voer na de installatie van de addon deze opdrachten één voor één uit in de console van je Garry’s Mod-server. Deze vind je in het beheerpaneel van je hostingprovider.",
+    "credentials": "Servergegevens",
+    "copy_id": "Server-ID kopiëren",
+    "copy_token": "Servertoken kopiëren",
+    "commands": "Consoleopdrachten",
+    "set_id": "1. De server-ID instellen",
+    "copy_id_command": "Opdracht voor het instellen van de server-ID kopiëren",
+    "set_token": "2. Het servertoken instellen",
+    "token_hint": "Bij het kopiëren van deze opdracht wordt je token meegenomen, ook als het verborgen is.",
+    "copy_token_command": "Opdracht voor het instellen van het servertoken kopiëren",
+    "test": "3. De verbinding testen",
+    "copy_test_command": "Opdracht voor het testen van de verbinding kopiëren",
+    "saved_hint": "De addon slaat deze instellingen direct op en test de verbinding automatisch zodra beide servergegevens zijn ingesteld.",
+    "diagnostics": "Diagnose",
+    "help": "De verbindingsstatus en beschikbare opdrachten bekijken",
+    "copy_help_command": "Diagnoseopdracht kopiëren",
+    "version": "De geïnstalleerde addonversie controleren",
+    "copy_version_command": "Opdracht voor versiecontrole kopiëren"
   }
 }

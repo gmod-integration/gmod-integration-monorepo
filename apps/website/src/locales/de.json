@@ -693,7 +693,8 @@
         "information": "Unterrichtung",
         "player_metadata": "Player Metadaten",
         "end_of_list": "Ende der Liste",
-        "capture_metadata": "Metadaten erfassen"
+        "capture_metadata": "Metadaten erfassen",
+        "copy_url": "Screenshot-URL kopieren"
       },
       "edit_player": {
         "title": "Player bearbeiten",
@@ -1149,7 +1150,10 @@
     "wait_saving": "Warte, bis das Speichern abgeschlossen ist, bevor du die Seite verlässt.",
     "leave_description": "Deine ungespeicherten Änderungen werden verworfen.",
     "stay": "Auf dieser Seite bleiben",
-    "discard_leave": "Verwerfen und verlassen"
+    "discard_leave": "Verwerfen und verlassen",
+    "copy": "Kopieren",
+    "copied": "Kopiert!",
+    "copy_error": "Kopieren nicht möglich. Bitte versuche es erneut."
   },
   "settings": {
     "access": "Zugang und Verifizierung",
@@ -1252,5 +1256,26 @@
     "reverse_sync": "Synchronisierung von Discord zum Spiel",
     "errors_history": "Fehlerverlauf",
     "verification_preferences": "Verifizierungseinstellungen"
+  },
+  "server_setup": {
+    "title": "Gmod Integration-Addon verbinden",
+    "description": "Führe diese Befehle nach der Installation des Addons einzeln in der Konsole deines Garry’s Mod-Servers aus. Du findest sie im Verwaltungspanel deines Hosters.",
+    "credentials": "Server-Zugangsdaten",
+    "copy_id": "Server-ID kopieren",
+    "copy_token": "Server-Token kopieren",
+    "commands": "Konsolenbefehle",
+    "set_id": "1. Server-ID festlegen",
+    "copy_id_command": "Befehl zum Festlegen der Server-ID kopieren",
+    "set_token": "2. Server-Token festlegen",
+    "token_hint": "Beim Kopieren dieses Befehls wird dein Token übernommen, auch wenn es ausgeblendet ist.",
+    "copy_token_command": "Befehl zum Festlegen des Server-Tokens kopieren",
+    "test": "3. Verbindung testen",
+    "copy_test_command": "Befehl zum Verbindungstest kopieren",
+    "saved_hint": "Das Addon speichert diese Einstellungen sofort und testet die Verbindung automatisch, sobald beide Zugangsdaten festgelegt sind.",
+    "diagnostics": "Diagnose",
+    "help": "Verbindungsstatus und verfügbare Befehle prüfen",
+    "copy_help_command": "Diagnosebefehl kopieren",
+    "version": "Installierte Addon-Version prüfen",
+    "copy_version_command": "Befehl zur Versionsprüfung kopieren"
   }
 }

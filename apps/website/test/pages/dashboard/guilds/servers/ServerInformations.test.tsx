@@ -24,6 +24,7 @@ vi.mock('../../../../../src/utils/websocket.js', async (importOriginal) => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.useRealTimers()
 })
 
@@ -124,6 +125,59 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     setServerLocalStorage({ isPublic: false })
     renderPage()
     expect(screen.getByRole('checkbox', { name: 'Public' })).not.toBeChecked()
+  })
+
+  describe('addon setup commands', () => {
+    it('shows the Lua console commands with the selected server ID while masking the token', () => {
+      const { container } = renderPage()
+      expect(screen.getByText('gmod-integration config set id "s1"')).toBeInTheDocument()
+      expect(screen.getByText('gmod-integration config try')).toBeInTheDocument()
+      expect(container.textContent).toContain('gmod-integration help')
+      expect(container.textContent).toContain('gmod-integration version')
+      expect(container.innerHTML).not.toContain('secret-token')
+      expect(screen.getByRole('button', { name: 'Copy the server token command' })).toBeEnabled()
+    })
+
+    it('copies complete commands with the current credentials without revealing the token', async () => {
+      const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+      const { container } = renderPage()
+      await fireEvent.click(screen.getByRole('button', { name: 'Copy the server ID command' }))
+      expect(writeText).toHaveBeenLastCalledWith('gmod-integration config set id "s1"')
+      await fireEvent.click(screen.getByRole('button', { name: 'Copy the server token command' }))
+      expect(writeText).toHaveBeenLastCalledWith('gmod-integration config set token "secret-token"')
+      await fireEvent.click(screen.getByRole('button', { name: 'Copy the connection test command' }))
+      expect(writeText).toHaveBeenLastCalledWith('gmod-integration config try')
+      expect(container.innerHTML).not.toContain('secret-token')
+      expect(fetchAPI).not.toHaveBeenCalled()
+    })
+
+    it('uses a newly reset token for subsequent copies and hides a previously revealed command', async () => {
+      const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+      ;(fetchAPI as Mock).mockResolvedValue(okJson({ ...baseServer, token: 'replacement-token' }))
+      renderPage()
+      await fireEvent.click(screen.getByRole('button', { name: 'Show Token' }))
+      expect(screen.getByText('gmod-integration config set token "secret-token"')).toBeInTheDocument()
+      await fireEvent.click(screen.getByRole('button', { name: 'Reset Server Token' }))
+      await fireEvent.click(
+        within(document.getElementById('reset-server-token')!).getByRole('button', { name: 'Reset Server Token' }),
+      )
+      await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('server')!).token).toBe('replacement-token'))
+      expect(screen.getByRole('button', { name: 'Show Token' })).toBeInTheDocument()
+      expect(screen.queryByText(/replacement-token/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/secret-token/)).not.toBeInTheDocument()
+      await fireEvent.click(screen.getByRole('button', { name: 'Copy the server token command' }))
+      expect(writeText).toHaveBeenLastCalledWith('gmod-integration config set token "replacement-token"')
+    })
+
+    it('does not allow an incomplete token command to be copied', async () => {
+      setServerLocalStorage({ token: '' })
+      const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+      renderPage()
+      const copy = screen.getByRole('button', { name: 'Copy the server token command' })
+      expect(copy).toBeDisabled()
+      await fireEvent.click(copy)
+      expect(writeText).not.toHaveBeenCalled()
+    })
   })
 
   describe('connection status panel', () => {

@@ -693,7 +693,8 @@
         "information": "Renseignements",
         "player_metadata": "Métadonnées du lecteur",
         "end_of_list": "Fin de liste",
-        "capture_metadata": "Capturer les métadonnées"
+        "capture_metadata": "Capturer les métadonnées",
+        "copy_url": "Ekran görüntüsü URL’sini kopyala"
       },
       "edit_player": {
         "title": "Modifier le lecteur",
@@ -1149,7 +1150,10 @@
     "wait_saving": "Çıkmadan önce kaydetme işleminin bitmesini bekleyin.",
     "leave_description": "Kaydedilmemiş değişiklikleriniz atılacak.",
     "stay": "Bu sayfada kal",
-    "discard_leave": "Değişiklikleri at ve çık"
+    "discard_leave": "Değişiklikleri at ve çık",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı!",
+    "copy_error": "Kopyalanamadı. Lütfen tekrar deneyin."
   },
   "settings": {
     "access": "Erişim ve doğrulama",
@@ -1252,5 +1256,26 @@
     "reverse_sync": "Discord’dan oyuna eşitleme",
     "errors_history": "Hata geçmişi",
     "verification_preferences": "Doğrulama tercihleri"
+  },
+  "server_setup": {
+    "title": "Gmod Integration eklentisini bağlayın",
+    "description": "Eklentiyi yükledikten sonra bu komutları, barındırma sağlayıcınızın panelinden erişebileceğiniz Garry’s Mod sunucu konsolunda sırayla çalıştırın.",
+    "credentials": "Sunucu kimlik bilgileri",
+    "copy_id": "Sunucu kimliğini kopyala",
+    "copy_token": "Sunucu belirtecini kopyala",
+    "commands": "Konsol komutları",
+    "set_id": "1. Sunucu kimliğini ayarlayın",
+    "copy_id_command": "Sunucu kimliğini ayarlama komutunu kopyala",
+    "set_token": "2. Sunucu belirtecini ayarlayın",
+    "token_hint": "Bu komutu kopyaladığınızda, gizli olsa bile sunucu belirteciniz de kopyalanır.",
+    "copy_token_command": "Sunucu belirtecini ayarlama komutunu kopyala",
+    "test": "3. Bağlantıyı test edin",
+    "copy_test_command": "Bağlantı testi komutunu kopyala",
+    "saved_hint": "Eklenti bu ayarları hemen kaydeder ve her iki kimlik bilgisi de ayarlandığında bağlantıyı otomatik olarak test eder.",
+    "diagnostics": "Tanılama",
+    "help": "Bağlantı durumunu ve kullanılabilir komutları kontrol edin",
+    "copy_help_command": "Tanılama komutunu kopyala",
+    "version": "Yüklü eklenti sürümünü kontrol edin",
+    "copy_version_command": "Sürüm kontrolü komutunu kopyala"
   }
 }

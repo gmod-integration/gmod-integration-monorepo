@@ -733,7 +733,8 @@
         "information": "Information",
         "player_metadata": "Métadonnées du Joueur",
         "end_of_list": "Fin de la liste",
-        "capture_metadata": "Métadonnées de la Capture"
+        "capture_metadata": "Métadonnées de la Capture",
+        "copy_url": "Copier l’URL de la capture d’écran"
       },
       "edit_player": {
         "title": "Modifier le Joueur",
@@ -1218,7 +1219,10 @@
     "wait_saving": "Attendez la fin de l’enregistrement avant de quitter.",
     "leave_description": "Vos modifications non enregistrées seront abandonnées.",
     "stay": "Rester sur cette page",
-    "discard_leave": "Abandonner et quitter"
+    "discard_leave": "Abandonner et quitter",
+    "copy": "Copier",
+    "copied": "Copié !",
+    "copy_error": "Impossible de copier. Réessayez."
   },
   "settings": {
     "access": "Accès et vérification",
@@ -1321,5 +1325,26 @@
     "reverse_sync": "Synchronisation de Discord vers le jeu",
     "errors_history": "Historique des erreurs",
     "verification_preferences": "Préférences de vérification"
+  },
+  "server_setup": {
+    "title": "Connecter l’addon Gmod Integration",
+    "description": "Une fois l’addon installé, exécutez ces commandes une par une dans la console de votre serveur Garry’s Mod, accessible depuis le panneau de votre hébergeur.",
+    "credentials": "Identifiants du serveur",
+    "copy_id": "Copier l’identifiant du serveur",
+    "copy_token": "Copier le token du serveur",
+    "commands": "Commandes de console",
+    "set_id": "1. Configurer l’identifiant du serveur",
+    "copy_id_command": "Copier la commande de configuration de l’identifiant",
+    "set_token": "2. Configurer le token du serveur",
+    "token_hint": "La copie de cette commande inclut votre token, même lorsqu’il est masqué.",
+    "copy_token_command": "Copier la commande de configuration du token",
+    "test": "3. Tester la connexion",
+    "copy_test_command": "Copier la commande de test de connexion",
+    "saved_hint": "L’addon enregistre immédiatement ces réglages et teste automatiquement la connexion une fois les deux identifiants renseignés.",
+    "diagnostics": "Diagnostic",
+    "help": "Vérifier l’état de la connexion et les commandes disponibles",
+    "copy_help_command": "Copier la commande de diagnostic",
+    "version": "Vérifier la version installée de l’addon",
+    "copy_version_command": "Copier la commande de vérification de version"
   }
 }

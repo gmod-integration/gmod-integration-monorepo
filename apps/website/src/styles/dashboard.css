@@ -52,6 +52,84 @@
   flex-shrink: 0;
   vertical-align: middle;
 }
+.ui-copyable {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 8px;
+  background: var(--dashboard-input, var(--color-base-200));
+  vertical-align: middle;
+  transition:
+    border-color 160ms,
+    background-color 160ms;
+}
+.ui-copyable-value {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  font-size: 0.875em;
+  line-height: 1.5;
+}
+.ui-copyable--multiline {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  padding: 10px 8px 10px 12px;
+}
+.ui-copyable:focus-within {
+  border-color: var(--dashboard-accent, var(--color-primary));
+  outline: 2px solid color-mix(in srgb, var(--color-primary) 30%, transparent);
+  outline-offset: 2px;
+}
+.ui-copyable:has(> [data-copy-state='copied']) {
+  border-color: var(--color-success);
+}
+.ui-copyable .ui-copy-button {
+  flex: none;
+}
+.ui-copy-button[data-copy-state='copied'] {
+  color: var(--color-success);
+}
+.ui-copy-button[data-copy-state='error'] {
+  color: var(--color-error);
+}
+.ui-copy-button[data-copy-state='copied'] .ui-icon {
+  animation: copy-confirmed 180ms ease-out;
+}
+.ui-copy-button[data-copy-state='pending'] .ui-icon {
+  animation: copy-pending 900ms linear infinite;
+}
+.ui-copy-error {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+}
+@keyframes copy-confirmed {
+  from {
+    transform: scale(0.7);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@keyframes copy-pending {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-copyable {
+    transition: none;
+  }
+  .ui-copy-button .ui-icon {
+    animation: none !important;
+  }
+}
 .dashboard-canvas {
   background: var(--dashboard-canvas);
 }

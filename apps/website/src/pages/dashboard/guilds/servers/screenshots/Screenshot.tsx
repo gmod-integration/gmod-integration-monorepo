@@ -1,4 +1,4 @@
-import { Icon } from '../../../../../components/ui/index.js'
+import { CopyButton, Icon } from '../../../../../components/ui/index.js'
 import { showDialog } from '../../../../../utils/dialog.js'
 import { type Component, type ParentProps, Show } from 'solid-js'
 import { type ScreenshotStructure } from './ServerScreenshotList'
@@ -34,7 +34,7 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
         {/* overlay top-right, visible au hover */}
         <div
           class="absolute top-2 right-2 flex space-x-1
-                 opacity-0 group-hover:opacity-100 transition-opacity
+                 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity
                  bg-black/50 p-1 rounded-md"
         >
           {/* View */}
@@ -61,13 +61,11 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
           </A>
 
           {/* Copy URL */}
-          <button
+          <CopyButton
+            value={props.screenshot.url}
+            label={t('dashboard.server.screenshots_list.copy_url', 'Copy screenshot URL')}
             class="p-1 hover:bg-base-content/20 rounded-sm"
-            aria-label="Copy URL"
-            onClick={() => navigator.clipboard.writeText(props.screenshot.url)}
-          >
-            <Icon name="link" />
-          </button>
+          />
         </div>
       </div>
 

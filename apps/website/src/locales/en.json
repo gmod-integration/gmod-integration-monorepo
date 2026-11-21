@@ -733,7 +733,8 @@
         "information": "Information",
         "player_metadata": "Player Metadata",
         "end_of_list": "End of List",
-        "capture_metadata": "Capture Metadata"
+        "capture_metadata": "Capture Metadata",
+        "copy_url": "Copy screenshot URL"
       },
       "edit_player": {
         "title": "Edit Player",
@@ -1235,7 +1236,10 @@
     "wait_saving": "Wait for saving to finish before leaving.",
     "leave_description": "Your unsaved changes will be discarded.",
     "stay": "Stay on this page",
-    "discard_leave": "Discard and leave"
+    "discard_leave": "Discard and leave",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "copy_error": "Unable to copy. Please try again."
   },
   "settings": {
     "access": "Access and verification",
@@ -1338,5 +1342,26 @@
     "reverse_sync": "Discord to game synchronization",
     "errors_history": "Error history",
     "verification_preferences": "Verification preferences"
+  },
+  "server_setup": {
+    "title": "Connect the Gmod Integration addon",
+    "description": "Once the addon is installed, run these commands one at a time in your Garry’s Mod server console, available from your hosting panel.",
+    "credentials": "Server credentials",
+    "copy_id": "Copy server ID",
+    "copy_token": "Copy server token",
+    "commands": "Console commands",
+    "set_id": "1. Set the server ID",
+    "copy_id_command": "Copy the server ID command",
+    "set_token": "2. Set the server token",
+    "token_hint": "Copying this command includes your token, even when it is hidden.",
+    "copy_token_command": "Copy the server token command",
+    "test": "3. Test the connection",
+    "copy_test_command": "Copy the connection test command",
+    "saved_hint": "The addon saves these settings immediately and automatically tests the connection once both credentials are set.",
+    "diagnostics": "Diagnostics",
+    "help": "Check connection status and available commands",
+    "copy_help_command": "Copy the diagnostics command",
+    "version": "Check the installed addon version",
+    "copy_version_command": "Copy the version command"
   }
 }

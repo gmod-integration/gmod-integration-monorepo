@@ -8,20 +8,28 @@ remain the visual foundation.
 
 Import from `apps/website/src/components/ui/index.ts`.
 
-| Component         | Purpose                                 | Contract                                                                                                                                                                                       |
-| ----------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Button`          | Text actions                            | Native attributes; `variant`: `primary`, `secondary`, `ghost`, `danger`, `warning`; `size`: `sm`, `md`; `loading` blocks clicks and retains the label. Default `type="button"`.                |
-| `ButtonLink`      | Navigation styled as a button           | Native anchor attributes and the same `variant`/`size` options as `Button`. Use an `href` for navigation; pending actions belong in `Button`.                                                  |
-| `IconButton`      | Compact row actions                     | `Button` props plus required translated `label` and `icon` or children. Includes accessible name and tooltip.                                                                                  |
-| `LanguageFlag`    | Language selector artwork               | Typed `locale`, decorative SVG from local assets, fixed 24×16 dimensions. English uses the British flag. Pair with the visible native language name.                                           |
-| `FormField`       | Labelled input, select or textarea      | `id`, `label`, optional `description`, `error`, `required`. The child control uses the same `id`.                                                                                              |
-| `FormActions`     | Save/cancel and feedback                | `onSave`, optional `onCancel`, `pending`, `disabled`, `dirty`, `error`, `success`, `message`, custom labels. Cancel precedes primary Save. Pending blocks both; validation disables only Save. |
-| `AsyncState`      | Loading, error, empty and ready content | `loading`, `error`, `empty`, optional labels and `onRetry`; content in children. Handles states in that order. Errors use safe translated copy.                                                |
-| `TableState`      | These states inside a table             | `AsyncState` props plus `colSpan`. Renders valid `tr`/`td` state content. Place inside `tbody`.                                                                                                |
-| `PageState`       | Full-page authentication and status     | `icon`, `title`, optional `description`, `status` and action children. Provides a labelled section and one page heading; `status` announces redirect progress.                                 |
-| `SettingGroup`    | Related settings                        | `title`, optional `id`, `description` and `icon`. Use within an existing panel to group controls by user goal.                                                                                 |
-| `SettingRow`      | Setting, explanation and control        | `title`, optional `controlId`, `description`, `feedback`, `stacked`. Set the control's `id` to `controlId` and associate the description with `${controlId}-description`.                      |
-| `SettingFeedback` | Action feedback                         | `pending`, `error`, `success`; announces the active state without duplicating page-specific markup.                                                                                            |
+| Component         | Purpose                                 | Contract                                                                                                                                                                                                                           |
+| ----------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Button`          | Text actions                            | Native attributes; `variant`: `primary`, `secondary`, `ghost`, `danger`, `warning`; `size`: `sm`, `md`; `loading` blocks clicks and retains the label. Default `type="button"`.                                                    |
+| `ButtonLink`      | Navigation styled as a button           | Native anchor attributes and the same `variant`/`size` options as `Button`. Use an `href` for navigation; pending actions belong in `Button`.                                                                                      |
+| `IconButton`      | Compact row actions                     | `Button` props plus required translated `label` and `icon` or children. Includes accessible name and tooltip.                                                                                                                      |
+| `CopyableValue`   | Bordered value or console command       | `value` is the clipboard payload; optional `display` masks it or preserves a link. `label` names the copy action, `multiline` wraps commands, `disabled` prevents copying. Copy icon becomes a check only after clipboard success. |
+| `CopyButton`      | Standalone clipboard action             | `value`, optional `label`, `disabled` and `class`. Shares pending, copied and retryable error feedback with `CopyableValue`.                                                                                                       |
+| `LanguageFlag`    | Language selector artwork               | Typed `locale`, decorative SVG from local assets, fixed 24×16 dimensions. English uses the British flag. Pair with the visible native language name.                                                                               |
+| `FormField`       | Labelled input, select or textarea      | `id`, `label`, optional `description`, `error`, `required`. The child control uses the same `id`.                                                                                                                                  |
+| `FormActions`     | Save/cancel and feedback                | `onSave`, optional `onCancel`, `pending`, `disabled`, `dirty`, `error`, `success`, `message`, custom labels. Cancel precedes primary Save. Pending blocks both; validation disables only Save.                                     |
+| `AsyncState`      | Loading, error, empty and ready content | `loading`, `error`, `empty`, optional labels and `onRetry`; content in children. Handles states in that order. Errors use safe translated copy.                                                                                    |
+| `TableState`      | These states inside a table             | `AsyncState` props plus `colSpan`. Renders valid `tr`/`td` state content. Place inside `tbody`.                                                                                                                                    |
+| `PageState`       | Full-page authentication and status     | `icon`, `title`, optional `description`, `status` and action children. Provides a labelled section and one page heading; `status` announces redirect progress.                                                                     |
+| `SettingGroup`    | Related settings                        | `title`, optional `id`, `description` and `icon`. Use within an existing panel to group controls by user goal.                                                                                                                     |
+| `SettingRow`      | Setting, explanation and control        | `title`, optional `controlId`, `description`, `feedback`, `stacked`. Set the control's `id` to `controlId` and associate the description with `${controlId}-description`.                                                          |
+| `SettingFeedback` | Action feedback                         | `pending`, `error`, `success`; announces the active state without duplicating page-specific markup.                                                                                                                                |
+
+Copy controls retain the displayed value beside a keyboard-accessible action. They wait for the
+clipboard promise before showing an animated check, reset confirmation after two seconds or a value
+change, and allow retry after failure. Link displays retain their normal navigation. For credentials,
+pass a masked `display` and a translated action `label`; never include the secret in accessible names
+or tooltips. Copying still uses the current complete `value`.
 
 ## Existing components to reuse
 
@@ -52,7 +60,7 @@ Paths below are relative to `apps/website/src`.
 | `Pagination`                                      | `components/Pagination.tsx`                       | Existing query, total and page-size controls. Keep its query contract.                                                                                                                                                                                                                          |
 | `DiscordStatusPreview`                            | `components/discord/DiscordStatusPreview.tsx`     | Shared status rendering for the page and its editors.                                                                                                                                                                                                                                           |
 | `DiscordChannel`, `DiscordRole`, `DiscordMessage` | `components/discord/`                             | Discord entity display and message links.                                                                                                                                                                                                                                                       |
-| `TextValue`, `LinkValue`, `SteamID64`             | `components/popup/`, `components/SteamID64.tsx`   | Long-value, link and player identifier display.                                                                                                                                                                                                                                                 |
+| `TextValue`, `LinkValue`, `SteamID64`             | `components/popup/`, `components/SteamID64.tsx`   | Bordered copyable values, links and player identifiers. Links preserve their navigation with a separate copy action.                                                                                                                                                                            |
 | `PremiumBadge`, `BuyPremiumBtn`, `PremiumOnly`    | `utils/premium.tsx`, `components/PremiumOnly.tsx` | Shared premium access presentation.                                                                                                                                                                                                                                                             |
 | `ServerActivityChart`, `AdminChart`, `JsonViewer` | `components/`                                     | Charts and structured data display.                                                                                                                                                                                                                                                             |
 
@@ -100,6 +108,24 @@ uses the verification message rather than a Premium or quota claim. Cleanup rema
 `PremiumBadge`, `PremiumOnly` and `AdminPanel.premium` remain presentation adapters.
 `BuyPremiumBtn` is deprecated: it keeps content visible beside a link, but new code uses `FeatureGate`
 with a named capability. The icon-only badge has an accessible link name.
+
+## Addon setup in server information
+
+The server information page includes copyable commands using the selected server's ID and current
+token, with the token masked until explicitly revealed. A successful token reset updates the copied
+command and hides the token again. Setup is separate from the editable server-information draft.
+
+Commands come from the addon's [Lua console handler](../../submodules/gmod-integration/lua/gmod_integration/core/config/sv_con.lua):
+
+```text
+gmod-integration config set id "SERVER_ID"
+gmod-integration config set token "SERVER_TOKEN"
+gmod-integration config try
+```
+
+Run them one at a time in the Garry's Mod server console. The addon persists each setting immediately
+and automatically tests the connection once both credentials are configured. The diagnostics
+disclosure provides `gmod-integration help` and `gmod-integration version`.
 
 ## Interaction contracts
 

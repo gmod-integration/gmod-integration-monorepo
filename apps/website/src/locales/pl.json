@@ -693,7 +693,8 @@
         "information": "Renseignements",
         "player_metadata": "Métadonnées du lecteur",
         "end_of_list": "Fin de liste",
-        "capture_metadata": "Capturer les métadonnées"
+        "capture_metadata": "Capturer les métadonnées",
+        "copy_url": "Kopiuj adres URL zrzutu ekranu"
       },
       "edit_player": {
         "title": "Modifier le lecteur",
@@ -1149,7 +1150,10 @@
     "wait_saving": "Poczekaj na zakończenie zapisywania, zanim wyjdziesz.",
     "leave_description": "Niezapisane zmiany zostaną odrzucone.",
     "stay": "Zostań na tej stronie",
-    "discard_leave": "Odrzuć i wyjdź"
+    "discard_leave": "Odrzuć i wyjdź",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano!",
+    "copy_error": "Nie można skopiować. Spróbuj ponownie."
   },
   "settings": {
     "access": "Dostęp i weryfikacja",
@@ -1252,5 +1256,26 @@
     "reverse_sync": "Synchronizacja z Discorda do gry",
     "errors_history": "Historia błędów",
     "verification_preferences": "Preferencje weryfikacji"
+  },
+  "server_setup": {
+    "title": "Połącz dodatek Gmod Integration",
+    "description": "Po zainstalowaniu dodatku wykonaj te polecenia pojedynczo w konsoli serwera Garry’s Mod, dostępnej w panelu dostawcy hostingu.",
+    "credentials": "Dane uwierzytelniające serwera",
+    "copy_id": "Kopiuj identyfikator serwera",
+    "copy_token": "Kopiuj token serwera",
+    "commands": "Polecenia konsoli",
+    "set_id": "1. Ustaw identyfikator serwera",
+    "copy_id_command": "Kopiuj polecenie ustawienia identyfikatora serwera",
+    "set_token": "2. Ustaw token serwera",
+    "token_hint": "Skopiowanie tego polecenia obejmuje token, nawet gdy jest ukryty.",
+    "copy_token_command": "Kopiuj polecenie ustawienia tokenu serwera",
+    "test": "3. Przetestuj połączenie",
+    "copy_test_command": "Kopiuj polecenie testowania połączenia",
+    "saved_hint": "Dodatek natychmiast zapisuje te ustawienia i automatycznie testuje połączenie po ustawieniu obu danych uwierzytelniających.",
+    "diagnostics": "Diagnostyka",
+    "help": "Sprawdź stan połączenia i dostępne polecenia",
+    "copy_help_command": "Kopiuj polecenie diagnostyczne",
+    "version": "Sprawdź zainstalowaną wersję dodatku",
+    "copy_version_command": "Kopiuj polecenie sprawdzania wersji"
   }
 }

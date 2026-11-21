@@ -8,7 +8,7 @@ import AdminPanel from '../../../../components/AdminPanel.js'
 import defaultServer from '../../../../assets/defaultServer.png'
 import { useI18n } from '../../../../i18n.js'
 import { fetchAPI } from '../../../../utils/api.js'
-import { Button, FormActions, Icon, SettingGroup, SettingRow } from '../../../../components/ui/index.js'
+import { Button, CopyableValue, FormActions, Icon, SettingGroup, SettingRow } from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
 
 const ServerInformations: Component = () => {
@@ -17,6 +17,8 @@ const ServerInformations: Component = () => {
   const params = useParams()
   const [server, setServer] = createSignal(getServer())
   const [showToken, setShowToken] = createSignal(false)
+  const idCommand = () => `gmod-integration config set id "${server().id || ''}"`
+  const tokenCommand = () => `gmod-integration config set token "${server().token || ''}"`
   const editable = (value: ReturnType<typeof getServer>) => ({
     name: value.name || '',
     description: value.description || '',
@@ -203,19 +205,6 @@ const ServerInformations: Component = () => {
               </SettingRow>
             )}
           </For>
-          <SettingRow title={t('dashboard.server.server_informations.server_id', 'ID')}>
-            <code>{server().id}</code>
-          </SettingRow>
-          <SettingRow title={t('dashboard.server.server_informations.server_token', 'Token')}>
-            <Button
-              variant="ghost"
-              size="sm"
-              class="max-w-full break-all whitespace-normal"
-              onClick={() => setShowToken(!showToken())}
-            >
-              {showToken() ? server().token : t('dashboard.server.server_informations.show_token', 'Click to Show')}
-            </Button>
-          </SettingRow>
         </SettingGroup>
         <FormActions
           dirty={editor.dirty()}
@@ -226,6 +215,98 @@ const ServerInformations: Component = () => {
           onSave={() => void editServer()}
           onCancel={editor.discard}
         />
+      </AdminPanel>
+      <AdminPanel
+        title={t('server_setup.title', 'Connect the Gmod Integration addon')}
+        description={t(
+          'server_setup.description',
+          'Once the addon is installed, run these commands one at a time in your Garry’s Mod server console, available from your hosting panel.',
+        )}
+        icon="link"
+      >
+        <SettingGroup title={t('server_setup.credentials', 'Server credentials')} icon="id-card">
+          <SettingRow title={t('dashboard.server.server_informations.server_id', 'ID')}>
+            <CopyableValue value={server().id || ''} label={t('server_setup.copy_id', 'Copy server ID')} />
+          </SettingRow>
+          <SettingRow title={t('dashboard.server.server_informations.server_token', 'Token')}>
+            <div class="flex min-w-0 flex-wrap items-center gap-2">
+              <CopyableValue
+                value={server().token || ''}
+                display={showToken() ? server().token : '••••••••••••••••'}
+                label={t('server_setup.copy_token', 'Copy server token')}
+              />
+              <Button variant="ghost" size="sm" onClick={() => setShowToken(!showToken())}>
+                <Icon name={showToken() ? 'eye-off' : 'eye'} size={16} />
+                {showToken()
+                  ? t('dashboard.server.server_informations.hide_token', 'Hide Token')
+                  : t('dashboard.server.server_informations.show_token', 'Show Token')}
+              </Button>
+            </div>
+          </SettingRow>
+        </SettingGroup>
+        <SettingGroup title={t('server_setup.commands', 'Console commands')} icon="scroll-text">
+          <SettingRow title={t('server_setup.set_id', '1. Set the server ID')} stacked>
+            <CopyableValue
+              value={idCommand()}
+              disabled={!server().id}
+              label={t('server_setup.copy_id_command', 'Copy the server ID command')}
+              multiline
+              class="w-full"
+            />
+          </SettingRow>
+          <SettingRow
+            title={t('server_setup.set_token', '2. Set the server token')}
+            description={t(
+              'server_setup.token_hint',
+              'Copying this command includes your token, even when it is hidden.',
+            )}
+            stacked
+          >
+            <CopyableValue
+              value={tokenCommand()}
+              display={showToken() ? tokenCommand() : 'gmod-integration config set token "••••••••••••••••"'}
+              disabled={!server().token}
+              label={t('server_setup.copy_token_command', 'Copy the server token command')}
+              multiline
+              class="w-full"
+            />
+          </SettingRow>
+          <SettingRow title={t('server_setup.test', '3. Test the connection')} stacked>
+            <CopyableValue
+              value="gmod-integration config try"
+              label={t('server_setup.copy_test_command', 'Copy the connection test command')}
+              multiline
+              class="w-full"
+            />
+          </SettingRow>
+          <p class="text-sm text-base-content/60">
+            {t(
+              'server_setup.saved_hint',
+              'The addon saves these settings immediately and automatically tests the connection once both credentials are set.',
+            )}
+          </p>
+          <details class="rounded-lg border border-base-200 p-3">
+            <summary class="cursor-pointer text-sm font-medium">{t('server_setup.diagnostics', 'Diagnostics')}</summary>
+            <div class="mt-3 flex min-w-0 flex-col gap-3">
+              <SettingRow title={t('server_setup.help', 'Check connection status and available commands')} stacked>
+                <CopyableValue
+                  value="gmod-integration help"
+                  label={t('server_setup.copy_help_command', 'Copy the diagnostics command')}
+                  multiline
+                  class="w-full"
+                />
+              </SettingRow>
+              <SettingRow title={t('server_setup.version', 'Check the installed addon version')} stacked>
+                <CopyableValue
+                  value="gmod-integration version"
+                  label={t('server_setup.copy_version_command', 'Copy the version command')}
+                  multiline
+                  class="w-full"
+                />
+              </SettingRow>
+            </div>
+          </details>
+        </SettingGroup>
       </AdminPanel>
       <AdminPanel
         title={t('dashboard.server.server_informations.connection_status_title', 'Connection Status')}

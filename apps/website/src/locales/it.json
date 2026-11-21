@@ -693,7 +693,8 @@
         "information": "Informazioni",
         "player_metadata": "Metadati del giocatore",
         "end_of_list": "Fine dell'elenco",
-        "capture_metadata": "Cattura metadati"
+        "capture_metadata": "Cattura metadati",
+        "copy_url": "Copia l’URL dello screenshot"
       },
       "edit_player": {
         "title": "Modifica lettore",
@@ -1149,7 +1150,10 @@
     "wait_saving": "Attendi il completamento del salvataggio prima di uscire.",
     "leave_description": "Le modifiche non salvate verranno scartate.",
     "stay": "Rimani su questa pagina",
-    "discard_leave": "Scarta ed esci"
+    "discard_leave": "Scarta ed esci",
+    "copy": "Copia",
+    "copied": "Copiato!",
+    "copy_error": "Impossibile copiare. Riprova."
   },
   "settings": {
     "access": "Accesso e verifica",
@@ -1252,5 +1256,26 @@
     "reverse_sync": "Sincronizzazione da Discord al gioco",
     "errors_history": "Cronologia errori",
     "verification_preferences": "Preferenze di verifica"
+  },
+  "server_setup": {
+    "title": "Collega l’addon Gmod Integration",
+    "description": "Dopo aver installato l’addon, esegui questi comandi uno alla volta nella console del tuo server Garry’s Mod, disponibile nel pannello del tuo provider di hosting.",
+    "credentials": "Credenziali del server",
+    "copy_id": "Copia l’ID del server",
+    "copy_token": "Copia il token del server",
+    "commands": "Comandi della console",
+    "set_id": "1. Imposta l’ID del server",
+    "copy_id_command": "Copia il comando per impostare l’ID del server",
+    "set_token": "2. Imposta il token del server",
+    "token_hint": "La copia di questo comando include il tuo token, anche quando è nascosto.",
+    "copy_token_command": "Copia il comando per impostare il token del server",
+    "test": "3. Verifica la connessione",
+    "copy_test_command": "Copia il comando di verifica della connessione",
+    "saved_hint": "L’addon salva subito queste impostazioni e verifica automaticamente la connessione una volta impostate entrambe le credenziali.",
+    "diagnostics": "Diagnostica",
+    "help": "Controlla lo stato della connessione e i comandi disponibili",
+    "copy_help_command": "Copia il comando di diagnostica",
+    "version": "Controlla la versione installata dell’addon",
+    "copy_version_command": "Copia il comando di verifica della versione"
   }
 }
