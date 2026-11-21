@@ -78,7 +78,30 @@
     "request_my_data": "Demande de mes données",
     "delete_my_data": "Supprimer mes données",
     "error_create_data_request": "Impossible de créer la requête de données",
-    "description": "Zarządzaj połączonymi kontami, sesjami i danymi osobowymi."
+    "description": "Zarządzaj połączonymi kontami, sesjami i danymi osobowymi.",
+    "erasure": {
+      "submit_error": "Nie udało się potwierdzić żądania. Spróbuj ponownie — zostanie użyte to samo żądanie.",
+      "title": "Poproś o usunięcie konta",
+      "scope": "Ta operacja usuwa Twoje profile osobiste, statystyki, sesje, pliki i eksporty danych.",
+      "retained": "Zachowane zostaną minimalny zapis żądania, globalne bany i reputacja. Społeczności i wspólne zakupy pozostaną.",
+      "new_account": "Ponowne zalogowanie po usunięciu danych tworzy nowe konto.",
+      "confirmation": "Wpisz DELETE, aby potwierdzić",
+      "signout": "Po zaakceptowaniu żądania nastąpi wylogowanie. Ta przeglądarka zachowa potwierdzenie umożliwiające śledzenie postępu.",
+      "submit": "Potwierdź żądanie usunięcia",
+      "completed": "Żądane usunięcie danych zostało zakończone.",
+      "running": "Twoje dane osobowe są usuwane. Tutaj możesz śledzić postęp także po wylogowaniu.",
+      "retry": "Twoje żądanie zostało zachowane. Przetwarzanie zostanie wznowione automatycznie — nie musisz wysyłać nowego żądania.",
+      "pending": "Twoje żądanie zostało przyjęte i oczekuje na przetworzenie. Usuwanie nie zostało jeszcze zakończone.",
+      "checking": "Sprawdzanie żądania usunięcia…",
+      "progress": "Postęp usuwania",
+      "completed_date": "Zakończono",
+      "status_error": "Nie udało się sprawdzić stanu żądania. Spróbuj ponownie — potwierdzenie zostanie zachowane, a nowe żądanie nie powstanie.",
+      "paused": "Automatyczne sprawdzanie zostało wstrzymane. Żądanie pozostaje aktywne — sprawdź ponownie, aby wznowić śledzenie.",
+      "check_again": "Sprawdź stan ponownie",
+      "sign_in_again": "Zaloguj się, aby utworzyć nowe konto",
+      "return_account": "Wróć do konta",
+      "external_copies": "Kopie udostępnione już na Discordzie lub przechowywane w kopiach zapasowych wymagają osobnej obsługi. W ich sprawie skontaktuj się z pomocą techniczną."
+    }
   },
   "premium": {
     "sync_chat": "Synchronisation",

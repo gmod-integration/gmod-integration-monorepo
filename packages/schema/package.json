@@ -7,7 +7,8 @@
     "./bullmq.js": "./src/bullmq.ts",
     "./db/*.js": "./src/db/*.ts",
     "./gmod/*.js": "./src/gmod/*.ts",
-    "./server/*.js": "./src/server/*.ts"
+    "./server/*.js": "./src/server/*.ts",
+    "./user/*.js": "./src/user/*.ts"
   },
   "dependencies": {
     "zod": "^3.25.76",

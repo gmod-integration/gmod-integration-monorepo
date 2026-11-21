@@ -258,6 +258,16 @@ export type gm_users_data_request = Prisma.gm_users_data_requestModel
  */
 export type gm_users_notifications = Prisma.gm_users_notificationsModel
 /**
+ * Model gm_user_erasure
+ *
+ */
+export type gm_user_erasure = Prisma.gm_user_erasureModel
+/**
+ * Model gm_user_security
+ *
+ */
+export type gm_user_security = Prisma.gm_user_securityModel
+/**
  * Model users
  * 
  */

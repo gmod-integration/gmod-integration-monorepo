@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 const insertOneMock = vi.fn()
 const countDocumentsMock = vi.fn()
 const toArrayMock = vi.fn()
@@ -7,7 +16,9 @@ const skipMock = vi.fn(() => ({ toArray: toArrayMock }))
 const limitMock = vi.fn(() => ({ skip: skipMock }))
 const findMock = vi.fn(() => ({ limit: limitMock }))
 
+const deleteOneMock = vi.fn()
 const collectionMock = {
+  deleteOne: deleteOneMock,
   insertOne: insertOneMock,
   countDocuments: countDocumentsMock,
   find: findMock,
@@ -35,6 +46,8 @@ const validErrorInput = {
 
 describe('GmodErrors', () => {
   beforeEach(() => {
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
+    deleteOneMock.mockReset()
     insertOneMock.mockReset().mockResolvedValue({ insertedId: 'id1' })
     countDocumentsMock.mockReset().mockResolvedValue(0)
     toArrayMock.mockReset().mockResolvedValue([])
@@ -71,6 +84,18 @@ describe('GmodErrors', () => {
         steamID64: '',
       }),
     )
+  })
+
+  it('does not store client diagnostics for a suppressed player', async () => {
+    isErasureBlockedMock.mockResolvedValue(true)
+    await GmodErrors.from({ ...validErrorInput, steamID64: '765' }).save()
+    expect(insertOneMock).not.toHaveBeenCalled()
+  })
+
+  it('deletes only the diagnostic inserted during an erasure race', async () => {
+    isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+    await GmodErrors.from({ ...validErrorInput, steamID64: '765' }).save()
+    expect(deleteOneMock).toHaveBeenCalledWith({ _id: 'id1' })
   })
 
   it('getErrorsCountByServer() counts by serverID', async () => {

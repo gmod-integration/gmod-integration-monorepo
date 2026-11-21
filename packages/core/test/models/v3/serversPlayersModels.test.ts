@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 const getSteamUserAvatarLargeMock = vi.fn(async () => 'https://avatar.example')
 vi.mock('@gmod/infra-steam', () => ({ getSteamUserAvatarLarge: getSteamUserAvatarLargeMock }))
 
@@ -9,8 +18,8 @@ vi.mock('../../../src/utils/tools.js', () => ({ getRandomDiscordRelay: getRandom
 vi.mock('@gmod/config', () => ({ ConfigDiscord: { barerTokenRelay: 'relay-token' } }))
 
 const prismaMock: any = {
-  users: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
-  gm_user_steam: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
+  users: { deleteMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
+  gm_user_steam: { deleteMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
@@ -43,6 +52,7 @@ function makeServer(overrides: Record<string, any> = {}) {
 
 describe('serversPlayersModels', () => {
   beforeEach(() => {
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
     getSteamUserAvatarLargeMock.mockReset().mockResolvedValue('https://avatar.example')
     getRandomDiscordRelayMock.mockClear()
     for (const table of Object.values(prismaMock)) {
@@ -54,6 +64,12 @@ describe('serversPlayersModels', () => {
   })
 
   describe('sendPlayerSay', () => {
+    it('does not relay a suppressed player or load their avatar', async () => {
+      isErasureBlockedMock.mockResolvedValue(true)
+      await expect(sendPlayerSay(makeServer(), makePlayer(), 'hello', false)).resolves.toMatchObject({ skip: true })
+      expect(fetch).not.toHaveBeenCalled()
+      expect(getSteamUserAvatarLargeMock).not.toHaveBeenCalled()
+    })
     it('skips when the text is empty', async () => {
       await expect(sendPlayerSay(makeServer(), makePlayer(), '', false)).resolves.toEqual({
         skip: true,
@@ -379,6 +395,32 @@ describe('serversPlayersModels', () => {
         expect(fetchMock).toHaveBeenCalled()
       })
     })
+  })
+
+  it('does not recreate either global player profile during or after erasure', async () => {
+    isErasureBlockedMock.mockResolvedValue(true)
+    await saveConnectionGlobalInfo('765', 'STEAM_0:0:1', '192.0.2.1', 'Name')
+    await saveConnectionSteamInfo('765', 'Name', '192.0.2.1')
+    expect(prismaMock.users.create).not.toHaveBeenCalled()
+    expect(prismaMock.users.update).not.toHaveBeenCalled()
+    expect(prismaMock.gm_user_steam.create).not.toHaveBeenCalled()
+    expect(prismaMock.gm_user_steam.update).not.toHaveBeenCalled()
+  })
+
+  it('cleans the exact global profile revision written after an erasure request', async () => {
+    const updatedAt = new Date('2026-11-21T10:00:00Z')
+    isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+    prismaMock.users.create.mockResolvedValueOnce({ updatedAt })
+    await saveConnectionGlobalInfo('765', 'STEAM_0:0:1', '192.0.2.1', 'Name')
+    expect(prismaMock.users.deleteMany).toHaveBeenCalledWith({ where: { steamID64: '765', updatedAt } })
+  })
+
+  it('cleans the exact Steam profile revision written after an erasure request', async () => {
+    const updatedAt = new Date('2026-11-21T10:00:00Z')
+    isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+    prismaMock.gm_user_steam.create.mockResolvedValueOnce({ updatedAt })
+    await saveConnectionSteamInfo('765', 'Name', '192.0.2.1')
+    expect(prismaMock.gm_user_steam.deleteMany).toHaveBeenCalledWith({ where: { steam_id: '765', updatedAt } })
   })
 
   describe('saveConnectionGlobalInfo', () => {

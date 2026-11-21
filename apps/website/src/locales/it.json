@@ -78,7 +78,30 @@
     "request_my_data": "Richiedi i miei dati",
     "delete_my_data": "Elimina i miei dati",
     "error_create_data_request": "Creazione della richiesta di dati non riuscita",
-    "description": "Gestisci gli account collegati, le sessioni e i dati personali."
+    "description": "Gestisci gli account collegati, le sessioni e i dati personali.",
+    "erasure": {
+      "submit_error": "Impossibile confermare la richiesta. Riprova: verrà riutilizzata la stessa richiesta.",
+      "title": "Richiedi la cancellazione dell’account",
+      "scope": "Questa operazione cancella i tuoi profili personali, statistiche, sessioni, file ed esportazioni dei dati.",
+      "retained": "Vengono conservati una traccia minima della richiesta, i ban globali e la reputazione. Le comunità e gli acquisti collettivi rimangono.",
+      "new_account": "Accedendo nuovamente dopo la cancellazione, viene creato un nuovo account.",
+      "confirmation": "Digita DELETE per confermare",
+      "signout": "Verrai disconnesso quando la richiesta sarà accettata. Questo browser conserva una ricevuta per consentirti di seguirne l’avanzamento.",
+      "submit": "Conferma la richiesta di cancellazione",
+      "completed": "La cancellazione richiesta è completata.",
+      "running": "I tuoi dati personali sono in fase di cancellazione. Puoi seguirne l’avanzamento qui anche dopo la disconnessione.",
+      "retry": "La tua richiesta è conservata. L’elaborazione riprenderà automaticamente: non devi inviare un’altra richiesta.",
+      "pending": "La tua richiesta è stata accettata ed è in attesa di elaborazione. La cancellazione non è ancora completata.",
+      "checking": "Verifica della richiesta di cancellazione…",
+      "progress": "Avanzamento della cancellazione",
+      "completed_date": "Completata il",
+      "status_error": "Impossibile verificare lo stato della richiesta. Riprova: la ricevuta è conservata e non verrà creata una nuova richiesta.",
+      "paused": "I controlli automatici sono in pausa. La richiesta rimane attiva: verifica di nuovo per riprendere il monitoraggio.",
+      "check_again": "Verifica di nuovo lo stato",
+      "sign_in_again": "Accedi per creare un nuovo account",
+      "return_account": "Torna all’account",
+      "external_copies": "Le copie già condivise su Discord o conservate nei backup richiedono una gestione separata. Contatta il supporto per queste copie."
+    }
   },
   "premium": {
     "sync_chat": "Sincronizza conversazione",

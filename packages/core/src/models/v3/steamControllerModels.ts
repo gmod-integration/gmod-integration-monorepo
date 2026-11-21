@@ -4,6 +4,7 @@ import { gmLog } from '@gmod/shared/logger.js'
 import prisma from '@gmod/infra-prisma'
 import { removeDiscordSync, removeServerSync } from '../../classes/v3/PlayerGmod.js'
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js'
+import { getRetainedTrust, isErasureBlocked } from '@gmod/domain-user/privacy.js'
 import { enqueueDiscordGuildVerifyUser } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 
 const steamAuthUrl = 'https://steamcommunity.com/openid/login'
@@ -81,6 +82,10 @@ export async function processSteamVerificationReturn(query: Record<string, unkno
     if (!steamID64) {
       return { kind: 'json', status: 200, body: { message: 'Authentication failed' } }
     }
+    if (await isErasureBlocked(user.id, steamID64)) {
+      return { kind: 'json', status: 409, body: { error: 'personal_data_erasure_blocked' } }
+    }
+    const retainedTrust = await getRetainedTrust(user.id, steamID64)
 
     const usersWithSteam = await prisma.gm_user.findMany({
       where: {
@@ -136,6 +141,7 @@ export async function processSteamVerificationReturn(query: Record<string, unkno
         token_expires: null,
         last_oauth: new Date(),
         steam: steamID64,
+        ...(retainedTrust !== null ? { trust: retainedTrust } : {}),
       },
     })
 

@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
-import { renderWithProviders } from '../testUtils.js'
-import { setIsLogged } from '../../src/utils/event.js'
+import { historyAt, renderWithProviders } from '../testUtils.js'
+import { discordUser, isAdmin, isLogged, setIsAdmin, setIsLogged } from '../../src/utils/event.js'
+import { ERASURE_RECEIPT_KEY } from '../../src/utils/accountErasure.js'
+import { notificationCount, updateNotificationCount } from '../../src/utils/notificationStore.js'
+import {
+  setWebSocketLogsMessages,
+  setWebSocketSignal,
+  webSocketLogsMessages,
+  webSocketSignal,
+} from '../../src/utils/websocket.js'
 import Account from '../../src/pages/Account.js'
 
 vi.mock('../../src/utils/api.js', async (importOriginal) => {
@@ -15,6 +23,7 @@ afterEach(() => {
   cleanup()
   vi.useRealTimers()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 function jsonResponse(data: unknown, ok = true) {
@@ -83,7 +92,7 @@ function setupFetchAPI({
 }
 
 function renderAccount() {
-  return renderWithProviders(() => <Account />)
+  return renderWithProviders(() => <Account />, { path: '/account', history: historyAt('/account') })
 }
 
 async function waitForLoaded() {
@@ -100,6 +109,9 @@ function stubLocation(href = 'http://localhost:3000/account') {
 describe('pages/Account.tsx', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    window.sessionStorage.clear()
+    setWebSocketSignal(null)
+    setIsAdmin(false)
     setIsLogged(true)
     window.localStorage.setItem(
       'discordUser',
@@ -527,13 +539,246 @@ describe('pages/Account.tsx', () => {
       await vi.waitFor(() => expect(screen.getByText(/Failed to create the data request/)).toBeInTheDocument())
     })
 
-    it('renders the delete-my-data mailto link', async () => {
-      renderAccount()
-      await waitForLoaded()
-      expect(screen.getByRole('link', { name: 'Delete my Data' })).toHaveAttribute(
-        'href',
-        'mailto:gmod-integration@linv.dev',
-      )
+    describe('account erasure', () => {
+      const storedReceipt = () =>
+        JSON.parse(localStorage.getItem(ERASURE_RECEIPT_KEY)!) as { requestId: string; receipt: string }
+      const statusResponse = (status: 'pending' | 'running' | 'retry' | 'completed' = 'pending') => ({
+        requestId: storedReceipt().requestId,
+        status,
+        requestedAt: '2026-11-21T10:00:00.000Z',
+        completedAt: status === 'completed' ? '2026-11-21T10:00:30.000Z' : null,
+      })
+      const response = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+      const saveReceipt = () => {
+        const receipt = { requestId: '00000000-0000-4000-8000-000000000001', receipt: 'a'.repeat(64) }
+        localStorage.setItem(ERASURE_RECEIPT_KEY, JSON.stringify(receipt))
+        return receipt
+      }
+      const openDialog = async () => {
+        await fireEvent.click(screen.getByRole('button', { name: 'Delete my Data' }))
+        return screen.getByRole('dialog', { name: 'Request account erasure' })
+      }
+      const confirmErasure = async () => {
+        const dialog = await openDialog()
+        await fireEvent.input(within(dialog).getByLabelText('Type DELETE to confirm'), { target: { value: 'DELETE' } })
+        await fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm erasure request' }))
+        return dialog
+      }
+
+      it('requires exact confirmation and allows canceling before sending', async () => {
+        const fetchMock = vi.fn()
+        vi.stubGlobal('fetch', fetchMock)
+        renderAccount()
+        await waitForLoaded()
+        const dialog = await openDialog()
+        const input = within(dialog).getByLabelText('Type DELETE to confirm')
+        const confirm = within(dialog).getByRole('button', { name: 'Confirm erasure request' })
+        expect(confirm).toBeDisabled()
+        await fireEvent.input(input, { target: { value: 'delete' } })
+        expect(confirm).toBeDisabled()
+        await fireEvent.input(input, { target: { value: 'DELETE' } })
+        expect(confirm).not.toBeDisabled()
+        await fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+        expect(dialog).not.toHaveAttribute('open')
+        expect(fetchMock).not.toHaveBeenCalled()
+        expect(localStorage.getItem(ERASURE_RECEIPT_KEY)).toBeNull()
+        await openDialog()
+        expect(input).toHaveValue('')
+      })
+
+      it('locks pending submission, saves the receipt first, then signs out without reporting completion on 202', async () => {
+        localStorage.setItem('accessToken', 'current-tok')
+        localStorage.setItem('discordID', 'u1')
+        localStorage.setItem('oldAccessToken', 'impersonated-token')
+        localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
+        localStorage.setItem('locale', 'en')
+        localStorage.setItem('theme', 'dark')
+        sessionStorage.setItem('private-cache', 'old identity')
+        setIsAdmin(true)
+        updateNotificationCount(4)
+        setWebSocketLogsMessages([{ private: 'old log' }])
+        const remove = vi.spyOn(localStorage, 'removeItem')
+        const close = vi.fn()
+        setWebSocketSignal({ close, onmessage: vi.fn(), onclose: vi.fn(), onerror: vi.fn() } as unknown as WebSocket)
+        let resolvePost!: (value: Response) => void
+        const fetchMock = vi.fn((url: string, init: RequestInit) => {
+          if (init.method === 'POST') {
+            expect(storedReceipt().receipt).toMatch(/^[a-f0-9]{64}$/)
+            expect(JSON.parse(String(init.body))).toEqual({
+              confirmation: 'DELETE',
+              idempotencyKey: storedReceipt().requestId,
+              receipt: storedReceipt().receipt,
+            })
+            return new Promise<Response>((resolve) => {
+              resolvePost = resolve
+            })
+          }
+          return Promise.resolve(response(statusResponse()))
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        renderAccount()
+        await waitForLoaded()
+        const dialog = await confirmErasure()
+        const confirm = within(dialog).getByRole('button', { name: 'Confirm erasure request' })
+        expect(confirm).toBeDisabled()
+        expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+        expect(within(dialog).getByRole('button', { name: 'Close' })).toBeDisabled()
+        await fireEvent.click(confirm)
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+        expect(localStorage.getItem('accessToken')).toBe('current-tok')
+        resolvePost(response({ ...statusResponse(), receipt: storedReceipt().receipt }, 202))
+        await vi.waitFor(() => expect(document.querySelector('[data-erasure-status="pending"]')).toBeInTheDocument())
+        expect(screen.queryByText('The requested erasure is complete.')).not.toBeInTheDocument()
+        expect(isLogged()).toBe(false)
+        expect(isAdmin()).toBe(false)
+        expect(discordUser().id).toBe('')
+        expect(close).toHaveBeenCalledTimes(1)
+        expect(webSocketSignal()).toBeNull()
+        expect(webSocketLogsMessages()).toEqual([])
+        expect(notificationCount()).toBe(0)
+        expect(Object.keys(localStorage).sort()).toEqual([ERASURE_RECEIPT_KEY, 'locale', 'theme'].sort())
+        expect(localStorage.getItem('theme')).toBe('dark')
+        expect(remove).not.toHaveBeenCalledWith(ERASURE_RECEIPT_KEY)
+        expect(sessionStorage.length).toBe(0)
+        expect(fetchMock).toHaveBeenCalledWith(
+          expect.stringContaining('/v6/account/erasure-requests/'),
+          expect.objectContaining({ method: 'GET', headers: { Authorization: `Bearer ${storedReceipt().receipt}` } }),
+        )
+        expect(screen.queryByRole('button', { name: 'Request my Data' })).not.toBeInTheDocument()
+      })
+
+      it('keeps the session on failure and reuses the same idempotency key and receipt on retry', async () => {
+        localStorage.setItem('accessToken', 'current-tok')
+        let posts = 0
+        const bodies: string[] = []
+        const fetchMock = vi.fn((url: string, init: RequestInit) => {
+          if (init.method === 'POST') {
+            bodies.push(String(init.body))
+            return Promise.resolve(
+              ++posts === 1
+                ? response({}, 500)
+                : response({ ...statusResponse(), receipt: storedReceipt().receipt }, 202),
+            )
+          }
+          return Promise.resolve(posts === 1 ? response({}, 404) : response(statusResponse()))
+        })
+        vi.stubGlobal('fetch', fetchMock)
+        renderAccount()
+        await waitForLoaded()
+        const dialog = await confirmErasure()
+        await vi.waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument())
+        expect(isLogged()).toBe(true)
+        expect(localStorage.getItem('accessToken')).toBe('current-tok')
+        expect(dialog).toHaveAttribute('open')
+        await fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm erasure request' }))
+        await vi.waitFor(() => expect(document.querySelector('[data-erasure-status="pending"]')).toBeInTheDocument())
+        expect(posts).toBe(2)
+        expect(bodies[1]).toBe(bodies[0])
+      })
+
+      it('recovers a lost POST acknowledgement through the receipt without submitting again', async () => {
+        localStorage.setItem('accessToken', 'current-tok')
+        const fetchMock = vi.fn((url: string, init: RequestInit) =>
+          init.method === 'POST'
+            ? Promise.reject(new Error('response lost'))
+            : Promise.resolve(response(statusResponse('running'))),
+        )
+        vi.stubGlobal('fetch', fetchMock)
+        renderAccount()
+        await waitForLoaded()
+        await confirmErasure()
+        await vi.waitFor(() => expect(document.querySelector('[data-erasure-status="running"]')).toBeInTheDocument())
+        expect(fetchMock.mock.calls.filter(([, init]) => init.method === 'POST')).toHaveLength(1)
+        expect(isLogged()).toBe(false)
+        expect(localStorage.getItem('accessToken')).toBeNull()
+        expect(screen.queryByText('The requested erasure is complete.')).not.toBeInTheDocument()
+      })
+
+      it('resumes receipt-only tracking after reload and only reports success once completed', async () => {
+        saveReceipt()
+        setIsLogged(false)
+        let checks = 0
+        const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(() =>
+          Promise.resolve(response(statusResponse(++checks === 1 ? 'pending' : checks === 2 ? 'retry' : 'completed'))),
+        )
+        vi.stubGlobal('fetch', fetchMock)
+        vi.useFakeTimers()
+        renderAccount()
+        await vi.advanceTimersByTimeAsync(0)
+        expect(document.querySelector('[data-erasure-status="pending"]')).toBeInTheDocument()
+        expect(fetchAPI).not.toHaveBeenCalled()
+        await vi.advanceTimersByTimeAsync(5000)
+        expect(document.querySelector('[data-erasure-status="retry"]')).toBeInTheDocument()
+        expect(
+          screen.getByText(
+            'Your request is kept. Processing will resume automatically; you do not need to submit another request.',
+          ),
+        ).toBeInTheDocument()
+        expect(screen.queryByText('The requested erasure is complete.')).not.toBeInTheDocument()
+        await vi.advanceTimersByTimeAsync(5000)
+        expect(screen.getByText('The requested erasure is complete.')).toBeInTheDocument()
+        await vi.advanceTimersByTimeAsync(60_000)
+        expect(fetchMock).toHaveBeenCalledTimes(3)
+        expect(fetchMock.mock.calls.every(([, init]) => (init as RequestInit).method === 'GET')).toBe(true)
+      })
+
+      it('bounds automatic polling and resumes GET-only tracking on demand, then cleans up on unmount', async () => {
+        saveReceipt()
+        setIsLogged(false)
+        const fetchMock = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(() =>
+          Promise.resolve(response(statusResponse())),
+        )
+        vi.stubGlobal('fetch', fetchMock)
+        vi.useFakeTimers()
+        const { unmount } = renderAccount()
+        await vi.advanceTimersByTimeAsync(65_000)
+        expect(fetchMock).toHaveBeenCalledTimes(12)
+        expect(
+          screen.getByText(
+            'Automatic checks have paused. Your request remains active; check again to resume following it.',
+          ),
+        ).toBeInTheDocument()
+        await fireEvent.click(screen.getByRole('button', { name: 'Check status again' }))
+        await vi.advanceTimersByTimeAsync(0)
+        expect(fetchMock).toHaveBeenCalledTimes(13)
+        const signal = (fetchMock.mock.calls.at(-1)![1] as RequestInit).signal!
+        unmount()
+        expect(signal.aborted).toBe(true)
+        await vi.advanceTimersByTimeAsync(60_000)
+        expect(fetchMock).toHaveBeenCalledTimes(13)
+      })
+
+      it('retries status errors using the receipt and forgets it only when signing in after completion', async () => {
+        saveReceipt()
+        setIsLogged(false)
+        const fetchMock = vi
+          .fn()
+          .mockRejectedValueOnce(new Error('network'))
+          .mockImplementation(() => Promise.resolve(response(statusResponse('completed'))))
+        vi.stubGlobal('fetch', fetchMock)
+        renderAccount()
+        await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+        await fireEvent.click(screen.getByRole('button', { name: 'Check status again' }))
+        await vi.waitFor(() => expect(screen.getByText('The requested erasure is complete.')).toBeInTheDocument())
+        expect(fetchMock.mock.calls.every(([, init]) => (init as RequestInit).method === 'GET')).toBe(true)
+        expect(localStorage.getItem(ERASURE_RECEIPT_KEY)).not.toBeNull()
+        await fireEvent.click(screen.getByRole('link', { name: 'Sign in to create a new account' }))
+        expect(localStorage.getItem(ERASURE_RECEIPT_KEY)).toBeNull()
+      })
+
+      it('does not purge an unconfirmed session when a previously saved receipt cannot be verified', async () => {
+        saveReceipt()
+        localStorage.setItem('accessToken', 'current-tok')
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({}, 404)))
+        renderAccount()
+        await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+        expect(localStorage.getItem('accessToken')).toBe('current-tok')
+        expect(isLogged()).toBe(true)
+        await fireEvent.click(screen.getByRole('button', { name: 'Return to account' }))
+        await waitForLoaded()
+        expect(screen.getByRole('button', { name: 'Delete my Data' })).toBeInTheDocument()
+      })
     })
   })
 })

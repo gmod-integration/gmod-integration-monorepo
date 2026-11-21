@@ -8,6 +8,7 @@ import {
   S3ServiceException,
 } from '@aws-sdk/client-s3'
 import { ConfigMinIO, ConfigServer } from '@gmod/config'
+import { isErasureBlocked } from '@gmod/infra-prisma/privacy.js'
 
 export const s3 = new S3Client({
   endpoint: ConfigMinIO.endpoint,
@@ -71,6 +72,19 @@ export const AVATAR_BUCKET = 'gmi-user-avatars'
 
 export type AvatarProvider = 'discord' | 'steam' | 'guild'
 
+function isAvatarErasureBlocked(provider: AvatarProvider, id: string): Promise<boolean> {
+  if (provider === 'discord') return isErasureBlocked(id)
+  if (provider === 'steam') return isErasureBlocked(undefined, id)
+  return Promise.resolve(false)
+}
+
+/** Keep this outside caching fallbacks: privacy lookup/deletion failures must not reveal a URL. */
+async function discardErasedAvatar(provider: AvatarProvider, id: string): Promise<boolean> {
+  if (!(await isAvatarErasureBlocked(provider, id))) return false
+  await s3.send(new DeleteObjectCommand({ Bucket: AVATAR_BUCKET, Key: getAvatarObjectKey(provider, id) }))
+  return true
+}
+
 function getAvatarObjectKey(provider: AvatarProvider, id: string): string {
   return `${provider}/${id}`
 }
@@ -128,17 +142,20 @@ export async function ensureAvatarStored(
   if (!remoteUrl) {
     return null
   }
+  if (await isAvatarErasureBlocked(provider, id)) return null
 
+  let avatarUrl = remoteUrl
   try {
     if (!(await avatarExists(provider, id))) {
       await uploadRemoteAvatar(provider, id, remoteUrl)
     }
 
-    return getStoredAvatarUrl(provider, id)
+    avatarUrl = getStoredAvatarUrl(provider, id)
   } catch (error) {
     console.error(`Failed to cache ${provider} avatar for ${id}:`, error)
-    return remoteUrl
   }
+  if (await discardErasedAvatar(provider, id)) return null
+  return avatarUrl
 }
 
 export async function replaceStoredAvatar(
@@ -149,14 +166,17 @@ export async function replaceStoredAvatar(
   if (!remoteUrl) {
     return null
   }
+  if (await isAvatarErasureBlocked(provider, id)) return null
 
+  let avatarUrl = remoteUrl
   try {
     await uploadRemoteAvatar(provider, id, remoteUrl)
-    return getStoredAvatarUrl(provider, id)
+    avatarUrl = getStoredAvatarUrl(provider, id)
   } catch (error) {
     console.error(`Failed to refresh ${provider} avatar for ${id}:`, error)
-    return remoteUrl
   }
+  if (await discardErasedAvatar(provider, id)) return null
+  return avatarUrl
 }
 
 export async function deleteStoredAvatar(provider: AvatarProvider, id: string): Promise<void> {

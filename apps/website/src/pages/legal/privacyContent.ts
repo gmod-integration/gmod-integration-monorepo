@@ -4,7 +4,8 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
   en: {
     title: 'Privacy Policy',
     updatedLabel: 'Last updated',
-    updatedDate: '20 November 2026',
+    updatedDate: '21 November 2026',
+    updatedISO: '2026-11-21',
     sections: [
       {
         title: 'Scope and contact',
@@ -168,7 +169,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'How to make a request',
         paragraphs: [
-          'Use Account → Manage Data for a downloadable export, or email us for access, a supplementary copy, correction, erasure, restriction or an objection. The dashboard export facilitates access without guaranteeing coverage of every data category. The “Delete my Data” button opens an email request; it does not immediately delete an account.',
+          'Use Account → Manage Data for a downloadable export or to confirm an erasure request. The request revokes your sessions and provides a receipt for tracking the cleanup of personal records, stored captures and exports. Completion is reported only after the configured storage cleanup succeeds. A separate, minimized record of the request, active global security bans and an existing non-default reputation score are retained for their specific purposes. Community configuration and acquired community entitlements are not deleted with the personal account. Copies already shared to Discord, backups and other independently held copies require separate handling; contact us about these copies or for access, correction, restriction or an objection.',
           'No dashboard account is needed to contact us. Include the relevant Discord or Steam identifier and community if known. We may request proportionate identity verification where necessary, without routinely requiring an identity document.',
           'We must respond without undue delay and normally within one month of receipt. For complex or numerous requests, GDPR permits up to two additional months; we must explain that extension within the first month. Requests are normally free; any refusal or charge must meet GDPR conditions and be explained with the available remedies.',
           'For community-controlled processing, its administrator is also a contact. We must identify the relevant controller or assist it as appropriate, rather than treating the absence of a website account as a reason to deny your rights.',
@@ -197,7 +198,8 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
   fr: {
     title: 'Politique de confidentialité',
     updatedLabel: 'Dernière mise à jour',
-    updatedDate: '20 novembre 2026',
+    updatedDate: '21 novembre 2026',
+    updatedISO: '2026-11-21',
     sections: [
       {
         title: 'Périmètre et contact',
@@ -361,7 +363,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'Exercer vos droits',
         paragraphs: [
-          'La rubrique Compte → Gérer les données permet de demander un export téléchargeable. Vous pouvez nous écrire pour un accès, une copie complémentaire, une rectification, un effacement, une limitation ou une opposition. L’export facilite l’accès sans garantir de couvrir toutes les catégories. Le bouton « Supprimer mes données » ouvre une demande par email ; il ne supprime pas immédiatement un compte.',
+          'La rubrique Compte → Gérer les données permet de demander un export ou de confirmer une demande d’effacement. La demande révoque vos sessions et fournit un reçu pour suivre le nettoyage des données personnelles, captures stockées et exports. La fin du traitement est annoncée uniquement après la réussite du nettoyage des stockages prévus. Une trace distincte et minimisée de la demande, les bans globaux de sécurité actifs et une valeur de réputation existante différente du score par défaut sont conservés pour leurs finalités précises. La configuration et les droits acquis des communautés ne sont pas supprimés avec le compte personnel. Les copies déjà partagées sur Discord, les sauvegardes et les autres copies détenues séparément nécessitent un traitement distinct ; contactez-nous à leur sujet ou pour un accès, une rectification, une limitation ou une opposition.',
           'Aucun compte sur le tableau de bord n’est nécessaire pour nous contacter. Précisez l’identifiant Discord ou Steam concerné et la communauté si connue. Des éléments proportionnés peuvent être demandés pour vérifier votre identité si nécessaire, sans demander systématiquement une pièce d’identité.',
           'Nous devons répondre dans les meilleurs délais et normalement sous un mois à compter de la réception. Pour une demande complexe ou de nombreuses demandes, le RGPD autorise jusqu’à deux mois supplémentaires ; nous devons expliquer cette prolongation pendant le premier mois. Les demandes sont normalement gratuites ; tout refus ou frais doit respecter les conditions du RGPD et être motivé avec les voies de recours.',
           'Pour les traitements contrôlés par une communauté, son administrateur est aussi un interlocuteur. Nous devons identifier le responsable concerné ou l’assister selon le cas, sans faire de l’absence de compte sur le site un motif de refus de vos droits.',

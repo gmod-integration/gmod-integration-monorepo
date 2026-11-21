@@ -5,6 +5,7 @@ import redis from '@gmod/infra-redis'
 import { gmLog } from '@gmod/shared/logger.js'
 import { ChannelType, type Webhook } from 'discord.js'
 import prisma from '@gmod/infra-prisma'
+import { getErasedSteamIDs, isErasureBlocked } from '@gmod/infra-prisma/privacy.js'
 import { gm_server_logs_triggers_action, gm_server_logs_triggers_operator } from '@gmod/infra-prisma/enums.js'
 import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
@@ -699,13 +700,20 @@ export class Server extends BaseClass {
     uptime: number,
     playersList: any,
   ) {
+    const incomingPlayers: any[] = Array.isArray(playersList) ? playersList : []
+    const incomingIDs = incomingPlayers
+      .map((player) => player?.steamID64)
+      .filter((id): id is string => typeof id === 'string' && !!id)
+    const erasedPlayers = await getErasedSteamIDs(incomingIDs)
+    const visiblePlayers = incomingPlayers.filter((player) => !erasedPlayers.has(player?.steamID64))
     const serverStatus = await prisma.gm_server_status.findFirst({
       where: {
         id: this.getID(),
       },
     })
+    let saved: { updatedAt: Date }
     if (serverStatus) {
-      await prisma.gm_server_status.update({
+      saved = await prisma.gm_server_status.update({
         where: {
           id: this.getID(),
         },
@@ -717,11 +725,11 @@ export class Server extends BaseClass {
           gameMode,
           players,
           maxPlayers,
-          playersList: JSON.stringify(playersList),
+          playersList: JSON.stringify(visiblePlayers),
         },
       })
     } else {
-      await prisma.gm_server_status.create({
+      saved = await prisma.gm_server_status.create({
         data: {
           id: this.getID(),
           ip,
@@ -731,8 +739,19 @@ export class Server extends BaseClass {
           gameMode,
           players,
           maxPlayers,
-          playersList: JSON.stringify(playersList),
+          playersList: JSON.stringify(visiblePlayers),
         },
+      })
+    }
+
+    const newlyErased = await getErasedSteamIDs(
+      visiblePlayers.map((player) => player?.steamID64).filter((id): id is string => typeof id === 'string' && !!id),
+    )
+    const currentPlayers = visiblePlayers.filter((player) => !newlyErased.has(player?.steamID64))
+    if (currentPlayers.length !== visiblePlayers.length) {
+      await prisma.gm_server_status.updateMany({
+        where: { id: this.getID(), updatedAt: saved.updatedAt },
+        data: { playersList: JSON.stringify(currentPlayers) },
       })
     }
 
@@ -788,6 +807,7 @@ export class Server extends BaseClass {
   }
 
   async saveUserConnectionInfo(steamID64: string, name: string) {
+    if (await isErasureBlocked(undefined, steamID64)) return
     try {
       const player = await prisma.gm_server_stat.findFirst({
         where: {
@@ -796,8 +816,9 @@ export class Server extends BaseClass {
         },
       })
 
+      let saved: { updatedAt: Date }
       if (player) {
-        await prisma.gm_server_stat.update({
+        saved = await prisma.gm_server_stat.update({
           where: {
             server_id_steam_id: {
               steam_id: steamID64,
@@ -810,7 +831,7 @@ export class Server extends BaseClass {
           },
         })
       } else {
-        await prisma.gm_server_stat.create({
+        saved = await prisma.gm_server_stat.create({
           data: {
             steam_id: steamID64,
             server_id: this.id,
@@ -819,6 +840,11 @@ export class Server extends BaseClass {
             first_join: new Date(),
             custom_values: '{}',
           },
+        })
+      }
+      if (await isErasureBlocked(undefined, steamID64)) {
+        await prisma.gm_server_stat.deleteMany({
+          where: { server_id: this.id, steam_id: steamID64, updatedAt: saved.updatedAt },
         })
       }
     } catch (error) {

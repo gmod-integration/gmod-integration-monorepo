@@ -28,6 +28,12 @@ nothing else in the codebase should read `process.env` directly (see
 
 ## Used by
 
+`ConfigPrivacy.hashSecret` reads optional `PRIVACY_HASH_SECRET` through the strong-secret validator.
+Account erasure refuses new requests until this separate, stable key is configured. It must be shared by
+the API, WebSocket and Discord workers that read the erasure registry. Do not rotate it with ordinary
+OAuth credentials: provider-scoped HMAC lookup keys, retained reputation and detached purchase keys
+depend on it. Migration/rekeying needs an explicit plan before the original identities are erased.
+
 Everything. Every app and most `packages/*` import `@gmod/config` for ports, URLs, and credentials instead of
 `process.env`.
 

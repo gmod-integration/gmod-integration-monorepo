@@ -78,7 +78,30 @@
     "request_my_data": "Vraag mijn gegevens aan",
     "delete_my_data": "Mijn gegevens verwijderen",
     "error_create_data_request": "Aanmaken van de gegevensaanvraag mislukt",
-    "description": "Beheer je gekoppelde accounts, sessies en persoonlijke gegevens."
+    "description": "Beheer je gekoppelde accounts, sessies en persoonlijke gegevens.",
+    "erasure": {
+      "submit_error": "De aanvraag kon niet worden bevestigd. Probeer het opnieuw; dezelfde aanvraag wordt hergebruikt.",
+      "title": "Accountverwijdering aanvragen",
+      "scope": "Hiermee worden je persoonlijke profielen, statistieken, sessies, bestanden en gegevensexports verwijderd.",
+      "retained": "Een minimale registratie van de aanvraag, globale bans en reputatie blijven bewaard. Community’s en gezamenlijke aankopen blijven bestaan.",
+      "new_account": "Als je na het verwijderen opnieuw inlogt, wordt een nieuw account aangemaakt.",
+      "confirmation": "Typ DELETE om te bevestigen",
+      "signout": "Je wordt uitgelogd zodra de aanvraag is geaccepteerd. Deze browser bewaart een ontvangstbewijs waarmee je de voortgang kunt volgen.",
+      "submit": "Verwijderingsaanvraag bevestigen",
+      "completed": "De aangevraagde verwijdering is voltooid.",
+      "running": "Je persoonlijke gegevens worden verwijderd. Je kunt de voortgang hier na het uitloggen blijven volgen.",
+      "retry": "Je aanvraag blijft bewaard. De verwerking wordt automatisch hervat; je hoeft geen nieuwe aanvraag in te dienen.",
+      "pending": "Je aanvraag is geaccepteerd en wacht op verwerking. De verwijdering is nog niet voltooid.",
+      "checking": "Je verwijderingsaanvraag wordt gecontroleerd…",
+      "progress": "Voortgang van de verwijdering",
+      "completed_date": "Voltooid op",
+      "status_error": "De aanvraagstatus kon niet worden gecontroleerd. Probeer het opnieuw; je ontvangstbewijs blijft bewaard en er wordt geen nieuwe aanvraag gemaakt.",
+      "paused": "Automatische controles zijn gepauzeerd. Je aanvraag blijft actief; controleer opnieuw om de voortgang weer te volgen.",
+      "check_again": "Status opnieuw controleren",
+      "sign_in_again": "Inloggen om een nieuw account te maken",
+      "return_account": "Terug naar account",
+      "external_copies": "Kopieën die al op Discord zijn gedeeld of in back-ups staan, moeten apart worden behandeld. Neem hiervoor contact op met support."
+    }
   },
   "premium": {
     "sync_chat": "Chatten synchroniseren",

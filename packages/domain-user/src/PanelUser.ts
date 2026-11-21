@@ -1,6 +1,7 @@
 import { getUserFromDiscordID } from './User.js'
 import redis from '@gmod/infra-redis'
 import prisma from '@gmod/infra-prisma'
+import { isErasureBlocked } from './privacy.js'
 
 export class PanelUser {
   public user: any
@@ -42,6 +43,7 @@ export class PanelUser {
   }
 
   async isValidPanelToken(token: string) {
+    if (await isErasureBlocked(this.discordID)) return false
     const tokens = await prisma.gm_panelToken.findMany({
       where: {
         discordID: this.discordID,
@@ -53,7 +55,7 @@ export class PanelUser {
       },
     })
 
-    return tokens.length > 0
+    return tokens.length > 0 && !(await isErasureBlocked(this.discordID))
   }
 
   async authAllowed(token: string) {
@@ -61,6 +63,7 @@ export class PanelUser {
   }
 
   async findGuilds() {
+    if (await isErasureBlocked(this.discordID)) return []
     const redisKey = `user:${this.discordID}:guilds`
     const redisKey2 = `user:${this.discordID}:isWaitingGuilds`
 
@@ -134,6 +137,7 @@ export class PanelUser {
 }
 
 export async function getPanelUserFromDiscordID(discordID: string) {
+  if (await isErasureBlocked(discordID)) return null
   const panelInfo = await prisma.gm_panelToken.findFirst({
     where: {
       discordID: discordID,

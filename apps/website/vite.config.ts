@@ -34,7 +34,13 @@ export default defineConfig(() => {
       sourcemap: true,
       rollupOptions: {
         output: {
-          manualChunks: (id) => (id.includes('/node_modules/lucide-solid/') ? 'lucide-icons' : undefined),
+          manualChunks: (id) => {
+            if (id.includes('/src/locales/') && id.endsWith('.json')) return 'locales'
+            if (id.includes('/node_modules/lucide-solid/')) return 'lucide-icons'
+            if (id.includes('/node_modules/zod/')) return 'validation'
+            if (id.includes('/node_modules/solid-js/') || id.includes('/node_modules/@solidjs/router/'))
+              return 'solid-runtime'
+          },
         },
       },
     },

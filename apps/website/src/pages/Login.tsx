@@ -1,8 +1,9 @@
-import { Component, createEffect } from 'solid-js'
+import { type Component, createEffect } from 'solid-js'
 import { isLogged, normalizeDiscordUserPayload, setDiscordUser, setIsLogged } from '../utils/event'
 import { useLocation, useNavigate } from '@solidjs/router'
 import { useI18n } from '../i18n'
 import { getAPIUrl } from '../utils/api'
+import { clearAccountSession } from '../utils/accountSession.js'
 import { parseSessionExpiration } from '../utils/sessionExpiration.js'
 import { ButtonLink, Icon, PageState } from '../components/ui/index.js'
 
@@ -58,13 +59,13 @@ const Login: Component = () => {
 
         const redirect = urlParams.get('redirect')
         navigate(redirect || '/dashboard/guilds')
-      } catch (error) {
+      } catch {
         setIsLogged(false)
       }
     } else {
-      // If not logged in, clear localStorage and redirect to login
+      // Remove old session data while retaining preferences and any erasure recovery receipt.
       if (!isLogged()) {
-        localStorage.clear()
+        clearAccountSession()
         const redirect = urlParams.get('redirect')
         window.location.href = `${getAPIUrl()}/users/login${redirect ? `?redirect=${redirect}` : ''}`
       } else {

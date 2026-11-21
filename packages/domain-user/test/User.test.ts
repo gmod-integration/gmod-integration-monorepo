@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('../src/privacy.js', () => ({ isErasureBlocked: isErasureBlockedMock }))
+
 const findFirstMock = vi.fn()
 vi.mock('@gmod/infra-prisma', () => ({
   default: { gm_user: { findFirst: findFirstMock } },
@@ -30,6 +33,7 @@ describe('User', () => {
 
 describe('getUserFromSteamID64', () => {
   beforeEach(() => {
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
     findFirstMock.mockReset()
   })
 
@@ -45,15 +49,16 @@ describe('getUserFromSteamID64', () => {
     expect(user?.trustLevel).toBe(80)
   })
 
-  it('falls back to trustLevel 50 when the DB trust is falsy', async () => {
+  it('preserves a zero trust level', async () => {
     findFirstMock.mockResolvedValueOnce({ steam: '765', id: 'd1', rank: 'user', last_oauth: null, trust: 0 })
     const user = await getUserFromSteamID64('765')
-    expect(user?.trustLevel).toBe(50)
+    expect(user?.trustLevel).toBe(0)
   })
 })
 
 describe('getUserFromDiscordID', () => {
   beforeEach(() => {
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
     findFirstMock.mockReset()
   })
 
@@ -63,15 +68,21 @@ describe('getUserFromDiscordID', () => {
     expect(findFirstMock).toHaveBeenCalledWith({ where: { id: 'd1' } })
   })
 
+  it('does not expose an existing profile while its identity is suppressed', async () => {
+    findFirstMock.mockResolvedValueOnce({ id: 'd1', steam: '765', trust: 0 })
+    isErasureBlockedMock.mockResolvedValueOnce(true)
+    await expect(getUserFromDiscordID('d1')).resolves.toBeNull()
+  })
+
   it('returns a User with the DB trust level when set', async () => {
     findFirstMock.mockResolvedValueOnce({ steam: '765', id: 'd1', rank: 'user', last_oauth: null, trust: 15 })
     const user = await getUserFromDiscordID('d1')
     expect(user?.trustLevel).toBe(15)
   })
 
-  it('falls back to trustLevel 50 when the DB trust is falsy', async () => {
+  it('preserves a zero trust level', async () => {
     findFirstMock.mockResolvedValueOnce({ steam: '765', id: 'd1', rank: 'user', last_oauth: null, trust: 0 })
     const user = await getUserFromDiscordID('d1')
-    expect(user?.trustLevel).toBe(50)
+    expect(user?.trustLevel).toBe(0)
   })
 })

@@ -7,7 +7,8 @@
     ".": "./src/index.ts",
     "./index.js": "./src/index.ts",
     "./client.js": "./src/client.ts",
-    "./enums.js": "./src/enums.ts"
+    "./enums.js": "./src/enums.ts",
+    "./privacy.js": "./src/privacy.ts"
   },
   "dependencies": {
     "@gmod/infra-mongo": "workspace:*",

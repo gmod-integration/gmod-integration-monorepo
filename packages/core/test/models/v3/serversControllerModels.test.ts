@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 const badArgumentMock = vi.fn()
 vi.mock('../../../src/utils/tools.js', () => ({ badArgument: badArgumentMock }))
 
@@ -13,7 +22,7 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
 
 const prismaMock: any = {
   gm_server_status: { findFirst: vi.fn() },
-  gm_server_warn: { findFirst: vi.fn(), create: vi.fn() },
+  gm_server_warn: { findFirst: vi.fn(), create: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
@@ -33,6 +42,7 @@ const {
 } = await import('../../../src/models/v3/serversControllerModels.js')
 
 function resetAllMocks() {
+  isErasureBlockedMock.mockReset().mockResolvedValue(false)
   badArgumentMock.mockReset().mockReturnValue(false)
   logServerMock.mockReset()
   enqueueDiscordServerStatusRefreshAsyncMock.mockReset().mockResolvedValue(undefined)
@@ -218,6 +228,50 @@ describe('serversControllerModels', () => {
   })
 
   describe('processServerImportWarns', () => {
+    it('removes only an imported warn inserted after its subject becomes suppressed', async () => {
+      let blocked = false
+      isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => blocked && steamID64 === 'p1')
+      let resolveWrite!: (warn: { id: number }) => void
+      prismaMock.gm_server_warn.create.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveWrite = resolve
+          }),
+      )
+      const operation = processServerImportWarns(makeServer(), [
+        { adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 },
+      ])
+      await vi.waitFor(() => expect(prismaMock.gm_server_warn.create).toHaveBeenCalledOnce())
+      blocked = true
+      resolveWrite({ id: 42 })
+      await operation
+      expect(prismaMock.gm_server_warn.deleteMany).toHaveBeenCalledExactlyOnceWith({ where: { id: 42 } })
+      expect(prismaMock.gm_server_warn.updateMany).not.toHaveBeenCalled()
+    })
+
+    it('preserves another player’s imported warn when only its author is erased during insertion', async () => {
+      let blocked = false
+      isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => blocked && steamID64 === 'a1')
+      let resolveWrite!: (warn: { id: number }) => void
+      prismaMock.gm_server_warn.create.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveWrite = resolve
+          }),
+      )
+      const operation = processServerImportWarns(makeServer(), [
+        { adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 },
+      ])
+      await vi.waitFor(() => expect(prismaMock.gm_server_warn.create).toHaveBeenCalledOnce())
+      blocked = true
+      resolveWrite({ id: 42 })
+      await operation
+      expect(prismaMock.gm_server_warn.deleteMany).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_warn.updateMany).toHaveBeenCalledExactlyOnceWith({
+        where: { id: 42, adminSteamID64: 'a1' },
+        data: { adminSteamID64: '' },
+      })
+    })
     it('returns 400 when warns is missing', async () => {
       const result = await processServerImportWarns(makeServer(), undefined)
       expect(result.status).toBe(400)

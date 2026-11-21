@@ -5,6 +5,7 @@ import { ConfigServer } from '@gmod/config'
 import { gmLog } from '@gmod/shared/logger.js'
 import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { getPanelUserFromDiscordID, type PanelUser } from '@gmod/domain-user/PanelUser.js'
+import { isErasureBlocked, PRIVACY_REVOCATION_CHANNEL } from '@gmod/domain-user/privacy.js'
 import { getUserGuildsWithPermsForPanel } from '@gmod/domain-guild/discordModels.js'
 import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import redis, { gracefulShutdownRedis } from '@gmod/infra-redis'
@@ -83,10 +84,15 @@ function wsSendToServer(id: string, data: any) {
   return true
 }
 
-function wsSendToClient(discordID: string, data: any, action: string) {
+async function wsSendToClient(discordID: string, data: any, action: string) {
   const client = clients.client.find((client) => client.panelUser.discordID === discordID)
 
   if (!client) {
+    return false
+  }
+  if (await isErasureBlocked(discordID)) {
+    client.ws.close(1008, 'Session revoked')
+    clients.client = clients.client.filter((candidate) => candidate !== client)
     return false
   }
 
@@ -96,10 +102,15 @@ function wsSendToClient(discordID: string, data: any, action: string) {
   return true
 }
 
-function wsSendToAllClientsOfServer(serverID: string, action: string, data: any) {
+async function wsSendToAllClientsOfServer(serverID: string, action: string, data: any) {
   const clientsToSend = clients.client.filter((client) => client.serverAdminListID.includes(serverID))
 
   for (const client of clientsToSend) {
+    if (await isErasureBlocked(client.panelUser.discordID)) {
+      client.ws.close(1008, 'Session revoked')
+      clients.client = clients.client.filter((candidate) => candidate !== client)
+      continue
+    }
     gmLog('websocket', 'Sending to client ' + client.panelUser.discordID + ' ' + JSON.stringify(data))
     client.ws.send(
       JSON.stringify({
@@ -146,6 +157,18 @@ export async function main() {
   })
 
   wsSendToServerSubscriber.on('message', async (channel, payload) => {
+    if (channel === PRIVACY_REVOCATION_CHANNEL) {
+      try {
+        const { discordID } = JSON.parse(payload)
+        if (typeof discordID !== 'string') return
+        const revoked = clients.client.filter((client) => client.panelUser.discordID === discordID)
+        clients.client = clients.client.filter((client) => client.panelUser.discordID !== discordID)
+        for (const client of revoked) client.ws.close(1008, 'Session revoked')
+      } catch {
+        gmLog('websocket', 'Invalid privacy revocation message', true)
+      }
+      return
+    }
     if (channel !== WS_SEND_TO_SERVER_BROADCAST_CHANNEL) {
       return
     }
@@ -174,6 +197,7 @@ export async function main() {
   })
 
   await wsSendToServerSubscriber.subscribe(WS_SEND_TO_SERVER_BROADCAST_CHANNEL)
+  await wsSendToServerSubscriber.subscribe(PRIVACY_REVOCATION_CHANNEL)
 
   wss = new WebSocketServer({
     port: ConfigServer.ports.websocket,
@@ -295,6 +319,11 @@ export async function main() {
             if (!wsInfo.action) {
               return
             }
+            if (await isErasureBlocked(discordID)) {
+              ws.close(1008, 'Session revoked')
+              clients.client = clients.client.filter((client) => client.ws !== ws)
+              return
+            }
 
             gmLog('websocket', 'Received from client ' + discordID + ' ' + JSON.stringify(wsInfo))
 
@@ -305,7 +334,7 @@ export async function main() {
                 const serverVersion = await redis.get(`server:${serverID}:version`)
                 const serverLastRequest = await redis.get(`server:${serverID}:last_request`)
 
-                wsSendToClient(
+                await wsSendToClient(
                   discordID,
                   {
                     action: 'server_status',
@@ -372,7 +401,7 @@ export async function main() {
   wsSendToAllClientsOfServerWorker = new Worker(
     wsSendToAllClientsOfServerQueue.name,
     async (job) => {
-      wsSendToAllClientsOfServer(job.data.id, job.data.action, job.data.data)
+      await wsSendToAllClientsOfServer(job.data.id, job.data.action, job.data.data)
     },
     {
       connection,

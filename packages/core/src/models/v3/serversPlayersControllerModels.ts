@@ -8,6 +8,7 @@ import {
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import prisma from '@gmod/infra-prisma'
 import { type Server } from '@gmod/domain-server/Server.js'
+import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 
 type EndpointResult = {
   status: number
@@ -81,6 +82,7 @@ export async function processPlayerChangeName(server: Server, body: any): Promis
   if (!ply.isValid()) {
     return getInvalidPlayerResult(ply)
   }
+  if (await isErasureBlocked(undefined, ply.steamID64)) return ok()
 
   await enqueueUpdateGuildUserPseudo({
     serverID: server.getID(),
@@ -108,6 +110,7 @@ export async function processPlayerChangeGroup(
       },
     })
   }
+  if (await isErasureBlocked(undefined, steamID64)) return ok()
 
   await enqueueUpdatePlayerUserGroup({
     serverID: server.getID(),
@@ -135,6 +138,7 @@ export async function processPlayerChangeTeam(
   }
 
   const ply = new PlayerGmod(player, false)
+  if (await isErasureBlocked(undefined, steamID64 || ply.steamID64)) return ok()
   if (ply.isValid()) {
     await ply.saveTeamTime(server.getID())
   }
@@ -168,6 +172,7 @@ export async function processPlayerConnect(
   }
 
   const ip = ipGetIP(address)
+  if (await isErasureBlocked(undefined, steamID64)) return ok()
   await saveConnectionGlobalInfo(steamID64, networkid, ip, name)
   await saveConnectionSteamInfo(steamID64, name, ip)
   await server.saveUserConnectionInfo(steamID64, name)
@@ -189,10 +194,12 @@ export async function processPlayerDisconnect(server: Server, body: any): Promis
   if (!ply.isValid()) {
     return getInvalidPlayerResult(ply)
   }
+  if (await isErasureBlocked(undefined, ply.steamID64)) return ok()
 
   await ply.saveServerStat(server.getID())
   await ply.saveServerStatSession(server.getID())
   await ply.saveTeamTime(server.getID())
+  if (await isErasureBlocked(undefined, ply.steamID64)) return ok()
   await enqueueUpdatePlayerUserGroup({
     serverID: server.getID(),
     steamID64: ply.steamID64,
@@ -234,6 +241,9 @@ export async function processPlayerWarn(server: Server, steamID64Param: unknown,
 
   const plyAdmin = new PlayerGmod(admin)
   const plyUser = new PlayerGmod(player)
+  if (await isErasureBlocked(undefined, plyUser.steamID64 || steamID64)) return ok()
+  const author = plyAdmin.steamID64 || adminSteamID64
+  const visibleAuthor = (await isErasureBlocked(undefined, author)) ? '' : author
 
   // `new PlayerGmod(...)` above either succeeds (returning a truthy instance) or throws, so
   // plyUser/plyAdmin are always truthy here - no existence check is needed on them.
@@ -241,10 +251,21 @@ export async function processPlayerWarn(server: Server, steamID64Param: unknown,
     data: {
       serverID: server.getID(),
       userSteamID64: plyUser.steamID64 || steamID64,
-      adminSteamID64: plyAdmin.steamID64 || adminSteamID64,
+      adminSteamID64: visibleAuthor,
       reason,
       createdAt: validDate,
     },
   })
+  if (await isErasureBlocked(undefined, plyUser.steamID64 || steamID64)) {
+    await prisma.gm_server_warn.deleteMany({ where: { id: warn.id } })
+    return ok()
+  }
+  if (visibleAuthor && (await isErasureBlocked(undefined, author))) {
+    await prisma.gm_server_warn.updateMany({
+      where: { id: warn.id, adminSteamID64: visibleAuthor },
+      data: { adminSteamID64: '' },
+    })
+    return ok({ ...warn, adminSteamID64: '' })
+  }
   return ok(warn)
 }

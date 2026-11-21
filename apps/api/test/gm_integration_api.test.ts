@@ -2,6 +2,9 @@ import request from 'supertest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@gmod/core/utils/update-log.js', () => ({}))
+const stopErasureWorker = vi.fn()
+const startErasureWorker = vi.fn(() => stopErasureWorker)
+vi.mock('@gmod/domain-compliance/accountErasure.js', () => ({ startAccountErasureWorker: startErasureWorker }))
 vi.mock('@gmod/infra-bullmq', () => ({}))
 vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
   isBullMQReplyTimeoutError: vi.fn(() => false),
@@ -31,6 +34,7 @@ vi.mock('@gmod/core/database/gm_server_logs.js', () => ({ gracefulShutdownMongo:
 
 let configServerMock: any
 vi.mock('@gmod/config', () => ({
+  ConfigPrivacy: { hashSecret: 'configured-test-privacy-key' },
   get ConfigServer() {
     return configServerMock
   },
@@ -49,6 +53,8 @@ const { app, main, gracefulShutdown } = await import('../src/gm_integration_api.
 describe('gm_integration_api', () => {
   beforeEach(() => {
     gmLogMock.mockClear()
+    startErasureWorker.mockClear()
+    stopErasureWorker.mockClear()
     gracefulShutdownRedisMock.mockReset().mockResolvedValue(undefined)
     connectPrismaMock.mockReset().mockResolvedValue(undefined)
     gracefulShutdownPrismaMock.mockReset().mockResolvedValue(undefined)
@@ -198,6 +204,7 @@ describe('gm_integration_api', () => {
     try {
       await main()
       expect(connectPrismaMock).toHaveBeenCalled()
+      expect(startErasureWorker).toHaveBeenCalledOnce()
       expect(listenSpy).toHaveBeenCalledWith(3001, expect.any(Function))
       expect(gmLogMock).toHaveBeenCalledWith('express', expect.stringContaining('Server started'))
     } finally {

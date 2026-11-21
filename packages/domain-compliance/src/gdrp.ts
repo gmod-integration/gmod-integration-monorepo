@@ -8,14 +8,16 @@ import { getLogsBySteamIDList, getLogsCountBySteamIDList } from '@gmod/core/data
 import path from 'path'
 import * as os from 'node:os'
 import { createBucketIfNotExists, s3 } from '@gmod/infra-minio'
-import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import prisma from '@gmod/infra-prisma'
 import { Readable } from 'node:stream'
 import { getErrorsBySteamID, getErrorsCountBySteamID } from '@gmod/domain-gmod/GmodErrors.js'
+import { assertPersonalDataAllowed, isErasureBlocked, PersonalDataErasureError } from '@gmod/domain-user/privacy.js'
 
 export async function getUserDataGRPD(user: User) {
   const discordID = user.getDiscordID()
   const steamID64 = user.getSteamID64()
+  await assertPersonalDataAllowed(discordID, steamID64)
 
   const request = await prisma.gm_users_data_request.create({
     data: {
@@ -183,6 +185,13 @@ export async function getUserDataGRPD(user: User) {
   }
 
   const zipFilePath = path.join(baseTempPath, `${request.id}.zip`)
+  const guardExport = async () => {
+    if (!(await isErasureBlocked(discordID, steamID64))) return
+    await s3.send(new DeleteObjectCommand({ Bucket: 'gmi-gdpr-exports', Key: `${request.id}.zip` }))
+    fs.rmSync(tempPath, { recursive: true, force: true })
+    fs.rmSync(zipFilePath, { force: true })
+    throw new PersonalDataErasureError()
+  }
   const output = fs.createWriteStream(zipFilePath)
   const archive = archiver('zip', { zlib: { level: 9 } })
 
@@ -222,6 +231,8 @@ export async function getUserDataGRPD(user: User) {
   await archive.finalize()
   await outputClosed
 
+  await guardExport()
+
   await createBucketIfNotExists('gmi-gdpr-exports')
   const zipStream = fs.createReadStream(zipFilePath)
 
@@ -237,6 +248,8 @@ export async function getUserDataGRPD(user: User) {
   } catch (err) {
     console.error('Error uploading zip to MinIO:', err)
   }
+
+  await guardExport()
 
   fs.rmSync(tempPath, { recursive: true, force: true })
   fs.rmSync(zipFilePath, { force: true })

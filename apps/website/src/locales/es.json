@@ -78,7 +78,30 @@
     "request_my_data": "Solicitar mis datos",
     "delete_my_data": "Eliminar mis datos",
     "error_create_data_request": "Falló al crear la solicitud de datos",
-    "description": "Gestiona tus cuentas vinculadas, sesiones y datos personales."
+    "description": "Gestiona tus cuentas vinculadas, sesiones y datos personales.",
+    "erasure": {
+      "submit_error": "No se pudo confirmar la solicitud. Inténtalo de nuevo; se reutilizará la misma solicitud.",
+      "title": "Solicitar la eliminación de la cuenta",
+      "scope": "Esta operación elimina tus perfiles personales, estadísticas, sesiones, archivos y exportaciones de datos.",
+      "retained": "Se conservan un registro mínimo de la solicitud, los bloqueos globales y la reputación. Las comunidades y las compras colectivas permanecen.",
+      "new_account": "Iniciar sesión de nuevo después de la eliminación crea una cuenta nueva.",
+      "confirmation": "Escribe DELETE para confirmar",
+      "signout": "Se cerrará tu sesión cuando se acepte la solicitud. Este navegador guarda un recibo para que puedas seguir su progreso.",
+      "submit": "Confirmar la solicitud de eliminación",
+      "completed": "La eliminación solicitada ha finalizado.",
+      "running": "Tus datos personales se están eliminando. Puedes seguir el progreso aquí después de cerrar sesión.",
+      "retry": "Tu solicitud se conserva. El procesamiento se reanudará automáticamente; no necesitas enviar otra solicitud.",
+      "pending": "Tu solicitud se ha aceptado y está pendiente de procesamiento. La eliminación aún no ha finalizado.",
+      "checking": "Comprobando tu solicitud de eliminación…",
+      "progress": "Progreso de la eliminación",
+      "completed_date": "Finalizado el",
+      "status_error": "No se pudo consultar el estado de la solicitud. Inténtalo de nuevo; tu recibo se conserva y no se creará otra solicitud.",
+      "paused": "Las comprobaciones automáticas están en pausa. Tu solicitud sigue activa; vuelve a consultar para reanudar el seguimiento.",
+      "check_again": "Consultar el estado de nuevo",
+      "sign_in_again": "Iniciar sesión para crear una cuenta nueva",
+      "return_account": "Volver a la cuenta",
+      "external_copies": "Las copias ya compartidas en Discord o guardadas en copias de seguridad requieren un tratamiento separado. Contacta con soporte para esas copias."
+    }
   },
   "premium": {
     "sync_chat": "Sincronizar el chat",

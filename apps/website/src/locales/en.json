@@ -81,7 +81,30 @@
     "request_my_data": "Request my Data",
     "delete_my_data": "Delete my Data",
     "error_create_data_request": "Failed to create the data request",
-    "description": "Manage your linked accounts, sessions and personal data."
+    "description": "Manage your linked accounts, sessions and personal data.",
+    "erasure": {
+      "submit_error": "The request could not be confirmed. Try again; the same request will be reused.",
+      "title": "Request account erasure",
+      "scope": "This erases your personal profiles, statistics, sessions, files and data exports.",
+      "retained": "A minimal request record, global bans and reputation are retained. Communities and collective purchases remain.",
+      "new_account": "Signing in again after erasure creates a new account.",
+      "confirmation": "Type DELETE to confirm",
+      "signout": "You will be signed out when the request is accepted. This browser keeps a receipt so you can follow its progress.",
+      "submit": "Confirm erasure request",
+      "completed": "The requested erasure is complete.",
+      "running": "Your personal data is being erased. You can check progress here after signing out.",
+      "retry": "Your request is kept. Processing will resume automatically; you do not need to submit another request.",
+      "pending": "Your request has been accepted and is waiting to be processed. Erasure is not complete yet.",
+      "checking": "Checking your erasure request…",
+      "progress": "Erasure progress",
+      "completed_date": "Completed",
+      "status_error": "The request status could not be checked. Try checking again; your receipt is kept and no new request will be created.",
+      "paused": "Automatic checks have paused. Your request remains active; check again to resume following it.",
+      "check_again": "Check status again",
+      "sign_in_again": "Sign in to create a new account",
+      "return_account": "Return to account",
+      "external_copies": "Copies already shared on Discord or kept in backups need separate handling. Contact support for these copies."
+    }
   },
   "premium": {
     "sync_chat": "Sync Chat",

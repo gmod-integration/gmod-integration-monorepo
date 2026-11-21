@@ -10,6 +10,7 @@ import type { gm_server_logs_triggers } from '@gmod/infra-prisma/client.js'
 import { type wsSendToAllClientsOfServerData, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js'
 import { resolveGuildPreferredLocale } from './guildLocaleCache.js'
 import { enqueueDiscordGuildSendLogMessage } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 
 export enum LogLevel {
   MINIMAL = 'minimal',
@@ -310,8 +311,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     //
   }
 
-  handleLogsTrigger(server, type, data).catch(() => {})
-
   const playerInvolvedSteamID64: any = []
   const dataString = JSON.stringify(data)
   const regex = /7656119\d{10}/g
@@ -319,6 +318,10 @@ export async function logServer(server: Server, type: string, data?: any) {
   while ((match = regex.exec(dataString))) {
     if (!playerInvolvedSteamID64.includes(match[0])) playerInvolvedSteamID64.push(match[0])
   }
+  for (const steamID64 of playerInvolvedSteamID64) {
+    if (await isErasureBlocked(undefined, steamID64)) return
+  }
+  handleLogsTrigger(server, type, data).catch(() => {})
 
   let dataToSave: any = {}
   if (data.player) dataToSave.ply = data.player
@@ -612,7 +615,7 @@ export async function logServer(server: Server, type: string, data?: any) {
     if (data.ip) dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`')
   }
 
-  await addLog({
+  const persisted = await addLog({
     serverID: server.getID(),
     type,
     data: dataToSave,
@@ -620,6 +623,7 @@ export async function logServer(server: Server, type: string, data?: any) {
     createdAt: new Date(),
     updatedAt: new Date(),
   })
+  if (persisted === false) return
 
   await wsSendToAllClientsOfServerQueue.add('wsSendToAllClientsOfServer', {
     id: server.getID(),

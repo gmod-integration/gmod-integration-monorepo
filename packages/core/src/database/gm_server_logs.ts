@@ -1,4 +1,5 @@
 import { mongoClient } from '@gmod/infra-mongo'
+import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 
 const db = mongoClient.db('gmod_integration')
 const collectionLogs = db.collection('logs')
@@ -10,11 +11,22 @@ interface Log {
   createdAt: Date
   updatedAt: Date
   data: any
-  playerInvolvedSteamID64: string
+  playerInvolvedSteamID64: string | string[]
 }
 
 export async function addLog(log: Log) {
-  await collectionLogs.insertOne(log)
+  const ids = Array.isArray(log.playerInvolvedSteamID64) ? log.playerInvolvedSteamID64 : [log.playerInvolvedSteamID64]
+  for (const steamID64 of ids) {
+    if (await isErasureBlocked(undefined, steamID64)) return false
+  }
+  const inserted = await collectionLogs.insertOne(log)
+  for (const steamID64 of ids) {
+    if (await isErasureBlocked(undefined, steamID64)) {
+      await collectionLogs.deleteOne({ _id: inserted.insertedId })
+      return false
+    }
+  }
+  return true
 }
 
 export async function getLogsCountBySteamIDList(SteamIDS: string[]) {

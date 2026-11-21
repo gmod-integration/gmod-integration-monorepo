@@ -6,6 +6,7 @@ export type LegalDocumentContent = {
   title: string
   updatedLabel: string
   updatedDate: string
+  updatedISO?: string
   sections: {
     title: string
     paragraphs: string[]
@@ -25,7 +26,8 @@ const LegalDocument: Component<{ document: LegalDocumentContent; language: 'en' 
         </span>
         <h1>{props.document.title}</h1>
         <p class="legal-updated">
-          {props.document.updatedLabel}: <time dateTime="2026-11-20">{props.document.updatedDate}</time>
+          {props.document.updatedLabel}:{' '}
+          <time dateTime={props.document.updatedISO ?? '2026-11-20'}>{props.document.updatedDate}</time>
         </p>
       </header>
       <div class="legal-layout">

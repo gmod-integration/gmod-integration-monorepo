@@ -1,5 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  PersonalDataErasureError: class extends Error {
+    constructor() {
+      super('Personal data collection is disabled')
+    }
+  },
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 const getRandomDiscordRelayMock = vi.fn(() => 'https://relay.example')
 vi.mock('../../../src/utils/tools.js', () => ({ getRandomDiscordRelay: getRandomDiscordRelayMock }))
 
@@ -32,8 +46,8 @@ const getTranslateMock = vi.fn(async (key: string) => key)
 vi.mock('../../../src/utils/localizations.js', () => ({ getTranslate: getTranslateMock }))
 
 const prismaMock: any = {
-  gm_server_screenshots: { create: vi.fn() },
-  gm_server_report_bugs: { create: vi.fn() },
+  gm_server_screenshots: { create: vi.fn(), deleteMany: vi.fn() },
+  gm_server_report_bugs: { create: vi.fn(), deleteMany: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
@@ -54,6 +68,7 @@ function makeServer(overrides: Record<string, any> = {}) {
 
 describe('clientsModels', () => {
   beforeEach(() => {
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
     getRandomDiscordRelayMock.mockClear()
     getSteamUserAvatarLargeMock.mockClear()
     createBucketIfNotExistsMock.mockReset()
@@ -69,6 +84,26 @@ describe('clientsModels', () => {
   })
 
   describe('saveScreenshot', () => {
+    it('removes an upload that finishes after erasure starts instead of publishing or registering it', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      s3SendMock.mockResolvedValue({})
+      await expect(saveScreenshot('AAAA', {}, fakePlayer, makeServer(), 'Private')).rejects.toThrow(
+        'Personal data collection is disabled',
+      )
+      expect(s3SendMock).toHaveBeenCalledTimes(2)
+      expect(s3SendMock.mock.calls[1][0].constructor.name).toBe('DeleteObjectCommand')
+      expect(prismaMock.gm_server_screenshots.create).not.toHaveBeenCalled()
+      expect(enqueueMainClientUploadScreenshotMock).not.toHaveBeenCalled()
+    })
+    it('does not upload or persist a capture for a suppressed player', async () => {
+      isErasureBlockedMock.mockResolvedValue(true)
+      await expect(saveScreenshot('AAAA', {}, fakePlayer, makeServer(), 'Private')).rejects.toThrow(
+        'Personal data collection is disabled',
+      )
+      expect(s3SendMock).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_screenshots.create).not.toHaveBeenCalled()
+      expect(enqueueMainClientUploadScreenshotMock).not.toHaveBeenCalled()
+    })
     it('uploads to S3 and persists the DB row, skipping Discord upload when no channel is configured', async () => {
       s3SendMock.mockResolvedValueOnce({})
       prismaMock.gm_server_screenshots.create.mockResolvedValueOnce({})
@@ -229,6 +264,30 @@ describe('clientsModels', () => {
   })
 
   describe('reportBugPayload', () => {
+    it('removes exactly the bug report whose deferred write finishes after erasure starts', async () => {
+      let blocked = false
+      isErasureBlockedMock.mockImplementation(async () => blocked)
+      let resolveWrite!: (report: { id: number }) => void
+      prismaMock.gm_server_report_bugs.create.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveWrite = resolve
+          }),
+      )
+      const operation = reportBugPayload(makeServer(), {
+        player: fakePlayer,
+        description: 'desc',
+        importance: 'high',
+        steps: 'steps',
+        expected: 'expected',
+        actual: 'actual',
+      })
+      await vi.waitFor(() => expect(prismaMock.gm_server_report_bugs.create).toHaveBeenCalledOnce())
+      blocked = true
+      resolveWrite({ id: 42 })
+      await expect(operation).resolves.toMatchObject({ skip: true })
+      expect(prismaMock.gm_server_report_bugs.deleteMany).toHaveBeenCalledExactlyOnceWith({ where: { id: 42 } })
+    })
     it('returns a missing_arguments error when required fields are absent', async () => {
       const result = await reportBugPayload(makeServer(), { player: fakePlayer })
       expect(result).toEqual(expect.objectContaining({ error: 'missing_arguments' }))

@@ -1,6 +1,7 @@
 import express from 'express'
 import webhooksRoutes from './webhooks/_webhooksRoutes.js'
 import v3Routes from './v3/_v3Routes.js'
+import v6Routes from './v6/_v6Routes.js'
 import steamRoutes from './steamRoutes.js'
 import asyncHandler from '@/middleware/asyncHandler.js'
 import prisma from '@gmod/infra-prisma'
@@ -8,6 +9,7 @@ import { GetObjectCommand } from '@aws-sdk/client-s3'
 import { AVATAR_BUCKET, s3 } from '@gmod/infra-minio'
 import { Readable } from 'node:stream'
 import { getSingleParam } from '@/utils/requestParams.js'
+import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 
 const router = express.Router()
 
@@ -17,6 +19,14 @@ router.get('/avatars/:provider/:id', async (req, res) => {
 
   if (provider !== 'discord' && provider !== 'steam' && provider !== 'guild') {
     return res.status(400).send('Invalid avatar provider')
+  }
+
+  if (
+    provider !== 'guild' &&
+    (await isErasureBlocked(provider === 'discord' ? id : null, provider === 'steam' ? id : null))
+  ) {
+    res.setHeader('Cache-Control', 'no-store')
+    return res.status(404).send('Avatar not found')
   }
 
   try {
@@ -114,6 +124,7 @@ router.get(
 
 router.use('/webhooks', webhooksRoutes)
 router.use('/v3', v3Routes)
+router.use('/v6', v6Routes)
 router.use('/steam', steamRoutes)
 
 export default router

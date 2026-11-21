@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/routes/webhooks/_webhooksRoutes.js', () => ({ default: express.Router() }))
 vi.mock('@/routes/v3/_v3Routes.js', () => ({ default: express.Router() }))
+vi.mock('@/routes/v6/_v6Routes.js', () => ({ default: express.Router() }))
 vi.mock('@/routes/steamRoutes.js', () => ({ default: express.Router() }))
 
 const prismaMock: any = { gm_users_data_request: { findFirst: vi.fn() } }
@@ -132,8 +133,9 @@ describe('mainRoutes', () => {
     })
   })
 
-  it('mounts the webhooks/v3/steam sub-routers', () => {
+  it('mounts the webhooks/v3/v6/steam sub-routers', () => {
     const mountedRouters = router.stack.filter((layer: any) => layer.name === 'router')
-    expect(mountedRouters.length).toBe(3)
+    expect(mountedRouters.length).toBe(4)
   })
 })
+vi.mock('@gmod/domain-user/privacy.js', () => ({ isErasureBlocked: vi.fn().mockResolvedValue(false) }))

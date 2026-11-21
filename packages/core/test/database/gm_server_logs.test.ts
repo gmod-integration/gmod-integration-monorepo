@@ -1,11 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 const insertOneMock = vi.fn()
 const countDocumentsMock = vi.fn()
 const findMock = vi.fn()
 const closeMock = vi.fn()
 
+const deleteOneMock = vi.fn()
 const collectionLogs = {
+  deleteOne: deleteOneMock,
   insertOne: insertOneMock,
   countDocuments: countDocumentsMock,
   find: findMock,
@@ -27,6 +38,8 @@ const {
 
 describe('gm_server_logs', () => {
   beforeEach(() => {
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
+    deleteOneMock.mockReset()
     insertOneMock.mockReset()
     countDocumentsMock.mockReset()
     findMock.mockReset()
@@ -44,6 +57,35 @@ describe('gm_server_logs', () => {
     }
     await addLog(log as any)
     expect(insertOneMock).toHaveBeenCalledWith(log)
+  })
+
+  it('does not persist a multiplayer log containing an erased identity', async () => {
+    isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => steamID64 === '765-erased')
+    await addLog({
+      serverID: 's1',
+      type: 'player_damage',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      data: {},
+      playerInvolvedSteamID64: ['765-other', '765-erased'],
+    })
+    expect(insertOneMock).not.toHaveBeenCalled()
+  })
+
+  it('removes exactly the log inserted while erasure started during its write', async () => {
+    isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+    insertOneMock.mockResolvedValueOnce({ insertedId: 'late-log' })
+    await expect(
+      addLog({
+        serverID: 's1',
+        type: 'player_connect',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        data: {},
+        playerInvolvedSteamID64: ['765'],
+      }),
+    ).resolves.toBe(false)
+    expect(deleteOneMock).toHaveBeenCalledWith({ _id: 'late-log' })
   })
 
   it('getLogsCountBySteamIDList counts matching documents', async () => {

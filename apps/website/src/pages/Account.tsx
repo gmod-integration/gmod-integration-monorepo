@@ -1,5 +1,5 @@
-import { AsyncState, Button, ButtonLink, Icon, IconButton, TableState } from '../components/ui/index.js'
-import { type Component, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { AsyncState, Button, ButtonLink, FormField, Icon, IconButton, TableState } from '../components/ui/index.js'
+import { batch, type Component, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import AdminPanel from '../components/AdminPanel.js'
 import { getDiscordUser } from '../utils/utils'
 import DashboardMiddleware from '../middleware/DashboardMiddleware'
@@ -7,6 +7,19 @@ import { useI18n } from '../i18n'
 import { Errors, ShowErrorList } from '../components/layout/Errors'
 import { fetchAPI, getAPIUrl, getUrlWithActualParams } from '../utils/api'
 import { createAsyncAction } from '../hooks/createAsyncAction.js'
+import AdminModal from '../components/AdminModal.js'
+import { closeDialog, showDialog } from '../utils/dialog.js'
+import { isLogged } from '../utils/event.js'
+import {
+  clearAccountSession,
+  fetchErasureStatus,
+  forgetErasureReceipt,
+  prepareErasureReceipt,
+  readErasureReceipt,
+  requestAccountErasure,
+  type ErasureReceipt,
+  type ErasureStatus,
+} from '../utils/accountErasure.js'
 
 type UserSession = {
   id: string
@@ -31,8 +44,38 @@ const fetchUser = async () => {
   return await response.json()
 }
 
-const Account: Component = () => {
+const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, status: ErasureStatus) => void }> = (
+  props,
+) => {
   const { t, locale } = useI18n()
+
+  const [erasureConfirmation, setErasureConfirmation] = createSignal('')
+  const erasureAction = createAsyncAction({
+    errorMessage: () =>
+      t(
+        'account.erasure.submit_error',
+        'The request could not be confirmed. Try again; the same request will be reused.',
+      ),
+  })
+  const resetErasureDialog = () => {
+    if (!erasureAction.pending()) {
+      setErasureConfirmation('')
+      erasureAction.reset()
+    }
+  }
+  const submitErasure = async () => {
+    if (erasureConfirmation() !== 'DELETE' || erasureAction.pending()) return
+    let receipt: ErasureReceipt | undefined
+    let status: ErasureStatus | undefined
+    const accepted = await erasureAction.run(async () => {
+      receipt = prepareErasureReceipt()
+      status = await requestAccountErasure(receipt)
+    })
+    if (accepted && receipt && status) {
+      closeDialog('account-erasure')
+      props.onErasureAccepted(receipt, status)
+    }
+  }
 
   const [localUser] = createSignal(getDiscordUser())
   const [user, { refetch: refetchUser }] = createResource('steamUser', fetchUser)
@@ -145,6 +188,78 @@ const Account: Component = () => {
   return (
     <>
       <DashboardMiddleware />
+      <AdminModal
+        id="account-erasure"
+        title={t('account.erasure.title', 'Request account erasure')}
+        busy={erasureAction.pending()}
+        onClose={resetErasureDialog}
+        onCancel={resetErasureDialog}
+      >
+        <p class="text-sm text-base-content/70">
+          {t(
+            'account.erasure.scope',
+            'This erases your personal profiles, statistics, sessions, files and data exports.',
+          )}
+        </p>
+        <p class="text-sm text-base-content/70">
+          {t(
+            'account.erasure.retained',
+            'A minimal request record, global bans and reputation are retained. Communities and collective purchases remain.',
+          )}
+        </p>
+        <p class="text-sm text-base-content/70">
+          {t('account.erasure.new_account', 'Signing in again after erasure creates a new account.')}
+        </p>
+        <p class="text-xs text-base-content/60">
+          {t(
+            'account.erasure.external_copies',
+            'Copies already shared on Discord or kept in backups need separate handling. Contact support for these copies.',
+          )}
+        </p>
+        <FormField
+          id="account-erasure-confirmation"
+          label={t('account.erasure.confirmation', 'Type DELETE to confirm')}
+          description={t(
+            'account.erasure.signout',
+            'You will be signed out when the request is accepted. This browser keeps a receipt so you can follow its progress.',
+          )}
+        >
+          <input
+            id="account-erasure-confirmation"
+            class="input w-full"
+            autocomplete="off"
+            spellcheck={false}
+            aria-describedby="account-erasure-confirmation-description"
+            disabled={erasureAction.pending()}
+            value={erasureConfirmation()}
+            onInput={(event) => setErasureConfirmation(event.currentTarget.value)}
+          />
+        </FormField>
+        <Show when={erasureAction.error()}>
+          <p role="alert" class="text-sm text-error">
+            {erasureAction.error()}
+          </p>
+        </Show>
+        <div class="flex flex-wrap justify-end gap-2 border-t border-base-200 pt-4">
+          <Button
+            disabled={erasureAction.pending()}
+            onClick={() => {
+              resetErasureDialog()
+              closeDialog('account-erasure')
+            }}
+          >
+            {t('ui.cancel', 'Cancel')}
+          </Button>
+          <Button
+            variant="danger"
+            loading={erasureAction.pending()}
+            disabled={erasureConfirmation() !== 'DELETE'}
+            onClick={() => void submitErasure()}
+          >
+            {t('account.erasure.submit', 'Confirm erasure request')}
+          </Button>
+        </div>
+      </AdminModal>
       <div class="public-page account-page mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 sm:px-8 sm:py-12">
         <header class="public-page-heading flex flex-col gap-3">
           <span class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
@@ -343,10 +458,16 @@ const Account: Component = () => {
                 <Icon name="download" size={16} />
                 {t('account.request_my_data', 'Request my Data')}
               </Button>
-              <ButtonLink href="mailto:gmod-integration@linv.dev" variant="danger" class="text-error">
+              <Button
+                variant="danger"
+                onClick={() => {
+                  resetErasureDialog()
+                  showDialog('account-erasure')
+                }}
+              >
+                <Icon name="trash-2" size={16} />
                 {t('account.delete_my_data', 'Delete my Data')}
-                <Icon name="external-link" size={14} />
-              </ButtonLink>
+              </Button>
             </div>
           }
         >
@@ -434,6 +555,220 @@ const Account: Component = () => {
         </AdminPanel>
       </div>
     </>
+  )
+}
+
+const AccountErasureStatus: Component<{
+  receipt: ErasureReceipt
+  initialStatus?: ErasureStatus
+  onVerified: () => void
+  onReturn: () => void
+  canReturn: () => boolean
+}> = (props) => {
+  const { t, locale } = useI18n()
+  const [status, setStatus] = createSignal(props.initialStatus)
+  const [checking, setChecking] = createSignal(false)
+  const [error, setError] = createSignal(false)
+  const [paused, setPaused] = createSignal(false)
+  let attempts = 0
+  let disposed = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+  let controller: AbortController | undefined
+  const refresh = async (restart = false) => {
+    if (checking()) return
+    clearTimeout(timer)
+    if (restart) {
+      attempts = 0
+      setPaused(false)
+    }
+    setChecking(true)
+    setError(false)
+    controller = new AbortController()
+    attempts += 1
+    try {
+      const next = await fetchErasureStatus(props.receipt, controller.signal)
+      if (disposed) return
+      props.onVerified()
+      setStatus(next)
+    } catch {
+      if (!disposed) setError(true)
+    } finally {
+      if (!disposed) {
+        setChecking(false)
+        if (!error() && status()?.status !== 'completed') {
+          if (attempts < 12) timer = setTimeout(() => void refresh(), 5000)
+          else setPaused(true)
+        }
+      }
+    }
+  }
+  onMount(() => {
+    if (status()?.status !== 'completed') void refresh()
+  })
+  onCleanup(() => {
+    disposed = true
+    clearTimeout(timer)
+    controller?.abort()
+  })
+  const statusMessage = () => {
+    switch (status()?.status) {
+      case 'completed':
+        return t('account.erasure.completed', 'The requested erasure is complete.')
+      case 'running':
+        return t(
+          'account.erasure.running',
+          'Your personal data is being erased. You can check progress here after signing out.',
+        )
+      case 'retry':
+        return t(
+          'account.erasure.retry',
+          'Your request is kept. Processing will resume automatically; you do not need to submit another request.',
+        )
+      case 'pending':
+        return t(
+          'account.erasure.pending',
+          'Your request has been accepted and is waiting to be processed. Erasure is not complete yet.',
+        )
+      default:
+        return t('account.erasure.checking', 'Checking your erasure request…')
+    }
+  }
+  return (
+    <div class="public-page account-page">
+      <header class="public-page-heading">
+        <span class="public-eyebrow">
+          <Icon name="shield-check" size={16} />
+          {t('account.manage_data', 'Manage Data')}
+        </span>
+        <h1>{t('account.erasure.title', 'Request account erasure')}</h1>
+      </header>
+      <AdminPanel
+        title={t('account.erasure.progress', 'Erasure progress')}
+        icon={status()?.status === 'completed' ? 'circle-check' : 'shield-check'}
+      >
+        <div
+          data-erasure-status={status()?.status || 'unconfirmed'}
+          role="status"
+          aria-live="polite"
+          class="flex items-start gap-3"
+        >
+          <Icon
+            name={
+              status()?.status === 'completed'
+                ? 'circle-check'
+                : status()?.status === 'retry'
+                  ? 'circle-alert'
+                  : 'loader-circle'
+            }
+            class={status()?.status === 'completed' ? 'text-success' : 'text-primary'}
+          />
+          <p>{statusMessage()}</p>
+        </div>
+        <Show when={status()}>
+          {(value) => (
+            <dl class="flex flex-wrap gap-6 text-sm text-base-content/65">
+              <div>
+                <dt>{t('account.request_date', 'Request Date')}</dt>
+                <dd>{new Date(value().requestedAt).toLocaleString(locale())}</dd>
+              </div>
+              <Show when={value().status === 'completed' && value().completedAt}>
+                <div>
+                  <dt>{t('account.erasure.completed_date', 'Completed')}</dt>
+                  <dd>{new Date(value().completedAt!).toLocaleString(locale())}</dd>
+                </div>
+              </Show>
+            </dl>
+          )}
+        </Show>
+        <Show when={error()}>
+          <p role="alert" class="text-sm text-error">
+            {t(
+              'account.erasure.status_error',
+              'The request status could not be checked. Try checking again; your receipt is kept and no new request will be created.',
+            )}
+          </p>
+        </Show>
+        <Show when={paused()}>
+          <p class="text-sm text-base-content/65">
+            {t(
+              'account.erasure.paused',
+              'Automatic checks have paused. Your request remains active; check again to resume following it.',
+            )}
+          </p>
+        </Show>
+        <p class="text-sm text-base-content/65">
+          {t(
+            'account.erasure.retained',
+            'A minimal request record, global bans and reputation are retained. Communities and collective purchases remain.',
+          )}
+        </p>
+        <p class="text-xs text-base-content/60">
+          {t(
+            'account.erasure.external_copies',
+            'Copies already shared on Discord or kept in backups need separate handling. Contact support for these copies.',
+          )}
+        </p>
+        <p class="text-sm text-base-content/65">
+          {t('account.erasure.new_account', 'Signing in again after erasure creates a new account.')}
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <Show when={status()?.status !== 'completed'}>
+            <Button loading={checking()} onClick={() => void refresh(true)}>
+              {t('account.erasure.check_again', 'Check status again')}
+            </Button>
+          </Show>
+          <Show when={status()?.status === 'completed'}>
+            <ButtonLink href="/login" onClick={forgetErasureReceipt}>
+              {t('account.erasure.sign_in_again', 'Sign in to create a new account')}
+            </ButtonLink>
+          </Show>
+          <Show when={error() && !status() && props.canReturn()}>
+            <Button onClick={props.onReturn}>{t('account.erasure.return_account', 'Return to account')}</Button>
+          </Show>
+          <ButtonLink href="/" variant="ghost">
+            {t('ui.back_home', 'Back to home')}
+          </ButtonLink>
+        </div>
+      </AdminPanel>
+    </div>
+  )
+}
+
+const Account: Component = () => {
+  const [receipt, setReceipt] = createSignal(readErasureReceipt())
+  const [initialStatus, setInitialStatus] = createSignal<ErasureStatus>()
+  let sessionCleared = false
+  const verified = (value: ErasureReceipt) => {
+    if (sessionCleared) return
+    sessionCleared = true
+    clearAccountSession(value)
+  }
+  return (
+    <Show
+      when={receipt()}
+      keyed
+      fallback={
+        <AccountSettings
+          onErasureAccepted={(value, status) =>
+            batch(() => {
+              setInitialStatus(status)
+              setReceipt(value)
+              verified(value)
+            })
+          }
+        />
+      }
+    >
+      {(value) => (
+        <AccountErasureStatus
+          receipt={value}
+          initialStatus={initialStatus()}
+          onVerified={() => verified(value)}
+          canReturn={() => !sessionCleared && isLogged() && !!localStorage.getItem('accessToken')}
+          onReturn={() => setReceipt(undefined)}
+        />
+      )}
+    </Show>
   )
 }
 

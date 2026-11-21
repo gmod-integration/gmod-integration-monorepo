@@ -1,5 +1,21 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const assertPersonalDataAllowedMock = vi.fn().mockResolvedValue(undefined)
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+const getRetainedTrustMock = vi.fn().mockResolvedValue(null)
+const prepareExplicitOAuthLoginMock = vi.fn().mockResolvedValue(undefined)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  assertPersonalDataAllowed: assertPersonalDataAllowedMock,
+  isErasureBlocked: isErasureBlockedMock,
+  getRetainedTrust: getRetainedTrustMock,
+  prepareExplicitOAuthLogin: prepareExplicitOAuthLoginMock,
+  PersonalDataErasureError: class extends Error {
+    constructor() {
+      super('Personal data collection is disabled')
+    }
+  },
+}))
+
 vi.mock('@gmod/config', () => ({
   ConfigDiscord: { clientID: 'client1', clientSecret: 'secret1', botToken: 'bot-token' },
 }))
@@ -39,13 +55,24 @@ const prismaMock: any = {
   gm_guild: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), findMany: vi.fn() },
   gm_guild_auto_roles: { findMany: vi.fn(), delete: vi.fn() },
   gm_guild_verify_role: { findMany: vi.fn(), delete: vi.fn() },
-  gm_discordToken: { findFirst: vi.fn(), delete: vi.fn(), update: vi.fn(), create: vi.fn(), findMany: vi.fn() },
-  gm_panelToken: { create: vi.fn() },
-  gm_user: { findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
+  gm_discordToken: {
+    deleteMany: vi.fn(),
+    findFirst: vi.fn(),
+    delete: vi.fn(),
+    update: vi.fn(),
+    create: vi.fn(),
+    findMany: vi.fn(),
+  },
+  gm_panelToken: { deleteMany: vi.fn(), create: vi.fn() },
+  gm_user: { deleteMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), update: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
 function resetAllMocks() {
+  assertPersonalDataAllowedMock.mockReset().mockResolvedValue(undefined)
+  isErasureBlockedMock.mockReset().mockResolvedValue(false)
+  getRetainedTrustMock.mockReset().mockResolvedValue(null)
+  prepareExplicitOAuthLoginMock.mockReset().mockResolvedValue(undefined)
   getUserFromDiscordIDMock.mockReset()
   getServersFromDiscordGuildIDMock.mockReset()
   isGuildPremiumMock.mockReset()
@@ -734,10 +761,23 @@ describe('discordModels', () => {
   })
 
   describe('saveUser', () => {
+    it('does not recreate a profile while data collection is suppressed', async () => {
+      assertPersonalDataAllowedMock.mockRejectedValueOnce(new Error('erasure active'))
+      await expect(saveUser('u1', 'Name')).rejects.toThrow('erasure active')
+      expect(prismaMock.gm_user.create).not.toHaveBeenCalled()
+      expect(prismaMock.gm_user.update).not.toHaveBeenCalled()
+    })
+
+    it('restores a retained reputation of zero for a returning user', async () => {
+      prismaMock.gm_user.findFirst.mockResolvedValueOnce(null)
+      getRetainedTrustMock.mockResolvedValueOnce(0)
+      await saveUser('u1', 'Name')
+      expect(prismaMock.gm_user.create).toHaveBeenCalledWith({ data: { id: 'u1', username: 'Name', trust: 0 } })
+    })
     it('creates a new user row when none exists', async () => {
       prismaMock.gm_user.findFirst.mockResolvedValueOnce(null)
       await expect(saveUser('u1', 'Name')).resolves.toBe(true)
-      expect(prismaMock.gm_user.create).toHaveBeenCalledWith({ data: { id: 'u1', username: 'Name' } })
+      expect(prismaMock.gm_user.create).toHaveBeenCalledWith({ data: { id: 'u1', username: 'Name', trust: 50 } })
     })
 
     it('updates the existing user row', async () => {
@@ -755,6 +795,13 @@ describe('discordModels', () => {
       expirationDate: new Date('2026-01-02'),
     }
     const sessionData = { os: 'Linux', ip: '1.2.3.4', browser: 'Firefox', country: 'FR' }
+
+    it('does not create OAuth or panel credentials when explicit reactivation is refused', async () => {
+      prepareExplicitOAuthLoginMock.mockRejectedValueOnce(new Error('erasure active'))
+      await expect(saveUserPanel('u1', discordUserToken, sessionData)).rejects.toThrow('erasure active')
+      expect(prismaMock.gm_panelToken.create).not.toHaveBeenCalled()
+      expect(prismaMock.gm_discordToken.create).not.toHaveBeenCalled()
+    })
 
     it('creates a new discord token row when none exists', async () => {
       prismaMock.gm_discordToken.findFirst.mockResolvedValueOnce(null)

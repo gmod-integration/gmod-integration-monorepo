@@ -1,4 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+const getErasedSteamIDsMock = vi.fn().mockResolvedValue(new Set())
+vi.mock('@gmod/infra-prisma/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  getErasedSteamIDs: getErasedSteamIDsMock,
+}))
 import { ChannelType } from 'discord.js'
 
 vi.mock('@gmod/shared/generateToken.js', () => ({ generateToken: vi.fn(() => 'generated-token') }))
@@ -34,11 +41,11 @@ const prismaMock: any = {
   gm_gmodstore_purchases: { findFirst: vi.fn() },
   gm_server_sync_chat_filter: { findMany: vi.fn() },
   gm_status: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
-  gm_server_status: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
+  gm_server_status: { updateMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
   gm_server_status_history: { create: vi.fn() },
   gm_server: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_status_button: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
-  gm_server_stat: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), findMany: vi.fn() },
+  gm_server_stat: { deleteMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), findMany: vi.fn() },
   gm_server_screenshot_channels: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_server_logs_channel: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_server_vote_channels: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
@@ -53,6 +60,8 @@ const { Server, getServerFromID, getServersFromDiscordGuildID, createServer, gen
   await import('../src/Server.js')
 
 function resetAllMocks() {
+  isErasureBlockedMock.mockReset().mockResolvedValue(false)
+  getErasedSteamIDsMock.mockReset().mockResolvedValue(new Set())
   redisMock.get.mockReset()
   redisMock.set.mockReset()
   redisMock.del.mockReset()
@@ -878,6 +887,21 @@ describe('Server', () => {
   describe('saveStatus', () => {
     const args = ['1.2.3.4', 27015, 'host', 'map1', 'sandbox', 5, 10, 100, [{ name: 'p1' }]] as const
 
+    it('removes a newly erased player from the saved list without changing other players or counts', async () => {
+      const updatedAt = new Date('2026-11-21T10:00:00Z')
+      getErasedSteamIDsMock.mockResolvedValueOnce(new Set()).mockResolvedValueOnce(new Set(['765-erased']))
+      prismaMock.gm_server_status.create.mockResolvedValueOnce({ updatedAt })
+      await makeServer().saveStatus('1.2.3.4', 27015, 'host', 'map1', 'sandbox', 2, 10, 100, [
+        { steamID64: '765-erased', name: 'Private' },
+        { steamID64: '765-other', name: 'Other' },
+      ])
+      expect(prismaMock.gm_server_status.updateMany).toHaveBeenCalledWith({
+        where: { id: 's1', updatedAt },
+        data: { playersList: JSON.stringify([{ steamID64: '765-other', name: 'Other' }]) },
+      })
+      expect(prismaMock.gm_server_status_history.create).toHaveBeenCalledWith({ data: { serverID: 's1', players: 2 } })
+    })
+
     it('updates the existing status row and always records history', async () => {
       prismaMock.gm_server_status.findFirst.mockResolvedValueOnce({ id: 's1' })
 
@@ -960,6 +984,15 @@ describe('Server', () => {
   })
 
   describe('saveUserConnectionInfo', () => {
+    it('does not retain a connection row when erasure starts during the write', async () => {
+      const updatedAt = new Date('2026-11-21T10:00:00Z')
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      prismaMock.gm_server_stat.create.mockResolvedValueOnce({ updatedAt })
+      await makeServer().saveUserConnectionInfo('765', 'Private')
+      expect(prismaMock.gm_server_stat.deleteMany).toHaveBeenCalledWith({
+        where: { server_id: 's1', steam_id: '765', updatedAt },
+      })
+    })
     it('increments total_connect on an existing player', async () => {
       prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce({ total_connect: 4 })
 

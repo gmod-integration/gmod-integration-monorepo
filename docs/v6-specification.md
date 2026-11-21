@@ -401,6 +401,19 @@ notamment le bot personnalisé lié à GmodStore, feront partie de la table de m
 
 ## Lots de réalisation
 
+### Premier parcours engagé — 21 novembre 2026
+
+Le premier contrat HTTP indépendant `/v6/account/erasure-requests` et le parcours d'effacement du compte
+sont implémentés : confirmation explicite, reçu de suivi après révocation des sessions, traitement SQL
+durable avec reprise et nettoyage des stockages personnels. La preuve de demande, les bans globaux actifs
+et la réputation utile sont séparés du profil supprimé ; les droits collectifs existants restent gérés.
+Voir le [contrat API](./apps/api.md#account-erasure-under-v6) et le
+[fonctionnement du domaine conformité](./packages/domain-compliance.md) pour le périmètre et les limites.
+
+Ce parcours nécessite sa migration de données et une clé de pseudonymisation dédiée avant activation.
+Il ne signifie pas que le transport WSS, la boutique ou les autres parcours v6 sont déjà migrés ; les lots
+ci-dessous restent la cible de réalisation et les conditions de sortie restent applicables.
+
 | Lot                     | Résultat attendu                                                                                                      | Dépendance principale                                              |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | 1 Contrats et périmètre | Inventaire des parcours, contrats HTTP et WSS v6, définitions de Forwards et Streams, grille de migration des droits. | Arbitrages produit et commerciaux.                                 |

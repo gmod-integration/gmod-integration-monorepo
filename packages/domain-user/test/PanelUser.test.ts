@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('../src/privacy.js', () => ({ isErasureBlocked: isErasureBlockedMock }))
+
 const findManyMock = vi.fn()
 const panelTokenFindFirstMock = vi.fn()
 const discordTokenFindFirstMock = vi.fn()
@@ -40,6 +43,7 @@ function buildPanelUser(overrides: Partial<{ discordExpiration: Date }> = {}) {
 
 describe('PanelUser', () => {
   beforeEach(() => {
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
     findManyMock.mockReset()
     redisGetMock.mockReset()
     redisSetMock.mockReset()
@@ -72,6 +76,12 @@ describe('PanelUser', () => {
   it('isValidPanelToken() is false when no matching token is found', async () => {
     findManyMock.mockResolvedValueOnce([])
     await expect(buildPanelUser().isValidPanelToken('panel-tok')).resolves.toBe(false)
+  })
+
+  it('rejects a previously valid token while erasure is active without consulting token rows', async () => {
+    isErasureBlockedMock.mockResolvedValueOnce(true)
+    await expect(buildPanelUser().authAllowed('panel-tok')).resolves.toBe(false)
+    expect(findManyMock).not.toHaveBeenCalled()
   })
 
   it('authAllowed() is true only when both the panel token and discord token are valid', async () => {
@@ -176,6 +186,7 @@ describe('PanelUser', () => {
 
 describe('getPanelUserFromDiscordID', () => {
   beforeEach(() => {
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
     panelTokenFindFirstMock.mockReset()
     discordTokenFindFirstMock.mockReset()
     getUserFromDiscordIDMock.mockReset()

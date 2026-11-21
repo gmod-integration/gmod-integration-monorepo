@@ -81,7 +81,30 @@
     "request_my_data": "Demander mes données",
     "delete_my_data": "Supprimer mes données",
     "error_create_data_request": "Échec de la création de la demande de données",
-    "description": "Gérez vos comptes liés, vos sessions et vos données personnelles."
+    "description": "Gérez vos comptes liés, vos sessions et vos données personnelles.",
+    "erasure": {
+      "submit_error": "La demande n’a pas pu être confirmée. Réessayez : la même demande sera réutilisée.",
+      "title": "Demander l’effacement du compte",
+      "scope": "Cette opération efface vos profils personnels, statistiques, sessions, fichiers et exports de données.",
+      "retained": "Une trace minimale de la demande, les bannissements globaux et la réputation sont conservés. Les communautés et les achats collectifs restent en place.",
+      "new_account": "Vous reconnecter après l’effacement crée un nouveau compte.",
+      "confirmation": "Saisissez DELETE pour confirmer",
+      "signout": "Vous serez déconnecté dès l’acceptation de la demande. Ce navigateur conserve un reçu pour vous permettre d’en suivre l’avancement.",
+      "submit": "Confirmer la demande d’effacement",
+      "completed": "L’effacement demandé est terminé.",
+      "running": "Vos données personnelles sont en cours d’effacement. Vous pouvez suivre l’avancement ici après la déconnexion.",
+      "retry": "Votre demande est conservée. Le traitement reprendra automatiquement : vous n’avez pas besoin d’envoyer une nouvelle demande.",
+      "pending": "Votre demande a été acceptée et attend d’être traitée. L’effacement n’est pas encore terminé.",
+      "checking": "Vérification de votre demande d’effacement…",
+      "progress": "Avancement de l’effacement",
+      "completed_date": "Terminé le",
+      "status_error": "Impossible de vérifier l’état de la demande. Réessayez : votre reçu est conservé et aucune nouvelle demande ne sera créée.",
+      "paused": "Les vérifications automatiques sont en pause. Votre demande reste active ; vérifiez à nouveau pour reprendre le suivi.",
+      "check_again": "Vérifier à nouveau l’état",
+      "sign_in_again": "Se connecter pour créer un nouveau compte",
+      "return_account": "Revenir au compte",
+      "external_copies": "Les copies déjà partagées sur Discord ou conservées dans des sauvegardes nécessitent un traitement distinct. Contactez le support à leur sujet."
+    }
   },
   "premium": {
     "sync_chat": "Synchroniser le chat",

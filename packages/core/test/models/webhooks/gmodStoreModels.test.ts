@@ -16,8 +16,21 @@ const addNotificationMock = vi.fn()
 vi.mock('../../../src/utils/tools.js', () => ({ addNotification: addNotificationMock }))
 
 const prismaMock: any = {
-  gm_gmodstore_purchases: { findUnique: vi.fn(), update: vi.fn(), create: vi.fn() },
+  gm_gmodstore_purchases: {
+    findUnique: vi.fn(),
+    update: vi.fn(),
+    create: vi.fn(),
+    upsert: vi.fn(),
+    deleteMany: vi.fn(),
+  },
+  gm_user_erasure: { findFirst: vi.fn() },
+  $transaction: vi.fn(),
 }
+const redisDelMock = vi.fn()
+vi.mock('@gmod/infra-redis', () => ({ default: { del: redisDelMock } }))
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  privacySubject: (provider: string, id: string) => `${provider}:private:${id}`,
+}))
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
 const { verifyWebhookSignature, getUser, saveGmodStorePurchase, processGmodStoreWebhook } =
@@ -36,10 +49,13 @@ function resetAllMocks() {
   getUserFromSteamID64Mock.mockReset()
   addNotificationMock.mockReset()
   for (const table of Object.values(prismaMock)) {
+    if (!table || typeof table !== 'object') continue
     for (const fn of Object.values(table as Record<string, any>)) {
       ;(fn as ReturnType<typeof vi.fn>).mockReset()
     }
   }
+  prismaMock.$transaction.mockReset().mockImplementation((operation: (tx: unknown) => unknown) => operation(prismaMock))
+  redisDelMock.mockReset()
   vi.stubGlobal('fetch', vi.fn())
 }
 
@@ -181,6 +197,86 @@ describe('gmodStoreModels', () => {
         where: { steamID64: '765' },
         data: { revoke: true, userID: 'u1' },
       })
+    })
+
+    it('applies refunds to the retained community purchase without restoring erased identifiers or notifying a recreated account', async () => {
+      const retainedKey = 'erased:steam:private:765'
+      prismaMock.gm_gmodstore_purchases.findUnique.mockImplementation(({ where }: { where: { steamID64: string } }) =>
+        Promise.resolve(
+          where.steamID64 === retainedKey ? { steamID64: retainedKey, guild: 'community', revoke: false } : null,
+        ),
+      )
+      getUserFromSteamID64Mock.mockResolvedValue({ getDiscordID: () => 'new-account' })
+      await saveGmodStorePurchase('765', 'personal-store-id', true)
+      expect(prismaMock.gm_gmodstore_purchases.upsert).toHaveBeenCalledWith({
+        where: { steamID64: retainedKey },
+        create: { steamID64: retainedKey, guild: 'community', revoke: true, userID: '', token: '' },
+        update: { guild: 'community', revoke: true, userID: '', token: '' },
+      })
+      expect(prismaMock.gm_gmodstore_purchases.create).not.toHaveBeenCalled()
+      expect(prismaMock.gm_gmodstore_purchases.update).not.toHaveBeenCalled()
+      expect(getUserFromSteamID64Mock).not.toHaveBeenCalled()
+      expect(addNotificationMock).not.toHaveBeenCalled()
+      expect(gmLogMock.mock.calls.flat().join(' ')).not.toContain('765')
+      expect(redisDelMock).toHaveBeenCalledWith('guild:community:premium')
+    })
+
+    it('keeps a historical erasure private after OAuth reactivation, even if no purchase row existed during erasure', async () => {
+      prismaMock.gm_gmodstore_purchases.findUnique.mockResolvedValue(null)
+      prismaMock.gm_user_erasure.findFirst.mockResolvedValue({ id: 'old-proof', reactivatedAt: new Date() })
+      await saveGmodStorePurchase('765', 'personal-store-id', false)
+      expect(prismaMock.gm_user_erasure.findFirst).toHaveBeenCalledWith({
+        where: { steamSubject: 'steam:private:765' },
+        select: { id: true },
+      })
+      expect(prismaMock.gm_gmodstore_purchases.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: { steamID64: 'erased:steam:private:765', guild: '', revoke: false, userID: '', token: '' },
+        }),
+      )
+      expect(prismaMock.gm_gmodstore_purchases.create).not.toHaveBeenCalled()
+      expect(getUserFromSteamID64Mock).not.toHaveBeenCalled()
+      expect(prismaMock.$transaction).toHaveBeenCalledWith(expect.any(Function), { isolationLevel: 'Serializable' })
+    })
+
+    it('merges an old duplicate personal row into the same retained assignment without a primary-key collision', async () => {
+      const retainedKey = 'erased:steam:private:765'
+      prismaMock.gm_gmodstore_purchases.findUnique.mockImplementation(({ where }: { where: { steamID64: string } }) =>
+        Promise.resolve({ steamID64: where.steamID64, guild: 'community', revoke: false }),
+      )
+      await saveGmodStorePurchase('765', 'do-not-restore', true)
+      expect(prismaMock.gm_gmodstore_purchases.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { steamID64: retainedKey },
+          update: { guild: 'community', revoke: true, userID: '', token: '' },
+        }),
+      )
+      expect(prismaMock.gm_gmodstore_purchases.deleteMany).toHaveBeenCalledWith({ where: { steamID64: '765' } })
+      expect(prismaMock.gm_gmodstore_purchases.create).not.toHaveBeenCalled()
+    })
+
+    it('refuses to silently discard a different community entitlement when duplicate historical assignments conflict', async () => {
+      prismaMock.gm_gmodstore_purchases.findUnique.mockImplementation(({ where }: { where: { steamID64: string } }) =>
+        Promise.resolve({
+          steamID64: where.steamID64,
+          guild: where.steamID64 === '765' ? 'new-community' : 'old-community',
+        }),
+      )
+      await expect(saveGmodStorePurchase('765', 'u1', true)).rejects.toThrow(
+        'Conflicting collective purchase assignments require review',
+      )
+      expect(prismaMock.gm_gmodstore_purchases.upsert).not.toHaveBeenCalled()
+      expect(prismaMock.gm_gmodstore_purchases.deleteMany).not.toHaveBeenCalled()
+    })
+
+    it('retries a serialization conflict without sending duplicate notifications', async () => {
+      prismaMock.$transaction.mockRejectedValueOnce({ code: 'P2034' })
+      prismaMock.gm_gmodstore_purchases.findUnique.mockResolvedValue(null)
+      getUserFromSteamID64Mock.mockResolvedValue({ getDiscordID: () => 'd1' })
+      await saveGmodStorePurchase('765', 'u1', false)
+      expect(prismaMock.$transaction).toHaveBeenCalledTimes(2)
+      expect(prismaMock.gm_gmodstore_purchases.create).toHaveBeenCalledTimes(1)
+      expect(addNotificationMock).toHaveBeenCalledTimes(1)
     })
 
     it('skips the notification when there is no linked discord user', async () => {

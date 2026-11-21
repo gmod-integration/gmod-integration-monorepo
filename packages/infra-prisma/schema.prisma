@@ -678,6 +678,37 @@ model gm_users_notifications {
   @@index([discordID], map: "discordID")
 }
 
+// Independent from gm_user: the minimal request evidence survives profile deletion.
+model gm_user_erasure {
+  id             String    @id @db.Char(36)
+  discordSubject String    @db.Char(64)
+  steamSubject   String?   @db.Char(64)
+  receiptHash    String    @unique @db.Char(64)
+  status         String    @default("pending") @db.VarChar(16)
+  requestedAt    DateTime  @default(now())
+  completedAt    DateTime?
+  reactivatedAt  DateTime?
+  payload        Json?
+  progress       Json?
+  attempts       Int       @default(0)
+  lastError      String?   @db.VarChar(64)
+  leaseUntil     DateTime?
+  leaseToken     String?   @db.Char(36)
+  nextAttemptAt  DateTime  @default(now())
+
+  @@index([steamSubject])
+  @@index([discordSubject, reactivatedAt])
+  @@index([status, nextAttemptAt])
+}
+
+// No names, contact details, sessions or activity history are retained here.
+model gm_user_security {
+  subject   String   @id @db.Char(64)
+  trust     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model users {
   steamID64  String    @id @db.Char(255)
   steamID    String?   @default("") @db.Text

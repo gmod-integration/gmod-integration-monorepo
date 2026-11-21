@@ -1,4 +1,13 @@
 import { EventEmitter } from 'node:events'
+
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 const gmLogMock = vi.fn()
@@ -409,6 +418,31 @@ describe('apps/websocket main()', () => {
   })
 
   describe('wsSendToAllClientsOfServer queue worker', () => {
+    it('closes an already connected client when privacy revocation is broadcast', async () => {
+      getPanelUserFromDiscordIDMock.mockReset().mockResolvedValueOnce({ discordID: 'd-privacy' })
+      getUserGuildsWithPermsForPanelMock.mockReset().mockResolvedValueOnce([])
+      const ws = makeFakeWs()
+      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-privacy/token=tok' })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await subscriberHandlers.message('gmi:privacy:revoked', JSON.stringify({ discordID: 'd-privacy' }))
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(ws.send).not.toHaveBeenCalled()
+    })
+
+    it('checks the durable suppression marker before delivering to an existing socket', async () => {
+      getPanelUserFromDiscordIDMock.mockReset().mockResolvedValueOnce({ discordID: 'd-suppressed' })
+      getUserGuildsWithPermsForPanelMock.mockReset().mockResolvedValueOnce([{ id: 'g-private' }])
+      getServersFromDiscordGuildIDMock.mockReset().mockResolvedValueOnce([{ id: 'srv-private' }])
+      const ws = makeFakeWs()
+      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-suppressed/token=tok' })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      await capturedWorkers['wsSendToAllClientsOfServer'].processor({
+        data: { id: 'srv-private', action: 'server_logs', data: {} },
+      })
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(ws.send).not.toHaveBeenCalled()
+    })
     it('sends to every client tracking the given server', async () => {
       getPanelUserFromDiscordIDMock.mockReset().mockResolvedValueOnce({ discordID: 'd-bulk' })
       getUserGuildsWithPermsForPanelMock.mockReset().mockResolvedValueOnce([{ id: 'g1' }])

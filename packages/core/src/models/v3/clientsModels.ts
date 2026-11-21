@@ -8,8 +8,9 @@ import prisma from '@gmod/infra-prisma'
 import { type PlayerGmod } from '../../classes/v3/PlayerGmod.js'
 import { getTranslate } from '../../utils/localizations.js'
 import { createBucketIfNotExists, s3 } from '@gmod/infra-minio'
-import { PutObjectCommand } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { enqueueMainClientUploadScreenshot } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { assertPersonalDataAllowed, isErasureBlocked, PersonalDataErasureError } from '@gmod/domain-user/privacy.js'
 
 type MissingArgumentsResponse<T extends Record<string, unknown>> = {
   error: 'missing_arguments'
@@ -41,6 +42,7 @@ export async function saveScreenshot(
   server: Server,
   title: string | undefined,
 ) {
+  await assertPersonalDataAllowed(undefined, player.steamID64)
   const format = captureData.format || 'jpeg'
   const dateFormatted = new Date().toISOString().replace(/T/g, '_').replace(/\..+/, '').replace(/:/g, '-')
   const filename = `${dateFormatted}_${player.steamID64}_${randomUUID()}.${format}`
@@ -63,6 +65,14 @@ export async function saveScreenshot(
       console.error('Error uploading players screenshot to S3:', err)
     })
 
+  const ensureStillAllowed = async () => {
+    if (!(await isErasureBlocked(undefined, player.steamID64))) return
+    await s3.send(new DeleteObjectCommand({ Bucket: 'gmi-players-screenshots', Key: filename }))
+    await prisma.gm_server_screenshots.deleteMany({ where: { serverID: server.id, url: internUrl } })
+    throw new PersonalDataErasureError()
+  }
+  await ensureStillAllowed()
+
   let discordUrl = ''
   if (ConfigServer.screenshotChannel) {
     discordUrl = await enqueueMainClientUploadScreenshot({
@@ -74,6 +84,7 @@ export async function saveScreenshot(
     }).catch(() => '')
   }
 
+  await ensureStillAllowed()
   await prisma.gm_server_screenshots.create({
     data: {
       serverID: server.id,
@@ -83,6 +94,7 @@ export async function saveScreenshot(
       captureData: JSON.stringify(captureData),
     },
   })
+  await ensureStillAllowed()
 
   return {
     discordUrl,
@@ -99,6 +111,8 @@ export async function sendScreenshotToDiscord(
   server: Server,
   title: string | undefined,
 ) {
+  if (await isErasureBlocked(undefined, player.steamID64))
+    return { skip: true, message: 'Personal data collection is disabled' }
   const channelInfo = await server.getScreenshotsChannel()
   if (!channelInfo) {
     return { skip: true, message: 'Channel not found' }
@@ -157,6 +171,8 @@ export async function uploadScreenshotPayload(server: Server, payload: any) {
   if (missingArguments) {
     return missingArguments
   }
+  if (await isErasureBlocked(undefined, player.steamID64))
+    return { skip: true, message: 'Personal data collection is disabled' }
 
   const { discordUrl, filename, internUrl } = await saveScreenshot(screenshot, captureData, player, server, title)
   await sendScreenshotToDiscord(discordUrl, internUrl, filename, player, server, title)
@@ -176,6 +192,8 @@ export async function reportBugPayload(server: Server, payload: any) {
   if (missingArguments) {
     return missingArguments
   }
+  if (await isErasureBlocked(undefined, player.steamID64))
+    return { skip: true, message: 'Personal data collection is disabled' }
 
   let screenshotName = ''
   if (screenshot) {
@@ -189,7 +207,8 @@ export async function reportBugPayload(server: Server, payload: any) {
     }
   }
 
-  return await prisma.gm_server_report_bugs.create({
+  await assertPersonalDataAllowed(undefined, player.steamID64)
+  const report = await prisma.gm_server_report_bugs.create({
     data: {
       serverID: server.id,
       steamID64: player.steamID64,
@@ -202,4 +221,9 @@ export async function reportBugPayload(server: Server, payload: any) {
       screenshot: screenshotName,
     },
   })
+  if (await isErasureBlocked(undefined, player.steamID64)) {
+    await prisma.gm_server_report_bugs.deleteMany({ where: { id: report.id } })
+    return { skip: true, message: 'Personal data collection is disabled' }
+  }
+  return report
 }

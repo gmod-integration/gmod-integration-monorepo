@@ -1,5 +1,6 @@
 import { type GmodErrorsInput, GmodErrorsSchema } from '@gmod/schema/gmod/GmodErrorsSchema.js'
 import { mongoClient } from '@gmod/infra-mongo'
+import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 
 interface OffsetLimitQuery {
   offset: number
@@ -38,7 +39,8 @@ export class GmodErrors {
   }
 
   public async save() {
-    return await collection.insertOne({
+    if (await isErasureBlocked(undefined, this.steamID64)) return
+    const inserted = await collection.insertOne({
       error: this.error,
       stack: this.stack,
       workshopID: this.workshopID || '',
@@ -51,6 +53,11 @@ export class GmodErrors {
       createdAt: new Date(),
       updatedAt: new Date(),
     })
+    if (await isErasureBlocked(undefined, this.steamID64)) {
+      await collection.deleteOne({ _id: inserted.insertedId })
+      return
+    }
+    return inserted
   }
 }
 

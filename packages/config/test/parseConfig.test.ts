@@ -75,6 +75,14 @@ describe('packages/config src/index.ts module (parseConfig on import)', () => {
     expect(second).toBe(first)
   })
 
+  it('exposes the dedicated stable privacy secret separately from OAuth credentials', async () => {
+    process.env.PRIVACY_HASH_SECRET = 'a-separate-stable-privacy-secret'
+    vi.resetModules()
+    const mod = await import('../src/index.js')
+    expect(mod.ConfigPrivacy.hashSecret).toBe('a-separate-stable-privacy-secret')
+    expect(mod.ConfigPrivacy.hashSecret).not.toBe(mod.ConfigDiscord.clientSecret)
+  })
+
   it('sets ConfigInstance.isSelfHosted = false when DEV is true, regardless of domain', async () => {
     process.env.DEV = 'true'
     process.env.DOMAIN_URL = 'https://api.my-self-hosted-domain.example'

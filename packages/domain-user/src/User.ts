@@ -1,4 +1,5 @@
 import prisma from '@gmod/infra-prisma'
+import { isErasureBlocked } from './privacy.js'
 
 export class User {
   steamID64: string | null
@@ -48,13 +49,14 @@ export async function getUserFromSteamID64(steamID64: string) {
   })
 
   if (!user) return null
+  if (await isErasureBlocked(user.id, user.steam)) return null
 
   return new User({
     steamID64: user.steam,
     discordID: user.id,
     rank: user.rank,
     lastVerification: user.last_oauth,
-    trustLevel: user.trust || 50,
+    trustLevel: user.trust ?? 50,
   })
 }
 
@@ -66,12 +68,13 @@ export async function getUserFromDiscordID(discordID: string) {
   })
 
   if (!user) return null
+  if (await isErasureBlocked(user.id, user.steam)) return null
 
   return new User({
     steamID64: user.steam,
     discordID: user.id,
     rank: user.rank,
     lastVerification: user.last_oauth,
-    trustLevel: user.trust || 50,
+    trustLevel: user.trust ?? 50,
   })
 }

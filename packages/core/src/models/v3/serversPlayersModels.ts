@@ -6,8 +6,11 @@ import { type PlayerGmod } from '../../classes/v3/PlayerGmod.js'
 import prisma from '@gmod/infra-prisma'
 import { gm_server_sync_chat_filter_element } from '@gmod/infra-prisma/enums.js'
 import type { gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js'
+import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 
 export async function sendPlayerSay(server: Server, player: PlayerGmod, text: string, onlyTeam: boolean) {
+  if (await isErasureBlocked(undefined, player.steamID64))
+    return { skip: true, message: 'Personal data collection is disabled' }
   let anonymous = false
 
   player.name.replace(/[^\x00-\x7F]/g, '')
@@ -158,12 +161,14 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
 }
 
 export async function saveConnectionGlobalInfo(steamID64: string, steamID: string, IP: string, name: string) {
+  if (await isErasureBlocked(undefined, steamID64)) return
   const user = await prisma.users.findFirst({
     where: {
       steamID64: steamID64,
     },
   })
 
+  let savedUser: { updatedAt: Date }
   if (user) {
     let IPArray: string[] = []
 
@@ -180,7 +185,7 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
 
     if (!IPArray.includes(IP)) IPArray.push(IP)
 
-    await prisma.users.update({
+    savedUser = await prisma.users.update({
       where: {
         steamID64: steamID64,
       },
@@ -191,7 +196,7 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
       },
     })
   } else {
-    await prisma.users.create({
+    savedUser = await prisma.users.create({
       data: {
         steamID64: steamID64,
         steamID: steamID,
@@ -201,9 +206,13 @@ export async function saveConnectionGlobalInfo(steamID64: string, steamID: strin
       },
     })
   }
+  if (await isErasureBlocked(undefined, steamID64)) {
+    await prisma.users.deleteMany({ where: { steamID64, updatedAt: savedUser.updatedAt } })
+  }
 }
 
 export async function saveConnectionSteamInfo(steamID64: string, name: string, IP: string) {
+  if (await isErasureBlocked(undefined, steamID64)) return
   try {
     const player = await prisma.gm_user_steam.findFirst({
       where: {
@@ -211,8 +220,9 @@ export async function saveConnectionSteamInfo(steamID64: string, name: string, I
       },
     })
 
+    let savedPlayer: { updatedAt: Date }
     if (player) {
-      await prisma.gm_user_steam.update({
+      savedPlayer = await prisma.gm_user_steam.update({
         where: {
           steam_id: steamID64,
         },
@@ -223,13 +233,16 @@ export async function saveConnectionSteamInfo(steamID64: string, name: string, I
         },
       })
     } else {
-      await prisma.gm_user_steam.create({
+      savedPlayer = await prisma.gm_user_steam.create({
         data: {
           steam_id: steamID64,
           username: name,
           last_ip: IP,
         },
       })
+    }
+    if (await isErasureBlocked(undefined, steamID64)) {
+      await prisma.gm_user_steam.deleteMany({ where: { steam_id: steamID64, updatedAt: savedPlayer.updatedAt } })
     }
   } catch (err) {
     console.error(err)

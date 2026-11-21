@@ -1,4 +1,11 @@
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
+import {
+  assertPersonalDataAllowed,
+  getRetainedTrust,
+  isErasureBlocked,
+  PersonalDataErasureError,
+  prepareExplicitOAuthLogin,
+} from '@gmod/domain-user/privacy.js'
 import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { isGuildPremium } from './Guild.js'
 import { ConfigDiscord } from '@gmod/config'
@@ -318,6 +325,7 @@ export async function getUserTokenFromRefreshToken(refreshToken: string) {
 }
 
 export async function refreshUserToken(discordID: string) {
+  if (await isErasureBlocked(discordID)) return null
   const discordToken = await prisma.gm_discordToken.findFirst({
     where: {
       discordID,
@@ -339,7 +347,8 @@ export async function refreshUserToken(discordID: string) {
     return null
   }
 
-  await prisma.gm_discordToken.update({
+  await assertPersonalDataAllowed(discordID)
+  const saved = await prisma.gm_discordToken.update({
     where: {
       discordID,
     },
@@ -351,6 +360,10 @@ export async function refreshUserToken(discordID: string) {
     },
   })
 
+  if (await isErasureBlocked(discordID)) {
+    await prisma.gm_discordToken.deleteMany({ where: { discordID, updatedAt: saved.updatedAt } })
+    return null
+  }
   return token
 }
 
@@ -390,21 +403,24 @@ export async function getUserFromToken(token: string) {
 }
 
 export async function saveUser(id: string, username: string) {
+  await assertPersonalDataAllowed(id)
   const user = await prisma.gm_user.findFirst({
     where: {
       id,
     },
   })
 
+  let saved: { updatedAt: Date }
   if (!user) {
-    await prisma.gm_user.create({
+    saved = await prisma.gm_user.create({
       data: {
         id,
         username,
+        trust: (await getRetainedTrust(id)) ?? 50,
       },
     })
   } else {
-    await prisma.gm_user.update({
+    saved = await prisma.gm_user.update({
       where: {
         id,
       },
@@ -414,18 +430,25 @@ export async function saveUser(id: string, username: string) {
     })
   }
 
+  if (await isErasureBlocked(id)) {
+    await prisma.gm_user.deleteMany({ where: { id, updatedAt: saved.updatedAt } })
+    throw new PersonalDataErasureError()
+  }
   return true
 }
 
 export async function saveUserPanel(discordID: string, discordUserToken: any, sessionData: any) {
+  await prepareExplicitOAuthLogin(discordID)
+  await assertPersonalDataAllowed(discordID)
   const discordToken = await prisma.gm_discordToken.findFirst({
     where: {
       discordID,
     },
   })
 
+  let savedDiscordToken: { updatedAt: Date }
   if (!discordToken) {
-    await prisma.gm_discordToken.create({
+    savedDiscordToken = await prisma.gm_discordToken.create({
       data: {
         discordID,
         accessToken: discordUserToken.access_token,
@@ -435,7 +458,7 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
       },
     })
   } else {
-    await prisma.gm_discordToken.update({
+    savedDiscordToken = await prisma.gm_discordToken.update({
       where: {
         discordID,
       },
@@ -448,6 +471,7 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
     })
   }
 
+  await assertPersonalDataAllowed(discordID)
   const panelAccessToken = generateToken(32)
 
   await prisma.gm_panelToken.create({
@@ -464,6 +488,11 @@ export async function saveUserPanel(discordID: string, discordUserToken: any, se
     },
   })
 
+  if (await isErasureBlocked(discordID)) {
+    await prisma.gm_panelToken.deleteMany({ where: { discordID, accessToken: panelAccessToken } })
+    await prisma.gm_discordToken.deleteMany({ where: { discordID, updatedAt: savedDiscordToken.updatedAt } })
+    throw new PersonalDataErasureError()
+  }
   return panelAccessToken
 }
 

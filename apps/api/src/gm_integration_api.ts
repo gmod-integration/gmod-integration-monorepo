@@ -1,6 +1,6 @@
 // import '@gmod/core/utils/instrument.js';
 import { fileURLToPath } from 'node:url'
-import { ConfigServer } from '@gmod/config'
+import { ConfigPrivacy, ConfigServer } from '@gmod/config'
 import '@gmod/core/utils/update-log.js'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { gmLog } from '@gmod/shared/logger.js'
@@ -16,6 +16,9 @@ import { gracefulShutdownRedis } from '@gmod/infra-redis'
 import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import { gracefulShutdownMongo } from '@gmod/core/database/gm_server_logs.js'
 import '@gmod/infra-bullmq'
+import { startAccountErasureWorker } from '@gmod/domain-compliance/accountErasure.js'
+
+let stopAccountErasureWorker: (() => void) | undefined
 
 // Express
 export const app = express()
@@ -36,7 +39,12 @@ app.use(useragent.express())
 let inShutdown = false
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (inShutdown) {
-    res.status(503).json({ error: 'Server is in the process of restarting' })
+    if (req.path === '/v6' || req.path.startsWith('/v6/')) {
+      res.setHeader('Cache-Control', 'no-store')
+      res
+        .status(503)
+        .json({ error: { code: 'service_unavailable', message: 'Server is in the process of restarting' } })
+    } else res.status(503).json({ error: 'Server is in the process of restarting' })
   } else {
     next()
   }
@@ -163,6 +171,7 @@ app.use(errorMiddleware)
 export async function gracefulShutdown() {
   gmLog('shutdown', 'Gracefully shutting down...')
   inShutdown = true
+  stopAccountErasureWorker?.()
   // await Sentry.flush(2000);
   await gracefulShutdownRedis()
   await gracefulShutdownPrisma()
@@ -172,6 +181,7 @@ export async function gracefulShutdown() {
 
 export async function main() {
   await connectPrisma()
+  if (ConfigPrivacy.hashSecret) stopAccountErasureWorker = startAccountErasureWorker()
 
   // Listen
   app.listen(ConfigServer.ports.api, () => {

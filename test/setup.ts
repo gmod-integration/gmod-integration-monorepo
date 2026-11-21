@@ -22,7 +22,8 @@ const envTestKeys = new Set(Object.keys(dotenv.parse(readFileSync(envTestPath, '
 // packages/config/src/website.ts reads a few of its own env vars that aren't part of
 // ConfigSchema/.env.test above (its own separate WebsiteConfigSchema) — clear those too, for
 // the same reason. Keep in sync with WebsiteConfigSchema's fields in that file.
-for (const key of ['WEBSITE_WS_URL', 'WEBSITE_DEV_SHOW_MISSING_TRANSLATIONS']) {
+// The optional server privacy secret is absent from .env.test and must not leak into tests.
+for (const key of ['WEBSITE_WS_URL', 'WEBSITE_DEV_SHOW_MISSING_TRANSLATIONS', 'PRIVACY_HASH_SECRET']) {
   envTestKeys.add(key)
 }
 

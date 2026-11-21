@@ -230,6 +230,8 @@
       "name": "@gmod/domain-compliance",
       "version": "1.0.0",
       "dependencies": {
+        "@gmod/infra-mongo": "workspace:*",
+        "@gmod/infra-redis": "workspace:*",
         "@aws-sdk/client-s3": "^3.1009.0",
         "@gmod/config": "workspace:*",
         "@gmod/core": "workspace:*",
@@ -245,6 +247,7 @@
       "name": "@gmod/domain-gmod",
       "version": "1.0.0",
       "dependencies": {
+        "@gmod/domain-user": "workspace:*",
         "@gmod/infra-mongo": "workspace:*",
         "@gmod/schema": "workspace:*",
       },
@@ -312,6 +315,7 @@
       "name": "@gmod/infra-minio",
       "version": "1.0.0",
       "dependencies": {
+        "@gmod/infra-prisma": "workspace:*",
         "@aws-sdk/client-s3": "^3.1009.0",
         "@gmod/config": "workspace:*",
       },

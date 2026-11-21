@@ -4,6 +4,7 @@ import prisma from '@gmod/infra-prisma'
 import { PlayerGmod } from '../../classes/v3/PlayerGmod.js'
 import { type Server } from '@gmod/domain-server/Server.js'
 import { enqueueDiscordServerStatusRefreshAsync } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 
 type EndpointResult = {
   status: number
@@ -90,10 +91,14 @@ export async function processServerImportWarns(server: Server, warns: any): Prom
   }
 
   for (const warn of warns) {
-    let { adminSteamID64, playerSteamID64, date, reason } = warn
+    let { adminSteamID64, date, reason } = warn
+    const { playerSteamID64 } = warn
     if (!adminSteamID64 || !playerSteamID64 || !date) {
       continue
     }
+    if (await isErasureBlocked(undefined, playerSteamID64)) continue
+    // Preserve another player's moderation history without restoring an erased actor's identity.
+    if (await isErasureBlocked(undefined, adminSteamID64)) adminSteamID64 = ''
 
     if (typeof date === 'string' && !isNaN(Number(date))) {
       date = new Date(Number(date) * 1000)
@@ -117,7 +122,7 @@ export async function processServerImportWarns(server: Server, warns: any): Prom
       continue
     }
 
-    await prisma.gm_server_warn.create({
+    const inserted = await prisma.gm_server_warn.create({
       data: {
         serverID: server.getID(),
         userSteamID64: playerSteamID64,
@@ -126,6 +131,16 @@ export async function processServerImportWarns(server: Server, warns: any): Prom
         createdAt: date,
       },
     })
+    if (await isErasureBlocked(undefined, playerSteamID64)) {
+      await prisma.gm_server_warn.deleteMany({ where: { id: inserted.id } })
+      continue
+    }
+    if (adminSteamID64 && (await isErasureBlocked(undefined, adminSteamID64))) {
+      await prisma.gm_server_warn.updateMany({
+        where: { id: inserted.id, adminSteamID64 },
+        data: { adminSteamID64: '' },
+      })
+    }
   }
 
   return ok()

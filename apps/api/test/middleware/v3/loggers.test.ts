@@ -94,6 +94,21 @@ describe('loggerMiddleware', () => {
     expect(body.screenshot).toBe('base64-secret-image')
   })
 
+  it('keeps erasure receipts out of the body, query and Authorization log fields', () => {
+    const receipt = 'e'.repeat(64)
+    const req = makeReq({
+      url: `/v6/account/erasure-requests/request-id?receipt=${receipt}`,
+      headers: { authorization: `Bearer ${receipt}` },
+      body: { receipt },
+      query: { receipt },
+    })
+    loggerMiddleware(req, {} as any, vi.fn())
+    const message = gmLogMock.mock.calls[0][1] as string
+    expect(message).not.toContain(receipt)
+    expect(message).toContain('[REDACTED]')
+    expect(req.body.receipt).toBe(receipt)
+  })
+
   it('does not redact when the bugs body has no screenshot', () => {
     const next = vi.fn()
     loggerMiddleware(makeReq({ url: '/v3/servers/s1/players/765/bugs', body: {} }), {} as any, next)

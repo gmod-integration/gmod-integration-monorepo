@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 vi.mock('@gmod/config', () => ({
   ConfigDiscord: { embedColor: '#ffffff', barerTokenRelay: 'relay-token' },
 }))
@@ -54,6 +63,7 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
 const { logServer } = await import('../../src/utils/logger.js')
 
 function resetAllMocks() {
+  isErasureBlockedMock.mockReset().mockResolvedValue(false)
   getRandomDiscordRelayMock.mockClear()
   ipGetIPMock.mockClear()
   getTranslateMock.mockClear()
@@ -96,6 +106,14 @@ describe('logger', () => {
   })
 
   describe('logServer', () => {
+    it('does not persist, broadcast or relay a log involving an erased player', async () => {
+      isErasureBlockedMock.mockResolvedValue(true)
+      await logServer(makeServer(), 'player_connect', { steamID64: '76561198219049673', name: 'Private' })
+      expect(addLogMock).not.toHaveBeenCalled()
+      expect(wsAddMock).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
+      expect(enqueueDiscordGuildSendLogMessageMock).not.toHaveBeenCalled()
+    })
     it('defaults data to {} when omitted', async () => {
       const server = makeServer()
       await logServer(server, 'server_start')

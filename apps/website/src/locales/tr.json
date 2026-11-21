@@ -78,7 +78,30 @@
     "request_my_data": "Demande de mes données",
     "delete_my_data": "Supprimer mes données",
     "error_create_data_request": "Impossible de créer la requête de données",
-    "description": "Bağlı hesaplarınızı, oturumlarınızı ve kişisel verilerinizi yönetin."
+    "description": "Bağlı hesaplarınızı, oturumlarınızı ve kişisel verilerinizi yönetin.",
+    "erasure": {
+      "submit_error": "İstek doğrulanamadı. Tekrar deneyin; aynı istek yeniden kullanılacaktır.",
+      "title": "Hesabın silinmesini iste",
+      "scope": "Bu işlem kişisel profillerinizi, istatistiklerinizi, oturumlarınızı, dosyalarınızı ve veri dışa aktarımlarınızı siler.",
+      "retained": "İsteğin asgari kaydı, genel yasaklar ve itibar korunur. Topluluklar ve ortak satın alımlar kalır.",
+      "new_account": "Silme işleminden sonra yeniden giriş yaptığınızda yeni bir hesap oluşturulur.",
+      "confirmation": "Onaylamak için DELETE yazın",
+      "signout": "İstek kabul edildiğinde oturumunuz kapatılır. Bu tarayıcı, ilerlemeyi takip edebilmeniz için bir alındı kaydı saklar.",
+      "submit": "Silme isteğini onayla",
+      "completed": "İstenen silme işlemi tamamlandı.",
+      "running": "Kişisel verileriniz siliniyor. Oturumunuz kapandıktan sonra da ilerlemeyi buradan takip edebilirsiniz.",
+      "retry": "İsteğiniz korunuyor. İşlem otomatik olarak sürdürülecek; yeni bir istek göndermeniz gerekmez.",
+      "pending": "İsteğiniz kabul edildi ve işleme alınmayı bekliyor. Silme işlemi henüz tamamlanmadı.",
+      "checking": "Silme isteğiniz kontrol ediliyor…",
+      "progress": "Silme ilerlemesi",
+      "completed_date": "Tamamlanma tarihi",
+      "status_error": "İsteğin durumu kontrol edilemedi. Tekrar deneyin; alındı kaydınız korunur ve yeni bir istek oluşturulmaz.",
+      "paused": "Otomatik kontroller duraklatıldı. İsteğiniz etkin kalır; takibi sürdürmek için yeniden kontrol edin.",
+      "check_again": "Durumu yeniden kontrol et",
+      "sign_in_again": "Yeni hesap oluşturmak için giriş yap",
+      "return_account": "Hesaba dön",
+      "external_copies": "Discord’da paylaşılmış veya yedeklerde saklanan kopyalar ayrı olarak işlenmelidir. Bu kopyalar için destek ekibiyle iletişime geçin."
+    }
   },
   "premium": {
     "sync_chat": "Synchronisation",

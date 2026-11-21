@@ -50,6 +50,17 @@ describe('ConfigSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('keeps account erasure optional until its dedicated privacy secret is configured', () => {
+    expect(ConfigSchema.parse(validEnv()).PRIVACY_HASH_SECRET).toBeUndefined()
+    expect(
+      ConfigSchema.parse(validEnv({ PRIVACY_HASH_SECRET: 'a-separate-stable-privacy-secret' })).PRIVACY_HASH_SECRET,
+    ).toBe('a-separate-stable-privacy-secret')
+  })
+
+  it.each(['', 'short', 'SECRET', 'root'])('rejects an insecure privacy secret: %s', (secret) => {
+    expect(ConfigSchema.safeParse(validEnv({ PRIVACY_HASH_SECRET: secret })).success).toBe(false)
+  })
+
   it('defaults DEV to "false" when omitted', () => {
     const result = ConfigSchema.parse(validEnv())
     expect(result.DEV).toBe('false')

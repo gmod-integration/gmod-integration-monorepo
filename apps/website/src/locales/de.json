@@ -78,7 +78,30 @@
     "request_my_data": "Fordern Sie meine Daten",
     "delete_my_data": "Löschen meiner Daten",
     "error_create_data_request": "Fehler beim Erstellen der Datenanforderung",
-    "description": "Verwalten Sie verknüpfte Konten, Sitzungen und persönliche Daten."
+    "description": "Verwalten Sie verknüpfte Konten, Sitzungen und persönliche Daten.",
+    "erasure": {
+      "submit_error": "Die Anfrage konnte nicht bestätigt werden. Versuche es erneut; dieselbe Anfrage wird wiederverwendet.",
+      "title": "Kontolöschung anfordern",
+      "scope": "Dabei werden deine persönlichen Profile, Statistiken, Sitzungen, Dateien und Datenexporte gelöscht.",
+      "retained": "Ein minimaler Anfragenachweis, globale Sperren und die Reputation bleiben erhalten. Communities und gemeinschaftliche Käufe bleiben bestehen.",
+      "new_account": "Wenn du dich nach der Löschung erneut anmeldest, wird ein neues Konto erstellt.",
+      "confirmation": "Gib zur Bestätigung DELETE ein",
+      "signout": "Du wirst abgemeldet, sobald die Anfrage angenommen wurde. Dieser Browser speichert einen Beleg, mit dem du den Fortschritt verfolgen kannst.",
+      "submit": "Löschanfrage bestätigen",
+      "completed": "Die angeforderte Löschung ist abgeschlossen.",
+      "running": "Deine persönlichen Daten werden gelöscht. Du kannst den Fortschritt hier auch nach der Abmeldung verfolgen.",
+      "retry": "Deine Anfrage bleibt erhalten. Die Verarbeitung wird automatisch fortgesetzt; du musst keine weitere Anfrage stellen.",
+      "pending": "Deine Anfrage wurde angenommen und wartet auf die Verarbeitung. Die Löschung ist noch nicht abgeschlossen.",
+      "checking": "Deine Löschanfrage wird geprüft…",
+      "progress": "Fortschritt der Löschung",
+      "completed_date": "Abgeschlossen am",
+      "status_error": "Der Anfragestatus konnte nicht geprüft werden. Versuche es erneut; dein Beleg bleibt erhalten und es wird keine neue Anfrage erstellt.",
+      "paused": "Die automatischen Prüfungen wurden angehalten. Deine Anfrage bleibt aktiv; prüfe erneut, um die Verfolgung fortzusetzen.",
+      "check_again": "Status erneut prüfen",
+      "sign_in_again": "Anmelden und ein neues Konto erstellen",
+      "return_account": "Zurück zum Konto",
+      "external_copies": "Bereits auf Discord geteilte oder in Sicherungen gespeicherte Kopien müssen separat bearbeitet werden. Wende dich dafür an den Support."
+    }
   },
   "premium": {
     "sync_chat": "Chat synchronisieren",

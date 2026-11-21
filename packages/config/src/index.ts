@@ -129,6 +129,10 @@ export const ConfigSteam = {
   apiKey: config.STEAM_API_KEY,
 }
 
+export const ConfigPrivacy = {
+  hashSecret: config.PRIVACY_HASH_SECRET,
+}
+
 export const ConfigGmodStore = {
   apiKey: config.GMODSTORE_API_KEY,
   signingSecretKey: config.SIGNING_SECRET_WEBHOOK,

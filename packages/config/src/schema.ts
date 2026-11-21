@@ -43,6 +43,7 @@ export const ConfigSchema = z.object({
 
   DISCORD_CLIENT_ID: z.string().min(1),
   DISCORD_CLIENT_SECRET: z.string().min(1),
+  PRIVACY_HASH_SECRET: strongSecretSchema('PRIVACY_HASH_SECRET').optional(),
   DISCORD_GUILD_ID: z.string().min(1),
   DISCORD_BOT_TOKEN: z.string().min(1),
   DISCORD_BOT_INVITE_URL: z.string().url(),

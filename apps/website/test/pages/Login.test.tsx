@@ -9,9 +9,13 @@ import {
   setIsLogged,
 } from '../../src/utils/event.js'
 import Login from '../../src/pages/Login.js'
+import { ERASURE_RECEIPT_KEY } from '../../src/utils/accountErasure.js'
 import { Header } from '../../src/components/layout/Header.js'
 
-vi.mock('../../src/utils/websocket.js', () => ({ initWebSocket: vi.fn() }))
+vi.mock('../../src/utils/websocket.js', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  initWebSocket: vi.fn(),
+}))
 
 const futureExpiration = Date.now() + 60_000_000
 const futureExpirationISO = new Date(futureExpiration).toISOString()
@@ -174,6 +178,26 @@ describe('pages/Login.tsx', () => {
 
       await vi.waitFor(() => expect(window.location.href).toBe('http://localhost:5001/v3/users/login'))
       expect(window.localStorage.getItem('someLeftoverKey')).toBeNull()
+      restoreLocation()
+    })
+
+    it('keeps an erasure receipt and preferences while clearing old credentials for a new login', async () => {
+      const restoreLocation = stubLocation()
+      const receipt = { requestId: '00000000-0000-4000-8000-000000000001', receipt: 'a'.repeat(64) }
+      localStorage.setItem(ERASURE_RECEIPT_KEY, JSON.stringify(receipt))
+      localStorage.setItem('theme', 'dark')
+      localStorage.setItem('locale', 'en')
+      localStorage.setItem('accessToken', 'old-token')
+      const remove = vi.spyOn(localStorage, 'removeItem')
+      setIsLogged(false)
+      renderAt('/login')
+      await vi.waitFor(() => expect(window.location.href).toBe('http://localhost:5001/v3/users/login'))
+      expect(JSON.parse(localStorage.getItem(ERASURE_RECEIPT_KEY)!)).toEqual(receipt)
+      expect(remove).not.toHaveBeenCalledWith(ERASURE_RECEIPT_KEY)
+      expect(localStorage.getItem('accessToken')).toBeNull()
+      expect(localStorage.getItem('theme')).toBe('dark')
+      expect(localStorage.getItem('locale')).toBe('en')
+      remove.mockRestore()
       restoreLocation()
     })
 

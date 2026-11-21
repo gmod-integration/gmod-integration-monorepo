@@ -86,6 +86,13 @@ previous draft, and preview buttons cannot open links or launch the game.
 
 ## Privacy controls
 
+Account data management includes a confirmed v6 erasure request and receipt-only progress tracking.
+The browser generates and stores its request ID and recovery credential before submission, so a lost
+acknowledgement can be recovered after session revocation. `pending`/`running`/`retry` do not display a
+success message; only `completed` does. Polling is bounded and can be resumed explicitly. Confirmed
+acceptance clears account data and sockets while retaining preferences and the recovery receipt.
+See [domain-compliance](../packages/domain-compliance.md) for cleanup scope, retention and deployment.
+
 The legal documents at `/legal/terms` and `/legal/privacy` follow the selected UI language for French,
 with English as the fallback for other languages. Their revision date is explicit rather than the build date.
 Their shared renderer includes a collapsible table of contents, anchored sections and horizontally

@@ -1,5 +1,5 @@
-import { Component, onMount } from 'solid-js'
-import { normalizeDiscordUserPayload, setDiscordUser, setIsLogged } from '../utils/event'
+import { type Component, onMount } from 'solid-js'
+import { clearAccountSession } from '../utils/accountSession.js'
 import { useNavigate } from '@solidjs/router'
 import { useI18n } from '../i18n'
 import { fetchAPI } from '../utils/api'
@@ -10,10 +10,12 @@ const Logout: Component = () => {
   const { t } = useI18n()
 
   onMount(async () => {
-    await fetchAPI(`/users/:discordID/logout`, 'POST')
-    localStorage.clear()
-    setIsLogged(false)
-    setDiscordUser(normalizeDiscordUserPayload({}))
+    try {
+      await fetchAPI(`/users/:discordID/logout`, 'POST')
+    } catch {
+      // A network failure must not leave local credentials signed in.
+    }
+    clearAccountSession()
     navigate('/')
   })
 

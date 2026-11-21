@@ -1,5 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+const retainedTrustMock = vi.fn().mockResolvedValue(null)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  getRetainedTrust: retainedTrustMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 vi.mock('@gmod/config', () => ({
   ConfigServer: { domain: 'https://gmod-integration.com', websiteUrl: 'https://gmod-integration.com' },
 }))
@@ -36,6 +47,8 @@ const { processSteamVerification, processSteamVerificationReturn } =
   await import('../../../src/models/v3/steamControllerModels.js')
 
 function resetAllMocks() {
+  isErasureBlockedMock.mockReset().mockResolvedValue(false)
+  retainedTrustMock.mockReset().mockResolvedValue(null)
   axiosPostMock.mockReset()
   gmLogMock.mockClear()
   removeDiscordSyncMock.mockReset()
@@ -91,6 +104,24 @@ describe('steamControllerModels', () => {
   })
 
   describe('processSteamVerificationReturn', () => {
+    it('restores retained zero reputation when the Steam identity is linked to a new account', async () => {
+      prismaMock.gm_user.findFirst.mockResolvedValueOnce({ id: 'new-account' })
+      axiosPostMock.mockResolvedValueOnce({ data: 'is_valid:true' })
+      prismaMock.gm_user.findMany.mockResolvedValueOnce([])
+      prismaMock.gm_user.update.mockResolvedValueOnce({})
+      getPanelUserFromDiscordIDMock.mockResolvedValueOnce(null)
+      retainedTrustMock.mockResolvedValueOnce(0)
+      await processSteamVerificationReturn({
+        verificationCode: 'code1',
+        'openid.claimed_id': 'https://steamcommunity.com/openid/id/765',
+      })
+      expect(prismaMock.gm_user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'new-account' },
+          data: expect.objectContaining({ steam: '765', trust: 0 }),
+        }),
+      )
+    })
     it('returns 400 when the verification code is missing', async () => {
       const result = await processSteamVerificationReturn({})
       expect(result).toEqual({ kind: 'text', status: 400, text: 'Verification code is missing' })
