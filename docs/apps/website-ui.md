@@ -13,6 +13,7 @@ Import from `apps/website/src/components/ui/index.ts`.
 | `Button`          | Text actions                            | Native attributes; `variant`: `primary`, `secondary`, `ghost`, `danger`, `warning`; `size`: `sm`, `md`; `loading` blocks clicks and retains the label. Default `type="button"`.                |
 | `ButtonLink`      | Navigation styled as a button           | Native anchor attributes and the same `variant`/`size` options as `Button`. Use an `href` for navigation; pending actions belong in `Button`.                                                  |
 | `IconButton`      | Compact row actions                     | `Button` props plus required translated `label` and `icon` or children. Includes accessible name and tooltip.                                                                                  |
+| `LanguageFlag`    | Language selector artwork               | Typed `locale`, decorative SVG from local assets, fixed 24×16 dimensions. English uses the British flag. Pair with the visible native language name.                                           |
 | `FormField`       | Labelled input, select or textarea      | `id`, `label`, optional `description`, `error`, `required`. The child control uses the same `id`.                                                                                              |
 | `FormActions`     | Save/cancel and feedback                | `onSave`, optional `onCancel`, `pending`, `disabled`, `dirty`, `error`, `success`, `message`, custom labels. Cancel precedes primary Save. Pending blocks both; validation disables only Save. |
 | `AsyncState`      | Loading, error, empty and ready content | `loading`, `error`, `empty`, optional labels and `onRetry`; content in children. Handles states in that order. Errors use safe translated copy.                                                |
@@ -30,6 +31,8 @@ All UI icons use `Icon` from the same barrel, with a typed `IconName` (`pencil`,
 Icons are decorative by default; put accessible names on their button or link. `IconButton` accepts the
 same typed names. User-supplied emoji and Discord message content retain their original appearance.
 The former icon-font stylesheets and proprietary font assets are removed.
+Language flags use the local `LanguageFlag` assets rather than Lucide or emoji fonts; these are language
+selector artwork, while action icons remain in the Lucide registry.
 
 ```tsx
 <Icon name="server" size={18} />

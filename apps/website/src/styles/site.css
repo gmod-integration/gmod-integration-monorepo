@@ -67,6 +67,15 @@
 .site-shell .header-dropdown :is(a, button) {
   font-size: 12px;
 }
+.language-flag {
+  display: inline-block;
+  width: 24px;
+  height: 16px;
+  flex-shrink: 0;
+  object-fit: cover;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--dashboard-border);
+}
 .public-navigation {
   display: flex;
   align-items: center;

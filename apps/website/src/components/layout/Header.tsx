@@ -10,16 +10,16 @@ import {
   setIsLogged,
 } from '../../utils/event'
 import logo from '../../assets/brand/logo.png'
-import { useI18n } from '../../i18n'
+import { useI18n, type Locale } from '../../i18n.js'
 import { initWebSocket } from '../../utils/websocket'
 import { API_FQDN, fetchAPI } from '../../utils/api'
 import { notificationCount, updateNotificationCount } from '../../utils/notificationStore'
 import { setThemeMode, type ThemeMode, themeMode } from '../../utils/theme'
 import { parseSessionExpiration } from '../../utils/sessionExpiration.js'
-import { ButtonLink, Icon, type IconName } from '../ui/index.js'
+import { ButtonLink, Icon, LanguageFlag, type IconName } from '../ui/index.js'
 
 type Language = {
-  code: string
+  code: Locale
   title: string
 }
 
@@ -406,6 +406,7 @@ export const Header: Component = () => {
               type="button"
               class="header-control btn btn-ghost"
               aria-label={t('ui.language', 'Language')}
+              title={lang.find((language) => language.code === locale())?.title}
               aria-controls="language-navigation"
               aria-expanded={languageOpen()}
               onClick={() => {
@@ -414,9 +415,7 @@ export const Header: Component = () => {
                 setPublicNavigationOpen(false)
               }}
             >
-              <span class="text-base-content">
-                <Icon name="globe" size={18} />
-              </span>
+              <LanguageFlag locale={locale()} />
               <div class="flex justify-center items-center min-w-6 min-h-6">
                 <Icon name="chevron-down" size={16} />
               </div>
@@ -432,17 +431,21 @@ export const Header: Component = () => {
                   <li class="flex">
                     <button
                       type="button"
-                      class="px-3 py-2.5 gap-3 m-0 whitespace-nowrap rounded-lg"
+                      class="px-3 py-2.5 gap-3 m-0 whitespace-nowrap rounded-lg w-full"
+                      aria-pressed={locale() === language.code}
                       onClick={() => {
                         updateLocale(language.code)
                         setLanguageOpen(false)
                         languageTrigger?.focus()
                       }}
                     >
-                      <span class="flex justify-center w-6 items-center text-base-content">
-                        <Icon name={locale() === language.code ? 'check' : 'globe'} size={16} />
+                      <LanguageFlag locale={language.code} />
+                      <span lang={language.code} class="flex-1 text-left">
+                        {language.title}
                       </span>
-                      {language.title}
+                      <Show when={locale() === language.code}>
+                        <Icon name="check" size={16} />
+                      </Show>
                     </button>
                   </li>
                 )}

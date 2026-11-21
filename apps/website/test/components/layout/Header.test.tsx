@@ -14,6 +14,8 @@ import {
 import { notificationCount, updateNotificationCount } from '../../../src/utils/notificationStore.js'
 import { initWebSocket } from '../../../src/utils/websocket.js'
 import { setThemeMode } from '../../../src/utils/theme.js'
+import gbFlag from '../../../src/assets/flags/gb.svg'
+import frFlag from '../../../src/assets/flags/fr.svg'
 
 vi.mock('../../../src/utils/websocket.js', () => ({ initWebSocket: vi.fn() }))
 
@@ -154,7 +156,16 @@ describe('Header navigation', () => {
       'Русский',
       'Türkçe',
     ])
-    expect(selector.querySelector('svg[data-icon="globe"]')).toBeInTheDocument()
+    const flags = choices.map((choice) => choice.querySelector('img.language-flag')!)
+    expect(flags).toHaveLength(9)
+    expect(new Set(flags.map((flag) => flag.getAttribute('src'))).size).toBe(9)
+    flags.forEach((flag) => {
+      expect(flag).toHaveAttribute('alt', '')
+      expect(flag).toHaveAttribute('aria-hidden', 'true')
+    })
+    expect(selector.querySelector('img.language-flag')).toHaveAttribute('src', gbFlag)
+    expect(choices[0]).toHaveAttribute('aria-pressed', 'true')
+    choices.slice(1).forEach((choice) => expect(choice).toHaveAttribute('aria-pressed', 'false'))
   })
 
   it('switches the visible navigation language without reloading or losing the selected community', () => {
@@ -173,6 +184,10 @@ describe('Header navigation', () => {
     expect(reloadSpy).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Langue' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByRole('button', { name: 'Langue' })).toHaveFocus()
+    expect(screen.getByRole('button', { name: 'Langue' }).querySelector('img.language-flag')).toHaveAttribute(
+      'src',
+      frFlag,
+    )
   })
 
   it('closes the language dropdown with Escape, outside clicks and when opening the user menu', () => {
