@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, within } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
+import { A } from '@solidjs/router'
 import { renderWithProviders } from '../testUtils.js'
 import AdminRoleSelector from '../../src/components/AdminRoleSelector.js'
+import { DraftEditingProvider } from '../../src/components/DraftEditingProvider.js'
 
 afterEach(() => {
   cleanup()
@@ -21,6 +23,31 @@ function renderSelector(onConfirm: (roleID: string) => Promise<unknown>) {
 }
 
 describe('AdminRoleSelector', () => {
+  it('protects an unsaved role selection during navigation and discards only after explicit confirmation', async () => {
+    const confirm = vi.fn()
+    const { container } = renderWithProviders(
+      () => (
+        <DraftEditingProvider>
+          <AdminRoleSelector id="role-picker" title="Select role" roles={roles} onConfirm={confirm} />
+          <A href="/other">Leave picker</A>
+        </DraftEditingProvider>
+      ),
+      { path: '*' },
+    )
+    const modal = container.querySelector<HTMLDialogElement>('#role-picker')!
+    modal.showModal()
+    await fireEvent.change(within(modal).getByRole('combobox'), { target: { value: 'admin' } })
+    await fireEvent.click(screen.getByRole('link', { name: 'Leave picker' }))
+    const guard = container.querySelector<HTMLDialogElement>('#discard-dashboard-changes')!
+    expect(guard.open).toBe(true)
+    await fireEvent.click(within(guard).getByRole('button', { name: 'Stay on this page' }))
+    expect(within(modal).getByRole('combobox')).toHaveValue('admin')
+    await fireEvent.click(screen.getByRole('link', { name: 'Leave picker' }))
+    await fireEvent.click(within(guard).getByRole('button', { name: 'Discard and leave' }))
+    expect(confirm).not.toHaveBeenCalled()
+    expect(within(modal).getByRole('combobox')).toHaveValue('')
+  })
+
   it('keeps choosing local until Save and resets the selection after canceling', async () => {
     const confirm = vi.fn().mockResolvedValue(undefined)
     const modal = renderSelector(confirm)

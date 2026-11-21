@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import { MemoryRouter, Route } from '@solidjs/router'
+import { I18nProvider } from '../../../../src/i18n.js'
 import { historyAt, renderWithProviders } from '../../../testUtils.js'
 import { okJson, errJson } from './servers/testHelpers.js'
 
@@ -109,6 +111,20 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
     expect(container2.querySelector('svg[data-icon="check"].text-success')).toBeInTheDocument()
   })
 
+  it('shows unverifiable Premium status without claiming the guild has lost access', async () => {
+    render(() => (
+      <MemoryRouter
+        history={historyAt('/dashboard/guilds/g1/config')}
+        root={(props) => <I18nProvider>{props.children}</I18nProvider>}
+      >
+        <Route path="/dashboard/guilds/:guildID/config" component={GuildInformations} />
+      </MemoryRouter>
+    ))
+    await waitForAdminsLoaded()
+    expect(screen.getByText('Access could not be verified. Your saved configuration is preserved.')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /upgrade/i })).not.toBeInTheDocument()
+  })
+
   it('shows an empty (not crashed) admin list when the admins GET responds with a non-ok status', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
       if (endpoint === ADMINS_URL && method === 'GET') return Promise.resolve(errJson())
@@ -122,7 +138,7 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
   })
 
   it('keeps a failed channels request distinct from an empty result and recovers on refetch', async () => {
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
+    ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
       if (endpoint === CHANNELS_URL) return Promise.resolve(errJson())
       if (endpoint === ADMINS_URL) return Promise.resolve(okJson(defaultAdmins()))
       if (endpoint === BOT_URL) return Promise.resolve(okJson({ active: false }))
@@ -203,7 +219,7 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
     it('does not crash and hides the activate panel when the bot resource errors', async () => {
       // Bug fix regression test: `!bot().active` used to be read unguarded, so once the bot
       // resource settled into an error state, evaluating `bot()` re-threw and crashed the render.
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
+      ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
         if (endpoint === ADMINS_URL) return Promise.resolve(okJson(defaultAdmins()))
         if (endpoint === BOT_URL) return Promise.resolve(errJson())
         if (endpoint === GMOD_STORE_URL) return Promise.resolve(okJson({ steamID64: 's1' }))
@@ -217,6 +233,20 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
   })
 
   describe('deactivate gmod store premium', () => {
+    it('stops polling an open invite popup when leaving the information page', async () => {
+      vi.useFakeTimers()
+      setupFetchAPI({ bot: { active: true }, gmodStorePurchase: { steamID64: 's1', guild: 'g1', hasMainBot: false } })
+      const { unmount } = renderPage()
+      await waitForAdminsLoaded()
+      vi.spyOn(window, 'open').mockReturnValue({ closed: false } as Window)
+      await fireEvent.click(await screen.findByText('Invite Main Bot'))
+      const clear = vi.spyOn(globalThis, 'clearInterval')
+      const callsBefore = (fetchAPI as Mock).mock.calls.length
+      unmount()
+      expect(clear).toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1000)
+      expect((fetchAPI as Mock).mock.calls).toHaveLength(callsBefore)
+    })
     it('shows the reinvite warning and Invite Main Bot when hasMainBot is false, disabling Deactivate', async () => {
       setupFetchAPI({
         bot: { active: true },

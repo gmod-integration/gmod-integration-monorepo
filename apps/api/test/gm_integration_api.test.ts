@@ -5,6 +5,12 @@ vi.mock('@gmod/core/utils/update-log.js', () => ({}))
 const stopErasureWorker = vi.fn()
 const startErasureWorker = vi.fn(() => stopErasureWorker)
 vi.mock('@gmod/domain-compliance/accountErasure.js', () => ({ startAccountErasureWorker: startErasureWorker }))
+const stopDiscordRefreshWorker = vi.fn()
+const startDiscordRefreshWorker = vi.fn(() => stopDiscordRefreshWorker)
+vi.mock('@gmod/domain-auth/discordOAuth.js', () => ({
+  startDiscordTokenRefreshWorker: startDiscordRefreshWorker,
+  DiscordOAuthError: class extends Error {},
+}))
 vi.mock('@gmod/infra-bullmq', () => ({}))
 vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
   isBullMQReplyTimeoutError: vi.fn(() => false),
@@ -32,21 +38,19 @@ vi.mock('@gmod/infra-prisma', () => ({
 const gracefulShutdownMongoMock = vi.fn()
 vi.mock('@gmod/core/database/gm_server_logs.js', () => ({ gracefulShutdownMongo: gracefulShutdownMongoMock }))
 
-let configServerMock: any
+const configServerMock: any = {
+  dev: false,
+  bodyLimit: '10mb',
+  domain: 'https://gmod-integration.com',
+  websiteUrl: 'https://app.gmod-integration.com',
+  ports: { api: 3001 },
+}
 vi.mock('@gmod/config', () => ({
   ConfigPrivacy: { hashSecret: 'configured-test-privacy-key' },
   get ConfigServer() {
     return configServerMock
   },
 }))
-
-configServerMock = {
-  dev: false,
-  bodyLimit: '10mb',
-  domain: 'https://gmod-integration.com',
-  websiteUrl: 'https://gmod-integration.com',
-  ports: { api: 3001 },
-}
 
 const { app, main, gracefulShutdown } = await import('../src/gm_integration_api.js')
 
@@ -55,6 +59,8 @@ describe('gm_integration_api', () => {
     gmLogMock.mockClear()
     startErasureWorker.mockClear()
     stopErasureWorker.mockClear()
+    startDiscordRefreshWorker.mockClear()
+    stopDiscordRefreshWorker.mockClear()
     gracefulShutdownRedisMock.mockReset().mockResolvedValue(undefined)
     connectPrismaMock.mockReset().mockResolvedValue(undefined)
     gracefulShutdownPrismaMock.mockReset().mockResolvedValue(undefined)
@@ -77,11 +83,21 @@ describe('gm_integration_api', () => {
       expect(response.status).not.toBe(500)
     })
 
-    it('allows the official gmod-integration.com domain', async () => {
+    it('allows the explicitly configured dashboard subdomain', async () => {
       const response = await request(app)
         .get('/totally-unknown-route')
         .set('Origin', 'https://app.gmod-integration.com')
       expect(response.headers['access-control-allow-origin']).toBe('https://app.gmod-integration.com')
+      expect(response.headers['access-control-allow-credentials']).toBe('true')
+    })
+
+    it('does not implicitly trust every other official subdomain with credentials', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const response = await request(app)
+        .get('/totally-unknown-route')
+        .set('Origin', 'https://other.gmod-integration.com')
+      expect(response.headers['access-control-allow-origin']).toBeUndefined()
+      expect(response.status).toBe(500)
     })
 
     it('sets Cross-Origin-Resource-Policy for *.gmod-integration.com origins', async () => {
@@ -174,6 +190,12 @@ describe('gm_integration_api', () => {
       const response = await request(app).get('/totally-unknown-route')
       expect(response.status).toBe(503)
       expect(response.body).toEqual({ error: 'Server is in the process of restarting' })
+      const v6 = await request(app).get('/v6/auth/session')
+      expect(v6.status).toBe(503)
+      expect(v6.headers['cache-control']).toBe('no-store')
+      expect(v6.body).toEqual({
+        error: { code: 'service_unavailable', message: 'Server is in the process of restarting' },
+      })
     } finally {
       exitSpy.mockRestore()
     }
@@ -205,8 +227,27 @@ describe('gm_integration_api', () => {
       await main()
       expect(connectPrismaMock).toHaveBeenCalled()
       expect(startErasureWorker).toHaveBeenCalledOnce()
+      expect(startDiscordRefreshWorker).toHaveBeenCalledOnce()
       expect(listenSpy).toHaveBeenCalledWith(3001, expect.any(Function))
       expect(gmLogMock).toHaveBeenCalledWith('express', expect.stringContaining('Server started'))
+      const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
+      try {
+        let finishRefresh!: () => void
+        stopDiscordRefreshWorker.mockReturnValueOnce(
+          new Promise<void>((resolve) => {
+            finishRefresh = resolve
+          }),
+        )
+        const shutdown = gracefulShutdown()
+        expect(stopDiscordRefreshWorker).toHaveBeenCalledOnce()
+        expect(gracefulShutdownRedisMock).not.toHaveBeenCalled()
+        expect(gracefulShutdownPrismaMock).not.toHaveBeenCalled()
+        finishRefresh()
+        await shutdown
+        expect(stopErasureWorker).toHaveBeenCalledOnce()
+      } finally {
+        exitSpy.mockRestore()
+      }
     } finally {
       listenSpy.mockRestore()
       // main() registers real process-level listeners each call - trim back to the pre-test
@@ -232,15 +273,21 @@ describe('gm_integration_api', () => {
       return {} as any
     }) as any)
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { ConfigPrivacy } = await import('@gmod/config')
+    const previousHashSecret = ConfigPrivacy.hashSecret
+    ConfigPrivacy.hashSecret = ''
 
     try {
       await main()
+      expect(startErasureWorker).not.toHaveBeenCalled()
+      expect(startDiscordRefreshWorker).toHaveBeenCalledOnce()
       const handlers = process.listeners('unhandledRejection')
       const handler = handlers[handlers.length - 1] as (error: Error) => void
       handler(new Error('async boom'))
       expect(gmLogMock).toHaveBeenCalledWith('unhandledRejection', 'async boom', true)
       expect(errorSpy).toHaveBeenCalled()
     } finally {
+      ConfigPrivacy.hashSecret = previousHashSecret
       listenSpy.mockRestore()
       const handlers = process.listeners('unhandledRejection')
       process.removeListener('unhandledRejection', handlers[handlers.length - 1] as any)

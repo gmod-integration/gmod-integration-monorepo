@@ -1277,5 +1277,13 @@
     "copy_help_command": "Diagnoseopdracht kopiëren",
     "version": "De geïnstalleerde addonversie controleren",
     "copy_version_command": "Opdracht voor versiecontrole kopiëren"
+  },
+  "auth": {
+    "unavailable": "De verbinding is tijdelijk niet beschikbaar. Je sessie en niet-opgeslagen wijzigingen blijven behouden.",
+    "reconnect_discord": "Verbind Discord opnieuw in een nieuw tabblad. Je niet-opgeslagen wijzigingen blijven hier behouden.",
+    "logout_unconfirmed": "Je bent afgemeld op dit apparaat. De intrekking op de server kon niet worden bevestigd. Probeer het opnieuw zodra de verbinding terug is.",
+    "stop_impersonation": "Terug naar je account",
+    "impersonation_erasure": "Ga terug naar je eigen account voordat je om verwijdering vraagt.",
+    "oauth_denied": "Het aanmelden bij Discord is niet voltooid. Je kunt het opnieuw proberen wanneer je wilt."
   }
 }

@@ -297,6 +297,11 @@ describe('Server', () => {
   })
 
   describe('getSetting', () => {
+    it('keeps an unrestricted effective setting available without consulting premium access', async () => {
+      prismaMock.gm_server_settings.findFirst.mockResolvedValueOnce({ value: 'fr' })
+      await expect(makeServer().getEffectiveSetting('ig_language')).resolves.toBe('fr')
+      expect(accessMocks.resolve).not.toHaveBeenCalled()
+    })
     it('throws for an unknown setting', async () => {
       await expect(makeServer().getSetting('not_a_real_setting')).rejects.toThrow('Setting not found')
     })
@@ -907,6 +912,22 @@ describe('Server', () => {
   describe('saveStatus', () => {
     const args = ['1.2.3.4', 27015, 'host', 'map1', 'sandbox', 5, 10, 100, [{ name: 'p1' }]] as const
 
+    it.each([null, undefined, { steamID64: '765-private' }])(
+      'stores an empty player list for a malformed addon list while preserving aggregate counts',
+      async (playersList) => {
+        await makeServer().saveStatus('1.2.3.4', 27015, 'host', 'map1', 'sandbox', 5, 10, 100, playersList)
+        expect(prismaMock.gm_server_status.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ players: 5, maxPlayers: 10, playersList: '[]' }),
+          }),
+        )
+        expect(getErasedSteamIDsMock).toHaveBeenCalledWith([])
+        expect(prismaMock.gm_server_status_history.create).toHaveBeenCalledWith({
+          data: { serverID: 's1', players: 5 },
+        })
+      },
+    )
+
     it('removes a newly erased player from the saved list without changing other players or counts', async () => {
       const updatedAt = new Date('2026-11-21T10:00:00Z')
       getErasedSteamIDsMock.mockResolvedValueOnce(new Set()).mockResolvedValueOnce(new Set(['765-erased']))
@@ -1004,6 +1025,13 @@ describe('Server', () => {
   })
 
   describe('saveUserConnectionInfo', () => {
+    it('does not read or recreate connection data for a player whose erasure is already blocked', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      await makeServer().saveUserConnectionInfo('765-private', 'Private name')
+      expect(prismaMock.gm_server_stat.findFirst).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_stat.create).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_stat.update).not.toHaveBeenCalled()
+    })
     it('does not retain a connection row when erasure starts during the write', async () => {
       const updatedAt = new Date('2026-11-21T10:00:00Z')
       isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)

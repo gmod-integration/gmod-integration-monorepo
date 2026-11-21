@@ -1363,5 +1363,13 @@
     "copy_help_command": "Copy the diagnostics command",
     "version": "Check the installed addon version",
     "copy_version_command": "Copy the version command"
+  },
+  "auth": {
+    "unavailable": "The connection is temporarily unavailable. Your session and unsaved changes are preserved.",
+    "reconnect_discord": "Reconnect Discord in a new tab to continue. Your unsaved changes stay here.",
+    "logout_unconfirmed": "You are signed out on this device. Server revocation could not be confirmed; try again when the connection returns.",
+    "stop_impersonation": "Return to your account",
+    "impersonation_erasure": "Return to your own account before requesting erasure.",
+    "oauth_denied": "Discord sign-in was not completed. You can try again when you are ready."
   }
 }

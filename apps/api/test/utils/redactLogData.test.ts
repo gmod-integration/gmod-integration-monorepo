@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { redactLogData } from '../../src/utils/redactLogData.js'
 
 describe('redactLogData', () => {
+  it('also redacts one-time OAuth state, PKCE verifiers and socket tickets', () => {
+    expect(
+      redactLogData({ state: 'private', code_verifier: 'private', ticket: 'private', redirect: '/account' }),
+    ).toEqual({ state: '[REDACTED]', code_verifier: '[REDACTED]', ticket: '[REDACTED]', redirect: '/account' })
+  })
   it('redacts credentials in nested JSON objects and arrays while keeping ordinary diagnostic fields', () => {
     const input = {
       password: 'private-password',

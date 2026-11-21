@@ -1277,5 +1277,13 @@
     "copy_help_command": "Tanılama komutunu kopyala",
     "version": "Yüklü eklenti sürümünü kontrol edin",
     "copy_version_command": "Sürüm kontrolü komutunu kopyala"
+  },
+  "auth": {
+    "unavailable": "Bağlantı geçici olarak kullanılamıyor. Oturumunuz ve kaydedilmemiş değişiklikleriniz korunur.",
+    "reconnect_discord": "Devam etmek için Discord’u yeni bir sekmede yeniden bağlayın. Kaydedilmemiş değişiklikleriniz burada kalır.",
+    "logout_unconfirmed": "Bu cihazda oturumunuz kapatıldı. Sunucudaki iptal doğrulanamadı; bağlantı geri geldiğinde tekrar deneyin.",
+    "stop_impersonation": "Hesabınıza dönün",
+    "impersonation_erasure": "Silme isteğinde bulunmadan önce kendi hesabınıza dönün.",
+    "oauth_denied": "Discord oturumu açma işlemi tamamlanmadı. Hazır olduğunuzda tekrar deneyebilirsiniz."
   }
 }

@@ -1,21 +1,12 @@
 import { A, useLocation } from '@solidjs/router'
-import { createSignal, For, onCleanup, onMount, Show, type Component } from 'solid-js'
-import {
-  discordUser,
-  isAdmin,
-  isLogged,
-  normalizeDiscordUserPayload,
-  setDiscordUser,
-  setIsAdmin,
-  setIsLogged,
-} from '../../utils/event'
+import { createEffect, createSignal, For, on, onCleanup, onMount, Show, type Component } from 'solid-js'
+import { discordUser, isAdmin, isLogged } from '../../utils/event'
 import logo from '../../assets/brand/logo.png'
 import { useI18n, type Locale } from '../../i18n.js'
-import { initWebSocket } from '../../utils/websocket'
-import { API_FQDN, fetchAPI } from '../../utils/api'
+import { fetchAPI } from '../../utils/api'
 import { notificationCount, updateNotificationCount } from '../../utils/notificationStore'
 import { setThemeMode, type ThemeMode, themeMode } from '../../utils/theme'
-import { parseSessionExpiration } from '../../utils/sessionExpiration.js'
+import { authSession, authStatus } from '../../utils/authClient.js'
 import { ButtonLink, Icon, LanguageFlag, type IconName } from '../ui/index.js'
 
 type Language = {
@@ -146,30 +137,10 @@ export const Header: Component = () => {
           href: '/notifications',
         },
         {
-          title: 'Stop Impersonate',
+          title: t('auth.stop_impersonation', 'Return to your account'),
           icon: 'user-round-cog',
-          condition: () => {
-            return localStorage.getItem('oldAccessToken') !== null
-          },
-          href: '/',
-          onPress: () => {
-            const oldToken = localStorage.getItem('oldAccessToken') || ''
-            const oldDiscordID = localStorage.getItem('oldDiscordID') || ''
-            const oldExpirationDate = parseSessionExpiration(localStorage.getItem('oldExpirationDate') || '')
-            // 1 clear all cookies
-            localStorage.clear()
-            sessionStorage.clear()
-            if (!oldExpirationDate || oldExpirationDate.getTime() <= Date.now()) {
-              window.location.href = '/login'
-              return
-            }
-            // set accessTokens & oldAccessToken
-            localStorage.setItem('accessToken', oldToken)
-            localStorage.setItem('discordID', oldDiscordID)
-            localStorage.setItem('expirationDate', oldExpirationDate.toISOString())
-            // redirect to home
-            window.location.href = `/login/?discordID=${oldDiscordID}&accessToken=${oldToken}&expirationDate=${oldExpirationDate.getTime()}`
-          },
+          condition: () => !!authSession()?.session.actorDiscordID,
+          href: '/dashboard/admins/stop-impersonate',
         },
       ],
     },
@@ -242,101 +213,19 @@ export const Header: Component = () => {
     onCleanup(() => document.removeEventListener('keydown', handleEscape))
   })
 
-  onMount(() => {
-    const discordID = localStorage.getItem('discordID')
-    const token = localStorage.getItem('accessToken')
-    const expirationDate = localStorage.getItem('expirationDate')
-
-    if (!discordID || !token || !expirationDate) {
-      setIsLogged(false)
-      console.log('Failed to get the user data from the local storage')
-      return
-    }
-
-    setIsAdmin(false)
-    const expirationDateParsed = parseSessionExpiration(expirationDate)
-    if (!expirationDateParsed || expirationDateParsed.getTime() <= Date.now()) {
-      setIsLogged(false)
-      console.log('The token has expired')
-      return
-    }
-    localStorage.setItem('expirationDate', expirationDateParsed.toISOString())
-
-    fetch(`${API_FQDN}/users/${discordID}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
+  createEffect(
+    on(
+      () => isLogged() && discordUser().id,
+      (id) => {
+        if (!id) return
+        fetchAPI('/users/:discordID/notifications/count', 'GET')
+          .then(async (response) => {
+            if (response.ok) updateNotificationCount((await response.json()).unreadCount || 0)
+          })
+          .catch((error) => console.error('Failed to load notification count:', error))
       },
-    })
-      .then((res) => {
-        if (!res.ok) {
-          setIsLogged(false)
-          console.log('Failed to get the user data from the API')
-        }
-      })
-      .catch(() => {
-        setIsLogged(false)
-        console.log('Failed to get the user data from the API')
-      })
-
-    let storedDiscordUser: unknown
-    try {
-      storedDiscordUser = JSON.parse(localStorage.getItem('discordUser') || 'null')
-    } catch {
-      localStorage.removeItem('discordUser')
-      setIsLogged(false)
-      return
-    }
-    if (!storedDiscordUser || typeof storedDiscordUser !== 'object') {
-      setIsLogged(false)
-      console.log('Failed to get the user data from the local storage')
-      return
-    }
-
-    if ('error' in storedDiscordUser && storedDiscordUser.error) {
-      localStorage.removeItem('discordUser')
-      setIsLogged(false)
-      console.log('The user data is invalid')
-      return
-    }
-
-    const normalizedUser = normalizeDiscordUserPayload(storedDiscordUser)
-    localStorage.setItem('discordUser', JSON.stringify(normalizedUser))
-    setDiscordUser(normalizedUser)
-    setIsLogged(true)
-    initWebSocket()
-
-    // Load notification count after authentication
-    fetchAPI('/users/:discordID/notifications/count', 'GET')
-      .then(async (res) => {
-        if (res.ok) {
-          const data = await res.json()
-          updateNotificationCount(data.unreadCount || 0)
-        }
-      })
-      .catch((error) => {
-        console.error('Failed to load notification count:', error)
-      })
-
-    fetch(`${API_FQDN}/users?discordID=${normalizedUser.id}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        }
-      })
-      .then((userInfo) => {
-        // `userInfo` is undefined when the fetch above resolved with `!res.ok` (no `else` branch
-        // there returns a value) - guard with optional chaining so that response is a silent
-        // no-op instead of an unhandled promise rejection (`Cannot read properties of undefined`).
-        if (userInfo?.rank && userInfo.rank === 'developer') {
-          setIsAdmin(true)
-        }
-      })
-      .catch(() => setIsAdmin(false))
-  })
+    ),
+  )
 
   return (
     <>
@@ -546,7 +435,7 @@ export const Header: Component = () => {
             </div>
           </div>
         </Show>
-        <Show when={!isLogged()}>
+        <Show when={!isLogged() && authStatus() !== 'checking'}>
           <div class="flex-none pl-4">
             <ButtonLink
               href="/login"

@@ -4,26 +4,39 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../../../src/routes/v6/dashboardSettingsRoutes.js', () => ({ default: express.Router() }))
 vi.mock('../../../src/routes/v6/statusSettingsRoutes.js', () => ({ default: express.Router() }))
 vi.mock('../../../src/routes/v6/accessRoutes.js', () => ({ default: express.Router() }))
+vi.mock('../../../src/routes/v6/authRoutes.js', () => ({ default: express.Router() }))
 
 const mocks = vi.hoisted(() => ({
   findSessions: vi.fn(),
+  findSession: vi.fn(),
   panelUser: vi.fn(),
   authAllowed: vi.fn(),
   requestErasure: vi.fn(),
   status: vi.fn(),
 }))
-vi.mock('@gmod/infra-prisma', () => ({ default: { gm_panelToken: { findMany: mocks.findSessions } } }))
+vi.mock('@gmod/infra-prisma', () => ({
+  default: { gm_panelToken: { findMany: mocks.findSessions, findFirst: mocks.findSession } },
+}))
 vi.mock('@gmod/domain-user/PanelUser.js', () => ({ getPanelUserFromDiscordID: mocks.panelUser }))
 vi.mock('@gmod/domain-compliance/accountErasure.js', () => ({
   requestAccountErasure: mocks.requestErasure,
   getAccountErasureStatus: mocks.status,
 }))
-vi.mock('@gmod/config', () => ({ ConfigServer: { websiteUrl: 'https://dashboard.example.test/app' } }))
+vi.mock('@gmod/config', () => ({
+  ConfigAuth: {},
+  ConfigDiscord: { clientSecret: 'test-csrf-signing-key' },
+  ConfigPrivacy: {},
+  ConfigServer: { websiteUrl: 'https://dashboard.example.test/app', domain: 'https://api.example.test', dev: false },
+}))
+vi.mock('@gmod/infra-redis', () => ({ default: { get: vi.fn(), set: vi.fn(), getdel: vi.fn(), publish: vi.fn() } }))
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: vi.fn() }))
 vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({ isBullMQReplyTimeoutError: vi.fn(() => false) }))
 
 const { default: router } = await import('../../../src/routes/v6/_v6Routes.js')
 const { default: errorMiddleware } = await import('../../../src/middleware/errorMiddleware.js')
+const { AuthSessionError } = await import('@gmod/domain-auth/authSessions.js')
+const { DiscordOAuthError } = await import('@gmod/domain-auth/discordOAuth.js')
+const { AccessDeniedError } = await import('@gmod/domain-access/index.js')
 
 const id = 'c6801874-4d4b-4543-884c-80f379fe7299'
 const otherId = 'd6801874-4d4b-4543-884c-80f379fe7299'
@@ -48,7 +61,19 @@ const get = (requestId = id, value = receipt) =>
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.findSessions.mockResolvedValue([{ discordID: 'session-owner' }])
+  mocks.findSessions.mockResolvedValue([
+    {
+      id: 'session-id',
+      discordID: 'session-owner',
+      accessToken: sessionToken,
+      revoke: false,
+      creationDate: new Date(),
+      createdAt: new Date(),
+      expirationDate: new Date(Date.now() + 600000),
+      absoluteExpiresAt: null,
+      lastSeenAt: null,
+    },
+  ])
   mocks.panelUser.mockResolvedValue({ discordID: 'session-owner', authAllowed: mocks.authAllowed })
   mocks.authAllowed.mockResolvedValue(true)
   mocks.requestErasure.mockResolvedValue({ ...snapshot, receipt })
@@ -67,18 +92,79 @@ function assertError(response: request.Response, status: number, code: string) {
 }
 
 describe('v6 erasure routes with real Express authentication flow', () => {
+  it('refuses erasure from a delegated session even when its parent is valid', async () => {
+    const actor = {
+      id: 'actor',
+      discordID: 'operator',
+      accessToken: 'parent-token',
+      revoke: false,
+      creationDate: new Date(),
+      expirationDate: new Date(Date.now() + 600_000),
+    }
+    mocks.findSessions.mockResolvedValue([
+      {
+        ...actor,
+        id: 'delegate',
+        discordID: 'target',
+        accessToken: sessionToken,
+        actorDiscordID: 'operator',
+        actorSessionID: 'actor',
+      },
+    ])
+    mocks.findSession.mockResolvedValue(actor)
+    assertError(await post(), 403, 'erasure_impersonation_forbidden')
+    expect(mocks.requestErasure).not.toHaveBeenCalled()
+  })
+
+  it('acknowledges an already completed erasure and rejects an unrelated acknowledgement', async () => {
+    mocks.requestErasure.mockResolvedValueOnce({ ...snapshot, status: 'completed', completedAt: snapshot.requestedAt })
+    expect((await post()).status).toBe(200)
+    mocks.requestErasure.mockResolvedValueOnce({ ...snapshot, requestId: otherId })
+    assertError(await post(), 500, 'internal_error')
+  })
+
+  it('preserves typed authentication and provider errors through the versioned boundary', async () => {
+    const failures = [
+      [new AuthSessionError(403, 'csrf_invalid', 'Refresh this session.'), 403, 'csrf_invalid'],
+      [new DiscordOAuthError('grant_rejected'), 403, 'discord_reauth_required'],
+      [new DiscordOAuthError('provider_unavailable', 4), 503, 'provider_unavailable'],
+      [Object.assign(new Error('Try again.'), { code: 'provider_unavailable' }), 503, 'provider_unavailable'],
+    ] as const
+    for (const [error, status, code] of failures) {
+      mocks.requestErasure.mockRejectedValueOnce(error)
+      const response = await post()
+      assertError(response, status, code)
+      if (error instanceof DiscordOAuthError && error.retryAfter) expect(response.headers['retry-after']).toBe('4')
+    }
+  })
+
+  it('keeps capability refusals distinct and never exposes untrusted error objects', async () => {
+    mocks.requestErasure.mockRejectedValueOnce(new AccessDeniedError('status.chart', 'upgrade_required'))
+    const premium = await post()
+    expect(premium.status).toBe(403)
+    expect(premium.body.error).toMatchObject({ code: 'upgrade_required', capability: 'status.chart' })
+    mocks.requestErasure.mockRejectedValueOnce({ code: 'settings_forbidden' })
+    assertError(await post(), 403, 'settings_forbidden')
+    for (const error of ['private service detail']) {
+      mocks.requestErasure.mockRejectedValueOnce(error)
+      assertError(await post(), 503, 'service_unavailable')
+    }
+  })
   it('uses the unique database session owner, never a client target account, and acknowledges a pending job', async () => {
     const response = await post()
     expect(response.status).toBe(202)
     expect(response.body).toEqual({ ...snapshot, receipt })
     expect(response.headers['cache-control']).toBe('no-store')
     expect(mocks.findSessions).toHaveBeenCalledWith({
-      where: { accessToken: sessionToken, revoke: false, expirationDate: { gt: expect.any(Date) } },
-      select: { discordID: true },
+      where: {
+        accessToken: { in: [sessionToken, expect.stringMatching(/^sha256:/)] },
+        revoke: false,
+        expirationDate: { gt: expect.any(Date) },
+      },
       take: 2,
     })
-    expect(mocks.panelUser).toHaveBeenCalledWith('session-owner')
-    expect(mocks.authAllowed).toHaveBeenCalledWith(sessionToken)
+    expect(mocks.panelUser).not.toHaveBeenCalled()
+    expect(mocks.authAllowed).not.toHaveBeenCalled()
     expect(mocks.requestErasure).toHaveBeenCalledWith('session-owner', id, receipt)
   })
 
@@ -103,15 +189,26 @@ describe('v6 erasure routes with real Express authentication flow', () => {
   )
 
   it('rejects an identity whose current session validation fails instead of returning a false success', async () => {
-    mocks.authAllowed.mockResolvedValue(false)
+    mocks.findSessions.mockResolvedValue([
+      {
+        id: 'revoked',
+        discordID: 'session-owner',
+        accessToken: sessionToken,
+        revoke: true,
+        creationDate: new Date(),
+        expirationDate: new Date(Date.now() + 600000),
+      },
+    ])
     assertError(await post(), 401, 'unauthorized')
     expect(mocks.requestErasure).not.toHaveBeenCalled()
   })
 
-  it('rejects an identity that no longer has a panel account', async () => {
+  it('keeps account erasure available to an authenticated session without a Discord grant', async () => {
     mocks.panelUser.mockResolvedValue(null)
-    assertError(await post(), 401, 'unauthorized')
-    expect(mocks.requestErasure).not.toHaveBeenCalled()
+    const response = await post()
+    expect(response.status).toBe(202)
+    expect(mocks.panelUser).not.toHaveBeenCalled()
+    expect(mocks.requestErasure).toHaveBeenCalledWith('session-owner', id, receipt)
   })
 
   it.each([

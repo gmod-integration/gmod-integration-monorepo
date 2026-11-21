@@ -265,6 +265,56 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     expect(within(setupModal).getByLabelText(/Token/)).toHaveValue('rejected-token')
   })
 
+  it('discards the setup secret on Cancel and reopens with an empty draft', async () => {
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot()))
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
+    const modal = container.querySelector<HTMLDialogElement>('#setup_bot')!
+    await fireEvent.input(within(modal).getByLabelText(/Token/), { target: { value: 'secret-to-discard' } })
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+    expect(modal.open).toBe(false)
+    await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
+    expect(within(modal).getByLabelText(/Token/)).toHaveValue('')
+    expect(within(modal).getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PATCH')).toHaveLength(0)
+  })
+
+  it('allows disabling the saved premium presence while preserving custom bot access', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false, customBot: true }))
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot({ status: 'playerCount' })))
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
+    const modal = container.querySelector<HTMLDialogElement>('#edit_bot')!
+    expect(within(modal).getByText(/This saved feature is suspended\./)).toBeInTheDocument()
+    await fireEvent.change(within(modal).getByLabelText('Status'), { target: { value: 'disabled' } })
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot({ status: 'disabled' })))
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(modal.open).toBe(false))
+    expect(fetchAPI).toHaveBeenCalledWith(
+      '/users/:discordID/guilds/:guildID/bot',
+      'PUT',
+      expect.objectContaining({ status: 'disabled' }),
+    )
+  })
+
+  it('explains blocked invite popups and lets the user retry the invitation', async () => {
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot({ onGuild: false })))
+    const { unmount } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    const open = vi
+      .spyOn(window, 'open')
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce({ closed: false } as Window)
+    await fireEvent.click(screen.getByRole('button', { name: 'Join Guild' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Allow pop-ups for this site to invite the bot.')
+    await fireEvent.click(screen.getByRole('button', { name: 'Join Guild' }))
+    expect(open).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    unmount()
+  })
+
   it('keeps the custom bot action visible but disabled without its historical entitlement', async () => {
     localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true, customBot: false }))
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ purchased: false })))

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@gmod/infra-prisma": "workspace:*",
-    "@gmod/infra-redis": "workspace:*"
+    "@gmod/infra-redis": "workspace:*",
+    "@gmod/domain-auth": "workspace:*"
   }
 }

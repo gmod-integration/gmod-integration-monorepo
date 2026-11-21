@@ -69,6 +69,11 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
     renderWithProviders(() => <GuildLinks />)
     await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Failed to load the links'))
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    setupFetchAPI()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Docs')).toBeInTheDocument()
   })
 
   it('shows the failed-to-load message when the links fetch rejects', async () => {

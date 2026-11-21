@@ -43,6 +43,19 @@ describe('getUserFromSteamID64', () => {
     expect(findFirstMock).toHaveBeenCalledWith({ where: { steam: '765' } })
   })
 
+  it('does not expose a linked Steam profile while either verified identity is suppressed', async () => {
+    findFirstMock.mockResolvedValueOnce({ steam: '765', id: 'd1', rank: 'user', last_oauth: null, trust: 0 })
+    isErasureBlockedMock.mockResolvedValueOnce(true)
+    await expect(getUserFromSteamID64('765')).resolves.toBeNull()
+    expect(isErasureBlockedMock).toHaveBeenCalledExactlyOnceWith('d1', '765')
+  })
+
+  it('uses the neutral trust default for legacy Steam profiles without a stored score', async () => {
+    findFirstMock.mockResolvedValueOnce({ steam: '765', id: 'd1', rank: 'user', last_oauth: null, trust: null })
+    const user = await getUserFromSteamID64('765')
+    expect(user?.trustLevel).toBe(50)
+  })
+
   it('returns a User with the DB trust level when set', async () => {
     findFirstMock.mockResolvedValueOnce({ steam: '765', id: 'd1', rank: 'user', last_oauth: null, trust: 80 })
     const user = await getUserFromSteamID64('765')
@@ -78,6 +91,13 @@ describe('getUserFromDiscordID', () => {
     findFirstMock.mockResolvedValueOnce({ steam: '765', id: 'd1', rank: 'user', last_oauth: null, trust: 15 })
     const user = await getUserFromDiscordID('d1')
     expect(user?.trustLevel).toBe(15)
+  })
+
+  it('uses the neutral trust default for legacy Discord profiles without a stored score', async () => {
+    findFirstMock.mockResolvedValueOnce({ steam: null, id: 'd1', rank: 'user', last_oauth: null, trust: null })
+    const user = await getUserFromDiscordID('d1')
+    expect(user?.trustLevel).toBe(50)
+    expect(user?.steamID64).toBeNull()
   })
 
   it('preserves a zero trust level', async () => {

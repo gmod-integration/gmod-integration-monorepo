@@ -1,9 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { acceptAuthSession, resetAuthentication } from '../../src/utils/authClient.js'
+import { sessionFixture } from '../authFixture.js'
 import { API_FQDN, Api, fetchAPI, getAPIUrl, getUrlWithActualParams } from '../../src/utils/api.js'
 
 describe('utils/api.tsx', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    resetAuthentication()
     window.history.replaceState(null, '', '/')
   })
 
@@ -72,18 +75,24 @@ describe('utils/api.tsx', () => {
     })
 
     it('resolves the endpoint params, sends JSON headers/body, and hits the versioned API base', async () => {
-      window.localStorage.setItem('accessToken', 'tok1')
+      acceptAuthSession(sessionFixture())
       window.localStorage.setItem('server', JSON.stringify({ id: 's1' }))
       const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
       vi.stubGlobal('fetch', fetchMock)
 
       await fetchAPI('/servers/:serverID', 'POST', { hello: 'world' })
 
-      expect(fetchMock).toHaveBeenCalledWith('http://localhost:5001/v3/servers/s1', {
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:5001/v3/servers/s1')
+      expect(fetchMock.mock.calls[0][1]).toMatchObject({
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer tok1' },
+        credentials: 'include',
         body: JSON.stringify({ hello: 'world' }),
       })
+      const headers = new Headers(fetchMock.mock.calls[0][1].headers)
+      expect(headers.get('Content-Type')).toBe('application/json')
+      expect(headers.get('X-CSRF-Token')).toBe('csrf-token')
+      expect(headers.has('Authorization')).toBe(false)
     })
   })
 })

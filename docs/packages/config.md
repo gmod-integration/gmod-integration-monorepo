@@ -28,6 +28,12 @@ nothing else in the codebase should read `process.env` directly (see
 
 ## Used by
 
+`ConfigAuth` contains the optional stable `AUTH_TOKEN_ENCRYPTION_KEY` (minimum 32 characters),
+`AUTH_SESSION_ABSOLUTE_TTL_SECONDS` (30 days by default) and `AUTH_SESSION_IDLE_TTL_SECONDS` (7 days,
+clamped to the absolute lifetime). OAuth state lasts ten minutes; single-use WebSocket tickets last at
+most 30 seconds. Key changes require re-encryption or renewed Discord authorization. See the
+[auth contract and deployment procedure](./domain-auth.md) before upgrading or rotating key material.
+
 `ConfigPrivacy.hashSecret` reads optional `PRIVACY_HASH_SECRET` through the strong-secret validator.
 Account erasure refuses new requests until this separate, stable key is configured. It must be shared by
 the API, WebSocket and Discord workers that read the erasure registry. Do not rotate it with ordinary

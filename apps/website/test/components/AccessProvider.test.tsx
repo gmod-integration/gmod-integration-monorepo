@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { A, MemoryRouter, Route, useNavigate } from '@solidjs/router'
 import { createSignal } from 'solid-js'
-import { AccessProvider, useFeatureAccess, type DashboardAccessSnapshot } from '../../src/components/AccessProvider.js'
+import {
+  AccessProvider,
+  useAccess,
+  useFeatureAccess,
+  type DashboardAccessSnapshot,
+} from '../../src/components/AccessProvider.js'
 import { FeatureGate } from '../../src/components/FeatureGate.js'
 import { PremiumBadge } from '../../src/utils/premium.js'
 import { I18nProvider } from '../../src/i18n.js'
@@ -36,6 +41,7 @@ function Harness() {
       </FeatureGate>
       <button disabled={!reverse.allowed()}>Reverse direction</button>
       <button disabled={!access.canCreate(3)}>Fourth free rule</button>
+      <button onClick={access.refresh}>Refresh access</button>
       <button onClick={() => navigate('/dashboard/guilds/g2/config/servers/s2/roles')}>Other community</button>
       <PremiumBadge onlyIcon />
       <A href="/premium">Plan details</A>
@@ -69,6 +75,76 @@ afterEach(() => {
 })
 
 describe('authoritative reactive access', () => {
+  it('fails closed outside a provider and safely accepts a refresh without manufacturing rights', async () => {
+    const Probe = () => {
+      const access = useAccess()
+      return (
+        <>
+          <output aria-label="Snapshot">{access.snapshot()?.guildID || 'No verified community'}</output>
+          <output aria-label="Loading">{String(access.loading())}</output>
+          <output aria-label="Error">{String(access.error())}</output>
+          <output aria-label="Ready">{String(access.ready())}</output>
+          <button onClick={access.refresh}>Refresh missing access</button>
+        </>
+      )
+    }
+    const network = vi.fn()
+    vi.stubGlobal('fetch', network)
+    render(Probe)
+    expect(screen.getByLabelText('Snapshot')).toHaveTextContent('No verified community')
+    expect(screen.getByLabelText('Loading')).toHaveTextContent('false')
+    expect(screen.getByLabelText('Error')).toHaveTextContent('true')
+    expect(screen.getByLabelText('Ready')).toHaveTextContent('false')
+    await fireEvent.click(screen.getByRole('button', { name: 'Refresh missing access' }))
+    expect(network).not.toHaveBeenCalled()
+  })
+
+  it('retries a failed access lookup from the shared error action without discarding edits', async () => {
+    const network = vi.fn().mockResolvedValueOnce(response({}, 503))
+    vi.stubGlobal('fetch', network)
+    renderRemote()
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Access could not be verified'))
+    await fireEvent.input(screen.getByLabelText('Draft'), { target: { value: 'Keep my draft' } })
+    network.mockResolvedValueOnce(response(snapshot({ premium: true, serverID: 's1' })))
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Draft')).toHaveValue('Keep my draft')
+    expect(network).toHaveBeenCalledTimes(2)
+  })
+
+  it('refreshes when the document becomes visible and unregisters browser listeners on unmount', async () => {
+    const network = vi.fn().mockImplementation(async () => response(snapshot({ serverID: 's1' })))
+    vi.stubGlobal('fetch', network)
+    const view = renderRemote()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Fourth free rule' })).toBeEnabled())
+    const visibility = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(network).toHaveBeenCalledTimes(1)
+    visibility.mockReturnValue('visible')
+    network.mockImplementation(async () => response(snapshot({ premium: true, serverID: 's1' })))
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled())
+    expect(network).toHaveBeenCalledTimes(2)
+    view.unmount()
+    window.dispatchEvent(new Event('focus'))
+    window.dispatchEvent(new Event('storage'))
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(network).toHaveBeenCalledTimes(2)
+  })
+
+  it('lets a feature explicitly refresh the authoritative snapshot after a plan change', async () => {
+    const network = vi.fn().mockResolvedValueOnce(response(snapshot({ serverID: 's1' })))
+    vi.stubGlobal('fetch', network)
+    renderRemote()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Fourth free rule' })).toBeEnabled())
+    expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeDisabled()
+    network.mockResolvedValueOnce(response(snapshot({ premium: true, serverID: 's1' })))
+    await fireEvent.click(screen.getByRole('button', { name: 'Refresh access' }))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled())
+    expect(network).toHaveBeenCalledTimes(2)
+  })
+
   it('ignores a stored Premium flag, then refreshes rights after upgrade and revocation without losing the draft', async () => {
     localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
     const network = vi.fn().mockResolvedValue(response(snapshot({ serverID: 's1' })))

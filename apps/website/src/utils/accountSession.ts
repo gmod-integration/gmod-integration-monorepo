@@ -2,12 +2,14 @@ import { batch } from 'solid-js'
 import { normalizeDiscordUserPayload, setDiscordUser, setIsAdmin, setIsLogged } from './event.js'
 import { updateNotificationCount } from './notificationStore.js'
 import { setWebSocketLogsMessages, setWebSocketServerStatus, setWebSocketSignal, webSocketSignal } from './websocket.js'
+import { broadcastAuthChange, resetAuthentication } from './authClient.js'
 
 export const ERASURE_RECEIPT_KEY = 'account-erasure-receipt'
 export type ErasureReceipt = { requestId: string; receipt: string }
 
 /** Remove the signed-in application's data; only preferences and the recovery receipt survive. */
 export function clearAccountSession(value?: ErasureReceipt) {
+  resetAuthentication()
   // Never remove the recovery credential, even briefly: the session may already be revoked.
   if (value && localStorage.getItem(ERASURE_RECEIPT_KEY) !== JSON.stringify(value))
     localStorage.setItem(ERASURE_RECEIPT_KEY, JSON.stringify(value))
@@ -42,4 +44,6 @@ export function clearAccountSession(value?: ErasureReceipt) {
       action: 'server_status',
     })
   })
+  // Tabs without a live socket must check their cookie after account cleanup too.
+  broadcastAuthChange()
 }

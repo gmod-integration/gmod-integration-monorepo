@@ -32,7 +32,7 @@ describe('pages/Premium.tsx', () => {
       renderWithProviders(() => <Premium />)
       const card = screen.getByText('Subscribe', { selector: 'h2' }).closest('a')!
       expect(card).toHaveAttribute('href', 'https://discord.com/application-directory/1110121451501129758/premium')
-      expect(within(card).getByText('$7.99')).toBeInTheDocument()
+      expect(within(card).getByText('$25.99')).toBeInTheDocument()
       expect(within(card).getByText('Subscribe on Discord')).toBeInTheDocument()
     })
 
@@ -43,7 +43,7 @@ describe('pages/Premium.tsx', () => {
       renderWithProviders(() => <Premium />)
       const card = screen.getByText('One Time', { selector: 'h2' }).closest('a')!
       expect(card).toHaveAttribute('href', 'https://www.gmodstore.com/market/view/gmod-integration')
-      expect(within(card).getByText('$69.99')).toBeInTheDocument()
+      expect(within(card).getByText('$259.99')).toBeInTheDocument()
       expect(within(card).queryByText(/% off until/)).not.toBeInTheDocument()
       expect(within(card).getByText('Buy on Gmod Store')).toBeInTheDocument()
       expect(within(card).getByText('Custom Bot')).toBeInTheDocument()
@@ -56,10 +56,10 @@ describe('pages/Premium.tsx', () => {
       renderWithProviders(() => <Premium />)
       const card = screen.getByText('One Time', { selector: 'h2' }).closest('a')!
 
-      // 69.99 - 69.99 * 15 / 100 = 59.4915 -> toFixed(2)
-      expect(within(card).getByText('$59.49')).toBeInTheDocument()
+      // 259.99 - 259.99 * 15 / 100 = 220.9915 -> toFixed(2)
+      expect(within(card).getByText('$220.99')).toBeInTheDocument()
       // The struck-through original price is rendered alongside the discounted one.
-      expect(within(card).getByText('$69.99')).toBeInTheDocument()
+      expect(within(card).getByText('$259.99')).toBeInTheDocument()
       const expectedDate = new Date('2024-09-22T23:59:59').toLocaleDateString()
       expect(within(card).getByText(`15% off until ${expectedDate}`)).toBeInTheDocument()
     })

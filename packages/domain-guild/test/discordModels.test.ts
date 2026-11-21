@@ -1,6 +1,27 @@
 import type * as NodeCrypto from 'node:crypto'
 import type * as DomainAccess from '@gmod/domain-access/index.js'
-import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const oauth = vi.hoisted(() => ({
+  exchangeCode: vi.fn(),
+  exchangeRefresh: vi.fn(),
+  refresh: vi.fn(),
+  save: vi.fn(),
+  createSession: vi.fn(),
+}))
+vi.mock('@gmod/domain-auth/discordOAuth.js', () => ({
+  DiscordOAuthError: class extends Error {
+    constructor(readonly code: string) {
+      super(code)
+    }
+  },
+  exchangeDiscordCode: oauth.exchangeCode,
+  exchangeDiscordRefreshToken: oauth.exchangeRefresh,
+  refreshDiscordCredentials: oauth.refresh,
+  saveDiscordCredentials: oauth.save,
+}))
+vi.mock('@gmod/domain-auth/authSessions.js', () => ({ createApplicationSession: oauth.createSession }))
+import { DiscordOAuthError } from '@gmod/domain-auth/discordOAuth.js'
 
 const accessMock = vi.hoisted(() => vi.fn())
 vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
@@ -86,6 +107,11 @@ const prismaMock: any = {
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
 function resetAllMocks() {
+  oauth.exchangeCode.mockReset()
+  oauth.exchangeRefresh.mockReset()
+  oauth.refresh.mockReset()
+  oauth.save.mockReset().mockResolvedValue({ version: 1, refreshToken: 'encrypted-refresh' })
+  oauth.createSession.mockReset().mockResolvedValue({ token: 'new-session-token', session: { id: 'session-1' } })
   accessMock.mockReset().mockResolvedValue({ ...freeAccess(), premium: true })
   assertPersonalDataAllowedMock.mockReset().mockResolvedValue(undefined)
   isErasureBlockedMock.mockReset().mockResolvedValue(false)
@@ -109,10 +135,6 @@ function resetAllMocks() {
   vi.stubGlobal('fetch', vi.fn())
 }
 
-// This module registers a `setInterval` at import time - use fake timers before importing so
-// that real 30s interval never actually schedules against the real clock during the test run.
-vi.useFakeTimers()
-
 const {
   updateRolesToGmod,
   updateGuildStat,
@@ -131,13 +153,6 @@ const {
   updatePseudoToGmod,
   givePremiumRoleOfMainGuild,
 } = await import('../src/discordModels.js')
-
-// Fake timers stay active for the whole file so the module-level setInterval registered above
-// (under this same fake clock) can still be advanced by the dedicated interval test at the end -
-// switching to real timers and back would create a new clock that doesn't know about it.
-afterAll(() => {
-  vi.useRealTimers()
-})
 
 describe('discordModels', () => {
   beforeEach(() => {
@@ -715,43 +730,99 @@ describe('discordModels', () => {
   })
 
   describe('getUserTokenFromCode / getUserTokenFromRefreshToken / getUserFromToken', () => {
-    it('getUserTokenFromCode returns the parsed token on success', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'tok' }) }))
-      await expect(getUserTokenFromCode('code1', 'https://redirect')).resolves.toEqual({ access_token: 'tok' })
+    it('delegates the code and PKCE verifier to the shared OAuth service', async () => {
+      oauth.exchangeCode.mockResolvedValueOnce({ access_token: 'tok' })
+      await expect(getUserTokenFromCode('code1', 'https://redirect', 'verifier')).resolves.toEqual({
+        access_token: 'tok',
+      })
+      expect(oauth.exchangeCode).toHaveBeenCalledWith('code1', 'https://redirect', 'verifier')
     })
 
-    it('getUserTokenFromCode returns null and logs on failure', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false, status: 400, text: async () => 'bad request' }))
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      await expect(getUserTokenFromCode('code1', 'https://redirect')).resolves.toBeNull()
-      expect(errorSpy).toHaveBeenCalled()
-    })
-
-    it('getUserTokenFromCode returns null when reading the error body itself fails', async () => {
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValueOnce({
-          ok: false,
-          status: 400,
-          text: vi.fn().mockRejectedValueOnce(new Error('stream error')),
-        }),
-      )
+    it('returns null for a rejected authorization code', async () => {
+      oauth.exchangeCode.mockRejectedValueOnce(new DiscordOAuthError('grant_rejected'))
       await expect(getUserTokenFromCode('code1', 'https://redirect')).resolves.toBeNull()
     })
 
-    it('getUserTokenFromRefreshToken returns the parsed token on success', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: 'tok' }) }))
+    it('preserves temporary provider errors instead of turning them into invalid credentials', async () => {
+      oauth.exchangeCode.mockRejectedValueOnce(new DiscordOAuthError('provider_unavailable'))
+      await expect(getUserTokenFromCode('code1', 'https://redirect')).rejects.toMatchObject({
+        code: 'provider_unavailable',
+      })
+    })
+
+    it('delegates raw refresh exchange while retaining its typed failures', async () => {
+      oauth.exchangeRefresh.mockResolvedValueOnce({ access_token: 'tok' })
       await expect(getUserTokenFromRefreshToken('refresh1')).resolves.toEqual({ access_token: 'tok' })
-    })
-
-    it('getUserTokenFromRefreshToken returns null on failure', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false }))
-      await expect(getUserTokenFromRefreshToken('refresh1')).resolves.toBeNull()
+      expect(oauth.exchangeRefresh).toHaveBeenCalledWith('refresh1')
+      oauth.exchangeRefresh.mockRejectedValueOnce(new DiscordOAuthError('provider_unavailable'))
+      await expect(getUserTokenFromRefreshToken('refresh1')).rejects.toMatchObject({ code: 'provider_unavailable' })
     })
 
     it('getUserFromToken returns the parsed user on success', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => ({ id: 'u1' }) }))
-      await expect(getUserFromToken('tok1')).resolves.toEqual({ id: 'u1' })
+      const profile = {
+        id: '123456789',
+        username: 'Alice',
+        global_name: 'Alice Display',
+        avatar: 'a_hash',
+        discriminator: '0',
+      }
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => profile }))
+      const timeout = vi.spyOn(AbortSignal, 'timeout')
+      await expect(getUserFromToken('tok1')).resolves.toEqual(profile)
+      expect(timeout).toHaveBeenCalledWith(10_000)
+      expect(fetch).toHaveBeenCalledWith('https://discord.com/api/users/@me', {
+        signal: expect.any(AbortSignal),
+        headers: { authorization: 'tok1' },
+      })
+    })
+
+    it.each([
+      null,
+      'profile',
+      [],
+      {},
+      { id: 123, username: 'Alice' },
+      { id: '../account', username: 'Alice' },
+      { id: '123456789' },
+      { id: '123456789', username: '' },
+      { id: '123456789', username: '   ' },
+      { id: '123456789', username: 'a'.repeat(81) },
+    ])('getUserFromToken rejects malformed required profile fields: %j', async (profile) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => profile }))
+      await expect(getUserFromToken('tok1')).resolves.toBeNull()
+    })
+
+    it.each([
+      [
+        { id: '123456789', username: 'Alice' },
+        { id: '123456789', username: 'Alice' },
+      ],
+      [
+        { id: '123456789', username: 'Alice', global_name: null, avatar: null },
+        { id: '123456789', username: 'Alice', global_name: null, avatar: null },
+      ],
+      [
+        { id: '123456789', username: 'Alice', global_name: {}, avatar: '../unsafe', discriminator: false },
+        { id: '123456789', username: 'Alice' },
+      ],
+    ])('getUserFromToken only uses valid optional decoration: %j', async (profile, expected) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => profile }))
+      await expect(getUserFromToken('tok1')).resolves.toEqual(expected)
+    })
+
+    it('getUserFromToken exposes network and malformed JSON failures as provider unavailability', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockRejectedValueOnce(new Error('network'))
+          .mockResolvedValueOnce({
+            ok: true,
+            json: vi.fn().mockRejectedValueOnce(new Error('malformed JSON')),
+          }),
+      )
+      await expect(getUserFromToken('tok1')).rejects.toMatchObject({ code: 'provider_unavailable' })
+      await expect(getUserFromToken('tok1')).rejects.toMatchObject({ code: 'provider_unavailable' })
     })
 
     it('getUserFromToken returns null and logs on failure', async () => {
@@ -780,35 +851,16 @@ describe('discordModels', () => {
   })
 
   describe('refreshUserToken', () => {
-    it('returns null when there is no stored discord token', async () => {
-      prismaMock.gm_discordToken.findFirst.mockResolvedValueOnce(null)
-      await expect(refreshUserToken('u1')).resolves.toBeNull()
+    it('delegates account rotations to the shared coordinator', async () => {
+      oauth.refresh.mockResolvedValueOnce({ access_token: 'new' })
+      await expect(refreshUserToken('u1')).resolves.toEqual({ access_token: 'new' })
+      expect(oauth.refresh).toHaveBeenCalledWith('u1')
+      expect(prismaMock.gm_discordToken.delete).not.toHaveBeenCalled()
     })
-
-    it('deletes the stored token and returns null when refreshing fails', async () => {
-      prismaMock.gm_discordToken.findFirst.mockResolvedValueOnce({ refreshToken: 'r1' })
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: false }))
-
-      await expect(refreshUserToken('u1')).resolves.toBeNull()
-      expect(prismaMock.gm_discordToken.delete).toHaveBeenCalledWith({ where: { discordID: 'u1' } })
-    })
-
-    it('updates and returns the refreshed token on success', async () => {
-      prismaMock.gm_discordToken.findFirst.mockResolvedValueOnce({ refreshToken: 'r1' })
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ access_token: 'new-access', refresh_token: 'new-refresh', expires_in: 3600 }),
-        }),
-      )
-
-      const result = await refreshUserToken('u1')
-
-      expect(result).toEqual({ access_token: 'new-access', refresh_token: 'new-refresh', expires_in: 3600 })
-      expect(prismaMock.gm_discordToken.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { discordID: 'u1' } }),
-      )
+    it('does not turn a transient provider outage into account deletion', async () => {
+      oauth.refresh.mockRejectedValueOnce(new DiscordOAuthError('provider_unavailable'))
+      await expect(refreshUserToken('u1')).rejects.toMatchObject({ code: 'provider_unavailable' })
+      expect(prismaMock.gm_discordToken.delete).not.toHaveBeenCalled()
     })
   })
 
@@ -837,6 +889,15 @@ describe('discordModels', () => {
       await expect(saveUser('u1', 'Name')).resolves.toBe(true)
       expect(prismaMock.gm_user.update).toHaveBeenCalledWith({ where: { id: 'u1' }, data: { username: 'Name' } })
     })
+
+    it('removes only the profile version written by this login when erasure starts during saving', async () => {
+      const updatedAt = new Date('2026-11-21T17:00:00Z')
+      prismaMock.gm_user.findFirst.mockResolvedValueOnce(null)
+      prismaMock.gm_user.create.mockResolvedValueOnce({ id: 'u1', updatedAt })
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      await expect(saveUser('u1', 'Name')).rejects.toThrow('Personal data collection is disabled')
+      expect(prismaMock.gm_user.deleteMany).toHaveBeenCalledWith({ where: { id: 'u1', updatedAt } })
+    })
   })
 
   describe('saveUserPanel', () => {
@@ -855,24 +916,22 @@ describe('discordModels', () => {
       expect(prismaMock.gm_discordToken.create).not.toHaveBeenCalled()
     })
 
-    it('creates a new discord token row when none exists', async () => {
-      prismaMock.gm_discordToken.findFirst.mockResolvedValueOnce(null)
-
+    it('saves OAuth credentials and creates an independent application session', async () => {
       const token = await saveUserPanel('u1', discordUserToken, sessionData)
-
-      expect(prismaMock.gm_discordToken.create).toHaveBeenCalled()
-      expect(prismaMock.gm_panelToken.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ discordID: 'u1', accessToken: 'generated-token' }) }),
-      )
-      expect(token).toBe('generated-token')
+      expect(oauth.save).toHaveBeenCalledWith('u1', discordUserToken)
+      expect(oauth.createSession).toHaveBeenCalledWith('u1', sessionData)
+      expect(token).toBe('new-session-token')
+      expect(prismaMock.gm_panelToken.create).not.toHaveBeenCalled()
     })
-
-    it('updates the existing discord token row', async () => {
-      prismaMock.gm_discordToken.findFirst.mockResolvedValueOnce({ discordID: 'u1' })
-
-      await saveUserPanel('u1', discordUserToken, sessionData)
-
-      expect(prismaMock.gm_discordToken.update).toHaveBeenCalled()
+    it('removes only the matching credentials/session if erasure starts during login', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      await expect(saveUserPanel('u1', discordUserToken, sessionData)).rejects.toThrow(
+        'Personal data collection is disabled',
+      )
+      expect(prismaMock.gm_panelToken.deleteMany).toHaveBeenCalledWith({ where: { id: 'session-1' } })
+      expect(prismaMock.gm_discordToken.deleteMany).toHaveBeenCalledWith({
+        where: { discordID: 'u1', version: 1, refreshToken: 'encrypted-refresh' },
+      })
     })
   })
 
@@ -1020,24 +1079,6 @@ describe('discordModels', () => {
       enqueueMainClientSyncPremiumRolesMock.mockResolvedValueOnce(undefined)
       await givePremiumRoleOfMainGuild()
       expect(enqueueMainClientSyncPremiumRolesMock).toHaveBeenCalled()
-    })
-  })
-
-  describe('token-refresh interval', () => {
-    it('refreshes every token nearing expiration', async () => {
-      prismaMock.gm_discordToken.findMany.mockResolvedValueOnce([{ discordID: 'u1', refreshToken: 'r1' }])
-      prismaMock.gm_discordToken.findFirst.mockResolvedValueOnce({ refreshToken: 'r1' })
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValueOnce({
-          ok: true,
-          json: async () => ({ access_token: 'a', refresh_token: 'r', expires_in: 3600 }),
-        }),
-      )
-
-      await vi.advanceTimersByTimeAsync(30_000)
-
-      expect(prismaMock.gm_discordToken.findMany).toHaveBeenCalled()
     })
   })
 })

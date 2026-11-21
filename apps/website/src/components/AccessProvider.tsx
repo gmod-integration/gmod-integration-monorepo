@@ -18,6 +18,7 @@ import {
   hasCapability,
 } from '@gmod/schema/server/AccessPolicySchema.js'
 import { getAPIUrl } from '../utils/api.js'
+import { authenticatedFetch } from '../utils/authClient.js'
 import { ACCESS_REFRESH_EVENT } from '../utils/accessEvents.js'
 import { useI18n } from '../i18n.js'
 import { Button } from './ui/Button.js'
@@ -79,8 +80,7 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
     setPermissionDenied(false)
     try {
       const path = `/v6/guilds/${encodeURIComponent(target.guildID)}${target.serverID ? `/servers/${encodeURIComponent(target.serverID)}` : ''}/access`
-      const response = await fetch(getAPIUrl(false) + path, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
+      const response = await authenticatedFetch(getAPIUrl(false) + path, {
         cache: 'no-store',
       })
       if (!response.ok) {

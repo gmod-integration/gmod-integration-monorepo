@@ -228,6 +228,29 @@ describe('serversControllerModels', () => {
   })
 
   describe('processServerImportWarns', () => {
+    it('skips importing moderation history for an erased subject', async () => {
+      isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => steamID64 === 'p1')
+      await processServerImportWarns(makeServer(), [{ adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 }])
+      expect(prismaMock.gm_server_warn.findFirst).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_warn.create).not.toHaveBeenCalled()
+    })
+    it('imports another player’s moderation history without restoring an erased author', async () => {
+      isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => steamID64 === 'a1')
+      prismaMock.gm_server_warn.create.mockResolvedValueOnce({ id: 42 })
+      await processServerImportWarns(makeServer(), [
+        { adminSteamID64: 'a1', playerSteamID64: 'p1', reason: 'Rule', date: 1700000000 },
+      ])
+      expect(prismaMock.gm_server_warn.create).toHaveBeenCalledWith({
+        data: {
+          serverID: 's1',
+          userSteamID64: 'p1',
+          adminSteamID64: '',
+          reason: 'Rule',
+          createdAt: new Date(1700000000 * 1000),
+        },
+      })
+      expect(prismaMock.gm_server_warn.updateMany).not.toHaveBeenCalled()
+    })
     it('removes only an imported warn inserted after its subject becomes suppressed', async () => {
       let blocked = false
       isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => blocked && steamID64 === 'p1')

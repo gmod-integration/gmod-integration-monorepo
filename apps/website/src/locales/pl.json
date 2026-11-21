@@ -1277,5 +1277,13 @@
     "copy_help_command": "Kopiuj polecenie diagnostyczne",
     "version": "Sprawdź zainstalowaną wersję dodatku",
     "copy_version_command": "Kopiuj polecenie sprawdzania wersji"
+  },
+  "auth": {
+    "unavailable": "Połączenie jest chwilowo niedostępne. Sesja i niezapisane zmiany zostały zachowane.",
+    "reconnect_discord": "Połącz ponownie Discord w nowej karcie. Niezapisane zmiany pozostaną tutaj.",
+    "logout_unconfirmed": "Wylogowano Cię na tym urządzeniu. Nie udało się potwierdzić unieważnienia sesji na serwerze; spróbuj ponownie po przywróceniu połączenia.",
+    "stop_impersonation": "Wróć do swojego konta",
+    "impersonation_erasure": "Wróć do własnego konta przed wysłaniem prośby o usunięcie danych.",
+    "oauth_denied": "Logowanie do Discorda nie zostało ukończone. Możesz spróbować ponownie w dowolnej chwili."
   }
 }

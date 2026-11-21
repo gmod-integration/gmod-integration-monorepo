@@ -1277,5 +1277,13 @@
     "copy_help_command": "Copia il comando di diagnostica",
     "version": "Controlla la versione installata dell’addon",
     "copy_version_command": "Copia il comando di verifica della versione"
+  },
+  "auth": {
+    "unavailable": "La connessione è temporaneamente non disponibile. La sessione e le modifiche non salvate vengono conservate.",
+    "reconnect_discord": "Ricollega Discord in una nuova scheda per continuare. Le modifiche non salvate rimangono qui.",
+    "logout_unconfirmed": "Hai effettuato la disconnessione su questo dispositivo. Non è stato possibile confermare la revoca sul server; riprova al ripristino della connessione.",
+    "stop_impersonation": "Torna al tuo account",
+    "impersonation_erasure": "Torna al tuo account prima di richiedere la cancellazione.",
+    "oauth_denied": "L’accesso a Discord non è stato completato. Puoi riprovare quando vuoi."
   }
 }

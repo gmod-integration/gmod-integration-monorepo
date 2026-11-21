@@ -50,6 +50,21 @@ describe('ConfigSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('provides separate, bounded session lifetime defaults and an optional encryption key', () => {
+    const parsed = ConfigSchema.parse(validEnv())
+    expect(parsed.AUTH_SESSION_ABSOLUTE_TTL_SECONDS).toBe(2592000)
+    expect(parsed.AUTH_SESSION_IDLE_TTL_SECONDS).toBe(604800)
+    expect(parsed.AUTH_TOKEN_ENCRYPTION_KEY).toBeUndefined()
+  })
+
+  it.each(['0', '-1', 'forever', '31536001'])('rejects an invalid absolute session lifetime %s', (value) => {
+    expect(ConfigSchema.safeParse(validEnv({ AUTH_SESSION_ABSOLUTE_TTL_SECONDS: value })).success).toBe(false)
+  })
+
+  it('rejects a short dedicated OAuth encryption key', () => {
+    expect(ConfigSchema.safeParse(validEnv({ AUTH_TOKEN_ENCRYPTION_KEY: 'short' })).success).toBe(false)
+  })
+
   it('keeps account erasure optional until its dedicated privacy secret is configured', () => {
     expect(ConfigSchema.parse(validEnv()).PRIVACY_HASH_SECRET).toBeUndefined()
     expect(

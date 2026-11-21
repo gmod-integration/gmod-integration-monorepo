@@ -14,6 +14,7 @@ import {
 import { A, useNavigate } from '@solidjs/router'
 import defaultGuild from '../../../assets/defaultGuild.png'
 import { isLogged } from '../../../utils/event.js'
+import { authStatus } from '../../../utils/authClient.js'
 import { useI18n } from '../../../i18n.js'
 import { INVITE_URL } from '../../../utils/utils.js'
 import { fetchAPI } from '../../../utils/api.js'
@@ -51,7 +52,7 @@ const GuildsSelector: Component = () => {
   const inviteTimers = new Set<ReturnType<typeof setInterval>>()
 
   createEffect(() => {
-    if (!isLogged()) navigate('/login')
+    if (!isLogged() && authStatus() === 'signed_out') navigate('/login')
   })
   onMount(() => {
     localStorage.removeItem('server')

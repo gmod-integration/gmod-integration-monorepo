@@ -3,7 +3,6 @@ import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../testUtils.js'
 import { Header } from '../../../src/components/layout/Header.js'
 import {
-  discordUser,
   isAdmin,
   isLogged,
   normalizeDiscordUserPayload,
@@ -16,6 +15,8 @@ import { initWebSocket } from '../../../src/utils/websocket.js'
 import { setThemeMode } from '../../../src/utils/theme.js'
 import gbFlag from '../../../src/assets/flags/gb.svg'
 import frFlag from '../../../src/assets/flags/fr.svg'
+import { acceptAuthSession, authSession, resetAuthentication } from '../../../src/utils/authClient.js'
+import { sessionFixture } from '../../authFixture.js'
 
 vi.mock('../../../src/utils/websocket.js', () => ({ initWebSocket: vi.fn() }))
 
@@ -29,6 +30,7 @@ afterEach(() => {
 beforeEach(() => {
   window.localStorage.clear()
   window.sessionStorage.clear()
+  resetAuthentication()
   setIsLogged(false)
   setDiscordUser(normalizeDiscordUserPayload({}))
   setIsAdmin(false)
@@ -67,24 +69,18 @@ function makeFetchMock(config: FetchMockConfig = {}) {
 function setValidAuth(
   overrides: Partial<{ discordID: string; accessToken: string; expired: boolean; user: unknown }> = {},
 ) {
-  const discordID = overrides.discordID ?? 'd1'
-  window.localStorage.setItem('discordID', discordID)
-  window.localStorage.setItem('accessToken', overrides.accessToken ?? 'tok1')
-  window.localStorage.setItem(
-    'expirationDate',
-    new Date(Date.now() + (overrides.expired ? -60_000 : 60_000_000)).toISOString(),
-  )
-  window.localStorage.setItem(
-    'discordUser',
-    JSON.stringify(
-      overrides.user ?? {
-        id: discordID,
-        username: 'bob',
-        globalName: 'Bobby',
-        avatarURL: 'https://cdn/a.png',
-        displayAvatarURL: 'https://cdn/b.png',
-      },
-    ),
+  acceptAuthSession(
+    sessionFixture({
+      user: normalizeDiscordUserPayload(
+        overrides.user ?? {
+          id: overrides.discordID ?? 'd1',
+          username: 'bob',
+          globalName: 'Bobby',
+          avatarURL: 'https://cdn/a.png',
+          displayAvatarURL: 'https://cdn/b.png',
+        },
+      ),
+    }),
   )
 }
 
@@ -234,111 +230,52 @@ describe('Header navigation', () => {
   })
 })
 
-describe('Header authentication bootstrap', () => {
-  it('stays signed out without stored credentials and does not request notification counts', () => {
-    const fetchMock = makeFetchMock()
-    vi.stubGlobal('fetch', fetchMock)
-    renderWithProviders(() => <Header />)
-    expect(isLogged()).toBe(false)
-    expect(fetchMock).not.toHaveBeenCalled()
-    expect(initWebSocket).not.toHaveBeenCalled()
-  })
-
-  it.each(['expired', 'invalid'] as const)('rejects an %s expiration date', (expiration) => {
-    setValidAuth({ expired: expiration === 'expired' })
-    if (expiration === 'invalid') window.localStorage.setItem('expirationDate', 'invalid-date')
-    const fetchMock = makeFetchMock()
-    vi.stubGlobal('fetch', fetchMock)
-    renderWithProviders(() => <Header />)
-    expect(isLogged()).toBe(false)
-    expect(fetchMock).not.toHaveBeenCalled()
-  })
-
-  it.each(['null', '{invalid JSON', '{"error":"invalid session"}'])(
-    'handles unusable cached user data: %s',
-    (cached) => {
-      setValidAuth()
-      window.localStorage.setItem('discordUser', cached)
-      vi.stubGlobal('fetch', makeFetchMock())
-      expect(() => renderWithProviders(() => <Header />)).not.toThrow()
-      expect(isLogged()).toBe(false)
-      expect(initWebSocket).not.toHaveBeenCalled()
-    },
-  )
-
-  it('restores and normalizes the cached user synchronously and opens the websocket once', () => {
+describe('Header authenticated identity', () => {
+  it('renders a server-validated session without requiring stored credentials', () => {
     setValidAuth()
     vi.stubGlobal('fetch', makeFetchMock())
     renderWithProviders(() => <Header />)
     expect(isLogged()).toBe(true)
-    expect(discordUser().globalName).toBe('Bobby')
-    expect(JSON.parse(window.localStorage.getItem('discordUser')!)).toMatchObject({ id: 'd1', globalName: 'Bobby' })
-    expect(initWebSocket).toHaveBeenCalledTimes(1)
+    expect(localStorage.getItem('accessToken')).toBeNull()
     expect(screen.getByAltText('Discord avatar')).toHaveAttribute('src', 'https://cdn/b.png')
+    expect(initWebSocket).not.toHaveBeenCalled()
   })
-
-  it('keeps the account button named when its avatar is missing and the visible name is hidden on mobile', () => {
+  it('does not infer sign-in from a browser profile or bearer cache', () => {
+    localStorage.setItem('discordUser', JSON.stringify({ id: 'fake', username: 'Fake' }))
+    localStorage.setItem('accessToken', 'old-token')
+    renderWithProviders(() => <Header />)
+    expect(isLogged()).toBe(false)
+    expect(screen.getByRole('link', { name: 'Login with Discord' })).toBeInTheDocument()
+  })
+  it('keeps the account control named when there is no avatar', () => {
     setValidAuth({ user: { id: 'd1', username: 'bob', globalName: 'Bobby' } })
     vi.stubGlobal('fetch', makeFetchMock())
     renderWithProviders(() => <Header />)
     const trigger = screen.getByRole('button', { name: 'Bobby' })
     expect(trigger).toHaveAttribute('aria-label', 'Bobby')
     expect(screen.queryByAltText('Discord avatar')).not.toBeInTheDocument()
-    fireEvent.click(trigger)
-    expect(trigger).toHaveAttribute('aria-expanded', 'true')
   })
-
-  it('restores an existing session cached with a millisecond expiration and migrates it to ISO', () => {
+  it('uses the authenticated rank for the developer destination', () => {
     setValidAuth()
-    const expirationDate = Date.now() + 60_000_000
-    window.localStorage.setItem('expirationDate', String(expirationDate))
+    acceptAuthSession({ ...authSession()!, user: { ...authSession()!.user, rank: 'developer' } })
     vi.stubGlobal('fetch', makeFetchMock())
     renderWithProviders(() => <Header />)
-
-    expect(isLogged()).toBe(true)
-    expect(discordUser().id).toBe('d1')
-    expect(window.localStorage.getItem('expirationDate')).toBe(new Date(expirationDate).toISOString())
-    expect(initWebSocket).toHaveBeenCalledTimes(1)
-  })
-
-  it.each(['notOk', 'reject'] as const)(
-    'clears the signed-in state after a %s validation response',
-    async (userValidation) => {
-      setValidAuth()
-      vi.stubGlobal('fetch', makeFetchMock({ userValidation }))
-      renderWithProviders(() => <Header />)
-      expect(isLogged()).toBe(true)
-      await vi.waitFor(() => expect(isLogged()).toBe(false))
-      expect(screen.getByRole('link', { name: 'Login with Discord' })).toBeInTheDocument()
-    },
-  )
-
-  it('grants the admin destination only for a developer account', async () => {
-    setValidAuth()
-    vi.stubGlobal('fetch', makeFetchMock({ rank: 'developer' }))
-    renderWithProviders(() => <Header />)
-    await vi.waitFor(() => expect(isAdmin()).toBe(true))
     openUserMenu()
+    expect(isAdmin()).toBe(true)
     expect(screen.getByRole('link', { name: 'Admin Dashboard' })).toHaveAttribute(
       'href',
       '/dashboard/admins/informations',
     )
   })
-
-  it.each(['member', 'notOk', 'reject'])(
-    'keeps a %s rank lookup non-admin without an unhandled rejection',
-    async (rank) => {
-      setValidAuth()
-      const fetchMock = makeFetchMock({ rank })
-      vi.stubGlobal('fetch', fetchMock)
-      renderWithProviders(() => <Header />)
-      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      expect(isAdmin()).toBe(false)
-      openUserMenu()
-      expect(screen.queryByRole('link', { name: 'Admin Dashboard' })).not.toBeInTheDocument()
-    },
-  )
+  it('keeps the session when a notification request encounters a temporary failure', async () => {
+    setValidAuth()
+    vi.stubGlobal('fetch', makeFetchMock({ unreadCount: 'reject' }))
+    renderWithProviders(() => <Header />)
+    await Promise.resolve()
+    expect(isLogged()).toBe(true)
+    openUserMenu()
+    expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument()
+  })
 })
 
 describe('Header notifications', () => {
@@ -413,51 +350,21 @@ describe('Header user menu', () => {
     expect(() => fireEvent.mouseDown(document.body)).not.toThrow()
   })
 
-  it.each(['ISO', 'milliseconds'])(
-    'restores the previous session with an %s expiration when stopping impersonation',
-    (format) => {
-      setValidAuth()
-      const expirationDate = Date.now() + 60_000_000
-      const expirationISO = new Date(expirationDate).toISOString()
-      window.localStorage.setItem('oldAccessToken', 'oldTok')
-      window.localStorage.setItem('oldDiscordID', 'oldD1')
-      window.localStorage.setItem('oldExpirationDate', format === 'ISO' ? expirationISO : String(expirationDate))
-      vi.stubGlobal('fetch', makeFetchMock())
-      renderWithProviders(() => <Header />)
-      openUserMenu()
-      fireEvent.click(screen.getByRole('link', { name: 'Stop Impersonate' }))
-      expect(window.localStorage.getItem('accessToken')).toBe('oldTok')
-      expect(window.localStorage.getItem('discordID')).toBe('oldD1')
-      expect(window.localStorage.getItem('expirationDate')).toBe(expirationISO)
-      expect(window.localStorage.getItem('oldAccessToken')).toBeNull()
-      expect(window.location.href).toContain('/login/?discordID=oldD1&accessToken=oldTok')
-      expect(new URL(window.location.href).searchParams.get('expirationDate')).toBe(String(expirationDate))
-    },
-  )
-
-  it.each(['invalid-date', String(Date.now() - 60_000)])(
-    'requires sign-in when the previous expiration is %s',
-    (expirationDate) => {
-      setValidAuth()
-      window.localStorage.setItem('oldAccessToken', 'oldTok')
-      window.localStorage.setItem('oldDiscordID', 'oldD1')
-      window.localStorage.setItem('oldExpirationDate', expirationDate)
-      vi.stubGlobal('fetch', makeFetchMock())
-      renderWithProviders(() => <Header />)
-      openUserMenu()
-      fireEvent.click(screen.getByRole('link', { name: 'Stop Impersonate' }))
-
-      expect(window.location.pathname).toBe('/login')
-      expect(window.localStorage.getItem('accessToken')).toBeNull()
-      expect(window.localStorage.getItem('oldAccessToken')).toBeNull()
-    },
-  )
+  it('uses the server delegation marker for returning to the original account', () => {
+    setValidAuth()
+    acceptAuthSession({ ...authSession()!, session: { ...authSession()!.session, actorDiscordID: 'admin' } })
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+    openUserMenu()
+    expect(screen.getByRole('link', { name: 'Return to your account' })).toBeInTheDocument()
+    expect(localStorage.getItem('oldAccessToken')).toBeNull()
+  })
 
   it('does not offer stop impersonation for a regular session', () => {
     setValidAuth()
     vi.stubGlobal('fetch', makeFetchMock())
     renderWithProviders(() => <Header />)
     openUserMenu()
-    expect(screen.queryByRole('link', { name: 'Stop Impersonate' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Return to your account' })).not.toBeInTheDocument()
   })
 })

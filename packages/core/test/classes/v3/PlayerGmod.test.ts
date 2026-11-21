@@ -299,6 +299,11 @@ describe('PlayerGmod', () => {
   })
 
   describe('updateDiscordTeamRole', () => {
+    it('does not queue a Discord team mutation for a suppressed Steam identity', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      await updateDiscordTeamRole({ getID: () => 's1' } as any, '765', 'Red')
+      expect(enqueueUpdateDiscordTeamRoleMock).not.toHaveBeenCalled()
+    })
     it('delegates to the bullmq adapter', async () => {
       const server = { getID: () => 's1' } as any
       await updateDiscordTeamRole(server, '765', 'Red')
@@ -311,6 +316,13 @@ describe('PlayerGmod', () => {
   })
 
   describe('updatePlayerUserGroup', () => {
+    it('does not read, persist or queue the rank of a suppressed Steam identity', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      await updatePlayerUserGroup({ getID: () => 's1' } as any, '765', 'admin')
+      expect(prismaMock.gm_server_stat.findFirst).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_stat.update).not.toHaveBeenCalled()
+      expect(enqueueUpdatePlayerUserGroupMock).not.toHaveBeenCalled()
+    })
     it('does nothing when the player stat row does not exist', async () => {
       prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce(null)
       const server = { getID: () => 's1' } as any

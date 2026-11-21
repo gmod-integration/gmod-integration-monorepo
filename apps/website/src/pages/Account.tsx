@@ -10,6 +10,7 @@ import { createAsyncAction } from '../hooks/createAsyncAction.js'
 import AdminModal from '../components/AdminModal.js'
 import { closeDialog, showDialog } from '../utils/dialog.js'
 import { isLogged } from '../utils/event.js'
+import { authSession } from '../utils/authClient.js'
 import {
   clearAccountSession,
   fetchErasureStatus,
@@ -23,12 +24,14 @@ import {
 
 type UserSession = {
   id: string
-  updatedAt: string
+  lastSeenAt?: string
+  createdAt: string
+  expiresAt: string
   ip: string
   os: string
   browser: string
   country: string
-  accessToken: string
+  isCurrent: boolean
 }
 
 type UserDataRequest = {
@@ -64,7 +67,7 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
     }
   }
   const submitErasure = async () => {
-    if (erasureConfirmation() !== 'DELETE' || erasureAction.pending()) return
+    if (erasureConfirmation() !== 'DELETE' || erasureAction.pending() || authSession()?.session.actorDiscordID) return
     let receipt: ErasureReceipt | undefined
     let status: ErasureStatus | undefined
     const accepted = await erasureAction.run(async () => {
@@ -114,7 +117,11 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
   const [userSessions, { mutate: mutateUserSessions }] = createResource(
     'userSessions',
     async (): Promise<UserSession[]> => {
-      return await fetchAPI('/users/:discordID/sessions', 'GET').then(async (res) => (await res.json()) || [])
+      const response = await fetchAPI('/v6/auth/sessions', 'GET')
+      if (!response.ok) throw new Error('Sessions unavailable')
+      const value = await response.json()
+      if (!value || !Array.isArray(value.sessions)) throw new Error('Invalid sessions response')
+      return value.sessions
     },
     { initialValue: [] },
   )
@@ -146,7 +153,7 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
 
   async function deleteUserSession(sessionID: string) {
     await sessionAction.run(async () => {
-      const response = await fetchAPI(`/users/:discordID/sessions/${sessionID}`, 'DELETE')
+      const response = await fetchAPI(`/v6/auth/sessions/${encodeURIComponent(sessionID)}`, 'DELETE')
       if (!response.ok) throw new Error('Session deletion failed')
       mutateUserSessions((previous) => previous.filter((session) => session.id !== sessionID))
     })
@@ -253,7 +260,7 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
           <Button
             variant="danger"
             loading={erasureAction.pending()}
-            disabled={erasureConfirmation() !== 'DELETE'}
+            disabled={erasureConfirmation() !== 'DELETE' || !!authSession()?.session.actorDiscordID}
             onClick={() => void submitErasure()}
           >
             {t('account.erasure.submit', 'Confirm erasure request')}
@@ -400,7 +407,7 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                       <tr>
                         <td class="font-mono text-xs">{session.id.substring(0, 8)}</td>
                         <td class="whitespace-nowrap text-base-content/60">
-                          {new Date(session.updatedAt).toLocaleDateString(locale())}
+                          {new Date(session.lastSeenAt || session.createdAt).toLocaleDateString(locale())}
                         </td>
                         <td class="font-mono text-xs">{session.ip}</td>
                         <td>{session.os}</td>
@@ -408,7 +415,7 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                         <td>{session.country}</td>
                         <td class="text-center">
                           <Show
-                            when={session.accessToken === localStorage.getItem('accessToken')}
+                            when={session.isCurrent}
                             fallback={
                               <div class="tooltip" data-tip={t('account.delete_session', 'Delete this session')}>
                                 <IconButton
@@ -460,6 +467,12 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
               </Button>
               <Button
                 variant="danger"
+                disabled={!!authSession()?.session.actorDiscordID}
+                title={
+                  authSession()?.session.actorDiscordID
+                    ? t('auth.impersonation_erasure', 'Return to your own account before requesting erasure.')
+                    : undefined
+                }
                 onClick={() => {
                   resetErasureDialog()
                   showDialog('account-erasure')
@@ -764,7 +777,7 @@ const Account: Component = () => {
           receipt={value}
           initialStatus={initialStatus()}
           onVerified={() => verified(value)}
-          canReturn={() => !sessionCleared && isLogged() && !!localStorage.getItem('accessToken')}
+          canReturn={() => !sessionCleared && isLogged()}
           onReturn={() => setReceipt(undefined)}
         />
       )}

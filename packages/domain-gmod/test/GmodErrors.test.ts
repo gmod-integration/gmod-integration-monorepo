@@ -161,4 +161,20 @@ describe('error history commercial window', () => {
     })
     expect(aggregateMock).not.toHaveBeenCalled()
   })
+  it.each([undefined, '$where'])(
+    'falls back from unsupported sort %s while preserving the commercial history window',
+    async (sort) => {
+      const result = await getErrorsByServer({ offset: 5, limit: 10, sort, orderBy: 'DESC' }, 's1', 50)
+      expect(result).toMatchObject({ query: { total: 50 } })
+      expect(aggregateMock).toHaveBeenCalledWith([
+        { $match: { serverID: 's1' } },
+        { $sort: { createdAt: -1, _id: -1 } },
+        { $limit: 50 },
+        { $sort: { createdAt: -1, _id: -1 } },
+        { $skip: 5 },
+        { $limit: 10 },
+      ])
+      expect(findMock).not.toHaveBeenCalled()
+    },
+  )
 })

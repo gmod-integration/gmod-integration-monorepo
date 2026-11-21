@@ -1,122 +1,99 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
-import { renderWithProviders } from '../../../testUtils.js'
+import { beforeEach, afterEach, describe, expect, it, vi, type Mock } from 'vitest'
+import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { renderWithProviders, historyAt } from '../../../testUtils.js'
+import { acceptAuthSession, resetAuthentication } from '../../../../src/utils/authClient.js'
+import { sessionFixture } from '../../../authFixture.js'
 import Impersonate from '../../../../src/pages/dashboard/admins/Impersonate.js'
-
+import { fetchAPI } from '../../../../src/utils/api.js'
+vi.mock('../../../../src/utils/api.js', async (original) => ({ ...(await original<object>()), fetchAPI: vi.fn() }))
+beforeEach(() => {
+  localStorage.clear()
+  resetAuthentication()
+  vi.mocked(fetchAPI).mockClear()
+  acceptAuthSession(sessionFixture({ user: { ...sessionFixture().user, rank: 'developer' } }))
+  ;(fetchAPI as Mock).mockResolvedValue({
+    ok: true,
+    json: async () => [
+      { discordID: 'u1', username: 'Self' },
+      { discordID: 'target', username: 'Target' },
+    ],
+  })
+})
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
-
-describe('pages/dashboard/admins/Impersonate.tsx', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
-    window.sessionStorage.clear()
+function renderPage(path = '/dashboard/admins/impersonate') {
+  const history = historyAt(path)
+  renderWithProviders(() => <Impersonate />, { path: '*', history, session: false })
+  return history
+}
+describe('server-tracked administrative delegation', () => {
+  it('shows target identities without requiring target session tokens', async () => {
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Target' })).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'Self' })).not.toBeInTheDocument()
   })
-
-  it('shows a loading placeholder while the panel-users resource is loading', () => {
-    const fetchMock = vi.fn().mockReturnValue(new Promise(() => {}))
-    vi.stubGlobal('fetch', fetchMock)
-
-    renderWithProviders(() => <Impersonate />)
-
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
-  })
-
-  it('renders an empty list when the response is not ok', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 403 }))
-    vi.stubGlobal('fetch', fetchMock)
-
-    renderWithProviders(() => <Impersonate />)
-
-    await vi.waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
-    expect(screen.queryByText(/ID:/)).not.toBeInTheDocument()
-  })
-
-  it('excludes the current user from the panel-user list', async () => {
-    window.localStorage.setItem('discordID', 'me')
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(new Response(JSON.stringify([{ discordID: 'me' }, { discordID: 'other' }])))
-    vi.stubGlobal('fetch', fetchMock)
-
-    renderWithProviders(() => <Impersonate />)
-
-    await vi.waitFor(() => expect(screen.getByText('other')).toBeInTheDocument())
-    expect(screen.queryByText('me')).not.toBeInTheDocument()
-  })
-
-  it.each(['ISO', 'milliseconds'])(
-    'impersonating a user supports an %s expiration in the login redirect',
-    async (format) => {
-      const expirationDate = Date.now() + 60_000_000
-      window.localStorage.setItem('discordID', 'me')
-      window.localStorage.setItem('accessToken', 'my-token')
-      window.localStorage.setItem('expirationDate', '123')
-      window.sessionStorage.setItem('someSessionKey', 'x')
-
-      const fetchMock = vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify([
-            {
-              discordID: 'other',
-              accessToken: 'other-token',
-              expirationDate: format === 'ISO' ? new Date(expirationDate).toISOString() : String(expirationDate),
-            },
-          ]),
+  it('starts a delegated session using CSRF and cookies and leaves browser preferences intact', async () => {
+    localStorage.setItem('theme', 'dark')
+    const network = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify(
+          sessionFixture({
+            user: { ...sessionFixture().user, id: 'target' },
+            session: { ...sessionFixture().session, id: 'delegated', actorDiscordID: 'u1' },
+          }),
         ),
-      )
-      vi.stubGlobal('fetch', fetchMock)
-
-      const originalLocation = window.location
-      Object.defineProperty(window, 'location', {
-        configurable: true,
-        value: { href: 'http://localhost:3000/' },
-        writable: true,
-      })
-
-      renderWithProviders(() => <Impersonate />)
-      await vi.waitFor(() => expect(screen.getByText('other')).toBeInTheDocument())
-
-      screen
-        .getByText('other')
-        .closest('.card')!
-        .dispatchEvent(new MouseEvent('click', { bubbles: true }))
-
-      expect(window.sessionStorage.getItem('someSessionKey')).toBeNull()
-      expect(window.localStorage.getItem('oldAccessToken')).toBe('my-token')
-      expect(window.localStorage.getItem('oldDiscordID')).toBe('me')
-      expect(window.localStorage.getItem('oldExpirationDate')).toBe('123')
-      expect(window.location.href).toBe(
-        `/login/?discordID=other&accessToken=other-token&expirationDate=${expirationDate}`,
-      )
-
-      Object.defineProperty(window, 'location', { configurable: true, value: originalLocation, writable: true })
-    },
-  )
-
-  it('preserves the current session when the target session has an invalid expiration', async () => {
-    window.localStorage.setItem('discordID', 'me')
-    window.localStorage.setItem('accessToken', 'my-token')
-    vi.stubGlobal(
-      'fetch',
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify([{ discordID: 'other', accessToken: 'other-token', expirationDate: 'invalid-date' }]),
-          ),
-        ),
+      ),
     )
-    renderWithProviders(() => <Impersonate />)
-    await vi.waitFor(() => expect(screen.getByText('other')).toBeInTheDocument())
-    screen
-      .getByText('other')
-      .closest('.card')!
-      .dispatchEvent(new MouseEvent('click', { bubbles: true }))
-
-    expect(window.localStorage.getItem('discordID')).toBe('me')
-    expect(window.localStorage.getItem('accessToken')).toBe('my-token')
-    expect(window.localStorage.getItem('oldAccessToken')).toBeNull()
+    vi.stubGlobal('fetch', network)
+    const history = renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Target' })).toBeEnabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Target' }))
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds'))
+    expect(network.mock.calls[0][0]).toBe('http://localhost:5001/v6/auth/impersonations')
+    expect(network.mock.calls[0][1].body).toBe(JSON.stringify({ discordID: 'target' }))
+    expect(network.mock.calls[0][1].credentials).toBe('include')
+    expect(localStorage.getItem('theme')).toBe('dark')
+    expect(localStorage.getItem('accessToken')).toBeNull()
+    expect(localStorage.getItem('oldAccessToken')).toBeNull()
+    expect(window.location.href).not.toContain('accessToken=')
+  })
+  it('reports a rejected delegation without replacing the current identity', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 403 })))
+    const history = renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Target' })).toBeEnabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Target' }))
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(history.get()).toBe('/dashboard/admins/impersonate')
+    expect(localStorage.getItem('discordID')).toBe('u1')
+  })
+  it('keeps the delegated identity after a failed return and retries with its own CSRF', async () => {
+    acceptAuthSession(
+      sessionFixture({
+        user: { ...sessionFixture().user, id: 'target' },
+        session: { ...sessionFixture().session, id: 'delegated', actorDiscordID: 'u1' },
+      }),
+    )
+    const network = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 503 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(sessionFixture({ user: { ...sessionFixture().user, rank: 'developer' } }))),
+      )
+    vi.stubGlobal('fetch', network)
+    const history = renderPage('/dashboard/admins/stop-impersonate')
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(localStorage.getItem('discordID')).toBe('target')
+    expect(fetchAPI).not.toHaveBeenCalled()
+    await fireEvent.click(screen.getByRole('button', { name: 'Return to your account' }))
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/admins/impersonate'))
+    expect(network.mock.calls.map(([url]) => url)).toEqual([
+      'http://localhost:5001/v6/auth/impersonations/end',
+      'http://localhost:5001/v6/auth/impersonations/end',
+    ])
+    expect(new Headers(network.mock.calls[1][1].headers).get('X-CSRF-Token')).toBe('csrf-token')
+    expect(localStorage.getItem('discordID')).toBe('u1')
   })
 })

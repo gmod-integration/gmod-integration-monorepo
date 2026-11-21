@@ -80,7 +80,7 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
   it('renders the loaded auto-role table using DiscordRole to resolve names', async () => {
     renderWithProviders(() => <GuildAutoRoles />)
     await waitForLoaded()
-    expect(screen.getByText('@Moderator')).toBeInTheDocument()
+    expect(within(screen.getByRole('table')).getByText('@Moderator')).toBeInTheDocument()
     expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
   })
 
@@ -102,6 +102,11 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
     })
     renderWithProviders(() => <GuildAutoRoles />)
     await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to load roles.'))
+    setupFetchAPI()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('table')).getByText('@Moderator')).toBeInTheDocument()
   })
 
   it('shows the failed-to-load message when the auto-roles fetch rejects', async () => {

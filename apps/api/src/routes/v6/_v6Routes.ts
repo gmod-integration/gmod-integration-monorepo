@@ -1,7 +1,7 @@
 import express, { type ErrorRequestHandler, type Response } from 'express'
 import { ConfigServer } from '@gmod/config'
-import prisma from '@gmod/infra-prisma'
-import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js'
+import { AuthSessionError, assertSessionRequest, resolveRequestSession } from '@gmod/domain-auth/authSessions.js'
+import { DiscordOAuthError } from '@gmod/domain-auth/discordOAuth.js'
 import { getAccountErasureStatus, requestAccountErasure } from '@gmod/domain-compliance/accountErasure.js'
 import {
   AccountErasureReceiptSchema,
@@ -14,6 +14,7 @@ import asyncHandler from '../../middleware/asyncHandler.js'
 import dashboardSettingsRoutes from './dashboardSettingsRoutes.js'
 import statusSettingsRoutes from './statusSettingsRoutes.js'
 import accessRoutes from './accessRoutes.js'
+import authRoutes from './authRoutes.js'
 import { AccessDeniedError } from '@gmod/domain-access/index.js'
 
 const router = express.Router()
@@ -39,6 +40,7 @@ router.get('/', (_req, res) => {
 router.use(dashboardSettingsRoutes)
 router.use(statusSettingsRoutes)
 router.use(accessRoutes)
+router.use('/auth', authRoutes)
 
 router.post(
   '/account/erasure-requests',
@@ -46,20 +48,16 @@ router.post(
     if (req.headers.origin !== undefined && req.headers.origin !== expectedOrigin) {
       return errorResponse(res, 403, 'origin_forbidden', 'This origin cannot request account erasure.')
     }
-    const token = bearer(req.headers.authorization)
-    if (!token) return errorResponse(res, 401, 'unauthorized', 'A valid session is required.')
-    const sessions = await prisma.gm_panelToken.findMany({
-      where: { accessToken: token, revoke: false, expirationDate: { gt: new Date() } },
-      select: { discordID: true },
-      take: 2,
-    })
-    // Tokens are not unique in the legacy schema. Refuse an ambiguous identity rather than
-    // picking the first matching account or accepting a client-supplied Discord identifier.
-    if (sessions.length !== 1) return errorResponse(res, 401, 'unauthorized', 'A valid session is required.')
-    const panelUser = await getPanelUserFromDiscordID(sessions[0].discordID)
-    if (!panelUser || !(await panelUser.authAllowed(token))) {
-      return errorResponse(res, 401, 'unauthorized', 'A valid session is required.')
-    }
+    const session = await resolveRequestSession(req, { touch: false })
+    if (!session) return errorResponse(res, 401, 'unauthorized', 'A valid session is required.')
+    assertSessionRequest(req, session)
+    if (session.actorDiscordID)
+      return errorResponse(
+        res,
+        403,
+        'erasure_impersonation_forbidden',
+        'Account erasure requires your own account session.',
+      )
     const input = AccountErasureRequestSchema.safeParse(req.body)
     if (!input.success || Object.keys(req.query).length > 0) {
       return errorResponse(
@@ -69,7 +67,7 @@ router.post(
         'Confirmation, a UUID idempotency key and a receipt are required.',
       )
     }
-    const result = await requestAccountErasure(sessions[0].discordID, input.data.idempotencyKey, input.data.receipt)
+    const result = await requestAccountErasure(session.discordID, input.data.idempotencyKey, input.data.receipt)
     const response = AccountErasureResponseSchema.safeParse({ ...result, receipt: input.data.receipt })
     if (!response.success || response.data.requestId !== input.data.idempotencyKey) {
       return errorResponse(res, 500, 'internal_error', 'The erasure request could not be acknowledged.')
@@ -102,6 +100,21 @@ router.use((_req, res) => {
 })
 
 const handleError: ErrorRequestHandler = (error: unknown, _req, res, _next) => {
+  if (
+    error instanceof AuthSessionError ||
+    error instanceof DiscordOAuthError ||
+    (error instanceof Error && 'code' in error && error.code === 'provider_unavailable')
+  ) {
+    const detail = error as Error & { status?: number; code: string; retryAfter?: number }
+    const status = detail.code === 'grant_rejected' ? 403 : detail.status || 503
+    if (detail.retryAfter) res.setHeader('Retry-After', String(detail.retryAfter))
+    return errorResponse(
+      res,
+      status,
+      detail.code === 'grant_rejected' ? 'discord_reauth_required' : detail.code,
+      detail.message,
+    )
+  }
   if (error instanceof AccessDeniedError) {
     res.status(error.status).json({
       error: {

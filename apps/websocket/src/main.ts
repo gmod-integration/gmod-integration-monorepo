@@ -1,6 +1,13 @@
 import { WebSocketServer } from 'ws'
 import { Worker } from 'bullmq'
 import { randomUUID } from 'node:crypto'
+import {
+  AUTH_SESSION_REVOCATION_CHANNEL,
+  assertTrustedOrigin,
+  consumeWebSocketTicket,
+  validateApplicationSession,
+  type AuthSession,
+} from '@gmod/domain-auth/authSessions.js'
 import { ConfigServer } from '@gmod/config'
 import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { gmLog } from '@gmod/shared/logger.js'
@@ -12,18 +19,18 @@ import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import redis, { gracefulShutdownRedis } from '@gmod/infra-redis'
 import { lastGmodIntegrationTag, versionComparator } from '@gmod/core/utils/tools.js'
 import { connection } from '@gmod/infra-bullmq'
-import {
-  type WSSendToServerData,
-  type wsSendToAllClientsOfServerData,
-  wsSendToServerQueue,
-  wsSendToAllClientsOfServerQueue,
-} from '@gmod/infra-websocket/queues.js'
+import { wsSendToServerQueue, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js'
 
 interface wsClientClient {
   ws: any
   panelUser: PanelUser
   guildAdminListID: string[]
   serverAdminListID: string[]
+  session: AuthSession
+  permissionsCheckedAt: number
+  permissionsRetryAt?: number
+  authorizationRequired?: boolean
+  expiryTimer?: ReturnType<typeof setTimeout>
 }
 
 interface wsClientServer {
@@ -41,6 +48,11 @@ const WS_SEND_TO_SERVER_ACK_PREFIX = 'ws:send-to-server:ack:'
 const WS_SEND_TO_SERVER_ACK_WAIT_MS = 600
 const WS_SEND_TO_SERVER_ACK_TTL_SECONDS = 5
 const WS_SEND_TO_SERVER_ACK_POLL_MS = 60
+
+type VerifiedHandshake = { kind: 'server'; serverID: string } | { kind: 'dashboard'; session: AuthSession }
+const verifiedHandshakes = new WeakMap<object, VerifiedHandshake>()
+const socketStops = new Map<any, () => void>()
+const PERMISSION_RECHECK_MS = 30_000
 
 let inShutdown = false
 let wss: WebSocketServer | undefined
@@ -106,43 +118,126 @@ function wsSendToServer(id: string, data: any) {
   return true
 }
 
-async function wsSendToClient(discordID: string, data: any, action: string) {
-  const client = clients.client.find((client) => client.panelUser.discordID === discordID)
+function removeClient(client: wsClientClient) {
+  clients.client = clients.client.filter((candidate) => candidate.ws !== client.ws)
+  if (client.expiryTimer) clearTimeout(client.expiryTimer)
+}
 
-  if (!client) {
+function closeClient(client: wsClientClient, reason = 'Session revoked', code = 1008) {
+  removeClient(client)
+  socketStops.get(client.ws)?.()
+  client.ws.close(code, reason)
+}
+
+async function validClient(client: wsClientClient) {
+  if (!clients.client.includes(client) || client.ws.readyState !== 1) return false
+  const session = await validateApplicationSession(client.session.id)
+  if (!session || session.discordID !== client.panelUser.discordID || (await isErasureBlocked(session.discordID))) {
+    closeClient(client)
     return false
   }
-  if (await isErasureBlocked(discordID)) {
-    client.ws.close(1008, 'Session revoked')
-    clients.client = clients.client.filter((candidate) => candidate !== client)
+  client.session = session
+  return true
+}
+
+async function refreshClientPermissions(client: wsClientClient, force = false) {
+  if (client.permissionsRetryAt && Date.now() < client.permissionsRetryAt) return false
+  if (!force && Date.now() - client.permissionsCheckedAt < PERMISSION_RECHECK_MS) return true
+  try {
+    const guilds = await getUserGuildsWithPermsForPanel(client.panelUser)
+    const guildIDs: string[] = []
+    const serverIDs: string[] = []
+    for (const guild of guilds) {
+      guildIDs.push(guild.id)
+      const servers = await getServersFromDiscordGuildID(guild.id)
+      for (const server of servers || []) serverIDs.push(server.id)
+    }
+    client.guildAdminListID = guildIDs
+    client.serverAdminListID = serverIDs
+    client.permissionsCheckedAt = Date.now()
+    client.permissionsRetryAt = undefined
+    return true
+  } catch (error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      ['discord_reauth_required', 'grant_rejected'].includes(String(error.code))
+    ) {
+      client.authorizationRequired = true
+      closeClient(client, 'Discord authorization required', 4003)
+      return false
+    }
+    // A provider outage does not log the user out or preserve an authorization we cannot revalidate.
+    client.guildAdminListID = []
+    client.serverAdminListID = []
+    client.permissionsCheckedAt = 0
+    client.permissionsRetryAt = Date.now() + 5_000
     return false
   }
+}
 
-  gmLog('websocket', 'Sending to client ' + discordID + ' ' + JSON.stringify(data))
+function scheduleSessionCheck(client: wsClientClient) {
+  const delay = Math.max(1, Math.min(60_000, client.session.expiresAt.getTime() - Date.now()))
+  client.expiryTimer = setTimeout(async () => {
+    try {
+      if (await validClient(client)) scheduleSessionCheck(client)
+    } catch {
+      closeClient(client, 'Session unavailable', 1013)
+    }
+  }, delay)
+  client.expiryTimer.unref?.()
+}
+
+function startHeartbeat(ws: any) {
+  let alive = true
+  const onPong = () => {
+    alive = true
+  }
+  ws.on('pong', onPong)
+  const timer = setInterval(() => {
+    if (ws.readyState !== 1) return
+    if (!alive) {
+      stop()
+      if (typeof ws.terminate === 'function') ws.terminate()
+      else ws.close(1001, 'Heartbeat timeout')
+      return
+    }
+    alive = false
+    try {
+      ws.ping()
+    } catch {
+      stop()
+      ws.close()
+    }
+  }, 30_000)
+  timer.unref?.()
+  const stop = () => {
+    clearInterval(timer)
+    ws.removeListener('pong', onPong)
+    socketStops.delete(ws)
+  }
+  socketStops.set(ws, stop)
+  ws.once('close', stop)
+}
+
+async function wsSendToClient(client: wsClientClient, data: any) {
+  if (!(await validClient(client))) return false
   client.ws.send(JSON.stringify(data))
-
   return true
 }
 
 async function wsSendToAllClientsOfServer(serverID: string, action: string, data: any) {
-  const clientsToSend = clients.client.filter((client) => client.serverAdminListID.includes(serverID))
-
-  for (const client of clientsToSend) {
-    if (await isErasureBlocked(client.panelUser.discordID)) {
-      client.ws.close(1008, 'Session revoked')
-      clients.client = clients.client.filter((candidate) => candidate !== client)
-      continue
+  for (const client of [...clients.client]) {
+    try {
+      if (!(await validClient(client)) || !(await refreshClientPermissions(client))) continue
+      if (!client.serverAdminListID.includes(serverID)) continue
+      await wsSendToClient(client, { action, serverID, data })
+    } catch {
+      // Delivery never uses stale permissions when session storage or Discord is unavailable.
+      gmLog('websocket', 'Client delivery temporarily unavailable', true)
     }
-    gmLog('websocket', 'Sending to client ' + client.panelUser.discordID + ' ' + JSON.stringify(data))
-    client.ws.send(
-      JSON.stringify({
-        action,
-        serverID,
-        data,
-      }),
-    )
   }
-
   return true
 }
 
@@ -151,6 +246,13 @@ export async function gracefulShutdown() {
   inShutdown = true
 
   gmLog('shutdown', 'Gracefully shutting down websocket app...')
+
+  for (const stop of socketStops.values()) stop()
+  for (const client of clients.client) {
+    clearTimeout(client.expiryTimer)
+    client.ws.close(1001, 'Service restarting')
+  }
+  for (const server of clients.server) server.ws.close(1001, 'Service restarting')
 
   await wsSendToServerWorker?.close()
   await wsSendToAllClientsOfServerWorker?.close()
@@ -179,13 +281,25 @@ export async function main() {
   })
 
   wsSendToServerSubscriber.on('message', async (channel, payload) => {
+    if (channel === AUTH_SESSION_REVOCATION_CHANNEL) {
+      try {
+        const { sessionID } = JSON.parse(payload)
+        if (typeof sessionID !== 'string') return
+        for (const client of [...clients.client])
+          if (client.session.id === sessionID || client.session.actorSessionID === sessionID) closeClient(client)
+      } catch {
+        gmLog('websocket', 'Invalid session revocation message', true)
+      }
+      return
+    }
     if (channel === PRIVACY_REVOCATION_CHANNEL) {
       try {
         const { discordID } = JSON.parse(payload)
         if (typeof discordID !== 'string') return
-        const revoked = clients.client.filter((client) => client.panelUser.discordID === discordID)
-        clients.client = clients.client.filter((client) => client.panelUser.discordID !== discordID)
-        for (const client of revoked) client.ws.close(1008, 'Session revoked')
+        const revoked = clients.client.filter(
+          (client) => client.panelUser.discordID === discordID || client.session.actorDiscordID === discordID,
+        )
+        for (const client of revoked) closeClient(client)
       } catch {
         gmLog('websocket', 'Invalid privacy revocation message', true)
       }
@@ -221,6 +335,7 @@ export async function main() {
 
   await wsSendToServerSubscriber.subscribe(WS_SEND_TO_SERVER_BROADCAST_CHANNEL)
   await wsSendToServerSubscriber.subscribe(PRIVACY_REVOCATION_CHANNEL)
+  await wsSendToServerSubscriber.subscribe(AUTH_SESSION_REVOCATION_CHANNEL)
 
   wss = new WebSocketServer({
     port: ConfigServer.ports.websocket,
@@ -228,26 +343,35 @@ export async function main() {
     verifyClient: async (info, cb) => {
       const { id, token } = info.req.headers
 
-      if (id && token) {
-        const server = await getServerFromID(id as string)
-        if (server && server.isValidToken(token as string)) {
+      if (id !== undefined || token !== undefined) {
+        if (typeof id !== 'string' || !id || typeof token !== 'string' || !token) return cb(false, 401, 'Unauthorized')
+        try {
+          const server = await getServerFromID(id)
+          if (!server || !server.isValidToken(token)) return cb(false, 401, 'Unauthorized')
+          verifiedHandshakes.set(info.req, { kind: 'server', serverID: id })
           gmLog('websocket', 'Authorized server ' + id)
           return cb(true)
+        } catch {
+          return cb(false, 503, 'Server authentication unavailable')
         }
       }
 
-      if (info.req.url && info.req.url.includes('discordID') && info.req.url.includes('token')) {
-        const args = new URLSearchParams(info.req.url.split('?')[1].split('/').join('&'))
-        const authToken = args.get('token')
-        const discordID = args.get('discordID')
-
-        if (discordID && authToken) {
-          const user = await getPanelUserFromDiscordID(discordID)
-          if (user && (await user.authAllowed(authToken))) {
-            gmLog('websocket', 'Authorized client ' + discordID)
+      try {
+        try {
+          assertTrustedOrigin(info.req)
+        } catch {
+          return cb(false, 403, 'Forbidden')
+        }
+        const ticket = new URL(info.req.url || '/', 'http://localhost').searchParams.get('ticket')
+        if (ticket) {
+          const session = await consumeWebSocketTicket(ticket)
+          if (session) {
+            verifiedHandshakes.set(info.req, { kind: 'dashboard', session })
             return cb(true)
           }
         }
+      } catch {
+        return cb(false, 503, 'Session unavailable')
       }
 
       gmLog('websocket', 'Unauthorized connection')
@@ -257,9 +381,15 @@ export async function main() {
   })
 
   wss.on('connection', async function connectionWS(ws, req) {
-    const { id, token } = req.headers
+    const verified = verifiedHandshakes.get(req)
+    verifiedHandshakes.delete(req)
+    if (!verified) {
+      ws.close(1008, 'Session required')
+      return
+    }
 
-    if (id && token) {
+    if (verified.kind === 'server') {
+      const id = verified.serverID
       const existingClient = clients.server.find((client) => client.id === id)
       if (existingClient) {
         try {
@@ -302,96 +432,69 @@ export async function main() {
           gmLog('websocket', 'Error parsing message from server ' + id + ' ' + e)
         }
       })
-    }
-
-    if (req.url && req.url.includes('discordID') && req.url.includes('token')) {
-      const args = new URLSearchParams(req.url.split('?')[1].split('/').join('&'))
-      const discordID = args.get('discordID')
-      const barerToken = args.get('token')
-
-      if (discordID && barerToken) {
-        const user = await getPanelUserFromDiscordID(discordID)
+    } else {
+      const session = verified.session
+      try {
+        const user = await getPanelUserFromDiscordID(session.discordID, undefined, session)
         if (!user) {
-          gmLog('websocket', 'Client not found: ' + discordID)
-          ws.close()
+          ws.close(1008, 'Session revoked')
           return
         }
-
-        const guildAdminListID: string[] = []
-        const serverAdminListID: string[] = []
-
-        const guildAdminList = await getUserGuildsWithPermsForPanel(user)
-        for (const guildID of guildAdminList) {
-          const server = await getServersFromDiscordGuildID(guildID.id)
-          if (server) {
-            for (const serverID of server) {
-              serverAdminListID.push(serverID.id)
-            }
-          }
-          guildAdminListID.push(guildID.id)
+        const client: wsClientClient = {
+          ws,
+          panelUser: user,
+          session,
+          guildAdminListID: [],
+          serverAdminListID: [],
+          permissionsCheckedAt: 0,
         }
-
-        clients.client = clients.client.filter((client) => client.panelUser.discordID !== discordID)
-        clients.client.push({ ws, panelUser: user, guildAdminListID, serverAdminListID })
-        gmLog('websocket', 'Client connected: ' + discordID)
+        if (!(await refreshClientPermissions(client, true))) {
+          if (!client.authorizationRequired && ws.readyState === 1) ws.close(1013, 'Permissions unavailable')
+          return
+        }
+        clients.client.push(client)
+        scheduleSessionCheck(client)
+        gmLog('websocket', 'Client connected: ' + session.discordID)
 
         ws.on('message', async (message: string) => {
           try {
-            const wsInfo = JSON.parse(message)
-
-            if (!wsInfo.action) {
-              return
-            }
-            if (await isErasureBlocked(discordID)) {
-              ws.close(1008, 'Session revoked')
-              clients.client = clients.client.filter((client) => client.ws !== ws)
-              return
-            }
-
-            gmLog('websocket', 'Received from client ' + discordID + ' ' + JSON.stringify(wsInfo))
-
-            switch (wsInfo.action) {
-              case 'server_status': {
-                const { serverID } = wsInfo.data
-
-                const serverVersion = await redis.get(`server:${serverID}:version`)
-                const serverLastRequest = await redis.get(`server:${serverID}:last_request`)
-
-                await wsSendToClient(
-                  discordID,
-                  {
-                    action: 'server_status',
-                    serverID,
-                    version: serverVersion,
-                    versionComparator: serverVersion ? versionComparator(lastGmodIntegrationTag, serverVersion) : 1,
-                    lastRequest: serverLastRequest
-                      ? new Date(serverLastRequest)
-                      : new Date(new Date().getTime() - 1000 * 60 * 2),
-                    isWebSocketConnected: !!clients.server.find((client) => client.id === serverID),
-                  },
-                  'server_status',
-                )
-
-                break
+            const info = JSON.parse(message)
+            if (!info || typeof info !== 'object' || !info.action) return
+            if (!(await validClient(client))) return
+            if (info.action === 'server_status') {
+              const serverID = info.data?.serverID
+              if (typeof serverID !== 'string' || !(await refreshClientPermissions(client))) return
+              if (!client.serverAdminListID.includes(serverID)) {
+                await wsSendToClient(client, { action: 'error', error: 'forbidden', serverID })
+                return
               }
-              default:
-                break
+              const [version, lastRequest] = await Promise.all([
+                redis.get(`server:${serverID}:version`),
+                redis.get(`server:${serverID}:last_request`),
+              ])
+              await wsSendToClient(client, {
+                action: 'server_status',
+                serverID,
+                version,
+                versionComparator: version ? versionComparator(lastGmodIntegrationTag, version) : 1,
+                lastRequest: lastRequest ? new Date(lastRequest) : new Date(Date.now() - 120_000),
+                isWebSocketConnected: !!clients.server.find((server) => server.id === serverID),
+              })
             }
-          } catch (e) {
-            gmLog('websocket', 'Error parsing message from client ' + discordID + ' ' + e)
+          } catch {
+            gmLog('websocket', 'Error processing client message', true)
           }
         })
-
         ws.on('close', () => {
-          clients.client = clients.client.filter((client) => client.panelUser.discordID !== discordID)
-          gmLog('websocket', 'Client disconnected: ' + discordID)
+          removeClient(client)
+          gmLog('websocket', 'Client disconnected: ' + session.discordID)
         })
+      } catch {
+        ws.close(1013, 'Session temporarily unavailable')
+        return
       }
     }
-
-    setInterval(() => {
-      ws.ping()
-    }, 1000)
+    startHeartbeat(ws)
   })
 
   wsSendToServerWorker = new Worker(

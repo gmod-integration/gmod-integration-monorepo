@@ -96,6 +96,18 @@ async function edited() {
 }
 
 describe('aggregate status configuration', () => {
+  it('reads safe defaults from a legacy snapshot missing its settings without writing or publishing', async () => {
+    state.settings = {}
+    const snapshot = await getStatusConfiguration('s1')
+    expect(snapshot.configuration.settings).toEqual({
+      show_player_list_status: false,
+      status_player_list_format: '{connectTime} - {name}',
+      show_status_chart: false,
+    })
+    expect(snapshot.configuration.buttons[0]?.id).toBe(1)
+    expect(mocks.db.$transaction).not.toHaveBeenCalled()
+    expect(refresh).not.toHaveBeenCalled()
+  })
   it('reads stored values, provides a stable revision and serializes only configuration fields', async () => {
     const first = await getStatusConfiguration('s1')
     expect(await getStatusConfiguration('s1')).toEqual(first)
@@ -179,6 +191,64 @@ describe('aggregate status configuration', () => {
     const input = await edited()
     input.configuration.settings.show_status_chart = false
     expect((await saveStatusConfiguration(server, input, refresh)).configuration.settings.show_status_chart).toBe(false)
+  })
+  it('permits editing and removing owned excess buttons after expiry without replacing their identities', async () => {
+    state.buttons = Array.from({ length: 5 }, (_, index) => ({
+      ...state.buttons[0]!,
+      id: index + 1,
+      name: `Existing ${index + 1}`,
+    }))
+    mocks.access.mockResolvedValue(access(false))
+    const current = await getStatusConfiguration('s1')
+    const input = {
+      ...current,
+      configuration: {
+        ...current.configuration,
+        buttons: current.configuration.buttons
+          .slice(0, 4)
+          .map((button) => ({ ...button, name: `Retained ${button.id}` })),
+      },
+    }
+    const accepted = await saveStatusConfiguration(server, input, refresh)
+    expect(accepted.configuration.buttons.map((button) => button.id)).toEqual([1, 2, 3, 4])
+    expect(accepted.configuration.buttons[0]?.name).toBe('Retained 1')
+    expect(state.buttons).toHaveLength(4)
+    expect(nextID).toBe(2)
+    expect(commitCount).toBe(1)
+    expect(accepted.sync).toBe('applied')
+  })
+  it('rejects replacing an excess owned button with a new one even when the total decreases', async () => {
+    state.buttons = Array.from({ length: 5 }, (_, index) => ({ ...state.buttons[0]!, id: index + 1 }))
+    mocks.access.mockResolvedValue(access(false))
+    const current = await getStatusConfiguration('s1')
+    const input = {
+      ...current,
+      configuration: {
+        ...current.configuration,
+        buttons: [
+          ...current.configuration.buttons.slice(0, 3),
+          { name: 'New activation', emoji: '', url: 'https://example.test/new', enable: true },
+        ],
+      },
+    }
+    const previous = structuredClone(state)
+    await expect(saveStatusConfiguration(server, input, refresh)).rejects.toMatchObject({
+      code: 'quota_reached',
+      limit: 3,
+    })
+    expect(state).toEqual(previous)
+    expect(commitCount).toBe(0)
+    expect(refresh).not.toHaveBeenCalled()
+  })
+  it('rejects a snapshot outside the maximum button bound before consulting permissions or starting writes', async () => {
+    const input = await edited()
+    input.configuration.buttons = Array.from({ length: 26 }, () => input.configuration.buttons[0]!)
+    await expect(saveStatusConfiguration(server, input, refresh)).rejects.toMatchObject({
+      code: 'invalid_configuration',
+    })
+    expect(mocks.access).not.toHaveBeenCalled()
+    expect(mocks.db.$transaction).not.toHaveBeenCalled()
+    expect(refresh).not.toHaveBeenCalled()
   })
   it.each(['throw', 'false', 'cache'] as const)(
     'reports committed data with pending delivery after %s failure',

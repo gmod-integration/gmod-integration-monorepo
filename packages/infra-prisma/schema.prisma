@@ -25,8 +25,9 @@ model banUsers {
 
 model gm_discordToken {
   discordID      String   @id @db.Char(255)
-  accessToken    String   @db.VarChar(255)
-  refreshToken   String   @db.VarChar(255)
+  accessToken    String   @db.Text
+  refreshToken   String   @db.Text
+  version        Int      @default(0)
   creationDate   DateTime @default(now())
   expirationDate DateTime @default(dbgenerated("(current_timestamp() + interval 7 day)"))
   createdAt      DateTime @default(now())
@@ -130,8 +131,15 @@ model gm_panelToken {
   revoke         Boolean  @default(false)
   creationDate   DateTime @default(now())
   expirationDate DateTime @default(dbgenerated("(current_timestamp() + interval 7 day)"))
+  absoluteExpiresAt DateTime?
+  lastSeenAt       DateTime?
+  actorDiscordID   String? @db.VarChar(255)
+  actorSessionID   String? @db.Char(36)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([discordID, revoke, expirationDate])
+  @@index([actorSessionID])
 }
 
 model gm_role_auto {

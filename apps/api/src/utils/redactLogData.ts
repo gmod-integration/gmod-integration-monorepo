@@ -1,4 +1,4 @@
-const sensitiveKey = /token|password|secret|authorization|apikey|accesskey|receipt|^code$/i
+const sensitiveKey = /token|password|secret|authorization|apikey|accesskey|receipt|verifier|^code$|^state$|^ticket$/i
 
 /** Return a log-safe copy of JSON request data without changing what controllers receive. */
 export function redactLogData(value: unknown): unknown {

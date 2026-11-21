@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
 vi.mock('@gmod/domain-user/privacy.js', () => ({ isErasureBlocked: isErasureBlockedMock }))
@@ -45,6 +45,7 @@ const {
   processPlayerDisconnect,
   processPlayerWarn,
 } = await import('../../../src/models/v3/serversPlayersControllerModels.js')
+const { PlayerGmod } = await import('../../../src/classes/v3/PlayerGmod.js')
 
 function validPlayerPayload(overrides: Record<string, any> = {}) {
   return {
@@ -79,6 +80,7 @@ function makeServer(overrides: Record<string, any> = {}) {
 }
 
 describe('serversPlayersControllerModels', () => {
+  afterEach(() => vi.restoreAllMocks())
   beforeEach(() => {
     isErasureBlockedMock.mockReset().mockResolvedValue(false)
     badArgumentMock.mockReset().mockReturnValue(false)
@@ -97,6 +99,27 @@ describe('serversPlayersControllerModels', () => {
   })
 
   describe('processPlayerSay', () => {
+    it.each([{ skip: true }, { failed: false }])(
+      'does not log an intentional skipped or successful relay response: %j',
+      async (result) => {
+        sendPlayerSayMock.mockResolvedValueOnce(result)
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+        expect(
+          await processPlayerSay(makeServer(), '765', { player: validPlayerPayload(), text: 'hello', teamOnly: false }),
+        ).toMatchObject({ status: 200 })
+        expect(error).not.toHaveBeenCalled()
+      },
+    )
+    it('logs a failed chat relay without rejecting the addon’s accepted player event', async () => {
+      sendPlayerSayMock.mockResolvedValueOnce({ failed: true, message: 'Configured webhook no longer exists' })
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+      expect(
+        await processPlayerSay(makeServer(), '765', { player: validPlayerPayload(), text: 'hello', teamOnly: false }),
+      ).toMatchObject({ status: 200 })
+      expect(error).toHaveBeenCalledExactlyOnceWith(
+        '[chat sync] gmod->discord relay failed for server s1: Configured webhook no longer exists',
+      )
+    })
     it('returns 400 with missing_arguments when required fields are absent', async () => {
       badArgumentMock.mockReturnValueOnce(true)
       const result = await processPlayerSay(makeServer(), '765', {})
@@ -248,6 +271,21 @@ describe('serversPlayersControllerModels', () => {
   })
 
   describe('processPlayerDisconnect', () => {
+    it('stops deferred Discord synchronization when erasure begins while final stats are being saved', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      const totals = vi.spyOn(PlayerGmod.prototype, 'saveServerStat').mockResolvedValueOnce(undefined)
+      const session = vi.spyOn(PlayerGmod.prototype, 'saveServerStatSession').mockResolvedValueOnce(undefined)
+      const team = vi.spyOn(PlayerGmod.prototype, 'saveTeamTime').mockResolvedValueOnce(undefined)
+      expect(await processPlayerDisconnect(makeServer(), { player: validPlayerPayload() })).toMatchObject({
+        status: 200,
+      })
+      expect(totals).toHaveBeenCalledWith('s1')
+      expect(session).toHaveBeenCalledWith('s1')
+      expect(team).toHaveBeenCalledWith('s1')
+      expect(enqueueUpdatePlayerUserGroupMock).not.toHaveBeenCalled()
+      expect(enqueueUpdateGuildUserPseudoMock).not.toHaveBeenCalled()
+      expect(enqueueUpdateDiscordTeamRoleMock).not.toHaveBeenCalled()
+    })
     it('returns 400 when required fields are absent', async () => {
       badArgumentMock.mockReturnValueOnce(true)
       const result = await processPlayerDisconnect(makeServer(), {})
@@ -274,6 +312,26 @@ describe('serversPlayersControllerModels', () => {
   })
 
   describe('processPlayerWarn', () => {
+    it('keeps the subject’s moderation history while anonymizing an already erased author', async () => {
+      isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => steamID64 === '999')
+      prismaMock.gm_server_warn.create.mockResolvedValueOnce({ id: 42 })
+      await processPlayerWarn(makeServer(), '765', {
+        admin: validPlayerPayload({ steamID64: '999' }),
+        player: validPlayerPayload(),
+        reason: 'Rule',
+        date: 1700000000,
+      })
+      expect(prismaMock.gm_server_warn.create).toHaveBeenCalledWith({
+        data: {
+          serverID: 's1',
+          userSteamID64: '765',
+          adminSteamID64: '',
+          reason: 'Rule',
+          createdAt: new Date(1700000000 * 1000),
+        },
+      })
+      expect(prismaMock.gm_server_warn.deleteMany).not.toHaveBeenCalled()
+    })
     it('removes only the warn inserted when its subject is erased during the deferred write', async () => {
       let blocked = false
       isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => blocked && steamID64 === '765')
@@ -380,5 +438,42 @@ describe('serversPlayersControllerModels', () => {
         expect.objectContaining({ data: expect.objectContaining({ userSteamID64: '765', adminSteamID64: '111' }) }),
       )
     })
+  })
+
+  describe('suppressed player events', () => {
+    it.each(['name', 'group', 'team', 'connect', 'disconnect', 'warn'] as const)(
+      'accepts %s events without restoring erased personal data or queuing Discord changes',
+      async (event) => {
+        isErasureBlockedMock.mockResolvedValue(true)
+        const server = makeServer()
+        const player = validPlayerPayload()
+        const operations = {
+          name: () => processPlayerChangeName(server, { player, oldName: 'Old', newName: 'New' }),
+          group: () => processPlayerChangeGroup(server, '765', { oldGroup: 'user', newGroup: 'admin' }),
+          team: () =>
+            processPlayerChangeTeam(server, undefined, { player, oldTeam: { name: 'Red' }, newTeam: { name: 'Blue' } }),
+          connect: () =>
+            processPlayerConnect(server, '765', { address: '127.0.0.1:27015', name: 'Bob', networkid: 'STEAM_0:1:1' }),
+          disconnect: () => processPlayerDisconnect(server, { player }),
+          warn: () =>
+            processPlayerWarn(server, '765', {
+              admin: validPlayerPayload({ steamID64: '999' }),
+              player,
+              reason: 'Rule',
+              date: 1700000000,
+            }),
+        }
+        expect(await operations[event]()).toEqual({ status: 200, body: { success: true } })
+        expect(server.saveUserConnectionInfo).not.toHaveBeenCalled()
+        expect(saveConnectionGlobalInfoMock).not.toHaveBeenCalled()
+        expect(saveConnectionSteamInfoMock).not.toHaveBeenCalled()
+        expect(prismaMock.gm_server_stat.create).not.toHaveBeenCalled()
+        expect(prismaMock.gm_server_stat_session.create).not.toHaveBeenCalled()
+        expect(prismaMock.gm_server_warn.create).not.toHaveBeenCalled()
+        expect(enqueueUpdateGuildUserPseudoMock).not.toHaveBeenCalled()
+        expect(enqueueUpdatePlayerUserGroupMock).not.toHaveBeenCalled()
+        expect(enqueueUpdateDiscordTeamRoleMock).not.toHaveBeenCalled()
+      },
+    )
   })
 })

@@ -90,6 +90,8 @@ const GuildInformations: Component = () => {
   })
   const navigate = useNavigate()
   const { t } = useI18n()
+  let inviteTimer: ReturnType<typeof setInterval> | undefined
+  onCleanup(() => clearInterval(inviteTimer))
 
   async function activateGmodStorePremium() {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/gmod-store', 'POST')
@@ -241,13 +243,13 @@ const GuildInformations: Component = () => {
                 onClick={(e) => {
                   e.preventDefault()
                   const newWindow = window.open(`/invite&guild_id=${getGuild().id}`, '_blank', 'width=600,height=900')
-                  const timer = setInterval(function () {
+                  clearInterval(inviteTimer)
+                  inviteTimer = setInterval(function () {
                     if (newWindow && newWindow.closed) {
-                      clearInterval(timer)
+                      clearInterval(inviteTimer)
                       refetchGmodStorePurchase()
                     }
                   }, 500)
-                  onCleanup(() => clearInterval(timer))
                 }}
               >
                 {t('dashboard.guild.information.invite_main_bot', 'Invite Main Bot')}

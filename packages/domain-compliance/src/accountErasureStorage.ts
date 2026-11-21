@@ -4,7 +4,7 @@ import type { Prisma } from '@gmod/infra-prisma/client.js'
 import { AVATAR_BUCKET, s3 } from '@gmod/infra-minio'
 import { mongoClient } from '@gmod/infra-mongo'
 import redis from '@gmod/infra-redis'
-import { PRIVACY_REVOCATION_CHANNEL } from '@gmod/domain-user/privacy.js'
+import { PRIVACY_REVOCATION_CHANNEL, privacySubject } from '@gmod/domain-user/privacy.js'
 import { erasedPurchaseKey } from '@gmod/domain-user/purchasePrivacy.js'
 import fs from 'node:fs/promises'
 import os from 'node:os'
@@ -137,7 +137,11 @@ export async function eraseObjectData(identity: ErasureIdentity, fence?: Erasure
 
 export async function eraseCachedData(identity: ErasureIdentity, fence?: ErasureFence) {
   await ensureLease(fence)
-  await redis.del(`user:${identity.discordID}:guilds`, `user:${identity.discordID}:isWaitingGuilds`)
+  await redis.del(
+    `user:${identity.discordID}:guilds`,
+    `user:${identity.discordID}:isWaitingGuilds`,
+    `gmi:auth:profile:${identity.discordID}`,
+  )
   if (identity.steamID64) {
     let cursor = '0'
     do {
@@ -154,7 +158,12 @@ export async function eraseCachedData(identity: ErasureIdentity, fence?: Erasure
   }
   // These caches contain personal admin references / SteamID filter exceptions and last 24h.
   // Invalidating a derived cache is safe; community rules are reloaded from their cleaned SQL rows.
-  for (const pattern of ['server:*:logsTrigger*', 'server:*:gmodToDiscordFilter']) {
+  for (const pattern of [
+    `auth:discord:retry:${privacySubject('discord', identity.discordID)}:*`,
+    `auth:discord:retry:${identity.discordID}:*`,
+    'server:*:logsTrigger*',
+    'server:*:gmodToDiscordFilter',
+  ]) {
     let cursor = '0'
     do {
       const [next, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 250)
@@ -162,7 +171,8 @@ export async function eraseCachedData(identity: ErasureIdentity, fence?: Erasure
       cursor = next
     } while (cursor !== '0')
   }
-  // WebSocket instances subscribe and close authenticated sessions for this subject.
+  // Keep active refresh leases fenced until their owners finish or their short TTL expires.
+  // WebSocket instances close sessions belonging to this subject or delegated by this actor.
   await redis.publish(PRIVACY_REVOCATION_CHANNEL, JSON.stringify(identity))
 }
 
@@ -173,7 +183,7 @@ export async function eraseSqlData(identity: ErasureIdentity, fence?: ErasureFen
       // The lease row stays locked until this transaction commits. A stale worker cannot erase
       // a profile recreated after another worker completed and OAuth explicitly reactivated it.
       await ensureLease(fence, tx)
-      await tx.gm_panelToken.deleteMany({ where: { discordID } })
+      await tx.gm_panelToken.deleteMany({ where: { OR: [{ discordID }, { actorDiscordID: discordID }] } })
       await tx.gm_discordToken.deleteMany({ where: { discordID } })
       await tx.gm_guild_member.deleteMany({ where: { user_id: discordID } })
       await tx.gm_users_transfers.deleteMany({

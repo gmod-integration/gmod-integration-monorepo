@@ -43,6 +43,9 @@ export const ConfigSchema = z.object({
 
   DISCORD_CLIENT_ID: z.string().min(1),
   DISCORD_CLIENT_SECRET: z.string().min(1),
+  AUTH_TOKEN_ENCRYPTION_KEY: z.string().trim().min(32).optional(),
+  AUTH_SESSION_ABSOLUTE_TTL_SECONDS: z.coerce.number().int().min(300).max(31536000).default(2592000),
+  AUTH_SESSION_IDLE_TTL_SECONDS: z.coerce.number().int().min(60).max(31536000).default(604800),
   PRIVACY_HASH_SECRET: strongSecretSchema('PRIVACY_HASH_SECRET').optional(),
   DISCORD_GUILD_ID: z.string().min(1),
   DISCORD_BOT_TOKEN: z.string().min(1),

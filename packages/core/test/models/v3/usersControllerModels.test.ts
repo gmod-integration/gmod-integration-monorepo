@@ -1,6 +1,15 @@
 import type * as AccessDomain from '@gmod/domain-access/index.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const listSessionsMock = vi.fn()
+const resolveSessionMock = vi.fn()
+const revokeSessionMock = vi.fn()
+vi.mock('@gmod/domain-auth/authSessions.js', () => ({
+  listApplicationSessions: listSessionsMock,
+  resolveApplicationSession: resolveSessionMock,
+  revokeApplicationSession: revokeSessionMock,
+}))
+
 const accessMock = vi.hoisted(() => vi.fn())
 vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
   ...(await importOriginal<typeof AccessDomain>()),
@@ -105,6 +114,9 @@ const {
 } = await import('../../../src/models/v3/usersControllerModels.js')
 
 function resetAllMocks() {
+  listSessionsMock.mockReset()
+  resolveSessionMock.mockReset()
+  revokeSessionMock.mockReset()
   getUserFromDiscordIDMock.mockReset()
   getUserFromSteamID64Mock.mockReset()
   generateTokenMock.mockClear()
@@ -168,44 +180,46 @@ describe('usersControllerModels', () => {
   })
 
   describe('processGetUserSessions', () => {
-    it('returns the list of non-revoked sessions', async () => {
-      prismaMock.gm_panelToken.findMany.mockResolvedValueOnce([{ id: 's1' }])
-      const result = await processGetUserSessions('d1')
-      expect(result).toEqual({ status: 200, body: [{ id: 's1' }] })
+    it('returns only safe session DTOs and identifies the exact current device', async () => {
+      listSessionsMock.mockResolvedValueOnce([{ id: 'session-A', isCurrent: true }])
+      const result = await processGetUserSessions('d1', 'session-A')
+      expect(listSessionsMock).toHaveBeenCalledWith('d1', 'session-A')
+      expect(result).toEqual({ status: 200, body: [{ id: 'session-A', isCurrent: true }] })
+      expect(JSON.stringify(result.body)).not.toContain('accessToken')
     })
   })
 
   describe('processDeleteUserSession', () => {
-    it('returns 404 when the session is not found', async () => {
-      prismaMock.gm_panelToken.findFirst.mockResolvedValueOnce(null)
-      const result = await processDeleteUserSession('d1', 's1')
-      expect(result.status).toBe(404)
+    it('does not revoke a missing session or a session owned by another account', async () => {
+      revokeSessionMock.mockResolvedValueOnce(false)
+      expect((await processDeleteUserSession('d1', 'session-other')).status).toBe(404)
+      expect(revokeSessionMock).toHaveBeenCalledWith('session-other', 'd1')
     })
-
-    it('revokes and returns the session', async () => {
-      prismaMock.gm_panelToken.findFirst.mockResolvedValueOnce({ id: 's1' })
-      const result = await processDeleteUserSession('d1', 's1')
-      expect(prismaMock.gm_panelToken.update).toHaveBeenCalledWith({
-        where: { id: 's1' },
-        data: { revoke: true },
-      })
-      expect(result).toEqual({ status: 200, body: { id: 's1' } })
+    it('uses shared durable revocation and returns no original credential', async () => {
+      revokeSessionMock.mockResolvedValueOnce(true)
+      expect(await processDeleteUserSession('d1', 'session-A')).toEqual({ status: 200, body: { revoked: true } })
+      expect(revokeSessionMock).toHaveBeenCalledWith('session-A', 'd1')
+      expect(prismaMock.gm_panelToken.update).not.toHaveBeenCalled()
     })
   })
 
   describe('processLogOut', () => {
-    it('revokes the session token when found', async () => {
-      prismaMock.gm_panelToken.findFirst.mockResolvedValueOnce({ id: 's1' })
-      const result = await processLogOut('d1', 'tok1')
-      expect(prismaMock.gm_panelToken.update).toHaveBeenCalledWith({ where: { id: 's1' }, data: { revoke: true } })
-      expect(result).toEqual({ status: 200, body: { id: 's1' } })
+    it('revokes session A presented by the caller rather than a more recent B', async () => {
+      resolveSessionMock.mockResolvedValueOnce({ id: 'session-A', discordID: 'd1' })
+      expect(await processLogOut('d1', 'token-A')).toEqual({ status: 200, body: { revoked: true } })
+      expect(resolveSessionMock).toHaveBeenCalledWith('token-A')
+      expect(revokeSessionMock).toHaveBeenCalledWith('session-A', 'd1')
+      expect(prismaMock.gm_panelToken.findFirst).not.toHaveBeenCalled()
     })
-
-    it('returns an empty body when no session token is found', async () => {
-      prismaMock.gm_panelToken.findFirst.mockResolvedValueOnce(null)
-      const result = await processLogOut('d1', 'tok1')
-      expect(prismaMock.gm_panelToken.update).not.toHaveBeenCalled()
-      expect(result).toEqual({ status: 200, body: {} })
+    it('is idempotent when the credential is already expired or revoked', async () => {
+      resolveSessionMock.mockResolvedValueOnce(null)
+      expect(await processLogOut('d1', 'old-token')).toEqual({ status: 200, body: { revoked: true } })
+      expect(revokeSessionMock).not.toHaveBeenCalled()
+    })
+    it('cannot revoke another account session by passing a different discord ID', async () => {
+      resolveSessionMock.mockResolvedValueOnce({ id: 'session-B', discordID: 'other' })
+      expect(await processLogOut('d1', 'token-B')).toEqual({ status: 200, body: { revoked: true } })
+      expect(revokeSessionMock).not.toHaveBeenCalled()
     })
   })
 
@@ -603,6 +617,49 @@ describe('usersControllerModels', () => {
   })
 
   describe('processPostGmodPurchase', () => {
+    it('refuses to link a revoked purchase without changing its community or rights', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ steamID64: '765', guild: 'g2', revoke: true })
+      expect(await processPostGmodPurchase('g1', 'd1', {}, {})).toEqual({
+        status: 403,
+        body: { error: 'Purchase revoked' },
+      })
+      expect(prismaMock.gm_gmodstore_purchases.update).not.toHaveBeenCalled()
+      expect(redisMock.del).not.toHaveBeenCalled()
+      expect(enqueueDiscordGuildReloadBotInstanceMock).not.toHaveBeenCalled()
+    })
+
+    it('transfers a purchase and invalidates both communities despite transient cache and old-bot reload failures', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ steamID64: '765', guild: 'g2' })
+      prismaMock.gm_gmodstore_purchases.update.mockResolvedValueOnce({ steamID64: '765', guild: 'g1' })
+      redisMock.del.mockRejectedValue(new Error('Redis temporarily unavailable'))
+      enqueueDiscordGuildReloadBotInstanceMock.mockRejectedValueOnce(new Error('Discord worker unavailable'))
+      const guild = { getBotClientInfo: vi.fn().mockResolvedValueOnce({ id: 'new-bot' }) }
+      const operator = { id: 'operator' }
+      expect(await processPostGmodPurchase('g1', 'd1', guild, { user: operator })).toEqual({
+        status: 200,
+        body: { id: 'new-bot' },
+      })
+      expect(prismaMock.gm_gmodstore_purchases.update).toHaveBeenCalledWith({
+        where: { steamID64: '765' },
+        data: { guild: 'g1' },
+      })
+      expect(redisMock.del).toHaveBeenCalledTimes(2)
+      expect(redisMock.del).toHaveBeenCalledWith(expect.any(String), 'guild:g2:premium')
+      expect(redisMock.del).toHaveBeenCalledWith(expect.any(String), 'guild:g1:premium')
+      expect(enqueueDiscordGuildReloadBotInstanceMock).toHaveBeenCalledExactlyOnceWith('g2')
+      expect(guild.getBotClientInfo).toHaveBeenCalledWith(operator)
+    })
+
+    it('invalidates one community without reloading an old bot when reapplying the same purchase', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ steamID64: '765', guild: 'g1' })
+      const guild = { getBotClientInfo: vi.fn().mockResolvedValueOnce({ id: 'same-bot' }) }
+      expect(await processPostGmodPurchase('g1', 'd1', guild, { user: {} })).toMatchObject({ status: 200 })
+      expect(redisMock.del).toHaveBeenCalledExactlyOnceWith(expect.any(String), 'guild:g1:premium')
+      expect(enqueueDiscordGuildReloadBotInstanceMock).not.toHaveBeenCalled()
+    })
     it('returns 404 when the user is not linked to steam', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce(null)
       const result = await processPostGmodPurchase('g1', 'd1', {}, {})
@@ -645,6 +702,24 @@ describe('usersControllerModels', () => {
   })
 
   describe('processDeleteGmodPurchase', () => {
+    it('removes the purchase credentials and reloads the bot even if cached rights cannot be invalidated', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ steamID64: '765', guild: 'g1' })
+      const cleared = { steamID64: '765', guild: '', token: '' }
+      prismaMock.gm_gmodstore_purchases.update.mockResolvedValueOnce(cleared)
+      redisMock.del.mockRejectedValueOnce(new Error('Redis temporarily unavailable'))
+      const guild = {
+        mainBotOnGuild: vi.fn().mockResolvedValueOnce(true),
+        reloadBotInstance: vi.fn().mockResolvedValueOnce(undefined),
+      }
+      expect(await processDeleteGmodPurchase('d1', guild)).toEqual({ status: 200, body: cleared })
+      expect(prismaMock.gm_gmodstore_purchases.update).toHaveBeenCalledWith({
+        where: { steamID64: '765' },
+        data: { guild: '', token: '' },
+      })
+      expect(redisMock.del).toHaveBeenCalledWith(expect.any(String), 'guild:g1:premium')
+      expect(guild.reloadBotInstance).toHaveBeenCalledOnce()
+    })
     it('returns 400 when the main bot is not on the guild', async () => {
       const guild = { mainBotOnGuild: vi.fn().mockResolvedValueOnce(false) }
       const result = await processDeleteGmodPurchase('d1', guild)
@@ -714,11 +789,13 @@ describe('usersControllerModels', () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
       prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ guild: 'g1', steamID64: '765' })
       prismaMock.gm_gmodstore_purchases.update.mockResolvedValueOnce({ guild: '', steamID64: '765' })
+      redisMock.del.mockRejectedValueOnce(new Error('Redis temporarily unavailable'))
       enqueueDiscordGuildReloadBotInstanceMock.mockRejectedValueOnce(new Error('discord down'))
 
       const result = await processDeleteUserGmodPurchase('d1', 'g1')
 
       expect(enqueueDiscordGuildReloadBotInstanceMock).toHaveBeenCalledWith('g1')
+      expect(redisMock.del).toHaveBeenCalledWith(expect.any(String), 'guild:g1:premium')
       expect(result).toEqual({ status: 200, body: { guild: '', steamID64: '765' } })
     })
   })
@@ -839,6 +916,16 @@ describe('usersControllerModels', () => {
   })
 
   describe('processGetServerLogs', () => {
+    it('refuses to read history for a server that no longer resolves to a community', async () => {
+      getServerFromIDMock.mockResolvedValueOnce(null)
+      expect(await processGetServerLogs('missing-server', {})).toEqual({
+        status: 404,
+        body: { error: 'Server not found' },
+      })
+      expect(accessMock).not.toHaveBeenCalled()
+      expect(getTotalLogsByServerMock).not.toHaveBeenCalled()
+      expect(getLogsByServerMock).not.toHaveBeenCalled()
+    })
     it('rejects an invalid sort column', async () => {
       const result = await processGetServerLogs('s1', { sort: 'not_allowed' })
       expect(result.status).toBe(400)

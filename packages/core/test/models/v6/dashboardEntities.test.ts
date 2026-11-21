@@ -124,6 +124,15 @@ describe('complete and historical entity creation share access policy', () => {
     expect(tables.gm_guild_verify_role.create).not.toHaveBeenCalled()
     expect(lock).toHaveBeenCalledWith({ where: { guild: 'guild' }, data: { updatedAt: expect.any(Date) } })
   })
+  it('rejects an incomplete verification rule before checking entitlements or starting a write', async () => {
+    expect(await createDashboardVerificationRole(guild, 'role', { isGiveRole: 'yes' })).toEqual({
+      status: 400,
+      body: { error: 'invalid_values' },
+    })
+    expect(accessMock).not.toHaveBeenCalled()
+    expect(transaction).not.toHaveBeenCalled()
+    expect(tables.gm_guild_verify_role.create).not.toHaveBeenCalled()
+  })
   it.each([false, true])('applies guild link quota before insertion for legacy=%s', async (legacy) => {
     accessMock.mockResolvedValue(snapshot())
     tables.gm_server_links.count.mockResolvedValueOnce(2)

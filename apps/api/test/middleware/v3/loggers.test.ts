@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { EventEmitter } from 'node:events'
 
 const gmLogMock = vi.fn()
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
@@ -27,6 +28,27 @@ describe('loggerMiddleware', () => {
     loggerMiddleware(makeReq(), {} as any, next)
     expect(gmLogMock).toHaveBeenCalledWith('api', expect.stringContaining('Method: GET'))
     expect(next).toHaveBeenCalled()
+  })
+
+  it('records the actor and subject resolved after middleware for delegated actions without secrets', () => {
+    const req = makeReq({ method: 'PUT', url: '/v6/guilds/123/settings?token=private', body: { token: 'private' } })
+    const res = Object.assign(new EventEmitter(), { statusCode: 200 })
+    loggerMiddleware(req, res as any, vi.fn())
+    req.authSession = { id: 'delegated-session', discordID: 'target', actorDiscordID: 'operator', tokenHash: 'private' }
+    res.emit('finish')
+    expect(gmLogMock).toHaveBeenLastCalledWith(
+      'auth',
+      JSON.stringify({
+        action: 'delegated_request',
+        actor: 'operator',
+        subject: 'target',
+        sessionID: 'delegated-session',
+        method: 'PUT',
+        path: '/v6/guilds/123/settings',
+        status: 200,
+      }),
+    )
+    expect(gmLogMock.mock.calls.at(-1)?.[1]).not.toContain('private')
   })
 
   it('prefers the cf-connecting-ip header over req.ip', () => {

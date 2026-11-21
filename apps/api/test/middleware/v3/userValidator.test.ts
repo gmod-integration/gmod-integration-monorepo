@@ -1,5 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const resolveRequestSessionMock = vi.fn()
+const assertSessionRequestMock = vi.fn()
+const readSessionCredentialMock = vi.fn()
+vi.mock('@gmod/domain-auth/authSessions.js', () => ({
+  resolveRequestSession: resolveRequestSessionMock,
+  assertSessionRequest: assertSessionRequestMock,
+  readSessionCredential: readSessionCredentialMock,
+}))
+const exactSession = { id: 'session-a', discordID: 'd1' }
+
 const badArgumentMock = vi.fn()
 vi.mock('@gmod/core/utils/tools.js', () => ({ badArgument: badArgumentMock }))
 
@@ -36,6 +46,11 @@ function makeRes() {
 }
 
 function resetAllMocks() {
+  resolveRequestSessionMock
+    .mockReset()
+    .mockImplementation(async (req: any) => (req.headers.authorization || req.headers.cookie ? exactSession : null))
+  assertSessionRequestMock.mockReset()
+  readSessionCredentialMock.mockReset().mockReturnValue('tok1')
   badArgumentMock.mockReset().mockReturnValue(false)
   getPanelUserFromDiscordIDMock.mockReset()
   getServerFromIDMock.mockReset()
@@ -49,6 +64,15 @@ describe('userValidator', () => {
   })
 
   describe('userValidator', () => {
+    it('passes an absent compatibility credential as undefined after exact session resolution', async () => {
+      readSessionCredentialMock.mockReturnValue(undefined)
+      getPanelUserFromDiscordIDMock.mockResolvedValue({ discordID: 'd1' })
+      const req = { params: { discordID: 'd1' }, headers: { authorization: 'Bearer tok1' } } as any
+      const next = vi.fn()
+      await userValidator(req, makeRes(), next)
+      expect(getPanelUserFromDiscordIDMock).toHaveBeenCalledWith('d1', undefined, exactSession)
+      expect(next).toHaveBeenCalledWith()
+    })
     function makeReq(overrides: Record<string, any> = {}) {
       return { params: { discordID: 'd1' }, headers: { authorization: 'Bearer tok1' }, ...overrides } as any
     }
@@ -73,18 +97,42 @@ describe('userValidator', () => {
       expect(res.status).toHaveBeenCalledWith(401)
     })
 
-    it('returns 404 when there is no panel user', async () => {
+    it('returns 401 when there is no panel user', async () => {
       getPanelUserFromDiscordIDMock.mockResolvedValueOnce(null)
       const res = makeRes()
       await userValidator(makeReq(), res, vi.fn())
-      expect(res.status).toHaveBeenCalledWith(404)
+      expect(res.status).toHaveBeenCalledWith(401)
     })
 
-    it('returns 401 when the token is not allowed', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ authAllowed: vi.fn().mockResolvedValueOnce(false) })
+    it('returns 401 when the presented session belongs to another account', async () => {
+      resolveRequestSessionMock.mockResolvedValueOnce({ id: 'other-session', discordID: 'other-user' })
       const res = makeRes()
       await userValidator(makeReq(), res, vi.fn())
       expect(res.status).toHaveBeenCalledWith(401)
+      expect(getPanelUserFromDiscordIDMock).not.toHaveBeenCalled()
+    })
+
+    it('accepts a cookie session and validates the mutation protections before dispatch', async () => {
+      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ discordID: 'd1' })
+      const req = makeReq({ method: 'POST', headers: { cookie: 'gmi_session=session-cookie' } })
+      readSessionCredentialMock.mockReturnValueOnce('session-cookie')
+      const next = vi.fn()
+      await userValidator(req, makeRes(), next)
+      expect(assertSessionRequestMock).toHaveBeenCalledWith(req, exactSession)
+      expect(getPanelUserFromDiscordIDMock).toHaveBeenCalledWith('d1', 'session-cookie', exactSession)
+      expect(req.authSession).toBe(exactSession)
+      expect(next).toHaveBeenCalledWith()
+    })
+
+    it('does not dispatch a cookie mutation rejected by CSRF validation', async () => {
+      const rejected = Object.assign(new Error('CSRF rejected'), { status: 403 })
+      assertSessionRequestMock.mockImplementationOnce(() => {
+        throw rejected
+      })
+      const next = vi.fn()
+      await userValidator(makeReq(), makeRes(), next)
+      expect(next).toHaveBeenCalledWith(rejected)
+      expect(getPanelUserFromDiscordIDMock).not.toHaveBeenCalled()
     })
 
     it('attaches the panel user and calls next on success', async () => {
@@ -96,6 +144,8 @@ describe('userValidator', () => {
       await userValidator(req, makeRes(), next)
 
       expect(req.panelUser).toBe(panelUser)
+      expect(req.authSession).toBe(exactSession)
+      expect(getPanelUserFromDiscordIDMock).toHaveBeenCalledWith('d1', 'tok1', exactSession)
       expect(next).toHaveBeenCalledWith()
     })
 

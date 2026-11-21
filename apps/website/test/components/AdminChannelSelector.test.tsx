@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../testUtils.js'
+import type * as API from '../../src/utils/api.js'
 
 vi.mock('../../src/utils/api.js', async (importActual) => {
-  const actual = await importActual<typeof import('../../src/utils/api.js')>()
+  const actual = await importActual<typeof API>()
   return {
     ...actual,
     fetchAPI: vi.fn(() => Promise.resolve({ ok: true, json: async () => [] })),
@@ -54,6 +55,23 @@ describe('components/AdminChannelSelector.tsx', () => {
   })
 
   describe('ChannelSelector', () => {
+    it('sorts channels within a category by position and reports the selected channel ID', async () => {
+      guildChannelsMutate([
+        CATEGORY,
+        { ...CHANNEL_IN_CATEGORY, position: 20 },
+        { ...CHANNEL_IN_CATEGORY, id: 'earlier', name: 'Earlier channel', position: 2 },
+      ])
+      const callback = vi.fn()
+      const { container } = renderWithProviders(() => <ChannelSelector callback={callback} />)
+      const group = container.querySelector('optgroup')!
+      expect(Array.from(group.querySelectorAll('option')).map((option) => option.textContent)).toEqual([
+        'Earlier channel',
+        'in-category',
+      ])
+      await fireEvent.change(screen.getByRole('combobox'), { target: { value: 'earlier' } })
+      expect(callback).toHaveBeenCalledExactlyOnceWith('earlier')
+    })
+
     it('groups channels with a parent under their category optgroup, and drops empty categories', () => {
       const { container } = renderWithProviders(() => <ChannelSelector />)
       const optgroups = container.querySelectorAll('optgroup')

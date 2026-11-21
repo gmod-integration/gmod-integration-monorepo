@@ -39,13 +39,40 @@ Controllers should stay thin (rule of thumb: extract past ~10 lines, see
 [best-practices.md](../best-practices.md)); the actual server/guild/user logic lives in `@gmod/domain-*`
 classes, not in the controller.
 
+## Dashboard authentication
+
+`/v6/auth` owns application sessions independently of Discord access-token expiry:
+
+| Route                      | Contract                                                                                |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `GET /session`             | Authoritative user/rank, session deadlines and CSRF token; no credential or Set-Cookie. |
+| `POST /legacy-session`     | Strict JSON `{token}` exchanges the owner's valid legacy credential once.               |
+| `POST /logout`             | Revokes the presented session and delegates, clears cookies; idempotent.                |
+| `GET /sessions`            | Safe device/date metadata and `isCurrent`, without credentials.                         |
+| `DELETE /sessions/:id`     | Revokes only a session owned by the authenticated account.                              |
+| `POST /ws-ticket`          | Issues a single-use ticket valid for at most 30 seconds.                                |
+| `POST /impersonations`     | Developer-only `{discordID}` creates a separate, audited delegate session.              |
+| `POST /impersonations/end` | Revokes the delegate and restores the bound actor cookie.                               |
+
+Cookie mutations require `X-CSRF-Token`. CORS allows credentials only for the configured website/API
+origins (development also permits localhost origins). All auth responses use `Cache-Control: no-store`.
+Historical Bearer clients use the same exact-session resolver; a database token digest cannot itself
+authenticate. Discord-dependent actions return `503 provider_unavailable` for temporary provider failure
+or `403 discord_reauth_required` for a rejected grant. They do not revoke the application session.
+
+The v3 Discord login callback uses browser-bound, one-use state and PKCE S256, sets the HttpOnly session
+cookie and redirects without a credential in the URL. API startup owns the bounded provider refresh
+worker; shutdown drains it before closing storage. See [domain-auth](../packages/domain-auth.md) for
+lifetimes, legacy migration, encryption and the required coordinated deployment procedure.
+
 ## Account erasure under v6
 
 `POST /v6/account/erasure-requests` accepts a strict JSON body with `confirmation: "DELETE"`,
 `idempotencyKey` (UUID) and `receipt` (64 hexadecimal characters). Generate and retain both random values
 before sending the request: the public request ID equals the idempotency key, while the receipt is its
 separate recovery credential. The route derives the Discord identity from exactly one valid, unrevoked
-panel session matching the Bearer token, then revalidates that session. It accepts no client-selected
+panel session matching the cookie or explicit Bearer credential, then revalidates that session. Cookie
+mutations require CSRF protection. It accepts no client-selected
 account identifier and checks the configured website origin when an Origin header is present.
 
 A durable accepted request returns 202 with `requestId`, `status`, `requestedAt`, `completedAt` and the
@@ -61,10 +88,9 @@ use `Cache-Control: no-store` and versioned errors shaped as `{error: {code, mes
 and credentials are excluded. Request logging redacts receipts, including rejected query/body values.
 The domain service and durable worker live in `@gmod/domain-compliance/accountErasure.js`.
 
-The legacy impersonation screen copies an existing target-account session token without recording a
-server-side impersonation marker. The v6 API cannot distinguish such a copied token from that account's
-own session. The account UI blocks erasure while its impersonation state is active; stronger assurance
-requires a separate reauthentication flow and server-tracked v6 sessions.
+Server-tracked delegate sessions cannot request erasure. Acceptance revokes sessions belonging to the
+subject and delegate sessions created by that actor, then removes auth profile and provider retry caches.
+The erasure barrier is checked before and after authentication writes to prevent credential recreation.
 
 `apps/api/test/routes/v6/_v6Routes.test.ts` mounts the real versioned Express router with mocked database
 and domain boundaries. It verifies session ownership, absent/revoked/ambiguous sessions, strict input,
@@ -104,7 +130,7 @@ synchronization directions, nickname format, chat preferences and log content. U
 types return 400. Values must fit their existing storage limits. Premium requirements are enforced before
 writing, including when a request mixes restricted and unrestricted settings.
 
-The dashboard session middleware resolves exactly one valid Bearer session, revalidates authentication,
+The dashboard session middleware resolves exactly one valid cookie or explicit Bearer session, revalidates authentication,
 checks community administration and confirms that the requested server belongs to that community.
 An Origin header must match the configured website. Responses use `Cache-Control: no-store`.
 

@@ -1,0 +1,18 @@
+{
+  "name": "@gmod/domain-auth",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./index.js": "./src/index.ts",
+    "./*.js": "./src/*.ts"
+  },
+  "dependencies": {
+    "@gmod/config": "workspace:*",
+    "@gmod/infra-prisma": "workspace:*",
+    "@gmod/infra-redis": "workspace:*",
+    "@gmod/shared": "workspace:*",
+    "zod": "^3.25.76"
+  }
+}

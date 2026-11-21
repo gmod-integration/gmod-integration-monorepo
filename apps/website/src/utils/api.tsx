@@ -1,6 +1,7 @@
 import { refreshAccess } from './accessEvents.js'
 import { WEBSITE_CONFIG } from '../config'
 import { getDiscordUser, getGuild, getServer } from './utils.js'
+import { authenticatedFetch, authSession } from './authClient.js'
 
 export const Api = 'v3'
 const apiBaseUrl = WEBSITE_CONFIG.apiUrl
@@ -25,7 +26,7 @@ export function getUrlWithActualParams(url: string) {
     }
   }
   const parameters = {
-    discordID: localStorage.getItem('discordID'),
+    discordID: authSession()?.user.id || localStorage.getItem('discordID') || getDiscordUser().id,
     serverID: routeID(match?.[2]) ?? getServer().id,
     userID: getDiscordUser().id,
     guildID: routeID(match?.[1]) ?? getGuild().id,
@@ -38,11 +39,10 @@ export function getUrlWithActualParams(url: string) {
 
 export async function fetchAPI(endpoint: string, method: string, body?: unknown) {
   endpoint = getUrlWithActualParams(endpoint)
-  const response = await fetch(`${API_FQDN}${endpoint}`, {
+  const response = await authenticatedFetch(`${endpoint.startsWith('/v6/') ? apiBaseUrl : API_FQDN}${endpoint}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
     },
     body: JSON.stringify(body),
   })

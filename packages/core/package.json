@@ -34,6 +34,7 @@
     "unicode-emoji": "^2.6.0",
     "@gmod/shared": "workspace:*",
     "@gmod/schema": "workspace:*",
-    "@gmod/domain-access": "workspace:*"
+    "@gmod/domain-access": "workspace:*",
+    "@gmod/domain-auth": "workspace:*"
   }
 }

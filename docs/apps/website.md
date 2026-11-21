@@ -90,7 +90,9 @@ Account data management includes a confirmed v6 erasure request and receipt-only
 The browser generates and stores its request ID and recovery credential before submission, so a lost
 acknowledgement can be recovered after session revocation. `pending`/`running`/`retry` do not display a
 success message; only `completed` does. Polling is bounded and can be resumed explicitly. Confirmed
-acceptance clears account data and sockets while retaining preferences and the recovery receipt.
+acceptance clears account data and sockets while retaining preferences and the recovery receipt. A
+non-secret storage event asks other tabs to revalidate their cookie session, including tabs without a
+live WebSocket. Delegated sessions cannot request account erasure.
 See [domain-compliance](../packages/domain-compliance.md) for cleanup scope, retention and deployment.
 
 The legal documents at `/legal/terms` and `/legal/privacy` follow the selected UI language for French,
@@ -107,10 +109,44 @@ the published text alone does not establish GDPR compliance.
 
 ## Auth model
 
-Dashboard auth is Discord-OAuth based (`PanelUser`, see
-[docs/packages/domain-user.md](../packages/domain-user.md)). The site opens a WebSocket to `apps/websocket`
-using `discordID` + token, scoped server-side to the guilds/servers that user administers — see
-[docs/apps/websocket.md](./websocket.md).
+Discord OAuth creates an application session held in an HttpOnly cookie. `AuthProvider` bootstraps
+identity, session deadlines, the optional delegation actor and a CSRF token from `GET /v6/auth/session`.
+The server snapshot supplies login/admin state; cached profile or selection data cannot authenticate
+the browser. `Header` displays this state and does not run a separate authentication lifecycle.
+
+Authenticated HTTP requests go through `utils/authClient.ts`: `authenticatedFetch` sends cookies,
+adds `X-CSRF-Token` to mutations and coordinates session recovery across v3/v6 callers. A failed GET
+can retry once after session validation; mutations are never replayed automatically. Only a definitive
+session 401 clears identity. Network errors and 503 responses retain the session and mounted editors;
+permission 403 responses do not sign out. `discord_reauth_required` offers Discord OAuth in a new tab
+so the current draft stays mounted. A denied OAuth callback requires an explicit retry.
+
+The OAuth callback returns to `/login` without credentials in the URL. Historical URL credentials are
+removed immediately and ignored. A pre-existing localStorage token can be converted once through
+`POST /v6/auth/legacy-session`; successful conversion removes the durable token and old expiry fields.
+A rejected conversion checks the cookie again before signing out, covering another tab completing the
+conversion first. New application requests never send a durable Bearer token.
+
+Login, logout, delegation and accepted account erasure publish a non-secret `gmi:auth-event` storage
+notification. Other tabs reread their cookie rather than trusting an identity in the event. Superseded
+requests are aborted and stale acknowledgements are ignored. Focus, visibility, connectivity and the
+session deadline also trigger validation. Logout reports when server revocation could not be confirmed.
+The account page lists and revokes session IDs without exposing credentials; delegation switches the
+cookie session and uses the server's actor marker when returning to the operator account.
+When a delegated session expires, a valid operator cookie can return a 401 recovery challenge with
+`actor_session_available` and an operator CSRF token, without exposing identity. The shared session
+client submits that challenge to `POST /v6/auth/impersonations/end` and adopts only its validated
+session DTO. A revoked operator signs out; a temporary recovery failure keeps the editor mounted and
+allows retry. Successful recovery notifies other tabs about the changed cookie.
+
+Each WebSocket connection requests a fresh short-lived ticket through the CSRF-protected
+`POST /v6/auth/ws-ticket`. The URL carries the ticket and selected scope, with no durable token or
+Discord identity. Reconnect uses bounded exponential backoff with jitter, obtains a new ticket and
+rechecks session revocation. Discord authorization failures stop retries until authorization is
+restored. See [apps/websocket](./websocket.md) for the server-side scope checks.
+
+The account-erasure receipt is a separate recovery credential: its receipt-only status request retains
+its own Bearer header after the application session is revoked.
 
 ## Run it
 

@@ -20,6 +20,7 @@
     "@gmod/shared": "workspace:*",
     "@gmod/domain-guild": "workspace:*",
     "@gmod/infra-prisma": "workspace:*",
-    "@gmod/domain-access": "workspace:*"
+    "@gmod/domain-access": "workspace:*",
+    "@gmod/domain-auth": "workspace:*"
   }
 }

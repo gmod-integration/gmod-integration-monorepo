@@ -17,8 +17,10 @@ import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import { gracefulShutdownMongo } from '@gmod/core/database/gm_server_logs.js'
 import '@gmod/infra-bullmq'
 import { startAccountErasureWorker } from '@gmod/domain-compliance/accountErasure.js'
+import { startDiscordTokenRefreshWorker } from '@gmod/domain-auth/discordOAuth.js'
 
 let stopAccountErasureWorker: (() => void) | undefined
+let stopDiscordTokenRefreshWorker: (() => void) | undefined
 
 // Express
 export const app = express()
@@ -63,6 +65,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // signature, so `callback(null, true)` now genuinely reflects the request's own Origin header.
 app.use(
   cors({
+    credentials: true,
     origin: (origin: string | undefined, callback: any) => {
       if (!origin) {
         callback(null, true)
@@ -81,10 +84,9 @@ app.use(
       const isWebOrigin = ['http:', 'https:'].includes(parsedOrigin.protocol) && parsedOrigin.origin === origin
       const isConfiguredOrigin = allowedCorsOrigins.has(origin)
       const hostname = parsedOrigin.hostname
-      const isOfficialDomain = hostname === 'gmod-integration.com' || hostname.endsWith('.gmod-integration.com')
       const isLocalOrigin = ['localhost', '127.0.0.1', '[::1]'].includes(hostname)
 
-      if (isWebOrigin && (isOfficialDomain || isConfiguredOrigin || (ConfigServer.dev && isLocalOrigin))) {
+      if (isWebOrigin && (isConfiguredOrigin || (ConfigServer.dev && isLocalOrigin))) {
         callback(null, true)
       } else {
         callback(new Error('Not allowed by CORS'))
@@ -158,7 +160,7 @@ app.use(loggerMiddleware)
 app.use(mainRoutes)
 
 // 404
-app.all(/.*/, (req: Request, res: Response, next: NextFunction) => {
+app.all(/.*/, (req: Request, res: Response, _next: NextFunction) => {
   res.status(404).json({ error: '404 Not Found' })
 })
 
@@ -172,6 +174,7 @@ export async function gracefulShutdown() {
   gmLog('shutdown', 'Gracefully shutting down...')
   inShutdown = true
   stopAccountErasureWorker?.()
+  await stopDiscordTokenRefreshWorker?.()
   // await Sentry.flush(2000);
   await gracefulShutdownRedis()
   await gracefulShutdownPrisma()
@@ -182,6 +185,7 @@ export async function gracefulShutdown() {
 export async function main() {
   await connectPrisma()
   if (ConfigPrivacy.hashSecret) stopAccountErasureWorker = startAccountErasureWorker()
+  stopDiscordTokenRefreshWorker = startDiscordTokenRefreshWorker()
 
   // Listen
   app.listen(ConfigServer.ports.api, () => {

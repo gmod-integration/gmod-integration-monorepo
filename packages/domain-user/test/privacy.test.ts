@@ -76,6 +76,21 @@ describe('privacy suppression', () => {
     }
   })
 
+  it('keeps the legacy subject fallback usable before a dedicated privacy key is configured', () => {
+    const configured = privacySubject('discord', 'd1')
+    const secret = ConfigPrivacy.hashSecret
+    try {
+      ConfigPrivacy.hashSecret = undefined
+      const legacy = privacySubject('discord', 'd1')
+      expect(legacy).toMatch(/^[0-9a-f]{64}$/)
+      expect(legacy).not.toBe(configured)
+      expect(privacySubject('discord', ' d1 ')).toBe(legacy)
+      expect(privacySubject('steam', 'd1')).not.toBe(legacy)
+    } finally {
+      ConfigPrivacy.hashSecret = secret
+    }
+  })
+
   it('looks up either identity and only active suppression markers', async () => {
     erasure.findFirst.mockResolvedValue({ id: 'request' })
     await expect(isErasureBlocked('d1', '765')).resolves.toBe(true)
@@ -130,6 +145,22 @@ describe('privacy suppression', () => {
       },
       select: { steamSubject: true },
     })
+  })
+
+  it('does not query suppression state for an empty or blank-only player batch', async () => {
+    await expect(getErasedSteamIDs([])).resolves.toEqual(new Set())
+    await expect(getErasedSteamIDs(['', ''])).resolves.toEqual(new Set())
+    expect(erasure.findMany).not.toHaveBeenCalled()
+  })
+
+  it('maps only requested identities even when legacy rows have no Steam subject or an unrelated subject', async () => {
+    erasure.findMany.mockResolvedValue([
+      { steamSubject: null },
+      { steamSubject: privacySubject('steam', 'not-in-this-batch') },
+      { steamSubject: privacySubject('steam', '765-erased') },
+    ])
+    await expect(getErasedSteamIDs(['765-erased', '765-other'])).resolves.toEqual(new Set(['765-erased']))
+    expect(erasure.findMany).toHaveBeenCalledTimes(1)
   })
 })
 

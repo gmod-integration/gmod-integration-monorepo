@@ -14,12 +14,35 @@ vi.mock('@gmod/domain-user/privacy.js', () => ({
   },
   PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
 }))
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const gmLogMock = vi.fn()
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
-vi.mock('@gmod/config', () => ({ ConfigServer: { ports: { websocket: 9999 } } }))
+vi.mock('@gmod/config', () => ({ ConfigServer: { ports: { websocket: 9999 }, websiteUrl: 'http://localhost:3000' } }))
+
+const consumeTicketMock = vi.fn()
+const validateSessionMock = vi.fn()
+vi.mock('@gmod/domain-auth/authSessions.js', () => ({
+  AUTH_SESSION_REVOCATION_CHANNEL: 'gmi:auth:session-revoked',
+  assertTrustedOrigin: (req: any) => {
+    if (req.headers.origin && req.headers.origin !== 'http://localhost:3000') throw new Error('Foreign origin')
+  },
+  consumeWebSocketTicket: consumeTicketMock,
+  validateApplicationSession: validateSessionMock,
+}))
+const sessions = new Map<string, any>()
+const tickets = new Map<string, any>()
+const openedSockets: any[] = []
+const session = (id: string, discordID = 'd1') => ({
+  id,
+  discordID,
+  tokenHash: 'hash-' + id,
+  createdAt: new Date(),
+  lastSeenAt: new Date(),
+  expiresAt: new Date(Date.now() + 60_000),
+  absoluteExpiresAt: new Date(Date.now() + 120_000),
+})
 
 const getServerFromIDMock = vi.fn()
 const getServersFromDiscordGuildIDMock = vi.fn()
@@ -112,6 +135,9 @@ function makeFakeWs() {
   ws.send = vi.fn()
   ws.close = vi.fn()
   ws.ping = vi.fn()
+  ws.readyState = 1
+  ws.terminate = vi.fn(() => ws.emit('close'))
+  openedSockets.push(ws)
   return ws
 }
 
@@ -132,271 +158,510 @@ describe('apps/websocket main()', () => {
     expect(gmLogMock).toHaveBeenCalledWith('websocket', expect.stringContaining('Listening on port'))
   })
 
-  describe('verifyClient', () => {
-    function verify(info: any) {
-      return new Promise((resolve) => {
-        capturedWss!.opts.verifyClient(info, (...args: any[]) => resolve(args))
-      })
+  beforeEach(() => {
+    getServerFromIDMock.mockReset()
+    consumeTicketMock.mockReset().mockImplementation(async (ticket) => {
+      const found = tickets.get(ticket) || null
+      tickets.delete(ticket)
+      return found
+    })
+    validateSessionMock.mockReset().mockImplementation(async (id) => sessions.get(id) || null)
+    getPanelUserFromDiscordIDMock
+      .mockReset()
+      .mockImplementation(async (discordID, _token, authSession) => ({ discordID, authSession }))
+    getUserGuildsWithPermsForPanelMock.mockReset().mockResolvedValue([{ id: 'g1' }])
+    getServersFromDiscordGuildIDMock.mockReset().mockResolvedValue([{ id: 'srv-status' }, { id: 'srv-bulk' }])
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
+  })
+  afterEach(() => {
+    for (const socket of openedSockets.splice(0)) socket.emit('close')
+    sessions.clear()
+    tickets.clear()
+    vi.useRealTimers()
+  })
+  async function verify(req: any) {
+    return new Promise<any[]>((resolve) => {
+      capturedWss!.opts.verifyClient({ req }, (...args: any[]) => resolve(args))
+    })
+  }
+  async function connectClient(id: string, discordID = 'd1', overrides: Record<string, unknown> = {}) {
+    const authSession = { ...session(id, discordID), ...overrides }
+    sessions.set(id, authSession)
+    tickets.set('ticket-' + id + '-' + openedSockets.length, authSession)
+    const req = {
+      headers: { origin: 'http://localhost:3000' },
+      url: '/ws?ticket=ticket-' + id + '-' + openedSockets.length,
     }
+    expect(await verify(req)).toEqual([true])
+    const ws = makeFakeWs()
+    capturedWss!.emit('connection', ws, req)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    return ws
+  }
+  async function connectServer(id: string, ws = makeFakeWs()) {
+    const req = { headers: { id, token: 'tok' }, url: '/' }
+    getServerFromIDMock.mockResolvedValueOnce({ isValidToken: () => true })
+    expect(await verify(req)).toEqual([true])
+    capturedWss!.emit('connection', ws, req)
+    return ws
+  }
 
-    it('authorizes a server with a valid id+token', async () => {
+  describe('verifyClient', () => {
+    it('authorizes a GMod server with valid existing headers', async () => {
       getServerFromIDMock.mockResolvedValueOnce({ isValidToken: () => true })
-      const result = await verify({ req: { headers: { id: 's1', token: 'tok' }, url: '/' } })
-      expect(result).toEqual([true])
+      expect(await verify({ headers: { id: 's1', token: 'tok' }, url: '/' })).toEqual([true])
     })
-
-    it('falls through to unauthorized when the server id does not resolve', async () => {
-      getServerFromIDMock.mockResolvedValueOnce(null)
-      const result = await verify({ req: { headers: { id: 's1', token: 'tok' }, url: '/' } })
-      expect(result).toEqual([false, 401, 'Unauthorized'])
+    it.each([null, { isValidToken: () => false }])('rejects missing or invalid server credentials', async (server) => {
+      getServerFromIDMock.mockResolvedValueOnce(server)
+      expect(await verify({ headers: { id: 's1', token: 'bad' }, url: '/' })).toEqual([false, 401, 'Unauthorized'])
     })
+    it.each([{ id: 'target' }, { token: 'fake' }, { id: ['target'], token: 'fake' }])(
+      'does not fall back to a dashboard ticket for incomplete or malformed addon headers %j',
+      async (headers) => {
+        tickets.set('valid-owner-ticket', session('owner'))
+        expect(await verify({ headers, url: '/ws?ticket=valid-owner-ticket' })).toEqual([false, 401, 'Unauthorized'])
+        expect(consumeTicketMock).not.toHaveBeenCalled()
+      },
+    )
+    it('rejects forged addon credentials even with a valid dashboard ticket and cannot evict or configure the server', async () => {
+      const original = await connectServer('forged-target')
+      const saveIGSettings = vi.fn()
+      getServerFromIDMock.mockResolvedValueOnce({ isValidToken: () => false, saveIGSettings })
+      tickets.set('valid-owner-ticket', session('owner'))
+      const req = {
+        headers: { id: 'forged-target', token: 'fake' },
+        url: '/ws?ticket=valid-owner-ticket',
+      }
+      expect(await verify(req)).toEqual([false, 401, 'Unauthorized'])
+      expect(consumeTicketMock).not.toHaveBeenCalled()
 
-    it('falls through to unauthorized when the server token is invalid', async () => {
-      getServerFromIDMock.mockResolvedValueOnce({ isValidToken: () => false })
-      const result = await verify({ req: { headers: { id: 's1', token: 'bad' }, url: '/' } })
-      expect(result).toEqual([false, 401, 'Unauthorized'])
+      const forged = makeFakeWs()
+      capturedWss!.emit('connection', forged, req)
+      forged.emit('message', JSON.stringify({ action: 'save_config', config: { tampered: true } }))
+      expect(forged.close).toHaveBeenCalledWith(1008, 'Session required')
+      expect(saveIGSettings).not.toHaveBeenCalled()
+      expect(original.close).not.toHaveBeenCalled()
+      await capturedWorkers.wsSendToServer.processor({
+        data: { id: 'forged-target', data: { stillOriginal: true } },
+      })
+      expect(original.send).toHaveBeenCalledWith(JSON.stringify({ stillOriginal: true }))
+      expect(forged.send).not.toHaveBeenCalled()
     })
-
-    it('authorizes a panel client via discordID+token in the URL', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ authAllowed: async () => true })
-      const result = await verify({ req: { headers: {}, url: '/ws?discordID=d1/token=tok' } })
-      expect(result).toEqual([true])
+    it('returns a temporary failure when addon authentication storage is unavailable', async () => {
+      getServerFromIDMock.mockRejectedValueOnce(new Error('Database unavailable'))
+      expect(await verify({ headers: { id: 'server', token: 'token' }, url: '/' })).toEqual([
+        false,
+        503,
+        'Server authentication unavailable',
+      ])
     })
-
-    it('falls through to unauthorized when the panel user is not found', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce(null)
-      const result = await verify({ req: { headers: {}, url: '/ws?discordID=d1/token=tok' } })
-      expect(result).toEqual([false, 401, 'Unauthorized'])
+    it('consumes a short ticket once and rejects replay', async () => {
+      const auth = session('ticket-session')
+      tickets.set('one-time', auth)
+      expect(await verify({ headers: { origin: 'http://localhost:3000' }, url: '/ws?ticket=one-time' })).toEqual([true])
+      expect(await verify({ headers: { origin: 'http://localhost:3000' }, url: '/ws?ticket=one-time' })).toEqual([
+        false,
+        401,
+        'Unauthorized',
+      ])
     })
-
-    it('falls through to unauthorized when authAllowed rejects the token', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ authAllowed: async () => false })
-      const result = await verify({ req: { headers: {}, url: '/ws?discordID=d1/token=bad' } })
-      expect(result).toEqual([false, 401, 'Unauthorized'])
+    it('rejects old durable Bearer URLs', async () => {
+      expect(await verify({ headers: {}, url: '/ws?discordID=d1&token=durable-secret' })).toEqual([
+        false,
+        401,
+        'Unauthorized',
+      ])
+      expect(consumeTicketMock).not.toHaveBeenCalled()
     })
-
-    it('rejects when neither server headers nor a client URL are present', async () => {
-      const result = await verify({ req: { headers: {}, url: '/ws' } })
-      expect(result).toEqual([false, 401, 'Unauthorized'])
+    it('rejects a cross-origin browser before consuming its ticket', async () => {
+      expect(await verify({ headers: { origin: 'https://attacker.test' }, url: '/ws?ticket=valid' })).toEqual([
+        false,
+        403,
+        'Forbidden',
+      ])
+      expect(consumeTicketMock).not.toHaveBeenCalled()
     })
-
-    it('rejects when the url mentions discordID/token but one resolves empty', async () => {
-      const result = await verify({ req: { headers: {}, url: '/ws?discordID=/token=tok' } })
-      expect(result).toEqual([false, 401, 'Unauthorized'])
-      expect(getPanelUserFromDiscordIDMock).not.toHaveBeenCalledWith('')
+    it('returns a temporary handshake failure if session storage is unavailable', async () => {
+      consumeTicketMock.mockRejectedValueOnce(new Error('Redis down'))
+      expect(await verify({ headers: {}, url: '/ws?ticket=valid' })).toEqual([false, 503, 'Session unavailable'])
+    })
+    it('rejects an absent ticket', async () => {
+      expect(await verify({ headers: {}, url: '/ws' })).toEqual([false, 401, 'Unauthorized'])
+      expect(await verify({ headers: {} })).toEqual([false, 401, 'Unauthorized'])
     })
   })
 
   describe('connection handler - server sockets', () => {
-    it('registers a server connection and replaces an existing one with the same id', () => {
+    it('registers a server connection and replaces an existing one with the same id', async () => {
       const ws1 = makeFakeWs()
-      capturedWss!.emit('connection', ws1, { headers: { id: 'srv-a', token: 'tok' }, url: '/' })
+      await connectServer('srv-a', ws1)
       expect(gmLogMock).toHaveBeenCalledWith('websocket', expect.stringContaining('Server connected: srv-a'))
 
       const ws2 = makeFakeWs()
-      capturedWss!.emit('connection', ws2, { headers: { id: 'srv-a', token: 'tok' }, url: '/' })
+      await connectServer('srv-a', ws2)
       expect(ws1.close).toHaveBeenCalled()
     })
 
-    it('swallows an error thrown while closing the replaced socket', () => {
+    it('swallows an error thrown while closing the replaced socket', async () => {
       const ws1 = makeFakeWs()
       ws1.close = vi.fn(() => {
         throw new Error('close boom')
       })
-      capturedWss!.emit('connection', ws1, { headers: { id: 'srv-b', token: 'tok' }, url: '/' })
+      await connectServer('srv-b', ws1)
       const ws2 = makeFakeWs()
-      expect(() =>
-        capturedWss!.emit('connection', ws2, { headers: { id: 'srv-b', token: 'tok' }, url: '/' }),
-      ).not.toThrow()
+      await expect(connectServer('srv-b', ws2)).resolves.toBe(ws2)
     })
 
-    it('removes the server from the tracked list on close', () => {
+    it('removes the server from the tracked list on close', async () => {
       const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: { id: 'srv-c', token: 'tok' }, url: '/' })
+      await connectServer('srv-c', ws)
       ws.emit('close')
       expect(gmLogMock).toHaveBeenCalledWith('websocket', expect.stringContaining('Server disconnected: srv-c'))
     })
 
-    it('logs and continues on malformed JSON messages', () => {
+    it('logs and continues on malformed JSON messages', async () => {
       const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: { id: 'srv-d', token: 'tok' }, url: '/' })
+      await connectServer('srv-d', ws)
       ws.emit('message', '{not json')
       expect(gmLogMock).toHaveBeenCalledWith('websocket', expect.stringContaining('Error parsing message from server'))
     })
 
-    it('ignores a message with no action', () => {
+    it('ignores a message with no action', async () => {
       const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: { id: 'srv-e', token: 'tok' }, url: '/' })
+      await connectServer('srv-e', ws)
       ws.emit('message', JSON.stringify({}))
     })
 
-    it('ignores an unknown action', () => {
+    it('ignores an unknown action', async () => {
       const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: { id: 'srv-f', token: 'tok' }, url: '/' })
+      await connectServer('srv-f', ws)
       ws.emit('message', JSON.stringify({ action: 'not-a-real-action' }))
     })
 
     it('save_config does nothing when the server cannot be resolved', async () => {
-      getServerFromIDMock.mockResolvedValueOnce(null)
       const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: { id: 'srv-g', token: 'tok' }, url: '/' })
+      await connectServer('srv-g', ws)
+      getServerFromIDMock.mockResolvedValueOnce(null)
       ws.emit('message', JSON.stringify({ action: 'save_config', config: {} }))
       await new Promise((resolve) => setTimeout(resolve, 0))
     })
 
     it('save_config saves the settings when the server resolves', async () => {
       const saveIGSettings = vi.fn().mockResolvedValue(undefined)
-      getServerFromIDMock.mockResolvedValueOnce({ saveIGSettings })
       const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: { id: 'srv-h', token: 'tok' }, url: '/' })
+      await connectServer('srv-h', ws)
+      getServerFromIDMock.mockResolvedValueOnce({ saveIGSettings })
       ws.emit('message', JSON.stringify({ action: 'save_config', config: { foo: 'bar' } }))
       await new Promise((resolve) => setTimeout(resolve, 0))
       expect(saveIGSettings).toHaveBeenCalledWith({ foo: 'bar' })
     })
   })
 
-  describe('connection handler - ping interval', () => {
-    it('pings the socket on the interval tick', () => {
-      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
-      try {
-        const ws = makeFakeWs()
-        capturedWss!.emit('connection', ws, { headers: {}, url: '/' })
-        vi.advanceTimersByTime(1000)
-        expect(ws.ping).toHaveBeenCalled()
-      } finally {
-        vi.useRealTimers()
-      }
+  describe('connection heartbeat', () => {
+    it('pings, accepts pong and clears its timer when closed', async () => {
+      vi.useFakeTimers()
+      const ws = makeFakeWs()
+      await connectServer('heartbeat-server', ws)
+      vi.advanceTimersByTime(30_000)
+      expect(ws.ping).toHaveBeenCalledTimes(1)
+      ws.emit('pong')
+      vi.advanceTimersByTime(30_000)
+      expect(ws.ping).toHaveBeenCalledTimes(2)
+      ws.emit('close')
+      vi.advanceTimersByTime(60_000)
+      expect(ws.ping).toHaveBeenCalledTimes(2)
+    })
+    it('terminates a connection that stops responding', async () => {
+      vi.useFakeTimers()
+      const ws = makeFakeWs()
+      await connectServer('dead-heartbeat', ws)
+      vi.advanceTimersByTime(60_000)
+      expect(ws.terminate).toHaveBeenCalledTimes(1)
+    })
+    it('ignores a non-open transport until its close event cleans up the heartbeat', async () => {
+      vi.useFakeTimers()
+      const ws = await connectServer('already-closing')
+      ws.readyState = 2
+      vi.advanceTimersByTime(60_000)
+      expect(ws.ping).not.toHaveBeenCalled()
+      expect(ws.terminate).not.toHaveBeenCalled()
+    })
+    it('falls back to close when a dead transport has no terminate method', async () => {
+      vi.useFakeTimers()
+      const ws = await connectServer('heartbeat-fallback')
+      delete ws.terminate
+      vi.advanceTimersByTime(60_000)
+      expect(ws.close).toHaveBeenCalledWith(1001, 'Heartbeat timeout')
+    })
+    it('stops heartbeat polling and closes a transport if ping fails', async () => {
+      vi.useFakeTimers()
+      const ws = await connectServer('heartbeat-error')
+      ws.ping.mockImplementation(() => {
+        throw new Error('Transport failed')
+      })
+      vi.advanceTimersByTime(90_000)
+      expect(ws.ping).toHaveBeenCalledTimes(1)
+      expect(ws.close).toHaveBeenCalled()
     })
   })
 
-  describe('connection handler - client sockets', () => {
-    it('does nothing when the url has neither discordID nor token', () => {
-      const ws = makeFakeWs()
-      expect(() => capturedWss!.emit('connection', ws, { headers: {}, url: '/' })).not.toThrow()
-    })
-
-    it('does nothing when the url mentions discordID/token but one resolves empty', () => {
-      const ws = makeFakeWs()
-      expect(() => capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=/token=tok' })).not.toThrow()
-      expect(getPanelUserFromDiscordIDMock).not.toHaveBeenCalledWith('')
-    })
-
-    it('closes the socket when the panel user cannot be resolved', async () => {
+  describe('session-bound client sockets', () => {
+    it('rejects a resolved session whose user disappeared before connection', async () => {
       getPanelUserFromDiscordIDMock.mockResolvedValueOnce(null)
-      const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-a/token=tok' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      expect(ws.close).toHaveBeenCalled()
+      const ws = await connectClient('missing-profile')
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
     })
-
-    it('registers a client connection, replacing an existing one for the same discordID', async () => {
-      getPanelUserFromDiscordIDMock.mockReset().mockResolvedValue({ discordID: 'd-b' })
-      getUserGuildsWithPermsForPanelMock.mockReset().mockResolvedValue([{ id: 'g1' }])
-      getServersFromDiscordGuildIDMock.mockReset().mockResolvedValueOnce([{ id: 'srv-x' }])
-
-      const ws1 = makeFakeWs()
-      capturedWss!.emit('connection', ws1, { headers: {}, url: '/ws?discordID=d-b/token=tok' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      expect(gmLogMock).toHaveBeenCalledWith('websocket', expect.stringContaining('Client connected: d-b'))
-
+    it('closes temporarily if resolving the user fails after ticket consumption', async () => {
+      getPanelUserFromDiscordIDMock.mockRejectedValueOnce(new Error('Database unavailable'))
+      const ws = await connectClient('profile-outage')
+      expect(ws.close).toHaveBeenCalledWith(1013, 'Session temporarily unavailable')
+    })
+    it('closes temporarily if initial permissions cannot be resolved', async () => {
+      getUserGuildsWithPermsForPanelMock.mockRejectedValueOnce(new Error('Discord unavailable'))
+      const ws = await connectClient('initial-permission-outage')
+      expect(ws.close).toHaveBeenCalledWith(1013, 'Permissions unavailable')
+    })
+    it('does not close a transport a second time if it closed during initial permission lookup', async () => {
+      getUserGuildsWithPermsForPanelMock.mockImplementationOnce(async () => {
+        openedSockets.at(-1).readyState = 3
+        throw new Error('Discord unavailable')
+      })
+      const ws = await connectClient('closed-during-permissions')
+      expect(ws.close).not.toHaveBeenCalled()
+    })
+    it('does not give server access for a guild with no configured servers', async () => {
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce(null)
-      const ws2 = makeFakeWs()
-      capturedWss!.emit('connection', ws2, { headers: {}, url: '/ws?discordID=d-b/token=tok' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      const ws = await connectClient('no-servers')
+      await capturedWorkers.wsSendToAllClientsOfServer.processor({
+        data: { id: 'srv-bulk', action: 'server_logs', data: {} },
+      })
+      expect(ws.send).not.toHaveBeenCalled()
     })
-
-    it('removes the client from the tracked list on close', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ discordID: 'd-c' })
-      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
+    it('does not accept a connection that bypassed ticket validation', () => {
       const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-c/token=tok' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      ws.emit('close')
-      expect(gmLogMock).toHaveBeenCalledWith('websocket', expect.stringContaining('Client disconnected: d-c'))
+      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?ticket=not-verified' })
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Session required')
     })
-
-    it('logs and continues on malformed JSON client messages', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ discordID: 'd-d' })
-      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
-      const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-d/token=tok' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      ws.emit('message', '{not json')
-      expect(gmLogMock).toHaveBeenCalledWith('websocket', expect.stringContaining('Error parsing message from client'))
+    it('uses the exact session authenticated during the handshake', async () => {
+      await connectClient('session-A')
+      expect(getPanelUserFromDiscordIDMock).toHaveBeenCalledWith(
+        'd1',
+        undefined,
+        expect.objectContaining({ id: 'session-A' }),
+      )
     })
-
-    it('ignores a client message with no action', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ discordID: 'd-e' })
-      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
-      const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-e/token=tok' })
+    it('keeps another tab subscribed when the older tab closes', async () => {
+      const old = await connectClient('old-tab')
+      const current = await connectClient('new-tab')
+      old.emit('close')
+      await capturedWorkers.wsSendToAllClientsOfServer.processor({
+        data: { id: 'srv-bulk', action: 'server_logs', data: { live: true } },
+      })
+      expect(current.send).toHaveBeenCalledWith(expect.stringContaining('"live":true'))
+      expect(old.send).not.toHaveBeenCalled()
+      expect(current.close).not.toHaveBeenCalled()
+      old.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
       await new Promise((resolve) => setTimeout(resolve, 0))
-      ws.emit('message', JSON.stringify({}))
+      expect(old.send).not.toHaveBeenCalled()
     })
-
-    it('ignores an unknown client action', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ discordID: 'd-f' })
-      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
-      const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-f/token=tok' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      ws.emit('message', JSON.stringify({ action: 'not-a-real-action' }))
+    it('delivers independently to two tabs of the same session', async () => {
+      const first = await connectClient('same-session')
+      const second = await connectClient('same-session')
+      await capturedWorkers.wsSendToAllClientsOfServer.processor({
+        data: { id: 'srv-bulk', action: 'server_logs', data: {} },
+      })
+      expect(first.send).toHaveBeenCalled()
+      expect(second.send).toHaveBeenCalled()
     })
-
-    it('server_status replies with version/connection info, covering the present-value branches', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ discordID: 'd-g' })
-      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
-      const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-g/token=tok' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      // Also register a matching server socket so isWebSocketConnected is true.
-      const serverWs = makeFakeWs()
-      capturedWss!.emit('connection', serverWs, { headers: { id: 'srv-status', token: 'tok' }, url: '/' })
-
-      redisMock.get.mockResolvedValueOnce('1.0.0').mockResolvedValueOnce(String(Date.now()))
+    it('closes only revoked sessions and their delegated children', async () => {
+      const first = await connectClient('a')
+      const delegated = await connectClient('delegated', 'target', { actorSessionID: 'a', actorDiscordID: 'd1' })
+      const other = await connectClient('b')
+      await subscriberHandlers.message('gmi:auth:session-revoked', JSON.stringify({ sessionID: 'a', discordID: 'd1' }))
+      expect(first.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(delegated.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(other.close).not.toHaveBeenCalled()
+    })
+    it('stops delivering once the session becomes revoked or expired, even after a missed broadcast', async () => {
+      const ws = await connectClient('expired')
+      sessions.delete('expired')
+      await capturedWorkers.wsSendToAllClientsOfServer.processor({
+        data: { id: 'srv-bulk', action: 'server_logs', data: {} },
+      })
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(ws.send).not.toHaveBeenCalled()
+    })
+    it('ignores messages from a transport that is no longer open', async () => {
+      const ws = await connectClient('closing-client')
+      ws.readyState = 2
       ws.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
       await new Promise((resolve) => setTimeout(resolve, 0))
-
-      expect(versionComparatorMock).toHaveBeenCalledWith('v1.2.3', '1.0.0')
-      expect(ws.send).toHaveBeenCalledWith(expect.stringContaining('"action":"server_status"'))
+      expect(ws.send).not.toHaveBeenCalled()
     })
-
-    it('wsSendToClient no-ops if the client was removed from tracking between message and reply', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ discordID: 'd-race' })
-      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
-      const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-race/token=tok' })
+    it('closes before processing a message when its session has been revoked', async () => {
+      const ws = await connectClient('revoked-before-message')
+      sessions.delete('revoked-before-message')
+      ws.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
       await new Promise((resolve) => setTimeout(resolve, 0))
-
-      // Simulate the socket closing (removing it from the tracked client list) just before a
-      // message that was already in flight on the same socket gets handled.
-      ws.emit('close')
-      redisMock.get.mockResolvedValue(null)
-      expect(() =>
-        ws.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-race' } })),
-      ).not.toThrow()
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(ws.send).not.toHaveBeenCalled()
     })
-
-    it('server_status falls back to defaults when redis has no stored version/last-request', async () => {
-      getPanelUserFromDiscordIDMock.mockResolvedValueOnce({ discordID: 'd-h' })
-      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
-      const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-h/token=tok' })
+    it('does not expose status of a server outside current permissions', async () => {
+      const ws = await connectClient('status-forbidden')
+      redisMock.get.mockClear()
+      ws.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'unrelated-server' } }))
       await new Promise((resolve) => setTimeout(resolve, 0))
-
+      expect(redisMock.get).not.toHaveBeenCalled()
+      expect(ws.send).toHaveBeenCalledWith(expect.stringContaining('"error":"forbidden"'))
+    })
+    it('replies only to the requesting authorized socket', async () => {
+      await connectServer('srv-status')
+      const first = await connectClient('status-one')
+      const second = await connectClient('status-two')
+      redisMock.get.mockResolvedValueOnce('1.0.0').mockResolvedValueOnce(String(Date.now()))
+      first.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(first.send).toHaveBeenCalledWith(expect.stringContaining('"action":"server_status"'))
+      expect(second.send).not.toHaveBeenCalled()
+      expect(JSON.parse(first.send.mock.calls[0][0]).isWebSocketConnected).toBe(true)
+    })
+    it('reports a missing version and request time without leaking another server status', async () => {
+      const ws = await connectClient('status-no-history')
       redisMock.get.mockResolvedValueOnce(null).mockResolvedValueOnce(null)
-      ws.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-unknown' } }))
+      ws.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
       await new Promise((resolve) => setTimeout(resolve, 0))
-      expect(ws.send).toHaveBeenCalled()
+      expect(JSON.parse(ws.send.mock.calls[0][0])).toMatchObject({
+        serverID: 'srv-status',
+        version: null,
+        versionComparator: 1,
+        isWebSocketConnected: false,
+      })
+    })
+    it('revalidates the session again after reading status and suppresses a response revoked in flight', async () => {
+      const ws = await connectClient('revoked-during-status')
+      redisMock.get
+        .mockImplementationOnce(async () => {
+          sessions.delete('revoked-during-status')
+          return null
+        })
+        .mockResolvedValueOnce(null)
+      ws.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(ws.send).not.toHaveBeenCalled()
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
+    })
+    it('logs a session-storage outage during live delivery without sending cached data', async () => {
+      const ws = await connectClient('delivery-session-outage')
+      validateSessionMock.mockRejectedValueOnce(new Error('Database unavailable'))
+      await capturedWorkers.wsSendToAllClientsOfServer.processor({
+        data: { id: 'srv-bulk', action: 'server_logs', data: {} },
+      })
+      expect(ws.send).not.toHaveBeenCalled()
+      expect(gmLogMock).toHaveBeenCalledWith('websocket', 'Client delivery temporarily unavailable', true)
+    })
+    it('rechecks permissions before delivery after the freshness bound', async () => {
+      const ws = await connectClient('permission-revoked')
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 31_000)
+      try {
+        getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
+        await capturedWorkers.wsSendToAllClientsOfServer.processor({
+          data: { id: 'srv-bulk', action: 'server_logs', data: {} },
+        })
+        expect(ws.send).not.toHaveBeenCalled()
+        await capturedWorkers.wsSendToAllClientsOfServer.processor({
+          data: { id: 'srv-bulk', action: 'server_logs', data: {} },
+        })
+        expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(2)
+      } finally {
+        vi.restoreAllMocks()
+      }
+    })
+    it('suppresses delivery instead of preserving stale permissions during a provider outage', async () => {
+      const ws = await connectClient('permission-outage')
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 31_000)
+      try {
+        getUserGuildsWithPermsForPanelMock.mockRejectedValueOnce(new Error('Discord unavailable'))
+        await capturedWorkers.wsSendToAllClientsOfServer.processor({
+          data: { id: 'srv-bulk', action: 'server_logs', data: {} },
+        })
+        expect(ws.send).not.toHaveBeenCalled()
+        await capturedWorkers.wsSendToAllClientsOfServer.processor({
+          data: { id: 'srv-bulk', action: 'server_logs', data: {} },
+        })
+        expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(2)
+      } finally {
+        vi.restoreAllMocks()
+      }
+    })
+    it('does not answer status if a permission refresh fails after the freshness deadline', async () => {
+      const ws = await connectClient('status-permission-outage')
+      vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 31_000)
+      try {
+        getUserGuildsWithPermsForPanelMock.mockRejectedValueOnce(new Error('Discord unavailable'))
+        ws.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(ws.send).not.toHaveBeenCalled()
+      } finally {
+        vi.restoreAllMocks()
+      }
+    })
+    it('closes an expired session on its scheduled check even without new messages', async () => {
+      const ws = await connectClient('timer-expiry', 'd1', { expiresAt: new Date(Date.now() + 50) })
+      sessions.delete('timer-expiry')
+      await new Promise((resolve) => setTimeout(resolve, 80))
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(ws.send).not.toHaveBeenCalled()
+    })
+    it('reschedules checks when HTTP activity extends a still-valid session', async () => {
+      const ws = await connectClient('timer-extended', 'd1', { expiresAt: new Date(Date.now() + 20) })
+      sessions.set('timer-extended', session('timer-extended'))
+      await new Promise((resolve) => setTimeout(resolve, 45))
+      expect(validateSessionMock).toHaveBeenCalledWith('timer-extended')
+      expect(ws.close).not.toHaveBeenCalled()
+    })
+    it('closes with a temporary failure if a scheduled session check cannot reach storage', async () => {
+      const ws = await connectClient('timer-storage-outage', 'd1', { expiresAt: new Date(Date.now() + 20) })
+      validateSessionMock.mockRejectedValueOnce(new Error('Storage unavailable'))
+      await new Promise((resolve) => setTimeout(resolve, 45))
+      expect(ws.close).toHaveBeenCalledWith(1013, 'Session unavailable')
+    })
+    it('requires Discord reauthorization without describing it as a revoked local session', async () => {
+      getUserGuildsWithPermsForPanelMock.mockRejectedValueOnce(
+        Object.assign(new Error('Reconnect Discord'), { code: 'discord_reauth_required' }),
+      )
+      const ws = await connectClient('reconnect-discord')
+      expect(ws.close).toHaveBeenCalledWith(4003, 'Discord authorization required')
+      expect(ws.close).not.toHaveBeenCalledWith(1008, expect.any(String))
+    })
+    it('handles malformed client messages safely', async () => {
+      const ws = await connectClient('malformed')
+      ws.emit('message', '{not json')
+      expect(gmLogMock).toHaveBeenCalledWith('websocket', 'Error processing client message', true)
+    })
+    it('ignores actionless messages, unknown actions and malformed server IDs', async () => {
+      const ws = await connectClient('invalid-actions')
+      for (const value of [null, {}, 'string', { action: 'unknown' }, { action: 'server_status', data: {} }])
+        ws.emit('message', JSON.stringify(value))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(ws.send).not.toHaveBeenCalled()
+      expect(ws.close).not.toHaveBeenCalled()
     })
   })
 
   describe('wsSendToServer queue worker', () => {
+    it('delivers allowed effective synchronization to its authenticated addon', async () => {
+      const ws = await connectServer('sync-allowed')
+      getServerFromIDMock.mockResolvedValueOnce({ getEffectiveSetting: async () => 'both' })
+      expect(
+        await capturedWorkers.wsSendToServer.processor({
+          data: { id: 'sync-allowed', data: { method: 'wsSyncName', name: 'Allowed' } },
+        }),
+      ).toBe(true)
+      expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ method: 'wsSyncName', name: 'Allowed' }))
+    })
     it('resolves locally when the target server is connected', async () => {
       const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: { id: 'srv-local', token: 'tok' }, url: '/' })
+      await connectServer('srv-local', ws)
       const result = await capturedWorkers['wsSendToServer'].processor({
         data: { id: 'srv-local', data: { hello: 'world' } },
       })
@@ -464,48 +729,58 @@ describe('apps/websocket main()', () => {
     }, 2000)
   })
 
-  describe('wsSendToAllClientsOfServer queue worker', () => {
-    it('closes an already connected client when privacy revocation is broadcast', async () => {
-      getPanelUserFromDiscordIDMock.mockReset().mockResolvedValueOnce({ discordID: 'd-privacy' })
-      getUserGuildsWithPermsForPanelMock.mockReset().mockResolvedValueOnce([])
-      const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-privacy/token=tok' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      await subscriberHandlers.message('gmi:privacy:revoked', JSON.stringify({ discordID: 'd-privacy' }))
-      expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
-      expect(ws.send).not.toHaveBeenCalled()
+  describe('privacy revocation and delivery', () => {
+    it('closes subject sessions and actor delegations on erasure broadcast while preserving unrelated tabs', async () => {
+      const first = await connectClient('privacy-one', 'privacy-user')
+      const second = await connectClient('privacy-two', 'privacy-user')
+      const delegated = await connectClient('privacy-delegated', 'delegation-target', {
+        actorDiscordID: 'privacy-user',
+        actorSessionID: 'privacy-one',
+      })
+      const unrelated = await connectClient('privacy-unrelated', 'unrelated-user')
+      await subscriberHandlers.message('gmi:privacy:revoked', JSON.stringify({ discordID: 'privacy-user' }))
+      expect(first.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(second.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(delegated.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(unrelated.close).not.toHaveBeenCalled()
     })
-
-    it('checks the durable suppression marker before delivering to an existing socket', async () => {
-      getPanelUserFromDiscordIDMock.mockReset().mockResolvedValueOnce({ discordID: 'd-suppressed' })
-      getUserGuildsWithPermsForPanelMock.mockReset().mockResolvedValueOnce([{ id: 'g-private' }])
-      getServersFromDiscordGuildIDMock.mockReset().mockResolvedValueOnce([{ id: 'srv-private' }])
-      const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-suppressed/token=tok' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
-      isErasureBlockedMock.mockResolvedValueOnce(true)
-      await capturedWorkers['wsSendToAllClientsOfServer'].processor({
-        data: { id: 'srv-private', action: 'server_logs', data: {} },
+    it('checks the durable erasure marker before delivery', async () => {
+      const ws = await connectClient('erased')
+      isErasureBlockedMock.mockResolvedValue(true)
+      await capturedWorkers.wsSendToAllClientsOfServer.processor({
+        data: { id: 'srv-bulk', action: 'server_logs', data: {} },
       })
       expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
       expect(ws.send).not.toHaveBeenCalled()
-    })
-    it('sends to every client tracking the given server', async () => {
-      getPanelUserFromDiscordIDMock.mockReset().mockResolvedValueOnce({ discordID: 'd-bulk' })
-      getUserGuildsWithPermsForPanelMock.mockReset().mockResolvedValueOnce([{ id: 'g1' }])
-      getServersFromDiscordGuildIDMock.mockReset().mockResolvedValueOnce([{ id: 'srv-bulk' }])
-      const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: {}, url: '/ws?discordID=d-bulk/token=tok' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
-
-      await capturedWorkers['wsSendToAllClientsOfServer'].processor({
-        data: { id: 'srv-bulk', action: 'server_status', data: { ok: true } },
-      })
-      expect(ws.send).toHaveBeenCalled()
     })
   })
 
   describe('subscriber handlers', () => {
+    it.each([
+      ['gmi:auth:session-revoked', 'sessionID', 'Invalid session revocation message'],
+      ['gmi:privacy:revoked', 'discordID', 'Invalid privacy revocation message'],
+    ])('ignores malformed identifiers and logs corrupt payloads on %s', async (channel, key, message) => {
+      const ws = await connectClient('safe-from-malformed-revocation')
+      await subscriberHandlers.message(channel, JSON.stringify({ [key]: 123 }))
+      expect(ws.close).not.toHaveBeenCalled()
+      await subscriberHandlers.message(channel, '{malformed')
+      expect(gmLogMock).toHaveBeenCalledWith('websocket', message, true)
+      expect(ws.close).not.toHaveBeenCalled()
+    })
+    it('rejects a remote synchronization dispatch when effective access no longer allows it', async () => {
+      const ws = await connectServer('remote-restricted')
+      getServerFromIDMock.mockResolvedValueOnce({ getEffectiveSetting: async () => 'gmod-to-discord' })
+      await subscriberHandlers.message(
+        'ws:send-to-server:broadcast',
+        JSON.stringify({
+          id: 'remote-restricted',
+          requestId: 'not-acked',
+          data: { method: 'wsSyncName' },
+        }),
+      )
+      expect(ws.send).not.toHaveBeenCalled()
+      expect(redisMock.incr).not.toHaveBeenCalledWith('ws:send-to-server:ack:not-acked')
+    })
     it('logs subscriber errors', () => {
       subscriberHandlers['error'](new Error('sub boom'))
       expect(gmLogMock).toHaveBeenCalledWith('websocket', expect.stringContaining('Subscriber error'), true)
@@ -538,7 +813,7 @@ describe('apps/websocket main()', () => {
 
     it('acks once the payload is delivered to a locally-connected server', async () => {
       const ws = makeFakeWs()
-      capturedWss!.emit('connection', ws, { headers: { id: 'srv-broadcast', token: 'tok' }, url: '/' })
+      await connectServer('srv-broadcast', ws)
       await subscriberHandlers['message'](
         'ws:send-to-server:broadcast',
         JSON.stringify({ id: 'srv-broadcast', data: { a: 1 }, requestId: 'r2' }),
@@ -550,6 +825,8 @@ describe('apps/websocket main()', () => {
 
   describe('gracefulShutdown', () => {
     it('tears down workers/subscriber/wss/redis/prisma and exits, then is a no-op on re-entry', async () => {
+      const browser = await connectClient('shutdown-session')
+      const addon = await connectServer('shutdown-addon')
       const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
       // Reject once each to exercise the `.catch(() => {})` swallow after unsubscribe/quit.
       redisSubscriberMock.unsubscribe.mockRejectedValueOnce(new Error('unsubscribe boom'))
@@ -563,6 +840,8 @@ describe('apps/websocket main()', () => {
         expect(gracefulShutdownRedisMock).toHaveBeenCalled()
         expect(gracefulShutdownPrismaMock).toHaveBeenCalled()
         expect(exitSpy).toHaveBeenCalledWith(0)
+        expect(browser.close).toHaveBeenCalledWith(1001, 'Service restarting')
+        expect(addon.close).toHaveBeenCalledWith(1001, 'Service restarting')
 
         capturedWorkers['wsSendToServer'].close.mockClear()
         await gracefulShutdown()

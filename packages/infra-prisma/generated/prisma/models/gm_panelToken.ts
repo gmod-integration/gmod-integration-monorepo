@@ -35,6 +35,10 @@ export type Gm_panelTokenMinAggregateOutputType = {
   revoke: boolean | null
   creationDate: Date | null
   expirationDate: Date | null
+  absoluteExpiresAt: Date | null
+  lastSeenAt: Date | null
+  actorDiscordID: string | null
+  actorSessionID: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -50,6 +54,10 @@ export type Gm_panelTokenMaxAggregateOutputType = {
   revoke: boolean | null
   creationDate: Date | null
   expirationDate: Date | null
+  absoluteExpiresAt: Date | null
+  lastSeenAt: Date | null
+  actorDiscordID: string | null
+  actorSessionID: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -65,6 +73,10 @@ export type Gm_panelTokenCountAggregateOutputType = {
   revoke: number
   creationDate: number
   expirationDate: number
+  absoluteExpiresAt: number
+  lastSeenAt: number
+  actorDiscordID: number
+  actorSessionID: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -82,6 +94,10 @@ export type Gm_panelTokenMinAggregateInputType = {
   revoke?: true
   creationDate?: true
   expirationDate?: true
+  absoluteExpiresAt?: true
+  lastSeenAt?: true
+  actorDiscordID?: true
+  actorSessionID?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -97,6 +113,10 @@ export type Gm_panelTokenMaxAggregateInputType = {
   revoke?: true
   creationDate?: true
   expirationDate?: true
+  absoluteExpiresAt?: true
+  lastSeenAt?: true
+  actorDiscordID?: true
+  actorSessionID?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -112,6 +132,10 @@ export type Gm_panelTokenCountAggregateInputType = {
   revoke?: true
   creationDate?: true
   expirationDate?: true
+  absoluteExpiresAt?: true
+  lastSeenAt?: true
+  actorDiscordID?: true
+  actorSessionID?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -200,6 +224,10 @@ export type Gm_panelTokenGroupByOutputType = {
   revoke: boolean
   creationDate: Date
   expirationDate: Date
+  absoluteExpiresAt: Date | null
+  lastSeenAt: Date | null
+  actorDiscordID: string | null
+  actorSessionID: string | null
   createdAt: Date
   updatedAt: Date
   _count: Gm_panelTokenCountAggregateOutputType | null
@@ -236,6 +264,10 @@ export type gm_panelTokenWhereInput = {
   revoke?: Prisma.BoolFilter<"gm_panelToken"> | boolean
   creationDate?: Prisma.DateTimeFilter<"gm_panelToken"> | Date | string
   expirationDate?: Prisma.DateTimeFilter<"gm_panelToken"> | Date | string
+  absoluteExpiresAt?: Prisma.DateTimeNullableFilter<"gm_panelToken"> | Date | string | null
+  lastSeenAt?: Prisma.DateTimeNullableFilter<"gm_panelToken"> | Date | string | null
+  actorDiscordID?: Prisma.StringNullableFilter<"gm_panelToken"> | string | null
+  actorSessionID?: Prisma.StringNullableFilter<"gm_panelToken"> | string | null
   createdAt?: Prisma.DateTimeFilter<"gm_panelToken"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_panelToken"> | Date | string
 }
@@ -251,6 +283,10 @@ export type gm_panelTokenOrderByWithRelationInput = {
   revoke?: Prisma.SortOrder
   creationDate?: Prisma.SortOrder
   expirationDate?: Prisma.SortOrder
+  absoluteExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastSeenAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  actorDiscordID?: Prisma.SortOrderInput | Prisma.SortOrder
+  actorSessionID?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _relevance?: Prisma.gm_panelTokenOrderByRelevanceInput
@@ -270,6 +306,10 @@ export type gm_panelTokenWhereUniqueInput = Prisma.AtLeast<{
   revoke?: Prisma.BoolFilter<"gm_panelToken"> | boolean
   creationDate?: Prisma.DateTimeFilter<"gm_panelToken"> | Date | string
   expirationDate?: Prisma.DateTimeFilter<"gm_panelToken"> | Date | string
+  absoluteExpiresAt?: Prisma.DateTimeNullableFilter<"gm_panelToken"> | Date | string | null
+  lastSeenAt?: Prisma.DateTimeNullableFilter<"gm_panelToken"> | Date | string | null
+  actorDiscordID?: Prisma.StringNullableFilter<"gm_panelToken"> | string | null
+  actorSessionID?: Prisma.StringNullableFilter<"gm_panelToken"> | string | null
   createdAt?: Prisma.DateTimeFilter<"gm_panelToken"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_panelToken"> | Date | string
 }, "id">
@@ -285,6 +325,10 @@ export type gm_panelTokenOrderByWithAggregationInput = {
   revoke?: Prisma.SortOrder
   creationDate?: Prisma.SortOrder
   expirationDate?: Prisma.SortOrder
+  absoluteExpiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastSeenAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  actorDiscordID?: Prisma.SortOrderInput | Prisma.SortOrder
+  actorSessionID?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.gm_panelTokenCountOrderByAggregateInput
@@ -306,6 +350,10 @@ export type gm_panelTokenScalarWhereWithAggregatesInput = {
   revoke?: Prisma.BoolWithAggregatesFilter<"gm_panelToken"> | boolean
   creationDate?: Prisma.DateTimeWithAggregatesFilter<"gm_panelToken"> | Date | string
   expirationDate?: Prisma.DateTimeWithAggregatesFilter<"gm_panelToken"> | Date | string
+  absoluteExpiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"gm_panelToken"> | Date | string | null
+  lastSeenAt?: Prisma.DateTimeNullableWithAggregatesFilter<"gm_panelToken"> | Date | string | null
+  actorDiscordID?: Prisma.StringNullableWithAggregatesFilter<"gm_panelToken"> | string | null
+  actorSessionID?: Prisma.StringNullableWithAggregatesFilter<"gm_panelToken"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"gm_panelToken"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"gm_panelToken"> | Date | string
 }
@@ -321,6 +369,10 @@ export type gm_panelTokenCreateInput = {
   revoke?: boolean
   creationDate?: Date | string
   expirationDate?: Date | string
+  absoluteExpiresAt?: Date | string | null
+  lastSeenAt?: Date | string | null
+  actorDiscordID?: string | null
+  actorSessionID?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -336,6 +388,10 @@ export type gm_panelTokenUncheckedCreateInput = {
   revoke?: boolean
   creationDate?: Date | string
   expirationDate?: Date | string
+  absoluteExpiresAt?: Date | string | null
+  lastSeenAt?: Date | string | null
+  actorDiscordID?: string | null
+  actorSessionID?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -351,6 +407,10 @@ export type gm_panelTokenUpdateInput = {
   revoke?: Prisma.BoolFieldUpdateOperationsInput | boolean
   creationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expirationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  absoluteExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  actorDiscordID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actorSessionID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -366,6 +426,10 @@ export type gm_panelTokenUncheckedUpdateInput = {
   revoke?: Prisma.BoolFieldUpdateOperationsInput | boolean
   creationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expirationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  absoluteExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  actorDiscordID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actorSessionID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -381,6 +445,10 @@ export type gm_panelTokenCreateManyInput = {
   revoke?: boolean
   creationDate?: Date | string
   expirationDate?: Date | string
+  absoluteExpiresAt?: Date | string | null
+  lastSeenAt?: Date | string | null
+  actorDiscordID?: string | null
+  actorSessionID?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -396,6 +464,10 @@ export type gm_panelTokenUpdateManyMutationInput = {
   revoke?: Prisma.BoolFieldUpdateOperationsInput | boolean
   creationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expirationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  absoluteExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  actorDiscordID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actorSessionID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -411,6 +483,10 @@ export type gm_panelTokenUncheckedUpdateManyInput = {
   revoke?: Prisma.BoolFieldUpdateOperationsInput | boolean
   creationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expirationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  absoluteExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSeenAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  actorDiscordID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  actorSessionID?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -432,6 +508,10 @@ export type gm_panelTokenCountOrderByAggregateInput = {
   revoke?: Prisma.SortOrder
   creationDate?: Prisma.SortOrder
   expirationDate?: Prisma.SortOrder
+  absoluteExpiresAt?: Prisma.SortOrder
+  lastSeenAt?: Prisma.SortOrder
+  actorDiscordID?: Prisma.SortOrder
+  actorSessionID?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -447,6 +527,10 @@ export type gm_panelTokenMaxOrderByAggregateInput = {
   revoke?: Prisma.SortOrder
   creationDate?: Prisma.SortOrder
   expirationDate?: Prisma.SortOrder
+  absoluteExpiresAt?: Prisma.SortOrder
+  lastSeenAt?: Prisma.SortOrder
+  actorDiscordID?: Prisma.SortOrder
+  actorSessionID?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -462,6 +546,10 @@ export type gm_panelTokenMinOrderByAggregateInput = {
   revoke?: Prisma.SortOrder
   creationDate?: Prisma.SortOrder
   expirationDate?: Prisma.SortOrder
+  absoluteExpiresAt?: Prisma.SortOrder
+  lastSeenAt?: Prisma.SortOrder
+  actorDiscordID?: Prisma.SortOrder
+  actorSessionID?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -479,6 +567,10 @@ export type gm_panelTokenSelect<ExtArgs extends runtime.Types.Extensions.Interna
   revoke?: boolean
   creationDate?: boolean
   expirationDate?: boolean
+  absoluteExpiresAt?: boolean
+  lastSeenAt?: boolean
+  actorDiscordID?: boolean
+  actorSessionID?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["gm_panelToken"]>
@@ -496,11 +588,15 @@ export type gm_panelTokenSelectScalar = {
   revoke?: boolean
   creationDate?: boolean
   expirationDate?: boolean
+  absoluteExpiresAt?: boolean
+  lastSeenAt?: boolean
+  actorDiscordID?: boolean
+  actorSessionID?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type gm_panelTokenOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "discordID" | "accessToken" | "os" | "ip" | "country" | "browser" | "revoke" | "creationDate" | "expirationDate" | "createdAt" | "updatedAt", ExtArgs["result"]["gm_panelToken"]>
+export type gm_panelTokenOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "discordID" | "accessToken" | "os" | "ip" | "country" | "browser" | "revoke" | "creationDate" | "expirationDate" | "absoluteExpiresAt" | "lastSeenAt" | "actorDiscordID" | "actorSessionID" | "createdAt" | "updatedAt", ExtArgs["result"]["gm_panelToken"]>
 
 export type $gm_panelTokenPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "gm_panelToken"
@@ -516,6 +612,10 @@ export type $gm_panelTokenPayload<ExtArgs extends runtime.Types.Extensions.Inter
     revoke: boolean
     creationDate: Date
     expirationDate: Date
+    absoluteExpiresAt: Date | null
+    lastSeenAt: Date | null
+    actorDiscordID: string | null
+    actorSessionID: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["gm_panelToken"]>
@@ -897,6 +997,10 @@ export interface gm_panelTokenFieldRefs {
   readonly revoke: Prisma.FieldRef<"gm_panelToken", 'Boolean'>
   readonly creationDate: Prisma.FieldRef<"gm_panelToken", 'DateTime'>
   readonly expirationDate: Prisma.FieldRef<"gm_panelToken", 'DateTime'>
+  readonly absoluteExpiresAt: Prisma.FieldRef<"gm_panelToken", 'DateTime'>
+  readonly lastSeenAt: Prisma.FieldRef<"gm_panelToken", 'DateTime'>
+  readonly actorDiscordID: Prisma.FieldRef<"gm_panelToken", 'String'>
+  readonly actorSessionID: Prisma.FieldRef<"gm_panelToken", 'String'>
   readonly createdAt: Prisma.FieldRef<"gm_panelToken", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"gm_panelToken", 'DateTime'>
 }

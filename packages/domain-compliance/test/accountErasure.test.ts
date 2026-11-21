@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   config: { hashSecret: 'stable-key' as string | undefined },
@@ -34,8 +34,13 @@ vi.mock('../src/accountErasureStorage.js', () => ({
   eraseObjectData: mocks.objects,
   eraseSqlData: mocks.sql,
 }))
-const { AccountErasureConflictError, requestAccountErasure, processAccountErasure } =
-  await import('../src/accountErasure.js')
+const {
+  AccountErasureConflictError,
+  requestAccountErasure,
+  getAccountErasureStatus,
+  processAccountErasure,
+  startAccountErasureWorker,
+} = await import('../src/accountErasure.js')
 
 const requestId = 'c6801874-4d4b-4543-884c-80f379fe7299'
 const receipt = 'a'.repeat(64)
@@ -67,6 +72,10 @@ beforeEach(() => {
   mocks.db.gm_user.update.mockResolvedValue({ steam: steamID64, trust: 50 })
   for (const phase of [mocks.sessions, mocks.mongo, mocks.objects, mocks.sql]) phase.mockResolvedValue(undefined)
 })
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
 
 describe('durable account erasure', () => {
   it('refuses to create work or revoke sessions when the stable privacy key is absent', async () => {
@@ -89,6 +98,40 @@ describe('durable account erasure', () => {
     })
     expect(mocks.db.$transaction).not.toHaveBeenCalled()
     expect(mocks.db.gm_user_erasure.create).not.toHaveBeenCalled()
+  })
+
+  it('reuses the same request discovered after acquiring the transaction lock', async () => {
+    mocks.db.gm_user_erasure.findFirst.mockResolvedValue(record())
+    expect(await requestAccountErasure(discordID, requestId, receipt)).toMatchObject({ requestId, receipt })
+    expect(mocks.db.gm_user_erasure.create).not.toHaveBeenCalled()
+    expect(mocks.db.gm_panelToken.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('rejects a conflicting receipt discovered inside the serialized acceptance transaction', async () => {
+    mocks.db.gm_user_erasure.findFirst.mockResolvedValue({ ...record(), receiptHash: 'other-receipt-hash' })
+    await expect(requestAccountErasure(discordID, requestId, receipt)).rejects.toBeInstanceOf(
+      AccountErasureConflictError,
+    )
+    expect(mocks.db.gm_user_erasure.create).not.toHaveBeenCalled()
+    expect(mocks.db.gm_panelToken.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('looks up a receipt by its hash and returns only minimized progress metadata', async () => {
+    const completedAt = new Date('2026-11-21T12:00:00.000Z')
+    mocks.db.gm_user_erasure.findFirst.mockResolvedValue({ ...record(), status: 'completed', completedAt })
+    const result = await getAccountErasureStatus(requestId, receipt)
+    expect(mocks.db.gm_user_erasure.findFirst).toHaveBeenCalledWith({
+      where: { id: requestId, receiptHash: createHash('sha256').update(receipt).digest('hex') },
+    })
+    expect(result).toEqual({
+      requestId,
+      status: 'completed',
+      requestedAt: requestedAt.toISOString(),
+      completedAt: completedAt.toISOString(),
+    })
+    expect(JSON.stringify(result)).not.toMatch(/discord-owner|76561198|receiptHash|payload/)
+    mocks.db.gm_user_erasure.findFirst.mockResolvedValue(null)
+    await expect(getAccountErasureStatus(requestId, 'wrong-receipt')).resolves.toBeNull()
   })
 
   it.each(['subject', 'receipt'])('rejects an idempotency key belonging to a different %s', async (difference) => {
@@ -118,7 +161,10 @@ describe('durable account erasure', () => {
           progress: [],
         }),
       })
-      expect(mocks.db.gm_panelToken.updateMany).toHaveBeenCalledWith({ where: { discordID }, data: { revoke: true } })
+      expect(mocks.db.gm_panelToken.updateMany).toHaveBeenCalledWith({
+        where: { OR: [{ discordID }, { actorDiscordID: discordID }] },
+        data: { revoke: true },
+      })
       if (trust === 0) {
         expect(mocks.db.gm_user_security.upsert).toHaveBeenCalledTimes(2)
         expect(mocks.db.gm_user_security.upsert).toHaveBeenCalledWith({
@@ -230,5 +276,112 @@ describe('durable account erasure', () => {
     expect(updates.find((data) => data.status === 'retry')).toMatchObject({ lastError: 'verification' })
     expect(updates.some((data) => data.status === 'completed')).toBe(false)
     expect(updates.some((data) => 'payload' in data)).toBe(false)
+  })
+
+  it.each([null, {}, { discordID, steamID64: 123 }])(
+    'refuses malformed captured identity %j without erasing unrelated data',
+    async (payload) => {
+      mocks.db.gm_user_erasure.findUniqueOrThrow.mockResolvedValue({ ...record(), payload, progress: null })
+      expect(await processAccountErasure(requestId)).toBe(false)
+      expect(mocks.sessions).not.toHaveBeenCalled()
+      expect(mocks.sql).not.toHaveBeenCalled()
+      expect(mocks.db.gm_user_erasure.updateMany).toHaveBeenCalledWith({
+        where: { id: requestId, leaseToken: expect.any(String) },
+        data: expect.objectContaining({ status: 'retry', lastError: 'identity' }),
+      })
+    },
+  )
+
+  it('does not start the next storage phase after losing its lease while persisting progress', async () => {
+    mocks.db.gm_user_erasure.updateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 })
+    expect(await processAccountErasure(requestId)).toBe(false)
+    expect(mocks.mongo).not.toHaveBeenCalled()
+    expect(mocks.sql).not.toHaveBeenCalled()
+    expect(mocks.db.gm_user_erasure.updateMany).toHaveBeenLastCalledWith({
+      where: { id: requestId, leaseToken: expect.any(String) },
+      data: expect.objectContaining({ status: 'retry', lastError: 'sessions' }),
+    })
+  })
+
+  it('renews a long-running erasure and contains transient heartbeat failures without leaking its identity', async () => {
+    vi.useFakeTimers()
+    let finish!: () => void
+    mocks.mongo.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
+    )
+    const work = processAccountErasure(requestId)
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(mocks.db.gm_user_erasure.updateMany).toHaveBeenCalledWith({
+      where: { id: requestId, leaseToken: expect.any(String) },
+      data: { leaseUntil: expect.any(Date) },
+    })
+    mocks.db.gm_user_erasure.updateMany.mockRejectedValueOnce(new Error(`temporary database error ${discordID}`))
+    await vi.advanceTimersByTimeAsync(30_000)
+    finish()
+    await expect(work).resolves.toBe(true)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+})
+
+describe('account erasure worker lifecycle', () => {
+  it('drains queued requests and stops polling cleanly', async () => {
+    vi.useFakeTimers()
+    mocks.db.gm_user_erasure.findMany.mockResolvedValueOnce([{ id: requestId }]).mockResolvedValue([])
+    const stop = startAccountErasureWorker()
+    try {
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mocks.db.gm_user_erasure.findUniqueOrThrow).toHaveBeenCalledWith({ where: { id: requestId } })
+      expect(mocks.sessions).toHaveBeenCalledTimes(2)
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(mocks.db.gm_user_erasure.findMany).toHaveBeenCalledTimes(2)
+      stop()
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(mocks.db.gm_user_erasure.findMany).toHaveBeenCalledTimes(2)
+    } finally {
+      stop()
+    }
+  })
+
+  it('does not overlap queue scans and does not begin returned work after shutdown', async () => {
+    vi.useFakeTimers()
+    let release!: (requests: { id: string }[]) => void
+    mocks.db.gm_user_erasure.findMany.mockImplementationOnce(
+      () =>
+        new Promise<{ id: string }[]>((resolve) => {
+          release = resolve
+        }),
+    )
+    const stop = startAccountErasureWorker()
+    try {
+      await vi.advanceTimersByTimeAsync(10_000)
+      expect(mocks.db.gm_user_erasure.findMany).toHaveBeenCalledOnce()
+      stop()
+      release([{ id: requestId }])
+      await vi.advanceTimersByTimeAsync(0)
+      expect(mocks.db.gm_user_erasure.updateMany).not.toHaveBeenCalled()
+    } finally {
+      stop()
+    }
+  })
+
+  it('leaves requests queued after a database outage and resumes on the next poll', async () => {
+    vi.useFakeTimers()
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mocks.db.gm_user_erasure.findMany
+      .mockRejectedValueOnce(new Error(`private DB detail ${discordID}`))
+      .mockResolvedValue([])
+    const stop = startAccountErasureWorker()
+    try {
+      await vi.advanceTimersByTimeAsync(0)
+      expect(log).toHaveBeenCalledExactlyOnceWith('Account erasure worker unavailable; requests remain queued.')
+      expect(mocks.db.gm_user_erasure.updateMany).not.toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(5_000)
+      expect(mocks.db.gm_user_erasure.findMany).toHaveBeenCalledTimes(2)
+    } finally {
+      stop()
+    }
   })
 })

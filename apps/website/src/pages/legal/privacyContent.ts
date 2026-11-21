@@ -145,7 +145,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'Browser storage and optional tracking',
         paragraphs: [
-          'The website uses localStorage for sign-in identifiers, access tokens and expiry, a local Discord profile, the selected guild or server, and language and theme preferences. Authentication storage supports the dashboard you request; preference storage remembers your choices. Values remain until updated or cleared; token expiry does not necessarily remove them.',
+          'The website uses an HttpOnly cookie for your authenticated session. Local browser storage keeps a Discord profile cache, the selected guild or server, language and theme preferences, and any erasure recovery receipt. Historical browser access tokens are converted to a cookie session and removed after successful conversion. Cached values remain until updated or cleared.',
           'You can clear storage through browser settings or sign out. Clearing authentication requires signing in again; clearing preferences resets your choices.',
           'Google AdSense, browser session recording (Session Replay) and optional browser performance tracking are disabled in this version. Any future activation of non-essential tracking subject to consent must offer an informed choice before activation and an equally accessible way to refuse or withdraw it.',
         ],
@@ -339,7 +339,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'Stockage dans le navigateur et traceurs facultatifs',
         paragraphs: [
-          'Le site utilise localStorage pour les identifiants de connexion, jetons d’accès et expiration, une copie locale du profil Discord, la guilde ou le serveur sélectionnés, ainsi que la langue et le thème. Le stockage d’authentification permet le tableau de bord demandé ; les préférences mémorisent vos choix. Les valeurs restent présentes jusqu’à leur mise à jour ou effacement ; l’expiration d’un jeton ne les supprime pas nécessairement.',
+          'Le site utilise un cookie HttpOnly pour votre session authentifiée. Le stockage local conserve une copie du profil Discord, la guilde ou le serveur sélectionnés, la langue, le thème et un éventuel reçu de suivi d’effacement. Les anciens jetons d’accès du navigateur sont convertis en session par cookie puis supprimés après une conversion réussie. Les données en cache restent présentes jusqu’à leur mise à jour ou effacement.',
           'Vous pouvez effacer ce stockage dans les réglages du navigateur ou vous déconnecter. L’effacement de l’authentification nécessite une nouvelle connexion ; l’effacement des préférences réinitialise vos choix.',
           'Google AdSense, l’enregistrement des sessions du navigateur (Session Replay) et le suivi facultatif des performances du navigateur sont désactivés dans cette version. Toute réactivation de traceurs non essentiels soumis au consentement doit proposer un choix éclairé avant activation et un moyen aussi accessible de refuser ou retirer ce choix.',
         ],

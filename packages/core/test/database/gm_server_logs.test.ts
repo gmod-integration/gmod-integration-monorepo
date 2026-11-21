@@ -169,4 +169,19 @@ describe('gm_server_logs', () => {
     expect(aggregateMock).not.toHaveBeenCalled()
     expect(findMock).not.toHaveBeenCalled()
   })
+  it('maps descending ID ordering and an omitted page size inside the entitled latest window', async () => {
+    aggregateMock.mockReturnValueOnce({ toArray: vi.fn().mockResolvedValue([{ id: 'newest' }]) })
+    await expect(
+      getLogsByServer('s1', { offset: 10, limit: 0, sort: 'id', orderBy: 'desc', readLimit: 500 }),
+    ).resolves.toEqual([{ id: 'newest' }])
+    expect(aggregateMock).toHaveBeenCalledExactlyOnceWith([
+      { $match: { serverID: 's1' } },
+      { $sort: { createdAt: -1, _id: -1 } },
+      { $limit: 500 },
+      { $sort: { _id: -1 } },
+      { $skip: 10 },
+      { $limit: 490 },
+    ])
+    expect(findMock).not.toHaveBeenCalled()
+  })
 })

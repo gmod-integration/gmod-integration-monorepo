@@ -130,6 +130,54 @@ describe('discord/index status-rotation setInterval', () => {
     vi.restoreAllMocks()
   })
 
+  it('keeps a connected custom bot when entitlement verification is temporarily unavailable', async () => {
+    await bootClient('access-outage')
+    const mod = await import('../../src/discord/index.js')
+    const client = await mod.getGuildClient('access-outage', false)
+    accessMock.mockImplementation(async (guildID: string) => {
+      if (guildID === 'access-outage') throw new Error('Entitlement service temporarily unavailable')
+      return { guildID, premium: true, customBot: true, state: 'ready' }
+    })
+    await mod.reconcileGuildClientAccess()
+    expect(client.destroy).not.toHaveBeenCalled()
+    expect(gmLogMock).toHaveBeenCalledWith('discord', 'Custom bot access reconciliation is temporarily unavailable')
+  })
+
+  it('disconnects a custom bot when its entitlement disappears between reconciliation and presence refresh', async () => {
+    await bootClient('revoked-during-status')
+    const mod = await import('../../src/discord/index.js')
+    const client = await mod.getGuildClient('revoked-during-status', false)
+    let checks = 0
+    accessMock.mockImplementation(async (guildID: string) => ({
+      guildID,
+      premium: true,
+      customBot: guildID !== 'revoked-during-status' || ++checks === 1,
+      state: 'ready',
+    }))
+    guildSettingExistsMock.mockResolvedValueOnce(true)
+    gmGuildSettingsFindManyMock.mockResolvedValueOnce([{ guildID: 'revoked-during-status', value: 'rotate' }])
+    await tick(30_000)
+    expect(client.destroy).toHaveBeenCalledOnce()
+    expect(client.user.setPresence).not.toHaveBeenCalled()
+  })
+
+  it('clears custom presence when the bot remains entitled but Premium presence is unavailable', async () => {
+    await bootClient('presence-expired')
+    const mod = await import('../../src/discord/index.js')
+    const client = await mod.getGuildClient('presence-expired', false)
+    accessMock.mockImplementation(async (guildID: string) => ({
+      guildID,
+      premium: false,
+      customBot: true,
+      state: 'ready',
+    }))
+    guildSettingExistsMock.mockResolvedValueOnce(true)
+    gmGuildSettingsFindManyMock.mockResolvedValueOnce([{ guildID: 'presence-expired', value: 'rotate' }])
+    await tick(30_000)
+    expect(client.destroy).not.toHaveBeenCalled()
+    expect(client.user.setPresence).toHaveBeenCalledWith({ activities: [] })
+  })
+
   it('returns early without querying settings when bot_status setting does not exist anywhere', async () => {
     guildSettingExistsMock.mockResolvedValueOnce(false)
     await tick(30000)

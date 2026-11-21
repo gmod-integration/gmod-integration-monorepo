@@ -1,3 +1,4 @@
+import { authenticatedFetch } from './authClient.js'
 import { refreshAccess } from './accessEvents.js'
 import { getAPIUrl, getUrlWithActualParams } from './api.js'
 
@@ -7,9 +8,9 @@ export async function saveDashboardSettings(
   settings: Record<string, unknown>,
 ): Promise<{ settings: Record<string, unknown>; sync: 'applied' | 'pending' }> {
   const path = scope === 'server' ? '/v6/guilds/:guildID/servers/:serverID/settings' : '/v6/guilds/:guildID/settings'
-  const response = await fetch(getAPIUrl(false) + getUrlWithActualParams(path), {
+  const response = await authenticatedFetch(getAPIUrl(false) + getUrlWithActualParams(path), {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ settings }),
   })
   if (response.status === 403 || response.ok) refreshAccess()

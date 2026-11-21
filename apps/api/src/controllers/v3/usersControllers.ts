@@ -1,7 +1,20 @@
 import { AccessDeniedError, assertCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js'
-import { ConfigDiscord } from '@gmod/config'
+import { ConfigAuth, ConfigDiscord } from '@gmod/config'
+import { beginOAuthFlow, consumeOAuthFlow } from '@gmod/domain-auth/oauthState.js'
+import {
+  actorCookieName,
+  AuthSessionError,
+  oauthCookieName,
+  readCookie,
+  readSessionCredential,
+  resolveApplicationSession,
+  revokeApplicationSession,
+  serializeAuthCookie,
+  sessionCookieName,
+} from '@gmod/domain-auth/authSessions.js'
+import redis from '@gmod/infra-redis'
 import {
   addUserToGuild,
   getDiscordUserFromID,
@@ -79,11 +92,15 @@ export async function getProfile(req: Request, res: Response) {
 }
 
 export async function getUserSessions(req: Request, res: Response) {
-  const result = await processGetUserSessions(getSingleParam(req.params.discordID))
+  if (req.authSession?.actorDiscordID)
+    throw new AuthSessionError(403, 'impersonation_forbidden', 'This operation requires your own account session.')
+  const result = await processGetUserSessions(getSingleParam(req.params.discordID), req.authSession?.id)
   return res.status(result.status).send(result.body)
 }
 
 export async function deleteUserSession(req: Request, res: Response) {
+  if (req.authSession?.actorDiscordID)
+    throw new AuthSessionError(403, 'impersonation_forbidden', 'This operation requires your own account session.')
   const discordID = getSingleParam(req.params.discordID)
   const sessionID = getSingleParam(req.params.sessionID)
   const result = await processDeleteUserSession(String(discordID), String(sessionID))
@@ -92,7 +109,14 @@ export async function deleteUserSession(req: Request, res: Response) {
 
 export async function logOut(req: Request, res: Response) {
   const panelUser = req.panelUser!
-  const result = await processLogOut(panelUser.discordID, panelUser.panelToken.token)
+  if (req.authSession) {
+    await revokeApplicationSession(req.authSession.id, req.authSession.discordID)
+    res.append('Set-Cookie', serializeAuthCookie(sessionCookieName(), '', new Date(0)))
+    return res.status(200).json({ revoked: true })
+  }
+  const credential = readSessionCredential(req)
+  if (!credential) throw new AuthSessionError(401, 'unauthorized', 'A valid session is required.')
+  const result = await processLogOut(panelUser.discordID, credential)
   return res.status(result.status).json(result.body)
 }
 
@@ -101,86 +125,89 @@ export async function findCurrentUser(req: Request, res: Response) {
 }
 
 export async function oauthLogin(req: Request, res: Response) {
+  res.setHeader('Cache-Control', 'no-store')
+  res.setHeader('Referrer-Policy', 'no-referrer')
   const { code } = req.query
-
-  if (!code) {
-    const { redirect } = req.query
-    return res.redirect(ConfigDiscord.oauthPanel + (redirect ? `&state=redirect:${redirect}` : ''))
+  if (!code && !req.query.error) {
+    const flow = await beginOAuthFlow(req.query.redirect, readCookie(req, oauthCookieName()))
+    const authorization = new URL(ConfigDiscord.oauthPanel)
+    authorization.searchParams.set('response_type', 'code')
+    authorization.searchParams.set('state', flow.state)
+    authorization.searchParams.set('code_challenge', flow.codeChallenge)
+    authorization.searchParams.set('code_challenge_method', 'S256')
+    res.append(
+      'Set-Cookie',
+      serializeAuthCookie(
+        oauthCookieName(),
+        flow.browserBinding,
+        new Date(Date.now() + ConfigAuth.oauthStateTtlSeconds * 1000),
+      ),
+    )
+    return res.redirect(authorization.toString())
   }
-
-  const redirect = typeof req.query.state === 'string' ? req.query.state.split('redirect:')[1] : null
-  const codeString = typeof code === 'string' ? code : ''
-  let oauthRedirectUri = `${req.protocol}://${req.headers.host}${req.originalUrl.split('?')[0]}`
-  try {
-    const configuredRedirectUri = new URL(ConfigDiscord.oauthPanel).searchParams.get('redirect_uri')
-    if (configuredRedirectUri) {
-      oauthRedirectUri = configuredRedirectUri
-    }
-  } catch {
-    // Keep runtime-derived URI fallback when oauthPanel is malformed.
+  const flow = await consumeOAuthFlow(req.query.state, readCookie(req, oauthCookieName()))
+  if (req.query.iss !== undefined && req.query.iss !== 'https://discord.com')
+    throw new AuthSessionError(400, 'oauth_issuer_invalid', 'This authorization response is not valid.')
+  if (req.query.error) {
+    const destination = new URL(ConfigDiscord.oauthPanelRedirect)
+    destination.searchParams.set('error', 'oauth_denied')
+    destination.searchParams.set('redirect', flow.redirect)
+    return res.redirect(destination.toString())
   }
-  const discordUserToken = await getUserTokenFromCode(codeString, oauthRedirectUri)
-  if (!discordUserToken) {
-    return res.status(401).send({
-      error: 'unauthorized',
-    })
-  }
-
-  const guildIDMatch = typeof req.query.state === 'string' ? req.query.state.match(/guildID=([0-9]+)/) : null
-  const guildID = guildIDMatch ? guildIDMatch[1] : null
-
-  discordUserToken.expirationDate = new Date(Date.now() + discordUserToken.expires_in * 1000)
-  discordUserToken.creationDate = new Date()
-
+  if (typeof code !== 'string' || !code)
+    throw new AuthSessionError(400, 'oauth_code_invalid', 'An authorization code is required.')
+  const configured = new URL(ConfigDiscord.oauthPanel).searchParams.get('redirect_uri')
+  if (!configured)
+    throw new AuthSessionError(503, 'oauth_configuration_invalid', 'Discord sign-in is temporarily unavailable.')
+  const discordUserToken = await getUserTokenFromCode(code, configured, flow.verifier)
+  if (!discordUserToken) throw new AuthSessionError(401, 'oauth_code_invalid', 'Please start a new sign-in attempt.')
   const discordUser = await getUserFromToken(`${discordUserToken.token_type} ${discordUserToken.access_token}`)
-  if (!discordUser) {
-    return res.status(401).send({
-      error: 'unauthorized',
-    })
+  if (!discordUser)
+    throw new AuthSessionError(503, 'provider_unavailable', 'Discord sign-in is temporarily unavailable.')
+  let skipGuildJoin = false
+  if (flow.guildID) {
+    const dscGuild = await enqueueDiscordGuildSnapshot(flow.guildID)
+    if (dscGuild)
+      skipGuildJoin = await new Guild({ id: dscGuild.id }).getEffectiveSetting('verification_dont_join_support')
   }
-
-  let skipGuidJoin = false
-
-  if (guildID) {
-    const dscGuild = await enqueueDiscordGuildSnapshot(guildID)
-    if (!dscGuild) {
-      return res.status(404).send({
-        error: 'guild_not_found',
-      })
-    }
-
-    const guild = new Guild({ id: dscGuild.id })
-
-    skipGuidJoin = await guild.getEffectiveSetting('verification_dont_join_support')
+  if (!skipGuildJoin && discordUserToken.scope?.split(' ').includes('guilds.join')) {
+    await addUserToGuild(ConfigDiscord.guildID, discordUser.id, discordUserToken.access_token).catch(() => false)
   }
-
-  if (!skipGuidJoin) {
-    await addUserToGuild(ConfigDiscord.guildID, discordUser.id, discordUserToken.access_token)
-      .then(() => {
-        console.log('User added to guild')
-      })
-      .catch((error) => {
-        console.error(error)
-      })
-  }
-
-  const userIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress
-  const userCountry = req.headers['cf-ipcountry'] || 'XX'
-  const userUA = req.useragent
-
-  const panelAccessToken = await saveUserPanel(discordUser.id, discordUserToken, {
-    os: userUA?.os || 'Unknown',
-    browser: userUA?.browser || 'Unknown',
-    ip: userIP,
-    country: userCountry,
+  const token = await saveUserPanel(discordUser.id, discordUserToken, {
+    os: req.useragent?.os || 'Unknown',
+    browser: req.useragent?.browser || 'Unknown',
+    ip: req.ip || req.connection.remoteAddress,
+    country: req.headers['cf-ipcountry'] || 'XX',
   })
   await saveUser(discordUser.id, discordUser.username)
-
-  return res.redirect(
-    `${ConfigDiscord.oauthPanelRedirect}?discordID=${discordUser.id}&accessToken=${panelAccessToken}&expirationDate=${discordUserToken.expirationDate.getTime()}${
-      redirect ? `&redirect=${redirect}` : ''
-    }`,
-  )
+  const session = await resolveApplicationSession(token, { touch: false })
+  if (!session) throw new AuthSessionError(401, 'unauthorized', 'Please start a new sign-in attempt.')
+  try {
+    await redis.set(
+      `gmi:auth:profile:${discordUser.id}`,
+      JSON.stringify({
+        globalName: discordUser.global_name || discordUser.username,
+        displayName: discordUser.global_name || discordUser.username,
+        avatarURL: discordUser.avatar
+          ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.webp`
+          : '',
+        discriminator: discordUser.discriminator || '',
+      }),
+      'EX',
+      3600,
+    )
+  } catch {
+    /* Cached profile decoration is independent from the successful sign-in. */
+  }
+  if (!(await resolveApplicationSession(token, { touch: false }))) {
+    await redis.del(`gmi:auth:profile:${discordUser.id}`).catch(() => {})
+    throw new AuthSessionError(401, 'unauthorized', 'Please start a new sign-in attempt.')
+  }
+  res.append('Set-Cookie', serializeAuthCookie(actorCookieName(), '', new Date(0)))
+  res.append('Set-Cookie', serializeAuthCookie(sessionCookieName(), token, session.absoluteExpiresAt))
+  const destination = new URL(ConfigDiscord.oauthPanelRedirect)
+  destination.searchParams.set('redirect', flow.redirect)
+  return res.redirect(destination.toString())
 }
 
 export async function getUserGuildsOwnOrAdmins(req: Request, res: Response) {
@@ -200,7 +227,7 @@ export async function findGuild(req: Request, res: Response) {
   })
 }
 
-export async function findGuildChannels(req: Request, res: Response, next: NextFunction) {
+export async function findGuildChannels(req: Request, res: Response, _next: NextFunction) {
   const dscGuild = req.dscGuild!
 
   return res.send(dscGuild.channels)
@@ -828,7 +855,7 @@ export async function getGuildSetting(req: Request, res: Response) {
     return res.send({
       value: await guild.getSetting(setting),
     })
-  } catch (error) {
+  } catch {
     return res.status(404).send({
       error: 'Setting not found',
     })
@@ -870,7 +897,7 @@ export async function getServerSetting(req: Request, res: Response) {
     return res.send({
       value: await server.getSetting(setting),
     })
-  } catch (error) {
+  } catch {
     return res.status(404).send({
       error: 'Setting not found',
     })
@@ -902,7 +929,7 @@ export async function putServerSetting(req: Request, res: Response) {
   if (statusRefreshSettings.has(setting)) {
     try {
       await enqueueDiscordServerStatusRefresh(server.id)
-    } catch (error) {
+    } catch {
       return res.status(502).send({
         error: 'Setting updated but status refresh dispatch failed',
       })

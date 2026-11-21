@@ -202,6 +202,7 @@ describe('account erasure across storage boundaries', () => {
     expect(mocks.del).toHaveBeenCalledWith(
       `user:${identity.discordID}:guilds`,
       `user:${identity.discordID}:isWaitingGuilds`,
+      `gmi:auth:profile:${identity.discordID}`,
     )
     expect(mocks.scan).toHaveBeenNthCalledWith(
       1,
@@ -226,10 +227,33 @@ describe('account erasure across storage boundaries', () => {
   it('does not scan unrelated Steam caches when the account has never linked Steam', async () => {
     await eraseCachedData({ discordID: identity.discordID, steamID64: null })
     expect(mocks.scan.mock.calls.map(([, , pattern]) => pattern)).toEqual([
+      `auth:discord:retry:discord:opaque:${identity.discordID}:*`,
+      `auth:discord:retry:${identity.discordID}:*`,
       'server:*:logsTrigger*',
       'server:*:gmodToDiscordFilter',
     ])
     expect(mocks.del).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears every OAuth retry version and its legacy keys without releasing an active refresh lease', async () => {
+    const retryKey = `auth:discord:retry:discord:opaque:${identity.discordID}`
+    mocks.scan
+      .mockResolvedValueOnce(['9', [`${retryKey}:1`]])
+      .mockResolvedValueOnce(['0', [`${retryKey}:2`]])
+      .mockResolvedValueOnce(['0', [`auth:discord:retry:${identity.discordID}:0`]])
+    await eraseCachedData({ discordID: identity.discordID, steamID64: null })
+    expect(mocks.scan).toHaveBeenNthCalledWith(2, '9', 'MATCH', `${retryKey}:*`, 'COUNT', 250)
+    expect(mocks.del).toHaveBeenCalledWith(`${retryKey}:1`)
+    expect(mocks.del).toHaveBeenCalledWith(`${retryKey}:2`)
+    expect(mocks.del).toHaveBeenCalledWith(`auth:discord:retry:${identity.discordID}:0`)
+    expect(mocks.del.mock.calls.flat().some((key) => key.startsWith('auth:discord:refresh:'))).toBe(false)
+  })
+
+  it('removes sessions identifying the erased account as their subject or delegation actor', async () => {
+    await eraseSqlData(identity)
+    expect(mocks.db.gm_panelToken.deleteMany).toHaveBeenCalledExactlyOnceWith({
+      where: { OR: [{ discordID: identity.discordID }, { actorDiscordID: identity.discordID }] },
+    })
   })
 
   it('retains minimized active global sanctions and other users’ moderation records while removing the subject’s data', async () => {
@@ -275,6 +299,31 @@ describe('account erasure across storage boundaries', () => {
     expect(mocks.db.gm_server_status.update).toHaveBeenCalledExactlyOnceWith({
       where: { id: 'status-1' },
       data: { playersList: '[{"id":"other-player"}]' },
+    })
+  })
+
+  it('clears unparseable legacy identity payloads while preserving longer third-party IDs', async () => {
+    const numericIdentity = { discordID: '12345', steamID64: identity.steamID64 }
+    mocks.db.gm_server_logs_triggers.findMany.mockResolvedValue([
+      { id: 'third-party', adminIDS: '["123456"]' },
+      { id: 'broken', adminIDS: '[12345' },
+    ])
+    mocks.db.gm_server_status.findMany.mockResolvedValue([
+      { id: 'broken-status', playersList: `[${identity.steamID64}` },
+      { id: 'legacy-object', playersList: '{"id":"12345"}' },
+    ])
+    await eraseSqlData(numericIdentity)
+    expect(mocks.db.gm_server_logs_triggers.update).toHaveBeenCalledExactlyOnceWith({
+      where: { id: 'broken' },
+      data: { adminIDS: '[]' },
+    })
+    expect(mocks.db.gm_server_status.update).toHaveBeenCalledWith({
+      where: { id: 'broken-status' },
+      data: { playersList: '[]' },
+    })
+    expect(mocks.db.gm_server_status.update).toHaveBeenCalledWith({
+      where: { id: 'legacy-object' },
+      data: { playersList: '[]' },
     })
   })
 

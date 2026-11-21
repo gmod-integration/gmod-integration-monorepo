@@ -6,13 +6,14 @@ import { App } from '../../src/app/App.js'
 import { setDiscordUser, setIsAdmin, setIsLogged, normalizeDiscordUserPayload } from '../../src/utils/event.js'
 import { updateNotificationCount } from '../../src/utils/notificationStore.js'
 import { useI18n } from '../../src/i18n.js'
+import { resetAuthentication, setAuthStatus } from '../../src/utils/authClient.js'
+import { sessionFixture } from '../authFixture.js'
 
-// App.tsx composes RedirectMiddleware + Header + Footer around its children - Header's own
-// onMount fires a handful of fetch/websocket calls regardless of which page is mounted under App,
-// so these need the same baseline mocking as Header.test.tsx even though this file isn't testing
-// Header's behavior itself.
+// AuthProvider validates the session and controls live transport for the application shell.
+// These tests keep that boundary mocked while exercising route and loading composition.
 vi.mock('../../src/utils/websocket.js', () => ({
   initWebSocket: vi.fn(),
+  stopWebSocket: vi.fn(),
 }))
 
 afterEach(() => {
@@ -26,7 +27,7 @@ beforeEach(() => {
   setDiscordUser(normalizeDiscordUserPayload({}))
   setIsAdmin(false)
   updateNotificationCount(0)
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) }))
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 401 })))
   vi.spyOn(console, 'log').mockImplementation(() => {})
 })
 
@@ -118,5 +119,37 @@ describe('app/App.tsx', () => {
       { path: '*', history },
     )
     await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds'))
+  })
+  it('waits for authoritative identity before mounting an account editor and retains site navigation', async () => {
+    resetAuthentication()
+    setAuthStatus('checking')
+    let finish!: (response: Response) => void
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation((url: string) =>
+        url.endsWith('/auth/session')
+          ? new Promise<Response>((resolve) => {
+              finish = resolve
+            })
+          : Promise.resolve(new Response('0')),
+      ),
+    )
+    renderWithProviders(
+      () => (
+        <App>
+          <h1>Private account editor</h1>
+        </App>
+      ),
+      {
+        path: '*',
+        history: historyAt('/account'),
+        session: false,
+      },
+    )
+    expect(screen.queryByRole('heading', { name: 'Private account editor' })).not.toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('Loading…')
+    expect(screen.getByRole('link', { name: 'Gmod Integration' })).toBeInTheDocument()
+    finish(new Response(JSON.stringify(sessionFixture())))
+    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'Private account editor' })).toBeInTheDocument())
   })
 })

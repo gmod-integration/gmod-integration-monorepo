@@ -7,42 +7,56 @@ import { Footer } from '../components/layout/Footer/Footer'
 import { useI18n } from '../i18n'
 import { AccessProvider } from '../components/AccessProvider.js'
 import { DraftEditingProvider } from '../components/DraftEditingProvider.js'
+import { AuthProvider } from '../components/AuthProvider.js'
+import { authSession, authStatus } from '../utils/authClient.js'
 
 const AppContent: ParentComponent = (props) => {
   const { t } = useI18n()
   const location = useLocation()
   const dashboard = () => location.pathname.startsWith('/dashboard')
+  const protectedPage = () => dashboard() || ['/account', '/notifications'].includes(location.pathname)
   return (
     <div class="site-shell">
-      <AccessProvider>
-        <DraftEditingProvider>
-          <a class="skip-link" href="#main-content">
-            {t('ui.skip_to_content', 'Skip to content')}
-          </a>
-          <RedirectMiddleware />
-          <Header />
-          <main
-            id="main-content"
-            tabIndex={-1}
-            class="site-main grow shrink-0 flex-auto flex flex-col"
-            classList={{ 'dashboard-canvas': dashboard() }}
-          >
-            <Suspense
-              fallback={
-                <div role="status" class="flex flex-1 items-center justify-center gap-3 p-8">
-                  <span aria-hidden="true" class="loading loading-spinner" />
-                  <span>{t('ui.loading', 'Loading…')}</span>
-                </div>
-              }
+      <AuthProvider>
+        <AccessProvider>
+          <DraftEditingProvider>
+            <a class="skip-link" href="#main-content">
+              {t('ui.skip_to_content', 'Skip to content')}
+            </a>
+            <RedirectMiddleware />
+            <Header />
+            <main
+              id="main-content"
+              tabIndex={-1}
+              class="site-main grow shrink-0 flex-auto flex flex-col"
+              classList={{ 'dashboard-canvas': dashboard() }}
             >
-              {props.children}
-            </Suspense>
-          </main>
-          <Show when={!dashboard()}>
-            <Footer />
-          </Show>
-        </DraftEditingProvider>
-      </AccessProvider>
+              <Suspense
+                fallback={
+                  <div role="status" class="flex flex-1 items-center justify-center gap-3 p-8">
+                    <span aria-hidden="true" class="loading loading-spinner" />
+                    <span>{t('ui.loading', 'Loading…')}</span>
+                  </div>
+                }
+              >
+                <Show
+                  when={!protectedPage() || authSession() || authStatus() === 'signed_out'}
+                  fallback={
+                    <div role="status" class="p-8">
+                      {t('ui.loading', 'Loading…')}
+                    </div>
+                  }
+                >
+                  {props.children}
+                </Show>
+              </Suspense>
+            </main>
+            <Show when={!dashboard()}>
+              <Footer />
+            </Show>
+          </DraftEditingProvider>
+        </AccessProvider>
+      </AuthProvider>
     </div>
   )
 }

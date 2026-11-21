@@ -288,7 +288,7 @@ const Premium: Component = () => {
       ],
       ['button']: t('premium.subscribe_on_discord', 'Subscribe on Discord'),
       ['link']: 'https://discord.com/application-directory/1110121451501129758/premium',
-      ['price']: 7.99,
+      ['price']: 25.99,
       ['permanent']: false,
     },
     ['buy']: {
@@ -304,7 +304,7 @@ const Premium: Component = () => {
       ],
       ['button']: t('premium.buy_on_gmod_store', 'Buy on Gmod Store'),
       ['link']: 'https://www.gmodstore.com/market/view/gmod-integration',
-      ['price']: 69.99,
+      ['price']: 259.99,
       ['reduction']: {
         ['percent']: 15,
         ['date']: '2024-09-22T23:59:59',

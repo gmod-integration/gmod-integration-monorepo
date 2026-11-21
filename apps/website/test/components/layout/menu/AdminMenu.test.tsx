@@ -15,6 +15,26 @@ function renderAt(path = '/dashboard/admins/informations') {
 }
 
 describe('Admin navigation', () => {
+  it('opens the mobile navigation and closes it after selecting a destination without changing collapse preference', async () => {
+    localStorage.setItem('admin-navigation-collapsed', 'true')
+    const history = historyAt('/dashboard/admins/informations')
+    renderWithProviders(() => <AdminMenu />, { path: '*', history })
+    const toggle = screen.getByRole('button', { name: 'Toggle navigation' })
+    const sidebar = screen.getByRole('complementary')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true')
+    await fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(sidebar).toHaveAttribute('data-mobile-open', 'true')
+    expect(screen.getByText('Guilds')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('link', { name: 'Guilds' }))
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/admins/guilds'))
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(sidebar).toHaveAttribute('data-mobile-open', 'false')
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true')
+    expect(localStorage.getItem('admin-navigation-collapsed')).toBe('true')
+  })
+
   it('exposes only implemented destinations and identifies the current page', () => {
     renderAt()
     const navigation = screen.getByRole('navigation', { name: 'Admin' })

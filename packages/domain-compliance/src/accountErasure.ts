@@ -78,7 +78,10 @@ export async function requestAccountErasure(discordID: string, idempotencyKey: s
         status: 'pending',
       },
     })
-    await tx.gm_panelToken.updateMany({ where: { discordID }, data: { revoke: true } })
+    await tx.gm_panelToken.updateMany({
+      where: { OR: [{ discordID }, { actorDiscordID: discordID }] },
+      data: { revoke: true },
+    })
     return created
   })
   return { ...snapshot(request), receipt }

@@ -1,3 +1,4 @@
+import { authenticatedFetch } from './authClient.js'
 import {
   AccountErasureReceiptSchema,
   AccountErasureRequestIdSchema,
@@ -57,11 +58,10 @@ export async function fetchErasureStatus(value: ErasureReceipt, signal?: AbortSi
 
 export async function requestAccountErasure(value: ErasureReceipt): Promise<ErasureStatus> {
   try {
-    const response = await fetch(`${getAPIUrl(false)}/v6/account/erasure-requests`, {
+    const response = await authenticatedFetch(`${getAPIUrl(false)}/v6/account/erasure-requests`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('accessToken')}`,
       },
       body: JSON.stringify({ confirmation: 'DELETE', idempotencyKey: value.requestId, receipt: value.receipt }),
     })

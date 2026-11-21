@@ -143,6 +143,7 @@ export const Gm_discordTokenScalarFieldEnum = {
   discordID: 'discordID',
   accessToken: 'accessToken',
   refreshToken: 'refreshToken',
+  version: 'version',
   creationDate: 'creationDate',
   expirationDate: 'expirationDate',
   createdAt: 'createdAt',
@@ -254,6 +255,10 @@ export const Gm_panelTokenScalarFieldEnum = {
   revoke: 'revoke',
   creationDate: 'creationDate',
   expirationDate: 'expirationDate',
+  absoluteExpiresAt: 'absoluteExpiresAt',
+  lastSeenAt: 'lastSeenAt',
+  actorDiscordID: 'actorDiscordID',
+  actorSessionID: 'actorSessionID',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -952,7 +957,9 @@ export const gm_panelTokenOrderByRelevanceFieldEnum = {
   os: 'os',
   ip: 'ip',
   country: 'country',
-  browser: 'browser'
+  browser: 'browser',
+  actorDiscordID: 'actorDiscordID',
+  actorSessionID: 'actorSessionID'
 } as const
 
 export type gm_panelTokenOrderByRelevanceFieldEnum = (typeof gm_panelTokenOrderByRelevanceFieldEnum)[keyof typeof gm_panelTokenOrderByRelevanceFieldEnum]

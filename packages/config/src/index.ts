@@ -133,6 +133,14 @@ export const ConfigPrivacy = {
   hashSecret: config.PRIVACY_HASH_SECRET,
 }
 
+export const ConfigAuth = {
+  credentialEncryptionKey: config.AUTH_TOKEN_ENCRYPTION_KEY,
+  sessionAbsoluteTtlSeconds: config.AUTH_SESSION_ABSOLUTE_TTL_SECONDS,
+  sessionIdleTtlSeconds: Math.min(config.AUTH_SESSION_IDLE_TTL_SECONDS, config.AUTH_SESSION_ABSOLUTE_TTL_SECONDS),
+  oauthStateTtlSeconds: 600,
+  wsTicketTtlSeconds: 30,
+}
+
 export const ConfigGmodStore = {
   apiKey: config.GMODSTORE_API_KEY,
   signingSecretKey: config.SIGNING_SECRET_WEBHOOK,

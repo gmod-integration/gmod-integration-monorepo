@@ -1,4 +1,9 @@
 import {
+  listApplicationSessions,
+  resolveApplicationSession,
+  revokeApplicationSession,
+} from '@gmod/domain-auth/authSessions.js'
+import {
   assertCapability,
   assertQuota,
   capabilityLimit,
@@ -81,65 +86,19 @@ export async function processGetProfile(steamID64: unknown, discordID: unknown):
   return bad({ error: 'Missing required query parameter' })
 }
 
-export async function processGetUserSessions(discordID: string): Promise<EndpointResult> {
-  const sessions = await prisma.gm_panelToken.findMany({
-    where: {
-      revoke: false,
-      discordID,
-    },
-  })
-
-  // findMany() always resolves to an array (never null), so no falsy fallback is needed here.
-  return ok(sessions)
+export async function processGetUserSessions(discordID: string, currentSessionID?: string): Promise<EndpointResult> {
+  return ok(await listApplicationSessions(discordID, currentSessionID))
 }
 
 export async function processDeleteUserSession(discordID: string, sessionID: string): Promise<EndpointResult> {
-  const session = await prisma.gm_panelToken.findFirst({
-    where: {
-      discordID,
-      id: sessionID,
-      revoke: false,
-    },
-  })
-
-  if (!session) {
-    return notFound({ error: 'Session not found' })
-  }
-
-  await prisma.gm_panelToken.update({
-    where: {
-      id: sessionID,
-    },
-    data: {
-      revoke: true,
-    },
-  })
-
-  // session was already null-checked above (returning 404), so it's always truthy here.
-  return ok(session)
+  if (!(await revokeApplicationSession(sessionID, discordID))) return notFound({ error: 'Session not found' })
+  return ok({ revoked: true })
 }
 
 export async function processLogOut(discordID: string, accessToken: string): Promise<EndpointResult> {
-  const sessionToken = await prisma.gm_panelToken.findFirst({
-    where: {
-      discordID,
-      accessToken,
-      revoke: false,
-    },
-  })
-
-  if (sessionToken) {
-    await prisma.gm_panelToken.update({
-      where: {
-        id: sessionToken.id,
-      },
-      data: {
-        revoke: true,
-      },
-    })
-  }
-
-  return ok(sessionToken || {})
+  const session = await resolveApplicationSession(accessToken)
+  if (session?.discordID === discordID) await revokeApplicationSession(session.id, discordID)
+  return ok({ revoked: true })
 }
 
 export async function processCreateNewServer(guild: any): Promise<EndpointResult> {

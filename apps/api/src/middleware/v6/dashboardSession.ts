@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express'
-import prisma from '@gmod/infra-prisma'
+import { assertSessionRequest, resolveRequestSession, readSessionCredential } from '@gmod/domain-auth/authSessions.js'
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
 import { Guild } from '@gmod/domain-guild/Guild.js'
@@ -10,18 +10,14 @@ export async function dashboardSession(req: Request, res: Response, next: NextFu
   res.setHeader('Cache-Control', 'no-store')
   if (req.headers.origin && req.headers.origin !== new URL(ConfigServer.websiteUrl).origin)
     return res.status(403).json({ error: { code: 'origin_forbidden', message: 'This origin is not allowed.' } })
-  const token = req.headers.authorization?.match(/^Bearer ([A-Za-z0-9._~+/-]+=*)$/i)?.[1]
-  if (!token) return res.status(401).json({ error: { code: 'unauthorized', message: 'A valid session is required.' } })
-  const sessions = await prisma.gm_panelToken.findMany({
-    where: { accessToken: token, revoke: false, expirationDate: { gt: new Date() } },
-    select: { discordID: true },
-    take: 2,
-  })
-  if (sessions.length !== 1)
+  const session = await resolveRequestSession(req, { touch: true })
+  if (!session)
     return res.status(401).json({ error: { code: 'unauthorized', message: 'A valid session is required.' } })
-  const panel = await getPanelUserFromDiscordID(sessions[0].discordID)
-  if (!panel || !(await panel.authAllowed(token)))
-    return res.status(401).json({ error: { code: 'unauthorized', message: 'A valid session is required.' } })
+  assertSessionRequest(req, session)
+  const panel = await getPanelUserFromDiscordID(session.discordID, readSessionCredential(req) || undefined, session)
+  if (!panel) return res.status(401).json({ error: { code: 'unauthorized', message: 'A valid session is required.' } })
+  req.authSession = session
+
   req.panelUser = panel
   next()
 }

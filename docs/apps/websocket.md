@@ -5,16 +5,62 @@ port `53139` (see root [README.md](../../README.md)).
 
 ## Two kinds of connections
 
-Both connect to the same `WebSocketServer`; `verifyClient` decides which one based on the handshake:
+Both connect to the same `WebSocketServer`. The handshake stores a verified connection type, which the
+connection handler consumes once:
 
 - **GMod server** — headers `id` + `token`, checked against `@gmod/domain-server` (`server.isValidToken`).
-  Tracked in an in-memory `clients.server` list. Can send `save_config` to persist in-game settings changes.
-- **Dashboard client** — query params `discordID` + `token`, checked against `@gmod/domain-user`
-  (`getPanelUserFromDiscordID` + `user.authAllowed`). Tracked in `clients.client`, along with which guilds/
-  servers that user administers (used to scope pushes). Can request `server_status` (version, last-request
-  time, live-connected flag from `clients.server`).
+  Missing, malformed or invalid addon credentials are rejected without falling back to dashboard
+  authentication. Tracked in `clients.server`; a newly authenticated connection replaces the previous
+  socket for that server. Can send `save_config` to persist in-game settings changes.
+- **Dashboard client** — query parameter `ticket`, consumed by
+  [`@gmod/domain-auth/authSessions.ts`](../../packages/domain-auth/src/authSessions.ts). The resolved
+  application session supplies the Discord identity; durable bearer tokens in WebSocket URLs are rejected.
+  Tracked per socket in `clients.client`, with its exact session and allowed guild/server IDs.
 
-Both sides get a 1s `ws.ping()` keepalive.
+The dashboard first obtains its session and CSRF token through `GET /v6/auth/session`, then requests
+`POST /v6/auth/ws-ticket` with the session cookie and `X-CSRF-Token`. Each connection attempt needs a new
+ticket. Tickets have a maximum lifetime of 30 seconds, bounded by session expiry, and Redis atomically
+consumes them with `GETDEL`; only their hash is used in the Redis key. HTTP bearer clients can also request
+a ticket. Supplied browser origins must pass the shared origin check.
+
+## Sessions, permissions and connection lifecycle
+
+Multiple tabs may connect using the same session, and multiple sessions may belong to the same account.
+Closing one socket removes only that socket. Every dashboard message and outgoing delivery revalidates
+the exact application session. A timer also revalidates idle sockets at least every 60 seconds, or sooner
+at their current expiry. Validation enforces inactivity/absolute deadlines, revocation, privacy erasure
+and the parent session of a delegated login. WebSocket traffic does not extend an application session;
+authenticated HTTP activity handles the sliding inactivity deadline.
+
+After delegation expiry, an HTTP session check can return `actor_session_available` with a CSRF recovery
+token. Returning to the original account uses the explicit HTTP impersonation-end endpoint, followed by
+a fresh ticket for that account; the gateway never switches the socket's identity in place.
+
+All replicas subscribe to `gmi:auth:session-revoked` (`{sessionID, discordID}`) and immediately close sockets
+for that session and its delegated children. They also subscribe to `gmi:privacy:revoked` and close sockets
+whose subject or delegation actor is the erased account. Durable validation remains authoritative if a
+revocation publication is missed.
+
+Guild/server permissions are resolved on connection and checked again before scoped operations when
+their local snapshot is at least 30 seconds old. The underlying Discord guild cache lasts 120 seconds;
+this means Discord permission changes are not instantaneous. The provider grant is checked before that
+cache is returned. A temporary permission lookup failure clears the socket's allowed IDs and delays its
+next lookup by five seconds. A `server_status` request must name an allowed server, and its response goes
+only to the requesting socket. Live pushes also require an allowed server ID.
+
+Application login remains independent of the Discord OAuth grant. The dashboard distinguishes these
+close codes:
+
+| Code   | Meaning                                                            | Dashboard handling                                                                        |
+| ------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| `1008` | Application session revoked, expired or unavailable as an identity | Refresh the HTTP session before reconnecting.                                             |
+| `4003` | Discord grant requires reconnection                                | Keep the application session and drafts; stop reconnecting until Discord is reauthorized. |
+| `1013` | Temporary session or permission-service failure                    | Retry with backoff and a new ticket.                                                      |
+| `1001` | Service restart                                                    | Reconnect with a new ticket.                                                              |
+
+Both connection types receive a ping every 30 seconds. A socket that has not answered with a pong by the
+following heartbeat is terminated. Socket closure and graceful shutdown remove heartbeat and session
+timers.
 
 ## Cross-replica delivery
 
@@ -26,8 +72,8 @@ _this_ replica, it re-publishes the payload on the Redis pub/sub channel `ws:sen
 `requestId`, and every replica that owns that connection tries to deliver it and increments a short-TTL Redis
 ack key (`ws:send-to-server:ack:<requestId>`) that the original worker polls for up to 600ms.
 
-`wsSendToAllClientsOfServerQueue` fans out to every connected dashboard client scoped to a given server
-(`serverAdminListID`).
+`wsSendToAllClientsOfServerQueue` fans out to every authorized dashboard socket scoped to a given server
+(`serverAdminListID`), including multiple tabs, with session and permission checks before delivery.
 
 ## Structure
 

@@ -52,6 +52,30 @@ beforeEach(() => {
 })
 
 describe('atomic dashboard settings', () => {
+  it('serializes administrator rank maps for storage and addon synchronization as one accepted draft', async () => {
+    const input = { ig_adminRank: { superadmin: true as const, moderator: true as const } }
+    expect(await saveServerDashboardSettings(server(true), input)).toEqual({ settings: input, sync: 'pending' })
+    expect(mocks.serverUpsert).toHaveBeenCalledWith({
+      where: { serverID_setting: { serverID: 'server', setting: 'ig_adminRank' } },
+      create: { serverID: 'server', setting: 'ig_adminRank', value: JSON.stringify(input.ig_adminRank) },
+      update: { value: JSON.stringify(input.ig_adminRank) },
+    })
+    expect(mocks.enqueue).toHaveBeenCalledWith('wsSendToServer', {
+      id: 'server',
+      data: { method: 'wsEditSetting', setting: 'ig_adminRank', value: JSON.stringify(input.ig_adminRank) },
+    })
+  })
+  it('preserves committed guild settings and reports pending synchronization when the cache is unavailable', async () => {
+    mocks.del.mockRejectedValueOnce(new Error('Cache unavailable'))
+    const input = { verification_dont_mp: true }
+    expect(await saveGuildDashboardSettings(guild(), input)).toEqual({ settings: input, sync: 'pending' })
+    expect(mocks.guildUpsert).toHaveBeenCalledWith({
+      where: { guildID_setting: { guildID: 'guild', setting: 'verification_dont_mp' } },
+      create: { guildID: 'guild', setting: 'verification_dont_mp', value: 'true' },
+      update: { value: 'true' },
+    })
+    expect(mocks.transaction).toHaveBeenCalledOnce()
+  })
   it('commits a section in one transaction before dispatching addon changes', async () => {
     const order: string[] = []
     mocks.transaction.mockImplementation(async (operation) => {

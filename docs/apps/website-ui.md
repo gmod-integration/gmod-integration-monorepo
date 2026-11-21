@@ -64,6 +64,34 @@ Paths below are relative to `apps/website/src`.
 | `PremiumBadge`, `BuyPremiumBtn`, `PremiumOnly`    | `utils/premium.tsx`, `components/PremiumOnly.tsx` | Shared premium access presentation.                                                                                                                                                                                                                                                             |
 | `ServerActivityChart`, `AdminChart`, `JsonViewer` | `components/`                                     | Charts and structured data display.                                                                                                                                                                                                                                                             |
 
+## Authentication and session recovery
+
+`AuthProvider` in `components/AuthProvider.tsx` owns the shared session lifecycle. Read `authSession()`
+and `authStatus()` from `utils/authClient.ts`; `checking`, `signed_out`, `temporarily_unavailable` and
+`reauth_required` are distinct states. Protected routes wait for the first check. Keep existing editors
+mounted through temporary failures, and redirect to login only after a definitive signed-out result.
+`Header` displays the shared state without validating credentials independently.
+
+Use `fetchAPI` for the existing v3 route helpers and `/v6/` paths, or `authenticatedFetch` for full URLs.
+Both use `credentials: 'include'`; mutations receive `X-CSRF-Token` from the session snapshot. Do not
+read a localStorage access token, build an Authorization header or add credentials to links/WebSocket
+URLs. The separate erasure-receipt status reader owns its recovery Bearer header.
+
+Session validation is coordinated across callers. A 401 checks the application session before clearing
+identity. An expired delegation can recover the operator through the session endpoint's
+`actor_session_available` CSRF challenge and a direct return request; a temporary failure preserves the
+editor. A GET may retry once after recovery. Never replay a mutation automatically. A permission
+403 leaves the session intact; `discord_reauth_required` displays the shared reconnect action. OAuth
+opens in a new tab to preserve the active editor. Network/503 failures retain drafts and show retry
+feedback instead of a forced logout or upgrade prompt.
+
+`authCommand` handles session-changing commands and validates their acknowledgement before adopting
+the new server identity. Session IDs and the server's `actorDiscordID` marker drive session management
+and delegation; target DTOs and browser storage never contain another account's credential. Login,
+logout, delegation and account cleanup publish only a nonce/time storage notification. Recipients
+reread the cookie, abort superseded requests and ignore stale responses. Keep this notification after
+private-data cleanup so another tab can notice revocation without a WebSocket.
+
 ## Capability and quota controls
 
 Business access comes from the authenticated v6 access snapshot, with policy metadata from

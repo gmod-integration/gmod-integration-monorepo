@@ -1,70 +1,73 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../testUtils.js'
-import { discordUser, isLogged, setDiscordUser, setIsLogged } from '../../src/utils/event.js'
+import { acceptAuthSession, resetAuthentication } from '../../src/utils/authClient.js'
+import { isLogged } from '../../src/utils/event.js'
+import { sessionFixture } from '../authFixture.js'
 import Logout from '../../src/pages/Logout.js'
 import { ERASURE_RECEIPT_KEY } from '../../src/utils/accountErasure.js'
 
+beforeEach(() => {
+  localStorage.clear()
+  resetAuthentication()
+  acceptAuthSession(sessionFixture())
+})
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
-
-describe('pages/Logout.tsx', () => {
-  it('calls the logout endpoint, clears local state, and navigates home', async () => {
-    window.localStorage.setItem('accessToken', 'tok1')
-    setIsLogged(true)
-    setDiscordUser({
-      id: '1',
-      username: 'bob',
-      globalName: 'bob',
-      displayName: 'bob',
-      discriminator: '',
-      avatarURL: '',
-      displayAvatarURL: '',
-    })
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}'))
-    vi.stubGlobal('fetch', fetchMock)
-
-    const history = historyAt('/logout')
-    renderWithProviders(() => <Logout />, { path: '/logout', history })
-
-    // happy-dom's getAttribute('href') mis-serializes a bare "/" anchor href back to "" (an
-    // environment quirk, not a component bug) - the resolved `.href` property is correct though.
-    expect((screen.getByText('Click here if you are not redirected.') as HTMLAnchorElement).href).toBe(
-      'http://localhost:3000/',
-    )
-
+function renderLogout() {
+  const history = historyAt('/logout')
+  renderWithProviders(() => <Logout />, { path: '/logout', history, session: false })
+  return history
+}
+describe('explicit logout', () => {
+  it('revokes the cookie session with CSRF, clears local state and navigates home', async () => {
+    const network = vi.fn().mockResolvedValue(new Response('{}'))
+    vi.stubGlobal('fetch', network)
+    const history = renderLogout()
     await vi.waitFor(() => expect(history.get()).toBe('/'))
-    expect(fetchMock).toHaveBeenCalledWith(
-      'http://localhost:5001/v3/users//logout',
-      expect.objectContaining({ method: 'POST' }),
-    )
-    expect(window.localStorage.getItem('accessToken')).toBeNull()
+    expect(network.mock.calls[0][0]).toBe('http://localhost:5001/v6/auth/logout')
+    expect(network.mock.calls[0][1].credentials).toBe('include')
+    expect(new Headers(network.mock.calls[0][1].headers).get('X-CSRF-Token')).toBe('csrf-token')
     expect(isLogged()).toBe(false)
-    expect(discordUser().id).toBe('')
+    expect(localStorage.getItem('discordUser')).toBeNull()
   })
-  it('preserves the recovery receipt and preferences even when the logout request fails', async () => {
-    localStorage.clear()
+  it('distinguishes unconfirmed server revocation while clearing local private data and preserving receipt/preferences', async () => {
     const receipt = { requestId: '00000000-0000-4000-8000-000000000001', receipt: 'a'.repeat(64) }
     localStorage.setItem(ERASURE_RECEIPT_KEY, JSON.stringify(receipt))
     localStorage.setItem('locale', 'en')
     localStorage.setItem('theme', 'dark')
-    localStorage.setItem('accessToken', 'old-token')
-    sessionStorage.setItem('private-cache', 'old data')
-    setIsLogged(true)
-    const remove = vi.spyOn(localStorage, 'removeItem')
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network unavailable')))
-    const history = historyAt('/logout')
-    renderWithProviders(() => <Logout />, { path: '/logout', history })
-    await vi.waitFor(() => expect(history.get()).toBe('/'))
+    sessionStorage.setItem('private-cache', 'old')
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network down')))
+    const history = renderLogout()
+    await vi.waitFor(() => expect(screen.getByText(/Server revocation could not be confirmed/)).toBeInTheDocument())
+    expect(history.get()).toBe('/logout')
     expect(isLogged()).toBe(false)
-    expect(JSON.parse(localStorage.getItem(ERASURE_RECEIPT_KEY)!)).toEqual(receipt)
-    expect(remove).not.toHaveBeenCalledWith(ERASURE_RECEIPT_KEY)
-    expect(localStorage.getItem('accessToken')).toBeNull()
-    expect(localStorage.getItem('theme')).toBe('dark')
+    expect(localStorage.getItem(ERASURE_RECEIPT_KEY)).toBe(JSON.stringify(receipt))
     expect(localStorage.getItem('locale')).toBe('en')
+    expect(localStorage.getItem('theme')).toBe('dark')
     expect(sessionStorage.length).toBe(0)
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled()
+  })
+  it('retries unconfirmed revocation using a fresh session CSRF without replaying the original request', async () => {
+    const network = vi.fn().mockRejectedValueOnce(new Error('Offline'))
+    vi.stubGlobal('fetch', network)
+    const history = renderLogout()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled())
+    network.mockImplementation(
+      async (url: string) =>
+        new Response(JSON.stringify(url.endsWith('/session') ? sessionFixture() : { revoked: true })),
+    )
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(history.get()).toBe('/'))
+    expect(network.mock.calls.map(([url]) => url)).toEqual([
+      'http://localhost:5001/v6/auth/logout',
+      'http://localhost:5001/v6/auth/session',
+      'http://localhost:5001/v6/auth/logout',
+    ])
+    expect(new Headers(network.mock.calls[2][1].headers).get('X-CSRF-Token')).toBe('csrf-token')
+    expect(isLogged()).toBe(false)
   })
 })

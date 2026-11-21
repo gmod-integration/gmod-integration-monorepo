@@ -150,6 +150,7 @@
     "zod": "^3.25.76",
     "zod-openapi": "^4.2.4",
     "@gmod/shared": "workspace:*",
-    "@gmod/domain-access": "workspace:*"
+    "@gmod/domain-access": "workspace:*",
+    "@gmod/domain-auth": "workspace:*"
   }
 }

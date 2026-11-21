@@ -104,6 +104,25 @@ describe('steamControllerModels', () => {
   })
 
   describe('processSteamVerificationReturn', () => {
+    it('refuses linking an erased Discord or Steam identity after validating the OpenID assertion', async () => {
+      prismaMock.gm_user.findFirst.mockResolvedValueOnce({ id: 'u1' })
+      axiosPostMock.mockResolvedValueOnce({ data: 'is_valid:true' })
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      expect(
+        await processSteamVerificationReturn({
+          verificationCode: 'code1',
+          'openid.claimed_id': 'https://steamcommunity.com/openid/id/765',
+        }),
+      ).toEqual({
+        kind: 'json',
+        status: 409,
+        body: { error: 'personal_data_erasure_blocked' },
+      })
+      expect(isErasureBlockedMock).toHaveBeenCalledWith('u1', '765')
+      expect(prismaMock.gm_user.findMany).not.toHaveBeenCalled()
+      expect(prismaMock.gm_user.update).not.toHaveBeenCalled()
+      expect(enqueueDiscordGuildVerifyUserMock).not.toHaveBeenCalled()
+    })
     it('restores retained zero reputation when the Steam identity is linked to a new account', async () => {
       prismaMock.gm_user.findFirst.mockResolvedValueOnce({ id: 'new-account' })
       axiosPostMock.mockResolvedValueOnce({ data: 'is_valid:true' })

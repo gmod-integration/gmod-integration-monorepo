@@ -11,9 +11,11 @@ import {
   webSocketSignal,
 } from '../../src/utils/websocket.js'
 import Account from '../../src/pages/Account.js'
+import type * as ApiModule from '../../src/utils/api.js'
+import { AUTH_STORAGE_KEY } from '../../src/utils/authClient.js'
 
 vi.mock('../../src/utils/api.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../src/utils/api.js')>()
+  const actual = await importOriginal<typeof ApiModule>()
   return { ...actual, fetchAPI: vi.fn() }
 })
 
@@ -34,27 +36,27 @@ const FETCH_USER_URL = '/users?discordID=u1'
 const VERIFY_URL = '/users/:discordID/verifications/token'
 const GMODSTORE_URL = '/users/:discordID/gmod-store'
 const DATA_REQ_URL = '/users/:discordID/data-requests'
-const SESSIONS_URL = '/users/:discordID/sessions'
+const SESSIONS_URL = '/v6/auth/sessions'
 
 function defaultSessions() {
   return [
     {
       id: 'session-current-123',
-      updatedAt: '2024-01-05T10:00:00.000Z',
+      lastSeenAt: '2024-01-05T10:00:00.000Z',
       ip: '1.2.3.4',
       os: 'Windows',
       browser: 'Chrome',
       country: 'FR',
-      accessToken: 'current-tok',
+      isCurrent: true,
     },
     {
       id: 'session-other-456',
-      updatedAt: '2024-01-04T09:00:00.000Z',
+      lastSeenAt: '2024-01-04T09:00:00.000Z',
       ip: '5.6.7.8',
       os: 'Linux',
       browser: 'Firefox',
       country: 'US',
-      accessToken: 'other-tok',
+      isCurrent: false,
     },
   ]
 }
@@ -86,7 +88,7 @@ function setupFetchAPI({
     if (endpoint === FETCH_USER_URL && method === 'GET') return Promise.resolve(jsonResponse(user))
     if (endpoint === GMODSTORE_URL && method === 'GET') return Promise.resolve(jsonResponse(gmodStore))
     if (endpoint === DATA_REQ_URL && method === 'GET') return Promise.resolve(jsonResponse(dataRequests))
-    if (endpoint === SESSIONS_URL && method === 'GET') return Promise.resolve(jsonResponse(sessions))
+    if (endpoint === SESSIONS_URL && method === 'GET') return Promise.resolve(jsonResponse({ sessions }))
     return Promise.resolve(jsonResponse({}))
   })
 }
@@ -125,8 +127,16 @@ describe('pages/Account.tsx', () => {
     renderAccount()
     expect(screen.getByText('u1')).toBeInTheDocument()
   })
+  it('displays the server-normalized cached avatar without treating it as a credential', () => {
+    localStorage.setItem(
+      'discordUser',
+      JSON.stringify({ id: 'u1', username: 'bob', displayAvatarURL: 'https://cdn.discordapp.com/avatar.png' }),
+    )
+    renderAccount()
+    expect(document.querySelector('img[src="https://cdn.discordapp.com/avatar.png"]')).toBeInTheDocument()
+  })
 
-  it('falls back to an empty object/list for every resource when its response body is falsy', async () => {
+  it('rejects malformed session data while other optional resources retain their empty states', async () => {
     // Exercises the `res.json() || {}` fallback on the gmod-store/data-requests/sessions
     // resources (json() resolving to null is an edge case a malformed API response could hit).
     // Solid's <For> tolerates a non-array `each` by rendering nothing, so this doesn't crash.
@@ -139,10 +149,25 @@ describe('pages/Account.tsx', () => {
     expect(screen.getByRole('link', { name: 'Activate on Guild' })).toBeInTheDocument()
     expect(
       screen.getAllByRole('status').filter((element) => element.textContent?.includes('Nothing to display yet.')),
-    ).toHaveLength(2)
+    ).toHaveLength(1)
+    expect(
+      within(screen.getByRole('heading', { name: 'Manage Sessions' }).closest('.dashboard-panel')!).getByRole('alert'),
+    ).toBeInTheDocument()
   })
 
   describe('steam panel', () => {
+    it('retries the linked-account lookup after a temporary failure', async () => {
+      const fallback = (fetchAPI as Mock).getMockImplementation()!
+      ;(fetchAPI as Mock).mockImplementation((...args: unknown[]) =>
+        args[0] === FETCH_USER_URL ? Promise.reject(new Error('Temporary outage')) : fallback(...args),
+      )
+      renderAccount()
+      const panel = screen.getByRole('heading', { name: 'Steam' }).closest<HTMLElement>('.dashboard-panel')!
+      await vi.waitFor(() => expect(within(panel).getByRole('button', { name: 'Try again' })).toBeEnabled())
+      setupFetchAPI({ user: { id: 'u1', steamID64: '76500000000000000' } })
+      await fireEvent.click(within(panel).getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(within(panel).getByText('76500000000000000')).toBeInTheDocument())
+    })
     it('shows a loading spinner while the steam user resource is pending', () => {
       ;(fetchAPI as Mock).mockReturnValue(new Promise(() => {}))
       renderAccount()
@@ -213,6 +238,21 @@ describe('pages/Account.tsx', () => {
   })
 
   describe('gmod store purchase panel', () => {
+    it('retries a temporary purchase lookup failure without changing the account', async () => {
+      const fallback = (fetchAPI as Mock).getMockImplementation()!
+      ;(fetchAPI as Mock).mockImplementation((...args: unknown[]) =>
+        args[0] === GMODSTORE_URL ? Promise.reject(new Error('Temporary outage')) : fallback(...args),
+      )
+      renderAccount()
+      const panel = screen
+        .getByRole('heading', { name: 'Gmod Store Purchase' })
+        .closest<HTMLElement>('.dashboard-panel')!
+      await vi.waitFor(() => expect(within(panel).getByRole('button', { name: 'Try again' })).toBeEnabled())
+      setupFetchAPI({ gmodStore: { guild: 'Recovered guild' } })
+      await fireEvent.click(within(panel).getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(within(panel).getByText('Recovered guild')).toBeInTheDocument())
+      expect(JSON.parse(localStorage.getItem('discordUser')!).id).toBe('u1')
+    })
     it('shows a loading spinner while the resource is pending', () => {
       ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
         if (endpoint === GMODSTORE_URL) return new Promise(() => {})
@@ -345,7 +385,7 @@ describe('pages/Account.tsx', () => {
       expect(panel.querySelector('.loading-spinner')).toBeInTheDocument()
     })
 
-    it('marks the session matching the local accessToken as current and others as deletable', async () => {
+    it('uses the server isCurrent marker for the current session and others as deletable', async () => {
       window.localStorage.setItem('accessToken', 'current-tok')
       setupFetchAPI({ sessions: defaultSessions() })
       renderAccount()
@@ -637,7 +677,13 @@ describe('pages/Account.tsx', () => {
         expect(webSocketSignal()).toBeNull()
         expect(webSocketLogsMessages()).toEqual([])
         expect(notificationCount()).toBe(0)
-        expect(Object.keys(localStorage).sort()).toEqual([ERASURE_RECEIPT_KEY, 'locale', 'theme'].sort())
+        expect(Object.keys(localStorage).sort()).toEqual(
+          [ERASURE_RECEIPT_KEY, AUTH_STORAGE_KEY, 'locale', 'theme'].sort(),
+        )
+        expect(JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY)!)).toEqual({
+          nonce: expect.any(String),
+          at: expect.any(Number),
+        })
         expect(localStorage.getItem('theme')).toBe('dark')
         expect(remove).not.toHaveBeenCalledWith(ERASURE_RECEIPT_KEY)
         expect(sessionStorage.length).toBe(0)

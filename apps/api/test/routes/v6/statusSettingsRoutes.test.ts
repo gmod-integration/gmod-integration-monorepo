@@ -16,7 +16,42 @@ vi.mock('@gmod/infra-prisma', () => ({ default: { gm_panelToken: { findMany: moc
 vi.mock('@gmod/domain-user/PanelUser.js', () => ({ getPanelUserFromDiscordID: mocks.panel }))
 vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: mocks.server }))
 vi.mock('@gmod/domain-guild/Guild.js', () => ({ Guild: class {} }))
-vi.mock('@gmod/config', () => ({ ConfigServer: { websiteUrl: 'https://dashboard.example.test' } }))
+vi.mock('@gmod/config', () => ({
+  ConfigServer: { websiteUrl: 'https://dashboard.example.test', domain: 'https://api.example.test', dev: false },
+  ConfigDiscord: { clientSecret: 'test-oauth-client-secret' },
+  ConfigAuth: { credentialEncryptionKey: 'test-auth-key', sessionIdleTtlSeconds: 604800 },
+}))
+vi.mock('@gmod/infra-prisma/privacy.js', () => ({ isErasureBlocked: vi.fn().mockResolvedValue(false) }))
+vi.mock('@gmod/infra-redis', () => ({ default: { publish: vi.fn() } }))
+const { csrfTokenForSession, hashSessionToken } = await import('@gmod/domain-auth/authSessions.js')
+function sessionRow(overrides: Record<string, unknown> = {}) {
+  const now = new Date()
+  return {
+    id: 'session-A',
+    discordID: 'owner',
+    accessToken: hashSessionToken('session-token'),
+    revoke: false,
+    creationDate: now,
+    createdAt: now,
+    lastSeenAt: now,
+    expirationDate: new Date(now.getTime() + 600_000),
+    absoluteExpiresAt: new Date(now.getTime() + 3_600_000),
+    ...overrides,
+  }
+}
+function csrf() {
+  const row = sessionRow()
+  return csrfTokenForSession({
+    id: row.id,
+    discordID: row.discordID,
+    tokenHash: row.accessToken,
+    createdAt: row.createdAt,
+    lastSeenAt: row.lastSeenAt,
+    expiresAt: row.expirationDate,
+    absoluteExpiresAt: row.absoluteExpiresAt,
+  })
+}
+
 vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({ enqueueDiscordServerStatusRefresh: mocks.refresh }))
 vi.mock('@gmod/domain-server/statusConfiguration.js', () => ({
   getStatusConfiguration: mocks.get,
@@ -40,8 +75,8 @@ function app() {
   const instance = express()
   instance.use(express.json())
   instance.use('/v6', router)
-  instance.use((_err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) =>
-    res.status(503).json({ error: { code: 'service_unavailable' } }),
+  instance.use((error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) =>
+    res.status(error.status || 503).json({ error: { code: error.code || 'service_unavailable' } }),
   )
   return instance
 }
@@ -50,7 +85,7 @@ const put = (body: unknown = snapshot) =>
   request(app()).put(endpoint).set('Authorization', 'Bearer session-token').send(body)
 beforeEach(() => {
   vi.clearAllMocks()
-  mocks.sessions.mockResolvedValue([{ discordID: 'owner' }])
+  mocks.sessions.mockResolvedValue([sessionRow()])
   mocks.panel.mockResolvedValue({ authAllowed: mocks.auth, isAdminOfGuild: mocks.admin })
   mocks.auth.mockResolvedValue(true)
   mocks.admin.mockResolvedValue(true)
@@ -67,7 +102,11 @@ describe('v6 aggregate status settings', () => {
     expect(response.body).toEqual(snapshot)
     expect(response.headers['cache-control']).toBe('no-store')
     expect(mocks.get).toHaveBeenCalledWith('s1')
-    expect(mocks.panel).toHaveBeenCalledWith('owner')
+    expect(mocks.panel).toHaveBeenCalledWith(
+      'owner',
+      'session-token',
+      expect.objectContaining({ id: 'session-A', discordID: 'owner' }),
+    )
     expect(mocks.admin).toHaveBeenCalledWith('g1')
   })
   it('validates the whole aggregate before calling one domain save with an explicit refresh callback', async () => {
@@ -107,6 +146,17 @@ describe('v6 aggregate status settings', () => {
     expect((await put()).status).toBe(403)
     expect(mocks.get).not.toHaveBeenCalled()
     expect(mocks.save).not.toHaveBeenCalled()
+  })
+  it('loads via a cookie and requires its CSRF token for an aggregate save', async () => {
+    const cookie = '__Host-gmi_session=session-token'
+    expect((await request(app()).get(endpoint).set('Cookie', cookie)).status).toBe(200)
+    expect((await request(app()).put(endpoint).set('Cookie', cookie).send(snapshot)).status).toBe(403)
+    expect(mocks.save).not.toHaveBeenCalled()
+    expect(
+      (await request(app()).put(endpoint).set('Cookie', cookie).set('X-CSRF-Token', csrf()).send(snapshot)).status,
+    ).toBe(200)
+    expect(mocks.save).toHaveBeenCalledTimes(1)
+    expect(mocks.auth).not.toHaveBeenCalled()
   })
   it('does not accept a server from another guild', async () => {
     mocks.server.mockResolvedValue({ ...server, guild: 'g2' })

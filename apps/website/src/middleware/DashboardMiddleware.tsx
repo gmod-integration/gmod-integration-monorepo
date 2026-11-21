@@ -1,6 +1,7 @@
 import { createEffect } from 'solid-js'
 import { useLocation, useNavigate } from '@solidjs/router'
 import { isLogged } from '../utils/event'
+import { authStatus } from '../utils/authClient.js'
 
 const urlReplaceStrings = [
   {
@@ -38,7 +39,7 @@ const DashboardMiddleware = () => {
       navigate('/dashboard/guilds')
     }
 
-    if (!isLogged()) {
+    if (!isLogged() && authStatus() === 'signed_out') {
       navigate('/login?redirect=' + location.pathname)
     }
 

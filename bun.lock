@@ -8,8 +8,9 @@
         "@aws-sdk/client-s3": "^3.1157.0",
         "@discordjs/builders": "^1.14.1",
         "@gmod/config": "workspace:*",
-        "@gmod/domain-access": "workspace:*",
         "@gmod/core": "workspace:*",
+        "@gmod/domain-access": "workspace:*",
+        "@gmod/domain-auth": "workspace:*",
         "@gmod/domain-compliance": "workspace:*",
         "@gmod/domain-gmod": "workspace:*",
         "@gmod/domain-guild": "workspace:*",
@@ -94,8 +95,8 @@
       "dependencies": {
         "@aws-sdk/client-s3": "^3.1009.0",
         "@gmod/config": "workspace:*",
-        "@gmod/domain-access": "workspace:*",
         "@gmod/core": "workspace:*",
+        "@gmod/domain-access": "workspace:*",
         "@gmod/domain-guild": "workspace:*",
         "@gmod/domain-moderation": "workspace:*",
         "@gmod/domain-server": "workspace:*",
@@ -176,8 +177,9 @@
       "version": "1.0.0",
       "dependencies": {
         "@gmod/config": "workspace:*",
-        "@gmod/domain-access": "workspace:*",
         "@gmod/core": "workspace:*",
+        "@gmod/domain-access": "workspace:*",
+        "@gmod/domain-auth": "workspace:*",
         "@gmod/domain-guild": "workspace:*",
         "@gmod/domain-server": "workspace:*",
         "@gmod/domain-user": "workspace:*",
@@ -205,6 +207,7 @@
         "@aws-sdk/client-s3": "^3.1009.0",
         "@gmod/config": "workspace:*",
         "@gmod/domain-access": "workspace:*",
+        "@gmod/domain-auth": "workspace:*",
         "@gmod/domain-gmod": "workspace:*",
         "@gmod/domain-guild": "workspace:*",
         "@gmod/domain-server": "workspace:*",
@@ -238,22 +241,33 @@
         "@gmod/infra-prisma": "workspace:*",
         "@gmod/infra-redis": "workspace:*",
         "@gmod/schema": "workspace:*",
-        "zod": "^3.25.76"
-      }
+        "zod": "^3.25.76",
+      },
+    },
+    "packages/domain-auth": {
+      "name": "@gmod/domain-auth",
+      "version": "1.0.0",
+      "dependencies": {
+        "@gmod/config": "workspace:*",
+        "@gmod/infra-prisma": "workspace:*",
+        "@gmod/infra-redis": "workspace:*",
+        "@gmod/shared": "workspace:*",
+        "zod": "^3.25.76",
+      },
     },
     "packages/domain-compliance": {
       "name": "@gmod/domain-compliance",
       "version": "1.0.0",
       "dependencies": {
-        "@gmod/infra-mongo": "workspace:*",
-        "@gmod/infra-redis": "workspace:*",
         "@aws-sdk/client-s3": "^3.1009.0",
         "@gmod/config": "workspace:*",
         "@gmod/core": "workspace:*",
         "@gmod/domain-gmod": "workspace:*",
         "@gmod/domain-user": "workspace:*",
         "@gmod/infra-minio": "workspace:*",
+        "@gmod/infra-mongo": "workspace:*",
         "@gmod/infra-prisma": "workspace:*",
+        "@gmod/infra-redis": "workspace:*",
         "@gmod/shared": "workspace:*",
         "archiver": "^7.0.1",
       },
@@ -273,6 +287,7 @@
       "dependencies": {
         "@gmod/config": "workspace:*",
         "@gmod/domain-access": "workspace:*",
+        "@gmod/domain-auth": "workspace:*",
         "@gmod/domain-server": "workspace:*",
         "@gmod/domain-user": "workspace:*",
         "@gmod/infra-bullmq": "workspace:*",
@@ -314,6 +329,7 @@
       "name": "@gmod/domain-user",
       "version": "1.0.0",
       "dependencies": {
+        "@gmod/domain-auth": "workspace:*",
         "@gmod/infra-prisma": "workspace:*",
         "@gmod/infra-redis": "workspace:*",
       },
@@ -332,9 +348,9 @@
       "name": "@gmod/infra-minio",
       "version": "1.0.0",
       "dependencies": {
-        "@gmod/infra-prisma": "workspace:*",
         "@aws-sdk/client-s3": "^3.1009.0",
         "@gmod/config": "workspace:*",
+        "@gmod/infra-prisma": "workspace:*",
       },
     },
     "packages/infra-mongo": {
@@ -963,6 +979,8 @@
     "@gmod/core": ["@gmod/core@workspace:packages/core"],
 
     "@gmod/domain-access": ["@gmod/domain-access@workspace:packages/domain-access"],
+
+    "@gmod/domain-auth": ["@gmod/domain-auth@workspace:packages/domain-auth"],
 
     "@gmod/domain-compliance": ["@gmod/domain-compliance@workspace:packages/domain-compliance"],
 

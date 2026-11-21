@@ -1,3 +1,4 @@
+import { assertSessionRequest, resolveRequestSession, readSessionCredential } from '@gmod/domain-auth/authSessions.js'
 import { badArgument } from '@gmod/core/utils/tools.js'
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
@@ -9,9 +10,6 @@ import { getSingleParam } from '@/utils/requestParams.js'
 export async function userValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const discordID = getSingleParam(req.params.discordID)
-    const authorization = Array.isArray(req.headers.authorization)
-      ? req.headers.authorization[0]
-      : req.headers.authorization
 
     if (badArgument([discordID])) {
       res.status(400).json({
@@ -23,29 +21,18 @@ export async function userValidator(req: Request, res: Response, next: NextFunct
       return
     }
 
-    if (!authorization || !authorization.startsWith('Bearer ')) {
-      res.status(401).json({
-        error: 'unauthorized',
-      })
+    const session = await resolveRequestSession(req, { touch: true })
+    if (!session || session.discordID !== discordID) {
+      res.status(401).json({ error: 'unauthorized' })
       return
     }
-
-    const token = authorization.split(' ')[1]
-
-    const panelUser = await getPanelUserFromDiscordID(discordID)
+    assertSessionRequest(req, session)
+    const panelUser = await getPanelUserFromDiscordID(discordID, readSessionCredential(req) || undefined, session)
     if (!panelUser) {
-      res.status(404).json({
-        error: 'user_not_found',
-      })
+      res.status(401).json({ error: 'unauthorized' })
       return
     }
-
-    if (!(await panelUser.authAllowed(token))) {
-      res.status(401).json({
-        error: 'unauthorized',
-      })
-      return
-    }
+    req.authSession = session
 
     req.panelUser = panelUser
 

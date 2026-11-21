@@ -123,6 +123,17 @@ describe('logger', () => {
   })
 
   describe('logServer', () => {
+    it('does not broadcast or relay an event rejected by the storage privacy barrier', async () => {
+      addLogMock.mockResolvedValueOnce(false)
+      const server = makeServer({
+        getCachedLogsChannel: vi.fn().mockResolvedValue({ webhookID: 'webhook', webhookToken: 'secret' }),
+      })
+      await logServer(server, 'server_start')
+      await flushMicrotasks()
+      expect(addLogMock).toHaveBeenCalledOnce()
+      expect(wsAddMock).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
+    })
     it('does not persist, broadcast or relay a log involving an erased player', async () => {
       isErasureBlockedMock.mockResolvedValue(true)
       await logServer(makeServer(), 'player_connect', { steamID64: '76561198219049673', name: 'Private' })

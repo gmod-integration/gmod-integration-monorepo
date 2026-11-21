@@ -1,3 +1,4 @@
+import type * as NodeCrypto from 'node:crypto'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
@@ -26,7 +27,7 @@ const getSteamUserAvatarLargeMock = vi.fn(async () => 'https://avatar.example')
 vi.mock('@gmod/infra-steam', () => ({ getSteamUserAvatarLarge: getSteamUserAvatarLargeMock }))
 
 vi.mock('node:crypto', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('node:crypto')>()),
+  ...(await importOriginal<typeof NodeCrypto>()),
   randomUUID: vi.fn(() => 'uuid-1'),
 }))
 
@@ -187,6 +188,16 @@ describe('clientsModels', () => {
   })
 
   describe('sendScreenshotToDiscord', () => {
+    it('does not inspect channels or publish a screenshot belonging to an erased player', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      const server = makeServer()
+      expect(await sendScreenshotToDiscord('durl', 'iurl', 'private.jpeg', fakePlayer, server, 'Private')).toEqual({
+        skip: true,
+        message: 'Personal data collection is disabled',
+      })
+      expect(server.getScreenshotsChannel).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
+    })
     it('skips when the server has no screenshots channel configured', async () => {
       const server = makeServer({ getScreenshotsChannel: vi.fn().mockResolvedValue(null) })
       const result = await sendScreenshotToDiscord('durl', 'iurl', 'file.jpeg', fakePlayer, server, 'title')
@@ -230,6 +241,23 @@ describe('clientsModels', () => {
   })
 
   describe('uploadScreenshotPayload', () => {
+    it('does not upload or save a screenshot when collection is already disabled', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      expect(
+        await uploadScreenshotPayload(makeServer(), {
+          player: fakePlayer,
+          screenshot: 'AAAA',
+          captureData: { format: 'jpeg' },
+          size: 100,
+        }),
+      ).toEqual({
+        skip: true,
+        message: 'Personal data collection is disabled',
+      })
+      expect(s3SendMock).not.toHaveBeenCalled()
+      expect(enqueueMainClientUploadScreenshotMock).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_screenshots.create).not.toHaveBeenCalled()
+    })
     it('returns a missing_arguments error when required fields are absent', async () => {
       const result = await uploadScreenshotPayload(makeServer(), { player: fakePlayer })
       expect(result).toEqual(
@@ -264,6 +292,21 @@ describe('clientsModels', () => {
   })
 
   describe('reportBugPayload', () => {
+    it('does not register a private report or screenshot when collection is already disabled', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      expect(
+        await reportBugPayload(makeServer(), {
+          player: fakePlayer,
+          description: 'Private',
+          importance: 'high',
+          steps: 'steps',
+          expected: 'expected',
+          actual: 'actual',
+        }),
+      ).toEqual({ skip: true, message: 'Personal data collection is disabled' })
+      expect(s3SendMock).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_report_bugs.create).not.toHaveBeenCalled()
+    })
     it('removes exactly the bug report whose deferred write finishes after erasure starts', async () => {
       let blocked = false
       isErasureBlockedMock.mockImplementation(async () => blocked)

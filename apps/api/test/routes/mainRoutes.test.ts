@@ -1,7 +1,7 @@
 import express from 'express'
 import request from 'supertest'
 import { Readable } from 'node:stream'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/routes/webhooks/_webhooksRoutes.js', () => ({ default: express.Router() }))
 vi.mock('@/routes/v3/_v3Routes.js', () => ({ default: express.Router() }))
@@ -27,8 +27,21 @@ describe('mainRoutes', () => {
     prismaMock.gm_users_data_request.findFirst.mockReset()
     s3SendMock.mockReset()
   })
+  afterEach(() => vi.restoreAllMocks())
 
   describe('GET /avatars/:provider/:id', () => {
+    it('does not serve erased Discord or Steam avatars from object storage', async () => {
+      const privacy = await import('@gmod/domain-user/privacy.js')
+      const guard = vi.spyOn(privacy, 'isErasureBlocked').mockResolvedValueOnce(true).mockResolvedValueOnce(true)
+      for (const provider of ['discord', 'steam']) {
+        const response = await request(makeApp()).get(`/avatars/${provider}/123`)
+        expect(response.status).toBe(404)
+        expect(response.headers['cache-control']).toBe('no-store')
+      }
+      expect(guard).toHaveBeenCalledWith('123', null)
+      expect(guard).toHaveBeenCalledWith(null, '123')
+      expect(s3SendMock).not.toHaveBeenCalled()
+    })
     it('returns 400 for an unrecognized provider', async () => {
       const response = await request(makeApp()).get('/avatars/unknown/123')
       expect(response.status).toBe(400)

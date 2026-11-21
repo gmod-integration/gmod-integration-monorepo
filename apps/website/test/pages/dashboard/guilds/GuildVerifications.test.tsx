@@ -311,6 +311,59 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     expect(container.querySelector('#verification-support')).toBeDisabled()
   })
 
+  it('allows turning off saved premium preferences after expiry without changing the other saved preference', async () => {
+    setupFetchAPI({ dontMP: { value: true }, dontJoinSupport: { value: true } })
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    const group = screen.getByText('Member experience').closest('section')!
+    const dm = container.querySelector<HTMLInputElement>('#verification-dm')!
+    const support = container.querySelector<HTMLInputElement>('#verification-support')!
+    await vi.waitFor(() => expect(dm).toBeChecked())
+    expect(dm).not.toBeDisabled()
+    await fireEvent.click(dm)
+    expect(support).toBeChecked()
+    vi.mocked(saveDashboardSettings).mockResolvedValue({ settings: { verification_dont_mp: false }, sync: 'applied' })
+    await fireEvent.click(within(group).getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(saveDashboardSettings).toHaveBeenCalledWith('guild', { verification_dont_mp: false }))
+    await vi.waitFor(() => expect(within(group).getByRole('button', { name: 'Save' })).toBeDisabled())
+    expect(dm).not.toBeChecked()
+    expect(dm).toBeDisabled()
+    expect(support).toBeChecked()
+  })
+
+  it('discards an unsaved verification rule when the dialog is cancelled with Escape', async () => {
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Role' }))
+    const modal = container.querySelector<HTMLDialogElement>('#edit_role_modal')!
+    await vi.waitFor(() => expect(within(modal).getByLabelText(/^Role/)).not.toBeDisabled())
+    await fireEvent.change(within(modal).getByLabelText(/^Role/), { target: { value: 'r3' } })
+    await fireEvent.change(within(modal).getByLabelText('Active'), { target: { value: 'false' } })
+    await fireEvent(modal, new Event('cancel', { cancelable: true }))
+    expect(within(modal).getByLabelText(/^Role/)).toHaveValue('')
+    expect(within(modal).getByLabelText('Active')).toHaveValue('true')
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+  })
+
+  it('reloads the verification message after a failed request without publishing a duplicate', async () => {
+    const channels = [{ id: 'c1', name: 'general', type: 0, textBased: true, position: 0, parentID: null }]
+    setupFetchAPI({ channels })
+    guildChannelsMutate(channels)
+    const original = vi.mocked(fetchAPI).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((url: string, method: string) =>
+      url === VERIFY_MESSAGE_URL ? Promise.resolve(errJson()) : original(url, method),
+    )
+    renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    const group = screen.getByText('Verification entry point').closest('section')!
+    await vi.waitFor(() => expect(within(group).getByRole('alert')).toBeInTheDocument())
+    setupFetchAPI({ channels, verifyMessage: { channelID: 'c1', messageID: 'm1' } })
+    await fireEvent.click(within(group).getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(within(group).getByRole('link', { name: /#general/ })).toBeInTheDocument())
+    expect(within(group).queryByRole('alert')).not.toBeInTheDocument()
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+  })
+
   it('shows a failed preference fetch and retries instead of editing default values', async () => {
     const original = (fetchAPI as Mock).getMockImplementation()!
     ;(fetchAPI as Mock).mockImplementation((url: string, method: string) =>

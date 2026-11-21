@@ -1,3 +1,4 @@
+import { authenticatedFetch } from '../../../../../utils/authClient.js'
 import { useFeatureAccess } from '../../../../../components/AccessProvider.js'
 import {
   createContext,
@@ -56,9 +57,7 @@ function createStatusConfiguration() {
     errorMessage: () => saveError() || t('ui.save_error', 'Unable to save. Please try again.'),
   })
   const [configuration, { refetch }] = createResource(async () => {
-    const response = await fetch(configurationURL(), {
-      headers: { Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
-    })
+    const response = await authenticatedFetch(configurationURL(), {})
     if (!response.ok) throw new Error('Status configuration unavailable')
     return StatusConfigurationSnapshotSchema.parse(await response.json())
   })
@@ -107,9 +106,9 @@ function createStatusConfiguration() {
     if (!ready() || stagedButton() || accessError()) return false
     setSaveError('')
     return form.save(async (draft) => {
-      const response = await fetch(configurationURL(), {
+      const response = await authenticatedFetch(configurationURL(), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('accessToken')}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ configuration: StatusConfigurationSchema.parse(draft), revision: revision() }),
       })
       if (response.status === 403 || response.ok) refreshAccess()

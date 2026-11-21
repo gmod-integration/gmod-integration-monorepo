@@ -1277,5 +1277,13 @@
     "copy_help_command": "Diagnosebefehl kopieren",
     "version": "Installierte Addon-Version prüfen",
     "copy_version_command": "Befehl zur Versionsprüfung kopieren"
+  },
+  "auth": {
+    "unavailable": "Die Verbindung ist vorübergehend nicht verfügbar. Ihre Sitzung und ungespeicherten Änderungen bleiben erhalten.",
+    "reconnect_discord": "Verbinden Sie Discord in einem neuen Tab erneut. Ihre ungespeicherten Änderungen bleiben hier erhalten.",
+    "logout_unconfirmed": "Sie sind auf diesem Gerät abgemeldet. Der Widerruf auf dem Server konnte nicht bestätigt werden. Versuchen Sie es erneut, sobald die Verbindung wiederhergestellt ist.",
+    "stop_impersonation": "Zu Ihrem Konto zurückkehren",
+    "impersonation_erasure": "Kehren Sie zu Ihrem eigenen Konto zurück, bevor Sie die Löschung beantragen.",
+    "oauth_denied": "Die Discord-Anmeldung wurde nicht abgeschlossen. Sie können es später erneut versuchen."
   }
 }

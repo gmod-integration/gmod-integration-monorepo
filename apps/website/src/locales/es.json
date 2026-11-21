@@ -1277,5 +1277,13 @@
     "copy_help_command": "Copiar el comando de diagnóstico",
     "version": "Consultar la versión instalada del addon",
     "copy_version_command": "Copiar el comando para consultar la versión"
+  },
+  "auth": {
+    "unavailable": "La conexión no está disponible temporalmente. Tu sesión y los cambios sin guardar se conservan.",
+    "reconnect_discord": "Vuelve a conectar Discord en una pestaña nueva para continuar. Los cambios sin guardar permanecen aquí.",
+    "logout_unconfirmed": "Has cerrado la sesión en este dispositivo. No se pudo confirmar la revocación en el servidor; inténtalo de nuevo cuando vuelva la conexión.",
+    "stop_impersonation": "Volver a tu cuenta",
+    "impersonation_erasure": "Vuelve a tu propia cuenta antes de solicitar la eliminación.",
+    "oauth_denied": "No se completó el inicio de sesión en Discord. Puedes volver a intentarlo cuando quieras."
   }
 }

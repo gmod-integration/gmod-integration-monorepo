@@ -3,8 +3,24 @@ import { gmLog } from '@gmod/shared/logger.js'
 import { type NextFunction, type Request, type Response } from 'express'
 import { isBullMQReplyTimeoutError } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { AccessDeniedError } from '@gmod/domain-access/index.js'
+import { AuthSessionError } from '@gmod/domain-auth/authSessions.js'
+import { DiscordOAuthError } from '@gmod/domain-auth/discordOAuth.js'
 
 export default async (err: Error, req: Request, res: Response, _next: NextFunction) => {
+  if (
+    err instanceof AuthSessionError ||
+    err instanceof DiscordOAuthError ||
+    ('code' in err && err.code === 'provider_unavailable')
+  ) {
+    const detail = err as Error & { status?: number; code: string; retryAfter?: number }
+    res.setHeader('Cache-Control', 'no-store')
+    if (detail.retryAfter) res.setHeader('Retry-After', String(detail.retryAfter))
+    const code = detail.code === 'grant_rejected' ? 'discord_reauth_required' : detail.code
+    res
+      .status(detail.code === 'grant_rejected' ? 403 : detail.status || 503)
+      .json({ error: req.path?.startsWith('/v6') ? { code, message: detail.message } : code })
+    return
+  }
   if (err instanceof AccessDeniedError) {
     res.setHeader('Cache-Control', 'no-store')
     const detail = {
