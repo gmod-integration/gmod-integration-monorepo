@@ -9,8 +9,9 @@ import wallpaper from '../assets/wallpaper.png'
 import players from '../assets/features/players.png'
 import rcon from '../assets/features/rcon.png'
 import chat from '../assets/features/chat.png'
-import { useI18n } from '../i18n'
-import { API_FQDN } from '../utils/api'
+import { useI18n } from '../i18n.js'
+import { Button, ButtonLink, Icon, type IconName } from '../components/ui/index.js'
+import { API_FQDN } from '../utils/api.js'
 
 type PublicStats = { guild: number; server: number; user: number; verifyUser: number }
 
@@ -29,12 +30,13 @@ const fetchStats = async (): Promise<PublicStats> => {
 
 const Home: Component = () => {
   const [stat, { refetch }] = createResource(fetchStats)
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
 
   type Feature = {
     title: string
     description: string
     img: string
+    icon: IconName
   }
 
   const showFeatures = (): Feature[] => [
@@ -45,6 +47,7 @@ const Home: Component = () => {
         "Show the actual status of your server, if it's online or offline, how many players are on, the actual map and the game mode, since when the server is online ect... Server status is updated every 2 minutes, by default only one button (connect) is shown if the server is online, but you can add more buttons like 'Shop' or 'Workshop' in the dashboard.",
       ),
       img: servers_status,
+      icon: 'activity',
     },
     {
       title: t('home.features.user_profile.title', 'User Profile'),
@@ -53,6 +56,7 @@ const Home: Component = () => {
         "Show the profile of a user, it shows their name, bot rank, trust factor, last verification date, discord id and steam id. You can easily interact with the user profile by clicking on the buttons, 'Steam Profile' ect...",
       ),
       img: profile,
+      icon: 'contact',
     },
     {
       title: t('home.features.chat_bridge.title', 'Chat Bridge'),
@@ -61,6 +65,7 @@ const Home: Component = () => {
         'The bot can bridge the chat between your server and your discord guilds, so your users can talk to each other without being on the same platform. You can choose the channels that you want to bridge, the direction of the bridge (from discord to server, from server to discord or both) and apply custom rules like skipping commands, anonymizing /ano, skip message for specific users groups ect...',
       ),
       img: chat,
+      icon: 'messages-square',
     },
     {
       title: t('home.features.discord_rcon.title', 'Discord Rcon'),
@@ -69,6 +74,7 @@ const Home: Component = () => {
         "Don't have access to your server console? No problem, you can use the bot to run commands on your server from your discord guilds. Only discord Admins with superadmin rank can use this feature.",
       ),
       img: rcon,
+      icon: 'monitor',
     },
     {
       title: t('home.features.custom_link.title', 'Custom Link'),
@@ -77,6 +83,7 @@ const Home: Component = () => {
         "You can create a custom link for your discord guilds, it's a good way to share community link, like your website, your steam group, your workshop ect... Use this links to simplify the access to your community resources.",
       ),
       img: links,
+      icon: 'link',
     },
     {
       title: t('home.features.user_verification.title', 'User Verification'),
@@ -85,6 +92,7 @@ const Home: Component = () => {
         "Actually the most important feature of the bot, it allows you to force your users to verify their Discord account with their Steam account, it's a good way to prevent trolls, bots and ban evaders from joining your server. Also, it allows us to sync your users with your server, so you can use other synchronized feature like user information (name, stats, rank, warn, ban ect...).",
       ),
       img: verification,
+      icon: 'shield-check',
     },
     {
       title: t('home.features.statistics.title', 'Statistics'),
@@ -93,6 +101,7 @@ const Home: Component = () => {
         'The bot can collect some statistics about your server, like the number of players, the number of bans, the number of warns ect... You can see the statistics in the dashboard, and you can also enable the statistics channel, so the bot will send a message in a channel when a user get banned ect...',
       ),
       img: statistic,
+      icon: 'chart-no-axes-combined',
     },
     {
       title: t('home.features.logs.title', 'Logs'),
@@ -101,6 +110,7 @@ const Home: Component = () => {
         'The bot can log some actions of your users, like when they join or leave your server, when they get banned or kicked, when they get warned ect... You can see the logs in the dashboard, and you can also enable the logs channel, so the bot will send a message in a channel when a user get banned ect...',
       ),
       img: logs,
+      icon: 'scroll-text',
     },
     {
       title: t('home.features.player_database.title', 'Player Database'),
@@ -109,100 +119,209 @@ const Home: Component = () => {
         'View all the players that have joined your server, you can see their name, steam id, discord id, join date, last join date, total time spent on your server, total warns, total bans ect... You can also search for a player by name, steam id or discord id.',
       ),
       img: players,
+      icon: 'users',
     },
   ]
 
   const metrics = () => [
-    { key: 'guild' as const, label: t('main.guilds', 'Guilds') },
-    { key: 'server' as const, label: t('main.servers', 'Servers') },
-    { key: 'user' as const, label: t('main.users', 'Users') },
-    { key: 'verifyUser' as const, label: t('main.verified_users', 'Verified Users') },
+    { key: 'guild' as const, icon: 'users' as const, label: t('main.guilds', 'Guilds') },
+    { key: 'server' as const, icon: 'server' as const, label: t('main.servers', 'Servers') },
+    { key: 'user' as const, icon: 'user-round' as const, label: t('main.users', 'Users') },
+    { key: 'verifyUser' as const, icon: 'shield-check' as const, label: t('main.verified_users', 'Verified Users') },
   ]
-  const value = (key: keyof PublicStats) => (stat.loading || stat.error ? '—' : (stat()?.[key].toLocaleString() ?? '—'))
+  const value = (key: keyof PublicStats) =>
+    stat.loading || stat.error ? '—' : (stat()?.[key].toLocaleString(locale()) ?? '—')
 
   return (
-    <>
+    <div class="public-home">
       <section
-        class="hero relative min-h-175 flex items-center justify-center overflow-hidden"
+        class="public-hero mx-auto grid w-full max-w-6xl min-w-0 items-center gap-12 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[1.08fr_1fr] lg:gap-16 lg:py-24"
         aria-labelledby="home-title"
       >
-        <div
-          aria-hidden="true"
-          class="absolute inset-0 bg-cover bg-center min-w-480 w-full max-w-640 h-175 object-cover object-bottom blur-[5px] opacity-60"
-          style={`background-image: url(${wallpaper}); background-position: center; left: 50%; transform: translateX(-50%);`}
-        />
-        <div class="relative z-10 w-full px-4">
-          <div class="hero-content text-center mx-auto">
-            <div class="min-w-0">
-              <h1 id="home-title" class="mb-5 text-4xl sm:text-6xl font-bold sm:whitespace-nowrap">
-                Gmod Integration
-              </h1>
-              <p class="mb-5 text-lg">
-                {t('home.hero.title', "Improve your discord server with the most Advanced Garry's Mod bot")}
-              </p>
-              <a href="/dashboard/guilds" class="btn btn-wide">
-                {t('home.hero.button', 'Go to Dashboard')}
-              </a>
+        <div class="public-hero-copy flex min-w-0 flex-col items-start gap-7">
+          <span class="public-eyebrow inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/8 px-3 py-1.5 text-xs font-medium text-primary">
+            <Icon name="gamepad-2" size={15} />
+            Garry’s Mod
+            <span class="text-base-content/30">/</span>
+            Discord
+          </span>
+          <div class="flex flex-col gap-5">
+            <h1
+              id="home-title"
+              class="max-w-xl text-5xl font-semibold leading-[1.03] tracking-[-0.055em] sm:text-6xl lg:text-7xl"
+            >
+              Gmod Integration
+            </h1>
+            <p class="max-w-lg text-base leading-relaxed text-base-content/60 sm:text-lg">
+              {t('home.hero.title', "Improve your discord server with the most Advanced Garry's Mod bot")}
+            </p>
+          </div>
+          <div class="public-hero-actions flex w-full flex-wrap items-center gap-3">
+            <ButtonLink href="/dashboard/guilds" variant="primary">
+              {t('home.hero.button', 'Go to Dashboard')}
+              <Icon name="arrow-right" size={17} />
+            </ButtonLink>
+            <ButtonLink href="/docs">
+              <Icon name="book-open" size={17} />
+              {t('main.documentation', 'Documentation')}
+            </ButtonLink>
+          </div>
+          <div class="flex flex-wrap gap-x-5 gap-y-3 pt-1 text-xs text-base-content/50">
+            <span class="inline-flex items-center gap-2">
+              <Icon name="activity" size={14} />
+              {t('home.features.server_status.title', 'Server Status')}
+            </span>
+            <span class="inline-flex items-center gap-2">
+              <Icon name="messages-square" size={14} />
+              {t('home.features.chat_bridge.title', 'Chat Bridge')}
+            </span>
+            <span class="inline-flex items-center gap-2">
+              <Icon name="shield-check" size={14} />
+              {t('home.features.user_verification.title', 'User Verification')}
+            </span>
+          </div>
+        </div>
+
+        <div class="public-hero-visual relative min-w-0 overflow-hidden rounded-2xl border border-base-content/10 bg-base-100 shadow-xl shadow-black/5">
+          <img
+            src={wallpaper}
+            alt=""
+            aria-hidden="true"
+            class="absolute inset-0 h-full w-full object-cover opacity-10"
+            decoding="async"
+          />
+          <div class="relative flex min-w-0 flex-col gap-5 p-5 sm:p-6">
+            <div class="flex items-center justify-between gap-4 border-b border-base-content/8 pb-5">
+              <span class="inline-flex items-center gap-2.5 text-sm font-medium">
+                <Icon name="gamepad-2" class="text-primary" size={19} />
+                Garry’s Mod
+              </span>
+              <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-primary/8 text-primary">
+                <Icon name="arrow-left-right" size={16} />
+              </span>
+              <span class="inline-flex items-center gap-2.5 text-sm font-medium">
+                <Icon name="messages-square" class="text-primary" size={19} />
+                Discord
+              </span>
+            </div>
+            <div class="overflow-hidden rounded-xl border border-base-content/10 bg-base-200/25 p-3 sm:p-4">
+              <img
+                src={servers_status}
+                alt=""
+                aria-hidden="true"
+                class="mx-auto max-h-80 w-full object-contain"
+                decoding="async"
+              />
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center text-[10px] text-base-content/55 sm:text-xs">
+              <span class="flex min-w-0 flex-col items-center gap-2 rounded-lg border border-base-content/8 bg-base-100/75 px-1 py-3">
+                <Icon name="users" size={17} />
+                {t('main.users', 'Users')}
+              </span>
+              <span class="flex min-w-0 flex-col items-center gap-2 rounded-lg border border-base-content/8 bg-base-100/75 px-1 py-3">
+                <Icon name="server" size={17} />
+                {t('main.servers', 'Servers')}
+              </span>
+              <span class="flex min-w-0 flex-col items-center gap-2 rounded-lg border border-base-content/8 bg-base-100/75 px-1 py-3">
+                <Icon name="shield-check" size={17} />
+                {t('main.verified_users', 'Verified Users')}
+              </span>
             </div>
           </div>
         </div>
       </section>
 
-      <hr class="border border-base-200 w-full" />
-
       <section
-        class="flex flex-wrap items-center justify-center gap-x-16 gap-y-4 w-full min-h-20 px-4 py-5"
+        class="public-stats mx-auto grid w-full max-w-6xl grid-cols-2 gap-3 px-5 sm:gap-4 sm:px-8 lg:grid-cols-4"
         aria-label={t('ui.community_statistics', 'Community statistics')}
         aria-busy={stat.loading}
       >
         <For each={metrics()}>
           {(metric) => (
-            <h2 class="flex items-center gap-1 text-2xl font-bold text-center text-secondary">
-              <span aria-hidden="true">{stat.loading || stat.error ? '' : '+'}</span>
-              <span>{value(metric.key)}</span>
-              <span>{metric.label}</span>
-            </h2>
+            <div class="public-stat flex min-w-0 flex-col gap-4 rounded-xl border border-base-content/10 bg-base-100 p-5 sm:p-6">
+              <div class="flex items-center justify-between gap-2 text-xs text-base-content/55">
+                <span>{metric.label}</span>
+                <Icon name={metric.icon} size={17} class="text-primary/75" />
+              </div>
+              <p class="text-2xl font-semibold tracking-tight sm:text-3xl">
+                <span aria-hidden="true" class="text-primary">
+                  {stat.loading || stat.error ? '' : '+'}
+                </span>
+                <span>{value(metric.key)}</span>
+              </p>
+            </div>
           )}
         </For>
         <Show when={stat.error}>
           <div
             role="status"
-            class="w-full flex flex-wrap items-center justify-center gap-3 text-sm text-base-content/70"
+            class="col-span-full flex flex-wrap items-center justify-center gap-3 rounded-xl border border-base-content/10 bg-base-100 p-4 text-sm text-base-content/60"
           >
             {t('ui.statistics_unavailable', 'Community statistics are temporarily unavailable.')}
-            <button type="button" class="btn btn-sm btn-ghost" onClick={() => refetch()}>
+            <Button size="sm" variant="ghost" onClick={() => refetch()}>
               {t('ui.retry', 'Try again')}
-            </button>
+            </Button>
           </div>
         </Show>
       </section>
 
-      <hr class="border border-base-200 w-full" />
-
-      <div class="container mx-auto">
-        <For each={showFeatures()}>
-          {({ title, description, img }, index) => (
-            <article
-              class={`flex flex-col ${
-                index() % 2 === 0 ? 'md:flex-row-reverse' : 'md:flex-row'
-              } items-center justify-around gap-8 px-6 py-16 md:py-32`}
-            >
-              <img
-                src={img}
-                alt={title}
-                class="rounded-lg w-full md:w-1/2 max-w-150 max-h-150 min-w-0 object-contain border-2 border-base-200"
-                loading="lazy"
-                decoding="async"
-              />
-              <div class="flex flex-col justify-center w-full md:w-1/2 max-w-lg min-w-0">
-                <h2 class="text-3xl font-bold mb-4 text-secondary">{title}</h2>
-                <p class="mb-4">{description}</p>
-              </div>
-            </article>
-          )}
-        </For>
-      </div>
-    </>
+      <section
+        class="public-section mx-auto flex w-full max-w-6xl flex-col gap-8 px-5 py-16 sm:px-8 sm:py-20"
+        aria-labelledby="home-services-title"
+      >
+        <div class="flex flex-wrap items-end justify-between gap-5 border-b border-base-content/8 pb-6">
+          <div class="flex flex-col gap-3">
+            <span class="public-eyebrow text-xs font-medium uppercase tracking-[0.12em] text-primary">
+              Gmod Integration
+            </span>
+            <h2 id="home-services-title" class="text-3xl font-semibold tracking-tight sm:text-4xl">
+              {t('main.services', 'Services')}
+            </h2>
+          </div>
+          <a
+            href="/docs"
+            class="inline-flex items-center gap-2 text-sm font-medium text-base-content/60 transition-colors hover:text-primary"
+          >
+            {t('main.documentation', 'Documentation')}
+            <Icon name="arrow-up-right" size={16} />
+          </a>
+        </div>
+        <div class="public-feature-grid grid min-w-0 grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <For each={showFeatures()}>
+            {({ title, description, img, icon }) => (
+              <article class="public-feature-card flex min-w-0 flex-col overflow-hidden rounded-xl border border-base-content/10 bg-base-100">
+                <div class="public-feature-media flex h-52 items-center justify-center overflow-hidden border-b border-base-content/8 bg-base-200/20 p-5">
+                  <img
+                    src={img}
+                    alt={title}
+                    class="max-h-full w-full min-w-0 rounded-lg object-contain"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+                <div class="flex min-w-0 flex-1 flex-col gap-4 p-6">
+                  <span class="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/10 bg-primary/8 text-primary">
+                    <Icon name={icon} size={18} />
+                  </span>
+                  <h2 class="text-lg font-semibold tracking-tight">{title}</h2>
+                  <p class="text-sm leading-7 text-base-content/55">{description}</p>
+                </div>
+              </article>
+            )}
+          </For>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-5 rounded-xl border border-primary/15 bg-primary/5 p-6 sm:p-8">
+          <span class="inline-flex items-center gap-3 text-lg font-semibold tracking-tight">
+            <Icon name="bot" size={22} class="text-primary" />
+            Gmod Integration
+          </span>
+          <ButtonLink href="/dashboard/guilds" variant="primary">
+            {t('home.hero.button', 'Go to Dashboard')}
+            <Icon name="arrow-right" size={17} />
+          </ButtonLink>
+        </div>
+      </section>
+    </div>
   )
 }
 

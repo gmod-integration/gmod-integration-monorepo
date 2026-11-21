@@ -1,15 +1,21 @@
-import { Component, For, ParentProps, Show } from 'solid-js'
-import AdminModal from './AdminModal'
-import { guildChannels } from '../pages/dashboard/guilds/GuildInformations'
-import { useI18n } from '../i18n'
-import { TypeDiscordChannel } from '../utils/types/DiscordTypes'
+import { createEffect, createSignal, For, Show, type Component, type ParentProps } from 'solid-js'
+import AdminModal from './AdminModal.js'
+import { AsyncState, FormActions } from './ui/index.js'
+import { guildChannels, guildChannelsRefetch } from '../pages/dashboard/guilds/GuildInformations.js'
+import { createAsyncAction } from '../hooks/createAsyncAction.js'
+import { useI18n } from '../i18n.js'
+import { closeDialog } from '../utils/dialog.js'
+import type { TypeDiscordChannel } from '../utils/types/DiscordTypes.js'
 
 interface ChannelSelectorProps extends ParentProps {
   callback?: (channelID: string) => void
+  /** @deprecated Selection never closes a dialog; confirm through AdminChannelSelector. */
   hasModal?: boolean
+  /** @deprecated Selection never closes a dialog; confirm through AdminChannelSelector. */
   modalId?: string
   idSelect?: string
   onlyTextChannel?: boolean
+  disabled?: boolean
 }
 
 const CHANNEL_TYPE_CATEGORY = 4
@@ -29,7 +35,6 @@ function isCategoryChannel(channel: TypeDiscordChannel): boolean {
 
 export const ChannelSelector: Component<ChannelSelectorProps> = (props) => {
   const { t } = useI18n()
-  const hasModal = props.hasModal ?? false
   const onlyTextChannel = props.onlyTextChannel ?? true
 
   function getUniqueCategories(channels: TypeDiscordChannel[]) {
@@ -60,7 +65,12 @@ export const ChannelSelector: Component<ChannelSelectorProps> = (props) => {
   }
 
   return (
-    <Show when={!guildChannels.loading} fallback={<div>Loading...</div>}>
+    <AsyncState
+      loading={guildChannels.loading}
+      error={!!guildChannels.error}
+      errorLabel={t('ui.load_error', 'Unable to load the data.')}
+      onRetry={() => void guildChannelsRefetch()}
+    >
       {(() => {
         const allChannels = guildChannels()
         const selectableChannels = getSelectableChannels(allChannels)
@@ -71,23 +81,15 @@ export const ChannelSelector: Component<ChannelSelectorProps> = (props) => {
 
         return (
           <select
-            class="select"
-            onChange={async (e) => {
-              if (hasModal && props.modalId) {
-                // Look the dialog up by its actual id instead of a hardcoded `select_channel_modal`
-                // global - the previous version always closed the literal `select_channel_modal`
-                // element regardless of which id was actually passed in, which was wrong for any
-                // caller using a different modal id (e.g. `select_channel_modal_channel`).
-                const modal = document.getElementById(props.modalId) as
-                  (HTMLDialogElement & { close?: () => void }) | null
-                modal?.close?.()
-              }
-              if (props.callback) props.callback(e.currentTarget.value)
-            }}
+            class="select w-full"
+            aria-label={t('tools.select_channel', 'Select a Channel')}
+            disabled={props.disabled}
+            value={props.idSelect || '0'}
+            onChange={(event) => props.callback?.(event.currentTarget.value)}
           >
             <option value="0">{t('tools.select_channel', 'Select a Channel')}</option>
             <Show when={noCategoryChannels.length > 0}>
-              <optgroup label="No Category">
+              <optgroup label={t('ui.no_category', 'No Category')}>
                 <For each={noCategoryChannels}>
                   {(channel) => (
                     <option value={channel.id} selected={props.idSelect === channel.id}>
@@ -113,7 +115,7 @@ export const ChannelSelector: Component<ChannelSelectorProps> = (props) => {
           </select>
         )
       })()}
-    </Show>
+    </AsyncState>
   )
 }
 
@@ -121,24 +123,52 @@ interface AdminChannelSelectorProps {
   title?: string
   id: string
   onlyTextChannel?: boolean
-  callback?: any
+  idSelect?: string
+  callback?: (channelID: string) => unknown | Promise<unknown>
 }
 
 const AdminChannelSelector: Component<AdminChannelSelectorProps> = (props) => {
   const { t } = useI18n()
   const onlyTextChannel = props.onlyTextChannel ?? true
+  const [selected, setSelected] = createSignal(props.idSelect || '0')
+  const save = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
+
+  createEffect(() => setSelected(props.idSelect || '0'))
+
+  function discard() {
+    setSelected(props.idSelect || '0')
+    save.reset()
+  }
+
+  async function confirm() {
+    if (selected() === '0' || guildChannels.loading || guildChannels.error) return
+    if (await save.run(async () => props.callback?.(selected()))) closeDialog(props.id)
+  }
 
   return (
     <>
-      <AdminModal title={props.title || t('tools.select_channel', 'Select a Channel')} id={props.id}>
+      <AdminModal
+        title={props.title || t('tools.select_channel', 'Select a Channel')}
+        id={props.id}
+        busy={save.pending()}
+        onClose={discard}
+        onCancel={discard}
+      >
         <div class="fieldset">
           <ChannelSelector
-            callback={props.callback || (() => {})}
-            hasModal={true}
-            modalId={props.id}
+            callback={setSelected}
+            idSelect={selected()}
+            disabled={save.pending()}
             onlyTextChannel={onlyTextChannel}
           />
         </div>
+        <FormActions
+          pending={save.pending()}
+          disabled={selected() === '0' || guildChannels.loading || !!guildChannels.error}
+          error={save.error()}
+          onSave={() => void confirm()}
+          onCancel={() => closeDialog(props.id)}
+        />
       </AdminModal>
     </>
   )

@@ -94,11 +94,14 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
     expect(screen.queryByText('76500000000000001')).not.toBeInTheDocument()
   })
 
-  it('renders an empty list without crashing when the GET is not ok', async () => {
-    ;(fetchAPI as Mock).mockImplementation(() => Promise.resolve(errJson()))
+  it('shows an inline recoverable error instead of treating a failed GET as an empty list', async () => {
+    ;(fetchAPI as Mock).mockResolvedValueOnce(errJson())
     const { container } = renderPage()
-    await vi.waitFor(() => expect(container.querySelector('.loading')).not.toBeInTheDocument())
-    expect(container.querySelectorAll('tbody tr').length).toBe(0)
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(container.querySelector('tbody > tr > td [role="alert"]')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('sorts bug rows by createdAt descending (most recent first)', async () => {
@@ -140,11 +143,11 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       const row = rowFor(container, '76500000000000001')
-      expect(row.querySelector('.fa-chevron-down')).toBeInTheDocument()
+      expect(row.querySelector('svg[data-icon="chevron-down"]')).toBeInTheDocument()
 
       await fireEvent.click(row.querySelector('.tooltip') as HTMLElement)
 
-      expect(row.querySelector('.fa-chevron-up')).toBeInTheDocument()
+      expect(row.querySelector('svg[data-icon="chevron-up"]')).toBeInTheDocument()
       expect(screen.getByText('Screenshot')).toBeInTheDocument()
       expect(screen.getByText('It should not crash')).toBeInTheDocument()
       expect(screen.getByText('It crashed')).toBeInTheDocument()
@@ -163,7 +166,7 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
       expect(screen.getByText('Screenshot')).toBeInTheDocument()
 
       await fireEvent.click(row.querySelector('.tooltip') as HTMLElement)
-      expect(row.querySelector('.fa-chevron-down')).toBeInTheDocument()
+      expect(row.querySelector('svg[data-icon="chevron-down"]')).toBeInTheDocument()
       expect(screen.queryByText('Screenshot')).not.toBeInTheDocument()
     })
 
@@ -179,8 +182,8 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
       await fireEvent.click(row2.querySelector('.tooltip') as HTMLElement)
       expect(screen.queryByText('It crashed')).not.toBeInTheDocument()
       expect(screen.getByText('actual behavior')).toBeInTheDocument()
-      expect(row1.querySelector('.fa-chevron-down')).toBeInTheDocument()
-      expect(row2.querySelector('.fa-chevron-up')).toBeInTheDocument()
+      expect(row1.querySelector('svg[data-icon="chevron-down"]')).toBeInTheDocument()
+      expect(row2.querySelector('svg[data-icon="chevron-up"]')).toBeInTheDocument()
     })
 
     it('shows a loading spinner and hides the screenshot image until it loads, then reveals it', async () => {

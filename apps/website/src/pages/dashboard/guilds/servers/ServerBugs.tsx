@@ -1,5 +1,6 @@
 import { type Component, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel'
+import { IconButton, TableState, Icon } from '../../../../components/ui/index.js'
 import { useI18n } from '../../../../i18n'
 import { fetchAPI, getAPIUrl } from '../../../../utils/api'
 
@@ -50,9 +51,12 @@ const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
         <td class="wrap-break-word">{shortDescription}</td>
         <td>
           <div class="flex gap-2 justify-center">
-            <div
+            <IconButton
               class="tooltip tooltip-info"
-              data-tip={t('dashboard.server.actions.showMore', 'Show More')}
+              variant="ghost"
+              size="sm"
+              label={t('dashboard.server.actions.showMore', 'Show More')}
+              aria-expanded={selectReport() === localIdxLog}
               onClick={() => {
                 setHasLoadScreenshot(false)
                 if (selectReport() === localIdxLog) {
@@ -63,19 +67,19 @@ const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
               }}
             >
               <Show when={selectReport() === localIdxLog}>
-                <i class="fa-solid fa-chevron-up"></i>
+                <Icon name="chevron-up" />
               </Show>
               <Show when={selectReport() !== localIdxLog}>
-                <i class="fa-solid fa-chevron-down"></i>
+                <Icon name="chevron-down" />
               </Show>
-            </div>
+            </IconButton>
           </div>
         </td>
       </tr>
 
       <Show when={selectReport() === localIdxLog}>
         <tr>
-          <td colspan="6">
+          <td colspan="5">
             <h3 class="font-bold">{t('dashboard.server.screenshot', 'Screenshot')}</h3>
             <Show when={!hasLoadScreenshot()}>
               <span class="loading loading-lg"></span>
@@ -128,11 +132,11 @@ type Bugs = {
 }
 
 const ServerBugs: Component = () => {
-  const [bugsReport, { mutate: bugsReportMutate }] = createResource('bugsReport', async () => {
+  const [bugsReport, { refetch }] = createResource('bugsReport', async () => {
     return await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/bugs', 'GET')
       .then(async (res) => {
         if (!res.ok) {
-          return [] as Bugs[]
+          throw new Error('Bug reports request failed')
         }
         return (await res.json()) as Bugs[]
       })
@@ -162,7 +166,13 @@ const ServerBugs: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show when={!bugsReport.loading} fallback={<span class="loading loading-lg"></span>}>
+            <TableState
+              colSpan={5}
+              loading={bugsReport.loading}
+              error={bugsReport.error}
+              empty={!bugsReport.loading && !bugsReport.error && bugsReport()?.length === 0}
+              onRetry={() => void refetch()}
+            >
               <For each={bugsReport()}>
                 {(reportData) => (
                   <AddReportBugsComponent
@@ -179,7 +189,7 @@ const ServerBugs: Component = () => {
                   />
                 )}
               </For>
-            </Show>
+            </TableState>
           </tbody>
         </table>
       </AdminPanel>

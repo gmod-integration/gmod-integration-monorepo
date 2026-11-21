@@ -1,3 +1,4 @@
+import { Icon } from '../../../../../components/ui/index.js'
 import { showDialog } from '../../../../../utils/dialog.js'
 import { type Component, type ParentProps, Show } from 'solid-js'
 import { type ScreenshotStructure } from './ServerScreenshotList'
@@ -45,7 +46,7 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
               showDialog('focusImgModal')
             }}
           >
-            <i class="fa-solid fa-eye"></i>
+            <Icon name="eye" />
           </button>
 
           {/* Open in new tab */}
@@ -56,7 +57,7 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
             class="p-1 hover:bg-base-content/20 rounded-sm"
             aria-label="Open in new tab"
           >
-            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <Icon name="external-link" />
           </A>
 
           {/* Copy URL */}
@@ -65,7 +66,7 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
             aria-label="Copy URL"
             onClick={() => navigator.clipboard.writeText(props.screenshot.url)}
           >
-            <i class="fa-solid fa-link"></i>
+            <Icon name="link" />
           </button>
         </div>
       </div>

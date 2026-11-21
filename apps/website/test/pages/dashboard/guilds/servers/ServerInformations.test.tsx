@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../testUtils.js'
 import ServerInformations from '../../../../../src/pages/dashboard/guilds/servers/ServerInformations.js'
 import { fetchAPI } from '../../../../../src/utils/api.js'
@@ -106,13 +106,13 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     setServerLocalStorage({ isPublic: true })
     const { unmount } = renderPage()
     // "Public:" is the real en.json translation (differs from the JSX fallback "Server Public").
-    expect(screen.getByText('Public:').nextSibling).toHaveTextContent('Yes')
+    expect(screen.getByText('Public:').closest('.settings-row')).toHaveTextContent('Yes')
     unmount()
     cleanup()
 
     setServerLocalStorage({ isPublic: false })
     renderPage()
-    expect(screen.getByText('Public:').nextSibling).toHaveTextContent('No')
+    expect(screen.getByText('Public:').closest('.settings-row')).toHaveTextContent('No')
   })
 
   describe('connection status panel', () => {
@@ -214,6 +214,43 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
   })
 
   describe('editing the server', () => {
+    it('keeps edits isolated and restores saved values after canceling', async () => {
+      const { container } = renderPage()
+      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
+      const modal = container.querySelector('#edit_server') as HTMLDialogElement
+      await fireEvent.input(within(modal).getByRole('textbox', { name: 'Name' }), { target: { value: 'Unsaved name' } })
+      expect(screen.getByText('My Server')).toBeInTheDocument()
+      expect(screen.queryByText('Unsaved name')).not.toBeInTheDocument()
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+      expect(fetchAPI).not.toHaveBeenCalled()
+      expect(JSON.parse(window.localStorage.getItem('server')!).name).toBe('My Server')
+      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
+      expect(within(modal).getByRole('textbox', { name: 'Name' })).toHaveValue('My Server')
+    })
+
+    it('prevents duplicate saves and keeps a failed draft open for correction', async () => {
+      let finish!: (value: ReturnType<typeof errJson>) => void
+      ;(fetchAPI as Mock).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
+      const { container } = renderPage()
+      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
+      const modal = container.querySelector('#edit_server') as HTMLDialogElement
+      const name = within(modal).getByRole('textbox', { name: 'Name' })
+      await fireEvent.input(name, { target: { value: 'Draft name' } })
+      const save = within(modal).getByRole('button', { name: 'Save Changes' })
+      await fireEvent.click(save)
+      await fireEvent.click(save)
+      expect(fetchAPI).toHaveBeenCalledTimes(1)
+      expect(save).toBeDisabled()
+      expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+      expect(modal).toHaveAttribute('open')
+      finish(errJson())
+      await vi.waitFor(() => expect(within(modal).getByRole('alert')).toHaveTextContent('Unable to save'))
+      expect(modal).toHaveAttribute('open')
+      expect(name).toHaveValue('Draft name')
+      expect(screen.getByText('My Server')).toBeInTheDocument()
+      expect(save).not.toBeDisabled()
+    })
+
     it('saves the edited fields and updates localStorage on success', async () => {
       const updated = { ...baseServer, name: 'New Name' }
       ;(fetchAPI as Mock).mockResolvedValue(okJson(updated))

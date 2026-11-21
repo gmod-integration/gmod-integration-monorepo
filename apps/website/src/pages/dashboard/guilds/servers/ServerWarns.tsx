@@ -1,5 +1,6 @@
 // ServerWarns.tsx
 import { Component, createResource, createSignal, For, Show } from 'solid-js'
+import { TableState } from '../../../../components/ui/index.js'
 import AdminPanel from '../../../../components/AdminPanel'
 import { useI18n } from '../../../../i18n'
 import Pagination from '../../../../components/Pagination'
@@ -52,7 +53,7 @@ const ServerWarns: Component = () => {
   }
 
   // 3) Create the resource, bound to the 'query' signal
-  const [warnsData] = createResource(query, fetchWarns, {
+  const [warnsData, { refetch }] = createResource(query, fetchWarns, {
     // Provide initialValue so warnsData() is never undefined
     initialValue: {
       warns: [],
@@ -88,15 +89,12 @@ const ServerWarns: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show
-              when={!warnsData.loading}
-              fallback={
-                <td colSpan={4}>
-                  <div class="flex w-full justify-center items-center">
-                    <span class="loading loading-lg" />
-                  </div>
-                </td>
-              }
+            <TableState
+              colSpan={4}
+              loading={warnsData.loading}
+              error={warnsData.error}
+              empty={!warnsData.loading && !warnsData.error && warnsData().warns.length === 0}
+              onRetry={() => refetch()}
             >
               {/* RENDER WARNS ROWS */}
               <For each={warnsData().warns}>
@@ -109,8 +107,8 @@ const ServerWarns: Component = () => {
                   </tr>
                 )}
               </For>
-
-              {/* PAGINATION ROW */}
+            </TableState>
+            <Show when={!warnsData.loading && !warnsData.error}>
               <Pagination query={query()} total={warnsData().query.total} onChange={setQuery} colSpan={4} />
             </Show>
           </tbody>

@@ -4,90 +4,114 @@ import AdminPanel from '../../../../components/AdminPanel'
 import AdminModal from '../../../../components/AdminModal'
 import { useI18n } from '../../../../i18n'
 import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket'
-import { BuyPremiumBtn, premium, PremiumBadge } from '../../../../utils/premium'
+import { BuyPremiumBtn, premium } from '../../../../utils/premium'
 import { PremiumOnly } from '../../../../components/PremiumOnly'
 import { fetchAPI } from '../../../../utils/api'
 import { TextValue } from '../../../../components/popup/TextValue'
+import {
+  AsyncState,
+  Button,
+  FormActions,
+  FormField,
+  IconButton,
+  TableState,
+  Icon,
+  SettingGroup,
+  SettingRow,
+} from '../../../../components/ui/index.js'
+import { createAsyncAction } from '../../../../hooks/createAsyncAction.js'
 
 const ServerPseudo: Component = () => {
-  function getSelectorClassList(direction: string) {
-    return !pseudoDirection.loading ? pseudoDirection().value === direction : false
-  }
-
   const { t } = useI18n()
 
   const [format, setFormat] = createSignal('')
-  const [preview, setPreview] = createSignal('')
+  const [direction, setDirection] = createSignal('disable')
+  const actionOptions = { errorMessage: () => t('ui.save_error', 'Unable to save the changes.') }
+  const directionAction = createAsyncAction(actionOptions)
+  const formatAction = createAsyncAction(actionOptions)
+  const roleAction = createAsyncAction(actionOptions)
+  const listAction = createAsyncAction(actionOptions)
+
+  const [pseudoDirection, { mutate: mutatePseudoDirection, refetch: refetchDirection }] = createResource(
+    'pseudoDirection',
+    async () => {
+      return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_pseudo_direction', 'GET').then(
+        async (res) => {
+          if (!res.ok) throw new Error('An error occurred while fetching the pseudo direction.')
+          return (await res.json()) || {}
+        },
+      )
+    },
+  )
 
   createEffect(() => {
-    const previewValue = format()
-      .replace('{plyName}', 'John Doe')
-      .replace('{plySteamID64}', '76500000000000000')
-      .replace('{rolePrefix}', 'A')
-      .replace('{roleName}', 'Admin')
-    setPreview(previewValue)
+    if (!pseudoDirection.loading && !pseudoDirection.error) setDirection(pseudoDirection()?.value || 'disable')
   })
 
-  const [pseudoDirection, { mutate: mutatePseudoDirection }] = createResource('pseudoDirection', async () => {
-    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_pseudo_direction', 'GET').then(
-      async (res) => {
-        if (!res.ok) throw new Error('An error occurred while fetching the pseudo direction.')
-        return (await res.json()) || {}
-      },
-    )
-  })
-
-  function updateSyncPseudoDirection(direction: string) {
-    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_pseudo_direction', 'PUT', {
-      value: direction,
+  async function updateSyncPseudoDirection(value: string) {
+    const stored =
+      !pseudoDirection.loading && !pseudoDirection.error ? pseudoDirection()?.value || 'disable' : 'disable'
+    setDirection(value)
+    const saved = await directionAction.run(async () => {
+      const response = await fetchAPI(
+        '/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_pseudo_direction',
+        'PUT',
+        { value },
+      )
+      if (!response.ok) throw new Error('Pseudo direction update failed')
+      mutatePseudoDirection(await response.json())
     })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the pseudo direction.')
-        }
-      })
-      .then((data) => {
-        mutatePseudoDirection(data)
-      })
-      .catch((error) => console.error(error))
+    if (!saved) setDirection(stored)
   }
 
-  const [pseudoFormat, { mutate: mutatePseudoFormat }] = createResource('pseudoFormat', async () => {
-    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/pseudoFormat', 'GET')
-      .then(async (res) => {
-        if (!res.ok) throw new Error('An error occurred while fetching the pseudo format.')
-        return (await res.json()) || { value: '' }
-      })
-      .then((data) => {
-        setFormat(data.value || '')
-        return data
-      })
-  })
+  const [pseudoFormat, { mutate: mutatePseudoFormat, refetch: refetchFormat }] = createResource(
+    'pseudoFormat',
+    async () => {
+      return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/pseudoFormat', 'GET')
+        .then(async (res) => {
+          if (!res.ok) throw new Error('An error occurred while fetching the pseudo format.')
+          return (await res.json()) || { value: '' }
+        })
+        .then((data) => {
+          setFormat(data.value || '')
+          return data
+        })
+    },
+  )
 
-  function updatePseudoFormat(format: string) {
-    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/pseudoFormat', 'PUT', {
-      value: format,
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the pseudo format.')
-        }
-      })
-      .then((data) => {
-        mutatePseudoFormat(data)
+  const storedFormat = () => (!pseudoFormat.loading && !pseudoFormat.error ? pseudoFormat()?.value || '' : '')
+  const renderFormat = (value: string) =>
+    value
+      .replaceAll('{plyName}', 'John Doe')
+      .replaceAll('{plySteamID64}', '76500000000000000')
+      .replaceAll('{rolePrefix}', 'A')
+      .replaceAll('{roleName}', 'Admin')
+  const preview = () => renderFormat(format())
 
-        closeDialog('edit_format')
+  function discardFormat() {
+    setFormat(storedFormat())
+    formatAction.reset()
+  }
+
+  async function updatePseudoFormat() {
+    const value = format()
+    if (
+      await formatAction.run(async () => {
+        const response = await fetchAPI(
+          '/users/:discordID/guilds/:guildID/servers/:serverID/settings/pseudoFormat',
+          'PUT',
+          { value },
+        )
+        if (!response.ok) throw new Error('Pseudo format update failed')
+        mutatePseudoFormat(await response.json())
       })
-      .catch((error) => console.error(error))
+    )
+      closeDialog('edit_format')
   }
 
   const [activeRole, setActiveRole] = createSignal({ id: 0, enabled: false, role: '', name: '', prefix: '' })
 
-  const [pseudoRoles, { mutate: mutatePseudoRoles }] = createResource(
+  const [pseudoRoles, { mutate: mutatePseudoRoles, refetch: refetchRoles }] = createResource(
     'pseudoRoles',
     async (): Promise<ReturnType<typeof activeRole>[]> => {
       return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/pseudo', 'GET').then(async (res) => {
@@ -98,104 +122,104 @@ const ServerPseudo: Component = () => {
     { initialValue: [] },
   )
 
+  function discardRole() {
+    const stored = !pseudoRoles.error ? pseudoRoles().find((role) => role.id === activeRole().id) : undefined
+    setActiveRole(stored ? { ...stored } : { id: 0, enabled: false, role: '', name: '', prefix: '' })
+    roleAction.reset()
+  }
+
   async function addRole() {
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/pseudo`, 'POST', activeRole())
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while adding the role.')
-        }
+    await listAction.run(async () => {
+      const response = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/pseudo', 'POST', {
+        id: 0,
+        enabled: false,
+        role: '',
+        name: '',
+        prefix: '',
       })
-      .then((data) => {
-        mutatePseudoRoles((prev) => [...prev, data])
-      })
-      .catch((error) => console.error(error))
+      if (!response.ok) throw new Error('Pseudo role creation failed')
+      const data = await response.json()
+      mutatePseudoRoles((previous) => [...previous, data])
+    })
   }
 
   async function editRole() {
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/pseudo/${activeRole().id}`, 'PUT', activeRole())
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while editing the role.')
-        }
+    const draft = { ...activeRole() }
+    if (
+      await roleAction.run(async () => {
+        const response = await fetchAPI(
+          `/users/:discordID/guilds/:guildID/servers/:serverID/pseudo/${draft.id}`,
+          'PUT',
+          draft,
+        )
+        if (!response.ok) throw new Error('Pseudo role update failed')
+        const data = await response.json()
+        mutatePseudoRoles((previous) => previous.map((role) => (role.id === data.id ? data : role)))
       })
-      .then((data) => {
-        mutatePseudoRoles((prev) => prev.map((r) => (r.id === data.id ? data : r)))
-      })
-      .catch((error) => console.error(error))
+    )
+      closeDialog('edit_role_modal')
   }
 
   async function deleteRole(id: number) {
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/pseudo/${id}`, 'DELETE')
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while deleting the role.')
-        }
-      })
-      .then((data) => {
-        mutatePseudoRoles((prev) => prev.filter((r) => r.id !== data.id))
-      })
-      .catch((error) => console.error(error))
+    await listAction.run(async () => {
+      const response = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/pseudo/${id}`, 'DELETE')
+      if (!response.ok) throw new Error('Pseudo role removal failed')
+      await response.json()
+      mutatePseudoRoles((previous) => previous.filter((role) => role.id !== id))
+    })
   }
 
   return (
     <>
       <NeedWebsocket />
-      <AdminModal title={t('dashboard.server.pseudo.editRole', 'Edit Role')} id="edit_role_modal">
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.pseudo.userGroup', 'User Group')}</span>
-          </label>
+      <AdminModal
+        title={t('dashboard.server.pseudo.editRole', 'Edit Role')}
+        id="edit_role_modal"
+        busy={roleAction.pending()}
+        onClose={discardRole}
+        onCancel={discardRole}
+      >
+        <FormField id="pseudo-role-group" label={t('dashboard.server.pseudo.userGroup', 'User Group')}>
           <input
+            id="pseudo-role-group"
             type="text"
             class="input"
-            disabled={pseudoRoles.loading}
+            disabled={pseudoRoles.loading || roleAction.pending()}
             value={activeRole().role}
             onInput={(e) => {
               setActiveRole((previous) => ({ ...previous, role: e.currentTarget.value }))
             }}
           />
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.pseudo.name', 'Name')}</span>
-          </label>
+        </FormField>
+        <FormField id="pseudo-role-name" label={t('dashboard.server.pseudo.name', 'Name')}>
           <input
+            id="pseudo-role-name"
             type="text"
-            disabled={pseudoRoles.loading}
+            disabled={pseudoRoles.loading || roleAction.pending()}
             class="input"
             value={activeRole().name}
             onInput={(e) => {
               setActiveRole((previous) => ({ ...previous, name: e.currentTarget.value }))
             }}
           />
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.pseudo.prefix', 'Prefix')}</span>
-          </label>
+        </FormField>
+        <FormField id="pseudo-role-prefix" label={t('dashboard.server.pseudo.prefix', 'Prefix')}>
           <input
+            id="pseudo-role-prefix"
             type="text"
-            disabled={pseudoRoles.loading}
+            disabled={pseudoRoles.loading || roleAction.pending()}
             class="input"
             value={activeRole().prefix}
             onInput={(e) => {
               setActiveRole((previous) => ({ ...previous, prefix: e.currentTarget.value }))
             }}
           />
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.pseudo.active', 'Active')}</span>
-          </label>
+        </FormField>
+        <FormField id="pseudo-role-active" label={t('dashboard.server.pseudo.active', 'Active')}>
           <select
+            id="pseudo-role-active"
             class="select"
-            disabled={pseudoRoles.loading}
+            disabled={pseudoRoles.loading || roleAction.pending()}
             value={activeRole().enabled ? 'true' : 'false'}
             onChange={(e) => {
               setActiveRole((previous) => ({ ...previous, enabled: e.currentTarget.value === 'true' }))
@@ -204,63 +228,56 @@ const ServerPseudo: Component = () => {
             <option value="true">{t('dashboard.server.pseudo.yes', 'Yes')}</option>
             <option value="false">{t('dashboard.server.pseudo.no', 'No')}</option>
           </select>
-        </div>
-        <button
-          class="btn btn-base-200 mt-2"
-          disabled={pseudoRoles.loading}
-          onClick={async () => {
-            closeDialog('edit_role_modal')
-            await editRole()
-          }}
-        >
-          {t('dashboard.server.pseudo.save', 'Save')}
-        </button>
+        </FormField>
+        <FormActions
+          pending={roleAction.pending()}
+          disabled={pseudoRoles.loading || !!pseudoRoles.error}
+          error={roleAction.error()}
+          onSave={() => void editRole()}
+          onCancel={() => closeDialog('edit_role_modal')}
+          saveLabel={t('dashboard.server.pseudo.save', 'Save')}
+        />
       </AdminModal>
 
-      <AdminModal title={t('dashboard.server.pseudo.editFormat', 'Edit Format')} id="edit_format">
-        <Show when={!pseudoFormat.loading}>
-          <div class="fieldset p-2">
-            <h1 class="text-lg text-base-content/70 font-bold">
-              {t('dashboard.server.pseudo.variables', 'Variables')}
-            </h1>
+      <AdminModal
+        title={t('dashboard.server.pseudo.editFormat', 'Edit Format')}
+        id="edit_format"
+        busy={formatAction.pending()}
+        onClose={discardFormat}
+        onCancel={discardFormat}
+      >
+        <Show when={!pseudoFormat.loading && !pseudoFormat.error}>
+          <FormField id="pseudo-format" label={t('dashboard.server.pseudo.format', 'Format')}>
+            <input
+              id="pseudo-format"
+              type="text"
+              class="input"
+              disabled={pseudoFormat.loading || formatAction.pending()}
+              value={format()}
+              onInput={(e) => {
+                setFormat(e.currentTarget.value)
+              }}
+            />
+          </FormField>
+          <FormField id="pseudo-format-preview" label={t('dashboard.server.pseudo.preview', 'Preview')}>
+            <input id="pseudo-format-preview" type="text" class="input" value={preview()} readonly />
+          </FormField>
+          <details class="settings-advanced">
+            <summary>{t('dashboard.server.pseudo.variables', 'Variables')}</summary>
             <ul class="text-base-content/60 list-inside">
               <li>{`{plyName} - ${t('dashboard.server.pseudo.playerName', 'Player Name')}`}</li>
               <li>{`{plySteamID64} - ${t('dashboard.server.pseudo.playerSteamID64', 'Player SteamID64')}`}</li>
               <li>{`{rolePrefix} - ${t('dashboard.server.pseudo.rolePrefix', 'Role Prefix')}`}</li>
               <li>{`{roleName} - ${t('dashboard.server.pseudo.roleName', 'Role Name')}`}</li>
             </ul>
-          </div>
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.server.pseudo.format', 'Format')}</span>
-            </label>
-            <input
-              type="text"
-              class="input"
-              disabled={pseudoFormat.loading}
-              value={pseudoFormat().value}
-              onInput={(e) => {
-                pseudoFormat().value = e.currentTarget.value
-                setFormat(e.currentTarget.value)
-              }}
-            />
-          </div>
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.server.pseudo.preview', 'Preview')}</span>
-            </label>
-            <input type="text" class="input" value={preview()} readonly />
-          </div>
-          <button
-            class="btn btn-base-200 mt-2"
-            disabled={pseudoFormat.loading}
-            onClick={async () => {
-              closeDialog('edit_format')
-              updatePseudoFormat(pseudoFormat().value)
-            }}
-          >
-            {t('dashboard.server.pseudo.save', 'Save')}
-          </button>
+          </details>
+          <FormActions
+            pending={formatAction.pending()}
+            error={formatAction.error()}
+            onSave={() => void updatePseudoFormat()}
+            onCancel={() => closeDialog('edit_format')}
+            saveLabel={t('dashboard.server.pseudo.save', 'Save')}
+          />
         </Show>
       </AdminModal>
 
@@ -272,132 +289,220 @@ const ServerPseudo: Component = () => {
         )}
         info={t('dashboard.server.pseudo.info', 'Please note that Guild Owner will not have pseudo updates.')}
       >
-        <div class="flex w-fit items-center">
-          <PremiumBadge onlyIcon={true} />
-          <span class="mr-2 text-nowrap">
-            {t('dashboard.server.pseudo.pseudoSyncDirection', 'Pseudo Synchronization Direction')} :{' '}
-          </span>
-          <select
-            class="select w-full max-w-xs"
-            disabled={pseudoDirection.loading}
-            onChange={(e) => {
-              updateSyncPseudoDirection(e.currentTarget.value)
+        <Show when={pseudoDirection.error || pseudoFormat.error}>
+          <AsyncState
+            error={true}
+            onRetry={() => {
+              if (pseudoDirection.error) void refetchDirection()
+              if (pseudoFormat.error) void refetchFormat()
             }}
+          />
+        </Show>
+        <SettingGroup title={t('settings.sync_behavior', 'Synchronization behavior')} icon="arrow-left-right">
+          <SettingRow
+            controlId="server-pseudo-direction"
+            title={t('dashboard.server.pseudo.pseudoSyncDirection', 'Pseudo Synchronization Direction')}
+            description={t(
+              'settings.sync_direction_help',
+              'This direction applies to every rule below. Changes are saved automatically.',
+            )}
+            feedback={
+              <>
+                <Show when={directionAction.pending()}>
+                  <p role="status">{t('ui.loading', 'Loading…')}</p>
+                </Show>
+                <Show when={directionAction.error()}>
+                  <p role="alert" class="text-error">
+                    {directionAction.error()}
+                  </p>
+                </Show>
+                <Show when={directionAction.success()}>
+                  <p role="status" class="text-success">
+                    {t('ui.saved', 'Changes saved.')}
+                  </p>
+                </Show>
+              </>
+            }
           >
-            <option value="discord-to-gmod" selected={getSelectorClassList('discord-to-gmod')} disabled={!premium()}>
-              {t('dashboard.server.pseudo.fromDiscordToGmod', 'From Discord to Gmod')} <PremiumOnly />
-            </option>
-            <option value="gmod-to-discord" selected={getSelectorClassList('gmod-to-discord')}>
-              {t('dashboard.server.pseudo.fromGmodToDiscord', 'From Gmod to Discord')}
-            </option>
-            <option value="both" selected={getSelectorClassList('both')} disabled={!premium()}>
-              {t('dashboard.server.pseudo.bothWays', 'Both Ways')} <PremiumOnly />
-            </option>
-            <option value="disable" selected={getSelectorClassList('disable')}>
-              {t('dashboard.server.pseudo.disable', 'Disable')}
-            </option>
-          </select>
-        </div>
-
-        <div class="flex w-fit items-center">
-          <span class="mr-2">{t('dashboard.server.pseudo.format', 'Format')}:</span>
-          <input type="text" class="input" value={preview()} readonly />
-        </div>
-
-        <div class="flex w-fit items-center gap-4">
-          <button
-            class="btn btn-base-200"
-            onClick={() => {
-              showDialog('edit_format')
-            }}
+            <select
+              id="server-pseudo-direction"
+              aria-describedby="server-pseudo-direction-description"
+              class="select w-full max-w-xs"
+              disabled={pseudoDirection.loading || !!pseudoDirection.error || directionAction.pending()}
+              value={direction()}
+              aria-label={t('dashboard.server.pseudo.pseudoSyncDirection', 'Pseudo Synchronization Direction')}
+              onChange={(e) => {
+                updateSyncPseudoDirection(e.currentTarget.value)
+              }}
+            >
+              <option value="discord-to-gmod" disabled={!premium()}>
+                {t('dashboard.server.pseudo.fromDiscordToGmod', 'From Discord to Gmod')} <PremiumOnly />
+              </option>
+              <option value="gmod-to-discord">
+                {t('dashboard.server.pseudo.fromGmodToDiscord', 'From Gmod to Discord')}
+              </option>
+              <option value="both" disabled={!premium()}>
+                {t('dashboard.server.pseudo.bothWays', 'Both Ways')} <PremiumOnly />
+              </option>
+              <option value="disable">{t('dashboard.server.pseudo.disable', 'Disable')}</option>
+            </select>
+          </SettingRow>
+          <Show when={!premium()}>
+            <p class="settings-notice">
+              <Icon name="crown" size={16} />
+              {t('settings.sync_premium_help', 'Discord to game and two-way synchronization require Premium.')}
+            </p>
+          </Show>
+          <Show when={!pseudoDirection.loading && !pseudoDirection.error && direction() === 'disable'}>
+            <p class="settings-notice">
+              <Icon name="info" size={16} />
+              {t(
+                'settings.sync_disabled',
+                'Synchronization is disabled. Your format and rules are kept for when you enable it again.',
+              )}
+            </p>
+          </Show>
+        </SettingGroup>
+        <SettingGroup title={t('dashboard.server.pseudo.format', 'Format')} icon="tag">
+          <SettingRow
+            controlId="pseudo-saved-preview"
+            title={t('settings.saved_preview', 'Saved preview')}
+            description={t(
+              'settings.nickname_format_help',
+              'Preview the saved nickname format, then edit the template and its variables.',
+            )}
+            stacked
           >
-            {t('dashboard.server.pseudo.editFormat', 'Edit Format')}
-          </button>
-        </div>
+            <div class="flex flex-wrap items-center gap-3 w-full min-w-0">
+              <input
+                id="pseudo-saved-preview"
+                type="text"
+                class="input font-mono min-w-0 flex-1"
+                aria-describedby="pseudo-saved-preview-description"
+                value={renderFormat(storedFormat())}
+                readonly
+              />
+              <Button
+                disabled={pseudoFormat.loading || !!pseudoFormat.error}
+                onClick={() => {
+                  discardFormat()
+                  showDialog('edit_format')
+                }}
+              >
+                <Icon name="pencil" size={16} />
+                {t('dashboard.server.pseudo.editFormat', 'Edit Format')}
+              </Button>
+            </div>
+          </SettingRow>
+        </SettingGroup>
       </AdminPanel>
 
       <AdminPanel
         title={t('dashboard.server.pseudo.rolePrefix', 'Role Prefix')}
         description={t('dashboard.server.pseudo.rolePrefixDescription', 'Define prefixes for each user group.')}
         type="none"
-      >
-        <table class="table border-b border-base-300 rounded-none">
-          <thead>
-            <tr class="text-l">
-              <th>{t('dashboard.server.pseudo.userGroup', 'User Group')}</th>
-              <th>{t('dashboard.server.pseudo.name', 'Name')}</th>
-              <th>{t('dashboard.server.pseudo.prefix', 'Prefix')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.server.pseudo.active', 'Active')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.server.pseudo.actions', 'Actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <Show
-              when={!pseudoRoles.loading}
-              fallback={
-                <div class="flex justify-center h-36">
-                  <div class="loading loading-spinner loading-lg"></div>
-                </div>
-              }
+        icon="list"
+        actions={
+          <Show when={!pseudoRoles.loading && !pseudoRoles.error}>
+            <BuyPremiumBtn
+              subCondition={pseudoRoles().length < 3}
+              btnText={t(
+                'dashboard.server.pseudo.rolePrefixPremium',
+                'Limited to 3 roles customization for free users.',
+              )}
+              hidden={pseudoRoles.loading}
             >
-              <For each={pseudoRoles()}>
-                {(role) => (
-                  <tr>
-                    <td>
-                      <TextValue value={role.role} />
-                    </td>
-                    <td>
-                      <TextValue value={role.name} />
-                    </td>
-                    <td>
-                      <TextValue value={role.prefix} />
-                    </td>
-                    <td>
-                      <div class="flex gap-2 justify-center">
-                        {role.enabled ? (
-                          <i class="fa-solid fa-check text-success"></i>
-                        ) : (
-                          <i class="fa-solid fa-times text-error"></i>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div class="flex gap-2 justify-center">
-                        <div class="tooltip tooltip-info" data-tip={t('dashboard.server.pseudo.edit', 'Edit')}>
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-edit"
+              <Button variant="primary" loading={listAction.pending()} onClick={() => void addRole()}>
+                {t('dashboard.server.pseudo.addRole', 'Add Role')}
+              </Button>
+            </BuyPremiumBtn>
+          </Show>
+        }
+      >
+        <p class="settings-notice px-5 py-4">
+          <Icon name="info" size={16} />
+          {t(
+            'settings.pseudo_rules_help',
+            'Prefixes and role names are used only when the format contains {rolePrefix} or {roleName}.',
+          )}
+        </p>
+        <div class="min-w-0 w-full overflow-x-auto">
+          <table class="table border-b border-base-300 rounded-none">
+            <thead>
+              <tr class="text-l">
+                <th>{t('dashboard.server.pseudo.userGroup', 'User Group')}</th>
+                <th>{t('dashboard.server.pseudo.name', 'Name')}</th>
+                <th>{t('dashboard.server.pseudo.prefix', 'Prefix')}</th>
+                <th class="w-1/6 text-center">{t('dashboard.server.pseudo.active', 'Active')}</th>
+                <th class="w-1/6 text-center">{t('dashboard.server.pseudo.actions', 'Actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <TableState
+                colSpan={5}
+                loading={pseudoRoles.loading}
+                error={pseudoRoles.error}
+                empty={!pseudoRoles.loading && !pseudoRoles.error && pseudoRoles().length === 0}
+                onRetry={() => void refetchRoles()}
+              >
+                <For each={pseudoRoles()}>
+                  {(role) => (
+                    <tr>
+                      <td>
+                        <TextValue value={role.role} />
+                      </td>
+                      <td>
+                        <TextValue value={role.name} />
+                      </td>
+                      <td>
+                        <TextValue value={role.prefix} />
+                      </td>
+                      <td>
+                        <div class="flex gap-2 justify-center">
+                          {role.enabled ? (
+                            <Icon name="check" class="text-success" />
+                          ) : (
+                            <Icon name="x" class="text-error" />
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div class="flex gap-2 justify-center">
+                          <IconButton
+                            variant="ghost"
+                            size="sm"
+                            label={t('dashboard.server.pseudo.edit', 'Edit')}
+                            icon="pencil"
+                            disabled={listAction.pending()}
                             onClick={() => {
+                              setActiveRole({ ...role })
+                              roleAction.reset()
                               showDialog('edit_role_modal')
-                              setActiveRole(role)
                             }}
-                          ></i>
+                          />
+                          <IconButton
+                            variant="danger"
+                            size="sm"
+                            label={t('dashboard.server.pseudo.delete', 'Delete')}
+                            icon="trash-2"
+                            disabled={listAction.pending()}
+                            onClick={() => void deleteRole(role.id)}
+                          />
                         </div>
-                        <div class="tooltip tooltip-error" data-tip={t('dashboard.server.pseudo.delete', 'Delete')}>
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-trash text-error"
-                            onClick={() => deleteRole(role.id)}
-                          ></i>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </Show>
-          </tbody>
-        </table>
-
-        <div class="flex gap-4 p-4">
-          <BuyPremiumBtn
-            subCondition={pseudoRoles()?.length < 3}
-            btnText={t('dashboard.server.pseudo.rolePrefixPremium', 'Limited to 3 roles customization for free users.')}
-            hidden={pseudoRoles.loading}
-          >
-            <button class="btn btn-base-200" onClick={addRole}>
-              {t('dashboard.server.pseudo.addRole', 'Add Role')}
-            </button>
-          </BuyPremiumBtn>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </TableState>
+            </tbody>
+          </table>
         </div>
+
+        <Show when={listAction.error()}>
+          <p role="alert" class="p-4 text-sm text-error">
+            {listAction.error()}
+          </p>
+        </Show>
       </AdminPanel>
     </>
   )

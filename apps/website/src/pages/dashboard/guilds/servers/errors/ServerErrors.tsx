@@ -1,9 +1,10 @@
-import { Component, createResource, createSignal, For, ParentProps, Show } from 'solid-js'
+import { type Component, createResource, createSignal, For, type ParentProps, Show } from 'solid-js'
+import { IconButton, TableState, Icon } from '../../../../../components/ui/index.js'
 import AdminPanel from '../../../../../components/AdminPanel'
 import { useI18n } from '../../../../../i18n'
 import JsonViewer from '../../../../../components/JsonViewer'
 import { fetchAPI } from '../../../../../utils/api'
-import { ClientQuery, QuerySort, ServerQuery } from '../../../../../utils/types/QueryTypes'
+import { type ClientQuery, QuerySort, type ServerQuery } from '../../../../../utils/types/QueryTypes'
 import Pagination from '../../../../../components/Pagination'
 import { premium } from '../../../../../utils/premium'
 
@@ -67,9 +68,12 @@ const AddErrorComponent: Component<AddErrorProps> = (props) => {
         <td class=" wrap-break-word">{props.error.error}</td>
         <td>
           <div class="flex gap-2 justify-center">
-            <div
+            <IconButton
               class="tooltip tooltip-info"
-              data-tip={t('dashboard.server.errors.actions.view_details', 'View Details')}
+              variant="ghost"
+              size="sm"
+              label={t('dashboard.server.errors.actions.view_details', 'View Details')}
+              aria-expanded={selectError() === localIdxLog}
               onClick={() => {
                 if (selectError() === localIdxLog) {
                   setSelectError(0)
@@ -79,12 +83,12 @@ const AddErrorComponent: Component<AddErrorProps> = (props) => {
               }}
             >
               <Show when={selectError() === localIdxLog}>
-                <i class="fa-solid fa-chevron-up"></i>
+                <Icon name="chevron-up" />
               </Show>
               <Show when={selectError() !== localIdxLog}>
-                <i class="fa-solid fa-chevron-down"></i>
+                <Icon name="chevron-down" />
               </Show>
-            </div>
+            </IconButton>
             <Show when={props.error.workshopID !== '' && props.error.workshopID !== '0'}>
               <div
                 class="tooltip tooltip-info"
@@ -93,8 +97,10 @@ const AddErrorComponent: Component<AddErrorProps> = (props) => {
                 <a
                   href={`https://steamcommunity.com/sharedfiles/filedetails/?id=${props.error.workshopID}`}
                   target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={t('dashboard.server.errors.actions.open_workshop', 'Open Workshop')}
                 >
-                  <i class="fa-solid fa-external-link-alt"></i>
+                  <Icon name="external-link" />
                 </a>
               </div>
             </Show>
@@ -102,8 +108,9 @@ const AddErrorComponent: Component<AddErrorProps> = (props) => {
               <a
                 href={`data:text/plain;charset=utf-8,${encodeURIComponent(errorContentStr.join('\n'))}`}
                 download={`log-${props.error.createdAt.toLocaleString()}.json`}
+                aria-label={t('dashboard.server.errors.actions.download', 'Download')}
               >
-                <i class="fa-solid fa-download"></i>
+                <Icon name="download" />
               </a>
             </div>
           </div>
@@ -157,7 +164,7 @@ const ServerErrors: Component = () => {
     return data
   }
 
-  const [errors] = createResource(query, fetchErrors, {
+  const [errors, { refetch }] = createResource(query, fetchErrors, {
     initialValue: {
       errors: [],
       query: {
@@ -189,15 +196,18 @@ const ServerErrors: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show
-              when={!errors.loading}
-              fallback={
-                <span class="loading loading-lg">{t('dashboard.server.errors.loading', 'Loading errors...')}</span>
-              }
+            <TableState
+              colSpan={6}
+              loading={errors.loading}
+              error={errors.error}
+              empty={!errors.loading && !errors.error && errors().errors.length === 0}
+              onRetry={() => void refetch()}
             >
               <For each={errors().errors}>{(errorData) => <AddErrorComponent error={errorData} />}</For>
+            </TableState>
+            <Show when={!errors.loading && !errors.error}>
+              <Pagination query={query()} total={errors().query.total} onChange={setQuery} colSpan={6} />
             </Show>
-            <Pagination query={query()} total={errors().query.total} onChange={setQuery} colSpan={6} />
           </tbody>
         </table>
       </AdminPanel>

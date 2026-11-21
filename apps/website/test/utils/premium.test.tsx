@@ -36,7 +36,7 @@ describe('utils/premium.tsx', () => {
       renderWithProviders(() => <PremiumBadge onlyIcon />)
       const link = screen.getByRole('link')
       expect(link).toHaveAttribute('href', '/premium')
-      expect(link.querySelector('.fa-crown')).toBeInTheDocument()
+      expect(link.querySelector('svg[data-icon="crown"]')).toBeInTheDocument()
     })
 
     it('renders the full badge with text when onlyIcon is not set', () => {

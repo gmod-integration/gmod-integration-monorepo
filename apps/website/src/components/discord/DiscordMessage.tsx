@@ -1,6 +1,7 @@
-import { Component } from 'solid-js'
+import { Icon } from '../ui/index.js'
+import { Show, type Component } from 'solid-js'
 import { hexToHSL } from '../../utils/hexToHSL'
-import { TypeDiscordChannel } from '../../utils/types/DiscordTypes'
+import type { TypeDiscordChannel } from '../../utils/types/DiscordTypes'
 import { guildChannels } from '../../pages/dashboard/guilds/GuildInformations'
 import { getUrlWithActualParams } from '../../utils/api'
 
@@ -13,31 +14,29 @@ interface DiscordMessageProps {
 const hsl = hexToHSL('#7d95ff')
 
 const DiscordMessage: Component<DiscordMessageProps> = (props) => {
-  let channel
-
-  if (!props.channelID && !props.channel) {
-    return null
-  }
-
-  if (!props.channel) {
-    channel = guildChannels().find((ch: TypeDiscordChannel) => ch.id === props.channelID)
-    if (!channel) return null
-  } else {
-    channel = props.channel
+  const channel = () => {
+    if (props.channel) return props.channel
+    if (!props.channelID || guildChannels.loading || guildChannels.error) return
+    return guildChannels().find((candidate) => candidate.id === props.channelID)
   }
 
   return (
-    <a
-      href={getUrlWithActualParams(`https://discord.com/channels/:guildID/${channel.id}/${props.messageID}`)}
-      class="w-min text-nowrap rounded-md px-1"
-      target="_blank"
-      style={{
-        color: '#7d95ff',
-        'background-color': `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.1)`,
-      }}
-    >
-      {`#${channel.name} > `} <i class="fa-solid fa-comment" />
-    </a>
+    <Show when={channel()}>
+      {(resolved) => (
+        <a
+          href={getUrlWithActualParams(`https://discord.com/channels/:guildID/${resolved().id}/${props.messageID}`)}
+          class="w-min text-nowrap rounded-md px-1"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: '#7d95ff',
+            'background-color': `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.1)`,
+          }}
+        >
+          {`#${resolved().name} > `} <Icon name="message-circle" aria-hidden="true" />
+        </a>
+      )}
+    </Show>
   )
 }
 

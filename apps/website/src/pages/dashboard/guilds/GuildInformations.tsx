@@ -1,3 +1,4 @@
+import { Button, Icon } from '../../../components/ui/index.js'
 import type { TypeDiscordChannel, TypeDiscordRole } from '../../../utils/types/DiscordTypes.js'
 import { type Component, createEffect, createResource, on, onCleanup, Show } from 'solid-js'
 import { getGuild } from '../../../utils/utils'
@@ -28,7 +29,7 @@ export const [guildRoles, { mutate: guildRolesMutate, refetch: guildRolesRefetch
 async function fetchGuildChannels(): Promise<TypeDiscordChannel[]> {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/channels', 'GET')
   if (!res.ok) {
-    return []
+    throw new Error('Guild channels request failed')
   }
   return await res.json()
 }
@@ -164,14 +165,10 @@ const GuildInformations: Component = () => {
         </div>
         <div class="flex w-fit items-center">
           <span class="mr-2">{t('dashboard.guild.information.premium', 'Premium')}:</span>
-          {getGuild().isPremium ? (
-            <i class="fa-solid fa-check text-success"></i>
-          ) : (
-            <i class="fa-solid fa-times text-error"></i>
-          )}
+          {getGuild().isPremium ? <Icon name="check" class="text-success" /> : <Icon name="x" class="text-error" />}
         </div>
         <div>
-          <i class="fa-solid fa-warning text-warning mr-2"></i>
+          <Icon name="triangle-alert" class="text-warning mr-2" />
           <span>
             {t(
               'dashboard.guild.information.warning',
@@ -194,9 +191,9 @@ const GuildInformations: Component = () => {
           }
         >
           <div class="flex w-fit items-center gap-4">
-            <button class="btn btn-base-200" onClick={activateGmodStorePremium}>
+            <Button onClick={activateGmodStorePremium}>
               {t('dashboard.guild.information.activate_gmod_store_premium', 'Activate Gmod Store Premium')}
-            </button>
+            </Button>
           </div>
         </Show>
         <Show
@@ -239,15 +236,15 @@ const GuildInformations: Component = () => {
                 {t('dashboard.guild.information.invite_main_bot', 'Invite Main Bot')}
               </A>
             </Show>
-            <button
-              class="btn btn-warning"
+            <Button
+              variant="warning"
               onClick={deactivateGmodStorePremium}
               classList={{
                 'btn-disabled': !gmodStorePurchase().hasMainBot,
               }}
             >
               {t('dashboard.guild.information.deactivate_gmod_store_premium', 'Deactivate Gmod Store Premium')}
-            </button>
+            </Button>
           </div>
         </Show>
       </AdminPanel>

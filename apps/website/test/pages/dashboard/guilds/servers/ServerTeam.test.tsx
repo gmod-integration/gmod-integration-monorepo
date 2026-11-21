@@ -101,8 +101,8 @@ describe('pages/dashboard/guilds/servers/ServerTeam.tsx', () => {
     expect(screen.getByText('Red Team')).toBeInTheDocument()
     expect(screen.getByText('Blue Team')).toBeInTheDocument()
     const rows = screen.getAllByRole('row').slice(1) // skip header row
-    expect(rows[0].querySelector('.fa-check')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-times')).toBeInTheDocument()
+    expect(rows[0].querySelector('svg[data-icon="check"]')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
   })
 
   it('shows a loading spinner for the table while rolesSync is loading', () => {
@@ -116,7 +116,7 @@ describe('pages/dashboard/guilds/servers/ServerTeam.tsx', () => {
   })
 
   describe('add team role (select role modal)', () => {
-    it('lists every guild role (no filtering) and adds the chosen one on change', async () => {
+    it('lists every guild role (no filtering) and adds the chosen one only after Save', async () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'select_role_modal')
@@ -137,6 +137,8 @@ describe('pages/dashboard/guilds/servers/ServerTeam.tsx', () => {
       })
       const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'r3' } })
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Save', hidden: true }))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${TEAMS_URL}/r3`, 'POST'))
       await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
     })
@@ -152,6 +154,8 @@ describe('pages/dashboard/guilds/servers/ServerTeam.tsx', () => {
       const modal = container.querySelector('#select_role_modal') as HTMLElement
       const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'r3' } })
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Save', hidden: true }))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${TEAMS_URL}/r3`, 'POST'))
       expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
     })
@@ -162,7 +166,7 @@ describe('pages/dashboard/guilds/servers/ServerTeam.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0])
 
       const modal = container.querySelector('#edit_role_modal') as HTMLElement
@@ -193,7 +197,7 @@ describe('pages/dashboard/guilds/servers/ServerTeam.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0]) // Red Team row, enable: true
 
       const modal = container.querySelector('#edit_role_modal') as HTMLElement
@@ -223,13 +227,14 @@ describe('pages/dashboard/guilds/servers/ServerTeam.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0])
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === `${TEAMS_URL}/1` && method === 'PUT') return Promise.resolve(errJson())
         return Promise.resolve(okJson([]))
       })
       const modal = container.querySelector('#edit_role_modal') as HTMLElement
+      await fireEvent.input(within(modal).getByRole('textbox'), { target: { value: 'Unsaved draft' } })
       await fireEvent.click(within(modal).getByText('Save'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${TEAMS_URL}/1`, 'PUT', expect.anything()))
       expect(screen.getByText('Red Team')).toBeInTheDocument()
@@ -244,7 +249,7 @@ describe('pages/dashboard/guilds/servers/ServerTeam.tsx', () => {
         if (endpoint === `${TEAMS_URL}/2` && method === 'DELETE') return Promise.resolve(okJson({ id: 2 }))
         return Promise.resolve(okJson([]))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(screen.queryByText('Blue Team')).not.toBeInTheDocument())
       expect(screen.getByText('Red Team')).toBeInTheDocument()
@@ -257,7 +262,7 @@ describe('pages/dashboard/guilds/servers/ServerTeam.tsx', () => {
         if (endpoint === `${TEAMS_URL}/2` && method === 'DELETE') return Promise.resolve(errJson())
         return Promise.resolve(okJson([]))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${TEAMS_URL}/2`, 'DELETE'))
       expect(screen.getByText('Blue Team')).toBeInTheDocument()

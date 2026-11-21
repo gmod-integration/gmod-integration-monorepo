@@ -1,36 +1,109 @@
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
 import { type Component, createResource, createSignal, onCleanup, Show } from 'solid-js'
-import AdminPanel from '../../../components/AdminPanel'
+import AdminPanel from '../../../components/AdminPanel.js'
+import AdminModal from '../../../components/AdminModal.js'
+import {
+  AsyncState,
+  Button,
+  FormActions,
+  FormField,
+  Icon,
+  SettingGroup,
+  SettingRow,
+} from '../../../components/ui/index.js'
+import { createAsyncAction } from '../../../hooks/createAsyncAction.js'
 import { A } from '@solidjs/router'
-import AdminModal from '../../../components/AdminModal'
-import { useI18n } from '../../../i18n'
-import { Errors } from '../../../components/layout/Errors'
-import { fetchAPI, getUrlWithActualParams } from '../../../utils/api'
+import { useI18n } from '../../../i18n.js'
+import { fetchAPI, getUrlWithActualParams } from '../../../utils/api.js'
+
+type Bot = {
+  id: string
+  username: string
+  avatar: string
+  status: string
+  custom: boolean
+  purchased: boolean
+  onGuild: boolean
+  active: boolean
+  token?: string
+}
+type BotDraft = Pick<Bot, 'username' | 'avatar' | 'status'>
+const BOT_URL = '/users/:discordID/guilds/:guildID/bot'
+const emptyDraft = (): BotDraft => ({ username: '', avatar: '', status: 'disabled' })
 
 const GuildBot: Component = () => {
-  const [showToken, setShowToken] = createSignal(false)
-  const [bot, { mutate: setBot, refetch: refreshBot }] = createResource('bot', async () => {
-    return await fetchAPI('/users/:discordID/guilds/:guildID/bot', 'GET').then(async (res) => {
-      if (!res.ok) throw new Error('An error occurred while fetching the bot.')
-      return await res.json()
-    })
-  })
   const { t } = useI18n()
+  const [bot, { mutate: setBot, refetch: refreshBot }] = createResource(async (): Promise<Bot> => {
+    const response = await fetchAPI(BOT_URL, 'GET')
+    if (!response.ok) throw new Error('Bot request failed')
+    return await response.json()
+  })
+  const [draft, setDraft] = createSignal<BotDraft>(emptyDraft())
+  const [originalDraft, setOriginalDraft] = createSignal<BotDraft>(emptyDraft())
+  const [token, setToken] = createSignal('')
+  const [popupError, setPopupError] = createSignal(false)
+  const editAction = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save changes. Try again.') })
+  const setupAction = createAsyncAction({
+    errorMessage: () => t('ui.save_error', 'Unable to save changes. Try again.'),
+  })
+  const busy = () => editAction.pending() || setupAction.pending()
+  const dirty = () =>
+    draft().username !== originalDraft().username ||
+    draft().avatar !== originalDraft().avatar ||
+    draft().status !== originalDraft().status
+  let popupTimer: ReturnType<typeof setInterval> | undefined
+  onCleanup(() => clearInterval(popupTimer))
+
+  const updateDraft = (next: Partial<BotDraft>) => setDraft((previous) => ({ ...previous, ...next }))
+  const discardEdit = () => {
+    if (editAction.pending()) return
+    setDraft({ ...originalDraft() })
+    editAction.reset()
+  }
+  const discardSetup = () => {
+    if (setupAction.pending()) return
+    setToken('')
+    setupAction.reset()
+  }
+  const openEditor = () => {
+    if (bot.loading || bot.error || busy()) return
+    const current = bot()!
+    const next = { username: current.username, avatar: current.avatar, status: current.status }
+    setOriginalDraft(next)
+    setDraft({ ...next })
+    editAction.reset()
+    showDialog('edit_bot')
+  }
+  const openSetup = () => {
+    if (bot.loading || bot.error || busy()) return
+    discardSetup()
+    showDialog('setup_bot')
+  }
 
   async function saveBot() {
-    const res = await fetchAPI('/users/:discordID/guilds/:guildID/bot', 'PUT', bot())
-    if (!res.ok) return Errors('An error occurred while saving the bot.')
-    const data = await res.json()
-    setBot(data)
+    if (bot.loading || bot.error || !dirty()) return
+    const submitted = { ...draft() }
+    const saved = await editAction.run(async () => {
+      const response = await fetchAPI(BOT_URL, 'PUT', { ...bot()!, ...submitted })
+      if (!response.ok) throw new Error('Bot update failed')
+      const updated: Bot = await response.json()
+      setBot(updated)
+      setOriginalDraft({ username: updated.username, avatar: updated.avatar, status: updated.status })
+      setDraft({ username: updated.username, avatar: updated.avatar, status: updated.status })
+    })
+    if (saved) closeDialog('edit_bot')
   }
 
   async function setupBot() {
-    const res = await fetchAPI('/users/:discordID/guilds/:guildID/bot', 'PATCH', {
-      token: bot().token,
+    if (bot.loading || bot.error || !token().trim()) return
+    const submittedToken = token()
+    const saved = await setupAction.run(async () => {
+      const response = await fetchAPI(BOT_URL, 'PATCH', { token: submittedToken })
+      if (!response.ok) throw new Error('Bot setup failed')
+      setBot(await response.json())
+      setToken('')
     })
-    if (!res.ok) return Errors('The given token is invalid or intents are missing.')
-    const data = await res.json()
-    setBot(data)
+    if (saved) closeDialog('setup_bot')
   }
 
   function getNameOf(id: string) {
@@ -40,16 +113,37 @@ const GuildBot: Component = () => {
       playerCount: t('dashboard.guild.bot.playerCount', 'Show Player Count'),
       rotate: t('dashboard.guild.bot.rotate', 'Alternate Showed Information'),
     }
-
     return names[id] || t('dashboard.guild.bot.unknown', 'Unknown')
+  }
+
+  function inviteBot() {
+    if (bot.loading || bot.error) return
+    setPopupError(false)
+    const inviteWindow = window.open(
+      getUrlWithActualParams(
+        `https://discord.com/oauth2/authorize?client_id=${bot()!.id}&permissions=8&scope=bot&guild_id=:guildID`,
+      ),
+      '_blank',
+      'width=600,height=900',
+    )
+    if (!inviteWindow) {
+      setPopupError(true)
+      return
+    }
+    clearInterval(popupTimer)
+    popupTimer = setInterval(() => {
+      if (inviteWindow.closed) {
+        clearInterval(popupTimer)
+        void refreshBot()
+      }
+    }, 500)
   }
 
   return (
     <>
-      <Show when={!bot.loading && !bot().custom}>
-        <div class="text-indigo-300 flex h-12 items-center rounded-lg border-indigo-400 border p-4 gap-4">
-          {/*<i class="fa-solid fa-crown"></i>*/}
-          <i class="fa-solid fa-robot"></i>
+      <Show when={!bot.loading && !bot.error && !bot()!.custom}>
+        <div class="text-indigo-300 flex items-center rounded-lg border-indigo-400 border p-4 gap-4">
+          <Icon name="bot" aria-hidden="true" />
           <span>
             {t(
               'dashboard.guild.bot.feature_unavailable',
@@ -62,194 +156,188 @@ const GuildBot: Component = () => {
         </div>
       </Show>
 
-      <AdminModal title={t('dashboard.guild.bot.edit_custom_bot', 'Edit Custom Bot')} id="edit_bot">
-        <Show when={!bot.loading}>
-          {/* name */}
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.guild.bot.name', 'Name')}</span>
-            </label>
-            <input
-              type="text"
-              class="input"
-              disabled={bot.loading}
-              value={bot().username}
-              onChange={(e) => setBot({ ...bot(), username: e.currentTarget.value })}
-            />
-          </div>
-
-          {/*avatar*/}
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.guild.bot.avatar', 'Avatar')}</span>
-            </label>
-            <input
-              type="text"
-              class="input"
-              disabled={bot.loading}
-              value={bot().avatar}
-              onChange={(e) => setBot({ ...bot(), avatar: e.currentTarget.value })}
-            />
-          </div>
-
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.guild.bot.status', 'Status')}</span>
-              <span class="text-rose-500">{t('dashboard.guild.bot.refresh_every_30s', 'Refresh every 30s')}</span>
-            </label>
-            <select
-              class="select w-full"
-              disabled={bot.loading}
-              onChange={(e) => setBot({ ...bot(), status: e.currentTarget.value })}
-            >
-              <option value="disabled" selected={bot().status == 'disabled'}>
-                {getNameOf('disabled')}
-              </option>
-              <option value="guildMemberCount" selected={bot().status == 'guildMemberCount'}>
-                {getNameOf('guildMemberCount')}
-              </option>
-              <option value="playerCount" selected={bot().status == 'playerCount'}>
-                {getNameOf('playerCount')}
-              </option>
-              <option value="rotate" selected={bot().status == 'rotate'}>
-                {getNameOf('rotate')}
-              </option>
-            </select>
-          </div>
-
-          <button
-            disabled={bot.loading}
-            class="btn btn-base-200 mt-2"
-
-            onClick={async () => {
-              closeDialog('edit_bot')
-              await saveBot()
-            }}
+      <AdminModal
+        title={t('dashboard.guild.bot.edit_custom_bot', 'Edit Custom Bot')}
+        id="edit_bot"
+        busy={editAction.pending()}
+        onClose={discardEdit}
+        onCancel={discardEdit}
+      >
+        <FormField id="bot-name" label={t('dashboard.guild.bot.name', 'Name')}>
+          <input
+            id="bot-name"
+            type="text"
+            class="input w-full"
+            disabled={bot.loading || editAction.pending()}
+            value={draft().username}
+            onInput={(event) => updateDraft({ username: event.currentTarget.value })}
+          />
+        </FormField>
+        <FormField id="bot-avatar" label={t('dashboard.guild.bot.avatar', 'Avatar')}>
+          <input
+            id="bot-avatar"
+            type="url"
+            class="input w-full"
+            disabled={bot.loading || editAction.pending()}
+            value={draft().avatar}
+            onInput={(event) => updateDraft({ avatar: event.currentTarget.value })}
+          />
+        </FormField>
+        <FormField
+          id="bot-status"
+          label={t('dashboard.guild.bot.status', 'Status')}
+          description={t('dashboard.guild.bot.refresh_every_30s', 'Refresh every 30s')}
+        >
+          <select
+            id="bot-status"
+            aria-describedby="bot-status-description"
+            class="select w-full"
+            disabled={bot.loading || editAction.pending()}
+            value={draft().status}
+            onChange={(event) => updateDraft({ status: event.currentTarget.value })}
           >
-            {t('dashboard.guild.bot.save', 'Save')}
-          </button>
-        </Show>
+            <option value="disabled">{getNameOf('disabled')}</option>
+            <option value="guildMemberCount">{getNameOf('guildMemberCount')}</option>
+            <option value="playerCount">{getNameOf('playerCount')}</option>
+            <option value="rotate">{getNameOf('rotate')}</option>
+          </select>
+        </FormField>
+        <FormActions
+          dirty={dirty()}
+          pending={editAction.pending()}
+          disabled={bot.loading || !!bot.error}
+          onSave={saveBot}
+          onCancel={() => {
+            discardEdit()
+            closeDialog('edit_bot')
+          }}
+          error={editAction.error()}
+        />
       </AdminModal>
 
-      <AdminModal title={t('dashboard.guild.bot.setup_custom_bot', 'Setup Custom Bot')} id="setup_bot">
-        <Show when={!bot.loading}>
-          {/*short how to (create a discord.dev bot active 3 intent copy token*/}
-
-          {/**/}
-          <div class="fieldset p-2">
-            <h1 class="text-lg text-base-content/70 font-bold">
-              {t('dashboard.guild.bot.how_to_setup', 'How to setup a custom bot:')}
-            </h1>
-            <ul class="list-decimal text-base-content/60 list-inside">
-              <li>
-                {t('dashboard.guild.bot.create_app', 'Create a app on')}{' '}
-                <A class="link" href="https://discord.com/developers/applications">
-                  discord.dev
-                </A>
-              </li>
-              <li>{t('dashboard.guild.bot.go_to_bot_tab', 'Go to the bot tab')}</li>
-              <li>{t('dashboard.guild.bot.enable_x', "Enable 'Presence Intent'", 'Presence Intent')}</li>
-              <li>{t('dashboard.guild.bot.enable_x', "Enable 'Server Members Intent'", 'Server Members Intent')}</li>
-              <li>{t('dashboard.guild.bot.enable_x', "Enable 'Message Content Intent'", 'Message Content Intent')}</li>
-              <li>{t('dashboard.guild.bot.reset_token', 'Reset the token')}</li>
-              <li>{t('dashboard.guild.bot.copy_token', 'Copy the token')}</li>
-            </ul>
-          </div>
-
-          {/*set token*/}
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.guild.bot.token', 'Token')}</span>
-            </label>
-            <input
-              type="text"
-              disabled={bot.loading}
-              class="input"
-              value={bot().token}
-              onChange={(e) => setBot({ ...bot(), token: e.currentTarget.value })}
-            />
-          </div>
-
-          <button
-            disabled={bot.loading}
-            class="btn btn-base-200 mt-2"
-
-            onClick={async () => {
-              closeDialog('setup_bot')
-              await setupBot()
-            }}
-          >
-            {t('dashboard.guild.bot.save', 'Save')}
-          </button>
-        </Show>
+      <AdminModal
+        title={t('dashboard.guild.bot.setup_custom_bot', 'Setup Custom Bot')}
+        id="setup_bot"
+        busy={setupAction.pending()}
+        onClose={discardSetup}
+        onCancel={discardSetup}
+      >
+        <div class="rounded-lg border border-base-200 p-3">
+          <h3 class="font-semibold">{t('dashboard.guild.bot.how_to_setup', 'How to setup a custom bot:')}</h3>
+          <ol class="mt-2 list-decimal text-sm text-base-content/70 list-inside space-y-1">
+            <li>
+              {t('dashboard.guild.bot.create_app', 'Create a app on')}{' '}
+              <A class="link" href="https://discord.com/developers/applications">
+                discord.dev
+              </A>
+            </li>
+            <li>{t('dashboard.guild.bot.go_to_bot_tab', 'Go to the bot tab')}</li>
+            <li>{t('dashboard.guild.bot.enable_x', "Enable 'Presence Intent'", 'Presence Intent')}</li>
+            <li>{t('dashboard.guild.bot.enable_x', "Enable 'Server Members Intent'", 'Server Members Intent')}</li>
+            <li>{t('dashboard.guild.bot.enable_x', "Enable 'Message Content Intent'", 'Message Content Intent')}</li>
+            <li>{t('dashboard.guild.bot.reset_token', 'Reset the token')}</li>
+            <li>{t('dashboard.guild.bot.copy_token', 'Copy the token')}</li>
+          </ol>
+        </div>
+        <FormField id="bot-token" label={t('dashboard.guild.bot.token', 'Token')} required>
+          <input
+            id="bot-token"
+            type="password"
+            autocomplete="new-password"
+            class="input w-full"
+            disabled={bot.loading || setupAction.pending()}
+            value={token()}
+            onInput={(event) => setToken(event.currentTarget.value)}
+          />
+        </FormField>
+        <FormActions
+          dirty={!!token().trim()}
+          pending={setupAction.pending()}
+          disabled={bot.loading || !!bot.error}
+          onSave={setupBot}
+          onCancel={() => {
+            discardSetup()
+            closeDialog('setup_bot')
+          }}
+          error={setupAction.error()}
+        />
       </AdminModal>
 
       <AdminPanel
         title={t('dashboard.guild.bot.custom_bot', 'Custom Bot')}
         description={t('dashboard.guild.bot.edit_bot_info', 'Edit the bot information.')}
-      >
-        {/* name */}
-        <div class="flex w-fit items-center">
-          <span class="mr-2 text-nowrap">{t('dashboard.guild.bot.name', 'Name')} :</span>
-          <span>{!bot.loading ? bot().username : t('dashboard.guild.bot.loading', 'Loading...')}</span>
-        </div>
-
-        {/* avatar */}
-        <div class="flex w-fit items-center">
-          <span class="mr-2 text-nowrap">{t('dashboard.guild.bot.avatar', 'Avatar')} :</span>
-          <img src={!bot.loading ? bot().avatar : ''} alt="Avatar" class="w-8 h-8 rounded-full" />
-        </div>
-
-        <div class="flex w-fit items-center">
-          <span class="mr-2 text-nowrap">{t('dashboard.guild.bot.status', 'Status')} :</span>
-          <span>{!bot.loading ? getNameOf(bot().status) : t('dashboard.guild.bot.loading', 'Loading...')}</span>
-        </div>
-
-        <Show when={!bot.loading && bot().purchased}>
-          <div class="flex w-fit items-center gap-4">
-            <button
-              class="btn btn-base-200"
-              onClick={() => showDialog('edit_bot')}
-              classList={{
-                hidden: !bot().custom || !bot().onGuild,
-              }}
+        icon="bot"
+        type="none"
+        actions={
+          <Show when={!bot.loading && !bot.error && bot()!.purchased}>
+            <Button
+              variant="primary"
+              disabled={busy()}
+              onClick={openEditor}
+              classList={{ hidden: !bot()!.custom || !bot()!.onGuild }}
             >
               {t('dashboard.guild.bot.edit_custom_bot', 'Edit Custom Bot')}
-            </button>
-            <button
-              onClick={() => {
-                const newWindow = window.open(
-                  getUrlWithActualParams(
-                    `https://discord.com/oauth2/authorize?client_id=${bot().id}&permissions=8&scope=bot&guild_id=:guildID`,
-                  ),
-                  '_blank',
-                  'width=600,height=900',
-                )
-                const timer = setInterval(function () {
-                  if (newWindow && newWindow.closed) {
-                    clearInterval(timer)
-                    refreshBot()
+            </Button>
+          </Show>
+        }
+      >
+        <AsyncState
+          loading={bot.loading}
+          loadingLabel={t('dashboard.guild.bot.loading', 'Loading...')}
+          error={!!bot.error}
+          onRetry={() => void refreshBot()}
+        >
+          <Show when={!bot.loading && !bot.error}>
+            <SettingGroup title={t('settings.bot_identity', 'Identity and presence')} icon="user-round">
+              <dl class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 min-w-0 p-5">
+                <dt class="text-base-content/70">{t('dashboard.guild.bot.name', 'Name')}</dt>
+                <dd class="break-words">{bot()!.username}</dd>
+                <dt class="text-base-content/70">{t('dashboard.guild.bot.avatar', 'Avatar')}</dt>
+                <dd>
+                  <img
+                    src={bot()!.avatar}
+                    alt={t('dashboard.guild.bot.avatar', 'Avatar')}
+                    class="w-8 h-8 rounded-full"
+                  />
+                </dd>
+                <dt class="text-base-content/70">{t('dashboard.guild.bot.status', 'Status')}</dt>
+                <dd>{getNameOf(bot()!.status)}</dd>
+              </dl>
+            </SettingGroup>
+            <Show when={bot()!.purchased}>
+              <SettingGroup title={t('settings.bot_connection', 'Connection and credentials')} icon="link">
+                <SettingRow
+                  title={t('settings.bot_membership', 'Discord server')}
+                  description={
+                    bot()!.onGuild
+                      ? t('settings.bot_connected', 'The bot is already in this Discord server.')
+                      : t('settings.bot_invite_hint', 'Invite the custom bot before editing its identity.')
                   }
-                }, 500)
-                onCleanup(() => clearInterval(timer))
-              }}
-              class="btn btn-base-200"
-              classList={{
-                hidden: bot().onGuild || !bot().custom,
-              }}
-            >
-              {t('dashboard.guild.bot.join_guild', 'Join Guild')}
-            </button>
-            <button
-              class="btn btn-base-200"
-              onClick={() => showDialog('setup_bot')}
-              classList={{
-                hidden: !bot().active,
-              }}
-            >
-              {t('dashboard.guild.bot.setup_custom_bot', 'Setup Custom Bot')}
-            </button>
-          </div>
+                >
+                  <Button
+                    disabled={busy()}
+                    onClick={inviteBot}
+                    classList={{ hidden: bot()!.onGuild || !bot()!.custom }}
+                  >
+                    {t('dashboard.guild.bot.join_guild', 'Join Guild')}
+                  </Button>
+                </SettingRow>
+                <SettingRow
+                  title={t('dashboard.guild.bot.token', 'Token')}
+                  description={t('settings.bot_token_hint', 'Use setup to configure or replace the custom bot token.')}
+                >
+                  <Button disabled={busy()} onClick={openSetup} classList={{ hidden: !bot()!.active }}>
+                    {t('dashboard.guild.bot.setup_custom_bot', 'Setup Custom Bot')}
+                  </Button>
+                </SettingRow>
+              </SettingGroup>
+            </Show>
+          </Show>
+        </AsyncState>
+        <Show when={popupError()}>
+          <p role="alert" class="text-error">
+            {t('ui.popup_blocked', 'Allow pop-ups for this site to invite the bot.')}
+          </p>
         </Show>
       </AdminPanel>
     </>

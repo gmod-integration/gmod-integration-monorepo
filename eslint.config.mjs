@@ -9,7 +9,7 @@ export default [
       '**/dist/**',
       '**/.turbo/**',
       '**/coverage/**',
-      '**/logs/**',
+      'logs/**',
       'packages/infra-prisma/generated/**',
       'apps/docs/build/**',
       'apps/docs/.docusaurus/**',
@@ -41,6 +41,39 @@ export default [
       'no-control-regex': 'warn',
       'no-useless-escape': 'warn',
       'no-async-promise-executor': 'warn',
+    },
+  },
+  {
+    files: ['apps/website/src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@fortawesome/*', 'font-awesome', 'fontawesome'],
+              message: 'Use the shared Lucide Icon registry in components/ui/Icon.tsx.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['apps/website/src/pages/dashboard/**/*.tsx'],
+    ignores: ['apps/website/src/pages/dashboard/guilds/servers/screenshots/FocusImg.tsx'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXOpeningElement[name.name='i'] > JSXAttribute[name.name='onClick']",
+          message: 'Use IconButton from components/ui for named, keyboard-accessible actions.',
+        },
+        {
+          selector: "JSXOpeningElement[name.name='button'] > JSXAttribute[name.name='class'][value.value=/\\bbtn\\b/]",
+          message: 'Use Button or IconButton from components/ui instead of copying dashboard button classes.',
+        },
+      ],
     },
   },
   {

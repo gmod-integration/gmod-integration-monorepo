@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
 import { okJson, errJson } from '../testHelpers.js'
 
@@ -85,6 +85,8 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
     })
     const select = document.querySelector('#select_channel_modal select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'POST')).toBe(false)
+    await fireEvent.click(within(select.closest('dialog')!).getByRole('button', { name: 'Save', hidden: true }))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'POST', { channelID: 'c1' }))
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
   })
@@ -98,6 +100,8 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
     })
     const select = document.querySelector('#select_channel_modal select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'POST')).toBe(false)
+    await fireEvent.click(within(select.closest('dialog')!).getByRole('button', { name: 'Save', hidden: true }))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'POST', { channelID: 'c1' }))
     expect(screen.queryByText('#general')).not.toBeInTheDocument()
   })

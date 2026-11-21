@@ -114,6 +114,19 @@ describe('Community selection', () => {
     )
   })
 
+  it('filters communities by name without changing selection or fetching again', async () => {
+    serveGuilds()
+    renderGuilds()
+    await loadedGuilds()
+    await fireEvent.input(screen.getByRole('searchbox', { name: 'Search communities' }), { target: { value: 'bEtA' } })
+    expect(cards()).toHaveLength(1)
+    expect(screen.getByRole('link', { name: /Beta/ })).toBeInTheDocument()
+    expect(window.localStorage.getItem('guilds')).toBeNull()
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
+    await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'unknown' } })
+    expect(screen.getByRole('status')).toHaveTextContent('No results match your search.')
+  })
+
   it('stores a selected community and navigates to its configuration', async () => {
     serveGuilds()
     const { history } = renderGuilds()

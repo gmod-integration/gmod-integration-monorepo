@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
-import { ErrorBoundary } from 'solid-js/web'
 import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
@@ -73,25 +72,16 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsList.tsx', () => {
     )
   })
 
-  it('throws when the response is not ok, to be caught by the app-level ErrorBoundary', async () => {
-    // ServerLogsList has no local error UI: fetchLogs throws on a non-ok response and relies on
-    // the real app's route-level <ErrorBoundary> (see AppDashboard.tsx) to catch it. Reproduce
-    // that same wrapping here instead of rendering the bare component, otherwise the thrown
-    // resource error has nothing to catch it and surfaces as an unhandled promise rejection -
-    // a harness artifact of not having the real route tree, not a bug in this component.
-    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(false, {}) as never)
-    renderWithProviders(
-      () => (
-        <ErrorBoundary fallback={(err) => <div data-testid="boundary-error">{err.message}</div>}>
-          <ServerLogsList />
-        </ErrorBoundary>
-      ),
-      {
-        path: '/dashboard/guilds/:guildID/config/servers/:serverID/logs',
-        history: historyAt('/dashboard/guilds/g1/config/servers/s1/logs'),
-      },
-    )
-    await vi.waitFor(() => expect(screen.getByTestId('boundary-error')).toHaveTextContent('Failed to fetch logs'))
+  it('keeps a failed request inside the table and allows retry without leaving the page', async () => {
+    vi.mocked(fetchAPI)
+      .mockResolvedValueOnce(jsonResponse(false, {}) as never)
+      .mockResolvedValueOnce(jsonResponse(true, logsBody(1)) as never)
+    const { container } = renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to load this content.'))
+    expect(container.querySelector('tbody > tr > td [role=alert]')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(screen.getByText('Player0')).toBeInTheDocument())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('renders live websocket log messages when on the first page', async () => {
@@ -116,7 +106,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsList.tsx', () => {
     setWebSocketLogsMessages([{ type: 'player_ready', data: { ply: { name: 'LiveBob' } } }])
     await vi.waitFor(() => expect(screen.getByText('LiveBob')).toBeInTheDocument())
 
-    const nextBtn = container.querySelector('.fa-chevron-right')!.closest('button')!
+    const nextBtn = container.querySelector('svg[data-icon="chevron-right"]')!.closest('button')!
     await fireEvent.click(nextBtn)
 
     await vi.waitFor(() => expect(webSocketLogsMessages()).toEqual([]))

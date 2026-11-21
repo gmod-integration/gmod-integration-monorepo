@@ -1,3 +1,4 @@
+import { Button, Icon } from '../../../../../components/ui/index.js'
 import { showDialog } from '../../../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, Show } from 'solid-js'
 import {
@@ -42,7 +43,7 @@ const ServerStatusChannel: Component = () => {
       format,
     })
     if (!res.ok) {
-      return
+      throw new Error('Channel update failed')
     }
     const parsed = ServerStatusChannelSchema.safeParse(await res.json())
     const statusChannel = parsed.success ? parsed.data : EMPTY_STATUS_CHANNEL
@@ -61,7 +62,7 @@ const ServerStatusChannel: Component = () => {
     statusChannelIDMutate(EMPTY_STATUS_CHANNEL)
   }
 
-  const [format, setFormat] = createSignal('')
+  const [format] = createSignal('')
   const [preview, setPreview] = createSignal('')
 
   createEffect(() => {
@@ -98,14 +99,17 @@ const ServerStatusChannel: Component = () => {
                   class="tooltip tooltip-info"
                   data-tip={t('dashboard.server.status_channel.send_status', 'Send Status')}
                 >
-                  <button
-                    class="btn btn-sm hover:cursor-pointer fa-solid fa-plus"
+                  <Button
+                    size="sm"
+                    aria-label={t('dashboard.server.status_channel.send_status', 'Send Status')}
                     disabled={statusChannel.loading}
                     onClick={() => {
                       showDialog('select_channel_modal_channel')
                       guildChannelsRefetch()
                     }}
-                  ></button>
+                  >
+                    <Icon name="plus" size={16} />
+                  </Button>
                 </div>
               </>
             }
@@ -115,13 +119,17 @@ const ServerStatusChannel: Component = () => {
               class="tooltip tooltip-danger"
               data-tip={t('dashboard.server.status_channel.remove_status', 'Remove Status')}
             >
-              <button
-                class="btn btn-sm hover:cursor-pointer fa-solid fa-xmark text-error"
+              <Button
+                size="sm"
+                variant="danger"
+                aria-label={t('dashboard.server.status_channel.remove_status', 'Remove Status')}
                 disabled={statusChannel.loading}
                 onClick={async () => {
                   await removeStatus()
                 }}
-              ></button>
+              >
+                <Icon name="x" size={16} />
+              </Button>
             </div>
           </Show>
         </div>
@@ -130,13 +138,16 @@ const ServerStatusChannel: Component = () => {
           <span class="mr-2 text-nowrap">{t('dashboard.server.status_channel.format', 'Player List Format')}:</span>
           <input type="text" class="mr-2 input" value={preview()} readOnly disabled={statusChannel.loading} />
           <div class="tooltip tooltip-info" data-tip={t('dashboard.server.status.edit', 'Edit')}>
-            <button
-              class="btn btn-sm hover:cursor-pointer fa-solid fa-edit"
+            <Button
+              size="sm"
+              aria-label={t('dashboard.server.status.edit', 'Edit')}
               disabled={statusChannel.loading}
               onClick={() => {
                 showDialog('edit_status_button')
               }}
-            ></button>
+            >
+              <Icon name="pencil" size={16} />
+            </Button>
           </div>
         </div>
       </AdminPanel>

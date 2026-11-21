@@ -129,6 +129,22 @@ describe('Dashboard navigation', () => {
     expect(screen.getByRole('button', { name: 'Expand' })).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('opens readable mobile navigation even with a collapsed desktop preference and closes after choosing a page', async () => {
+    window.localStorage.setItem('dashboard-navigation-collapsed', 'true')
+    const history = historyAt('/dashboard/guilds/g1/config/servers/s1/status')
+    renderWithProviders(() => <DashboardMenu />, { path: '*', history })
+    const toggle = screen.getByRole('button', { name: 'Toggle navigation' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Roles')).not.toBeInTheDocument()
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Roles')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('link', { name: 'Roles' }))
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1/roles'))
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(window.localStorage.getItem('dashboard-navigation-collapsed')).toBe('true')
+  })
+
   it('keeps the menu usable when its stored preference cannot be read', () => {
     const getItem = Storage.prototype.getItem
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key) {

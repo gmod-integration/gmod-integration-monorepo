@@ -64,8 +64,8 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
     await waitForLoaded()
     expect(screen.getByText('Moderator')).toBeInTheDocument()
     const rows = screen.getAllByRole('row').slice(1) // skip header row
-    expect(rows[0].querySelector('.fa-check')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-times')).toBeInTheDocument()
+    expect(rows[0].querySelector('svg[data-icon="check"]')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
   })
 
   it('shows a loading spinner for the role table while pseudoRoles is loading', () => {
@@ -82,6 +82,18 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
       const previews = screen.getAllByDisplayValue('John Doe-76500000000000000-A-Admin')
       expect(previews.length).toBeGreaterThan(0)
     })
+  })
+
+  it('keeps the format and saved role rules available while synchronization is disabled', async () => {
+    setupFetchAPI({ direction: { value: 'disable' } })
+    renderPage()
+    await waitForLoaded()
+    expect(
+      screen.getByText('Synchronization is disabled. Your format and rules are kept for when you enable it again.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit Format' })).toBeEnabled()
+    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(2)
+    expect(screen.getByLabelText('Saved preview')).toHaveValue('John Doe')
   })
 
   describe('pseudo direction selector', () => {
@@ -141,12 +153,8 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
       const callsBeforeChange = (fetchAPI as Mock).mock.calls.length
       await fireEvent.change(select, { target: { value: 'disable' } })
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_DIRECTION_URL, 'PUT', { value: 'disable' }))
-      // `fireEvent.change` sets the <select>'s live DOM value directly (like a real browser
-      // would), independent of Solid's reactive `selected` bindings - since those only re-run
-      // when their tracked resource signal changes, and mutate is never called here (the PUT
-      // failed), there's no reactive update to assert on for "did the UI revert" the way there
-      // would be for a controlled `value=` binding. The meaningful, source-accurate assertion is
-      // that the failed PUT is the only call it triggers - no follow-up GET/PUT from a success path.
+      await vi.waitFor(() => expect(select).toHaveValue('gmod-to-discord'))
+      expect(screen.getByRole('alert')).toBeInTheDocument()
       expect((fetchAPI as Mock).mock.calls.length).toBe(callsBeforeChange + 1)
     })
   })
@@ -179,6 +187,50 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
       await fireEvent.click(screen.getByRole('button', { name: 'Edit Format' }))
       expect(container.querySelector('#edit_format')?.hasAttribute('open')).toBe(true)
     })
+
+    it('cancels a format draft without changing the saved preview', async () => {
+      const { container } = renderPage()
+      await waitForLoaded()
+      stubDialogGlobal(container, 'edit_format')
+      await fireEvent.click(screen.getByRole('button', { name: 'Edit Format' }))
+      const modal = container.querySelector('#edit_format') as HTMLDialogElement
+      await fireEvent.input(within(modal).getByLabelText('Format'), { target: { value: 'Draft {plyName}' } })
+      expect(within(modal).getByLabelText('Preview')).toHaveValue('Draft John Doe')
+      expect(container.querySelector('input[readonly]:not(#pseudo-format-preview)')).toHaveValue('John Doe')
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+      expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'PUT')).toBe(false)
+      await fireEvent.click(screen.getByRole('button', { name: 'Edit Format' }))
+      expect(within(modal).getByLabelText('Format')).toHaveValue('{plyName}')
+    })
+
+    it('waits for format Save, blocks duplicate requests and retains the draft after a failed save', async () => {
+      const { container } = renderPage()
+      await waitForLoaded()
+      const modal = stubDialogGlobal(container, 'edit_format')
+      await fireEvent.click(screen.getByRole('button', { name: 'Edit Format' }))
+      await fireEvent.input(within(modal).getByLabelText('Format'), { target: { value: 'Draft {plyName}' } })
+      let resolveSave!: (response: ReturnType<typeof errJson>) => void
+      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
+        if (endpoint === PSEUDO_FORMAT_URL && method === 'PUT')
+          return new Promise((resolve) => {
+            resolveSave = resolve
+          })
+        return Promise.resolve(okJson({}))
+      })
+      const save = within(modal).getByRole('button', { name: 'Save' })
+      await fireEvent.click(save)
+      expect(save).toBeDisabled()
+      expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+      expect(within(modal).getByRole('button', { name: 'Close' })).toBeDisabled()
+      await fireEvent.click(save)
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
+      expect(modal.close).not.toHaveBeenCalled()
+      resolveSave(errJson())
+      await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+      expect(modal.open).toBe(true)
+      expect(within(modal).getByLabelText('Format')).toHaveValue('Draft {plyName}')
+      expect(save).not.toBeDisabled()
+    })
   })
 
   describe('role management', () => {
@@ -199,8 +251,8 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
 
-      const editIcons = container.querySelectorAll('.fa-edit')
-      await fireEvent.click(editIcons[0])
+      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
+      await fireEvent.click(edit)
 
       const modal = container.querySelector('#edit_role_modal') as HTMLElement
       const nameInput = within(modal).getAllByRole('textbox')[1] as HTMLInputElement
@@ -222,8 +274,8 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
-      await fireEvent.click(editIcons[0])
+      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
+      await fireEvent.click(edit)
 
       const modal = container.querySelector('#edit_role_modal') as HTMLElement
       const [roleInput, , prefixInput] = within(modal).getAllByRole('textbox') as HTMLInputElement[]
@@ -256,7 +308,7 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
         if (endpoint === `${PSEUDO_ROLES_URL}/2` && method === 'DELETE') return Promise.resolve(okJson({ id: 2 }))
         return Promise.resolve(okJson({}))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(screen.queryByText('Moderator')).not.toBeInTheDocument())
       expect(screen.getByText('Admin')).toBeInTheDocument()
@@ -278,8 +330,8 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
-      await fireEvent.click(editIcons[0])
+      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
+      await fireEvent.click(edit)
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === `${PSEUDO_ROLES_URL}/1` && method === 'PUT') return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
@@ -288,6 +340,25 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
       await fireEvent.click(within(modal).getByText('Save'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${PSEUDO_ROLES_URL}/1`, 'PUT', expect.anything()))
       expect(screen.getByText('Admin')).toBeInTheDocument()
+      expect(container.querySelector('#edit_role_modal')).toHaveAttribute('open')
+      expect(within(modal).getByRole('alert')).toBeInTheDocument()
+    })
+
+    it('discards role drafts on Cancel and restores the saved fields when reopened', async () => {
+      const { container } = renderPage()
+      await waitForLoaded()
+      stubDialogGlobal(container, 'edit_role_modal')
+      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
+      await fireEvent.click(edit)
+      const modal = container.querySelector('#edit_role_modal') as HTMLDialogElement
+      await fireEvent.input(within(modal).getByLabelText('Name'), { target: { value: 'Changed name' } })
+      await fireEvent.input(within(modal).getByLabelText('Prefix'), { target: { value: 'Changed prefix' } })
+      expect(screen.getByText('Admin')).toBeInTheDocument()
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+      expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'PUT')).toBe(false)
+      await fireEvent.click(edit)
+      expect(within(modal).getByLabelText('Name')).toHaveValue('Admin')
+      expect(within(modal).getByLabelText('Prefix')).toHaveValue('A')
     })
 
     it('does not remove the row when deleting a role fails', async () => {
@@ -297,7 +368,7 @@ describe('pages/dashboard/guilds/servers/ServerPseudo.tsx', () => {
         if (endpoint === `${PSEUDO_ROLES_URL}/2` && method === 'DELETE') return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${PSEUDO_ROLES_URL}/2`, 'DELETE'))
       expect(screen.getByText('Moderator')).toBeInTheDocument()

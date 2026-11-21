@@ -1,0 +1,314 @@
+/* A consistent reading order: group, explanation, value/action, then feedback. */
+.settings-group {
+  min-width: 0;
+  scroll-margin-top: 24px;
+}
+.settings-group + .settings-group {
+  margin-top: 12px;
+}
+.settings-group-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--dashboard-border);
+}
+.settings-group-heading > .ui-icon {
+  margin-top: 2px;
+  color: var(--dashboard-accent);
+}
+.settings-group-heading h3 {
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 650;
+}
+.settings-group-heading p {
+  max-width: 72ch;
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--dashboard-muted);
+}
+.settings-group-content {
+  min-width: 0;
+}
+.settings-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 0.8fr);
+  align-items: start;
+  gap: 24px;
+  min-width: 0;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--dashboard-border);
+}
+.settings-row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.settings-row:first-child {
+  padding-top: 0;
+}
+.settings-group-heading + .settings-group-content > .settings-row:first-child {
+  padding-top: 20px;
+}
+.settings-row-copy {
+  min-width: 0;
+  padding-top: 5px;
+}
+.settings-row-title {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.65;
+}
+.settings-row-title .ui-icon {
+  vertical-align: -3px;
+}
+.settings-row-description {
+  max-width: 64ch;
+  margin-top: 5px;
+  color: var(--dashboard-muted);
+  font-size: 11px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+.settings-row-content {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.settings-row-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 34px;
+}
+.settings-row-control > :is(.input, .select, textarea) {
+  width: 100%;
+  max-width: 100%;
+}
+.settings-row-control :is(code, span) {
+  overflow-wrap: anywhere;
+}
+.settings-row-feedback {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+}
+.settings-row-feedback :is(p, span, div) {
+  font-size: inherit;
+}
+.settings-row.is-stacked {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+.settings-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 12px 14px;
+  border: 1px solid var(--dashboard-border);
+  border-radius: 9px;
+  background: var(--dashboard-tint);
+  color: var(--dashboard-muted);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.settings-notice > .ui-icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--dashboard-accent);
+}
+.settings-browser {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+.dashboard-panel-body.is-flush > .settings-browser {
+  padding: 24px 24px 0;
+}
+.dashboard-panel-body.is-flush > .settings-group {
+  padding: 24px;
+  margin: 0;
+}
+.dashboard-panel-body.is-flush > .settings-group + .settings-group {
+  border-top: 1px solid var(--dashboard-border);
+}
+.dashboard-panel-body.is-flush > .settings-advanced {
+  padding: 24px;
+}
+.settings-autosave {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--dashboard-muted);
+  font-size: 11px;
+}
+.settings-category > span {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--dashboard-tint);
+  font-size: 10px;
+}
+.settings-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 24px;
+  color: var(--dashboard-muted);
+  text-align: center;
+}
+.settings-dependency {
+  margin-top: 8px;
+  padding-left: 9px;
+  border-left: 2px solid var(--dashboard-border);
+  font-size: 11px;
+  color: var(--dashboard-muted);
+}
+.settings-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.settings-search {
+  position: relative;
+  min-width: 0;
+  max-width: 520px;
+}
+.settings-search > .ui-icon {
+  position: absolute;
+  top: 11px;
+  left: 12px;
+  color: var(--dashboard-muted);
+  pointer-events: none;
+}
+.settings-search > input {
+  width: 100%;
+  padding-left: 38px;
+}
+.settings-categories {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.site-shell .settings-category {
+  min-height: 32px;
+  height: auto;
+  font-size: 11px;
+  padding: 7px 11px;
+}
+.site-shell .settings-category[aria-pressed='true'] {
+  background: var(--dashboard-tint);
+  border-color: color-mix(in srgb, var(--dashboard-accent) 30%, transparent);
+  color: var(--dashboard-accent);
+}
+.settings-results {
+  color: var(--dashboard-muted);
+  font-size: 11px;
+}
+.settings-advanced {
+  border-top: 1px solid var(--dashboard-border);
+  padding-top: 18px;
+}
+.settings-advanced > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  list-style: none;
+}
+.settings-advanced > summary::after {
+  content: '+';
+  margin-left: auto;
+  color: var(--dashboard-muted);
+}
+.settings-advanced[open] > summary::after {
+  content: '−';
+}
+.settings-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+.settings-advanced > summary > span {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.settings-advanced > summary > span > span {
+  color: var(--dashboard-muted);
+  font-size: 11px;
+  font-weight: 400;
+}
+.settings-advanced > summary > .ui-icon:last-child {
+  display: none;
+}
+.settings-advanced[open] > summary {
+  margin-bottom: 22px;
+}
+.settings-ranks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+.settings-ranks input {
+  min-width: 0;
+}
+.settings-default {
+  color: var(--dashboard-muted);
+  font-size: 10px;
+}
+.settings-table {
+  min-width: 0;
+  width: 100%;
+  overflow-x: auto;
+}
+.settings-dependent {
+  margin: 8px 0 0 12px;
+  border-left: 2px solid var(--dashboard-border);
+  padding-left: 18px;
+}
+.settings-danger {
+  border-top: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
+  padding-top: 20px;
+}
+.settings-danger .settings-group-heading > .ui-icon {
+  color: var(--color-error);
+}
+@media (max-width: 767px) {
+  .dashboard-panel-body.is-flush > :is(.settings-browser, .settings-group, .settings-advanced) {
+    padding-inline: 18px;
+  }
+  .settings-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    padding-block: 18px;
+  }
+  .settings-row-copy {
+    padding-top: 0;
+  }
+  .settings-row-control {
+    gap: 8px;
+  }
+  .settings-row-control .ui-button {
+    white-space: normal;
+    height: auto;
+    min-height: 34px;
+  }
+  .settings-dependent {
+    margin-left: 0;
+    padding-left: 14px;
+  }
+  .settings-categories {
+    gap: 5px;
+  }
+}

@@ -78,16 +78,16 @@ describe('pages/Premium.tsx', () => {
       const { container } = renderWithProviders(() => <Premium />)
       const row = screen.getByText('Sync Chat - Customisation').closest('tr')!
       // free_value: false, premium_value: true
-      expect(row.querySelector('.fa-times.text-error')).toBeInTheDocument()
-      expect(row.querySelector('.fa-check.text-success')).toBeInTheDocument()
-      expect(container.querySelectorAll('.fa-check.text-success').length).toBeGreaterThan(1)
+      expect(row.querySelector('svg[data-icon="x"].text-error')).toBeInTheDocument()
+      expect(row.querySelector('svg[data-icon="check"].text-success')).toBeInTheDocument()
+      expect(container.querySelectorAll('svg[data-icon="check"].text-success').length).toBeGreaterThan(1)
     })
 
     it('renders an infinity icon when the value equals the translated "infinite" string', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('Servers').closest('tr')!
       expect(within(row).getByText('1 server')).toBeInTheDocument() // free_value: raw text
-      expect(row.querySelector('.fa-infinity.text-primary')).toBeInTheDocument() // premium_value: infinite
+      expect(row.querySelector('svg[data-icon="infinity"].text-primary')).toBeInTheDocument() // premium_value: infinite
     })
 
     it('renders raw string values as-is for both free and premium columns', () => {
@@ -101,7 +101,7 @@ describe('pages/Premium.tsx', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('WebPanel Logs').closest('tr')!
       expect(within(row).getByText('24 hours')).toBeInTheDocument()
-      expect(row.querySelector('.fa-infinity.text-primary')).toBeInTheDocument()
+      expect(row.querySelector('svg[data-icon="infinity"].text-primary')).toBeInTheDocument()
     })
 
     it('wraps an in-development feature name in a warning tooltip instead of rendering it plainly', () => {
@@ -109,7 +109,7 @@ describe('pages/Premium.tsx', () => {
       const name = screen.getByText('Team Vocal')
       const tooltip = name.closest('[data-tip]')!
       expect(tooltip).toHaveClass('tooltip-warning')
-      expect(tooltip.querySelector('.fa-triangle-exclamation')).toBeInTheDocument()
+      expect(tooltip.querySelector('svg[data-icon="triangle-alert"]')).toBeInTheDocument()
     })
 
     it('renders a non-in-development feature name without a tooltip wrapper', () => {

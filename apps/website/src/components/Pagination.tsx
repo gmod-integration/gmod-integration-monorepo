@@ -1,3 +1,4 @@
+import { Button, Icon } from './ui/index.js'
 import type { Component } from 'solid-js'
 import { type ClientQuery } from '../utils/types/QueryTypes.js'
 import { useI18n } from '../i18n.js'
@@ -59,24 +60,26 @@ const Pagination: Component<PaginationProps> = (props) => {
           class="join flex justify-center [&>.join-item]:border-2 [&>.join-item]:border-base-200 [&>.join-item:not(:first-child)]:border-l-0"
           aria-label={t('ui.pagination', 'Pagination')}
         >
-          <button
+          <Button
             type="button"
-            class="btn btn-sm join-item bg-base-200/20"
+            size="sm"
+            class="join-item bg-base-200/20"
             aria-label={t('ui.previous_page', 'Previous page')}
             onClick={handlePrev}
             disabled={!canPrev()}
           >
-            <i aria-hidden="true" class="fa-solid fa-chevron-left"></i>
-          </button>
+            <Icon name="chevron-left" aria-hidden="true" />
+          </Button>
 
-          <button
+          <Button
             type="button"
-            class="btn btn-sm join-item bg-base-200/20"
+            size="sm"
+            class="join-item bg-base-200/20"
             title={t('ui.first_page', 'Back to the first page')}
             onClick={handleReset}
           >
             {`${currentPage()} / ${totalPages()}`}
-          </button>
+          </Button>
 
           <select
             class="btn btn-sm join-item bg-base-200/20"
@@ -90,15 +93,16 @@ const Pagination: Component<PaginationProps> = (props) => {
             <option value={500}>500</option>
           </select>
 
-          <button
+          <Button
             type="button"
-            class="btn btn-sm join-item bg-base-200/20"
+            size="sm"
+            class="join-item bg-base-200/20"
             aria-label={t('ui.next_page', 'Next page')}
             onClick={handleNext}
             disabled={!canNext()}
           >
-            <i aria-hidden="true" class="fa-solid fa-chevron-right"></i>
-          </button>
+            <Icon name="chevron-right" aria-hidden="true" />
+          </Button>
         </nav>
       </td>
     </tr>

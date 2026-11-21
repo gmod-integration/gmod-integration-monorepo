@@ -1,3 +1,4 @@
+import { Button } from '../../../components/ui/index.js'
 import { type Component, createResource, Show } from 'solid-js'
 import PieChart from './pieChart'
 import AdminChart from '../../../components/AdminChart'
@@ -13,9 +14,9 @@ const AdminInformations: Component = () => {
   return (
     <>
       <Show when={!adminData.loading && adminData()} fallback={<div class="skeleton h-[96px]"></div>}>
-        <button class="btn btn-outline border-base-200 hover:bg-base-100 hover:border-base-200" onClick={refetch}>
+        <Button class="border-base-200 hover:bg-base-100 hover:border-base-200" onClick={refetch}>
           Refresh Admin Data
-        </button>
+        </Button>
 
         <h1 class="text-2xl font-semibold text-zinc-500">General</h1>
         <div class="stats shadow-sm border-base-200 border">

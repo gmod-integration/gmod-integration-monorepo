@@ -2,16 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../../testUtils.js'
 import { fetchAPI, getUrlWithActualParams } from '../../../../src/utils/api.js'
-import { Errors } from '../../../../src/components/layout/Errors.js'
 import GuildBot from '../../../../src/pages/dashboard/guilds/GuildBot.js'
 
 vi.mock('../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn(),
   getUrlWithActualParams: vi.fn((s: string) => s),
-}))
-
-vi.mock('../../../../src/components/layout/Errors.js', () => ({
-  Errors: vi.fn(),
 }))
 
 afterEach(() => {
@@ -49,7 +44,6 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     ;(fetchAPI as any).mockReset()
     ;(getUrlWithActualParams as any).mockReset()
     ;(getUrlWithActualParams as any).mockImplementation((s: string) => s)
-    ;(Errors as any).mockReset()
   })
 
   it('shows loading placeholders while the bot is being fetched', () => {
@@ -80,7 +74,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ status: 'playerCount' })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await vi.waitFor(() => expect(screen.getByText('MyBot')).toBeInTheDocument())
-    const summaryPanel = container.querySelector<HTMLElement>('div.border.border-base-200.rounded-lg')!
+    const summaryPanel = container.querySelector<HTMLElement>('dl')!
     expect(within(summaryPanel).getByText('Show Player Count')).toBeInTheDocument()
   })
 
@@ -94,12 +88,13 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ username: 'OldName', status: 'disabled' })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await vi.waitFor(() => expect(screen.getByText('OldName')).toBeInTheDocument())
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
 
     const editModal = container.querySelector<HTMLDialogElement>('#edit_bot')!
     const [nameInput, avatarInput] = within(editModal).getAllByRole('textbox', { hidden: true }) as HTMLInputElement[]
     expect(nameInput.value).toBe('OldName')
-    fireEvent.change(nameInput, { target: { value: 'NewName' } })
-    fireEvent.change(avatarInput, { target: { value: 'http://avatar/new.png' } })
+    fireEvent.input(nameInput, { target: { value: 'NewName' } })
+    fireEvent.input(avatarInput, { target: { value: 'http://avatar/new.png' } })
 
     const statusSelect = within(editModal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
     expect(statusSelect.value).toBe('disabled')
@@ -122,23 +117,76 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ username: 'OldName' })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await vi.waitFor(() => expect(screen.getByText('OldName')).toBeInTheDocument())
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
 
     ;(fetchAPI as any).mockResolvedValue(jsonResponse({}, false))
     const editModal = container.querySelector<HTMLDialogElement>('#edit_bot')!
+    await fireEvent.input(within(editModal).getByLabelText('Name'), { target: { value: 'Unsaved name' } })
     fireEvent.click(within(editModal).getByRole('button', { name: 'Save', hidden: true }))
 
-    await vi.waitFor(() => expect(Errors).toHaveBeenCalledWith('An error occurred while saving the bot.'))
+    await vi.waitFor(() => expect(within(editModal).getByRole('alert')).toBeInTheDocument())
+    expect(editModal.open).toBe(true)
+    expect(within(editModal).getByLabelText('Name')).toHaveValue('Unsaved name')
     expect(screen.getByText('OldName')).toBeInTheDocument()
+  })
+
+  it('keeps edits local and restores the saved bot when the editor is canceled', async () => {
+    ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot()))
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    const edit = screen.getByRole('button', { name: 'Edit Custom Bot' })
+    await fireEvent.click(edit)
+    const modal = container.querySelector<HTMLDialogElement>('#edit_bot')!
+    await fireEvent.input(within(modal).getByLabelText('Name'), { target: { value: 'Draft bot' } })
+    expect(screen.getByText('MyBot')).toBeInTheDocument()
+    expect(screen.queryByText('Draft bot')).not.toBeInTheDocument()
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+    expect(modal.open).toBe(false)
+    await fireEvent.click(edit)
+    expect(within(modal).getByLabelText('Name')).toHaveValue('MyBot')
+    expect((fetchAPI as any).mock.calls.filter(([, method]: string[]) => method === 'PUT')).toHaveLength(0)
+  })
+
+  it('prevents duplicate saves and closes the editor only after a successful response', async () => {
+    ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot()))
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
+    const modal = container.querySelector<HTMLDialogElement>('#edit_bot')!
+    await fireEvent.input(within(modal).getByLabelText('Name'), { target: { value: 'Saved bot' } })
+    let resolveSave!: (response: Response) => void
+    ;(fetchAPI as any).mockImplementation(() => new Promise((resolve) => (resolveSave = resolve)))
+    const save = within(modal).getByRole('button', { name: 'Save' })
+    await fireEvent.click(save)
+    await fireEvent.click(save)
+    expect((fetchAPI as any).mock.calls.filter(([, method]: string[]) => method === 'PUT')).toHaveLength(1)
+    expect(save).toBeDisabled()
+    expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    expect(within(modal).getByLabelText('Name')).toBeDisabled()
+    expect(modal.open).toBe(true)
+    resolveSave(jsonResponse(baseBot({ username: 'Saved bot' })))
+    await vi.waitFor(() => expect(modal.open).toBe(false))
+    expect(screen.getByText('Saved bot')).toBeInTheDocument()
+  })
+
+  it('shows an error with retry instead of reading a failed bot resource', async () => {
+    ;(fetchAPI as any).mockResolvedValue(jsonResponse({}, false))
+    renderWithProviders(() => <GuildBot />)
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot()))
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(screen.getByText('MyBot')).toBeInTheDocument())
   })
 
   it('sets up the custom bot with a token from the setup modal', async () => {
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ token: '' })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
 
     const setupModal = container.querySelector<HTMLDialogElement>('#setup_bot')!
-    const tokenInput = within(setupModal).getByRole('textbox', { hidden: true }) as HTMLInputElement
-    fireEvent.change(tokenInput, { target: { value: 'secret-token' } })
+    const tokenInput = within(setupModal).getByLabelText(/Token/) as HTMLInputElement
+    fireEvent.input(tokenInput, { target: { value: 'secret-token' } })
 
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ token: 'secret-token', active: true })))
     fireEvent.click(within(setupModal).getByRole('button', { name: 'Save', hidden: true }))
@@ -154,12 +202,16 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ token: '' })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
 
     ;(fetchAPI as any).mockResolvedValue(jsonResponse({}, false))
     const setupModal = container.querySelector<HTMLDialogElement>('#setup_bot')!
+    await fireEvent.input(within(setupModal).getByLabelText(/Token/), { target: { value: 'rejected-token' } })
     fireEvent.click(within(setupModal).getByRole('button', { name: 'Save', hidden: true }))
 
-    await vi.waitFor(() => expect(Errors).toHaveBeenCalledWith('The given token is invalid or intents are missing.'))
+    await vi.waitFor(() => expect(within(setupModal).getByRole('alert')).toBeInTheDocument())
+    expect(setupModal.open).toBe(true)
+    expect(within(setupModal).getByLabelText(/Token/)).toHaveValue('rejected-token')
   })
 
   it('hides the whole action row when the bot has not been purchased', async () => {

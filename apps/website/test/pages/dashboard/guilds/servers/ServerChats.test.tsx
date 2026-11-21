@@ -58,9 +58,9 @@ function renderPage() {
   })
 }
 
-async function waitForLoaded(container: HTMLElement) {
+async function waitForLoaded(_container: HTMLElement) {
   await vi.waitFor(() => {
-    const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole('combobox')[0]
+    const select = screen.getAllByRole('combobox')[0]
     expect(select).not.toBeDisabled()
   })
 }
@@ -164,6 +164,13 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
         return Promise.resolve(okJson({}))
       })
       await fireEvent.change(select, { target: { value: 'c1' } })
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+      await fireEvent.click(
+        within(container.querySelector('#select_channel_modal') as HTMLElement).getByRole('button', {
+          name: 'Save',
+          hidden: true,
+        }),
+      )
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(CHATS_URL, 'POST', { channelID: 'c1' }))
       await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
     })
@@ -177,6 +184,12 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
         return Promise.resolve(okJson({}))
       })
       await fireEvent.change(select, { target: { value: 'c1' } })
+      await fireEvent.click(
+        within(container.querySelector('#select_channel_modal') as HTMLElement).getByRole('button', {
+          name: 'Save',
+          hidden: true,
+        }),
+      )
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(CHATS_URL, 'POST', { channelID: 'c1' }))
       expect(screen.getByText('No Sync Chats')).toBeInTheDocument()
     })
@@ -185,11 +198,9 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
   describe('sync direction selector', () => {
     it('marks the selected option based on the fetched direction', async () => {
       defaultFetch({ [PSEUDO_DIRECTION_URL]: { value: 'both' } })
-      const { container } = renderPage()
+      renderPage()
       await vi.waitFor(() => {
-        const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole(
-          'combobox',
-        )[0] as HTMLSelectElement
+        const select = screen.getAllByRole('combobox')[0] as HTMLSelectElement
         expect(within(select).getByText('Both Ways', { exact: false })).toHaveProperty('selected', true)
       })
     })
@@ -198,9 +209,7 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
       window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
       const { container } = renderPage()
       await waitForLoaded(container)
-      const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole(
-        'combobox',
-      )[0] as HTMLSelectElement
+      const select = screen.getAllByRole('combobox')[0] as HTMLSelectElement
       const options = within(select).getAllByRole('option') as HTMLOptionElement[]
       expect(options.find((o) => o.value === 'discordToGmod')).toBeDisabled()
       expect(options.find((o) => o.value === 'both')).toBeDisabled()
@@ -210,9 +219,7 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
     it('sends the new direction on change and mutates on success', async () => {
       const { container } = renderPage()
       await waitForLoaded(container)
-      const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole(
-        'combobox',
-      )[0] as HTMLSelectElement
+      const select = screen.getAllByRole('combobox')[0] as HTMLSelectElement
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(okJson({ value: 'both' }))
         return Promise.resolve(okJson({}))
@@ -221,20 +228,23 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_DIRECTION_URL, 'PUT', { value: 'both' }))
     })
 
-    it('logs and does not throw when updating the direction fails', async () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    it('restores the previous direction after failure and allows retry', async () => {
       const { container } = renderPage()
       await waitForLoaded(container)
-      const select = within(container.querySelector('.border-base-200') as HTMLElement).getAllByRole(
-        'combobox',
-      )[0] as HTMLSelectElement
+      const select = screen.getAllByRole('combobox')[0] as HTMLSelectElement
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
       })
-      await fireEvent.change(select, { target: { value: 'gmodToDiscord' } })
-      await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-      errorSpy.mockRestore()
+      await fireEvent.change(select, { target: { value: 'both' } })
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
+      expect(select).toHaveValue('gmodToDiscord')
+      expect(select).not.toBeDisabled()
+      ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({ value: 'both' }))
+      await fireEvent.change(select, { target: { value: 'both' } })
+      await vi.waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument())
+      expect(select).toHaveValue('both')
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
   })
 
@@ -260,8 +270,7 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
       await vi.waitFor(() => expect(checkbox.checked).toBe(true))
     })
 
-    it('logs and does not throw when updating fails', async () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    it('shows feedback and restores the saved toggle when updating fails', async () => {
       const { container } = renderPage()
       await vi.waitFor(() => expect(container.querySelectorAll('input[type=checkbox]')[0]).not.toBeDisabled())
       const checkbox = container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement
@@ -270,8 +279,9 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
         return Promise.resolve(okJson({}))
       })
       await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-      errorSpy.mockRestore()
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
+      expect(checkbox).not.toBeChecked()
+      expect(checkbox).not.toBeDisabled()
     })
   })
 
@@ -317,8 +327,7 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(RELAY_ALL_URL, 'PUT', { value: false }))
     })
 
-    it('logs and does not throw when updating fails', async () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    it('shows feedback and restores the saved default behavior when updating fails', async () => {
       renderPage()
       await vi.waitFor(() => expect(screen.getByText('Relay All Messages')).toBeInTheDocument())
       const select = screen.getByText('Relay All Messages').closest('select') as HTMLSelectElement
@@ -327,8 +336,9 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
         return Promise.resolve(okJson({}))
       })
       await fireEvent.change(select, { target: { value: 'false' } })
-      await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-      errorSpy.mockRestore()
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
+      expect(select).toHaveValue('true')
+      expect(select).not.toBeDisabled()
     })
   })
 
@@ -343,17 +353,17 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
       defaultFetch({ [FILTERS_URL]: [filterRule()] })
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
-      expect(screen.getByText('message')).toBeInTheDocument()
-      expect(screen.getByText('contain')).toBeInTheDocument()
-      expect(screen.getByText('relay')).toBeInTheDocument()
-      expect(container.querySelector('tbody .fa-check')).toBeInTheDocument()
+      expect(screen.getByRole('cell', { name: 'Message' })).toBeInTheDocument()
+      expect(screen.getByRole('cell', { name: 'Contain' })).toBeInTheDocument()
+      expect(screen.getByRole('cell', { name: 'Relay' })).toBeInTheDocument()
+      expect(container.querySelector('tbody svg[data-icon="check"]')).toBeInTheDocument()
     })
 
     it('shows an inactive marker for a disabled rule', async () => {
       defaultFetch({ [FILTERS_URL]: [filterRule({ active: false })] })
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
-      expect(container.querySelector('tbody .fa-times')).toBeInTheDocument()
+      expect(container.querySelector('tbody svg[data-icon="x"]')).toBeInTheDocument()
     })
 
     it('adds a rule and appends it to the list on success', async () => {
@@ -378,7 +388,7 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
       })
       await fireEvent.click(screen.getByText('Add Rule'))
       await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-      expect(screen.queryAllByRole('row')).toHaveLength(1) // header row only
+      expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.')
       errorSpy.mockRestore()
     })
 
@@ -390,7 +400,7 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
         if (endpoint === `${FILTERS_URL}/1` && method === 'DELETE') return Promise.resolve(okJson({ id: 1 }))
         return Promise.resolve(okJson({}))
       })
-      await fireEvent.click(container.querySelector('tbody .fa-trash') as HTMLElement)
+      await fireEvent.click(container.querySelector('tbody svg[data-icon="trash-2"]') as HTMLElement)
       await vi.waitFor(() => expect(screen.queryByText('hello')).not.toBeInTheDocument())
     })
 
@@ -403,7 +413,7 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
         if (endpoint === `${FILTERS_URL}/1` && method === 'DELETE') return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
       })
-      await fireEvent.click(container.querySelector('tbody .fa-trash') as HTMLElement)
+      await fireEvent.click(container.querySelector('tbody svg[data-icon="trash-2"]') as HTMLElement)
       await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
       expect(screen.getByText('hello')).toBeInTheDocument()
       errorSpy.mockRestore()
@@ -428,13 +438,40 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
         return renderPage()
       }
 
+      it('blocks duplicate saves, keeps failed drafts local and restores the stored rule after cancel', async () => {
+        const { container } = renderWithRule()
+        await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
+        await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+        const modal = container.querySelector('#edit_rule_modal') as HTMLDialogElement
+        const input = within(modal).getByRole('textbox')
+        await fireEvent.input(input, { target: { value: 'Draft trigger' } })
+        expect(screen.getByText('hello')).toBeInTheDocument()
+        let finish!: (value: ReturnType<typeof errJson>) => void
+        ;(fetchAPI as Mock).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
+        const save = within(modal).getByRole('button', { name: 'Save' })
+        await fireEvent.click(save)
+        await fireEvent.click(save)
+        expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
+        expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+        const escape = new Event('cancel', { cancelable: true })
+        modal.dispatchEvent(escape)
+        expect(escape.defaultPrevented).toBe(true)
+        finish(errJson())
+        await vi.waitFor(() => expect(within(modal).getByRole('alert')).toHaveTextContent('Unable to save'))
+        expect(modal).toHaveAttribute('open')
+        expect(input).toHaveValue('Draft trigger')
+        await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+        await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+        expect(within(modal).getByRole('textbox')).toHaveValue('hello')
+      })
+
       it('prefills the modal fields from the selected rule and saves the edit, leaving other rows untouched', async () => {
         defaultFetch({ [FILTERS_URL]: [filterRule(), filterRule({ id: 99, trigger: 'untouched' })] })
         const { container } = renderPage()
         await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
         expect(screen.getByText('untouched')).toBeInTheDocument()
         stubDialogGlobal(container, 'edit_rule_modal')
-        await fireEvent.click(container.querySelector('tbody .fa-edit') as HTMLElement)
+        await fireEvent.click(container.querySelector('tbody svg[data-icon="pencil"]') as HTMLElement)
 
         const modal = container.querySelector('#edit_rule_modal') as HTMLElement
         expect(modal.hasAttribute('open')).toBe(true)
@@ -480,21 +517,20 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
         expect(screen.getByText('untouched')).toBeInTheDocument()
       })
 
-      it('logs and does not throw, and does not change the row, when saving the edit fails', async () => {
-        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      it('shows an error and keeps the draft open without changing the row when saving fails', async () => {
         const { container } = renderWithRule()
         await vi.waitFor(() => expect(screen.getByText('hello')).toBeInTheDocument())
         stubDialogGlobal(container, 'edit_rule_modal')
-        await fireEvent.click(container.querySelector('tbody .fa-edit') as HTMLElement)
+        await fireEvent.click(container.querySelector('tbody svg[data-icon="pencil"]') as HTMLElement)
         const modal = container.querySelector('#edit_rule_modal') as HTMLElement
         ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
           if (endpoint === `${FILTERS_URL}/1` && method === 'PUT') return Promise.resolve(errJson())
           return Promise.resolve(okJson({}))
         })
         await fireEvent.click(within(modal).getByText('Save'))
-        await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
+        await vi.waitFor(() => expect(within(modal).getByRole('alert')).toHaveTextContent('Unable to save'))
         expect(screen.getByText('hello')).toBeInTheDocument()
-        errorSpy.mockRestore()
+        expect(modal).toHaveAttribute('open')
       })
 
       it('disables the modal fields while filters are loading', () => {
@@ -526,7 +562,7 @@ describe('pages/dashboard/guilds/servers/ServerChats.tsx', () => {
       // ServerStatusButtons.tsx's docs for why v8/Solid tolerate a non-array `each`), so the table
       // just renders no rows instead of throwing.
       await vi.waitFor(() => expect(container.querySelector('.loading-spinner')).not.toBeInTheDocument())
-      expect(screen.queryAllByRole('row')).toHaveLength(1) // header row only
+      expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.')
     })
   })
 

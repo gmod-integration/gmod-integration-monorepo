@@ -1,4 +1,5 @@
-import { Component, createResource, For, Match, Show, Switch } from 'solid-js'
+import { type Component, createResource, For, Show } from 'solid-js'
+import { TableState, Icon } from '../../../components/ui/index.js'
 import AdminPanel from '../../../components/AdminPanel'
 import { useI18n } from '../../../i18n'
 import { fetchAPI } from '../../../utils/api'
@@ -29,13 +30,13 @@ interface GuildBansData {
 const fetchBans = async (): Promise<GuildBansData> => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/bans', 'GET')
   if (!res.ok) {
-    return { gmodBans: [], discordBans: [] }
+    throw new Error('Bans request failed')
   }
   return await res.json()
 }
 
 const GuildBans: Component = () => {
-  const [bans] = createResource('guildBans', fetchBans)
+  const [bans, { refetch }] = createResource('guildBans', fetchBans)
   const { t } = useI18n()
 
   return (
@@ -57,7 +58,15 @@ const GuildBans: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show when={!bans.loading && !bans.error}>
+            <TableState
+              colSpan={4}
+              loading={bans.loading}
+              error={bans.error}
+              empty={!bans.loading && !bans.error && bans()?.gmodBans.length === 0}
+              errorLabel={t('dashboard.guild.bans.failed_to_load', 'Failed to load bans')}
+              emptyLabel={t('dashboard.guild.bans.gmod_empty', 'No GMod bans found.')}
+              onRetry={() => void refetch()}
+            >
               <For each={bans()?.gmodBans}>
                 {(ban) => (
                   <tr>
@@ -77,7 +86,7 @@ const GuildBans: Component = () => {
                             class="tooltip tooltip-warning"
                             data-tip={t('dashboard.guild.bans.also_banned_discord', 'Also banned on Discord')}
                           >
-                            <i class="fa-brands fa-discord text-warning"></i>
+                            <Icon name="message-circle" class="text-warning" />
                           </div>
                         </Show>
                       </div>
@@ -85,25 +94,9 @@ const GuildBans: Component = () => {
                   </tr>
                 )}
               </For>
-            </Show>
+            </TableState>
           </tbody>
         </table>
-
-        <Switch>
-          <Match when={bans.loading}>
-            <div class="flex justify-center h-36">
-              <div class="loading loading-spinner loading-lg"></div>
-            </div>
-          </Match>
-          <Match when={bans.error}>
-            <div>{t('dashboard.guild.bans.failed_to_load', 'Failed to load bans')}</div>
-          </Match>
-          <Match when={!bans.loading && bans()?.gmodBans.length === 0}>
-            <div class="flex justify-center p-4 text-base-content/50">
-              {t('dashboard.guild.bans.gmod_empty', 'No GMod bans found.')}
-            </div>
-          </Match>
-        </Switch>
       </AdminPanel>
 
       <AdminPanel
@@ -120,7 +113,15 @@ const GuildBans: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show when={!bans.loading && !bans.error}>
+            <TableState
+              colSpan={3}
+              loading={bans.loading}
+              error={bans.error}
+              empty={!bans.loading && !bans.error && bans()?.discordBans.length === 0}
+              errorLabel={t('dashboard.guild.bans.failed_to_load', 'Failed to load bans')}
+              emptyLabel={t('dashboard.guild.bans.discord_empty', 'No Discord bans found.')}
+              onRetry={() => void refetch()}
+            >
               <For each={bans()?.discordBans}>
                 {(ban) => (
                   <tr>
@@ -137,7 +138,7 @@ const GuildBans: Component = () => {
                             class="tooltip tooltip-warning"
                             data-tip={t('dashboard.guild.bans.also_banned_gmod', 'Also banned on GMod')}
                           >
-                            <i class="fa-solid fa-gamepad text-warning"></i>
+                            <Icon name="gamepad-2" class="text-warning" />
                           </div>
                         </Show>
                       </div>
@@ -145,25 +146,9 @@ const GuildBans: Component = () => {
                   </tr>
                 )}
               </For>
-            </Show>
+            </TableState>
           </tbody>
         </table>
-
-        <Switch>
-          <Match when={bans.loading}>
-            <div class="flex justify-center h-36">
-              <div class="loading loading-spinner loading-lg"></div>
-            </div>
-          </Match>
-          <Match when={bans.error}>
-            <div>{t('dashboard.guild.bans.failed_to_load', 'Failed to load bans')}</div>
-          </Match>
-          <Match when={!bans.loading && bans()?.discordBans.length === 0}>
-            <div class="flex justify-center p-4 text-base-content/50">
-              {t('dashboard.guild.bans.discord_empty', 'No Discord bans found.')}
-            </div>
-          </Match>
-        </Switch>
       </AdminPanel>
     </>
   )

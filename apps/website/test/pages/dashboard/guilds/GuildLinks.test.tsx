@@ -53,8 +53,8 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
     expect(screen.getByText('example.com')).toBeInTheDocument()
     expect(screen.getByText('docs.example.com')).toBeInTheDocument()
     const rows = screen.getAllByRole('row').slice(1)
-    expect(rows[0].querySelector('.fa-check')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-times')).toBeInTheDocument()
+    expect(rows[0].querySelector('svg[data-icon="check"]')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
   })
 
   it('shows a loading spinner and hides the table body while links is loading', () => {
@@ -64,11 +64,11 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
     expect(screen.queryAllByRole('row')).toHaveLength(1) // header row only, tbody For is gated
   })
 
-  it('renders an empty list (not an error) when the links GET responds with a non-ok status', async () => {
+  it('shows a retryable error when the links GET responds with a non-ok status', async () => {
     ;(fetchAPI as Mock).mockImplementation(() => Promise.resolve(errJson()))
     renderWithProviders(() => <GuildLinks />)
-    await vi.waitFor(() => expect(screen.queryAllByRole('row')).toHaveLength(1)) // header row only
-    expect(screen.queryByText('Failed to load the links')).not.toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Failed to load the links'))
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 
   it('shows the failed-to-load message when the links fetch rejects', async () => {
@@ -118,7 +118,7 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
         if (endpoint === `${LINKS_URL}/2` && method === 'DELETE') return Promise.resolve(okJson({ id: 2 }))
         return Promise.resolve(okJson({}))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(screen.queryByText('Docs')).not.toBeInTheDocument())
       expect(screen.getByText('Site')).toBeInTheDocument()
@@ -131,7 +131,7 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
         if (endpoint === `${LINKS_URL}/2` && method === 'DELETE') return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${LINKS_URL}/2`, 'DELETE'))
       expect(screen.getByText('Docs')).toBeInTheDocument()
@@ -144,7 +144,7 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_select_link')
 
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0])
 
       const modal = container.querySelector('#edit_select_link') as HTMLElement
@@ -179,16 +179,59 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       const { container } = renderWithProviders(() => <GuildLinks />)
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_select_link')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0])
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === `${LINKS_URL}/1` && method === 'PUT') return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
       })
       const modal = container.querySelector('#edit_select_link') as HTMLElement
+      await fireEvent.input(within(modal).getByLabelText('Alias'), { target: { value: 'Unsaved alias' } })
       await fireEvent.click(within(modal).getByText('Save'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${LINKS_URL}/1`, 'PUT', expect.anything()))
       expect(screen.getByText('Site')).toBeInTheDocument()
+      expect(modal).toHaveAttribute('open')
+      expect(within(modal).getByRole('alert')).toBeInTheDocument()
+      expect(within(modal).getByLabelText('Alias')).toHaveValue('Unsaved alias')
+    })
+
+    it('discards changes on Cancel and restores the saved values when reopened', async () => {
+      const { container } = renderWithProviders(() => <GuildLinks />)
+      await waitForLoaded()
+      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
+      await fireEvent.click(edit)
+      const modal = container.querySelector<HTMLDialogElement>('#edit_select_link')!
+      await fireEvent.input(within(modal).getByLabelText('Alias'), { target: { value: 'Local draft' } })
+      await fireEvent.input(within(modal).getByLabelText('URL'), { target: { value: 'https://draft.example' } })
+      expect(screen.getByText('Site')).toBeInTheDocument()
+      expect(screen.queryByText('Local draft')).not.toBeInTheDocument()
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+      expect(modal.open).toBe(false)
+      await fireEvent.click(edit)
+      expect(within(modal).getByLabelText('Alias')).toHaveValue('Site')
+      expect(within(modal).getByLabelText('URL')).toHaveValue('https://example.com/')
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
+    })
+
+    it('blocks duplicate saves and keeps the dialog open until the request succeeds', async () => {
+      const { container } = renderWithProviders(() => <GuildLinks />)
+      await waitForLoaded()
+      await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
+      const modal = container.querySelector<HTMLDialogElement>('#edit_select_link')!
+      await fireEvent.input(within(modal).getByLabelText('Alias'), { target: { value: 'Saved alias' } })
+      let resolveSave!: (response: ReturnType<typeof okJson>) => void
+      ;(fetchAPI as Mock).mockImplementation(() => new Promise((resolve) => (resolveSave = resolve)))
+      const save = within(modal).getByRole('button', { name: 'Save' })
+      await fireEvent.click(save)
+      await fireEvent.click(save)
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
+      expect(save).toBeDisabled()
+      expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+      expect(within(modal).getByLabelText('Alias')).toBeDisabled()
+      expect(modal.open).toBe(true)
+      resolveSave(okJson({ ...defaultLinksRaw()[0], alias: 'Saved alias' }))
+      await vi.waitFor(() => expect(modal.open).toBe(false))
+      expect(screen.getByText('Saved alias')).toBeInTheDocument()
     })
 
     it('disables the modal fields while links is loading', () => {

@@ -42,8 +42,8 @@ function renderPage() {
 }
 
 function findRow(container: HTMLElement, label: string) {
-  const row = Array.from(container.querySelectorAll('.flex.flex-col.gap-2.p-4')).find(
-    (el) => el.querySelector('span.font-medium')?.textContent === label,
+  const row = Array.from(container.querySelectorAll('.settings-row')).find(
+    (el) => el.querySelector('.settings-row-title')?.textContent === label,
   )
   if (!row) throw new Error(`no config row for label "${label}"`)
   return row as HTMLElement
@@ -80,8 +80,65 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
     const { container } = renderPage()
     expect(findRow(container, 'Sync Bans').querySelector('input[type=checkbox]')).toBeDisabled()
     expect(findRow(container, 'Client Branch').querySelector('select')).toBeDisabled()
-    expect(findRow(container, 'Support Link').querySelector('input[type=text]')).toBeDisabled()
+    expect(findRow(container, 'Support Link').querySelector('input[type=url]')).toBeDisabled()
     expect(findRow(container, 'Admin Ranks').querySelector('button')).toBeDisabled()
+  })
+
+  it('groups common settings and keeps advanced options in an expandable section', async () => {
+    const { container } = renderPage()
+    await waitForLoaded(container)
+    expect(screen.getByRole('region', { name: 'General' })).toContainElement(findRow(container, 'Addon Language'))
+    expect(screen.getByRole('region', { name: 'Access and verification' })).toContainElement(
+      findRow(container, 'Verify Kick Delay (sec)'),
+    )
+    const advanced = container.querySelector<HTMLDetailsElement>('.settings-advanced')!
+    expect(advanced.open).toBe(false)
+    expect(advanced).toContainElement(findRow(container, 'Client Branch'))
+    await fireEvent.click(screen.getByRole('button', { name: /Advanced settings/ }))
+    expect(container.querySelector<HTMLDetailsElement>('.settings-advanced')!.open).toBe(true)
+    expect(container.querySelectorAll('.settings-row')).toHaveLength(4)
+    expect((fetchAPI as Mock).mock.calls.every(([, method]) => method === 'GET')).toBe(true)
+  })
+
+  it('searches setting descriptions and resets a category with no matching results', async () => {
+    const { container } = renderPage()
+    await waitForLoaded(container)
+    const search = screen.getByRole('searchbox', { name: 'Search settings' })
+    await fireEvent.input(search, { target: { value: 'materials are broken' } })
+    expect(container.querySelectorAll('.settings-row')).toHaveLength(1)
+    expect(findRow(container, 'Redownload Materials')).toBeInTheDocument()
+    expect(container.querySelector<HTMLDetailsElement>('.settings-advanced')!.open).toBe(true)
+    await fireEvent.click(screen.getByRole('button', { name: /Moderation/ }))
+    expect(container.querySelectorAll('.settings-row')).toHaveLength(0)
+    expect(screen.getByText('No settings match your search in this category.')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
+    expect(search).toHaveValue('')
+    expect(container.querySelectorAll('.settings-row')).toHaveLength(16)
+    expect(screen.getByRole('button', { name: /All settings/ })).toHaveAttribute('aria-pressed', 'true')
+    expect((fetchAPI as Mock).mock.calls.every(([, method]) => method === 'GET')).toBe(true)
+  })
+
+  it('matches translated labels without requiring their accents', async () => {
+    window.localStorage.setItem('locale', 'fr')
+    const { container } = renderPage()
+    await vi.waitFor(() => expect(container.querySelector('#ig_forcePlayerLink')).not.toBeDisabled())
+    await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'verifier a la connexion' } })
+    expect(container.querySelectorAll('.settings-row')).toHaveLength(1)
+    expect(findRow(container, 'Vérifier à la connexion')).toBeInTheDocument()
+  })
+
+  it('keeps a debounced edit when switching categories', async () => {
+    const { container } = renderPage()
+    await waitForLoaded(container)
+    vi.useFakeTimers()
+    await fireEvent.input(within(findRow(container, 'Support Link')).getByRole('textbox'), {
+      target: { value: 'https://support.example/new' },
+    })
+    await fireEvent.click(screen.getByRole('button', { name: /Moderation/ }))
+    await vi.advanceTimersByTimeAsync(500)
+    expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_supportLink'), 'PUT', {
+      value: 'https://support.example/new',
+    })
   })
 
   describe('initial rendering of fetched values', () => {
@@ -103,10 +160,10 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
     it('renders text inputs with the fetched value', async () => {
       const { container } = renderPage()
       await waitForLoaded(container)
-      const input = findRow(container, 'Support Link').querySelector('input[type=text]') as HTMLInputElement
+      const input = findRow(container, 'Support Link').querySelector('input[type=url]') as HTMLInputElement
       expect(input.value).toBe('http://support.example.com')
       const kickTimeInput = findRow(container, 'Verify Kick Delay (sec)').querySelector(
-        'input[type=text]',
+        'input[type=number]',
       ) as HTMLInputElement
       expect(kickTimeInput.value).toBe('120')
     })
@@ -143,9 +200,11 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
     it('shows the Default value line for a boolean, a select, and the admin rank object', async () => {
       const { container } = renderPage()
       await waitForLoaded(container)
-      expect(findRow(container, 'Sync Bans').textContent).toContain('Default: true')
-      expect(findRow(container, 'Client Branch').textContent).toContain('Default: any')
-      expect(findRow(container, 'Admin Ranks').textContent).toContain('Default: {"superadmin":true}')
+      expect(findRow(container, 'Sync Bans').querySelector('.settings-default code')).toHaveTextContent('true')
+      expect(findRow(container, 'Client Branch').querySelector('.settings-default code')).toHaveTextContent('any')
+      expect(findRow(container, 'Admin Ranks').querySelector('.settings-default code')).toHaveTextContent(
+        '{"superadmin":true}',
+      )
     })
   })
 
@@ -200,21 +259,19 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
   })
 
   describe('when the initial GET fails', () => {
-    it('does not crash and leaves controls enabled with default values once the resource settles', async () => {
+    it('keeps controls disabled after a failed initial GET and allows retrying the configuration', async () => {
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === CONFIG_URL && method === 'GET') return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
       })
       const { container } = renderPage()
-      await vi.waitFor(() => {
-        const checkbox = findRow(container, 'Sync Bans').querySelector('input[type=checkbox]') as HTMLInputElement
-        expect(checkbox).not.toBeDisabled()
-      })
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
       const checkbox = findRow(container, 'Sync Bans').querySelector('input[type=checkbox]') as HTMLInputElement
-      expect(checkbox.checked).toBe(true) // defaultValue, since config store was never populated
-      const row = findRow(container, 'Admin Ranks')
-      const inputs = within(row).queryAllByRole('textbox') as HTMLInputElement[]
-      expect(inputs).toHaveLength(0) // adminRankList signal also stayed at its initial []
+      expect(checkbox).toBeDisabled()
+      setupFetchAPI()
+      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await waitForLoaded(container)
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
   })
 
@@ -324,18 +381,36 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
       expect(checkbox.checked).toBe(true)
     })
 
-    it('does not throw when the PUT fails (missing .catch would surface as an unhandled rejection)', async () => {
+    it('locks only the pending setting, restores a failed checkbox and retries with visible feedback', async () => {
       const { container } = renderPage()
       await waitForLoaded(container)
-      const checkbox = findRow(container, 'Sync Timeouts').querySelector('input[type=checkbox]') as HTMLInputElement
+      const row = findRow(container, 'Sync Timeouts')
+      const checkbox = within(row).getByRole('checkbox')
+      let resolveSave!: (response: ReturnType<typeof errJson>) => void
+      let attempts = 0
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === settingUrl('ig_syncTimeout') && method === 'PUT') return Promise.resolve(errJson())
+        if (endpoint === settingUrl('ig_syncTimeout') && method === 'PUT') {
+          if (attempts++ === 0)
+            return new Promise((resolve) => {
+              resolveSave = resolve
+            })
+          return Promise.resolve(okJson({ value: true }))
+        }
         return Promise.resolve(okJson({}))
       })
       await fireEvent.click(checkbox)
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', expect.anything()),
-      )
+      expect(checkbox).toBeChecked()
+      expect(checkbox).toBeDisabled()
+      expect(within(row).getByRole('status')).toHaveTextContent('Loading…')
+      expect(within(findRow(container, 'Sync Bans')).getByRole('checkbox')).not.toBeDisabled()
+      resolveSave(errJson())
+      await vi.waitFor(() => expect(within(row).getByRole('alert')).toBeInTheDocument())
+      expect(checkbox).not.toBeChecked()
+      expect(checkbox).not.toBeDisabled()
+      await fireEvent.click(within(row).getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(within(row).getByRole('status')).toHaveTextContent('Saved'))
+      expect(checkbox).toBeChecked()
+      expect(attempts).toBe(2)
     })
 
     it('parses a JSON-object-shaped string value back into an object once received', async () => {
@@ -395,11 +470,85 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
   })
 
   describe('updating a text setting (debounced)', () => {
+    it('restores the last confirmed text value after a later debounced save fails', async () => {
+      const { container } = renderPage()
+      await waitForLoaded(container)
+      vi.useFakeTimers()
+      const row = findRow(container, 'Support Link')
+      const input = within(row).getByRole('textbox')
+      let fail = false
+      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string, body: { value: string }) => {
+        if (endpoint === settingUrl('ig_supportLink') && method === 'PUT')
+          return Promise.resolve(fail ? errJson() : okJson({ value: body.value }))
+        return Promise.resolve(okJson({}))
+      })
+      await fireEvent.input(input, { target: { value: 'https://accepted.example' } })
+      await vi.advanceTimersByTimeAsync(500)
+      expect(within(row).getByRole('status')).toHaveTextContent('Saved')
+      fail = true
+      await fireEvent.input(input, { target: { value: 'https://rejected.example' } })
+      expect(input).toHaveValue('https://rejected.example')
+      await vi.advanceTimersByTimeAsync(500)
+      expect(within(row).getByRole('alert')).toBeInTheDocument()
+      expect(input).toHaveValue('https://accepted.example')
+    })
+
+    it('restores failed rank edits and retries the same serialized change explicitly', async () => {
+      const { container } = renderPage()
+      await waitForLoaded(container)
+      vi.useFakeTimers()
+      const row = findRow(container, 'Admin Ranks')
+      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
+        if (endpoint === settingUrl('ig_adminRank') && method === 'PUT') return Promise.resolve(errJson())
+        return Promise.resolve(okJson({}))
+      })
+      await fireEvent.click(within(row).getAllByRole('button', { name: 'Remove' })[0])
+      expect(
+        within(row)
+          .getAllByRole('textbox')
+          .map((input) => (input as HTMLInputElement).value),
+      ).toEqual(['superadmin'])
+      await vi.advanceTimersByTimeAsync(500)
+      expect(within(row).getByRole('alert')).toBeInTheDocument()
+      expect(
+        within(row)
+          .getAllByRole('textbox')
+          .map((input) => (input as HTMLInputElement).value),
+      ).toEqual(['mod', 'superadmin'])
+      ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({ value: JSON.stringify({ superadmin: true }) }))
+      await fireEvent.click(within(row).getByRole('button', { name: 'Try again' }))
+      await vi.advanceTimersByTimeAsync(0)
+      expect(fetchAPI).toHaveBeenLastCalledWith(settingUrl('ig_adminRank'), 'PUT', {
+        value: JSON.stringify({ superadmin: true }),
+      })
+      expect(
+        within(row)
+          .getAllByRole('textbox')
+          .map((input) => (input as HTMLInputElement).value),
+      ).toEqual(['superadmin'])
+      expect(within(row).getByRole('status')).toHaveTextContent('Saved')
+    })
+
+    it('clears pending text and rank debounce timers when leaving the page', async () => {
+      const { container, unmount } = renderPage()
+      await waitForLoaded(container)
+      vi.useFakeTimers()
+      await fireEvent.input(within(findRow(container, 'Support Link')).getByRole('textbox'), {
+        target: { value: 'unsaved' },
+      })
+      await fireEvent.input(within(findRow(container, 'Admin Ranks')).getAllByRole('textbox')[0], {
+        target: { value: 'unsaved' },
+      })
+      unmount()
+      await vi.advanceTimersByTimeAsync(1000)
+      expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'PUT')).toBe(false)
+    })
+
     it('updates the store optimistically and sends the PUT 500ms after the last keystroke', async () => {
       const { container } = renderPage()
       await waitForLoaded(container)
       vi.useFakeTimers()
-      const input = findRow(container, 'Support Link').querySelector('input[type=text]') as HTMLInputElement
+      const input = findRow(container, 'Support Link').querySelector('input[type=url]') as HTMLInputElement
 
       fireEvent.input(input, { target: { value: 'http://new.example.com' } })
       expect(input.value).toBe('http://new.example.com') // optimistic update, no debounce needed to see it
@@ -415,7 +564,7 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
       await waitForLoaded(container)
       const callsBefore = (fetchAPI as Mock).mock.calls.length
       vi.useFakeTimers()
-      const input = findRow(container, 'Support Link').querySelector('input[type=text]') as HTMLInputElement
+      const input = findRow(container, 'Support Link').querySelector('input[type=url]') as HTMLInputElement
 
       fireEvent.input(input, { target: { value: 'a' } })
       fireEvent.input(input, { target: { value: 'ab' } })
@@ -431,7 +580,7 @@ describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded(container)
       vi.useFakeTimers()
-      const supportInput = findRow(container, 'Support Link').querySelector('input[type=text]') as HTMLInputElement
+      const supportInput = findRow(container, 'Support Link').querySelector('input[type=url]') as HTMLInputElement
       const timestampInput = findRow(container, 'Log Timestamp Format').querySelector(
         'input[type=text]',
       ) as HTMLInputElement

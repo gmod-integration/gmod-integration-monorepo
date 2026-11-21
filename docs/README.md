@@ -45,6 +45,8 @@ responsibilities, gotchas, what depends on it and what it depends on).
 | `website`       | SolidJS/Vite frontend: public site + user/guild dashboard, talks to `api` and `websocket`.                                                           | [docs/apps/website.md](./apps/website.md)             |
 | `docs`          | The Docusaurus site that publishes the **product** documentation (this `./docs` folder is not part of it).                                           | [docs/apps/docs.md](./apps/docs.md)                   |
 
+The [website UI catalogue](./apps/website-ui.md) lists reusable components and interaction rules.
+
 ### `packages/*` — shared code
 
 Nothing in `apps/*` should contain business logic that another app also needs — that logic lives here instead.

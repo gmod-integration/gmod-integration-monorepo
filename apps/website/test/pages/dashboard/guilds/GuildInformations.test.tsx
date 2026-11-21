@@ -26,9 +26,11 @@ const BOT_URL = '/users/:discordID/guilds/:guildID/bot'
 const GUILD_GMOD_STORE_URL = '/users/:discordID/guilds/:guildID/gmod-store'
 const GMOD_STORE_URL = '/users/:discordID/gmod-store'
 
-afterEach(() => {
+afterEach(async () => {
   cleanup()
   vi.useRealTimers()
+  setupFetchAPI()
+  await guildChannelsRefetch()
   vi.restoreAllMocks()
 })
 
@@ -68,12 +70,13 @@ async function waitForAdminsLoaded() {
 }
 
 describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     window.localStorage.clear()
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', name: 'My Guild', isPremium: false }))
     ;(fetchAPI as Mock).mockReset()
     ;(Errors as Mock).mockReset()
     setupFetchAPI()
+    await guildChannelsRefetch()
   })
 
   it('renders guild name, id and the joined admin list once loaded', async () => {
@@ -96,14 +99,14 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
   it('shows a check icon when the guild is premium, a times icon otherwise', async () => {
     const { container, unmount } = renderPage()
     await waitForAdminsLoaded()
-    expect(container.querySelector('.fa-times')).toBeInTheDocument()
-    expect(container.querySelector('.fa-check.text-success')).not.toBeInTheDocument()
+    expect(container.querySelector('svg[data-icon="x"]')).toBeInTheDocument()
+    expect(container.querySelector('svg[data-icon="check"].text-success')).not.toBeInTheDocument()
     unmount()
 
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', name: 'My Guild', isPremium: true }))
     const { container: container2 } = renderPage()
     await waitForAdminsLoaded()
-    expect(container2.querySelector('.fa-check.text-success')).toBeInTheDocument()
+    expect(container2.querySelector('svg[data-icon="check"].text-success')).toBeInTheDocument()
   })
 
   it('shows an empty (not crashed) admin list when the admins GET responds with a non-ok status', async () => {
@@ -118,7 +121,7 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
     expect(screen.getByText('Admins:').parentElement!.textContent).toBe('Admins:')
   })
 
-  it('resolves the shared guildChannels resource to [] (not a crash) on a non-ok channels response', async () => {
+  it('keeps a failed channels request distinct from an empty result and recovers on refetch', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
       if (endpoint === CHANNELS_URL) return Promise.resolve(errJson())
       if (endpoint === ADMINS_URL) return Promise.resolve(okJson(defaultAdmins()))
@@ -129,7 +132,12 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
     renderPage()
     await waitForAdminsLoaded()
     await guildChannelsRefetch()
-    await vi.waitFor(() => expect(guildChannels()).toEqual([]))
+    expect(guildChannels.error).toBeInstanceOf(Error)
+    expect(() => guildChannels()).toThrow('Guild channels request failed')
+    setupFetchAPI()
+    await guildChannelsRefetch()
+    expect(guildChannels.error).toBeUndefined()
+    expect(guildChannels()).toEqual([])
   })
 
   it('shows neither gmod-store panel when the guild has no gmod-store purchase', async () => {

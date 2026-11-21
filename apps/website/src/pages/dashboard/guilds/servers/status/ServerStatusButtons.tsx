@@ -1,26 +1,16 @@
 import { closeDialog, showDialog } from '../../../../../utils/dialog.js'
-import {
-  type Component,
-  createEffect,
-  createResource,
-  createSignal,
-  For,
-  Match,
-  onCleanup,
-  onMount,
-  Show,
-  Switch,
-} from 'solid-js'
+import { type Component, createEffect, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import type { StatusPreviewButton } from '@gmod/schema/server/StatusMessagePreviewSchema.js'
 import AdminPanel from '../../../../../components/AdminPanel'
 import { useI18n } from '../../../../../i18n'
 import { LinkValue } from '../../../../../components/popup/LinkValue'
-import { TextValue } from '../../../../../components/popup/TextValue'
 import { BuyPremiumBtn } from '../../../../../utils/premium'
 import { fetchAPI } from '../../../../../utils/api'
 import AdminModal from '../../../../../components/AdminModal'
 import DiscordStatusPreview from '../../../../../components/discord/DiscordStatusPreview.js'
 import { useStatusPreview } from './StatusPreviewContext.js'
+import { Button, FormActions, FormField, Icon, IconButton, TableState } from '../../../../../components/ui/index.js'
+import { createAsyncAction } from '../../../../../hooks/createAsyncAction.js'
 
 //show_player_list_status
 class StatusButton {
@@ -42,7 +32,7 @@ class StatusButton {
 const fetchStatusButtons = async () => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status/buttons', 'GET')
   if (!res.ok) {
-    return {}
+    throw new Error('Status buttons request failed')
   }
   return await res.json()
 }
@@ -50,12 +40,13 @@ const fetchStatusButtons = async () => {
 const ServerStatusButtons: Component = () => {
   const { t } = useI18n()
   const statusPreview = useStatusPreview()
-  const [statusButtons, { mutate }] = createResource('statusButtons', fetchStatusButtons)
+  const [statusButtons, { mutate, refetch }] = createResource('statusButtons', fetchStatusButtons)
   const [selectStatusButton, setSelectStatusButton] = createSignal(new StatusButton(0, '', '', '', false))
   const [visibleEmojiPicker, setVisibleEmojiPicker] = createSignal(false)
   const [editing, setEditing] = createSignal(false)
   const [saving, setSaving] = createSignal(false)
   const [saveError, setSaveError] = createSignal(false)
+  const mutation = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
 
   const persistedButtons = (): StatusButton[] => {
     if (statusButtons.error) return []
@@ -129,7 +120,7 @@ const ServerStatusButtons: Component = () => {
   const createStatusButton = async () => {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status/buttons', 'POST')
     if (!res.ok) {
-      return
+      throw new Error('Status button creation failed')
     }
     const button = await res.json()
     const newButton = new StatusButton(button.id, button.emoji, button.name, button.url, button.enable)
@@ -148,7 +139,7 @@ const ServerStatusButtons: Component = () => {
       'DELETE',
     )
     if (!res.ok) {
-      return
+      throw new Error('Status button removal failed')
     }
     mutate(persistedButtons().filter((existing) => existing.id !== button.id))
   }
@@ -174,12 +165,14 @@ const ServerStatusButtons: Component = () => {
 
   return (
     <>
-      <AdminModal title={t('dashboard.server.status.edit_button', 'Edit Button')} id="edit_status_button">
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.status.select_emoji', 'Select an Emoji')}</span>
-          </label>
+      <AdminModal
+        title={t('dashboard.server.status.edit_button', 'Edit Button')}
+        id="edit_status_button"
+        busy={saving()}
+      >
+        <FormField id="status-button-emoji" label={t('dashboard.server.status.select_emoji', 'Select an Emoji')}>
           <button
+            id="status-button-emoji"
             type="button"
             class="input text-left"
             disabled={saving()}
@@ -191,13 +184,11 @@ const ServerStatusButtons: Component = () => {
             {/*// @ts-expect-error -- intentional: legacy typing gap*/}
             <emoji-picker emoji-version="12.0" onEmoji-click={handleEmojiClick}></emoji-picker>
           </Show>
-        </div>
+        </FormField>
 
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.status.button_name', 'Button Name')}</span>
-          </label>
+        <FormField id="status-button-name" label={t('dashboard.server.status.button_name', 'Button Name')}>
           <input
+            id="status-button-name"
             type="text"
             class="input"
             maxLength={80}
@@ -205,13 +196,11 @@ const ServerStatusButtons: Component = () => {
             value={selectStatusButton().name}
             onInput={(e) => setSelectStatusButton({ ...selectStatusButton(), name: e.currentTarget.value })}
           />
-        </div>
+        </FormField>
 
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.status.button_url', 'Button URL')}</span>
-          </label>
+        <FormField id="status-button-url" label={t('dashboard.server.status.button_url', 'Button URL')}>
           <input
+            id="status-button-url"
             type="text"
             class="input"
             maxLength={2048}
@@ -219,13 +208,11 @@ const ServerStatusButtons: Component = () => {
             value={selectStatusButton().url}
             onInput={(e) => setSelectStatusButton({ ...selectStatusButton(), url: e.currentTarget.value })}
           />
-        </div>
+        </FormField>
 
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.status.button_action', 'Button Action')}</span>
-          </label>
+        <FormField id="status-button-active" label={t('dashboard.server.status.button_action', 'Button Action')}>
           <select
+            id="status-button-active"
             class="select"
             disabled={saving()}
             value={selectStatusButton().enable ? 'true' : 'false'}
@@ -236,7 +223,7 @@ const ServerStatusButtons: Component = () => {
             <option value="true">{t('dashboard.server.status.yes', 'Yes')}</option>
             <option value="false">{t('dashboard.server.status.no', 'No')}</option>
           </select>
-        </div>
+        </FormField>
 
         <Show when={statusPreview}>
           <DiscordStatusPreview
@@ -251,25 +238,15 @@ const ServerStatusButtons: Component = () => {
             {t('dashboard.server.status.button_save_failed', 'Unable to save this button. Try again.')}
           </p>
         </Show>
-        <div class="flex flex-wrap gap-2 mt-2">
-          <button type="button" class="btn btn-base-200" disabled={saving() || !previewReady()} onClick={saveDraft}>
-            <Show when={saving()}>
-              <span class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-            </Show>
-            {t('dashboard.server.status.save', 'Save')}
-          </button>
-          <button
-            type="button"
-            class="btn btn-ghost"
-            disabled={saving()}
-            onClick={() => {
-              discardDraft()
-              closeDialog('edit_status_button')
-            }}
-          >
-            {t('dashboard.server.status.cancel', 'Cancel')}
-          </button>
-        </div>
+        <FormActions
+          pending={saving()}
+          disabled={!previewReady()}
+          onSave={saveDraft}
+          onCancel={() => {
+            discardDraft()
+            closeDialog('edit_status_button')
+          }}
+        />
       </AdminModal>
 
       <AdminPanel
@@ -281,7 +258,7 @@ const ServerStatusButtons: Component = () => {
         type="none"
       >
         <div class="min-w-0 w-full overflow-x-auto">
-          <table class="table border-b border-base-300 rounded-none">
+          <table class="status-buttons-table table rounded-none">
             <thead>
               <tr class="text-l">
                 <th>{t('dashboard.server.status.button_icon', 'Icon')}</th>
@@ -296,13 +273,22 @@ const ServerStatusButtons: Component = () => {
                 error, so reading `statusButtons()` below would throw (a resource re-throws its
                 stored error when read) before the `<Match when={statusButtons.error}>` below ever
                 gets a chance to render - crashing the whole page instead of showing that message. */}
-              <Show when={!statusButtons.loading && !statusButtons.error}>
+              <TableState
+                colSpan={5}
+                loading={statusButtons.loading}
+                error={statusButtons.error}
+                errorLabel={t('dashboard.server.status.failed_to_load', 'Failed to load the links')}
+                empty={!statusButtons.loading && !statusButtons.error && persistedButtons().length === 0}
+                onRetry={() => refetch()}
+              >
                 <For each={persistedButtons()}>
                   {(button) => (
                     <tr>
                       <td>{button.emoji}</td>
                       <td>
-                        <TextValue value={button.name} />
+                        <span class="inline-flex max-w-full items-center rounded-lg border border-base-content/10 bg-base-200/50 px-3 py-1.5 text-sm font-medium [overflow-wrap:anywhere]">
+                          {button.name}
+                        </span>
                       </td>
                       <td>
                         <LinkValue url={button.url} />
@@ -310,45 +296,52 @@ const ServerStatusButtons: Component = () => {
                       <td>
                         <div class="flex gap-2 justify-center">
                           {button.enable ? (
-                            <i class="fa-solid fa-check text-success"></i>
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+                              <Icon name="check" size={13} />
+                              {t('dashboard.server.status.yes', 'Yes')}
+                            </span>
                           ) : (
-                            <i class="fa-solid fa-times text-error"></i>
+                            <span class="inline-flex items-center gap-1.5 rounded-full bg-base-200/70 px-2.5 py-1 text-xs text-base-content/45">
+                              <Icon name="x" size={13} />
+                              {t('dashboard.server.status.no', 'No')}
+                            </span>
                           )}
                         </div>
                       </td>
                       <td>
                         <div class="flex gap-2 justify-center">
                           <div class="tooltip tooltip-info" data-tip={t('dashboard.server.status.edit', 'Edit')}>
-                            <i class="hover:cursor-pointer fa-solid fa-edit" onClick={() => openEditor(button)}></i>
+                            <IconButton
+                              label={t('dashboard.server.status.edit', 'Edit')}
+                              icon="pencil"
+                              disabled={mutation.pending()}
+                              onClick={() => openEditor(button)}
+                            />
                           </div>
                           <div class="tooltip tooltip-error" data-tip={t('dashboard.server.status.delete', 'Delete')}>
-                            <i
-                              class="hover:cursor-pointer fa-solid fa-trash text-error"
-                              onClick={() => deleteStatusButton(button)}
-                            ></i>
+                            <IconButton
+                              label={t('dashboard.server.status.delete', 'Delete')}
+                              icon="trash-2"
+                              variant="danger"
+                              disabled={mutation.pending()}
+                              onClick={() => void mutation.run(() => deleteStatusButton(button))}
+                            />
                           </div>
                         </div>
                       </td>
                     </tr>
                   )}
                 </For>
-              </Show>
+              </TableState>
             </tbody>
           </table>
         </div>
 
-        <Switch>
-          <Match when={statusButtons.loading}>
-            <div class="flex justify-center h-36">
-              <div class="loading loading-spinner loading-lg"></div>
-            </div>
-          </Match>
-          <Match when={statusButtons.error}>
-            <p role="alert" class="p-4">
-              {t('dashboard.server.status.failed_to_load', 'Failed to load the links')}
-            </p>
-          </Match>
-        </Switch>
+        <Show when={mutation.error()}>
+          <p role="alert" class="px-4 text-sm text-error">
+            {mutation.error()}
+          </p>
+        </Show>
 
         <div class="flex gap-4 p-4">
           <BuyPremiumBtn
@@ -356,9 +349,15 @@ const ServerStatusButtons: Component = () => {
             btnText={t('dashboard.server.status.premium', 'Limited to 3 buttons for free users.')}
             hidden={statusButtons.loading}
           >
-            <button class="btn btn-base-200" disabled={statusButtons.loading} onClick={() => createStatusButton()}>
+            <Button
+              variant="primary"
+              loading={mutation.pending()}
+              disabled={statusButtons.loading || !!statusButtons.error}
+              onClick={() => void mutation.run(createStatusButton)}
+            >
+              <Icon name="plus" size={17} />
               {t('dashboard.server.status.add_button', 'Add Button')}
-            </button>
+            </Button>
           </BuyPremiumBtn>
         </div>
       </AdminPanel>

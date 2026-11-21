@@ -1,3 +1,4 @@
+import { Icon } from '../ui/index.js'
 import { Component, createMemo, createResource, For, Show } from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { useI18n } from '../../i18n'
@@ -55,7 +56,7 @@ const MissingRolePermission: Component = () => {
   return (
     <Show when={uneditableRoles().length > 0}>
       <div class="text-warning flex items-center rounded-lg border-warning border py-2 px-4 gap-4">
-        <i class="fa-solid fa-exclamation-triangle"></i>
+        <Icon name="triangle-alert" />
         <span class="flex flex-wrap gap-1">
           {t(
             'tools.needRolesPerms',

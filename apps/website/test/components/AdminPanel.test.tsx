@@ -38,7 +38,7 @@ describe('components/AdminPanel.tsx', () => {
 
   it('does not render the info row when info is absent', () => {
     const { container } = renderWithProviders(() => <AdminPanel title="t" description="d" />)
-    expect(container.querySelector('.fa-circle-info')).not.toBeInTheDocument()
+    expect(container.querySelector('[data-icon="info"]')).not.toBeInTheDocument()
   })
 
   it('renders the info row when info is provided', () => {
@@ -82,5 +82,17 @@ describe('components/AdminPanel.tsx', () => {
     const childrenWrapper = container.querySelector('hr + div')
     expect(childrenWrapper).not.toHaveClass('gap-4')
     expect(childrenWrapper).not.toHaveClass('p-4')
+  })
+
+  it('supports shared header actions and footer without requiring a description', () => {
+    renderWithProviders(() => (
+      <AdminPanel title="Links" actions={<button>Add a link</button>} footer={<span>2 links</span>}>
+        <span>Configuration</span>
+      </AdminPanel>
+    ))
+    expect(screen.getByRole('heading', { name: 'Links' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add a link' })).toBeInTheDocument()
+    expect(screen.getByText('2 links')).toBeInTheDocument()
+    expect(screen.getByText('Configuration')).toBeInTheDocument()
   })
 })

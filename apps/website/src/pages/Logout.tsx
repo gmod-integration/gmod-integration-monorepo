@@ -3,6 +3,7 @@ import { normalizeDiscordUserPayload, setDiscordUser, setIsLogged } from '../uti
 import { useNavigate } from '@solidjs/router'
 import { useI18n } from '../i18n'
 import { fetchAPI } from '../utils/api'
+import { ButtonLink, PageState } from '../components/ui/index.js'
 
 const Logout: Component = () => {
   const navigate = useNavigate()
@@ -17,11 +18,9 @@ const Logout: Component = () => {
   })
 
   return (
-    <>
-      <a class="link-hover" href="/">
-        {t('main.click_if_not_redirected', 'Click here if you are not redirected.')}
-      </a>
-    </>
+    <PageState icon="log-out" title={t('ui.logging_out', 'Signing out')} status>
+      <ButtonLink href="/">{t('main.click_if_not_redirected', 'Click here if you are not redirected.')}</ButtonLink>
+    </PageState>
   )
 }
 

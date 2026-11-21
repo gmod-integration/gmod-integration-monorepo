@@ -39,6 +39,7 @@ function mockApi(
     failPreview?: boolean
     format?: unknown
     boolStrings?: boolean
+    players?: boolean
   } = {},
 ) {
   ;(fetchAPI as Mock).mockImplementation(
@@ -53,6 +54,8 @@ function mockApi(
           const key = path.slice(SETTING.length)
           if (key === 'status_player_list_format' && options.format !== undefined)
             return okJson({ value: options.format })
+          if (key === 'show_player_list_status' && options.players !== undefined)
+            return okJson({ value: options.players })
           return okJson({
             value: options.boolStrings && key !== 'status_player_list_format' ? 'true' : settingValues[key],
           })
@@ -82,9 +85,11 @@ function renderPage(provider = false) {
   )
 }
 const writeCalls = () => (fetchAPI as Mock).mock.calls.filter(([path, method]) => method !== 'GET' && path !== PREVIEW)
-const ready = (container: HTMLElement) =>
+const ready = (_container: HTMLElement) =>
   vi.waitFor(() =>
-    expect(container.querySelector('.fa-plus') || container.querySelector('.fa-xmark')).not.toBeDisabled(),
+    expect(
+      screen.queryByRole('button', { name: 'Send Status' }) || screen.getByRole('button', { name: 'Remove Status' }),
+    ).not.toBeDisabled(),
   )
 const mainSave = () => screen.getAllByRole('button', { name: 'Save', hidden: true }).at(-1)!
 const chooseChannel = async (modal: Element) => {
@@ -183,6 +188,7 @@ describe('status message editor draft workflow', () => {
   })
 
   it('keeps format typing local, updates live preview, cancels safely and saves only an explicit changed format', async () => {
+    mockApi({ players: true })
     const { container } = renderPage(true)
     await ready(container)
     stubDialogGlobal(container, 'edit_format')
@@ -194,12 +200,12 @@ describe('status message editor draft workflow', () => {
       expect(fetchAPI).toHaveBeenCalledWith(PREVIEW, 'POST', {
         simulation: true,
         locale: 'en',
-        settings: { ...settingValues, status_player_list_format: '**{name}** - {team}' },
+        settings: { ...settingValues, show_player_list_status: true, status_player_list_format: '**{name}** - {team}' },
       }),
     )
     expect(writeCalls()).toHaveLength(0)
     await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel', hidden: true }))
-    expect(screen.getByLabelText('Player List Format:')).toHaveValue('{name}')
+    expect(screen.getByLabelText('Player List Format')).toHaveValue('{name}')
     await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
     await fireEvent.input(within(modal).getByLabelText('Format'), { target: { value: '{team}' } })
     expect(within(modal).getByRole('button', { name: 'Save', hidden: true })).toBeDisabled()
@@ -212,13 +218,28 @@ describe('status message editor draft workflow', () => {
   })
 
   it('resets the format when the native dialog is closed without saving', async () => {
+    mockApi({ players: true })
     const { container } = renderPage()
     await ready(container)
     await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
     const modal = container.querySelector('#edit_format')! as HTMLElement
     await fireEvent.input(within(modal).getByLabelText('Format'), { target: { value: 'unsaved' } })
     await fireEvent(modal, new Event('close'))
-    expect(screen.getByLabelText('Player List Format:')).toHaveValue('{name}')
+    expect(screen.getByLabelText('Player List Format')).toHaveValue('{name}')
+    expect(writeCalls()).toHaveLength(0)
+  })
+
+  it('shows the player format only when the list is enabled and keeps its saved value', async () => {
+    const { container } = renderPage()
+    await ready(container)
+    expect(screen.queryByLabelText('Player List Format')).not.toBeInTheDocument()
+    const players = screen.getByRole('checkbox', { name: 'Show Player List' })
+    await fireEvent.click(players)
+    expect(screen.getByLabelText('Player List Format')).toHaveValue('{name}')
+    await fireEvent.click(players)
+    expect(screen.queryByLabelText('Player List Format')).not.toBeInTheDocument()
+    await fireEvent.click(players)
+    expect(screen.getByLabelText('Player List Format')).toHaveValue('{name}')
     expect(writeCalls()).toHaveLength(0)
   })
 
@@ -295,7 +316,7 @@ describe('status message editor draft workflow', () => {
     await ready(container)
     expect(screen.getByRole('checkbox', { name: /Show Player List/ })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: /Show Player Chart/ })).toBeChecked()
-    expect(screen.getByLabelText('Player List Format:')).toHaveValue('')
+    expect(screen.getByLabelText('Player List Format')).toHaveValue('')
   })
 
   it('removes a configured status only after an explicit click and retains it on errors', async () => {

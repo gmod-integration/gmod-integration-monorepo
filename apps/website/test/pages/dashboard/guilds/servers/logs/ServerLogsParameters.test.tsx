@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
 import { okJson, errJson } from '../testHelpers.js'
 
@@ -82,8 +82,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
   it('toggles the hide-IP checkbox and updates on success', async () => {
     renderPage()
     await waitForLoaded()
-    const hideIPLabel = screen.getByText('Hide IP in discord logs:')
-    const checkbox = hideIPLabel.parentElement!.querySelector('input[type="checkbox"]') as HTMLInputElement
+    const checkbox = screen.getByRole('checkbox', { name: 'Hide IP in discord logs:' }) as HTMLInputElement
     expect(checkbox.checked).toBe(false)
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
       if (endpoint === HIDE_IP_URL && method === 'PUT') return Promise.resolve(okJson({ value: true }))
@@ -97,8 +96,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
   it('toggles the attach-log-file checkbox and updates on success', async () => {
     renderPage()
     await waitForLoaded()
-    const label = screen.getByText('Attach log information file:')
-    const checkbox = label.parentElement!.querySelector('input[type="checkbox"]') as HTMLInputElement
+    const checkbox = screen.getByRole('checkbox', { name: 'Attach log information file:' }) as HTMLInputElement
     expect(checkbox.checked).toBe(false)
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
       if (endpoint === LOG_FILE_URL && method === 'PUT') return Promise.resolve(okJson({ value: true }))
@@ -107,6 +105,33 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
     await fireEvent.click(checkbox)
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LOG_FILE_URL, 'PUT', { value: true }))
     await vi.waitFor(() => expect(checkbox.checked).toBe(true))
+  })
+
+  it.each([
+    [HIDE_IP_URL, 'Hide IP in discord logs:'],
+    [LOG_FILE_URL, 'Attach log information file:'],
+  ])('blocks duplicate changes, restores failed values and allows retry for %s', async (url, label) => {
+    renderPage()
+    await waitForLoaded()
+    const checkbox = screen.getByRole('checkbox', { name: label })
+    let finish!: (value: ReturnType<typeof errJson>) => void
+    ;(fetchAPI as Mock).mockReturnValueOnce(new Promise((resolve) => (finish = resolve)))
+    await fireEvent.click(checkbox)
+    expect(checkbox).toBeDisabled()
+    expect(checkbox).toHaveAttribute('aria-busy', 'true')
+    await fireEvent.click(checkbox)
+    expect(
+      (fetchAPI as Mock).mock.calls.filter(([endpoint, method]) => endpoint === url && method === 'PUT'),
+    ).toHaveLength(1)
+    finish(errJson())
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
+    expect(checkbox).not.toBeChecked()
+    expect(checkbox).not.toBeDisabled()
+    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({ value: true }))
+    await fireEvent.click(checkbox)
+    await vi.waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument())
+    expect(checkbox).toBeChecked()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('opens the channel selector modal on Select Channel', async () => {
@@ -129,6 +154,8 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
     })
     const select = document.querySelector('#select_channel_modal select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'POST')).toBe(false)
+    await fireEvent.click(within(select.closest('dialog')!).getByRole('button', { name: 'Save', hidden: true }))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LOGS_CHANNEL_URL, 'POST', { channelID: 'c1' }))
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
   })
@@ -142,6 +169,8 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
     })
     const select = document.querySelector('#select_channel_modal select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'POST')).toBe(false)
+    await fireEvent.click(within(select.closest('dialog')!).getByRole('button', { name: 'Save', hidden: true }))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LOGS_CHANNEL_URL, 'POST', { channelID: 'c1' }))
     expect(screen.queryByText('#general')).not.toBeInTheDocument()
   })

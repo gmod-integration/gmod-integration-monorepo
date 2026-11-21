@@ -1,13 +1,15 @@
-import { Component, createResource, createSignal, For, Show } from 'solid-js'
+import { type Component, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../../../components/AdminPanel'
 import { useI18n } from '../../../../../i18n'
 import { ColorsLogsType } from './ColorLogsType'
-import { linkBadge } from '../../../../../components/layout/menu/DashboardMenu'
 import AdminModal from '../../../../../components/AdminModal'
 import { ChannelSelector } from '../../../../../components/AdminChannelSelector'
 import { fetchAPI } from '../../../../../utils/api'
 import { premium } from '../../../../../utils/premium'
 import { TextValue } from '../../../../../components/popup/TextValue'
+import { Button, FormActions, FormField, IconButton, TableState } from '../../../../../components/ui/index.js'
+import { createAsyncAction } from '../../../../../hooks/createAsyncAction.js'
+import { closeDialog, showDialog } from '../../../../../utils/dialog.js'
 
 const log_trigger_operator: Record<string, string> = {
   greaterThan: 'greaterThan',
@@ -125,56 +127,46 @@ export const ServerLogsTriggers: Component = () => {
     return (await res.json()) as log_trigger[]
   }
 
-  const [logTriggers, { mutate: mutateLogTrigger }] = createResource('log-triggers', fetchLogTriggers, {
+  const [logTriggers, { mutate: mutateLogTrigger, refetch }] = createResource('log-triggers', fetchLogTriggers, {
     initialValue: [] as log_trigger[],
   })
 
-  const [editedTrigger, setEditedTrigger] = createSignal<log_trigger>(exampleLogTriggers)
+  const freshTrigger = () => ({ ...exampleLogTriggers, adminIDS: [...exampleLogTriggers.adminIDS] })
+  const [editedTrigger, setEditedTrigger] = createSignal<log_trigger>(freshTrigger())
+  const save = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
+  const deletion = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
+  function discard() {
+    setEditedTrigger(freshTrigger())
+    save.reset()
+  }
 
   async function createNewTrigger() {
-    await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/logs/triggers', 'POST', editedTrigger())
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error('An error occurred while creating the trigger.')
-        }
-        const data = (await res.json()) as log_trigger
-        mutateLogTrigger((prev) => [...prev, data])
-      })
-      .catch((err) => {
-        console.error(err)
-      })
+    const res = await fetchAPI(
+      '/users/:discordID/guilds/:guildID/servers/:serverID/logs/triggers',
+      'POST',
+      editedTrigger(),
+    )
+    if (!res.ok) throw new Error('An error occurred while creating the trigger.')
+    const data = (await res.json()) as log_trigger
+    mutateLogTrigger((prev) => [...prev, data])
   }
 
   async function editTrigger() {
-    await fetchAPI(
+    const res = await fetchAPI(
       `/users/:discordID/guilds/:guildID/servers/:serverID/logs/triggers/${editedTrigger().id}`,
       'PUT',
       editedTrigger(),
     )
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error('An error occurred while editing the trigger.')
-        }
-        const data = (await res.json()) as log_trigger
-        mutateLogTrigger((prev) => prev.map((r) => (r.id === data.id ? data : r)))
-      })
-      .catch((err) => {
-        console.error(err)
-      })
+    if (!res.ok) throw new Error('An error occurred while editing the trigger.')
+    const data = (await res.json()) as log_trigger
+    mutateLogTrigger((prev) => prev.map((row) => (row.id === data.id ? data : row)))
   }
 
   async function deleteTrigger(id: number) {
-    await fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/logs/triggers/${id}`, 'DELETE')
-      .then(async (res) => {
-        if (!res.ok) {
-          throw new Error('An error occurred while deleting the trigger.')
-        }
-        const data = ((await res.json()) as log_trigger).id
-        mutateLogTrigger((prev) => prev.filter((r) => r.id !== data))
-      })
-      .catch((err) => {
-        console.error(err)
-      })
+    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/logs/triggers/${id}`, 'DELETE')
+    if (!res.ok) throw new Error('An error occurred while deleting the trigger.')
+    const data = ((await res.json()) as log_trigger).id
+    mutateLogTrigger((prev) => prev.filter((row) => row.id !== data))
   }
 
   return (
@@ -185,28 +177,32 @@ export const ServerLogsTriggers: Component = () => {
           t('dashboard.server.logs_trigger.add_trigger', 'Add Trigger')
         }
         id="edit_log_trigger"
+        busy={save.pending()}
+        onClose={discard}
+        onCancel={discard}
       >
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.logs_trigger.trigger', 'Trigger')}</span>
-          </label>
+        <FormField id="log-trigger-type" label={t('dashboard.server.logs_trigger.trigger', 'Trigger')}>
           <select
+            id="log-trigger-type"
             class="select"
-            disabled={logTriggers.loading}
-            onChange={(e) => setEditedTrigger({ ...editedTrigger(), log_type: e.currentTarget.value })}
+            disabled={logTriggers.loading || save.pending()}
+            value={editedTrigger().log_type}
+            onChange={(e) => {
+              const log_type = e.currentTarget.value
+              setEditedTrigger({ ...editedTrigger(), log_type, compare: Object.keys(log_trigger_compare[log_type])[0] })
+            }}
           >
             <For each={Object.keys(log_trigger_compare)}>
               {(trigger) => <option value={trigger}>{t(`dashboard.server.logs.logNames.${trigger}`, trigger)}</option>}
             </For>
           </select>
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.logs_trigger.compare', 'Compare')}</span>
-          </label>
+        </FormField>
+        <FormField id="log-trigger-compare" label={t('dashboard.server.logs_trigger.compare', 'Compare')}>
           <select
+            id="log-trigger-compare"
             class="select"
-            disabled={logTriggers.loading}
+            disabled={logTriggers.loading || save.pending()}
+            value={editedTrigger().compare}
             onChange={(e) => setEditedTrigger({ ...editedTrigger(), compare: e.currentTarget.value })}
           >
             <For each={Object.keys(log_trigger_compare[editedTrigger().log_type])}>
@@ -220,14 +216,12 @@ export const ServerLogsTriggers: Component = () => {
               )}
             </For>
           </select>
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.logs_trigger.operator', 'Operator')}</span>
-          </label>
+        </FormField>
+        <FormField id="log-trigger-operator" label={t('dashboard.server.logs_trigger.operator', 'Operator')}>
           <select
+            id="log-trigger-operator"
             class="select"
-            disabled={logTriggers.loading}
+            disabled={logTriggers.loading || save.pending()}
             onChange={(e) => {
               setEditedTrigger({ ...editedTrigger(), operator: e.currentTarget.value })
             }}
@@ -243,25 +237,26 @@ export const ServerLogsTriggers: Component = () => {
               )}
             </For>
           </select>
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.logs_trigger.value', 'Value')}</span>
-          </label>
+        </FormField>
+        <FormField id="log-trigger-value" label={t('dashboard.server.logs_trigger.value', 'Value')}>
           <input
+            id="log-trigger-value"
             type="text"
             placeholder={t('dashboard.server.logs_trigger.value', 'Value')}
-            disabled={logTriggers.loading}
+            disabled={logTriggers.loading || save.pending()}
             class="input"
             value={editedTrigger().value}
             onInput={(e) => setEditedTrigger({ ...editedTrigger(), value: e.currentTarget.value })}
           />
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.logs_trigger.reply_action', 'Reply Action')}</span>
-          </label>
-          <select class="select" disabled={logTriggers.loading}>
+        </FormField>
+        <FormField id="log-trigger-action" label={t('dashboard.server.logs_trigger.reply_action', 'Reply Action')}>
+          <select
+            id="log-trigger-action"
+            class="select"
+            disabled={logTriggers.loading || save.pending()}
+            value={editedTrigger().action}
+            onChange={(event) => setEditedTrigger({ ...editedTrigger(), action: event.currentTarget.value })}
+          >
             <For each={Object.keys(log_trigger_action)}>
               {(action) => (
                 <option value={action} selected={editedTrigger().action === action}>
@@ -270,13 +265,14 @@ export const ServerLogsTriggers: Component = () => {
               )}
             </For>
           </select>
-        </div>
+        </FormField>
         <Show when={editedTrigger().action === log_trigger_action.sendMessageInChannel}>
           <div class="fieldset">
             <label class="label">
               <span>{t('dashboard.server.logs_trigger.channel', 'Channel')}</span>
             </label>
             <ChannelSelector
+              disabled={save.pending()}
               idSelect={editedTrigger().channelID}
               callback={(channelID) => {
                 setEditedTrigger({ ...editedTrigger(), channelID })
@@ -324,28 +320,28 @@ export const ServerLogsTriggers: Component = () => {
             <textarea
               class="textarea"
               placeholder={t('dashboard.server.logs_trigger.message', 'Message')}
-              disabled={logTriggers.loading}
+              disabled={logTriggers.loading || save.pending()}
               value={editedTrigger().message}
               onInput={(e) => setEditedTrigger({ ...editedTrigger(), message: e.currentTarget.value })}
             />
           </div>
         </Show>
-        <button
-          class="btn btn-base-200 mt-2"
+        <FormActions
+          pending={save.pending()}
           disabled={!premium() || editedTrigger().channelID === '' || logTriggers.loading}
-          onClick={async () => {
-            // @ts-ignore
-            edit_log_trigger.close()
-            if (editedTrigger().id === 0) {
-              await createNewTrigger()
-            } else {
-              await editTrigger()
-            }
+          error={save.error()}
+          saveLabel={
+            editedTrigger().id !== 0
+              ? t('dashboard.server.logs_trigger.save', 'Save')
+              : t('dashboard.server.logs_trigger.add', 'Add')
+          }
+          onSave={() => {
+            void save.run(editedTrigger().id === 0 ? createNewTrigger : editTrigger).then((saved) => {
+              if (saved) closeDialog('edit_log_trigger')
+            })
           }}
-        >
-          {(editedTrigger().id !== 0 && t('dashboard.server.logs_trigger.save', 'Save')) ||
-            t('dashboard.server.logs_trigger.add', 'Add')}
-        </button>
+          onCancel={() => closeDialog('edit_log_trigger')}
+        />
       </AdminModal>
 
       <AdminPanel
@@ -369,7 +365,13 @@ export const ServerLogsTriggers: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show when={!logTriggers.loading} fallback={<span class="loading loading-lg"></span>}>
+            <TableState
+              colSpan={6}
+              loading={logTriggers.loading}
+              error={!!logTriggers.error}
+              empty={!logTriggers.loading && !logTriggers.error && logTriggers().length === 0}
+              onRetry={() => void refetch()}
+            >
               <For each={logTriggers()}>
                 {(trigger) => (
                   <tr>
@@ -394,45 +396,51 @@ export const ServerLogsTriggers: Component = () => {
                     </td>
                     <td class="w-1/6">
                       <div class="flex gap-2 justify-center">
-                        <div class="tooltip tooltip-info" data-tip={t('dashboard.server.logs_trigger.edit', 'Edit')}>
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-edit"
-                            onClick={() => {
-                              setEditedTrigger(trigger)
-                              // @ts-ignore
-                              edit_log_trigger.showModal()
-                            }}
-                          />
-                        </div>
-
-                        <div class="tooltip tooltip-error" data-tip={t('dashboard.server.pseudo.delete', 'Delete')}>
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-trash text-error"
-                            onClick={() => deleteTrigger(trigger.id)}
-                          />
-                        </div>
+                        <IconButton
+                          size="sm"
+                          label={t('dashboard.server.logs_trigger.edit', 'Edit')}
+                          icon="pencil"
+                          disabled={save.pending() || deletion.pending()}
+                          onClick={() => {
+                            save.reset()
+                            setEditedTrigger({ ...trigger, adminIDS: [...trigger.adminIDS] })
+                            showDialog('edit_log_trigger')
+                          }}
+                        />
+                        <IconButton
+                          size="sm"
+                          variant="danger"
+                          label={t('dashboard.server.pseudo.delete', 'Delete')}
+                          icon="trash-2"
+                          loading={deletion.pending()}
+                          disabled={save.pending()}
+                          onClick={() => void deletion.run(() => deleteTrigger(trigger.id))}
+                        />
                       </div>
                     </td>
                   </tr>
                 )}
               </For>
-            </Show>
+            </TableState>
           </tbody>
         </table>
 
         <div class="flex gap-4 p-4">
-          <button
-            class="btn btn-base-200"
-            disabled={!premium()}
+          <Button
+            disabled={!premium() || logTriggers.loading || !!logTriggers.error || deletion.pending()}
             onClick={() => {
-              setEditedTrigger(exampleLogTriggers)
-              // @ts-ignore
-              edit_log_trigger.showModal()
+              discard()
+              showDialog('edit_log_trigger')
             }}
           >
             {t('dashboard.server.logs_trigger.addTrigger', 'Add Trigger')}
-          </button>
+          </Button>
         </div>
+        <Show when={deletion.error()}>
+          <p role="alert" class="p-4 text-error">
+            {deletion.error()}
+          </p>
+        </Show>
       </AdminPanel>
     </>
   )

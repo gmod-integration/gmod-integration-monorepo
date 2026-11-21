@@ -50,6 +50,25 @@ describe('Guild dashboard shell', () => {
     expect(screen.getByText('Page content')).toBeInTheDocument()
   })
 
+  it('shows the current server context and updates the page heading after navigation', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', name: 'Community One' }))
+    window.localStorage.setItem('server', JSON.stringify({ id: 's1', name: 'Sandbox One' }))
+    const history = historyAt('/dashboard/guilds/g1/config/servers/s1/status')
+    renderWithProviders(
+      () => (
+        <AppDashboard>
+          <div>Page content</div>
+        </AppDashboard>
+      ),
+      { path: '*', history },
+    )
+    expect(screen.getByRole('heading', { level: 1, name: 'Status' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toHaveTextContent('Community One')
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toHaveTextContent('Sandbox One')
+    history.set({ value: '/dashboard/guilds/g1/config/servers/s1/logs', replace: true })
+    await vi.waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Logs' })).toBeInTheDocument())
+  })
+
   it('catches a page failure, keeps navigation available and retries rendering', () => {
     let shouldFail = true
     function FailablePage() {

@@ -74,7 +74,7 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
   it('shows a loading indicator before the first fetch resolves', () => {
     ;(fetchAPI as Mock).mockReturnValue(new Promise(() => {}))
     renderPage()
-    expect(screen.getByText('Loading errors...')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…')
   })
 
   it('renders a fetched error row', async () => {
@@ -98,7 +98,7 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
     await vi.waitFor(() => expect(screen.getByText('server')).toHaveClass('text-yellow-500'))
   })
 
-  it('throws to the app-level ErrorBoundary when the fetch response is not ok', async () => {
+  it('keeps a failed fetch inside the table and recovers through the shared retry action', async () => {
     ;(fetchAPI as Mock).mockResolvedValue({ ok: false, json: async () => ({}) })
     renderWithProviders(
       () => (
@@ -111,7 +111,12 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
         history: historyAt('/dashboard/guilds/g1/config/servers/s1/errors'),
       },
     )
-    await vi.waitFor(() => expect(screen.getByTestId('boundary-error')).toHaveTextContent('Failed to fetch errors'))
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.queryByTestId('boundary-error')).not.toBeInTheDocument()
+    ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([errorEntry()])))
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(screen.getByText('my_addon')).toBeInTheDocument())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   describe('non-premium truncation', () => {
@@ -152,12 +157,12 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
       await vi.waitFor(() => expect(screen.getByText('my_addon')).toBeInTheDocument())
       expect(container.querySelector('.hljs')).not.toBeInTheDocument()
 
-      const expandTrigger = container.querySelector('.fa-chevron-down')!.closest('.tooltip') as HTMLElement
+      const expandTrigger = container.querySelector('svg[data-icon="chevron-down"]')!.closest('.tooltip') as HTMLElement
       await fireEvent.click(expandTrigger)
       expect(container.querySelector('.hljs')).toBeInTheDocument()
-      expect(container.querySelector('.fa-chevron-up')).toBeInTheDocument()
+      expect(container.querySelector('svg[data-icon="chevron-up"]')).toBeInTheDocument()
 
-      await fireEvent.click(container.querySelector('.fa-chevron-up')!.closest('.tooltip') as HTMLElement)
+      await fireEvent.click(container.querySelector('svg[data-icon="chevron-up"]')!.closest('.tooltip') as HTMLElement)
       expect(container.querySelector('.hljs')).not.toBeInTheDocument()
     })
 
@@ -172,12 +177,12 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
       // JsonViewer renders that same wrapper internally too, so each expanded row actually
       // contributes 2 nested `.hljs` elements, not 1 - pre-existing redundant (but harmless)
       // markup, not something breaking behavior, so asserting on the real count of 2 here.
-      const triggers = container.querySelectorAll('.fa-chevron-down')
+      const triggers = container.querySelectorAll('svg[data-icon="chevron-down"]')
       await fireEvent.click(triggers[0].closest('.tooltip') as HTMLElement)
       expect(container.querySelectorAll('.hljs')).toHaveLength(2)
       expect(screen.getByText('first').closest('tr')?.nextElementSibling?.textContent).toContain('"first"')
 
-      const secondTrigger = container.querySelectorAll('.fa-chevron-down')[0]
+      const secondTrigger = container.querySelectorAll('svg[data-icon="chevron-down"]')[0]
       await fireEvent.click(secondTrigger.closest('.tooltip') as HTMLElement)
       expect(container.querySelectorAll('.hljs')).toHaveLength(2)
       expect(screen.getByText('second').closest('tr')?.nextElementSibling?.textContent).toContain('"second"')
@@ -212,7 +217,7 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
       ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([errorEntry({ stack: '' })])))
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('my_addon')).toBeInTheDocument())
-      const expandTrigger = container.querySelector('.fa-chevron-down')!.closest('.tooltip') as HTMLElement
+      const expandTrigger = container.querySelector('svg[data-icon="chevron-down"]')!.closest('.tooltip') as HTMLElement
       await fireEvent.click(expandTrigger)
       expect(container.querySelector('.hljs')).toBeInTheDocument()
     })
@@ -234,7 +239,7 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
       ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage(errors, 60)))
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('addon0')).toBeInTheDocument())
-      const nextBtn = container.querySelector('.fa-chevron-right')!.closest('button')!
+      const nextBtn = container.querySelector('svg[data-icon="chevron-right"]')!.closest('button')!
       await fireEvent.click(nextBtn)
       await vi.waitFor(() =>
         expect(fetchAPI).toHaveBeenCalledWith(

@@ -1,4 +1,4 @@
-import { A } from '@solidjs/router'
+import { A, useLocation } from '@solidjs/router'
 import { createSignal, For, onCleanup, onMount, Show, type Component } from 'solid-js'
 import {
   discordUser,
@@ -16,82 +16,56 @@ import { API_FQDN, fetchAPI } from '../../utils/api'
 import { notificationCount, updateNotificationCount } from '../../utils/notificationStore'
 import { setThemeMode, type ThemeMode, themeMode } from '../../utils/theme'
 import { parseSessionExpiration } from '../../utils/sessionExpiration.js'
-
-type FlagProps = { locale: string; size: number }
-
-const GetFlagImg: Component<FlagProps> = (props) => {
-  const size = () => props.size
-  const flag = () => (props.locale.toLowerCase() === 'en' ? 'gb' : props.locale.toLowerCase())
-  return (
-    <img
-      src={`https://flagcdn.com/${size()}x${Math.round(size() * 0.75)}/${flag()}.png`}
-      srcSet={`https://flagcdn.com/${size() * 2}x${Math.round(size() * 1.5)}/${flag()}.png 2x, https://flagcdn.com/${size() * 3}x${Math.round(size() * 2.25)}/${flag()}.png 3x`}
-      width={size()}
-      height={Math.round(size() * 0.75)}
-      alt=""
-      aria-hidden="true"
-    />
-  )
-}
+import { ButtonLink, Icon, type IconName } from '../ui/index.js'
 
 type Language = {
   code: string
   title: string
-  emoji: string
 }
 
 const lang: Language[] = [
   {
     code: 'en',
     title: 'English',
-    emoji: '🇬🇧',
   },
   {
     code: 'fr',
     title: 'Français',
-    emoji: '🇫🇷',
   },
   {
     code: 'de',
     title: 'Deutsch',
-    emoji: '🇩🇪',
   },
   {
     code: 'es',
     title: 'Español',
-    emoji: '🇪🇸',
   },
   {
     code: 'it',
     title: 'Italiano',
-    emoji: '🇮🇹',
   },
   {
     code: 'nl',
     title: 'Nederlands',
-    emoji: '🇳🇱',
   },
   {
     code: 'pl',
     title: 'Polski',
-    emoji: '🇵🇱',
   },
   {
     code: 'ru',
     title: 'Русский',
-    emoji: '🇷🇺',
   },
   {
     code: 'tr',
     title: 'Türkçe',
-    emoji: '🇹🇷',
   },
 ]
 
-const themeOptions: { mode: ThemeMode; icon: string; labelKey: string; fallback: string }[] = [
-  { mode: 'auto', icon: 'fa-circle-half-stroke', labelKey: 'header.theme_auto', fallback: 'Automatic' },
-  { mode: 'light', icon: 'fa-sun', labelKey: 'header.theme_light', fallback: 'Light' },
-  { mode: 'dark', icon: 'fa-moon', labelKey: 'header.theme_dark', fallback: 'Dark' },
+const themeOptions: { mode: ThemeMode; icon: IconName; labelKey: string; fallback: string }[] = [
+  { mode: 'auto', icon: 'monitor', labelKey: 'header.theme_auto', fallback: 'Automatic' },
+  { mode: 'light', icon: 'sun', labelKey: 'header.theme_light', fallback: 'Light' },
+  { mode: 'dark', icon: 'moon', labelKey: 'header.theme_dark', fallback: 'Dark' },
 ]
 
 // Each click moves to the next mode: auto -> light -> dark -> auto.
@@ -103,13 +77,19 @@ const cycleTheme = () => {
 }
 
 export const Header: Component = () => {
+  const location = useLocation()
+  const dashboard = () => location.pathname.startsWith('/dashboard')
   const [isOpen, setIsOpen] = createSignal(false)
   const [languageOpen, setLanguageOpen] = createSignal(false)
+  const [publicNavigationOpen, setPublicNavigationOpen] = createSignal(false)
+  let publicNavigationTrigger: HTMLButtonElement | undefined
+  let languageTrigger: HTMLButtonElement | undefined
+  let userTrigger: HTMLButtonElement | undefined
   const { t, locale, updateLocale } = useI18n()
 
   type NavLink = {
     title: string
-    fontAwesomeIcon: string
+    icon: IconName
     href: string
     color?: string
     hoverColor?: string
@@ -118,22 +98,22 @@ export const Header: Component = () => {
   const navLinks = (): NavLink[] => [
     {
       title: t('main.documentation', 'Documentation'),
-      fontAwesomeIcon: 'fa-solid fa-book',
+      icon: 'book-open',
       href: '/docs',
     },
     {
       title: t('main.add_bot', 'Add the Bot'),
-      fontAwesomeIcon: 'fa-solid fa-robot',
+      icon: 'bot',
       href: '/invite',
     },
     {
       title: t('main.support', 'Support'),
-      fontAwesomeIcon: 'fa-brands fa-discord',
+      icon: 'messages-square',
       href: '/discord',
     },
     {
       title: t('main.premium', 'Premium'),
-      fontAwesomeIcon: 'fa-solid fa-crown',
+      icon: 'crown',
       href: '/premium',
       color: 'text-amber-400',
       hoverColor: 'hover:text-amber-300',
@@ -144,7 +124,7 @@ export const Header: Component = () => {
     title: string
     content: {
       title: string
-      fontAwesomeIcon: string
+      icon: IconName
       href: string
       condition?: () => boolean
       onPress?: () => void
@@ -157,17 +137,17 @@ export const Header: Component = () => {
       content: [
         {
           title: t('main.account', 'Account'),
-          fontAwesomeIcon: 'fa-solid fa-user',
+          icon: 'user-round',
           href: '/account',
         },
         {
           title: t('main.notifications', 'Notifications'),
-          fontAwesomeIcon: 'fa-solid fa-bell',
+          icon: 'bell',
           href: '/notifications',
         },
         {
           title: 'Stop Impersonate',
-          fontAwesomeIcon: 'fa-solid fa-user-secret',
+          icon: 'user-round-cog',
           condition: () => {
             return localStorage.getItem('oldAccessToken') !== null
           },
@@ -198,17 +178,17 @@ export const Header: Component = () => {
       content: [
         {
           title: t('main.servers_ranking', 'Servers Ranking'),
-          fontAwesomeIcon: 'fa-solid fa-server',
+          icon: 'server',
           href: '/servers',
         },
         {
           title: t('main.dashboard', 'Dashboard'),
-          fontAwesomeIcon: 'fa-solid fa-tachometer-alt',
+          icon: 'layout-dashboard',
           href: '/dashboard/guilds',
         },
         {
           title: t('main.admin_dashboard', 'Admin Dashboard'),
-          fontAwesomeIcon: 'fa-solid fa-screwdriver-wrench',
+          icon: 'wrench',
           href: '/dashboard/admins/informations',
           condition: () => {
             return isAdmin()
@@ -221,7 +201,7 @@ export const Header: Component = () => {
       content: [
         {
           title: t('main.logout', 'Logout'),
-          fontAwesomeIcon: 'fa-solid fa-right-from-bracket',
+          icon: 'log-out',
           href: '/logout',
         },
       ],
@@ -233,13 +213,25 @@ export const Header: Component = () => {
       if (!(event.target instanceof Element)) return
       if (!event.target.closest('[data-header-menu="user"]')) setIsOpen(false)
       if (!event.target.closest('[data-header-menu="language"]')) setLanguageOpen(false)
+      if (!event.target.closest('.site-header')) setPublicNavigationOpen(false)
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
+        const activeElement = document.activeElement
+        const trigger =
+          publicNavigationOpen() && activeElement?.closest('#public-navigation')
+            ? publicNavigationTrigger
+            : languageOpen() && activeElement?.closest('[data-header-menu="language"]')
+              ? languageTrigger
+              : isOpen() && activeElement?.closest('[data-header-menu="user"]')
+                ? userTrigger
+                : undefined
         setIsOpen(false)
         setLanguageOpen(false)
+        setPublicNavigationOpen(false)
+        trigger?.focus()
       }
     }
     document.addEventListener('keydown', handleEscape)
@@ -348,32 +340,59 @@ export const Header: Component = () => {
 
   return (
     <>
-      <header class="navbar bg-base-100 max-w-(--breakpoint-2xl) mx-auto p-4 flex-wrap gap-y-4">
-        <div class="flex flex-1 flex-wrap items-center gap-y-4 min-w-0">
-          <img src={logo} alt="logo" width="60" height="60" />
-          <A
-            href="/"
-            class="text-2xl font-bold ml-4 text-base-content whitespace-nowrap max-sm:whitespace-normal max-sm:ml-2"
-          >
-            Gmod Integration
+      <header
+        class="site-header navbar bg-base-100"
+        classList={{ 'is-dashboard': dashboard(), 'site-header-public': !dashboard() }}
+      >
+        <div class="header-brand-group flex flex-1 flex-wrap items-center min-w-0">
+          <A href="/" class="header-brand font-bold text-base-content" aria-label="Gmod Integration">
+            <img src={logo} alt="" width="34" height="34" />
+            <span class="header-brand-name">Gmod Integration</span>
           </A>
-          <nav class="contents" aria-label={t('ui.primary_navigation', 'Main navigation')}>
-            <For each={navLinks()}>
-              {({ title, fontAwesomeIcon, href, color, hoverColor }) => (
-                <A
-                  href={href}
-                  class={
-                    'ml-6 whitespace-nowrap ' +
-                    (color ? color : 'text-base-content/70') +
-                    ' ' +
-                    (hoverColor ? hoverColor : 'hover:text-base-content')
-                  }
-                >
-                  <i aria-hidden="true" class={fontAwesomeIcon + ' mr-1'} /> {title}
-                </A>
-              )}
-            </For>
-          </nav>
+          <Show when={dashboard()}>
+            <span class="header-workspace-label">{t('main.dashboard', 'Dashboard')}</span>
+          </Show>
+          <Show when={!dashboard()}>
+            <button
+              ref={publicNavigationTrigger}
+              type="button"
+              class="public-menu-toggle header-control"
+              aria-label={t('ui.toggle_navigation', 'Toggle navigation')}
+              aria-controls="public-navigation"
+              aria-expanded={publicNavigationOpen()}
+              onClick={() => {
+                setPublicNavigationOpen(!publicNavigationOpen())
+                setIsOpen(false)
+                setLanguageOpen(false)
+              }}
+            >
+              <Icon name={publicNavigationOpen() ? 'x' : 'menu'} size={20} />
+            </button>
+            <nav
+              id="public-navigation"
+              class="public-navigation"
+              classList={{ 'is-open': publicNavigationOpen() }}
+              aria-label={t('ui.primary_navigation', 'Main navigation')}
+            >
+              <For each={navLinks()}>
+                {({ title, icon, href, color, hoverColor }) => (
+                  <A
+                    href={href}
+                    class={
+                      'public-navigation-link whitespace-nowrap ' +
+                      (color ? color : 'text-base-content/70') +
+                      ' ' +
+                      (hoverColor ? hoverColor : 'hover:text-base-content')
+                    }
+                    aria-current={location.pathname === href ? 'page' : undefined}
+                    onClick={() => setPublicNavigationOpen(false)}
+                  >
+                    <Icon name={icon} size={17} class="inline-block mr-1.5" /> {title}
+                  </A>
+                )}
+              </For>
+            </nav>
+          </Show>
         </div>
 
         <div class="flex">
@@ -383,42 +402,45 @@ export const Header: Component = () => {
             classList={{ 'dropdown-open': languageOpen() }}
           >
             <button
+              ref={languageTrigger}
               type="button"
-              class="btn btn-ghost hover:bg-transparent text-lg input-ghost"
+              class="header-control btn btn-ghost"
               aria-label={t('ui.language', 'Language')}
               aria-controls="language-navigation"
               aria-expanded={languageOpen()}
               onClick={() => {
                 setLanguageOpen(!languageOpen())
                 setIsOpen(false)
+                setPublicNavigationOpen(false)
               }}
             >
               <span class="text-base-content">
-                <GetFlagImg locale={locale()} size={20} />
+                <Icon name="globe" size={18} />
               </span>
               <div class="flex justify-center items-center min-w-6 min-h-6">
-                <i aria-hidden="true" class="fa-solid fa-angle-down" />
+                <Icon name="chevron-down" size={16} />
               </div>
             </button>
             <ul
               id="language-navigation"
               hidden={!languageOpen()}
               classList={{ hidden: !languageOpen() }}
-              class="menu dropdown-content mt-3 z-1 p-4 gap-4 shadow-sm bg-base-200 rounded-md w-40 max-sm:fixed max-sm:left-4 max-sm:right-auto"
+              class="header-dropdown menu dropdown-content mt-3 z-50 p-2 gap-1 border border-base-300/60 shadow-lg bg-base-100 rounded-xl w-44 max-sm:fixed max-sm:left-4 max-sm:right-auto"
             >
               <For each={lang}>
                 {(language) => (
                   <li class="flex">
                     <button
                       type="button"
-                      class="p-0 gap-4 m-0 hover:font-bold whitespace-nowrap hover:bg-transparent"
+                      class="px-3 py-2.5 gap-3 m-0 whitespace-nowrap rounded-lg"
                       onClick={() => {
                         updateLocale(language.code)
                         setLanguageOpen(false)
+                        languageTrigger?.focus()
                       }}
                     >
                       <span class="flex justify-center w-6 items-center text-base-content">
-                        <GetFlagImg locale={language.code} size={16} />
+                        <Icon name={locale() === language.code ? 'check' : 'globe'} size={16} />
                       </span>
                       {language.title}
                     </button>
@@ -429,12 +451,12 @@ export const Header: Component = () => {
           </div>
           <button
             type="button"
-            class="btn btn-ghost hover:bg-transparent text-lg input-ghost text-base-content"
+            class="header-control btn btn-ghost text-base-content"
             aria-label={`${t('header.theme', 'Theme')}: ${t(currentThemeOption().labelKey, currentThemeOption().fallback)}`}
             title={`${t('header.theme', 'Theme')}: ${t(currentThemeOption().labelKey, currentThemeOption().fallback)}`}
             onClick={cycleTheme}
           >
-            <i aria-hidden="true" class={`fa-solid ${currentThemeOption().icon}`} />
+            <Icon name={currentThemeOption().icon} size={19} />
           </button>
         </div>
 
@@ -442,23 +464,36 @@ export const Header: Component = () => {
           <div class="flex-none max-sm:ml-auto">
             <div class="dropdown dropdown-end" data-header-menu="user" classList={{ 'dropdown-open': isOpen() }}>
               <button
+                ref={userTrigger}
                 type="button"
-                class="btn btn-ghost hover:bg-transparent input-ghost user-menu-trigger"
+                class="header-user-trigger btn btn-ghost user-menu-trigger"
+                aria-label={
+                  discordUser().globalName ||
+                  discordUser().displayName ||
+                  discordUser().username ||
+                  t('main.account', 'Account')
+                }
                 aria-controls="user-navigation"
                 aria-expanded={isOpen()}
                 onClick={() => {
                   setIsOpen(!isOpen())
                   setLanguageOpen(false)
+                  setPublicNavigationOpen(false)
                 }}
               >
-                <div class="w-10 rounded-full overflow-hidden">
-                  <img alt="Discord avatar" src={discordUser().displayAvatarURL || discordUser().avatarURL} />
+                <div class="header-user-avatar rounded-full overflow-hidden flex items-center justify-center bg-base-200">
+                  <Show
+                    when={discordUser().displayAvatarURL || discordUser().avatarURL}
+                    fallback={<Icon name="user-round" size={17} />}
+                  >
+                    <img alt="Discord avatar" src={discordUser().displayAvatarURL || discordUser().avatarURL} />
+                  </Show>
                 </div>
-                <p class="text-[1.3em] text-secondary mx-2">
+                <p class="header-user-name font-medium text-base-content">
                   {discordUser().globalName || discordUser().displayName || discordUser().username}
                 </p>
                 <div class="flex justify-center items-center min-w-6 min-h-6">
-                  <i aria-hidden="true" class={`fa-solid ${isOpen() ? 'fa-angle-up' : 'fa-angle-down'}`} />
+                  <Icon name={isOpen() ? 'chevron-up' : 'chevron-down'} size={16} />
                 </div>
               </button>
               <ul
@@ -466,18 +501,18 @@ export const Header: Component = () => {
                 hidden={!isOpen()}
                 classList={{ hidden: !isOpen() }}
                 tabIndex={-1}
-                class="menu dropdown-content mt-3 z-1 p-4 gap-4 shadow-sm bg-base-200 rounded-md min-w-50"
+                class="header-dropdown menu dropdown-content mt-3 z-50 p-2 gap-1 border border-base-300/60 shadow-lg bg-base-100 rounded-xl min-w-56"
               >
                 <For each={navDropdownLinks()}>
                   {({ content }, index) => (
                     <>
                       <For each={content}>
-                        {({ title, fontAwesomeIcon, href, condition, onPress }) => (
+                        {({ title, icon, href, condition, onPress }) => (
                           <Show when={!condition || condition()}>
                             <li class="flex">
                               <A
                                 href={href}
-                                class="p-0 m-0 hover:font-bold whitespace-nowrap hover:bg-transparent flex items-center gap-2"
+                                class="px-3 py-2.5 m-0 whitespace-nowrap rounded-lg flex items-center gap-3"
                                 onClick={(event) => {
                                   if (onPress) {
                                     event.preventDefault()
@@ -487,7 +522,7 @@ export const Header: Component = () => {
                                 }}
                               >
                                 <div class="flex justify-center items-center min-w-6 min-h-6">
-                                  <i aria-hidden="true" class={fontAwesomeIcon} />
+                                  <Icon name={icon} size={17} />
                                 </div>
                                 {title}
                                 <Show when={href === '/notifications' && notificationCount() > 0}>
@@ -500,7 +535,7 @@ export const Header: Component = () => {
                           </Show>
                         )}
                       </For>
-                      {index() < navDropdownLinks().length - 1 && <hr class="border border-[#6d6d6d]" />}
+                      {index() < navDropdownLinks().length - 1 && <hr class="border-base-300/60 mx-2 my-1" />}
                     </>
                   )}
                 </For>
@@ -510,13 +545,22 @@ export const Header: Component = () => {
         </Show>
         <Show when={!isLogged()}>
           <div class="flex-none pl-4">
-            <A href="/login" class="btn btn-base-200">
-              {t('header.login', 'Login with Discord')}
-            </A>
+            <ButtonLink
+              href="/login"
+              variant="primary"
+              size="sm"
+              class="header-login"
+              aria-label={t('header.login', 'Login with Discord')}
+            >
+              <Icon name="user-round" size={16} />
+              <span class="header-login-copy">{t('header.login', 'Login with Discord')}</span>
+            </ButtonLink>
           </div>
         </Show>
       </header>
-      <hr class="border border-base-200" />
+      <Show when={!dashboard()}>
+        <hr class="border border-base-200" />
+      </Show>
     </>
   )
 }

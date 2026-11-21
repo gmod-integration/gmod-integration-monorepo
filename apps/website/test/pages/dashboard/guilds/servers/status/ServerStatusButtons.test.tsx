@@ -84,14 +84,14 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
     await vi.waitFor(() => expect(screen.getByText('Website')).toBeInTheDocument())
     expect(screen.getByText('🎮')).toBeInTheDocument()
     expect(screen.getByText('example.com')).toBeInTheDocument()
-    expect(container.querySelector('.fa-check')).toBeInTheDocument()
+    expect(container.querySelector('[data-icon="check"]')).toBeInTheDocument()
   })
 
   it('shows a disabled marker for an inactive button', async () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson([statusButton({ enable: false })]))
     const { container } = renderPage()
     await vi.waitFor(() => expect(screen.getByText('Website')).toBeInTheDocument())
-    expect(container.querySelector('.fa-times')).toBeInTheDocument()
+    expect(container.querySelector('[data-icon="x"]')).toBeInTheDocument()
   })
 
   describe('edit modal', () => {
@@ -109,7 +109,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       const { container } = renderPage(true)
       await vi.waitFor(() => expect(container.querySelector('tbody')?.textContent).toContain('Website'))
       stubDialogGlobal(container, 'edit_status_button')
-      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+      await fireEvent.click(container.querySelector('[data-icon="pencil"]') as HTMLElement)
       const modal = container.querySelector('#edit_status_button') as HTMLDialogElement
       const save = within(modal).getByRole('button', { name: 'Save' })
       expect(save).toBeDisabled()
@@ -171,7 +171,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       const { container } = renderPage(true)
       await vi.waitFor(() => expect(container.querySelector('tbody')?.textContent).toContain('Website'))
       stubDialogGlobal(container, 'edit_status_button')
-      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+      await fireEvent.click(container.querySelector('[data-icon="pencil"]') as HTMLElement)
       const modal = container.querySelector('#edit_status_button') as HTMLDialogElement
       await vi.waitFor(() => expect(within(modal).getByRole('button', { name: 'Website' })).toBeInTheDocument())
       await fireEvent.input(within(modal).getByDisplayValue('Website'), { target: { value: 'Live draft' } })
@@ -198,7 +198,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       await fireEvent.change(within(modal).getByRole('combobox'), { target: { value: 'false' } })
       await vi.waitFor(() => expect(previews().at(-1)![2].buttons).toEqual([untouched]))
       expect(within(modal).queryByRole('button', { name: 'Live draft' })).not.toBeInTheDocument()
-      expect(container.querySelector('tbody .fa-check')).toBeInTheDocument()
+      expect(container.querySelector('tbody [data-icon="check"]')).toBeInTheDocument()
       expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
       await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
       expect(modal.open).toBe(false)
@@ -258,7 +258,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       await vi.waitFor(() => expect(container.querySelector('tbody')?.textContent).toContain('Website'))
       const modal = stubDialogGlobal(container, 'edit_status_button')
       for (const eventName of ['close', 'cancel']) {
-        await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+        await fireEvent.click(container.querySelector('[data-icon="pencil"]') as HTMLElement)
         await fireEvent.input(within(modal).getByDisplayValue('Website'), { target: { value: 'Unpublished' } })
         await vi.waitFor(() =>
           expect(
@@ -283,7 +283,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('Website')).toBeInTheDocument())
       stubDialogGlobal(container, 'edit_status_button')
-      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+      await fireEvent.click(container.querySelector('[data-icon="pencil"]') as HTMLElement)
 
       const modal = container.querySelector('#edit_status_button') as HTMLElement
       expect(modal.hasAttribute('open')).toBe(true)
@@ -320,7 +320,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('Website')).toBeInTheDocument())
       stubDialogGlobal(container, 'edit_status_button')
-      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+      await fireEvent.click(container.querySelector('[data-icon="pencil"]') as HTMLElement)
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === `${BUTTONS_URL}/1` && method === 'PUT') return Promise.resolve(errJson())
         return Promise.resolve(okJson([statusButton()]))
@@ -338,7 +338,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('Website')).toBeInTheDocument())
       stubDialogGlobal(container, 'edit_status_button')
-      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+      await fireEvent.click(container.querySelector('[data-icon="pencil"]') as HTMLElement)
       const modal = container.querySelector('#edit_status_button') as HTMLDialogElement
       const input = within(modal).getByDisplayValue('Website')
       await fireEvent.input(input, { target: { value: 'Retry me' } })
@@ -369,7 +369,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('Website')).toBeInTheDocument())
       stubDialogGlobal(container, 'edit_status_button')
-      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+      await fireEvent.click(container.querySelector('[data-icon="pencil"]') as HTMLElement)
 
       const modal = container.querySelector('#edit_status_button') as HTMLElement
       const emojiToggle = within(modal).getByText('🎮')
@@ -385,7 +385,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('Website')).toBeInTheDocument())
       stubDialogGlobal(container, 'edit_status_button')
-      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
+      await fireEvent.click(container.querySelector('[data-icon="pencil"]') as HTMLElement)
 
       const modal = container.querySelector('#edit_status_button') as HTMLElement
       await fireEvent.click(within(modal).getByText('🎮'))
@@ -407,7 +407,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       })
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('Website')).toBeInTheDocument())
-      await fireEvent.click(container.querySelector('.fa-trash') as HTMLElement)
+      await fireEvent.click(container.querySelector('[data-icon="trash-2"]') as HTMLElement)
       await vi.waitFor(() => expect(screen.queryByText('Website')).not.toBeInTheDocument())
     })
 
@@ -419,7 +419,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       })
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('Website')).toBeInTheDocument())
-      await fireEvent.click(container.querySelector('.fa-trash') as HTMLElement)
+      await fireEvent.click(container.querySelector('[data-icon="trash-2"]') as HTMLElement)
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${BUTTONS_URL}/1`, 'DELETE'))
       expect(screen.getByText('Website')).toBeInTheDocument()
     })
@@ -439,19 +439,19 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusButtons.tsx', () => 
       await vi.waitFor(() => expect(screen.getByText('Second')).toBeInTheDocument())
     })
 
-    it('starts a fresh list with just the created button when the previous value was not an array (failed initial GET)', async () => {
-      // Regression test for a bug: fetchStatusButtons() falls back to `{}` (not an array) when the
-      // initial GET fails, and the old `prevButtons ? [...prevButtons, x] : []` mutate callback
-      // would throw trying to spread that `{}` (an unhandled rejection, since the onClick handler
-      // never awaits/catches createStatusButton()'s promise) - and even its own fallback branch
-      // discarded the newly created button. Now fixed to check Array.isArray and keep the button.
+    it('requires a successful list retry before allowing creation after a failed GET', async () => {
+      let failList = true
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === BUTTONS_URL && method === 'GET') return Promise.resolve(errJson())
+        if (endpoint === BUTTONS_URL && method === 'GET') return Promise.resolve(failList ? errJson() : okJson([]))
         if (endpoint === BUTTONS_URL && method === 'POST')
           return Promise.resolve(okJson(statusButton({ id: 3, name: 'First' })))
         return Promise.resolve(okJson([]))
       })
       renderPage()
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Failed to load'))
+      expect(screen.getByText('Add Button')).toBeDisabled()
+      failList = false
+      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
       await vi.waitFor(() => expect(screen.getByText('Add Button')).not.toBeDisabled())
       await fireEvent.click(screen.getByText('Add Button'))
       await vi.waitFor(() => expect(screen.getByText('First')).toBeInTheDocument())

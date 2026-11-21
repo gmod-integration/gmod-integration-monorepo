@@ -247,7 +247,7 @@ describe('public server ranking', () => {
     await waitForCard()
     fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
     expect(screen.queryByRole('heading', { name: 'Host 1' })).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Loading servers')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading servers')
     resolvePage(ok(response([server(11)], 20, 10)))
     await waitForCard('Host 11')
   })

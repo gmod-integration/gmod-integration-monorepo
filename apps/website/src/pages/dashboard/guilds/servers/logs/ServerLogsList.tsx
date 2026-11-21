@@ -8,6 +8,7 @@ import { AddLogComponent } from './ListLog'
 import { ClientQuery, QuerySort, ServerQuery } from '../../../../../utils/types/QueryTypes'
 import Pagination from '../../../../../components/Pagination'
 import { premium } from '../../../../../utils/premium'
+import { TableState } from '../../../../../components/ui/index.js'
 
 interface Log {
   id: number
@@ -59,7 +60,7 @@ export const ServerLogsList: Component = () => {
     return data
   }
 
-  const [logs] = createResource(query, fetchLogs, {
+  const [logs, { refetch }] = createResource(query, fetchLogs, {
     // Provide initialValue so warnsData() is never undefined
     initialValue: {
       logs: [],
@@ -98,7 +99,13 @@ export const ServerLogsList: Component = () => {
           </tr>
         </thead>
         <tbody class="max-w-40">
-          <Show when={!logs.loading} fallback={<span class="loading loading-lg"></span>}>
+          <TableState
+            colSpan={4}
+            loading={logs.loading}
+            error={logs.error}
+            empty={!logs.loading && !logs.error && logs().logs.length === 0 && webSocketLogsMessages().length === 0}
+            onRetry={() => refetch()}
+          >
             <Show when={query().offset === 0}>
               <For each={webSocketLogsMessages()}>
                 {(parsedMsg) => {
@@ -109,6 +116,8 @@ export const ServerLogsList: Component = () => {
             <For each={logs().logs}>
               {(log) => <AddLogComponent data={log.data} category={log.type} createAt={new Date(log.createdAt)} />}
             </For>
+          </TableState>
+          <Show when={!logs.loading && !logs.error}>
             <Pagination query={query()} total={logs().query.total} onChange={setQuery} colSpan={4} />
           </Show>
         </tbody>

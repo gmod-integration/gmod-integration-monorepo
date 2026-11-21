@@ -51,7 +51,7 @@ describe('pages/Notifications.tsx', () => {
   it('shows a loading indicator while the notifications resource is loading', () => {
     ;(fetchAPI as Mock).mockReturnValue(new Promise(() => {}))
     const { container } = renderWithProviders(() => <Notifications />)
-    expect(container.querySelector('.loading-lg')).toBeInTheDocument()
+    expect(container.querySelector('[role="status"]')).toBeInTheDocument()
   })
 
   it('shows the empty state when there are no notifications', async () => {
@@ -60,11 +60,15 @@ describe('pages/Notifications.tsx', () => {
     await vi.waitFor(() => expect(screen.getByText('No notifications yet')).toBeInTheDocument())
   })
 
-  it('falls back to an empty result set when the response is not ok', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({}, false))
+  it('shows a recoverable request error instead of presenting it as an empty inbox', async () => {
+    ;(fetchAPI as Mock)
+      .mockResolvedValueOnce(jsonResponse({}, false))
+      .mockResolvedValueOnce(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
     renderWithProviders(() => <Notifications />)
-    await vi.waitFor(() => expect(screen.getByText('No notifications yet')).toBeInTheDocument())
-    expect(notificationCount()).toBe(0)
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to load this content.'))
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
+    expect(notificationCount()).toBe(3)
   })
 
   it('falls back to an empty list when json.notifications is present but not an array', async () => {
@@ -88,7 +92,7 @@ describe('pages/Notifications.tsx', () => {
     expect(notificationCount()).toBe(3)
     expect(screen.getByText('3')).toBeInTheDocument() // badge next to the title
 
-    const rows = screen.getAllByRole('row').slice(1) // skip header row
+    const rows = screen.getAllByRole('listitem')
     // createdAt desc: FYI (04) > Careful (03) > All good (02) > Something broke (01)
     expect(rows[0]).toHaveTextContent('FYI')
     expect(rows[1]).toHaveTextContent('Careful')
@@ -102,9 +106,9 @@ describe('pages/Notifications.tsx', () => {
     expect(rows[0].querySelector('.badge-success')).toBeInTheDocument() // 'info' type falls back to success
 
     // read row (Careful) is dimmed and shows the eye-slash icon instead of a clickable eye
-    expect(rows[1].querySelector('.fa-eye-slash')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-eye')).not.toBeInTheDocument()
-    expect(rows[0].querySelector('.fa-eye')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="eye-off"]')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="eye"]')).not.toBeInTheDocument()
+    expect(rows[0].querySelector('svg[data-icon="eye"]')).toBeInTheDocument()
   })
 
   it('shows the Mark All Read button only when there are unread notifications', async () => {
@@ -127,8 +131,8 @@ describe('pages/Notifications.tsx', () => {
     await waitForLoaded()
 
     ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ unreadCount: 2 }))
-    const rows = screen.getAllByRole('row').slice(1)
-    const eyeIcon = rows[3].querySelector('.fa-eye')! // "Something broke" row, unread
+    const rows = screen.getAllByRole('listitem')
+    const eyeIcon = rows[3].querySelector('svg[data-icon="eye"]')! // "Something broke" row, unread
     fireEvent.click(eyeIcon)
 
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/notifications/1', 'PATCH'))
@@ -136,8 +140,26 @@ describe('pages/Notifications.tsx', () => {
     // `<For>` swaps in a fresh DOM node for the mutated item (new object reference), so the row
     // must be re-queried rather than reusing the pre-mutation `rows[3]` reference.
     await vi.waitFor(() =>
-      expect(screen.getAllByRole('row').slice(1)[3].querySelector('.fa-eye-slash')).toBeInTheDocument(),
+      expect(screen.getAllByRole('listitem')[3].querySelector('svg[data-icon="eye-off"]')).toBeInTheDocument(),
     )
+  })
+
+  it('disables repeated read actions while the request is pending and updates only after success', async () => {
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
+    renderWithProviders(() => <Notifications />)
+    await waitForLoaded()
+    let resolve!: (value: Response) => void
+    ;(fetchAPI as Mock).mockReturnValue(new Promise<Response>((done) => (resolve = done)))
+    const item = screen.getByText('Something broke').closest('li')!
+    const button = item.querySelector('button')!
+    await fireEvent.click(button)
+    expect(button).toBeDisabled()
+    expect(notificationCount()).toBe(3)
+    await fireEvent.click(button)
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PATCH')).toHaveLength(1)
+    resolve(jsonResponse({ unreadCount: 2 }))
+    await vi.waitFor(() => expect(notificationCount()).toBe(2))
+    expect(screen.getByText('Something broke').closest('li')).toHaveAttribute('data-read', 'true')
   })
 
   it('falls back to a zero count when the mark-as-read response omits unreadCount', async () => {
@@ -146,8 +168,8 @@ describe('pages/Notifications.tsx', () => {
     await waitForLoaded()
 
     ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({}))
-    const rows = screen.getAllByRole('row').slice(1)
-    fireEvent.click(rows[3].querySelector('.fa-eye')!)
+    const rows = screen.getAllByRole('listitem')
+    fireEvent.click(rows[3].querySelector('svg[data-icon="eye"]')!)
 
     await vi.waitFor(() => expect(notificationCount()).toBe(0))
   })
@@ -158,8 +180,8 @@ describe('pages/Notifications.tsx', () => {
     await waitForLoaded()
 
     ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({}, false))
-    const rows = screen.getAllByRole('row').slice(1)
-    fireEvent.click(rows[3].querySelector('.fa-eye')!)
+    const rows = screen.getAllByRole('listitem')
+    fireEvent.click(rows[3].querySelector('svg[data-icon="eye"]')!)
 
     await vi.waitFor(() => expect(Errors).toHaveBeenCalledWith('Failed to mark the notification as read'))
     expect(notificationCount()).toBe(3)
@@ -178,12 +200,9 @@ describe('pages/Notifications.tsx', () => {
     )
     await vi.waitFor(() => expect(notificationCount()).toBe(0))
     await vi.waitFor(() =>
-      expect(
-        screen
-          .queryAllByRole('row')
-          .slice(1)
-          .every((row) => row.querySelector('.fa-eye-slash')),
-      ).toBe(true),
+      expect(screen.queryAllByRole('listitem').every((row) => row.querySelector('svg[data-icon="eye-off"]'))).toBe(
+        true,
+      ),
     )
   })
 
@@ -199,16 +218,16 @@ describe('pages/Notifications.tsx', () => {
     expect(notificationCount()).toBe(3)
   })
 
-  it('shows an error and logs when marking all as read rejects', async () => {
+  it('shows an inline error and preserves unread items when marking all as read rejects', async () => {
     ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications: defaultNotifications(), unreadCount: 3 }))
     renderWithProviders(() => <Notifications />)
     await waitForLoaded()
 
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     ;(fetchAPI as Mock).mockRejectedValue(new Error('network down'))
     fireEvent.click(screen.getByTitle('Mark All as Read'))
 
     await vi.waitFor(() => expect(Errors).toHaveBeenCalledWith('Failed to mark all notifications as read'))
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Error in markAllAsRead:', expect.any(Error))
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to save. Please try again.')
+    expect(notificationCount()).toBe(3)
   })
 })

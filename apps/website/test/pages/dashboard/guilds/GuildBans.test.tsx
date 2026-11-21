@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../../testUtils.js'
 import GuildBans from '../../../../src/pages/dashboard/guilds/GuildBans.js'
 import { fetchAPI } from '../../../../src/utils/api.js'
@@ -79,8 +79,8 @@ describe('pages/dashboard/guilds/GuildBans.tsx', () => {
 
     const rows = container.querySelectorAll('tbody tr')
     // First GMod row (765) is cross-flagged, second (766) is not.
-    expect(rows[0].querySelector('.fa-discord')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-discord')).not.toBeInTheDocument()
+    expect(rows[0].querySelector('svg[data-icon="message-circle"]')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="message-circle"]')).not.toBeInTheDocument()
   })
 
   it('flags a Discord ban whose linked account is also banned on GMod', async () => {
@@ -90,8 +90,8 @@ describe('pages/dashboard/guilds/GuildBans.tsx', () => {
 
     const discordTable = container.querySelectorAll('table')[1]
     const rows = discordTable.querySelectorAll('tbody tr')
-    expect(rows[0].querySelector('.fa-gamepad')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-gamepad')).not.toBeInTheDocument()
+    expect(rows[0].querySelector('svg[data-icon="gamepad-2"]')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="gamepad-2"]')).not.toBeInTheDocument()
   })
 
   it('shows loading spinners while bans is loading', () => {
@@ -100,11 +100,15 @@ describe('pages/dashboard/guilds/GuildBans.tsx', () => {
     expect(container.querySelectorAll('.loading-spinner').length).toBeGreaterThan(0)
   })
 
-  it('shows empty-state messages when the request is not ok (fetchBans swallows it to an empty result)', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(errJson())
+  it('distinguishes a failed request from empty bans and retries both tables together', async () => {
+    ;(fetchAPI as Mock).mockResolvedValueOnce(errJson())
     renderWithProviders(() => <GuildBans />)
-    await vi.waitFor(() => expect(screen.getByText('No GMod bans found.')).toBeInTheDocument())
-    expect(screen.getByText('No Discord bans found.')).toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2))
+    expect(screen.queryByText('No GMod bans found.')).not.toBeInTheDocument()
+    expect(screen.queryByText('No Discord bans found.')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Try again' })[0])
+    await waitForLoaded()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('shows a failure message when the resource itself rejects', async () => {

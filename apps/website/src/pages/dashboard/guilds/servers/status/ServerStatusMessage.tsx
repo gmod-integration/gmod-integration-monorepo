@@ -2,6 +2,8 @@ import { closeDialog, showDialog } from '../../../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
 import type { StatusPreviewSettings } from '@gmod/schema/server/StatusMessagePreviewSchema.js'
 import AdminPanel from '../../../../../components/AdminPanel.js'
+import AdminModal from '../../../../../components/AdminModal.js'
+import { Button, FormActions, Icon, IconButton, SettingGroup, SettingRow } from '../../../../../components/ui/index.js'
 import { guildChannelsRefetch } from '../../GuildInformations.js'
 import { ChannelSelector } from '../../../../../components/AdminChannelSelector.js'
 import { useI18n } from '../../../../../i18n.js'
@@ -26,6 +28,7 @@ const ServerStatusMessage: Component = () => {
   const [stored, setStored] = createSignal<Settings>({ ...defaults })
   const [draft, setDraft] = createSignal<Settings>({ ...defaults })
   const [busy, setBusy] = createSignal(false)
+  const [saved, setSaved] = createSignal(false)
   const [operationError, setOperationError] = createSignal('')
   const [selectedChannel, setSelectedChannel] = createSignal('')
   const [formatOpen, setFormatOpen] = createSignal(false)
@@ -64,7 +67,10 @@ const ServerStatusMessage: Component = () => {
   const dirty = () => keys.some((key) => draft()[key] !== stored()[key])
   const unavailable = () => configuration.loading || !!configuration.error || busy()
   const previewUnavailable = () => !!preview && (preview.loading() || !!preview.error() || !preview.preview())
-  const updateDraft = (next: Partial<Settings>) => setDraft((previous) => ({ ...previous, ...next }))
+  const updateDraft = (next: Partial<Settings>) => {
+    setSaved(false)
+    setDraft((previous) => ({ ...previous, ...next }))
+  }
 
   async function persistSettings() {
     const settings = { ...draft() }
@@ -81,9 +87,11 @@ const ServerStatusMessage: Component = () => {
   async function saveSettings(closeFormat = false) {
     if (unavailable() || previewUnavailable()) return
     setBusy(true)
+    setSaved(false)
     setOperationError('')
     try {
       await persistSettings()
+      setSaved(true)
       if (closeFormat) {
         formatCommitted = true
         closeDialog('edit_format')
@@ -132,6 +140,7 @@ const ServerStatusMessage: Component = () => {
   }
 
   const beginFormat = () => {
+    setOperationError('')
     formatAtOpen = draft().status_player_list_format
     formatCommitted = false
     setFormatOpen(true)
@@ -140,12 +149,14 @@ const ServerStatusMessage: Component = () => {
   const closeFormat = () => {
     if (!formatCommitted) updateDraft({ status_player_list_format: formatAtOpen })
     setFormatOpen(false)
+    setOperationError('')
     formatCommitted = false
   }
   const cancelFormat = () => {
     updateDraft({ status_player_list_format: formatAtOpen })
     closeDialog('edit_format')
     setFormatOpen(false)
+    setOperationError('')
   }
   const Preview: Component = () => (
     <Show when={preview}>
@@ -175,62 +186,53 @@ const ServerStatusMessage: Component = () => {
 
   return (
     <>
-      <dialog
-        class="modal"
+      <AdminModal
+        title={t('dashboard.server.status.send_status', 'Send Status')}
+        busy={busy()}
+        size="wide"
         id="select_channel_modal"
-        onClose={() => setSendOpen(false)}
+        onClose={() => {
+          setSendOpen(false)
+          setOperationError('')
+        }}
         onCancel={(event) => {
           if (busy()) event.preventDefault()
         }}
       >
-        <div class="modal-box">
-          <div class="flex flex-col gap-4 min-w-0">
-            <h2 class="text-2xl font-bold">{t('dashboard.server.status.send_status', 'Send Status')}</h2>
-            <p class="text-sm text-base-content/70">
-              {t(
-                'dashboard.server.status.preview.confirm_send',
-                'Choose a channel, review the preview, then send the message.',
-              )}
-            </p>
-            <label class="flex flex-col gap-2">
-              <span>{t('tools.select_channel', 'Select a Channel')}</span>
-              <ChannelSelector callback={setSelectedChannel} idSelect={selectedChannel()} />
-            </label>
-            <Show when={sendOpen()}>
-              <Preview />
-            </Show>
-            <Show when={operationError() && sendOpen()}>
-              <p role="alert" class="text-error">
-                {operationError()}
-              </p>
-            </Show>
-            <div class="flex flex-wrap gap-2">
-              <button
-                type="button"
-                class="btn btn-base-200"
-                disabled={busy()}
-                onClick={() => {
-                  closeDialog('select_channel_modal')
-                  setSendOpen(false)
-                }}
-              >
-                {t('dashboard.server.status.preview.cancel', 'Cancel')}
-              </button>
-              <button
-                type="button"
-                class="btn btn-primary"
-                disabled={unavailable() || !selectedChannel() || selectedChannel() === '0' || previewUnavailable()}
-                onClick={sendStatus}
-              >
-                {t('dashboard.server.status.preview.send', 'Send to Discord')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </dialog>
+        <p class="text-sm text-base-content/70">
+          {t(
+            'dashboard.server.status.preview.confirm_send',
+            'Choose a channel, review the preview, then send the message.',
+          )}
+        </p>
+        <label class="flex flex-col gap-2">
+          <span>{t('tools.select_channel', 'Select a Channel')}</span>
+          <ChannelSelector callback={setSelectedChannel} idSelect={selectedChannel()} />
+        </label>
+        <Show when={sendOpen()}>
+          <Preview />
+        </Show>
+        <Show when={operationError() && sendOpen()}>
+          <p role="alert" class="text-error">
+            {operationError()}
+          </p>
+        </Show>
+        <FormActions
+          pending={busy()}
+          disabled={unavailable() || !selectedChannel() || selectedChannel() === '0' || previewUnavailable()}
+          onCancel={() => {
+            closeDialog('select_channel_modal')
+            setSendOpen(false)
+          }}
+          onSave={sendStatus}
+          saveLabel={t('dashboard.server.status.preview.send', 'Send to Discord')}
+        />
+      </AdminModal>
 
-      <dialog
-        class="modal"
+      <AdminModal
+        title={t('dashboard.server.pseudo.editFormat', 'Edit Format')}
+        busy={busy()}
+        size="wide"
         id="edit_format"
         onClose={closeFormat}
         onCancel={(event) => {
@@ -238,56 +240,48 @@ const ServerStatusMessage: Component = () => {
           else closeFormat()
         }}
       >
-        <div class="modal-box">
-          <div class="flex flex-col gap-4 min-w-0">
-            <h2 class="text-2xl font-bold">{t('dashboard.server.pseudo.editFormat', 'Edit Format')}</h2>
-            <details class="rounded-lg border border-base-200 p-3">
-              <summary class="cursor-pointer text-base-content/70 font-bold">
-                {t('dashboard.server.pseudo.variables', 'Variables')}
-              </summary>
-              <ul class="mt-3 text-sm text-base-content/60 list-inside">
-                <For each={variables}>
-                  {([variable, label, fallback]) => (
-                    <li>{`{${variable}} - ${t(`dashboard.server.status.${label}`, fallback)}`}</li>
-                  )}
-                </For>
-              </ul>
-            </details>
-            <label class="flex flex-col gap-2">
-              <span>{t('dashboard.server.pseudo.format', 'Format')}</span>
-              <input
-                type="text"
-                class="input w-full"
-                maxLength={500}
-                value={draft().status_player_list_format}
-                disabled={unavailable()}
-                onInput={(event) => updateDraft({ status_player_list_format: event.currentTarget.value })}
-              />
-            </label>
-            <Show when={formatOpen()}>
-              <Preview />
-            </Show>
-            <Show when={operationError() && formatOpen()}>
-              <p role="alert" class="text-error">
-                {operationError()}
-              </p>
-            </Show>
-            <div class="flex flex-wrap gap-2">
-              <button type="button" class="btn btn-base-200" disabled={busy()} onClick={cancelFormat}>
-                {t('dashboard.server.status.preview.cancel', 'Cancel')}
-              </button>
-              <button
-                type="button"
-                class="btn btn-primary"
-                disabled={unavailable() || previewUnavailable() || !dirty()}
-                onClick={() => saveSettings(true)}
-              >
-                {t('dashboard.server.pseudo.save', 'Save')}
-              </button>
-            </div>
-          </div>
-        </div>
-      </dialog>
+        <details class="rounded-lg border border-base-200 p-3">
+          <summary class="cursor-pointer text-base-content/70 font-bold">
+            {t('dashboard.server.pseudo.variables', 'Variables')}
+          </summary>
+          <ul class="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            <For each={variables}>
+              {([variable, label, fallback]) => (
+                <li class="flex items-center gap-2 rounded-lg bg-base-200/50 px-3 py-2">
+                  <code class="text-xs text-primary">{`{${variable}}`}</code>
+                  <span class="text-xs text-base-content/55">{t(`dashboard.server.status.${label}`, fallback)}</span>
+                </li>
+              )}
+            </For>
+          </ul>
+        </details>
+        <label class="flex flex-col gap-2">
+          <span>{t('dashboard.server.pseudo.format', 'Format')}</span>
+          <input
+            type="text"
+            class="input w-full font-mono text-sm"
+            maxLength={500}
+            value={draft().status_player_list_format}
+            disabled={unavailable()}
+            onInput={(event) => updateDraft({ status_player_list_format: event.currentTarget.value })}
+          />
+        </label>
+        <Show when={formatOpen()}>
+          <Preview />
+        </Show>
+        <Show when={operationError() && formatOpen()}>
+          <p role="alert" class="text-error">
+            {operationError()}
+          </p>
+        </Show>
+        <FormActions
+          pending={busy()}
+          disabled={unavailable() || previewUnavailable()}
+          dirty={dirty()}
+          onCancel={cancelFormat}
+          onSave={() => saveSettings(true)}
+        />
+      </AdminModal>
 
       <AdminPanel
         title={t('dashboard.server.status.title', 'Server Status')}
@@ -299,98 +293,150 @@ const ServerStatusMessage: Component = () => {
         <Show when={configuration.error}>
           <div role="alert" class="flex flex-wrap items-center gap-3 text-error">
             <p>{t('dashboard.server.status.preview.settings_error', 'Unable to load the status settings.')}</p>
-            <button type="button" class="btn btn-sm btn-base-200" onClick={() => refetch()}>
+            <Button type="button" size="sm" onClick={() => refetch()}>
               {t('ui.retry', 'Try again')}
-            </button>
+            </Button>
           </div>
         </Show>
-        <div class="flex flex-wrap items-center gap-2 min-w-0">
-          <span>{t('dashboard.server.status.status_message', 'Status Message')}:</span>
+        <div class="status-publication-card flex flex-wrap items-center justify-between gap-4 rounded-xl border border-primary/15 bg-primary/5 p-4">
+          <div class="flex min-w-0 items-center gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Icon name="send" size={19} />
+            </span>
+            <div class="flex min-w-0 flex-col gap-1">
+              <span class="text-sm font-medium">{t('dashboard.server.status.status_message', 'Status Message')}</span>
+              <Show
+                when={status().channel}
+                fallback={
+                  <span class="text-xs text-base-content/50">
+                    {t('dashboard.server.status.no_status_message', 'No status message')}
+                  </span>
+                }
+              >
+                <DiscordMessage messageID={status().message!} channelID={status().channel} />
+              </Show>
+            </div>
+          </div>
           <Show
             when={status().channel}
             fallback={
-              <>
-                <span>{t('dashboard.server.status.no_status_message', 'No status message')}</span>
-                <button
-                  type="button"
-                  class="btn btn-sm fa-solid fa-plus"
-                  aria-label={t('dashboard.server.status.send_status', 'Send Status')}
-                  disabled={unavailable()}
-                  onClick={() => {
-                    setSelectedChannel('')
-                    setOperationError('')
-                    setSendOpen(true)
-                    showDialog('select_channel_modal')
-                    void guildChannelsRefetch()
-                  }}
-                ></button>
-              </>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={unavailable()}
+                onClick={() => {
+                  setSelectedChannel('')
+                  setOperationError('')
+                  setSendOpen(true)
+                  showDialog('select_channel_modal')
+                  void guildChannelsRefetch()
+                }}
+              >
+                <Icon name="plus" size={16} />
+                {t('dashboard.server.status.send_status', 'Send Status')}
+              </Button>
             }
           >
-            <DiscordMessage messageID={status().message!} channelID={status().channel} />
-            <button
-              type="button"
-              class="btn btn-sm fa-solid fa-xmark text-error"
-              aria-label={t('dashboard.server.status.remove_status', 'Remove Status')}
+            <IconButton
+              variant="danger"
+              size="sm"
+              label={t('dashboard.server.status.remove_status', 'Remove Status')}
+              icon="trash-2"
               disabled={unavailable()}
               onClick={removeStatus}
-            ></button>
+            />
           </Show>
         </div>
-        <label class="flex flex-wrap items-center gap-2">
-          <span>{t('dashboard.server.status.show_player_list', 'Show Player List')}:</span>
-          <input
-            type="checkbox"
-            class="toggle toggle-md"
-            checked={draft().show_player_list_status}
-            disabled={unavailable()}
-            onChange={(event) => updateDraft({ show_player_list_status: event.currentTarget.checked })}
-          />
-        </label>
-        <div class="flex flex-wrap items-center gap-2 min-w-0">
-          <label for="status-player-format">{t('dashboard.server.status.format', 'Player List Format')}:</label>
-          <input
-            id="status-player-format"
-            type="text"
-            class="input min-w-0 max-w-full"
-            value={draft().status_player_list_format}
-            readOnly
-            disabled={unavailable()}
-          />
-          <button
-            type="button"
-            class="btn btn-sm fa-solid fa-edit"
-            aria-label={t('dashboard.server.status.edit', 'Edit')}
-            disabled={unavailable()}
-            onClick={beginFormat}
-          ></button>
-        </div>
-        <label class="flex flex-wrap items-center gap-2">
-          <PremiumBadge onlyIcon noMargin />
-          <span>{t('dashboard.server.status.show_player_chart', 'Show Player Chart')}:</span>
-          <input
-            type="checkbox"
-            class="toggle toggle-md"
-            checked={draft().show_status_chart}
-            disabled={unavailable() || !premium()}
-            onChange={(event) => updateDraft({ show_status_chart: event.currentTarget.checked })}
-          />
-        </label>
-        <div class="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            class="btn btn-base-200"
-            disabled={unavailable() || previewUnavailable() || !dirty()}
-            onClick={() => saveSettings()}
+        <SettingGroup
+          title={t('settings.message_content', 'Message content')}
+          description={t(
+            'settings.status_content_help',
+            'Choose what appears in the message. Review the preview, then save your changes.',
+          )}
+          icon="sliders-horizontal"
+        >
+          <SettingRow
+            controlId="status-show-players"
+            title={t('dashboard.server.status.show_player_list', 'Show Player List')}
+            description={t(
+              'settings.status_players_help',
+              'Include the connected players and customize the information shown for each one.',
+            )}
           >
-            {t('dashboard.server.pseudo.save', 'Save')}
-          </button>
-          <Show when={dirty()}>
-            <p class="text-sm text-base-content/70">
-              {t('dashboard.server.status.preview.unsaved', 'Preview only — save to apply these changes to Discord.')}
-            </p>
+            <input
+              id="status-show-players"
+              aria-describedby="status-show-players-description"
+              type="checkbox"
+              class="toggle toggle-sm shrink-0"
+              checked={draft().show_player_list_status}
+              disabled={unavailable()}
+              onChange={(event) => updateDraft({ show_player_list_status: event.currentTarget.checked })}
+            />
+          </SettingRow>
+          <Show when={draft().show_player_list_status}>
+            <div class="settings-dependent">
+              <SettingRow
+                controlId="status-player-format"
+                title={t('dashboard.server.status.format', 'Player List Format')}
+                stacked
+              >
+                <input
+                  id="status-player-format"
+                  type="text"
+                  class="input min-w-0 flex-1 font-mono text-xs"
+                  value={draft().status_player_list_format}
+                  readOnly
+                  disabled={unavailable()}
+                />
+                <Button type="button" size="sm" disabled={unavailable()} onClick={beginFormat}>
+                  <Icon name="pencil" size={15} />
+                  {t('dashboard.server.status.edit', 'Edit')}
+                </Button>
+              </SettingRow>
+            </div>
           </Show>
-        </div>
+          <SettingRow
+            controlId="status-show-chart"
+            title={
+              <>
+                {t('dashboard.server.status.show_player_chart', 'Show Player Chart')} <PremiumBadge onlyIcon noMargin />
+              </>
+            }
+            description={t('settings.status_chart_help', 'Add a chart of player activity to the status message.')}
+          >
+            <input
+              id="status-show-chart"
+              aria-describedby="status-show-chart-description"
+              type="checkbox"
+              class="toggle toggle-sm shrink-0"
+              checked={draft().show_status_chart}
+              disabled={unavailable() || !premium()}
+              onChange={(event) => updateDraft({ show_status_chart: event.currentTarget.checked })}
+            />
+          </SettingRow>
+        </SettingGroup>
+        <FormActions
+          pending={busy()}
+          disabled={unavailable() || previewUnavailable()}
+          dirty={dirty()}
+          success={saved()}
+          onSave={() => saveSettings()}
+          onCancel={
+            dirty()
+              ? () => {
+                  setDraft({ ...stored() })
+                  setOperationError('')
+                  setSaved(false)
+                }
+              : undefined
+          }
+          message={
+            dirty()
+              ? t('dashboard.server.status.preview.unsaved', 'Preview only — save to apply these changes to Discord.')
+              : undefined
+          }
+        />
         <Show when={operationError() && !sendOpen() && !formatOpen()}>
           <p role="alert" class="text-error">
             {operationError()}

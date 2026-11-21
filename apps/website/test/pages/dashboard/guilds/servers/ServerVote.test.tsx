@@ -112,6 +112,8 @@ describe('pages/dashboard/guilds/servers/ServerVote.tsx', () => {
     const modal = container.querySelector('#select_channel_modal') as HTMLElement
     const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'POST')).toBe(false)
+    await fireEvent.click(within(select.closest('dialog')!).getByRole('button', { name: 'Save', hidden: true }))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VOTE_URL, 'POST', { channelID: 'c1' }))
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
   })
@@ -127,6 +129,8 @@ describe('pages/dashboard/guilds/servers/ServerVote.tsx', () => {
     const modal = container.querySelector('#select_channel_modal') as HTMLElement
     const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'POST')).toBe(false)
+    await fireEvent.click(within(select.closest('dialog')!).getByRole('button', { name: 'Save', hidden: true }))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VOTE_URL, 'POST', { channelID: 'c1' }))
     expect(screen.getByText('No channel selected')).toBeInTheDocument()
   })

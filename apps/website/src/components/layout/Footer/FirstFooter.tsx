@@ -62,14 +62,14 @@ const FirstFooter: Component = () => {
   ]
 
   return (
-    <footer class="footer md:footer-horizontal p-10 bg-base-100 text-base-content justify-around max-w-(--breakpoint-2xl) mx-auto">
+    <div class="site-footer-links">
       <For each={footerLinks()}>
         {({ title, links }) => (
-          <nav>
-            <h6 class="footer-title opacity-100">{title}</h6>
+          <nav aria-label={title}>
+            <h3>{title}</h3>
             <For each={links}>
               {({ title, href }) => (
-                <A class="link link-hover text-base-content/50" href={href}>
+                <A class="site-footer-link" href={href}>
                   {title}
                 </A>
               )}
@@ -77,7 +77,7 @@ const FirstFooter: Component = () => {
           </nav>
         )}
       </For>
-    </footer>
+    </div>
   )
 }
 

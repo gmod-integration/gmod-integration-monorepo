@@ -125,7 +125,9 @@ describe('pages/Account.tsx', () => {
     renderAccount()
     await waitForLoaded()
     expect(screen.getByRole('link', { name: 'Activate on Guild' })).toBeInTheDocument()
-    expect(screen.queryAllByRole('row')).toHaveLength(2) // just the two table header rows
+    expect(
+      screen.getAllByRole('status').filter((element) => element.textContent?.includes('Nothing to display yet.')),
+    ).toHaveLength(2)
   })
 
   describe('steam panel', () => {
@@ -340,9 +342,9 @@ describe('pages/Account.tsx', () => {
       const rows = screen.getAllByRole('row')
       const currentRow = rows.find((r) => r.textContent?.includes('1.2.3.4'))!
       const otherRow = rows.find((r) => r.textContent?.includes('5.6.7.8'))!
-      expect(currentRow.querySelector('.fa-user-check')).toBeInTheDocument()
-      expect(currentRow.querySelector('.fa-trash')).not.toBeInTheDocument()
-      expect(otherRow.querySelector('.fa-trash')).toBeInTheDocument()
+      expect(currentRow.querySelector('svg[data-icon="user-check"]')).toBeInTheDocument()
+      expect(currentRow.querySelector('svg[data-icon="trash-2"]')).not.toBeInTheDocument()
+      expect(otherRow.querySelector('svg[data-icon="trash-2"]')).toBeInTheDocument()
       // session.id.substring(0, 8) - both fixture ids share the "session-" prefix.
       expect(within(currentRow).getByText('session-')).toBeInTheDocument()
       expect(within(otherRow).getByText('session-')).toBeInTheDocument()
@@ -361,7 +363,7 @@ describe('pages/Account.tsx', () => {
         return Promise.resolve(jsonResponse({}))
       })
       const otherRow = screen.getAllByRole('row').find((r) => r.textContent?.includes('5.6.7.8'))!
-      fireEvent.click(otherRow.querySelector('.fa-trash')!)
+      fireEvent.click(otherRow.querySelector('svg[data-icon="trash-2"]')!)
 
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${SESSIONS_URL}/session-other-456`, 'DELETE'))
       await vi.waitFor(() => expect(screen.queryByText(/5\.6\.7\.8/)).not.toBeInTheDocument())
@@ -381,7 +383,7 @@ describe('pages/Account.tsx', () => {
         return Promise.resolve(jsonResponse({}))
       })
       const otherRow = screen.getAllByRole('row').find((r) => r.textContent?.includes('5.6.7.8'))!
-      fireEvent.click(otherRow.querySelector('.fa-trash')!)
+      fireEvent.click(otherRow.querySelector('svg[data-icon="trash-2"]')!)
 
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${SESSIONS_URL}/session-other-456`, 'DELETE'))
       expect(screen.getByText('5.6.7.8')).toBeInTheDocument()
@@ -396,8 +398,8 @@ describe('pages/Account.tsx', () => {
 
       expect(screen.getByText('Active')).toBeInTheDocument()
       expect(screen.getByText('Expired')).toBeInTheDocument()
-      expect(document.querySelector('[data-tip="Download your data"] .fa-download')).toBeInTheDocument()
-      expect(document.querySelector('[data-tip="Request has expired"] .fa-download')).toBeInTheDocument()
+      expect(document.querySelector('[data-tip="Download your data"] svg[data-icon="download"]')).toBeInTheDocument()
+      expect(document.querySelector('[data-tip="Request has expired"] svg[data-icon="download"]')).toBeInTheDocument()
     })
 
     it('opens the download link with its code for an active request', async () => {
@@ -406,7 +408,7 @@ describe('pages/Account.tsx', () => {
       await waitForLoaded()
 
       const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null)
-      fireEvent.click(document.querySelector('[data-tip="Download your data"] .fa-download')!)
+      fireEvent.click(document.querySelector('[data-tip="Download your data"] svg[data-icon="download"]')!)
       expect(openSpy).toHaveBeenCalledWith('http://dl/active?code=active-code')
     })
 
@@ -471,7 +473,13 @@ describe('pages/Account.tsx', () => {
       })
 
       vi.useFakeTimers()
-      fireEvent.click(screen.getByRole('button', { name: 'Request my Data' }))
+      const requestButton = screen.getByRole('button', { name: 'Request my Data' })
+      fireEvent.click(requestButton)
+      expect(requestButton).toBeDisabled()
+      fireEvent.click(requestButton)
+      expect(
+        (fetchAPI as Mock).mock.calls.filter(([endpoint, method]) => endpoint === DATA_REQ_URL && method === 'POST'),
+      ).toHaveLength(1)
       await vi.advanceTimersByTimeAsync(500)
       expect(screen.getByText('Depends on your data size, this can take a while.')).toBeInTheDocument()
 

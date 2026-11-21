@@ -1,3 +1,4 @@
+import { Icon } from '../ui/index.js'
 import { createSignal, For, type Component } from 'solid-js'
 
 type Notice = { id: number; message: string }
@@ -18,7 +19,7 @@ interface ErrorProps {
 export const AddErrorComponent: Component<ErrorProps> = (props) => {
   return (
     <div role="alert" class="text-error flex min-h-12 items-center rounded-lg border-error border p-4 gap-4">
-      <i aria-hidden="true" class="fa-regular fa-circle-xmark"></i>
+      <Icon name="circle-x" aria-hidden="true" />
       <span>Error : {props.message}</span>
     </div>
   )

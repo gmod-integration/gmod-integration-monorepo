@@ -109,8 +109,8 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
     expect(screen.getByText('admins')).toBeInTheDocument()
     expect(screen.getByText('mods')).toBeInTheDocument()
     const rows = screen.getAllByRole('row').slice(1) // skip header row
-    expect(rows[0].querySelector('.fa-check')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-times')).toBeInTheDocument()
+    expect(rows[0].querySelector('svg[data-icon="check"]')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
   })
 
   it('shows a loading spinner for the role sync table while rolesSync is loading', () => {
@@ -173,7 +173,7 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
   })
 
   describe('add role sync (select role modal)', () => {
-    it('lists only guild roles not already synced, and adds the chosen one on change', async () => {
+    it('lists only guild roles not already synced, and adds the chosen one only after Save', async () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'select_role_modal')
@@ -194,6 +194,8 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
       })
       const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'r3' } })
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Save', hidden: true }))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r3`, 'POST'))
       await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
     })
@@ -209,6 +211,8 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
       const modal = container.querySelector('#select_role_modal') as HTMLElement
       const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'r3' } })
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Save', hidden: true }))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r3`, 'POST'))
       expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
     })
@@ -219,7 +223,7 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0])
 
       const modal = container.querySelector('#edit_role_modal') as HTMLElement
@@ -232,7 +236,7 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
         return Promise.resolve(okJson([]))
       })
       await fireEvent.input(userGroupInput, { target: { value: 'superadmins' } })
-      await fireEvent.click(within(modal).getByText('Save Changes'))
+      await fireEvent.click(within(modal).getByText('Save'))
 
       await vi.waitFor(() =>
         expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r1`, 'PUT', {
@@ -249,7 +253,7 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0]) // Admin row, enable: true
 
       const modal = container.querySelector('#edit_role_modal') as HTMLElement
@@ -263,7 +267,7 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
         if (endpoint === `${ROLES_SYNC_URL}/r1` && method === 'PUT') return Promise.resolve(okJson(updated))
         return Promise.resolve(okJson([]))
       })
-      await fireEvent.click(within(modal).getByText('Save Changes'))
+      await fireEvent.click(within(modal).getByText('Save'))
       await vi.waitFor(() =>
         expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r1`, 'PUT', {
           serverID: 's1',
@@ -278,14 +282,15 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0])
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === `${ROLES_SYNC_URL}/r1` && method === 'PUT') return Promise.resolve(errJson())
         return Promise.resolve(okJson([]))
       })
       const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      await fireEvent.click(within(modal).getByText('Save Changes'))
+      await fireEvent.input(within(modal).getByRole('textbox'), { target: { value: 'Unsaved draft' } })
+      await fireEvent.click(within(modal).getByText('Save'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r1`, 'PUT', expect.anything()))
       expect(screen.getByText('admins')).toBeInTheDocument()
     })
@@ -299,7 +304,7 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
         if (endpoint === `${ROLES_SYNC_URL}/r2` && method === 'DELETE') return Promise.resolve(okJson({ roleID: 'r2' }))
         return Promise.resolve(okJson([]))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(screen.queryByText('@Moderator')).not.toBeInTheDocument())
       expect(screen.getByText('@Admin')).toBeInTheDocument()
@@ -312,7 +317,7 @@ describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
         if (endpoint === `${ROLES_SYNC_URL}/r2` && method === 'DELETE') return Promise.resolve(errJson())
         return Promise.resolve(okJson([]))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r2`, 'DELETE'))
       expect(screen.getByText('@Moderator')).toBeInTheDocument()

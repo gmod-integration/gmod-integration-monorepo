@@ -96,15 +96,14 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
     expect(container.querySelector('.loading-spinner')).toBeInTheDocument()
   })
 
-  it('renders an empty list (not an error) when the auto-roles GET responds with a non-ok status', async () => {
+  it('shows a retryable error when the auto-roles GET responds with a non-ok status', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
       if (endpoint === AUTO_ROLES_URL) return Promise.resolve(errJson())
       if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
       return Promise.resolve(okJson([]))
     })
     renderWithProviders(() => <GuildAutoRoles />)
-    await vi.waitFor(() => expect(screen.queryAllByRole('row')).toHaveLength(1)) // header row only
-    expect(screen.queryByText('Failed to load the links')).not.toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Failed to load the links'))
   })
 
   it('shows the failed-to-load message when the auto-roles fetch rejects', async () => {
@@ -125,7 +124,7 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
         if (endpoint === `${AUTO_ROLES_URL}/r2` && method === 'DELETE') return Promise.resolve(okJson({ roleID: 'r2' }))
         return Promise.resolve(okJson({}))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(screen.queryByText('@Moderator')).not.toBeInTheDocument())
       expect(screen.getByText('@Admin')).toBeInTheDocument()
@@ -138,7 +137,7 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
         if (endpoint === `${AUTO_ROLES_URL}/r2` && method === 'DELETE') return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${AUTO_ROLES_URL}/r2`, 'DELETE'))
       expect(screen.getByText('@Moderator')).toBeInTheDocument()
@@ -146,7 +145,7 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
   })
 
   describe('select role modal (add role)', () => {
-    it('lists only guild roles not already in autoRoles, and adds the chosen one on change', async () => {
+    it('lists only guild roles not already in autoRoles, and adds the chosen one only after Save', async () => {
       const { container } = renderWithProviders(() => <GuildAutoRoles />)
       await waitForLoaded()
       stubDialogGlobal(container, 'select_role_modal')
@@ -171,6 +170,8 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
       })
       const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'r3' } })
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Save', hidden: true }))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${AUTO_ROLES_URL}/r3`, 'POST'))
       await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
     })
@@ -186,6 +187,8 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
       const modal = container.querySelector('#select_role_modal') as HTMLElement
       const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'r3' } })
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Save', hidden: true }))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${AUTO_ROLES_URL}/r3`, 'POST'))
       expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
     })
@@ -210,6 +213,21 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
   })
 
   describe('edit role modal', () => {
+    it('discards the local enabled flag on Cancel without writing to the server', async () => {
+      const { container } = renderWithProviders(() => <GuildAutoRoles />)
+      await waitForLoaded()
+      const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
+      await fireEvent.click(edit)
+      const modal = container.querySelector<HTMLDialogElement>('#edit_role_modal')!
+      const active = within(modal).getByLabelText('Active')
+      await fireEvent.change(active, { target: { value: 'false' } })
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+      expect(modal.open).toBe(false)
+      await fireEvent.click(edit)
+      expect(within(modal).getByLabelText('Active')).toHaveValue('true')
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
+    })
+
     it('saves the enabled flag for the selected role via editVerifyRole', async () => {
       const { container } = renderWithProviders(() => <GuildAutoRoles />)
       await waitForLoaded()

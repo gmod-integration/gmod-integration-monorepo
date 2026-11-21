@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
-import { okJson, errJson, stubDialogGlobal, clearDialogGlobals } from '../testHelpers.js'
+import { okJson, errJson } from '../testHelpers.js'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn(() => Promise.resolve({ ok: true, json: async () => [] })),
@@ -18,7 +18,6 @@ const TRIGGERS_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/logs/t
 
 afterEach(() => {
   cleanup()
-  clearDialogGlobals('edit_log_trigger')
 })
 
 function trigger(overrides: Partial<Record<string, unknown>> = {}) {
@@ -64,6 +63,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
   it('shows "Add Trigger" as the title and disables Save while channelID is empty', async () => {
     const { container } = renderPage()
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Trigger' })).not.toBeDisabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Trigger' }))
     const m = within(modal(container))
     expect(m.getByText('Add Trigger')).toBeInTheDocument()
     const saveBtn = m.getByText('Add')
@@ -73,10 +73,9 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
   it('enables Save once a channel is selected, and creates a new trigger on click', async () => {
     const { container } = renderPage()
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Trigger' })).not.toBeDisabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Trigger' }))
     const m = within(modal(container))
-    // Find the channel selector specifically: it's the <select> right after the "Channel" label.
-    const channelFieldset = m.getByText('Channel').closest('.fieldset') as HTMLElement
-    const select = channelFieldset.querySelector('select') as HTMLSelectElement
+    const select = m.getByRole('combobox', { name: 'Select a Channel' })
     await fireEvent.change(select, { target: { value: 'c1' } })
 
     const newTrigger = trigger({ id: 5, channelID: 'c1' })
@@ -87,22 +86,20 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
 
     const saveBtn = m.getByText('Add')
     await vi.waitFor(() => expect(saveBtn).not.toBeDisabled())
-    stubDialogGlobal(container, 'edit_log_trigger')
     await fireEvent.click(saveBtn)
 
     await vi.waitFor(() =>
       expect(fetchAPI).toHaveBeenCalledWith(TRIGGERS_URL, 'POST', expect.objectContaining({ channelID: 'c1' })),
     )
-    await vi.waitFor(() => expect(container.querySelectorAll('tbody tr')).toHaveLength(1))
+    await vi.waitFor(() => expect(screen.getByText('1000000')).toBeInTheDocument())
   })
 
-  it('logs an error and does not add a row when creating a trigger fails', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('shows an error and keeps the draft open when creating a trigger fails', async () => {
     const { container } = renderPage()
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Trigger' })).not.toBeDisabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Trigger' }))
     const m = within(modal(container))
-    const channelFieldset = m.getByText('Channel').closest('.fieldset') as HTMLElement
-    const select = channelFieldset.querySelector('select') as HTMLSelectElement
+    const select = m.getByRole('combobox', { name: 'Select a Channel' })
     await fireEvent.change(select, { target: { value: 'c1' } })
 
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
@@ -111,12 +108,12 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
     })
     const saveBtn = m.getByText('Add')
     await vi.waitFor(() => expect(saveBtn).not.toBeDisabled())
-    stubDialogGlobal(container, 'edit_log_trigger')
     await fireEvent.click(saveBtn)
 
-    await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-    expect(container.querySelectorAll('tbody tr')).toHaveLength(0)
-    errorSpy.mockRestore()
+    await vi.waitFor(() => expect(m.getByRole('alert')).toHaveTextContent('Unable to save'))
+    expect(modal(container)).toHaveAttribute('open')
+    expect(select).toHaveValue('c1')
+    expect(container.querySelector('tbody svg[data-icon="pencil"]')).not.toBeInTheDocument()
   })
 
   it('opens with "Edit Trigger" title and the trigger fields prefilled when the edit icon is clicked', async () => {
@@ -125,9 +122,8 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
       return Promise.resolve(okJson([]))
     })
     const { container } = renderPage()
-    await vi.waitFor(() => expect(container.querySelectorAll('tbody tr')).toHaveLength(1))
-    stubDialogGlobal(container, 'edit_log_trigger')
-    await fireEvent.click(container.querySelector('tbody .fa-edit') as HTMLElement)
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument())
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
 
     const m = within(modal(container))
     expect(m.getByText('Edit Trigger')).toBeInTheDocument()
@@ -143,8 +139,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
     })
     const { container } = renderPage()
     await vi.waitFor(() => expect(container.querySelectorAll('tbody tr')).toHaveLength(2))
-    stubDialogGlobal(container, 'edit_log_trigger')
-    await fireEvent.click(container.querySelectorAll('tbody .fa-edit')[0] as HTMLElement)
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
 
     const m = within(modal(container))
     const valueInput = m.getByPlaceholderText('Value') as HTMLInputElement
@@ -164,16 +159,14 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
     expect(screen.getByText('555')).toBeInTheDocument()
   })
 
-  it('logs an error and keeps the old row when saving an edited trigger fails', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  it('shows an error and keeps the old row when saving an edited trigger fails', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
       if (endpoint === TRIGGERS_URL && method === 'GET') return Promise.resolve(okJson([trigger()]))
       return Promise.resolve(okJson([]))
     })
     const { container } = renderPage()
-    await vi.waitFor(() => expect(container.querySelectorAll('tbody tr')).toHaveLength(1))
-    stubDialogGlobal(container, 'edit_log_trigger')
-    await fireEvent.click(container.querySelector('tbody .fa-edit') as HTMLElement)
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument())
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
 
     const m = within(modal(container))
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
@@ -181,26 +174,24 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
       return Promise.resolve(okJson([]))
     })
     await fireEvent.click(m.getByText('Save'))
-    await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
+    await vi.waitFor(() => expect(m.getByRole('alert')).toHaveTextContent('Unable to save'))
     expect(within(container.querySelector('tbody tr') as HTMLElement).getByText('1000000')).toBeInTheDocument()
-    errorSpy.mockRestore()
+    expect(modal(container)).toHaveAttribute('open')
   })
 
   it('changes the log_type, compare, operator and message fields via their selects/inputs', async () => {
     const { container } = renderPage()
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Trigger' })).not.toBeDisabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Trigger' }))
     const m = within(modal(container))
 
-    const triggerFieldset = m.getByText('Trigger').closest('.fieldset') as HTMLElement
-    const triggerSelect = triggerFieldset.querySelector('select') as HTMLSelectElement
+    const triggerSelect = m.getByLabelText('Trigger')
     await fireEvent.change(triggerSelect, { target: { value: 'ch_atm_send_money' } })
 
-    const compareFieldset = m.getByText('Compare').closest('.fieldset') as HTMLElement
-    const compareSelect = compareFieldset.querySelector('select') as HTMLSelectElement
+    const compareSelect = m.getByLabelText('Compare')
     await fireEvent.change(compareSelect, { target: { value: 'amount' } })
 
-    const operatorFieldset = m.getByText('Operator').closest('.fieldset') as HTMLElement
-    const operatorSelect = operatorFieldset.querySelector('select') as HTMLSelectElement
+    const operatorSelect = m.getByLabelText('Operator')
     await fireEvent.change(operatorSelect, { target: { value: 'lessThan' } })
 
     const messageTextarea = modal(container).querySelector('textarea') as HTMLTextAreaElement
@@ -209,15 +200,13 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
     expect(messageTextarea.value).toBe('Custom message')
     // None of these throw and the modal keeps functioning - functional assertion via a
     // subsequent create carrying the edited fields through.
-    const channelFieldset = m.getByText('Channel').closest('.fieldset') as HTMLElement
-    const channelSelect = channelFieldset.querySelector('select') as HTMLSelectElement
+    const channelSelect = m.getByRole('combobox', { name: 'Select a Channel' })
     await fireEvent.change(channelSelect, { target: { value: 'c2' } })
 
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
       if (endpoint === TRIGGERS_URL && method === 'POST') return Promise.resolve(okJson(trigger({ id: 9 })))
       return Promise.resolve(okJson([]))
     })
-    stubDialogGlobal(container, 'edit_log_trigger')
     const saveBtn = m.getByText('Add')
     await vi.waitFor(() => expect(saveBtn).not.toBeDisabled())
     await fireEvent.click(saveBtn)
@@ -241,13 +230,13 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
       return Promise.resolve(okJson([]))
     })
     const { container } = renderPage()
-    await vi.waitFor(() => expect(container.querySelectorAll('tbody tr')).toHaveLength(1))
-    stubDialogGlobal(container, 'edit_log_trigger')
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument())
     // Open+edit first, to move state away from the default example trigger.
-    await fireEvent.click(container.querySelector('tbody .fa-edit') as HTMLElement)
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
     const m1 = within(modal(container))
     expect(m1.getByText('Edit Trigger')).toBeInTheDocument()
 
+    await fireEvent.click(m1.getByRole('button', { name: 'Cancel' }))
     await fireEvent.click(screen.getByRole('button', { name: 'Add Trigger' }))
     const m2 = within(modal(container))
     expect(m2.getByText('Add Trigger')).toBeInTheDocument()

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../testUtils.js'
 
 vi.mock('../../src/utils/api.js', async (importActual) => {
@@ -15,7 +15,13 @@ const { guildChannels, guildChannelsMutate, guildChannelsRefetch } =
 const { ChannelSelector, default: AdminChannelSelector } = await import('../../src/components/AdminChannelSelector.js')
 const { fetchAPI } = await import('../../src/utils/api.js')
 
-afterEach(() => cleanup())
+afterEach(async () => {
+  cleanup()
+  vi.mocked(fetchAPI)
+    .mockReset()
+    .mockResolvedValue({ ok: true, json: async () => [] } as Response)
+  await guildChannelsRefetch()
+})
 
 const CATEGORY = { id: 'cat1', name: 'Category One', type: 4, position: 0, parentID: null }
 const CATEGORY_EMPTY = { id: 'cat2', name: 'Empty Category', type: 4, position: 1, parentID: null }
@@ -35,6 +41,7 @@ const CHANNEL_NAN_TYPE = { id: 'chan5', name: 'weird-type', type: 'not-a-number'
 describe('components/AdminChannelSelector.tsx', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    vi.mocked(fetchAPI).mockClear()
     guildChannelsMutate([
       CATEGORY,
       CATEGORY_EMPTY,
@@ -55,10 +62,10 @@ describe('components/AdminChannelSelector.tsx', () => {
       expect(labels).not.toContain('Empty Category')
     })
 
-    it('lists channels without a parent under the "No Category" group', () => {
+    it('lists channels without a parent under the translated category-free group', () => {
       const { container } = renderWithProviders(() => <ChannelSelector />)
       const noCategoryGroup = Array.from(container.querySelectorAll('optgroup')).find(
-        (g) => g.getAttribute('label') === 'No Category',
+        (g) => g.getAttribute('label')?.toLowerCase() === 'no category',
       )
       expect(noCategoryGroup).toBeTruthy()
       expect(noCategoryGroup?.textContent).toContain('no-category')
@@ -115,7 +122,7 @@ describe('components/AdminChannelSelector.tsx', () => {
       expect(() => fireEvent.change(select, { target: { value: 'chan2' } })).not.toThrow()
     })
 
-    it('closes the dialog matching modalId when hasModal is set and a matching dialog exists', () => {
+    it('keeps selection local even when legacy modal props are supplied', () => {
       const callback = vi.fn()
       const { container } = renderWithProviders(() => (
         <>
@@ -128,7 +135,7 @@ describe('components/AdminChannelSelector.tsx', () => {
       dialog.close = closeSpy
       const select = container.querySelector('select') as HTMLSelectElement
       fireEvent.change(select, { target: { value: 'chan2' } })
-      expect(closeSpy).toHaveBeenCalled()
+      expect(closeSpy).not.toHaveBeenCalled()
       expect(callback).toHaveBeenCalledWith('chan2')
     })
 
@@ -150,11 +157,24 @@ describe('components/AdminChannelSelector.tsx', () => {
       )
       const refetchPromise = guildChannelsRefetch()
       const { container } = renderWithProviders(() => <ChannelSelector />)
-      expect(container).toHaveTextContent('Loading...')
+      expect(container).toHaveTextContent('Loading…')
 
       resolveFetch({ ok: true, json: async () => [CHANNEL_NO_CATEGORY] })
       await refetchPromise
       await vi.waitFor(() => expect(guildChannels.loading).toBe(false))
+    })
+
+    it('shows HTTP loading failures inline and reloads channels through the shared retry action', async () => {
+      vi.mocked(fetchAPI).mockResolvedValueOnce({ ok: false, json: async () => ({}) } as Response)
+      await guildChannelsRefetch()
+      renderWithProviders(() => <ChannelSelector />)
+      expect(screen.getByRole('alert')).toBeInTheDocument()
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+      vi.mocked(fetchAPI).mockResolvedValueOnce({ ok: true, json: async () => [CHANNEL_NO_CATEGORY] } as Response)
+      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(screen.getByRole('combobox')).toBeInTheDocument())
+      expect(screen.getByRole('option', { name: 'no-category' })).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
   })
 
@@ -170,14 +190,76 @@ describe('components/AdminChannelSelector.tsx', () => {
       expect(container.querySelector('h2')).toHaveTextContent('Select a Channel')
     })
 
-    it('closes its own dialog (matching its id) via the modalId plumbed through to ChannelSelector', () => {
-      const { container } = renderWithProviders(() => <AdminChannelSelector id="pick_channel_2" />)
+    it('applies the selected channel and closes its own dialog only after explicit Save', async () => {
+      const callback = vi.fn().mockResolvedValue(undefined)
+      const { container } = renderWithProviders(() => <AdminChannelSelector id="pick_channel_2" callback={callback} />)
       const dialog = container.querySelector('dialog#pick_channel_2') as HTMLDialogElement
       const closeSpy = vi.fn()
       dialog.close = closeSpy
       const select = container.querySelector('select') as HTMLSelectElement
-      fireEvent.change(select, { target: { value: 'chan2' } })
-      expect(closeSpy).toHaveBeenCalled()
+      await fireEvent.change(select, { target: { value: 'chan2' } })
+      expect(callback).not.toHaveBeenCalled()
+      expect(closeSpy).not.toHaveBeenCalled()
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Save', hidden: true }))
+      expect(callback).toHaveBeenCalledWith('chan2')
+      await vi.waitFor(() => expect(closeSpy).toHaveBeenCalledOnce())
+    })
+
+    it('blocks duplicate saves and keeps the modal open while the request is pending', async () => {
+      let resolveSave!: () => void
+      const callback = vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveSave = resolve
+          }),
+      )
+      const { container } = renderWithProviders(() => <AdminChannelSelector id="pick_channel" callback={callback} />)
+      const dialog = container.querySelector('dialog')!
+      const close = vi.spyOn(dialog, 'close')
+      dialog.showModal()
+      await fireEvent.change(within(dialog).getByRole('combobox'), { target: { value: 'chan2' } })
+      const save = within(dialog).getByRole('button', { name: 'Save' })
+      await fireEvent.click(save)
+      expect(save).toBeDisabled()
+      expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+      expect(within(dialog).getByRole('combobox')).toBeDisabled()
+      await fireEvent.click(save)
+      expect(callback).toHaveBeenCalledOnce()
+      expect(close).not.toHaveBeenCalled()
+      resolveSave()
+      await vi.waitFor(() => expect(close).toHaveBeenCalledOnce())
+    })
+
+    it('keeps the selection open on failure and allows retrying the same channel', async () => {
+      const callback = vi.fn().mockRejectedValueOnce(new Error('Unavailable')).mockResolvedValueOnce(undefined)
+      const { container } = renderWithProviders(() => <AdminChannelSelector id="pick_channel" callback={callback} />)
+      const dialog = container.querySelector('dialog')!
+      const close = vi.spyOn(dialog, 'close')
+      dialog.showModal()
+      await fireEvent.change(within(dialog).getByRole('combobox'), { target: { value: 'chan2' } })
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+      await vi.waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument())
+      expect(close).not.toHaveBeenCalled()
+      expect(within(dialog).getByRole('combobox')).toHaveValue('chan2')
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+      await vi.waitFor(() => expect(close).toHaveBeenCalledOnce())
+      expect(callback).toHaveBeenCalledTimes(2)
+    })
+
+    it('discards a changed selection on Cancel and restores the configured channel when reopened', async () => {
+      const callback = vi.fn()
+      const { container } = renderWithProviders(() => (
+        <AdminChannelSelector id="pick_channel" idSelect="chan2" callback={callback} />
+      ))
+      const dialog = container.querySelector('dialog')!
+      dialog.showModal()
+      expect(within(dialog).getByRole('combobox')).toHaveValue('chan2')
+      await fireEvent.change(within(dialog).getByRole('combobox'), { target: { value: 'chan1' } })
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+      expect(callback).not.toHaveBeenCalled()
+      await vi.waitFor(() => expect(dialog.open).toBe(false))
+      dialog.showModal()
+      expect(within(dialog).getByRole('combobox')).toHaveValue('chan2')
     })
   })
 })

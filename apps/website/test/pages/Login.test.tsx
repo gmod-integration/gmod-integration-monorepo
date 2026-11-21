@@ -58,6 +58,13 @@ describe('pages/Login.tsx', () => {
     expect(link.href).toBe('http://localhost:5001/v3/users/login')
   })
 
+  it('preserves the destination in the manual login link', () => {
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise(() => {})))
+    renderAt(callbackURL + '&redirect=' + encodeURIComponent('/dashboard/guilds/g1/config'))
+    const link = screen.getByText('Click here if you are not redirected.') as HTMLAnchorElement
+    expect(new URL(link.href).searchParams.get('redirect')).toBe('/dashboard/guilds/g1/config')
+  })
+
   describe('when discordID/expirationDate/accessToken are all present', () => {
     it.each([String(futureExpiration), futureExpirationISO])(
       'stores a normalized expiration from %s and signs in',

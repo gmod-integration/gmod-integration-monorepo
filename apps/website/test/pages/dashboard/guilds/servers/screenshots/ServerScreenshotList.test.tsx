@@ -163,12 +163,20 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.tsx', 
     await vi.waitFor(() => expect(screen.getByText('Shot 100')).toBeInTheDocument())
   })
 
-  it('logs an error and stops loading when the fetch response is not ok', async () => {
+  it('shows a failed page, pauses automatic loading and retries only on request', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     ;(fetchAPI as Mock).mockResolvedValue({ ok: false, json: async () => ({}) })
     const { container } = renderPage()
     await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
     expect(container.querySelector('.loading-spinner')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    sentinelNearViewport = true
+    await fireEvent.scroll(window)
+    expect(fetchAPI).toHaveBeenCalledOnce()
+    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson(page([shot({ title: 'Recovered screenshot' })])))
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(screen.getByText('Recovered screenshot')).toBeInTheDocument())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     errorSpy.mockRestore()
   })
 

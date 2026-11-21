@@ -69,6 +69,20 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     expect(screen.getAllByText('Manage')).toHaveLength(2)
   })
 
+  it('filters server cards by name or address while preserving server creation limits', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
+    vi.mocked(fetchAPI).mockResolvedValue(okJson(servers) as Response)
+    renderList()
+    await vi.waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
+    await fireEvent.input(screen.getByRole('searchbox', { name: 'Search servers' }), { target: { value: '5.6.7.8' } })
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
+    expect(screen.getByText('Beta')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create Server' })).toBeDisabled()
+    await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'unknown' } })
+    expect(screen.getByRole('status')).toHaveTextContent('No results match your search.')
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
+  })
+
   it('sets the selected server in localStorage and links to its config page when a card is clicked', async () => {
     ;(fetchAPI as any).mockResolvedValue(okJson(servers))
     const history = renderList()

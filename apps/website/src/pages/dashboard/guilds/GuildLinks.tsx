@@ -1,170 +1,143 @@
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
-import { type Component, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
-import AdminPanel from '../../../components/AdminPanel'
-import AdminModal from '../../../components/AdminModal'
-import { useI18n } from '../../../i18n'
-import { BuyPremiumBtn } from '../../../utils/premium'
-import { fetchAPI } from '../../../utils/api'
-import { LinkValue } from '../../../components/popup/LinkValue'
-import { TextValue } from '../../../components/popup/TextValue'
+import { type Component, createResource, createSignal, For, Show } from 'solid-js'
+import AdminPanel from '../../../components/AdminPanel.js'
+import AdminModal from '../../../components/AdminModal.js'
+import { AsyncState, Button, FormActions, FormField, IconButton, Icon } from '../../../components/ui/index.js'
+import { createAsyncAction } from '../../../hooks/createAsyncAction.js'
+import { useI18n } from '../../../i18n.js'
+import { BuyPremiumBtn } from '../../../utils/premium.js'
+import { fetchAPI } from '../../../utils/api.js'
+import { LinkValue } from '../../../components/popup/LinkValue.js'
+import { TextValue } from '../../../components/popup/TextValue.js'
 
-class Link {
-  id: number
-  alias: string
-  url: string
-  active: boolean
+type Link = { id: number; alias: string; url: string; active: boolean }
+const LINKS_URL = '/users/:discordID/guilds/:guildID/links'
+const emptyLink = (): Link => ({ id: 0, alias: '', url: '', active: false })
 
-  constructor(id: number, alias: string, url: string, active: boolean) {
-    this.id = id
-    this.alias = alias
-    this.url = url
-    this.active = active
-  }
-
-  setActive(active: boolean) {
-    this.active = active
-  }
-
-  setAlias(alias: string) {
-    this.alias = alias
-  }
-
-  setUrl(url: string) {
-    this.url = url
-  }
-
-  getId() {
-    return this.id
-  }
-
-  getAlias() {
-    return this.alias
-  }
-
-  getUrl() {
-    return this.url
-  }
-
-  isActive() {
-    return this.active
-  }
-}
-
-const fetchLinks = async () => {
-  const linksArray: Link[] = []
-  const res = await fetchAPI('/users/:discordID/guilds/:guildID/links', 'GET')
-  if (!res.ok) {
-    return linksArray
-  }
-  const links = await res.json()
-  for (const link of links) {
-    linksArray.push(new Link(link.id, link.alias, link.url, link.active))
-  }
-  return linksArray
+const fetchLinks = async (): Promise<Link[]> => {
+  const response = await fetchAPI(LINKS_URL, 'GET')
+  if (!response.ok) throw new Error('Links request failed')
+  const links: unknown = await response.json()
+  if (!Array.isArray(links)) throw new Error('Invalid links response')
+  return links
 }
 
 const GuildLinks: Component = () => {
-  const [links, { mutate }] = createResource('links', fetchLinks, { initialValue: [] })
-  const [selectedLink, setSelectedLink] = createSignal<Link>(new Link(0, '', '', false))
   const { t } = useI18n()
+  const [links, { mutate, refetch }] = createResource(fetchLinks)
+  const [selectedLink, setSelectedLink] = createSignal<Link>(emptyLink())
+  const [originalLink, setOriginalLink] = createSignal<Link>(emptyLink())
+  const saveAction = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save changes. Try again.') })
+  const listAction = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save changes. Try again.') })
+  const busy = () => saveAction.pending() || listAction.pending()
+  const dirty = () =>
+    selectedLink().alias !== originalLink().alias ||
+    selectedLink().url !== originalLink().url ||
+    selectedLink().active !== originalLink().active
 
-  const deleteLink = async (link: Link) => {
-    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/links/${link.id}`, 'DELETE')
-    if (!res.ok) {
-      return
-    }
-    mutate((prevLinks) => (prevLinks ? prevLinks.filter((l) => l.getId() !== link.getId()) : []))
-    return link
+  const updateDraft = (next: Partial<Link>) => setSelectedLink((previous) => ({ ...previous, ...next }))
+  const discardDraft = () => {
+    if (saveAction.pending()) return
+    setSelectedLink({ ...originalLink() })
+    saveAction.reset()
+  }
+  const cancelEdit = () => {
+    if (saveAction.pending()) return
+    discardDraft()
+    closeDialog('edit_select_link')
+  }
+  const openEditor = (link: Link) => {
+    if (busy()) return
+    saveAction.reset()
+    setOriginalLink({ ...link })
+    setSelectedLink({ ...link })
+    showDialog('edit_select_link')
   }
 
-  const editLink = async (link: Link) => {
-    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/links/${link.id}`, 'PUT', {
-      alias: link.alias,
-      url: link.url,
-      active: link.active,
+  async function saveLink() {
+    if (links.loading || links.error || !dirty()) return
+    const draft = { ...selectedLink() }
+    const saved = await saveAction.run(async () => {
+      const response = await fetchAPI(`${LINKS_URL}/${draft.id}`, 'PUT', {
+        alias: draft.alias,
+        url: draft.url,
+        active: draft.active,
+      })
+      if (!response.ok) throw new Error('Link update failed')
+      const updated: Link = await response.json()
+      mutate((previous) => previous?.map((link) => (link.id === updated.id ? updated : link)))
+      setOriginalLink({ ...updated })
+      setSelectedLink({ ...updated })
     })
-    if (!res.ok) {
-      return
-    }
-    const updatedLink = await res.json()
-    const newLinks = new Link(updatedLink.id, updatedLink.alias, updatedLink.url, updatedLink.active)
-    mutate((prevLinks) => (prevLinks ? prevLinks.map((l) => (l.getId() === newLinks.getId() ? newLinks : l)) : []))
-    return newLinks
+    if (saved) closeDialog('edit_select_link')
   }
 
-  const createLink = async () => {
-    const newLink = await fetchAPI(`/users/:discordID/guilds/:guildID/links`, 'POST')
-    if (!newLink.ok) {
-      return
-    }
-    const link = await newLink.json()
-    const newLinkObj = new Link(link.id, link.alias, link.url, link.active)
-    mutate((prevLinks) => (prevLinks ? [...prevLinks, newLinkObj] : [newLinkObj]))
-    return newLinkObj
+  async function deleteLink(link: Link) {
+    await listAction.run(async () => {
+      const response = await fetchAPI(`${LINKS_URL}/${link.id}`, 'DELETE')
+      if (!response.ok) throw new Error('Link deletion failed')
+      mutate((previous) => previous?.filter((existing) => existing.id !== link.id))
+    })
+  }
+
+  async function createLink() {
+    await listAction.run(async () => {
+      const response = await fetchAPI(LINKS_URL, 'POST')
+      if (!response.ok) throw new Error('Link creation failed')
+      const created: Link = await response.json()
+      mutate((previous) => [...(previous ?? []), created])
+    })
   }
 
   return (
     <>
-      {/*<PremiumFeature message="The free plan only allows you to create 2 links." />*/}
-      <AdminModal title={t('dashboard.guild.links.edit_link', 'Edit Link')} id="edit_select_link">
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.guild.links.alias', 'Alias')}</span>
-          </label>
+      <AdminModal
+        title={t('dashboard.guild.links.edit_link', 'Edit Link')}
+        id="edit_select_link"
+        busy={saveAction.pending()}
+        onClose={discardDraft}
+        onCancel={discardDraft}
+      >
+        <FormField id="link-alias" label={t('dashboard.guild.links.alias', 'Alias')}>
           <input
+            id="link-alias"
             type="text"
-            class="input"
-            disabled={links.loading}
-            value={selectedLink().getAlias()}
-            onInput={(e) => {
-              selectedLink().setAlias(e.currentTarget.value)
-            }}
+            class="input w-full"
+            disabled={links.loading || saveAction.pending()}
+            value={selectedLink().alias}
+            onInput={(event) => updateDraft({ alias: event.currentTarget.value })}
           />
-        </div>
-
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.guild.links.url', 'URL')}</span>
-          </label>
+        </FormField>
+        <FormField id="link-url" label={t('dashboard.guild.links.url', 'URL')}>
           <input
-            type="text"
-            class="input"
-            disabled={links.loading}
-            value={selectedLink().getUrl()}
-            onInput={(e) => {
-              selectedLink().setUrl(e.currentTarget.value)
-            }}
+            id="link-url"
+            type="url"
+            class="input w-full"
+            disabled={links.loading || saveAction.pending()}
+            value={selectedLink().url}
+            onInput={(event) => updateDraft({ url: event.currentTarget.value })}
           />
-        </div>
-
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.guild.links.active', 'Active')}</span>
-          </label>
+        </FormField>
+        <FormField id="link-active" label={t('dashboard.guild.links.active', 'Active')}>
           <select
-            class="select"
-            disabled={links.loading}
-            value={selectedLink().isActive() ? 'true' : 'false'}
-            onChange={(e) => {
-              selectedLink().setActive(e.currentTarget.value === 'true')
-            }}
+            id="link-active"
+            class="select w-full"
+            disabled={links.loading || saveAction.pending()}
+            value={selectedLink().active ? 'true' : 'false'}
+            onChange={(event) => updateDraft({ active: event.currentTarget.value === 'true' })}
           >
             <option value="true">{t('dashboard.guild.links.yes', 'Yes')}</option>
             <option value="false">{t('dashboard.guild.links.no', 'No')}</option>
           </select>
-        </div>
-
-        <button
-          disabled={links.loading}
-          class="btn btn-base-200 mt-2"
-
-          onClick={async () => {
-            closeDialog('edit_select_link')
-            await editLink(selectedLink())
-          }}
-        >
-          {t('dashboard.guild.links.save', 'Save')}
-        </button>
+        </FormField>
+        <FormActions
+          dirty={dirty()}
+          pending={saveAction.pending()}
+          disabled={links.loading || !!links.error}
+          onSave={saveLink}
+          onCancel={cancelEdit}
+          error={saveAction.error()}
+        />
       </AdminModal>
 
       <AdminPanel
@@ -172,96 +145,86 @@ const GuildLinks: Component = () => {
         description={t('dashboard.guild.links.description', 'Create shortcuts for your server informations.')}
         type="none"
       >
-        <table class="table border-b border-base-300 rounded-none">
-          <thead>
-            <tr class="text-l">
-              <th>{t('dashboard.guild.links.alias', 'Alias')}</th>
-              <th>{t('dashboard.guild.links.url', 'URL')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.guild.links.active', 'Active')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.guild.links.actions', 'Actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {/* Bug fix: also gate on !links.error - `links()` is read unguarded below (via
-                <For each={links()}>), and reading a resource accessor while it's in an error
-                state re-throws that error, which crashed the render (leaving it stuck on the
-                loading state forever) and made the `Match when={links.error}` message below
-                unreachable. Mirrors the same fix already applied to ServerPlayers.tsx. */}
-            <Show when={!links.loading && !links.error}>
-              <For each={links()}>
-                {(link) => (
-                  <tr>
-                    <td>
-                      <TextValue value={link.alias} />
-                    </td>
-                    <td>
-                      <LinkValue url={link.url} />
-                    </td>
-                    <td>
-                      <div class="flex gap-2 justify-center">
-                        {link.active ? (
-                          <i class="fa-solid fa-check text-success"></i>
-                        ) : (
-                          <i class="fa-solid fa-times text-error"></i>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div class="flex gap-2 justify-center">
-                        <div class="tooltip tooltip-info" data-tip={t('dashboard.guild.links.edit', 'Edit')}>
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-edit"
-                            onClick={() => {
-                              showDialog('edit_select_link')
-                              setSelectedLink(link)
-                            }}
-                          ></i>
-                        </div>
-                        <div class="tooltip tooltip-error" data-tip={t('dashboard.guild.links.delete', 'Delete')}>
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-trash text-error"
+        <div class="min-w-0 w-full overflow-x-auto">
+          <table class="table border-b border-base-300 rounded-none">
+            <thead>
+              <tr>
+                <th>{t('dashboard.guild.links.alias', 'Alias')}</th>
+                <th>{t('dashboard.guild.links.url', 'URL')}</th>
+                <th class="text-center">{t('dashboard.guild.links.active', 'Active')}</th>
+                <th class="text-center">{t('dashboard.guild.links.actions', 'Actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <Show when={!links.loading && !links.error}>
+                <For each={links()}>
+                  {(link) => (
+                    <tr>
+                      <td>
+                        <TextValue value={link.alias} />
+                      </td>
+                      <td>
+                        <LinkValue url={link.url} />
+                      </td>
+                      <td>
+                        <span
+                          class="flex justify-center"
+                          aria-label={
+                            link.active ? t('dashboard.guild.links.yes', 'Yes') : t('dashboard.guild.links.no', 'No')
+                          }
+                        >
+                          <Icon
+                            name={link.active ? 'check' : 'x'}
+                            class={link.active ? 'text-success' : 'text-error'}
+                            aria-hidden="true"
+                          />
+                        </span>
+                      </td>
+                      <td>
+                        <div class="flex gap-2 justify-center">
+                          <IconButton
+                            label={t('dashboard.guild.links.edit', 'Edit')}
+                            icon="pencil"
+                            disabled={busy()}
+                            onClick={() => openEditor(link)}
+                          />
+                          <IconButton
+                            label={t('dashboard.guild.links.delete', 'Delete')}
+                            icon="trash-2"
+                            variant="danger"
+                            disabled={busy()}
                             onClick={() => deleteLink(link)}
-                          ></i>
+                          />
                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </Show>
-          </tbody>
-        </table>
-
-        <Switch>
-          <Match when={links.loading}>
-            <div class="flex justify-center h-36">
-              <div class="loading loading-spinner loading-lg"></div>
-            </div>
-          </Match>
-          <Match when={links.error}>
-            <div>{t('dashboard.guild.links.failed_to_load', 'Failed to load the links')}</div>
-          </Match>
-        </Switch>
-
-        {/* Bug fix: also gate on !links.error - see the tbody Show above for why reading
-            links() unguarded (via subCondition below) crashes the render when the resource
-            errored. */}
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </Show>
+            </tbody>
+          </table>
+        </div>
+        <AsyncState
+          loading={links.loading}
+          error={!!links.error}
+          empty={!links.loading && !links.error && links()?.length === 0}
+          errorLabel={t('dashboard.guild.links.failed_to_load', 'Failed to load the links')}
+          onRetry={() => void refetch()}
+        />
+        <Show when={listAction.error()}>
+          <p role="alert" class="px-4 text-error">
+            {listAction.error()}
+          </p>
+        </Show>
         <Show when={!links.loading && !links.error}>
           <div class="flex gap-4 p-4">
             <BuyPremiumBtn
-              subCondition={links()?.length < 2}
+              subCondition={(links()?.length ?? 0) < 2}
               btnText={t('dashboard.guild.links.premium', 'Limited to 2 links for free users.')}
-              hidden={links.loading}
             >
-              <button
-                class="btn btn-base-200"
-                disabled={links.loading}
-                onClick={async () => {
-                  await createLink()
-                }}
-              >
+              <Button disabled={busy()} loading={listAction.pending()} onClick={createLink}>
                 {t('dashboard.guild.links.add_link', 'Add Link')}
-              </button>
+              </Button>
             </BuyPremiumBtn>
           </div>
         </Show>

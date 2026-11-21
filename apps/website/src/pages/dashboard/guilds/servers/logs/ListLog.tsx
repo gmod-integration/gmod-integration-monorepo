@@ -1,3 +1,4 @@
+import { Icon } from '../../../../../components/ui/index.js'
 import { Component, createSignal, Match, Show, Switch } from 'solid-js'
 import { useI18n } from '../../../../../i18n'
 import JsonViewer from '../../../../../components/JsonViewer'
@@ -260,10 +261,10 @@ export const AddLogComponent: Component<AddDataProps> = (props) => {
               }}
             >
               <Show when={selectLog() === localIdxLog}>
-                <i class="fa-solid fa-chevron-up"></i>
+                <Icon name="chevron-up" />
               </Show>
               <Show when={selectLog() !== localIdxLog}>
-                <i class="fa-solid fa-chevron-down"></i>
+                <Icon name="chevron-down" />
               </Show>
             </div>
             <div class="tooltip tooltip-info" data-tip={t('dashboard.server.logs.tooltip.download', 'Download')}>
@@ -271,7 +272,7 @@ export const AddLogComponent: Component<AddDataProps> = (props) => {
                 href={`data:text/plain;charset=utf-8,${encodeURIComponent(logContentStr.join('\n'))}`}
                 download={`${t('dashboard.server.logs.log_filename_prefix', 'log-')}${props.createAt.toLocaleString()}.json`}
               >
-                <i class="fa-solid fa-download"></i>
+                <Icon name="download" />
               </a>
             </div>
           </div>

@@ -93,12 +93,32 @@ function openUserMenu() {
 }
 
 describe('Header navigation', () => {
+  it('opens public navigation and closes it with Escape or a link selection', () => {
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+    const toggle = screen.getByRole('button', { name: 'Toggle navigation' })
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    const language = screen.getByRole('button', { name: 'Language' })
+    fireEvent.click(language)
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(language).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(toggle)
+    expect(language).toHaveAttribute('aria-expanded', 'false')
+    screen.getByRole('link', { name: 'Premium' }).focus()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveFocus()
+    fireEvent.click(toggle)
+    fireEvent.click(screen.getByRole('link', { name: 'Premium' }))
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  })
   it('provides the brand, main destinations and sign-in link when logged out', () => {
     const fetchMock = makeFetchMock()
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(() => <Header />)
 
-    expect(screen.getByAltText('logo')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Gmod Integration' }).querySelector('img')).toHaveAttribute('alt', '')
     expect(screen.getByRole('link', { name: 'Gmod Integration' })).toHaveAttribute('href', '/')
     const navigation = screen.getByRole('navigation', { name: 'Main navigation' })
     for (const [name, href] of [
@@ -113,7 +133,7 @@ describe('Header navigation', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('offers all nine languages in the original flag dropdown', () => {
+  it('offers all nine languages in the language dropdown', () => {
     vi.stubGlobal('fetch', makeFetchMock())
     const { container } = renderWithProviders(() => <Header />)
     const selector = screen.getByRole('button', { name: 'Language' })
@@ -134,7 +154,7 @@ describe('Header navigation', () => {
       'Русский',
       'Türkçe',
     ])
-    expect(selector.querySelector('img')).toHaveAttribute('src', 'https://flagcdn.com/20x15/gb.png')
+    expect(selector.querySelector('svg[data-icon="globe"]')).toBeInTheDocument()
   })
 
   it('switches the visible navigation language without reloading or losing the selected community', () => {
@@ -152,6 +172,7 @@ describe('Header navigation', () => {
     expect(window.localStorage.getItem('guilds')).toBe(JSON.stringify({ id: 'g1' }))
     expect(reloadSpy).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Langue' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: 'Langue' })).toHaveFocus()
   })
 
   it('closes the language dropdown with Escape, outside clicks and when opening the user menu', () => {
@@ -161,8 +182,10 @@ describe('Header navigation', () => {
     const toggle = screen.getByRole('button', { name: 'Language' })
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    screen.getByRole('button', { name: 'Français' }).focus()
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveFocus()
     fireEvent.click(toggle)
     fireEvent.mouseDown(document.body)
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
@@ -237,6 +260,17 @@ describe('Header authentication bootstrap', () => {
     expect(JSON.parse(window.localStorage.getItem('discordUser')!)).toMatchObject({ id: 'd1', globalName: 'Bobby' })
     expect(initWebSocket).toHaveBeenCalledTimes(1)
     expect(screen.getByAltText('Discord avatar')).toHaveAttribute('src', 'https://cdn/b.png')
+  })
+
+  it('keeps the account button named when its avatar is missing and the visible name is hidden on mobile', () => {
+    setValidAuth({ user: { id: 'd1', username: 'bob', globalName: 'Bobby' } })
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+    const trigger = screen.getByRole('button', { name: 'Bobby' })
+    expect(trigger).toHaveAttribute('aria-label', 'Bobby')
+    expect(screen.queryByAltText('Discord avatar')).not.toBeInTheDocument()
+    fireEvent.click(trigger)
+    expect(trigger).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('restores an existing session cached with a millisecond expiration and migrates it to ISO', () => {

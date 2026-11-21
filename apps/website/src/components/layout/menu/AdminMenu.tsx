@@ -1,6 +1,7 @@
 import { createSignal, createUniqueId, For, Show, type Component } from 'solid-js'
 import { A, useLocation } from '@solidjs/router'
 import { useI18n } from '../../../i18n.js'
+import { Icon, type IconName } from '../../ui/index.js'
 
 export const AdminMenu: Component = () => {
   const { t } = useI18n()
@@ -15,8 +16,9 @@ export const AdminMenu: Component = () => {
       }
     })(),
   )
+  const [mobileOpen, setMobileOpen] = createSignal(false)
   const [hoverExpand, setHoverExpand] = createSignal(false)
-  const expanded = () => !onlyShowEmoji() || hoverExpand()
+  const expanded = () => !onlyShowEmoji() || hoverExpand() || mobileOpen()
   const toggleCollapsed = () => {
     const next = !onlyShowEmoji()
     setOnlyShowEmoji(next)
@@ -26,83 +28,91 @@ export const AdminMenu: Component = () => {
       // The menu still works when browser storage is unavailable.
     }
   }
-  const links = () => [
+  const links = (): { label: string; icon: IconName; url: string }[] => [
     {
       label: t('dashboard.menu.admin.information', 'Information'),
-      emoji: 'fa-info',
+      icon: 'info',
       url: '/dashboard/admins/informations',
     },
-    { label: t('main.guilds', 'Guilds'), emoji: 'fa-server', url: '/dashboard/admins/guilds' },
+    { label: t('main.guilds', 'Guilds'), icon: 'server', url: '/dashboard/admins/guilds' },
     {
       label: t('dashboard.menu.admin.impersonate', 'Impersonate'),
-      emoji: 'fa-user-secret',
+      icon: 'user-round-cog',
       url: '/dashboard/admins/impersonate',
     },
   ]
 
   return (
-    <>
-      <aside
-        class="flex flex-col p-4 gap-2"
-        classList={{ 'min-w-[240px]': expanded() }}
-        onMouseEnter={() => setHoverExpand(true)}
-        onMouseLeave={() => setHoverExpand(false)}
-      >
-        <div class="flex items-center p-2 gap-4">
-          <div class="flex justify-center items-center min-w-6 min-h-6">
-            <i aria-hidden="true" class="fa-solid fa-screwdriver-wrench" />
+    <aside
+      class="dashboard-sidebar"
+      data-collapsed={!expanded()}
+      data-mobile-open={mobileOpen()}
+      onMouseEnter={() => setHoverExpand(true)}
+      onMouseLeave={() => setHoverExpand(false)}
+    >
+      <div class="dashboard-context">
+        <span class="dashboard-context-icon">
+          <Icon name="wrench" size={20} />
+        </span>
+        <Show when={expanded()}>
+          <div class="min-w-0 flex-1">
+            <span class="dashboard-context-label">Gmod Integration</span>
+            <strong class="dashboard-context-name">{t('dashboard.menu.admin.title', 'Admin')}</strong>
           </div>
-          <Show when={expanded()}>{t('dashboard.menu.admin.title', 'Admin')}</Show>
-        </div>
-        <hr class="border border-base-200" />
-        <nav id={navigationId} aria-label={t('dashboard.menu.admin.title', 'Admin')} class="contents">
+        </Show>
+        <button
+          type="button"
+          class="dashboard-mobile-toggle"
+          aria-label={t('ui.toggle_navigation', 'Toggle navigation')}
+          aria-controls={navigationId}
+          aria-expanded={mobileOpen()}
+          onClick={() => setMobileOpen(!mobileOpen())}
+        >
+          <Icon name={mobileOpen() ? 'x' : 'menu'} size={20} />
+        </button>
+      </div>
+      <nav id={navigationId} aria-label={t('dashboard.menu.admin.title', 'Admin')} class="dashboard-navigation">
+        <div class="dashboard-nav-group">
+          <Show when={expanded()}>
+            <p class="dashboard-nav-group-title">{t('dashboard.ui.overview', 'Overview')}</p>
+          </Show>
           <For each={links()}>
             {(link) => (
               <A
                 href={link.url}
-                class="flex items-center gap-4 p-2 rounded-md"
-                classList={{ 'bg-base-200': location.pathname === link.url }}
+                class="dashboard-nav-item"
+                classList={{ 'is-active': location.pathname === link.url }}
                 aria-label={link.label}
                 aria-current={location.pathname === link.url ? 'page' : undefined}
                 title={onlyShowEmoji() ? link.label : undefined}
+                onClick={() => setMobileOpen(false)}
               >
-                <div class="flex justify-center items-center min-w-6 min-h-6">
-                  <i aria-hidden="true" class={`fa-solid ${link.emoji}`} />
-                </div>
+                <Icon name={link.icon} size={18} />
                 <Show when={expanded()}>
-                  <span>{link.label}</span>
+                  <span class="dashboard-nav-label">{link.label}</span>
                 </Show>
               </A>
             )}
           </For>
-        </nav>
-        <div class="flex flex-col mt-auto">
-          <hr class="border border-base-200 mb-4" />
-          <button
-            type="button"
-            class="flex items-center p-2 gap-4 hover:font-bold text-left"
-            aria-label={
-              onlyShowEmoji() ? t('dashboard.menu.expand', 'Expand') : t('dashboard.menu.collapse', 'Collapse')
-            }
-            aria-controls={navigationId}
-            aria-expanded={expanded()}
-            onClick={toggleCollapsed}
-          >
-            <div class="flex justify-center items-center min-w-6 min-h-6">
-              <i
-                aria-hidden="true"
-                class={`fa-solid ${onlyShowEmoji() ? 'fa-angle-double-right' : 'fa-angle-double-left'}`}
-              />
-            </div>
-            <Show when={expanded()}>
-              <span>
-                {onlyShowEmoji() ? t('dashboard.menu.expand', 'Expand') : t('dashboard.menu.collapse', 'Collapse')}
-              </span>
-            </Show>
-          </button>
         </div>
-      </aside>
-      <div class="border border-base-200" />
-    </>
+      </nav>
+      <div class="dashboard-sidebar-footer">
+        <button
+          type="button"
+          class="dashboard-nav-collapse"
+          aria-label={onlyShowEmoji() ? t('dashboard.menu.expand', 'Expand') : t('dashboard.menu.collapse', 'Collapse')}
+          aria-controls={navigationId}
+          aria-expanded={expanded()}
+          onClick={toggleCollapsed}
+        >
+          <Icon name={onlyShowEmoji() ? 'panel-left-open' : 'panel-left-close'} size={18} />
+          <Show when={expanded()}>
+            <span>
+              {onlyShowEmoji() ? t('dashboard.menu.expand', 'Expand') : t('dashboard.menu.collapse', 'Collapse')}
+            </span>
+          </Show>
+        </button>
+      </div>
+    </aside>
   )
 }

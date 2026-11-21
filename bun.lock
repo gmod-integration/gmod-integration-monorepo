@@ -153,6 +153,7 @@
         "d3": "^7.9.0",
         "emoji-picker-element": "^1.29.1",
         "highlight.js": "^11.11.1",
+        "lucide-solid": "^1.77.0",
         "prettier": "^3.8.1",
         "solid-js": "^1.9.20",
       },
@@ -2845,6 +2846,8 @@
     "lru-cache": ["lru-cache@11.5.1", "", {}, "sha512-RPimw/7aMdv2oqRrxKwvZXcPfwBrn/JZ2xYcY9Hus/6LaS3VOAKVWKWgNLCFSiOm1ESXinjsDlidVU7JlnCN2A=="],
 
     "lru.min": ["lru.min@1.1.4", "", {}, "sha512-DqC6n3QQ77zdFpCMASA1a3Jlb64Hv2N2DciFGkO/4L9+q/IpIAuRlKOvCXabtRW6cQf8usbmM6BE/TOPysCdIA=="],
+
+    "lucide-solid": ["lucide-solid@1.77.0", "", { "peerDependencies": { "solid-js": "^1.4.7" } }, "sha512-VHbTICLAwYdSbhlLJp1mEfOS1gjWL8MEXyGbqgh4oFd/si6RTBCM4B8B8D3T5ag2fDUJtUr2xEVJq4zdFSt0og=="],
 
     "luxon": ["luxon@3.7.2", "", {}, "sha512-vtEhXh/gNjI9Yg1u4jX/0YVPMvxzHuGgCm6tC5kZyb08yjGWGnqAjGJvcXbqQR2P3MyMEFnRbpcdFS6PBcLqew=="],
 

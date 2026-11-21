@@ -41,6 +41,7 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshots.tsx', () 
   it('renders both the parameters panel and the screenshot list together', async () => {
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('Select Channel')).toBeInTheDocument())
-    await vi.waitFor(() => expect(screen.getByText('End of List')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.'))
+    expect(screen.queryByText('End of List')).not.toBeInTheDocument()
   })
 })

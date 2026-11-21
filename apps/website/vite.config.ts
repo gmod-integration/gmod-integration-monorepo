@@ -32,6 +32,11 @@ export default defineConfig(() => {
     build: {
       target: 'esnext',
       sourcemap: true,
+      rollupOptions: {
+        output: {
+          manualChunks: (id) => (id.includes('/node_modules/lucide-solid/') ? 'lucide-icons' : undefined),
+        },
+      },
     },
     plugins: [
       solidPlugin({

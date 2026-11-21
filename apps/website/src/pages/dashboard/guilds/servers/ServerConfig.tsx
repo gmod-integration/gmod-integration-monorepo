@@ -1,4 +1,14 @@
-import { Component, createResource, createSignal, For, Index, Show } from 'solid-js'
+import {
+  AsyncState,
+  Button,
+  Icon,
+  IconButton,
+  SettingGroup,
+  SettingRow,
+  type IconName,
+} from '../../../../components/ui/index.js'
+import { createAsyncAction } from '../../../../hooks/createAsyncAction.js'
+import { batch, type Component, createResource, createSignal, For, Index, onCleanup, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel'
 import { useI18n } from '../../../../i18n'
 import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket'
@@ -6,15 +16,18 @@ import { fetchAPI } from '../../../../utils/api'
 import { createStore } from 'solid-js/store'
 
 const ServerConfig: Component = () => {
-  const { t } = useI18n()
-  const [debounceTimers, setDebounceTimers] = createSignal<Record<string, NodeJS.Timeout>>({})
+  const { t, locale } = useI18n()
+  const [search, setSearch] = createSignal('')
+  const [category, setCategory] = createSignal('all')
+  const debounceTimers: Record<string, ReturnType<typeof setTimeout>> = {}
+  const confirmed = new Map<string, unknown>()
+  const attempted = new Map<string, unknown>()
 
   // Store to hold fetched config values
   const [config, setConfig] = createStore<Record<string, unknown>>({})
 
   // Intermediate state for admin rank list - maintains array representation
   const [adminRankList, setAdminRankList] = createSignal<string[]>([])
-  const [adminRankListDebounce, setAdminRankListDebounce] = createSignal<NodeJS.Timeout | null>(null)
 
   const isBooleanOption = (info: { acceptedValues: unknown }) =>
     Array.isArray(info.acceptedValues) &&
@@ -147,14 +160,106 @@ const ServerConfig: Component = () => {
     },
   }
 
-  const [serverConfig] = createResource('serverConfig', async () => {
+  type SettingKey = keyof typeof configInfo
+  type SettingCategory = {
+    id: string
+    titleKey: string
+    title: string
+    descriptionKey: string
+    description: string
+    icon: IconName
+    keys: SettingKey[]
+    advanced?: boolean
+  }
+  const categories: SettingCategory[] = [
+    {
+      id: 'general',
+      titleKey: 'settings.general',
+      title: 'General',
+      descriptionKey: 'settings.general_description',
+      description: 'Language and support information shown to players.',
+      icon: 'globe',
+      keys: ['ig_language', 'ig_supportLink'],
+    },
+    {
+      id: 'access',
+      titleKey: 'settings.access',
+      title: 'Access and verification',
+      descriptionKey: 'settings.access_description',
+      description: 'Choose how players link their accounts and are verified when joining.',
+      icon: 'shield-check',
+      keys: ['ig_forcePlayerLink', 'ig_verifyOnJoin', 'ig_verifyOnReadyKickTime', 'ig_verifyFamilySharing'],
+    },
+    {
+      id: 'moderation',
+      titleKey: 'settings.moderation',
+      title: 'Moderation',
+      descriptionKey: 'settings.moderation_description',
+      description: 'Synchronize sanctions between Discord and the game server.',
+      icon: 'ban',
+      keys: ['ig_syncBan', 'ig_syncTimeout', 'ig_syncKick', 'ig_filterOnBan'],
+    },
+    {
+      id: 'administration',
+      titleKey: 'settings.administration',
+      title: 'Administration',
+      descriptionKey: 'settings.administration_description',
+      description: 'Manage administrator access and maintenance mode.',
+      icon: 'user-round-cog',
+      keys: ['ig_maintenance', 'ig_adminRank'],
+    },
+    {
+      id: 'advanced',
+      titleKey: 'settings.advanced',
+      title: 'Advanced settings',
+      descriptionKey: 'settings.advanced_description',
+      description: 'Client compatibility, troubleshooting and log formatting.',
+      icon: 'sliders-horizontal',
+      keys: ['ig_clientBranch', 'ig_debug', 'ig_redownloadMaterials', 'ig_logTimestamp'],
+      advanced: true,
+    },
+  ]
+  const normalizeSearch = (value: string) =>
+    value
+      .toLocaleLowerCase(locale())
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+  const matchingKeys = (group: SettingCategory) =>
+    group.keys.filter((key) => {
+      const query = normalizeSearch(search().trim())
+      return (
+        !query ||
+        normalizeSearch(
+          [
+            t(configInfo[key].labelKey, key),
+            t(configInfo[key].descriptionKey, ''),
+            t(group.titleKey, group.title),
+          ].join(' '),
+        ).includes(query)
+      )
+    })
+  const visibleCategories = () =>
+    categories.filter((group) => (category() === 'all' || category() === group.id) && matchingKeys(group).length > 0)
+  const visibleCount = () => visibleCategories().reduce((total, group) => total + matchingKeys(group).length, 0)
+  const resetFilters = () => {
+    setSearch('')
+    setCategory('all')
+  }
+
+  const actions = Object.fromEntries(
+    Object.keys(configInfo).map((key) => [
+      key,
+      createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save the changes.') }),
+    ]),
+  )
+
+  const [serverConfig, { refetch }] = createResource('serverConfig', async () => {
     return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/config', 'GET').then(async (res) => {
       if (!res.ok)
         throw new Error(
           t('dashboard.server.config.error_occurred', 'An error occurred while fetching the server configuration.'),
         )
       const data = await res.json()
-      console.log('Fetched config:', data)
 
       // Update store with fetched config - extract settings from nested structure
       const settings = data?.settings || {}
@@ -172,6 +277,9 @@ const ServerConfig: Component = () => {
         }
       }
 
+      for (const [key, info] of Object.entries(configInfo)) {
+        confirmed.set(key, structuredClone(settings[key] ?? info.defaultValue))
+      }
       setConfig(settings)
 
       // Initialize admin rank list from the fetched config
@@ -185,228 +293,342 @@ const ServerConfig: Component = () => {
     })
   })
 
-  function updateSetting(setting: string, value: unknown) {
-    // Debug log to check what's being sent
-    console.log(`Updating ${setting}:`, value, typeof value)
-
-    // Convert object values to JSON strings for objects like adminRank
-    let sendValue: unknown = value
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      sendValue = JSON.stringify(value)
-    }
-
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/settings/${setting}`, 'PUT', {
-      value: sendValue,
+  function assignValue(setting: string, value: unknown) {
+    batch(() => {
+      // Replace object settings as well as scalars, so deleted rank keys cannot survive a merge.
+      setConfig(setting, undefined)
+      setConfig(setting, structuredClone(value))
     })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the setting.')
-        }
-      })
-      .then((data) => {
-        console.log(`Received response for ${setting}:`, data)
-        let value = data.value
-        // Parse stringified objects back
-        if (typeof value === 'string' && (value.startsWith('{') || value === '[object Object]')) {
-          try {
-            value = JSON.parse(value)
-          } catch {
-            // Keep as string if parsing fails
-          }
-        }
-        setConfig(setting, value)
-      })
-      .catch((error) => console.error(error))
   }
 
-  function updateAdminRank(newList: string[]) {
-    // Update the intermediate state
-    setAdminRankList(newList)
+  function restoreRankList(value: unknown) {
+    const ranks = value && typeof value === 'object' ? value : { superadmin: true }
+    setAdminRankList(
+      Object.keys(ranks)
+        .filter((rank) => !rank.startsWith('__empty_'))
+        .sort(),
+    )
+  }
 
-    // Clear existing debounce timer
-    const existingTimer = adminRankListDebounce()
-    if (existingTimer) {
-      clearTimeout(existingTimer)
-    }
-
-    // Set new debounce timer for API update
-    const newTimer = setTimeout(() => {
-      // Clean empty values before converting to object
-      const cleanedList = newList.map((rank) => rank.trim()).filter((rank) => rank.length > 0)
-
-      // Convert to object format
-      const adminRankObject = cleanedList.reduce(
-        (acc, rank) => {
-          acc[rank] = true
-          return acc
-        },
-        {} as Record<string, boolean>,
+  async function updateSetting(setting: string, value: unknown) {
+    const action = actions[setting]
+    if (action.pending() || serverConfig.loading || serverConfig.error) return
+    clearTimeout(debounceTimers[setting])
+    delete debounceTimers[setting]
+    const snapshot = structuredClone(value)
+    attempted.set(setting, snapshot)
+    assignValue(setting, snapshot)
+    const saved = await action.run(async () => {
+      const sendValue =
+        typeof snapshot === 'object' && snapshot !== null && !Array.isArray(snapshot)
+          ? JSON.stringify(snapshot)
+          : snapshot
+      const response = await fetchAPI(
+        `/users/:discordID/guilds/:guildID/servers/:serverID/settings/${setting}`,
+        'PUT',
+        { value: sendValue },
       )
-
-      // Update config store with the object representation
-      setConfig('ig_adminRank', adminRankObject)
-
-      // Send to server
-      updateSetting('ig_adminRank', adminRankObject)
-    }, 500)
-
-    setAdminRankListDebounce(newTimer)
+      if (!response.ok) throw new Error('Setting update failed')
+      const data = await response.json()
+      let accepted = data && typeof data === 'object' && 'value' in data ? data.value : snapshot
+      if (typeof accepted === 'string' && (accepted.startsWith('{') || accepted === '[object Object]')) {
+        try {
+          accepted = JSON.parse(accepted)
+        } catch {
+          /* Keep non-JSON strings unchanged. */
+        }
+      }
+      confirmed.set(setting, structuredClone(accepted))
+      assignValue(setting, accepted)
+      if (setting === 'ig_adminRank') restoreRankList(accepted)
+    })
+    if (!saved) {
+      const previous = confirmed.get(setting)
+      assignValue(setting, previous)
+      if (setting === 'ig_adminRank') restoreRankList(previous)
+    }
   }
 
   function debouncedUpdateSetting(setting: string, value: unknown) {
-    // Clear existing timer for this setting
-    const timers = debounceTimers()
-    if (timers[setting]) {
-      clearTimeout(timers[setting])
-    }
+    if (actions[setting].pending()) return
+    actions[setting].reset()
+    clearTimeout(debounceTimers[setting])
+    assignValue(setting, value)
+    debounceTimers[setting] = setTimeout(() => {
+      delete debounceTimers[setting]
+      void updateSetting(setting, value)
+    }, 500)
+  }
 
-    // Update local state immediately for UI responsiveness
-    setConfig(setting, value)
+  function updateAdminRank(newList: string[]) {
+    if (actions.ig_adminRank.pending()) return
+    setAdminRankList(newList)
+    const value = newList
+      .map((rank) => rank.trim())
+      .filter(Boolean)
+      .reduce(
+        (ranks, rank) => {
+          ranks[rank] = true
+          return ranks
+        },
+        {} as Record<string, boolean>,
+      )
+    debouncedUpdateSetting('ig_adminRank', value)
+  }
 
-    // Set new timer
-    const newTimer = setTimeout(() => {
-      updateSetting(setting, value)
-    }, 500) // 500ms debounce
+  onCleanup(() => Object.values(debounceTimers).forEach(clearTimeout))
 
-    // Save the new timer
-    setDebounceTimers({
-      ...timers,
-      [setting]: newTimer,
-    })
+  const renderSetting = (key: SettingKey) => {
+    const info = configInfo[key]
+    const descriptionId = `${key}-description`
+    return (
+      <SettingRow
+        controlId={key === 'ig_adminRank' ? undefined : key}
+        title={t(info.labelKey, key)}
+        description={
+          <>
+            <span>{t(info.descriptionKey, '')}</span>
+            <Show when={key === 'ig_verifyOnJoin'}>
+              <p class="settings-dependency">
+                <Icon name="info" size={13} />
+                {t('settings.verification_dependency', 'This check applies when forced account linking is enabled.')}
+              </p>
+            </Show>
+            <Show when={key === 'ig_verifyOnReadyKickTime'}>
+              <p class="settings-dependency">
+                <Icon name="info" size={13} />
+                {t(
+                  'settings.kick_delay_dependency',
+                  'Account-link kicks require forced linking. Client-branch checks also use this delay, or 600 seconds when it is set to 0.',
+                )}
+              </p>
+            </Show>
+          </>
+        }
+        feedback={
+          <>
+            <Show when={actions[key].pending()}>
+              <p role="status" class="text-sm text-base-content/65">
+                {t('ui.loading', 'Loading…')}
+              </p>
+            </Show>
+            <Show when={actions[key].error()}>
+              <div role="alert" class="flex flex-wrap items-center gap-2 text-sm text-error">
+                <span>{actions[key].error()}</span>
+                <Button size="sm" onClick={() => void updateSetting(key, attempted.get(key))}>
+                  {t('ui.retry', 'Try again')}
+                </Button>
+              </div>
+            </Show>
+            <Show when={actions[key].success()}>
+              <p role="status" class="text-sm text-success">
+                {t('ui.saved', 'Saved')}
+              </p>
+            </Show>
+          </>
+        }
+      >
+        <Show
+          when={key === 'ig_adminRank'}
+          fallback={
+            <Show
+              when={info.acceptedValues && Array.isArray(info.acceptedValues)}
+              fallback={
+                <input
+                  type={key === 'ig_verifyOnReadyKickTime' ? 'number' : key === 'ig_supportLink' ? 'url' : 'text'}
+                  min={key === 'ig_verifyOnReadyKickTime' ? 0 : undefined}
+                  step={key === 'ig_verifyOnReadyKickTime' ? 1 : undefined}
+                  id={key}
+                  aria-describedby={descriptionId}
+                  class="input w-full"
+                  value={String(config[key] ?? info.defaultValue ?? '')}
+                  disabled={serverConfig.loading || !!serverConfig.error || actions[key].pending()}
+                  onInput={(e) => debouncedUpdateSetting(key, e.currentTarget.value)}
+                />
+              }
+            >
+              <Show
+                when={isBooleanOption(info)}
+                fallback={
+                  <select
+                    id={key}
+                    aria-describedby={descriptionId}
+                    class="select w-full"
+                    value={String(config[key] ?? info.defaultValue ?? '')}
+                    disabled={serverConfig.loading || !!serverConfig.error || actions[key].pending()}
+                    onChange={(e) => {
+                      const value = e.currentTarget.value
+                      updateSetting(key, value === 'true' ? true : value === 'false' ? false : value)
+                    }}
+                  >
+                    <For each={info.acceptedValues!}>{(val) => <option value={String(val)}>{String(val)}</option>}</For>
+                  </select>
+                }
+              >
+                <input
+                  type="checkbox"
+                  id={key}
+                  aria-describedby={descriptionId}
+                  class="toggle toggle-md"
+                  checked={Boolean(config[key] ?? info.defaultValue)}
+                  disabled={serverConfig.loading || !!serverConfig.error || actions[key].pending()}
+                  onChange={(e) => void updateSetting(key, e.currentTarget.checked)}
+                />
+              </Show>
+            </Show>
+          }
+        >
+          <div class="settings-ranks">
+            <Index each={adminRankList()}>
+              {(rank, index) => (
+                <div class="flex items-center gap-2">
+                  <input
+                    type="text"
+                    class="input w-full"
+                    aria-label={`${t(info.labelKey, key)} ${index + 1}`}
+                    value={rank()}
+                    disabled={serverConfig.loading || !!serverConfig.error || actions[key].pending()}
+                    onInput={(e) => {
+                      const newList = [...adminRankList()]
+                      newList[index] = e.currentTarget.value
+                      updateAdminRank(newList)
+                    }}
+                  />
+                  <IconButton
+                    variant="ghost"
+                    size="sm"
+                    label={t('ui.remove', 'Remove')}
+                    icon="x"
+                    disabled={serverConfig.loading || !!serverConfig.error || actions[key].pending()}
+                    onClick={() => updateAdminRank(adminRankList().filter((_, i) => i !== index))}
+                  />
+                </div>
+              )}
+            </Index>
+            <Button
+              size="sm"
+              class="w-fit"
+              disabled={serverConfig.loading || !!serverConfig.error || actions[key].pending()}
+              onClick={() => setAdminRankList([...adminRankList(), ''])}
+            >
+              {t('dashboard.server.config.add_admin_rank', 'Add rank')}
+            </Button>
+          </div>
+        </Show>
+        <details class="settings-default">
+          <summary>{t('dashboard.server.config.default', 'Default')}</summary>
+          <code>
+            {typeof info.defaultValue === 'object'
+              ? JSON.stringify(info.defaultValue)
+              : String(info.defaultValue === '' ? '—' : info.defaultValue)}
+          </code>
+        </details>
+      </SettingRow>
+    )
   }
 
   return (
     <>
       <NeedWebsocket />
-
       <AdminPanel
         title={t('dashboard.server.config.title', 'Configuration')}
         type="none"
         description={t('dashboard.server.config.description', 'Manage the in game configuration of this server.')}
       >
-        <div class="flex flex-col">
-          <For each={Object.entries(configInfo)}>
-            {([key, info]) => (
-              <div class="flex flex-col gap-2 p-4 border-b border-base-200/30 s">
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col w-1/2">
-                    <span class="font-medium">{t(info.labelKey, key)}</span>
-                    <span class="text-xs text-base-content/60">{t(info.descriptionKey, '')}</span>
-                  </div>
-                  <div class="flex items-center gap-4 w-1/2">
-                    <Show
-                      when={key === 'ig_adminRank'}
-                      fallback={
-                        <Show
-                          when={info.acceptedValues && Array.isArray(info.acceptedValues)}
-                          fallback={
-                            <input
-                              type="text"
-                              id={key}
-                              class="input"
-                              value={String(config[key] ?? info.defaultValue ?? '')}
-                              disabled={serverConfig.loading}
-                              onInput={(e) => {
-                                const newValue = e.currentTarget.value
-                                debouncedUpdateSetting(key, newValue)
-                              }}
-                            />
-                          }
-                        >
-                          <Show
-                            when={isBooleanOption(info)}
-                            fallback={
-                              <select
-                                id={key}
-                                class="select"
-                                value={String(config[key] ?? info.defaultValue ?? '')}
-                                disabled={serverConfig.loading}
-                                onChange={(e) => {
-                                  const value = e.currentTarget.value
-                                  let parsedValue: any = value
-                                  if (value === 'true') parsedValue = true
-                                  else if (value === 'false') parsedValue = false
-                                  updateSetting(key, parsedValue)
-                                }}
-                              >
-                                <For each={info.acceptedValues!}>
-                                  {(val) => (
-                                    <option value={String(val)} selected={config[key] === val}>
-                                      {String(val)}
-                                    </option>
-                                  )}
-                                </For>
-                              </select>
-                            }
-                          >
-                            <input
-                              type="checkbox"
-                              class="toggle toggle-md"
-                              checked={Boolean(config[key] ?? info.defaultValue)}
-                              disabled={serverConfig.loading}
-                              onChange={(e) => {
-                                updateSetting(key, e.currentTarget.checked)
-                              }}
-                            />
-                          </Show>
-                        </Show>
-                      }
-                    >
-                      <div class="flex flex-col gap-2">
-                        <Index each={adminRankList()}>
-                          {(rank, index) => (
-                            <div class="flex items-center gap-2">
-                              <input
-                                type="text"
-                                class="input w-full"
-                                value={rank()}
-                                disabled={serverConfig.loading}
-                                onInput={(e) => {
-                                  const newList = [...adminRankList()]
-                                  newList[index] = e.currentTarget.value
-                                  updateAdminRank(newList)
-                                }}
-                              />
-                              <button
-                                class="btn btn-ghost btn-sm"
-                                disabled={serverConfig.loading}
-                                onClick={() => {
-                                  const newList = adminRankList().filter((_, i) => i !== index)
-                                  updateAdminRank(newList)
-                                }}
-                              >
-                                <i class="fa-solid fa-xmark"></i>
-                              </button>
-                            </div>
-                          )}
-                        </Index>
-                        <button
-                          class="btn btn-base-200 btn-sm w-fit"
-                          disabled={serverConfig.loading}
-                          onClick={() => {
-                            setAdminRankList([...adminRankList(), ''])
-                          }}
-                        >
-                          {t('dashboard.server.config.add_admin_rank', 'Add rank')}
-                        </button>
-                      </div>
-                    </Show>
-                  </div>
-                </div>
-                <span class="text-xs text-base-content/60">
-                  {t('dashboard.server.config.default', 'Default')}:{' '}
-                  {key === 'ig_adminRank'
-                    ? JSON.stringify(info.defaultValue)
-                    : typeof info.defaultValue === 'object'
-                      ? JSON.stringify(info.defaultValue)
-                      : String(info.defaultValue)}
-                </span>
-              </div>
+        <div class="settings-browser">
+          <div class="settings-toolbar">
+            <label class="settings-search">
+              <Icon name="search" size={17} />
+              <span class="sr-only">{t('settings.search', 'Search settings')}</span>
+              <input
+                type="search"
+                class="input w-full"
+                placeholder={t('settings.search_placeholder', 'Search by name or description…')}
+                value={search()}
+                onInput={(event) => setSearch(event.currentTarget.value)}
+              />
+            </label>
+            <p class="settings-autosave">
+              <Icon name="circle-check" size={15} />
+              {t('ui.autosave', 'Changes are saved automatically.')}
+            </p>
+          </div>
+          <div class="settings-categories" role="group" aria-label={t('settings.categories', 'Setting categories')}>
+            <Button
+              size="sm"
+              variant="ghost"
+              class="settings-category"
+              aria-pressed={category() === 'all'}
+              onClick={() => setCategory('all')}
+            >
+              {t('settings.all', 'All settings')}
+              <span>{Object.keys(configInfo).length}</span>
+            </Button>
+            <For each={categories}>
+              {(group) => (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  class="settings-category"
+                  aria-pressed={category() === group.id}
+                  onClick={() => setCategory(group.id)}
+                >
+                  <Icon name={group.icon} size={15} />
+                  {t(group.titleKey, group.title)}
+                  <span>{group.keys.length}</span>
+                </Button>
+              )}
+            </For>
+          </div>
+          <p class="settings-results" aria-live="polite">
+            {visibleCount()} {t('settings.results', 'settings shown')}
+          </p>
+        </div>
+        <AsyncState loading={serverConfig.loading} error={serverConfig.error} onRetry={() => void refetch()} />
+        <Show
+          when={visibleCount() > 0}
+          fallback={
+            <div class="settings-empty">
+              <Icon name="search" size={25} />
+              <p>{t('settings.no_results', 'No settings match your search in this category.')}</p>
+              <Button size="sm" onClick={resetFilters}>
+                {t('settings.reset_filters', 'Reset filters')}
+              </Button>
+            </div>
+          }
+        >
+          <For each={visibleCategories()}>
+            {(group) => (
+              <Show
+                when={!group.advanced}
+                fallback={
+                  <details class="settings-advanced" open={!!search().trim() || category() === 'advanced'}>
+                    <summary>
+                      <Icon name={group.icon} />
+                      <span>
+                        <strong>{t(group.titleKey, group.title)}</strong>
+                        <span>{t(group.descriptionKey, group.description)}</span>
+                      </span>
+                      <Icon name="chevron-down" size={16} />
+                    </summary>
+                    <div class="settings-advanced-content">
+                      <For each={matchingKeys(group)}>{(key) => renderSetting(key)}</For>
+                    </div>
+                  </details>
+                }
+              >
+                <SettingGroup
+                  id={`config-${group.id}`}
+                  title={t(group.titleKey, group.title)}
+                  description={t(group.descriptionKey, group.description)}
+                  icon={group.icon}
+                >
+                  <For each={matchingKeys(group)}>{(key) => renderSetting(key)}</For>
+                </SettingGroup>
+              </Show>
             )}
           </For>
-        </div>
+        </Show>
       </AdminPanel>
     </>
   )

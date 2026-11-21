@@ -1,24 +1,32 @@
 import { Component, Match, Switch } from 'solid-js'
 import { isRedirecting } from '../middleware/redirection'
-import { A } from '@solidjs/router'
+import { useI18n } from '../i18n.js'
+import { ButtonLink, Icon, PageState } from '../components/ui/index.js'
 
 const NotFound: Component = () => {
-  console.log(isRedirecting())
+  const { t } = useI18n()
   return (
-    <div class="flex flex-col items-center justify-center gap-6 my-auto w-full">
-      <Switch>
-        <Match when={isRedirecting() != ''}>
-          <h1 class="text-2xl font-bold">Redirecting...</h1>
-          <A href={isRedirecting()} class="link text-xl">
-            Click here if you are not redirected.
-          </A>
-        </Match>
-        <Match when={isRedirecting() == ''}>
-          <h1 class="text-6xl font-bold">404</h1>
-          <p class="text-xl">The page you are looking for does not exist.</p>
-        </Match>
-      </Switch>
-    </div>
+    <Switch>
+      <Match when={isRedirecting() != ''}>
+        <PageState icon="external-link" title={t('ui.redirecting', 'Redirecting...')} status>
+          <ButtonLink href={isRedirecting()} variant="primary">
+            {t('main.click_if_not_redirected', 'Click here if you are not redirected.')}
+          </ButtonLink>
+        </PageState>
+      </Match>
+      <Match when={isRedirecting() == ''}>
+        <PageState
+          icon="search"
+          title="404"
+          description={t('ui.not_found_description', 'The page you are looking for does not exist.')}
+        >
+          <ButtonLink href="/" variant="primary">
+            <Icon name="arrow-left" size={16} />
+            {t('ui.back_home', 'Back to home')}
+          </ButtonLink>
+        </PageState>
+      </Match>
+    </Switch>
   )
 }
 

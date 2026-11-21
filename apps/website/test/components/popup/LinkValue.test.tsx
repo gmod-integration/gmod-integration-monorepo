@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, screen } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../testUtils.js'
+import { createSignal } from 'solid-js'
 import { LinkValue } from '../../../src/components/popup/LinkValue.js'
 
 afterEach(() => cleanup())
@@ -26,5 +27,13 @@ describe('components/popup/LinkValue.tsx', () => {
   it('renders an empty link when the url has no content left after stripping the protocol', () => {
     const { container } = renderWithProviders(() => <LinkValue url="https://" />)
     expect(container.querySelector('a')).toBeEmptyDOMElement()
+  })
+
+  it('updates the derived label when an edited URL changes', () => {
+    const [url, setUrl] = createSignal('https://old.example/')
+    renderWithProviders(() => <LinkValue url={url()} />)
+    setUrl('https://new.example/rules')
+    expect(screen.getByRole('link')).toHaveTextContent('new.example/rules')
+    expect(screen.getByRole('link')).toHaveAttribute('href', 'https://new.example/rules')
   })
 })

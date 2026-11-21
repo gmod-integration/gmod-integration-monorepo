@@ -1,5 +1,6 @@
-import { Component, For, Show } from 'solid-js'
-import { useI18n } from '../i18n'
+import { Icon } from '../components/ui/index.js'
+import { type Component, For, Show } from 'solid-js'
+import { useI18n } from '../i18n.js'
 
 const Premium: Component = () => {
   const { t } = useI18n()
@@ -395,148 +396,177 @@ const Premium: Component = () => {
   ]
 
   return (
-    <>
-      <div class="max-w-(--breakpoint-xl) mx-auto flex flex-col p-6 gap-16">
-        <div class="flex flex-col items-center justify-center gap-6 mt-12">
-          <h1 class="text-5xl font-bold">{t('premium.title', 'Premium')}</h1>
-          <p class="text-lg">
-            {t('premium.subtitle', 'Upgrade your community to the next level with customisation and more features')}
-          </p>
-        </div>
+    <div class="public-page premium-page mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 lg:gap-16 lg:px-8 lg:py-12">
+      <header class="public-page-heading flex max-w-2xl flex-col gap-4">
+        <span class="inline-flex w-fit items-center gap-2 rounded-lg border border-primary/15 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary">
+          <Icon name="crown" size={15} />
+          {t('premium.premium', 'Premium')}
+        </span>
+        <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">{t('premium.title', 'Premium')}</h1>
+        <p class="text-sm leading-relaxed text-base-content/55 sm:text-base">
+          {t('premium.subtitle', 'Upgrade your community to the next level with customisation and more features')}
+        </p>
+      </header>
 
-        <div class="flex flex-wrap justify-around gap-6 py-6">
-          <For each={Object.keys(offers)}>
-            {(key) => (
-              <a
-                class="shadowHover w-85 border border-base-200 rounded-lg p-6 gap-6 flex flex-col"
-                href={offers[key].link}
-              >
-                <h2 class="text-2xl font-bold">{offers[key].name}</h2>
-                <div class="gap-2 flex flex-col">
-                  <h1 class="text-5xl font-bold">
-                    <Show when={offers[key].reduction} fallback={<span>${offers[key].price}</span>}>
-                      <span>
-                        $
-                        {(
-                          offers[key].price -
-                          (offers[key].price * ((offers[key].reduction && offers[key].reduction.percent) || 1)) / 100
-                        ).toFixed(2)}
-                      </span>
-                      <br />
-                      <span class="text-3xl line-through text-rose-500">${offers[key].price}</span>
-                    </Show>
-                  </h1>
-                  <h3 class="text-base-content">{offers[key].sub_price}</h3>
-                  <Show when={offers[key].reduction}>
-                    <span class="text-amber-400">
-                      {(offers[key].reduction && offers[key].reduction.percent) || 0}% off until{' '}
-                      {new Date(
-                        (offers[key].reduction && offers[key].reduction.date) || new Date(),
-                      ).toLocaleDateString()}
+      <div class="premium-offers grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <For each={Object.keys(offers)}>
+          {(key) => (
+            <a
+              class={`premium-offer public-card group flex min-w-0 flex-col gap-6 rounded-xl border bg-base-100 p-6 transition-colors ${key === 'subscribe' ? 'border-primary/35' : 'border-base-content/10 hover:border-primary/30'}`}
+              data-featured={key === 'subscribe' || undefined}
+              href={offers[key].link}
+            >
+              <div class="flex items-center gap-3">
+                <span
+                  class={`flex h-10 w-10 items-center justify-center rounded-xl ${key === 'free' ? 'bg-base-200/65 text-base-content/55' : 'bg-primary/10 text-primary'}`}
+                >
+                  <Icon name={key === 'free' ? 'server' : key === 'subscribe' ? 'crown' : 'gift'} size={19} />
+                </span>
+                <h2 class="text-base font-semibold tracking-tight">{offers[key].name}</h2>
+              </div>
+              <div class="premium-offer-price flex flex-col gap-2">
+                <p class="flex flex-wrap items-baseline gap-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+                  <Show when={offers[key].reduction} fallback={<span>${offers[key].price}</span>}>
+                    <span>
+                      $
+                      {(
+                        offers[key].price -
+                        (offers[key].price * ((offers[key].reduction && offers[key].reduction.percent) || 1)) / 100
+                      ).toFixed(2)}
                     </span>
+                    <span class="text-lg font-normal text-base-content/35 line-through">${offers[key].price}</span>
                   </Show>
-                </div>
-                <ul class="flex flex-col gap-5">
-                  <For each={offers[key].promote_features}>
-                    {(feature) => (
-                      <li class="flex gap-4 items-center">
-                        <i class="fa-solid fa-check text-[24px] text-success font-bold"></i>
-                        <p>{feature}</p>
-                      </li>
-                    )}
-                  </For>
-                </ul>
-                <div />
-                <div class="btn btn-base-200 w-full mt-auto">{offers[key].button}</div>
-              </a>
+                </p>
+                <p class="text-xs text-base-content/45">{offers[key].sub_price}</p>
+                <Show when={offers[key].reduction}>
+                  <span class="text-xs text-amber-400">
+                    {(offers[key].reduction && offers[key].reduction.percent) || 0}% off until{' '}
+                    {new Date((offers[key].reduction && offers[key].reduction.date) || new Date()).toLocaleDateString()}
+                  </span>
+                </Show>
+              </div>
+              <p class="text-xs leading-relaxed text-base-content/55">{offers[key].description}</p>
+              <ul class="premium-offer-features flex flex-col gap-3 border-t border-base-content/8 pt-5 text-xs">
+                <For each={offers[key].promote_features}>
+                  {(feature) => (
+                    <li class="flex items-start gap-2.5 leading-relaxed">
+                      <Icon name="check" size={15} class="mt-0.5 text-primary" />
+                      <span>{feature}</span>
+                    </li>
+                  )}
+                </For>
+              </ul>
+              <span
+                class={`premium-offer-action mt-auto inline-flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-xs font-semibold ${key === 'subscribe' ? 'bg-primary text-primary-content' : 'bg-base-200/65 text-base-content group-hover:text-primary'}`}
+              >
+                {offers[key].button}
+                <Icon name="arrow-right" size={15} />
+              </span>
+            </a>
+          )}
+        </For>
+      </div>
+
+      <section
+        class="public-section premium-comparison flex min-w-0 flex-col gap-6"
+        aria-labelledby="premium-comparison-title"
+      >
+        <div class="flex items-center gap-3">
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/8 text-primary">
+            <Icon name="list" size={17} />
+          </span>
+          <h2 id="premium-comparison-title" class="text-xl font-semibold tracking-tight">
+            {t('premium.plans_comparison', 'Plans Comparison')}
+          </h2>
+        </div>
+        <div class="flex min-w-0 flex-col gap-5">
+          <For each={Object.keys(category)}>
+            {(key) => (
+              <div class="public-card min-w-0 overflow-x-auto rounded-xl border border-base-content/10 bg-base-100">
+                <table class="premium-comparison-table table w-full border-collapse">
+                  <thead>
+                    <tr>
+                      <th class="w-[54%] text-left">{category[key].name}</th>
+                      <th class="w-[23%] text-center">{t('premium.free', 'Free')}</th>
+                      <th class="w-[23%] text-center text-primary">{t('premium.premium', 'Premium')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <For each={category[key].features}>
+                      {(feature) => (
+                        <tr>
+                          <td class="wrap-break-word text-left text-xs">
+                            <Show when={feature.inDev}>
+                              <span
+                                class="tooltip tooltip-warning z-10"
+                                data-tip={t(
+                                  'premium.in_dev_tooltip',
+                                  'This feature is still in development and not available.',
+                                )}
+                              >
+                                {feature.name}
+                                <Icon name="triangle-alert" size={13} class="ml-1.5 text-warning" />
+                              </span>
+                            </Show>
+                            <Show when={!feature.inDev}>{feature.name}</Show>
+                          </td>
+                          <td class="text-center text-xs">
+                            {feature.free_value === true ? (
+                              <Icon name="check" size={17} class="text-success" />
+                            ) : feature.free_value === false ? (
+                              <Icon name="x" size={17} class="text-error" />
+                            ) : feature.free_value === t('premium.infinite', 'infinite') ? (
+                              <Icon name="infinity" size={17} class="text-primary" />
+                            ) : (
+                              feature.free_value
+                            )}
+                          </td>
+                          <td class="text-center text-xs">
+                            {feature.premium_value === true ? (
+                              <Icon name="check" size={17} class="text-success" />
+                            ) : feature.premium_value === false ? (
+                              <Icon name="x" size={17} class="text-error" />
+                            ) : feature.premium_value === t('premium.infinite', 'infinite') ? (
+                              <Icon name="infinity" size={17} class="text-primary" />
+                            ) : (
+                              feature.premium_value
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </For>
+                  </tbody>
+                </table>
+              </div>
             )}
           </For>
         </div>
+      </section>
 
-        <div class="p-6">
-          <h1 class="text-4xl font-bold text-center mb-12">{t('premium.plans_comparison', 'Plans Comparison')}</h1>
-          <div class="flex flex-col gap-12">
-            <For each={Object.keys(category)}>
-              {(key) => (
-                <div class="w-full border-radius">
-                  <table class="table border border-base-200 rounded-lg border-separate noBorderBottomTable">
-                    <thead>
-                      <tr class="text-lg">
-                        <th class="w-1/3">{category[key].name}</th>
-                        <th class="w-1/4 text-center">{t('premium.free', 'Free')}</th>
-                        <th class="w-1/4 text-center">{t('premium.premium', 'Premium')}</th>
-                      </tr>
-                    </thead>
-                    <tbody class="text-[1.1em]">
-                      <For each={category[key].features}>
-                        {(feature) => (
-                          <tr>
-                            <td class="text-left">
-                              <Show when={feature.inDev}>
-                                <div
-                                  class="tooltip tooltip-warning z-10"
-                                  data-tip={t(
-                                    'premium.in_dev_tooltip',
-                                    'This feature is still in development and not available.',
-                                  )}
-                                >
-                                  {feature.name}
-                                  <i class="fa-solid fa-triangle-exclamation text-warning text-lg ml-2"></i>
-                                </div>
-                              </Show>
-                              <Show when={!feature.inDev}>{feature.name}</Show>
-                            </td>
-                            <td class="min-w-1/4 text-center">
-                              {feature.free_value === true ? (
-                                <i class="fa-solid fa-check text-success text-[1.4em]"></i>
-                              ) : feature.free_value === false ? (
-                                <i class="fa-solid fa-times text-error text-[1.4em]"></i>
-                              ) : feature.free_value === t('premium.infinite', 'infinite') ? (
-                                <i class="fa-solid fa-infinity text-primary text-[1.4em]"></i>
-                              ) : (
-                                feature.free_value
-                              )}
-                            </td>
-                            <td class="w-1/4 text-center">
-                              {feature.premium_value === true ? (
-                                <i class="fa-solid fa-check text-success text-[1.4em]"></i>
-                              ) : feature.premium_value === false ? (
-                                <i class="fa-solid fa-times text-error text-[1.4em]"></i>
-                              ) : feature.premium_value === t('premium.infinite', 'infinite') ? (
-                                <i class="fa-solid fa-infinity text-primary text-[1.4em]"></i>
-                              ) : (
-                                feature.premium_value
-                              )}
-                            </td>
-                          </tr>
-                        )}
-                      </For>
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </For>
-          </div>
+      <section class="public-section premium-faq flex flex-col gap-6" aria-labelledby="premium-faq-title">
+        <div class="flex items-center gap-3">
+          <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/8 text-primary">
+            <Icon name="message-circle" size={17} />
+          </span>
+          <h2 id="premium-faq-title" class="text-xl font-semibold tracking-tight">
+            {t('premium.faq_title', 'Frequently Asked Questions')}
+          </h2>
         </div>
-
-        <div class="p-6">
-          <h1 class="text-4xl font-bold text-center mb-12">{t('premium.faq_title', 'Frequently Asked Questions')}</h1>
-          <div class="join join-vertical w-full">
-            <For each={faq}>
-              {({ question, answer }) => (
-                <div class="collapse collapse-arrow join-item border border-base-200 max-w-5xl">
-                  <input type="radio" name="my-accordion-4" />
-                  <div class="collapse-title font-medium">{question}</div>
-                  <div class="collapse-content text-base-content">
-                    <p>{answer}</p>
-                  </div>
+        <div class="public-card overflow-hidden rounded-xl border border-base-content/10 bg-base-100">
+          <For each={faq}>
+            {({ question, answer }) => (
+              <div class="collapse collapse-arrow border-b border-base-content/8 last:border-b-0">
+                <input type="radio" name="my-accordion-4" aria-label={question} />
+                <div class="collapse-title text-sm font-medium">{question}</div>
+                <div class="collapse-content text-xs leading-relaxed text-base-content/55">
+                  <p>{answer}</p>
                 </div>
-              )}
-            </For>
-          </div>
+              </div>
+            )}
+          </For>
         </div>
-      </div>
-    </>
+      </section>
+    </div>
   )
 }
 

@@ -26,9 +26,30 @@ src/
 
 ## Navigation and loading
 
-`App.tsx` provides the original header and footer with a skip link and main landmark. Guild/server and
-admin views use their original dashboard menus and layout. The community and server selectors retain
-their original presentation while handling loading, empty results and request failures.
+The website's shared controls and interaction contracts are listed in the
+[UI component catalogue](./website-ui.md). `components/ui/index.ts` is the entry point for generic
+controls; `AdminPanel`, `AdminModal`, the selectors and pagination remain the shared feature shells.
+
+`App.tsx` provides a skip link and main landmark, with a compact header on dashboard routes and the
+public footer elsewhere. Community/server management and admin views share an application shell with
+grouped sidebar navigation, saved collapse preference, mobile navigation and contextual breadcrumbs.
+Shared panels, controls and tables use the light/dark visual system in `src/styles/dashboard.css`,
+scoped to the site shell. Public page layouts in `src/styles/site.css` reuse these tokens and controls.
+Community and server selectors display searchable identity cards and handle loading, empty results and
+request failures. All UI icons use the shared Lucide SVG registry; icon fonts are no longer loaded.
+
+The public header has collapsible mobile navigation and mutually exclusive navigation, language and
+account menus. The home, premium and ranking pages share heading, card and action patterns. Account
+settings reuse dashboard panels and tables; notifications use a responsive list with pending/error
+feedback. `ButtonLink` preserves native navigation semantics while matching `Button`, and `PageState`
+provides the authentication, redirect and missing-page presentation. The footer uses a single landmark.
+Dates and numbers follow the selected UI locale.
+
+Dashboard settings use shared `SettingGroup`/`SettingRow` layouts, with global behavior separated from
+rule lists and channel actions kept beside their destination. Server configuration groups the options
+by purpose and supports translated search and category filters. Advanced options and defaults use
+native disclosures; filtering preserves values and pending saves. Status player-list formatting appears
+under its enabled list option. Sensitive server actions are separated from routine identity editing.
 
 The public home, authentication pages and layouts are available immediately. The remaining route pages
 use Solid's `lazy` imports, with a translated `Suspense` fallback inside the main content area so the
@@ -67,6 +88,8 @@ previous draft, and preview buttons cannot open links or launch the game.
 
 The legal documents at `/legal/terms` and `/legal/privacy` follow the selected UI language for French,
 with English as the fallback for other languages. Their revision date is explicit rather than the build date.
+Their shared renderer includes a collapsible table of contents, anchored sections and horizontally
+scrollable data tables; presentation changes do not alter the document content.
 
 The website does not initialize browser Sentry monitoring or load Google AdSense. Optional tracking must not
 be reintroduced before the required prior consent and withdrawal controls exist and the notice is updated.

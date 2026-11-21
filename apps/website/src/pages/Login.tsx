@@ -4,11 +4,18 @@ import { useLocation, useNavigate } from '@solidjs/router'
 import { useI18n } from '../i18n'
 import { getAPIUrl } from '../utils/api'
 import { parseSessionExpiration } from '../utils/sessionExpiration.js'
+import { ButtonLink, Icon, PageState } from '../components/ui/index.js'
 
 const Login: Component = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useI18n()
+  const loginUrl = () => {
+    const url = new URL(`${getAPIUrl()}/users/login`)
+    const redirect = new URLSearchParams(location.search).get('redirect')
+    if (redirect) url.searchParams.set('redirect', redirect)
+    return url.toString()
+  }
 
   console.log('Login page')
   createEffect(async () => {
@@ -69,11 +76,17 @@ const Login: Component = () => {
   })
 
   return (
-    <>
-      <a class="link-hover text-center" href={`${getAPIUrl()}/users/login`}>
+    <PageState
+      icon="user-round"
+      title={t('header.login', 'Login with Discord')}
+      description={t('ui.redirecting', 'Redirecting...')}
+      status
+    >
+      <ButtonLink variant="primary" href={loginUrl()}>
         {t('main.click_if_not_redirected', 'Click here if you are not redirected.')}
-      </a>
-    </>
+        <Icon name="arrow-right" size={16} />
+      </ButtonLink>
+    </PageState>
   )
 }
 

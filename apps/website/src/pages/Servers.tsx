@@ -1,3 +1,4 @@
+import { AsyncState, Button, ButtonLink, FormField, Icon } from '../components/ui/index.js'
 import { createResource, createSignal, For, onCleanup, Show, type Component } from 'solid-js'
 import {
   PublicServerRankingResponseSchema,
@@ -57,69 +58,69 @@ const Servers: Component = () => {
 
   const ServerCard: Component<{ server: PublicRankedServer; featured?: boolean }> = (props) => {
     const name = () => props.server.status?.hostname || props.server.name || t('servers.no_name', 'No name')
-    // The shared response schema validates Discord invitations before rendering them.
     const discordUrl = () => props.server.discordUrl
     return (
       <article
         data-server-id={props.server.id}
-        class={`border rounded-lg p-4 flex gap-4 min-w-0 ${props.featured ? 'border-primary/40 bg-base-200/20 flex-col' : 'border-base-200 flex-col md:flex-row'}`}
+        data-featured={props.featured || undefined}
+        class={`ranking-server-card public-card grid min-w-0 gap-5 rounded-xl border border-base-content/10 bg-base-100 p-5 ${props.featured ? '' : 'xl:grid-cols-[minmax(0,1fr)_220px]'}`}
       >
-        <div
-          class={`flex gap-4 min-w-0 ${props.featured ? 'items-start' : 'md:flex-col md:items-center md:w-28 md:shrink-0'}`}
-        >
-          <img
-            src={props.server.image || defaultServer}
-            alt={props.server.name || t('servers.no_name', 'No name')}
-            class={`rounded-md object-cover shrink-0 ${props.featured ? 'w-16 h-16' : 'w-20 h-20 md:w-28 md:h-28'}`}
-            loading="lazy"
-          />
-          <div class="flex flex-col gap-2 min-w-0">
-            <span class={`badge font-bold ${props.featured ? 'badge-primary' : 'badge-ghost'}`}>
-              #{props.server.rank}
-            </span>
-            <Show when={props.featured}>
-              <h3 class="text-lg font-bold wrap-break-word">{name()}</h3>
-            </Show>
-          </div>
-        </div>
-        <div class="flex flex-col gap-3 min-w-0 flex-1">
-          <Show when={!props.featured}>
-            <h3 class="text-xl font-bold wrap-break-word">{name()}</h3>
-          </Show>
-          <div class="flex flex-wrap gap-2 items-center">
-            <span class={`badge ${props.server.online ? 'badge-success' : 'badge-ghost'}`}>
-              {props.server.online ? t('servers.online', 'Online') : t('servers.offline', 'Offline')}
-            </span>
-            <span class="text-sm text-base-content/70">
-              {props.server.vote} {t('servers.votes', 'votes')}
-            </span>
-          </div>
-          <p class="text-sm text-base-content/70 wrap-break-word">
+        <div class="ranking-server-details flex min-w-0 flex-col gap-4">
+          <header class="flex min-w-0 items-start gap-3">
+            <img
+              src={props.server.image || defaultServer}
+              alt={props.server.name || t('servers.no_name', 'No name')}
+              class="ranking-server-avatar h-12 w-12 shrink-0 rounded-xl border border-base-content/8 object-cover"
+              loading="lazy"
+            />
+            <div class="flex min-w-0 flex-1 flex-col gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span
+                  class={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold ${props.featured ? 'bg-primary/10 text-primary' : 'bg-base-200/70 text-base-content/55'}`}
+                >
+                  #{props.server.rank}
+                </span>
+                <span
+                  class={`inline-flex items-center gap-1.5 text-[10px] font-medium ${props.server.online ? 'text-success' : 'text-base-content/40'}`}
+                >
+                  <span
+                    class={`h-1.5 w-1.5 rounded-full ${props.server.online ? 'bg-success' : 'bg-base-content/30'}`}
+                    aria-hidden="true"
+                  />
+                  {props.server.online ? t('servers.online', 'Online') : t('servers.offline', 'Offline')}
+                </span>
+              </div>
+              <h3 class="wrap-break-word text-base font-semibold leading-snug tracking-tight">{name()}</h3>
+            </div>
+          </header>
+          <p class="wrap-break-word text-xs leading-relaxed text-base-content/55">
             {props.server.description || t('servers.no_description', 'No description')}
           </p>
-          <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm min-w-0">
-            <div>
-              <dt class="text-base-content/60">{t('servers.players', 'Players')}</dt>
-              <dd class="font-semibold">
+          <dl
+            class={`ranking-server-metrics grid min-w-0 gap-x-4 gap-y-3 text-xs ${props.featured ? 'grid-cols-2' : 'grid-cols-2 sm:grid-cols-4'}`}
+          >
+            <div class="min-w-0">
+              <dt class="mb-1 text-[10px] font-medium text-base-content/40">{t('servers.players', 'Players')}</dt>
+              <dd class="font-medium">
                 {props.server.online && props.server.status
                   ? `${props.server.status.players}/${props.server.status.maxPlayers}`
                   : t('servers.offline', 'Offline')}
               </dd>
             </div>
-            <div>
-              <dt class="text-base-content/60">{t('servers.game_mode', 'Game Mode')}</dt>
-              <dd class="font-semibold wrap-break-word">{props.server.status?.gameMode || '—'}</dd>
-            </div>
-            <div>
-              <dt class="text-base-content/60">{t('servers.map', 'Map')}</dt>
-              <dd class="font-semibold wrap-break-word">{props.server.status?.map || '—'}</dd>
+            <div class="min-w-0">
+              <dt class="mb-1 text-[10px] font-medium text-base-content/40">{t('servers.game_mode', 'Game Mode')}</dt>
+              <dd class="wrap-break-word font-medium">{props.server.status?.gameMode || '—'}</dd>
             </div>
             <div class="min-w-0">
-              <dt class="text-base-content/60">{t('servers.ip', 'IP')}</dt>
-              <dd class="wrap-break-word">
+              <dt class="mb-1 text-[10px] font-medium text-base-content/40">{t('servers.map', 'Map')}</dt>
+              <dd class="wrap-break-word font-medium">{props.server.status?.map || '—'}</dd>
+            </div>
+            <div class="min-w-0">
+              <dt class="mb-1 text-[10px] font-medium text-base-content/40">{t('servers.ip', 'IP')}</dt>
+              <dd class="wrap-break-word font-mono text-[11px]">
                 <Show when={props.server.ip && props.server.port} fallback="—">
                   <a
-                    class="text-secondary hover:underline"
+                    class="text-primary hover:underline"
                     href={`steam://connect/${props.server.ip}:${props.server.port}`}
                   >
                     {props.server.ip}:{props.server.port}
@@ -128,38 +129,48 @@ const Servers: Component = () => {
               </dd>
             </div>
           </dl>
-          <Show when={!props.server.online && props.server.lastSeenAt}>
-            <p class="text-sm text-base-content/60">
-              {t('servers.last_seen', 'Last activity')}:{' '}
-              <time dateTime={props.server.lastSeenAt!}>{lastSeen(props.server.lastSeenAt!)}</time>
-            </p>
-          </Show>
+          <div class="mt-auto flex flex-wrap items-center justify-between gap-2 border-t border-base-content/7 pt-3 text-[11px] text-base-content/45">
+            <span class="inline-flex items-center gap-1.5">
+              <Icon name="vote" size={13} />
+              {props.server.vote} {t('servers.votes', 'votes')}
+            </span>
+            <Show when={!props.server.online && props.server.lastSeenAt}>
+              <span>
+                {t('servers.last_seen', 'Last activity')}:{' '}
+                <time dateTime={props.server.lastSeenAt!}>{lastSeen(props.server.lastSeenAt!)}</time>
+              </span>
+            </Show>
+          </div>
         </div>
-        <div class={`flex flex-col gap-3 min-w-0 ${props.featured ? '' : 'md:w-56 md:shrink-0'}`}>
+        <div
+          class={`ranking-server-actions flex min-w-0 flex-col justify-between gap-4 ${props.featured ? 'border-t border-base-content/7 pt-4' : 'border-t border-base-content/7 pt-4 xl:border-t-0 xl:border-l xl:pl-5 xl:pt-0'}`}
+        >
           <ServerActivityChart points={props.server.activity} online={props.server.online} />
           <Show
             when={discordUrl()}
             fallback={
-              <button
-                type="button"
-                class="btn btn-sm btn-outline w-full h-auto min-h-8 whitespace-normal py-2"
+              <Button
+                size="sm"
+                class="h-auto! min-h-9! w-full whitespace-normal py-2!"
                 disabled
                 title={t('servers.discord_unavailable', 'Discord invitation unavailable')}
               >
-                <i class="fa-brands fa-discord" aria-hidden="true"></i>
+                <Icon name="message-circle" size={15} />
                 {t('servers.discord_unavailable', 'Discord invitation unavailable')}
-              </button>
+              </Button>
             }
           >
-            <a
+            <ButtonLink
               href={discordUrl()!}
-              class="btn btn-sm btn-outline btn-primary w-full"
+              class="w-full"
+              variant="primary"
+              size="sm"
               target="_blank"
               rel="noopener noreferrer"
             >
-              <i class="fa-brands fa-discord" aria-hidden="true"></i>
+              <Icon name="message-circle" size={15} />
               {t('servers.join_discord', 'Join Discord')}
-            </a>
+            </ButtonLink>
           </Show>
         </div>
       </article>
@@ -169,167 +180,160 @@ const Servers: Component = () => {
   return (
     <>
       <DashboardMiddleware />
-      <div class="flex flex-col p-4 gap-6 max-w-(--breakpoint-xl) mx-auto w-full">
-        <h1 class="text-2xl py-4 font-bold">{t('servers.title', 'Servers')}</h1>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label class="flex flex-col gap-2 text-sm min-w-0">
-            <span>{t('servers.search', 'Search')}</span>
-            <input
-              type="search"
-              class="input input-bordered w-full"
-              maxLength={100}
-              value={searchInput()}
-              onInput={(event) => updateSearch(event.currentTarget.value)}
-              placeholder={t('servers.search_placeholder', 'Name, description or IP')}
-            />
-          </label>
-          <label class="flex flex-col gap-2 text-sm min-w-0">
-            <span>{t('servers.game_mode', 'Game Mode')}</span>
-            <select
-              class="select select-bordered w-full"
-              value={query().gameMode}
-              onChange={(event) => updateFilters({ gameMode: event.currentTarget.value })}
-            >
-              <option value="">{t('servers.all_modes', 'All game modes')}</option>
-              <For each={gameModes()}>{(mode) => <option value={mode}>{mode}</option>}</For>
-            </select>
-          </label>
-          <label class="flex flex-col gap-2 text-sm min-w-0">
-            <span>{t('servers.status', 'Status')}</span>
-            <select
-              class="select select-bordered w-full"
-              value={query().status}
-              onChange={(event) =>
-                updateFilters({ status: event.currentTarget.value as PublicServerRankingQuery['status'] })
-              }
-            >
-              <option value="all">{t('servers.all_statuses', 'All servers')}</option>
-              <option value="online">{t('servers.online', 'Online')}</option>
-              <option value="offline">{t('servers.offline', 'Offline')}</option>
-            </select>
-          </label>
-          <label class="flex flex-col gap-2 text-sm min-w-0">
-            <span>{t('servers.per_page', 'Servers per page')}</span>
-            <select
-              class="select select-bordered w-full"
-              value={query().limit}
-              onChange={(event) => updateFilters({ limit: Number(event.currentTarget.value) })}
-            >
-              <option value="10">10</option>
-              <option value="25">25</option>
-              <option value="50">50</option>
-            </select>
-          </label>
-        </div>
-        <Show when={hasFilters()}>
-          <button type="button" class="btn btn-sm btn-ghost self-start" onClick={resetFilters}>
-            {t('servers.reset_filters', 'Clear filters')}
-          </button>
-        </Show>
-        <div aria-busy={ranking.loading}>
-          <Show
-            when={!ranking.error}
-            fallback={
-              <div role="alert" class="border border-base-200 rounded-lg p-6 flex flex-col items-center gap-4">
-                <p>{t('servers.load_error', 'Unable to load servers.')}</p>
-                <button type="button" class="btn btn-base-200" disabled={ranking.loading} onClick={() => refetch()}>
-                  {t('ui.retry', 'Try again')}
-                </button>
+      <div class="public-page ranking-page mx-auto flex w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8 lg:py-12">
+        <header class="public-page-heading flex flex-col gap-3">
+          <span class="inline-flex items-center gap-2 text-xs font-medium text-primary">
+            <Icon name="server" size={16} />
+            {t('servers.ranking', 'Server ranking')}
+          </span>
+          <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">{t('servers.title', 'Servers')}</h1>
+          <p class="max-w-2xl text-sm leading-relaxed text-base-content/55">
+            {t('servers.ranking_description', 'Ranked by votes over the last 30 days.')}
+          </p>
+        </header>
+        <section
+          class="public-toolbar ranking-toolbar rounded-xl border border-base-content/10 bg-base-100 p-5"
+          aria-label={t('servers.search', 'Search')}
+        >
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.5fr)_1fr_1fr_1fr]">
+            <FormField id="ranking-search" label={t('servers.search', 'Search')}>
+              <div class="input flex w-full items-center gap-2">
+                <Icon name="search" size={16} class="text-base-content/40" />
+                <input
+                  id="ranking-search"
+                  type="search"
+                  class="min-w-0 flex-1 bg-transparent outline-none"
+                  maxLength={100}
+                  value={searchInput()}
+                  onInput={(event) => updateSearch(event.currentTarget.value)}
+                  placeholder={t('servers.search_placeholder', 'Name, description or IP')}
+                />
               </div>
-            }
-          >
-            <Show
-              when={!ranking.loading}
-              fallback={
-                <div role="status" class="flex justify-center p-10">
-                  <span class="loading loading-lg" aria-label={t('servers.loading', 'Loading servers')}></span>
-                </div>
-              }
-            >
-              <Show
-                when={ranking()!.servers.length > 0}
-                fallback={
-                  <p role="status" class="border border-base-200 rounded-lg p-8 text-center">
-                    {t('servers.empty', 'No servers match these filters.')}
-                  </p>
+            </FormField>
+            <FormField id="ranking-game-mode" label={t('servers.game_mode', 'Game Mode')}>
+              <select
+                id="ranking-game-mode"
+                class="select w-full"
+                value={query().gameMode}
+                onChange={(event) => updateFilters({ gameMode: event.currentTarget.value })}
+              >
+                <option value="">{t('servers.all_modes', 'All game modes')}</option>
+                <For each={gameModes()}>{(mode) => <option value={mode}>{mode}</option>}</For>
+              </select>
+            </FormField>
+            <FormField id="ranking-status" label={t('servers.status', 'Status')}>
+              <select
+                id="ranking-status"
+                class="select w-full"
+                value={query().status}
+                onChange={(event) =>
+                  updateFilters({ status: event.currentTarget.value as PublicServerRankingQuery['status'] })
                 }
               >
-                <div class="flex flex-col gap-6">
-                  <Show when={featured().length > 0}>
-                    <section aria-labelledby="server-top-three" class="flex flex-col gap-4">
-                      <h2 id="server-top-three" class="text-lg font-bold">
+                <option value="all">{t('servers.all_statuses', 'All servers')}</option>
+                <option value="online">{t('servers.online', 'Online')}</option>
+                <option value="offline">{t('servers.offline', 'Offline')}</option>
+              </select>
+            </FormField>
+            <FormField id="ranking-page-size" label={t('servers.per_page', 'Servers per page')}>
+              <select
+                id="ranking-page-size"
+                class="select w-full"
+                value={query().limit}
+                onChange={(event) => updateFilters({ limit: Number(event.currentTarget.value) })}
+              >
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+            </FormField>
+          </div>
+          <Show when={hasFilters()}>
+            <Button size="sm" variant="ghost" class="mt-3" onClick={resetFilters}>
+              <Icon name="x" size={13} />
+              {t('servers.reset_filters', 'Clear filters')}
+            </Button>
+          </Show>
+        </section>
+        <div aria-busy={ranking.loading}>
+          <AsyncState
+            loading={ranking.loading}
+            error={ranking.error}
+            loadingLabel={t('servers.loading', 'Loading servers')}
+            errorLabel={t('servers.load_error', 'Unable to load servers.')}
+            onRetry={() => refetch()}
+          >
+            <Show
+              when={ranking()!.servers.length > 0}
+              fallback={<AsyncState empty emptyLabel={t('servers.empty', 'No servers match these filters.')} />}
+            >
+              <div class="flex flex-col gap-8">
+                <Show when={featured().length > 0}>
+                  <section aria-labelledby="server-top-three" class="ranking-podium flex flex-col gap-4">
+                    <div class="flex items-center gap-2">
+                      <Icon name="crown" size={17} class="text-primary" />
+                      <h2 id="server-top-three" class="text-sm font-semibold">
                         {t('servers.top_three', 'Top 3')}
                       </h2>
-                      <p class="text-sm text-base-content/60">
-                        {t('servers.ranking_description', 'Ranked by votes over the last 30 days.')}
-                      </p>
-                      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        <For each={featured()}>{(server) => <ServerCard server={server} featured />}</For>
-                      </div>
-                    </section>
-                  </Show>
-                  <Show when={regularServers().length > 0}>
-                    <section aria-label={t('servers.ranking', 'Server ranking')} class="flex flex-col gap-4">
-                      <For each={regularServers()}>{(server) => <ServerCard server={server} />}</For>
-                    </section>
-                  </Show>
-                </div>
-              </Show>
-              <Show when={ranking()!.pagination.total > 0}>
-                <div class="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p role="status" class="text-sm text-base-content/70">
-                    {t(
-                      'servers.showing',
-                      'Showing {1}–{2} of {3} servers',
-                      ranking()!.pagination.offset + 1,
-                      ranking()!.pagination.offset + ranking()!.servers.length,
-                      ranking()!.pagination.total,
-                    )}
-                  </p>
-                  <nav
-                    aria-label={t('ui.pagination', 'Pagination')}
-                    class="flex flex-wrap items-center justify-center gap-2"
-                  >
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-base-200"
-                      onClick={() => changePage(0)}
-                      disabled={currentPage() <= 1}
-                    >
-                      {t('servers.first_page', 'First')}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-base-200"
-                      onClick={() => changePage(Math.max(0, query().offset - query().limit))}
-                      disabled={currentPage() <= 1}
-                    >
-                      {t('ui.previous_page', 'Previous page')}
-                    </button>
-                    <span class="px-2 text-sm" aria-current="page">
-                      {t('servers.page_of', 'Page {1} of {2}', currentPage(), pages())}
-                    </span>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-base-200"
-                      onClick={() => changePage(query().offset + query().limit)}
-                      disabled={currentPage() >= pages()}
-                    >
-                      {t('ui.next_page', 'Next page')}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-sm btn-base-200"
-                      onClick={() => changePage((pages() - 1) * query().limit)}
-                      disabled={currentPage() >= pages()}
-                    >
-                      {t('servers.last_page', 'Last')}
-                    </button>
-                  </nav>
-                </div>
-              </Show>
+                    </div>
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                      <For each={featured()}>{(server) => <ServerCard server={server} featured />}</For>
+                    </div>
+                  </section>
+                </Show>
+                <Show when={regularServers().length > 0}>
+                  <section aria-label={t('servers.ranking', 'Server ranking')} class="flex flex-col gap-4">
+                    <For each={regularServers()}>{(server) => <ServerCard server={server} />}</For>
+                  </section>
+                </Show>
+              </div>
             </Show>
-          </Show>
+            <Show when={ranking()!.pagination.total > 0}>
+              <div class="ranking-pagination mt-7 flex flex-col gap-4 border-t border-base-content/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                <p role="status" class="text-xs text-base-content/50">
+                  {t(
+                    'servers.showing',
+                    'Showing {1}–{2} of {3} servers',
+                    ranking()!.pagination.offset + 1,
+                    ranking()!.pagination.offset + ranking()!.servers.length,
+                    ranking()!.pagination.total,
+                  )}
+                </p>
+                <nav
+                  aria-label={t('ui.pagination', 'Pagination')}
+                  class="flex flex-wrap items-center justify-center gap-1.5"
+                >
+                  <Button size="sm" onClick={() => changePage(0)} disabled={currentPage() <= 1}>
+                    {t('servers.first_page', 'First')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => changePage(Math.max(0, query().offset - query().limit))}
+                    disabled={currentPage() <= 1}
+                  >
+                    {t('ui.previous_page', 'Previous page')}
+                  </Button>
+                  <span class="px-2 text-xs text-base-content/55" aria-current="page">
+                    {t('servers.page_of', 'Page {1} of {2}', currentPage(), pages())}
+                  </span>
+                  <Button
+                    size="sm"
+                    onClick={() => changePage(query().offset + query().limit)}
+                    disabled={currentPage() >= pages()}
+                  >
+                    {t('ui.next_page', 'Next page')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => changePage((pages() - 1) * query().limit)}
+                    disabled={currentPage() >= pages()}
+                  >
+                    {t('servers.last_page', 'Last')}
+                  </Button>
+                </nav>
+              </div>
+            </Show>
+          </AsyncState>
         </div>
       </div>
     </>

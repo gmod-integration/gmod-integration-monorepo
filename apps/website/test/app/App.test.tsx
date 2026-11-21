@@ -66,6 +66,25 @@ describe('app/App.tsx', () => {
     expect(screen.getByTestId('child-translation')).toHaveTextContent('Login with Discord')
   })
 
+  it('keeps dashboard chrome compact while retaining account preferences and the main landmark', () => {
+    renderWithProviders(
+      () => (
+        <App>
+          <div>Dashboard content</div>
+        </App>
+      ),
+      {
+        path: '*',
+        history: historyAt('/dashboard/guilds'),
+      },
+    )
+    expect(screen.getByRole('link', { name: 'Gmod Integration' })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Services')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Language' })).toBeInTheDocument()
+    expect(screen.getByRole('main')).toHaveTextContent('Dashboard content')
+  })
+
   it('keeps navigation available and announces a pending page in the selected language', async () => {
     window.localStorage.setItem('locale', 'fr')
     let resolvePage!: (module: { default: Component }) => void

@@ -1,3 +1,4 @@
+import { Icon } from '../components/ui/index.js'
 import { getGuild } from './utils'
 import { type Component, type ParentProps, Show } from 'solid-js'
 import { useI18n } from '../i18n'
@@ -27,7 +28,7 @@ export const PremiumBadge: Component<PremiumBadgeProps> = (props) => {
             }}
             data-tip={t('main.premium', 'Premium')}
           >
-            <i class="text-amber-400 fa-solid fa-crown" />
+            <Icon name="crown" class="text-amber-400" />
           </A>
         }
       >
@@ -39,7 +40,7 @@ export const PremiumBadge: Component<PremiumBadgeProps> = (props) => {
           }}
           data-tip={t('main.buy_premium', 'This feature is only available to premium users.')}
         >
-          <i class="fa-solid fa-crown" />
+          <Icon name="crown" />
           <span class="ml-2">{t('tools.premium', 'Premium')}</span>
         </A>
       </Show>

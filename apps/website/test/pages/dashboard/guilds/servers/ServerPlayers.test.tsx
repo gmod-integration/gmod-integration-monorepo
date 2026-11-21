@@ -88,19 +88,18 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
   it('shows the failed-to-load message when the resource errors', async () => {
     ;(fetchAPI as Mock).mockImplementation(() => Promise.reject(new Error('network down')))
     renderPage()
-    await vi.waitFor(() => expect(screen.getByText('Failed to load the links')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
   })
 
-  // Bug found & fixed (ServerPlayers.tsx:292): fetchPlayers() returns `{}` when the GET isn't ok,
-  // so `playersList()` resolves successfully to `{}` (not an error state). The Pagination row was
-  // reading `playersList().query.total` unconditionally, which threw
-  // "Cannot read properties of undefined (reading 'total')" and crashed the whole page anytime the
-  // players endpoint returned a non-ok response. Fixed with `playersList().query?.total ?? 0`.
-  it('renders gracefully without crashing when the GET request is not ok', async () => {
-    ;(fetchAPI as Mock).mockImplementation(() => Promise.resolve(errJson()))
+  it('shows a recoverable failure instead of an empty list when the GET is not ok', async () => {
+    ;(fetchAPI as Mock).mockResolvedValueOnce(errJson())
     const { container } = renderPage()
-    await vi.waitFor(() => expect(screen.getByText('1 / 1')).toBeInTheDocument())
-    expect(container.querySelectorAll('tbody tr').length).toBe(1) // pagination row only, no player rows
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(container.querySelector('tbody > tr > td [role="alert"]')).toBeInTheDocument()
+    expect(screen.queryByText('1 / 1')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('renders player rows with formatted time, connect count, rank and bypass icons', async () => {
@@ -116,10 +115,10 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
     const cells = aliceRow.querySelectorAll('td')
     expect(cells[1]).toHaveTextContent('1') // rank
     expect(cells[3]).toHaveTextContent('5') // total_connect
-    expect(aliceRow.querySelector('.fa-check.text-success')).toBeInTheDocument()
+    expect(aliceRow.querySelector('svg[data-icon="check"].text-success')).toBeInTheDocument()
 
     const bobRow = Array.from(dataRows).find((r) => r.textContent?.includes('Bob')) as HTMLElement
-    expect(bobRow.querySelector('.fa-times.text-error')).toBeInTheDocument()
+    expect(bobRow.querySelector('svg[data-icon="x"].text-error')).toBeInTheDocument()
   })
 
   it('renders a steam profile link per row using the steam_id', async () => {
@@ -131,10 +130,10 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
   })
 
   describe('column sorting', () => {
-    it('defaults every header sort icon to fa-sort', async () => {
+    it('defaults every header sort icon to the neutral sort indicator', async () => {
       const { container } = renderPage()
       await waitForLoaded()
-      expect(findHeader(container, 'Rank').querySelector('i')).toHaveClass('fa-sort')
+      expect(findHeader(container, 'Rank').querySelector('svg')).toHaveAttribute('data-icon', 'arrow-up-down')
     })
 
     it('sorts ascending on first click and flips to descending on a second click of the same column', async () => {
@@ -144,12 +143,12 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
 
       await fireEvent.click(nameHeader)
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('order=ASC'), 'GET'))
-      expect(nameHeader.querySelector('i')).toHaveClass('fa-sort-up')
+      expect(nameHeader.querySelector('svg')).toHaveAttribute('data-icon', 'arrow-up')
       expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('searchColum=name'), 'GET')
 
       await fireEvent.click(nameHeader)
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('order=DESC'), 'GET'))
-      expect(nameHeader.querySelector('i')).toHaveClass('fa-sort-down')
+      expect(nameHeader.querySelector('svg')).toHaveAttribute('data-icon', 'arrow-down')
     })
 
     it('clicking a different column resets its icon to ascending and does not affect the untouched column', async () => {
@@ -162,8 +161,8 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       await vi.waitFor(() =>
         expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('searchColum=rank'), 'GET'),
       )
-      expect(findHeader(container, 'Rank').querySelector('i')).toHaveClass('fa-sort-up')
-      expect(findHeader(container, 'Name').querySelector('i')).toHaveClass('fa-sort')
+      expect(findHeader(container, 'Rank').querySelector('svg')).toHaveAttribute('data-icon', 'arrow-up')
+      expect(findHeader(container, 'Name').querySelector('svg')).toHaveAttribute('data-icon', 'arrow-up-down')
     })
 
     it('shows a loading spinner in place of rows while a sort request is in flight, then restores the data', async () => {
@@ -210,7 +209,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       await waitForLoaded()
       expect(screen.getByText('1 / 3')).toBeInTheDocument()
 
-      const nextBtn = container.querySelector('.fa-chevron-right')?.closest('button') as HTMLButtonElement
+      const nextBtn = container.querySelector('svg[data-icon="chevron-right"]')?.closest('button') as HTMLButtonElement
       await fireEvent.click(nextBtn)
 
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=50'), 'GET'))
@@ -221,11 +220,11 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       setupFetchAPI(120)
       const { container } = renderPage()
       await waitForLoaded()
-      const nextBtn = container.querySelector('.fa-chevron-right')?.closest('button') as HTMLButtonElement
+      const nextBtn = container.querySelector('svg[data-icon="chevron-right"]')?.closest('button') as HTMLButtonElement
       await fireEvent.click(nextBtn)
       await vi.waitFor(() => expect(screen.getByText('2 / 3')).toBeInTheDocument())
 
-      const prevBtn = container.querySelector('.fa-chevron-left')?.closest('button') as HTMLButtonElement
+      const prevBtn = container.querySelector('svg[data-icon="chevron-left"]')?.closest('button') as HTMLButtonElement
       await fireEvent.click(prevBtn)
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=0'), 'GET'))
       await vi.waitFor(() => expect(screen.getByText('1 / 3')).toBeInTheDocument())
@@ -269,7 +268,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_player')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0])
 
       const modal = container.querySelector('#edit_player') as HTMLElement
@@ -282,7 +281,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_player')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0]) // Alice, bypassMaintenance true
 
       const modal = container.querySelector('#edit_player') as HTMLElement
@@ -306,14 +305,14 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       )
       const rows = container.querySelectorAll('tbody tr')
       const aliceRow = Array.from(rows).find((r) => r.textContent?.includes('Alice')) as HTMLElement
-      expect(aliceRow.querySelector('.fa-times.text-error')).toBeInTheDocument()
+      expect(aliceRow.querySelector('svg[data-icon="x"].text-error')).toBeInTheDocument()
     })
 
     it('does not update the row when saving fails', async () => {
       const { container } = renderPage()
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_player')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0])
       const modal = container.querySelector('#edit_player') as HTMLElement
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
@@ -326,7 +325,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       )
       const rows = container.querySelectorAll('tbody tr')
       const aliceRow = Array.from(rows).find((r) => r.textContent?.includes('Alice')) as HTMLElement
-      expect(aliceRow.querySelector('.fa-check.text-success')).toBeInTheDocument()
+      expect(aliceRow.querySelector('svg[data-icon="check"].text-success')).toBeInTheDocument()
     })
   })
 })

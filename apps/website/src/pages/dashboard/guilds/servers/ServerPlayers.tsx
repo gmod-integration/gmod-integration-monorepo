@@ -1,5 +1,7 @@
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
-import { type Component, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
+import { type Component, createResource, createSignal, For, Show } from 'solid-js'
+import { FormActions, FormField, IconButton, TableState, Icon, type IconName } from '../../../../components/ui/index.js'
+import { createAsyncAction } from '../../../../hooks/createAsyncAction.js'
 import AdminPanel from '../../../../components/AdminPanel'
 import AdminModal from '../../../../components/AdminModal'
 import Pagination from '../../../../components/Pagination'
@@ -13,7 +15,7 @@ type PlayerList = { rows: Player[]; query?: ServerQuery }
 const fetchPlayers = async (): Promise<PlayerList> => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/players', 'GET')
   if (!res.ok) {
-    return { rows: [] }
+    throw new Error('Players request failed')
   }
   return await res.json()
 }
@@ -44,7 +46,7 @@ class Player {
 }
 
 const ServerPlayer: Component = () => {
-  const [playersList, { mutate }] = createResource('playersList', fetchPlayers, {
+  const [playersList, { mutate, refetch }] = createResource('playersList', fetchPlayers, {
     initialValue: { rows: [], query: undefined },
   })
   const [currentPlayers, setCurrentPlayers] = createSignal(new Player('', '', 0, 0, 0, false))
@@ -59,8 +61,10 @@ const ServerPlayer: Component = () => {
     orderBy: QuerySort.DESC,
   })
   const { t } = useI18n()
+  const save = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save the changes.') })
 
   const [loadSearch, setLoadSearch] = createSignal(false)
+  const [searchError, setSearchError] = createSignal(false)
   const [searchValue, setSearchValue] = createSignal('')
 
   async function sortPlayerBy(
@@ -99,28 +103,28 @@ const ServerPlayer: Component = () => {
     ).toString()
 
     setLoadSearch(true)
-    mutate(() => {
-      return {
-        ...playersList(),
-        rows: [],
-      }
-    })
-    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/players?${queryString}`, 'GET')
-    setLoadSearch(false)
-    if (!res.ok) {
-      return
+    setSearchError(false)
+    if (!playersList.error) mutate((previous) => ({ ...previous, rows: [] }))
+    try {
+      const response = await fetchAPI(
+        `/users/:discordID/guilds/:guildID/servers/:serverID/players?${queryString}`,
+        'GET',
+      )
+      if (!response.ok) throw new Error('Player search failed')
+      mutate(await response.json())
+    } catch {
+      setSearchError(true)
+    } finally {
+      setLoadSearch(false)
     }
-
-    const data = await res.json()
-    mutate(() => data)
   }
 
-  function getSortIcon(key: string) {
+  function getSortIcon(key: string): IconName {
     const sortInfoValue = sortInfo()
     if (sortInfoValue.lastKey === key) {
-      return sortInfoValue.dsc ? 'fa-solid fa-sort-down' : 'fa-solid fa-sort-up'
+      return sortInfoValue.dsc ? 'arrow-down' : 'arrow-up'
     }
-    return 'fa-solid fa-sort'
+    return 'arrow-up-down'
   }
 
   async function handleQueryChange(newQuery: ClientQuery) {
@@ -129,57 +133,65 @@ const ServerPlayer: Component = () => {
   }
 
   async function savePlayer() {
-    const res = await fetchAPI(
-      `/users/:discordID/guilds/:guildID/servers/:serverID/players/${currentPlayers().steam_id}`,
-      'PUT',
-      currentPlayers(),
-    )
-    if (!res.ok) {
-      return
-    }
-    const ply = await res.json()
-    mutate((prevPlayers) => {
-      if (!prevPlayers) return prevPlayers
-      return {
-        ...prevPlayers,
-        rows: prevPlayers.rows.map((p) =>
-          p.steam_id === ply.steam_id ? { ...p, bypassMaintenance: ply.bypassMaintenance } : p,
-        ),
+    const draft = { ...currentPlayers() }
+    const saved = await save.run(async () => {
+      const res = await fetchAPI(
+        `/users/:discordID/guilds/:guildID/servers/:serverID/players/${draft.steam_id}`,
+        'PUT',
+        draft,
+      )
+      if (!res.ok) {
+        throw new Error('Player update failed')
       }
+      const ply = await res.json()
+      mutate((prevPlayers) => {
+        if (!prevPlayers) return prevPlayers
+        return {
+          ...prevPlayers,
+          rows: prevPlayers.rows.map((p) =>
+            p.steam_id === ply.steam_id ? { ...p, bypassMaintenance: ply.bypassMaintenance } : p,
+          ),
+        }
+      })
     })
+    if (saved) closeDialog('edit_player')
   }
 
   const [inputID, setInputID] = createSignal(0)
   return (
     <>
-      <AdminModal title={t('dashboard.server.edit_player.title', 'Edit Player')} id="edit_player">
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.edit_player.bypass_maintenance', 'ByPass Maintenance')}</span>
-          </label>
+      <AdminModal
+        title={t('dashboard.server.edit_player.title', 'Edit Player')}
+        id="edit_player"
+        busy={save.pending()}
+        onClose={() => save.reset()}
+        onCancel={() => save.reset()}
+      >
+        <FormField
+          id="player-bypass-maintenance"
+          label={t('dashboard.server.edit_player.bypass_maintenance', 'ByPass Maintenance')}
+        >
           <select
+            id="player-bypass-maintenance"
             class="select"
-            disabled={playersList.loading}
+            disabled={playersList.loading || save.pending()}
             value={currentPlayers().bypassMaintenance ? 'true' : 'false'}
             onChange={(e) => {
-              currentPlayers().bypassMaintenance = e.currentTarget.value === 'true'
+              setCurrentPlayers((previous) => ({ ...previous, bypassMaintenance: e.currentTarget.value === 'true' }))
             }}
           >
             <option value="true">{t('dashboard.server.edit_player.yes', 'Yes')}</option>
             <option value="false">{t('dashboard.server.edit_player.no', 'No')}</option>
           </select>
-        </div>
-
-        <button
-          class="btn btn-base-200 mt-2"
+        </FormField>
+        <FormActions
+          pending={save.pending()}
           disabled={playersList.loading}
-          onClick={async () => {
-            closeDialog('edit_player')
-            await savePlayer()
-          }}
-        >
-          {t('dashboard.server.edit_player.save', 'Save')}
-        </button>
+          error={save.error()}
+          onSave={() => void savePlayer()}
+          onCancel={() => closeDialog('edit_player')}
+          saveLabel={t('dashboard.server.edit_player.save', 'Save')}
+        />
       </AdminModal>
 
       <AdminPanel
@@ -201,35 +213,34 @@ const ServerPlayer: Component = () => {
                 setInputID(currentID)
                 setTimeout(async () => {
                   if (currentID === inputID()) {
-                    console.log(value)
                     await sortPlayerBy(query().sort, false, 0, value)
                   }
                 }, 400)
               }}
             />
-            <i class="fa-solid fa-search"></i>
+            <Icon name="search" />
           </label>
         </div>
         <table class="table table-auto table-fixed border-t border-base-200 rounded-none">
           <thead>
             <tr class="text-l hover:cursor-pointer">
               <th class="w-1/4" onClick={() => sortPlayerBy('name')}>
-                {t('dashboard.server.players_database.name', 'Name')} <i class={getSortIcon('name')}></i>
+                {t('dashboard.server.players_database.name', 'Name')} <Icon name={getSortIcon('name')} />
               </th>
               <th class="w-1/6 text-center" onClick={() => sortPlayerBy('rank')}>
-                {t('dashboard.server.players_database.rank', 'Rank')} <i class={getSortIcon('rank')}></i>
+                {t('dashboard.server.players_database.rank', 'Rank')} <Icon name={getSortIcon('rank')} />
               </th>
               <th class="w-1/6 text-center" onClick={() => sortPlayerBy('total_time')}>
                 {t('dashboard.server.players_database.total_time', 'Total Time')}{' '}
-                <i class={getSortIcon('total_time')}></i>
+                <Icon name={getSortIcon('total_time')} />
               </th>
               <th class="w-1/6 text-center" onClick={() => sortPlayerBy('total_connect')}>
                 {t('dashboard.server.players_database.total_connect', 'Total Connect')}{' '}
-                <i class={getSortIcon('total_connect')}></i>
+                <Icon name={getSortIcon('total_connect')} />
               </th>
               <th class="w-1/6 text-center" onClick={() => sortPlayerBy('bypassMaintenance')}>
                 {t('dashboard.server.players_database.bypass_maintenance', 'Bypass Maintenance')}{' '}
-                <i class={getSortIcon('bypassMaintenance')}></i>
+                <Icon name={getSortIcon('bypassMaintenance')} />
               </th>
               <th class="hover:cursor-default w-1/6 text-center">
                 {t('dashboard.server.players_database.actions', 'Actions')}
@@ -237,24 +248,22 @@ const ServerPlayer: Component = () => {
             </tr>
           </thead>
           <tbody>
-            {/* Bug fix: also gate on !playersList.error - `playersList().rows` is read unguarded
-                below (via <For each={playersList().rows}>). On a fetch failure there's no
-                previously-loaded value to fall back to, so `playersList()` is `undefined` and
-                `.rows` throws a TypeError. Without this guard, the tbody's render effect threw on
-                every fetch failure, which the dev @solid-refresh wrapper caught and silently
-                retried forever, meaning `playersList.loading` never visibly settled and the
-                `Match when={playersList.error}` failed-to-load message below was unreachable dead
-                code. */}
-            <Show when={!playersList.loading && !playersList.error}>
-              <Show when={loadSearch()}>
-                <tr>
-                  <td colSpan="6">
-                    <div class="flex justify-center h-36">
-                      <div class="loading loading-spinner loading-lg"></div>
-                    </div>
-                  </td>
-                </tr>
-              </Show>
+            <TableState
+              colSpan={6}
+              loading={playersList.loading || loadSearch()}
+              error={playersList.error || searchError()}
+              empty={
+                !playersList.loading &&
+                !playersList.error &&
+                !loadSearch() &&
+                !searchError() &&
+                playersList().rows.length === 0
+              }
+              onRetry={() => {
+                if (searchError()) void sortPlayerBy(query().sort, false, query().offset, searchValue())
+                else void refetch()
+              }}
+            >
               <For each={playersList().rows}>
                 {(player) => (
                   <tr>
@@ -267,9 +276,9 @@ const ServerPlayer: Component = () => {
                     <td class="w-1/6 text-center">
                       <div class="flex gap-2 justify-center">
                         {player.bypassMaintenance ? (
-                          <i class="fa-solid fa-check text-success"></i>
+                          <Icon name="check" class="text-success" />
                         ) : (
-                          <i class="fa-solid fa-times text-error"></i>
+                          <Icon name="x" class="text-error" />
                         )}
                       </div>
                     </td>
@@ -281,26 +290,26 @@ const ServerPlayer: Component = () => {
                           class="tooltip tooltip-info"
                           data-tip={t('dashboard.server.players_database.steam', 'Steam')}
                         >
-                          <i class="fa-brands fa-steam"></i>
+                          <Icon name="gamepad-2" />
                         </a>
-                        <div
-                          class="tooltip tooltip-info"
-                          data-tip={t('dashboard.server.players_database.edit', 'Edit')}
-                        >
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-edit"
-                            onClick={() => {
-                              setCurrentPlayers(player)
-
-                              showDialog('edit_player')
-                            }}
-                          />
-                        </div>
+                        <IconButton
+                          variant="ghost"
+                          size="sm"
+                          label={t('dashboard.server.players_database.edit', 'Edit')}
+                          icon="pencil"
+                          onClick={() => {
+                            setCurrentPlayers({ ...player })
+                            save.reset()
+                            showDialog('edit_player')
+                          }}
+                        />
                       </div>
                     </td>
                   </tr>
                 )}
               </For>
+            </TableState>
+            <Show when={!playersList.loading && !playersList.error && !loadSearch() && !searchError()}>
               <Pagination
                 query={query()}
                 total={playersList().query?.total ?? 0}
@@ -310,19 +319,6 @@ const ServerPlayer: Component = () => {
             </Show>
           </tbody>
         </table>
-
-        <Switch>
-          <Match when={playersList.loading}>
-            <div class="flex justify-center h-36">
-              <div class="loading loading-spinner loading-lg"></div>
-            </div>
-          </Match>
-          <Match when={playersList.error}>
-            <tr>
-              <td colSpan="4">{t('dashboard.server.players_database.failed_to_load', 'Failed to load the links')}</td>
-            </tr>
-          </Match>
-        </Switch>
       </AdminPanel>
     </>
   )

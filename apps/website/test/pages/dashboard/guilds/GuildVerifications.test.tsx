@@ -119,8 +119,8 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     expect(within(table(container)).getByText('@Moderator')).toBeInTheDocument()
     expect(within(table(container)).getByText('Remove Role')).toBeInTheDocument()
     const rows = screen.getAllByRole('row').slice(1)
-    expect(rows[0].querySelector('.fa-check')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-times')).toBeInTheDocument()
+    expect(rows[0].querySelector('svg[data-icon="check"]')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
   })
 
   it('shows a loading spinner and hides the table body while verifyRoles is loading', () => {
@@ -131,18 +131,17 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     })
     const { container } = renderWithProviders(() => <GuildVerification />)
     expect(container.querySelector('.loading-spinner')).toBeInTheDocument()
-    expect(screen.queryAllByRole('row')).toHaveLength(1) // header row only, tbody For is gated
+    expect(screen.queryAllByRole('row')).toHaveLength(2) // header and loading state row
   })
 
-  it('renders an empty list (not an error) when the verify-roles GET responds with a non-ok status', async () => {
+  it('shows a retryable error when the verify-roles GET responds with a non-ok status', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
       if (endpoint === VERIFY_ROLES_URL) return Promise.resolve(errJson())
       if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
       return Promise.resolve(okJson([]))
     })
     renderWithProviders(() => <GuildVerification />)
-    await vi.waitFor(() => expect(screen.queryAllByRole('row')).toHaveLength(1)) // header row only
-    expect(screen.queryByText('Failed to load the links')).not.toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to load this content.'))
   })
 
   it('shows the failed-to-load message (and does not crash) when the verify-roles fetch rejects', async () => {
@@ -152,7 +151,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       return Promise.resolve(okJson([]))
     })
     renderWithProviders(() => <GuildVerification />)
-    await vi.waitFor(() => expect(screen.getByText('Failed to load the links')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to load this content.'))
     // The select-role modal and the Add Role upsell button both read verifyRoles() unguarded
     // elsewhere in the file - confirm the whole page still rendered instead of crashing.
     expect(screen.getByText('Verification Roles')).toBeInTheDocument()
@@ -198,9 +197,10 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       // Clicking "Send Verification Message" also fires guildChannelsRefetch() (unawaited), which
       // briefly puts guildChannels back into a loading state (showing ChannelSelector's "Loading..."
       // fallback) before it resolves via the mock above.
-      await vi.waitFor(() => expect(within(modal).queryByText('Loading...')).not.toBeInTheDocument())
+      await vi.waitFor(() => expect(within(modal).queryByRole('combobox')).toBeInTheDocument())
       const select = within(modal).getByRole('combobox') as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'c1' } })
+      await fireEvent.click(within(select.closest('dialog')!).getByText('Save'))
 
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VERIFY_MESSAGE_URL, 'POST', { channelID: 'c1' }))
       await vi.waitFor(() => expect(screen.getByText(/#general/)).toBeInTheDocument())
@@ -221,9 +221,10 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
         return Promise.resolve(okJson([]))
       })
       const modal = container.querySelector('#select_channel_modal') as HTMLElement
-      await vi.waitFor(() => expect(within(modal).queryByText('Loading...')).not.toBeInTheDocument())
+      await vi.waitFor(() => expect(within(modal).queryByRole('combobox')).toBeInTheDocument())
       const select = within(modal).getByRole('combobox') as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'c1' } })
+      await fireEvent.click(within(select.closest('dialog')!).getByText('Save'))
 
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(VERIFY_MESSAGE_URL, 'POST', { channelID: 'c1' }))
       expect(screen.getByText('No verification message')).toBeInTheDocument()
@@ -287,7 +288,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
         return Promise.resolve(okJson([]))
       })
       renderWithProviders(() => <GuildVerification />)
-      expect(screen.getByText('Check All Roles')).toHaveClass('btn-disabled')
+      expect(screen.getByRole('button', { name: 'Check All Roles' })).toBeDisabled()
     })
 
     it('disables the button after a successful check (lastVerify becomes false)', async () => {
@@ -300,7 +301,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       })
       await fireEvent.click(screen.getByText('Check All Roles'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(CHECK_URL, 'POST'))
-      await vi.waitFor(() => expect(screen.getByText('Check All Roles')).toHaveClass('btn-disabled'))
+      await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Check All Roles' })).toBeDisabled())
     })
 
     it('leaves the button enabled when the check request fails', async () => {
@@ -317,6 +318,54 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
   })
 
   describe('"don\'t send DM" / "don\'t join support guild" premium toggles', () => {
+    it.each([
+      [0, DONT_MP_URL],
+      [1, DONT_JOIN_SUPPORT_URL],
+    ] as const)(
+      'blocks repeated changes to setting %s while pending, restores failures and permits retry',
+      async (index, endpoint) => {
+        window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+        renderWithProviders(() => <GuildVerification />)
+        await waitForLoaded()
+        const toggles = screen.getAllByRole('checkbox')
+        const toggle = toggles[index]
+        const otherToggle = toggles[1 - index]
+        let finish!: (response: ReturnType<typeof errJson>) => void
+        ;(fetchAPI as Mock).mockImplementation(() => new Promise((resolve) => (finish = resolve)))
+        await fireEvent.click(toggle)
+        await fireEvent.click(toggle)
+        expect(fetchAPI).toHaveBeenCalledWith(endpoint, 'PUT', { value: true })
+        expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(1)
+        expect(toggle).toBeDisabled()
+        expect(toggle).toHaveAttribute('aria-busy', 'true')
+        expect(otherToggle).not.toBeDisabled()
+        finish(errJson())
+        await vi.waitFor(() => expect(toggle).not.toBeDisabled())
+        expect(toggle).not.toBeChecked()
+        expect(screen.getByRole('alert')).toHaveTextContent('Unable to save')
+        ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
+        await fireEvent.click(toggle)
+        await vi.waitFor(() => expect(toggle).not.toBeDisabled())
+        expect(toggle).toBeChecked()
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+        expect(screen.getByRole('status')).toHaveTextContent('Saved')
+      },
+    )
+
+    it('restores the saved DM setting and shows an error after a network failure', async () => {
+      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+      setupFetchAPI({ dontMP: { value: true } })
+      renderWithProviders(() => <GuildVerification />)
+      await waitForLoaded()
+      const toggle = screen.getAllByRole('checkbox')[0]
+      expect(toggle).toBeChecked()
+      ;(fetchAPI as Mock).mockRejectedValueOnce(new Error('Network unavailable'))
+      await fireEvent.click(toggle)
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
+      expect(toggle).toBeChecked()
+      expect(toggle).not.toBeDisabled()
+    })
+
     it('disables both toggles for a free-tier guild', async () => {
       renderWithProviders(() => <GuildVerification />)
       await waitForLoaded()
@@ -356,7 +405,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       })
       await fireEvent.click(dontJoinSupportToggle)
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(DONT_JOIN_SUPPORT_URL, 'PUT', { value: true }))
-      expect(dontJoinSupportToggle.checked).toBe(false)
+      await vi.waitFor(() => expect(dontJoinSupportToggle).not.toBeChecked())
     })
 
     it('reverts the "don\'t send DM" toggle when its PUT fails (premium)', async () => {
@@ -373,7 +422,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       })
       await fireEvent.click(dontMPToggle)
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(DONT_MP_URL, 'PUT', { value: true }))
-      expect(dontMPToggle.checked).toBe(false)
+      await vi.waitFor(() => expect(dontMPToggle).not.toBeChecked())
     })
 
     it('saves the "don\'t join support guild" toggle when its PUT succeeds (premium)', async () => {
@@ -403,7 +452,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
           return Promise.resolve(okJson({ roleID: 'r2' }))
         return Promise.resolve(okJson([]))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(screen.queryByText('@Moderator')).not.toBeInTheDocument())
       expect(screen.getByText('@Admin')).toBeInTheDocument()
@@ -416,7 +465,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
         if (endpoint === `${VERIFY_ROLES_URL}/r2` && method === 'DELETE') return Promise.resolve(errJson())
         return Promise.resolve(okJson([]))
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
+      const deleteIcons = container.querySelectorAll('svg[data-icon="trash-2"]')
       await fireEvent.click(deleteIcons[1])
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${VERIFY_ROLES_URL}/r2`, 'DELETE'))
       expect(screen.getByText('@Moderator')).toBeInTheDocument()
@@ -424,7 +473,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
   })
 
   describe('select role modal (add role)', () => {
-    it('lists only guild roles not already verified, and adds the chosen one on change', async () => {
+    it('lists only guild roles not already verified, and adds the chosen one only after Save', async () => {
       // Free tier is at the 2-role limit with the default fixture, which hides "Add Role" behind
       // the premium upsell (covered separately below) - go premium here so it's clickable.
       window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
@@ -435,7 +484,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       expect(fetchAPI).toHaveBeenCalledWith(GUILD_ROLES_URL, 'GET')
 
       const modal = container.querySelector('#select_role_modal') as HTMLElement
-      await vi.waitFor(() => expect(within(modal).queryByText('Loading...')).not.toBeInTheDocument())
+      await vi.waitFor(() => expect(within(modal).queryByRole('combobox')).toBeInTheDocument())
       const optionTexts = within(modal)
         .getAllByRole('option', { hidden: true })
         .map((o) => o.textContent)
@@ -450,6 +499,8 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       })
       const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'r3' } })
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Save', hidden: true }))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${VERIFY_ROLES_URL}/r3`, 'POST'))
       await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
     })
@@ -465,6 +516,8 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       const modal = container.querySelector('#select_role_modal') as HTMLElement
       const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
       await fireEvent.change(select, { target: { value: 'r3' } })
+      expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
+      await fireEvent.click(within(modal).getByRole('button', { name: 'Save', hidden: true }))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${VERIFY_ROLES_URL}/r3`, 'POST'))
       expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
     })
@@ -498,7 +551,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
 
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0])
 
       const modal = container.querySelector('#edit_role_modal') as HTMLElement
@@ -530,20 +583,24 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
       )
       await vi.waitFor(() => expect(within(table(container)).getAllByText('Remove Role')).toHaveLength(2))
       const rows = screen.getAllByRole('row').slice(1)
-      expect(rows[0].querySelector('.fa-times')).toBeInTheDocument()
+      expect(rows[0].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
     })
 
     it('does not update the list when editing a role fails', async () => {
       const { container } = renderWithProviders(() => <GuildVerification />)
       await waitForLoaded()
       stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
+      const editIcons = container.querySelectorAll('svg[data-icon="pencil"]')
       await fireEvent.click(editIcons[0])
       ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
         if (endpoint === `${VERIFY_ROLES_URL}/r1` && method === 'PUT') return Promise.resolve(errJson())
         return Promise.resolve(okJson([]))
       })
       const modal = container.querySelector('#edit_role_modal') as HTMLElement
+      const editable = (within(modal).getAllByRole('combobox') as HTMLSelectElement[]).find(
+        (select) => !select.disabled,
+      )!
+      await fireEvent.change(editable, { target: { value: 'false' } })
       await fireEvent.click(within(modal).getByText('Save'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${VERIFY_ROLES_URL}/r1`, 'PUT', expect.anything()))
       expect(within(table(container)).getByText('Give Role')).toBeInTheDocument()

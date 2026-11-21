@@ -98,7 +98,7 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
     expect(cells[3]).toHaveTextContent('Spamming chat')
   })
 
-  it('renders an empty warns table (pagination row only) when there are no warns', async () => {
+  it('shows the shared empty state when there are no warns', async () => {
     setupFetchAPI(0)
     ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
       if (typeof endpoint === 'string' && endpoint.startsWith(WARNS_URL_PREFIX)) {
@@ -109,10 +109,36 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
       return Promise.resolve(okJson({}))
     })
     const { container } = renderPage()
-    await vi.waitFor(() => expect(container.querySelectorAll('tbody tr').length).toBe(1))
+    await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.'))
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(2)
+    expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
   })
 
   describe('pagination', () => {
+    it('keeps navigation available when the next page becomes empty', async () => {
+      ;(fetchAPI as Mock)
+        .mockResolvedValueOnce(okJson(defaultWarnsResponse(30)))
+        .mockResolvedValueOnce(
+          okJson({ warns: [], query: { limit: 25, offset: 25, sort: 'createdAt', orderBy: 'DESC', total: 0 } }),
+        )
+        .mockResolvedValueOnce(okJson(defaultWarnsResponse(2)))
+      renderPage()
+      await waitForLoaded()
+      await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+      await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.'))
+      expect(screen.getByRole('combobox', { name: 'Rows per page' })).toBeInTheDocument()
+      const previous = screen.getByRole('button', { name: 'Previous page' })
+      expect(previous).not.toBeDisabled()
+      await fireEvent.click(previous)
+      await vi.waitFor(() => expect(screen.getByText('Spamming chat')).toBeInTheDocument())
+      expect(fetchAPI).toHaveBeenLastCalledWith(
+        `${WARNS_URL_PREFIX}?offset=0&limit=25&sort=createdAt&orderBy=DESC`,
+        'GET',
+      )
+    })
+
     it('requests the query string built from offset/limit/sort/orderBy', async () => {
       renderPage()
       await waitForLoaded()
@@ -125,7 +151,7 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
       await waitForLoaded()
       expect(screen.getByText('1 / 3')).toBeInTheDocument()
 
-      const nextBtn = container.querySelector('.fa-chevron-right')?.closest('button') as HTMLButtonElement
+      const nextBtn = container.querySelector('svg[data-icon="chevron-right"]')?.closest('button') as HTMLButtonElement
       await fireEvent.click(nextBtn)
 
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=25'), 'GET'))
@@ -136,7 +162,7 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
       setupFetchAPI(200)
       const { container } = renderPage()
       await waitForLoaded()
-      const nextBtn = container.querySelector('.fa-chevron-right')?.closest('button') as HTMLButtonElement
+      const nextBtn = container.querySelector('svg[data-icon="chevron-right"]')?.closest('button') as HTMLButtonElement
       await fireEvent.click(nextBtn)
       await vi.waitFor(() => expect(screen.getByText('2 / 8')).toBeInTheDocument())
 

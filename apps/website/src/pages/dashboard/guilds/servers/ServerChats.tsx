@@ -7,10 +7,21 @@ import AdminModal from '../../../../components/AdminModal'
 import { useI18n } from '../../../../i18n'
 import DiscordChannel from '../../../../components/discord/DiscordChannel'
 import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket'
-import { premium, PremiumBadge } from '../../../../utils/premium'
+import { premium } from '../../../../utils/premium'
 import { PremiumOnly } from '../../../../components/PremiumOnly'
 import { fetchAPI } from '../../../../utils/api'
 import { TextValue } from '../../../../components/popup/TextValue'
+import {
+  Button,
+  FormActions,
+  FormField,
+  IconButton,
+  TableState,
+  Icon,
+  SettingGroup,
+  SettingRow,
+} from '../../../../components/ui/index.js'
+import { createAsyncAction } from '../../../../hooks/createAsyncAction.js'
 
 const fetchScreenshot = async () => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats', 'GET')
@@ -34,13 +45,22 @@ const emptyFilter = (): ChatFilter => ({ id: 0, element: '', operator: '', trigg
 const ServerChats: Component = () => {
   const [syncChats, { mutate: syncChatsMutate }] = createResource('screenshot', fetchScreenshot)
   const { t } = useI18n()
+  const ruleSave = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
+  const channelRemoval = createAsyncAction({
+    errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
+  })
+  const directionSave = createAsyncAction({
+    errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
+  })
+  const relaySave = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
+  const pingSave = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
 
   const sendScreenshots = async (channelID: string) => {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats', 'POST', {
       channelID,
     })
     if (!res.ok) {
-      return
+      throw new Error('Channel update failed')
     }
     const screenshot = await res.json()
     syncChatsMutate(screenshot)
@@ -50,7 +70,7 @@ const ServerChats: Component = () => {
   const removeScreenshots = async () => {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/chats', 'DELETE')
     if (!res.ok) {
-      return
+      throw new Error('Channel removal failed')
     }
     syncChatsMutate({})
     return {}
@@ -77,21 +97,22 @@ const ServerChats: Component = () => {
     },
   )
 
-  function updateGmToDscFilterRelayAll(relayAll: boolean) {
-    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/chat_sync_relay_all', 'PUT', {
-      value: relayAll,
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the pseudo direction.')
-        }
-      })
-      .then((data) => {
-        mutateGmToDscFilterRelayAll(data)
-      })
-      .catch((error) => console.error(error))
+  async function updateGmToDscFilterRelayAll(relayAll: boolean) {
+    if (relaySave.pending()) return
+    const previous = gmToDscFilterRelayAll()
+    mutateGmToDscFilterRelayAll({ ...previous, value: relayAll })
+    if (
+      !(await relaySave.run(async () => {
+        const res = await fetchAPI(
+          '/users/:discordID/guilds/:guildID/servers/:serverID/settings/chat_sync_relay_all',
+          'PUT',
+          { value: relayAll },
+        )
+        if (!res.ok) throw new Error('Relay setting update failed')
+        mutateGmToDscFilterRelayAll(await res.json())
+      }))
+    )
+      mutateGmToDscFilterRelayAll(previous)
   }
 
   const [preventChatPing, { mutate: mutatePreventChatPing }] = createResource('preventChatPing', async () => {
@@ -103,21 +124,22 @@ const ServerChats: Component = () => {
     )
   })
 
-  function updatePreventChatPing(preventPing: boolean) {
-    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_chat_prevent_ping', 'PUT', {
-      value: preventPing,
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the prevent chat ping.')
-        }
-      })
-      .then((data) => {
-        mutatePreventChatPing(data)
-      })
-      .catch((error) => console.error(error))
+  async function updatePreventChatPing(preventPing: boolean) {
+    if (pingSave.pending()) return
+    const previous = preventChatPing()
+    mutatePreventChatPing({ ...previous, value: preventPing })
+    if (
+      !(await pingSave.run(async () => {
+        const res = await fetchAPI(
+          '/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_chat_prevent_ping',
+          'PUT',
+          { value: preventPing },
+        )
+        if (!res.ok) throw new Error('Ping setting update failed')
+        mutatePreventChatPing(await res.json())
+      }))
+    )
+      mutatePreventChatPing(previous)
   }
 
   const [gmToDscFilters, { mutate: mutateGmToDscFilters }] = createResource(
@@ -162,61 +184,78 @@ const ServerChats: Component = () => {
   }
 
   const [selectFilter, setSelectFilter] = createSignal<ChatFilter>(emptyFilter())
+  const discardRule = () => {
+    setSelectFilter(emptyFilter())
+    ruleSave.reset()
+  }
 
-  function editGmToDscFilter() {
-    fetchAPI(
+  async function editGmToDscFilter() {
+    const res = await fetchAPI(
       `/users/:discordID/guilds/:guildID/servers/:serverID/chats/filters/${selectFilter().id}`,
       'PUT',
       selectFilter(),
     )
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while editing the role.')
-        }
-      })
-      .then((data) => {
-        mutateGmToDscFilters((prev) => prev.map((r) => (r.id === data.id ? data : r)))
-        setSelectFilter(emptyFilter())
-      })
-      .catch((error) => console.error(error))
+    if (!res.ok) throw new Error('An error occurred while editing the rule.')
+    const data = await res.json()
+    mutateGmToDscFilters((prev) => prev.map((rule) => (rule.id === data.id ? data : rule)))
   }
 
-  function updateSyncPseudoDirection(direction: string) {
-    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/syncChatDirection', 'PUT', {
-      value: direction,
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the pseudo direction.')
-        }
-      })
-      .then((data) => {
-        mutatePseudoDirection(data)
-      })
-      .catch((error) => console.error(error))
+  async function updateSyncPseudoDirection(direction: string) {
+    if (directionSave.pending()) return
+    const previous = pseudoDirection()
+    mutatePseudoDirection({ ...previous, value: direction })
+    if (
+      !(await directionSave.run(async () => {
+        const res = await fetchAPI(
+          '/users/:discordID/guilds/:guildID/servers/:serverID/settings/syncChatDirection',
+          'PUT',
+          { value: direction },
+        )
+        if (!res.ok) throw new Error('Direction update failed')
+        mutatePseudoDirection(await res.json())
+      }))
+    )
+      mutatePseudoDirection(previous)
   }
 
   function getSelectorClassList(direction: string) {
     return !pseudoDirection.loading ? pseudoDirection().value === direction : false
   }
 
+  const filterLabels = () => ({
+    message: t('dashboard.server.chat.message', 'Message'),
+    userGroup: t('dashboard.server.chat.user_group', 'User Group'),
+    steamID64: t('dashboard.server.chat.steam_id_64', 'Steam ID 64'),
+    teamName: t('dashboard.server.chat.team_name', 'Team Name'),
+    contain: t('dashboard.server.chat.contain', 'Contain'),
+    notContain: t('dashboard.server.chat.not_contain', 'Not Contain'),
+    equal: t('dashboard.server.chat.equal', 'Equal'),
+    notEqual: t('dashboard.server.chat.not_equal', 'Not Equal'),
+    startWith: t('dashboard.server.chat.start_with', 'Start With'),
+    endWith: t('dashboard.server.chat.end_with', 'End With'),
+    block: t('dashboard.server.chat.block', 'Block'),
+    relay: t('dashboard.server.chat.relay', 'Relay'),
+    anonymize: t('dashboard.server.chat.anonymize', 'Anonymize'),
+  })
+  const filterLabel = (value: string) => filterLabels()[value as keyof ReturnType<typeof filterLabels>] ?? value
+
   return (
     <>
       <NeedWebsocket />
       <AdminChannelSelector id="select_channel_modal" callback={sendScreenshots} />
 
-      <AdminModal title={t('dashboard.server.chat.edit_rule', 'Edit Rule')} id="edit_rule_modal">
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.chat.element', 'Element')}</span>
-          </label>
+      <AdminModal
+        title={t('dashboard.server.chat.edit_rule', 'Edit Rule')}
+        id="edit_rule_modal"
+        busy={ruleSave.pending()}
+        onClose={discardRule}
+        onCancel={discardRule}
+      >
+        <FormField id="chat-rule-element" label={t('dashboard.server.chat.element', 'Element')}>
           <select
+            id="chat-rule-element"
             class="select"
-            disabled={gmToDscFilters.loading}
+            disabled={gmToDscFilters.loading || ruleSave.pending()}
             onChange={(e) => {
               setSelectFilter((previous) => ({ ...previous, element: e.currentTarget.value }))
             }}
@@ -234,13 +273,11 @@ const ServerChats: Component = () => {
               {t('dashboard.server.chat.team_name', 'Team Name')}
             </option>
           </select>
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.chat.operator', 'Operator')}</span>
-          </label>
+        </FormField>
+        <FormField id="chat-rule-operator" label={t('dashboard.server.chat.operator', 'Operator')}>
           <select
-            disabled={gmToDscFilters.loading}
+            id="chat-rule-operator"
+            disabled={gmToDscFilters.loading || ruleSave.pending()}
             class="select"
             onChange={(e) => {
               setSelectFilter((previous) => ({ ...previous, operator: e.currentTarget.value }))
@@ -265,27 +302,23 @@ const ServerChats: Component = () => {
               {t('dashboard.server.chat.end_with', 'End With')}
             </option>
           </select>
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.chat.trigger', 'Trigger')}</span>
-          </label>
+        </FormField>
+        <FormField id="chat-rule-trigger" label={t('dashboard.server.chat.trigger', 'Trigger')}>
           <input
+            id="chat-rule-trigger"
             type="text"
-            disabled={gmToDscFilters.loading}
+            disabled={gmToDscFilters.loading || ruleSave.pending()}
             class="input"
             value={selectFilter().trigger}
             onInput={(e) => {
               setSelectFilter((previous) => ({ ...previous, trigger: e.currentTarget.value }))
             }}
           />
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.chat.actions_on_match', 'Actions on Match')}</span>
-          </label>
+        </FormField>
+        <FormField id="chat-rule-action" label={t('dashboard.server.chat.actions_on_match', 'Actions on Match')}>
           <select
-            disabled={gmToDscFilters.loading}
+            id="chat-rule-action"
+            disabled={gmToDscFilters.loading || ruleSave.pending()}
             class="select"
             onChange={(e) => {
               setSelectFilter((previous) => ({ ...previous, action: e.currentTarget.value }))
@@ -301,13 +334,11 @@ const ServerChats: Component = () => {
               {t('dashboard.server.chat.anonymize', 'Anonymize')}
             </option>
           </select>
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.chat.active', 'Active')}</span>
-          </label>
+        </FormField>
+        <FormField id="chat-rule-active" label={t('dashboard.server.chat.active', 'Active')}>
           <select
-            disabled={gmToDscFilters.loading}
+            id="chat-rule-active"
+            disabled={gmToDscFilters.loading || ruleSave.pending()}
             class="select"
             onChange={(e) => {
               setSelectFilter((previous) => ({ ...previous, active: e.currentTarget.value === 'true' }))
@@ -320,17 +351,19 @@ const ServerChats: Component = () => {
               {t('dashboard.server.chat.no', 'No')}
             </option>
           </select>
-        </div>
-        <button
-          class="btn btn-base-200 mt-2"
-          disabled={gmToDscFilters.loading}
-          onClick={async () => {
-            closeDialog('edit_rule_modal')
-            editGmToDscFilter()
+        </FormField>
+        <FormActions
+          pending={ruleSave.pending()}
+          disabled={gmToDscFilters.loading || !!gmToDscFilters.error}
+          error={ruleSave.error()}
+          saveLabel={t('dashboard.server.chat.save', 'Save')}
+          onSave={() => {
+            void ruleSave.run(editGmToDscFilter).then((saved) => {
+              if (saved) closeDialog('edit_rule_modal')
+            })
           }}
-        >
-          {t('dashboard.server.chat.save', 'Save')}
-        </button>
+          onCancel={() => closeDialog('edit_rule_modal')}
+        />
       </AdminModal>
 
       <AdminPanel
@@ -340,96 +373,208 @@ const ServerChats: Component = () => {
           'Set a channel to sync the chats between your server and Discord.',
         )}
       >
-        <div class="flex w-fit items-center">
-          <span class="mr-2">{t('dashboard.server.chat.chats_channels', 'Actual Chats Channels') + ' : '}</span>
-          <Show
-            when={!syncChats.loading && syncChats().channel}
-            fallback={<span>{t('dashboard.server.chat.no_sync_chats', 'No Sync Chats')}</span>}
+        <SettingGroup title={t('settings.chat_destination', 'Discord destination')} icon="messages-square">
+          <SettingRow
+            title={t('dashboard.server.chat.chats_channels', 'Actual Chats Channels')}
+            description={t(
+              'settings.chat_destination_help',
+              'Messages are relayed through this channel. Select a channel to connect the relay.',
+            )}
+            feedback={
+              <>
+                <Show when={channelRemoval.error()}>
+                  <p role="alert" class="text-error">
+                    {channelRemoval.error()}
+                  </p>
+                </Show>
+              </>
+            }
           >
-            <DiscordChannel channelID={syncChats().channel} />
-          </Show>
-        </div>
-        <div class="flex w-fit items-center">
-          <PremiumBadge onlyIcon={true} />
-          <span class="mr-2 text-nowrap">
-            {t('dashboard.server.chat.sync_direction', 'Chats Synchronization Direction') + ' : '}
-          </span>
-          <select
-            class="select w-full max-w-xs"
-            disabled={pseudoDirection.loading}
-            onChange={(e) => {
-              updateSyncPseudoDirection(e.currentTarget.value)
-            }}
+            <div class="flex flex-wrap items-center gap-3">
+              <Show
+                when={!syncChats.loading && syncChats().channel}
+                fallback={<span>{t('dashboard.server.chat.no_sync_chats', 'No Sync Chats')}</span>}
+              >
+                <DiscordChannel channelID={syncChats().channel} />
+              </Show>{' '}
+              <div class="flex gap-4">
+                <Show when={!syncChats.loading && syncChats().channel}>
+                  <Button
+                    variant="danger"
+                    loading={channelRemoval.pending()}
+                    onClick={() => void channelRemoval.run(removeScreenshots)}
+                  >
+                    {t('dashboard.server.chat.remove_channel', 'Remove Channel')}
+                  </Button>
+                </Show>
+                <Button
+                  disabled={channelRemoval.pending()}
+                  onClick={() => {
+                    showDialog('select_channel_modal')
+                    guildChannelsRefetch()
+                  }}
+                >
+                  {t('dashboard.server.chat.select_channel', 'Select Channel')}
+                </Button>
+              </div>
+            </div>
+          </SettingRow>
+        </SettingGroup>
+        <SettingGroup title={t('settings.sync_behavior', 'Synchronization behavior')} icon="arrow-left-right">
+          <SettingRow
+            controlId="chat-direction"
+            title={t('dashboard.server.chat.sync_direction', 'Chats Synchronization Direction')}
+            description={t(
+              'settings.chat_direction_help',
+              'Choose which side can send messages through the relay. Changes are saved automatically.',
+            )}
+            feedback={
+              <>
+                <Show when={directionSave.pending()}>
+                  <span
+                    role="status"
+                    aria-label={t('ui.loading', 'Loading…')}
+                    class="loading loading-spinner loading-sm"
+                  />
+                </Show>
+                <Show when={directionSave.error()}>
+                  <span role="alert" class="text-sm text-error">
+                    {directionSave.error()}
+                  </span>
+                </Show>
+                <Show when={directionSave.success()}>
+                  <span role="status" class="text-sm text-success">
+                    {t('ui.saved', 'Saved')}
+                  </span>
+                </Show>
+              </>
+            }
           >
-            <option value="discordToGmod" selected={getSelectorClassList('discordToGmod')} disabled={!premium()}>
-              {t('dashboard.server.chat.from_discord_to_gmod', 'From Discord to Gmod')} <PremiumOnly />
-            </option>
-            <option value="gmodToDiscord" selected={getSelectorClassList('gmodToDiscord')}>
-              {t('dashboard.server.chat.from_gmod_to_discord', 'From Gmod to Discord')}
-            </option>
-            <option value="both" selected={getSelectorClassList('both')} disabled={!premium()}>
-              {t('dashboard.server.chat.both_ways', 'Both Ways')} <PremiumOnly />
-            </option>
-          </select>
-        </div>
-        <div class="flex w-fit items-center">
-          <span class="mr-2">{t('dashboard.server.chat.prevent_chat_ping', 'Prevent Chat Ping') + ' : '}</span>
-          <input
-            type="checkbox"
-            class="toggle toggle-md"
-            disabled={preventChatPing.loading}
-            checked={!preventChatPing.loading ? preventChatPing().value : false}
-            onChange={(e) => {
-              updatePreventChatPing(e.currentTarget.checked)
-            }}
-          />
-        </div>
-        <div class="flex gap-4">
-          <Show when={!syncChats.loading && syncChats().channel}>
-            <button
-              class="btn btn-warning"
-              onClick={async () => {
-                await removeScreenshots()
+            <select
+              id="chat-direction"
+              aria-describedby="chat-direction-description"
+              aria-label={t('dashboard.server.chat.sync_direction', 'Chats Synchronization Direction')}
+              class="select w-full max-w-xs"
+              disabled={pseudoDirection.loading || directionSave.pending()}
+              aria-busy={directionSave.pending() || undefined}
+              value={!pseudoDirection.loading ? pseudoDirection().value : ''}
+              onChange={(e) => {
+                updateSyncPseudoDirection(e.currentTarget.value)
               }}
             >
-              {t('dashboard.server.chat.remove_channel', 'Remove Channel')}
-            </button>
-          </Show>
-          <button
-            class="btn btn-base-200"
-            onClick={() => {
-              showDialog('select_channel_modal')
-              guildChannelsRefetch()
-            }}
+              <option value="discordToGmod" selected={getSelectorClassList('discordToGmod')} disabled={!premium()}>
+                {t('dashboard.server.chat.from_discord_to_gmod', 'From Discord to Gmod')} <PremiumOnly />
+              </option>
+              <option value="gmodToDiscord" selected={getSelectorClassList('gmodToDiscord')}>
+                {t('dashboard.server.chat.from_gmod_to_discord', 'From Gmod to Discord')}
+              </option>
+              <option value="both" selected={getSelectorClassList('both')} disabled={!premium()}>
+                {t('dashboard.server.chat.both_ways', 'Both Ways')} <PremiumOnly />
+              </option>
+            </select>
+          </SettingRow>
+          <SettingRow
+            controlId="chat-prevent-ping"
+            title={t('dashboard.server.chat.prevent_chat_ping', 'Prevent Chat Ping')}
+            description={t(
+              'settings.chat_ping_help',
+              'Prevent relayed messages from mentioning Discord members and roles.',
+            )}
+            feedback={
+              <>
+                <Show when={pingSave.pending()}>
+                  <span
+                    role="status"
+                    aria-label={t('ui.loading', 'Loading…')}
+                    class="loading loading-spinner loading-sm"
+                  />
+                </Show>
+                <Show when={pingSave.error()}>
+                  <span role="alert" class="text-sm text-error">
+                    {pingSave.error()}
+                  </span>
+                </Show>
+                <Show when={pingSave.success()}>
+                  <span role="status" class="text-sm text-success">
+                    {t('ui.saved', 'Saved')}
+                  </span>
+                </Show>
+              </>
+            }
           >
-            {t('dashboard.server.chat.select_channel', 'Select Channel')}
-          </button>
-        </div>
+            <input
+              id="chat-prevent-ping"
+              aria-describedby="chat-prevent-ping-description"
+              aria-label={t('dashboard.server.chat.prevent_chat_ping', 'Prevent Chat Ping')}
+              type="checkbox"
+              class="toggle toggle-md"
+              disabled={preventChatPing.loading || pingSave.pending()}
+              aria-busy={pingSave.pending() || undefined}
+              checked={!preventChatPing.loading ? preventChatPing().value : false}
+              onChange={(e) => {
+                updatePreventChatPing(e.currentTarget.checked)
+              }}
+            />
+          </SettingRow>
+          <Show when={!premium()}>
+            <p class="settings-notice">
+              <Icon name="crown" size={16} />
+              {t('settings.sync_premium_help', 'Discord to game and two-way synchronization require Premium.')}
+            </p>
+          </Show>
+        </SettingGroup>
       </AdminPanel>
 
       <AdminPanel
         title={t('dashboard.server.chat.gmod_to_discord_filter', 'Gmod to Discord Filter')}
-        description={t(
-          'dashboard.server.chat.add_rules',
-          'Add specific rules to filter the messages sent from Gmod to Discord.',
-        )}
-        type="none"
+        description={t('ui.autosave', 'Changes are saved automatically.')}
+        icon="sliders-horizontal"
         premium={true}
       >
-        <div class="p-4 flex w-fit items-center">
-          <span class="mr-2 text-nowrap">
-            {t('dashboard.server.chat.default_behavior', 'Comportement by Default : ')}
-          </span>
+        <SettingRow
+          controlId="chat-default-behavior"
+          title={t('dashboard.server.chat.default_behavior', 'Default behavior')}
+          description={t(
+            'settings.chat_default_help',
+            'Choose whether game messages are relayed or blocked by default. Configure exceptions in the rules below.',
+          )}
+          feedback={
+            <>
+              <Show when={relaySave.pending()}>
+                <span
+                  role="status"
+                  aria-label={t('ui.loading', 'Loading…')}
+                  class="loading loading-spinner loading-sm"
+                />
+              </Show>
+              <Show when={relaySave.error()}>
+                <span role="alert" class="text-sm text-error">
+                  {relaySave.error()}
+                </span>
+              </Show>
+              <Show when={relaySave.success()}>
+                <span role="status" class="text-sm text-success">
+                  {t('ui.saved', 'Saved')}
+                </span>
+              </Show>
+            </>
+          }
+        >
           <select
+            id="chat-default-behavior"
+            aria-describedby="chat-default-behavior-description"
+            aria-label={t('dashboard.server.chat.default_behavior', 'Default behavior')}
             class="select w-full max-w-xs"
-            disabled={!premium() || gmToDscFilterRelayAll.loading}
+            disabled={!premium() || gmToDscFilterRelayAll.loading || relaySave.pending()}
+            aria-busy={relaySave.pending() || undefined}
+            value={!gmToDscFilterRelayAll.loading ? String(gmToDscFilterRelayAll().value) : ''}
             onChange={(e) => {
               updateGmToDscFilterRelayAll(e.currentTarget.value === 'true')
             }}
           >
             <Show
               when={!gmToDscFilterRelayAll.loading}
-              fallback={<div>{t('dashboard.server.chat.loading', 'Loading...')}</div>}
+              fallback={<option value="">{t('dashboard.server.chat.loading', 'Loading...')}</option>}
             >
               <option value="true" selected={gmToDscFilterRelayAll().value === true}>
                 {t('dashboard.server.chat.relay_all_messages', 'Relay All Messages')}
@@ -439,83 +584,88 @@ const ServerChats: Component = () => {
               </option>
             </Show>
           </select>
-        </div>
-
-        <table class="table border-b border-base-300 rounded-none">
-          <thead>
-            <tr class="text-l">
-              <th>{t('dashboard.server.chat.element', 'Element')}</th>
-              <th>{t('dashboard.server.chat.operator', 'Operator')}</th>
-              <th>{t('dashboard.server.chat.trigger', 'Trigger')}</th>
-              <th>{t('dashboard.server.chat.actions_on_match', 'Actions on Match')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.server.chat.active', 'Active')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.server.chat.actions', 'Actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <Show
-              when={!gmToDscFilters.loading}
-              fallback={
-                <div class="flex justify-center h-36">
-                  <div class="loading loading-spinner loading-lg"></div>
-                </div>
-              }
-            >
-              <For each={gmToDscFilters()}>
-                {(rule) => (
-                  <tr>
-                    <td>{rule.element}</td>
-                    <td>{rule.operator}</td>
-                    <td>
-                      <TextValue value={rule.trigger} />
-                    </td>
-                    <td>{rule.action}</td>
-                    <td>
-                      <div class="flex gap-2 justify-center">
-                        {rule.active ? (
-                          <i class="fa-solid fa-check text-success"></i>
-                        ) : (
-                          <i class="fa-solid fa-times text-error"></i>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div class="flex gap-2 justify-center">
-                        <div class="tooltip tooltip-info" data-tip={t('dashboard.server.chat.edit', 'Edit')}>
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-edit"
-                            onClick={() => {
-                              showDialog('edit_rule_modal')
-                              setSelectFilter({ ...rule })
-                            }}
-                          ></i>
-                        </div>
-                        <div class="tooltip tooltip-error" data-tip={t('dashboard.server.chat.delete', 'Delete')}>
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-trash text-error"
-                            onClick={() => deleteGmToDscFilter(rule.id)}
-                          ></i>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </Show>
-          </tbody>
-        </table>
-
-        <div class="flex gap-4 p-4">
-          <button
-            class="btn btn-base-200"
-            disabled={!premium() || gmToDscFilters.loading}
-            classList={{
-              'btn-disabled': !premium(),
-            }}
-            onClick={addGmToDscFilter}
-          >
+        </SettingRow>
+      </AdminPanel>
+      <AdminPanel
+        title={t('settings.chat_rules', 'Filter rules')}
+        description={t(
+          'dashboard.server.chat.add_rules',
+          'Add specific rules to filter the messages sent from Gmod to Discord.',
+        )}
+        icon="list"
+        type="none"
+        actions={
+          <Button variant="primary" disabled={!premium() || gmToDscFilters.loading} onClick={addGmToDscFilter}>
             {t('dashboard.server.chat.add_rule', 'Add Rule')}
-          </button>
+          </Button>
+        }
+      >
+        <div class="min-w-0 w-full overflow-x-auto">
+          <table class="table border-b border-base-300 rounded-none">
+            <thead>
+              <tr class="text-l">
+                <th>{t('dashboard.server.chat.element', 'Element')}</th>
+                <th>{t('dashboard.server.chat.operator', 'Operator')}</th>
+                <th>{t('dashboard.server.chat.trigger', 'Trigger')}</th>
+                <th>{t('dashboard.server.chat.actions_on_match', 'Actions on Match')}</th>
+                <th class="w-1/6 text-center">{t('dashboard.server.chat.active', 'Active')}</th>
+                <th class="w-1/6 text-center">{t('dashboard.server.chat.actions', 'Actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <TableState
+                colSpan={6}
+                loading={gmToDscFilters.loading}
+                error={!!gmToDscFilters.error}
+                empty={!gmToDscFilters.loading && !gmToDscFilters.error && gmToDscFilters().length === 0}
+              >
+                <For each={gmToDscFilters()}>
+                  {(rule) => (
+                    <tr>
+                      <td>{filterLabel(rule.element)}</td>
+                      <td>{filterLabel(rule.operator)}</td>
+                      <td>
+                        <TextValue value={rule.trigger} />
+                      </td>
+                      <td>{filterLabel(rule.action)}</td>
+                      <td>
+                        <div class="flex gap-2 justify-center">
+                          {rule.active ? (
+                            <Icon name="check" class="text-success" />
+                          ) : (
+                            <Icon name="x" class="text-error" />
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        <div class="flex gap-2 justify-center">
+                          <IconButton
+                            size="sm"
+                            label={t('dashboard.server.chat.edit', 'Edit')}
+                            icon="pencil"
+                            disabled={ruleSave.pending()}
+                            onClick={() => {
+                              ruleSave.reset()
+                              setSelectFilter({ ...rule })
+                              showDialog('edit_rule_modal')
+                            }}
+                          />
+                          <IconButton
+                            size="sm"
+                            variant="danger"
+                            label={t('dashboard.server.chat.delete', 'Delete')}
+                            icon="trash-2"
+                            disabled={ruleSave.pending()}
+                            onClick={() => deleteGmToDscFilter(rule.id)}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </TableState>
+            </tbody>
+          </table>
         </div>
       </AdminPanel>
     </>
