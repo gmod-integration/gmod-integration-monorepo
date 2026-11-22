@@ -195,10 +195,13 @@ publishing partial changes.
 ## Platform administration
 
 `/v6/admin` exposes platform statistics, paginated community/server/user/Premium directories and
-administrative mutations. Every route requires the operator's own application session and a current
-`developer` rank from the database; delegated support sessions are refused. Origin and CSRF checks
+administrative mutations. Every route requires the operator's own application session and membership
+in the root `developers.json` allowlist; delegated support sessions are refused. Origin and CSRF checks
 use the shared session helpers. Mutations validate strict payloads and record the actor, target and
 reason. Server token rotation returns an acknowledgement without exposing the replacement secret.
+User roles are computed from that static list. There is no HTTP endpoint to grant or edit a role.
+Community/server mutations request fresh Discord permissions before modifying data; reads can use
+the bounded, revision-checked permission cache.
 
 See [the admin dashboard contract](./admin-dashboard.md) for endpoints, safeguards and the required
 Premium grant migration before deployment.

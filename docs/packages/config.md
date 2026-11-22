@@ -15,6 +15,10 @@ nothing else in the codebase should read `process.env` directly (see
 - `./schema.js` → `src/schema.ts`: the `ConfigSchema` Zod definition (all env vars, types, defaults). Secrets
   (`MARIA_PASSWORD`, `MARIA_ROOT_PASSWORD`, ...) go through `strongSecretSchema`, which rejects short values
   and the literal strings `"secret"`/`"root"`.
+- `./developers.js` → `src/developers.ts`: server-only platform privilege lookup from the root
+  `developers.json`. Exposes the frozen `developerDiscordIDs`, `isDeveloper(discordID)` and
+  `getPlatformRank(discordID)`. This submodule reads the file through `node:fs`; never import it into
+  browser code.
 - `./website.js` → `src/website.ts`: a **separate**, smaller Zod schema for the subset of config the frontend
   needs at build/runtime (`DOMAIN_URL`, `WEBSITE_URL`, `DISCORD_CLIENT_ID`, `WEBSITE_WS_URL`). Kept apart from
   the server schema so the website bundle never has a reason to reference server secrets.
@@ -25,6 +29,24 @@ nothing else in the codebase should read `process.env` directly (see
   responsibility for the normal server config bootstrap.
 - `./website-runtime.js` → `dist/website.js`: prebuilt output of `website.ts` for environments that can't run
   the TS loader.
+
+## Platform developer allowlist
+
+The checked-in root [`developers.json`](../../developers.json) is the only source of platform developer
+access. It currently contains only Discord ID `333650866747867137`. The module validates an array of
+17–20 digit string IDs, rejects an invalid file at import and freezes a deduplicated copy. Neither
+environment variables, Discord roles nor `gm_user.rank` can add privileges.
+
+`isDeveloper` checks an exact string ID. `getPlatformRank` projects `developer` for a listed ID and
+`user` otherwise; those are the only platform roles. Session and admin-directory responses expose this
+effective rank to the frontend. The dashboard has no role editor or rank mutation route; backend
+administration and support-start authorization consult the allowlist themselves.
+
+The file is loaded once when the server module is imported, with no live reload. After changing the
+list, redeploy/restart all backend services and replicas, including the API, WebSocket gateway, Discord
+processes and workers, with the same root file. An old process otherwise keeps its previous privilege
+list. No database rank update is required. The browser receives the computed role and must never bundle
+the JSON file or the server-only helper.
 
 ## Used by
 

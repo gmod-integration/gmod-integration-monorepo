@@ -87,6 +87,7 @@ const redisSubscriberMock = {
   quit: vi.fn().mockResolvedValue(undefined),
 }
 const redisMock: any = {
+  mget: vi.fn().mockResolvedValue([null, null]),
   get: vi.fn(),
   set: vi.fn().mockResolvedValue(undefined),
   del: vi.fn().mockResolvedValue(undefined),
@@ -105,6 +106,9 @@ vi.mock('@gmod/core/utils/tools.js', () => ({
 }))
 
 vi.mock('@gmod/infra-bullmq', () => ({ connection: {} }))
+const acceptAddonCommandResultMock = vi.fn().mockResolvedValue(undefined)
+vi.mock('@gmod/infra-websocket/addonCommands.js', () => ({ acceptAddonCommandResult: acceptAddonCommandResultMock }))
+
 vi.mock('@gmod/infra-websocket/queues.js', () => ({
   wsSendToServerQueue: { name: 'wsSendToServer' },
   wsSendToAllClientsOfServerQueue: { name: 'wsSendToAllClientsOfServer' },
@@ -170,6 +174,7 @@ describe('apps/websocket main()', () => {
   })
 
   beforeEach(() => {
+    redisMock.mget.mockReset().mockResolvedValue([null, null])
     getServerFromIDMock.mockReset()
     consumeTicketMock.mockReset().mockImplementation(async (ticket) => {
       const found = tickets.get(ticket) || null
@@ -215,6 +220,25 @@ describe('apps/websocket main()', () => {
     expect(await verify(req)).toEqual([true])
     capturedWss!.emit('connection', ws, req)
     return ws
+  }
+
+  async function simulateDashboardDelivery(packet: { id: string; action: string; data: unknown }) {
+    const channel = 'ws:send-to-clients:broadcast'
+    const publishedBefore = redisMock.publish.mock.calls.length
+    const previousPublish = redisMock.publish.getMockImplementation()
+    try {
+      // Exercise the real worker in both local-delivery and Redis-fanout implementations.
+      // Bridge publications explicitly below instead of depending on a particular fake Redis transport.
+      redisMock.publish.mockImplementation((publishedChannel: string, payload: string) =>
+        publishedChannel === channel ? Promise.resolve(1) : previousPublish?.(publishedChannel, payload),
+      )
+      await capturedWorkers.wsSendToAllClientsOfServer.processor({ data: packet })
+    } finally {
+      redisMock.publish.mockImplementation(previousPublish)
+    }
+    for (const [publishedChannel, payload] of redisMock.publish.mock.calls.slice(publishedBefore)) {
+      if (publishedChannel === channel) await subscriberHandlers.message(publishedChannel, payload)
+    }
   }
 
   describe('verifyClient', () => {
@@ -425,6 +449,135 @@ describe('apps/websocket main()', () => {
   })
 
   describe('session-bound client sockets', () => {
+    it('suppresses a status response when its socket is revoked during the final permission revision read', async () => {
+      const ws = await connectClient('revoked-during-final-permission-read')
+      redisMock.mget.mockResolvedValueOnce([null, null]).mockImplementationOnce(async () => {
+        await subscriberHandlers.message(
+          'gmi:auth:session-revoked',
+          JSON.stringify({ sessionID: 'revoked-during-final-permission-read' }),
+        )
+        return [null, null]
+      })
+      ws.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(ws.send).not.toHaveBeenCalled()
+      expect(ws.close).toHaveBeenCalledExactlyOnceWith(1008, 'Session revoked')
+    })
+    it('never registers a socket closed while its user was still resolving', async () => {
+      gmLogMock.mockClear()
+      let resolveUser!: (value: any) => void
+      getPanelUserFromDiscordIDMock.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveUser = resolve
+        }),
+      )
+      const ws = await connectClient('closed-during-user')
+      ws.emit('close')
+      resolveUser({ discordID: 'd1' })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(getUserGuildsWithPermsForPanelMock).not.toHaveBeenCalled()
+      expect(ws.listenerCount('message')).toBe(0)
+      expect(gmLogMock).not.toHaveBeenCalledWith('websocket', 'Client connected: d1')
+    })
+    it('never resurrects a socket closed during its initial permission lookup', async () => {
+      gmLogMock.mockClear()
+      let resolvePermissions!: (value: any) => void
+      getUserGuildsWithPermsForPanelMock.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolvePermissions = resolve
+        }),
+      )
+      const ws = await connectClient('closed-during-permissions')
+      ws.emit('close')
+      resolvePermissions([{ id: 'g1' }])
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(ws.listenerCount('message')).toBe(0)
+      expect(gmLogMock).not.toHaveBeenCalledWith('websocket', 'Client connected: d1')
+      await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+      expect(ws.send).not.toHaveBeenCalled()
+    })
+    it('applies session revocation while initial permissions are pending', async () => {
+      gmLogMock.mockClear()
+      let resolvePermissions!: (value: any) => void
+      getUserGuildsWithPermsForPanelMock.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolvePermissions = resolve
+        }),
+      )
+      const ws = await connectClient('revoked-during-permissions')
+      await subscriberHandlers.message(
+        'gmi:auth:session-revoked',
+        JSON.stringify({ sessionID: 'revoked-during-permissions' }),
+      )
+      resolvePermissions([{ id: 'g1' }])
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(ws.close).toHaveBeenCalledExactlyOnceWith(1008, 'Session revoked')
+      expect(ws.listenerCount('message')).toBe(0)
+      expect(gmLogMock).not.toHaveBeenCalledWith('websocket', 'Client connected: d1')
+    })
+    it('invalidates local permissions immediately on a member-role notification', async () => {
+      const ws = await connectClient('member-role-revoked')
+      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
+      await subscriberHandlers.message(
+        'gmi:discord:guild-permissions-invalidated',
+        JSON.stringify({ discordID: 'd1', guildID: 'g1', revision: 'changed' }),
+      )
+      await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+      expect(ws.send).not.toHaveBeenCalled()
+      expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(2)
+    })
+    it('leaves another account snapshot cached after a targeted invalidation', async () => {
+      const ws = await connectClient('unaffected-user', 'other')
+      await subscriberHandlers.message(
+        'gmi:discord:guild-permissions-invalidated',
+        JSON.stringify({ discordID: 'd1', guildID: 'g1', revision: 'changed' }),
+      )
+      await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+      expect(ws.send).toHaveBeenCalled()
+      expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(1)
+    })
+    it('refreshes a newly granted guild role even when that guild was absent from the previous admin snapshot', async () => {
+      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
+      const ws = await connectClient('newly-granted-community-admin')
+      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([{ id: 'g1' }])
+      await subscriberHandlers.message(
+        'gmi:discord:guild-permissions-invalidated',
+        JSON.stringify({ guildID: 'g1', revision: 'admin-role-enabled' }),
+      )
+      await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+      expect(ws.send).toHaveBeenCalled()
+      expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(2)
+    })
+    it('rechecks durable revisions before delivery even if the pubsub invalidation was missed', async () => {
+      const ws = await connectClient('missed-permission-revocation')
+      redisMock.mget.mockResolvedValue(['role-permission-changed', null])
+      getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
+      await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+      expect(ws.send).not.toHaveBeenCalled()
+      expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(2)
+    })
+    it('does not install a permission result invalidated while its request was in flight', async () => {
+      const ws = await connectClient('invalidated-during-permissions')
+      let resolvePermissions!: (value: any) => void
+      getUserGuildsWithPermsForPanelMock.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolvePermissions = resolve
+        }),
+      )
+      await subscriberHandlers.message(
+        'gmi:discord:guild-permissions-invalidated',
+        JSON.stringify({ guildID: 'g1', revision: 'first' }),
+      )
+      const delivery = simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      await subscriberHandlers.message(
+        'gmi:discord:guild-permissions-invalidated',
+        JSON.stringify({ guildID: 'g1', revision: 'second' }),
+      )
+      resolvePermissions([{ id: 'g1' }])
+      await delivery
+      expect(ws.send).not.toHaveBeenCalled()
+    })
     it('rejects a resolved session whose user disappeared before connection', async () => {
       getPanelUserFromDiscordIDMock.mockResolvedValueOnce(null)
       const ws = await connectClient('missing-profile')
@@ -688,6 +841,19 @@ describe('apps/websocket main()', () => {
       expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ hello: 'world' }))
     })
 
+    it('keeps privileged payloads out of dispatch logs', async () => {
+      const ws = await connectServer('private-command')
+      gmLogMock.mockClear()
+      const data = { method: 'wsServerRunLua', data: 'private-console-payload' }
+      expect(await capturedWorkers.wsSendToServer.processor({ data: { id: 'private-command', data } })).toBe(true)
+      expect(ws.send).toHaveBeenCalledWith(JSON.stringify(data))
+      expect(JSON.stringify(gmLogMock.mock.calls)).not.toContain('private-console-payload')
+      expect(gmLogMock).toHaveBeenCalledWith(
+        'websocket',
+        JSON.stringify({ action: 'command_dispatched', serverID: 'private-command', method: 'wsServerRunLua' }),
+      )
+    })
+
     it.each([
       [{ method: 'wsSyncName' }, 'gmod-to-discord'],
       [{ method: 'wsPlayerSay' }, 'gmodToDiscord'],
@@ -703,24 +869,27 @@ describe('apps/websocket main()', () => {
       },
     )
 
-    it('does not execute RCON queued before the paid capability expired', async () => {
-      getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'community' })
-      accessMock.mockResolvedValueOnce({
-        guildID: 'community',
-        premium: false,
-        customBot: false,
-        state: 'ready',
-        sources: [],
-        revision: 'expired',
-        validUntil: '2030-01-01T00:00:00.000Z',
-      })
-      redisMock.publish.mockClear()
-      const result = await capturedWorkers.wsSendToServer.processor({
-        data: { id: 'expired', data: { method: 'wsRcon', command: 'status' } },
-      })
-      expect(result).toBe(false)
-      expect(redisMock.publish).not.toHaveBeenCalled()
-    })
+    it.each(['wsRcon', 'wsAuthorizedRcon'])(
+      'does not execute %s queued before the paid capability expired',
+      async (method) => {
+        getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'community' })
+        accessMock.mockResolvedValueOnce({
+          guildID: 'community',
+          premium: false,
+          customBot: false,
+          state: 'ready',
+          sources: [],
+          revision: 'expired',
+          validUntil: '2030-01-01T00:00:00.000Z',
+        })
+        redisMock.publish.mockClear()
+        const result = await capturedWorkers.wsSendToServer.processor({
+          data: { id: 'expired', data: { method, command: 'status' } },
+        })
+        expect(result).toBe(false)
+        expect(redisMock.publish).not.toHaveBeenCalled()
+      },
+    )
 
     it('still allows role removal commands used for cleanup after expiry', async () => {
       redisMock.get.mockResolvedValueOnce('1')
@@ -771,6 +940,23 @@ describe('apps/websocket main()', () => {
       })
       expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
       expect(ws.send).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('authenticated addon command acknowledgements', () => {
+    it('routes an execution acknowledgement with the authenticated server identity', async () => {
+      const ws = await connectServer('rcon-command-result')
+      getServerFromIDMock.mockResolvedValueOnce({ isValidToken: () => true, getID: () => 'rcon-command-result' })
+      const packet = {
+        action: 'addon.command-result',
+        id: '123e4567-e89b-42d3-a456-426614174000',
+        method: 'wsAuthorizedRcon',
+        ok: true,
+        code: 'executed',
+      }
+      ws.emit('message', Buffer.from(JSON.stringify(packet)), false)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(acceptAddonCommandResultMock).toHaveBeenCalledWith('rcon-command-result', packet)
     })
   })
 

@@ -64,6 +64,10 @@ Developer impersonation creates a distinct session lasting at most 15 minutes an
 session. The original actor credential stays in a separate HttpOnly cookie. Start, end and delegated
 requests log actor, subject and session ID without credentials. Delegates cannot erase an account,
 manage its sessions or start another delegation. Revoking/erasing the actor also invalidates delegates.
+The actor must be present in the checked-in root `developers.json` allowlist both when issuing a
+delegation and whenever it is resolved, including WebSocket validation. A database rank cannot grant
+or preserve support access. Changing the static list requires restarting all backend services from
+the same release; delegates issued by an operator absent from that list are then rejected.
 
 ## Deployment procedure
 

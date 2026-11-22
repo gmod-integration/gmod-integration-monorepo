@@ -173,6 +173,13 @@ describe('userValidator', () => {
       expect(res.status).toHaveBeenCalledWith(403)
     })
 
+    it.each(['POST', 'PUT', 'PATCH', 'DELETE'])('requires fresh Discord permissions before %s', async (method) => {
+      const request = makeReq({ method })
+      enqueueDiscordGuildSnapshotMock.mockResolvedValueOnce({ id: 'g1' })
+      await userAdminGuildValidator(request, makeRes(), vi.fn())
+      expect(request.panelUser.isAdminOfGuild).toHaveBeenCalledWith('g1', { fresh: true })
+    })
+
     it('returns 404 when the discord guild snapshot is not found', async () => {
       enqueueDiscordGuildSnapshotMock.mockResolvedValueOnce(null)
       const res = makeRes()

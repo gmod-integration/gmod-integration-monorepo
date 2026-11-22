@@ -12,7 +12,7 @@ import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { ButtonVerificationWebsite } from '../../utils/buttons.js'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
 import { replyNeedPremium } from '@gmod/domain-guild/Guild.js'
-import { enqueueWSSendToServerAndWait } from '@gmod/infra-websocket/queues.js'
+import { enqueueAddonRconAndWait } from '@gmod/infra-websocket/addonCommands.js'
 import { getTranslate } from '@gmod/core/utils/localizations.js'
 
 export default {
@@ -63,14 +63,6 @@ export default {
       })
     }
 
-    const player = await server.getServerPlayer(user.steamID64)
-    if (!player || player.rank !== 'superadmin') {
-      return interaction.reply({
-        content: await getTranslate('rcon_superadmin', lang),
-        ephemeral: true,
-      })
-    }
-
     const access = await resolveGuildAccess(server.getGuildID())
     if (!hasCapability(access, 'console.rcon')) {
       if (access.state === 'unknown')
@@ -81,24 +73,22 @@ export default {
       return replyNeedPremium(interaction)
     }
 
-    const queued = await enqueueWSSendToServerAndWait(
+    // The addon checks its current configured administrator ranks immediately before execution.
+    await interaction.deferReply({ ephemeral: true })
+    const executed = await enqueueAddonRconAndWait(
       {
-        id: server.getID(),
-        data: {
-          method: 'wsRcon',
-          steamID: user.getSteamID64(),
-          command: interaction.options.getString('command', true),
-        },
+        serverID: server.getID(),
+        steamID: user.steamID64,
+        command: interaction.options.getString('command', true),
       },
       5000,
     ).catch((error) => {
-      console.error('Failed to enqueue wsRcon job:', error)
+      console.error('Failed to confirm addon RCON execution:', error)
       return false
     })
 
-    return interaction.reply({
-      content: await getTranslate(queued ? 'rcon_command_success' : 'rcon_command_error', lang),
-      ephemeral: true,
+    return interaction.editReply({
+      content: await getTranslate(executed ? 'rcon_command_success' : 'rcon_command_error', lang),
     })
   },
   async autocomplete(interaction: AutocompleteInteraction) {

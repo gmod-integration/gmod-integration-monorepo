@@ -54,3 +54,10 @@ code:
 Run `python3 submodules/gmod-integration/scripts/test_lua.py` from this repository for mocked transport
 and relay regressions. These checks complement the TypeScript schema/core/gateway tests; they do not
 replace staging on a dedicated Garry's Mod server with GWSockets and ordinary/admin test clients.
+
+Console commands use `wsAuthorizedRcon`, not the legacy `wsRcon` handler. The addon validates the
+bounded command, linked SteamID64, UUID and deadline, then requires an online player allowed by
+`gmInte.config.adminRank`. Request IDs are deduplicated before console submission. It returns a
+matching `addon.command-result`; success means console acceptance, not verification of command
+output. The old method is rejected. An older addon cannot execute the new method, so upgrade the
+addon with the matching backend release. Deadlines require reasonably aligned server clocks.

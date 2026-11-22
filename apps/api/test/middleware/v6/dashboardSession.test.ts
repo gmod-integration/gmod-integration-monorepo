@@ -113,6 +113,21 @@ describe('v6 authorization stays separate from session and provider failures', (
     expect(response.status).toHaveBeenCalledWith(404)
     expect(getServerMock).not.toHaveBeenCalled()
   })
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE'])(
+    'requires fresh community permissions before %s for both scopes',
+    async (method) => {
+      for (const authorize of [dashboardGuild, dashboardServer]) {
+        panel.isAdminOfGuild.mockClear()
+        await authorize(req({ method, panelUser: panel }), res(), vi.fn())
+        expect(panel.isAdminOfGuild).toHaveBeenCalledExactlyOnceWith('g1', { fresh: true })
+      }
+    },
+  )
+  it('allows the bounded read cache for GET', async () => {
+    await dashboardGuild(req({ panelUser: panel }), res(), vi.fn())
+    expect(panel.isAdminOfGuild).toHaveBeenCalledExactlyOnceWith('g1')
+  })
+
   it('returns forbidden for a verified absence of administration permission', async () => {
     panel.isAdminOfGuild.mockResolvedValueOnce(false)
     const response = res()

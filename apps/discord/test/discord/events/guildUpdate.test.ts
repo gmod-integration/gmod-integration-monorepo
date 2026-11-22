@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const invalidatePermissionsMock = vi.fn().mockResolvedValue(undefined)
+vi.mock('@gmod/domain-user/guildPermissions.js', () => ({
+  invalidateDiscordGuildPermissions: invalidatePermissionsMock,
+}))
+
 const gmLogMock = vi.fn()
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
@@ -110,5 +115,11 @@ describe('guildUpdate event', () => {
     expect(gmLogMock).toHaveBeenCalledWith('event', 'Guild locale changed from en-US to fr-FR')
     expect(setCachedGuildPreferredLocaleMock).toHaveBeenCalledWith('guild1', 'fr-FR')
     expect(updateGuildStatMock).toHaveBeenCalledWith(newGuild)
+  })
+  it('invalidates ownership transfers even when the visible guild metadata is unchanged', async () => {
+    const mod = await import('../../../src/discord/events/guildUpdate.js')
+    await mod.default.execute(makeGuild({ ownerId: 'old-owner' }) as any, makeGuild({ ownerId: 'new-owner' }) as any)
+    expect(invalidatePermissionsMock).toHaveBeenCalledWith({ guildID: 'guild1' })
+    expect(updateGuildStatMock).not.toHaveBeenCalled()
   })
 })

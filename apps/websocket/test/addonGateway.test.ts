@@ -20,6 +20,7 @@ function fixture(options: { timeoutMs?: number } = {}) {
   const dispatch = vi.fn().mockResolvedValue({ status: 200, body: { success: true } })
   const onActivity = vi.fn().mockResolvedValue(undefined)
   const onConsole = vi.fn().mockResolvedValue(undefined)
+  const onCommandResult = vi.fn().mockResolvedValue(undefined)
   const connection = createAddonGateway({
     socket,
     serverID: 's1',
@@ -27,13 +28,25 @@ function fixture(options: { timeoutMs?: number } = {}) {
     dispatch,
     onActivity,
     onConsole,
+    onCommandResult,
     ...options,
   })
   connections.push(connection)
   const request = (id = 'r1', changes = {}) =>
     JSON.stringify({ action: 'addon.request', id, method: 'GET', endpoint: '/servers/s1', ...changes })
   const packets = () => socket.send.mock.calls.map(([data]) => JSON.parse(data))
-  return { server, socket, authenticate, dispatch, onActivity, onConsole, connection, request, packets }
+  return {
+    server,
+    socket,
+    authenticate,
+    dispatch,
+    onActivity,
+    onConsole,
+    onCommandResult,
+    connection,
+    request,
+    packets,
+  }
 }
 
 describe('addon WebSocket gateway', () => {
@@ -181,5 +194,42 @@ describe('addon WebSocket gateway', () => {
     for (let index = 0; index < 601; index++) await f.connection.receive('{}')
     expect(f.socket.close).toHaveBeenCalledWith(1008, 'Addon request rate exceeded')
     expect(f.socket.send.mock.calls.flat().join('')).not.toContain('private credentials')
+  })
+})
+
+describe('addon command execution results', () => {
+  const packet = {
+    action: 'addon.command-result',
+    id: '3a918b48-ff6f-4ed4-b2b9-f4b722840f04',
+    method: 'wsAuthorizedRcon',
+    ok: true,
+    code: 'executed',
+  }
+  it('requires protocol readiness and authenticates before forwarding a command result', async () => {
+    const f = fixture()
+    await f.connection.receive(JSON.stringify(packet))
+    expect(f.onCommandResult).not.toHaveBeenCalled()
+    f.connection.ready()
+    await f.connection.receive(JSON.stringify(packet))
+    expect(f.authenticate).toHaveBeenCalledOnce()
+    expect(f.onCommandResult).toHaveBeenCalledExactlyOnceWith(packet)
+    expect(f.dispatch).not.toHaveBeenCalled()
+  })
+  it('rejects forged or malformed execution acknowledgements before the callback', async () => {
+    const f = fixture()
+    f.connection.ready()
+    await f.connection.receive(JSON.stringify({ ...packet, ok: true, code: 'permission_denied' }))
+    expect(f.onCommandResult).not.toHaveBeenCalled()
+    f.authenticate.mockResolvedValueOnce(undefined)
+    await f.connection.receive(JSON.stringify(packet))
+    expect(f.onCommandResult).not.toHaveBeenCalled()
+    expect(f.socket.close).toHaveBeenCalledWith(1008, 'Server credentials revoked')
+  })
+  it('fails closed if credentials or result persistence are unavailable', async () => {
+    const f = fixture()
+    f.connection.ready()
+    f.onCommandResult.mockRejectedValueOnce(new Error('unavailable'))
+    await f.connection.receive(JSON.stringify(packet))
+    expect(f.socket.close).toHaveBeenCalledWith(1013, 'Server verification unavailable')
   })
 })

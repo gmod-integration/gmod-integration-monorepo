@@ -630,21 +630,21 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
   })
 
   describe('guildAdmins', () => {
-    it('replies admins=[] when the guild cannot be fetched', async () => {
+    it('reports unavailable when the guild cannot be fetched', async () => {
       const client = makeGuildClient(null)
       client.guilds.fetch = vi.fn().mockRejectedValueOnce(new Error('nope'))
       getGuildClientMock.mockResolvedValueOnce(client)
       await processor()(makeJob('guildAdmins', { guildID: 'g1', correlationId: 'c1' }))
-      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', admins: [] })
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', available: false, admins: [] })
     })
 
-    it('replies admins=[] when members cannot be fetched', async () => {
+    it('reports unavailable when members cannot be fetched', async () => {
       const guild = makeGuild('g1', {
         members: { fetch: vi.fn().mockRejectedValueOnce(new Error('nope')), cache: new FakeCollection() },
       })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('guildAdmins', { guildID: 'g1', correlationId: 'c1' }))
-      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', admins: [] })
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', available: false, admins: [] })
     })
 
     it('filters to human administrators, with stored avatars', async () => {

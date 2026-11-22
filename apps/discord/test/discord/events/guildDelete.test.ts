@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const invalidatePermissionsMock = vi.fn().mockResolvedValue(undefined)
+vi.mock('@gmod/domain-user/guildPermissions.js', () => ({
+  invalidateDiscordGuildPermissions: invalidatePermissionsMock,
+}))
+
 const gmLogMock = vi.fn()
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
@@ -167,5 +172,11 @@ describe('guildDelete event', () => {
     await mod.default.execute(guild as any)
 
     expect(prismaMock.gm_gmodstore_purchases.update).not.toHaveBeenCalled()
+  })
+  it('invalidates permissions when the bot leaves before any cleanup can return early', async () => {
+    getGuildClientMock.mockResolvedValue({ user: null })
+    const mod = await import('../../../src/discord/events/guildDelete.js')
+    await mod.default.execute(makeGuild() as any)
+    expect(invalidatePermissionsMock).toHaveBeenCalledWith({ guildID: 'guild1' })
   })
 })

@@ -4,7 +4,7 @@ Player and dashboard-user identity.
 
 ## Files
 
-- `User.ts` — the `User` class: `steamID64` + `discordID` + `rank` + `trustLevel` + last verification date.
+- `User.ts` — the `User` class: `steamID64` + `discordID` + effective `rank` + `trustLevel` + last verification date.
   This is the in-game/verified-player identity, independent of whether that person ever logs into the
   dashboard.
 - `PanelUser.ts` — the `PanelUser` class: wraps a `User`, the exact application `authSession`, and a
@@ -34,10 +34,29 @@ New application credentials are hashed in storage, and session-list DTOs do not 
 HTTP `403` / `discord_reauth_required` for dashboard operations. Temporary provider failures remain
 retryable `503` errors. Neither condition revokes an otherwise valid application session.
 
+## Platform developer access
+
+The root [`developers.json`](../../developers.json) is the sole authority for platform developer
+privileges. It currently contains only Discord ID `333650866747867137`. The server-only
+`@gmod/config/developers.js` helper supplies `isDeveloper(discordID)` and
+`getPlatformRank(discordID)`, projecting `developer` for listed IDs and `user` for every other account.
+`User.rank` and `User.isDeveloper()` use this helper; a stored `gm_user.rank` or a legacy constructor
+rank does not grant privileges. No additional platform roles are defined.
+
+Session and admin-directory DTOs expose this effective rank for display. Browser code consumes the DTO,
+never the allowlist or its filesystem reader. Administration and the start of support delegation check
+the server allowlist independently of frontend presentation; the dashboard cannot edit ranks.
+
+The helper loads the list once per process. After changing it, redeploy/restart all backend services
+and replicas, including the API, WebSocket gateway, Discord processes and workers. See the
+[configuration contract](./config.md#platform-developer-allowlist).
+
 ## Returning from a delegated session
 
 Developer impersonation uses a short-lived primary session linked to the actor's original session. The
-original credential stays in a separate HttpOnly actor cookie. If the delegation expires or its primary
+start command requires the actor's own live session and an ID in the server developer allowlist. Its
+duration is at most 15 minutes, bounded by the remaining actor-session lifetime. The original credential
+stays in a separate HttpOnly actor cookie. If the delegation expires or its primary
 cookie disappears, `GET /v6/auth/session` returns `401` / `actor_session_available` and an actor CSRF token
 when that original session remains valid. This response exposes no identity and does not set cookies.
 
@@ -63,13 +82,20 @@ A repeated provider `401` requires Discord reauthorization. If erasure starts du
 personal data is not cached or returned.
 
 `findGuildsWithPerms()` accepts guild owners or the Discord administrator permission, using `BigInt` for
-permission bitfields. `isAdminOfGuild(guildID)` uses that result. The
-[WebSocket gateway](../apps/websocket.md) adds its own bounded permission snapshot and revalidates sessions
+permission bitfields. `isAdminOfGuild(guildID)` uses that result; platform developer status does not
+replace these guild permissions. Delegated dashboard connections use the target account's guild rights.
+The [WebSocket gateway](../apps/websocket.md) adds its own bounded permission snapshot and revalidates sessions
 before messages and delivery.
+
+Mutations use `isAdminOfGuild(guildID, { fresh: true })` to bypass cached Discord rights. Read caches
+carry user/global revisions from `guildPermissions.ts`; old raw-array caches are discarded. Discord
+member/role/ownership events invalidate those revisions and notify gateways. Reads verify revisions
+before returning cached rights and before storing a completed lookup, so an invalidated in-flight
+result cannot restore old permissions. Gateways also check durable revisions before scoped delivery.
 
 ## Depends on
 
-`@gmod/domain-auth`, `@gmod/infra-prisma`, `@gmod/infra-redis`.
+`@gmod/config`, `@gmod/domain-auth`, `@gmod/infra-prisma`, `@gmod/infra-redis`.
 
 ## Used by
 

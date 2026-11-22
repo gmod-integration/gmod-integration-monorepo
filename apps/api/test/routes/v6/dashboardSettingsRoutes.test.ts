@@ -106,7 +106,7 @@ describe('dashboard section endpoints and session authorization', () => {
       expect.objectContaining({ id: 'session-A', discordID: 'owner' }),
     )
     expect(mocks.auth).not.toHaveBeenCalled()
-    expect(mocks.admin).toHaveBeenCalledWith('guild')
+    expect(mocks.admin).toHaveBeenCalledWith('guild', { fresh: true })
     expect(mocks.saveServer).toHaveBeenCalledExactlyOnceWith(target, { log_hide_ip: true })
   })
   it('saves guild preferences with the same authorization', async () => {

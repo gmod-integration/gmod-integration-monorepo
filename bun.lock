@@ -187,6 +187,7 @@
         "@gmod/infra-prisma": "workspace:*",
         "@gmod/infra-redis": "workspace:*",
         "@gmod/infra-websocket": "workspace:*",
+        "@gmod/schema": "workspace:*",
         "@gmod/shared": "workspace:*",
         "bullmq": "^5.71.0",
         "ws": "^8.19.0",
@@ -307,6 +308,7 @@
         "@gmod/config": "workspace:*",
         "@gmod/core": "workspace:*",
         "@gmod/domain-server": "workspace:*",
+        "@gmod/domain-user": "workspace:*",
         "@gmod/infra-prisma": "workspace:*",
         "discord.js": "^14.28.1",
       },
@@ -329,6 +331,7 @@
       "name": "@gmod/domain-user",
       "version": "1.0.0",
       "dependencies": {
+        "@gmod/config": "workspace:*",
         "@gmod/domain-auth": "workspace:*",
         "@gmod/infra-prisma": "workspace:*",
         "@gmod/infra-redis": "workspace:*",
@@ -394,6 +397,8 @@
       "version": "1.0.0",
       "dependencies": {
         "@gmod/infra-bullmq": "workspace:*",
+        "@gmod/infra-redis": "workspace:*",
+        "@gmod/schema": "workspace:*",
         "bullmq": "^5.71.0",
       },
     },

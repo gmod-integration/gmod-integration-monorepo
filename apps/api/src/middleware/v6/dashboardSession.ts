@@ -24,7 +24,7 @@ export async function dashboardSession(req: Request, res: Response, next: NextFu
 
 export async function dashboardGuild(req: Request, res: Response, next: NextFunction) {
   const guildID = getSingleParam(req.params.guildID)
-  if (!guildID || !req.panelUser || !(await req.panelUser.isAdminOfGuild(guildID)))
+  if (!guildID || !req.panelUser || !(await canAdminGuild(req, guildID)))
     return res
       .status(403)
       .json({ error: { code: 'forbidden', message: 'Community administration permission is required.' } })
@@ -34,7 +34,7 @@ export async function dashboardGuild(req: Request, res: Response, next: NextFunc
 
 export async function dashboardServer(req: Request, res: Response, next: NextFunction) {
   const guildID = getSingleParam(req.params.guildID)
-  if (!guildID || !req.panelUser || !(await req.panelUser.isAdminOfGuild(guildID)))
+  if (!guildID || !req.panelUser || !(await canAdminGuild(req, guildID)))
     return res
       .status(403)
       .json({ error: { code: 'forbidden', message: 'Community administration permission is required.' } })
@@ -47,4 +47,10 @@ export async function dashboardServer(req: Request, res: Response, next: NextFun
   req.guild = new Guild({ id: guildID })
   req.server = server
   next()
+}
+
+async function canAdminGuild(req: Request, guildID: string) {
+  return ['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET')
+    ? req.panelUser!.isAdminOfGuild(guildID)
+    : req.panelUser!.isAdminOfGuild(guildID, { fresh: true })
 }

@@ -25,8 +25,8 @@ vi.mock('@gmod/domain-guild/Guild.js', () => ({
   replyNeedPremium: replyNeedPremiumMock,
 }))
 
-const enqueueWSSendToServerAndWaitMock = vi.fn()
-vi.mock('@gmod/infra-websocket/queues.js', () => ({ enqueueWSSendToServerAndWait: enqueueWSSendToServerAndWaitMock }))
+const enqueueAddonRconAndWaitMock = vi.fn()
+vi.mock('@gmod/infra-websocket/addonCommands.js', () => ({ enqueueAddonRconAndWait: enqueueAddonRconAndWaitMock }))
 
 const rcon = (await import('../../../../src/discord/commands/admin/rcon.js')).default
 
@@ -38,6 +38,8 @@ function makeInteraction(overrides: Record<string, any> = {}) {
       getString: vi.fn(),
     },
     reply: vi.fn(),
+    deferReply: vi.fn(),
+    editReply: vi.fn(),
     respond: vi.fn(),
     ...overrides,
   } as any
@@ -68,10 +70,23 @@ beforeEach(() => {
   buttonVerificationWebsiteMock.mockClear()
   resolveAccessMock.mockReset()
   replyNeedPremiumMock.mockReset()
-  enqueueWSSendToServerAndWaitMock.mockReset()
+  enqueueAddonRconAndWaitMock.mockReset()
 })
 
 describe('commands/admin/rcon execute', () => {
+  it('reports denied, offline or unacknowledged execution as an error', async () => {
+    const interaction = makeInteraction()
+    interaction.options.getString.mockImplementation((name: string) => (name === 'server' ? 's1' : 'status'))
+    const server = makeServer()
+    getServerFromIDMock.mockResolvedValueOnce(server)
+    getUserFromDiscordIDMock.mockResolvedValueOnce(makeUser())
+    resolveAccessMock.mockResolvedValueOnce({ premium: true, customBot: false, state: 'ready' })
+    enqueueAddonRconAndWaitMock.mockResolvedValueOnce(false)
+    await rcon.execute(interaction)
+    expect(server.getServerPlayer).not.toHaveBeenCalled()
+    expect(interaction.editReply).toHaveBeenCalledWith({ content: 'rcon_command_error' })
+  })
+
   it('returns early when there is no guild', async () => {
     const interaction = makeInteraction({ guild: null })
     const result = await rcon.execute(interaction)
@@ -101,7 +116,7 @@ describe('commands/admin/rcon execute', () => {
     await rcon.execute(interaction)
     expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', ephemeral: true })
     expect(resolveAccessMock).not.toHaveBeenCalled()
-    expect(enqueueWSSendToServerAndWaitMock).not.toHaveBeenCalled()
+    expect(enqueueAddonRconAndWaitMock).not.toHaveBeenCalled()
   })
 
   it('replies rcon_steam_link when the user is not linked', async () => {
@@ -123,28 +138,6 @@ describe('commands/admin/rcon execute', () => {
     getUserFromDiscordIDMock.mockResolvedValueOnce(makeUser({ steamID64: null }))
     await rcon.execute(interaction)
     expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ content: 'rcon_steam_link' }))
-  })
-
-  it('replies rcon_superadmin when the player cannot be found on the server', async () => {
-    const interaction = makeInteraction()
-    interaction.options.getString.mockReturnValue('s1')
-    const server = makeServer()
-    server.getServerPlayer.mockResolvedValueOnce(null)
-    getServerFromIDMock.mockResolvedValueOnce(server)
-    getUserFromDiscordIDMock.mockResolvedValueOnce(makeUser())
-    await rcon.execute(interaction)
-    expect(interaction.reply).toHaveBeenCalledWith({ content: 'rcon_superadmin', ephemeral: true })
-  })
-
-  it('replies rcon_superadmin when the player rank is not superadmin', async () => {
-    const interaction = makeInteraction()
-    interaction.options.getString.mockReturnValue('s1')
-    const server = makeServer()
-    server.getServerPlayer.mockResolvedValueOnce({ rank: 'admin' })
-    getServerFromIDMock.mockResolvedValueOnce(server)
-    getUserFromDiscordIDMock.mockResolvedValueOnce(makeUser())
-    await rcon.execute(interaction)
-    expect(interaction.reply).toHaveBeenCalledWith({ content: 'rcon_superadmin', ephemeral: true })
   })
 
   it('replies with need-premium when the guild is not premium', async () => {
@@ -170,7 +163,7 @@ describe('commands/admin/rcon execute', () => {
     resolveAccessMock.mockResolvedValueOnce({ premium: false, customBot: false, state: 'unknown' })
     await rcon.execute(interaction)
     expect(replyNeedPremiumMock).not.toHaveBeenCalled()
-    expect(enqueueWSSendToServerAndWaitMock).not.toHaveBeenCalled()
+    expect(enqueueAddonRconAndWaitMock).not.toHaveBeenCalled()
     expect(interaction.reply).toHaveBeenCalledWith({ content: 'access_verification_unavailable', ephemeral: true })
   })
 
@@ -182,22 +175,21 @@ describe('commands/admin/rcon execute', () => {
     getServerFromIDMock.mockResolvedValueOnce(server)
     getUserFromDiscordIDMock.mockResolvedValueOnce(makeUser())
     resolveAccessMock.mockResolvedValueOnce({ premium: true, customBot: false, state: 'ready' })
-    enqueueWSSendToServerAndWaitMock.mockResolvedValueOnce(true)
+    enqueueAddonRconAndWaitMock.mockResolvedValueOnce(true)
 
     await rcon.execute(interaction)
 
-    expect(enqueueWSSendToServerAndWaitMock).toHaveBeenCalledWith(
+    expect(enqueueAddonRconAndWaitMock).toHaveBeenCalledWith(
       {
-        id: 's1',
-        data: {
-          method: 'wsRcon',
-          steamID: '765611111111',
-          command: 'say hi',
-        },
+        serverID: 's1',
+        steamID: '765611111111',
+        command: 'say hi',
       },
       5000,
     )
-    expect(interaction.reply).toHaveBeenCalledWith({ content: 'rcon_command_success', ephemeral: true })
+    expect(server.getServerPlayer).not.toHaveBeenCalled()
+    expect(interaction.deferReply).toHaveBeenCalledWith({ ephemeral: true })
+    expect(interaction.editReply).toHaveBeenCalledWith({ content: 'rcon_command_success' })
   })
 
   it('replies with error content when the enqueue rejects', async () => {
@@ -209,12 +201,12 @@ describe('commands/admin/rcon execute', () => {
     getUserFromDiscordIDMock.mockResolvedValueOnce(makeUser())
     resolveAccessMock.mockResolvedValueOnce({ premium: true, customBot: false, state: 'ready' })
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    enqueueWSSendToServerAndWaitMock.mockRejectedValueOnce(new Error('timeout'))
+    enqueueAddonRconAndWaitMock.mockRejectedValueOnce(new Error('timeout'))
 
     await rcon.execute(interaction)
 
-    expect(errorSpy).toHaveBeenCalledWith('Failed to enqueue wsRcon job:', expect.any(Error))
-    expect(interaction.reply).toHaveBeenCalledWith({ content: 'rcon_command_error', ephemeral: true })
+    expect(errorSpy).toHaveBeenCalledWith('Failed to confirm addon RCON execution:', expect.any(Error))
+    expect(interaction.editReply).toHaveBeenCalledWith({ content: 'rcon_command_error' })
     errorSpy.mockRestore()
   })
 })

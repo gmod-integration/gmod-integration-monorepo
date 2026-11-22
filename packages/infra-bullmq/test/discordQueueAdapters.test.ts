@@ -41,6 +41,16 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
     vi.useRealTimers()
   })
 
+  it('distinguishes unavailable Discord administrators from an empty verified list', async () => {
+    mockReply({ correlationId: 'unavailable', available: false, admins: [] })
+    await expect(adapters.enqueueDiscordGuildAdmins('g1')).rejects.toMatchObject({
+      status: 503,
+      code: 'provider_unavailable',
+    })
+    mockReply({ correlationId: 'available', available: true, admins: [] })
+    await expect(adapters.enqueueDiscordGuildAdmins('g1')).resolves.toEqual([])
+  })
+
   describe('fire-and-forget job enqueuers', () => {
     it('enqueueUpdateGuildUserPseudo adds a job to the pseudo queue', async () => {
       await adapters.enqueueUpdateGuildUserPseudo({

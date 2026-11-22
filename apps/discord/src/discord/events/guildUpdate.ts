@@ -3,10 +3,12 @@ import { updateGuildStat } from '@gmod/domain-guild/discordModels.js'
 import { type Guild } from 'discord.js'
 import { setCachedGuildPreferredLocale } from '@gmod/core/utils/guildLocaleCache.js'
 import { deleteStoredAvatar, replaceStoredAvatar } from '@gmod/infra-minio'
+import { invalidateDiscordGuildPermissions } from '@gmod/domain-user/guildPermissions.js'
 
 export default {
   name: 'guildUpdate',
   async execute(oldGuild: Guild, newGuild: Guild) {
+    if (oldGuild.ownerId !== newGuild.ownerId) await invalidateDiscordGuildPermissions({ guildID: newGuild.id })
     const iconChanged = oldGuild.icon !== newGuild.icon
     const nameChanged = oldGuild.name !== newGuild.name
     const localeChanged = oldGuild.preferredLocale !== newGuild.preferredLocale

@@ -978,13 +978,13 @@ export const discordGuildOpsWorker = new Worker<
       const client = await getGuildClient(payload.guildID, false)
       const guild = await client.guilds.fetch(payload.guildID).catch(() => null)
       if (!guild) {
-        await writeReply(payload.correlationId, { correlationId: payload.correlationId, admins: [] })
+        await writeReply(payload.correlationId, { correlationId: payload.correlationId, available: false, admins: [] })
         return
       }
 
       const members = await guild.members.fetch().catch(() => null)
       if (!members) {
-        await writeReply(payload.correlationId, { correlationId: payload.correlationId, admins: [] })
+        await writeReply(payload.correlationId, { correlationId: payload.correlationId, available: false, admins: [] })
         return
       }
 

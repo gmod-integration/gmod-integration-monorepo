@@ -17,6 +17,8 @@ vi.mock('@gmod/domain-guild/discordModels.js', () => ({
   verifyUser: verifyUserMock,
 }))
 
+vi.mock('@gmod/config', () => ({ ConfigDiscord: { guildID: 'support-guild' } }))
+
 const gmLogMock = vi.fn()
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
@@ -40,13 +42,34 @@ function makeMessage(overrides: any = {}) {
     react: vi.fn(),
     reply: vi.fn(),
     member: null,
-    guild: null,
+    guild: { id: 'support-guild' },
     channel: { messages: { fetch: vi.fn() } },
     ...overrides,
+    ...(overrides.guild ? { guild: { id: 'support-guild', ...overrides.guild } } : {}),
   }
 }
 
 describe('messageCreate event', () => {
+  it.each([null, { id: 'another-guild' }])(
+    'rejects developer prefix commands outside the support guild (%j)',
+    async (guild) => {
+      getUserFromDiscordIDMock.mockResolvedValue(makeDeveloperUser())
+      const mod = await import('../../../src/discord/events/messageCreate.js')
+      const message = makeMessage({ content: '§runWS server1 {}', guild })
+      await mod.default.execute(message as any)
+      expect(wsSendToServerQueueAddMock).not.toHaveBeenCalled()
+      expect(message.react).not.toHaveBeenCalled()
+    },
+  )
+
+  it('does not put raw websocket payloads in the developer command audit log', async () => {
+    getUserFromDiscordIDMock.mockResolvedValue(makeDeveloperUser())
+    const mod = await import('../../../src/discord/events/messageCreate.js')
+    await mod.default.execute(makeMessage({ content: '§runWS server1 {"secret":"test-secret"}' }) as any)
+    expect(gmLogMock).toHaveBeenCalledWith('info', expect.stringContaining('runWS'))
+    expect(JSON.stringify(gmLogMock.mock.calls)).not.toContain('test-secret')
+  })
+
   beforeEach(() => {
     vi.clearAllMocks()
     processDiscordMessageToGmodMock.mockResolvedValue(undefined)
@@ -363,7 +386,7 @@ describe('messageCreate event', () => {
           ['m1', member1],
           ['m2', member2],
         ])
-        const guild = { members: { fetch: vi.fn().mockResolvedValue(membersCollection) } }
+        const guild = { id: 'support-guild', members: { fetch: vi.fn().mockResolvedValue(membersCollection) } }
         const mod = await import('../../../src/discord/events/messageCreate.js')
         const message = makeMessage({ content: '§verifyAll', guild })
 

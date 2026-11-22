@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import type { Server } from '@gmod/domain-server/Server.js'
 import type { AddonRequest, AddonResult } from '@gmod/core/models/gmod/addonTransport.js'
+import { AddonCommandResultSchema, type AddonCommandResult } from '@gmod/schema/gmod/AddonTransportSchema.js'
 
 // Also configured on WebSocketServer so oversized frames are rejected before JSON parsing.
 export const ADDON_MAX_FRAME_BYTES = 12 * 1024 * 1024
@@ -33,6 +34,7 @@ interface AddonGatewayOptions {
   authenticate: () => Promise<Server | undefined>
   onActivity?: () => Promise<void>
   onConsole?: (text: string) => Promise<void>
+  onCommandResult?: (packet: AddonCommandResult) => Promise<void>
   dispatch?: (server: Server, request: AddonRequest) => Promise<AddonResult>
   now?: () => number
   timeoutMs?: number
@@ -149,6 +151,17 @@ export function createAddonGateway(options: AddonGatewayOptions) {
       if (!ready || typeof text !== 'string' || text.length > 32_768 || !options.onConsole) return
       try {
         if (await authenticate()) await options.onConsole(text)
+      } catch {
+        terminate(1013, 'Server verification unavailable')
+      }
+      return
+    }
+    if (packet.action === 'addon.command-result') {
+      if (!ready || !options.onCommandResult) return
+      const parsed = AddonCommandResultSchema.safeParse(packet)
+      if (!parsed.success) return
+      try {
+        if (await authenticate()) await options.onCommandResult(parsed.data)
       } catch {
         terminate(1013, 'Server verification unavailable')
       }

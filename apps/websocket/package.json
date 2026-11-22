@@ -8,6 +8,7 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
+    "@gmod/schema": "workspace:*",
     "@gmod/config": "workspace:*",
     "@gmod/core": "workspace:*",
     "@gmod/domain-server": "workspace:*",

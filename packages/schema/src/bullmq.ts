@@ -378,6 +378,7 @@ export type DiscordGuildAdminsJob = z.infer<typeof DiscordGuildAdminsJobSchema>
 
 export const DiscordGuildAdminsReplySchema = z.object({
   correlationId: z.string().min(1, 'correlationId required'),
+  available: z.boolean().default(true),
   admins: z.array(
     z.object({
       id: z.string(),

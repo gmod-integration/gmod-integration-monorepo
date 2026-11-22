@@ -9,7 +9,7 @@ the six pages are lazy-loaded from `apps/website/src/pages/dashboard/admins/`.
 | Overview    | `/informations` | Separate counts for communities, game servers, Discord accounts, linked accounts, Steam profiles, memberships, active sessions and recorded Premium sources; registrations over the last seven days and community languages. |
 | Communities | `/guilds`       | Search/filter the community directory, inspect effective access and its sources, and open the community's server directory.                                                                                                  |
 | Servers     | `/servers`      | Filter by community, verification and visibility; inspect recent activity and addon version; edit identity/flags, rotate a token or delete a server.                                                                         |
-| Users       | `/users`        | Search/filter accounts, inspect Discord/Steam identity and active sessions, change another account's rank, revoke its sessions or start support access.                                                                      |
+| Users       | `/users`        | Search/filter accounts, inspect Discord/Steam identity, effective read-only role and active sessions, revoke another account's sessions or start support access.                                                             |
 | Premium     | `/premium`      | Inspect recorded manual/GmodStore sources and effective access separately; add or remove a local manual grant.                                                                                                               |
 | Support     | `/impersonate`  | Select an account and confirm temporary access with that account's permissions; return to the operator account when delegated.                                                                                               |
 
@@ -22,8 +22,13 @@ the name is missing.
 [`AdminAccessGuard`](../../apps/website/src/components/AdminAccessGuard.tsx) waits for the shared cookie
 session and verifies `GET /v6/admin/access` before mounting protected page content. Its acknowledgement
 must name the current Discord account, and verification is bound to the current application session ID.
-The operator must use their own session with rank `developer`; a delegated session cannot open platform
-administration, even when its target is a developer. The return routes remain available while delegated.
+The operator must use their own session and belong to the root
+[`developers.json`](../../developers.json) allowlist. That file is the sole source of platform developer
+privileges and currently contains only Discord ID `333650866747867137`. Database ranks, Discord roles
+and environment variables cannot grant this access. The server projects an effective `developer` or
+`user` rank into session/user DTOs; the browser displays that result and never imports the allowlist.
+A delegated session cannot open platform administration, even when its target is a developer. The
+return routes remain available while delegated.
 
 The guard refreshes on focus. A definitive 401/403 removes the protected view. A temporary verification
 failure preserves already-mounted editors and exposes retry feedback; an initial failure does not mount
@@ -31,10 +36,15 @@ the pages. Cached profile data, navigation visibility and localStorage flags gra
 
 Every `/v6/admin` request independently passes
 [`adminSession`](../../apps/api/src/middleware/v6/adminSession.ts): trusted-origin validation, a valid
-application session, the session request/CSRF contract and a fresh database rank check. Both delegation
-markers (`actorDiscordID`, `actorSessionID`) are rejected. Responses use `Cache-Control: no-store`.
+application session, the session request/CSRF contract and the server's developer allowlist check.
+Both delegation markers (`actorDiscordID`, `actorSessionID`) are rejected. Responses use `Cache-Control: no-store`.
 Website mutations use the normal authenticated HTTP client and `X-CSRF-Token`; failed mutations are
 never replayed automatically.
+
+The server-only `@gmod/config/developers.js` module reads and validates the checked-in list once on
+import. After changing it, redeploy/restart all backend services and replicas, including the API,
+WebSocket gateway, Discord processes and workers, so no process retains the previous list. There is
+no dashboard role editor or rank mutation endpoint.
 
 ## Data and pagination
 
@@ -50,6 +60,9 @@ The directory endpoints are `GET /v6/admin/{guilds,servers,users,premium}`. They
 fields are allowlisted. The server clamps an out-of-range offset to the last valid page and uses a
 stable ID tie-breaker. Filtering/searching/sorting resets the offset; pagination preserves the filters.
 The browser never paginates a previously fetched partial list.
+
+The user directory's `rank=user|developer` filter matches IDs against the same allowlist, independently
+of the stored `gm_user.rank`. Database rank is not an allowed user sort field.
 
 [`adminApi.ts`](../../apps/website/src/pages/dashboard/admins/adminApi.ts) shares request handling and
 `createAdminList`; `AdminListToolbar` shares search, filters, sorting and refresh. Row schemas validate
@@ -71,7 +84,7 @@ unavailable or malformed cache data remains unknown.
 ## Changes, confirmations and audit events
 
 Business edits use explicit drafts and Save/Cancel. Command confirmations name the target and explain
-the consequence. Server edits, deletion, token rotation, rank changes, session revocation and manual
+the consequence. Server edits, deletion, token rotation, session revocation and manual
 Premium changes require a trimmed reason of 5–500 characters. Deletion, token rotation and account
 session revocation additionally send `confirm` matching the target ID.
 
@@ -80,7 +93,6 @@ session revocation additionally send `confirm` matching the target ID.
 | Edit server             | `PATCH /servers/:serverID`            | The updated safe server DTO.                                                           |
 | Delete server           | `DELETE /servers/:serverID`           | `{ deleted: true }`.                                                                   |
 | Rotate server token     | `POST /servers/:serverID/reset-token` | `{ reset: true }`; the replacement secret is not returned.                             |
-| Change rank             | `PUT /users/:userID/rank`             | `{ changed: boolean, rank }` matching the submitted rank.                              |
 | Revoke account sessions | `POST /users/:userID/revoke-sessions` | `{ revoked: true }`.                                                                   |
 | Change manual Premium   | `PUT /guilds/:guildID/premium`        | `{ guildID, manualPremium, access, pending }` matching the submitted target and grant. |
 
@@ -90,23 +102,24 @@ requests, dismissal and navigation. `ConfirmActionDialog.disabled` gates confirm
 `children` can be a render callback receiving the pending accessor, so reason fields are disabled while
 the command runs. See the [UI catalogue](./website-ui.md#existing-components-to-reuse).
 
-Rank changes accept only `user` or `developer`. A legacy rank outside that set remains visible as its
-raw value and requires an explicit replacement choice. Operators cannot change their own rank or use
-the admin command to revoke their own sessions. Rank changes lock and recheck the actor/target and
-developer set in a transaction, retaining the last developer. Account session revocation includes
-delegations originating from the target and uses the existing session-revocation lifecycle.
+Roles remain read-only: `developer` means the account is in the root allowlist, and every other account
+is projected as `user`, including legacy database ranks. The platform operator manages developer access
+through deployment configuration. Operators cannot use the admin command to revoke their own sessions.
+Account session revocation includes delegations originating from the target and uses the existing
+session-revocation lifecycle.
 
 Successful administration commands emit structured `gmLog('admin', ...)` events with action, actor,
-target and reason. Rank changes also record the resulting rank and whether it changed. These are log
-events; the back office does not expose an audit-history directory. Token rotation and deletion reuse
-the existing server domain methods; the owner reconnects through the ordinary server configuration.
+target and reason. These are log events; the back office does not expose an audit-history directory.
+Token rotation and deletion reuse the existing server domain methods; the owner reconnects through the
+ordinary server configuration.
 
 ## Temporary support access
 
 Support uses the existing auth commands rather than an admin credential exchange:
 `POST /v6/auth/impersonations` starts delegation and `POST /v6/auth/impersonations/end` restores the
-operator. Starting requires the operator's own live developer session and a different registered
-account. The confirmation explains that access uses the target's permissions.
+operator. Starting requires the operator's own live session, an ID in the server's root developer
+allowlist and a different registered account. A stored database rank cannot authorize this command.
+The confirmation explains that access uses the target's permissions.
 
 The delegated session lasts at most 15 minutes, bounded further by the remaining operator-session
 lifetime. Actor markers link it to the originating session; the operator credential stays in an

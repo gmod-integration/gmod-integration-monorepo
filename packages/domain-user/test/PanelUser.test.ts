@@ -25,11 +25,12 @@ vi.mock('@gmod/domain-auth/discordOAuth.js', () => ({
 const panelTokenFindFirstMock = vi.fn()
 vi.mock('@gmod/infra-prisma', () => ({ default: { gm_panelToken: { findFirst: panelTokenFindFirstMock } } }))
 const redisGetMock = vi.fn()
+const redisMgetMock = vi.fn()
 const redisSetMock = vi.fn()
 const redisDelMock = vi.fn()
 const redisEvalMock = vi.fn()
 vi.mock('@gmod/infra-redis', () => ({
-  default: { get: redisGetMock, set: redisSetMock, del: redisDelMock, eval: redisEvalMock },
+  default: { mget: redisMgetMock, get: redisGetMock, set: redisSetMock, del: redisDelMock, eval: redisEvalMock },
 }))
 const getUserFromDiscordIDMock = vi.fn()
 vi.mock('../src/User.js', () => ({ getUserFromDiscordID: getUserFromDiscordIDMock }))
@@ -44,6 +45,9 @@ const session = (overrides: Record<string, unknown> = {}) => ({
   absoluteExpiresAt: new Date('2999-01-01'),
   ...overrides,
 })
+function cachedGuilds(guilds: unknown, revision = '["0","0"]') {
+  return JSON.stringify({ revision, guilds })
+}
 function buildPanelUser() {
   return new PanelUser({
     user: { discordID: 'd1' },
@@ -62,6 +66,7 @@ beforeEach(() => {
   resolveSessionMock.mockReset().mockResolvedValue(session())
   getValidDiscordTokenMock.mockReset().mockResolvedValue('fresh-token')
   refreshDiscordCredentialsMock.mockReset().mockResolvedValue({ access_token: 'fresh-token' })
+  redisMgetMock.mockReset().mockResolvedValue([null, null])
   redisGetMock.mockReset().mockResolvedValue(null)
   redisSetMock.mockReset().mockResolvedValue('OK')
   redisDelMock.mockReset().mockResolvedValue(1)
@@ -109,6 +114,46 @@ describe('application sessions are independent of Discord credentials', () => {
 })
 
 describe('bounded and typed Discord permission lookup', () => {
+  it('bypasses cached administrator rights for a fresh authorization decision', async () => {
+    redisGetMock.mockResolvedValue(cachedGuilds([{ id: 'g1', permissions: '8' }]))
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, status: 200, json: async () => [{ id: 'g1', permissions: '0' }] })
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(buildPanelUser().isAdminOfGuild('g1')).resolves.toBe(true)
+    await expect(buildPanelUser().isAdminOfGuild('g1', { fresh: true })).resolves.toBe(false)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+  it('discards a cached list from a previous permission revision', async () => {
+    redisGetMock.mockResolvedValueOnce(cachedGuilds([{ id: 'g1', permissions: '8' }], 'outdated'))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => [] }))
+    await expect(buildPanelUser().isAdminOfGuild('g1')).resolves.toBe(false)
+    expect(redisDelMock).toHaveBeenCalledWith('user:d1:guilds')
+  })
+  it('does not trust a legacy cache without a permission revision', async () => {
+    redisGetMock.mockResolvedValueOnce(JSON.stringify([{ id: 'g1', permissions: '8' }]))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => [] }))
+    await expect(buildPanelUser().findGuilds()).resolves.toEqual([])
+  })
+  it('rejects a lookup invalidated during its provider request without caching or returning old rights', async () => {
+    redisMgetMock.mockResolvedValueOnce([null, null]).mockResolvedValueOnce([null, 'new-member-roles'])
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => [{ id: 'g1', owner: true }] }),
+    )
+    await expect(buildPanelUser().isAdminOfGuild('g1', { fresh: true })).rejects.toMatchObject({
+      status: 503,
+      code: 'provider_unavailable',
+    })
+    expect(redisSetMock.mock.calls.filter(([key]) => key === 'user:d1:guilds')).toEqual([])
+    expect(redisEvalMock).toHaveBeenCalled()
+  })
+  it('does not fall back to cached rights when a fresh provider check fails', async () => {
+    redisGetMock.mockResolvedValue(cachedGuilds([{ id: 'g1', owner: true }]))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }))
+    await expect(buildPanelUser().isAdminOfGuild('g1', { fresh: true })).rejects.toMatchObject({ status: 503 })
+    expect(redisGetMock).not.toHaveBeenCalled()
+  })
   it('returns no personal permissions for an erased account without reading the grant or caches', async () => {
     isErasureBlockedMock.mockResolvedValue(true)
     await expect(buildPanelUser().findGuilds()).resolves.toEqual([])
@@ -116,20 +161,20 @@ describe('bounded and typed Discord permission lookup', () => {
     expect(redisGetMock).not.toHaveBeenCalled()
   })
   it('checks the grant before returning cached permissions without fetching guilds', async () => {
-    redisGetMock.mockResolvedValueOnce(JSON.stringify([{ id: 'g1', owner: true }]))
+    redisGetMock.mockResolvedValueOnce(cachedGuilds([{ id: 'g1', owner: true }]))
     await expect(buildPanelUser().findGuilds()).resolves.toEqual([{ id: 'g1', owner: true }])
     expect(redisSetMock).not.toHaveBeenCalled()
     expect(getValidDiscordTokenMock).toHaveBeenCalledExactlyOnceWith('d1')
   })
   it('rejects cached permissions after a confirmed rejected grant while keeping the local session valid', async () => {
-    redisGetMock.mockResolvedValue(JSON.stringify([{ id: 'g1', owner: true }]))
+    redisGetMock.mockResolvedValue(cachedGuilds([{ id: 'g1', owner: true }]))
     getValidDiscordTokenMock.mockRejectedValue(Object.assign(new Error('grant rejected'), { code: 'grant_rejected' }))
     await expect(buildPanelUser().findGuilds()).rejects.toMatchObject({ status: 403, code: 'discord_reauth_required' })
     expect(redisGetMock).not.toHaveBeenCalled()
     await expect(buildPanelUser().authAllowed('panel-tok')).resolves.toBe(true)
   })
   it('preserves a temporary grant lookup failure without serving cached rights or invalidating the session', async () => {
-    redisGetMock.mockResolvedValue(JSON.stringify([{ id: 'g1', owner: true }]))
+    redisGetMock.mockResolvedValue(cachedGuilds([{ id: 'g1', owner: true }]))
     getValidDiscordTokenMock.mockRejectedValue(
       Object.assign(new Error('provider unavailable'), { code: 'provider_unavailable', status: 503 }),
     )
@@ -150,7 +195,7 @@ describe('bounded and typed Discord permission lookup', () => {
       'NX',
     )
     expect(redisEvalMock).toHaveBeenCalledWith(expect.stringContaining("redis.call('get'"), 1, key, owner)
-    expect(redisSetMock).toHaveBeenCalledWith('user:d1:guilds', JSON.stringify([{ id: 'g1' }]), 'EX', 120)
+    expect(redisSetMock).toHaveBeenCalledWith('user:d1:guilds', cachedGuilds([{ id: 'g1' }]), 'EX', 120)
   })
   it.each([429, 500, 503])(
     'returns a temporary failure for HTTP %i without a false permission denial',
@@ -214,7 +259,7 @@ describe('bounded and typed Discord permission lookup', () => {
     await expect(buildPanelUser().findGuilds()).rejects.toMatchObject({ status: 503 })
   })
   it('uses a cache populated by another request while waiting without extending the owner TTL', async () => {
-    redisGetMock.mockResolvedValueOnce(null).mockResolvedValueOnce(JSON.stringify([{ id: 'g-other' }]))
+    redisGetMock.mockResolvedValueOnce(null).mockResolvedValueOnce(cachedGuilds([{ id: 'g-other' }]))
     redisSetMock.mockResolvedValueOnce(null)
     await expect(buildPanelUser().findGuilds()).resolves.toEqual([{ id: 'g-other' }])
     expect(redisEvalMock).not.toHaveBeenCalled()
@@ -245,7 +290,7 @@ describe('bounded and typed Discord permission lookup', () => {
     expect(redisEvalMock).toHaveBeenCalled()
   })
   it('uses a cache filled just before obtaining the lease and releases its own lease without a provider request', async () => {
-    redisGetMock.mockResolvedValueOnce(null).mockResolvedValueOnce(JSON.stringify([{ id: 'concurrent' }]))
+    redisGetMock.mockResolvedValueOnce(null).mockResolvedValueOnce(cachedGuilds([{ id: 'concurrent' }]))
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     await expect(buildPanelUser().findGuilds()).resolves.toEqual([{ id: 'concurrent' }])
@@ -265,7 +310,7 @@ describe('bounded and typed Discord permission lookup', () => {
   })
   it('keeps admin permissions as bigint without truncating high Discord permission bits', async () => {
     redisGetMock.mockResolvedValue(
-      JSON.stringify([
+      cachedGuilds([
         { id: 'owner', owner: true, permissions: '0' },
         { id: 'admin', permissions: String(2n ** 60n + 8n) },
         { id: 'neither', permissions: '0' },

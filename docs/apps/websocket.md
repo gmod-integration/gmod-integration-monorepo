@@ -43,11 +43,19 @@ whose subject or delegation actor is the erased account. Durable validation rema
 revocation publication is missed.
 
 Guild/server permissions are resolved on connection and checked again before scoped operations when
-their local snapshot is at least 30 seconds old. The underlying Discord guild cache lasts 120 seconds;
-this means Discord permission changes are not instantaneous. The provider grant is checked before that
-cache is returned. A temporary permission lookup failure clears the socket's allowed IDs and delays its
+their local snapshot is at least 30 seconds old. The underlying Discord guild cache lasts 120 seconds.
+Discord member/role/ownership changes invalidate shared revisions and notify all gateways; each scoped
+operation also checks the durable revision, so a missed notification cannot preserve an old snapshot.
+Revision checks fence pending lookups. The provider grant is checked before cached rights are returned.
+A temporary permission lookup failure clears the socket's allowed IDs and delays its
 next lookup by five seconds. A `server_status` request must name an allowed server, and its response goes
 only to the requesting socket. Live pushes also require an allowed server ID.
+Closed or revoked sockets cannot be registered after pending authentication or permission lookups.
+The dashboard discards live status on transport loss and never applies another server's status.
+
+Addon console execution uses `wsAuthorizedRcon` with an expiry and request ID. The gateway accepts
+`addon.command-result` only on a ready, reauthenticated addon connection and binds it to the actual
+server before completing its pending result. Socket delivery alone does not confirm console execution.
 
 Application login remains independent of the Discord OAuth grant. The dashboard distinguishes these
 close codes:

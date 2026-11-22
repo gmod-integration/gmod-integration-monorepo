@@ -687,6 +687,11 @@ export async function enqueueDiscordGuildAdmins(
   })
 
   const reply = await waitForReply(correlationId, (value) => DiscordGuildAdminsReplySchema.parse(value), timeoutMs)
+  if (!reply.available)
+    throw Object.assign(new Error('Discord administrators are temporarily unavailable.'), {
+      code: 'provider_unavailable',
+      status: 503,
+    })
   return reply.admins
 }
 

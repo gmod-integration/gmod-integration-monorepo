@@ -14,6 +14,11 @@ import { gmLog } from '@gmod/shared/logger.js'
 import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { getPanelUserFromDiscordID, type PanelUser } from '@gmod/domain-user/PanelUser.js'
 import { isErasureBlocked, PRIVACY_REVOCATION_CHANNEL } from '@gmod/domain-user/privacy.js'
+import {
+  DISCORD_GUILD_PERMISSIONS_CHANNEL,
+  parseDiscordGuildPermissionsInvalidation,
+  readDiscordGuildPermissionsRevision,
+} from '@gmod/domain-user/guildPermissions.js'
 import { getUserGuildsWithPermsForPanel } from '@gmod/domain-guild/discordModels.js'
 import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import redis, { gracefulShutdownRedis } from '@gmod/infra-redis'
@@ -21,6 +26,7 @@ import { lastGmodIntegrationTag, versionComparator } from '@gmod/core/utils/tool
 import { ADDON_MAX_FRAME_BYTES, createAddonGateway } from './addonGateway.js'
 import { connection } from '@gmod/infra-bullmq'
 import { wsSendToServerQueue, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js'
+import { acceptAddonCommandResult } from '@gmod/infra-websocket/addonCommands.js'
 
 interface wsClientClient {
   ws: any
@@ -29,6 +35,8 @@ interface wsClientClient {
   serverAdminListID: string[]
   session: AuthSession
   permissionsCheckedAt: number
+  permissionsGeneration: number
+  permissionsRevision?: string
   permissionsRetryAt?: number
   authorizationRequired?: boolean
   expiryTimer?: ReturnType<typeof setTimeout>
@@ -54,6 +62,7 @@ type VerifiedHandshake =
   { kind: 'server'; serverID: string; token: string } | { kind: 'dashboard'; session: AuthSession }
 const verifiedHandshakes = new WeakMap<object, VerifiedHandshake>()
 const socketStops = new Map<any, () => void>()
+const closedSockets = new WeakSet<object>()
 const PERMISSION_RECHECK_MS = 30_000
 
 let inShutdown = false
@@ -85,7 +94,7 @@ async function waitForRemoteWsDispatchAck(requestId: string, timeoutMs = WS_SEND
 }
 
 async function mayDispatchServerData(id: string, data: any) {
-  if (data?.method === 'wsRcon') {
+  if (['wsRcon', 'wsAuthorizedRcon'].includes(data?.method)) {
     const server = await getServerFromID(id)
     return !!server && hasCapability(await resolveGuildAccess(server.getGuildID()), 'console.rcon')
   }
@@ -114,7 +123,14 @@ function wsSendToServer(id: string, data: any) {
 
   const stringData = JSON.stringify(data)
 
-  gmLog('websocket', 'Sending to server ' + id + ' ' + stringData)
+  gmLog(
+    'websocket',
+    JSON.stringify({
+      action: 'command_dispatched',
+      serverID: id,
+      method: typeof data?.method === 'string' ? data.method.slice(0, 64) : 'unknown',
+    }),
+  )
   client.ws.send(stringData)
 
   return true
@@ -126,26 +142,49 @@ function removeClient(client: wsClientClient) {
 }
 
 function closeClient(client: wsClientClient, reason = 'Session revoked', code = 1008) {
+  closedSockets.add(client.ws)
   removeClient(client)
   socketStops.get(client.ws)?.()
   client.ws.close(code, reason)
 }
 
+function isLiveClient(client: wsClientClient) {
+  return !inShutdown && clients.client.includes(client) && client.ws.readyState === 1 && !closedSockets.has(client.ws)
+}
+
 async function validClient(client: wsClientClient) {
-  if (!clients.client.includes(client) || client.ws.readyState !== 1) return false
+  if (!isLiveClient(client)) return false
   const session = await validateApplicationSession(client.session.id)
   if (!session || session.discordID !== client.panelUser.discordID || (await isErasureBlocked(session.discordID))) {
     closeClient(client)
     return false
   }
+  if (!isLiveClient(client)) return false
   client.session = session
   return true
 }
 
+function invalidateClientPermissions(client: wsClientClient) {
+  client.guildAdminListID = []
+  client.serverAdminListID = []
+  client.permissionsCheckedAt = 0
+  client.permissionsRetryAt = undefined
+  client.permissionsRevision = undefined
+  client.permissionsGeneration++
+}
+
 async function refreshClientPermissions(client: wsClientClient, force = false) {
-  if (client.permissionsRetryAt && Date.now() < client.permissionsRetryAt) return false
-  if (!force && Date.now() - client.permissionsCheckedAt < PERMISSION_RECHECK_MS) return true
   try {
+    if (!isLiveClient(client)) return false
+    const revision = await readDiscordGuildPermissionsRevision(client.panelUser.discordID)
+    if (!isLiveClient(client)) return false
+    if (client.permissionsRevision !== revision) {
+      invalidateClientPermissions(client)
+      client.permissionsRevision = revision
+    }
+    if (client.permissionsRetryAt && Date.now() < client.permissionsRetryAt) return false
+    if (!force && Date.now() - client.permissionsCheckedAt < PERMISSION_RECHECK_MS) return true
+    const generation = client.permissionsGeneration
     const guilds = await getUserGuildsWithPermsForPanel(client.panelUser)
     const guildIDs: string[] = []
     const serverIDs: string[] = []
@@ -153,6 +192,15 @@ async function refreshClientPermissions(client: wsClientClient, force = false) {
       guildIDs.push(guild.id)
       const servers = await getServersFromDiscordGuildID(guild.id)
       for (const server of servers || []) serverIDs.push(server.id)
+    }
+    if (!isLiveClient(client) || client.permissionsGeneration !== generation) return false
+    if (
+      (await readDiscordGuildPermissionsRevision(client.panelUser.discordID)) !== revision ||
+      client.permissionsGeneration !== generation ||
+      !isLiveClient(client)
+    ) {
+      invalidateClientPermissions(client)
+      return false
     }
     client.guildAdminListID = guildIDs
     client.serverAdminListID = serverIDs
@@ -225,6 +273,13 @@ function startHeartbeat(ws: any) {
 
 async function wsSendToClient(client: wsClientClient, data: any) {
   if (!(await validClient(client))) return false
+  if (
+    data.action !== 'error' &&
+    typeof data.serverID === 'string' &&
+    (!(await refreshClientPermissions(client)) || !client.serverAdminListID.includes(data.serverID))
+  )
+    return false
+  if (!isLiveClient(client)) return false
   client.ws.send(JSON.stringify(data))
   return true
 }
@@ -283,6 +338,16 @@ export async function main() {
   })
 
   wsSendToServerSubscriber.on('message', async (channel, payload) => {
+    if (channel === DISCORD_GUILD_PERMISSIONS_CHANNEL) {
+      const invalidation = parseDiscordGuildPermissionsInvalidation(payload)
+      if (!invalidation) return
+      for (const client of clients.client) {
+        // Guild-wide changes can grant rights to a member absent from the previous admin list.
+        if (!invalidation.discordID || client.panelUser.discordID === invalidation.discordID)
+          invalidateClientPermissions(client)
+      }
+      return
+    }
     if (channel === AUTH_SESSION_REVOCATION_CHANNEL) {
       try {
         const { sessionID } = JSON.parse(payload)
@@ -338,6 +403,7 @@ export async function main() {
   await wsSendToServerSubscriber.subscribe(WS_SEND_TO_SERVER_BROADCAST_CHANNEL)
   await wsSendToServerSubscriber.subscribe(PRIVACY_REVOCATION_CHANNEL)
   await wsSendToServerSubscriber.subscribe(AUTH_SESSION_REVOCATION_CHANNEL)
+  await wsSendToServerSubscriber.subscribe(DISCORD_GUILD_PERMISSIONS_CHANNEL)
 
   wss = new WebSocketServer({
     maxPayload: ADDON_MAX_FRAME_BYTES,
@@ -384,6 +450,7 @@ export async function main() {
   })
 
   wss.on('connection', async function connectionWS(ws, req) {
+    ws.once('close', () => closedSockets.add(ws))
     const verified = verifiedHandshakes.get(req)
     verifiedHandshakes.delete(req)
     if (!verified) {
@@ -437,6 +504,7 @@ export async function main() {
             data: { data: text },
           })
         },
+        onCommandResult: (packet) => acceptAddonCommandResult(id, packet),
       })
       ws.on('message', (message: Buffer, binary: boolean) => addon.receive(message, binary))
       ws.once('close', () => addon.close())
@@ -445,6 +513,7 @@ export async function main() {
       const session = verified.session
       try {
         const user = await getPanelUserFromDiscordID(session.discordID, undefined, session)
+        if (inShutdown || ws.readyState !== 1 || closedSockets.has(ws)) return
         if (!user) {
           ws.close(1008, 'Session revoked')
           return
@@ -456,12 +525,19 @@ export async function main() {
           guildAdminListID: [],
           serverAdminListID: [],
           permissionsCheckedAt: 0,
-        }
-        if (!(await refreshClientPermissions(client, true))) {
-          if (!client.authorizationRequired && ws.readyState === 1) ws.close(1013, 'Permissions unavailable')
-          return
+          permissionsGeneration: 0,
         }
         clients.client.push(client)
+        ws.on('close', () => {
+          removeClient(client)
+          gmLog('websocket', 'Client disconnected: ' + session.discordID)
+        })
+        if (!(await refreshClientPermissions(client, true))) {
+          if (!client.authorizationRequired && ws.readyState === 1 && !closedSockets.has(ws))
+            closeClient(client, 'Permissions unavailable', 1013)
+          return
+        }
+        if (!(await validClient(client)) || inShutdown) return
         scheduleSessionCheck(client)
         gmLog('websocket', 'Client connected: ' + session.discordID)
 
@@ -494,16 +570,12 @@ export async function main() {
             gmLog('websocket', 'Error processing client message', true)
           }
         })
-        ws.on('close', () => {
-          removeClient(client)
-          gmLog('websocket', 'Client disconnected: ' + session.discordID)
-        })
       } catch {
         ws.close(1013, 'Session temporarily unavailable')
         return
       }
     }
-    startHeartbeat(ws)
+    if (!inShutdown && ws.readyState === 1 && !closedSockets.has(ws)) startHeartbeat(ws)
   })
 
   wsSendToServerWorker = new Worker(

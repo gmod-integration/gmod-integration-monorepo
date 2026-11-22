@@ -95,7 +95,7 @@ describe('v6 erasure routes with real Express authentication flow', () => {
   it('refuses erasure from a delegated session even when its parent is valid', async () => {
     const actor = {
       id: 'actor',
-      discordID: 'operator',
+      discordID: '333650866747867137',
       accessToken: 'parent-token',
       revoke: false,
       creationDate: new Date(),
@@ -107,7 +107,7 @@ describe('v6 erasure routes with real Express authentication flow', () => {
         id: 'delegate',
         discordID: 'target',
         accessToken: sessionToken,
-        actorDiscordID: 'operator',
+        actorDiscordID: '333650866747867137',
         actorSessionID: 'actor',
       },
     ])

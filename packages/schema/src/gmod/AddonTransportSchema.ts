@@ -66,3 +66,40 @@ export const AddonRequestSchema = z
   })
 
 export type AddonRequest = z.infer<typeof AddonRequestSchema>
+
+export const AddonRconCommandSchema = z
+  .object({
+    method: z.literal('wsAuthorizedRcon'),
+    requestID: z.string().uuid(),
+    steamID: z.string().regex(/^\d{17}$/),
+    command: z
+      .string()
+      .min(1)
+      .max(8192)
+      .regex(/^[^\0\r\n]+$/),
+    expiresAt: z.number().int().positive(),
+  })
+  .strict()
+
+export const AddonCommandResultSchema = z.discriminatedUnion('ok', [
+  z
+    .object({
+      action: z.literal('addon.command-result'),
+      id: z.string().uuid(),
+      method: z.literal('wsAuthorizedRcon'),
+      ok: z.literal(true),
+      code: z.literal('executed'),
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal('addon.command-result'),
+      id: z.string().uuid(),
+      method: z.literal('wsAuthorizedRcon'),
+      ok: z.literal(false),
+      code: z.enum(['permission_denied', 'expired', 'execution_failed']),
+    })
+    .strict(),
+])
+
+export type AddonCommandResult = z.infer<typeof AddonCommandResultSchema>

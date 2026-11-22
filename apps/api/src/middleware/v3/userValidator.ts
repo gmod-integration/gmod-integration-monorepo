@@ -47,7 +47,10 @@ export async function userAdminGuildValidator(req: Request, res: Response, next:
     const panelUser = req.panelUser!
     const guildID = getSingleParam(req.params.guildID)
 
-    if (!(await panelUser.isAdminOfGuild(guildID))) {
+    const allowed = ['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET')
+      ? await panelUser.isAdminOfGuild(guildID)
+      : await panelUser.isAdminOfGuild(guildID, { fresh: true })
+    if (!allowed) {
       res.status(403).json({
         error: 'not_admin_of_guild',
       })

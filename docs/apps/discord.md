@@ -62,6 +62,30 @@ Preview rendering uses `getStatusMessage(..., { persistChart: false })`, which c
 Redis cache, accessing MinIO or uploading files. The default publication path retains its cache.
 The preview handler does not save settings or call Discord message send/edit/delete methods.
 
+## Authorization
+
+Platform developer commands use the root `developers.json` allowlist through the shared user model,
+not the stored database rank. Prefix maintenance commands are limited to `ConfigDiscord.guildID` and
+log their actor/action/target without recording the raw command payload.
+
+`/warn` and every warning pagination action require the game server to belong to the interaction's
+Discord community. A linked account may view its own warning history; viewing someone else's requires
+the Discord owner or Administrator permission. New replies are private. Interacting with a historical
+public message creates a private copy instead of updating its contents publicly.
+
+`/rcon` requires a linked Steam account, a server in the interaction's community and the console
+capability. Its Discord command remains restricted by default. The current game authority is checked
+in the addon: the linked player must be online and pass the configured `gmIntIsAdmin()` rule. Stored
+player statistics do not authorize execution. The new `wsAuthorizedRcon` command is expired and
+deduplicated by request ID; only an authenticated matching addon acknowledgement confirms that the
+console accepted it. A timeout leaves execution uncertain and is never retried automatically. Older
+addons do not recognize this new command and cannot execute it through the old unchecked handler.
+
+Member role/removal events and role permission, deletion, ownership and guild removal events invalidate
+the shared Discord permission revisions. Gateways clear matching snapshots and verify durable revisions
+before using cached permissions. `guildAdmins` replies distinguish an unavailable Discord lookup from
+a verified empty list, so the dashboard can offer retry feedback.
+
 ## Run it
 
 ```bash

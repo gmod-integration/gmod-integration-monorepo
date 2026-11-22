@@ -5,6 +5,7 @@ import prisma from '@gmod/infra-prisma'
 import { isErasureBlocked } from './privacy.js'
 import { AuthSessionError, resolveApplicationSession, type AuthSession } from '@gmod/domain-auth/authSessions.js'
 import { getValidDiscordToken, refreshDiscordCredentials } from '@gmod/domain-auth/discordOAuth.js'
+import { readDiscordGuildPermissionsRevision } from './guildPermissions.js'
 
 const GUILD_CACHE_SECONDS = 120
 const GUILD_LOCK_MS = 30_000
@@ -27,6 +28,7 @@ type DiscordGuild = {
   permissions?: string | number
   [key: string]: unknown
 }
+export type GuildPermissionLookupOptions = { fresh?: boolean }
 function guildList(value: unknown): DiscordGuild[] {
   if (
     !Array.isArray(value) ||
@@ -88,20 +90,28 @@ export class PanelUser {
     return this.isValidPanelToken(token)
   }
 
-  async findGuilds(): Promise<DiscordGuild[]> {
+  async findGuilds(options: GuildPermissionLookupOptions = {}): Promise<DiscordGuild[]> {
     if (await isErasureBlocked(this.discordID)) return []
     // A cached permission list cannot outlive a revoked Discord grant.
     let token = await this.getDiscordToken()
     const cacheKey = `user:${this.discordID}:guilds`
     const lockKey = `user:${this.discordID}:guild-permissions-lock`
-    const cached = await redis.get(cacheKey)
-    if (cached !== null) {
+    const readCached = async (): Promise<DiscordGuild[] | null> => {
+      if (options.fresh) return null
+      const revision = await readDiscordGuildPermissionsRevision(this.discordID)
+      const cached = await redis.get(cacheKey)
+      if (cached === null) return null
       try {
-        return guildList(JSON.parse(cached))
+        const value = JSON.parse(cached)
+        if (value?.revision === revision) return guildList(value.guilds)
       } catch {
-        await redis.del(cacheKey)
+        // A damaged or pre-revision cache is discarded rather than trusted for authorization.
       }
+      await redis.del(cacheKey)
+      return null
     }
+    const cached = await readCached()
+    if (cached !== null) return cached
 
     const owner = randomUUID()
     const deadline = Date.now() + GUILD_LOCK_WAIT_MS
@@ -109,21 +119,18 @@ export class PanelUser {
     while (!acquired) {
       acquired = (await redis.set(lockKey, owner, 'PX', GUILD_LOCK_MS, 'NX')) === 'OK'
       if (acquired) break
-      const filled = await redis.get(cacheKey)
+      const filled = await readCached()
       if (filled !== null) {
-        try {
-          return guildList(JSON.parse(filled))
-        } catch {
-          await redis.del(cacheKey)
-        }
+        return filled
       }
       if (Date.now() >= deadline) throw new GuildPermissionsUnavailableError()
       await new Promise((resolve) => setTimeout(resolve, 50))
     }
 
     try {
-      const filled = await redis.get(cacheKey)
-      if (filled !== null) return guildList(JSON.parse(filled))
+      const filled = await readCached()
+      if (filled !== null) return filled
+      const revision = await readDiscordGuildPermissionsRevision(this.discordID)
       const request = async (token: string) =>
         fetch('https://discord.com/api/users/@me/guilds', {
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
@@ -158,15 +165,17 @@ export class PanelUser {
         throw new GuildPermissionsUnavailableError()
       }
       if (await isErasureBlocked(this.discordID)) return []
-      await redis.set(cacheKey, JSON.stringify(guilds), 'EX', GUILD_CACHE_SECONDS)
+      if ((await readDiscordGuildPermissionsRevision(this.discordID)) !== revision)
+        throw new GuildPermissionsUnavailableError()
+      await redis.set(cacheKey, JSON.stringify({ revision, guilds }), 'EX', GUILD_CACHE_SECONDS)
       return guilds
     } finally {
       await redis.eval(RELEASE_LOCK, 1, lockKey, owner)
     }
   }
 
-  async findGuildsWithPerms() {
-    const guilds = await this.findGuilds()
+  async findGuildsWithPerms(options: GuildPermissionLookupOptions = {}) {
+    const guilds = await this.findGuilds(options)
     return guilds.filter((guild) => {
       if (guild.owner) return true
       try {
@@ -177,8 +186,8 @@ export class PanelUser {
     })
   }
 
-  async isAdminOfGuild(guildID: string) {
-    return (await this.findGuildsWithPerms()).some((guild) => guild.id === guildID)
+  async isAdminOfGuild(guildID: string, options: GuildPermissionLookupOptions = {}) {
+    return (await this.findGuildsWithPerms(options)).some((guild) => guild.id === guildID)
   }
 }
 
