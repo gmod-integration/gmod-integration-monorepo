@@ -35,8 +35,13 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
   enqueueDiscordGuildSnapshot: enqueueDiscordGuildSnapshotMock,
 }))
 
-const { userValidator, userAdminGuildValidator, userServerValidator, userAdminValidator } =
-  await import('../../../src/middleware/v3/userValidator.js')
+const {
+  userValidator,
+  userAdminGuildValidator,
+  userAdminGuildBotRemovalValidator,
+  userServerValidator,
+  userAdminValidator,
+} = await import('../../../src/middleware/v3/userValidator.js')
 
 function makeRes() {
   const res: any = {}
@@ -180,6 +185,23 @@ describe('userValidator', () => {
       expect(request.panelUser.isAdminOfGuild).toHaveBeenCalledWith('g1', { fresh: true })
     })
 
+    it('checks the target guild rather than a body override when removing a custom bot', async () => {
+      const admin = vi.fn(async (guildID) => guildID === 'g1')
+      const req = makeReq({
+        method: 'DELETE',
+        params: { guildID: 'g2' },
+        body: { guildID: 'g1' },
+        panelUser: { isAdminOfGuild: admin },
+      })
+      const res = makeRes()
+      const next = vi.fn()
+      await userAdminGuildValidator(req, res, next)
+      expect(admin).toHaveBeenCalledWith('g2', { fresh: true })
+      expect(res.status).toHaveBeenCalledWith(403)
+      expect(enqueueDiscordGuildSnapshotMock).not.toHaveBeenCalled()
+      expect(next).not.toHaveBeenCalled()
+    })
+
     it('returns 404 when the discord guild snapshot is not found', async () => {
       enqueueDiscordGuildSnapshotMock.mockResolvedValueOnce(null)
       const res = makeRes()
@@ -205,6 +227,55 @@ describe('userValidator', () => {
       const next = vi.fn()
       await userAdminGuildValidator(req, makeRes(), next)
       expect(next).toHaveBeenCalledWith(expect.any(Error))
+    })
+  })
+
+  describe('userAdminGuildBotRemovalValidator', () => {
+    it('permits authorized expired-bot cleanup without requiring an effective-bot snapshot', async () => {
+      const administrator = vi.fn().mockResolvedValueOnce(true)
+      enqueueDiscordGuildSnapshotMock.mockResolvedValueOnce(null)
+      const req = {
+        method: 'DELETE',
+        params: { guildID: 'expired-guild' },
+        panelUser: { isAdminOfGuild: administrator },
+      } as any
+      const next = vi.fn()
+      await userAdminGuildBotRemovalValidator(req, makeRes(), next)
+      expect(administrator).toHaveBeenCalledWith('expired-guild', { fresh: true })
+      expect(enqueueDiscordGuildSnapshotMock).not.toHaveBeenCalled()
+      expect(req.guild).toBeInstanceOf(FakeGuild)
+      expect(req.guild.id).toBe('expired-guild')
+      expect(next).toHaveBeenCalledWith()
+    })
+
+    it('refuses another guild’s administrator before constructing a cleanup target', async () => {
+      const administrator = vi.fn(async (guildID) => guildID === 'g1')
+      const req = {
+        method: 'DELETE',
+        params: { guildID: 'g2' },
+        body: { guildID: 'g1' },
+        panelUser: { isAdminOfGuild: administrator },
+      } as any
+      const res = makeRes()
+      const next = vi.fn()
+      await userAdminGuildBotRemovalValidator(req, res, next)
+      expect(administrator).toHaveBeenCalledWith('g2', { fresh: true })
+      expect(res.status).toHaveBeenCalledWith(403)
+      expect(req.guild).toBeUndefined()
+      expect(next).not.toHaveBeenCalled()
+    })
+
+    it('forwards an unavailable permission check without running cleanup', async () => {
+      const unavailable = new Error('Permissions unavailable')
+      const req = {
+        method: 'DELETE',
+        params: { guildID: 'g1' },
+        panelUser: { isAdminOfGuild: vi.fn().mockRejectedValueOnce(unavailable) },
+      } as any
+      const next = vi.fn()
+      await userAdminGuildBotRemovalValidator(req, makeRes(), next)
+      expect(req.guild).toBeUndefined()
+      expect(next).toHaveBeenCalledWith(unavailable)
     })
   })
 

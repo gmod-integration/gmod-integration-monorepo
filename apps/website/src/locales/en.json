@@ -1311,7 +1311,20 @@
         "avatar_keep": "Keep current avatar",
         "name_invalid": "Use a bot name of 2 to 32 characters.",
         "token_configured": "Token configured",
-        "token_missing": "Token not configured"
+        "token_missing": "Token not configured",
+        "remove_custom_bot": "Remove custom bot",
+        "remove_title": "Remove {1}?",
+        "remove_confirmation": "Disconnect this custom bot, delete its saved token and reset its activity. The main Gmod Integration bot will take over. Your GmodStore purchase stays linked to this Discord server.",
+        "remove_hint": "Remove the saved connection and switch this server back to the main bot. Your GmodStore purchase stays linked.",
+        "main_bot_required": "Invite the main Gmod Integration bot to this Discord server, then retry.",
+        "main_bot_unavailable": "We could not verify that the main bot is available. Try again.",
+        "disconnect_pending": "The saved token has been removed, but switching to the main bot is not fully confirmed. Retry to finish cleanup.",
+        "reconfigured": "The bot was configured again during removal. The new configuration was kept. Refresh the bot information before deciding whether to remove it.",
+        "state_unavailable": "The current bot configuration could not be verified. Refresh the bot information before deciding whether to retry removal.",
+        "refresh_information": "Refresh bot information",
+        "refresh_failed": "Unable to refresh the bot information. Try again.",
+        "invite_main_bot": "Invite Main Bot",
+        "removed": "Custom bot removed. Your GmodStore purchase stays linked."
       },
       "links": {
         "title": "Links",

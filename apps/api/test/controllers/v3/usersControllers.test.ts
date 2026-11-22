@@ -160,6 +160,11 @@ vi.mock('@gmod/core/models/v3/statusMessagePreviewModels.js', () => ({
   processPreviewServerStatus: processPreviewServerStatusMock,
 }))
 
+const processDeleteGuildBotInstanceMock = vi.fn()
+vi.mock('@gmod/core/models/v3/customBotRemovalModels.js', () => ({
+  processDeleteGuildBotInstance: processDeleteGuildBotInstanceMock,
+}))
+
 const getGuildSettingMock = vi.fn()
 const getEffectiveGuildSettingMock = vi.fn()
 class FakeGuild {
@@ -238,6 +243,7 @@ function resetAllMocks() {
   getUserDataGRPDMock.mockReset()
   processGetPublicServerRankingMock.mockReset()
   processPreviewServerStatusMock.mockReset()
+  processDeleteGuildBotInstanceMock.mockReset()
   getGuildSettingMock.mockReset()
   getEffectiveGuildSettingMock.mockReset()
   redisMock.del.mockReset()
@@ -2073,13 +2079,21 @@ describe('usersControllers', () => {
     })
   })
 
-  it('deleteGuildBotInstance delegates to todoControllers', async () => {
-    todoControllersMock.mockResolvedValueOnce(undefined)
-    const req = {} as any
-    const res = makeRes()
-    await c.deleteGuildBotInstance(req, res)
-    expect(todoControllersMock).toHaveBeenCalledWith(req, res)
-  })
+  it.each([200, 409, 503])(
+    'deleteGuildBotInstance forwards the removal result (%s) using its authorized guild',
+    async (status) => {
+      const body = status === 200 ? { removed: true, tokenConfigured: false } : { error: 'main_bot_required' }
+      processDeleteGuildBotInstanceMock.mockResolvedValueOnce({ status, body })
+      const guild = { id: 'authorized-guild' }
+      const req = { guild, params: { guildID: 'untrusted-guild' }, body: { guildID: 'other-guild' } } as any
+      const res = makeRes()
+      await c.deleteGuildBotInstance(req, res)
+      expect(processDeleteGuildBotInstanceMock).toHaveBeenCalledExactlyOnceWith(guild)
+      expect(res.status).toHaveBeenCalledWith(status)
+      expect(res.send).toHaveBeenCalledWith(body)
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
+    },
+  )
 
   it('getUserGmodStorePurchases delegates to processGetUserGmodStorePurchases', async () => {
     modelMocks.processGetUserGmodStorePurchases.mockResolvedValueOnce({ status: 200, body: {} })

@@ -54,6 +54,274 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     expect(screen.getAllByText('Loading...').length).toBeGreaterThan(0)
   })
 
+  it('names the custom bot and consequences before removal, and cancellation sends no request', async () => {
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot({ tokenConfigured: true })))
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+    const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+    expect(dialog.open).toBe(true)
+    expect(within(dialog).getByRole('heading', { name: 'Remove MyBot?' })).toBeInTheDocument()
+    expect(within(dialog).getByText(/Your GmodStore purchase stays linked to this Discord server/)).toBeInTheDocument()
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(dialog.open).toBe(false)
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'DELETE')).toHaveLength(0)
+  })
+
+  it('removes the custom connection after confirmation and refreshes the main bot without unlinking the purchase', async () => {
+    let removed = false
+    vi.mocked(fetchAPI).mockImplementation(async (_endpoint, method) => {
+      if (method === 'DELETE') {
+        removed = true
+        return jsonResponse({ removed: true, tokenConfigured: false })
+      }
+      return jsonResponse(
+        baseBot(
+          removed ? { custom: false, username: 'Gmod Integration', tokenConfigured: false } : { tokenConfigured: true },
+        ),
+      )
+    })
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+    const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+    await screen.findByText('Custom bot removed. Your GmodStore purchase stays linked.')
+    await screen.findByText('Gmod Integration')
+    expect(dialog.open).toBe(false)
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'DELETE')).toEqual([
+      ['/users/:discordID/guilds/:guildID/bot', 'DELETE'],
+    ])
+    const connection = screen.getByRole('region', { name: 'Connection and credentials' })
+    expect(within(connection).queryByRole('button', { name: 'Remove custom bot' })).not.toBeInTheDocument()
+    expect(within(connection).getByRole('button', { name: 'Setup Custom Bot' })).toBeEnabled()
+  })
+
+  it('blocks duplicate removals and dismissal until the command completes', async () => {
+    let complete!: (response: Response) => void
+    vi.mocked(fetchAPI).mockImplementation(async (_endpoint, method) =>
+      method === 'DELETE' ? new Promise<Response>((resolve) => (complete = resolve)) : jsonResponse(baseBot()),
+    )
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+    const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+    const confirm = within(dialog).getByRole('button', { name: 'Remove custom bot' })
+    await fireEvent.click(confirm)
+    await fireEvent.click(confirm)
+    expect(confirm).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    const cancellation = new Event('cancel', { cancelable: true })
+    await fireEvent(dialog, cancellation)
+    expect(cancellation.defaultPrevented).toBe(true)
+    expect(dialog.open).toBe(true)
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'DELETE')).toHaveLength(1)
+    complete(jsonResponse({ removed: true, tokenConfigured: false }))
+    await screen.findByText('Custom bot removed. Your GmodStore purchase stays linked.')
+  })
+
+  it('guides the administrator to invite the main bot after a blocked removal', async () => {
+    vi.mocked(fetchAPI).mockImplementation(async (_endpoint, method) =>
+      jsonResponse(
+        method === 'DELETE' ? { error: 'main_bot_required' } : baseBot({ tokenConfigured: true }),
+        method !== 'DELETE',
+      ),
+    )
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+    const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+    await within(dialog).findByText(/Invite the main Gmod Integration bot to this Discord server, then retry/)
+    expect(within(dialog).getByRole('link', { name: 'Invite Main Bot' })).toHaveAttribute('target', '_blank')
+    expect(within(dialog).getByRole('link', { name: 'Invite Main Bot' }).getAttribute('href')).toContain(
+      'https://discord.com/oauth2/authorize',
+    )
+    expect(screen.getByText('Token configured')).toBeInTheDocument()
+    expect(dialog.open).toBe(true)
+  })
+
+  it('reports a removed credential with pending disconnection truthfully and allows retry', async () => {
+    let removals = 0
+    vi.mocked(fetchAPI).mockImplementation(async (_endpoint, method) => {
+      if (method !== 'DELETE') return jsonResponse(baseBot({ tokenConfigured: true }))
+      removals += 1
+      return removals === 1
+        ? jsonResponse({ error: 'custom_bot_disconnect_pending', tokenConfigured: false }, false)
+        : jsonResponse({ removed: true, tokenConfigured: false })
+    })
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+    const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+    await within(dialog).findByText(
+      'The saved token has been removed, but switching to the main bot is not fully confirmed. Retry to finish cleanup.',
+    )
+    expect(screen.getByText('Token not configured')).toBeInTheDocument()
+    expect(screen.queryByText('Custom bot removed. Your GmodStore purchase stays linked.')).not.toBeInTheDocument()
+    expect(dialog.open).toBe(true)
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+    await screen.findByText('Custom bot removed. Your GmodStore purchase stays linked.')
+    expect(removals).toBe(2)
+  })
+
+  it('keeps removal available after the historical entitlement expires', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false, customBot: false }))
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot({ purchased: false, active: false })))
+    renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    expect(screen.getByRole('button', { name: 'Remove custom bot' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Edit Custom Bot' })).toBeDisabled()
+  })
+
+  it('retains cleanup retry after closing a partial removal whose client was already inactive', async () => {
+    let attempts = 0
+    vi.mocked(fetchAPI).mockImplementation(async (_endpoint, method) =>
+      jsonResponse(
+        method === 'DELETE'
+          ? attempts++ === 0
+            ? { error: 'custom_bot_disconnect_pending', tokenConfigured: false }
+            : { error: 'main_bot_unavailable' }
+          : baseBot({ custom: false, tokenConfigured: true }),
+        method !== 'DELETE',
+      ),
+    )
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+    const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+    await within(dialog).findByRole('alert')
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(dialog.open).toBe(false)
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+    expect(dialog.open).toBe(true)
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+    await within(dialog).findByText('We could not verify that the main bot is available. Try again.')
+    expect(within(dialog).getByText(/The saved token has been removed/)).toBeInTheDocument()
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByRole('button', { name: 'Remove custom bot' })).toBeEnabled()
+  })
+
+  it('does not report successful removal after an HTTP failure', async () => {
+    vi.mocked(fetchAPI).mockImplementation(async (_endpoint, method) =>
+      jsonResponse(method === 'DELETE' ? {} : baseBot(), method !== 'DELETE'),
+    )
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+    const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+    await within(dialog).findByRole('alert')
+    expect(dialog.open).toBe(true)
+    expect(screen.queryByText('Custom bot removed. Your GmodStore purchase stays linked.')).not.toBeInTheDocument()
+  })
+
+  it.each(['custom_bot_reconfigured', 'custom_bot_state_unavailable'])(
+    'requires refresh and a new confirmation after %s without repeating DELETE',
+    async (error) => {
+      let deletions = 0
+      vi.mocked(fetchAPI).mockImplementation(async (_endpoint, method) => {
+        if (method === 'DELETE') {
+          deletions += 1
+          return jsonResponse(
+            { error, ...(error === 'custom_bot_reconfigured' ? { tokenConfigured: true } : {}) },
+            false,
+          )
+        }
+        return jsonResponse(baseBot({ username: deletions ? 'New configuration' : 'MyBot', tokenConfigured: true }))
+      })
+      const { container } = renderWithProviders(() => <GuildBot />)
+      await waitForLoaded()
+      await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+      const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+      await within(dialog).findByRole('button', { name: 'Refresh bot information' })
+      expect(within(dialog).getByRole('button', { name: 'Remove custom bot' })).toBeDisabled()
+      expect(screen.queryByText('Custom bot removed. Your GmodStore purchase stays linked.')).not.toBeInTheDocument()
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+      await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+      expect(within(dialog).getByRole('button', { name: 'Remove custom bot' })).toBeDisabled()
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Refresh bot information' }))
+      await screen.findByText('New configuration')
+      await vi.waitFor(() => expect(dialog.open).toBe(false))
+      expect(deletions).toBe(1)
+      await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+      expect(within(dialog).getByRole('heading', { name: 'Remove New configuration?' })).toBeInTheDocument()
+      expect(within(dialog).getByRole('button', { name: 'Remove custom bot' })).toBeEnabled()
+      expect(deletions).toBe(1)
+    },
+  )
+
+  it('keeps the conflict open and blocks another deletion when refreshing fails, then retries the read', async () => {
+    let reads = 0
+    let deletions = 0
+    vi.mocked(fetchAPI).mockImplementation(async (_endpoint, method) => {
+      if (method === 'DELETE') {
+        deletions += 1
+        return jsonResponse({ error: 'custom_bot_reconfigured', tokenConfigured: true }, false)
+      }
+      reads += 1
+      if (reads === 2) return jsonResponse({}, false)
+      return jsonResponse(baseBot({ username: reads > 1 ? 'New configuration' : 'MyBot', tokenConfigured: true }))
+    })
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+    const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+    await within(dialog).findByRole('button', { name: 'Refresh bot information' })
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Refresh bot information' }))
+    await within(dialog).findByText('Unable to refresh the bot information. Try again.')
+    expect(dialog.open).toBe(true)
+    expect(within(dialog).getByRole('button', { name: 'Remove custom bot' })).toBeDisabled()
+    expect(deletions).toBe(1)
+    expect(screen.queryByText('Custom bot removed. Your GmodStore purchase stays linked.')).not.toBeInTheDocument()
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Refresh bot information' }))
+    await screen.findByText('New configuration')
+    await vi.waitFor(() => expect(dialog.open).toBe(false))
+    expect(reads).toBe(3)
+    expect(deletions).toBe(1)
+  })
+
+  it.each([null, { removed: false, tokenConfigured: false }, { removed: true, tokenConfigured: true }])(
+    'does not accept an incomplete or contradictory successful removal response (%j)',
+    async (body) => {
+      vi.mocked(fetchAPI).mockImplementation(async (_endpoint, method) =>
+        jsonResponse(method === 'DELETE' ? body : baseBot()),
+      )
+      const { container } = renderWithProviders(() => <GuildBot />)
+      await waitForLoaded()
+      await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+      const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+      await within(dialog).findByRole('alert')
+      expect(dialog.open).toBe(true)
+      expect(screen.queryByText('Custom bot removed. Your GmodStore purchase stays linked.')).not.toBeInTheDocument()
+      expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'GET')).toHaveLength(1)
+    },
+  )
+
+  it('keeps the acknowledged removal visible when refreshing the bot summary fails', async () => {
+    let removed = false
+    vi.mocked(fetchAPI).mockImplementation(async (_endpoint, method) => {
+      if (method === 'DELETE') {
+        removed = true
+        return jsonResponse({ removed: true, tokenConfigured: false })
+      }
+      return jsonResponse(removed ? {} : baseBot(), !removed)
+    })
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove custom bot' }))
+    const dialog = container.querySelector<HTMLDialogElement>('#remove_bot')!
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove custom bot' }))
+    await screen.findByText('Custom bot removed. Your GmodStore purchase stays linked.')
+    await screen.findByRole('button', { name: 'Try again' })
+    expect(dialog.open).toBe(false)
+  })
+
   it('shows the historical purchase requirement when the community has no custom-bot entitlement', async () => {
     localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true, customBot: false }))
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ custom: false, purchased: false })))
@@ -244,7 +512,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
   })
 
-  it('registers identity and secret drafts with the navigation guard and unregisters them on unmount', async () => {
+  it('registers identity, secret and removal navigation guards and unregisters them on unmount', async () => {
     vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot()))
     const entries: DraftEntry[] = []
     const unregister = vi.fn()
@@ -261,7 +529,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
       </DraftRegistryContext.Provider>
     ))
     await waitForLoaded()
-    expect(entries).toHaveLength(2)
+    expect(entries).toHaveLength(3)
     expect(entries.every((entry) => !entry.dirty())).toBe(true)
     await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
     const modal = container.querySelector<HTMLDialogElement>('#edit_bot')!
@@ -277,7 +545,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     entries[1].discard()
     expect(within(setup).getByLabelText(/^Bot token/)).toHaveValue('')
     unmount()
-    expect(unregister).toHaveBeenCalledTimes(2)
+    expect(unregister).toHaveBeenCalledTimes(3)
   })
 
   it('shows an error with retry instead of reading a failed bot resource', async () => {

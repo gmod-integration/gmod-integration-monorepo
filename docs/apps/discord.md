@@ -124,6 +124,20 @@ failures return a generic profile error rather than details from Discord or the 
 Deploy the API, website and Discord workers together for this upload contract; old jobs carrying URL
 or path avatars are rejected and are not converted into downloads.
 
+## Custom bot removal
+
+An acknowledged `guildReloadBotInstance` kills the guild's current custom client before rereading its
+saved credential. An empty credential keeps the main-client fallback without creating a replacement.
+Reloads for the same guild run sequentially, including startup discovery and a failed preceding reload;
+independent guilds remain independent. Startup rereads credentials inside that same lock. This prevents
+an already running reload or a stale startup snapshot from reconnecting a removed token.
+
+The Discord application requires a single runtime owner (`replicas: 1`) with `stop-first` updates and
+rollbacks. Its clients and reload serialization live in process memory. BullMQ delivers each reload to
+one worker; the reply is not a broadcast acknowledgement across multiple gateway owners. Multiple
+Discord replicas or overlapping deployments therefore cannot provide the removal confirmation
+contract. API and WebSocket replicas do not share this singleton restriction.
+
 ## Bot departure and community retention
 
 A guild-departure event only permits cleanup when it comes from the currently effective client

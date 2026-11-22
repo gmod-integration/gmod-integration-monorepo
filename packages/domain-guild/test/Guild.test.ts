@@ -477,9 +477,14 @@ describe('Guild', () => {
 
   describe('reloadBotInstance', () => {
     it('delegates to the bullmq adapter', async () => {
-      enqueueDiscordGuildReloadBotInstanceMock.mockResolvedValueOnce(undefined)
-      await makeGuild().reloadBotInstance()
+      enqueueDiscordGuildReloadBotInstanceMock.mockResolvedValueOnce(true)
+      await expect(makeGuild().reloadBotInstance()).resolves.toBe(true)
       expect(enqueueDiscordGuildReloadBotInstanceMock).toHaveBeenCalledWith('g1')
+    })
+
+    it('preserves a negative worker acknowledgement', async () => {
+      enqueueDiscordGuildReloadBotInstanceMock.mockResolvedValueOnce(false)
+      await expect(makeGuild().reloadBotInstance()).resolves.toBe(false)
     })
   })
 

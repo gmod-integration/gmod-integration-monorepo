@@ -65,6 +65,32 @@ route. Unlinked accounts return both fields as `null`; missing or erased account
 Steam and avatar lookup share a three-second budget. Provider failures preserve the linked ID, and
 avatar failures preserve an already resolved name with a `null` avatar URL.
 
+## Custom bot removal
+
+`DELETE /v3/users/:discordID/guilds/:guildID/bot` requires the authenticated account and fresh
+administrator permissions for the target guild, without requiring a snapshot from the effective bot.
+Cleanup remains available after commercial access expires. It first checks membership through the main Discord client, independently of the custom
+client. Missing membership returns 409 `main_bot_required`; an unavailable check returns 503
+`main_bot_unavailable`. Neither response changes the custom connection.
+
+The operation transactionally clears the guild's saved custom credentials and presence setting,
+preserving the purchase, its guild assignment and other access sources. It then invalidates the
+presence cache and waits for the Discord worker to reload the guild from storage. A final guild-scoped
+storage read must still find no configured credential before a positive acknowledgement returns 200
+`{removed: true, tokenConfigured: false}`. A new configuration observed during the operation is preserved
+and returns 409 `{error: 'custom_bot_reconfigured', tokenConfigured: true}`. An unavailable final check
+returns 503 `{error: 'custom_bot_state_unavailable'}` without claiming a known token state. Both outcomes
+require refreshing the summary and opening a new confirmation before another removal. A failure after durable removal
+returns 503 `{error: 'custom_bot_disconnect_pending', tokenConfigured: false}`; retrying repeats cleanup
+and reload even when the token is already empty. No response contains a credential.
+
+The dashboard names the bot and consequences in a confirmation dialog, blocks duplicates while
+pending, guides administrators to invite the main bot when required, and distinguishes a removed
+credential awaiting cleanup from a confirmed disconnection. Reloads for one guild are serialized in
+the Discord runtime so a preceding reload cannot reconnect an old credential after removal completes.
+The worker acknowledgement assumes one Discord runtime owner; see the singleton deployment contract
+in [the Discord app documentation](./discord.md#custom-bot-removal).
+
 ## Account notifications
 
 The authenticated v3 user routes share the dashboard's notification contract:

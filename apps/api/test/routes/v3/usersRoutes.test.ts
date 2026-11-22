@@ -114,6 +114,7 @@ vi.mock('@/controllers/v3/usersControllers.js', () => ({
 
 vi.mock('@/middleware/v3/userValidator.js', () => ({
   userAdminGuildValidator: vi.fn(),
+  userAdminGuildBotRemovalValidator: vi.fn(),
   userAdminValidator: vi.fn(),
   userServerValidator: vi.fn(),
   userValidator: vi.fn(),
@@ -124,8 +125,9 @@ vi.mock('@/controllers/v3/serversControllers.js', () => ({ getIGSettings: vi.fn(
 vi.mock('@/controllers/v3/users/ServerStatusChannelControllers.js', () => ({ putServerStatusChannel: vi.fn() }))
 
 const { default: router } = await import('../../../src/routes/v3/usersRoutes.js')
-const { userValidator, userAdminGuildValidator, userServerValidator } = await import('@/middleware/v3/userValidator.js')
-const { getSteamProfile } = await import('@/controllers/v3/usersControllers.js')
+const { userValidator, userAdminGuildValidator, userAdminGuildBotRemovalValidator, userServerValidator } =
+  await import('@/middleware/v3/userValidator.js')
+const { getSteamProfile, deleteGuildBotInstance } = await import('@/controllers/v3/usersControllers.js')
 
 describe('usersRoutes', () => {
   it('registers a representative sample of routes across the whole file', () => {
@@ -167,6 +169,15 @@ describe('usersRoutes', () => {
     expect(preview).toBeGreaterThan(server)
     expect(router.stack[preview].route.methods.post).toBe(true)
   })
+
+  it('protects custom-bot removal with account and guild-administrator checks', () => {
+    const removal = router.stack.findIndex(
+      (layer: any) => layer.route?.path === '/:discordID/guilds/:guildID/bot' && layer.route.methods.delete,
+    )
+    expect(removal).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
+    expect(removal).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator))
+    expect(router.stack[removal].route.stack[0].handle).toBe(userAdminGuildBotRemovalValidator)
+  })
 })
 
 describe('Steam profile account authentication', () => {
@@ -194,6 +205,69 @@ describe('Steam profile account authentication', () => {
     const response = await request(app).get('/v3/users/owner/steam-profile').set('x-test-user', 'owner')
     expect(response.status).toBe(200)
     expect(getSteamProfile).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('custom-bot removal HTTP authorization', () => {
+  const app = express()
+  app.use('/v3/users', router)
+
+  beforeEach(() => {
+    vi.mocked(deleteGuildBotInstance)
+      .mockReset()
+      .mockImplementation((_req, res) => res.json({ removed: true }))
+    vi.mocked(userValidator).mockImplementation((req, res, next) => {
+      if (req.header('x-test-user') !== req.params.discordID) return res.status(401).json({ error: 'Unauthorized' })
+      next()
+    })
+    vi.mocked(userAdminGuildValidator)
+      .mockReset()
+      .mockImplementation((_req, res) => res.status(404).json({ error: 'guild_not_found' }))
+    vi.mocked(userAdminGuildBotRemovalValidator)
+      .mockReset()
+      .mockImplementation((req, res, next) => {
+        if (req.header('x-test-admin-guild') !== req.params.guildID)
+          return res.status(403).json({ error: 'not_admin_of_guild' })
+        next()
+      })
+  })
+
+  it('rejects an anonymous removal before invoking the command', async () => {
+    const response = await request(app).delete('/v3/users/owner/guilds/g1/bot')
+    expect(response.status).toBe(401)
+    expect(deleteGuildBotInstance).not.toHaveBeenCalled()
+  })
+
+  it('does not let an administrator remove another guild’s custom bot', async () => {
+    const response = await request(app)
+      .delete('/v3/users/owner/guilds/g2/bot')
+      .set('x-test-user', 'owner')
+      .set('x-test-admin-guild', 'g1')
+    expect(response.status).toBe(403)
+    expect(deleteGuildBotInstance).not.toHaveBeenCalled()
+  })
+
+  it('allows the authenticated administrator of the target guild', async () => {
+    const response = await request(app)
+      .delete('/v3/users/owner/guilds/g1/bot')
+      .set('x-test-user', 'owner')
+      .set('x-test-admin-guild', 'g1')
+    expect(response.status).toBe(200)
+    expect(deleteGuildBotInstance).toHaveBeenCalledTimes(1)
+    expect(userAdminGuildValidator).not.toHaveBeenCalled()
+  })
+
+  it('reaches the main-bot-required response for authorized expired cleanup without a guild snapshot', async () => {
+    vi.mocked(deleteGuildBotInstance).mockImplementationOnce((_req, res) =>
+      res.status(409).json({ error: 'main_bot_required' }),
+    )
+    const response = await request(app)
+      .delete('/v3/users/owner/guilds/expired-guild/bot')
+      .set('x-test-user', 'owner')
+      .set('x-test-admin-guild', 'expired-guild')
+    expect(response.status).toBe(409)
+    expect(response.body).toEqual({ error: 'main_bot_required' })
+    expect(userAdminGuildValidator).not.toHaveBeenCalled()
   })
 })
 

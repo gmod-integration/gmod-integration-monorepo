@@ -10,9 +10,11 @@ import { closeDialog, showDialog } from '../../../utils/dialog.js'
 import { type Component, createResource, createSignal, onCleanup, Show } from 'solid-js'
 import AdminPanel from '../../../components/AdminPanel.js'
 import AdminModal from '../../../components/AdminModal.js'
+import ConfirmActionDialog from '../../../components/ConfirmActionDialog.js'
 import {
   AsyncState,
   Button,
+  ButtonLink,
   FormActions,
   FormField,
   Icon,
@@ -24,6 +26,7 @@ import { useDraftGuard } from '../../../hooks/draftRegistry.js'
 import { A } from '@solidjs/router'
 import { useI18n } from '../../../i18n.js'
 import { fetchAPI, getUrlWithActualParams } from '../../../utils/api.js'
+import { INVITE_URL } from '../../../utils/utils.js'
 
 type Bot = CustomBotInfo
 type BotDraft = { username: string; avatar: string; status: string }
@@ -54,11 +57,20 @@ const GuildBot: Component = () => {
   }
   onCleanup(cancelAvatarRead)
   const [popupError, setPopupError] = createSignal(false)
+  const [removalPending, setRemovalPending] = createSignal(false)
+  const [removalIssue, setRemovalIssue] = createSignal<string>()
+  const [cleanupPending, setCleanupPending] = createSignal(false)
+  const [removed, setRemoved] = createSignal(false)
   const editAction = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save changes. Try again.') })
   const setupAction = createAsyncAction({
     errorMessage: () => t('ui.save_error', 'Unable to save changes. Try again.'),
   })
-  const busy = () => editAction.pending() || setupAction.pending()
+  const removalRefresh = createAsyncAction({
+    errorMessage: () => t('dashboard.guild.bot.refresh_failed', 'Unable to refresh the bot information. Try again.'),
+  })
+  const needsRemovalRefresh = () =>
+    ['custom_bot_reconfigured', 'custom_bot_state_unavailable'].includes(removalIssue() ?? '')
+  const busy = () => editAction.pending() || setupAction.pending() || removalPending() || removalRefresh.pending()
   const dirty = () =>
     draft().username !== originalDraft().username ||
     draft().avatar !== originalDraft().avatar ||
@@ -146,8 +158,47 @@ const GuildBot: Component = () => {
       if (!response.ok) throw new Error('Bot setup failed')
       setBot(CustomBotInfoSchema.parse(await response.json()))
       setToken('')
+      setRemoved(false)
     })
     if (saved) closeDialog('setup_bot')
+  }
+
+  async function removeBot() {
+    setRemovalPending(true)
+    setRemovalIssue(undefined)
+    try {
+      const response = await fetchAPI(BOT_URL, 'DELETE')
+      const body = await response.json()
+      if (!response.ok) {
+        setRemovalIssue(body?.error)
+        if (needsRemovalRefresh()) {
+          setCleanupPending(false)
+          if (body?.tokenConfigured === true)
+            setBot((current) => (current ? { ...current, tokenConfigured: true } : current))
+        } else if (body?.tokenConfigured === false) {
+          setCleanupPending(true)
+          setBot((current) => (current ? { ...current, tokenConfigured: false, status: 'disabled' } : current))
+        }
+        throw new Error('Custom bot removal incomplete')
+      }
+      if (body?.removed !== true || body?.tokenConfigured !== false) throw new Error('Invalid removal response')
+    } finally {
+      setRemovalPending(false)
+    }
+  }
+
+  async function refreshAfterRemovalConflict() {
+    if (
+      await removalRefresh.run(async () => {
+        const refreshed = await refreshBot()
+        if (bot.error) throw new Error('Bot refresh failed')
+        CustomBotInfoSchema.parse(refreshed)
+      })
+    ) {
+      setRemovalIssue(undefined)
+      setCleanupPending(false)
+      closeDialog('remove_bot')
+    }
   }
 
   function selectAvatar(file: File | undefined) {
@@ -220,6 +271,84 @@ const GuildBot: Component = () => {
 
   return (
     <>
+      <ConfirmActionDialog
+        id="remove_bot"
+        title={t('dashboard.guild.bot.remove_title', 'Remove {1}?', bot.error ? '' : (bot.latest?.username ?? ''))}
+        description={t(
+          'dashboard.guild.bot.remove_confirmation',
+          'Disconnect this custom bot, delete its saved token and reset its activity. The main Gmod Integration bot will take over. Your GmodStore purchase stays linked to this Discord server.',
+        )}
+        confirmLabel={t('dashboard.guild.bot.remove_custom_bot', 'Remove custom bot')}
+        disabled={needsRemovalRefresh() || removalRefresh.pending()}
+        onConfirm={removeBot}
+        onSuccess={() => {
+          setCleanupPending(false)
+          setRemoved(true)
+          void Promise.resolve(refreshBot()).catch(() => {})
+        }}
+      >
+        <Show when={needsRemovalRefresh()}>
+          <p class="text-warning">
+            {removalIssue() === 'custom_bot_reconfigured'
+              ? t(
+                  'dashboard.guild.bot.reconfigured',
+                  'The bot was configured again during removal. The new configuration was kept. Refresh the bot information before deciding whether to remove it.',
+                )
+              : t(
+                  'dashboard.guild.bot.state_unavailable',
+                  'The current bot configuration could not be verified. Refresh the bot information before deciding whether to retry removal.',
+                )}
+          </p>
+          <Button loading={removalRefresh.pending()} onClick={refreshAfterRemovalConflict}>
+            {t('dashboard.guild.bot.refresh_information', 'Refresh bot information')}
+          </Button>
+          <Show when={removalRefresh.error()}>
+            <p role="alert" class="text-error">
+              {removalRefresh.error()}
+            </p>
+          </Show>
+        </Show>
+        <Show when={removalIssue() === 'main_bot_required'}>
+          <p class="text-warning">
+            {t(
+              'dashboard.guild.bot.main_bot_required',
+              'Invite the main Gmod Integration bot to this Discord server, then retry.',
+            )}
+          </p>
+          <ButtonLink
+            href={getUrlWithActualParams(`${INVITE_URL}&guild_id=:guildID&disable_guild_select=true`)}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-disabled={removalPending()}
+            onClick={(event) => {
+              if (removalPending()) event.preventDefault()
+            }}
+          >
+            {t('dashboard.guild.bot.invite_main_bot', 'Invite Main Bot')}
+          </ButtonLink>
+        </Show>
+        <Show when={removalIssue() === 'main_bot_unavailable'}>
+          <p class="text-warning">
+            {t(
+              'dashboard.guild.bot.main_bot_unavailable',
+              'We could not verify that the main bot is available. Try again.',
+            )}
+          </p>
+        </Show>
+        <Show when={cleanupPending()}>
+          <p role="status" class="text-warning">
+            {t(
+              'dashboard.guild.bot.disconnect_pending',
+              'The saved token has been removed, but switching to the main bot is not fully confirmed. Retry to finish cleanup.',
+            )}
+          </p>
+        </Show>
+      </ConfirmActionDialog>
+      <Show when={removed()}>
+        <p role="status" class="text-success">
+          {t('dashboard.guild.bot.removed', 'Custom bot removed. Your GmodStore purchase stays linked.')}
+        </p>
+      </Show>
       <Show when={!bot.loading && !bot.error && !bot()!.custom && !customAccess.allowed() && !bot()!.purchased}>
         <div class="text-indigo-300 flex items-center rounded-lg border-indigo-400 border p-4 gap-4">
           <Icon name="bot" aria-hidden="true" />
@@ -502,7 +631,15 @@ const GuildBot: Component = () => {
                 </dd>
               </dl>
             </AdminPanel>
-            <Show when={customAccess.allowed() || bot()!.purchased}>
+            <Show
+              when={
+                customAccess.allowed() ||
+                bot()!.purchased ||
+                bot()!.custom ||
+                bot()!.tokenConfigured ||
+                cleanupPending()
+              }
+            >
               <AdminPanel title={t('settings.bot_connection', 'Connection and credentials')} icon="link">
                 <SettingRow
                   title={t('settings.bot_membership', 'Discord server')}
@@ -517,13 +654,15 @@ const GuildBot: Component = () => {
                       ? t('settings.bot_member', 'In this server')
                       : t('settings.bot_not_member', 'Not in this server')}
                   </StatusBadge>
-                  <Button
-                    disabled={busy()}
-                    onClick={inviteBot}
-                    classList={{ hidden: bot()!.onGuild || !bot()!.custom }}
-                  >
-                    {t('dashboard.guild.bot.join_guild', 'Invite to this Discord server')}
-                  </Button>
+                  <Show when={customAccess.allowed() || bot()!.purchased}>
+                    <Button
+                      disabled={busy()}
+                      onClick={inviteBot}
+                      classList={{ hidden: bot()!.onGuild || !bot()!.custom }}
+                    >
+                      {t('dashboard.guild.bot.join_guild', 'Invite to this Discord server')}
+                    </Button>
+                  </Show>
                 </SettingRow>
                 <SettingRow
                   title={t('dashboard.guild.bot.token', 'Bot token')}
@@ -538,18 +677,42 @@ const GuildBot: Component = () => {
                       : t('dashboard.guild.bot.token_missing', 'Token not configured')}
                   </StatusBadge>
 
-                  <Button
-                    disabled={busy() || !customAccess.allowed()}
-                    onClick={openSetup}
-                    classList={{ hidden: !bot()!.active }}
-                  >
-                    {t('dashboard.guild.bot.setup_custom_bot', 'Setup Custom Bot')}
-                  </Button>
+                  <Show when={customAccess.allowed() || bot()!.purchased}>
+                    <Button
+                      disabled={busy() || !customAccess.allowed()}
+                      onClick={openSetup}
+                      classList={{ hidden: !bot()!.active }}
+                    >
+                      {t('dashboard.guild.bot.setup_custom_bot', 'Setup Custom Bot')}
+                    </Button>
+                  </Show>
                 </SettingRow>
                 <Show when={popupError()}>
                   <p role="alert" class="text-error">
                     {t('ui.popup_blocked', 'Allow pop-ups for this site to invite the bot.')}
                   </p>
+                </Show>
+                <Show when={bot()!.custom || bot()!.tokenConfigured || cleanupPending()}>
+                  <SettingRow
+                    title={t('dashboard.guild.bot.remove_custom_bot', 'Remove custom bot')}
+                    description={t(
+                      'dashboard.guild.bot.remove_hint',
+                      'Remove the saved connection and switch this server back to the main bot. Your GmodStore purchase stays linked.',
+                    )}
+                  >
+                    <Button
+                      variant="danger"
+                      disabled={busy()}
+                      onClick={() => {
+                        if (!needsRemovalRefresh()) setRemovalIssue(undefined)
+                        removalRefresh.reset()
+                        setRemoved(false)
+                        showDialog('remove_bot')
+                      }}
+                    >
+                      {t('dashboard.guild.bot.remove_custom_bot', 'Remove custom bot')}
+                    </Button>
+                  </SettingRow>
                 </Show>
               </AdminPanel>
             </Show>

@@ -34,7 +34,7 @@ import {
   saveUser,
   saveUserPanel,
 } from '@gmod/domain-guild/discordModels.js'
-import { badArgument, todoControllers } from '@gmod/core/utils/tools.js'
+import { badArgument } from '@gmod/core/utils/tools.js'
 import moment from 'moment'
 import { getUserDataGRPD } from '@gmod/domain-compliance/gdrp.js'
 import prisma from '@gmod/infra-prisma'
@@ -90,6 +90,7 @@ import {
 import { getSingleParam } from '@/utils/requestParams.js'
 import { processGetPublicServerRanking } from '@gmod/core/models/v3/publicServerRankingModels.js'
 import { processPreviewServerStatus } from '@gmod/core/models/v3/statusMessagePreviewModels.js'
+import { processDeleteGuildBotInstance } from '@gmod/core/models/v3/customBotRemovalModels.js'
 import {
   createDashboardServerEntity,
   createDashboardLink,
@@ -1252,10 +1253,9 @@ export async function putGuildBotInstance(req: Request, res: Response) {
 }
 
 export async function deleteGuildBotInstance(req: Request, res: Response) {
-  return todoControllers(req, res)
-  // const guild = req.guild!;
-  // await guild.deleteBotInstance();
-  // return res.send(await guild.getBotClientInfo(req.panelUser!.user));
+  res.setHeader('Cache-Control', 'no-store')
+  const result = await processDeleteGuildBotInstance(req.guild!)
+  return res.status(result.status).send(result.body)
 }
 
 export async function getUserGmodStorePurchases(req: Request, res: Response) {

@@ -42,21 +42,39 @@ export async function userValidator(req: Request, res: Response, next: NextFunct
   }
 }
 
+async function requireGuildAdministrator(req: Request, res: Response): Promise<string | null> {
+  const guildID = getSingleParam(req.params.guildID)
+  const panelUser = req.panelUser!
+  const allowed = ['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET')
+    ? await panelUser.isAdminOfGuild(guildID)
+    : await panelUser.isAdminOfGuild(guildID, { fresh: true })
+  if (!allowed) {
+    res.status(403).json({ error: 'not_admin_of_guild' })
+    return null
+  }
+  return guildID
+}
+
+export async function userAdminGuildBotRemovalValidator(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  try {
+    const guildID = await requireGuildAdministrator(req, res)
+    if (guildID === null) return
+    // Cleanup must reach the independent main-client check even if no effective bot can supply a snapshot.
+    req.guild = new Guild({ id: guildID })
+    return next()
+  } catch (error) {
+    return next(error)
+  }
+}
+
 export async function userAdminGuildValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const panelUser = req.panelUser!
-    const guildID = getSingleParam(req.params.guildID)
-
-    const allowed = ['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET')
-      ? await panelUser.isAdminOfGuild(guildID)
-      : await panelUser.isAdminOfGuild(guildID, { fresh: true })
-    if (!allowed) {
-      res.status(403).json({
-        error: 'not_admin_of_guild',
-      })
-      return
-    }
-
+    const guildID = await requireGuildAdministrator(req, res)
+    if (guildID === null) return
     const dscGuild = await enqueueDiscordGuildSnapshot(guildID)
     if (!dscGuild) {
       res.status(404).json({

@@ -1313,7 +1313,20 @@
         "avatar_keep": "Garder l’avatar actuel",
         "name_invalid": "Utilisez un nom de bot de 2 à 32 caractères.",
         "token_configured": "Jeton configuré",
-        "token_missing": "Jeton non configuré"
+        "token_missing": "Jeton non configuré",
+        "remove_custom_bot": "Retirer le bot personnalisé",
+        "remove_title": "Retirer {1} ?",
+        "remove_confirmation": "Déconnecter ce bot personnalisé, supprimer son jeton enregistré et réinitialiser son activité. Le bot principal Gmod Integration prendra le relais. Votre achat GmodStore reste associé à ce serveur Discord.",
+        "remove_hint": "Supprimez la connexion enregistrée et revenez au bot principal. Votre achat GmodStore reste associé.",
+        "main_bot_required": "Invitez le bot principal Gmod Integration sur ce serveur Discord, puis réessayez.",
+        "main_bot_unavailable": "Impossible de vérifier la disponibilité du bot principal. Réessayez.",
+        "disconnect_pending": "Le jeton enregistré a été supprimé, mais le retour au bot principal n’est pas entièrement confirmé. Réessayez pour terminer le nettoyage.",
+        "reconfigured": "Le bot a été reconfiguré pendant sa suppression. La nouvelle configuration a été conservée. Actualisez les informations du bot avant de décider de le retirer.",
+        "state_unavailable": "Impossible de vérifier la configuration actuelle du bot. Actualisez ses informations avant de décider de réessayer la suppression.",
+        "refresh_information": "Actualiser les informations du bot",
+        "refresh_failed": "Impossible d’actualiser les informations du bot. Réessayez.",
+        "invite_main_bot": "Inviter le bot principal",
+        "removed": "Bot personnalisé retiré. Votre achat GmodStore reste associé."
       },
       "links": {
         "title": "Liens",

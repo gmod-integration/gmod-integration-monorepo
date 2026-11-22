@@ -330,7 +330,7 @@ export class Guild {
   }
 
   async reloadBotInstance() {
-    await enqueueDiscordGuildReloadBotInstance(this.id)
+    return await enqueueDiscordGuildReloadBotInstance(this.id)
   }
 
   async updateBotInstanceToken(newToken: string) {

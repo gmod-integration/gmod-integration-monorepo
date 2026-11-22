@@ -107,6 +107,7 @@ import {
 } from '@/controllers/v3/usersControllers.js'
 import {
   userAdminGuildValidator,
+  userAdminGuildBotRemovalValidator,
   userAdminValidator,
   userServerValidator,
   userValidator,
@@ -152,13 +153,17 @@ router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds))
 router.get('/:discordID/admins/informations', asyncHandler(getAdminInformations))
 router.get('/:discordID/admins/panel-users', asyncHandler(getAllPanelUsers))
 
+router.delete(
+  '/:discordID/guilds/:guildID/bot',
+  userAdminGuildBotRemovalValidator,
+  asyncHandler(deleteGuildBotInstance),
+)
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator)
 router.get('/:discordID/guilds/:guildID', asyncHandler(findGuild))
 router.get('/:discordID/guilds/:guildID/bot', asyncHandler(getGuildBotInstance))
 router.put('/:discordID/guilds/:guildID/bot', asyncHandler(putGuildBotInstance))
 router.get('/:discordID/guilds/:guildID/bot/roles/subordination', asyncHandler(getGuildBotRoleSubordination))
 router.patch('/:discordID/guilds/:guildID/bot', asyncHandler(patchGuildBotInstance))
-router.delete('/:discordID/guilds/:guildID/bot', asyncHandler(deleteGuildBotInstance))
 router.post('/:discordID/guilds/:guildID/gmod-store', asyncHandler(postGmodPurchase))
 router.delete('/:discordID/guilds/:guildID/gmod-store', asyncHandler(deleteGmodPurchase))
 router.get('/:discordID/guilds/:guildID/channels', asyncHandler(findGuildChannels))

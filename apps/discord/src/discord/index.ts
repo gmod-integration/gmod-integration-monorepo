@@ -41,6 +41,7 @@ const envExtension = hasBuiltDiscordRuntime ? '.js' : '.ts'
 const appRuntimePath = hasBuiltDiscordRuntime ? distRuntimePath : sourceRuntimePath
 
 const clientList = new Collection<string, Client>()
+const guildReloads = new Map<string, Promise<void>>()
 
 async function checkTokenAndIntents(token: string) {
   return new Promise((resolve, reject) => {
@@ -316,7 +317,9 @@ export async function loadDiscordSlave() {
     if (processedGuilds.has(instanceInfo.guild)) continue
     processedGuilds.add(instanceInfo.guild)
 
-    await addNewClient(instanceInfo.guild, instanceInfo.token).catch(() => {
+    // Queue workers already run during startup. Re-read credentials inside the same guild lock
+    // as interactive reloads so this startup snapshot cannot reconnect a removed credential.
+    await loadGuildBotInstance(instanceInfo.guild).catch(() => {
       console.error(`Error starting bot instance for guild ${instanceInfo.guild}`)
     })
   }
@@ -442,17 +445,27 @@ export async function updateGuildUserPseudo(server: Server, player: PlayerGmod, 
 }
 
 export async function loadGuildBotInstance(guildID: string) {
-  await killGuildClient(guildID)
-  const instanceInfo = await prisma.gm_gmodstore_purchases.findFirst({
-    where: {
-      guild: guildID,
-      revoke: false,
-    },
-  })
-  // A purchase can be active with no token (bot not configured yet, or token removed):
-  // the guild then simply uses the main bot.
-  if (!instanceInfo?.token) return
-  await addNewClient(guildID, instanceInfo.token)
+  const previous = guildReloads.get(guildID)
+  const current = (async () => {
+    // A preceding reload may already hold the old token. Finish it before acknowledging its removal.
+    await previous?.catch(() => {})
+    await killGuildClient(guildID)
+    const instanceInfo = await prisma.gm_gmodstore_purchases.findFirst({
+      where: {
+        guild: guildID,
+        revoke: false,
+      },
+    })
+    // A purchase can be active with no token: the guild then simply uses the main bot.
+    if (!instanceInfo?.token) return
+    await addNewClient(guildID, instanceInfo.token)
+  })()
+  guildReloads.set(guildID, current)
+  try {
+    await current
+  } finally {
+    if (guildReloads.get(guildID) === current) guildReloads.delete(guildID)
+  }
 }
 
 /** Reconcile even bots with custom presence disabled, including clients already connected at revocation. */

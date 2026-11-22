@@ -187,6 +187,7 @@ describe('discord/index status-rotation setInterval', () => {
   it('clears a previous custom presence when its stored preference is explicitly disabled', async () => {
     const mod = await import('../../src/discord/index.js')
     prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([{ guild: 'disabled-presence', token: 'tok' }])
+    prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ guild: 'disabled-presence', token: 'tok' })
     await mod.loadDiscordSlave()
     const client = await mod.getGuildClient('disabled-presence', false)
     client.guilds.cache.set('disabled-presence', { memberCount: 7 })

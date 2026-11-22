@@ -105,15 +105,6 @@ const GuildInformations: Component = () => {
     navigate('/dashboard/guilds')
   }
 
-  async function deactivateBot() {
-    const res = await fetchAPI('/users/:discordID/guilds/:guildID/bot', 'DELETE')
-    if (!res.ok)
-      return Errors(t('dashboard.guild.information.bot_deactivation_error', 'Unable to deactivate the bot. Try again.'))
-    const data = await res.json()
-    setBot(data)
-    navigate('/dashboard/guilds')
-  }
-
   const [gmodStorePurchase, { refetch: refetchGmodStorePurchase }] = createResource('gmodStorePurchase', async () => {
     // Bug fix: was `res.json() || {}` - res.json() returns a Promise, which is always truthy, so
     // the `|| {}` fallback was dead code and never ran. Await first so a falsy/malformed JSON body
