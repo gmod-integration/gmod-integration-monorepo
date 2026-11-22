@@ -83,8 +83,12 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
 
   it('renders the panel title and description', () => {
     renderPage()
-    expect(screen.getByText('Bugs Report')).toBeInTheDocument()
-    expect(screen.getByText('List of all bugs reported on your server')).toBeInTheDocument()
+    expect(screen.getByText('Bug reports')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Read reports submitted by players. Expand a report to see what happened, the expected result and steps to reproduce it.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('shows a loading indicator while bugsReport is loading', () => {
@@ -119,7 +123,7 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
     const cells = row.querySelectorAll('td')
     expect(cells[0]).toHaveTextContent(new Date('2024-01-01T10:00:00.000Z').toLocaleString())
     expect(cells[1]).toHaveTextContent('76500000000000001')
-    expect(cells[2]).toHaveTextContent('high')
+    expect(cells[2]).toHaveTextContent('High')
   })
 
   it('renders the full description unshortened when at or under 160 characters', async () => {
@@ -154,7 +158,7 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
       expect(screen.getByText('step 1, step 2')).toBeInTheDocument()
       // full (untruncated) description is shown in the detail panel
       expect(screen.getByText('Short bug description', { selector: 'p' })).toBeInTheDocument()
-      const img = container.querySelector('img[alt="screenshot"]') as HTMLImageElement
+      const img = container.querySelector('img[alt="Screenshot attached to the bug report"]') as HTMLImageElement
       expect(img).toHaveAttribute('src', 'https://api.example.com/v3/screenshots/shot1.png')
     })
 
@@ -192,7 +196,7 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
       const row = rowFor(container, '76500000000000001')
       await fireEvent.click(row.querySelector('.tooltip') as HTMLElement)
 
-      const img = container.querySelector('img[alt="screenshot"]') as HTMLImageElement
+      const img = container.querySelector('img[alt="Screenshot attached to the bug report"]') as HTMLImageElement
       expect(img).toHaveClass('hidden')
       expect(container.querySelector('.loading.loading-lg')).toBeInTheDocument()
 
@@ -206,7 +210,7 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
       await waitForLoaded()
       const row = rowFor(container, '76500000000000001')
       await fireEvent.click(row.querySelector('.tooltip') as HTMLElement)
-      const img = container.querySelector('img[alt="screenshot"]') as HTMLImageElement
+      const img = container.querySelector('img[alt="Screenshot attached to the bug report"]') as HTMLImageElement
       await fireEvent.load(img)
       expect(img).not.toHaveClass('hidden')
 
@@ -220,13 +224,15 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
       await waitForLoaded()
       const row = rowFor(container, '76500000000000001')
       await fireEvent.click(row.querySelector('.tooltip') as HTMLElement)
-      const img = container.querySelector('img[alt="screenshot"]') as HTMLImageElement
+      const img = container.querySelector('img[alt="Screenshot attached to the bug report"]') as HTMLImageElement
       await fireEvent.load(img)
       expect(img).not.toHaveClass('hidden')
 
       await fireEvent.click(row.querySelector('.tooltip') as HTMLElement) // collapse
       await fireEvent.click(row.querySelector('.tooltip') as HTMLElement) // reopen
-      const reopenedImg = container.querySelector('img[alt="screenshot"]') as HTMLImageElement
+      const reopenedImg = container.querySelector(
+        'img[alt="Screenshot attached to the bug report"]',
+      ) as HTMLImageElement
       expect(reopenedImg).toHaveClass('hidden')
     })
   })

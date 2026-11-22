@@ -77,7 +77,7 @@ const ServerStatusMessage: Component = () => {
     <>
       <AdminModal
         id="select_channel_modal"
-        title={t('dashboard.server.status.send_status', 'Send Status')}
+        title={t('dashboard.server.status.send_status', 'Publish status message')}
         size="wide"
         busy={send.pending()}
         onClose={() => {
@@ -129,12 +129,12 @@ const ServerStatusMessage: Component = () => {
       </AdminModal>
       <ConfirmActionDialog
         id="remove-status-confirmation"
-        title={t('dashboard.server.status.remove_status', 'Remove Status')}
+        title={t('dashboard.server.status.remove_status', 'Remove published message')}
         description={t(
           'editing.remove_status_help',
           'Remove the published Discord status message. The saved configuration is kept.',
         )}
-        confirmLabel={t('dashboard.server.status.remove_status', 'Remove Status')}
+        confirmLabel={t('dashboard.server.status.remove_status', 'Remove published message')}
         onConfirm={async () => {
           const response = await fetchAPI(STATUS_URL, 'DELETE')
           if (!response.ok) throw new Error('Status removal failed')
@@ -142,10 +142,10 @@ const ServerStatusMessage: Component = () => {
         }}
       />
       <AdminPanel
-        title={t('dashboard.server.status.title', 'Server Status')}
+        title={t('dashboard.server.status.title', 'Discord status message')}
         description={t(
           'dashboard.server.status.description',
-          'Here you can manage your server status message and buttons.',
+          'Prepare the server status message, player information and link buttons. Save the configuration, then publish the message in a Discord channel.',
         )}
       >
         <Show when={status.error}>
@@ -167,7 +167,7 @@ const ServerStatusMessage: Component = () => {
                 when={!status.loading && !status.error && status()?.channel}
                 fallback={
                   <span class="text-xs text-base-content/50">
-                    {t('dashboard.server.status.no_status_message', 'No status message')}
+                    {t('dashboard.server.status.no_status_message', 'No status message published')}
                   </span>
                 }
               >
@@ -191,12 +191,12 @@ const ServerStatusMessage: Component = () => {
                 }}
               >
                 <Icon name="plus" size={16} />
-                {t('dashboard.server.status.send_status', 'Send Status')}
+                {t('dashboard.server.status.send_status', 'Publish status message')}
               </Button>
             }
           >
             <IconButton
-              label={t('dashboard.server.status.remove_status', 'Remove Status')}
+              label={t('dashboard.server.status.remove_status', 'Remove published message')}
               icon="trash-2"
               variant="danger"
               size="sm"
@@ -242,10 +242,15 @@ const ServerStatusMessage: Component = () => {
               <SettingRow
                 controlId="status-player-format"
                 title={t('dashboard.server.status.format', 'Player List Format')}
+                description={t(
+                  'dashboard.server.status.format_help',
+                  'Template repeated for each connected player. Use the variables below, such as {name} and {ping}, and check the Discord preview.',
+                )}
                 stacked
               >
                 <input
                   id="status-player-format"
+                  aria-describedby="status-player-format-description"
                   type="text"
                   class="input w-full font-mono text-xs"
                   maxLength={255}
@@ -282,7 +287,8 @@ const ServerStatusMessage: Component = () => {
             controlId="status-show-chart"
             title={
               <>
-                {t('dashboard.server.status.show_player_chart', 'Show Player Chart')} <PremiumBadge onlyIcon noMargin />
+                {t('dashboard.server.status.show_player_chart', 'Show player activity chart')}{' '}
+                <PremiumBadge onlyIcon noMargin />
               </>
             }
             description={t('settings.status_chart_help', 'Add a chart of player activity to the status message.')}

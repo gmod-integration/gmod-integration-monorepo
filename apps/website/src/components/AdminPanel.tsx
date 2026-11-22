@@ -49,10 +49,10 @@ const AdminPanel: Component<AdminPanelProps> = (props) => {
           <Show when={props.premium && access.ready() && access.snapshot()?.state === 'ready' && !premium()}>
             <p class="text-amber-400">
               {props.premium === true
-                ? t('main.buy_premium', 'This feature is only available to premium users.')
+                ? t('main.buy_premium', 'This feature requires Premium for this Discord community.')
                 : props.premium}{' '}
               <A class="link" href={upgradeHref()}>
-                {t('tools.upgrade_now', 'Upgrade Now')}
+                {t('tools.upgrade_now', 'View Premium plans')}
               </A>
             </p>
           </Show>

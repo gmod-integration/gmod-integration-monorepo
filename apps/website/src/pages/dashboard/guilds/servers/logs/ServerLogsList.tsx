@@ -79,8 +79,16 @@ export const ServerLogsList: Component = () => {
   return (
     <AdminPanel
       title={t('dashboard.server.logs.title.logs', 'Logs')}
-      description={t('dashboard.server.logs.description.logs', 'Watch the logs of your server.')}
+      description={t(
+        'dashboard.server.logs.description.logs',
+        'Browse recorded server events. New events appear on the first page while connected. Open an event for details or download its data.',
+      )}
       type="none"
+      footer={
+        !logs.loading && !logs.error ? (
+          <Pagination query={query()} total={logs().query.total} onChange={setQuery} standalone />
+        ) : undefined
+      }
     >
       <FeatureGate
         capability="logs.history"
@@ -102,6 +110,8 @@ export const ServerLogsList: Component = () => {
             colSpan={4}
             loading={logs.loading}
             error={logs.error}
+            errorLabel={t('dashboard.server.logs.load_error', 'Unable to load event history. Try again.')}
+            emptyLabel={t('dashboard.server.logs.empty', 'No events have been received for this server.')}
             empty={!logs.loading && !logs.error && logs().logs.length === 0 && webSocketLogsMessages().length === 0}
             onRetry={() => refetch()}
           >
@@ -116,9 +126,6 @@ export const ServerLogsList: Component = () => {
               {(log) => <AddLogComponent data={log.data} category={log.type} createAt={new Date(log.createdAt)} />}
             </For>
           </TableState>
-          <Show when={!logs.loading && !logs.error}>
-            <Pagination query={query()} total={logs().query.total} onChange={setQuery} colSpan={4} />
-          </Show>
         </tbody>
       </table>
     </AdminPanel>

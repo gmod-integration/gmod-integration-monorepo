@@ -82,7 +82,7 @@ describe('ServerChats unified editing', () => {
     renderPage()
     await loaded()
     expect(group(destinationSelect()).getByText('#general')).toBeInTheDocument()
-    expect(within(screen.getByRole('table')).getByText('Contain')).toBeInTheDocument()
+    expect(within(screen.getByRole('table')).getByText('Contains')).toBeInTheDocument()
     expect(input('chat-default-behavior')).toHaveValue('true')
     expect(input('chat-prevent-ping')).not.toBeChecked()
   })
@@ -131,17 +131,21 @@ describe('ServerChats unified editing', () => {
   it('confirms removal of the named channel and leaves it present after a failed request', async () => {
     renderPage()
     await loaded()
-    await fireEvent.click(screen.getByRole('button', { name: 'Remove Channel' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove destination' }))
     const confirm = within(document.getElementById('remove-chat-channel')!)
-    expect(confirm.getByText('#general')).toBeInTheDocument()
+    expect(
+      confirm.getByText(
+        '#general — Stop relaying chat through this destination. The Discord channel and filter rules are kept.',
+      ),
+    ).toBeInTheDocument()
     expect(writes()).toHaveLength(0)
     write = () => errJson()
-    await fireEvent.click(confirm.getByRole('button', { name: 'Remove Channel' }))
+    await fireEvent.click(confirm.getByRole('button', { name: 'Remove destination' }))
     await vi.waitFor(() => expect(confirm.getByRole('alert')).toBeInTheDocument())
     expect(screen.getAllByText('#general').length).toBeGreaterThan(0)
     write = () => okJson({})
-    await fireEvent.click(confirm.getByRole('button', { name: 'Remove Channel' }))
-    await vi.waitFor(() => expect(screen.getByText('No Sync Chats')).toBeInTheDocument())
+    await fireEvent.click(confirm.getByRole('button', { name: 'Remove destination' }))
+    await vi.waitFor(() => expect(screen.getByText('No chat destination configured')).toBeInTheDocument())
     expect(fetchAPI).toHaveBeenCalledWith(URL, 'DELETE')
   })
   it('groups direction and anti-ping into a local draft with one atomic Save', async () => {
@@ -288,7 +292,11 @@ describe('ServerChats unified editing', () => {
     await loaded()
     await fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     const confirm = within(document.getElementById('remove-chat-filter')!)
-    expect(confirm.getByText('Message Contain hello')).toBeInTheDocument()
+    expect(
+      confirm.getByText(
+        'Message Contains hello — Delete this filter rule. Messages that matched it will follow the remaining rules and default behavior.',
+      ),
+    ).toBeInTheDocument()
     expect(writes()).toHaveLength(0)
     await fireEvent.click(confirm.getByRole('button', { name: 'Cancel' }))
     expect(screen.getByText('hello')).toBeInTheDocument()

@@ -50,7 +50,9 @@ function cancel(container: HTMLElement, name: string) {
   return within(section(container, name)).getByRole('button', { name: 'Cancel', hidden: true })
 }
 async function ready(container: HTMLElement) {
-  await vi.waitFor(() => expect(row(container, 'Sync Bans').querySelector('input')).not.toBeDisabled())
+  await vi.waitFor(() =>
+    expect(row(container, 'Block Discord-banned players').querySelector('input')).not.toBeDisabled(),
+  )
 }
 const writes = () => (fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')
 
@@ -72,12 +74,12 @@ describe('server configuration section drafts', () => {
   it('shows thematic settings, their defaults and explicit section-saving guidance', async () => {
     const { container } = renderPage()
     await ready(container)
-    expect(screen.getByText('Configuration')).toBeInTheDocument()
-    expect(screen.getByText('GWSocket')).toBeInTheDocument()
+    expect(screen.getByText('In-game addon settings')).toBeInTheDocument()
+    expect(screen.getByText('GWSockets')).toBeInTheDocument()
     expect(screen.getByText('Changes apply only when you save this section.')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'General' })).toContainElement(row(container, 'Addon Language'))
     expect(screen.getByRole('region', { name: 'Access and verification' })).toContainElement(
-      row(container, 'Verify Kick Delay (sec)'),
+      row(container, 'Account-linking time limit (seconds)'),
     )
     expect(container.querySelectorAll('.settings-row')).toHaveLength(16)
     expect(row(container, 'Log Timestamp Format').querySelector('input')).toHaveValue('%H:%M:%S')
@@ -89,15 +91,17 @@ describe('server configuration section drafts', () => {
   it('disables every control type while loading and does not expose a default as editable after a failed read', async () => {
     vi.mocked(fetchAPI).mockImplementation(() => new Promise(() => {}))
     const first = renderPage()
-    expect(row(first.container, 'Sync Bans').querySelector('input')).toBeDisabled()
+    expect(row(first.container, 'Block Discord-banned players').querySelector('input')).toBeDisabled()
     expect(row(first.container, 'Support Link').querySelector('input')).toBeDisabled()
-    expect(row(first.container, 'Client Branch').querySelector('select')).toBeDisabled()
-    expect(within(row(first.container, 'Admin Ranks')).getByRole('button', { name: 'Add rank' })).toBeDisabled()
+    expect(row(first.container, 'Required Garry’s Mod client branch').querySelector('select')).toBeDisabled()
+    expect(
+      within(row(first.container, 'Game administrator groups')).getByRole('button', { name: 'Add rank' }),
+    ).toBeDisabled()
     first.unmount()
     vi.mocked(fetchAPI).mockResolvedValue(errJson() as Response)
     const second = renderPage()
     await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
-    expect(row(second.container, 'Sync Bans').querySelector('input')).toBeDisabled()
+    expect(row(second.container, 'Block Discord-banned players').querySelector('input')).toBeDisabled()
     expect(save(second.container, 'moderation')).toBeDisabled()
   })
 
@@ -115,7 +119,7 @@ describe('server configuration section drafts', () => {
     const { container } = renderPage()
     await ready(container)
     const search = screen.getByRole('searchbox', { name: 'Search settings' })
-    await fireEvent.input(search, { target: { value: 'materials are broken' } })
+    await fireEvent.input(search, { target: { value: 'automatic material downloading' } })
     expect(container.querySelectorAll('.settings-row')).toHaveLength(1)
     expect(row(container, 'Redownload Materials')).toBeInTheDocument()
     expect(container.querySelector<HTMLDetailsElement>('.settings-advanced')!.open).toBe(true)
@@ -131,15 +135,15 @@ describe('server configuration section drafts', () => {
     localStorage.setItem('locale', 'fr')
     const { container } = renderPage()
     await vi.waitFor(() => expect(container.querySelector('#ig_forcePlayerLink')).not.toBeDisabled())
-    await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'verifier a la connexion' } })
+    await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'verifier la liaison' } })
     expect(container.querySelectorAll('.settings-row')).toHaveLength(1)
-    expect(row(container, 'Vérifier à la connexion')).toBeInTheDocument()
+    expect(row(container, 'Vérifier la liaison avant l’entrée en jeu')).toBeInTheDocument()
   })
 
   it('keeps bool, select and text edits local until their own section is saved', async () => {
     const { container } = renderPage()
     await ready(container)
-    const timeout = within(row(container, 'Sync Timeouts')).getByRole('checkbox')
+    const timeout = within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox')
     await fireEvent.click(timeout)
     await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
       target: { value: 'https://new.example' },
@@ -171,7 +175,7 @@ describe('server configuration section drafts', () => {
     await ready(container)
     const input = within(row(container, 'Support Link')).getByRole('textbox')
     await fireEvent.input(input, { target: { value: 'https://draft.example' } })
-    await fireEvent.click(within(row(container, 'Sync Timeouts')).getByRole('checkbox'))
+    await fireEvent.click(within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox'))
     await fireEvent.click(cancel(container, 'general'))
     expect(input).toHaveValue('https://support.example.com')
     expect(save(container, 'general')).toBeDisabled()
@@ -233,7 +237,7 @@ describe('server configuration section drafts', () => {
     expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
     expect(input).toBeDisabled()
     expect(cancel(container, 'general')).toBeDisabled()
-    expect(within(row(container, 'Sync Timeouts')).getByRole('checkbox')).not.toBeDisabled()
+    expect(within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox')).not.toBeDisabled()
     finish({ settings: { ig_supportLink: 'https://accepted.example' }, sync: 'applied' })
     await vi.waitFor(() => expect(input).not.toBeDisabled())
     expect(input).toHaveValue('https://accepted.example')
@@ -247,7 +251,7 @@ describe('server configuration section drafts', () => {
     const { container } = renderPage()
     await ready(container)
     vi.mocked(saveDashboardSettings).mockResolvedValueOnce({ settings: { ig_syncTimeout: true }, sync: 'pending' })
-    await fireEvent.click(within(row(container, 'Sync Timeouts')).getByRole('checkbox'))
+    await fireEvent.click(within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox'))
     await fireEvent.click(save(container, 'moderation'))
     await vi.waitFor(() =>
       expect(
@@ -278,7 +282,7 @@ describe('server configuration section drafts', () => {
   it.each(['', '-1', '1.5'])('requires a non-negative integer kick delay: %s', async (value) => {
     const { container } = renderPage()
     await ready(container)
-    const input = within(row(container, 'Verify Kick Delay (sec)')).getByRole('spinbutton')
+    const input = within(row(container, 'Account-linking time limit (seconds)')).getByRole('spinbutton')
     await fireEvent.input(input, { target: { value } })
     expect(save(container, 'access')).toBeDisabled()
     expect(input).toHaveAttribute('aria-invalid', 'true')
@@ -288,7 +292,7 @@ describe('server configuration section drafts', () => {
   it('saves numeric delays as numbers and treats typing the unchanged number as clean', async () => {
     const { container } = renderPage()
     await ready(container)
-    const input = within(row(container, 'Verify Kick Delay (sec)')).getByRole('spinbutton')
+    const input = within(row(container, 'Account-linking time limit (seconds)')).getByRole('spinbutton')
     await fireEvent.input(input, { target: { value: '120' } })
     expect(save(container, 'access')).toBeDisabled()
     await fireEvent.input(input, { target: { value: '0' } })
@@ -301,7 +305,7 @@ describe('server configuration section drafts', () => {
   it('keeps rank additions local, rejects blank and duplicate names, then saves a normalized object', async () => {
     const { container } = renderPage()
     await ready(container)
-    const ranks = row(container, 'Admin Ranks')
+    const ranks = row(container, 'Game administrator groups')
     expect(
       within(ranks)
         .getAllByRole('textbox')
@@ -330,7 +334,7 @@ describe('server configuration section drafts', () => {
   it('restores removed ranks on cancellation without persisting their deletion', async () => {
     const { container } = renderPage()
     await ready(container)
-    const ranks = row(container, 'Admin Ranks')
+    const ranks = row(container, 'Game administrator groups')
     await fireEvent.click(within(ranks).getAllByRole('button', { name: 'Remove' })[0])
     expect(within(ranks).getAllByRole('textbox')).toHaveLength(1)
     await fireEvent.click(cancel(container, 'administration'))
@@ -345,7 +349,7 @@ describe('server configuration section drafts', () => {
       mockFetch(fixture)
       const { container } = renderPage()
       await ready(container)
-      const values = within(row(container, 'Admin Ranks'))
+      const values = within(row(container, 'Game administrator groups'))
         .getAllByRole('textbox')
         .map((input) => (input as HTMLInputElement).value)
       expect(values).toEqual(ranks === '{"owner":true}' ? ['owner'] : ['superadmin'])

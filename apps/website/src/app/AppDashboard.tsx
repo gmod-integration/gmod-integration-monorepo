@@ -27,9 +27,9 @@ export const DashboardPageHeader: Component<{ admin?: boolean }> = (props) => {
   const title = () => {
     if (props.admin) {
       const section = location.pathname.split('/').at(-1)
-      if (section === 'guilds') return t('main.guilds', 'Guilds')
+      if (section === 'guilds') return t('main.guilds', 'Discord communities')
       if (section === 'impersonate' || section === 'stop-impersonate')
-        return t('dashboard.menu.admin.impersonate', 'Impersonate')
+        return t('dashboard.menu.admin.impersonate', 'Support access')
       return t('dashboard.menu.admin.information', 'Information')
     }
     const route = serverRoute()
@@ -124,9 +124,11 @@ export const AppDashboard: ParentComponent = (props) => {
           <div class="dashboard-content">
             <ShowErrorList />
             <ErrorBoundary
-              fallback={(error, reset) => (
+              fallback={(_error, reset) => (
                 <div class="flex flex-col gap-2">
-                  <AddErrorComponent message={error instanceof Error ? error.message : String(error)} />
+                  <AddErrorComponent
+                    message={t('ui.page_error', 'This page could not be displayed. Try again to reload its content.')}
+                  />
                   <Button type="button" class="self-start" onClick={reset}>
                     {t('ui.retry', 'Try again')}
                   </Button>

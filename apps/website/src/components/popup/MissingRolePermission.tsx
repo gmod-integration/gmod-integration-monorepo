@@ -60,7 +60,7 @@ const MissingRolePermission: Component = () => {
         <span class="flex flex-wrap gap-1">
           {t(
             'tools.needRolesPerms',
-            `The bot does not have the permission to assign or remove roles to users. Put the bot role higher in the role list, roles affected:`,
+            'The bot cannot assign or remove these roles. Give it the Manage Roles permission and place its highest role above the affected roles in Discord: {1}',
             '',
           )}
           <For each={uneditableRoles()}>

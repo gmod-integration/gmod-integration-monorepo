@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../../testUtils.js'
 import GuildList from '../../../../src/pages/dashboard/admins/GuildList.js'
 
@@ -29,17 +29,51 @@ describe('pages/dashboard/admins/GuildList.tsx', () => {
 
     renderGuildList()
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…')
   })
 
-  it('returns an empty list when the response is not ok', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 500 }))
+  it.each(['http', 'network'])('distinguishes a %s failure from an empty list and allows retry', async (failure) => {
+    const fetchMock = vi.fn()
+    if (failure === 'http') fetchMock.mockResolvedValueOnce(new Response('{}', { status: 500 }))
+    else fetchMock.mockRejectedValueOnce(new Error('Network unavailable'))
+    fetchMock.mockResolvedValueOnce(
+      new Response(
+        JSON.stringify([
+          {
+            name: 'Recovered community',
+            guild: 'g1',
+            language: 'en',
+            member: 5,
+            createdAt: '2024-01-01T00:00:00.000Z',
+            updatedAt: '2024-02-01T00:00:00.000Z',
+          },
+        ]),
+      ),
+    )
     vi.stubGlobal('fetch', fetchMock)
 
     renderGuildList()
 
-    await vi.waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
-    expect(screen.queryByText(/ID:/)).not.toBeInTheDocument()
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the Discord communities.'),
+    )
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByText('No communities to display.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument()
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'Recovered community' })).toBeInTheDocument())
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows an empty state only after a successful response with no communities', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('[]')))
+    renderGuildList()
+
+    await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('No communities to display.'))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
   })
 
   it('sorts guilds by member desc and renders every guild card field', async () => {

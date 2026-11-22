@@ -57,7 +57,7 @@ const GuildAutoRole: Component = () => {
       <MissingRolePermission />
       <AdminRoleSelector
         id="select_role_modal"
-        title={t('dashboard.guild.auto_role.modal_title', 'Select Role')}
+        title={t('dashboard.guild.auto_role.modal_title', 'Add an automatic role')}
         roles={
           !guildRoles.loading && !guildRoles.error && !autoRoles.loading && !autoRoles.error
             ? guildRoles().filter((role) => !autoRoles().some((existing) => existing.roleID === role.id))
@@ -69,6 +69,12 @@ const GuildAutoRole: Component = () => {
         confirmDisabled={!quotaAccess.canCreate(!autoRoles.error ? autoRoles().length : 0)}
         onConfirm={createVerifyRole}
       >
+        <p class="text-sm text-base-content/70">
+          {t(
+            'dashboard.guild.auto_role.modal_description',
+            'Choose a role and save to assign it to future members when they join. Existing members are not changed by adding this rule.',
+          )}
+        </p>
         <FeatureGate
           capability="guild.auto_roles"
           used={!autoRoles.loading && !autoRoles.error ? autoRoles().length : undefined}
@@ -95,7 +101,7 @@ const GuildAutoRole: Component = () => {
         title={t('dashboard.guild.auto_role.title', 'Auto Roles')}
         description={t(
           'dashboard.guild.auto_role.description',
-          'Here you can set roles to give by default for new members.',
+          'Choose the Discord roles assigned automatically when a new member joins this Discord server.',
         )}
         type="none"
         icon="users"
@@ -149,6 +155,10 @@ const GuildAutoRole: Component = () => {
                 error={autoRoles.error}
                 empty={!autoRoles.loading && !autoRoles.error && autoRoles().length === 0}
                 errorLabel={t('dashboard.guild.auto_role.failed_to_load', 'Unable to load this content.')}
+                emptyLabel={t(
+                  'dashboard.guild.auto_role.no_roles',
+                  'No automatic roles yet. Add a role to assign it to new members.',
+                )}
                 onRetry={() => void refetchRoles()}
               />
               <Show when={!autoRoles.loading && !autoRoles.error}>

@@ -131,8 +131,8 @@ const ServerRoles: Component = () => {
         id="edit_role_modal"
         title={
           creating()
-            ? t('dashboard.server.roles.add_role_sync', 'Add Role')
-            : t('dashboard.server.roles.edit_role_sync', 'Edit Role')
+            ? t('dashboard.server.roles.add_role_sync', 'Add role mapping')
+            : t('dashboard.server.roles.edit_role_sync', 'Edit role mapping')
         }
         busy={editor.pending()}
         onClose={editor.discard}
@@ -140,7 +140,7 @@ const ServerRoles: Component = () => {
       >
         <FormField
           id="roles-role"
-          label={t('dashboard.server.roles.role_name', 'Discord Role')}
+          label={t('dashboard.server.roles.role_name', 'Discord role')}
           error={editor.errors().roleID}
         >
           <select
@@ -163,11 +163,16 @@ const ServerRoles: Component = () => {
         </FormField>
         <FormField
           id="roles-mapping"
-          label={t('dashboard.server.roles.select_user_group', 'User Group')}
+          label={t('dashboard.server.roles.select_user_group', 'Game user group')}
+          description={t(
+            'dashboard.server.roles.user_group_help',
+            'Enter the exact game user group, such as admin or vip. This is not a Discord role name.',
+          )}
           error={editor.errors().userGroup}
         >
           <input
             id="roles-mapping"
+            aria-describedby={`roles-mapping-description${editor.errors().userGroup ? ' roles-mapping-error' : ''}`}
             class="input w-full"
             value={editor.draft().userGroup}
             disabled={!available() || editor.pending()}
@@ -210,7 +215,11 @@ const ServerRoles: Component = () => {
       <ConfirmActionDialog
         id="delete-role-sync"
         title={t('ui.confirm_delete', 'Delete this item?')}
-        description={removing() ? `${roleName(removing()!.roleID)} — ${removing()!.userGroup}` : ''}
+        description={
+          removing()
+            ? `${roleName(removing()!.roleID)} — ${removing()!.userGroup} — ${t('dashboard.server.roles.remove_rule_help', 'Delete this mapping and stop synchronizing it. This does not delete the Discord role or the game user group.')}`
+            : ''
+        }
         confirmLabel={t('ui.delete', 'Delete')}
         onConfirm={async () => {
           const target = removing()
@@ -221,10 +230,10 @@ const ServerRoles: Component = () => {
         }}
       />
       <AdminPanel
-        title={t('dashboard.server.roles.title', 'Roles')}
+        title={t('dashboard.server.roles.title', 'Role and game group synchronization')}
         description={t(
           'dashboard.server.roles.description',
-          'Define the roles that are synchronized with your Discord server.',
+          'Map game user groups to Discord roles for players with linked accounts. The selected direction determines which side updates the other.',
         )}
       >
         <AsyncState
@@ -235,7 +244,7 @@ const ServerRoles: Component = () => {
         <SettingGroup title={t('settings.sync_behavior', 'Synchronization behavior')} icon="arrow-left-right">
           <SettingRow
             controlId="server-roles-direction"
-            title={t('dashboard.server.roles.sync_direction', 'Roles Synchronization Direction')}
+            title={t('dashboard.server.roles.sync_direction', 'Role synchronization direction')}
             description={t(
               'settings.sync_direction_help',
               'This direction applies to every rule below. Save to apply your changes.',
@@ -250,13 +259,11 @@ const ServerRoles: Component = () => {
               onChange={(event) => direction.patch({ value: event.currentTarget.value })}
             >
               <option value="discord-to-gmod" disabled={!reverseAccess.allowed()}>
-                {t('dashboard.server.roles.discord_to_server', 'From Discord to Gmod')}
+                {t('dashboard.server.roles.discord_to_server', 'Discord → game')}
               </option>
-              <option value="gmod-to-discord">
-                {t('dashboard.server.roles.server_to_discord', 'From Gmod to Discord')}
-              </option>
+              <option value="gmod-to-discord">{t('dashboard.server.roles.server_to_discord', 'Game → Discord')}</option>
               <option value="both" disabled={!reverseAccess.allowed()}>
-                {t('dashboard.server.roles.both_directions', 'Both Ways')}
+                {t('dashboard.server.roles.both_directions', 'Both directions')}
               </option>
             </select>
           </SettingRow>
@@ -285,10 +292,10 @@ const ServerRoles: Component = () => {
         </SettingGroup>
       </AdminPanel>
       <AdminPanel
-        title={t('dashboard.server.roles.role_sync', 'Roles Synchronized')}
+        title={t('dashboard.server.roles.role_sync', 'Role mappings')}
         description={t(
           'dashboard.server.roles.role_sync_description',
-          'Define the roles that are synchronized with your Discord server.',
+          'Each active rule links one Discord role to a game user group. Save the synchronization direction separately from these rules.',
         )}
         type="none"
         icon="shield-check"
@@ -300,7 +307,7 @@ const ServerRoles: Component = () => {
             error={rules.error}
           >
             <Button variant="primary" disabled={!canCreate()} onClick={() => begin()}>
-              {t('dashboard.server.roles.add_role_sync', 'Add Role')}
+              {t('dashboard.server.roles.add_role_sync', 'Add role mapping')}
             </Button>
           </FeatureGate>
         }
@@ -313,8 +320,8 @@ const ServerRoles: Component = () => {
           <table class="table w-full">
             <thead>
               <tr>
-                <th>{t('dashboard.server.roles.role_name', 'Discord Role')}</th>
-                <th>{t('dashboard.server.roles.user_group', 'User Group')}</th>
+                <th>{t('dashboard.server.roles.role_name', 'Discord role')}</th>
+                <th>{t('dashboard.server.roles.user_group', 'Game user group')}</th>
                 <th>{t('dashboard.server.roles.status', 'Active')}</th>
                 <th>{t('dashboard.server.roles.actions', 'Actions')}</th>
               </tr>
@@ -342,13 +349,13 @@ const ServerRoles: Component = () => {
                       <td>
                         <div class="flex gap-2">
                           <IconButton
-                            label={t('dashboard.server.roles.edit_role_sync', 'Edit')}
+                            label={t('dashboard.server.roles.edit_role_sync', 'Edit role mapping')}
                             icon="pencil"
                             disabled={editor.pending()}
                             onClick={() => begin(row)}
                           />
                           <IconButton
-                            label={t('dashboard.server.roles.delete_role_sync', 'Delete')}
+                            label={t('dashboard.server.roles.delete_role_sync', 'Delete role mapping')}
                             icon="trash-2"
                             variant="danger"
                             onClick={() => {

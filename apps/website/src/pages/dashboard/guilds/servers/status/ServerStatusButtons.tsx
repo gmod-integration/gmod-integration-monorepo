@@ -106,7 +106,11 @@ const ServerStatusButtons: Component = () => {
         </p>
         <FormField
           id="status-button-name"
-          label={t('dashboard.server.status.button_name', 'Name')}
+          label={t('dashboard.server.status.button_name', 'Button label')}
+          description={t(
+            'dashboard.server.status.button_name_help',
+            'Text displayed on the button in Discord, up to 80 characters.',
+          )}
           error={buttonForm.dirty() ? buttonForm.errors().name : undefined}
         >
           <input
@@ -117,7 +121,7 @@ const ServerStatusButtons: Component = () => {
             maxLength={80}
             disabled={unavailable()}
             aria-invalid={!!buttonForm.errors().name && buttonForm.dirty()}
-            aria-describedby={buttonForm.errors().name && buttonForm.dirty() ? 'status-button-name-error' : undefined}
+            aria-describedby={`status-button-name-description${buttonForm.errors().name && buttonForm.dirty() ? ' status-button-name-error' : ''}`}
             onInput={(event) => buttonForm.patch({ name: event.currentTarget.value })}
           />
         </FormField>
@@ -132,12 +136,18 @@ const ServerStatusButtons: Component = () => {
               disabled={unavailable()}
               onInput={(event) => buttonForm.patch({ emoji: event.currentTarget.value })}
             />
-            <Button onClick={() => setEmojiPicker(!emojiPicker())} disabled={unavailable()}>
+            <Button
+              onClick={() => setEmojiPicker(!emojiPicker())}
+              disabled={unavailable()}
+              aria-expanded={emojiPicker()}
+              aria-controls="status-button-emoji-picker"
+            >
               {t('dashboard.server.status.select_emoji', 'Select Emoji')}
             </Button>
           </div>
           <Show when={emojiPicker()}>
             <emoji-picker
+              id="status-button-emoji-picker"
               on:emoji-click={(event: CustomEvent) => {
                 buttonForm.patch({ emoji: event.detail.unicode })
                 setEmojiPicker(false)
@@ -148,6 +158,10 @@ const ServerStatusButtons: Component = () => {
         <FormField
           id="status-button-url"
           label={t('dashboard.server.status.button_url', 'URL')}
+          description={t(
+            'dashboard.server.status.button_url_help',
+            'HTTP or HTTPS address opened when a member clicks the button.',
+          )}
           error={buttonForm.dirty() ? buttonForm.errors().url : undefined}
         >
           <input
@@ -158,13 +172,21 @@ const ServerStatusButtons: Component = () => {
             maxLength={2048}
             disabled={unavailable()}
             aria-invalid={!!buttonForm.errors().url && buttonForm.dirty()}
-            aria-describedby={buttonForm.errors().url && buttonForm.dirty() ? 'status-button-url-error' : undefined}
+            aria-describedby={`status-button-url-description${buttonForm.errors().url && buttonForm.dirty() ? ' status-button-url-error' : ''}`}
             onInput={(event) => buttonForm.patch({ url: event.currentTarget.value })}
           />
         </FormField>
-        <FormField id="status-button-enabled" label={t('dashboard.server.status.active', 'Active')}>
+        <FormField
+          id="status-button-enabled"
+          label={t('dashboard.server.status.active', 'Active')}
+          description={t(
+            'dashboard.server.status.button_active_help',
+            'Active buttons appear in the status message after the configuration is saved.',
+          )}
+        >
           <input
             id="status-button-enabled"
+            aria-describedby="status-button-enabled-description"
             type="checkbox"
             class="toggle"
             checked={buttonForm.draft().enable}
@@ -208,7 +230,7 @@ const ServerStatusButtons: Component = () => {
         title={t('dashboard.server.status.status_buttons', 'Status Buttons')}
         description={t(
           'dashboard.server.status.status_buttons_description',
-          'Add utility buttons to your server status message.',
+          'Add links to useful pages, such as your shop or Workshop collection. Apply each button to the draft, then save the complete status configuration.',
         )}
         type="none"
         actions={
@@ -234,7 +256,7 @@ const ServerStatusButtons: Component = () => {
             <thead>
               <tr>
                 <th>{t('dashboard.server.status.button_icon', 'Icon')}</th>
-                <th>{t('dashboard.server.status.button_name', 'Name')}</th>
+                <th>{t('dashboard.server.status.button_name', 'Button label')}</th>
                 <th>{t('dashboard.server.status.button_url', 'URL')}</th>
                 <th class="text-center">{t('dashboard.server.status.active', 'Active')}</th>
                 <th class="text-center">{t('dashboard.server.status.actions', 'Actions')}</th>

@@ -117,7 +117,7 @@ const ServerInformations: Component = () => {
         onSuccess={() => navigate(`/dashboard/guilds/${params.guildID}/config/servers`)}
       />
       <AdminPanel
-        title={t('dashboard.server.server_informations.informations', 'Informations')}
+        title={t('dashboard.server.server_informations.informations', 'Server details')}
         description={t(
           'settings.server_edit_help',
           'Edit the server identity and connection details, then save your changes together.',
@@ -130,6 +130,7 @@ const ServerInformations: Component = () => {
               <SettingRow
                 controlId={`server-edit-${key}`}
                 title={t(`dashboard.server.server_informations.${label}`, fallback)}
+                description={t(`dashboard.server.server_informations.${label}_hint`)}
                 feedback={
                   editor.errors()[key] && (
                     <p role="alert" id={`server-edit-${key}-error`} class="text-error text-sm">
@@ -145,7 +146,7 @@ const ServerInformations: Component = () => {
                   disabled={editor.pending()}
                   value={editor.draft()[key]}
                   aria-invalid={!!editor.errors()[key]}
-                  aria-describedby={editor.errors()[key] ? `server-edit-${key}-error` : undefined}
+                  aria-describedby={`server-edit-${key}-description${editor.errors()[key] ? ` server-edit-${key}-error` : ''}`}
                   onInput={(event) => editor.patch({ [key]: event.currentTarget.value })}
                 />
               </SettingRow>
@@ -155,12 +156,12 @@ const ServerInformations: Component = () => {
             <img
               class="w-10 h-10 rounded-lg object-cover"
               src={editor.draft().image || defaultServer}
-              alt="Server Logo"
+              alt={t('dashboard.server.server_informations.server_logo', 'Server logo')}
             />
           </SettingRow>
           <SettingRow
             controlId="server-edit-public"
-            title={t('dashboard.server.server_informations.server_public', 'Public')}
+            title={t('dashboard.server.server_informations.server_public', 'Show in server ranking')}
             description={t(
               'settings.server_public_hint',
               'Choose whether this server appears in the public server ranking.',
@@ -177,7 +178,14 @@ const ServerInformations: Component = () => {
             />
           </SettingRow>
         </SettingGroup>
-        <SettingGroup title={t('settings.server_connection', 'Connection details')} icon="link">
+        <SettingGroup
+          title={t('settings.server_connection', 'Connection details')}
+          description={t(
+            'dashboard.server.server_informations.connection_help',
+            'Enter the address players use to join. These values describe your server; they do not change its hosting configuration.',
+          )}
+          icon="link"
+        >
           <For each={fields.slice(3)}>
             {([key, label, fallback]) => (
               <SettingRow
@@ -224,11 +232,18 @@ const ServerInformations: Component = () => {
         )}
         icon="link"
       >
-        <SettingGroup title={t('server_setup.credentials', 'Server credentials')} icon="id-card">
-          <SettingRow title={t('dashboard.server.server_informations.server_id', 'ID')}>
+        <SettingGroup
+          title={t('server_setup.credentials', 'Server credentials')}
+          description={t(
+            'server_setup.credentials_help',
+            'The ID identifies this server in Gmod Integration. The token authorizes the addon to connect; keep it private.',
+          )}
+          icon="id-card"
+        >
+          <SettingRow title={t('dashboard.server.server_informations.server_id', 'Gmod Integration server ID')}>
             <CopyableValue value={server().id || ''} label={t('server_setup.copy_id', 'Copy server ID')} />
           </SettingRow>
-          <SettingRow title={t('dashboard.server.server_informations.server_token', 'Token')}>
+          <SettingRow title={t('dashboard.server.server_informations.server_token', 'Connection token')}>
             <div class="flex min-w-0 flex-wrap items-center gap-2">
               <CopyableValue
                 value={server().token || ''}
@@ -309,10 +324,10 @@ const ServerInformations: Component = () => {
         </SettingGroup>
       </AdminPanel>
       <AdminPanel
-        title={t('dashboard.server.server_informations.connection_status_title', 'Connection Status')}
+        title={t('dashboard.server.server_informations.connection_status_title', 'Addon connection')}
         description={t(
           'dashboard.server.server_informations.connection_status_description',
-          'Here you can see the connection status of your server.',
+          'Check whether the addon is communicating with Gmod Integration. Each indicator checks a different part of the connection.',
         )}
         type="none"
       >
@@ -320,7 +335,7 @@ const ServerInformations: Component = () => {
           <article class="min-w-0 rounded-xl border border-base-200 p-4">
             <div class="flex items-center gap-3 mb-3">
               <div class="font-semibold text-sm">
-                {t('dashboard.server.server_informations.http_request_title', 'HTTP Request')}
+                {t('dashboard.server.server_informations.http_request_title', 'Recent server activity')}
               </div>
               <div class="ml-auto flex items-center justify-center">
                 <Icon
@@ -337,26 +352,26 @@ const ServerInformations: Component = () => {
                   <p>
                     {t(
                       'dashboard.server.server_informations.http_request_fallback_part1',
-                      "We haven't received any request from your server in the last minute, make sure to have installed the",
+                      'No request has been received from the addon in the last minute. Check that the server is running and that you installed the',
                     )}{' '}
                     <a href="/workshop" class="link">
                       {t('dashboard.server.server_informations.workshop_content', 'workshop content')}
                     </a>{' '}
                     {t(
                       'dashboard.server.server_informations.http_request_fallback_part2',
-                      'correctly and have fully configured your server id & token, read the',
+                      'and entered the correct server ID and token. See the',
                     )}{' '}
                     <a href="/docs/getting-started/configuration" class="link">
                       {t('dashboard.server.server_informations.documentation', 'documentation')}
                     </a>{' '}
-                    {t('dashboard.server.server_informations.http_request_fallback_part3', 'for more information.')}
+                    {t('dashboard.server.server_informations.http_request_fallback_part3', 'for setup instructions.')}
                   </p>
                 }
               >
                 <p>
                   {t(
                     'dashboard.server.server_informations.http_request_success',
-                    'Congratulations your server is correctly setup you can now configure it.',
+                    'A request was received from the addon within the last minute.',
                   )}
                 </p>
               </Show>
@@ -365,7 +380,7 @@ const ServerInformations: Component = () => {
           <article class="min-w-0 rounded-xl border border-base-200 p-4">
             <div class="flex items-center gap-3 mb-3">
               <div class="font-semibold text-sm">
-                {t('dashboard.server.server_informations.websocket_title', 'WebSocket')}
+                {t('dashboard.server.server_informations.websocket_title', 'Live connection (WebSocket)')}
               </div>
               <div class="ml-auto flex items-center justify-center">
                 <Icon
@@ -382,19 +397,22 @@ const ServerInformations: Component = () => {
                   <p>
                     {t(
                       'dashboard.server.server_informations.websocket_fallback_part1',
-                      'Your server is not connected to the websocket, advanced features are not available, to use them you need to install the',
+                      'The live connection is unavailable. Features that require it cannot operate. Check the addon connection and install the',
                     )}{' '}
                     <a href="/docs/getting-started/installation#dll" class="link">
-                      {t('dashboard.server.server_informations.gwsocket_module', 'GWSocket Module')}
+                      {t('dashboard.server.server_informations.gwsocket_module', 'GWSockets module')}
                     </a>{' '}
-                    {t('dashboard.server.server_informations.websocket_fallback_part2', 'on your server.')}
+                    {t(
+                      'dashboard.server.server_informations.websocket_fallback_part2',
+                      'if it is missing from your game server.',
+                    )}
                   </p>
                 }
               >
                 <p>
                   {t(
                     'dashboard.server.server_informations.websocket_success',
-                    'Congratulations you successfully connected to your server in websocket, advanced features are now available.',
+                    'The addon has a live connection. Features that need real-time communication can use it.',
                   )}
                 </p>
               </Show>
@@ -403,7 +421,7 @@ const ServerInformations: Component = () => {
           <article class="min-w-0 rounded-xl border border-base-200 p-4">
             <div class="flex items-center gap-3 mb-3">
               <div class="font-semibold text-sm">
-                {t('dashboard.server.server_informations.version_title', 'Version')}
+                {t('dashboard.server.server_informations.version_title', 'Addon version')}
               </div>
               <div class="ml-auto flex items-center justify-center">
                 <Icon
@@ -420,19 +438,19 @@ const ServerInformations: Component = () => {
                   <p>
                     {t(
                       'dashboard.server.server_informations.version_fallback_http_part1',
-                      "We can't check the version of your server, make sure to have installed the",
+                      'The addon version cannot be checked without recent server activity. Check that you installed the',
                     )}{' '}
                     <a href="/workshop" class="link">
                       {t('dashboard.server.server_informations.workshop_content', 'workshop content')}
                     </a>{' '}
                     {t(
                       'dashboard.server.server_informations.version_fallback_http_part2',
-                      'correctly and have fully configured your server id & token, read the',
+                      'and entered the correct server ID and token. See the',
                     )}{' '}
                     <a href="/docs/getting-started/configuration" class="link">
                       {t('dashboard.server.server_informations.documentation', 'documentation')}
                     </a>{' '}
-                    {t('dashboard.server.server_informations.version_fallback_http_part3', 'for more information.')}
+                    {t('dashboard.server.server_informations.version_fallback_http_part3', 'for setup instructions.')}
                   </p>
                 }
               >
@@ -442,7 +460,7 @@ const ServerInformations: Component = () => {
                     <p>
                       {t(
                         'dashboard.server.server_informations.version_fallback_outdated',
-                        'Your server is outdated, new features will not work correctly, you need to update it. If you are using the Workshop version simply restart your server and it will automatically update. But if you are using the github repo or a uncompressed workshop version you need to manually update it.',
+                        'The reported addon version is outdated. Update the addon before relying on newer features. For a Workshop installation, restart the game server to apply available updates; update a GitHub or extracted installation manually.',
                       )}
                     </p>
                   }
@@ -450,7 +468,7 @@ const ServerInformations: Component = () => {
                   <p>
                     {t(
                       'dashboard.server.server_informations.version_success',
-                      'Great your server is up to date and will work perfectly with the latest features',
+                      'The reported addon version is compatible with the current service.',
                     )}
                   </p>
                 </Show>
@@ -462,7 +480,7 @@ const ServerInformations: Component = () => {
       <AdminPanel title={t('settings.server_sensitive', 'Sensitive actions')} icon="triangle-alert">
         <div class="settings-danger">
           <SettingRow
-            title={t('dashboard.server.server_informations.server_token', 'Token')}
+            title={t('dashboard.server.server_informations.server_token', 'Connection token')}
             description={t(
               'settings.server_reset_hint',
               'Generate a new token, then update it in your Garry’s Mod configuration.',

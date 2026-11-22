@@ -49,20 +49,20 @@ describe('components/AdminPanel.tsx', () => {
   it('does not show the premium banner when premium is not set', () => {
     setGuildPremium(false)
     renderWithProviders(() => <AdminPanel title="t" description="d" />)
-    expect(screen.queryByRole('link', { name: 'Upgrade Now' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'View Premium plans' })).not.toBeInTheDocument()
   })
 
   it('does not show the premium banner when the guild already has premium', () => {
     setGuildPremium(true)
     renderWithProviders(() => <AdminPanel title="t" description="d" premium />)
-    expect(screen.queryByRole('link', { name: 'Upgrade Now' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'View Premium plans' })).not.toBeInTheDocument()
   })
 
   it('shows the default premium message and upgrade link when premium is true and guild lacks premium', () => {
     setGuildPremium(false)
     renderWithProviders(() => <AdminPanel title="t" description="d" premium />)
-    expect(screen.getByText(/This feature is only available to premium users\./)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Upgrade Now' })).toHaveAttribute('href', '/premium')
+    expect(screen.getByText(/This feature requires Premium for this Discord community\./)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View Premium plans' })).toHaveAttribute('href', '/premium')
   })
 
   it('shows a custom premium message string when premium is a string and guild lacks premium', () => {

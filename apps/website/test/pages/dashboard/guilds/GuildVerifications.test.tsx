@@ -422,17 +422,17 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
   it('confirms the mass role check, reports failure and permits retry', async () => {
     const { container } = renderWithProviders(() => <GuildVerification />)
     await waitForLoaded()
-    const button = screen.getByRole('button', { name: 'Check All Roles' })
+    const button = screen.getByRole('button', { name: 'Apply roles to existing members' })
     await fireEvent.click(button)
     const modal = container.querySelector<HTMLDialogElement>('#check_verification_roles')!
-    expect(within(modal).getByText(/1000 members max/)).toBeInTheDocument()
+    expect(within(modal).getByText(/up to 1,000 members/)).toBeInTheDocument()
     expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method === 'POST')).toHaveLength(0)
     ;(fetchAPI as Mock).mockResolvedValue(errJson())
-    await fireEvent.click(within(modal).getByRole('button', { name: 'Check All Roles' }))
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Apply roles to existing members' }))
     await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
     expect(button).not.toBeDisabled()
     ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
-    await fireEvent.click(within(modal).getByRole('button', { name: 'Check All Roles' }))
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Apply roles to existing members' }))
     await vi.waitFor(() => expect(button).toBeDisabled())
   })
 

@@ -53,21 +53,24 @@ const ServerVote: Component = () => {
 
       <ConfirmActionDialog
         id="remove-channel"
-        title={t('dashboard.server.vote.delete_channel', 'Delete Channel')}
+        title={t('dashboard.server.vote.delete_channel', 'Remove destination')}
         description={t(
-          'editing.remove_channel',
-          'Remove this destination? Future messages will no longer be sent to this channel.',
+          'dashboard.server.vote.remove_channel_help',
+          'Stop sending vote notifications to this destination. The Discord channel is kept.',
         )}
         confirmLabel={t('ui.delete', 'Delete')}
         onConfirm={removeScreenshots}
       />
       <AdminPanel
-        title={t('dashboard.server.vote.title', 'Server Vote')}
-        description={t('dashboard.server.vote.description', 'Configure voting notifications for your server')}
+        title={t('dashboard.server.vote.title', 'Vote notifications')}
+        description={t(
+          'dashboard.server.vote.description',
+          'Choose the Discord channel that receives notifications when players vote for this server.',
+        )}
       >
         <AsyncState loading={votes.loading} error={votes.error} onRetry={() => void refetch()}>
           <SettingRow
-            title={t('dashboard.server.vote.vote_channel', 'Vote Channel')}
+            title={t('dashboard.server.vote.vote_channel', 'Notification channel')}
             description={t(
               'settings.channel_confirmation',
               'Choose a channel, then confirm your selection. Removing it stops future messages in that channel.',
@@ -94,11 +97,11 @@ const ServerVote: Component = () => {
                 guildChannelsRefetch()
               }}
             >
-              {t('dashboard.server.vote.select_channel', 'Select Channel')}
+              {t('dashboard.server.vote.select_channel', 'Choose channel')}
             </Button>
             <Show when={!votes.loading && votes().channelID}>
               <Button variant="ghost" size="sm" onClick={() => showDialog('remove-channel')}>
-                {t('dashboard.server.vote.delete_channel', 'Delete Channel')}
+                {t('dashboard.server.vote.delete_channel', 'Remove destination')}
               </Button>
             </Show>
           </SettingRow>

@@ -1,6 +1,15 @@
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
 import { type Component, createResource, createSignal, For, Show } from 'solid-js'
-import { FormActions, FormField, IconButton, TableState, Icon, type IconName } from '../../../../components/ui/index.js'
+import {
+  Button,
+  FormActions,
+  FormField,
+  IconButton,
+  IconButtonLink,
+  TableState,
+  Icon,
+  type IconName,
+} from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
 import AdminPanel from '../../../../components/AdminPanel.js'
 import AdminModal from '../../../../components/AdminModal.js'
@@ -94,6 +103,7 @@ const ServerPlayer: Component = () => {
       orderBy: !sortInfo().dsc ? QuerySort.ASC : QuerySort.DESC,
       offset: offset,
     }
+    setQuery(newQuery)
 
     const params = {
       order: newQuery.orderBy,
@@ -133,6 +143,11 @@ const ServerPlayer: Component = () => {
     return 'arrow-up-down'
   }
 
+  function getSortDirection(key: string): 'none' | 'ascending' | 'descending' {
+    if (sortInfo().lastKey !== key) return 'none'
+    return sortInfo().dsc ? 'descending' : 'ascending'
+  }
+
   async function handleQueryChange(newQuery: ClientQuery) {
     setQuery(newQuery)
     await sortPlayerBy(newQuery.sort, false, newQuery.offset, searchValue())
@@ -164,7 +179,7 @@ const ServerPlayer: Component = () => {
   return (
     <>
       <AdminModal
-        title={t('dashboard.server.edit_player.title', 'Edit Player')}
+        title={t('dashboard.server.edit_player.title', 'Edit player access')}
         id="edit_player"
         description={editor.draft().steam_id ? `${editor.draft().name} · ${editor.draft().steam_id}` : undefined}
         busy={editor.pending()}
@@ -173,10 +188,15 @@ const ServerPlayer: Component = () => {
       >
         <FormField
           id="player-bypass-maintenance"
-          label={t('dashboard.server.edit_player.bypass_maintenance', 'ByPass Maintenance')}
+          label={t('dashboard.server.edit_player.bypass_maintenance', 'Allow access during maintenance')}
+          description={t(
+            'dashboard.server.edit_player.bypass_help',
+            'Allow this player to join while maintenance mode is enabled. Save to apply this permission.',
+          )}
         >
           <select
             id="player-bypass-maintenance"
+            aria-describedby="player-bypass-maintenance-description"
             class="select"
             disabled={playersList.loading || !!playersList.error || editor.pending()}
             value={editor.draft().bypassMaintenance ? 'true' : 'false'}
@@ -203,9 +223,22 @@ const ServerPlayer: Component = () => {
       </AdminModal>
 
       <AdminPanel
-        title={t('dashboard.server.players_database.title', 'Players Database')}
-        description={t('dashboard.server.players_database.description', 'List of all players in the server')}
+        title={t('dashboard.server.players_database.title', 'Player records')}
+        description={t(
+          'dashboard.server.players_database.description',
+          'View recorded players, their total playtime and connection count. Edit a player to manage maintenance access.',
+        )}
         type="none"
+        footer={
+          !playersList.loading && !playersList.error && !loadSearch() && !searchError() ? (
+            <Pagination
+              standalone
+              query={query()}
+              total={playersList().query?.total ?? 0}
+              onChange={handleQueryChange}
+            />
+          ) : undefined
+        }
       >
         {/* search*/}
         <div class="p-4">
@@ -213,7 +246,11 @@ const ServerPlayer: Component = () => {
             <input
               type="text"
               class="grow"
-              placeholder="Search for SteamID64, Name, Rank..."
+              aria-label={t('dashboard.server.players_database.search_label', 'Search players')}
+              placeholder={t(
+                'dashboard.server.players_database.search_placeholder',
+                'Search by SteamID64, name or rank…',
+              )}
               onInput={(e) => {
                 const value = e.currentTarget.value
                 setSearchValue(value)
@@ -231,26 +268,46 @@ const ServerPlayer: Component = () => {
         </div>
         <table class="table table-auto table-fixed border-t border-base-200 rounded-none">
           <thead>
-            <tr class="text-l hover:cursor-pointer">
-              <th class="w-1/4" onClick={() => sortPlayerBy('name')}>
-                {t('dashboard.server.players_database.name', 'Name')} <Icon name={getSortIcon('name')} />
+            <tr class="text-l">
+              <th class="w-1/4" scope="col" aria-sort={getSortDirection('name')}>
+                <Button variant="ghost" size="sm" class="ui-table-sort" onClick={() => void sortPlayerBy('name')}>
+                  {t('dashboard.server.players_database.name', 'Name')} <Icon name={getSortIcon('name')} />
+                </Button>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('rank')}>
-                {t('dashboard.server.players_database.rank', 'Rank')} <Icon name={getSortIcon('rank')} />
+              <th class="w-1/6 text-center" scope="col" aria-sort={getSortDirection('rank')}>
+                <Button variant="ghost" size="sm" class="ui-table-sort" onClick={() => void sortPlayerBy('rank')}>
+                  {t('dashboard.server.players_database.rank', 'Rank')} <Icon name={getSortIcon('rank')} />
+                </Button>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('total_time')}>
-                {t('dashboard.server.players_database.total_time', 'Total Time')}{' '}
-                <Icon name={getSortIcon('total_time')} />
+              <th class="w-1/6 text-center" scope="col" aria-sort={getSortDirection('total_time')}>
+                <Button variant="ghost" size="sm" class="ui-table-sort" onClick={() => void sortPlayerBy('total_time')}>
+                  {t('dashboard.server.players_database.total_time', 'Total playtime')}{' '}
+                  <Icon name={getSortIcon('total_time')} />
+                </Button>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('total_connect')}>
-                {t('dashboard.server.players_database.total_connect', 'Total Connect')}{' '}
-                <Icon name={getSortIcon('total_connect')} />
+              <th class="w-1/6 text-center" scope="col" aria-sort={getSortDirection('total_connect')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  class="ui-table-sort"
+                  onClick={() => void sortPlayerBy('total_connect')}
+                >
+                  {t('dashboard.server.players_database.total_connect', 'Connections')}{' '}
+                  <Icon name={getSortIcon('total_connect')} />
+                </Button>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('bypassMaintenance')}>
-                {t('dashboard.server.players_database.bypass_maintenance', 'Bypass Maintenance')}{' '}
-                <Icon name={getSortIcon('bypassMaintenance')} />
+              <th class="w-1/6 text-center" scope="col" aria-sort={getSortDirection('bypassMaintenance')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  class="ui-table-sort"
+                  onClick={() => void sortPlayerBy('bypassMaintenance')}
+                >
+                  {t('dashboard.server.players_database.bypass_maintenance', 'Maintenance access')}{' '}
+                  <Icon name={getSortIcon('bypassMaintenance')} />
+                </Button>
               </th>
-              <th class="hover:cursor-default w-1/6 text-center">
+              <th class="w-1/6 text-center" scope="col">
                 {t('dashboard.server.players_database.actions', 'Actions')}
               </th>
             </tr>
@@ -260,6 +317,14 @@ const ServerPlayer: Component = () => {
               colSpan={6}
               loading={playersList.loading || loadSearch()}
               error={playersList.error || searchError()}
+              errorLabel={t(
+                'dashboard.server.players_database.load_error',
+                'Unable to load players. Try again to reload the current search.',
+              )}
+              emptyLabel={t(
+                'dashboard.server.players_database.empty',
+                'No players match this search. Try another name, SteamID64 or rank, or clear the search.',
+              )}
               empty={
                 !playersList.loading &&
                 !playersList.error &&
@@ -292,14 +357,15 @@ const ServerPlayer: Component = () => {
                     </td>
                     <td class="w-1/6">
                       <div class="flex gap-2 justify-center">
-                        <a
+                        <IconButtonLink
                           href={`https://steamcommunity.com/profiles/${player.steam_id}`}
                           target="_blank"
-                          class="tooltip tooltip-info"
-                          data-tip={t('dashboard.server.players_database.steam', 'Steam')}
-                        >
-                          <Icon name="gamepad-2" />
-                        </a>
+                          rel="noopener noreferrer"
+                          variant="ghost"
+                          size="sm"
+                          label={t('dashboard.server.players_database.steam', 'Open Steam profile')}
+                          icon="gamepad-2"
+                        />
                         <IconButton
                           variant="ghost"
                           size="sm"
@@ -317,14 +383,6 @@ const ServerPlayer: Component = () => {
                 )}
               </For>
             </TableState>
-            <Show when={!playersList.loading && !playersList.error && !loadSearch() && !searchError()}>
-              <Pagination
-                query={query()}
-                total={playersList().query?.total ?? 0}
-                onChange={handleQueryChange}
-                colSpan={6}
-              />
-            </Show>
           </tbody>
         </table>
       </AdminPanel>

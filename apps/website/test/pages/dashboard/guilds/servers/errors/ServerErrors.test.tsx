@@ -60,7 +60,11 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([])))
     renderPage()
     expect(screen.getByText('Errors')).toBeInTheDocument()
-    expect(screen.getByText('Watch the errors of your server.')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Review Lua errors received from the game server and players. Open the details or download a report to investigate the cause.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('fetches with the correct query string on mount', async () => {
@@ -81,7 +85,7 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([errorEntry()])))
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('my_addon')).toBeInTheDocument())
-    expect(screen.getByText('server')).toBeInTheDocument()
+    expect(screen.getByText('Game server')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByText('attempt to call a nil value')).toBeInTheDocument()
   })
@@ -89,13 +93,13 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
   it('colors the realm text for the client realm', async () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([errorEntry({ realm: 'client' })])))
     renderPage()
-    await vi.waitFor(() => expect(screen.getByText('client')).toHaveClass('text-sky-500'))
+    await vi.waitFor(() => expect(screen.getByText('Player client')).toHaveClass('text-sky-500'))
   })
 
   it('colors the realm text for the server realm', async () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([errorEntry({ realm: 'server' })])))
     renderPage()
-    await vi.waitFor(() => expect(screen.getByText('server')).toHaveClass('text-yellow-500'))
+    await vi.waitFor(() => expect(screen.getByText('Game server')).toHaveClass('text-yellow-500'))
   })
 
   it('keeps a failed fetch inside the table and recovers through the shared retry action', async () => {

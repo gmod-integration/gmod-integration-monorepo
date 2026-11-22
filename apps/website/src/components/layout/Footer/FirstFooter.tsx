@@ -41,7 +41,7 @@ const FirstFooter: Component = () => {
           href: '/premium',
         },
         {
-          title: t('main.support', 'Support'),
+          title: t('main.support', 'Help and support'),
           href: '/support',
         },
       ],

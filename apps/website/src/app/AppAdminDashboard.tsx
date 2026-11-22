@@ -15,9 +15,11 @@ export const AppAdminDashboard: ParentComponent = (props) => {
         <div class="dashboard-content">
           <ShowErrorList />
           <ErrorBoundary
-            fallback={(error, reset) => (
+            fallback={(_error, reset) => (
               <div class="flex flex-col gap-2">
-                <AddErrorComponent message={error instanceof Error ? error.message : String(error)} />
+                <AddErrorComponent
+                  message={t('ui.page_error', 'This page could not be displayed. Try again to reload its content.')}
+                />
                 <Button class="self-start" onClick={reset}>
                   {t('ui.retry', 'Try again')}
                 </Button>

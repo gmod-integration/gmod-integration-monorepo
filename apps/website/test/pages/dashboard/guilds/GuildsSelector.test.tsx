@@ -45,13 +45,15 @@ describe('Community selection', () => {
     vi.mocked(fetchAPI).mockReturnValue(new Promise<Response>(() => {}))
     renderGuilds()
     expect(screen.getByRole('status')).toHaveTextContent(/Loading/)
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Select a Guild to manage / add the Bot to')
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Choose a Discord server')
   })
 
   it('offers retry after a request failure', async () => {
     vi.mocked(fetchAPI).mockRejectedValueOnce(new Error('network down')).mockResolvedValueOnce(response(guilds))
     renderGuilds()
-    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Failed to fetch your guilds'))
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load your Discord servers. Try again.'),
+    )
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await loadedGuilds()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -81,7 +83,10 @@ describe('Community selection', () => {
     renderGuilds()
     expect(window.localStorage.getItem('server')).toBeNull()
     expect(window.localStorage.getItem('guilds')).toBeNull()
-    expect(screen.getByRole('link', { name: 'Create Guild' })).toHaveAttribute('href', 'discord://-/guilds/create')
+    expect(screen.getByRole('link', { name: 'Create a Discord server' })).toHaveAttribute(
+      'href',
+      'discord://-/guilds/create',
+    )
   })
 
   it('sorts communities by plan, bot presence and name while preserving identifying details', async () => {
@@ -110,7 +115,9 @@ describe('Community selection', () => {
     vi.mocked(fetchAPI).mockResolvedValue(response([]))
     renderGuilds()
     await vi.waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('No communities are available for this account.'),
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'No manageable Discord servers were found. Check that you are signed in with the right Discord account and have permission to manage a server.',
+      ),
     )
   })
 

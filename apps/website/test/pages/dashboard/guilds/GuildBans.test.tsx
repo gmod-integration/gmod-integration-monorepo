@@ -114,7 +114,7 @@ describe('pages/dashboard/guilds/GuildBans.tsx', () => {
   it('shows a failure message when the resource itself rejects', async () => {
     ;(fetchAPI as Mock).mockRejectedValue(new Error('network down'))
     renderWithProviders(() => <GuildBans />)
-    await vi.waitFor(() => expect(screen.getAllByText('Failed to load bans').length).toBeGreaterThan(0))
+    await vi.waitFor(() => expect(screen.getAllByText('Unable to load bans. Try again.').length).toBeGreaterThan(0))
   })
 
   it('shows empty-state messages when there are no bans', async () => {

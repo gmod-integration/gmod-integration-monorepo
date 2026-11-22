@@ -48,7 +48,7 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     ;(fetchAPI as any).mockResolvedValue(okJson([]))
     renderList()
     await vi.waitFor(() => expect(screen.getByText('0 / 1 used')).toBeInTheDocument())
-    expect(screen.queryByRole('link', { name: 'Upgrade Now' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'View Premium plans' })).not.toBeInTheDocument()
   })
 
   it('renders each server card with name, address, and image, falling back to the default image', async () => {
@@ -56,7 +56,7 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     renderList()
     await vi.waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
 
-    expect(screen.getByText('Select a Server to manage')).toBeInTheDocument()
+    expect(screen.getByText('Your game servers')).toBeInTheDocument()
     expect(screen.getByText('Alpha')).toBeInTheDocument()
     expect(screen.getByText('1.2.3.4:27015')).toBeInTheDocument()
     expect(screen.getByText('Beta')).toBeInTheDocument()
@@ -67,7 +67,7 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     const betaImg = screen.getByAltText('Beta') as HTMLImageElement
     expect(betaImg.src).toContain('defaultServer')
 
-    expect(screen.getAllByText('Manage')).toHaveLength(2)
+    expect(screen.getAllByText('Configure server')).toHaveLength(2)
   })
 
   it('filters server cards by name or address while preserving server creation limits', async () => {
@@ -78,7 +78,7 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     await fireEvent.input(screen.getByRole('searchbox', { name: 'Search servers' }), { target: { value: '5.6.7.8' } })
     expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
     expect(screen.getByText('Beta')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Create Server' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add server' })).toBeDisabled()
     await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'unknown' } })
     expect(screen.getByRole('status')).toHaveTextContent('No results match your search.')
     expect(fetchAPI).toHaveBeenCalledTimes(1)
@@ -102,16 +102,16 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     ;(fetchAPI as any).mockResolvedValue(okJson([servers[0]]))
     renderList()
     await vi.waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
-    expect(screen.getByText('Create Server')).toHaveClass('btn-disabled')
-    expect(screen.getByRole('button', { name: 'Create Server' })).toBeDisabled()
+    expect(screen.getByText('Add server')).toHaveClass('btn-disabled')
+    expect(screen.getByRole('button', { name: 'Add server' })).toBeDisabled()
   })
 
   it('leaves the create-server button enabled for a free guild with no servers yet', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
     ;(fetchAPI as any).mockResolvedValue(okJson([]))
     renderList()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
-    expect(screen.getByText('Create Server')).not.toHaveClass('btn-disabled')
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add server' })).toBeEnabled())
+    expect(screen.getByText('Add server')).not.toHaveClass('btn-disabled')
     expect(screen.getByRole('status')).toHaveTextContent('No servers yet. Connect your first server to get started.')
   })
 
@@ -119,8 +119,8 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
     ;(fetchAPI as any).mockResolvedValue(okJson([servers[0]]))
     renderList()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
-    expect(screen.getByText('Create Server')).not.toHaveClass('btn-disabled')
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add server' })).toBeEnabled())
+    expect(screen.getByText('Add server')).not.toHaveClass('btn-disabled')
   })
 
   it('creates a server, stores it, and navigates to its config page on success', async () => {
@@ -129,9 +129,9 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
       return okJson([])
     })
     const history = renderList()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add server' })).toBeEnabled())
 
-    fireEvent.click(screen.getByText('Create Server'))
+    fireEvent.click(screen.getByText('Add server'))
 
     await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/:guildID/config/servers/new1'))
     expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers', 'POST')
@@ -152,8 +152,8 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
       method === 'POST' ? creating : Promise.resolve(okJson([]) as Response),
     )
     const history = renderList()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
-    const button = screen.getByRole('button', { name: 'Create Server' })
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add server' })).toBeEnabled())
+    const button = screen.getByRole('button', { name: 'Add server' })
     fireEvent.click(button)
     fireEvent.click(button)
 
@@ -171,15 +171,15 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
       return okJson([])
     })
     const history = renderList()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add server' })).toBeEnabled())
 
-    fireEvent.click(screen.getByText('Create Server'))
+    fireEvent.click(screen.getByText('Add server'))
 
     await vi.waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('The server could not be created. Please try again.'),
     )
     expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers', 'POST')
-    expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Add server' })).toBeEnabled()
     expect(history.get()).toBe('/dashboard/guilds/g1/config/servers')
     expect(window.localStorage.getItem('server')).toBeNull()
   })
@@ -195,7 +195,7 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
       renderList()
 
       await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Your servers could not be loaded.'))
-      expect(screen.queryByRole('button', { name: 'Create Server' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add server' })).not.toBeInTheDocument()
       fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
       await vi.waitFor(() => expect(screen.getByText('Alpha')).toBeInTheDocument())
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -209,8 +209,8 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
         (method === 'POST' ? okJson({ name: 'Missing identifier' }) : okJson([])) as Response,
     )
     const history = renderList()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Create Server' })).toBeEnabled())
-    fireEvent.click(screen.getByRole('button', { name: 'Create Server' }))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add server' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Add server' }))
 
     await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('The server could not be created.'))
     expect(history.get()).toBe('/dashboard/guilds/g1/config/servers')

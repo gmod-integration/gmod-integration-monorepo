@@ -36,7 +36,7 @@ async function loaded() {
   })
 }
 async function createDraft() {
-  await fireEvent.click(screen.getByRole('button', { name: 'Add Role' }))
+  await fireEvent.click(screen.getByRole('button', { name: 'Add nickname rule' }))
   await fireEvent.input(input('pseudo-role-group'), { target: { value: 'vip' } })
   await fireEvent.input(input('pseudo-role-name'), { target: { value: 'VIP' } })
   await fireEvent.input(input('pseudo-role-prefix'), { target: { value: '[V]' } })
@@ -117,7 +117,7 @@ describe('ServerPseudo unified editing', () => {
   it('requires the group and creates a complete rule only on Create', async () => {
     renderPage()
     await loaded()
-    await fireEvent.click(screen.getByRole('button', { name: 'Add Role' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Add nickname rule' }))
     expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
     await fireEvent.input(input('pseudo-role-name'), { target: { value: 'VIP' } })
     expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
@@ -138,7 +138,7 @@ describe('ServerPseudo unified editing', () => {
     await loaded()
     await createDraft()
     await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
-    await fireEvent.click(screen.getByRole('button', { name: 'Add Role' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Add nickname rule' }))
     expect(input('pseudo-role-group')).toHaveValue('')
     await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
     await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
@@ -175,7 +175,11 @@ describe('ServerPseudo unified editing', () => {
     await fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[1])
     const dialog = document.getElementById('delete-pseudo-rule')!
     const confirm = within(dialog)
-    expect(confirm.getByText('mods — Moderator [M]')).toBeInTheDocument()
+    expect(
+      confirm.getByText(
+        'mods — Moderator [M] — Delete this nickname rule. The game user group and Discord roles are kept.',
+      ),
+    ).toBeInTheDocument()
     expect(writes()).toHaveLength(0)
     write = () => errJson()
     await fireEvent.click(confirm.getByRole('button', { name: 'Delete' }))

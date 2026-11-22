@@ -273,18 +273,29 @@ const ServerConfig: Component = () => {
       if (key === 'ig_verifyOnReadyKickTime') {
         const number = Number(value)
         if (String(value).trim() === '' || !Number.isFinite(number) || !Number.isInteger(number) || number < 0)
-          errors[key] = invalid()
+          errors[key] = t('dashboard.server.config.invalid_delay', 'Enter a whole number of seconds, 0 or greater.')
       } else if (key === 'ig_supportLink' && String(value).trim()) {
         try {
           const url = new URL(String(value).trim())
-          if (!['http:', 'https:'].includes(url.protocol)) errors[key] = invalid()
+          if (!['http:', 'https:'].includes(url.protocol))
+            errors[key] = t(
+              'dashboard.server.config.invalid_support_url',
+              'Enter an HTTP or HTTPS link, or leave this field empty.',
+            )
         } catch {
-          errors[key] = invalid()
+          errors[key] = t(
+            'dashboard.server.config.invalid_support_url',
+            'Enter an HTTP or HTTPS link, or leave this field empty.',
+          )
         }
       } else if (key === 'ig_adminRank') {
         const ranks = value as string[]
         const trimmed = ranks.map((rank) => rank.trim())
-        if (trimmed.some((rank) => !rank) || new Set(trimmed).size !== trimmed.length) errors[key] = invalid()
+        if (trimmed.some((rank) => !rank) || new Set(trimmed).size !== trimmed.length)
+          errors[key] = t(
+            'dashboard.server.config.invalid_admin_ranks',
+            'Enter a different, non-empty game user group on each row.',
+          )
       } else if (configInfo[key].acceptedValues && !isBooleanOption(configInfo[key])) {
         if (!(configInfo[key].acceptedValues as unknown[]).includes(value)) errors[key] = invalid()
       }
@@ -505,9 +516,12 @@ const ServerConfig: Component = () => {
     <>
       <NeedWebsocket />
       <AdminPanel
-        title={t('dashboard.server.config.title', 'Configuration')}
+        title={t('dashboard.server.config.title', 'In-game addon settings')}
         type="none"
-        description={t('dashboard.server.config.description', 'Manage the in game configuration of this server.')}
+        description={t(
+          'dashboard.server.config.description',
+          'Configure player access and addon behavior on this game server. Save each section separately; a saved change may still be waiting to reach the addon.',
+        )}
       >
         <div class="settings-browser">
           <div class="settings-toolbar">

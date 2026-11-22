@@ -1,6 +1,6 @@
 import { FeatureGate } from '../../../../../components/FeatureGate.js'
 import { type Component, createResource, createSignal, For, type ParentProps, Show } from 'solid-js'
-import { IconButton, TableState, Icon } from '../../../../../components/ui/index.js'
+import { IconButton, IconButtonLink, TableState, Icon } from '../../../../../components/ui/index.js'
 import AdminPanel from '../../../../../components/AdminPanel'
 import { useI18n } from '../../../../../i18n'
 import JsonViewer from '../../../../../components/JsonViewer'
@@ -61,18 +61,22 @@ const AddErrorComponent: Component<AddErrorProps> = (props) => {
             'text-yellow-500': props.error.realm === 'server',
           }}
         >
-          {props.error.realm}
+          {props.error.realm === 'client'
+            ? t('dashboard.server.errors.realm_client', 'Player client')
+            : props.error.realm === 'server'
+              ? t('dashboard.server.errors.realm_server', 'Game server')
+              : props.error.realm}
         </td>
         <td class="">{props.error.count}</td>
         <td class=" text-nowrap">{props.error.name}</td>
         <td class=" wrap-break-word">{props.error.error}</td>
         <td>
-          <div class="flex gap-2 justify-center">
+          <div class="flex flex-wrap items-center justify-center gap-2">
             <IconButton
               class="tooltip tooltip-info"
               variant="ghost"
               size="sm"
-              label={t('dashboard.server.errors.actions.view_details', 'View Details')}
+              label={t('dashboard.server.errors.actions.view_details', 'View error details')}
               aria-expanded={selectError() === localIdxLog}
               onClick={() => {
                 if (selectError() === localIdxLog) {
@@ -90,29 +94,20 @@ const AddErrorComponent: Component<AddErrorProps> = (props) => {
               </Show>
             </IconButton>
             <Show when={props.error.workshopID !== '' && props.error.workshopID !== '0'}>
-              <div
-                class="tooltip tooltip-info"
-                data-tip={t('dashboard.server.errors.actions.open_workshop', 'Open Workshop')}
-              >
-                <a
-                  href={`https://steamcommunity.com/sharedfiles/filedetails/?id=${props.error.workshopID}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label={t('dashboard.server.errors.actions.open_workshop', 'Open Workshop')}
-                >
-                  <Icon name="external-link" />
-                </a>
-              </div>
+              <IconButtonLink
+                icon="external-link"
+                label={t('dashboard.server.errors.actions.open_workshop', 'Open addon in Workshop')}
+                href={`https://steamcommunity.com/sharedfiles/filedetails/?id=${props.error.workshopID}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              />
             </Show>
-            <div class="tooltip tooltip-info" data-tip={t('dashboard.server.errors.actions.download', 'Download')}>
-              <a
-                href={`data:text/plain;charset=utf-8,${encodeURIComponent(errorContentStr.join('\n'))}`}
-                download={`log-${props.error.createdAt.toLocaleString()}.json`}
-                aria-label={t('dashboard.server.errors.actions.download', 'Download')}
-              >
-                <Icon name="download" />
-              </a>
-            </div>
+            <IconButtonLink
+              icon="download"
+              label={t('dashboard.server.errors.actions.download', 'Download error report')}
+              href={`data:text/plain;charset=utf-8,${encodeURIComponent(errorContentStr.join('\n'))}`}
+              download={`log-${props.error.createdAt.toLocaleString()}.json`}
+            />
           </div>
         </td>
       </tr>
@@ -173,8 +168,16 @@ const ServerErrors: Component = () => {
     <>
       <AdminPanel
         title={t('dashboard.server.errors.title', 'Errors')}
-        description={t('dashboard.server.errors.description', 'Watch the errors of your server.')}
+        description={t(
+          'dashboard.server.errors.description',
+          'Review Lua errors received from the game server and players. Open the details or download a report to investigate the cause.',
+        )}
         type="none"
+        footer={
+          !errors.loading && !errors.error ? (
+            <Pagination query={query()} total={errors().query.total} onChange={setQuery} standalone />
+          ) : undefined
+        }
       >
         <FeatureGate
           capability="errors.history"
@@ -186,8 +189,8 @@ const ServerErrors: Component = () => {
           <thead>
             <tr class="text-l">
               <th class="w-1/6">{t('dashboard.server.errors.error_details.timestamp', 'Date')}</th>
-              <th class="w-1/12">{t('dashboard.server.errors.error_details.realm', 'Realm')}</th>
-              <th class="w-1/12">{t('dashboard.server.errors.error_details.count', 'Count')}</th>
+              <th class="w-1/12">{t('dashboard.server.errors.error_details.realm', 'Source')}</th>
+              <th class="w-1/12">{t('dashboard.server.errors.error_details.count', 'Occurrences')}</th>
               <th class="w-1/6">{t('dashboard.server.errors.error_details.addon', 'Addon')}</th>
               <th class="w-1/3">{t('dashboard.server.errors.error_details.message', 'Message')}</th>
               <th class="w-1/12 text-center">{t('dashboard.server.errors.actions.actions', 'Actions')}</th>
@@ -198,14 +201,13 @@ const ServerErrors: Component = () => {
               colSpan={6}
               loading={errors.loading}
               error={errors.error}
+              errorLabel={t('dashboard.server.errors.load_error', 'Unable to load error reports. Try again.')}
+              emptyLabel={t('dashboard.server.errors.empty', 'No Lua errors have been received for this server.')}
               empty={!errors.loading && !errors.error && errors().errors.length === 0}
               onRetry={() => void refetch()}
             >
               <For each={errors().errors}>{(errorData) => <AddErrorComponent error={errorData} />}</For>
             </TableState>
-            <Show when={!errors.loading && !errors.error}>
-              <Pagination query={query()} total={errors().query.total} onChange={setQuery} colSpan={6} />
-            </Show>
           </tbody>
         </table>
       </AdminPanel>

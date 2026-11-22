@@ -60,7 +60,7 @@ export const DashboardMenu: Component = () => {
       content: [
         {
           icon: 'info',
-          label: t('dashboard.menu.guilds.informations', 'Informations'),
+          label: t('dashboard.menu.guilds.informations', 'Community settings'),
           url: '/dashboard/guilds/:guildID/config',
         },
         {
@@ -75,17 +75,17 @@ export const DashboardMenu: Component = () => {
         },
         {
           icon: 'shield-check',
-          label: t('dashboard.menu.guilds.verification', 'Verification'),
+          label: t('dashboard.menu.guilds.verification', 'Account verification'),
           url: '/dashboard/guilds/:guildID/config/verification',
         },
         {
           icon: 'ban',
-          label: t('dashboard.menu.guilds.bans', 'Bans'),
+          label: t('dashboard.menu.guilds.bans', 'Ban lists'),
           url: '/dashboard/guilds/:guildID/config/bans',
         },
         {
           icon: 'wand-sparkles',
-          label: t('dashboard.menu.guilds.auto_role', 'Auto-Role'),
+          label: t('dashboard.menu.guilds.auto_role', 'Automatic roles'),
           url: '/dashboard/guilds/:guildID/config/auto-role',
         },
         {
@@ -102,7 +102,7 @@ export const DashboardMenu: Component = () => {
         },
         {
           icon: 'server',
-          label: t('dashboard.menu.guilds.servers', 'Servers'),
+          label: t('dashboard.menu.guilds.servers', 'Game servers'),
           url: '/dashboard/guilds/:guildID/config/servers',
         },
       ],
@@ -114,7 +114,7 @@ export const DashboardMenu: Component = () => {
       content: [
         {
           icon: 'info',
-          label: t('dashboard.menu.servers.informations', 'Informations'),
+          label: t('dashboard.menu.servers.informations', 'Server and connection'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID',
         },
         {
@@ -129,22 +129,22 @@ export const DashboardMenu: Component = () => {
         },
         {
           icon: 'contact',
-          label: t('dashboard.menu.servers.roles', 'Roles'),
+          label: t('dashboard.menu.servers.roles', 'Role synchronization'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/roles',
         },
         {
           icon: 'users',
-          label: t('dashboard.menu.servers.teams', 'Teams'),
+          label: t('dashboard.menu.servers.teams', 'Team roles'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/teams',
         },
         {
           icon: 'messages-square',
-          label: t('dashboard.menu.servers.chats', 'Chats'),
+          label: t('dashboard.menu.servers.chats', 'Chat relay'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/chats',
         },
         {
           icon: 'id-card',
-          label: t('dashboard.menu.servers.pseudo', 'Pseudo'),
+          label: t('dashboard.menu.servers.pseudo', 'Nickname synchronization'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/pseudo',
         },
         {
@@ -170,7 +170,7 @@ export const DashboardMenu: Component = () => {
         },
         {
           icon: 'circle-alert',
-          label: t('dashboard.menu.servers.errors', 'Errors'),
+          label: t('dashboard.menu.servers.errors', 'Lua errors'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/errors',
         },
         {
@@ -181,7 +181,7 @@ export const DashboardMenu: Component = () => {
         },
         {
           icon: 'bug',
-          label: t('dashboard.menu.servers.bugs_report', 'Bugs Report'),
+          label: t('dashboard.menu.servers.bugs_report', 'Player bug reports'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/bugs',
         },
         {
@@ -253,7 +253,7 @@ export const DashboardMenu: Component = () => {
   const contextName = () => {
     return category().name === 'Servers'
       ? getServer().name || t('main.servers', 'Servers')
-      : getGuild().name || t('main.guilds', 'Guilds')
+      : getGuild().name || t('main.guilds', 'Discord communities')
   }
 
   return (
@@ -281,7 +281,9 @@ export const DashboardMenu: Component = () => {
       </div>
       <nav
         id={navigationId}
-        aria-label={category().name === 'Servers' ? t('main.servers', 'Servers') : t('main.guilds', 'Guilds')}
+        aria-label={
+          category().name === 'Servers' ? t('main.servers', 'Servers') : t('main.guilds', 'Discord communities')
+        }
         class="dashboard-navigation"
       >
         <A

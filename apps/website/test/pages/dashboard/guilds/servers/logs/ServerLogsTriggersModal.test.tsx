@@ -199,13 +199,13 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx modal', () 
     await fireEvent.click(screen.getByRole('button', { name: 'Add Trigger' }))
     const m = within(modal(container))
 
-    const triggerSelect = m.getByLabelText('Trigger')
+    const triggerSelect = m.getByLabelText('Event')
     await fireEvent.change(triggerSelect, { target: { value: 'ch_atm_send_money' } })
 
-    const compareSelect = m.getByLabelText('Compare')
+    const compareSelect = m.getByLabelText('Event field')
     await fireEvent.change(compareSelect, { target: { value: 'amount' } })
 
-    const operatorSelect = m.getByLabelText('Operator')
+    const operatorSelect = m.getByLabelText('Condition')
     await fireEvent.change(operatorSelect, { target: { value: 'lessThan' } })
 
     const messageTextarea = modal(container).querySelector('textarea') as HTMLTextAreaElement

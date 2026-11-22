@@ -34,22 +34,22 @@ function renderAt(path = '/dashboard/guilds/g1/config') {
 describe('Dashboard navigation', () => {
   it('provides named guild destinations and a back link to community selection', () => {
     renderAt()
-    const navigation = screen.getByRole('navigation', { name: 'Guilds' })
+    const navigation = screen.getByRole('navigation', { name: 'Discord communities' })
     expect(within(navigation).getByRole('link', { name: 'Back' })).toHaveAttribute('href', '/dashboard/guilds')
     for (const label of [
-      'Informations',
+      'Community settings',
       'Custom Bot',
       'Links',
-      'Verification',
-      'Bans',
-      'Auto-Role',
+      'Account verification',
+      'Ban lists',
+      'Automatic roles',
       'Suggestions',
       'Tickets',
-      'Servers',
+      'Game servers',
     ]) {
       expect(within(navigation).getByRole('link', { name: label })).toBeInTheDocument()
     }
-    expect(screen.getByRole('link', { name: 'Informations' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Community settings' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Suggestions' })).not.toHaveAttribute('aria-current', 'page')
   })
 
@@ -61,20 +61,20 @@ describe('Dashboard navigation', () => {
       '/dashboard/guilds/g1/config/servers',
     )
     for (const label of [
-      'Informations',
+      'Server and connection',
       'Configuration',
       'Status',
-      'Roles',
-      'Teams',
-      'Chats',
-      'Pseudo',
+      'Role synchronization',
+      'Team roles',
+      'Chat relay',
+      'Nickname synchronization',
       'Rewards',
       'Players',
       'Warns',
       'Logs',
-      'Errors',
+      'Lua errors',
       'Forwards',
-      'Bugs Report',
+      'Player bug reports',
       'Screenshots',
       'Vote',
       'Streams',
@@ -82,12 +82,12 @@ describe('Dashboard navigation', () => {
     ]) {
       expect(within(navigation).getByRole('link', { name: label })).toBeInTheDocument()
     }
-    expect(screen.getByRole('link', { name: 'Roles' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Role synchronization' })).toHaveAttribute(
       'href',
       '/dashboard/guilds/g1/config/servers/s1/roles',
     )
-    expect(screen.getByRole('link', { name: 'Roles' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Teams' })).not.toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Role synchronization' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Team roles' })).not.toHaveAttribute('aria-current', 'page')
   })
 
   it('updates the navigation category when moving from a community to a server', async () => {
@@ -95,7 +95,7 @@ describe('Dashboard navigation', () => {
     renderWithProviders(() => <DashboardMenu />, { path: '*', history })
     history.set({ value: '/dashboard/guilds/g1/config/servers/s1/roles', replace: true })
     await vi.waitFor(() => expect(screen.getByRole('navigation', { name: 'Servers' })).toBeInTheDocument())
-    expect(screen.getByRole('link', { name: 'Roles' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Role synchronization' })).toHaveAttribute('aria-current', 'page')
   })
 
   it('lets developers follow preview destinations', async () => {
@@ -115,7 +115,7 @@ describe('Dashboard navigation', () => {
     fireEvent.click(collapse, { detail: 0 })
     expect(screen.getByRole('button', { name: 'Expand' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByRole('link', { name: 'Back' })).toHaveAttribute('href', '/dashboard/guilds')
-    expect(screen.getByRole('link', { name: 'Informations' })).toHaveAttribute('aria-label', 'Informations')
+    expect(screen.getByRole('link', { name: 'Community settings' })).toHaveAttribute('aria-label', 'Community settings')
     expect(screen.queryByText('Back')).not.toBeInTheDocument()
     expect(window.localStorage.getItem('dashboard-navigation-collapsed')).toBe('true')
     fireEvent.click(screen.getByRole('button', { name: 'Expand' }))
@@ -135,11 +135,11 @@ describe('Dashboard navigation', () => {
     renderWithProviders(() => <DashboardMenu />, { path: '*', history })
     const toggle = screen.getByRole('button', { name: 'Toggle navigation' })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByText('Roles')).not.toBeInTheDocument()
+    expect(screen.queryByText('Role synchronization')).not.toBeInTheDocument()
     fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('Roles')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('link', { name: 'Roles' }))
+    expect(screen.getByText('Role synchronization')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('link', { name: 'Role synchronization' }))
     await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1/roles'))
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(window.localStorage.getItem('dashboard-navigation-collapsed')).toBe('true')
@@ -176,7 +176,7 @@ describe('Dashboard navigation', () => {
     }
     renderWithProviders(Page, { path: '*', history: historyAt('/dashboard/guilds/g1/config') })
     fireEvent.click(screen.getByRole('button', { name: 'Français' }))
-    expect(screen.getByRole('navigation', { name: 'Guildes' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Communautés Discord' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Liens' })).toHaveAttribute('href', '/dashboard/guilds/g1/config/links')
   })
 })
@@ -190,7 +190,7 @@ describe('Production dashboard navigation', () => {
     renderAt()
     expect(screen.queryByRole('link', { name: 'Suggestions' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Tickets' })).not.toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Informations' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Community settings' })).toBeInTheDocument()
   })
 
   it('announces unavailable destinations and prevents navigation', () => {

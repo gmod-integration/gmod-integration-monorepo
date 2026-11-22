@@ -32,7 +32,7 @@ describe('Guild dashboard shell', () => {
       </AppDashboard>
     ))
     expect(history.get()).toBe('/dashboard/guilds/g1/config')
-    expect(screen.getByRole('navigation', { name: 'Guilds' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Discord communities' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Back' })).toHaveAttribute('href', '/dashboard/guilds')
     expect(screen.getByTestId('page')).toHaveTextContent('Guild config page')
   })
@@ -82,8 +82,10 @@ describe('Guild dashboard shell', () => {
         </AppDashboard>
       )),
     ).not.toThrow()
-    expect(screen.getByRole('alert')).toHaveTextContent('page crashed')
-    expect(screen.getByRole('navigation', { name: 'Guilds' })).toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'This page could not be displayed. Try again to reload its content.',
+    )
+    expect(screen.getByRole('navigation', { name: 'Discord communities' })).toBeInTheDocument()
 
     shouldFail = false
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))

@@ -78,7 +78,7 @@ export const AuthProvider: ParentComponent = (props) => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            {t('header.login', 'Login with Discord')}
+            {t('header.login', 'Sign in with Discord')}
           </ButtonLink>
         </div>
       </Show>

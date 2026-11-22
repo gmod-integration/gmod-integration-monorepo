@@ -92,27 +92,27 @@ export const ServerLogsParameters: Component = () => {
 
       <ConfirmActionDialog
         id="remove-logs-channel"
-        title={t('dashboard.server.logs.button.remove_channel', 'Remove Channel')}
+        title={t('dashboard.server.logs.button.remove_channel', 'Remove destination')}
         description={t(
-          'settings.channel_confirmation',
-          'Choose a channel, then confirm your selection. Removing it stops future messages in that channel.',
+          'dashboard.server.logs.remove_destination_help',
+          'Stop sending server logs to this destination? The Discord channel itself will not be deleted.',
         )}
-        confirmLabel={t('ui.delete', 'Delete')}
+        confirmLabel={t('dashboard.server.logs.button.remove_channel', 'Remove destination')}
         onConfirm={removeLogChannel}
       />
       <AdminPanel
         title={t('dashboard.server.logs.title.logs_channel', 'Logs Channel')}
         description={t(
           'dashboard.server.logs.description.logs_channel',
-          'Set a channel to sync the logs between your server and Discord.',
+          'Send server event logs to a Discord text channel. This destination is separate from the event history below.',
         )}
       >
         <AsyncState loading={logsChannel.loading} error={logsChannel.error} onRetry={() => void refetchChannel()}>
           <SettingRow
-            title={t('dashboard.server.logs.label.chats_channels', 'Chats Channels:')}
+            title={t('dashboard.server.logs.label.chats_channels', 'Discord destination')}
             description={t(
-              'settings.channel_confirmation',
-              'Choose a channel, then confirm your selection. Removing it stops future messages in that channel.',
+              'dashboard.server.logs.destination_help',
+              'Choose a channel and save the selection to receive future logs there.',
             )}
           >
             <div class="flex w-full min-w-0 items-center gap-2">
@@ -140,7 +140,7 @@ export const ServerLogsParameters: Component = () => {
             </Button>
             <Show when={!logsChannel.loading && logsChannel().channelID}>
               <Button variant="ghost" size="sm" onClick={() => showDialog('remove-logs-channel')}>
-                {t('dashboard.server.logs.button.remove_channel', 'Remove Channel')}
+                {t('dashboard.server.logs.button.remove_channel', 'Remove destination')}
               </Button>
             </Show>
           </SettingRow>
@@ -153,7 +153,7 @@ export const ServerLogsParameters: Component = () => {
           <AsyncState loading={content.loading} error={content.error} onRetry={() => void refetchContent()}>
             <SettingRow
               controlId="logs-hide-ip"
-              title={t('dashboard.server.logs.label.hide_ip', 'Hide IP in discord logs:')}
+              title={t('dashboard.server.logs.label.hide_ip', 'Hide IP addresses in Discord logs')}
               description={t('settings.log_ip_help', 'Keep player IP addresses out of the logs published to Discord.')}
             >
               <input
@@ -168,7 +168,7 @@ export const ServerLogsParameters: Component = () => {
             </SettingRow>
             <SettingRow
               controlId="logs-attach-file"
-              title={t('dashboard.server.logs.label.attach_log_file', 'Attach log information file:')}
+              title={t('dashboard.server.logs.label.attach_log_file', 'Attach event data as a file')}
               description={t('settings.log_file_help', 'Include the log information as a file attachment in Discord.')}
             >
               <input

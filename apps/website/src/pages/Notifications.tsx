@@ -12,7 +12,13 @@ type Notification = { id: number; type: string; message: string; read: boolean; 
 const Notifications: Component = () => {
   const { t, locale } = useI18n()
   const [activeID, setActiveID] = createSignal<number>()
-  const action = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.') })
+  const action = createAsyncAction({
+    errorMessage: () =>
+      t(
+        'notifications.action_error',
+        'The read status could not be updated. Refresh the list to check it before trying again.',
+      ),
+  })
   const [userNotifications, { mutate: mutateUserNotifications, refetch: refetchNotifications }] = createResource(
     'userNotifications',
     async (): Promise<Notification[]> => {
@@ -88,6 +94,12 @@ const Notifications: Component = () => {
                 </span>
               </Show>
             </div>
+            <p class="max-w-2xl text-sm leading-relaxed text-base-content/55">
+              {t(
+                'notifications.description',
+                'Read updates about your account. Marking a notification as read clears its unread indicator and keeps the message in this list.',
+              )}
+            </p>
           </div>
           <Show when={notificationCount() > 0}>
             <Button
@@ -156,7 +168,15 @@ const Notifications: Component = () => {
                         <span
                           class={`badge badge-sm ${notification.type === 'error' ? 'badge-error' : notification.type === 'warning' ? 'badge-warning' : 'badge-success'}`}
                         >
-                          {notification.type}
+                          {notification.type === 'error'
+                            ? t('notifications.types.error', 'Error')
+                            : notification.type === 'warning'
+                              ? t('notifications.types.warning', 'Warning')
+                              : notification.type === 'success'
+                                ? t('notifications.types.success', 'Success')
+                                : notification.type === 'info'
+                                  ? t('notifications.types.info', 'Information')
+                                  : notification.type}
                         </span>
                         <time dateTime={notification.createdAt} class="text-xs text-base-content/45">
                           {date(notification.createdAt)}
@@ -172,8 +192,9 @@ const Notifications: Component = () => {
                       <Show
                         when={!notification.read}
                         fallback={
-                          <span class="p-2 text-base-content/30">
+                          <span class="p-2 text-base-content/30" title={t('notifications.read', 'Read')}>
                             <Icon name="eye-off" size={17} />
+                            <span class="sr-only">{t('notifications.read', 'Read')}</span>
                           </span>
                         }
                       >

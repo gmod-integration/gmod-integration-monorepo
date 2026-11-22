@@ -22,7 +22,7 @@ const api = fetchAPI as Mock
 const ready = () => vi.waitFor(() => expect(screen.getByRole('checkbox', { name: /Show Player List/ })).toBeEnabled())
 const sendModal = () => document.getElementById('select_channel_modal')!
 async function openSend() {
-  await fireEvent.click(screen.getByRole('button', { name: 'Send Status' }))
+  await fireEvent.click(screen.getByRole('button', { name: 'Publish status message' }))
   const modal = sendModal()
   await vi.waitFor(() => expect(modal.querySelector('select')).not.toBeNull())
   await fireEvent.change(modal.querySelector('select')!, { target: { value: 'c1' } })
@@ -58,9 +58,9 @@ describe('status publication is a separate command', () => {
     renderStatus()
     await ready()
     await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
-    expect(screen.getByRole('button', { name: 'Send Status' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Publish status message' })).toBeDisabled()
     expect(screen.getByText('Save or cancel your changes before publishing a message.')).toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: 'Send Status' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Publish status message' }))
     expect(commands(api)).toHaveLength(0)
     expect(puts(network)).toHaveLength(0)
   })
@@ -113,21 +113,21 @@ describe('status publication is a separate command', () => {
     installNetwork(api, { status: { channel: 'c1', message: 'm1' } })
     renderStatus()
     await ready()
-    await fireEvent.click(screen.getByRole('button', { name: 'Remove Status' }))
-    const modal = screen.getByRole('dialog', { name: 'Remove Status' })
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove published message' }))
+    const modal = screen.getByRole('dialog', { name: 'Remove published message' })
     expect(commands(api)).toHaveLength(0)
     const original = api.getMockImplementation()!
     api.mockImplementation((path, method, body) =>
       path === STATUS && method === 'DELETE' ? Promise.resolve(errJson()) : original(path, method, body),
     )
-    await fireEvent.click(within(modal).getByRole('button', { name: 'Remove Status' }))
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Remove published message' }))
     await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
     expect(modal).toHaveAttribute('open')
     api.mockImplementation((path, method, body) =>
       path === STATUS && method === 'DELETE' ? Promise.resolve(okJson({})) : original(path, method, body),
     )
-    await fireEvent.click(within(modal).getByRole('button', { name: 'Remove Status' }))
-    await vi.waitFor(() => expect(screen.getByText('No status message')).toBeInTheDocument())
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Remove published message' }))
+    await vi.waitFor(() => expect(screen.getByText('No status message published')).toBeInTheDocument())
   })
   it('allows configuration editing when the published-message lookup fails', async () => {
     installNetwork(api)
@@ -137,7 +137,7 @@ describe('status publication is a separate command', () => {
     )
     renderStatus()
     await ready()
-    expect(screen.getByRole('button', { name: 'Send Status' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Publish status message' })).toBeDisabled()
     await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
     expect(screen.getByRole('button', { name: 'Save status configuration' })).toBeEnabled()
   })

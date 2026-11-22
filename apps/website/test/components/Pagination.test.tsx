@@ -25,7 +25,7 @@ describe('Pagination controls', () => {
   it('announces pagination and displays the current and total pages', () => {
     renderTable(baseQuery(), 100, vi.fn())
     expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '1 / 4' })).toHaveAttribute('title', 'Back to the first page')
+    expect(screen.getByRole('button', { name: 'Page 1 of 4' })).toHaveAttribute('title', 'Back to the first page')
     expect(screen.getByRole('combobox', { name: 'Rows per page' })).toHaveValue('25')
   })
 
@@ -34,9 +34,19 @@ describe('Pagination controls', () => {
     expect(container.querySelector('td')).toHaveAttribute('colspan', String(colSpan ?? 6))
   })
 
+  it('renders standalone controls outside table markup while retaining page navigation', () => {
+    const onChange = vi.fn()
+    const { container } = renderWithProviders(() => (
+      <Pagination standalone query={baseQuery({ offset: 25 })} total={100} onChange={onChange} />
+    ))
+    expect(container.querySelector('tr, td, table')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ offset: 50 }))
+  })
+
   it('keeps an empty result on page one with both navigation buttons disabled', () => {
     renderTable(baseQuery(), 0, vi.fn())
-    expect(screen.getByRole('button', { name: '1 / 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Page 1 of 1' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
   })
@@ -81,7 +91,7 @@ describe('Pagination controls', () => {
   it('returns to the first page when the current page indicator is activated', () => {
     const onChange = vi.fn()
     renderTable(baseQuery({ offset: 50 }), 100, onChange)
-    fireEvent.click(screen.getByRole('button', { name: '3 / 4' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Page 3 of 4' }))
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ offset: 0 }))
   })
 
@@ -101,7 +111,7 @@ describe('Pagination controls', () => {
 
   it('uses a valid display size and nonnegative offset when given a malformed query', () => {
     renderTable(baseQuery({ limit: 0, offset: -5 }), 100, vi.fn())
-    expect(screen.getByRole('button', { name: '1 / 4' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Page 1 of 4' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
     expect(screen.getByRole('combobox', { name: 'Rows per page' })).toHaveValue('25')
   })

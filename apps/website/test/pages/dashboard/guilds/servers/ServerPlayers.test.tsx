@@ -124,9 +124,31 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
     const link = container.querySelector('a[href="https://steamcommunity.com/profiles/76500000000000001"]')
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAccessibleName('Open Steam profile')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
   describe('column sorting', () => {
+    it('exposes focusable sort controls and announces the active column and direction', async () => {
+      const { container } = renderPage()
+      await waitForLoaded()
+      for (const label of ['Name', 'Rank', 'Total playtime', 'Connections', 'Maintenance access']) {
+        const header = findHeader(container, label)
+        const control = within(header).getByRole('button', { name: label })
+        expect(header).toHaveAttribute('scope', 'col')
+        expect(header).toHaveAttribute('aria-sort', 'none')
+        control.focus()
+        expect(control).toHaveFocus()
+      }
+
+      const rankHeader = findHeader(container, 'Rank')
+      await fireEvent.click(within(rankHeader).getByRole('button', { name: 'Rank' }))
+      await vi.waitFor(() => expect(rankHeader).toHaveAttribute('aria-sort', 'ascending'))
+      expect(findHeader(container, 'Name')).toHaveAttribute('aria-sort', 'none')
+      await fireEvent.click(within(rankHeader).getByRole('button', { name: 'Rank' }))
+      await vi.waitFor(() => expect(rankHeader).toHaveAttribute('aria-sort', 'descending'))
+    })
+
     it('defaults every header sort icon to the neutral sort indicator', async () => {
       const { container } = renderPage()
       await waitForLoaded()
@@ -138,12 +160,12 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       await waitForLoaded()
       const nameHeader = findHeader(container, 'Name')
 
-      await fireEvent.click(nameHeader)
+      await fireEvent.click(within(nameHeader).getByRole('button'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('order=ASC'), 'GET'))
       expect(nameHeader.querySelector('svg')).toHaveAttribute('data-icon', 'arrow-up')
       expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('searchColum=name'), 'GET')
 
-      await fireEvent.click(nameHeader)
+      await fireEvent.click(within(nameHeader).getByRole('button'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('order=DESC'), 'GET'))
       expect(nameHeader.querySelector('svg')).toHaveAttribute('data-icon', 'arrow-down')
     })
@@ -151,10 +173,10 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
     it('clicking a different column resets its icon to ascending and does not affect the untouched column', async () => {
       const { container } = renderPage()
       await waitForLoaded()
-      await fireEvent.click(findHeader(container, 'Name'))
+      await fireEvent.click(within(findHeader(container, 'Name')).getByRole('button'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('order=ASC'), 'GET'))
 
-      await fireEvent.click(findHeader(container, 'Rank'))
+      await fireEvent.click(within(findHeader(container, 'Rank')).getByRole('button'))
       await vi.waitFor(() =>
         expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('searchColum=rank'), 'GET'),
       )
@@ -173,7 +195,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
             resolveFetch = resolve
           }),
       )
-      fireEvent.click(findHeader(container, 'Name'))
+      fireEvent.click(within(findHeader(container, 'Name')).getByRole('button'))
 
       await vi.waitFor(() => expect(container.querySelector('.loading-spinner')).toBeInTheDocument())
       expect(screen.queryByText('Alice')).not.toBeInTheDocument()
@@ -190,7 +212,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
         if (typeof endpoint === 'string' && endpoint.startsWith(PLAYERS_URL)) return Promise.resolve(errJson())
         return Promise.resolve(okJson({}))
       })
-      await fireEvent.click(findHeader(container, 'Name'))
+      await fireEvent.click(within(findHeader(container, 'Name')).getByRole('button'))
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalled())
       // the list was optimistically cleared before the request and the failed request never
       // repopulates it - this documents existing (if slightly harsh) behavior.
@@ -200,6 +222,18 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
   })
 
   describe('pagination', () => {
+    it('keeps the chosen sort column and direction when advancing to the next page', async () => {
+      setupFetchAPI(120)
+      const { container } = renderPage()
+      await waitForLoaded()
+      await fireEvent.click(within(findHeader(container, 'Rank')).getByRole('button', { name: 'Rank' }))
+      await waitForLoaded()
+      await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=50'), 'GET'))
+      expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('searchColum=rank'), 'GET')
+      expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('order=ASC'), 'GET')
+    })
+
     it('requests the next offset and reflects it in the page indicator', async () => {
       setupFetchAPI(120)
       const { container } = renderPage()

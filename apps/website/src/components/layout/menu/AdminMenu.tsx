@@ -34,9 +34,9 @@ export const AdminMenu: Component = () => {
       icon: 'info',
       url: '/dashboard/admins/informations',
     },
-    { label: t('main.guilds', 'Guilds'), icon: 'server', url: '/dashboard/admins/guilds' },
+    { label: t('main.guilds', 'Discord communities'), icon: 'server', url: '/dashboard/admins/guilds' },
     {
-      label: t('dashboard.menu.admin.impersonate', 'Impersonate'),
+      label: t('dashboard.menu.admin.impersonate', 'Support access'),
       icon: 'user-round-cog',
       url: '/dashboard/admins/impersonate',
     },

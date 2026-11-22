@@ -101,7 +101,7 @@ describe('cookie session login', () => {
     expect(history.get()).toBe('/login?error=oauth_denied')
     expect(network).not.toHaveBeenCalled()
     expect(screen.getByText(/sign-in was not completed/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Login with Discord' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Sign in with Discord' })).toHaveAttribute(
       'href',
       expect.stringContaining('/v3/users/login'),
     )

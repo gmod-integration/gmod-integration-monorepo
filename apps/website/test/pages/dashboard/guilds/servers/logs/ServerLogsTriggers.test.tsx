@@ -71,7 +71,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
       expect(row.getByText('Amount')).toBeInTheDocument()
       expect(row.getByText('Greater Than')).toBeInTheDocument()
       expect(row.getByText('1000000')).toBeInTheDocument()
-      expect(row.getByText('Send Message In Channel')).toBeInTheDocument()
+      expect(row.getByText('Send a Discord message')).toBeInTheDocument()
     })
 
     it('shows a real access refusal as an error instead of a false empty list', async () => {
@@ -82,7 +82,9 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
       const { container } = renderPage()
       await vi.waitFor(() => expect(container.querySelector('.loading')).not.toBeInTheDocument())
       expect(screen.getByRole('alert')).toHaveTextContent('Unable to load')
-      expect(screen.queryByText('Nothing to display yet.')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('No log alerts are configured. Add a rule to receive notifications for matching events.'),
+      ).not.toBeInTheDocument()
     })
 
     it('shows a recoverable error when the fetch fails for a reason other than 403', async () => {
@@ -99,7 +101,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
       window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
       ;(fetchAPI as Mock).mockImplementation(() => Promise.resolve(okJson([])))
       renderPage()
-      await vi.waitFor(() => expect(screen.getByText('Logs Trigger')).toBeInTheDocument())
+      await vi.waitFor(() => expect(screen.getByText('Log alerts')).toBeInTheDocument())
       await vi.waitFor(() => expect(screen.getByRole('note')).toHaveTextContent('This feature requires Premium.'))
     })
 
@@ -178,7 +180,9 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
         within(screen.getByRole('dialog', { name: 'Delete trigger?' })).getByRole('button', { name: 'Delete' }),
       )
       await vi.waitFor(() => expect(container.querySelector('tbody svg[data-icon="trash-2"]')).not.toBeInTheDocument())
-      expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.')
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'No log alerts are configured. Add a rule to receive notifications for matching events.',
+      )
     })
 
     it('does not remove the row when deleting a trigger fails, and shows the error', async () => {

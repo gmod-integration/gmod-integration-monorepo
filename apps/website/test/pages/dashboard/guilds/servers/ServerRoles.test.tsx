@@ -52,7 +52,7 @@ const modal = () => within(document.getElementById('edit_role_modal')!)
 const input = (id: string) => document.getElementById(id) as HTMLInputElement
 const writes = () => (fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')
 async function createDraft() {
-  await fireEvent.click(screen.getByRole('button', { name: 'Add Role Sync' }))
+  await fireEvent.click(screen.getByRole('button', { name: 'Add role mapping' }))
   await fireEvent.change(input('roles-role'), { target: { value: 'r3' } })
   await fireEvent.input(input('roles-mapping'), { target: { value: 'vip' } })
   await fireEvent.click(input('roles-enabled'))
@@ -98,34 +98,34 @@ describe('ServerRoles unified editing', () => {
   it('requires a role and mapping before Create and discards a cancelled creation', async () => {
     renderPage()
     await loaded()
-    await fireEvent.click(screen.getByRole('button', { name: 'Add Role Sync' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Add role mapping' }))
     expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
     await fireEvent.change(input('roles-role'), { target: { value: 'r3' } })
     expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
     await fireEvent.input(input('roles-mapping'), { target: { value: 'draft' } })
     await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
     expect(writes()).toHaveLength(0)
-    await fireEvent.click(screen.getByRole('button', { name: 'Add Role Sync' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Add role mapping' }))
     expect(input('roles-mapping')).toHaveValue('')
     expect(input('roles-role')).toHaveValue('')
   })
   it('edits a copy and Cancel leaves the saved row unchanged', async () => {
     renderPage()
     await loaded()
-    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit Role Sync' })[0])
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit role mapping' })[0])
     expect(input('roles-role')).toBeDisabled()
     expect(input('roles-mapping')).toHaveValue('admins')
     await fireEvent.input(input('roles-mapping'), { target: { value: 'draft' } })
     await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
     expect(screen.getByText('admins')).toBeInTheDocument()
     expect(writes()).toHaveLength(0)
-    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit Role Sync' })[0])
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit role mapping' })[0])
     expect(input('roles-mapping')).toHaveValue('admins')
   })
   it('keeps a failed edit open with its values and retries successfully', async () => {
     renderPage()
     await loaded()
-    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit Role Sync' })[0])
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit role mapping' })[0])
     await fireEvent.input(input('roles-mapping'), { target: { value: 'superadmins' } })
     write = () => errJson()
     await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
@@ -160,13 +160,17 @@ describe('ServerRoles unified editing', () => {
   it('names the deletion target, cancels without a request and removes only after confirmation', async () => {
     renderPage()
     await loaded()
-    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete Role Sync' })[1])
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete role mapping' })[1])
     const confirmation = within(document.getElementById('delete-role-sync')!)
-    expect(confirmation.getByText('Moderator — mods')).toBeInTheDocument()
+    expect(
+      confirmation.getByText(
+        'Moderator — mods — Delete this mapping and stop synchronizing it. This does not delete the Discord role or the game user group.',
+      ),
+    ).toBeInTheDocument()
     expect(writes()).toHaveLength(0)
     await fireEvent.click(confirmation.getByRole('button', { name: 'Cancel' }))
     expect(screen.getByText('@Moderator')).toBeInTheDocument()
-    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete Role Sync' })[1])
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete role mapping' })[1])
     await fireEvent.click(confirmation.getByRole('button', { name: 'Delete' }))
     await vi.waitFor(() => expect(screen.queryByText('@Moderator')).not.toBeInTheDocument())
     expect(fetchAPI).toHaveBeenCalledWith(URL + '/r2', 'DELETE')
@@ -176,7 +180,7 @@ describe('ServerRoles unified editing', () => {
     renderPage()
     await loaded()
     write = () => errJson()
-    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete Role Sync' })[1])
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete role mapping' })[1])
     const dialog = document.getElementById('delete-role-sync')!
     await fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
     await vi.waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument())
@@ -187,11 +191,11 @@ describe('ServerRoles unified editing', () => {
     loadFailure = true
     renderPage()
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'Add Role Sync' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add role mapping' })).toBeDisabled()
     loadFailure = false
     await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await loaded()
-    expect(screen.getByRole('button', { name: 'Add Role Sync' })).not.toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Add role mapping' })).not.toBeDisabled()
   })
   it('keeps direction changes local, cancels them and saves explicitly with the accepted baseline', async () => {
     renderPage()
@@ -232,12 +236,12 @@ describe('ServerRoles unified editing', () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
     renderPage()
     await loaded()
-    await fireEvent.click(screen.getByRole('button', { name: 'Add Role Sync' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Add role mapping' }))
     const select = input('roles-role')
     expect(within(select).queryByRole('option', { name: 'Admin' })).not.toBeInTheDocument()
     expect(within(select).getByRole('option', { name: 'VIP' })).toBeInTheDocument()
     expect(
-      within(input('server-roles-direction')).getByRole('option', { name: 'Both Directions', hidden: true }),
+      within(input('server-roles-direction')).getByRole('option', { name: 'Both directions', hidden: true }),
     ).toBeDisabled()
   })
 })

@@ -1,4 +1,4 @@
-import { Icon } from '../../../../../components/ui/index.js'
+import { Icon, IconButton, IconButtonLink } from '../../../../../components/ui/index.js'
 import { Component, createSignal, Match, Show, Switch } from 'solid-js'
 import { useI18n } from '../../../../../i18n'
 import JsonViewer from '../../../../../components/JsonViewer'
@@ -248,10 +248,13 @@ export const AddLogComponent: Component<AddDataProps> = (props) => {
           </Switch>
         </td>
         <td>
-          <div class="flex gap-2 justify-center">
-            <div
+          <div class="flex flex-wrap items-center justify-center gap-2">
+            <IconButton
               class="tooltip tooltip-info"
-              data-tip={t('dashboard.server.logs.tooltip.show_more', 'Show More')}
+              variant="ghost"
+              size="sm"
+              label={t('dashboard.server.logs.tooltip.show_more', 'View event details')}
+              aria-expanded={selectLog() === localIdxLog}
               onClick={() => {
                 if (selectLog() === localIdxLog) {
                   setSelectLog(0)
@@ -266,15 +269,13 @@ export const AddLogComponent: Component<AddDataProps> = (props) => {
               <Show when={selectLog() !== localIdxLog}>
                 <Icon name="chevron-down" />
               </Show>
-            </div>
-            <div class="tooltip tooltip-info" data-tip={t('dashboard.server.logs.tooltip.download', 'Download')}>
-              <a
-                href={`data:text/plain;charset=utf-8,${encodeURIComponent(logContentStr.join('\n'))}`}
-                download={`${t('dashboard.server.logs.log_filename_prefix', 'log-')}${props.createAt.toLocaleString()}.json`}
-              >
-                <Icon name="download" />
-              </a>
-            </div>
+            </IconButton>
+            <IconButtonLink
+              icon="download"
+              label={t('dashboard.server.logs.tooltip.download', 'Download event data')}
+              href={`data:text/plain;charset=utf-8,${encodeURIComponent(logContentStr.join('\n'))}`}
+              download={`${t('dashboard.server.logs.log_filename_prefix', 'log-')}${props.createAt.toLocaleString()}.json`}
+            />
           </div>
         </td>
       </tr>

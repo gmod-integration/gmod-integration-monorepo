@@ -139,10 +139,10 @@ const GuildBot: Component = () => {
 
   function getNameOf(id: string) {
     const names: Record<string, string> = {
-      disabled: t('dashboard.guild.bot.disabled', 'Disabled'),
-      guildMemberCount: t('dashboard.guild.bot.guildMemberCount', 'Show Guild Member Count'),
+      disabled: t('dashboard.guild.bot.disabled', 'No activity'),
+      guildMemberCount: t('dashboard.guild.bot.guildMemberCount', 'Show Discord member count'),
       playerCount: t('dashboard.guild.bot.playerCount', 'Show Player Count'),
-      rotate: t('dashboard.guild.bot.rotate', 'Alternate Showed Information'),
+      rotate: t('dashboard.guild.bot.rotate', 'Alternate member and player counts'),
     }
     return names[id] || t('dashboard.guild.bot.unknown', 'Unknown')
   }
@@ -178,7 +178,7 @@ const GuildBot: Component = () => {
           <span>
             {t(
               'dashboard.guild.bot.feature_unavailable',
-              "This feature is only available for GmodStore's custom bots.",
+              'This feature is reserved for custom bots purchased on GmodStore. A standard Premium subscription does not include custom bots.',
             )}{' '}
             <A class="link" href="/gmodstore">
               {t('dashboard.guild.bot.get_custom_bot', 'Get a Custom Bot')}
@@ -197,6 +197,10 @@ const GuildBot: Component = () => {
         <FormField
           id="bot-name"
           label={t('dashboard.guild.bot.name', 'Name')}
+          description={t(
+            'dashboard.guild.bot.name_hint',
+            'The bot name displayed in Discord. Save this dialog to apply your changes.',
+          )}
           required
           error={dirty() && !draft().username.trim() ? t('ui.invalid_value', 'Enter a valid value.') : undefined}
         >
@@ -207,13 +211,17 @@ const GuildBot: Component = () => {
             disabled={bot.loading || editAction.pending()}
             value={draft().username}
             aria-invalid={dirty() && !draft().username.trim()}
-            aria-describedby={dirty() && !draft().username.trim() ? 'bot-name-error' : undefined}
+            aria-describedby={`bot-name-description${dirty() && !draft().username.trim() ? ' bot-name-error' : ''}`}
             onInput={(event) => updateDraft({ username: event.currentTarget.value })}
           />
         </FormField>
         <FormField
           id="bot-avatar"
           label={t('dashboard.guild.bot.avatar', 'Avatar')}
+          description={t(
+            'dashboard.guild.bot.avatar_hint',
+            'Paste the full http:// or https:// address of the image to use as the bot avatar.',
+          )}
           error={!avatarValid() ? t('ui.invalid_value', 'Enter a valid value.') : undefined}
         >
           <input
@@ -223,14 +231,17 @@ const GuildBot: Component = () => {
             disabled={bot.loading || editAction.pending()}
             value={draft().avatar}
             aria-invalid={!avatarValid()}
-            aria-describedby={!avatarValid() ? 'bot-avatar-error' : undefined}
+            aria-describedby={`bot-avatar-description${!avatarValid() ? ' bot-avatar-error' : ''}`}
             onInput={(event) => updateDraft({ avatar: event.currentTarget.value })}
           />
         </FormField>
         <FormField
           id="bot-status"
-          label={t('dashboard.guild.bot.status', 'Status')}
-          description={t('dashboard.guild.bot.refresh_every_30s', 'Refresh every 30s')}
+          label={t('dashboard.guild.bot.status', 'Discord activity')}
+          description={t(
+            'dashboard.guild.bot.refresh_every_30s',
+            'The activity shown under the bot name in Discord, refreshed every 30 seconds. Player counts combine the linked game servers. No activity hides this text without disconnecting the bot.',
+          )}
         >
           <select
             id="bot-status"
@@ -284,22 +295,41 @@ const GuildBot: Component = () => {
           <h3 class="font-semibold">{t('dashboard.guild.bot.how_to_setup', 'How to setup a custom bot:')}</h3>
           <ol class="mt-2 list-decimal text-sm text-base-content/70 list-inside space-y-1">
             <li>
-              {t('dashboard.guild.bot.create_app', 'Create a app on')}{' '}
+              {t('dashboard.guild.bot.create_app', 'Create an application in the Discord Developer Portal:')}{' '}
               <A class="link" href="https://discord.com/developers/applications">
                 discord.dev
               </A>
             </li>
-            <li>{t('dashboard.guild.bot.go_to_bot_tab', 'Go to the bot tab')}</li>
+            <li>{t('dashboard.guild.bot.go_to_bot_tab', 'Open the Bot tab for that application.')}</li>
             <li>{t('dashboard.guild.bot.enable_x', "Enable 'Presence Intent'", 'Presence Intent')}</li>
             <li>{t('dashboard.guild.bot.enable_x', "Enable 'Server Members Intent'", 'Server Members Intent')}</li>
             <li>{t('dashboard.guild.bot.enable_x', "Enable 'Message Content Intent'", 'Message Content Intent')}</li>
-            <li>{t('dashboard.guild.bot.reset_token', 'Reset the token')}</li>
-            <li>{t('dashboard.guild.bot.copy_token', 'Copy the token')}</li>
+            <li>
+              {t(
+                'dashboard.guild.bot.reset_token',
+                'Use Reset Token to generate a token. This invalidates any previous token for this bot.',
+              )}
+            </li>
+            <li>
+              {t(
+                'dashboard.guild.bot.copy_token',
+                'Copy the token, paste it below and save. You can then invite the custom bot to this Discord server.',
+              )}
+            </li>
           </ol>
         </div>
-        <FormField id="bot-token" label={t('dashboard.guild.bot.token', 'Token')} required>
+        <FormField
+          id="bot-token"
+          label={t('dashboard.guild.bot.token', 'Bot token')}
+          description={t(
+            'dashboard.guild.bot.token_hint',
+            'This secret authorizes Gmod Integration to run your custom bot. Paste the bot token from the Developer Portal, not a user token or application secret. Keep it private.',
+          )}
+          required
+        >
           <input
             id="bot-token"
+            aria-describedby="bot-token-description"
             type="password"
             autocomplete="new-password"
             class="input w-full"
@@ -324,7 +354,10 @@ const GuildBot: Component = () => {
 
       <AdminPanel
         title={t('dashboard.guild.bot.custom_bot', 'Custom Bot')}
-        description={t('dashboard.guild.bot.edit_bot_info', 'Edit the bot information.')}
+        description={t(
+          'dashboard.guild.bot.edit_bot_info',
+          'Configure the identity, displayed activity and connection of your custom Discord bot. Set its token and invite it to this Discord server before editing its identity.',
+        )}
         icon="bot"
         type="none"
         actions={
@@ -360,7 +393,7 @@ const GuildBot: Component = () => {
                     class="w-8 h-8 rounded-full"
                   />
                 </dd>
-                <dt class="text-base-content/70">{t('dashboard.guild.bot.status', 'Status')}</dt>
+                <dt class="text-base-content/70">{t('dashboard.guild.bot.status', 'Discord activity')}</dt>
                 <dd>{getNameOf(bot()!.status)}</dd>
               </dl>
             </SettingGroup>
@@ -379,11 +412,11 @@ const GuildBot: Component = () => {
                     onClick={inviteBot}
                     classList={{ hidden: bot()!.onGuild || !bot()!.custom }}
                   >
-                    {t('dashboard.guild.bot.join_guild', 'Join Guild')}
+                    {t('dashboard.guild.bot.join_guild', 'Invite to this Discord server')}
                   </Button>
                 </SettingRow>
                 <SettingRow
-                  title={t('dashboard.guild.bot.token', 'Token')}
+                  title={t('dashboard.guild.bot.token', 'Bot token')}
                   description={t('settings.bot_token_hint', 'Use setup to configure or replace the custom bot token.')}
                 >
                   <Button

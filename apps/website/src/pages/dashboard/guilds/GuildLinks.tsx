@@ -40,8 +40,10 @@ const GuildLinks: Component = () => {
         /* Invalid URL. */
       }
       return {
-        alias: draft.alias.trim() ? undefined : t('ui.invalid_value', 'Enter a valid value.'),
-        url: validURL ? undefined : t('ui.invalid_value', 'Enter a valid value.'),
+        alias: draft.alias.trim() ? undefined : t('dashboard.guild.links.alias_error', 'Enter a name for this link.'),
+        url: validURL
+          ? undefined
+          : t('dashboard.guild.links.url_error', 'Enter a complete URL starting with http:// or https://.'),
       }
     },
   })
@@ -111,6 +113,10 @@ const GuildLinks: Component = () => {
         <FormField
           id="link-alias"
           label={t('dashboard.guild.links.alias', 'Alias')}
+          description={t(
+            'dashboard.guild.links.alias_hint',
+            'The name members choose when using /link in Discord, such as Website or Workshop.',
+          )}
           required
           error={form.errors().alias}
         >
@@ -120,26 +126,43 @@ const GuildLinks: Component = () => {
             class="input w-full"
             disabled={links.loading || form.pending()}
             aria-invalid={!!form.errors().alias}
-            aria-describedby={form.errors().alias ? 'link-alias-error' : undefined}
+            aria-describedby={`link-alias-description${form.errors().alias ? ' link-alias-error' : ''}`}
             value={selectedLink().alias}
             onInput={(event) => form.patch({ alias: event.currentTarget.value })}
           />
         </FormField>
-        <FormField id="link-url" label={t('dashboard.guild.links.url', 'URL')} required error={form.errors().url}>
+        <FormField
+          id="link-url"
+          label={t('dashboard.guild.links.url', 'URL')}
+          description={t(
+            'dashboard.guild.links.url_hint',
+            'The full web address opened by this shortcut, starting with http:// or https://.',
+          )}
+          required
+          error={form.errors().url}
+        >
           <input
             id="link-url"
             type="url"
             class="input w-full"
             disabled={links.loading || form.pending()}
             aria-invalid={!!form.errors().url}
-            aria-describedby={form.errors().url ? 'link-url-error' : undefined}
+            aria-describedby={`link-url-description${form.errors().url ? ' link-url-error' : ''}`}
             value={selectedLink().url}
             onInput={(event) => form.patch({ url: event.currentTarget.value })}
           />
         </FormField>
-        <FormField id="link-active" label={t('dashboard.guild.links.active', 'Active')}>
+        <FormField
+          id="link-active"
+          label={t('dashboard.guild.links.active', 'Active')}
+          description={t(
+            'dashboard.guild.links.active_hint',
+            'Only active links are available through /link. Choose No to keep this link saved without offering it to members.',
+          )}
+        >
           <select
             id="link-active"
+            aria-describedby="link-active-description"
             class="select w-full"
             disabled={links.loading || form.pending()}
             value={selectedLink().active ? 'true' : 'false'}
@@ -176,7 +199,10 @@ const GuildLinks: Component = () => {
 
       <AdminPanel
         title={t('dashboard.guild.links.title', 'Links')}
-        description={t('dashboard.guild.links.description', 'Create shortcuts for your server informations.')}
+        description={t(
+          'dashboard.guild.links.description',
+          'Create named shortcuts to your website, workshop or other useful pages. Members retrieve active links with /link in Discord.',
+        )}
         type="none"
       >
         <div class="min-w-0 w-full overflow-x-auto">
@@ -246,6 +272,10 @@ const GuildLinks: Component = () => {
           error={!!links.error}
           empty={!links.loading && !links.error && links()?.length === 0}
           errorLabel={t('dashboard.guild.links.failed_to_load', 'Failed to load the links')}
+          emptyLabel={t(
+            'dashboard.guild.links.empty',
+            'No links yet. Add a link, then activate it to make it available through /link in Discord.',
+          )}
           onRetry={() => void refetch()}
         />
         <Show when={!links.loading && !links.error}>

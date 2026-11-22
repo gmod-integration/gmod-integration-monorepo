@@ -1,10 +1,10 @@
 import { capabilityLimit, hasCapability, type CapabilityKey } from '@gmod/schema/server/AccessPolicySchema.js'
 import { Icon } from '../components/ui/index.js'
-import { type Component, For, Show } from 'solid-js'
+import { type Component, createMemo, For, Show } from 'solid-js'
 import { useI18n } from '../i18n.js'
 
 const Premium: Component = () => {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const identity = (premium: boolean) => ({ premium, customBot: false, state: 'ready' as const })
   const included = (key: CapabilityKey, premium: boolean) => hasCapability(identity(premium), key)
   const limit = (key: CapabilityKey, premium: boolean, label: string) => {
@@ -19,7 +19,7 @@ const Premium: Component = () => {
     inDev?: boolean
   }
 
-  const features: Record<string, Feature> = {
+  const features = createMemo<Record<string, Feature>>(() => ({
     ['sync_chat']: {
       ['name']: t('premium.sync_chat', 'Sync Chat'),
       ['free_value']: true,
@@ -106,19 +106,19 @@ const Premium: Component = () => {
       ['premium_value']: true,
     },
     ['team_vocal']: {
-      ['name']: t('premium.team_vocal', 'Team Vocal'),
+      ['name']: t('premium.team_vocal', 'Team voice channels'),
       ['free_value']: false,
       ['premium_value']: true,
       ['inDev']: true,
     },
     ['server_status_alert']: {
       ['name']: t('premium.server_status_alert', 'Server Status - Alert'),
-      ['free_value']: 'Default Message',
-      ['premium_value']: 'Custom Message',
+      ['free_value']: t('premium.default_message', 'Default message'),
+      ['premium_value']: t('premium.custom_message', 'Custom message'),
       ['inDev']: true,
     },
     ['guild_link']: {
-      ['name']: t('premium.guild_link', 'Guild Links'),
+      ['name']: t('premium.guild_link', 'Community links'),
       ['free_value']: limit('guild.links', false, 'access.count_links'),
       ['premium_value']: true,
     },
@@ -128,7 +128,7 @@ const Premium: Component = () => {
       ['premium_value']: true,
     },
     ['logs']: {
-      ['name']: t('premium.logs', 'WebPanel Logs'),
+      ['name']: t('premium.logs', 'Game logs in the dashboard'),
       ['free_value']: limit('logs.history', false, 'access.history_count'),
       ['premium_value']: t('premium.infinite', 'infinite'),
     },
@@ -194,19 +194,19 @@ const Premium: Component = () => {
       ['premium_value']: included('sync.teams', true),
     },
     ['guild_tickets']: {
-      ['name']: t('premium.guild_tickets', 'Guild Tickets'),
+      ['name']: t('premium.guild_tickets', 'Community support tickets'),
       ['free_value']: true,
       ['premium_value']: true,
       ['inDev']: true,
     },
     ['guild_suggestions']: {
-      ['name']: t('premium.guild_suggestions', 'Guild Suggestions'),
+      ['name']: t('premium.guild_suggestions', 'Community suggestions'),
       ['free_value']: true,
       ['premium_value']: true,
       ['inDev']: true,
     },
     ['guild_verification']: {
-      ['name']: t('premium.guild_verification', 'Guild Verification'),
+      ['name']: t('premium.guild_verification', 'Discord and Steam verification'),
       ['free_value']: included('verification.roles', false),
       ['premium_value']: included('verification.roles', true),
     },
@@ -221,12 +221,12 @@ const Premium: Component = () => {
       premium_value: t('access.historical_bot', 'Requires a GmodStore purchase'),
     },
     ['guild_verification_role_limit']: {
-      ['name']: t('premium.guild_verification_role_limit', 'Guild Verification - Role Limit'),
+      ['name']: t('premium.guild_verification_role_limit', 'Verification role limit'),
       ['free_value']: limit('verification.roles', false, 'premium.guild_roles'),
       ['premium_value']: t('premium.infinite', 'infinite'),
     },
     ['force_ply_link']: {
-      ['name']: t('premium.force_ply_link', 'Force Player Link'),
+      ['name']: t('premium.force_ply_link', 'Require linked player accounts'),
       ['free_value']: true,
       ['premium_value']: true,
     },
@@ -236,7 +236,7 @@ const Premium: Component = () => {
       ['premium_value']: true,
     },
     ['rcon']: {
-      ['name']: t('premium.rcon', 'RCON Execution'),
+      ['name']: t('premium.rcon', 'Game console commands (RCON)'),
       ['free_value']: included('console.rcon', false),
       ['premium_value']: included('console.rcon', true),
     },
@@ -246,7 +246,7 @@ const Premium: Component = () => {
       ['premium_value']: true,
       ['inDev']: true,
     },
-  }
+  }))
 
   type Offer = {
     name: string
@@ -263,160 +263,167 @@ const Premium: Component = () => {
     permanent: boolean
   }
 
-  const offers: Record<string, Offer> = {
-    ['free']: {
-      ['name']: t('premium.free', 'Free'),
-      ['sub_price']: t('premium.free_price', 'free, nada, nothing, niente'),
-      ['description']: t('premium.free_description', 'Get access to all the basic features'),
-      ['promote_features']: [
-        t('premium.all_free_features', 'All Free Features'),
-        t('premium.basic_support', 'Basic Support'),
-      ],
-      ['button']: t('premium.setup_server', 'Setup Server'),
-      ['link']: '/dashboard/guilds',
-      ['price']: 0,
-      ['permanent']: false,
-    },
-    ['subscribe']: {
-      ['name']: t('premium.subscribe', 'Subscribe'),
-      ['sub_price']: t('premium.subscribe_price', 'guilds / month'),
-      ['description']: t('premium.subscribe_description', 'Get access to all features and customisation'),
-      ['promote_features']: [
-        t('premium.all_premium_features', 'All Premium Features'),
-        t('premium.premium_discord_role', 'Premium Discord Role'),
-        t('premium.priority_support', 'Priority Support'),
-      ],
-      ['button']: t('premium.subscribe_on_discord', 'Subscribe on Discord'),
-      ['link']: 'https://discord.com/application-directory/1110121451501129758/premium',
-      ['price']: 25.99,
-      ['permanent']: false,
-    },
-    ['buy']: {
-      ['name']: t('premium.one_time', 'One Time'),
-      ['sub_price']: t('premium.one_time_price', 'guilds / lifetime'),
-      ['description']: t('premium.one_time_description', 'Get access to all features and customisation'),
-      ['promote_features']: [
-        t('premium.all_premium_features', 'All Premium Features'),
-        t('premium.custom_bot', 'Custom Bot'),
-        t('premium.premium_discord_role', 'Premium Discord Role'),
-        t('premium.priority_support', 'Priority Support'),
-        t('premium.lifetime_access', 'Lifetime Access'),
-      ],
-      ['button']: t('premium.buy_on_gmod_store', 'Buy on Gmod Store'),
-      ['link']: 'https://www.gmodstore.com/market/view/gmod-integration',
-      ['price']: 259.99,
-      ['reduction']: {
-        ['percent']: 15,
-        ['date']: '2024-09-22T23:59:59',
+  const offers = createMemo<Record<string, Offer>>(() => {
+    const current: Record<string, Offer> = {
+      ['free']: {
+        ['name']: t('premium.free', 'Free'),
+        ['sub_price']: t('premium.free_price', 'No subscription required'),
+        ['description']: t(
+          'premium.free_description',
+          'Start with the free features and limits shown in the comparison below.',
+        ),
+        ['promote_features']: [
+          t('premium.all_free_features', 'All Free Features'),
+          t('premium.basic_support', 'Basic Support'),
+        ],
+        ['button']: t('premium.setup_server', 'Connect a game server'),
+        ['link']: '/dashboard/guilds',
+        ['price']: 0,
+        ['permanent']: false,
       },
-      ['permanent']: true,
-    },
-  }
-
-  for (const key in offers) {
-    if (offers[key].reduction && new Date(offers[key].reduction.date) < new Date()) {
-      delete offers[key].reduction
+      ['subscribe']: {
+        ['name']: t('premium.subscribe', 'Monthly subscription'),
+        ['sub_price']: t('premium.subscribe_price', 'per Discord community · month'),
+        ['description']: t(
+          'premium.subscribe_description',
+          'Activate Premium for one Discord community through Discord. Custom bots require the GmodStore offer.',
+        ),
+        ['promote_features']: [
+          t('premium.all_premium_features', 'Premium features listed below'),
+          t('premium.premium_discord_role', 'Premium Discord Role'),
+          t('premium.priority_support', 'Priority Support'),
+        ],
+        ['button']: t('premium.subscribe_on_discord', 'Subscribe on Discord'),
+        ['link']: 'https://discord.com/application-directory/1110121451501129758/premium',
+        ['price']: 25.99,
+        ['permanent']: false,
+      },
+      ['buy']: {
+        ['name']: t('premium.one_time', 'One-time purchase'),
+        ['sub_price']: t('premium.one_time_price', 'per Discord community · lifetime'),
+        ['description']: t(
+          'premium.one_time_description',
+          'Activate Premium for one Discord community through GmodStore, with access to the custom bot feature.',
+        ),
+        ['promote_features']: [
+          t('premium.all_premium_features', 'Premium features listed below'),
+          t('premium.custom_bot', 'Custom Bot'),
+          t('premium.premium_discord_role', 'Premium Discord Role'),
+          t('premium.priority_support', 'Priority Support'),
+          t('premium.lifetime_access', 'Lifetime Access'),
+        ],
+        ['button']: t('premium.buy_on_gmod_store', 'Buy on Gmod Store'),
+        ['link']: 'https://www.gmodstore.com/market/view/gmod-integration',
+        ['price']: 259.99,
+        ['reduction']: {
+          ['percent']: 15,
+          ['date']: '2024-09-22T23:59:59',
+        },
+        ['permanent']: true,
+      },
     }
-  }
+
+    for (const offer of Object.values(current)) {
+      if (offer.reduction && new Date(offer.reduction.date) < new Date()) delete offer.reduction
+    }
+    return current
+  })
 
   type Category = {
     name: string
     features: Feature[]
   }
 
-  const category: Record<string, Category> = {
+  const category = createMemo<Record<string, Category>>(() => ({
     ['server']: {
       ['name']: t('premium.server', 'Server'),
       ['features']: [
-        features['servers'],
-        features['server_status'],
-        features['server_status_buttons_limit'],
-        features['status_chart'],
-        features['server_status_alert'],
-        features['logs'],
-        features['errors_history'],
-        features['log_triggers'],
-        features['logs_relay'],
-        features['players'],
-        features['reward'],
+        features()['servers'],
+        features()['server_status'],
+        features()['server_status_buttons_limit'],
+        features()['status_chart'],
+        features()['server_status_alert'],
+        features()['logs'],
+        features()['errors_history'],
+        features()['log_triggers'],
+        features()['logs_relay'],
+        features()['players'],
+        features()['reward'],
       ],
     },
     ['utility']: {
       ['name']: t('premium.utility', 'Utility'),
       ['features']: [
-        features['guild_link'],
-        features['custom_bot'],
-        features['screenshots'],
-        features['guild_tickets'],
-        features['guild_suggestions'],
-        features['ig_report_bug'],
-        features['team_vocal'],
-        features['maintenance_white_list'],
-        features['rcon'],
+        features()['guild_link'],
+        features()['custom_bot'],
+        features()['screenshots'],
+        features()['guild_tickets'],
+        features()['guild_suggestions'],
+        features()['ig_report_bug'],
+        features()['team_vocal'],
+        features()['maintenance_white_list'],
+        features()['rcon'],
       ],
     },
     ['data']: {
       ['name']: t('premium.data_statistics', 'Data & Statistics'),
       ['features']: [
-        features['user_profiles'],
-        features['user_stats'],
-        features['user_stats_custom_value'],
-        features['leaderboards'],
+        features()['user_profiles'],
+        features()['user_stats'],
+        features()['user_stats_custom_value'],
+        features()['leaderboards'],
       ],
     },
     ['security']: {
       ['name']: t('premium.security', 'Security'),
       ['features']: [
-        features['guild_verification'],
-        features['guild_verification_role_limit'],
-        features['verification_preferences'],
-        features['auto_roles_limit'],
-        features['force_ply_link'],
-        features['sync_bans'],
-        features['sync_kicks'],
-        features['sync_warns'],
+        features()['guild_verification'],
+        features()['guild_verification_role_limit'],
+        features()['verification_preferences'],
+        features()['auto_roles_limit'],
+        features()['force_ply_link'],
+        features()['sync_bans'],
+        features()['sync_kicks'],
+        features()['sync_warns'],
       ],
     },
     ['synchronization']: {
       ['name']: t('premium.synchronization', 'Synchronization'),
       ['features']: [
-        features['sync_chat'],
-        features['sync_chat_customisation'],
-        features['sync_player_name'],
-        features['sync_player_name_customisation'],
-        features['nickname_rules_limit'],
-        features['chat_filters'],
-        features['reverse_sync'],
-        features['sync_roles'],
-        features['sync_roles_limit'],
-        features['sync_team'],
+        features()['sync_chat'],
+        features()['sync_chat_customisation'],
+        features()['sync_player_name'],
+        features()['sync_player_name_customisation'],
+        features()['nickname_rules_limit'],
+        features()['chat_filters'],
+        features()['reverse_sync'],
+        features()['sync_roles'],
+        features()['sync_roles_limit'],
+        features()['sync_team'],
       ],
     },
-  }
+  }))
 
-  const faq: { question: string; answer: string }[] = [
+  const faq = createMemo<{ question: string; answer: string }[]>(() => [
     {
-      question: t('premium.faq_question_1', 'What are the differences between the free and the premium version ?'),
+      question: t('premium.faq_question_1', 'What does Premium add?'),
       answer: t(
         'premium.faq_answer_1',
-        'Gmod Integration Premium offers more features and customisation and is a way to support the project. You can see the full list of features in the plans comparison table above.',
+        'Premium increases limits and adds the customization options shown in the comparison above. Features marked as in development are not available yet. Custom bots require the GmodStore offer.',
       ),
     },
     {
-      question: t('premium.faq_question_2', 'What is a server and what is a guilds ?'),
+      question: t('premium.faq_question_2', 'What is the difference between a community and a game server?'),
       answer: t(
         'premium.faq_answer_2',
-        "The terms server refers to a Garry's Mod server and guilds refers to a Discord guilds (aka discord server).",
+        "A community is your Discord server. A game server is a Garry's Mod server connected to it. One Discord community can manage several game servers, within the limits of its offer.",
       ),
     },
     {
-      question: t(
-        'premium.faq_question_3',
-        "What will happen if I lose my premium subscription or if I don't renew it ?",
-      ),
+      question: t('premium.faq_question_3', 'What happens when Premium expires?'),
       answer: t(
         'premium.faq_answer_3',
-        "You will lose access to the premium features and customisation. You won't lose your data but can't access it anymore.",
+        'Premium-only features become unavailable and free limits apply. Expiry does not erase your saved configuration. You can still disable or remove saved settings that require Premium.',
       ),
     },
     {
@@ -427,34 +434,34 @@ const Premium: Component = () => {
       ),
     },
     {
-      question: t('premium.faq_question_5', 'Who can buy the premium version ?'),
+      question: t('premium.faq_question_5', 'Where do I activate Premium?'),
       answer: t(
         'premium.faq_answer_5',
-        'Anyone can buy the monthly version for your guilds directly on Discord. The lifetime version is only available on Gmod Store and can be bought only once per guilds and only by a guilds Administrator.',
+        'Use the Discord offer for a monthly subscription. For a GmodStore purchase, link your Steam account, then use the dashboard to activate the purchase for a community you manage.',
       ),
     },
     {
-      question: t('premium.faq_question_6', 'How many premium can I buy ?'),
+      question: t('premium.faq_question_6', 'Does Premium cover all my communities?'),
       answer: t(
         'premium.faq_answer_6',
-        'You can buy only one lifetime version, but you can buy multiple monthly versions for different guilds.',
+        "Premium applies to the Discord community for which it is activated. Check each community's offer in its dashboard. Manage the community linked to a GmodStore purchase from your account page.",
       ),
     },
     {
-      question: t('premium.faq_question_7', 'Can I transfer my premium version to another guilds ?'),
+      question: t('premium.faq_question_7', 'Can I move a GmodStore purchase to another community?'),
       answer: t(
         'premium.faq_answer_7',
-        'Only the lifetime version is transferable to another guilds, you need to be Administrator of both guilds.',
+        'Unlink the current community from your account page, then activate the purchase for another community you manage. The previous community loses this purchase’s Premium benefits and its custom bot disconnects. Invite the main bot first to keep the integration available, and enter the custom bot token again after reactivation.',
       ),
     },
     {
-      question: t('premium.faq_question_8', 'Why so many features are in development ?'),
+      question: t('premium.faq_question_8', 'What does In development mean?'),
       answer: t(
         'premium.faq_answer_8',
-        "Because I'm a solo developer the project is pretty new and big, so I need time to develop all the features. But I'm working hard to make them available as soon as possible.",
+        'These features are not available yet, including with Premium. Choose an offer based on the features currently available; no release date is promised here.',
       ),
     },
-  ]
+  ])
 
   return (
     <div class="public-page premium-page mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-8 sm:px-6 lg:gap-16 lg:px-8 lg:py-12">
@@ -465,17 +472,20 @@ const Premium: Component = () => {
         </span>
         <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">{t('premium.title', 'Premium')}</h1>
         <p class="text-sm leading-relaxed text-base-content/55 sm:text-base">
-          {t('premium.subtitle', 'Upgrade your community to the next level with customisation and more features')}
+          {t(
+            'premium.subtitle',
+            'Compare the free and Premium features available for your Discord community and its game servers.',
+          )}
         </p>
       </header>
 
       <div class="premium-offers grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <For each={Object.keys(offers)}>
+        <For each={Object.keys(offers())}>
           {(key) => (
             <a
               class={`premium-offer public-card group flex min-w-0 flex-col gap-6 rounded-xl border bg-base-100 p-6 transition-colors ${key === 'subscribe' ? 'border-primary/35' : 'border-base-content/10 hover:border-primary/30'}`}
               data-featured={key === 'subscribe' || undefined}
-              href={offers[key].link}
+              href={offers()[key].link}
             >
               <div class="flex items-center gap-3">
                 <span
@@ -483,32 +493,36 @@ const Premium: Component = () => {
                 >
                   <Icon name={key === 'free' ? 'server' : key === 'subscribe' ? 'crown' : 'gift'} size={19} />
                 </span>
-                <h2 class="text-base font-semibold tracking-tight">{offers[key].name}</h2>
+                <h2 class="text-base font-semibold tracking-tight">{offers()[key].name}</h2>
               </div>
               <div class="premium-offer-price flex flex-col gap-2">
                 <p class="flex flex-wrap items-baseline gap-3 text-4xl font-semibold tracking-tight sm:text-5xl">
-                  <Show when={offers[key].reduction} fallback={<span>${offers[key].price}</span>}>
+                  <Show when={offers()[key].reduction} fallback={<span>${offers()[key].price}</span>}>
                     <span>
                       $
                       {(
-                        offers[key].price -
-                        (offers[key].price * ((offers[key].reduction && offers[key].reduction.percent) || 1)) / 100
+                        offers()[key].price -
+                        (offers()[key].price * (offers()[key].reduction?.percent || 1)) / 100
                       ).toFixed(2)}
                     </span>
-                    <span class="text-lg font-normal text-base-content/35 line-through">${offers[key].price}</span>
+                    <span class="text-lg font-normal text-base-content/35 line-through">${offers()[key].price}</span>
                   </Show>
                 </p>
-                <p class="text-xs text-base-content/45">{offers[key].sub_price}</p>
-                <Show when={offers[key].reduction}>
+                <p class="text-xs text-base-content/45">{offers()[key].sub_price}</p>
+                <Show when={offers()[key].reduction}>
                   <span class="text-xs text-amber-400">
-                    {(offers[key].reduction && offers[key].reduction.percent) || 0}% off until{' '}
-                    {new Date((offers[key].reduction && offers[key].reduction.date) || new Date()).toLocaleDateString()}
+                    {t(
+                      'premium.discount_until',
+                      '{1}% off until {2}',
+                      offers()[key].reduction?.percent ?? 0,
+                      new Date(offers()[key].reduction?.date ?? '').toLocaleDateString(locale()),
+                    )}
                   </span>
                 </Show>
               </div>
-              <p class="text-xs leading-relaxed text-base-content/55">{offers[key].description}</p>
+              <p class="text-xs leading-relaxed text-base-content/55">{offers()[key].description}</p>
               <ul class="premium-offer-features flex flex-col gap-3 border-t border-base-content/8 pt-5 text-xs">
-                <For each={offers[key].promote_features}>
+                <For each={offers()[key].promote_features}>
                   {(feature) => (
                     <li class="flex items-start gap-2.5 leading-relaxed">
                       <Icon name="check" size={15} class="mt-0.5 text-primary" />
@@ -520,7 +534,7 @@ const Premium: Component = () => {
               <span
                 class={`premium-offer-action mt-auto inline-flex items-center justify-between gap-3 rounded-lg px-4 py-3 text-xs font-semibold ${key === 'subscribe' ? 'bg-primary text-primary-content' : 'bg-base-200/65 text-base-content group-hover:text-primary'}`}
               >
-                {offers[key].button}
+                {offers()[key].button}
                 <Icon name="arrow-right" size={15} />
               </span>
             </a>
@@ -540,20 +554,26 @@ const Premium: Component = () => {
             {t('premium.plans_comparison', 'Plans Comparison')}
           </h2>
         </div>
+        <p class="text-sm leading-relaxed text-base-content/65">
+          {t(
+            'premium.availability_note',
+            'Features marked In development are not available yet. The custom bot feature is specific to the GmodStore offer.',
+          )}
+        </p>
         <div class="flex min-w-0 flex-col gap-5">
-          <For each={Object.keys(category)}>
+          <For each={Object.keys(category())}>
             {(key) => (
               <div class="public-card min-w-0 overflow-x-auto rounded-xl border border-base-content/10 bg-base-100">
                 <table class="premium-comparison-table table w-full border-collapse">
                   <thead>
                     <tr>
-                      <th class="w-[54%] text-left">{category[key].name}</th>
+                      <th class="w-[54%] text-left">{category()[key].name}</th>
                       <th class="w-[23%] text-center">{t('premium.free', 'Free')}</th>
                       <th class="w-[23%] text-center text-primary">{t('premium.premium', 'Premium')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <For each={category[key].features}>
+                    <For each={category()[key].features}>
                       {(feature) => (
                         <tr>
                           <td class="wrap-break-word text-left text-xs">
@@ -614,7 +634,7 @@ const Premium: Component = () => {
           </h2>
         </div>
         <div class="public-card overflow-hidden rounded-xl border border-base-content/10 bg-base-100">
-          <For each={faq}>
+          <For each={faq()}>
             {({ question, answer }) => (
               <div class="collapse collapse-arrow border-b border-base-content/8 last:border-b-0">
                 <input type="radio" name="my-accordion-4" aria-label={question} />

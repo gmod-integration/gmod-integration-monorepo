@@ -46,7 +46,7 @@ export const FeatureGate: ParentComponent<{
           </span>
           <Show when={needsUpgrade()}>
             <ButtonLink variant="ghost" size="sm" href={upgradeHref()}>
-              {t('tools.upgrade_now', 'Upgrade Now')}
+              {t('tools.upgrade_now', 'View Premium plans')}
             </ButtonLink>
           </Show>
           <Show when={props.capability === 'bot.custom' && !access.allowed()}>

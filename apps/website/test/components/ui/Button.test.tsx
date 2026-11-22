@@ -1,11 +1,29 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { createSignal } from 'solid-js'
-import { Button, ButtonLink, IconButton } from '../../../src/components/ui/index.js'
+import { Button, ButtonLink, IconButton, IconButtonLink } from '../../../src/components/ui/index.js'
 
 afterEach(() => cleanup())
 
 describe('shared buttons', () => {
+  it('keeps icon downloads as named native links and forwards their download and window attributes', () => {
+    render(() => (
+      <IconButtonLink
+        icon="download"
+        label="Download event data"
+        href="/event.json"
+        download="event.json"
+        target="_blank"
+        rel="noopener noreferrer"
+      />
+    ))
+    const link = screen.getByRole('link', { name: 'Download event data' })
+    expect(link).toHaveAttribute('href', '/event.json')
+    expect(link).toHaveAttribute('download', 'event.json')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
   it('keeps navigation as a native link when using the shared action appearance', () => {
     render(() => (
       <ButtonLink href="/docs" variant="primary">

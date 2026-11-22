@@ -85,7 +85,7 @@ const ServerTeam: Component = () => {
         title={
           creating()
             ? t('dashboard.server.team_roles.add_role_sync', 'Add Role')
-            : t('dashboard.server.team_roles.edit_role_sync', 'Edit Role')
+            : t('dashboard.server.team_roles.edit_role_sync', 'Edit team role mapping')
         }
         busy={editor.pending()}
         onClose={editor.discard}
@@ -112,11 +112,16 @@ const ServerTeam: Component = () => {
         </FormField>
         <FormField
           id="teams-mapping"
-          label={t('dashboard.server.team_roles.team_name', 'Team Name')}
+          label={t('dashboard.server.team_roles.team_name', 'Game team or job name')}
+          description={t(
+            'dashboard.server.team_roles.team_help',
+            'Enter the exact team or job name reported by the game server. It must match the name used in game.',
+          )}
           error={editor.errors().teamName}
         >
           <input
             id="teams-mapping"
+            aria-describedby={`teams-mapping-description${editor.errors().teamName ? ' teams-mapping-error' : ''}`}
             class="input w-full"
             value={editor.draft().teamName}
             disabled={!available() || editor.pending() || !featureAccess.allowed()}
@@ -156,7 +161,11 @@ const ServerTeam: Component = () => {
       <ConfirmActionDialog
         id="delete-role-sync"
         title={t('ui.confirm_delete', 'Delete this item?')}
-        description={removing() ? `${roleName(removing()!.roleID)} — ${removing()!.teamName}` : ''}
+        description={
+          removing()
+            ? `${roleName(removing()!.roleID)} — ${removing()!.teamName} — ${t('dashboard.server.team_roles.remove_rule_help', 'Delete this team-to-role mapping. The Discord role and the team in game are kept.')}`
+            : ''
+        }
         confirmLabel={t('ui.delete', 'Delete')}
         onConfirm={async () => {
           const target = removing()
@@ -167,10 +176,10 @@ const ServerTeam: Component = () => {
         }}
       />
       <AdminPanel
-        title={t('dashboard.server.team_roles.role', 'Team Role')}
+        title={t('dashboard.server.team_roles.role', 'Discord roles by game team')}
         description={t(
           'dashboard.server.team_roles.role_sync_description',
-          'Add temporary roles to your Discord members when they join a specific team in your game server.',
+          'Assign a Discord role while a linked player is in a specific game team or job. The role is removed when the player changes team or leaves the game.',
         )}
         type="none"
         icon="users"
@@ -186,7 +195,10 @@ const ServerTeam: Component = () => {
       >
         <p class="settings-notice">
           <Icon name="info" size={16} />
-          {t('settings.rule_setup_help', 'Create a complete rule, then save it to start synchronization.')}
+          {t(
+            'dashboard.server.team_roles.rule_setup_help',
+            'Choose an existing Discord role and a game team. Enable the rule before saving to use it for linked players.',
+          )}
         </p>
         <SuspendedFeature
           capability="sync.teams"
@@ -197,7 +209,7 @@ const ServerTeam: Component = () => {
             <thead>
               <tr>
                 <th>{t('dashboard.server.team_roles.role_name', 'Discord Role')}</th>
-                <th>{t('dashboard.server.team_roles.team_name', 'Team Name')}</th>
+                <th>{t('dashboard.server.team_roles.team_name', 'Game team or job name')}</th>
                 <th>{t('dashboard.server.team_roles.status', 'Active')}</th>
                 <th>{t('dashboard.server.team_roles.actions', 'Actions')}</th>
               </tr>
@@ -225,13 +237,13 @@ const ServerTeam: Component = () => {
                       <td>
                         <div class="flex gap-2">
                           <IconButton
-                            label={t('dashboard.server.team_roles.edit_role_sync', 'Edit')}
+                            label={t('dashboard.server.team_roles.edit_role_sync', 'Edit team role mapping')}
                             icon="pencil"
                             disabled={editor.pending()}
                             onClick={() => begin(row)}
                           />
                           <IconButton
-                            label={t('dashboard.server.team_roles.delete_role_sync', 'Delete')}
+                            label={t('dashboard.server.team_roles.delete_role_sync', 'Delete team role mapping')}
                             icon="trash-2"
                             variant="danger"
                             onClick={() => {

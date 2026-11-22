@@ -46,7 +46,7 @@ const Login: Component = () => {
   return (
     <PageState
       icon="user-round"
-      title={t('header.login', 'Login with Discord')}
+      title={t('header.login', 'Sign in with Discord')}
       description={
         denied()
           ? t('auth.oauth_denied', 'Discord sign-in was not completed. You can try again when you are ready.')
@@ -65,7 +65,7 @@ const Login: Component = () => {
         </Button>
       </Show>
       <ButtonLink variant="primary" href={loginUrl()}>
-        {t('header.login', 'Login with Discord')}
+        {t('header.login', 'Sign in with Discord')}
         <Icon name="arrow-right" size={16} />
       </ButtonLink>
     </PageState>

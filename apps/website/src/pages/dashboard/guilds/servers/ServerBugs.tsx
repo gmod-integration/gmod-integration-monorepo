@@ -47,7 +47,9 @@ const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
         <td class="w-1/6 text-base-content/70 text-nowrap">{props.createAt.toLocaleString()}</td>
         <td class="w-1/6 text-nowrap">{props.steamID64}</td>
         {/*<td class="w-1/12">{props.status}</td>*/}
-        <td class="w-1/12">{props.importance}</td>
+        <td class="w-1/12">
+          {t(`dashboard.server.bugsReport.importance_levels.${props.importance}`, props.importance)}
+        </td>
         <td class="wrap-break-word">{shortDescription}</td>
         <td>
           <div class="flex gap-2 justify-center">
@@ -87,7 +89,7 @@ const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
             <img
               class="w-1/2 h-1/2"
               src={`${getAPIUrl(false)}/screenshots/${props.screenshot}`}
-              alt="screenshot"
+              alt={t('dashboard.server.bugsReport.screenshot_alt', 'Screenshot attached to the bug report')}
               onLoad={() => setHasLoadScreenshot(true)}
               onError={() => setHasLoadScreenshot(false)}
               classList={{
@@ -150,8 +152,11 @@ const ServerBugs: Component = () => {
   return (
     <>
       <AdminPanel
-        title={t('dashboard.server.bugsReport.title', 'Bugs Report')}
-        description={t('dashboard.server.bugsReport.description', 'List of all bugs reported on your server')}
+        title={t('dashboard.server.bugsReport.title', 'Bug reports')}
+        description={t(
+          'dashboard.server.bugsReport.description',
+          'Read reports submitted by players. Expand a report to see what happened, the expected result and steps to reproduce it.',
+        )}
         type="none"
       >
         <table class="table">
@@ -170,6 +175,8 @@ const ServerBugs: Component = () => {
               colSpan={5}
               loading={bugsReport.loading}
               error={bugsReport.error}
+              errorLabel={t('dashboard.server.bugsReport.load_error', 'Unable to load bug reports. Try again.')}
+              emptyLabel={t('dashboard.server.bugsReport.empty', 'No bug reports have been received for this server.')}
               empty={!bugsReport.loading && !bugsReport.error && bugsReport()?.length === 0}
               onRetry={() => void refetch()}
             >

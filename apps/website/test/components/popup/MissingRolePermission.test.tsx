@@ -69,7 +69,7 @@ describe('components/popup/MissingRolePermission.tsx', () => {
     setRolesToCheck(['r1'])
     renderWithProviders(() => <MissingRolePermission />)
     await vi.waitFor(() => expect(screen.getByText('@RoleOne')).toBeInTheDocument())
-    expect(screen.getByText(/does not have the permission/)).toBeInTheDocument()
+    expect(screen.getByText(/cannot assign or remove these roles/)).toBeInTheDocument()
   })
 
   it('does not flag a role that is present and editable', async () => {

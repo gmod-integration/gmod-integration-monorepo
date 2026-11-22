@@ -64,7 +64,7 @@ describe('app/App.tsx', () => {
         </App>
       )),
     ).not.toThrow()
-    expect(screen.getByTestId('child-translation')).toHaveTextContent('Login with Discord')
+    expect(screen.getByTestId('child-translation')).toHaveTextContent('Sign in with Discord')
   })
 
   it('keeps dashboard chrome compact while retaining account preferences and the main landmark', () => {

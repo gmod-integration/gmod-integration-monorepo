@@ -37,19 +37,19 @@ describe('pages/dashboard/guilds/servers/screenshots/Screenshot.tsx', () => {
     expect(screen.getByText('My Screenshot')).toBeInTheDocument()
     const img = container.querySelector('img') as HTMLImageElement
     expect(img).toHaveAttribute('src', baseShot.url)
-    expect(img).toHaveAttribute('alt', 'Screenshot')
+    expect(img).toHaveAttribute('alt', 'Game screenshot')
     expect(container.textContent).toContain('1/1/2024')
     expect(container.textContent).toContain('Bob')
   })
 
   it('falls back to "No Title" when the title is empty', () => {
     renderShot({ ...baseShot, title: '' })
-    expect(screen.getByText('No Title')).toBeInTheDocument()
+    expect(screen.getByText('Untitled screenshot')).toBeInTheDocument()
   })
 
   it('falls back to "No Name" when the player name is empty', () => {
     renderShot({ ...baseShot, player: { name: '', steamID64: '765123' } })
-    expect(screen.getByText('No Name', { exact: false })).toBeInTheDocument()
+    expect(screen.getByText('Player name unavailable', { exact: false })).toBeInTheDocument()
   })
 
   it('renders a SteamID64 link when steamID64 is present', () => {
@@ -60,7 +60,7 @@ describe('pages/dashboard/guilds/servers/screenshots/Screenshot.tsx', () => {
 
   it('shows "No Steam ID" text when steamID64 is empty', () => {
     renderShot({ ...baseShot, player: { name: 'Bob', steamID64: '' } })
-    expect(screen.getByText('No Steam ID', { exact: false })).toBeInTheDocument()
+    expect(screen.getByText('SteamID64 unavailable', { exact: false })).toBeInTheDocument()
   })
 
   it('hides player metadata entirely when player is null', () => {
@@ -77,13 +77,13 @@ describe('pages/dashboard/guilds/servers/screenshots/Screenshot.tsx', () => {
 
   it('calls setFocusImg and opens the modal via the View button', async () => {
     const { setFocusImg } = renderShot(baseShot)
-    await fireEvent.click(screen.getByRole('button', { name: 'View Screenshot' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'View screenshot' }))
     expect(setFocusImg).toHaveBeenCalledWith(baseShot)
   })
 
   it('renders an "Open in new tab" link pointing at the screenshot url', () => {
     renderShot(baseShot)
-    const link = screen.getByRole('link', { name: 'Open in new tab' })
+    const link = screen.getByRole('link', { name: 'Open screenshot in a new tab' })
     expect(link).toHaveAttribute('href', baseShot.url)
     expect(link).toHaveAttribute('target', '_blank')
   })

@@ -76,20 +76,20 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
     renderPage()
     await waitForLoaded()
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'Remove Channel' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove destination' })).toBeInTheDocument()
   })
 
   it('does not show Remove Channel when no channel is configured', async () => {
     renderPage()
     await waitForLoaded()
-    await vi.waitFor(() => expect(screen.queryByRole('button', { name: 'Remove Channel' })).not.toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.queryByRole('button', { name: 'Remove destination' })).not.toBeInTheDocument())
   })
 
   it('keeps both content settings local and cancels the whole section', async () => {
     renderPage()
     await waitForLoaded()
-    const hide = screen.getByRole('checkbox', { name: 'Hide IP in discord logs:' })
-    const file = screen.getByRole('checkbox', { name: 'Attach log information file:' })
+    const hide = screen.getByRole('checkbox', { name: 'Hide IP addresses in Discord logs' })
+    const file = screen.getByRole('checkbox', { name: 'Attach event data as a file' })
     const save = screen.getByRole('button', { name: 'Save' })
     expect(save).toBeDisabled()
     await fireEvent.click(hide)
@@ -112,7 +112,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
   it('retains the section after failure, permits retry and blocks duplicate pending saves', async () => {
     renderPage()
     await waitForLoaded()
-    const checkbox = screen.getByRole('checkbox', { name: 'Hide IP in discord logs:' })
+    const checkbox = screen.getByRole('checkbox', { name: 'Hide IP addresses in Discord logs' })
     await fireEvent.click(checkbox)
     vi.mocked(saveDashboardSettings).mockRejectedValueOnce(new Error('Offline'))
     const save = screen.getByRole('button', { name: 'Save' })
@@ -198,10 +198,10 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
       if (endpoint === LOGS_CHANNEL_URL && method === 'DELETE') return Promise.resolve(okJson({}))
       return Promise.resolve(okJson([]))
     })
-    await fireEvent.click(screen.getByRole('button', { name: 'Remove Channel' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove destination' }))
     expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'DELETE')).toBe(false)
     await fireEvent.click(
-      within(document.querySelector('#remove-logs-channel')!).getByRole('button', { name: 'Delete' }),
+      within(document.querySelector('#remove-logs-channel')!).getByRole('button', { name: 'Remove destination' }),
     )
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LOGS_CHANNEL_URL, 'DELETE'))
     await vi.waitFor(() => expect(screen.queryByText('#general')).not.toBeInTheDocument())
@@ -216,10 +216,10 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
       if (endpoint === LOGS_CHANNEL_URL && method === 'DELETE') return Promise.resolve(errJson())
       return Promise.resolve(okJson([]))
     })
-    await fireEvent.click(screen.getByRole('button', { name: 'Remove Channel' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove destination' }))
     expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'DELETE')).toBe(false)
     await fireEvent.click(
-      within(document.querySelector('#remove-logs-channel')!).getByRole('button', { name: 'Delete' }),
+      within(document.querySelector('#remove-logs-channel')!).getByRole('button', { name: 'Remove destination' }),
     )
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(LOGS_CHANNEL_URL, 'DELETE'))
     expect(screen.getByText('#general')).toBeInTheDocument()

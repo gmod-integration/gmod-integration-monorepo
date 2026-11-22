@@ -146,7 +146,7 @@ describe('pages/Account.tsx', () => {
     })
     renderAccount()
     await waitForLoaded()
-    expect(screen.getByRole('link', { name: 'Activate on Guild' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Choose a Discord community' })).toBeInTheDocument()
     expect(
       screen.getAllByRole('status').filter((element) => element.textContent?.includes('Nothing to display yet.')),
     ).toHaveLength(1)
@@ -274,7 +274,10 @@ describe('pages/Account.tsx', () => {
       setupFetchAPI({ gmodStore: {} })
       renderAccount()
       await waitForLoaded()
-      expect(screen.getByRole('link', { name: 'Activate on Guild' })).toHaveAttribute('href', '/dashboard/guilds')
+      expect(screen.getByRole('link', { name: 'Choose a Discord community' })).toHaveAttribute(
+        'href',
+        '/dashboard/guilds',
+      )
     })
 
     it('shows the guild and an Unlink Guild button when a guild is activated', async () => {
@@ -282,7 +285,7 @@ describe('pages/Account.tsx', () => {
       renderAccount()
       await waitForLoaded()
       expect(screen.getByText('My Guild')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Unlink Guild' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Unlink the community' })).toBeInTheDocument()
     })
 
     it('does nothing when unlink is not confirmed', async () => {
@@ -292,7 +295,7 @@ describe('pages/Account.tsx', () => {
       await waitForLoaded()
 
       const callsBefore = (fetchAPI as Mock).mock.calls.length
-      fireEvent.click(screen.getByRole('button', { name: 'Unlink Guild' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Unlink the community' }))
       expect((fetchAPI as Mock).mock.calls.length).toBe(callsBefore)
     })
 
@@ -307,10 +310,12 @@ describe('pages/Account.tsx', () => {
         if (endpoint === GMODSTORE_URL && method === 'GET') return Promise.resolve(jsonResponse({}))
         return Promise.resolve(jsonResponse({}))
       })
-      fireEvent.click(screen.getByRole('button', { name: 'Unlink Guild' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Unlink the community' }))
 
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${GMODSTORE_URL}/My Guild`, 'DELETE'))
-      await vi.waitFor(() => expect(screen.getByRole('link', { name: 'Activate on Guild' })).toBeInTheDocument())
+      await vi.waitFor(() =>
+        expect(screen.getByRole('link', { name: 'Choose a Discord community' })).toBeInTheDocument(),
+      )
     })
 
     it('shows a spinner on the unlink button while the request is in flight', async () => {
@@ -327,7 +332,7 @@ describe('pages/Account.tsx', () => {
         if (endpoint === `${GMODSTORE_URL}/My Guild` && method === 'DELETE') return deletePromise
         return Promise.resolve(jsonResponse({}))
       })
-      const unlinkBtn = screen.getByRole('button', { name: 'Unlink Guild' })
+      const unlinkBtn = screen.getByRole('button', { name: 'Unlink the community' })
       fireEvent.click(unlinkBtn)
 
       await vi.waitFor(() => expect(unlinkBtn).toBeDisabled())
@@ -349,7 +354,7 @@ describe('pages/Account.tsx', () => {
         }
         return Promise.resolve(jsonResponse({}))
       })
-      fireEvent.click(screen.getByRole('button', { name: 'Unlink Guild' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Unlink the community' }))
 
       await vi.waitFor(() => expect(screen.getByText(/Custom unlink error/)).toBeInTheDocument())
       // Failed unlink does not refetch/clear - guild link stays.
@@ -368,9 +373,9 @@ describe('pages/Account.tsx', () => {
         }
         return Promise.resolve(jsonResponse({}))
       })
-      fireEvent.click(screen.getByRole('button', { name: 'Unlink Guild' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Unlink the community' }))
 
-      await vi.waitFor(() => expect(screen.getByText(/Failed to unlink the guild/)).toBeInTheDocument())
+      await vi.waitFor(() => expect(screen.getByText(/The community could not be unlinked/)).toBeInTheDocument())
     })
   })
 
@@ -448,10 +453,14 @@ describe('pages/Account.tsx', () => {
       renderAccount()
       await waitForLoaded()
 
-      expect(screen.getByText('Active')).toBeInTheDocument()
-      expect(screen.getByText('Expired')).toBeInTheDocument()
+      expect(screen.getByText('Download available')).toBeInTheDocument()
+      expect(screen.getByText('Download expired')).toBeInTheDocument()
       expect(document.querySelector('[data-tip="Download your data"] svg[data-icon="download"]')).toBeInTheDocument()
-      expect(document.querySelector('[data-tip="Request has expired"] svg[data-icon="download"]')).toBeInTheDocument()
+      expect(
+        document.querySelector(
+          '[data-tip="This download link has expired. Request a new copy of your data."] svg[data-icon="download"]',
+        ),
+      ).toBeInTheDocument()
     })
 
     it('opens the download link with its code for an active request', async () => {
@@ -479,10 +488,12 @@ describe('pages/Account.tsx', () => {
         if (endpoint === DATA_REQ_URL && method === 'POST') return Promise.resolve(jsonResponse(newRequest))
         return Promise.resolve(jsonResponse([]))
       })
-      fireEvent.click(screen.getByRole('button', { name: 'Request my Data' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Prepare a copy of my data' }))
 
-      await vi.waitFor(() => expect(screen.getByText('Active')).toBeInTheDocument())
-      expect(screen.queryByText('Depends on your data size, this can take a while.')).not.toBeInTheDocument()
+      await vi.waitFor(() => expect(screen.getByText('Download available')).toBeInTheDocument())
+      expect(
+        screen.queryByText('Preparing your data export. The time needed depends on the amount of data.'),
+      ).not.toBeInTheDocument()
     })
 
     it('does not show the loading message when the 500ms timer fires after the request already resolved', async () => {
@@ -500,14 +511,16 @@ describe('pages/Account.tsx', () => {
       })
 
       vi.useFakeTimers()
-      fireEvent.click(screen.getByRole('button', { name: 'Request my Data' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Prepare a copy of my data' }))
       // advanceTimersByTimeAsync flushes the already-resolved POST promise's microtasks (setting
       // the closure's `edited` flag) before the 500ms setTimeout callback runs, so the callback's
       // `if (edited) return` takes its early-return branch instead of showing the spinner.
       await vi.advanceTimersByTimeAsync(500)
       vi.useRealTimers()
 
-      expect(screen.queryByText('Depends on your data size, this can take a while.')).not.toBeInTheDocument()
+      expect(
+        screen.queryByText('Preparing your data export. The time needed depends on the amount of data.'),
+      ).not.toBeInTheDocument()
     })
 
     it('shows a loading message for a slow data request and hides it once resolved', async () => {
@@ -525,7 +538,7 @@ describe('pages/Account.tsx', () => {
       })
 
       vi.useFakeTimers()
-      const requestButton = screen.getByRole('button', { name: 'Request my Data' })
+      const requestButton = screen.getByRole('button', { name: 'Prepare a copy of my data' })
       fireEvent.click(requestButton)
       expect(requestButton).toBeDisabled()
       fireEvent.click(requestButton)
@@ -533,7 +546,9 @@ describe('pages/Account.tsx', () => {
         (fetchAPI as Mock).mock.calls.filter(([endpoint, method]) => endpoint === DATA_REQ_URL && method === 'POST'),
       ).toHaveLength(1)
       await vi.advanceTimersByTimeAsync(500)
-      expect(screen.getByText('Depends on your data size, this can take a while.')).toBeInTheDocument()
+      expect(
+        screen.getByText('Preparing your data export. The time needed depends on the amount of data.'),
+      ).toBeInTheDocument()
 
       resolvePost(
         jsonResponse({
@@ -545,7 +560,9 @@ describe('pages/Account.tsx', () => {
       vi.useRealTimers()
 
       await vi.waitFor(() =>
-        expect(screen.queryByText('Depends on your data size, this can take a while.')).not.toBeInTheDocument(),
+        expect(
+          screen.queryByText('Preparing your data export. The time needed depends on the amount of data.'),
+        ).not.toBeInTheDocument(),
       )
     })
 
@@ -560,7 +577,7 @@ describe('pages/Account.tsx', () => {
         }
         return Promise.resolve(jsonResponse([]))
       })
-      fireEvent.click(screen.getByRole('button', { name: 'Request my Data' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Prepare a copy of my data' }))
 
       await vi.waitFor(() => expect(screen.getByText(/Too many requests/)).toBeInTheDocument())
     })
@@ -574,9 +591,9 @@ describe('pages/Account.tsx', () => {
         if (endpoint === DATA_REQ_URL && method === 'POST') return Promise.resolve(jsonResponse({}, false))
         return Promise.resolve(jsonResponse([]))
       })
-      fireEvent.click(screen.getByRole('button', { name: 'Request my Data' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Prepare a copy of my data' }))
 
-      await vi.waitFor(() => expect(screen.getByText(/Failed to create the data request/)).toBeInTheDocument())
+      await vi.waitFor(() => expect(screen.getByText(/Your data export could not be prepared/)).toBeInTheDocument())
     })
 
     describe('account erasure', () => {
@@ -596,7 +613,7 @@ describe('pages/Account.tsx', () => {
         return receipt
       }
       const openDialog = async () => {
-        await fireEvent.click(screen.getByRole('button', { name: 'Delete my Data' }))
+        await fireEvent.click(screen.getByRole('button', { name: 'Request account erasure' }))
         return screen.getByRole('dialog', { name: 'Request account erasure' })
       }
       const confirmErasure = async () => {
@@ -691,7 +708,7 @@ describe('pages/Account.tsx', () => {
           expect.stringContaining('/v6/account/erasure-requests/'),
           expect.objectContaining({ method: 'GET', headers: { Authorization: `Bearer ${storedReceipt().receipt}` } }),
         )
-        expect(screen.queryByRole('button', { name: 'Request my Data' })).not.toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Prepare a copy of my data' })).not.toBeInTheDocument()
       })
 
       it('keeps the session on failure and reuses the same idempotency key and receipt on retry', async () => {
@@ -823,7 +840,7 @@ describe('pages/Account.tsx', () => {
         expect(isLogged()).toBe(true)
         await fireEvent.click(screen.getByRole('button', { name: 'Return to account' }))
         await waitForLoaded()
-        expect(screen.getByRole('button', { name: 'Delete my Data' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Request account erasure' })).toBeInTheDocument()
       })
     })
   })

@@ -32,6 +32,13 @@ const Impersonate: Component = () => {
   })
   return (
     <div class="flex min-w-0 flex-col gap-4">
+      <h2 class="text-2xl font-semibold">{t('admin.support_access', 'Support access to a user account')}</h2>
+      <p class="text-sm text-base-content/65">
+        {t(
+          'admin.support_access_description',
+          'Choose a user to open the dashboard with their permissions. Your actions affect their account. Use Return to your account when you have finished.',
+        )}
+      </p>
       <Show when={action.error()}>
         <p role="alert" class="text-error">
           {action.error()}
@@ -40,13 +47,18 @@ const Impersonate: Component = () => {
       <Show
         when={authSession()?.session.actorDiscordID}
         fallback={
-          <AsyncState loading={users.loading} error={users.error} empty={!users()?.length}>
+          <AsyncState
+            loading={users.loading}
+            error={users.error}
+            empty={!users()?.length}
+            emptyLabel={t('admin.users_empty', 'No user accounts are available for support access.')}
+          >
             <div class="flex flex-wrap gap-4">
               <For each={users()}>
                 {(user) => (
                   <Show when={user.discordID !== authSession()?.user.id}>
                     <Button class="max-w-full" loading={action.pending()} onClick={() => void begin(user.discordID)}>
-                      {user.username || user.discordID}
+                      {t('admin.open_account', 'Access {1}', user.username || user.discordID)}
                     </Button>
                   </Show>
                 )}

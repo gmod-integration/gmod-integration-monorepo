@@ -227,7 +227,9 @@ describe('pages/Notifications.tsx', () => {
     fireEvent.click(screen.getByTitle('Mark All as Read'))
 
     await vi.waitFor(() => expect(Errors).toHaveBeenCalledWith('Failed to mark all notifications as read'))
-    expect(screen.getByRole('alert')).toHaveTextContent('Unable to save. Please try again.')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'The read status could not be updated. Refresh the list to check it before trying again.',
+    )
     expect(notificationCount()).toBe(3)
   })
 })

@@ -11,6 +11,7 @@ import ServerActivityChart from '../components/ServerActivityChart.js'
 import defaultServer from '../assets/defaultServer.png'
 import { useI18n } from '../i18n.js'
 import { fetchAPI } from '../utils/api.js'
+import { PaginationControls } from '../components/Pagination.js'
 
 const initialQuery: PublicServerRankingQuery = { limit: 10, offset: 0, search: '', gameMode: '', status: 'all' }
 
@@ -136,7 +137,7 @@ const Servers: Component = () => {
             </span>
             <Show when={!props.server.online && props.server.lastSeenAt}>
               <span>
-                {t('servers.last_seen', 'Last activity')}:{' '}
+                {t('servers.last_seen', 'Last server update')}:{' '}
                 <time dateTime={props.server.lastSeenAt!}>{lastSeen(props.server.lastSeenAt!)}</time>
               </span>
             </Show>
@@ -186,9 +187,14 @@ const Servers: Component = () => {
             <Icon name="server" size={16} />
             {t('servers.ranking', 'Server ranking')}
           </span>
-          <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">{t('servers.title', 'Servers')}</h1>
+          <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">
+            {t('servers.title', "Garry's Mod server ranking")}
+          </h1>
           <p class="max-w-2xl text-sm leading-relaxed text-base-content/55">
-            {t('servers.ranking_description', 'Ranked by votes over the last 30 days.')}
+            {t(
+              'servers.ranking_description',
+              'Discover listed game servers, ranked by votes received in the last 30 days. Filter by game mode or connection status to find a community.',
+            )}
           </p>
         </header>
         <section
@@ -299,38 +305,16 @@ const Servers: Component = () => {
                     ranking()!.pagination.total,
                   )}
                 </p>
-                <nav
-                  aria-label={t('ui.pagination', 'Pagination')}
-                  class="flex flex-wrap items-center justify-center gap-1.5"
-                >
-                  <Button size="sm" onClick={() => changePage(0)} disabled={currentPage() <= 1}>
-                    {t('servers.first_page', 'First')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => changePage(Math.max(0, query().offset - query().limit))}
-                    disabled={currentPage() <= 1}
-                  >
-                    {t('ui.previous_page', 'Previous page')}
-                  </Button>
-                  <span class="px-2 text-xs text-base-content/55" aria-current="page">
-                    {t('servers.page_of', 'Page {1} of {2}', currentPage(), pages())}
-                  </span>
-                  <Button
-                    size="sm"
-                    onClick={() => changePage(query().offset + query().limit)}
-                    disabled={currentPage() >= pages()}
-                  >
-                    {t('ui.next_page', 'Next page')}
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => changePage((pages() - 1) * query().limit)}
-                    disabled={currentPage() >= pages()}
-                  >
-                    {t('servers.last_page', 'Last')}
-                  </Button>
-                </nav>
+                <PaginationControls
+                  page={currentPage()}
+                  pages={pages()}
+                  previousDisabled={currentPage() <= 1}
+                  nextDisabled={currentPage() >= pages()}
+                  onFirst={() => changePage(0)}
+                  onPrevious={() => changePage(Math.max(0, query().offset - query().limit))}
+                  onNext={() => changePage(query().offset + query().limit)}
+                  onLast={() => changePage((pages() - 1) * query().limit)}
+                />
               </div>
             </Show>
           </AsyncState>

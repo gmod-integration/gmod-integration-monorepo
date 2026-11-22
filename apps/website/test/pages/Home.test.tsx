@@ -27,7 +27,9 @@ describe('Home', () => {
     expect(within(statistics).getAllByText('—')).toHaveLength(4)
     expect(fetchMock).toHaveBeenCalledWith('http://localhost:5001/v3/stats')
     expect(
-      within(screen.getByRole('region', { name: 'Gmod Integration' })).getByRole('link', { name: 'Go to Dashboard' }),
+      within(screen.getByRole('region', { name: 'Gmod Integration' })).getByRole('link', {
+        name: 'Open the dashboard',
+      }),
     ).toHaveAttribute('href', '/dashboard/guilds')
     expect(screen.getByRole('heading', { level: 1, name: 'Gmod Integration' })).toBeInTheDocument()
   })

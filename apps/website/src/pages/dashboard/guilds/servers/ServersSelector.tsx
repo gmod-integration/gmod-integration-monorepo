@@ -80,8 +80,14 @@ const ServerList: Component = () => {
             <div class="dashboard-selection-heading flex flex-wrap items-center justify-between gap-4">
               <div>
                 <h2 class="text-xl font-semibold tracking-tight sm:text-2xl">
-                  {t('dashboard.server.servers_selector.select_server', 'Select a Server to manage')}
+                  {t('dashboard.server.servers_selector.select_server', 'Your game servers')}
                 </h2>
+                <p class="mt-2 max-w-2xl text-sm text-base-content/60">
+                  {t(
+                    'dashboard.server.servers_selector.description',
+                    'Add your existing Garry’s Mod server here, then follow its setup instructions to connect the addon. This does not create or host a game server.',
+                  )}
+                </p>
               </div>
               <FeatureGate
                 capability="guild.servers"
@@ -98,7 +104,7 @@ const ServerList: Component = () => {
                   onClick={createServer}
                 >
                   <Icon name="plus" size={17} />
-                  {t('dashboard.server.servers_selector.create_server', 'Create Server')}
+                  {t('dashboard.server.servers_selector.create_server', 'Add server')}
                 </Button>
               </FeatureGate>
             </div>
@@ -149,7 +155,7 @@ const ServerList: Component = () => {
                       </span>
                     </div>
                     <div class="dashboard-entity-action mt-5 flex items-center justify-between border-t border-base-content/6 pt-4 text-sm font-medium text-base-content/65 group-hover:text-primary">
-                      <span>{t('dashboard.server.servers_selector.manage_server', 'Manage')}</span>
+                      <span>{t('dashboard.server.servers_selector.manage_server', 'Configure server')}</span>
                       <Icon name="arrow-right" size={17} class="transition-transform group-hover:translate-x-0.5" />
                     </div>
                   </A>

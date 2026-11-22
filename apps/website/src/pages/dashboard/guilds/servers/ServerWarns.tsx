@@ -75,9 +75,17 @@ const ServerWarns: Component = () => {
         ]}
       />
       <AdminPanel
-        title={t('dashboard.server.warns.title', 'Warns')}
-        description={t('dashboard.server.warns.description', 'List of all warns on your server')}
+        title={t('dashboard.server.warns.title', 'Warnings')}
+        description={t(
+          'dashboard.server.warns.description',
+          'View warnings received from AWarn3, with the player, administrator and reason. Warnings are managed in game.',
+        )}
         type="none"
+        footer={
+          !warnsData.loading && !warnsData.error ? (
+            <Pagination query={query()} total={warnsData().query.total} onChange={setQuery} standalone />
+          ) : undefined
+        }
       >
         <table class="table">
           <thead>
@@ -93,6 +101,11 @@ const ServerWarns: Component = () => {
               colSpan={4}
               loading={warnsData.loading}
               error={warnsData.error}
+              errorLabel={t('dashboard.server.warns.load_error', 'Unable to load warning history. Try again.')}
+              emptyLabel={t(
+                'dashboard.server.warns.empty',
+                'No warnings have been received for this server. AWarn3 must be installed to send warnings.',
+              )}
               empty={!warnsData.loading && !warnsData.error && warnsData().warns.length === 0}
               onRetry={() => refetch()}
             >
@@ -108,9 +121,6 @@ const ServerWarns: Component = () => {
                 )}
               </For>
             </TableState>
-            <Show when={!warnsData.loading && !warnsData.error}>
-              <Pagination query={query()} total={warnsData().query.total} onChange={setQuery} colSpan={4} />
-            </Show>
           </tbody>
         </table>
       </AdminPanel>

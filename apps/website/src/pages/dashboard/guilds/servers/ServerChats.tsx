@@ -197,15 +197,15 @@ const ServerChats: Component = () => {
   }
   const labels = () => ({
     message: t('dashboard.server.chat.message', 'Message'),
-    userGroup: t('dashboard.server.chat.user_group', 'User Group'),
+    userGroup: t('dashboard.server.chat.user_group', 'Game user group'),
     steamID64: t('dashboard.server.chat.steam_id_64', 'Steam ID 64'),
-    teamName: t('dashboard.server.chat.team_name', 'Team Name'),
-    contain: t('dashboard.server.chat.contain', 'Contain'),
-    notContain: t('dashboard.server.chat.not_contain', 'Not Contain'),
-    equal: t('dashboard.server.chat.equal', 'Equal'),
-    notEqual: t('dashboard.server.chat.not_equal', 'Not Equal'),
-    startWith: t('dashboard.server.chat.start_with', 'Start With'),
-    endWith: t('dashboard.server.chat.end_with', 'End With'),
+    teamName: t('dashboard.server.chat.team_name', 'Game team or job'),
+    contain: t('dashboard.server.chat.contain', 'Contains'),
+    notContain: t('dashboard.server.chat.not_contain', 'Does not contain'),
+    equal: t('dashboard.server.chat.equal', 'Equals'),
+    notEqual: t('dashboard.server.chat.not_equal', 'Does not equal'),
+    startWith: t('dashboard.server.chat.start_with', 'Starts with'),
+    endWith: t('dashboard.server.chat.end_with', 'Ends with'),
     block: t('dashboard.server.chat.block', 'Block'),
     relay: t('dashboard.server.chat.relay', 'Relay'),
     anonymize: t('dashboard.server.chat.anonymize', 'Anonymize'),
@@ -216,13 +216,13 @@ const ServerChats: Component = () => {
       <NeedWebsocket />
       <ConfirmActionDialog
         id="remove-chat-channel"
-        title={t('dashboard.server.chat.remove_channel', 'Remove Channel')}
+        title={t('dashboard.server.chat.remove_channel', 'Remove destination')}
         description={
           !guildChannels.error
-            ? `#${guildChannels()?.find((entry) => entry.id === destination.saved().channelID)?.name || destination.saved().channelID}`
-            : destination.saved().channelID
+            ? `#${guildChannels()?.find((entry) => entry.id === destination.saved().channelID)?.name || destination.saved().channelID} — ${t('dashboard.server.chat.remove_channel_help', 'Stop relaying chat through this destination. The Discord channel and filter rules are kept.')}`
+            : `${destination.saved().channelID} — ${t('dashboard.server.chat.remove_channel_help', 'Stop relaying chat through this destination. The Discord channel and filter rules are kept.')}`
         }
-        confirmLabel={t('dashboard.server.chat.remove_channel', 'Remove Channel')}
+        confirmLabel={t('dashboard.server.chat.remove_channel', 'Remove destination')}
         onConfirm={async () => {
           const response = await fetchAPI(URL, 'DELETE')
           if (!response.ok) throw new Error('Channel removal failed')
@@ -233,7 +233,9 @@ const ServerChats: Component = () => {
         id="remove-chat-filter"
         title={t('ui.confirm_delete', 'Delete this item?')}
         description={
-          removing() ? `${label(removing()!.element)} ${label(removing()!.operator)} ${removing()!.trigger}` : ''
+          removing()
+            ? `${label(removing()!.element)} ${label(removing()!.operator)} ${removing()!.trigger} — ${t('dashboard.server.chat.remove_rule_help', 'Delete this filter rule. Messages that matched it will follow the remaining rules and default behavior.')}`
+            : ''
         }
         confirmLabel={t('dashboard.server.chat.delete', 'Delete')}
         onConfirm={async () => {
@@ -252,6 +254,10 @@ const ServerChats: Component = () => {
             : t('dashboard.server.chat.edit_rule', 'Edit Rule')
         }
         busy={editor.pending()}
+        description={t(
+          'dashboard.server.chat.rule_help',
+          'Choose the message or player detail to check, the matching condition and the action. Only active rules affect game messages sent to Discord.',
+        )}
         onClose={editor.discard}
         onCancel={editor.discard}
       >
@@ -260,13 +266,13 @@ const ServerChats: Component = () => {
             {
               key: 'element' as const,
               id: 'chat-rule-element',
-              title: t('dashboard.server.chat.element', 'Element'),
+              title: t('dashboard.server.chat.element', 'Detail to check'),
               options: ['message', 'userGroup', 'steamID64', 'teamName'],
             },
             {
               key: 'operator' as const,
               id: 'chat-rule-operator',
-              title: t('dashboard.server.chat.operator', 'Operator'),
+              title: t('dashboard.server.chat.operator', 'Match condition'),
               options: ['contain', 'notContain', 'equal', 'notEqual', 'startWith', 'endWith'],
             },
           ]}
@@ -287,11 +293,16 @@ const ServerChats: Component = () => {
         </For>
         <FormField
           id="chat-rule-trigger"
-          label={t('dashboard.server.chat.trigger', 'Trigger')}
+          label={t('dashboard.server.chat.trigger', 'Value to match')}
+          description={t(
+            'dashboard.server.chat.trigger_help',
+            'Enter the text to compare, such as /ooc, admin, a SteamID64 or a team name, depending on the selected detail.',
+          )}
           error={editor.errors().trigger}
         >
           <input
             id="chat-rule-trigger"
+            aria-describedby={`chat-rule-trigger-description${editor.errors().trigger ? ' chat-rule-trigger-error' : ''}`}
             class="input w-full"
             value={editor.draft().trigger}
             disabled={editor.pending() || !filterAccess.allowed()}
@@ -301,11 +312,16 @@ const ServerChats: Component = () => {
         </FormField>
         <FormField
           id="chat-rule-action"
-          label={t('dashboard.server.chat.actions_on_match', 'Actions on Match')}
+          label={t('dashboard.server.chat.actions_on_match', 'Action when matched')}
+          description={t(
+            'dashboard.server.chat.action_help',
+            'Block skips the relay, Relay forwards the message, and Anonymize hides the player’s name in Discord.',
+          )}
           error={editor.errors().action}
         >
           <select
             id="chat-rule-action"
+            aria-describedby="chat-rule-action-description"
             class="select w-full"
             value={editor.draft().action}
             disabled={editor.pending() || !filterAccess.allowed()}
@@ -344,23 +360,25 @@ const ServerChats: Component = () => {
         />
       </AdminModal>
       <AdminPanel
-        title={t('dashboard.server.chat.chats', 'Chats')}
+        title={t('dashboard.server.chat.chats', 'Chat relay')}
         description={t(
           'dashboard.server.chat.set_channel',
-          'Set a channel to sync the chats between your server and Discord.',
+          'Relay messages between your game server and a Discord channel. Choose the destination, then save the relay direction and any filters you need.',
         )}
       >
         <SettingGroup title={t('settings.chat_destination', 'Discord destination')} icon="messages-square">
           <AsyncState loading={channel.loading} error={channel.error} onRetry={() => void refetchChannel()} />
           <SettingRow
-            title={t('dashboard.server.chat.chats_channels', 'Actual Chats Channels')}
+            title={t('dashboard.server.chat.chats_channels', 'Saved destination')}
             description={t('settings.channel_draft_help', 'Choose a destination, then save to apply it.')}
             stacked
           >
             <Show
               when={destination.saved().channelID}
               fallback={
-                <span class="text-base-content/60">{t('dashboard.server.chat.no_sync_chats', 'No Sync Chats')}</span>
+                <span class="text-base-content/60">
+                  {t('dashboard.server.chat.no_sync_chats', 'No chat destination configured')}
+                </span>
               }
             >
               <DiscordChannel channelID={destination.saved().channelID} />
@@ -388,7 +406,7 @@ const ServerChats: Component = () => {
           />
           <Show when={destination.saved().channelID}>
             <Button variant="ghost" onClick={() => showDialog('remove-chat-channel')} disabled={destination.pending()}>
-              {t('dashboard.server.chat.remove_channel', 'Remove Channel')}
+              {t('dashboard.server.chat.remove_channel', 'Remove destination')}
             </Button>
           </Show>
         </SettingGroup>
@@ -400,7 +418,7 @@ const ServerChats: Component = () => {
           />
           <SettingRow
             controlId="chat-direction"
-            title={t('dashboard.server.chat.sync_direction', 'Chats Synchronization Direction')}
+            title={t('dashboard.server.chat.sync_direction', 'Chat relay direction')}
             description={t(
               'settings.chat_direction_help',
               'Choose which side can send messages through the relay. Save to apply your changes.',
@@ -414,20 +432,18 @@ const ServerChats: Component = () => {
               disabled={storedBehavior.loading || !!storedBehavior.error || behavior.pending()}
               onChange={(event) => behavior.patch({ direction: event.currentTarget.value })}
             >
-              <option value="gmodToDiscord">
-                {t('dashboard.server.chat.from_gmod_to_discord', 'From Gmod to Discord')}
-              </option>
+              <option value="gmodToDiscord">{t('dashboard.server.chat.from_gmod_to_discord', 'Game → Discord')}</option>
               <option value="discordToGmod" disabled={!reverseAccess.allowed()}>
-                {t('dashboard.server.chat.from_discord_to_gmod', 'From Discord to Gmod')}
+                {t('dashboard.server.chat.from_discord_to_gmod', 'Discord → game')}
               </option>
               <option value="both" disabled={!reverseAccess.allowed()}>
-                {t('dashboard.server.chat.both_ways', 'Both Ways')}
+                {t('dashboard.server.chat.both_ways', 'Both directions')}
               </option>
             </select>
           </SettingRow>
           <SettingRow
             controlId="chat-prevent-ping"
-            title={t('dashboard.server.chat.prevent_chat_ping', 'Prevent Chat Ping')}
+            title={t('dashboard.server.chat.prevent_chat_ping', 'Prevent Discord mentions')}
             description={t(
               'settings.chat_ping_help',
               'Prevent relayed messages from mentioning Discord members and roles.',
@@ -468,7 +484,7 @@ const ServerChats: Component = () => {
         </SettingGroup>
       </AdminPanel>
       <AdminPanel
-        title={t('dashboard.server.chat.gmod_to_discord_filter', 'Gmod to Discord Filter')}
+        title={t('dashboard.server.chat.gmod_to_discord_filter', 'Game-to-Discord message filtering')}
         description={t(
           'settings.chat_default_help',
           'Choose whether game messages are relayed or blocked by default. Configure exceptions in the rules below.',
@@ -488,7 +504,7 @@ const ServerChats: Component = () => {
         <AsyncState loading={storedRelay.loading} error={storedRelay.error} onRetry={() => void refetchRelay()} />
         <SettingRow
           controlId="chat-default-behavior"
-          title={t('dashboard.server.chat.default_behavior', 'Default behavior')}
+          title={t('dashboard.server.chat.default_behavior', 'Default action')}
         >
           <select
             id="chat-default-behavior"
@@ -502,8 +518,12 @@ const ServerChats: Component = () => {
             }
             onChange={(event) => relay.patch({ all: event.currentTarget.value === 'true' })}
           >
-            <option value="true">{t('dashboard.server.chat.relay_all_messages', 'Relay All Messages')}</option>
-            <option value="false">{t('dashboard.server.chat.block_all_messages', 'Block All Messages')}</option>
+            <option value="true">
+              {t('dashboard.server.chat.relay_all_messages', 'Relay unless a rule blocks the message')}
+            </option>
+            <option value="false">
+              {t('dashboard.server.chat.block_all_messages', 'Block unless a rule relays the message')}
+            </option>
           </select>
         </SettingRow>
         <FormActions
@@ -526,7 +546,7 @@ const ServerChats: Component = () => {
         title={t('settings.chat_rules', 'Filter rules')}
         description={t(
           'dashboard.server.chat.add_rules',
-          'Add specific rules to filter the messages sent from Gmod to Discord.',
+          'Create exceptions to the default action for game messages sent to Discord. Rules do not filter Discord-to-game messages.',
         )}
         icon="list"
         type="none"
@@ -550,10 +570,10 @@ const ServerChats: Component = () => {
           <table class="table w-full">
             <thead>
               <tr>
-                <th>{t('dashboard.server.chat.element', 'Element')}</th>
-                <th>{t('dashboard.server.chat.operator', 'Operator')}</th>
-                <th>{t('dashboard.server.chat.trigger', 'Trigger')}</th>
-                <th>{t('dashboard.server.chat.actions_on_match', 'Actions on Match')}</th>
+                <th>{t('dashboard.server.chat.element', 'Detail to check')}</th>
+                <th>{t('dashboard.server.chat.operator', 'Match condition')}</th>
+                <th>{t('dashboard.server.chat.trigger', 'Value to match')}</th>
+                <th>{t('dashboard.server.chat.actions_on_match', 'Action when matched')}</th>
                 <th>{t('dashboard.server.chat.active', 'Active')}</th>
                 <th>{t('dashboard.server.chat.actions', 'Actions')}</th>
               </tr>

@@ -133,7 +133,9 @@ describe('DiscordStatusPreview', () => {
     })
     expect(screen.getByRole('heading', { name: 'Prévisualisation Discord en direct' })).toBeInTheDocument()
     expect(
-      screen.getByText('L’aperçu suit vos modifications. Rien n’est envoyé avant l’enregistrement ou l’envoi.'),
+      screen.getByText(
+        'Les modifications mettent uniquement cet aperçu à jour. Enregistrez pour mettre à jour la configuration et un message existant ; publiez pour envoyer un nouveau message.',
+      ),
     ).toBeInTheDocument()
     expect(
       screen.getByText('Joueurs fictifs pour tester le rendu. L’envoi utilise les données réelles du serveur.'),
@@ -148,7 +150,9 @@ describe('DiscordStatusPreview', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'English' }))
     expect(screen.getByRole('heading', { name: 'Live Discord preview' })).toBeInTheDocument()
     expect(
-      screen.getByText('The preview follows your edits. Nothing is sent until you save or send the message.'),
+      screen.getByText(
+        'Edits update this preview only. Save to update the configuration and an existing message; publish to send a new message.',
+      ),
     ).toBeInTheDocument()
     expect(
       screen.getByText('Fictional players help you test the layout. Sending uses the server’s real data.'),

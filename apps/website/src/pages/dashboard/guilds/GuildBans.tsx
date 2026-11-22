@@ -41,19 +41,28 @@ const GuildBans: Component = () => {
 
   return (
     <>
+      <p class="text-sm text-base-content/70">
+        {t(
+          'dashboard.guild.bans.cross_platform_help',
+          'Cross-platform indicators require linked Steam and Discord accounts. No indicator can also mean that no linked account was found.',
+        )}
+      </p>
       <AdminPanel
         title={t('dashboard.guild.bans.gmod_title', 'GMod Bans')}
-        description={t('dashboard.guild.bans.gmod_description', 'Bans across every server in this guild.')}
+        description={t(
+          'dashboard.guild.bans.gmod_description',
+          "View up to 1,000 recent bans recorded by the Garry's Mod servers linked to this Discord server. The Discord indicator identifies matching bans on Discord.",
+        )}
         type="none"
       >
         <table class="table border-b border-base-300 rounded-none">
           <thead>
             <tr class="text-l">
-              <th>{t('dashboard.guild.bans.steam_id', 'SteamID64')}</th>
+              <th>{t('dashboard.guild.bans.steam_id', 'Player SteamID64')}</th>
               <th>{t('dashboard.guild.bans.admin', 'Admin')}</th>
               <th>{t('dashboard.guild.bans.reason', 'Reason')}</th>
               <th class="w-1/6 text-center">
-                {t('dashboard.guild.bans.also_banned_discord_column', 'Also on Discord')}
+                {t('dashboard.guild.bans.also_banned_discord_column', 'Also banned on Discord')}
               </th>
             </tr>
           </thead>
@@ -63,7 +72,7 @@ const GuildBans: Component = () => {
               loading={bans.loading}
               error={bans.error}
               empty={!bans.loading && !bans.error && bans()?.gmodBans.length === 0}
-              errorLabel={t('dashboard.guild.bans.failed_to_load', 'Failed to load bans')}
+              errorLabel={t('dashboard.guild.bans.failed_to_load', 'Unable to load bans. Try again.')}
               emptyLabel={t('dashboard.guild.bans.gmod_empty', 'No GMod bans found.')}
               onRetry={() => void refetch()}
             >
@@ -77,7 +86,7 @@ const GuildBans: Component = () => {
                       <TextValue value={ban.adminSteamID64} />
                     </td>
                     <td>
-                      <TextValue value={ban.reason} />
+                      <TextValue value={ban.reason || t('dashboard.guild.bans.no_reason', 'No reason provided')} />
                     </td>
                     <td>
                       <div class="flex gap-2 justify-center">
@@ -101,7 +110,10 @@ const GuildBans: Component = () => {
 
       <AdminPanel
         title={t('dashboard.guild.bans.discord_title', 'Discord Bans')}
-        description={t('dashboard.guild.bans.discord_description', 'Bans on this Discord server.')}
+        description={t(
+          'dashboard.guild.bans.discord_description',
+          'View bans from this Discord server. The GMod indicator identifies linked Steam accounts found in the game-server ban records above.',
+        )}
         type="none"
       >
         <table class="table border-b border-base-300 rounded-none">
@@ -109,7 +121,9 @@ const GuildBans: Component = () => {
             <tr class="text-l">
               <th>{t('dashboard.guild.bans.user', 'User')}</th>
               <th>{t('dashboard.guild.bans.reason', 'Reason')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.guild.bans.also_banned_gmod_column', 'Also on GMod')}</th>
+              <th class="w-1/6 text-center">
+                {t('dashboard.guild.bans.also_banned_gmod_column', 'Also banned on GMod')}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -118,7 +132,7 @@ const GuildBans: Component = () => {
               loading={bans.loading}
               error={bans.error}
               empty={!bans.loading && !bans.error && bans()?.discordBans.length === 0}
-              errorLabel={t('dashboard.guild.bans.failed_to_load', 'Failed to load bans')}
+              errorLabel={t('dashboard.guild.bans.failed_to_load', 'Unable to load bans. Try again.')}
               emptyLabel={t('dashboard.guild.bans.discord_empty', 'No Discord bans found.')}
               onRetry={() => void refetch()}
             >
@@ -129,7 +143,7 @@ const GuildBans: Component = () => {
                       <TextValue value={ban.tag} />
                     </td>
                     <td>
-                      <TextValue value={ban.reason || ''} />
+                      <TextValue value={ban.reason || t('dashboard.guild.bans.no_reason', 'No reason provided')} />
                     </td>
                     <td>
                       <div class="flex gap-2 justify-center">

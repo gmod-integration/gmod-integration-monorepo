@@ -93,12 +93,12 @@ export const Header: Component = () => {
       href: '/docs',
     },
     {
-      title: t('main.add_bot', 'Add the Bot'),
+      title: t('main.add_bot', 'Invite the bot'),
       icon: 'bot',
       href: '/invite',
     },
     {
-      title: t('main.support', 'Support'),
+      title: t('main.support', 'Help and support'),
       icon: 'messages-square',
       href: '/discord',
     },
@@ -442,10 +442,10 @@ export const Header: Component = () => {
               variant="primary"
               size="sm"
               class="header-login"
-              aria-label={t('header.login', 'Login with Discord')}
+              aria-label={t('header.login', 'Sign in with Discord')}
             >
               <Icon name="user-round" size={16} />
-              <span class="header-login-copy">{t('header.login', 'Login with Discord')}</span>
+              <span class="header-login-copy">{t('header.login', 'Sign in with Discord')}</span>
             </ButtonLink>
           </div>
         </Show>

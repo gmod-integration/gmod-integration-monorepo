@@ -1,10 +1,10 @@
 import { useAccess } from '../../../components/AccessProvider.js'
-import { Button, Icon } from '../../../components/ui/index.js'
+import { AsyncState, Button, Icon } from '../../../components/ui/index.js'
 import type { TypeDiscordChannel, TypeDiscordRole } from '../../../utils/types/DiscordTypes.js'
 import { type Component, createEffect, createResource, on, onCleanup, Show } from 'solid-js'
 import { getGuild } from '../../../utils/utils'
 import AdminPanel from '../../../components/AdminPanel'
-import { A, useLocation, useNavigate } from '@solidjs/router'
+import { useLocation, useNavigate } from '@solidjs/router'
 import { useI18n } from '../../../i18n'
 import { Errors } from '../../../components/layout/Errors'
 import { fetchAPI } from '../../../utils/api'
@@ -70,7 +70,7 @@ async function fetchAdmins() {
   const adminsList: GuildAdmin[] = []
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/admins', 'GET')
   if (!res.ok) {
-    return adminsList
+    throw new Error('Dashboard administrators request failed')
   }
   const admins = await res.json()
   for (const admin of admins) {
@@ -81,7 +81,7 @@ async function fetchAdmins() {
 
 const GuildInformations: Component = () => {
   const access = useAccess()
-  const [guildAdmins] = createResource('guilds-admins', fetchAdmins, { initialValue: [] })
+  const [guildAdmins, { refetch: refetchAdmins }] = createResource('guilds-admins', fetchAdmins, { initialValue: [] })
   const [bot, { mutate: setBot, refetch: refreshBot }] = createResource('bot', async () => {
     return await fetchAPI('/users/:discordID/guilds/:guildID/bot', 'GET').then(async (res) => {
       if (!res.ok) throw new Error('An error occurred while fetching the bot.')
@@ -95,7 +95,10 @@ const GuildInformations: Component = () => {
 
   async function activateGmodStorePremium() {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/gmod-store', 'POST')
-    if (!res.ok) return Errors('An error occurred while activating the bot.')
+    if (!res.ok)
+      return Errors(
+        t('dashboard.guild.information.activation_error', 'Unable to activate GmodStore Premium. Try again.'),
+      )
     const data = await res.json()
     setBot(data)
     navigate('/dashboard/guilds')
@@ -103,7 +106,10 @@ const GuildInformations: Component = () => {
 
   async function deactivateGmodStorePremium() {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/gmod-store', 'DELETE')
-    if (!res.ok) return Errors('An error occurred while deactivating the bot.')
+    if (!res.ok)
+      return Errors(
+        t('dashboard.guild.information.deactivation_error', 'Unable to deactivate GmodStore Premium. Try again.'),
+      )
     const data = await res.json()
     setBot(data)
     navigate('/dashboard/guilds')
@@ -111,7 +117,8 @@ const GuildInformations: Component = () => {
 
   async function deactivateBot() {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/bot', 'DELETE')
-    if (!res.ok) return Errors('An error occurred while deactivating the bot.')
+    if (!res.ok)
+      return Errors(t('dashboard.guild.information.bot_deactivation_error', 'Unable to deactivate the bot. Try again.'))
     const data = await res.json()
     setBot(data)
     navigate('/dashboard/guilds')
@@ -143,29 +150,44 @@ const GuildInformations: Component = () => {
   return (
     <>
       <AdminPanel
-        title={t('dashboard.guild.information.title', 'Informations')}
+        title={t('dashboard.guild.information.title', 'Discord server overview')}
         description={t(
           'dashboard.guild.information.description',
-          'Here you can see some informations about your guild, and edit some of them.',
+          'Review this Discord server, its dashboard administrators and its Premium access.',
         )}
       >
         <div class="flex w-fit items-center">
-          <span class="mr-2">{t('dashboard.guild.information.guild_name', 'Guild Name')}:</span>
+          <span class="mr-2">{t('dashboard.guild.information.guild_name', 'Discord server name')}:</span>
           <span>{getGuild().name}</span>
         </div>
         <div class="flex w-fit items-center">
-          <span class="mr-2">{t('dashboard.guild.information.guild_id', 'Guild ID')}:</span>
+          <span class="mr-2">{t('dashboard.guild.information.guild_id', 'Discord server ID')}:</span>
           <span>{getGuild().id}</span>
         </div>
-        <div class="flex w-fit items-center">
+        <div class="flex flex-wrap items-center gap-2">
           <span class="mr-2">{t('dashboard.guild.information.admins', 'Admins')}:</span>
-          <span>
-            {!guildAdmins.loading
-              ? guildAdmins()
-                  .map((admin) => admin.name)
-                  .join(', ')
-              : 'Loading...'}
-          </span>
+          <AsyncState
+            loading={guildAdmins.loading}
+            error={guildAdmins.error}
+            empty={!guildAdmins.loading && !guildAdmins.error && guildAdmins().length === 0}
+            errorLabel={t(
+              'dashboard.guild.information.admins_load_error',
+              'Unable to load the dashboard administrators. Try again.',
+            )}
+            emptyLabel={t(
+              'dashboard.guild.information.admins_empty',
+              'No dashboard administrators were returned for this community.',
+            )}
+            onRetry={() => void refetchAdmins()}
+          >
+            <span>
+              {!guildAdmins.error
+                ? guildAdmins()
+                    .map((admin) => admin.name)
+                    .join(', ')
+                : ''}
+            </span>
+          </AsyncState>
         </div>
         <div class="flex w-fit items-center">
           <span class="mr-2">{t('dashboard.guild.information.premium', 'Premium')}:</span>
@@ -191,7 +213,7 @@ const GuildInformations: Component = () => {
           <span>
             {t(
               'dashboard.guild.information.warning',
-              "Be careful, admins can manage the bot and so make modifications to your Discord Guild and your Garry's Mod Server.",
+              "These administrators can change bot settings for this Discord server and its linked Garry's Mod servers.",
             )}
           </span>
         </div>
@@ -232,16 +254,13 @@ const GuildInformations: Component = () => {
           >
             {t(
               'dashboard.guild.information.reinvite_main_bot',
-              'Before removing the Gmod Store Premium, you need to re-invite the main bot to your guild.',
+              'Invite the main Gmod Integration bot to this Discord server before deactivating GmodStore Premium.',
             )}
           </p>
           <div class="flex w-fit items-center gap-4">
             <Show when={!gmodStorePurchase().hasMainBot}>
-              <A
-                href="#"
-                class="btn btn-base-200"
-                onClick={(e) => {
-                  e.preventDefault()
+              <Button
+                onClick={() => {
                   const newWindow = window.open(`/invite&guild_id=${getGuild().id}`, '_blank', 'width=600,height=900')
                   clearInterval(inviteTimer)
                   inviteTimer = setInterval(function () {
@@ -253,15 +272,9 @@ const GuildInformations: Component = () => {
                 }}
               >
                 {t('dashboard.guild.information.invite_main_bot', 'Invite Main Bot')}
-              </A>
+              </Button>
             </Show>
-            <Button
-              variant="warning"
-              onClick={deactivateGmodStorePremium}
-              classList={{
-                'btn-disabled': !gmodStorePurchase().hasMainBot,
-              }}
-            >
+            <Button variant="warning" onClick={deactivateGmodStorePremium} disabled={!gmodStorePurchase().hasMainBot}>
               {t('dashboard.guild.information.deactivate_gmod_store_premium', 'Deactivate Gmod Store Premium')}
             </Button>
           </div>

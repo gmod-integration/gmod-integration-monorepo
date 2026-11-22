@@ -44,7 +44,7 @@ const Home: Component = () => {
       title: t('home.features.server_status.title', 'Server Status'),
       description: t(
         'home.features.server_status.description',
-        "Show the actual status of your server, if it's online or offline, how many players are on, the actual map and the game mode, since when the server is online ect... Server status is updated every 2 minutes, by default only one button (connect) is shown if the server is online, but you can add more buttons like 'Shop' or 'Workshop' in the dashboard.",
+        "Show your game server's connection status, player count, map and game mode in a Discord message. Choose the channel, message content and buttons in the dashboard.",
       ),
       img: servers_status,
       icon: 'activity',
@@ -53,7 +53,7 @@ const Home: Component = () => {
       title: t('home.features.user_profile.title', 'User Profile'),
       description: t(
         'home.features.user_profile.description',
-        "Show the profile of a user, it shows their name, bot rank, trust factor, last verification date, discord id and steam id. You can easily interact with the user profile by clicking on the buttons, 'Steam Profile' ect...",
+        "View a member's linked Discord and Steam accounts, verification details and available player information from Discord. Profile buttons provide direct access to their accounts.",
       ),
       img: profile,
       icon: 'contact',
@@ -62,34 +62,34 @@ const Home: Component = () => {
       title: t('home.features.chat_bridge.title', 'Chat Bridge'),
       description: t(
         'home.features.chat_bridge.description',
-        'The bot can bridge the chat between your server and your discord guilds, so your users can talk to each other without being on the same platform. You can choose the channels that you want to bridge, the direction of the bridge (from discord to server, from server to discord or both) and apply custom rules like skipping commands, anonymizing /ano, skip message for specific users groups ect...',
+        "Relay messages between Garry's Mod and a Discord channel. Choose the direction of the relay and use filters to control which game messages are sent.",
       ),
       img: chat,
       icon: 'messages-square',
     },
     {
-      title: t('home.features.discord_rcon.title', 'Discord Rcon'),
+      title: t('home.features.discord_rcon.title', 'Game console commands'),
       description: t(
         'home.features.discord_rcon.description',
-        "Don't have access to your server console? No problem, you can use the bot to run commands on your server from your discord guilds. Only discord Admins with superadmin rank can use this feature.",
+        'Run game server console commands from Discord with RCON. Access depends on your permissions and the server configuration.',
       ),
       img: rcon,
       icon: 'monitor',
     },
     {
-      title: t('home.features.custom_link.title', 'Custom Link'),
+      title: t('home.features.custom_link.title', 'Community links'),
       description: t(
         'home.features.custom_link.description',
-        "You can create a custom link for your discord guilds, it's a good way to share community link, like your website, your steam group, your workshop ect... Use this links to simplify the access to your community resources.",
+        "Give members quick access to your website, shop, Steam group or Workshop collection through the bot's community links.",
       ),
       img: links,
       icon: 'link',
     },
     {
-      title: t('home.features.user_verification.title', 'User Verification'),
+      title: t('home.features.user_verification.title', 'Discord and Steam verification'),
       description: t(
         'home.features.user_verification.description',
-        "Actually the most important feature of the bot, it allows you to force your users to verify their Discord account with their Steam account, it's a good way to prevent trolls, bots and ban evaders from joining your server. Also, it allows us to sync your users with your server, so you can use other synchronized feature like user information (name, stats, rank, warn, ban ect...).",
+        'Let members link their Discord and Steam accounts. Configure verification messages and Discord roles, and choose whether linked accounts are required to join your game server.',
       ),
       img: verification,
       icon: 'shield-check',
@@ -98,16 +98,16 @@ const Home: Component = () => {
       title: t('home.features.statistics.title', 'Statistics'),
       description: t(
         'home.features.statistics.description',
-        'The bot can collect some statistics about your server, like the number of players, the number of bans, the number of warns ect... You can see the statistics in the dashboard, and you can also enable the statistics channel, so the bot will send a message in a channel when a user get banned ect...',
+        'View available player and server statistics to follow activity in your community. The information shown depends on the data collected by your game server.',
       ),
       img: statistic,
       icon: 'chart-no-axes-combined',
     },
     {
-      title: t('home.features.logs.title', 'Logs'),
+      title: t('home.features.logs.title', 'Game server logs'),
       description: t(
         'home.features.logs.description',
-        'The bot can log some actions of your users, like when they join or leave your server, when they get banned or kicked, when they get warned ect... You can see the logs in the dashboard, and you can also enable the logs channel, so the bot will send a message in a channel when a user get banned ect...',
+        'Read recorded game events in the dashboard and choose which events are relayed to Discord. Add event actions for the conditions you want to monitor.',
       ),
       img: logs,
       icon: 'scroll-text',
@@ -116,7 +116,7 @@ const Home: Component = () => {
       title: t('home.features.player_database.title', 'Player Database'),
       description: t(
         'home.features.player_database.description',
-        'View all the players that have joined your server, you can see their name, steam id, discord id, join date, last join date, total time spent on your server, total warns, total bans ect... You can also search for a player by name, steam id or discord id.',
+        'Find players recorded by your game server and view their Steam ID, linked Discord account and available activity information. This list includes previous players, not just those currently online.',
       ),
       img: players,
       icon: 'users',
@@ -124,7 +124,7 @@ const Home: Component = () => {
   ]
 
   const metrics = () => [
-    { key: 'guild' as const, icon: 'users' as const, label: t('main.guilds', 'Guilds') },
+    { key: 'guild' as const, icon: 'users' as const, label: t('main.guilds', 'Discord communities') },
     { key: 'server' as const, icon: 'server' as const, label: t('main.servers', 'Servers') },
     { key: 'user' as const, icon: 'user-round' as const, label: t('main.users', 'Users') },
     { key: 'verifyUser' as const, icon: 'shield-check' as const, label: t('main.verified_users', 'Verified Users') },
@@ -153,12 +153,15 @@ const Home: Component = () => {
               Gmod Integration
             </h1>
             <p class="max-w-lg text-base leading-relaxed text-base-content/60 sm:text-lg">
-              {t('home.hero.title', "Improve your discord server with the most Advanced Garry's Mod bot")}
+              {t(
+                'home.hero.title',
+                "Connect your Garry's Mod server to Discord: share chat, show server activity and link player accounts.",
+              )}
             </p>
           </div>
           <div class="public-hero-actions flex w-full flex-wrap items-center gap-3">
             <ButtonLink href="/dashboard/guilds" variant="primary">
-              {t('home.hero.button', 'Go to Dashboard')}
+              {t('home.hero.button', 'Open the dashboard')}
               <Icon name="arrow-right" size={17} />
             </ButtonLink>
             <ButtonLink href="/docs">
@@ -177,7 +180,7 @@ const Home: Component = () => {
             </span>
             <span class="inline-flex items-center gap-2">
               <Icon name="shield-check" size={14} />
-              {t('home.features.user_verification.title', 'User Verification')}
+              {t('home.features.user_verification.title', 'Discord and Steam verification')}
             </span>
           </div>
         </div>
@@ -316,7 +319,7 @@ const Home: Component = () => {
             Gmod Integration
           </span>
           <ButtonLink href="/dashboard/guilds" variant="primary">
-            {t('home.hero.button', 'Go to Dashboard')}
+            {t('home.hero.button', 'Open the dashboard')}
             <Icon name="arrow-right" size={17} />
           </ButtonLink>
         </div>

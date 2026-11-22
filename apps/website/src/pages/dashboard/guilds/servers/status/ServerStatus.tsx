@@ -96,7 +96,7 @@ const ServerStatus: Component = () => {
       <StatusConfigurationProvider>
         <div
           role="tablist"
-          aria-label={t('dashboard.server.status.title', 'Server Status')}
+          aria-label={t('dashboard.server.status.title', 'Discord status message')}
           class="status-mobile-tabs flex min-w-0 gap-1 rounded-xl border border-base-content/10 bg-base-100 p-1 xl:hidden"
         >
           <Button

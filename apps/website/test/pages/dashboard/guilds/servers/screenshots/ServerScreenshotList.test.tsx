@@ -134,7 +134,7 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.tsx', 
   it('shows the end-of-list message once a short page indicates no more results', async () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(page([shot()])))
     renderPage()
-    await vi.waitFor(() => expect(screen.getByText('End of List')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByText('All received screenshots have been loaded.')).toBeInTheDocument())
   })
 
   it('does not show the end-of-list message while more pages remain', async () => {
@@ -142,7 +142,7 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.tsx', 
     ;(fetchAPI as Mock).mockResolvedValue(okJson(page(fullPage)))
     renderPage()
     await vi.waitFor(() => expect(screen.getAllByText('Shot').length).toBe(20))
-    expect(screen.queryByText('End of List')).not.toBeInTheDocument()
+    expect(screen.queryByText('All received screenshots have been loaded.')).not.toBeInTheDocument()
   })
 
   it('loads a second page on scroll, appending items and advancing the offset', async () => {

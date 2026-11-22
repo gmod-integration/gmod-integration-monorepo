@@ -8,6 +8,11 @@ remain the visual foundation.
 
 Import from `apps/website/src/components/ui/index.ts`.
 
+Icon navigation and downloads use `IconButtonLink`, with the same required `label`, optional `icon`
+and sizes as `IconButton`, plus native link attributes. Preserve `href`, `download`, `target` and `rel`
+instead of replacing link behavior with a click handler. Standard controls are 38 px high; small
+buttons and fields are 32 px high. Use `size="sm"` and `select-sm`/`input-sm` together in compact groups.
+
 | Component         | Purpose                                 | Contract                                                                                                                                                                                                                           |
 | ----------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Button`          | Text actions                            | Native attributes; `variant`: `primary`, `secondary`, `ghost`, `danger`, `warning`; `size`: `sm`, `md`; `loading` blocks clicks and retains the label. Default `type="button"`.                                                    |
@@ -306,9 +311,13 @@ does not cancel a pending save or reset draft values.
 
 Check loading/error before reading a Solid resource. Failure must not masquerade as an empty list.
 Keep `Pagination` outside `TableState`, under a successful `!loading && !error` guard, so empty pages
-still allow returning to a previous page or changing the page size. Keep pagination inside valid table
-rows. Use wrapping action groups and horizontal overflow for wide
-data; do not make the whole dashboard scroll horizontally.
+still allow returning to a previous page or changing the page size. Put `<Pagination standalone />`
+in `AdminPanel.footer`, outside the table and its horizontal scrolling body, so the controls stay
+visible on narrow screens. The default table-row output and `colSpan` remain available for older
+layouts. Public lists use the same `PaginationControls` presentation while retaining their own query
+shape and page-size limits. Both exports live in `components/Pagination.tsx`.
+Use wrapping action groups and horizontal overflow for wide data; do not make the whole dashboard
+scroll horizontally.
 
 ## Visual and maintenance rules
 

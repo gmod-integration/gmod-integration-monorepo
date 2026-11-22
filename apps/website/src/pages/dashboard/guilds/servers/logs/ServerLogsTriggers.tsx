@@ -199,13 +199,25 @@ export const ServerLogsTriggers: Component = () => {
           t('dashboard.server.logs_trigger.add_trigger', 'Add Trigger')
         }
         id="edit_log_trigger"
+        description={t(
+          'dashboard.server.logs_trigger.editor_help',
+          'Choose an event and a condition, then write the Discord message to send when it matches. Save to apply the rule.',
+        )}
         busy={form.pending()}
         onClose={discard}
         onCancel={discard}
       >
-        <FormField id="log-trigger-type" label={t('dashboard.server.logs_trigger.trigger', 'Trigger')}>
+        <FormField
+          id="log-trigger-type"
+          label={t('dashboard.server.logs_trigger.trigger', 'Event')}
+          description={t(
+            'dashboard.server.logs_trigger.event_help',
+            'Choose the server event to watch. The corresponding gamemode or addon must send this event.',
+          )}
+        >
           <select
             id="log-trigger-type"
+            aria-describedby="log-trigger-type-description"
             class="select"
             disabled={unavailable()}
             value={editedTrigger().log_type}
@@ -219,9 +231,14 @@ export const ServerLogsTriggers: Component = () => {
             </For>
           </select>
         </FormField>
-        <FormField id="log-trigger-compare" label={t('dashboard.server.logs_trigger.compare', 'Compare')}>
+        <FormField
+          id="log-trigger-compare"
+          label={t('dashboard.server.logs_trigger.compare', 'Event field')}
+          description={t('dashboard.server.logs_trigger.compare_help', 'Choose the event value to compare.')}
+        >
           <select
             id="log-trigger-compare"
+            aria-describedby="log-trigger-compare-description"
             class="select"
             disabled={unavailable()}
             value={editedTrigger().compare}
@@ -239,9 +256,17 @@ export const ServerLogsTriggers: Component = () => {
             </For>
           </select>
         </FormField>
-        <FormField id="log-trigger-operator" label={t('dashboard.server.logs_trigger.operator', 'Operator')}>
+        <FormField
+          id="log-trigger-operator"
+          label={t('dashboard.server.logs_trigger.operator', 'Condition')}
+          description={t(
+            'dashboard.server.logs_trigger.operator_help',
+            'Amounts are numbers. Use greater than, less than, equal or not equal. Text conditions do not apply to these amounts.',
+          )}
+        >
           <select
             id="log-trigger-operator"
+            aria-describedby="log-trigger-operator-description"
             class="select"
             disabled={unavailable()}
             onChange={(e) => {
@@ -263,6 +288,10 @@ export const ServerLogsTriggers: Component = () => {
         <FormField
           id="log-trigger-value"
           label={t('dashboard.server.logs_trigger.value', 'Value')}
+          description={t(
+            'dashboard.server.logs_trigger.value_help',
+            'Enter the amount to compare against, for example 1000000. Use digits without currency symbols or separators.',
+          )}
           error={form.dirty() ? form.errors().value : undefined}
         >
           <input
@@ -270,7 +299,7 @@ export const ServerLogsTriggers: Component = () => {
             type="text"
             maxLength={255}
             aria-invalid={form.dirty() && !!form.errors().value}
-            aria-describedby={form.dirty() && form.errors().value ? 'log-trigger-value-error' : undefined}
+            aria-describedby={`log-trigger-value-description${form.dirty() && form.errors().value ? ' log-trigger-value-error' : ''}`}
             placeholder={t('dashboard.server.logs_trigger.value', 'Value')}
             disabled={unavailable()}
             class="input"
@@ -278,7 +307,10 @@ export const ServerLogsTriggers: Component = () => {
             onInput={(e) => form.patch({ value: e.currentTarget.value })}
           />
         </FormField>
-        <FormField id="log-trigger-action" label={t('dashboard.server.logs_trigger.reply_action', 'Reply Action')}>
+        <FormField
+          id="log-trigger-action"
+          label={t('dashboard.server.logs_trigger.reply_action', 'Action when matched')}
+        >
           <select
             id="log-trigger-action"
             class="select"
@@ -298,7 +330,7 @@ export const ServerLogsTriggers: Component = () => {
         <Show when={editedTrigger().action === log_trigger_action.sendMessageInChannel}>
           <div class="fieldset">
             <label class="label">
-              <span>{t('dashboard.server.logs_trigger.channel', 'Channel')}</span>
+              <span>{t('dashboard.server.logs_trigger.channel', 'Discord destination')}</span>
             </label>
             <ChannelSelector
               disabled={unavailable()}
@@ -313,32 +345,31 @@ export const ServerLogsTriggers: Component = () => {
               <span>
                 {t('dashboard.server.logs_trigger.message', 'Message')}{' '}
                 <details class="dropdown dropdown-top dropdown-right">
-                  <summary class="link">({t('dashboard.server.logs_trigger.message_show_vars', 'Show Vars')})</summary>
+                  <summary class="link">
+                    ({t('dashboard.server.logs_trigger.message_show_vars', 'Insert event values')})
+                  </summary>
                   <div class="flex flex-col menu dropdown-content bg-base-100 rounded-box z-1 w-80 gap-2 p-2 shadow-2xl border border-base-200">
                     {/*add a description for ply var: you can use custom var with {{data.ply.steamID64}} for example */}
                     <p class="text-base-content/50">
                       {t(
                         'dashboard.server.logs_trigger.message_show_vars_description',
-                        'You can use any var of the log by using {{data.path.to.var}}, here is a list of the vars you can use',
+                        'Insert event values with {{data.path.to.var}}. Available fields depend on the event; these player fields apply when the event includes a player.',
                         ['{{data.path.to.var}}'],
                       )}
                       :
                     </p>
                     <ul class="flex flex-col text-sm text-base-content/50">
                       <li>
-                        {'{{data.ply.steamID64}}'} : {t('dashboard.server.logs_trigger.steamID64', 'SteamID64')}
+                        {'{{data.player.steamID64}}'} : {t('dashboard.server.logs_trigger.steamID64', 'SteamID64')}
                       </li>
                       <li>
-                        {'{{data.ply.name}}'} : {t('dashboard.server.logs_trigger.name', 'Name')}
+                        {'{{data.player.name}}'} : {t('dashboard.server.logs_trigger.name', 'Name')}
                       </li>
                       <li>
-                        {'{{data.ply.team.name}}'} : {t('dashboard.server.logs_trigger.team', 'Team')}
+                        {'{{data.player.team.name}}'} : {t('dashboard.server.logs_trigger.team', 'Team')}
                       </li>
                       <li>
                         {'{{data.amount}}'} : {t('dashboard.server.logs_trigger.amount', 'Amount')}
-                      </li>
-                      <li>
-                        {'{{data.category}}'} : {t('dashboard.server.logs_trigger.category', 'Category')}
                       </li>
                       <li>...</li>
                     </ul>
@@ -350,13 +381,19 @@ export const ServerLogsTriggers: Component = () => {
               id="log-trigger-message"
               maxLength={255}
               aria-invalid={form.dirty() && !!form.errors().message}
-              aria-describedby={form.dirty() && form.errors().message ? 'log-trigger-message-error' : undefined}
+              aria-describedby={`log-trigger-message-description${form.dirty() && form.errors().message ? ' log-trigger-message-error' : ''}`}
               class="textarea"
               placeholder={t('dashboard.server.logs_trigger.message', 'Message')}
               disabled={unavailable()}
               value={editedTrigger().message}
               onInput={(e) => form.patch({ message: e.currentTarget.value })}
             />
+            <p id="log-trigger-message-description" class="text-sm text-base-content/65">
+              {t(
+                'dashboard.server.logs_trigger.message_help',
+                'Write the notification sent to the selected Discord channel. Maximum 255 characters, including variables.',
+              )}
+            </p>
             <Show when={form.dirty() && form.errors().message}>
               <p id="log-trigger-message-error" class="text-sm text-error">
                 {form.errors().message}
@@ -405,10 +442,10 @@ export const ServerLogsTriggers: Component = () => {
       />
 
       <AdminPanel
-        title={t('dashboard.server.logs_trigger.title.logs_channel', 'Logs Trigger')}
+        title={t('dashboard.server.logs_trigger.title.logs_channel', 'Log alerts')}
         description={t(
           'dashboard.server.logs_trigger.description.logs_channel',
-          'Define custom actions for specific events in your server. You can customize the actions to suit your needs.',
+          'Send a Discord notification when a server event matches a condition, such as a money drop above a chosen amount.',
         )}
         type="none"
       >
@@ -419,11 +456,11 @@ export const ServerLogsTriggers: Component = () => {
         <table class="table border-b border-base-300 rounded-none">
           <thead>
             <tr class="text-l">
-              <th class="w-1/6">{t('dashboard.server.logs_trigger.trigger', 'Trigger')}</th>
-              <th class="w-1/6">{t('dashboard.server.logs_trigger.compare', 'Compare')}</th>
-              <th class="w-1/6">{t('dashboard.server.logs_trigger.operator', 'Operator')}</th>
+              <th class="w-1/6">{t('dashboard.server.logs_trigger.trigger', 'Event')}</th>
+              <th class="w-1/6">{t('dashboard.server.logs_trigger.compare', 'Event field')}</th>
+              <th class="w-1/6">{t('dashboard.server.logs_trigger.operator', 'Condition')}</th>
               <th class="w-1/6">{t('dashboard.server.logs_trigger.value', 'Value')}</th>
-              <th class="w-1/6">{t('dashboard.server.logs_trigger.reply_action', 'Reply Action')}</th>
+              <th class="w-1/6">{t('dashboard.server.logs_trigger.reply_action', 'Action when matched')}</th>
               <th class="text-center">{t('dashboard.server.logs_trigger.action', 'Action')}</th>
             </tr>
           </thead>
@@ -432,6 +469,11 @@ export const ServerLogsTriggers: Component = () => {
               colSpan={6}
               loading={logTriggers.loading}
               error={!!logTriggers.error}
+              errorLabel={t('dashboard.server.logs_trigger.load_error', 'Unable to load log alerts. Try again.')}
+              emptyLabel={t(
+                'dashboard.server.logs_trigger.empty',
+                'No log alerts are configured. Add a rule to receive notifications for matching events.',
+              )}
               empty={!logTriggers.loading && !logTriggers.error && logTriggers().length === 0}
               onRetry={() => void refetch()}
             >

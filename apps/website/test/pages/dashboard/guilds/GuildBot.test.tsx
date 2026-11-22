@@ -60,7 +60,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     const { container } = renderWithProviders(() => <GuildBot />)
     await vi.waitFor(() =>
       expect(container.querySelector<HTMLElement>('.text-indigo-300')?.textContent).toContain(
-        "This feature is only available for GmodStore's custom bots.",
+        'This feature is reserved for custom bots purchased on GmodStore. A standard Premium subscription does not include custom bots.',
       ),
     )
     expect(screen.getByRole('link', { name: 'Get a Custom Bot' })).toHaveAttribute('href', '/gmodstore')
@@ -212,10 +212,10 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
     await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
     const setup = container.querySelector<HTMLDialogElement>('#setup_bot')!
-    await fireEvent.input(within(setup).getByLabelText(/^Token/), { target: { value: 'secret-draft' } })
+    await fireEvent.input(within(setup).getByLabelText(/^Bot token/), { target: { value: 'secret-draft' } })
     expect(entries[1].dirty()).toBe(true)
     entries[1].discard()
-    expect(within(setup).getByLabelText(/^Token/)).toHaveValue('')
+    expect(within(setup).getByLabelText(/^Bot token/)).toHaveValue('')
     unmount()
     expect(unregister).toHaveBeenCalledTimes(2)
   })
@@ -236,7 +236,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
 
     const setupModal = container.querySelector<HTMLDialogElement>('#setup_bot')!
-    const tokenInput = within(setupModal).getByLabelText(/Token/) as HTMLInputElement
+    const tokenInput = within(setupModal).getByLabelText(/^Bot token/) as HTMLInputElement
     fireEvent.input(tokenInput, { target: { value: 'secret-token' } })
 
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ token: 'secret-token', active: true })))
@@ -257,12 +257,12 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
 
     ;(fetchAPI as any).mockResolvedValue(jsonResponse({}, false))
     const setupModal = container.querySelector<HTMLDialogElement>('#setup_bot')!
-    await fireEvent.input(within(setupModal).getByLabelText(/Token/), { target: { value: 'rejected-token' } })
+    await fireEvent.input(within(setupModal).getByLabelText(/^Bot token/), { target: { value: 'rejected-token' } })
     fireEvent.click(within(setupModal).getByRole('button', { name: 'Save', hidden: true }))
 
     await vi.waitFor(() => expect(within(setupModal).getByRole('alert')).toBeInTheDocument())
     expect(setupModal.open).toBe(true)
-    expect(within(setupModal).getByLabelText(/Token/)).toHaveValue('rejected-token')
+    expect(within(setupModal).getByLabelText(/^Bot token/)).toHaveValue('rejected-token')
   })
 
   it('discards the setup secret on Cancel and reopens with an empty draft', async () => {
@@ -271,11 +271,11 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     await waitForLoaded()
     await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
     const modal = container.querySelector<HTMLDialogElement>('#setup_bot')!
-    await fireEvent.input(within(modal).getByLabelText(/Token/), { target: { value: 'secret-to-discard' } })
+    await fireEvent.input(within(modal).getByLabelText(/^Bot token/), { target: { value: 'secret-to-discard' } })
     await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
     expect(modal.open).toBe(false)
     await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
-    expect(within(modal).getByLabelText(/Token/)).toHaveValue('')
+    expect(within(modal).getByLabelText(/^Bot token/)).toHaveValue('')
     expect(within(modal).getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PATCH')).toHaveLength(0)
   })
@@ -288,7 +288,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
     const modal = container.querySelector<HTMLDialogElement>('#edit_bot')!
     expect(within(modal).getByText(/This saved feature is suspended\./)).toBeInTheDocument()
-    await fireEvent.change(within(modal).getByLabelText('Status'), { target: { value: 'disabled' } })
+    await fireEvent.change(within(modal).getByLabelText('Discord activity'), { target: { value: 'disabled' } })
     vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot({ status: 'disabled' })))
     await fireEvent.click(within(modal).getByRole('button', { name: 'Save' }))
     await vi.waitFor(() => expect(modal.open).toBe(false))
@@ -307,9 +307,9 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
       .spyOn(window, 'open')
       .mockReturnValueOnce(null)
       .mockReturnValueOnce({ closed: false } as Window)
-    await fireEvent.click(screen.getByRole('button', { name: 'Join Guild' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Invite to this Discord server' }))
     expect(screen.getByRole('alert')).toHaveTextContent('Allow pop-ups for this site to invite the bot.')
-    await fireEvent.click(screen.getByRole('button', { name: 'Join Guild' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Invite to this Discord server' }))
     expect(open).toHaveBeenCalledTimes(2)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     unmount()
@@ -321,7 +321,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
     expect(screen.getByRole('button', { name: 'Edit Custom Bot' })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Join Guild' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Invite to this Discord server' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Setup Custom Bot' })).not.toBeInTheDocument()
   })
 
@@ -332,7 +332,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
     expect(screen.getByRole('button', { name: 'Edit Custom Bot' })).not.toHaveClass('hidden')
-    expect(screen.getByRole('button', { name: 'Join Guild' })).toHaveClass('hidden')
+    expect(screen.getByRole('button', { name: 'Invite to this Discord server' })).toHaveClass('hidden')
     expect(screen.getByRole('button', { name: 'Setup Custom Bot' })).not.toHaveClass('hidden')
   })
 
@@ -343,7 +343,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
     expect(screen.getByRole('button', { name: 'Edit Custom Bot' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Join Guild' })).not.toHaveClass('hidden')
+    expect(screen.getByRole('button', { name: 'Invite to this Discord server' })).not.toHaveClass('hidden')
     expect(screen.getByRole('button', { name: 'Setup Custom Bot' })).toHaveClass('hidden')
   })
 
@@ -354,7 +354,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
     expect(screen.getByRole('button', { name: 'Edit Custom Bot' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Join Guild' })).toHaveClass('hidden')
+    expect(screen.getByRole('button', { name: 'Invite to this Discord server' })).toHaveClass('hidden')
   })
 
   it('opens the invite window on Join Guild click and refreshes the bot once it closes', async () => {
@@ -374,7 +374,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     } as Window
     const openSpy = vi.spyOn(window, 'open').mockReturnValue(fakeWindow)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Join Guild' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Invite to this Discord server' }))
 
     expect(openSpy).toHaveBeenCalledWith(
       'https://discord.com/oauth2/authorize?client_id=bot42&permissions=8&scope=bot&guild_id=:guildID',

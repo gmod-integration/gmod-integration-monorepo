@@ -77,7 +77,9 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsList.tsx', () => {
       .mockResolvedValueOnce(jsonResponse(false, {}) as never)
       .mockResolvedValueOnce(jsonResponse(true, logsBody(1)) as never)
     const { container } = renderPage()
-    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to load this content.'))
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load event history. Try again.'),
+    )
     expect(container.querySelector('tbody > tr > td [role=alert]')).toBeInTheDocument()
     await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await vi.waitFor(() => expect(screen.getByText('Player0')).toBeInTheDocument())

@@ -153,7 +153,7 @@ describe('authoritative reactive access', () => {
     await vi.waitFor(() => expect(screen.getByText('4 / 4 used')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Add rule' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeDisabled()
-    expect(screen.getByRole('link', { name: 'Upgrade Now' })).toHaveAttribute('href', '/premium?guildID=g1')
+    expect(screen.getByRole('link', { name: 'View Premium plans' })).toHaveAttribute('href', '/premium?guildID=g1')
     expect(screen.getByRole('link', { name: 'Premium' })).toHaveAccessibleName('Premium')
     await fireEvent.input(screen.getByLabelText('Draft'), { target: { value: 'My unsaved draft' } })
     network.mockResolvedValue(response(snapshot({ premium: true, serverID: 's1', revision: 'two' })))
@@ -170,7 +170,7 @@ describe('authoritative reactive access', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({}, 503)))
     renderRemote()
     await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Access could not be verified'))
-    expect(screen.queryByRole('link', { name: 'Upgrade Now' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'View Premium plans' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add rule' })).toBeDisabled()
   })
 
@@ -178,7 +178,7 @@ describe('authoritative reactive access', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({}, 403)))
     renderRemote()
     await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('You do not have permission'))
-    expect(screen.queryByRole('link', { name: 'Upgrade Now' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'View Premium plans' })).not.toBeInTheDocument()
   })
 
   it('reloads for a different community and rejects a response for the previous scope', async () => {
@@ -201,7 +201,7 @@ describe('authoritative reactive access', () => {
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Fourth free rule' })).toBeEnabled())
     expect(screen.getByRole('button', { name: 'Add rule' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeDisabled()
-    expect(screen.queryByRole('link', { name: 'Upgrade Now' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'View Premium plans' })).not.toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('Access could not be verified')
   })
 
@@ -217,7 +217,7 @@ describe('authoritative reactive access', () => {
     expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled()
     await vi.advanceTimersByTimeAsync(1000)
     expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeDisabled()
-    expect(screen.queryByRole('link', { name: 'Upgrade Now' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'View Premium plans' })).not.toBeInTheDocument()
   })
 
   it('does not show a quota upgrade when the resource itself failed to load', () => {
@@ -239,7 +239,7 @@ describe('authoritative reactive access', () => {
         />
       </MemoryRouter>
     ))
-    expect(screen.queryByRole('link', { name: 'Upgrade Now' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'View Premium plans' })).not.toBeInTheDocument()
     expect(screen.queryByText('4 / 4 used')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add rule' })).toBeDisabled()
   })

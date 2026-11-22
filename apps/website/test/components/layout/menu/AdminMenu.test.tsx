@@ -26,8 +26,8 @@ describe('Admin navigation', () => {
     await fireEvent.click(toggle)
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
     expect(sidebar).toHaveAttribute('data-mobile-open', 'true')
-    expect(screen.getByText('Guilds')).toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('link', { name: 'Guilds' }))
+    expect(screen.getByText('Discord communities')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('link', { name: 'Discord communities' }))
     await vi.waitFor(() => expect(history.get()).toBe('/dashboard/admins/guilds'))
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
     expect(sidebar).toHaveAttribute('data-mobile-open', 'false')
@@ -44,8 +44,11 @@ describe('Admin navigation', () => {
       '/dashboard/admins/informations',
     )
     expect(within(navigation).getByRole('link', { name: 'Information' })).toHaveAttribute('aria-current', 'page')
-    expect(within(navigation).getByRole('link', { name: 'Guilds' })).toHaveAttribute('href', '/dashboard/admins/guilds')
-    expect(within(navigation).getByRole('link', { name: 'Impersonate' })).toHaveAttribute(
+    expect(within(navigation).getByRole('link', { name: 'Discord communities' })).toHaveAttribute(
+      'href',
+      '/dashboard/admins/guilds',
+    )
+    expect(within(navigation).getByRole('link', { name: 'Support access' })).toHaveAttribute(
       'href',
       '/dashboard/admins/impersonate',
     )
@@ -57,9 +60,9 @@ describe('Admin navigation', () => {
   it('marks the matching destination after navigation', async () => {
     const history = historyAt('/dashboard/admins/informations')
     renderWithProviders(() => <AdminMenu />, { path: '*', history })
-    fireEvent.click(screen.getByRole('link', { name: 'Guilds' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Discord communities' }))
     await vi.waitFor(() => expect(history.get()).toBe('/dashboard/admins/guilds'))
-    expect(screen.getByRole('link', { name: 'Guilds' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Discord communities' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Information' })).not.toHaveAttribute('aria-current', 'page')
   })
 
@@ -99,7 +102,7 @@ describe('Admin navigation', () => {
     first.unmount()
     renderAt()
     expect(screen.getByRole('button', { name: 'Expand' })).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByRole('link', { name: 'Guilds' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Discord communities' })).toBeInTheDocument()
   })
 
   it('remains usable when persistence is unavailable', () => {
@@ -133,7 +136,10 @@ describe('Admin navigation', () => {
     }
     renderWithProviders(Page)
     fireEvent.click(screen.getByRole('button', { name: 'Français' }))
-    expect(screen.getByRole('link', { name: 'Guildes' })).toHaveAttribute('href', '/dashboard/admins/guilds')
-    expect(screen.queryByRole('link', { name: 'Guilds' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Communautés Discord' })).toHaveAttribute(
+      'href',
+      '/dashboard/admins/guilds',
+    )
+    expect(screen.queryByRole('link', { name: 'Discord communities' })).not.toBeInTheDocument()
   })
 })

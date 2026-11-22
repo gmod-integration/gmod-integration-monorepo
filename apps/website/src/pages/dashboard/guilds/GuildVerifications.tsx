@@ -210,7 +210,7 @@ const GuildVerification: Component = () => {
         )}
         description={t(
           'dashboard.guild.verification.publish_consequence',
-          'Members will be able to use this message to link their accounts.',
+          'Members will use this message to link their Steam and Discord accounts. Enabled verification rules can then give or remove their Discord roles.',
         )}
         confirmLabel={t('ui.publish', 'Publish')}
         variant="primary"
@@ -225,7 +225,7 @@ const GuildVerification: Component = () => {
         )}
         description={t(
           'dashboard.guild.verification.delete_message_consequence',
-          'Members will no longer be able to start verification from this message.',
+          'Members will no longer be able to start verification from this message. Existing account links and assigned roles are kept.',
         )}
         confirmLabel={t('ui.delete', 'Delete')}
         onConfirm={deleteVerificationMessage}
@@ -249,9 +249,9 @@ const GuildVerification: Component = () => {
         )}
         description={t(
           'dashboard.guild.verification.check',
-          'Check all members and execute the verification process. 1000 members max.',
+          'Apply automatic roles to existing members and verification role rules to members with linked Steam and Discord accounts. Available once every 24 hours on Discord servers with up to 1,000 members.',
         )}
-        confirmLabel={t('dashboard.guild.verification.check_button', 'Check All Roles')}
+        confirmLabel={t('dashboard.guild.verification.check_button', 'Apply roles to existing members')}
         variant="warning"
         onConfirm={checkAllRoles}
       />
@@ -269,10 +269,15 @@ const GuildVerification: Component = () => {
         <FormField
           id="guildverifications-field-0"
           label={t('dashboard.guild.verification.role_label', 'Role')}
+          description={t(
+            'dashboard.guild.verification.role_hint',
+            'Choose the Discord role this rule will give or remove after account verification.',
+          )}
           required
         >
           <select
             id="guildverifications-field-0"
+            aria-describedby="guildverifications-field-0-description"
             class="select w-full"
             disabled={!!editingRoleID() || guildRoles.loading || !!guildRoles.error || roleForm.pending()}
             value={selectedRole().roleID}
@@ -285,9 +290,14 @@ const GuildVerification: Component = () => {
         <FormField
           id="guildverifications-field-1"
           label={t('dashboard.guild.verification.action_on_verification_label', 'Action on Verification')}
+          description={t(
+            'dashboard.guild.verification.action_hint',
+            'Give Role adds this role to verified members. Remove Role removes it, for example an Unverified role.',
+          )}
         >
           <select
             id="guildverifications-field-1"
+            aria-describedby="guildverifications-field-1-description"
             class="select w-full"
             disabled={roleForm.pending()}
             value={selectedRole().isGiveRole ? 'true' : 'false'}
@@ -297,9 +307,17 @@ const GuildVerification: Component = () => {
             <option value="false">{t('dashboard.guild.verification.remove_role', 'Remove Role')}</option>
           </select>
         </FormField>
-        <FormField id="guildverifications-field-2" label={t('dashboard.guild.verification.active_label', 'Active')}>
+        <FormField
+          id="guildverifications-field-2"
+          label={t('dashboard.guild.verification.active_label', 'Active')}
+          description={t(
+            'dashboard.guild.verification.active_hint',
+            'Choose No to keep this rule saved without giving or removing its role. This does not undo roles already assigned.',
+          )}
+        >
           <select
             id="guildverifications-field-2"
+            aria-describedby="guildverifications-field-2-description"
             class="select w-full"
             disabled={roleForm.pending()}
             value={selectedRole().enabled ? 'true' : 'false'}
@@ -343,7 +361,7 @@ const GuildVerification: Component = () => {
         title={t('dashboard.guild.verification.verification_panel_title', 'Verification')}
         description={t(
           'dashboard.guild.verification.verification_panel_description',
-          'Set up the verification system for your server, and choose role to give / remove when a user is verified.',
+          'Help members link their Steam and Discord accounts. Publish the verification message, choose their experience and configure which Discord roles verification gives or removes.',
         )}
         icon="shield-check"
         type="none"
@@ -417,13 +435,18 @@ const GuildVerification: Component = () => {
               controlId="verification-dm"
               title={t(
                 'dashboard.guild.verification.dont_send_verification_message_label',
-                "Don't send verification message in DM",
+                'Disable private verification reminders',
+              )}
+              description={t(
+                'dashboard.guild.verification.dm_hint',
+                "When enabled, new members with unlinked accounts will not receive the bot's verification reminder in a private message. Members can still use a published verification message.",
               )}
             >
               <div class="flex items-center gap-3">
                 <PremiumBadge onlyIcon />
                 <input
                   id="verification-dm"
+                  aria-describedby="verification-dm-description"
                   type="checkbox"
                   class="toggle toggle-md"
                   disabled={
@@ -440,13 +463,18 @@ const GuildVerification: Component = () => {
               controlId="verification-support"
               title={t(
                 'dashboard.guild.verification.dont_join_support_guild_message_label',
-                "Don't made user automatically join support guild",
+                'Disable automatic joining of the support server',
+              )}
+              description={t(
+                'dashboard.guild.verification.support_hint',
+                'When enabled, sign-in started from this Discord server will not automatically add the user to the Gmod Integration support server. It does not remove existing support-server members.',
               )}
             >
               <div class="flex items-center gap-3">
                 <PremiumBadge onlyIcon />
                 <input
                   id="verification-support"
+                  aria-describedby="verification-support-description"
                   type="checkbox"
                   class="toggle toggle-md"
                   disabled={
@@ -489,7 +517,7 @@ const GuildVerification: Component = () => {
         title={t('dashboard.guild.verification.verification_roles_panel_title', 'Verification Roles')}
         description={t(
           'dashboard.guild.verification.verification_roles_panel_description',
-          'Here you can set up the roles that will be given or removed when a user is verified.',
+          'Each active rule gives or removes a Discord role when a member has linked their Steam and Discord accounts. To apply the current rules to existing members, use the action below.',
         )}
         type="none"
         icon="users"
@@ -528,7 +556,7 @@ const GuildVerification: Component = () => {
             title={t('settings.verification_existing_members', 'Existing members')}
             description={t(
               'dashboard.guild.verification.check',
-              'Check all members and execute the verification process. 1000 members max.',
+              'Apply automatic roles to existing members and verification role rules to members with linked Steam and Discord accounts. Available once every 24 hours on Discord servers with up to 1,000 members.',
             )}
           >
             <Button
@@ -536,7 +564,7 @@ const GuildVerification: Component = () => {
               disabled={lastVerify.loading || !!lastVerify.error || lastVerify() === false}
               onClick={() => showDialog('check_verification_roles')}
             >
-              {t('dashboard.guild.verification.check_button', 'Check All Roles')}
+              {t('dashboard.guild.verification.check_button', 'Apply roles to existing members')}
             </Button>
           </SettingRow>
         }
@@ -558,6 +586,10 @@ const GuildVerification: Component = () => {
                 error={verifyRoles.error}
                 empty={!verifyRoles.loading && !verifyRoles.error && verifyRoles().length === 0}
                 errorLabel={t('ui.load_error', 'Unable to load this content.')}
+                emptyLabel={t(
+                  'dashboard.guild.verification.empty_roles',
+                  'No verification role rules yet. Add a role and choose whether verification should give or remove it.',
+                )}
                 onRetry={() => void refetchRoles()}
               />
               {/* Bug fix: also gate on !verifyRoles.error - `verifyRoles()` is read unguarded below

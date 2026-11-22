@@ -135,8 +135,11 @@ export const ServerScreenshotList: Component = () => {
 
   return (
     <AdminPanel
-      title={t('dashboard.server.screenshots_list.title', 'All Screenshots')}
-      description={t('dashboard.server.screenshots_list.description', 'See all screenshots taken on your server')}
+      title={t('dashboard.server.screenshots_list.title', 'Screenshot history')}
+      description={t(
+        'dashboard.server.screenshots_list.description',
+        'Browse screenshots received from your game server, newest first. Open an image to view it at full size and see its details.',
+      )}
     >
       <FocusImg focusImg={focusImg} />
 
@@ -147,6 +150,11 @@ export const ServerScreenshotList: Component = () => {
       <AsyncState
         loading={loading()}
         error={error()}
+        errorLabel={t(
+          'dashboard.server.screenshots_list.load_error',
+          'Unable to load screenshots. Try again to continue loading the gallery.',
+        )}
+        emptyLabel={t('dashboard.server.screenshots_list.empty', 'No screenshots have been received for this server.')}
         empty={items().length === 0 && !hasMore()}
         onRetry={() => {
           setError(false)
@@ -159,7 +167,7 @@ export const ServerScreenshotList: Component = () => {
 
       <Show when={items().length > 0 && !hasMore() && !loading() && !error()}>
         <p class="text-center text-base-content/50 mt-4">
-          {t('dashboard.server.screenshots_list.end_of_list', "You've reached the end!")}
+          {t('dashboard.server.screenshots_list.end_of_list', 'All received screenshots have been loaded.')}
         </p>
       </Show>
     </AdminPanel>

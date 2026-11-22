@@ -47,7 +47,7 @@ describe('ServerActivityChart', () => {
   it('distinguishes an empty history from a valid zero-player snapshot and updates reactively', async () => {
     const [points, setPoints] = createSignal<{ at: string; players: number }[]>([])
     const { container } = renderWithProviders(() => <ServerActivityChart online={true} points={points()} />)
-    expect(screen.getByText('No activity recorded')).toBeInTheDocument()
+    expect(screen.getByText('No activity data is available for this period.')).toBeInTheDocument()
     expect(screen.queryByRole('img')).not.toBeInTheDocument()
     setPoints([{ at: '2026-11-20T00:00:00.000Z', players: 0 }])
     await Promise.resolve()

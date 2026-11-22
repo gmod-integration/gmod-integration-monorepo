@@ -85,15 +85,15 @@ const GuildsSelector: Component = () => {
           <div class="flex max-w-2xl flex-col gap-3">
             <span class="inline-flex w-fit items-center gap-2 text-sm font-medium text-primary">
               <Icon name="users" size={17} />
-              {t('main.guilds', 'Guilds')}
+              {t('main.guilds', 'Discord communities')}
             </span>
             <h2 class="text-2xl font-semibold tracking-tight sm:text-3xl">
-              {t('dashboard.guild.select.select_guild', 'Select a Guild to manage / add the Bot to')}
+              {t('dashboard.guild.select.select_guild', 'Choose a Discord server')}
             </h2>
             <p class="max-w-xl text-sm leading-relaxed text-base-content/55">
               {t(
-                'ui.communities_description',
-                'Choose your community to configure its connections, members and servers.',
+                'dashboard.guild.select.description',
+                "Open a Discord server's dashboard to configure its bot and linked game servers. If the bot is missing, use Add Bot to invite it.",
               )}
             </p>
           </div>
@@ -102,7 +102,7 @@ const GuildsSelector: Component = () => {
             class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-base-content/10 bg-base-100 px-4 py-2.5 text-sm font-medium transition-colors hover:border-primary/40 hover:text-primary"
           >
             <Icon name="plus" size={17} />
-            {t('dashboard.guild.select.create_guild', 'Create a Guild')}
+            {t('dashboard.guild.select.create_guild', 'Create a Discord server')}
           </a>
         </div>
         <label class="dashboard-selection-toolbar flex w-full max-w-md items-center gap-3 rounded-xl border border-base-content/10 bg-base-100 px-4 py-3 text-base-content/45 focus-within:border-primary/60 focus-within:ring-2 focus-within:ring-primary/10">
@@ -141,7 +141,10 @@ const GuildsSelector: Component = () => {
                 class="col-span-full flex flex-col items-center gap-4 rounded-2xl border border-base-content/10 bg-base-100 p-10"
               >
                 <h2 class="text-2xl font-bold text-center text-secondary">
-                  {t('dashboard.guild.select.failed_to_fetch_guilds', 'Error loading guilds')}
+                  {t(
+                    'dashboard.guild.select.failed_to_fetch_guilds',
+                    'Unable to load your Discord servers. Try again.',
+                  )}
                 </h2>
                 <Button type="button" onClick={() => refetch()}>
                   {t('ui.retry', 'Try again')}
@@ -158,7 +161,10 @@ const GuildsSelector: Component = () => {
                   >
                     {search().trim()
                       ? t('ui.no_search_results', 'No results match your search.')
-                      : t('ui.no_guilds', 'No communities are available for this account.')}
+                      : t(
+                          'dashboard.guild.select.empty',
+                          'No manageable Discord servers were found. Check that you are signed in with the right Discord account and have permission to manage a server.',
+                        )}
                   </p>
                 }
               >

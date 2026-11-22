@@ -85,10 +85,18 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
   const [showRequestLoading, setShowRequestLoading] = createSignal(false)
   const [unlinkingGmodStorePurchase, setUnlinkingGmodStorePurchase] = createSignal(false)
   const sessionAction = createAsyncAction({
-    errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
+    errorMessage: () =>
+      t(
+        'account.session_error',
+        'This session could not be signed out. Refresh the session list to check its status before trying again.',
+      ),
   })
   const requestAction = createAsyncAction({
-    errorMessage: () => t('account.error_create_data_request', 'Failed to create the data request'),
+    errorMessage: () =>
+      t(
+        'account.error_create_data_request',
+        'Your data export could not be prepared. Check the export list before requesting another copy.',
+      ),
   })
   let requestLoadingTimer: ReturnType<typeof setTimeout> | undefined
   onCleanup(() => clearTimeout(requestLoadingTimer))
@@ -131,7 +139,7 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
       !window.confirm(
         t(
           'account.unlink_guild_confirmation',
-          'Are you sure you want to unlink this guild from your Gmod Store Premium?',
+          'Unlink this Discord community from your GmodStore purchase? It will lose the benefits provided by this purchase and its custom bot will disconnect. Invite the main Gmod Integration bot first to keep the integration available. The purchase remains on your account, but the custom bot token must be entered again after reactivation.',
         ),
       )
     ) {
@@ -144,7 +152,13 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
     setUnlinkingGmodStorePurchase(false)
 
     if (!response.ok) {
-      Errors(json.error || t('account.unlink_guild_error', 'Failed to unlink the guild'))
+      Errors(
+        json.error ||
+          t(
+            'account.unlink_guild_error',
+            'The community could not be unlinked. Check its current status before trying again.',
+          ),
+      )
       return
     }
 
@@ -175,7 +189,13 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
       if (response.ok) {
         mutateUserDataRequest((prev) => [...prev, json])
       } else {
-        Errors(json.error || t('account.error_create_data_request', 'Failed to create the data request'))
+        Errors(
+          json.error ||
+            t(
+              'account.error_create_data_request',
+              'Your data export could not be prepared. Check the export list before requesting another copy.',
+            ),
+        )
         reportedError = true
         throw new Error('Data request failed')
       }
@@ -275,14 +295,21 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
           </span>
           <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">{t('account.title', 'Account')}</h1>
           <p class="max-w-2xl text-sm leading-relaxed text-base-content/55">
-            {t('account.description', 'Manage your linked accounts, sessions and personal data.')}
+            {t(
+              'account.description',
+              'Manage your Discord and Steam accounts, your GmodStore purchase, connected devices and personal data.',
+            )}
           </p>
         </header>
 
         <ShowErrorList />
 
         <div class="account-overview grid min-w-0 gap-5 md:grid-cols-2">
-          <AdminPanel title={t('account.discord', 'Discord')} icon="messages-square">
+          <AdminPanel
+            title={t('account.discord', 'Discord')}
+            icon="messages-square"
+            description={t('account.discord_help', 'The Discord account used to sign in to this dashboard.')}
+          >
             <div class="account-identity flex min-w-0 items-center gap-4">
               <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-primary/15 bg-primary/10 text-primary">
                 <Show
@@ -307,7 +334,14 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
             </div>
           </AdminPanel>
 
-          <AdminPanel title={t('account.steam', 'Steam')} icon="gamepad-2">
+          <AdminPanel
+            title={t('account.steam', 'Steam')}
+            icon="gamepad-2"
+            description={t(
+              'account.steam_help',
+              'Link your Steam account to identify your player profile and check for a GmodStore purchase.',
+            )}
+          >
             <AsyncState loading={user.loading} error={user.error} onRetry={() => refetchUser()}>
               <Show
                 when={user()?.steamID64}
@@ -335,7 +369,10 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
         <AdminPanel
           title={t('account.gmodstore_purchase', 'Gmod Store Purchase')}
           icon="crown"
-          description={t('account.gmodstore_purchase_description', 'Manage your premium bought on Gmod Store.')}
+          description={t(
+            'account.gmodstore_purchase_description',
+            'Activate or unlink the Discord community associated with your GmodStore purchase. Link the Steam account used for that purchase first.',
+          )}
         >
           <AsyncState
             loading={gmodStorePurchase.loading}
@@ -357,17 +394,17 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                   fallback={
                     <ButtonLink href="/dashboard/guilds" variant="primary">
                       <Icon name="link" size={16} />
-                      {t('account.activate_on_guild', 'Activate on Guild')}
+                      {t('account.activate_on_guild', 'Choose a Discord community')}
                     </ButtonLink>
                   }
                 >
                   <p class="min-w-0 flex-1 break-all text-sm text-base-content/55">
-                    {t('account.activate_on_guild', 'Activate on Guild')}:{' '}
+                    {t('account.activated_on_guild', 'Activated for Discord community')}:{' '}
                     <span class="font-mono font-medium text-base-content">{gmodStorePurchase()?.guild}</span>
                   </p>
                   <Button variant="danger" loading={unlinkingGmodStorePurchase()} onClick={unlinkGmodStorePurchase}>
                     <Icon name="link" size={16} />
-                    {t('account.unlink_guild', 'Unlink Guild')}
+                    {t('account.unlink_guild', 'Unlink the community')}
                   </Button>
                 </Show>
               </Show>
@@ -378,7 +415,10 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
         <AdminPanel
           title={t('account.manage_sessions', 'Manage Sessions')}
           icon="monitor"
-          description={t('account.manage_sessions_description', 'Manage your active sessions.')}
+          description={t(
+            'account.manage_sessions_description',
+            'These devices and browsers can access your account. End a session to sign it out; your current session is marked separately.',
+          )}
           type="none"
         >
           <div class="min-w-0 w-full overflow-x-auto">
@@ -387,9 +427,9 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
               <thead>
                 <tr>
                   <th>{t('account.session_id', 'Session ID')}</th>
-                  <th>{t('account.session_date', 'Session Date')}</th>
-                  <th>{t('account.ip', 'IP')}</th>
-                  <th>{t('account.os', 'OS')}</th>
+                  <th>{t('account.session_date', 'Last activity')}</th>
+                  <th>{t('account.ip', 'IP address')}</th>
+                  <th>{t('account.os', 'Operating system')}</th>
                   <th>{t('account.browser', 'Browser')}</th>
                   <th>{t('account.country', 'Country')}</th>
                   <th class="text-center">{t('account.actions', 'Actions')}</th>
@@ -417,11 +457,11 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                           <Show
                             when={session.isCurrent}
                             fallback={
-                              <div class="tooltip" data-tip={t('account.delete_session', 'Delete this session')}>
+                              <div class="tooltip" data-tip={t('account.delete_session', 'Sign out this session')}>
                                 <IconButton
                                   icon="trash-2"
                                   variant="danger"
-                                  label={t('account.delete_session', 'Delete this session')}
+                                  label={t('account.delete_session', 'Sign out this session')}
                                   disabled={sessionAction.pending()}
                                   onClick={() => deleteUserSession(session.id)}
                                 />
@@ -456,14 +496,14 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
           icon="shield-check"
           description={t(
             'account.manage_data_description',
-            'In compliance with GDPR, you can request or delete your data.',
+            'Prepare an export of your personal data, then download it from the list below. Exporting data does not delete your account. Account erasure is a separate request.',
           )}
           type="none"
           footer={
             <div class="flex flex-wrap gap-3">
               <Button onClick={userDataRequestCreate} loading={requestAction.pending()}>
                 <Icon name="download" size={16} />
-                {t('account.request_my_data', 'Request my Data')}
+                {t('account.request_my_data', 'Prepare a copy of my data')}
               </Button>
               <Button
                 variant="danger"
@@ -479,18 +519,18 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                 }}
               >
                 <Icon name="trash-2" size={16} />
-                {t('account.delete_my_data', 'Delete my Data')}
+                {t('account.delete_my_data', 'Request account erasure')}
               </Button>
             </div>
           }
         >
           <div class="min-w-0 w-full overflow-x-auto">
             <table class="table w-full noBorderBottomTable">
-              <caption class="sr-only">{t('account.data_requests', 'Data Requests')}</caption>
+              <caption class="sr-only">{t('account.data_requests', 'Personal data exports')}</caption>
               <thead>
                 <tr>
                   <th>{t('account.request_date', 'Request Date')}</th>
-                  <th>{t('account.expiration_date', 'Expiration Date')}</th>
+                  <th>{t('account.expiration_date', 'Download link expires')}</th>
                   <th>{t('account.status', 'Status')}</th>
                   <th class="text-center">{t('account.actions', 'Actions')}</th>
                 </tr>
@@ -521,8 +561,8 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                             class={`inline-flex rounded-full px-2.5 py-1 text-xs ${new Date(request.expirationDate) > new Date() ? 'bg-success/10 text-success' : 'bg-base-200 text-base-content/50'}`}
                           >
                             {new Date(request.expirationDate) > new Date()
-                              ? t('account.active', 'Active')
-                              : t('account.expired', 'Expired')}
+                              ? t('account.active', 'Download available')
+                              : t('account.expired', 'Download expired')}
                           </span>
                         </td>
                         <td class="text-center">
@@ -531,7 +571,10 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                             fallback={
                               <span
                                 class="tooltip text-base-content/35"
-                                data-tip={t('account.request_expired', 'Request has expired')}
+                                data-tip={t(
+                                  'account.request_expired',
+                                  'This download link has expired. Request a new copy of your data.',
+                                )}
                               >
                                 <Icon name="download" size={17} />
                               </span>
@@ -555,7 +598,10 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                         <div role="status" class="flex flex-col items-center gap-3 py-4">
                           <span class="loading loading-spinner loading-sm" aria-hidden="true" />
                           <p class="text-xs text-base-content/55">
-                            {t('account.loading_message', 'Depends on your data size, this can take a while.')}
+                            {t(
+                              'account.loading_message',
+                              'Preparing your data export. The time needed depends on the amount of data.',
+                            )}
                           </p>
                         </div>
                       </td>

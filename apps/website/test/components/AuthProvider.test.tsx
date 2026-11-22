@@ -86,7 +86,7 @@ describe('application authentication provider', () => {
     await vi.waitFor(() => expect(authStatus()).toBe('authenticated'))
     await fireEvent.input(screen.getByLabelText('Draft'), { target: { value: 'Keep this editor open' } })
     await authenticatedFetch('http://localhost:5001/v3/users/u1/guilds')
-    const reconnect = screen.getByRole('link', { name: 'Login with Discord' })
+    const reconnect = screen.getByRole('link', { name: 'Sign in with Discord' })
     expect(reconnect).toHaveAttribute('target', '_blank')
     expect(reconnect).toHaveAttribute('rel', 'noopener noreferrer')
     expect(reconnect).toHaveAttribute('href', expect.stringContaining('/v3/users/login?redirect='))

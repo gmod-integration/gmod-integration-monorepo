@@ -32,8 +32,8 @@ function renderPage(path = '/dashboard/admins/impersonate') {
 describe('server-tracked administrative delegation', () => {
   it('shows target identities without requiring target session tokens', async () => {
     renderPage()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Target' })).toBeInTheDocument())
-    expect(screen.queryByRole('button', { name: 'Self' })).not.toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Access Target' })).toBeInTheDocument())
+    expect(screen.queryByRole('button', { name: 'Access Self' })).not.toBeInTheDocument()
   })
   it('starts a delegated session using CSRF and cookies and leaves browser preferences intact', async () => {
     localStorage.setItem('theme', 'dark')
@@ -49,8 +49,8 @@ describe('server-tracked administrative delegation', () => {
     )
     vi.stubGlobal('fetch', network)
     const history = renderPage()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Target' })).toBeEnabled())
-    await fireEvent.click(screen.getByRole('button', { name: 'Target' }))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Access Target' })).toBeEnabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Access Target' }))
     await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds'))
     expect(network.mock.calls[0][0]).toBe('http://localhost:5001/v6/auth/impersonations')
     expect(network.mock.calls[0][1].body).toBe(JSON.stringify({ discordID: 'target' }))
@@ -63,8 +63,8 @@ describe('server-tracked administrative delegation', () => {
   it('reports a rejected delegation without replacing the current identity', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 403 })))
     const history = renderPage()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Target' })).toBeEnabled())
-    await fireEvent.click(screen.getByRole('button', { name: 'Target' }))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Access Target' })).toBeEnabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Access Target' }))
     await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
     expect(history.get()).toBe('/dashboard/admins/impersonate')
     expect(localStorage.getItem('discordID')).toBe('u1')

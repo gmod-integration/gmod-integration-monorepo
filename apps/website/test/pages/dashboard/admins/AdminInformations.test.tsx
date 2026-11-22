@@ -39,26 +39,42 @@ const adminData = {
 }
 
 describe('pages/dashboard/admins/AdminInformations.tsx', () => {
-  it('shows a skeleton while the admin data resource is loading', () => {
+  it('shows the shared loading state while service statistics are loading', () => {
     const fetchMock = vi.fn().mockReturnValue(new Promise(() => {}))
     vi.stubGlobal('fetch', fetchMock)
 
-    const { container } = renderAdminInformations()
+    renderAdminInformations()
 
-    expect(container.querySelector('.skeleton')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…')
+    expect(screen.queryByText('Service overview')).not.toBeInTheDocument()
   })
 
-  it('returns an empty array when the response is not ok, without rendering the stats block', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 500 }))
-    vi.stubGlobal('fetch', fetchMock)
+  it.each(['http', 'network'])(
+    'shows a recoverable %s failure instead of an endless loading placeholder',
+    async (failure) => {
+      const fetchMock = vi.fn()
+      if (failure === 'http') fetchMock.mockResolvedValueOnce(new Response('{}', { status: 500 }))
+      else fetchMock.mockRejectedValueOnce(new Error('Network unavailable'))
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(adminData)))
+      vi.stubGlobal('fetch', fetchMock)
 
-    const { container } = renderAdminInformations()
+      const { container } = renderAdminInformations()
 
-    await vi.waitFor(() => expect(screen.getByText('Charts')).toBeInTheDocument())
-    // adminData() resolves to [] (an array, not the stats object) so the loading Show still
-    // shows its fallback forever - the general stats section never renders.
-    expect(container.querySelector('.skeleton')).toBeInTheDocument()
-  })
+      await vi.waitFor(() =>
+        expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the service statistics.'),
+      )
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(container.querySelector('.skeleton')).not.toBeInTheDocument()
+      expect(screen.queryByText('Service overview')).not.toBeInTheDocument()
+      expect(container.querySelector('svg')).not.toBeInTheDocument()
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(screen.getByText('120')).toBeInTheDocument())
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.getByText('Communities by bot language')).toBeInTheDocument()
+    },
+  )
 
   it('renders general/user stats, percentages, the guild-language pie chart, and refetches on click', async () => {
     // A fresh Response per call - refetch() re-reads .json() on the resolved value, and a
@@ -68,7 +84,7 @@ describe('pages/dashboard/admins/AdminInformations.tsx', () => {
 
     renderAdminInformations()
 
-    await vi.waitFor(() => expect(screen.getByText('Total Guilds')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByText('Discord communities')).toBeInTheDocument())
     expect(screen.getByText('120')).toBeInTheDocument()
     expect(screen.getByText('45')).toBeInTheDocument()
     expect(screen.getByText('1,000')).toBeInTheDocument()
@@ -76,13 +92,13 @@ describe('pages/dashboard/admins/AdminInformations.tsx', () => {
     expect(screen.getByText(/700 - 70%/)).toBeInTheDocument()
     expect(screen.getByText(/600 - 60%/)).toBeInTheDocument()
     expect(screen.getByText(/400 - 40%/)).toBeInTheDocument()
-    expect(screen.getByText('Guilds by Language')).toBeInTheDocument()
+    expect(screen.getByText('Communities by bot language')).toBeInTheDocument()
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByText('Refresh Admin Data'))
+    fireEvent.click(screen.getByText('Refresh statistics'))
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     // Let the refetch's resource state settle back to resolved before the test (and its
     // cleanup()) tears the tree down, so nothing is disposed mid-flight.
-    await vi.waitFor(() => expect(screen.getByText('Total Guilds')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByText('Discord communities')).toBeInTheDocument())
   })
 })

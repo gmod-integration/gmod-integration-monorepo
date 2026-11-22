@@ -70,8 +70,12 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
 
   it('renders the panel title, description and the AWarn3 addon notice', () => {
     renderPage()
-    expect(screen.getByText('Warns')).toBeInTheDocument()
-    expect(screen.getByText('List of all warns on your server')).toBeInTheDocument()
+    expect(screen.getByText('Warnings')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'View warnings received from AWarn3, with the player, administrator and reason. Warnings are managed in game.',
+      ),
+    ).toBeInTheDocument()
     const addonLink = screen.getByText('AWarn3')
     expect(addonLink).toHaveAttribute('href', 'https://www.gmodstore.com/market/view/awarn3-warning-system')
   })
@@ -88,8 +92,9 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
     await waitForLoaded()
     expect(screen.getByText('Prop abuse')).toBeInTheDocument()
     const rows = container.querySelectorAll('tbody tr')
-    // 2 warn rows + 1 pagination row
-    expect(rows.length).toBe(3)
+    // Pagination stays outside the horizontally scrolling table.
+    expect(rows.length).toBe(2)
+    expect(screen.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
     const firstRow = rows[0]
     const cells = firstRow.querySelectorAll('td')
     expect(cells[0]).toHaveTextContent(new Date('2024-01-01T10:00:00.000Z').toLocaleString())
@@ -109,8 +114,12 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
       return Promise.resolve(okJson({}))
     })
     const { container } = renderPage()
-    await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.'))
-    expect(container.querySelectorAll('tbody tr')).toHaveLength(2)
+    await vi.waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'No warnings have been received for this server. AWarn3 must be installed to send warnings.',
+      ),
+    )
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(1)
     expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
@@ -127,7 +136,11 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
       renderPage()
       await waitForLoaded()
       await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
-      await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Nothing to display yet.'))
+      await vi.waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'No warnings have been received for this server. AWarn3 must be installed to send warnings.',
+        ),
+      )
       expect(screen.getByRole('combobox', { name: 'Rows per page' })).toBeInTheDocument()
       const previous = screen.getByRole('button', { name: 'Previous page' })
       expect(previous).not.toBeDisabled()

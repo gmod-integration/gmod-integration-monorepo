@@ -30,7 +30,9 @@ describe('Admin dashboard shell', () => {
         </AppAdminDashboard>
       )),
     ).not.toThrow()
-    expect(screen.getByRole('alert')).toHaveTextContent('admin page crashed')
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'This page could not be displayed. Try again to reload its content.',
+    )
     expect(screen.getByRole('navigation', { name: 'Admin' })).toBeInTheDocument()
 
     shouldFail = false

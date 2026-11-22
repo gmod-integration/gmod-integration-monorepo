@@ -42,7 +42,7 @@ export const PremiumBadge: Component<PremiumBadgeProps> = (props) => {
           classList={{
             'mr-2': !props.noMargin,
           }}
-          data-tip={t('main.buy_premium', 'This feature is only available to premium users.')}
+          data-tip={t('main.buy_premium', 'This feature requires Premium for this Discord community.')}
         >
           <Icon name="crown" />
           <span class="ml-2">{t('tools.premium', 'Premium')}</span>
@@ -72,7 +72,7 @@ export const BuyPremiumBtn: Component<BuyPremiumBtnProps> = (props) => {
         </fieldset>
         <Show when={blocked()}>
           <A href={upgradeHref()} class="link text-sm">
-            {props.btnText || t('tools.upgrade_now', 'Upgrade Now')}
+            {props.btnText || t('tools.upgrade_now', 'View Premium plans')}
           </A>
         </Show>
       </div>

@@ -120,14 +120,14 @@ describe('Header navigation', () => {
     expect(screen.getByRole('link', { name: 'Gmod Integration' })).toHaveAttribute('href', '/')
     const navigation = screen.getByRole('navigation', { name: 'Main navigation' })
     for (const [name, href] of [
-      ['Invite the Bot', '/invite'],
-      ['Support', '/discord'],
+      ['Invite the bot', '/invite'],
+      ['Help and support', '/discord'],
       ['Premium', '/premium'],
       ['Documentation', '/docs'],
     ]) {
       expect(within(navigation).getByRole('link', { name })).toHaveAttribute('href', href)
     }
-    expect(screen.getByRole('link', { name: 'Login with Discord' })).toHaveAttribute('href', '/login')
+    expect(screen.getByRole('link', { name: 'Sign in with Discord' })).toHaveAttribute('href', '/login')
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -174,8 +174,8 @@ describe('Header navigation', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Français' }))
 
     expect(window.localStorage.getItem('locale')).toBe('fr')
-    expect(screen.getByRole('link', { name: 'Inviter le Bot' })).toHaveAttribute('href', '/invite')
-    expect(screen.getByRole('link', { name: 'Se Connecter' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Inviter le bot' })).toHaveAttribute('href', '/invite')
+    expect(screen.getByRole('link', { name: 'Se connecter avec Discord' })).toBeInTheDocument()
     expect(window.localStorage.getItem('guilds')).toBe(JSON.stringify({ id: 'g1' }))
     expect(reloadSpy).not.toHaveBeenCalled()
     expect(screen.getByRole('button', { name: 'Langue' })).toHaveAttribute('aria-expanded', 'false')
@@ -245,7 +245,7 @@ describe('Header authenticated identity', () => {
     localStorage.setItem('accessToken', 'old-token')
     renderWithProviders(() => <Header />)
     expect(isLogged()).toBe(false)
-    expect(screen.getByRole('link', { name: 'Login with Discord' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Sign in with Discord' })).toBeInTheDocument()
   })
   it('keeps the account control named when there is no avatar', () => {
     setValidAuth({ user: { id: 'd1', username: 'bob', globalName: 'Bobby' } })

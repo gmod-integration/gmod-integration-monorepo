@@ -53,27 +53,27 @@ export const ServerScreenshotsParameters: Component = () => {
 
       <ConfirmActionDialog
         id="remove-channel"
-        title={t('dashboard.server.screenshots.delete_channel', 'Delete Channel')}
+        title={t('dashboard.server.screenshots.delete_channel', 'Remove destination')}
         description={t(
-          'editing.remove_channel',
-          'Remove this destination? Future messages will no longer be sent to this channel.',
+          'dashboard.server.screenshots.remove_destination_help',
+          'Stop sending screenshots to this destination? The Discord channel itself will not be deleted.',
         )}
-        confirmLabel={t('ui.delete', 'Delete')}
+        confirmLabel={t('dashboard.server.screenshots.delete_channel', 'Remove destination')}
         onConfirm={removeScreenshots}
       />
       <AdminPanel
         title={t('dashboard.server.screenshots.title', 'Server Screenshots')}
         description={t(
           'dashboard.server.screenshots.description',
-          'Configure where screenshots from your server will be sent',
+          'Choose the Discord text channel that receives screenshots sent by your game server. This setting does not take a screenshot.',
         )}
       >
         <AsyncState loading={screenshots.loading} error={screenshots.error} onRetry={() => void refetch()}>
           <SettingRow
-            title={t('dashboard.server.screenshots.current_channel', 'Current Channel')}
+            title={t('dashboard.server.screenshots.current_channel', 'Discord destination')}
             description={t(
-              'settings.channel_confirmation',
-              'Choose a channel, then confirm your selection. Removing it stops future messages in that channel.',
+              'dashboard.server.screenshots.destination_help',
+              'Choose a channel and save the selection to receive future screenshots there.',
             )}
           >
             <div class="flex w-full min-w-0 items-center gap-2">
@@ -101,7 +101,7 @@ export const ServerScreenshotsParameters: Component = () => {
             </Button>
             <Show when={!screenshots.loading && screenshots().channelID}>
               <Button variant="ghost" size="sm" onClick={() => showDialog('remove-channel')}>
-                {t('dashboard.server.screenshots.delete_channel', 'Delete Channel')}
+                {t('dashboard.server.screenshots.delete_channel', 'Remove destination')}
               </Button>
             </Show>
           </SettingRow>

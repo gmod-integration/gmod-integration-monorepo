@@ -68,7 +68,7 @@ function renderPage(path = '/dashboard/guilds/g1/config') {
 }
 
 async function waitForAdminsLoaded() {
-  await vi.waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
+  await vi.waitFor(() => expect(screen.queryByText('Loading…')).not.toBeInTheDocument())
 }
 
 describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
@@ -95,7 +95,7 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       return Promise.resolve(okJson([]))
     })
     renderPage()
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
+    expect(screen.getByText('Loading…')).toBeInTheDocument()
   })
 
   it('shows a check icon when the guild is premium, a times icon otherwise', async () => {
@@ -125,7 +125,7 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
     expect(screen.queryByRole('link', { name: /upgrade/i })).not.toBeInTheDocument()
   })
 
-  it('shows an empty (not crashed) admin list when the admins GET responds with a non-ok status', async () => {
+  it('explains a failed admin request and recovers without pretending the list is empty', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
       if (endpoint === ADMINS_URL && method === 'GET') return Promise.resolve(errJson())
       if (endpoint === BOT_URL && method === 'GET') return Promise.resolve(okJson({ active: false }))
@@ -133,8 +133,14 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       return Promise.resolve(okJson([]))
     })
     renderPage()
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the dashboard administrators. Try again.'),
+    )
+    expect(screen.queryByText('No dashboard administrators were returned for this community.')).not.toBeInTheDocument()
+    setupFetchAPI()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await waitForAdminsLoaded()
-    expect(screen.getByText('Admins:').parentElement!.textContent).toBe('Admins:')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('keeps a failed channels request distinct from an empty result and recovers on refetch', async () => {
@@ -212,7 +218,7 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       })
       await fireEvent.click(btn)
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(GUILD_GMOD_STORE_URL, 'POST'))
-      expect(Errors).toHaveBeenCalledWith('An error occurred while activating the bot.')
+      expect(Errors).toHaveBeenCalledWith('Unable to activate GmodStore Premium. Try again.')
       expect(history.get()).toBe('/dashboard/guilds/g1/config')
     })
 
@@ -254,9 +260,9 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       })
       renderPage()
       await waitForAdminsLoaded()
-      expect(await screen.findByText(/Before removing the Gmod Store Premium/)).not.toHaveClass('hidden')
+      expect(await screen.findByText(/Invite the main Gmod Integration bot/)).not.toHaveClass('hidden')
       expect(screen.getByText('Invite Main Bot')).toBeInTheDocument()
-      expect(screen.getByText('Deactivate Gmod Store Premium')).toHaveClass('btn-disabled')
+      expect(screen.getByText('Deactivate Gmod Store Premium')).toBeDisabled()
     })
 
     it('hides the reinvite warning and Invite Main Bot when hasMainBot is true, enabling Deactivate', async () => {
@@ -266,9 +272,9 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       })
       renderPage()
       await waitForAdminsLoaded()
-      expect(await screen.findByText(/Before removing the Gmod Store Premium/)).toHaveClass('hidden')
+      expect(await screen.findByText(/Invite the main Gmod Integration bot/)).toHaveClass('hidden')
       expect(screen.queryByText('Invite Main Bot')).not.toBeInTheDocument()
-      expect(screen.getByText('Deactivate Gmod Store Premium')).not.toHaveClass('btn-disabled')
+      expect(screen.getByText('Deactivate Gmod Store Premium')).not.toBeDisabled()
     })
 
     it('deactivates on click, navigating to /dashboard/guilds', async () => {
@@ -304,7 +310,7 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       })
       await fireEvent.click(btn)
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(GUILD_GMOD_STORE_URL, 'DELETE'))
-      expect(Errors).toHaveBeenCalledWith('An error occurred while deactivating the bot.')
+      expect(Errors).toHaveBeenCalledWith('Unable to deactivate GmodStore Premium. Try again.')
       expect(history.get()).toBe('/dashboard/guilds/g1/config')
     })
 

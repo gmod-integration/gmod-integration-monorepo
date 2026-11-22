@@ -8,8 +8,11 @@ const ToDo: Component = () => {
   return (
     <PageState
       icon="wrench"
-      title={t('todo.title', 'To-Do')}
-      description={t('todo.description', 'The page you are looking for does not exist yet.')}
+      title={t('todo.title', 'Feature in development')}
+      description={t(
+        'todo.description',
+        'This feature is not available yet. Return to the dashboard to use the features already supported.',
+      )}
     >
       <ButtonLink href="/dashboard/guilds">{t('main.dashboard', 'Dashboard')}</ButtonLink>
     </PageState>

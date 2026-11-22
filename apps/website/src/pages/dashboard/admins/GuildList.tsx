@@ -1,6 +1,8 @@
-import { type Component, createResource, For, Show } from 'solid-js'
+import { type Component, createResource, For } from 'solid-js'
 
 import { fetchAPI } from '../../../utils/api'
+import { useI18n } from '../../../i18n.js'
+import { AsyncState } from '../../../components/ui/index.js'
 
 type AdminGuild = {
   name: string
@@ -13,44 +15,60 @@ type AdminGuild = {
 
 const fetchGuildList = async (): Promise<AdminGuild[]> => {
   const res = await fetchAPI('/users/:discordID/admins/guilds', 'GET')
-  if (!res.ok) return []
+  if (!res.ok) throw new Error('Discord communities request failed')
   const data: AdminGuild[] = await res.json()
   return data.sort((a, b) => b.member - a.member)
 }
 
 const GuildList: Component = () => {
-  const [guildList, { mutate: guildListMutate }] = createResource('guildList', fetchGuildList)
+  const { t, locale } = useI18n()
+  const [guildList, { refetch }] = createResource('guildList', fetchGuildList)
 
   return (
     <>
-      <Show when={!guildList.loading} fallback={<div>Loading...</div>}>
+      <p class="text-sm text-base-content/65">
+        {t(
+          'admin.communities_description',
+          'Registered Discord communities, ordered by member count. Dates refer to their records in Gmod Integration.',
+        )}
+      </p>
+      <AsyncState
+        loading={guildList.loading}
+        error={guildList.error}
+        empty={!guildList.loading && !guildList.error && guildList()?.length === 0}
+        errorLabel={t('admin.communities_load_error', 'Unable to load the Discord communities. Try again.')}
+        emptyLabel={t('admin.communities_empty', 'No communities to display.')}
+        onRetry={() => void refetch()}
+      >
         <div class="flex flex-wrap gap-4">
-          <For each={guildList()}>
+          <For each={!guildList.error ? guildList() : []}>
             {(guild) => (
-              <div class="card shadow-md border border-base-200 w-[400px]">
-                <div class="card-body">
+              <div class="card min-w-0 w-full max-w-[400px] shadow-md border border-base-200">
+                <div class="card-body min-w-0 [overflow-wrap:anywhere]">
                   <h2 class="card-title text-xl">{guild.name}</h2>
                   <p class="text-base-content/50">
-                    ID: <span>{guild.guild}</span>
+                    {t('admin.community_id', 'Discord server ID')}: <span>{guild.guild}</span>
                   </p>
                   <p class="text-base-content/50">
-                    Language: <span>{guild.language}</span>
+                    {t('admin.bot_language', 'Bot language')}: <span>{guild.language}</span>
                   </p>
                   <p class="text-base-content/50">
-                    Members: <span>{guild.member}</span>
+                    {t('admin.members', 'Members')}: <span>{guild.member.toLocaleString(locale())}</span>
                   </p>
                   <p class="text-base-content/50">
-                    Created: <span>{new Date(guild.createdAt).toLocaleString()}</span>
+                    {t('admin.registered_at', 'Registered')}:{' '}
+                    <span>{new Date(guild.createdAt).toLocaleString(locale())}</span>
                   </p>
                   <p class="text-base-content/50">
-                    Updated: <span>{new Date(guild.updatedAt).toLocaleString()}</span>
+                    {t('admin.updated_at', 'Record updated')}:{' '}
+                    <span>{new Date(guild.updatedAt).toLocaleString(locale())}</span>
                   </p>
                 </div>
               </div>
             )}
           </For>
         </div>
-      </Show>
+      </AsyncState>
     </>
   )
 }

@@ -134,8 +134,8 @@ const ServerPseudo: Component = () => {
         id="edit_role_modal"
         title={
           creating()
-            ? t('dashboard.server.pseudo.addRole', 'Add Role')
-            : t('dashboard.server.pseudo.editRole', 'Edit Role')
+            ? t('dashboard.server.pseudo.addRole', 'Add nickname rule')
+            : t('dashboard.server.pseudo.editRole', 'Edit nickname rule')
         }
         busy={editor.pending()}
         onClose={editor.discard}
@@ -143,11 +143,16 @@ const ServerPseudo: Component = () => {
       >
         <FormField
           id="pseudo-role-group"
-          label={t('dashboard.server.pseudo.userGroup', 'User Group')}
+          label={t('dashboard.server.pseudo.userGroup', 'Game user group')}
+          description={t(
+            'dashboard.server.pseudo.user_group_help',
+            'Enter the exact game user group, such as admin or vip. This rule supplies the name and prefix used in the nickname format.',
+          )}
           error={editor.errors().role}
         >
           <input
             id="pseudo-role-group"
+            aria-describedby={`pseudo-role-group-description${editor.errors().role ? ' pseudo-role-group-error' : ''}`}
             class="input w-full"
             value={editor.draft().role}
             disabled={editor.pending()}
@@ -155,7 +160,7 @@ const ServerPseudo: Component = () => {
             onInput={(event) => editor.patch({ role: event.currentTarget.value })}
           />
         </FormField>
-        <FormField id="pseudo-role-name" label={t('dashboard.server.pseudo.name', 'Name')}>
+        <FormField id="pseudo-role-name" label={t('dashboard.server.pseudo.name', 'Display name for {roleName}')}>
           <input
             id="pseudo-role-name"
             class="input w-full"
@@ -164,7 +169,7 @@ const ServerPseudo: Component = () => {
             onInput={(event) => editor.patch({ name: event.currentTarget.value })}
           />
         </FormField>
-        <FormField id="pseudo-role-prefix" label={t('dashboard.server.pseudo.prefix', 'Prefix')}>
+        <FormField id="pseudo-role-prefix" label={t('dashboard.server.pseudo.prefix', 'Prefix for {rolePrefix}')}>
           <input
             id="pseudo-role-prefix"
             class="input w-full"
@@ -208,7 +213,11 @@ const ServerPseudo: Component = () => {
       <ConfirmActionDialog
         id="delete-pseudo-rule"
         title={t('ui.confirm_delete', 'Delete this item?')}
-        description={removing() ? `${removing()!.role} — ${removing()!.name} ${removing()!.prefix}` : ''}
+        description={
+          removing()
+            ? `${removing()!.role} — ${removing()!.name} ${removing()!.prefix} — ${t('dashboard.server.pseudo.remove_rule_help', 'Delete this nickname rule. The game user group and Discord roles are kept.')}`
+            : ''
+        }
         confirmLabel={t('ui.delete', 'Delete')}
         onConfirm={async () => {
           const target = removing()
@@ -219,12 +228,15 @@ const ServerPseudo: Component = () => {
         }}
       />
       <AdminPanel
-        title={t('dashboard.server.pseudo.pseudo', 'Pseudo')}
+        title={t('dashboard.server.pseudo.pseudo', 'Nickname synchronization')}
         description={t(
           'dashboard.server.pseudo.description',
-          'Define the pseudo that are synchronized with your Discord server.',
+          'Synchronize player names between the game and Discord for linked accounts. Choose the direction and nickname format, then save this section.',
         )}
-        info={t('dashboard.server.pseudo.info', 'Please note that Guild Owner will not have pseudo updates.')}
+        info={t(
+          'dashboard.server.pseudo.info',
+          'Discord prevents bots from changing the server owner’s nickname. The bot also needs permission to manage the target member’s nickname.',
+        )}
       >
         <AsyncState
           loading={configuration.loading}
@@ -234,7 +246,7 @@ const ServerPseudo: Component = () => {
         <SettingGroup title={t('settings.sync_behavior', 'Synchronization behavior')} icon="arrow-left-right">
           <SettingRow
             controlId="server-pseudo-direction"
-            title={t('dashboard.server.pseudo.pseudoSyncDirection', 'Pseudo Synchronization Direction')}
+            title={t('dashboard.server.pseudo.pseudoSyncDirection', 'Nickname synchronization direction')}
             description={t(
               'settings.sync_direction_help',
               'This direction applies to every rule below. Save to apply your changes.',
@@ -250,13 +262,13 @@ const ServerPseudo: Component = () => {
             >
               <option value="disable">{t('dashboard.server.pseudo.disable', 'Disable')}</option>
               <option value="gmod-to-discord">
-                {t('dashboard.server.pseudo.fromGmodToDiscord', 'From Gmod to Discord')}
+                {t('dashboard.server.pseudo.fromGmodToDiscord', 'Game → Discord')}
               </option>
               <option value="discord-to-gmod" disabled={!reverseAccess.allowed()}>
-                {t('dashboard.server.pseudo.fromDiscordToGmod', 'From Discord to Gmod')}
+                {t('dashboard.server.pseudo.fromDiscordToGmod', 'Discord → game')}
               </option>
               <option value="both" disabled={!reverseAccess.allowed()}>
-                {t('dashboard.server.pseudo.bothWays', 'Both Ways')}
+                {t('dashboard.server.pseudo.bothWays', 'Both directions')}
               </option>
             </select>
           </SettingRow>
@@ -298,8 +310,8 @@ const ServerPseudo: Component = () => {
             <ul class="text-base-content/60 list-inside">
               <li>{`{plyName} — ${t('dashboard.server.pseudo.playerName', 'Player Name')}`}</li>
               <li>{`{plySteamID64} — ${t('dashboard.server.pseudo.playerSteamID64', 'Player SteamID64')}`}</li>
-              <li>{`{rolePrefix} — ${t('dashboard.server.pseudo.rolePrefix', 'Role Prefix')}`}</li>
-              <li>{`{roleName} — ${t('dashboard.server.pseudo.roleName', 'Role Name')}`}</li>
+              <li>{`{rolePrefix} — ${t('dashboard.server.pseudo.rolePrefix', 'Game group prefix')}`}</li>
+              <li>{`{roleName} — ${t('dashboard.server.pseudo.roleName', 'Game group display name')}`}</li>
             </ul>
           </details>
           <FormActions
@@ -327,8 +339,11 @@ const ServerPseudo: Component = () => {
         </SettingGroup>
       </AdminPanel>
       <AdminPanel
-        title={t('dashboard.server.pseudo.rolePrefix', 'Role Prefix')}
-        description={t('dashboard.server.pseudo.rolePrefixDescription', 'Define prefixes for each user group.')}
+        title={t('dashboard.server.pseudo.rules_title', 'Nickname rules by game group')}
+        description={t(
+          'dashboard.server.pseudo.rolePrefixDescription',
+          'Choose the display name and prefix supplied by each game user group. These rules do not create or assign Discord roles.',
+        )}
         type="none"
         icon="list"
         actions={
@@ -339,7 +354,7 @@ const ServerPseudo: Component = () => {
             error={rules.error}
           >
             <Button variant="primary" disabled={!canCreate()} onClick={() => begin()}>
-              {t('dashboard.server.pseudo.addRole', 'Add Role')}
+              {t('dashboard.server.pseudo.addRole', 'Add nickname rule')}
             </Button>
           </FeatureGate>
         }
@@ -355,9 +370,9 @@ const ServerPseudo: Component = () => {
           <table class="table w-full">
             <thead>
               <tr>
-                <th>{t('dashboard.server.pseudo.userGroup', 'User Group')}</th>
-                <th>{t('dashboard.server.pseudo.name', 'Name')}</th>
-                <th>{t('dashboard.server.pseudo.prefix', 'Prefix')}</th>
+                <th>{t('dashboard.server.pseudo.userGroup', 'Game user group')}</th>
+                <th>{t('dashboard.server.pseudo.name', 'Display name for {roleName}')}</th>
+                <th>{t('dashboard.server.pseudo.prefix', 'Prefix for {rolePrefix}')}</th>
                 <th>{t('dashboard.server.pseudo.active', 'Active')}</th>
                 <th>{t('dashboard.server.pseudo.actions', 'Actions')}</th>
               </tr>

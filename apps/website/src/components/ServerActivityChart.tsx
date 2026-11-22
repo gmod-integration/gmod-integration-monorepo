@@ -59,7 +59,7 @@ const ServerActivityChart: Component<ServerActivityChartProps> = (props) => {
         when={samples().length > 0}
         fallback={
           <p class="flex items-center h-16 text-sm text-base-content/60">
-            {t('servers.noActivity', 'No activity recorded')}
+            {t('servers.noActivity', 'No activity data is available for this period.')}
           </p>
         }
       >

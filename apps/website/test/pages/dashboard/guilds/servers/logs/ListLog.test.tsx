@@ -128,7 +128,7 @@ describe('pages/dashboard/guilds/servers/logs/ListLog.tsx', () => {
   describe('show more / download actions', () => {
     it('toggles the JSON detail row open and closed, flipping the chevron icon', async () => {
       const { container } = renderLog('player_ready', { ply: { name: 'Bob' } })
-      const toggle = container.querySelector('.tooltip-info[data-tip="Show More"]') as HTMLElement
+      const toggle = container.querySelector('button[aria-label="View event details"]') as HTMLElement
       expect(toggle).toBeTruthy()
       expect(container.querySelector('svg[data-icon="chevron-down"]')).toBeInTheDocument()
       expect(container.querySelector('svg[data-icon="chevron-up"]')).not.toBeInTheDocument()

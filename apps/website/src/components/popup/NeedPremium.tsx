@@ -18,7 +18,7 @@ export const PremiumFeature: Component<{ message?: string }> = (props) => {
           <span>
             {props.message || t('ui.premium_required', 'This feature requires a premium plan.')}{' '}
             <A class="link" href={upgradeHref()}>
-              {t('tools.upgrade_now', 'Upgrade Now')}
+              {t('tools.upgrade_now', 'View Premium plans')}
             </A>
           </span>
         </div>

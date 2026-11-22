@@ -81,7 +81,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     renderPage()
     expect(screen.getByLabelText('Name')).toHaveValue('My Server')
     expect(screen.getByLabelText('Description')).toHaveValue('A cool server')
-    expect(screen.getByLabelText('IP')).toHaveValue('1.2.3.4')
+    expect(screen.getByLabelText('Server address')).toHaveValue('1.2.3.4')
     expect(screen.getByLabelText('Port')).toHaveValue('27015')
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(screen.getByText('s1')).toBeInTheDocument()
@@ -90,7 +90,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
   it('shows the default server logo when image is empty and the custom one when set', () => {
     setServerLocalStorage({ image: '' })
     const { unmount } = renderPage()
-    const img = screen.getByAltText('Server Logo') as HTMLImageElement
+    const img = screen.getByAltText('Logo') as HTMLImageElement
     expect(img.getAttribute('src')).toBeTruthy()
     const fallbackSrc = img.getAttribute('src')
     unmount()
@@ -98,7 +98,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
 
     setServerLocalStorage({ image: 'https://example.com/logo.png' })
     renderPage()
-    const img2 = screen.getByAltText('Server Logo') as HTMLImageElement
+    const img2 = screen.getByAltText('Logo') as HTMLImageElement
     expect(img2.getAttribute('src')).toBe('https://example.com/logo.png')
     expect(img2.getAttribute('src')).not.toBe(fallbackSrc)
   })
@@ -118,13 +118,13 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     setServerLocalStorage({ isPublic: true })
     const { unmount } = renderPage()
     // "Public:" is the real en.json translation (differs from the JSX fallback "Server Public").
-    expect(screen.getByRole('checkbox', { name: 'Public' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Show in server ranking' })).toBeChecked()
     unmount()
     cleanup()
 
     setServerLocalStorage({ isPublic: false })
     renderPage()
-    expect(screen.getByRole('checkbox', { name: 'Public' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Show in server ranking' })).not.toBeChecked()
   })
 
   describe('addon setup commands', () => {
@@ -183,15 +183,11 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
   describe('connection status panel', () => {
     it('shows all-invalid fallback content by default (never connected)', () => {
       renderPage()
-      expect(
-        screen.getByText(/We haven't received any request from your server in the last minute/),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByText(/Your server is not connected to the websocket, advanced features are not available/),
-      ).toBeInTheDocument()
+      expect(screen.getByText(/No request has been received from the addon in the last minute/)).toBeInTheDocument()
+      expect(screen.getByText(/The live connection is unavailable/)).toBeInTheDocument()
       // isValidHTTPRequest is false, so the version block also shows the HTTP-fallback text, not
       // the outdated/success text.
-      expect(screen.getByText(/We can't check the version of your server/)).toBeInTheDocument()
+      expect(screen.getByText(/The addon version cannot be checked without recent server activity/)).toBeInTheDocument()
     })
 
     it('shows success content when websocket connected, request fresh, and version up to date', () => {
@@ -202,17 +198,11 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
         versionComparator: 0,
       })
       renderPage()
+      expect(screen.getByText('A request was received from the addon within the last minute.')).toBeInTheDocument()
       expect(
-        screen.getByText('Congratulations your server is correctly setup you can now configure it.'),
+        screen.getByText('The addon has a live connection. Features that need real-time communication can use it.'),
       ).toBeInTheDocument()
-      expect(
-        screen.getByText(
-          'Congratulations you successfully connected to your server in websocket, advanced features are now available.',
-        ),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByText('Great your server is up to date and will work perfectly with the latest features.'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('The reported addon version is compatible with the current service.')).toBeInTheDocument()
     })
 
     it('treats versionComparator -1 as a valid (up to date) version', () => {
@@ -222,9 +212,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
         versionComparator: -1,
       })
       renderPage()
-      expect(
-        screen.getByText('Great your server is up to date and will work perfectly with the latest features.'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('The reported addon version is compatible with the current service.')).toBeInTheDocument()
     })
 
     it('shows the outdated-version message when the request is fresh but the version is outdated', () => {
@@ -234,14 +222,12 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
         versionComparator: 1,
       })
       renderPage()
-      expect(screen.getByText(/Your server is outdated, new features will not work correctly/)).toBeInTheDocument()
+      expect(screen.getByText(/The reported addon version is outdated/)).toBeInTheDocument()
     })
 
     it('reactively updates when webSocketServerStatus changes after mount', async () => {
       renderPage()
-      expect(
-        screen.getByText(/Your server is not connected to the websocket, advanced features are not available/),
-      ).toBeInTheDocument()
+      expect(screen.getByText(/The live connection is unavailable/)).toBeInTheDocument()
 
       setWebSocketServerStatus({
         ...defaultWSStatus,
@@ -250,9 +236,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
 
       await vi.waitFor(() =>
         expect(
-          screen.getByText(
-            'Congratulations you successfully connected to your server in websocket, advanced features are now available.',
-          ),
+          screen.getByText('The addon has a live connection. Features that need real-time communication can use it.'),
         ).toBeInTheDocument(),
       )
     })
@@ -283,13 +267,13 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       renderPage()
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Unsaved name' } })
       await fireEvent.input(screen.getByLabelText('Description'), { target: { value: 'Unsaved description' } })
-      await fireEvent.click(screen.getByRole('checkbox', { name: 'Public' }))
+      await fireEvent.click(screen.getByRole('checkbox', { name: 'Show in server ranking' }))
       expect(fetchAPI).not.toHaveBeenCalled()
       expect(JSON.parse(localStorage.getItem('server')!).name).toBe('My Server')
       await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
       expect(screen.getByLabelText('Name')).toHaveValue('My Server')
       expect(screen.getByLabelText('Description')).toHaveValue('A cool server')
-      expect(screen.getByRole('checkbox', { name: 'Public' })).toBeChecked()
+      expect(screen.getByRole('checkbox', { name: 'Show in server ranking' })).toBeChecked()
       expect(document.getElementById('edit_server')).not.toBeInTheDocument()
     })
     it('validates the name, port and image URL before allowing Save', async () => {
@@ -301,9 +285,9 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '70000' } })
       expect(save).toBeDisabled()
       await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '27015' } })
-      await fireEvent.input(screen.getByLabelText('Image'), { target: { value: 'invalid' } })
+      await fireEvent.input(screen.getByLabelText('Image URL'), { target: { value: 'invalid' } })
       expect(save).toBeDisabled()
-      await fireEvent.input(screen.getByLabelText('Image'), { target: { value: 'https://example.com/server.png' } })
+      await fireEvent.input(screen.getByLabelText('Image URL'), { target: { value: 'https://example.com/server.png' } })
       expect(save).not.toBeDisabled()
       expect(fetchAPI).not.toHaveBeenCalled()
     })
@@ -345,10 +329,10 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       renderPage()
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'New Name' } })
       await fireEvent.input(screen.getByLabelText('Description'), { target: { value: 'New Desc' } })
-      await fireEvent.input(screen.getByLabelText('Image'), { target: { value: 'https://example.com/logo.png' } })
-      await fireEvent.input(screen.getByLabelText('IP'), { target: { value: '5.6.7.8' } })
+      await fireEvent.input(screen.getByLabelText('Image URL'), { target: { value: 'https://example.com/logo.png' } })
+      await fireEvent.input(screen.getByLabelText('Server address'), { target: { value: '5.6.7.8' } })
       await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '27016' } })
-      await fireEvent.click(screen.getByRole('checkbox', { name: 'Public' }))
+      await fireEvent.click(screen.getByRole('checkbox', { name: 'Show in server ranking' }))
       await fireEvent.click(screen.getByRole('button', { name: 'Save' }))
       await vi.waitFor(() =>
         expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'PUT', {

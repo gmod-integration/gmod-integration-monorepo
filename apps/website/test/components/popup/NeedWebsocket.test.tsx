@@ -8,9 +8,9 @@ afterEach(() => cleanup())
 describe('components/popup/NeedWebsocket.tsx', () => {
   it('renders the GWSocket link and messaging', () => {
     renderWithProviders(() => <NeedWebsocket />)
-    const link = screen.getByRole('link', { name: 'GWSocket' })
+    const link = screen.getByRole('link', { name: 'GWSockets' })
     expect(link).toHaveAttribute('href', 'https://docs.gmod-integration.com/getting-started/installation#dll')
-    expect(screen.getByText(/This feature requires a/)).toBeInTheDocument()
-    expect(screen.getByText(/connection to work properly\./)).toBeInTheDocument()
+    expect(screen.getByText(/Install the/)).toBeInTheDocument()
+    expect(screen.getByText(/check that the addon is connected/)).toBeInTheDocument()
   })
 })
