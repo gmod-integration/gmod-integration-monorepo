@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../testUtils.js'
-import { authStatus, resetAuthentication } from '../../src/utils/authClient.js'
+import { authStatus, resetAuthentication, LOGOUT_PENDING_KEY } from '../../src/utils/authClient.js'
 import { isLogged } from '../../src/utils/event.js'
 import { sessionFixture } from '../authFixture.js'
 import Login from '../../src/pages/Login.js'
@@ -23,6 +23,14 @@ function renderLogin(path = '/login') {
   return history
 }
 describe('cookie session login', () => {
+  it('finishes a pending logout before attempting to restore a cookie session', async () => {
+    localStorage.setItem(LOGOUT_PENDING_KEY, 'pending')
+    const network = vi.fn()
+    vi.stubGlobal('fetch', network)
+    const history = renderLogin()
+    await vi.waitFor(() => expect(history.get()).toBe('/logout'))
+    expect(network).not.toHaveBeenCalled()
+  })
   it('restores identity from the server without a bearer callback or local token', async () => {
     const network = vi.fn().mockResolvedValue(json(sessionFixture()))
     vi.stubGlobal('fetch', network)

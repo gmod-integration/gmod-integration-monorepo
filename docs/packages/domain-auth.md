@@ -95,3 +95,15 @@ database/release backup or use a reviewed forward repair; do not restore erased 
 Configuration: `AUTH_SESSION_ABSOLUTE_TTL_SECONDS` defaults to `2592000` (minimum 300),
 `AUTH_SESSION_IDLE_TTL_SECONDS` defaults to `604800` (minimum 60, clamped to the absolute lifetime).
 Both are validated and capped at one year. See [config](./config.md).
+
+## Browser logout intent
+
+Before logout revocation, the browser records a non-secret pending intent and invalidates local
+requests/identity. A failed or malformed acknowledgement keeps that intent across ordinary reloads
+and tabs. Focus/network/session recovery cannot restore identity while it remains pending, and
+authenticated HTTP requests stay blocked. A retry obtains only the session/actor CSRF challenge needed
+for revocation; it does not adopt that identity or restore delegated access. Only an explicit
+`{ revoked: true }` acknowledgement clears the intent. The login page finishes a pending logout first.
+Storage failures cannot prevent the server revocation attempt; an in-memory fallback guards the
+current document when browser persistence is unavailable. UI copy keeps unconfirmed revocation distinct
+from a completed sign-out. Preferences and an account-erasure recovery receipt survive local cleanup.

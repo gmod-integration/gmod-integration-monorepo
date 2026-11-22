@@ -24,7 +24,7 @@ function renderLogout() {
 }
 describe('explicit logout', () => {
   it('revokes the cookie session with CSRF, clears local state and navigates home', async () => {
-    const network = vi.fn().mockResolvedValue(new Response('{}'))
+    const network = vi.fn().mockResolvedValue(new Response(JSON.stringify({ revoked: true })))
     vi.stubGlobal('fetch', network)
     const history = renderLogout()
     await vi.waitFor(() => expect(history.get()).toBe('/'))
@@ -42,7 +42,7 @@ describe('explicit logout', () => {
     sessionStorage.setItem('private-cache', 'old')
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network down')))
     const history = renderLogout()
-    await vi.waitFor(() => expect(screen.getByText(/Server revocation could not be confirmed/)).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByText(/Sign-out is not confirmed/)).toBeInTheDocument())
     expect(history.get()).toBe('/logout')
     expect(isLogged()).toBe(false)
     expect(localStorage.getItem(ERASURE_RECEIPT_KEY)).toBe(JSON.stringify(receipt))

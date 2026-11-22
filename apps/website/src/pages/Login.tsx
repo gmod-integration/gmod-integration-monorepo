@@ -2,7 +2,13 @@ import { type Component, createSignal, onMount, Show } from 'solid-js'
 import { useLocation, useNavigate } from '@solidjs/router'
 import { useI18n } from '../i18n.js'
 import { getAPIUrl } from '../utils/api.js'
-import { authStatus, broadcastAuthChange, refreshAuthSession, safeAuthRedirect } from '../utils/authClient.js'
+import {
+  authStatus,
+  broadcastAuthChange,
+  refreshAuthSession,
+  safeAuthRedirect,
+  isLogoutPending,
+} from '../utils/authClient.js'
 import { Button, ButtonLink, Icon, PageState } from '../components/ui/index.js'
 
 const Login: Component = () => {
@@ -29,6 +35,10 @@ const Login: Component = () => {
   }
   onMount(() => {
     const query = new URLSearchParams(location.search)
+    if (isLogoutPending()) {
+      navigate('/logout', { replace: true })
+      return
+    }
     // Remove historical bearer callbacks before any asynchronous request or navigation.
     if (query.has('accessToken') || query.has('expirationDate') || query.has('discordID')) {
       const clean = new URL(window.location.href)

@@ -11,6 +11,48 @@ export type AuthSession = {
 }
 export const AUTH_CHANGE_EVENT = 'gmi:auth-change'
 export const AUTH_STORAGE_KEY = 'gmi:auth-event'
+export const LOGOUT_PENDING_KEY = 'gmi:logout-pending'
+let memoryLogoutPending = false
+let pendingIntentPersisted = false
+let logoutRequest: Promise<void> | undefined
+
+function readAuthCache(key: string): string | null {
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+function writeAuthCache(key: string, value: string): boolean {
+  try {
+    localStorage.setItem(key, value)
+    return true
+  } catch {
+    return false
+  }
+}
+function removeAuthCache(key: string) {
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    /* Server authority and in-memory cleanup do not depend on browser cache access. */
+  }
+}
+
+/** A pending logout must not be undone by focus, network recovery or another tab. */
+export function isLogoutPending() {
+  try {
+    const persisted = localStorage.getItem(LOGOUT_PENDING_KEY)
+    // A confirmed logout in another tab may clear a shared marker after our own failed attempt.
+    if (pendingIntentPersisted && !persisted && !logoutRequest) {
+      memoryLogoutPending = false
+      pendingIntentPersisted = false
+    }
+    return memoryLogoutPending || !!persisted
+  } catch {
+    return memoryLogoutPending
+  }
+}
 export const [authStatus, setAuthStatus] = createSignal<AuthStatus>('checking')
 export const [authSession, setAuthSession] = createSignal<AuthSession>()
 let request: Promise<AuthSession | undefined> | undefined
@@ -47,25 +89,29 @@ function notify() {
   window.dispatchEvent(new Event(AUTH_CHANGE_EVENT))
 }
 export function broadcastAuthChange() {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ nonce: crypto.randomUUID(), at: Date.now() }))
+  writeAuthCache(AUTH_STORAGE_KEY, JSON.stringify({ nonce: crypto.randomUUID(), at: Date.now() }))
 }
 
 /** The server supplies identity and expiry; browser storage is only a presentation cache. */
 export function acceptAuthSession(value: AuthSession) {
+  if (isLogoutPending()) {
+    resetAuthentication()
+    return
+  }
   if (authSession() && authSession()!.session.id !== value.session.id) invalidatePendingRequests()
-  const previousID = authSession()?.user.id || localStorage.getItem('discordID')
+  const previousID = authSession()?.user.id || readAuthCache('discordID')
   if (previousID && previousID !== value.user.id) {
-    localStorage.removeItem('guilds')
-    localStorage.removeItem('server')
+    removeAuthCache('guilds')
+    removeAuthCache('server')
   }
   const normalized = { ...normalizeDiscordUserPayload(value.user), rank: value.user.rank }
-  localStorage.removeItem('accessToken')
-  localStorage.removeItem('expirationDate')
-  localStorage.removeItem('oldAccessToken')
-  localStorage.removeItem('oldExpirationDate')
-  localStorage.removeItem('oldDiscordID')
-  localStorage.setItem('discordID', normalized.id)
-  localStorage.setItem('discordUser', JSON.stringify(normalized))
+  removeAuthCache('accessToken')
+  removeAuthCache('expirationDate')
+  removeAuthCache('oldAccessToken')
+  removeAuthCache('oldExpirationDate')
+  removeAuthCache('oldDiscordID')
+  writeAuthCache('discordID', normalized.id)
+  writeAuthCache('discordUser', JSON.stringify(normalized))
   batch(() => {
     setAuthSession({ ...value, user: normalized })
     setDiscordUser(normalized)
@@ -87,7 +133,7 @@ export function resetAuthentication() {
     'discordID',
     'discordUser',
   ])
-    localStorage.removeItem(key)
+    removeAuthCache(key)
   batch(() => {
     setAuthSession(undefined)
     setDiscordUser(normalizeDiscordUserPayload({}))
@@ -103,6 +149,10 @@ const timeout = () => AbortSignal.timeout(12_000)
 
 /** Deduplicates validation and legacy conversion; temporary failures preserve drafts and credentials. */
 export function refreshAuthSession(): Promise<AuthSession | undefined> {
+  if (isLogoutPending()) {
+    resetAuthentication()
+    return Promise.resolve(undefined)
+  }
   if (request) return request
   const current = generation
   const controller = new AbortController()
@@ -140,7 +190,7 @@ export function refreshAuthSession(): Promise<AuthSession | undefined> {
         }
       }
       if (current !== generation) return authSession()
-      const oldToken = localStorage.getItem('accessToken')
+      const oldToken = readAuthCache('accessToken')
       if (response.status === 401 && oldToken) {
         response = await fetch(sessionURL('/legacy-session'), {
           method: 'POST',
@@ -203,9 +253,11 @@ async function sendAuthenticated(input: string, init: RequestInit, current: numb
 
 /** All authenticated v3/v6 requests use cookies and the same CSRF/session recovery contract. */
 export async function authenticatedFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  if (isLogoutPending()) throw new Error('Logout must be confirmed before making authenticated requests')
   const method = (init.method || 'GET').toUpperCase()
   const mutation = !['GET', 'HEAD', 'OPTIONS'].includes(method)
   if (mutation && !authSession()?.csrfToken) await refreshAuthSession()
+  if (isLogoutPending()) throw new Error('Logout must be confirmed before making authenticated requests')
   const headers = new Headers(init.headers)
   if (mutation && authSession()?.csrfToken) headers.set('X-CSRF-Token', authSession()!.csrfToken)
   const current = generation
@@ -240,20 +292,89 @@ export async function authCommand(path: string, body?: unknown): Promise<AuthSes
   if (current !== generation) throw new Error('The session changed while the request was pending')
   if (validSession(value)) {
     acceptAuthSession(value)
+    const accepted = authSession()
+    if (!accepted || accepted.session.id !== value.session.id) throw new Error('Session action unavailable')
     broadcastAuthChange()
-    return authSession()!
+    return accepted
   }
   throw new Error('Invalid session action acknowledgement')
 }
 
-export async function signOut() {
-  try {
-    const response = await authenticatedFetch(sessionURL('/logout'), { method: 'POST', signal: timeout() })
+export function signOut(): Promise<void> {
+  if (logoutRequest) return logoutRequest
+  const csrfToken = authSession()?.csrfToken
+  const legacyToken = readAuthCache('accessToken')
+  const intent = crypto.randomUUID()
+  const previousIntent = readAuthCache(LOGOUT_PENDING_KEY)
+  // Keep the local barrier active even if storage becomes unavailable after a successful write.
+  memoryLogoutPending = true
+  const persistedIntent = writeAuthCache(LOGOUT_PENDING_KEY, intent) ? intent : previousIntent
+  pendingIntentPersisted = !!persistedIntent
+  resetAuthentication()
+  broadcastAuthChange()
+  const operation = (async () => {
+    let csrf = csrfToken
+    // Retry obtains only a revocation CSRF challenge. It never adopts or restores this identity.
+    if (!csrf) {
+      const challenge = await fetch(sessionURL('/session'), {
+        credentials: 'include',
+        cache: 'no-store',
+        signal: timeout(),
+      })
+      const data: unknown = await challenge.json().catch(() => undefined)
+      if (challenge.ok && validSession(data)) csrf = data.csrfToken
+      else if (challenge.status === 401) {
+        const denied = data as { error?: { code?: string }; csrfToken?: string } | undefined
+        if (denied?.error?.code === 'actor_session_available' && typeof denied.csrfToken === 'string')
+          csrf = denied.csrfToken
+        else if (legacyToken) {
+          // Consume the existing one-use legacy credential only to revoke it; never adopt its identity.
+          const migrated = await fetch(sessionURL('/legacy-session'), {
+            method: 'POST',
+            credentials: 'include',
+            signal: timeout(),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: legacyToken }),
+          })
+          const snapshot: unknown = await migrated.json().catch(() => undefined)
+          if (migrated.ok && validSession(snapshot)) csrf = snapshot.csrfToken
+          else if (migrated.status !== 401) throw new Error('Logout revocation unconfirmed')
+        }
+      } else throw new Error('Logout revocation unconfirmed')
+    }
+    const response = await fetch(sessionURL('/logout'), {
+      method: 'POST',
+      credentials: 'include',
+      signal: timeout(),
+      headers: csrf ? { 'X-CSRF-Token': csrf } : undefined,
+    })
     if (!response.ok) throw new Error('Logout revocation unconfirmed')
-  } finally {
+    const acknowledgement: unknown = await response.json().catch(() => undefined)
+    if (
+      !acknowledgement ||
+      typeof acknowledgement !== 'object' ||
+      !('revoked' in acknowledgement) ||
+      acknowledgement.revoked !== true
+    )
+      throw new Error('Logout revocation unconfirmed')
+    // A successful retry may resolve an older marker when quota/privacy settings refused its replacement.
+    // Never clear an intent published by another tab after this operation started.
+    if (persistedIntent && readAuthCache(LOGOUT_PENDING_KEY) === persistedIntent) removeAuthCache(LOGOUT_PENDING_KEY)
+    memoryLogoutPending = false
+    pendingIntentPersisted = false
     resetAuthentication()
     broadcastAuthChange()
-  }
+  })()
+  logoutRequest = operation
+  void operation.then(
+    () => {
+      if (logoutRequest === operation) logoutRequest = undefined
+    },
+    () => {
+      if (logoutRequest === operation) logoutRequest = undefined
+    },
+  )
+  return operation
 }
 
 export function safeAuthRedirect(value: string | null | undefined, fallback = '/dashboard/guilds') {

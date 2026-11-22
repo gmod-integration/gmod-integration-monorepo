@@ -31,7 +31,7 @@ const Logout: Component = () => {
         <p>
           {t(
             'auth.logout_unconfirmed',
-            'You are signed out on this device. Server revocation could not be confirmed; try again when the connection returns.',
+            'Sign-out is not confirmed. Your server session may still be active. Retry to finish signing out.',
           )}
         </p>
         <Button loading={pending()} onClick={() => void logout()}>

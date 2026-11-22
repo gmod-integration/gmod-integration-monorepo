@@ -1519,7 +1519,7 @@
   "auth": {
     "unavailable": "La connexion est temporairement indisponible. Votre session et vos modifications non enregistrées sont conservées.",
     "reconnect_discord": "Reconnectez Discord dans un nouvel onglet pour continuer. Vos modifications non enregistrées restent ici.",
-    "logout_unconfirmed": "Vous êtes déconnecté sur cet appareil. La révocation sur le serveur n’a pas pu être confirmée ; réessayez lorsque la connexion revient.",
+    "logout_unconfirmed": "La déconnexion n’est pas confirmée. Votre session sur le serveur peut être encore active. Réessayez pour terminer la déconnexion.",
     "stop_impersonation": "Revenir à votre compte",
     "impersonation_erasure": "Revenez à votre propre compte avant de demander un effacement.",
     "oauth_denied": "La connexion Discord n’a pas été terminée. Vous pouvez réessayer lorsque vous le souhaitez."

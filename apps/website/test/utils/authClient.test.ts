@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   acceptAuthSession,
   AUTH_STORAGE_KEY,
+  LOGOUT_PENDING_KEY,
+  isLogoutPending,
+  signOut,
   authenticatedFetch,
   authCommand,
   authSession,
@@ -298,4 +301,197 @@ describe('authoritative browser session client', () => {
       expect(safeAuthRedirect(value)).toBe('/dashboard/guilds')
     },
   )
+})
+
+describe('pending logout isolation', () => {
+  it('consumes a pre-existing legacy credential for revocation without signing in during logout', async () => {
+    localStorage.setItem('accessToken', 'legacy-fixture')
+    const network = vi
+      .fn()
+      .mockResolvedValueOnce(json({}, 401))
+      .mockResolvedValueOnce(json(sessionFixture()))
+      .mockResolvedValueOnce(json({ revoked: true }))
+    vi.stubGlobal('fetch', network)
+    await signOut()
+    expect(network.mock.calls.map(([url]) => url)).toEqual([
+      'http://localhost:5001/v6/auth/session',
+      'http://localhost:5001/v6/auth/legacy-session',
+      'http://localhost:5001/v6/auth/logout',
+    ])
+    expect(network.mock.calls[1][1].body).toBe(JSON.stringify({ token: 'legacy-fixture' }))
+    expect(authSession()).toBeUndefined()
+    expect(localStorage.getItem('accessToken')).toBeNull()
+    expect(isLogoutPending()).toBe(false)
+  })
+
+  it('blocks silent session restoration and ordinary requests after an unconfirmed logout', async () => {
+    acceptAuthSession(sessionFixture())
+    const network = vi.fn().mockRejectedValueOnce(new Error('Offline'))
+    vi.stubGlobal('fetch', network)
+    await expect(signOut()).rejects.toThrow('Offline')
+    expect(isLogoutPending()).toBe(true)
+    expect(authSession()).toBeUndefined()
+    network.mockResolvedValue(json(sessionFixture()))
+    await refreshAuthSession()
+    await revalidateAuthSession()
+    await expect(authenticatedFetch('/v6/private')).rejects.toThrow('Logout must be confirmed')
+    expect(network).toHaveBeenCalledTimes(1)
+    expect(authStatus()).toBe('signed_out')
+  })
+  it('keeps a pending intent on malformed success and deduplicates revocation requests', async () => {
+    acceptAuthSession(sessionFixture())
+    let finish!: (response: Response) => void
+    const network = vi.fn().mockReturnValue(
+      new Promise<Response>((resolve) => {
+        finish = resolve
+      }),
+    )
+    vi.stubGlobal('fetch', network)
+    const first = signOut()
+    expect(signOut()).toBe(first)
+    finish(json({}))
+    await expect(first).rejects.toThrow('unconfirmed')
+    expect(isLogoutPending()).toBe(true)
+    expect(network).toHaveBeenCalledTimes(1)
+  })
+  it('retrieves a revocation challenge without ever adopting the still-live cookie identity', async () => {
+    localStorage.setItem(LOGOUT_PENDING_KEY, 'pending-from-an-earlier-tab')
+    const network = vi
+      .fn()
+      .mockResolvedValueOnce(json(sessionFixture()))
+      .mockResolvedValueOnce(json({ revoked: true }))
+    vi.stubGlobal('fetch', network)
+    await signOut()
+    expect(network.mock.calls.map(([url]) => url)).toEqual([
+      'http://localhost:5001/v6/auth/session',
+      'http://localhost:5001/v6/auth/logout',
+    ])
+    expect(new Headers(network.mock.calls[1][1].headers).get('X-CSRF-Token')).toBe('csrf-token')
+    expect(isLogoutPending()).toBe(false)
+    expect(authSession()).toBeUndefined()
+    expect(isLogged()).toBe(false)
+  })
+  it('uses an expired delegation’s actor challenge for revocation instead of restoring support access', async () => {
+    localStorage.setItem(LOGOUT_PENDING_KEY, 'pending')
+    const network = vi
+      .fn()
+      .mockResolvedValueOnce(json({ error: { code: 'actor_session_available' }, csrfToken: 'actor-csrf' }, 401))
+      .mockResolvedValueOnce(json({ revoked: true }))
+    vi.stubGlobal('fetch', network)
+    await signOut()
+    expect(network.mock.calls[1][0]).toBe('http://localhost:5001/v6/auth/logout')
+    expect(new Headers(network.mock.calls[1][1].headers).get('X-CSRF-Token')).toBe('actor-csrf')
+    expect(authSession()).toBeUndefined()
+  })
+  it('rejects cached identity adoption while a shared logout intent exists', () => {
+    acceptAuthSession(sessionFixture())
+    localStorage.setItem(LOGOUT_PENDING_KEY, 'another-tab')
+    acceptAuthSession(sessionFixture())
+    expect(authSession()).toBeUndefined()
+    expect(isLogged()).toBe(false)
+  })
+})
+
+describe('session cache failures do not block server authority', () => {
+  it('adopts a verified cookie session and clears local identity even if all cache access is refused', async () => {
+    for (const method of ['getItem', 'setItem', 'removeItem'] as const)
+      vi.spyOn(Storage.prototype, method).mockImplementation(() => {
+        throw new Error('Storage refused')
+      })
+    const network = vi.fn().mockResolvedValue(json(sessionFixture()))
+    vi.stubGlobal('fetch', network)
+    expect(await refreshAuthSession()).toMatchObject({ session: { id: 'session-current-123' } })
+    expect(isLogged()).toBe(true)
+    expect(() => resetAuthentication()).not.toThrow()
+    expect(authSession()).toBeUndefined()
+    expect(isLogged()).toBe(false)
+  })
+  it('still revokes with the current CSRF when storage throws before every cache operation', async () => {
+    acceptAuthSession(sessionFixture())
+    for (const method of ['getItem', 'setItem', 'removeItem'] as const)
+      vi.spyOn(Storage.prototype, method).mockImplementation(() => {
+        throw new Error('Storage refused')
+      })
+    const network = vi.fn().mockResolvedValue(json({ revoked: true }))
+    vi.stubGlobal('fetch', network)
+    await expect(signOut()).resolves.toBeUndefined()
+    expect(network).toHaveBeenCalledExactlyOnceWith(
+      'http://localhost:5001/v6/auth/logout',
+      expect.objectContaining({ method: 'POST', credentials: 'include', headers: { 'X-CSRF-Token': 'csrf-token' } }),
+    )
+    expect(isLogoutPending()).toBe(false)
+    expect(authSession()).toBeUndefined()
+    expect(isLogged()).toBe(false)
+  })
+  it('keeps the memory barrier after a refused write and network failure, then retries without adopting identity', async () => {
+    acceptAuthSession(sessionFixture())
+    for (const method of ['getItem', 'setItem', 'removeItem'] as const)
+      vi.spyOn(Storage.prototype, method).mockImplementation(() => {
+        throw new Error('Storage refused')
+      })
+    const network = vi.fn().mockRejectedValueOnce(new Error('Offline'))
+    vi.stubGlobal('fetch', network)
+    await expect(signOut()).rejects.toThrow('Offline')
+    expect(isLogoutPending()).toBe(true)
+    await refreshAuthSession()
+    await expect(authenticatedFetch('/private')).rejects.toThrow('Logout must be confirmed')
+    acceptAuthSession(sessionFixture())
+    expect(isLogged()).toBe(false)
+    expect(network).toHaveBeenCalledTimes(1)
+    network.mockImplementation(async (url: string) =>
+      json(url.endsWith('/session') ? sessionFixture() : { revoked: true }),
+    )
+    await signOut()
+    expect(network.mock.calls.map(([url]) => url)).toEqual([
+      'http://localhost:5001/v6/auth/logout',
+      'http://localhost:5001/v6/auth/session',
+      'http://localhost:5001/v6/auth/logout',
+    ])
+    expect(authSession()).toBeUndefined()
+    expect(isLogoutPending()).toBe(false)
+  })
+  it('clears an older persisted intent after confirmed revocation when quota rejects its replacement', async () => {
+    acceptAuthSession(sessionFixture())
+    localStorage.setItem(LOGOUT_PENDING_KEY, 'older-pending-intent')
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('Quota exceeded')
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({ revoked: true })))
+    await signOut()
+    expect(localStorage.getItem(LOGOUT_PENDING_KEY)).toBeNull()
+    expect(isLogoutPending()).toBe(false)
+  })
+  it('does not report a session command as successful when a shared logout arrives during acknowledgement parsing', async () => {
+    acceptAuthSession(sessionFixture())
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        status: 200,
+        ok: true,
+        json: async () => {
+          localStorage.setItem(LOGOUT_PENDING_KEY, 'other-tab')
+          return sessionFixture()
+        },
+      } as unknown as Response),
+    )
+    await expect(authCommand('/impersonations', { discordID: 'u2' })).rejects.toThrow('Session action unavailable')
+    expect(authSession()).toBeUndefined()
+    expect(isLogged()).toBe(false)
+  })
+  it('rechecks a shared logout barrier after awaiting a missing mutation CSRF session', async () => {
+    const network = vi.fn().mockResolvedValue({
+      status: 200,
+      ok: true,
+      json: async () => {
+        localStorage.setItem(LOGOUT_PENDING_KEY, 'other-tab')
+        return sessionFixture()
+      },
+    } as unknown as Response)
+    vi.stubGlobal('fetch', network)
+    await expect(
+      authenticatedFetch('/private-mutation', { method: 'POST', headers: { 'X-CSRF-Token': 'old-token' } }),
+    ).rejects.toThrow('Logout must be confirmed')
+    expect(network).toHaveBeenCalledTimes(1)
+    expect(network.mock.calls[0][0]).toBe('http://localhost:5001/v6/auth/session')
+  })
 })
