@@ -5,6 +5,10 @@ GMod dedicated server and talks to `apps/websocket` through an authenticated per
 Screenshots, reports and errors from players travel over Garry's Mod `net` to that server and then
 through its socket; platform credentials stay on the dedicated server. The new addon does not use HTTP
 for connected features. Existing HTTP routes remain for older installed releases during transition.
+The legacy server-info response projects only ID, name and community, matching the non-secret identity
+fields used by connection checks. Admin config snapshots and console output omit the stored token;
+the in-game token field accepts a new value and displays only whether a token is configured. Connection
+test callbacks revalidate the recipient's live permission before sending a projected response.
 
 This is a **separate git repository**, pinned as a submodule (`.gitmodules`: `submodules/gmod-integration` →
 `git@github.com:gmod-integration/gmod-integration.git`). Editing it means editing files inside that submodule
