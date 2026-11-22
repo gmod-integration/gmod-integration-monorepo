@@ -1,4 +1,6 @@
 import express, { type ErrorRequestHandler } from 'express'
+import adminMonitoringRoutes from './adminMonitoringRoutes.js'
+import adminPreviewsRoutes from './adminPreviewsRoutes.js'
 import { gmLog } from '@gmod/shared/logger.js'
 import {
   AdminGuildListQuerySchema,
@@ -18,6 +20,8 @@ import { adminSession } from '../../middleware/v6/adminSession.js'
 
 const router = express.Router()
 router.use(asyncHandler(adminSession))
+router.use('/monitoring', adminMonitoringRoutes)
+router.use(adminPreviewsRoutes)
 
 function parse<T>(schema: z.ZodType<T>, value: unknown): T {
   const result = schema.safeParse(value)

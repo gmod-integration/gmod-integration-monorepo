@@ -3,7 +3,16 @@ import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type * as AuthSessions from '@gmod/domain-auth/authSessions.js'
 
-const mocks = vi.hoisted(() => ({ session: vi.fn(), operator: vi.fn(), analytics: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  session: vi.fn(),
+  operator: vi.fn(),
+  analytics: vi.fn(),
+  connections: vi.fn(),
+  errors: vi.fn(),
+  bugs: vi.fn(),
+  previews: vi.fn(),
+  statusPreview: vi.fn(),
+}))
 vi.mock('@gmod/config', () => ({
   ConfigServer: { websiteUrl: 'https://dashboard.example.test', domain: 'https://api.example.test', dev: false },
   ConfigDiscord: { clientSecret: 'test-analytics-csrf-key' },
@@ -17,6 +26,15 @@ vi.mock('@gmod/domain-auth/authSessions.js', async (actual) => ({
 }))
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: vi.fn() }))
 vi.mock('@gmod/core/models/v6/adminAnalytics.js', () => ({ getAdminAnalytics: mocks.analytics }))
+vi.mock('@gmod/core/models/v6/adminMonitoring.js', () => ({
+  listAdminConnections: mocks.connections,
+  listAdminErrors: mocks.errors,
+  listAdminBugs: mocks.bugs,
+}))
+vi.mock('@gmod/core/models/v6/adminServerPreviews.js', () => ({
+  getAdminServerPreviews: mocks.previews,
+  getAdminServerStatusPreview: mocks.statusPreview,
+}))
 const { default: router } = await import('../../../src/routes/v6/adminRoutes.js')
 const developerID = '333650866747867137'
 const auth = () => ({
@@ -92,5 +110,46 @@ describe('protected administration analytics', () => {
     const result = await request(app()).get('/v6/admin/analytics')
     expect(result.status).toBe(503)
     expect(JSON.stringify(result.body)).not.toContain('private')
+  })
+})
+
+describe('developer-only administration monitoring and previews', () => {
+  const endpoints = [
+    '/monitoring/connections',
+    '/monitoring/errors',
+    '/monitoring/bugs',
+    '/servers/s1/previews',
+    '/servers/s1/status-preview',
+  ]
+  it.each(endpoints)('protects %s from ordinary accounts and delegated developer sessions', async (path) => {
+    mocks.session.mockResolvedValue({ ...auth(), discordID: '111111111111111111' })
+    expect((await request(app()).get(`/v6/admin${path}`)).status).toBe(403)
+    mocks.session.mockResolvedValue({ ...auth(), actorSessionID: 'delegating-session' })
+    expect((await request(app()).get(`/v6/admin${path}`)).status).toBe(403)
+    for (const fn of [mocks.connections, mocks.errors, mocks.bugs, mocks.previews, mocks.statusPreview])
+      expect(fn).not.toHaveBeenCalled()
+  })
+  it('routes authorized read requests without caching or sending a command', async () => {
+    for (const fn of [mocks.connections, mocks.errors, mocks.bugs, mocks.previews, mocks.statusPreview])
+      fn.mockResolvedValue({ example: true })
+    for (const endpoint of endpoints) {
+      const response = await request(app()).get(`/v6/admin${endpoint}`)
+      expect(response.status).toBe(200)
+      expect(response.headers['cache-control']).toBe('no-store')
+    }
+    expect(mocks.connections).toHaveBeenCalledWith(expect.objectContaining({ limit: 25, search: '' }))
+    expect(mocks.errors).toHaveBeenCalledWith(expect.objectContaining({ source: 'integration', days: 7 }))
+    expect(mocks.previews).toHaveBeenCalledExactlyOnceWith('s1')
+    expect(mocks.statusPreview).toHaveBeenCalledExactlyOnceWith('s1', {})
+  })
+  it.each([
+    '/monitoring/connections?limit=100000',
+    '/monitoring/errors?days=365',
+    '/monitoring/errors?source=secret',
+    '/monitoring/bugs?recurringOnly=maybe',
+    '/monitoring/bugs?search[x]=a',
+  ])('rejects malformed monitoring query: %s', async (endpoint) => {
+    expect((await request(app()).get(`/v6/admin${endpoint}`)).status).toBe(400)
+    for (const fn of [mocks.connections, mocks.errors, mocks.bugs]) expect(fn).not.toHaveBeenCalled()
   })
 })
