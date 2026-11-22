@@ -131,6 +131,7 @@ const modelMocks = {
   processGetAutoRoles: vi.fn(),
   processGetGuildBans: vi.fn(),
   processGetProfile: vi.fn(),
+  processGetSteamProfile: vi.fn(),
   processGetScreenshotsList: vi.fn(),
   processGetServerLogs: vi.fn(),
   processGetServerPlayers: vi.fn(),
@@ -276,6 +277,28 @@ describe('usersControllers', () => {
     modelMocks.processGetUserSessions.mockResolvedValueOnce({ status: 200, body: [] })
     await c.getUserSessions({ params: { discordID: 'd1' } } as any, makeRes())
     expect(modelMocks.processGetUserSessions).toHaveBeenCalledWith('d1', undefined)
+  })
+
+  it('getSteamProfile uses the authenticated identity and keeps the response private', async () => {
+    const body = { steamID64: '76561198219049673', steamProfile: { name: 'Linventif', avatarURL: null } }
+    modelMocks.processGetSteamProfile.mockResolvedValueOnce({ status: 200, body })
+    const res = makeRes()
+    await c.getSteamProfile(
+      { panelUser: { discordID: 'd1' }, params: { discordID: 'other' }, query: { steamID64: 'arbitrary' } } as any,
+      res,
+    )
+    expect(modelMocks.processGetSteamProfile).toHaveBeenCalledExactlyOnceWith('d1')
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.send).toHaveBeenCalledWith(body)
+    expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
+  })
+
+  it('getSteamProfile forwards the missing account status', async () => {
+    modelMocks.processGetSteamProfile.mockResolvedValueOnce({ status: 404, body: { error: 'User not found' } })
+    const res = makeRes()
+    await c.getSteamProfile({ panelUser: { discordID: 'd1' } } as any, res)
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(res.send).toHaveBeenCalledWith({ error: 'User not found' })
   })
 
   it('normalizes array route IDs instead of comma-joining identifiers passed to a model', async () => {

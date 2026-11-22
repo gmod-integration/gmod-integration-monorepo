@@ -56,6 +56,15 @@ Controllers should stay thin (rule of thumb: extract past ~10 lines, see
 [best-practices.md](../best-practices.md)); the actual server/guild/user logic lives in `@gmod/domain-*`
 classes, not in the controller.
 
+## Linked Steam profile
+
+`GET /v3/users/:discordID/steam-profile` requires the account's authenticated dashboard session and
+returns `{steamID64, steamProfile: {name, avatarURL} | null}` with `Cache-Control: no-store`. The Steam
+ID comes from the account's stored link; clients cannot request arbitrary Steam profiles through this
+route. Unlinked accounts return both fields as `null`; missing or erased accounts return 404.
+Steam and avatar lookup share a three-second budget. Provider failures preserve the linked ID, and
+avatar failures preserve an already resolved name with a `null` avatar URL.
+
 ## Account notifications
 
 The authenticated v3 user routes share the dashboard's notification contract:

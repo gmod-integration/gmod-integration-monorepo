@@ -54,8 +54,14 @@ type UserDataRequest = {
   code: string
 }
 
-const fetchUser = async () => {
-  const response = await fetchAPI('/users?discordID=' + getDiscordUser().id, 'GET')
+type SteamAccount = {
+  steamID64: string | null
+  steamProfile: { name: string; avatarURL: string | null } | null
+}
+
+const fetchUser = async (): Promise<SteamAccount> => {
+  const response = await fetchAPI('/users/:discordID/steam-profile', 'GET')
+  if (!response.ok) throw new Error('Steam account unavailable')
   return await response.json()
 }
 
@@ -95,6 +101,11 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
   const cachedUser = getDiscordUser()
   const localUser = () => authSession()?.user ?? cachedUser
   const [user, { refetch: refetchUser }] = createResource('steamUser', fetchUser)
+  const [failedSteamAvatarURL, setFailedSteamAvatarURL] = createSignal<string>()
+  const steamAvatarURL = () => {
+    const avatarURL = user()?.steamProfile?.avatarURL
+    return avatarURL && avatarURL !== failedSteamAvatarURL() ? avatarURL : undefined
+  }
   const [showRequestLoading, setShowRequestLoading] = createSignal(false)
   const [unlinkingGmodStorePurchase, setUnlinkingGmodStorePurchase] = createSignal(false)
   const sessionAction = createAsyncAction({
@@ -365,13 +376,33 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                 }
               >
                 <div class="account-identity flex min-w-0 items-center gap-4">
-                  <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-base-content/10 bg-base-200/40 text-base-content/55">
-                    <Icon name="gamepad-2" size={25} />
+                  <span
+                    class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-base-content/10 bg-base-200/40 text-base-content/55"
+                    aria-hidden="true"
+                  >
+                    <Show when={steamAvatarURL()} keyed fallback={<Icon name="gamepad-2" size={25} />}>
+                      {(avatarURL) => (
+                        <img
+                          src={avatarURL}
+                          alt=""
+                          class="h-full w-full object-cover"
+                          decoding="async"
+                          onError={() => setFailedSteamAvatarURL(avatarURL)}
+                        />
+                      )}
+                    </Show>
                   </span>
-                  <p class="break-all text-sm text-base-content/65">
-                    {t('account.id', 'ID')}:{' '}
-                    <span class="font-mono font-medium text-base-content">{user()?.steamID64}</span>
-                  </p>
+                  <div class="min-w-0">
+                    <Show when={user()?.steamProfile?.name}>
+                      {(name) => <p class="truncate text-base font-semibold">{name()}</p>}
+                    </Show>
+                    <p
+                      class="break-all text-xs text-base-content/50"
+                      classList={{ 'mt-1': Boolean(user()?.steamProfile?.name) }}
+                    >
+                      {t('account.id', 'ID')}: <span class="font-mono">{user()?.steamID64}</span>
+                    </p>
+                  </div>
                 </div>
               </Show>
             </AsyncState>

@@ -48,6 +48,7 @@ import {
   getGuildVerificationsRoles,
   getLogsChannel,
   getProfile,
+  getSteamProfile,
   getPublicServers,
   getPublicServerRanking,
   getScreenshotsList,
@@ -129,6 +130,7 @@ router.get('/login', asyncHandler(oauthLogin))
 
 router.use('/:discordID', userValidator)
 router.get('/:discordID', asyncHandler(findCurrentUser))
+router.get('/:discordID/steam-profile', asyncHandler(getSteamProfile))
 router.post('/:discordID/logout', asyncHandler(logOut))
 router.get('/:discordID/sessions', asyncHandler(getUserSessions))
 router.delete('/:discordID/sessions/:sessionID', asyncHandler(deleteUserSession))

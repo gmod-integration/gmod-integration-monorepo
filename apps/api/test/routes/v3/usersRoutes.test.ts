@@ -54,6 +54,7 @@ vi.mock('@/controllers/v3/usersControllers.js', () => ({
   getGuildVerificationsRoles: vi.fn(),
   getLogsChannel: vi.fn(),
   getProfile: vi.fn(),
+  getSteamProfile: vi.fn(),
   getPublicServers: vi.fn(),
   getPublicServerRanking: vi.fn(),
   getScreenshotsList: vi.fn(),
@@ -124,6 +125,7 @@ vi.mock('@/controllers/v3/users/ServerStatusChannelControllers.js', () => ({ put
 
 const { default: router } = await import('../../../src/routes/v3/usersRoutes.js')
 const { userValidator, userAdminGuildValidator, userServerValidator } = await import('@/middleware/v3/userValidator.js')
+const { getSteamProfile } = await import('@/controllers/v3/usersControllers.js')
 
 describe('usersRoutes', () => {
   it('registers a representative sample of routes across the whole file', () => {
@@ -146,6 +148,15 @@ describe('usersRoutes', () => {
     expect(router.stack[ranking].route.methods.get).toBe(true)
   })
 
+  it('registers Steam profile decoration after account authentication', () => {
+    const profile = router.stack.findIndex((layer: any) => layer.route?.path === '/:discordID/steam-profile')
+    const authentication = router.stack.findIndex((layer: any) => layer.handle === userValidator)
+    const guildAdministration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+    expect(profile).toBeGreaterThan(authentication)
+    expect(profile).toBeLessThan(guildAdministration)
+    expect(router.stack[profile].route.methods.get).toBe(true)
+  })
+
   it('protects draft previews with both guild-administrator and server access checks', () => {
     const preview = router.stack.findIndex(
       (layer: any) => layer.route?.path === '/:discordID/guilds/:guildID/servers/:serverID/status/preview',
@@ -155,6 +166,34 @@ describe('usersRoutes', () => {
     expect(preview).toBeGreaterThan(guild)
     expect(preview).toBeGreaterThan(server)
     expect(router.stack[preview].route.methods.post).toBe(true)
+  })
+})
+
+describe('Steam profile account authentication', () => {
+  const app = express()
+  app.use('/v3/users', router)
+
+  beforeEach(() => {
+    vi.mocked(getSteamProfile)
+      .mockReset()
+      .mockImplementation((_req, res) => res.json({ steamProfile: null }))
+    vi.mocked(userValidator).mockImplementation((req, res, next) => {
+      if (req.header('x-test-user') !== req.params.discordID) return res.status(401).json({ error: 'Unauthorized' })
+      next()
+    })
+  })
+
+  it.each([undefined, 'other'])('rejects an absent or mismatched account session (%s)', async (user) => {
+    const pending = request(app).get('/v3/users/owner/steam-profile')
+    const response = await (user ? pending.set('x-test-user', user) : pending)
+    expect(response.status).toBe(401)
+    expect(getSteamProfile).not.toHaveBeenCalled()
+  })
+
+  it('allows the matching account session through to the profile handler', async () => {
+    const response = await request(app).get('/v3/users/owner/steam-profile').set('x-test-user', 'owner')
+    expect(response.status).toBe(200)
+    expect(getSteamProfile).toHaveBeenCalledTimes(1)
   })
 })
 

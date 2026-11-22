@@ -32,7 +32,7 @@ function jsonResponse(data: unknown, ok = true) {
   return { ok, json: async () => data } as Response
 }
 
-const FETCH_USER_URL = '/users?discordID=u1'
+const FETCH_USER_URL = '/users/:discordID/steam-profile'
 const VERIFY_URL = '/users/:discordID/verifications/token'
 const GMODSTORE_URL = '/users/:discordID/gmod-store'
 const DATA_REQ_URL = '/users/:discordID/data-requests'
@@ -173,6 +173,17 @@ describe('pages/Account.tsx', () => {
   })
 
   describe('steam panel', () => {
+    it('shows a failed HTTP lookup as retryable instead of asking to link Steam again', async () => {
+      const fallback = (fetchAPI as Mock).getMockImplementation()!
+      ;(fetchAPI as Mock).mockImplementation((...args: unknown[]) =>
+        args[0] === FETCH_USER_URL ? Promise.resolve(jsonResponse({ error: 'Unavailable' }, false)) : fallback(...args),
+      )
+      renderAccount()
+      const panel = screen.getByRole('heading', { name: 'Steam' }).closest<HTMLElement>('.dashboard-panel')!
+      await vi.waitFor(() => expect(within(panel).getByRole('button', { name: 'Try again' })).toBeEnabled())
+      expect(within(panel).queryByRole('button', { name: 'Link Steam Account' })).not.toBeInTheDocument()
+    })
+
     it('retries the linked-account lookup after a temporary failure', async () => {
       const fallback = (fetchAPI as Mock).getMockImplementation()!
       ;(fetchAPI as Mock).mockImplementation((...args: unknown[]) =>
@@ -199,12 +210,48 @@ describe('pages/Account.tsx', () => {
       expect(screen.getByRole('button', { name: 'Link Steam Account' })).toBeInTheDocument()
     })
 
-    it('shows the linked steam id when present', async () => {
-      setupFetchAPI({ user: { id: 'u1', steamID64: '76500000000000000' } })
+    it('shows the linked Steam name and avatar alongside its id', async () => {
+      setupFetchAPI({
+        user: {
+          steamID64: '76500000000000000',
+          steamProfile: { name: 'Steam Player', avatarURL: 'https://cdn.example.com/steam-player.jpg' },
+        },
+      })
       renderAccount()
       await waitForLoaded()
-      expect(screen.getByText('76500000000000000')).toBeInTheDocument()
+      const panel = screen.getByRole('heading', { name: 'Steam' }).closest<HTMLElement>('.dashboard-panel')!
+      expect(within(panel).getByText('Steam Player')).toBeInTheDocument()
+      expect(within(panel).getByText('76500000000000000')).toBeInTheDocument()
+      expect(panel.querySelector('img')).toHaveAttribute('src', 'https://cdn.example.com/steam-player.jpg')
+      expect(panel.querySelector('img')).toHaveAttribute('alt', '')
       expect(screen.queryByRole('button', { name: 'Link Steam Account' })).not.toBeInTheDocument()
+    })
+
+    it('keeps the linked id visible when the Steam profile is unavailable', async () => {
+      setupFetchAPI({ user: { steamID64: '76500000000000000', steamProfile: null } })
+      renderAccount()
+      await waitForLoaded()
+      const panel = screen.getByRole('heading', { name: 'Steam' }).closest<HTMLElement>('.dashboard-panel')!
+      expect(within(panel).getByText('76500000000000000')).toBeInTheDocument()
+      expect(panel.querySelector('img')).not.toBeInTheDocument()
+      expect(within(panel).queryByRole('button', { name: 'Link Steam Account' })).not.toBeInTheDocument()
+    })
+
+    it('falls back from a broken Steam avatar without hiding the name or linked id', async () => {
+      setupFetchAPI({
+        user: {
+          steamID64: '76500000000000000',
+          steamProfile: { name: 'Steam Player', avatarURL: 'https://cdn.example.com/missing.jpg' },
+        },
+      })
+      renderAccount()
+      await waitForLoaded()
+      const panel = screen.getByRole('heading', { name: 'Steam' }).closest<HTMLElement>('.dashboard-panel')!
+      await fireEvent.error(panel.querySelector('img')!)
+      expect(panel.querySelector('img')).not.toBeInTheDocument()
+      expect(within(panel).getByText('Steam Player')).toBeInTheDocument()
+      expect(within(panel).getByText('76500000000000000')).toBeInTheDocument()
+      expect(panel.querySelector('svg')).toBeInTheDocument()
     })
 
     it('fetches a verification token and redirects to steam on Link Steam Account click', async () => {

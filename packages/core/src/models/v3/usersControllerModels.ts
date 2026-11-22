@@ -21,6 +21,8 @@ import {
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import redis from '@gmod/infra-redis'
 import prisma from '@gmod/infra-prisma'
+import { getSteamUserSummary } from '@gmod/infra-steam'
+import { ensureAvatarStored } from '@gmod/infra-minio'
 import type { gm_gmodstore_purchases } from '@gmod/infra-prisma/client.js'
 import { getLogsByServer, getTotalLogsByServer } from '../../database/gm_server_logs.js'
 
@@ -85,6 +87,42 @@ export async function processGetProfile(steamID64: unknown, discordID: unknown):
   }
 
   return bad({ error: 'Missing required query parameter' })
+}
+
+export async function processGetSteamProfile(discordID: string): Promise<EndpointResult> {
+  const user = await getUserFromDiscordID(discordID)
+  if (!user) return notFound({ error: 'User not found' })
+
+  const steamID64 = user.steamID64
+  let steamProfile: { name: string; avatarURL: string | null } | null = null
+  if (!steamID64) return ok({ steamID64: null, steamProfile })
+
+  let finished = false
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  const decoration = (async () => {
+    const summary = await getSteamUserSummary(steamID64)
+    if (finished || typeof summary.nickname !== 'string' || !summary.nickname.trim()) return
+    const name = summary.nickname
+    steamProfile = { name, avatarURL: null }
+    const avatarURL = await ensureAvatarStored('steam', steamID64, summary.avatar?.large)
+    if (!finished) steamProfile = { name, avatarURL }
+  })().catch(() => {
+    // Steam decoration is optional; the linked identity remains available during provider failures.
+  })
+
+  try {
+    await Promise.race([
+      decoration,
+      new Promise<void>((resolve) => {
+        timeout = setTimeout(resolve, 3_000)
+      }),
+    ])
+  } finally {
+    finished = true
+    clearTimeout(timeout)
+  }
+
+  return ok({ steamID64, steamProfile })
 }
 
 export async function processGetUserSessions(discordID: string, currentSessionID?: string): Promise<EndpointResult> {

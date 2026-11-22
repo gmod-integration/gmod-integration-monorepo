@@ -52,6 +52,7 @@ import {
   processGetAutoRoles,
   processGetGuildBans,
   processGetProfile,
+  processGetSteamProfile,
   processGetScreenshotsList,
   processGetServerLogs,
   processGetServerPlayers,
@@ -97,6 +98,12 @@ import {
 
 export async function getProfile(req: Request, res: Response) {
   const result = await processGetProfile(req.query.steamID64, req.query.discordID)
+  return res.status(result.status).send(result.body)
+}
+
+export async function getSteamProfile(req: Request, res: Response) {
+  res.setHeader('Cache-Control', 'no-store')
+  const result = await processGetSteamProfile(req.panelUser!.discordID)
   return res.status(result.status).send(result.body)
 }
 

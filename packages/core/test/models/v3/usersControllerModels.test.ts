@@ -32,6 +32,11 @@ vi.mock('@gmod/domain-user/User.js', () => ({
   getUserFromSteamID64: getUserFromSteamID64Mock,
 }))
 
+const getSteamUserSummaryMock = vi.fn()
+const ensureAvatarStoredMock = vi.fn()
+vi.mock('@gmod/infra-steam', () => ({ getSteamUserSummary: getSteamUserSummaryMock }))
+vi.mock('@gmod/infra-minio', () => ({ ensureAvatarStored: ensureAvatarStoredMock }))
+
 const generateTokenMock = vi.fn(() => 'generated-token')
 const badArgumentMock = vi.fn()
 vi.mock('@gmod/shared/generateToken.js', () => ({ generateToken: generateTokenMock }))
@@ -83,6 +88,7 @@ vi.mock('@gmod/infra-prisma', () => ({ default: { ...prismaMock, $transaction: t
 
 const {
   processGetProfile,
+  processGetSteamProfile,
   processGetUserSessions,
   processDeleteUserSession,
   processLogOut,
@@ -117,6 +123,8 @@ function resetAllMocks() {
   revokeSessionMock.mockReset()
   getUserFromDiscordIDMock.mockReset()
   getUserFromSteamID64Mock.mockReset()
+  getSteamUserSummaryMock.mockReset()
+  ensureAvatarStoredMock.mockReset().mockResolvedValue(null)
   generateTokenMock.mockClear()
   badArgumentMock.mockReset().mockReturnValue(false)
   createServerMock.mockReset()
@@ -162,6 +170,7 @@ describe('usersControllerModels', () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce({ id: 'u1' })
       const result = await processGetProfile(undefined, 'd1')
       expect(result).toEqual({ status: 200, body: { id: 'u1' } })
+      expect(getSteamUserSummaryMock).not.toHaveBeenCalled()
     })
 
     it('returns 404 when steamID64 is given but no user is found', async () => {
@@ -174,6 +183,124 @@ describe('usersControllerModels', () => {
       getUserFromSteamID64Mock.mockResolvedValueOnce({ id: 'u1' })
       const result = await processGetProfile('765', undefined)
       expect(result).toEqual({ status: 200, body: { id: 'u1' } })
+    })
+  })
+
+  describe('processGetSteamProfile', () => {
+    const steamID64 = '76561198219049673'
+
+    it('returns 404 for a missing or erased account without contacting Steam', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce(null)
+      expect(await processGetSteamProfile('d1')).toEqual({ status: 404, body: { error: 'User not found' } })
+      expect(getUserFromDiscordIDMock).toHaveBeenCalledWith('d1')
+      expect(getSteamUserSummaryMock).not.toHaveBeenCalled()
+    })
+
+    it('returns an unlinked identity without contacting Steam', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64: null })
+      expect(await processGetSteamProfile('d1')).toEqual({
+        status: 200,
+        body: { steamID64: null, steamProfile: null },
+      })
+      expect(getSteamUserSummaryMock).not.toHaveBeenCalled()
+    })
+
+    it('decorates only the linked Steam identity and returns allowlisted profile fields', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64, trustLevel: 50 })
+      getSteamUserSummaryMock.mockResolvedValueOnce({
+        nickname: 'Linventif',
+        realName: 'Private name',
+        avatar: { large: 'https://avatars.steamstatic.com/profile.jpg' },
+      })
+      ensureAvatarStoredMock.mockResolvedValueOnce('https://images.example.com/steam/avatar')
+
+      expect(await processGetSteamProfile('d1')).toEqual({
+        status: 200,
+        body: {
+          steamID64,
+          steamProfile: { name: 'Linventif', avatarURL: 'https://images.example.com/steam/avatar' },
+        },
+      })
+      expect(getSteamUserSummaryMock).toHaveBeenCalledExactlyOnceWith(steamID64)
+      expect(ensureAvatarStoredMock).toHaveBeenCalledWith(
+        'steam',
+        steamID64,
+        'https://avatars.steamstatic.com/profile.jpg',
+      )
+    })
+
+    it('keeps the linked identity when Steam is unavailable', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+      getSteamUserSummaryMock.mockRejectedValueOnce(new Error('Steam unavailable'))
+      expect(await processGetSteamProfile('d1')).toEqual({ status: 200, body: { steamID64, steamProfile: null } })
+      expect(ensureAvatarStoredMock).not.toHaveBeenCalled()
+    })
+
+    it('keeps the available display name when avatar storage fails', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+      getSteamUserSummaryMock.mockResolvedValueOnce({ nickname: 'Linventif', avatar: { large: 'avatar' } })
+      ensureAvatarStoredMock.mockRejectedValueOnce(new Error('Storage unavailable'))
+      expect(await processGetSteamProfile('d1')).toEqual({
+        status: 200,
+        body: { steamID64, steamProfile: { name: 'Linventif', avatarURL: null } },
+      })
+    })
+
+    it('accepts a profile without an avatar', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+      getSteamUserSummaryMock.mockResolvedValueOnce({ nickname: 'Linventif' })
+      expect(await processGetSteamProfile('d1')).toEqual({
+        status: 200,
+        body: { steamID64, steamProfile: { name: 'Linventif', avatarURL: null } },
+      })
+    })
+
+    it.each([undefined, '', '   '])('ignores a Steam summary without a usable display name (%s)', async (nickname) => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+      getSteamUserSummaryMock.mockResolvedValueOnce({ nickname, avatar: { large: 'avatar' } })
+      expect(await processGetSteamProfile('d1')).toEqual({ status: 200, body: { steamID64, steamProfile: null } })
+      expect(ensureAvatarStoredMock).not.toHaveBeenCalled()
+    })
+
+    it('bounds a stalled Steam lookup and does not start avatar work after the response', async () => {
+      vi.useFakeTimers()
+      try {
+        getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+        let resolveSummary!: (summary: unknown) => void
+        getSteamUserSummaryMock.mockReturnValueOnce(new Promise((resolve) => (resolveSummary = resolve)))
+        const response = processGetSteamProfile('d1')
+
+        await vi.advanceTimersByTimeAsync(3_000)
+        expect(await response).toEqual({ status: 200, body: { steamID64, steamProfile: null } })
+        resolveSummary({ nickname: 'Late profile', avatar: { large: 'avatar' } })
+        await vi.advanceTimersByTimeAsync(0)
+        expect(ensureAvatarStoredMock).not.toHaveBeenCalled()
+        expect(vi.getTimerCount()).toBe(0)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('uses the same deadline for avatar storage and retains the name on timeout', async () => {
+      vi.useFakeTimers()
+      try {
+        getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+        let resolveSummary!: (summary: unknown) => void
+        getSteamUserSummaryMock.mockReturnValueOnce(new Promise((resolve) => (resolveSummary = resolve)))
+        ensureAvatarStoredMock.mockReturnValueOnce(new Promise(() => {}))
+        const response = processGetSteamProfile('d1')
+
+        await vi.advanceTimersByTimeAsync(2_000)
+        resolveSummary({ nickname: 'Linventif', avatar: { large: 'avatar' } })
+        await vi.advanceTimersByTimeAsync(1_000)
+        expect(await response).toEqual({
+          status: 200,
+          body: { steamID64, steamProfile: { name: 'Linventif', avatarURL: null } },
+        })
+        expect(vi.getTimerCount()).toBe(0)
+      } finally {
+        vi.useRealTimers()
+      }
     })
   })
 
