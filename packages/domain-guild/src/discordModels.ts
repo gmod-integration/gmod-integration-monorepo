@@ -57,7 +57,8 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
       continue
     }
 
-    const syncRoles = await server.getEffectiveSyncRoles()
+    // Disabled mappings must neither grant a fallback role nor hide an enabled fallback.
+    const syncRoles = (await server.getEffectiveSyncRoles())?.filter((rule) => rule.enable === true)
     if (!syncRoles || syncRoles.length === 0) {
       continue
     }

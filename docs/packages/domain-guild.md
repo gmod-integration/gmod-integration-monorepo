@@ -47,3 +47,7 @@ contract for image dimensions and output. Existing Discord avatar URLs remain re
 The user-facing GmodStore purchase summary and unlink responses expose only Steam identity, linked
 community, revocation state and timestamps. Internal purchase credentials and store account IDs are
 not part of those HTTP responses.
+
+Role synchronization filters disabled mappings before matching current roles or choosing a fallback.
+An inactive `user` mapping cannot grant a Discord role, and a held inactive mapping cannot suppress an
+enabled fallback. The existing effective-capability and quota checks still apply before this filter.

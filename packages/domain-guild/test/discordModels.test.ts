@@ -466,6 +466,87 @@ describe('discordModels', () => {
       expect(rolesAdd).toHaveBeenCalledWith('r-user')
     })
 
+    it('does not grant or synchronize a disabled default user mapping', async () => {
+      const server = {
+        id: 's1',
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi
+          .fn()
+          .mockResolvedValueOnce([{ roleID: 'disabled-user', enable: false, userGroup: 'user' }]),
+      }
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      const rolesAdd = vi.fn()
+      const rolesRemove = vi.fn()
+      const member = {
+        guild: { id: 'g1' },
+        id: 'u1',
+        roles: { cache: makeRoleCollection([]), add: rolesAdd, remove: rolesRemove },
+      }
+
+      await updateRolesToGmod(member as any, member as any, member as any)
+
+      expect(rolesAdd).not.toHaveBeenCalled()
+      expect(rolesRemove).not.toHaveBeenCalled()
+      expect(wsAddMock).not.toHaveBeenCalled()
+      expect(redisMock.get).not.toHaveBeenCalled()
+      expect(redisMock.set).not.toHaveBeenCalled()
+    })
+
+    it('selects the enabled default even when a disabled user mapping comes first', async () => {
+      const server = {
+        id: 's1',
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce([
+          { roleID: 'disabled-user', enable: false, userGroup: 'user' },
+          { roleID: 'enabled-user', enable: true, userGroup: 'user' },
+        ]),
+      }
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      redisMock.get.mockResolvedValueOnce(null)
+      const rolesAdd = vi.fn()
+      const member = { guild: { id: 'g1' }, id: 'u1', roles: { cache: makeRoleCollection([]), add: rolesAdd } }
+
+      await updateRolesToGmod(member as any, member as any, member as any)
+
+      expect(rolesAdd).toHaveBeenCalledExactlyOnceWith('enabled-user')
+      expect(wsAddMock).not.toHaveBeenCalled()
+      const cached = JSON.parse(redisMock.set.mock.calls[0][1])
+      expect(cached.addIDs).toEqual(['enabled-user'])
+    })
+
+    it('does not let a held disabled mapping suppress the enabled fallback', async () => {
+      const server = {
+        id: 's1',
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('discord-to-gmod'),
+        getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce([
+          { roleID: 'disabled-vip', enable: false, userGroup: 'vip' },
+          { roleID: 'enabled-user', enable: true, userGroup: 'user' },
+        ]),
+      }
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      redisMock.get.mockResolvedValueOnce(null)
+      const rolesAdd = vi.fn()
+      const rolesRemove = vi.fn()
+      const member = {
+        guild: { id: 'g1' },
+        id: 'u1',
+        roles: {
+          cache: makeRoleCollection([['disabled-vip', { id: 'disabled-vip' }]]),
+          add: rolesAdd,
+          remove: rolesRemove,
+        },
+      }
+
+      await updateRolesToGmod(member as any, member as any, member as any)
+
+      expect(rolesAdd).toHaveBeenCalledExactlyOnceWith('enabled-user')
+      expect(rolesRemove).not.toHaveBeenCalled()
+      expect(wsAddMock).not.toHaveBeenCalled()
+    })
+
     it('does nothing when no synced role remains and there is no default "user" role', async () => {
       const syncRoles = [{ roleID: 'r-vip', enable: true, userGroup: 'vip' }]
       const server = {
