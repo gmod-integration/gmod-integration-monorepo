@@ -245,6 +245,19 @@ describe('userValidator', () => {
       return { panelUser: { discordID: 'd1' }, ...overrides } as any
     }
 
+    it.each([{ actorDiscordID: 'operator' }, { actorSessionID: 'parent' }])(
+      'rejects delegated access to legacy admin routes %j',
+      async (authSession) => {
+        const res = makeRes()
+        const next = vi.fn()
+        await userAdminValidator(makeReq({ authSession }), res, next)
+        expect(res.status).toHaveBeenCalledWith(403)
+        expect(res.json).toHaveBeenCalledWith({ error: 'own_admin_session_required' })
+        expect(getUserFromDiscordIDMock).not.toHaveBeenCalled()
+        expect(next).not.toHaveBeenCalled()
+      },
+    )
+
     it('returns 404 when the user is not found', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce(null)
       const res = makeRes()

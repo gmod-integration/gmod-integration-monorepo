@@ -15,6 +15,7 @@ import dashboardSettingsRoutes from './dashboardSettingsRoutes.js'
 import statusSettingsRoutes from './statusSettingsRoutes.js'
 import accessRoutes from './accessRoutes.js'
 import authRoutes from './authRoutes.js'
+import adminRoutes from './adminRoutes.js'
 import { AccessDeniedError } from '@gmod/domain-access/index.js'
 
 const router = express.Router()
@@ -41,6 +42,7 @@ router.use(dashboardSettingsRoutes)
 router.use(statusSettingsRoutes)
 router.use(accessRoutes)
 router.use('/auth', authRoutes)
+router.use('/admin', adminRoutes)
 
 router.post(
   '/account/erasure-requests',

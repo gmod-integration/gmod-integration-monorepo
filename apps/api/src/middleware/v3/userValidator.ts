@@ -102,6 +102,10 @@ export async function userServerValidator(req: Request, res: Response, next: Nex
 
 export async function userAdminValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    if (req.authSession?.actorDiscordID || req.authSession?.actorSessionID) {
+      res.status(403).json({ error: 'own_admin_session_required' })
+      return
+    }
     const panelUser = req.panelUser!
 
     const user = await getUserFromDiscordID(panelUser.discordID)
