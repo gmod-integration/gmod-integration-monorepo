@@ -33,3 +33,12 @@ docs/
 bun run docs:dev     # docusaurus start
 bun run docs:build
 ```
+
+## Build dependency contract
+
+Install dependencies from the repository root with Bun so the shared lockfile and root overrides
+apply. The documentation uses Docusaurus 3.10.2 with the root-pinned tinypool 2.1.2 and
+serialize-javascript 7.1.4. The latter retains the CommonJS interface used by Webpack plugins;
+the worker pool is also exercised through Docusaurus SSG with two workers when changing its pin.
+Use Node 22.12+ as declared by this workspace, and rerun the production build after changes to
+Docusaurus, its plugins or these resolutions. No private engineering reports are part of this build.

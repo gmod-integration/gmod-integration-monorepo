@@ -5,6 +5,7 @@ import { okJson } from '../testHelpers.js'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn((endpoint: string) => {
+    if (endpoint.endsWith('/screenshots/channel')) return Promise.resolve(okJson({}))
     if (endpoint.includes('/screenshots?')) return Promise.resolve(okJson({ screenshots: [], query: { total: 0 } }))
     return Promise.resolve(okJson([]))
   }),
