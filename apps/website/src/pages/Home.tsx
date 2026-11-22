@@ -17,7 +17,7 @@ const heroVariants = ['panorama', 'console', 'editorial'] as const
 const statsVariants = ['ribbon', 'spotlight', 'ledger'] as const
 
 function readAppearance(): Appearance {
-  const defaults: Appearance = { hero: 'panorama', stats: 'ribbon' }
+  const defaults: Appearance = { hero: 'console', stats: 'ribbon' }
   try {
     const saved = JSON.parse(localStorage.getItem(appearanceKey) ?? 'null')
     if (!saved || typeof saved !== 'object') return defaults

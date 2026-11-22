@@ -91,15 +91,15 @@ describe('Home', () => {
     const firstVisit = renderWithProviders(() => <Home />)
     const heroChoices = screen.getByRole('group', { name: 'Hero' })
     const statsChoices = screen.getByRole('group', { name: 'Statistics' })
-    expect(within(heroChoices).getByRole('button', { name: 'Panorama' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(heroChoices).getByRole('button', { name: 'Console' })).toHaveAttribute('aria-pressed', 'true')
     expect(within(statsChoices).getByRole('button', { name: 'Ribbon' })).toHaveAttribute('aria-pressed', 'true')
 
-    await fireEvent.click(within(heroChoices).getByRole('button', { name: 'Console' }))
+    await fireEvent.click(within(heroChoices).getByRole('button', { name: 'Panorama' }))
     await fireEvent.click(within(statsChoices).getByRole('button', { name: 'Register' }))
-    expect(within(heroChoices).getByRole('button', { name: 'Console' })).toHaveAttribute('aria-pressed', 'true')
-    expect(within(heroChoices).getByRole('button', { name: 'Panorama' })).toHaveAttribute('aria-pressed', 'false')
+    expect(within(heroChoices).getByRole('button', { name: 'Panorama' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(heroChoices).getByRole('button', { name: 'Console' })).toHaveAttribute('aria-pressed', 'false')
     expect(JSON.parse(window.localStorage.getItem('gmod-home-appearance')!)).toEqual({
-      hero: 'console',
+      hero: 'panorama',
       stats: 'ledger',
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -107,7 +107,7 @@ describe('Home', () => {
     firstVisit.unmount()
     renderWithProviders(() => <Home />)
     expect(
-      within(screen.getByRole('group', { name: 'Hero' })).getByRole('button', { name: 'Console' }),
+      within(screen.getByRole('group', { name: 'Hero' })).getByRole('button', { name: 'Panorama' }),
     ).toHaveAttribute('aria-pressed', 'true')
     expect(
       within(screen.getByRole('group', { name: 'Statistics' })).getByRole('button', { name: 'Register' }),
@@ -119,7 +119,7 @@ describe('Home', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(validStats)))
     renderWithProviders(() => <Home />)
     const heroChoices = screen.getByRole('group', { name: 'Hero' })
-    expect(within(heroChoices).getByRole('button', { name: 'Panorama' })).toHaveAttribute('aria-pressed', 'true')
+    expect(within(heroChoices).getByRole('button', { name: 'Console' })).toHaveAttribute('aria-pressed', 'true')
     const storagePrototype = Object.getPrototypeOf(window.localStorage)
     vi.spyOn(storagePrototype, 'setItem').mockImplementation(() => {
       throw new Error('Storage unavailable')
@@ -157,7 +157,8 @@ describe('Home', () => {
       expect(screen.getAllByText(capability).length).toBeGreaterThan(0)
     }
     expect(document.body).not.toHaveTextContent(/Streams|Tickets/)
-    for (const image of screen.getAllByRole('img')) expect(image).toHaveAttribute('loading', 'lazy')
+    const catalogue = screen.getByRole('region', { name: 'One community. All the connections.' })
+    for (const image of within(catalogue).getAllByRole('img')) expect(image).toHaveAttribute('loading', 'lazy')
 
     const filters = screen.getByRole('group', { name: /Explore features/i })
     const chatFilter = within(filters).getByRole('button', { name: /Chat.*screenshots/i })
