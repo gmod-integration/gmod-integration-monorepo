@@ -12,6 +12,7 @@ import {
   AdminUserListQuerySchema,
 } from '@gmod/schema/admin/AdminDashboardSchema.js'
 import type { z } from 'zod'
+import { AdminAnalyticsQuerySchema } from '@gmod/schema/admin/AdminAnalyticsSchema.js'
 import asyncHandler from '../../middleware/asyncHandler.js'
 import { adminSession } from '../../middleware/v6/adminSession.js'
 
@@ -36,6 +37,14 @@ router.get('/access', (_req, res) => res.json({ authorized: true, discordID: _re
 router.get(
   '/overview',
   asyncHandler(async (_req, res) => res.json(await (await models()).getAdminOverview())),
+)
+router.get(
+  '/analytics',
+  asyncHandler(async (req, res) => {
+    const query = parse(AdminAnalyticsQuerySchema, req.query)
+    const { getAdminAnalytics } = await import('@gmod/core/models/v6/adminAnalytics.js')
+    res.json(await getAdminAnalytics(query))
+  }),
 )
 router.get(
   '/guilds',
