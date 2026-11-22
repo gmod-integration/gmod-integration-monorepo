@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
-import { renderWithProviders } from '../../testUtils.js'
+import { historyAt, renderWithProviders } from '../../testUtils.js'
 import { Header } from '../../../src/components/layout/Header.js'
 import {
   isAdmin,
@@ -130,6 +130,56 @@ describe('Header navigation', () => {
     expect(screen.getByRole('link', { name: 'Sign in with Discord' })).toHaveAttribute('href', '/login')
     expect(screen.queryByRole('link', { name: /^Notifications/ })).not.toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each(['/dashboard/guilds/g1/config', '/dashboard/admins/informations'])(
+    'keeps documentation, invite and Premium accessible from the authenticated header at %s',
+    (path) => {
+      setValidAuth()
+      if (path.startsWith('/dashboard/admins')) {
+        acceptAuthSession({ ...authSession()!, user: { ...authSession()!.user, rank: 'developer' } })
+      }
+      vi.stubGlobal('fetch', makeFetchMock())
+      renderWithProviders(() => <Header />, { path: '*', history: historyAt(path) })
+      const header = screen.getByRole('banner')
+      const navigation = within(header).getByRole('navigation', { name: 'Main navigation' })
+      for (const [name, href] of [
+        ['Documentation', '/docs'],
+        ['Invite the bot', '/invite'],
+        ['Premium', '/premium'],
+        ['Help and support', '/discord'],
+      ]) {
+        expect(within(navigation).getByRole('link', { name })).toHaveAttribute('href', href)
+      }
+      expect(within(header).getByRole('button', { name: 'Bobby' })).toBeInTheDocument()
+      expect(within(header).queryByRole('link', { name: 'Sign in with Discord' })).not.toBeInTheDocument()
+    },
+  )
+
+  it('closes dashboard navigation with Escape and after a route change', async () => {
+    setValidAuth()
+    vi.stubGlobal('fetch', makeFetchMock())
+    const history = historyAt('/dashboard/guilds/g1/config')
+    renderWithProviders(() => <Header />, { path: '*', history })
+    const header = screen.getByRole('banner')
+    const toggle = within(header).getByRole('button', { name: 'Toggle navigation' })
+    const navigation = within(header).getByRole('navigation', { name: 'Main navigation' })
+    expect(toggle).toHaveAttribute('aria-controls', navigation.id)
+    const userMenu = within(header).getByRole('button', { name: 'Bobby' })
+    fireEvent.click(userMenu)
+    fireEvent.click(toggle)
+    expect(userMenu).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    within(navigation).getByRole('link', { name: 'Documentation' }).focus()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveFocus()
+
+    fireEvent.click(toggle)
+    history.set({ value: '/dashboard/guilds/g1/config/servers/s1/status', replace: true })
+    await vi.waitFor(() => expect(toggle).toHaveAttribute('aria-expanded', 'false'))
+    expect(within(navigation).getByRole('link', { name: 'Documentation' })).toHaveAttribute('href', '/docs')
   })
 
   it('offers all nine languages in the language dropdown', () => {

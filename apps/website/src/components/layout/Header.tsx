@@ -218,6 +218,13 @@ export const Header: Component = () => {
 
   createEffect(
     on(
+      () => location.pathname,
+      () => setPublicNavigationOpen(false),
+    ),
+  )
+
+  createEffect(
+    on(
       () => isLogged() && discordUser().id,
       (id) => {
         if (!id) return
@@ -244,47 +251,45 @@ export const Header: Component = () => {
           <Show when={dashboard()}>
             <span class="header-workspace-label">{t('main.dashboard', 'Dashboard')}</span>
           </Show>
-          <Show when={!dashboard()}>
-            <button
-              ref={publicNavigationTrigger}
-              type="button"
-              class="public-menu-toggle header-control"
-              aria-label={t('ui.toggle_navigation', 'Toggle navigation')}
-              aria-controls="public-navigation"
-              aria-expanded={publicNavigationOpen()}
-              onClick={() => {
-                setPublicNavigationOpen(!publicNavigationOpen())
-                setIsOpen(false)
-                setLanguageOpen(false)
-              }}
-            >
-              <Icon name={publicNavigationOpen() ? 'x' : 'menu'} size={20} />
-            </button>
-            <nav
-              id="public-navigation"
-              class="public-navigation"
-              classList={{ 'is-open': publicNavigationOpen() }}
-              aria-label={t('ui.primary_navigation', 'Main navigation')}
-            >
-              <For each={navLinks()}>
-                {({ title, icon, href, color, hoverColor }) => (
-                  <A
-                    href={href}
-                    class={
-                      'public-navigation-link whitespace-nowrap ' +
-                      (color ? color : 'text-base-content/70') +
-                      ' ' +
-                      (hoverColor ? hoverColor : 'hover:text-base-content')
-                    }
-                    aria-current={location.pathname === href ? 'page' : undefined}
-                    onClick={() => setPublicNavigationOpen(false)}
-                  >
-                    <Icon name={icon} size={17} class="inline-block mr-1.5" /> {title}
-                  </A>
-                )}
-              </For>
-            </nav>
-          </Show>
+          <button
+            ref={publicNavigationTrigger}
+            type="button"
+            class="public-menu-toggle header-control"
+            aria-label={t('ui.toggle_navigation', 'Toggle navigation')}
+            aria-controls="public-navigation"
+            aria-expanded={publicNavigationOpen()}
+            onClick={() => {
+              setPublicNavigationOpen(!publicNavigationOpen())
+              setIsOpen(false)
+              setLanguageOpen(false)
+            }}
+          >
+            <Icon name={publicNavigationOpen() ? 'x' : 'menu'} size={20} />
+          </button>
+          <nav
+            id="public-navigation"
+            class="public-navigation"
+            classList={{ 'is-open': publicNavigationOpen() }}
+            aria-label={t('ui.primary_navigation', 'Main navigation')}
+          >
+            <For each={navLinks()}>
+              {({ title, icon, href, color, hoverColor }) => (
+                <A
+                  href={href}
+                  class={
+                    'public-navigation-link whitespace-nowrap ' +
+                    (color ? color : 'text-base-content/70') +
+                    ' ' +
+                    (hoverColor ? hoverColor : 'hover:text-base-content')
+                  }
+                  aria-current={location.pathname === href ? 'page' : undefined}
+                  onClick={() => setPublicNavigationOpen(false)}
+                >
+                  <Icon name={icon} size={17} class="inline-block mr-1.5" /> {title}
+                </A>
+              )}
+            </For>
+          </nav>
         </div>
 
         <div class="flex">
