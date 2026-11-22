@@ -16,6 +16,17 @@ vi.mock('@gmod/domain-user/privacy.js', () => ({
 }))
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('@gmod/core/models/gmod/addonTransport.js', async () => {
+  const schema = await import('../../../packages/schema/src/gmod/AddonTransportSchema.js')
+  return {
+    ...schema,
+    handleAddonRequest: async (server: any, request: any) => {
+      if (request.endpoint.endsWith('/config')) await server.saveIGSettings(request.body)
+      return { status: 200, body: { success: true } }
+    },
+  }
+})
+
 const gmLogMock = vi.fn()
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
@@ -319,11 +330,11 @@ describe('apps/websocket main()', () => {
       expect(gmLogMock).toHaveBeenCalledWith('websocket', expect.stringContaining('Server disconnected: srv-c'))
     })
 
-    it('logs and continues on malformed JSON messages', async () => {
+    it('closes malformed addon JSON without logging its payload', async () => {
       const ws = makeFakeWs()
       await connectServer('srv-d', ws)
       ws.emit('message', '{not json')
-      expect(gmLogMock).toHaveBeenCalledWith('websocket', expect.stringContaining('Error parsing message from server'))
+      expect(ws.close).toHaveBeenCalledWith(1007, 'Invalid addon JSON')
     })
 
     it('ignores a message with no action', async () => {
@@ -341,18 +352,26 @@ describe('apps/websocket main()', () => {
     it('save_config does nothing when the server cannot be resolved', async () => {
       const ws = makeFakeWs()
       await connectServer('srv-g', ws)
+      await vi.waitFor(() =>
+        expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ action: 'addon.ready', protocol: 1 })),
+      )
       getServerFromIDMock.mockResolvedValueOnce(null)
-      ws.emit('message', JSON.stringify({ action: 'save_config', config: {} }))
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await ws.listeners('message')[0](JSON.stringify({ action: 'save_config', config: {} }))
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Server credentials revoked')
     })
 
     it('save_config saves the settings when the server resolves', async () => {
       const saveIGSettings = vi.fn().mockResolvedValue(undefined)
       const ws = makeFakeWs()
       await connectServer('srv-h', ws)
-      getServerFromIDMock.mockResolvedValueOnce({ saveIGSettings })
-      ws.emit('message', JSON.stringify({ action: 'save_config', config: { foo: 'bar' } }))
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      await vi.waitFor(() =>
+        expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ action: 'addon.ready', protocol: 1 })),
+      )
+      getServerFromIDMock.mockResolvedValueOnce({ saveIGSettings, getID: () => 'srv-h', isValidToken: () => true })
+      await ws.listeners('message')[0](JSON.stringify({ action: 'save_config', config: { foo: 'bar' } }))
+      expect(ws.close.mock.calls).toEqual([])
+      expect(getServerFromIDMock).toHaveBeenCalledTimes(2)
+      expect(ws.send.mock.calls.map(([payload]: [string]) => JSON.parse(payload)).at(-1)).toMatchObject({ status: 200 })
       expect(saveIGSettings).toHaveBeenCalledWith({ foo: 'bar' })
     })
   })
@@ -778,7 +797,9 @@ describe('apps/websocket main()', () => {
           data: { method: 'wsSyncName' },
         }),
       )
-      expect(ws.send).not.toHaveBeenCalled()
+      expect(ws.send.mock.calls.map(([payload]: [string]) => JSON.parse(payload))).toEqual([
+        { action: 'addon.ready', protocol: 1 },
+      ])
       expect(redisMock.incr).not.toHaveBeenCalledWith('ws:send-to-server:ack:not-acked')
     })
     it('logs subscriber errors', () => {

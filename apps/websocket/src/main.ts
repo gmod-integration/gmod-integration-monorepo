@@ -18,6 +18,7 @@ import { getUserGuildsWithPermsForPanel } from '@gmod/domain-guild/discordModels
 import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import redis, { gracefulShutdownRedis } from '@gmod/infra-redis'
 import { lastGmodIntegrationTag, versionComparator } from '@gmod/core/utils/tools.js'
+import { ADDON_MAX_FRAME_BYTES, createAddonGateway } from './addonGateway.js'
 import { connection } from '@gmod/infra-bullmq'
 import { wsSendToServerQueue, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js'
 
@@ -49,7 +50,8 @@ const WS_SEND_TO_SERVER_ACK_WAIT_MS = 600
 const WS_SEND_TO_SERVER_ACK_TTL_SECONDS = 5
 const WS_SEND_TO_SERVER_ACK_POLL_MS = 60
 
-type VerifiedHandshake = { kind: 'server'; serverID: string } | { kind: 'dashboard'; session: AuthSession }
+type VerifiedHandshake =
+  { kind: 'server'; serverID: string; token: string } | { kind: 'dashboard'; session: AuthSession }
 const verifiedHandshakes = new WeakMap<object, VerifiedHandshake>()
 const socketStops = new Map<any, () => void>()
 const PERMISSION_RECHECK_MS = 30_000
@@ -338,6 +340,7 @@ export async function main() {
   await wsSendToServerSubscriber.subscribe(AUTH_SESSION_REVOCATION_CHANNEL)
 
   wss = new WebSocketServer({
+    maxPayload: ADDON_MAX_FRAME_BYTES,
     port: ConfigServer.ports.websocket,
     clientTracking: true,
     verifyClient: async (info, cb) => {
@@ -348,7 +351,7 @@ export async function main() {
         try {
           const server = await getServerFromID(id)
           if (!server || !server.isValidToken(token)) return cb(false, 401, 'Unauthorized')
-          verifiedHandshakes.set(info.req, { kind: 'server', serverID: id })
+          verifiedHandshakes.set(info.req, { kind: 'server', serverID: id, token })
           gmLog('websocket', 'Authorized server ' + id)
           return cb(true)
         } catch {
@@ -408,30 +411,36 @@ export async function main() {
         gmLog('websocket', 'Server disconnected: ' + id)
       })
 
-      ws.on('message', async (message: string) => {
-        try {
-          const wsInfo = JSON.parse(message)
-
-          if (!wsInfo.action) {
-            return
-          }
-
-          gmLog('websocket', 'Received from server ' + id + ' ' + JSON.stringify(wsInfo))
-
-          switch (wsInfo.action) {
-            case 'save_config': {
-              const server = await getServerFromID(id.toString())
-              if (!server) return
-              await server.saveIGSettings(wsInfo.config)
-              break
-            }
-            default:
-              break
-          }
-        } catch (e) {
-          gmLog('websocket', 'Error parsing message from server ' + id + ' ' + e)
-        }
+      const addon = createAddonGateway({
+        socket: ws,
+        serverID: id,
+        authenticate: async () => {
+          const server = await getServerFromID(id)
+          return server?.isValidToken(verified.token) ? server : undefined
+        },
+        onActivity: async () => {
+          const version = req.headers['gmod-integrations-version']
+          if (
+            typeof version === 'string' &&
+            /^v?\d+\.\d+\.\d+(?:[-+][a-zA-Z0-9.-]+)?$/.test(version) &&
+            version.length <= 64
+          )
+            await redis.set(`server:${id}:version`, version)
+          await redis.set(`server:${id}:last_request`, new Date().toISOString())
+        },
+        onConsole: async (text) => {
+          const server = await getServerFromID(id)
+          if (!server || !hasCapability(await resolveGuildAccess(server.getGuildID()), 'console.rcon')) return
+          await wsSendToAllClientsOfServerQueue.add('wsSendToAllClientsOfServer', {
+            id,
+            action: 'console_live_exporter',
+            data: { data: text },
+          })
+        },
       })
+      ws.on('message', (message: Buffer, binary: boolean) => addon.receive(message, binary))
+      ws.once('close', () => addon.close())
+      addon.ready()
     } else {
       const session = verified.session
       try {

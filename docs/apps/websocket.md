@@ -11,7 +11,8 @@ connection handler consumes once:
 - **GMod server** — headers `id` + `token`, checked against `@gmod/domain-server` (`server.isValidToken`).
   Missing, malformed or invalid addon credentials are rejected without falling back to dashboard
   authentication. Tracked in `clients.server`; a newly authenticated connection replaces the previous
-  socket for that server. Can send `save_config` to persist in-game settings changes.
+  socket for that server. The current addon waits for `addon.ready` and uses correlated `addon.request` /
+  `addon.response` exchanges. Its operations go directly to shared models; no HTTP request is made by the gateway.
 - **Dashboard client** — query parameter `ticket`, consumed by
   [`@gmod/domain-auth/authSessions.ts`](../../packages/domain-auth/src/authSessions.ts). The resolved
   application session supplies the Discord identity; durable bearer tokens in WebSocket URLs are rejected.
@@ -84,8 +85,27 @@ src/
   index.ts
 ```
 
-There is no further folder split today — `main.ts` is the whole app. If it grows, connection handling and the
-BullMQ workers are the natural seams to extract along.
+`src/main.ts` owns authentication, connection registration and queue delivery.
+`src/addonGateway.ts` owns the addon request lifecycle, limits and correlated replies.
+
+## Addon request protocol
+
+The [addon transport contract](../packages/addon-transport.md) documents the shared schema, operation
+allowlist, delivery guarantees, player relay and release order. `src/addonGateway.ts` handles frame
+limits, credential revalidation, correlation, duplicate IDs, bounded concurrency and sanitized errors.
+The Lua addon uses a bounded FIFO and reconnect backoff; sent-but-unconfirmed requests are never
+replayed automatically. `save_config` / `config_save` remain narrow compatibility paths, with local
+credentials stripped before strict business-settings validation.
+
+Player uploads arrive through the authenticated dedicated-server socket after the Lua relay validates
+and rebuilds their actor identity. Console live output is size/rate bounded and forwarded only after
+checking console capability; recipient sessions and server permissions remain revalidated.
+
+Run the gateway tests, including an actual loopback WebSocket with mocked feature stores:
+
+```bash
+node_modules/.bin/vitest run apps/websocket/test --config apps/websocket/vitest.config.ts
+```
 
 ## Run it
 

@@ -1,8 +1,10 @@
 # `submodules/gmod-integration`
 
 The actual Garry's Mod addon (GLua) — the client of everything else in this monorepo. It runs on the customer's
-GMod dedicated server and talks to `apps/api` (HTTP) and `apps/websocket` (persistent socket), authenticated
-with a server token/ID (see [architecture.md — end-to-end data flow](../architecture.md#end-to-end-data-flow)).
+GMod dedicated server and talks to `apps/websocket` through an authenticated persistent socket.
+Screenshots, reports and errors from players travel over Garry's Mod `net` to that server and then
+through its socket; platform credentials stay on the dedicated server. The new addon does not use HTTP
+for connected features. Existing HTTP routes remain for older installed releases during transition.
 
 This is a **separate git repository**, pinned as a submodule (`.gitmodules`: `submodules/gmod-integration` →
 `git@github.com:gmod-integration/gmod-integration.git`). Editing it means editing files inside that submodule
@@ -40,10 +42,15 @@ code:
 
 ## Where it meets this monorepo
 
-- HTTP: authenticates against `apps/api` using the server token/ID issued when a server is registered (see
-  [`@gmod/domain-server`](../packages/domain-server.md)'s `Server.isValidToken`).
-- WebSocket: opens a persistent connection to `apps/websocket` with the same credentials — see
-  [docs/apps/websocket.md](../apps/websocket.md) for the handshake and message actions (`save_config`,
-  `server_status`).
+- WebSocket: authenticates using the server token/ID issued at registration, through
+  [`@gmod/domain-server`](../packages/domain-server.md)'s `Server.isValidToken`. The shared
+  [addon protocol](../packages/addon-transport.md) uses `addon.ready`, `addon.request` and
+  `addon.response`, with explicit endpoint allowlisting and no requests to the HTTP application.
+- The gateway reuses shared core models for configuration, lifecycle, moderation, player telemetry,
+  money trackers and client tools. Existing server-to-addon command methods retain explicit validators.
 - Payload shapes on both sides are meant to line up with [`@gmod/schema/gmod/*`](../packages/schema.md) and
   [`@gmod/domain-gmod`](../packages/domain-gmod.md) — if you change a field here, check those too.
+
+Run `python3 submodules/gmod-integration/scripts/test_lua.py` from this repository for mocked transport
+and relay regressions. These checks complement the TypeScript schema/core/gateway tests; they do not
+replace staging on a dedicated Garry's Mod server with GWSockets and ordinary/admin test clients.
