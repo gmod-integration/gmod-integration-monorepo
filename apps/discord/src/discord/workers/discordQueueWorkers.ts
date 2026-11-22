@@ -83,6 +83,7 @@ import { ConfigDiscord } from '@gmod/config'
 import { getDiscordEntitlements } from '@gmod/domain-guild/Guild.js'
 import { getPublicGuildInvite } from '../utils/publicInvite.js'
 import { renderStatusPreview } from '../utils/statusPreview.js'
+import { prepareCustomBotAvatar } from '../utils/customBotAvatar.js'
 
 async function writeReply(correlationId: string, payload: unknown) {
   await redis.set(`bullmq:reply:${correlationId}`, JSON.stringify(payload), 'EX', 30)
@@ -897,6 +898,8 @@ export const discordGuildOpsWorker = new Worker<
     if (job.name === 'guildUpdateBotProfile') {
       const payload = DiscordGuildUpdateBotProfileJobSchema.parse(job.data)
       try {
+        if (!hasCapability(await resolveGuildAccess(payload.guildID), 'bot.custom'))
+          throw new Error('Custom bot access is unavailable.')
         const botInstance = await getGuildClient(payload.guildID, false)
         if (!botInstance.user) {
           await writeReply(payload.correlationId, {
@@ -916,12 +919,14 @@ export const discordGuildOpsWorker = new Worker<
           return
         }
 
-        if (payload.username && payload.username !== botInstance.user.username) {
-          await botInstance.user.setUsername(payload.username)
-        }
-
-        if (payload.avatar && payload.avatar !== botInstance.user.avatarURL()) {
-          await botInstance.user.setAvatar(payload.avatar)
+        const avatar = payload.avatar === undefined ? undefined : await prepareCustomBotAvatar(payload.avatar)
+        const username =
+          payload.username && payload.username !== botInstance.user.username ? payload.username : undefined
+        if (username !== undefined || avatar !== undefined) {
+          await botInstance.user.edit({
+            ...(username !== undefined ? { username } : {}),
+            ...(avatar !== undefined ? { avatar } : {}),
+          })
         }
 
         await writeReply(payload.correlationId, { correlationId: payload.correlationId, updated: true })
@@ -929,7 +934,7 @@ export const discordGuildOpsWorker = new Worker<
         await writeReply(payload.correlationId, {
           correlationId: payload.correlationId,
           updated: false,
-          error: (error as Error).message,
+          error: 'Unable to update custom bot profile.',
         })
       }
       return

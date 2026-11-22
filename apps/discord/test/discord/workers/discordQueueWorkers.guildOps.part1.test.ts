@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FakeCollection, makeChannel, makeGuild, makeGuildClient, makeJob, makeMember, makeRole } from './fixtures.js'
 
 const accessMock = vi.hoisted(() => vi.fn())
+const prepareAvatarMock = vi.hoisted(() => vi.fn())
+vi.mock('../../../src/discord/utils/customBotAvatar.js', () => ({ prepareCustomBotAvatar: prepareAvatarMock }))
 vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
   ...(await importOriginal<typeof DomainAccess>()),
   resolveGuildAccess: accessMock,
@@ -517,6 +519,11 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
   })
 
   describe('guildUpdateBotProfile', () => {
+    const image = 'data:image/png;base64,AA=='
+    beforeEach(() => {
+      accessMock.mockResolvedValue({ ...access(), customBot: true })
+      prepareAvatarMock.mockReset().mockResolvedValue(Buffer.from('safe raster bytes'))
+    })
     function baseData(overrides: Record<string, any> = {}) {
       return { guildID: 'g1', correlationId: 'c1', ...overrides }
     }
@@ -533,39 +540,60 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', updated: false, error: 'Bot client is not custom' })
     })
 
+    it.each(['http://127.0.0.1/image', '/tmp/image.png', 'data:image/svg+xml;base64,AAAA'])(
+      'rejects an old job containing a resource-resolving avatar: %s',
+      async (avatar) => {
+        await expect(
+          processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'Changed name', avatar }))),
+        ).rejects.toThrow()
+        expect(getGuildClientMock).not.toHaveBeenCalled()
+        expect(prepareAvatarMock).not.toHaveBeenCalled()
+      },
+    )
+    it('does not mutate the username before rejecting invalid image bytes', async () => {
+      const edit = vi.fn()
+      getGuildClientMock.mockResolvedValueOnce({
+        user: { id: 'custom-bot', username: 'Existing', edit },
+      })
+      prepareAvatarMock.mockRejectedValueOnce(new Error('Invalid image bytes'))
+      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'Changed name', avatar: image })))
+      expect(edit).not.toHaveBeenCalled()
+      expect(lastReplyPayload().updated).toBe(false)
+    })
+    it('checks current custom-bot access before contacting the bot instance', async () => {
+      accessMock.mockResolvedValueOnce({ ...access(), customBot: false })
+      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'Changed name' })))
+      expect(getGuildClientMock).not.toHaveBeenCalled()
+      expect(lastReplyPayload().updated).toBe(false)
+    })
     it('updates username and avatar when both differ from current, and replies updated=true', async () => {
-      const setUsername = vi.fn().mockResolvedValue(undefined)
-      const setAvatar = vi.fn().mockResolvedValue(undefined)
+      const edit = vi.fn().mockResolvedValue(undefined)
       getGuildClientMock.mockResolvedValueOnce({
         user: {
           id: 'custom-bot',
           username: 'OldName',
           avatarURL: vi.fn().mockReturnValue('old-avatar'),
-          setUsername,
-          setAvatar,
+          edit,
         },
       })
-      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'NewName', avatar: 'new-avatar-data' })))
-      expect(setUsername).toHaveBeenCalledWith('NewName')
-      expect(setAvatar).toHaveBeenCalledWith('new-avatar-data')
+      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'NewName', avatar: image })))
+      expect(prepareAvatarMock).toHaveBeenCalledWith(image)
+      expect(edit).toHaveBeenCalledExactlyOnceWith({ username: 'NewName', avatar: Buffer.from('safe raster bytes') })
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', updated: true })
     })
 
     it('skips updates when username/avatar are unchanged or absent', async () => {
-      const setUsername = vi.fn().mockResolvedValue(undefined)
-      const setAvatar = vi.fn().mockResolvedValue(undefined)
+      const edit = vi.fn().mockResolvedValue(undefined)
       getGuildClientMock.mockResolvedValueOnce({
         user: {
           id: 'custom-bot',
           username: 'SameName',
           avatarURL: vi.fn().mockReturnValue('same-avatar'),
-          setUsername,
-          setAvatar,
+          edit,
         },
       })
-      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'SameName', avatar: 'same-avatar' })))
-      expect(setUsername).not.toHaveBeenCalled()
-      expect(setAvatar).not.toHaveBeenCalled()
+      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'SameName' })))
+      expect(edit).not.toHaveBeenCalled()
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', updated: true })
     })
 
@@ -575,11 +603,15 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
           id: 'custom-bot',
           username: 'OldName',
           avatarURL: vi.fn().mockReturnValue('old-avatar'),
-          setUsername: vi.fn().mockRejectedValueOnce(new Error('rate limited')),
+          edit: vi.fn().mockRejectedValueOnce(new Error('rate limited')),
         },
       })
       await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'NewName' })))
-      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', updated: false, error: 'rate limited' })
+      expect(lastReplyPayload()).toEqual({
+        correlationId: 'c1',
+        updated: false,
+        error: 'Unable to update custom bot profile.',
+      })
     })
   })
 

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CustomBotAvatarSchema } from './server/CustomBotProfileSchema.js'
 import { StatusMessagePreviewInputSchema, StatusMessagePreviewSchema } from './server/StatusMessagePreviewSchema.js'
 
 export const DiscordPublicInviteUrlSchema = z.string().regex(/^https:\/\/discord\.gg\/[A-Za-z0-9_-]{1,100}$/)
@@ -335,8 +336,8 @@ export type DiscordGuildReloadBotInstanceReply = z.infer<typeof DiscordGuildRelo
 
 export const DiscordGuildUpdateBotProfileJobSchema = z.object({
   guildID: z.string().min(1, 'guildID required'),
-  username: z.string().optional(),
-  avatar: z.string().optional(),
+  username: z.string().trim().min(2).max(32).optional(),
+  avatar: CustomBotAvatarSchema.optional(),
   correlationId: z.string().min(1, 'correlationId required'),
   timestamp: z.coerce.date().optional(),
 })

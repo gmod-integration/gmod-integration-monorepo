@@ -465,6 +465,15 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
     }
   })
 
+  it.each(['http://127.0.0.1/avatar', '/tmp/avatar.png', 'file:///tmp/avatar.png', 'data:image/svg+xml;base64,AAAA'])(
+    'does not enqueue a bot avatar that refers to an external or active resource: %s',
+    async (avatar) => {
+      await expect(adapters.enqueueDiscordGuildUpdateBotProfile({ guildID: 'g1', avatar })).rejects.toThrow()
+      expect(queueInstances.get('discord-guildOps')!.add).not.toHaveBeenCalled()
+      expect(redisGetMock).not.toHaveBeenCalled()
+    },
+  )
+
   it('enqueueDiscordGuildUpdateBotProfile returns {updated, error} without throwing on error', async () => {
     mockReply({ correlationId: 'x', updated: false, error: 'bot profile locked' })
     const result = await adapters.enqueueDiscordGuildUpdateBotProfile({ guildID: 'g1', username: 'New' })

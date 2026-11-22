@@ -21,6 +21,7 @@ import {
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import redis from '@gmod/infra-redis'
 import prisma from '@gmod/infra-prisma'
+import type { gm_gmodstore_purchases } from '@gmod/infra-prisma/client.js'
 import { getLogsByServer, getTotalLogsByServer } from '../../database/gm_server_logs.js'
 
 type EndpointResult = {
@@ -402,6 +403,17 @@ export async function processGetAdminInformations(): Promise<EndpointResult> {
   return ok(data)
 }
 
+const purchaseInfoSelect = { steamID64: true, guild: true, revoke: true, createdAt: true, updatedAt: true } as const
+function publicPurchaseInfo(row: Pick<gm_gmodstore_purchases, keyof typeof purchaseInfoSelect>) {
+  return {
+    steamID64: row.steamID64,
+    guild: row.guild,
+    revoke: row.revoke,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }
+}
+
 export async function processPostGmodPurchase(
   guildID: string,
   discordID: string,
@@ -471,11 +483,12 @@ export async function processDeleteGmodPurchase(discordID: string, guild: any): 
       guild: '',
       token: '',
     },
+    select: purchaseInfoSelect,
   })
 
   if (purchase.guild) await invalidateGuildAccess(purchase.guild).catch(() => {})
   await guild.reloadBotInstance()
-  return ok(savedPurchase)
+  return ok(publicPurchaseInfo(savedPurchase))
 }
 
 export async function processDeleteUserGmodPurchase(discordID: string, guildID: string): Promise<EndpointResult> {
@@ -510,6 +523,7 @@ export async function processDeleteUserGmodPurchase(discordID: string, guildID: 
       guild: '',
       token: '',
     },
+    select: purchaseInfoSelect,
   })
 
   await invalidateGuildAccess(guildID).catch(() => {})
@@ -518,26 +532,21 @@ export async function processDeleteUserGmodPurchase(discordID: string, guildID: 
   // not prevent users from recovering a purchase attached to an inaccessible guild.
   await enqueueDiscordGuildReloadBotInstance(guildID).catch(() => false)
 
-  return ok(savedPurchase)
+  return ok(publicPurchaseInfo(savedPurchase))
 }
 
 export async function processGetUserGmodStorePurchases(discordID: string): Promise<EndpointResult> {
   const user = await getUserFromDiscordID(discordID)
-  if (!user || !user.getSteamID64()) {
-    return notFound({ error: 'User not found or not linked' })
-  }
-
-  const purchases: any = await prisma.gm_gmodstore_purchases.findFirst({
-    where: {
-      steamID64: user.getSteamID64()!,
-    },
+  if (!user || !user.getSteamID64()) return notFound({ error: 'User not found or not linked' })
+  const purchase = await prisma.gm_gmodstore_purchases.findFirst({
+    where: { steamID64: user.getSteamID64()! },
+    select: purchaseInfoSelect,
   })
-
-  if (purchases && purchases.guild) {
-    purchases.hasMainBot = await enqueueMainClientHasGuild(purchases.guild).catch(() => false)
-  }
-
-  return ok(purchases || {})
+  if (!purchase) return ok({})
+  return ok({
+    ...publicPurchaseInfo(purchase),
+    ...(purchase.guild ? { hasMainBot: await enqueueMainClientHasGuild(purchase.guild).catch(() => false) } : {}),
+  })
 }
 
 export async function processPutServerPseudo(

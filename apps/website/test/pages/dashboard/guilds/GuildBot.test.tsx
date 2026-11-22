@@ -34,7 +34,7 @@ function baseBot(overrides: Record<string, unknown> = {}) {
     purchased: true,
     onGuild: true,
     active: true,
-    token: '',
+    tokenConfigured: false,
     ...overrides,
   }
 }
@@ -105,10 +105,16 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
 
     const editModal = container.querySelector<HTMLDialogElement>('#edit_bot')!
-    const [nameInput, avatarInput] = within(editModal).getAllByRole('textbox', { hidden: true }) as HTMLInputElement[]
+    const nameInput = within(editModal).getByLabelText(/^Name/) as HTMLInputElement
+    const avatarInput = within(editModal).getByLabelText('Avatar') as HTMLInputElement
     expect(nameInput.value).toBe('OldName')
     fireEvent.input(nameInput, { target: { value: 'NewName' } })
-    fireEvent.input(avatarInput, { target: { value: 'http://avatar/new.png' } })
+    await fireEvent.change(avatarInput, {
+      target: {
+        files: [new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], 'avatar.png', { type: 'image/png' })],
+      },
+    })
+    await within(editModal).findByAltText('New avatar preview')
 
     const statusSelect = within(editModal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
     expect(statusSelect.value).toBe('disabled')
@@ -121,10 +127,51 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
       expect(fetchAPI).toHaveBeenCalledWith(
         '/users/:discordID/guilds/:guildID/bot',
         'PUT',
-        expect.objectContaining({ username: 'NewName', avatar: 'http://avatar/new.png', status: 'rotate' }),
+        expect.objectContaining({
+          username: 'NewName',
+          avatar: expect.stringMatching(/^data:image\/png;base64,/),
+          status: 'rotate',
+        }),
       ),
     )
     await vi.waitFor(() => expect(screen.getByText('NewName')).toBeInTheDocument())
+  })
+
+  it('keeps saved credentials out of profile requests and opens replacement with an empty secret', async () => {
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot({ tokenConfigured: true })))
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await screen.findByText('Token configured')
+    await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
+    const setup = container.querySelector<HTMLDialogElement>('#setup_bot')!
+    expect(within(setup).getByLabelText(/^Bot token/)).toHaveValue('')
+    await fireEvent.click(within(setup).getByRole('button', { name: 'Cancel' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
+    const editor = container.querySelector<HTMLDialogElement>('#edit_bot')!
+    await fireEvent.input(within(editor).getByLabelText(/^Name/), { target: { value: 'Renamed bot' } })
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot({ tokenConfigured: true, username: 'Renamed bot' })))
+    await fireEvent.click(within(editor).getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(editor.open).toBe(false))
+    expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/bot', 'PUT', { username: 'Renamed bot' })
+  })
+
+  it('discards a pending avatar selection on cancel and keeps the current avatar unless a replacement is selected', async () => {
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot()))
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
+    const editor = container.querySelector<HTMLDialogElement>('#edit_bot')!
+    const upload = within(editor).getByLabelText('Avatar')
+    await fireEvent.change(upload, {
+      target: {
+        files: [new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], 'avatar.png', { type: 'image/png' })],
+      },
+    })
+    await within(editor).findByAltText('New avatar preview')
+    await fireEvent.click(within(editor).getByRole('button', { name: 'Cancel' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
+    expect(within(editor).queryByAltText('New avatar preview')).not.toBeInTheDocument()
+    expect(within(editor).getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
   })
 
   it('reports an error and keeps the previous bot when saving fails', async () => {
@@ -183,14 +230,16 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     expect(screen.getByText('Saved bot')).toBeInTheDocument()
   })
 
-  it('blocks invalid bot names and unsafe avatar URLs without saving', async () => {
+  it('blocks invalid bot names and unsupported avatar uploads without saving', async () => {
     vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot()))
     const { container } = renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
     await fireEvent.click(screen.getByRole('button', { name: 'Edit Custom Bot' }))
     const modal = container.querySelector<HTMLDialogElement>('#edit_bot')!
     await fireEvent.input(within(modal).getByLabelText(/^Name/), { target: { value: ' ' } })
-    await fireEvent.input(within(modal).getByLabelText('Avatar'), { target: { value: 'javascript:alert(1)' } })
+    await fireEvent.change(within(modal).getByLabelText('Avatar'), {
+      target: { files: [new File(['unsupported'], 'avatar.svg', { type: 'image/svg+xml' })] },
+    })
     expect(within(modal).getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PUT')).toHaveLength(0)
   })
@@ -241,7 +290,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
   })
 
   it('sets up the custom bot with a token from the setup modal', async () => {
-    ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ token: '' })))
+    ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ tokenConfigured: false })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
     await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
@@ -250,7 +299,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     const tokenInput = within(setupModal).getByLabelText(/^Bot token/) as HTMLInputElement
     fireEvent.input(tokenInput, { target: { value: 'secret-token' } })
 
-    ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ token: 'secret-token', active: true })))
+    ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ tokenConfigured: true, active: true })))
     fireEvent.click(within(setupModal).getByRole('button', { name: 'Save', hidden: true }))
 
     await vi.waitFor(() =>
@@ -261,7 +310,7 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
   })
 
   it('reports an error when the setup token is rejected', async () => {
-    ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ token: '' })))
+    ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ tokenConfigured: false })))
     const { container } = renderWithProviders(() => <GuildBot />)
     await waitForLoaded()
     await fireEvent.click(screen.getByRole('button', { name: 'Setup Custom Bot' }))
@@ -309,11 +358,9 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     await fireEvent.click(within(editor).getByRole('button', { name: 'Save' }))
     await vi.waitFor(() => expect(editor.open).toBe(false))
     expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PATCH')).toHaveLength(0)
-    expect(fetchAPI).toHaveBeenCalledWith(
-      '/users/:discordID/guilds/:guildID/bot',
-      'PUT',
-      expect.objectContaining({ username: 'Updated identity', token: '' }),
-    )
+    expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/bot', 'PUT', {
+      username: 'Updated identity',
+    })
     expect(within(connection).getByRole('button', { name: 'Setup Custom Bot' })).toBeEnabled()
   })
 

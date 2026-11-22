@@ -1,3 +1,4 @@
+import { DashboardChatConfigurationSchema } from '@gmod/schema/server/DashboardChannelSchema.js'
 import Pagination from '../../../../components/Pagination.js'
 import { createListPagination } from '../../../../hooks/createListPagination.js'
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
@@ -57,7 +58,7 @@ const ServerChats: Component = () => {
   const [channel, { mutate: mutateChannel, refetch: refetchChannel }] = createResource(async () => {
     const response = await fetchAPI(URL, 'GET')
     if (!response.ok) throw new Error('Chat destination unavailable')
-    return await response.json()
+    return DashboardChatConfigurationSchema.parse(await response.json())
   })
   const destination = createDraftForm({
     initial: { channelID: '' },
@@ -73,7 +74,7 @@ const ServerChats: Component = () => {
     await destination.save(async (snapshot) => {
       const response = await fetchAPI(URL, 'POST', { channelID: snapshot.channelID })
       if (!response.ok) throw new Error('Chat destination save failed')
-      const accepted = await response.json()
+      const accepted = DashboardChatConfigurationSchema.parse(await response.json())
       const channelID = typeof accepted.channel === 'string' ? accepted.channel : snapshot.channelID
       mutateChannel({ channel: channelID })
       return { channelID }

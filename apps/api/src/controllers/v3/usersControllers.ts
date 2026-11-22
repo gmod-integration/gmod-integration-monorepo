@@ -1,3 +1,11 @@
+import {
+  DashboardChannelConfigurationSchema,
+  DashboardChatConfigurationSchema,
+} from '@gmod/schema/server/DashboardChannelSchema.js'
+import {
+  CustomBotProfileCommandSchema,
+  CustomBotTokenCommandSchema,
+} from '@gmod/schema/server/CustomBotProfileSchema.js'
 import { AccessDeniedError, assertCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js'
@@ -519,34 +527,42 @@ export async function deleteServerStatusButtons(req: Request, res: Response) {
 
 export async function findServerScreenshots(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await server.getScreenshotsChannel()) || {})
+  return res.send(DashboardChannelConfigurationSchema.parse((await server.getScreenshotsChannel()) || {}))
 }
 
 export async function postServerScreenshots(req: Request, res: Response) {
   const server = req.server!
   const { channelID } = req.body
-  return res.send((await enqueueDiscordServerScreenshotChannelCreate(server.id, channelID)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse(
+      (await enqueueDiscordServerScreenshotChannelCreate(server.id, channelID)) || {},
+    ),
+  )
 }
 
 export async function deleteServerScreenshots(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await enqueueDiscordServerScreenshotChannelDelete(server.id)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse((await enqueueDiscordServerScreenshotChannelDelete(server.id)) || {}),
+  )
 }
 
 export async function findServerSyncChat(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await server.getSyncChat()) || {})
+  return res.send(DashboardChatConfigurationSchema.parse((await server.getSyncChat()) || {}))
 }
 
 export async function postServerSyncChat(req: Request, res: Response) {
   const server = req.server!
   const { channelID } = req.body
-  return res.send((await enqueueDiscordServerSyncChatCreate(server.id, channelID)) || {})
+  return res.send(
+    DashboardChatConfigurationSchema.parse((await enqueueDiscordServerSyncChatCreate(server.id, channelID)) || {}),
+  )
 }
 
 export async function deleteServerSyncChat(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await enqueueDiscordServerSyncChatDelete(server.id)) || {})
+  return res.send(DashboardChatConfigurationSchema.parse((await enqueueDiscordServerSyncChatDelete(server.id)) || {}))
 }
 
 export async function getGmodToDiscordFilter(req: Request, res: Response) {
@@ -789,7 +805,7 @@ export async function getPublicServers(req: Request, res: Response) {
 
 export async function getVoteChannels(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await server.getVoteChannel()) || {})
+  return res.send(DashboardChannelConfigurationSchema.parse((await server.getVoteChannel()) || {}))
 }
 
 export async function postVoteChannels(req: Request, res: Response) {
@@ -802,17 +818,23 @@ export async function postVoteChannels(req: Request, res: Response) {
     })
   }
 
-  return res.send((await enqueueDiscordServerVoteChannelCreate(server.id, channelID)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse(
+      (await enqueueDiscordServerVoteChannelCreate(server.id, channelID)) || {},
+    ),
+  )
 }
 
 export async function deleteVoteChannels(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await enqueueDiscordServerVoteChannelDelete(server.id)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse((await enqueueDiscordServerVoteChannelDelete(server.id)) || {}),
+  )
 }
 
 export async function getLogsChannel(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await server.getLogsChannel()) || {})
+  return res.send(DashboardChannelConfigurationSchema.parse((await server.getLogsChannel()) || {}))
 }
 
 export async function postLogsChannel(req: Request, res: Response) {
@@ -825,12 +847,18 @@ export async function postLogsChannel(req: Request, res: Response) {
     })
   }
 
-  return res.send((await enqueueDiscordServerLogsChannelCreate(server.id, channelID)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse(
+      (await enqueueDiscordServerLogsChannelCreate(server.id, channelID)) || {},
+    ),
+  )
 }
 
 export async function deleteLogsChannel(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await enqueueDiscordServerLogsChannelDelete(server.id)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse((await enqueueDiscordServerLogsChannelDelete(server.id)) || {}),
+  )
 }
 
 export async function getGuildSettings(req: Request, res: Response) {
@@ -1142,8 +1170,8 @@ export async function getGuildBotRoleSubordination(req: Request, res: Response) 
 }
 
 export async function patchGuildBotInstance(req: Request, res: Response) {
-  const { token } = req.body
-  if (badArgument([token])) {
+  const input = CustomBotTokenCommandSchema.safeParse(req.body)
+  if (!input.success) {
     return res.status(400).send({
       error: 'Missing required arguments',
     })
@@ -1151,14 +1179,13 @@ export async function patchGuildBotInstance(req: Request, res: Response) {
 
   const guild = req.guild!
   try {
-    await guild.updateBotInstanceToken(token)
+    await guild.updateBotInstanceToken(input.data.token)
     // getBotClientInfo() always resolves to an object (or throws), never falsy, so no
     // fallback is needed here.
     return res.send(await guild.getBotClientInfo(req.panelUser!.user))
-  } catch (error: any) {
-    return res.status(400).send({
-      error: error.message,
-    })
+  } catch (error) {
+    if (error instanceof AccessDeniedError) throw error
+    return res.status(400).send({ error: 'Unable to configure the custom bot.' })
   }
 }
 
@@ -1189,18 +1216,10 @@ export async function deleteUserGmodPurchase(req: Request, res: Response) {
 }
 
 export async function putGuildBotInstance(req: Request, res: Response) {
-  const { username, avatar, token, status } = req.body
+  const input = CustomBotProfileCommandSchema.safeParse(req.body)
+  if (!input.success) return res.status(400).send({ error: 'Invalid custom bot profile.' })
   const guild = req.guild!
-
-  if (badArgument([username, avatar, token, status])) {
-    return res.status(400).send({
-      error: 'Missing required arguments',
-    })
-  }
-
-  await guild.updateBotInstanceInfo({ username, avatar, token, status })
-  // getBotClientInfo() always resolves to an object (or throws), never falsy, so no
-  // fallback is needed here.
+  await guild.updateBotInstanceInfo(input.data)
   return res.send(await guild.getBotClientInfo(req.panelUser!.user))
 }
 

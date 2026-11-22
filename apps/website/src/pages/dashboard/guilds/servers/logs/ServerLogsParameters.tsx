@@ -1,3 +1,4 @@
+import { DashboardChannelConfigurationSchema } from '@gmod/schema/server/DashboardChannelSchema.js'
 import { type Component, createEffect, createResource, createSignal, Show } from 'solid-js'
 import { showDialog } from '../../../../../utils/dialog.js'
 import { AsyncState, Button, FormActions, SettingRow } from '../../../../../components/ui/index.js'
@@ -32,7 +33,7 @@ const fetchLogsChannel = async () => {
   if (!res.ok) {
     throw new Error('Log configuration unavailable')
   }
-  return await res.json()
+  return DashboardChannelConfigurationSchema.parse(await res.json())
 }
 
 export const ServerLogsParameters: Component = () => {
@@ -69,7 +70,7 @@ export const ServerLogsParameters: Component = () => {
     if (!res.ok) {
       throw new Error('Logs channel update failed')
     }
-    const screenshot = await res.json()
+    const screenshot = DashboardChannelConfigurationSchema.parse(await res.json())
     logsChannelMutate(screenshot)
   }
 
@@ -118,14 +119,14 @@ export const ServerLogsParameters: Component = () => {
             >
               <div class="flex w-full min-w-0 items-center gap-2">
                 <Show
-                  when={!logsChannel.loading && logsChannel().channelID}
+                  when={!logsChannel.loading && !logsChannel.error && logsChannel()?.channelID}
                   fallback={
                     <span class="text-base-content/60">
                       {t('dashboard.server.logs.no_logs_channel', 'No Logs Channel')}
                     </span>
                   }
                 >
-                  <DiscordChannel channelID={logsChannel().channelID} />
+                  <DiscordChannel channelID={logsChannel()?.channelID} />
                 </Show>
               </div>
               <Button
@@ -139,7 +140,7 @@ export const ServerLogsParameters: Component = () => {
               >
                 {t('dashboard.server.logs.button.select_channel', 'Select Channel')}
               </Button>
-              <Show when={!logsChannel.loading && logsChannel().channelID}>
+              <Show when={!logsChannel.loading && !logsChannel.error && logsChannel()?.channelID}>
                 <Button variant="ghost" size="sm" onClick={() => showDialog('remove-logs-channel')}>
                   {t('dashboard.server.logs.button.remove_channel', 'Remove destination')}
                 </Button>

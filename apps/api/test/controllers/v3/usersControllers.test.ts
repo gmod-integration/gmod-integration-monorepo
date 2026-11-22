@@ -1920,7 +1920,7 @@ describe('usersControllers', () => {
       const res = makeRes()
       await c.patchGuildBotInstance({ guild, panelUser: { user: {} }, body: { token: 'newtok' } } as any, res)
       expect(res.status).toHaveBeenCalledWith(400)
-      expect(res.send).toHaveBeenCalledWith({ error: 'bad token' })
+      expect(res.send).toHaveBeenCalledWith({ error: 'Unable to configure the custom bot.' })
     })
   })
 
@@ -1970,6 +1970,19 @@ describe('usersControllers', () => {
   })
 
   describe('putGuildBotInstance', () => {
+    it.each([
+      { avatar: 'https://example.test/avatar.png' },
+      { avatar: '/tmp/file.png' },
+      { username: 'Example', token: 'secret' },
+      { username: 'x' },
+    ])('refuses an invalid profile command before changing the bot: %j', async (body) => {
+      const guild = { updateBotInstanceInfo: vi.fn() }
+      const res = makeRes()
+      await c.putGuildBotInstance({ guild, body } as any, res)
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(guild.updateBotInstanceInfo).not.toHaveBeenCalled()
+    })
+
     it('returns 400 on missing fields', async () => {
       badArgumentMock.mockReturnValueOnce(true)
       const res = makeRes()
@@ -1987,14 +2000,12 @@ describe('usersControllers', () => {
         {
           guild,
           panelUser: { user: {} },
-          body: { username: 'n', avatar: 'a', token: 't', status: 'rotate' },
+          body: { username: 'New bot', status: 'rotate' },
         } as any,
         res,
       )
       expect(guild.updateBotInstanceInfo).toHaveBeenCalledWith({
-        username: 'n',
-        avatar: 'a',
-        token: 't',
+        username: 'New bot',
         status: 'rotate',
       })
       expect(res.send).toHaveBeenCalledWith({ id: 'bot1' })
@@ -2291,4 +2302,95 @@ describe('usersControllers', () => {
       expect(res.send).toHaveBeenCalledWith({ id: 1, guildID: 'g1', roleID: 'r1', ...input })
     })
   })
+})
+
+describe('public webhook destination response boundaries', () => {
+  beforeEach(() => {
+    badArgumentMock.mockReset().mockReturnValue(false)
+    for (const name of [
+      'enqueueDiscordServerScreenshotChannelCreate',
+      'enqueueDiscordServerScreenshotChannelDelete',
+      'enqueueDiscordServerSyncChatCreate',
+      'enqueueDiscordServerSyncChatDelete',
+      'enqueueDiscordServerVoteChannelCreate',
+      'enqueueDiscordServerVoteChannelDelete',
+      'enqueueDiscordServerLogsChannelCreate',
+      'enqueueDiscordServerLogsChannelDelete',
+    ] as const)
+      bullmqMocks[name].mockReset()
+  })
+
+  const families = [
+    {
+      name: 'screenshots',
+      get: c.findServerScreenshots,
+      post: c.postServerScreenshots,
+      remove: c.deleteServerScreenshots,
+      getter: 'getScreenshotsChannel',
+      create: 'enqueueDiscordServerScreenshotChannelCreate',
+      destroy: 'enqueueDiscordServerScreenshotChannelDelete',
+      expected: { channelID: 'channel-1', adminCmd: false },
+    },
+    {
+      name: 'chat',
+      get: c.findServerSyncChat,
+      post: c.postServerSyncChat,
+      remove: c.deleteServerSyncChat,
+      getter: 'getSyncChat',
+      create: 'enqueueDiscordServerSyncChatCreate',
+      destroy: 'enqueueDiscordServerSyncChatDelete',
+      expected: { channel: 'channel-1' },
+    },
+    {
+      name: 'vote',
+      get: c.getVoteChannels,
+      post: c.postVoteChannels,
+      remove: c.deleteVoteChannels,
+      getter: 'getVoteChannel',
+      create: 'enqueueDiscordServerVoteChannelCreate',
+      destroy: 'enqueueDiscordServerVoteChannelDelete',
+      expected: { channelID: 'channel-1', adminCmd: false },
+    },
+    {
+      name: 'logs',
+      get: c.getLogsChannel,
+      post: c.postLogsChannel,
+      remove: c.deleteLogsChannel,
+      getter: 'getLogsChannel',
+      create: 'enqueueDiscordServerLogsChannelCreate',
+      destroy: 'enqueueDiscordServerLogsChannelDelete',
+      expected: { channelID: 'channel-1', adminCmd: false },
+    },
+  ] as const
+  it.each(families)(
+    'keeps credentials and internal metadata out of $name read/create/delete responses',
+    async (family) => {
+      const internal = {
+        serverID: 's1',
+        server: 's1',
+        guild: 'g1',
+        channelID: 'channel-1',
+        channel: 'channel-1',
+        adminCmd: false,
+        id: 'private-webhook-id',
+        webhookID: 'private-webhook-id',
+        webhook: 'private-webhook-id',
+        token: 'private-webhook-token',
+        webhookToken: 'private-webhook-token',
+        nested: { token: 'private-nested-token' },
+      }
+      const server = { id: 's1', [family.getter]: vi.fn().mockResolvedValue(internal) }
+      bullmqMocks[family.create].mockResolvedValueOnce(internal)
+      bullmqMocks[family.destroy].mockResolvedValueOnce(internal)
+      for (const handle of [family.get, family.post, family.remove]) {
+        const res = makeRes()
+        await handle({ server, body: { channelID: 'channel-1' } } as any, res)
+        expect(res.send).toHaveBeenCalledWith(family.expected)
+        expect(JSON.stringify(res.send.mock.calls)).not.toMatch(/private-webhook|private-nested|"token"|"webhookToken"/)
+      }
+      expect(bullmqMocks[family.create]).toHaveBeenCalledExactlyOnceWith('s1', 'channel-1')
+      expect(bullmqMocks[family.destroy]).toHaveBeenCalledExactlyOnceWith('s1')
+      expect(internal.webhookToken).toBe('private-webhook-token')
+    },
+  )
 })

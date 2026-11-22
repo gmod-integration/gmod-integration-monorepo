@@ -26,3 +26,11 @@ must be parsed at the entry point (producer and consumer), not "somewhere in the
 
 `packages/infra-bullmq` (job/reply validation), `packages/domain-gmod` (typed GMod entity classes),
 `apps/api` (request validation, OpenAPI generation), `apps/discord` (worker payload parsing).
+
+## Browser destination configuration
+
+`server/DashboardChannelSchema.ts` defines the HTTP-facing channel configuration projections for
+screenshots, chat, logs and vote destinations. The browser receives only the destination channel and
+optional screenshot administration flag, including read, create and remove responses. Unknown fields
+are stripped by these schemas before JSON responses or feature state. Internal BullMQ/domain records
+still carry their webhook credentials for server-side delivery; they are not browser DTOs.

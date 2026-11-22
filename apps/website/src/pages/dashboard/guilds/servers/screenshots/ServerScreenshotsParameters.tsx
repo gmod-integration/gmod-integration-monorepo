@@ -1,3 +1,4 @@
+import { DashboardChannelConfigurationSchema } from '@gmod/schema/server/DashboardChannelSchema.js'
 import { showDialog } from '../../../../../utils/dialog.js'
 import { type Component, createResource, Show } from 'solid-js'
 import AdminPanel from '../../../../../components/AdminPanel'
@@ -15,7 +16,7 @@ const fetchScreenshot = async () => {
   if (!res.ok) {
     throw new Error('Channel configuration unavailable')
   }
-  return await res.json()
+  return DashboardChannelConfigurationSchema.parse(await res.json())
 }
 
 export const ServerScreenshotsParameters: Component = () => {
@@ -29,7 +30,7 @@ export const ServerScreenshotsParameters: Component = () => {
     if (!res.ok) {
       throw new Error('Screenshot channel update failed')
     }
-    const screenshot = await res.json()
+    const screenshot = DashboardChannelConfigurationSchema.parse(await res.json())
     screenshotsMutate(screenshot)
     return screenshot
   }
@@ -78,14 +79,14 @@ export const ServerScreenshotsParameters: Component = () => {
           >
             <div class="flex w-full min-w-0 items-center gap-2">
               <Show
-                when={!screenshots.loading && screenshots().channelID}
+                when={!screenshots.loading && !screenshots.error && screenshots()?.channelID}
                 fallback={
                   <span class="text-base-content/60">
                     {t('dashboard.server.screenshots.no_channel', 'No channel selected')}
                   </span>
                 }
               >
-                <DiscordChannel channelID={screenshots().channelID} />
+                <DiscordChannel channelID={screenshots()?.channelID} />
               </Show>
             </div>
             <Button
@@ -99,7 +100,7 @@ export const ServerScreenshotsParameters: Component = () => {
             >
               {t('dashboard.server.screenshots.select_channel', 'Select Channel')}
             </Button>
-            <Show when={!screenshots.loading && screenshots().channelID}>
+            <Show when={!screenshots.loading && !screenshots.error && screenshots()?.channelID}>
               <Button variant="ghost" size="sm" onClick={() => showDialog('remove-channel')}>
                 {t('dashboard.server.screenshots.delete_channel', 'Remove destination')}
               </Button>

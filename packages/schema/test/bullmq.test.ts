@@ -585,7 +585,7 @@ describe('bullmq schemas: extra constraints beyond required-field presence', () 
       guildID: 'g1',
       correlationId: 'c1',
       username: 'NewName',
-      avatar: 'data:image/png;base64,xyz',
+      avatar: 'data:image/png;base64,eHl6',
     })
     expect(result.success).toBe(true)
   })

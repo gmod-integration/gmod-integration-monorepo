@@ -712,10 +712,14 @@ describe('usersControllerModels', () => {
         mainBotOnGuild: vi.fn().mockResolvedValueOnce(true),
         reloadBotInstance: vi.fn().mockResolvedValueOnce(undefined),
       }
-      expect(await processDeleteGmodPurchase('d1', guild)).toEqual({ status: 200, body: cleared })
+      expect(await processDeleteGmodPurchase('d1', guild)).toEqual({
+        status: 200,
+        body: { steamID64: cleared.steamID64, guild: cleared.guild },
+      })
       expect(prismaMock.gm_gmodstore_purchases.update).toHaveBeenCalledWith({
         where: { steamID64: '765' },
         data: { guild: '', token: '' },
+        select: { steamID64: true, guild: true, revoke: true, createdAt: true, updatedAt: true },
       })
       expect(redisMock.del).toHaveBeenCalledWith(expect.any(String), 'guild:g1:premium')
       expect(guild.reloadBotInstance).toHaveBeenCalledOnce()
@@ -801,6 +805,25 @@ describe('usersControllerModels', () => {
   })
 
   describe('processGetUserGmodStorePurchases', () => {
+    it('projects only purchase state and never returns stored bot credentials or unrelated fields', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({
+        steamID64: '765',
+        guild: 'g1',
+        revoke: false,
+        token: 'private-bot-token-marker',
+        userID: 'private-store-buyer',
+      })
+      enqueueMainClientHasGuildMock.mockResolvedValueOnce(true)
+      const result = await processGetUserGmodStorePurchases('d1')
+      expect(result).toEqual({ status: 200, body: { steamID64: '765', guild: 'g1', revoke: false, hasMainBot: true } })
+      expect(JSON.stringify(result)).not.toMatch(/private-bot-token-marker|private-store-buyer|"token"/)
+      expect(prismaMock.gm_gmodstore_purchases.findFirst).toHaveBeenCalledWith({
+        where: { steamID64: '765' },
+        select: { steamID64: true, guild: true, revoke: true, createdAt: true, updatedAt: true },
+      })
+    })
+
     it('returns 404 when the user is not linked to steam', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce(null)
       const result = await processGetUserGmodStorePurchases('d1')

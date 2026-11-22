@@ -22,9 +22,28 @@ buttons, localization) shared by both `apps/discord` command handlers and `apps/
 ## Depends on
 
 `@gmod/config`, `@gmod/domain-server`, `@gmod/domain-user`, `@gmod/infra-bullmq`, `@gmod/infra-prisma`,
-`@gmod/infra-redis`, `@gmod/infra-websocket`, `discord.js`.
+`@gmod/infra-redis`, `@gmod/infra-websocket`, `@gmod/schema`, `discord.js`.
 
 ## Used by
 
 `apps/discord` (guild commands/events), `apps/api` (dashboard guild config endpoints), `apps/websocket`
 (resolving which guilds/servers a dashboard client administers).
+
+## Custom bot profile and credential commands
+
+`getBotClientInfo` projects the shared `CustomBotInfoSchema`: identity, membership, access flags,
+presence selection and `tokenConfigured`. It never returns the saved bot token. Token replacement is a
+separate write-only command; the dashboard opens it with an empty secret field and clears it after a
+successful save or cancellation. Profile commands contain only explicitly changed username, avatar or
+presence fields and reject unknown fields, including credentials. Both credential changes and identity
+changes check the authoritative custom-bot capability before issuing work. Presence access is checked
+before a combined profile change can reach Discord.
+
+Custom avatar commands carry a bounded JPEG/PNG upload as a strict base64 data URL (at most 2 MiB of
+input bytes), never a URL or filesystem path. The producer and worker validate the same shared schema.
+The worker decodes, checks and re-encodes the upload before invoking Discord; see the Discord app
+contract for image dimensions and output. Existing Discord avatar URLs remain read-only display values.
+
+The user-facing GmodStore purchase summary and unlink responses expose only Steam identity, linked
+community, revocation state and timestamps. Internal purchase credentials and store account IDs are
+not part of those HTTP responses.

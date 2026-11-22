@@ -1,3 +1,9 @@
+import {
+  CustomBotInfoSchema,
+  CustomBotAvatarSchema,
+  CUSTOM_BOT_AVATAR_MAX_BYTES,
+  type CustomBotInfo,
+} from '@gmod/schema/server/CustomBotProfileSchema.js'
 import { useFeatureAccess } from '../../../components/AccessProvider.js'
 import { FeatureGate, SuspendedFeature } from '../../../components/FeatureGate.js'
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
@@ -19,18 +25,8 @@ import { A } from '@solidjs/router'
 import { useI18n } from '../../../i18n.js'
 import { fetchAPI, getUrlWithActualParams } from '../../../utils/api.js'
 
-type Bot = {
-  id: string
-  username: string
-  avatar: string
-  status: string
-  custom: boolean
-  purchased: boolean
-  onGuild: boolean
-  active: boolean
-  token?: string
-}
-type BotDraft = Pick<Bot, 'username' | 'avatar' | 'status'>
+type Bot = CustomBotInfo
+type BotDraft = { username: string; avatar: string; status: string }
 const BOT_URL = '/users/:discordID/guilds/:guildID/bot'
 const emptyDraft = (): BotDraft => ({ username: '', avatar: '', status: 'disabled' })
 
@@ -41,11 +37,22 @@ const GuildBot: Component = () => {
   const [bot, { mutate: setBot, refetch: refreshBot }] = createResource(async (): Promise<Bot> => {
     const response = await fetchAPI(BOT_URL, 'GET')
     if (!response.ok) throw new Error('Bot request failed')
-    return await response.json()
+    return CustomBotInfoSchema.parse(await response.json())
   })
   const [draft, setDraft] = createSignal<BotDraft>(emptyDraft())
   const [originalDraft, setOriginalDraft] = createSignal<BotDraft>(emptyDraft())
   const [token, setToken] = createSignal('')
+  const [avatarError, setAvatarError] = createSignal('')
+  const [avatarReading, setAvatarReading] = createSignal(false)
+  let avatarReader: FileReader | undefined
+  let avatarInput!: HTMLInputElement
+  const cancelAvatarRead = () => {
+    const pending = avatarReader
+    avatarReader = undefined
+    pending?.abort()
+    setAvatarReading(false)
+  }
+  onCleanup(cancelAvatarRead)
   const [popupError, setPopupError] = createSignal(false)
   const editAction = createAsyncAction({ errorMessage: () => t('ui.save_error', 'Unable to save changes. Try again.') })
   const setupAction = createAsyncAction({
@@ -56,16 +63,12 @@ const GuildBot: Component = () => {
     draft().username !== originalDraft().username ||
     draft().avatar !== originalDraft().avatar ||
     draft().status !== originalDraft().status
-  const avatarValid = () => {
-    if (!draft().avatar.trim()) return true
-    try {
-      return ['http:', 'https:'].includes(new URL(draft().avatar).protocol)
-    } catch {
-      return false
-    }
-  }
+  const avatarValid = () =>
+    !avatarError() && (!draft().avatar || CustomBotAvatarSchema.safeParse(draft().avatar).success)
+  const nameValid = () => draft().username.trim().length >= 2 && draft().username.trim().length <= 32
   const valid = () =>
-    !!draft().username.trim() &&
+    nameValid() &&
+    !avatarReading() &&
     avatarValid() &&
     ['disabled', 'guildMemberCount', 'playerCount', 'rotate'].includes(draft().status)
   let popupTimer: ReturnType<typeof setInterval> | undefined
@@ -78,6 +81,9 @@ const GuildBot: Component = () => {
   }
   const discardEdit = () => {
     if (editAction.pending()) return
+    cancelAvatarRead()
+    setAvatarError('')
+    if (avatarInput) avatarInput.value = ''
     setDraft({ ...originalDraft() })
     editAction.reset()
   }
@@ -91,7 +97,10 @@ const GuildBot: Component = () => {
   const openEditor = () => {
     if (bot.loading || bot.error || busy() || !customAccess.allowed()) return
     const current = bot()!
-    const next = { username: current.username, avatar: current.avatar, status: current.status }
+    cancelAvatarRead()
+    setAvatarError('')
+    if (avatarInput) avatarInput.value = ''
+    const next = { username: current.username, avatar: '', status: current.status }
     setOriginalDraft(next)
     setDraft({ ...next })
     editAction.reset()
@@ -115,12 +124,16 @@ const GuildBot: Component = () => {
       return
     const submitted = { ...draft() }
     const saved = await editAction.run(async () => {
-      const response = await fetchAPI(BOT_URL, 'PUT', { ...bot()!, ...submitted })
+      const response = await fetchAPI(BOT_URL, 'PUT', {
+        ...(submitted.username.trim() !== originalDraft().username ? { username: submitted.username.trim() } : {}),
+        ...(submitted.avatar ? { avatar: submitted.avatar } : {}),
+        ...(submitted.status !== originalDraft().status ? { status: submitted.status } : {}),
+      })
       if (!response.ok) throw new Error('Bot update failed')
-      const updated: Bot = await response.json()
+      const updated = CustomBotInfoSchema.parse(await response.json())
       setBot(updated)
-      setOriginalDraft({ username: updated.username, avatar: updated.avatar, status: updated.status })
-      setDraft({ username: updated.username, avatar: updated.avatar, status: updated.status })
+      setOriginalDraft({ username: updated.username, avatar: '', status: updated.status })
+      setDraft({ username: updated.username, avatar: '', status: updated.status })
     })
     if (saved) closeDialog('edit_bot')
   }
@@ -131,10 +144,45 @@ const GuildBot: Component = () => {
     const saved = await setupAction.run(async () => {
       const response = await fetchAPI(BOT_URL, 'PATCH', { token: submittedToken })
       if (!response.ok) throw new Error('Bot setup failed')
-      setBot(await response.json())
+      setBot(CustomBotInfoSchema.parse(await response.json()))
       setToken('')
     })
     if (saved) closeDialog('setup_bot')
+  }
+
+  function selectAvatar(file: File | undefined) {
+    cancelAvatarRead()
+    if (!file) return
+    setAvatarError('')
+    if (
+      !['image/png', 'image/jpeg'].includes(file.type) ||
+      file.size === 0 ||
+      file.size > CUSTOM_BOT_AVATAR_MAX_BYTES
+    ) {
+      setAvatarError(t('dashboard.guild.bot.avatar_upload_error', 'Choose a PNG or JPEG image up to 2 MiB.'))
+      return
+    }
+    const reader = new FileReader()
+    avatarReader = reader
+    setAvatarReading(true)
+    reader.onload = () => {
+      if (avatarReader !== reader) return
+      avatarReader = undefined
+      setAvatarReading(false)
+      const parsed = CustomBotAvatarSchema.safeParse(reader.result)
+      if (!parsed.success) {
+        setAvatarError(t('dashboard.guild.bot.avatar_upload_error', 'Choose a PNG or JPEG image up to 2 MiB.'))
+        return
+      }
+      updateDraft({ avatar: parsed.data })
+    }
+    reader.onerror = () => {
+      if (avatarReader !== reader) return
+      avatarReader = undefined
+      setAvatarReading(false)
+      setAvatarError(t('dashboard.guild.bot.avatar_read_error', 'Unable to read this image. Choose it again.'))
+    }
+    reader.readAsDataURL(file)
   }
 
   function getNameOf(id: string) {
@@ -202,16 +250,22 @@ const GuildBot: Component = () => {
             'The bot name displayed in Discord. Save this dialog to apply your changes.',
           )}
           required
-          error={dirty() && !draft().username.trim() ? t('ui.invalid_value', 'Enter a valid value.') : undefined}
+          error={
+            dirty() && !nameValid()
+              ? t('dashboard.guild.bot.name_invalid', 'Use a bot name of 2 to 32 characters.')
+              : undefined
+          }
         >
           <input
             id="bot-name"
             type="text"
+            minLength={2}
+            maxLength={32}
             class="input w-full"
             disabled={bot.loading || editAction.pending()}
             value={draft().username}
-            aria-invalid={dirty() && !draft().username.trim()}
-            aria-describedby={`bot-name-description${dirty() && !draft().username.trim() ? ' bot-name-error' : ''}`}
+            aria-invalid={dirty() && !nameValid()}
+            aria-describedby={`bot-name-description${dirty() && !nameValid() ? ' bot-name-error' : ''}`}
             onInput={(event) => updateDraft({ username: event.currentTarget.value })}
           />
         </FormField>
@@ -220,20 +274,45 @@ const GuildBot: Component = () => {
           label={t('dashboard.guild.bot.avatar', 'Avatar')}
           description={t(
             'dashboard.guild.bot.avatar_hint',
-            'Paste the full http:// or https:// address of the image to use as the bot avatar.',
+            'Choose a PNG or JPEG image up to 2 MiB. Save to replace the current avatar; leaving this empty keeps it unchanged.',
           )}
-          error={!avatarValid() ? t('ui.invalid_value', 'Enter a valid value.') : undefined}
+          error={avatarError() || undefined}
         >
           <input
             id="bot-avatar"
-            type="url"
-            class="input w-full"
+            ref={avatarInput}
+            type="file"
+            accept="image/png,image/jpeg"
+            class="file-input w-full"
             disabled={bot.loading || editAction.pending()}
-            value={draft().avatar}
-            aria-invalid={!avatarValid()}
-            aria-describedby={`bot-avatar-description${!avatarValid() ? ' bot-avatar-error' : ''}`}
-            onInput={(event) => updateDraft({ avatar: event.currentTarget.value })}
+            aria-invalid={!!avatarError()}
+            aria-describedby={`bot-avatar-description${avatarError() ? ' bot-avatar-error' : ''}`}
+            onChange={(event) => selectAvatar(event.currentTarget.files?.[0])}
           />
+          <Show when={avatarReading()}>
+            <p role="status" class="text-sm text-base-content/65">
+              {t('dashboard.guild.bot.avatar_reading', 'Reading image…')}
+            </p>
+          </Show>
+          <Show when={draft().avatar}>
+            <div class="flex items-center gap-3 pt-3">
+              <img
+                src={draft().avatar}
+                alt={t('dashboard.guild.bot.avatar_preview', 'New avatar preview')}
+                class="h-16 w-16 rounded-full object-cover"
+              />
+              <Button
+                size="sm"
+                disabled={editAction.pending()}
+                onClick={() => {
+                  updateDraft({ avatar: '' })
+                  setAvatarError('')
+                }}
+              >
+                {t('dashboard.guild.bot.avatar_keep', 'Keep current avatar')}
+              </Button>
+            </div>
+          </Show>
         </FormField>
         <FormField
           id="bot-status"
@@ -329,6 +408,7 @@ const GuildBot: Component = () => {
         >
           <input
             id="bot-token"
+            maxLength={256}
             aria-describedby="bot-token-description"
             type="password"
             autocomplete="new-password"
@@ -394,7 +474,7 @@ const GuildBot: Component = () => {
                 <dt class="text-base-content/70">{t('dashboard.guild.bot.avatar', 'Avatar')}</dt>
                 <dd>
                   <img
-                    src={bot()!.avatar}
+                    src={bot()!.avatar || undefined}
                     alt={t('dashboard.guild.bot.avatar', 'Avatar')}
                     class="w-8 h-8 rounded-full"
                   />
@@ -447,8 +527,17 @@ const GuildBot: Component = () => {
                 </SettingRow>
                 <SettingRow
                   title={t('dashboard.guild.bot.token', 'Bot token')}
-                  description={t('settings.bot_token_hint', 'Use setup to configure or replace the custom bot token.')}
+                  description={t(
+                    'settings.bot_token_hint',
+                    'Use setup to configure or replace the custom bot token. Saved tokens are never shown.',
+                  )}
                 >
+                  <StatusBadge tone={bot()!.tokenConfigured ? 'success' : 'neutral'}>
+                    {bot()!.tokenConfigured
+                      ? t('dashboard.guild.bot.token_configured', 'Token configured')
+                      : t('dashboard.guild.bot.token_missing', 'Token not configured')}
+                  </StatusBadge>
+
                   <Button
                     disabled={busy() || !customAccess.allowed()}
                     onClick={openSetup}

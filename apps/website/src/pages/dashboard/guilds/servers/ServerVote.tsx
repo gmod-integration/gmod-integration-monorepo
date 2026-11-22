@@ -1,3 +1,4 @@
+import { DashboardChannelConfigurationSchema } from '@gmod/schema/server/DashboardChannelSchema.js'
 import { showDialog } from '../../../../utils/dialog.js'
 import { type Component, createResource, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel'
@@ -15,7 +16,7 @@ const fetchVote = async () => {
   if (!res.ok) {
     throw new Error('Channel configuration unavailable')
   }
-  return await res.json()
+  return DashboardChannelConfigurationSchema.parse(await res.json())
 }
 
 const ServerVote: Component = () => {
@@ -29,7 +30,7 @@ const ServerVote: Component = () => {
     if (!res.ok) {
       throw new Error('Vote channel update failed')
     }
-    const screenshot = await res.json()
+    const screenshot = DashboardChannelConfigurationSchema.parse(await res.json())
     votesMutate(screenshot)
     return screenshot
   }
@@ -78,14 +79,14 @@ const ServerVote: Component = () => {
           >
             <div class="flex w-full min-w-0 items-center gap-2">
               <Show
-                when={!votes.loading && votes().channelID}
+                when={!votes.loading && !votes.error && votes()?.channelID}
                 fallback={
                   <span class="text-base-content/60">
                     {t('dashboard.server.vote.no_channel_selected', 'No channel selected')}
                   </span>
                 }
               >
-                <DiscordChannel channelID={votes().channelID} />
+                <DiscordChannel channelID={votes()?.channelID} />
               </Show>
             </div>
             <Button
@@ -99,7 +100,7 @@ const ServerVote: Component = () => {
             >
               {t('dashboard.server.vote.select_channel', 'Choose channel')}
             </Button>
-            <Show when={!votes.loading && votes().channelID}>
+            <Show when={!votes.loading && !votes.error && votes()?.channelID}>
               <Button variant="ghost" size="sm" onClick={() => showDialog('remove-channel')}>
                 {t('dashboard.server.vote.delete_channel', 'Remove destination')}
               </Button>

@@ -1,6 +1,12 @@
 import { ConfigDiscord } from '@gmod/config'
 import {
+  CustomBotInfoSchema,
+  CustomBotProfileCommandSchema,
+  CustomBotTokenCommandSchema,
+} from '@gmod/schema/server/CustomBotProfileSchema.js'
+import {
   resolveGuildAccess,
+  assertCapability,
   getDiscordEntitlements as fetchDiscordEntitlements,
   assertGuildSettingChange,
   effectiveGuildSetting,
@@ -310,17 +316,17 @@ export class Guild {
       status = 'disabled'
     }
 
-    return {
+    return CustomBotInfoSchema.parse({
       id: botInfo.id,
       username: botInfo.username,
       avatar: botInfo.avatar,
       custom: isCustom,
-      token: activeGuild ? activeGuild.token : null,
+      tokenConfigured: !!activeGuild?.token,
       active: !!activeGuild,
       purchased: !!purchased,
       onGuild: botInfo.onGuild,
       status,
-    }
+    })
   }
 
   async reloadBotInstance() {
@@ -328,6 +334,8 @@ export class Guild {
   }
 
   async updateBotInstanceToken(newToken: string) {
+    const parsed = CustomBotTokenCommandSchema.parse({ token: newToken })
+    assertCapability(await resolveGuildAccess(this.id), 'bot.custom')
     const botInstanceData = await prisma.gm_gmodstore_purchases.findFirst({
       where: {
         guild: this.id,
@@ -341,20 +349,23 @@ export class Guild {
         steamID64: botInstanceData.steamID64,
       },
       data: {
-        token: newToken,
+        token: parsed.token,
       },
     })
     await this.reloadBotInstance()
   }
 
-  async updateBotInstanceInfo(data: { username: string; avatar: string; token: string; status: string }) {
-    const { username, avatar, status } = data
-    const updateResult = await enqueueDiscordGuildUpdateBotProfile({ guildID: this.id, username, avatar })
-    if (!updateResult.updated) throw new Error(updateResult.error || 'Unable to update bot profile')
-
-    if (status) {
-      await this.setSetting('bot_status', status)
+  async updateBotInstanceInfo(input: unknown) {
+    const { username, avatar, status } = CustomBotProfileCommandSchema.parse(input)
+    const access = await resolveGuildAccess(this.id)
+    assertCapability(access, 'bot.custom')
+    if (status !== undefined)
+      assertGuildSettingChange(access, 'bot_status', status, await this.getSetting('bot_status'))
+    if (username !== undefined || avatar !== undefined) {
+      const updateResult = await enqueueDiscordGuildUpdateBotProfile({ guildID: this.id, username, avatar })
+      if (!updateResult.updated) throw new Error(updateResult.error || 'Unable to update bot profile')
     }
+    if (status !== undefined) await this.setSetting('bot_status', status)
   }
 
   async getAdmins() {
