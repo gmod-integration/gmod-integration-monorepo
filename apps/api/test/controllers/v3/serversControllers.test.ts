@@ -61,12 +61,27 @@ describe('serversControllers', () => {
     { name: 'postIGSettings', controller: postIGSettings, model: 'processPostIGSettings', body: {} },
     { name: 'postStatus', controller: postStatus, model: 'processPostStatus', body: {} },
     { name: 'postDarkRPDropMoney', controller: postDarkRPDropMoney, model: 'processDarkRPDropMoney', body: {} },
-    { name: 'postDarkRPPickedUpMoney', controller: postDarkRPPickedUpMoney, model: 'processDarkRPPickedUpMoney', body: {} },
-    { name: 'postDarkRPPickedUpCheque', controller: postDarkRPPickedUpCheque, model: 'processDarkRPPickedUpCheque', body: {} },
+    {
+      name: 'postDarkRPPickedUpMoney',
+      controller: postDarkRPPickedUpMoney,
+      model: 'processDarkRPPickedUpMoney',
+      body: {},
+    },
+    {
+      name: 'postDarkRPPickedUpCheque',
+      controller: postDarkRPPickedUpCheque,
+      model: 'processDarkRPPickedUpCheque',
+      body: {},
+    },
     { name: 'postCHATMTakeMoney', controller: postCHATMTakeMoney, model: 'processCHATMTakeMoney', body: {} },
     { name: 'postCHATMReceiveMoney', controller: postCHATMReceiveMoney, model: 'processCHATMReceiveMoney', body: {} },
     { name: 'postCHATMSendMoney', controller: postCHATMSendMoney, model: 'processCHATMSendMoney', body: {} },
-    { name: 'postCHATMWithdrawMoney', controller: postCHATMWithdrawMoney, model: 'processCHATMWithdrawMoney', body: {} },
+    {
+      name: 'postCHATMWithdrawMoney',
+      controller: postCHATMWithdrawMoney,
+      model: 'processCHATMWithdrawMoney',
+      body: {},
+    },
     { name: 'postCHATMDepositMoney', controller: postCHATMDepositMoney, model: 'processCHATMDepositMoney', body: {} },
   ]
 
@@ -114,12 +129,23 @@ describe('serversControllers', () => {
     expect(logServerMock).toHaveBeenCalledWith(server, 'server_stop')
   })
 
-  it('getInfo responds with req.server', async () => {
-    const server = { id: 's1' }
+  it('getInfo projects connection metadata without credentials or unknown fields', async () => {
+    const server = Object.freeze({
+      id: 's1',
+      name: 'Test server',
+      guild: 'g1',
+      token: 'fixture-server-token',
+      publicTempToken: 'fixture-public-token',
+      unknown: Object.freeze({ nestedCredential: 'fixture-nested-secret' }),
+    })
     const res = makeRes()
     await getInfo({ server } as any, res)
     expect(res.status).toHaveBeenCalledWith(200)
-    expect(res.json).toHaveBeenCalledWith(server)
+    expect(res.json).toHaveBeenCalledWith({ id: 's1', name: 'Test server', guild: 'g1' })
+    expect(res.json.mock.calls[0][0]).not.toBe(server)
+    expect(server.token).toBe('fixture-server-token')
+    expect(server.publicTempToken).toBe('fixture-public-token')
+    expect(server.unknown).toEqual({ nestedCredential: 'fixture-nested-secret' })
   })
 
   it('getPublicToken regenerates and responds with the new token', async () => {
