@@ -865,6 +865,12 @@
 .site-shell .table:has(th:nth-child(4)) {
   min-width: 600px;
 }
+.site-shell .admin-monitoring-table.table {
+  min-width: 700px;
+}
+.site-shell .admin-monitoring-table :is(th, td):first-child {
+  min-width: 320px;
+}
 .site-shell .admin-users-table.table {
   min-width: 1120px;
 }

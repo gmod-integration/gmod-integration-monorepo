@@ -39,6 +39,8 @@ export const AdminMenu: Component = () => {
     { label: t('admin_v6.nav_servers', 'Game servers'), icon: 'gamepad-2', url: '/dashboard/admins/servers' },
     { label: t('admin_v6.nav_users', 'User accounts'), icon: 'users', url: '/dashboard/admins/users' },
     { label: t('admin_v6.nav_premium', 'Premium access'), icon: 'crown', url: '/dashboard/admins/premium' },
+    { label: t('admin_monitoring.title', 'Monitoring'), icon: 'activity', url: '/dashboard/admins/monitoring' },
+    { label: t('admin_previews.title', 'Server previews'), icon: 'eye', url: '/dashboard/admins/previews' },
     {
       label: t('dashboard.menu.admin.impersonate', 'Support access'),
       icon: 'user-round-cog',

@@ -38,7 +38,7 @@ describe('Admin navigation', () => {
   it('exposes only implemented destinations and identifies the current page', () => {
     renderAt()
     const navigation = screen.getByRole('navigation', { name: 'Admin' })
-    expect(within(navigation).getAllByRole('link')).toHaveLength(6)
+    expect(within(navigation).getAllByRole('link')).toHaveLength(8)
     expect(within(navigation).getByRole('link', { name: 'Overview' })).toHaveAttribute(
       'href',
       '/dashboard/admins/informations',

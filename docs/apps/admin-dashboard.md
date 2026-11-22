@@ -2,16 +2,23 @@
 
 The platform back office lives at `/dashboard/admins`. It uses the website's shared dashboard shell,
 controls, status badges and localized English/French wording. The index redirects to the overview;
-the six pages are lazy-loaded from `apps/website/src/pages/dashboard/admins/`.
+the eight pages are lazy-loaded from `apps/website/src/pages/dashboard/admins/`.
 
-| Page        | Route suffix    | Current behavior                                                                                                                                                                                                             |
-| ----------- | --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Overview    | `/informations` | Separate counts for communities, game servers, Discord accounts, linked accounts, Steam profiles, memberships, active sessions and recorded Premium sources; registrations over the last seven days and community languages. |
-| Communities | `/guilds`       | Search/filter the community directory, inspect effective access and its sources, and open the community's server directory.                                                                                                  |
-| Servers     | `/servers`      | Filter by community, verification and visibility; inspect recent activity and addon version; edit identity/flags, rotate a token or delete a server.                                                                         |
-| Users       | `/users`        | Search/filter accounts, inspect Discord/Steam identity, effective read-only role and active sessions, revoke another account's sessions or start support access.                                                             |
-| Premium     | `/premium`      | Inspect recorded manual/GmodStore sources and effective access separately; add or remove a local manual grant.                                                                                                               |
-| Support     | `/impersonate`  | Select an account and confirm temporary access with that account's permissions; return to the operator account when delegated.                                                                                               |
+| Page        | Route suffix    | Current behavior                                                                                                                                                                                                                                                     |
+| ----------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Overview    | `/informations` | Separate counts for communities, game servers, Discord accounts, linked accounts, Steam profiles, memberships, active sessions and recorded Premium sources; daily registrations over 7/30/90 UTC days, community languages and recorded Premium source comparisons. |
+| Communities | `/guilds`       | Search/filter the community directory, inspect effective access and its sources, and open the community's server directory.                                                                                                                                          |
+| Servers     | `/servers`      | Filter by community, verification and visibility; inspect recent activity and addon version; edit identity/flags, rotate a token or delete a server.                                                                                                                 |
+| Users       | `/users`        | Search/filter accounts, inspect Discord/Steam identity, effective read-only role and active sessions, revoke another account's sessions or start support access.                                                                                                     |
+| Premium     | `/premium`      | Inspect recorded manual/GmodStore sources and effective access separately; add or remove a local manual grant.                                                                                                                                                       |
+| Monitoring  | `/monitoring`   | Inspect WebSocket leases, automatically grouped received Lua errors and recurring player bug reports, with independent pagination and filters.                                                                                                                       |
+| Previews    | `/previews`     | Render effective saved statuses, inspect recent captures and try local message formatting without publishing.                                                                                                                                                        |
+| Support     | `/impersonate`  | Select an account and confirm temporary access with that account's permissions; return to the operator account when delegated.                                                                                                                                       |
+
+The Monitoring page (`/monitoring`) has independent, server-paginated cards for WebSocket leases,
+received Lua error groups and player bug report groups. The Previews page (`/previews?serverID=…`)
+opens from a server directory row and renders the saved effective status, recent raster captures and a
+local message formatting sandbox. Neither page changes business settings or sends Discord messages.
 
 `/stop-impersonate` is the return helper, not an additional administration page. IDs remain strings and
 copyable. User identity uses Discord avatars and read-only `@name` mentions, with an ID fallback when
@@ -76,8 +83,12 @@ Effective community access is resolved on inspection through `GET /v6/admin/guil
 every list row.
 
 The overview comes from `GET /v6/admin/overview`. Membership counts can include the same person in
-several communities; they are not an additional unique-user total. Recent registrations are counts
-over seven days, not a historical time series. User last activity comes from active-session metadata.
+several communities; they are not an additional unique-user total. The independent `GET /v6/admin/analytics?days=7|30|90` endpoint groups the registration dates of
+records still stored in MariaDB into consecutive UTC days, including zero-count days and the partial
+current day. It uses three prepared aggregate queries; deleted records are absent, so it is not an
+immutable registration event ledger. The charts expose exact values in expandable tables and use line
+patterns as well as colors. Language and Premium-source bars describe current counts; Premium sources
+can overlap and are not shares of one exclusive total. User last activity comes from active-session metadata.
 Server activity means a cached request within two minutes, not confirmed live WebSocket presence;
 unavailable or malformed cache data remains unknown.
 
@@ -152,3 +163,34 @@ and regenerate the Prisma client before deploying code that reads/writes `gm_gui
 The migration adds a non-null boolean with default `false`, preserving existing grants. The shared
 access resolver and administration queries exclude revoked local grants; this is a non-destructive
 grant migration, not deletion of purchase records.
+
+## Operational monitoring and previews
+
+`GET /v6/admin/monitoring/{connections,errors,bugs}` uses strict bounded filters and the same developer
+middleware as the other administration endpoints. Each card has its own request, loading/error/empty
+state, refresh and pagination. A failed source does not erase the others.
+
+Connections lists registered servers and reads their unexpired `ws:server-presence:<serverID>` sorted-set
+leases in one bounded Redis batch using the Redis clock. It does not infer a live connection from
+`last_request`. The gateway must publish and renew these per-socket leases on connection/pong, remove
+only its own member on close and expire crashed replicas within 90 seconds. Deploy the gateway presence
+support with the monitoring API. A Redis failure is Unknown; an absent lease means no confirmed
+connection. The total counts registered servers, not globally connected sockets.
+
+Errors are read from `gmod_integration.errors`, aggregated by addon name, realm and the first 1,000
+message characters over 7/30/90 days. The Integration filter matches addon names or paths; this is a
+heuristic, not a root-cause diagnosis. Reports and declared occurrences remain separate. Each Mongo
+aggregation has a 3-second maximum. Bugs aggregate player reports by the first 1,000 description
+characters, lowercased and trimmed, over the selected window; open/all and recurring filters are
+explicit. Similar wording alone does not prove the same bug. Summaries omit raw stack/player fields,
+truncate text and redact common URL, address, ID and credential indicators; free text can still contain
+sensitive context and remains developer-only. Index the source timestamps appropriately for large
+installations; an unavailable aggregate returns an error rather than fabricated zero counts.
+
+`GET /v6/admin/servers/:serverID/previews` projects only identity and up to six recent capture records,
+without player metadata, addon credentials or webhook secrets. Only same-origin `/screenshots/` raster
+URLs without query credentials are embedded. `GET /v6/admin/servers/:serverID/status-preview?locale=en|fr`
+uses the existing Discord worker preview operation with the saved configuration and no draft override.
+A preview is rendered from latest received data and does not confirm actual Discord delivery. Captures
+remain available if the preview worker fails. The message sandbox is local illustrative text, separate
+from saved templates; it supports the shared inert Discord text formatting subset and sends nothing.

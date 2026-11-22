@@ -409,3 +409,12 @@ scroll horizontally.
 
 Dashboard ESLint rules reject copied native `btn` controls and clickable `<i>` actions. Use `Button`
 and `IconButton`; the screenshot lightbox is the explicit specialized exception.
+
+## Administration analytics and read-only previews
+
+`AdminRegistrationsChart` renders 7/30/90 consecutive UTC daily buckets with color and line patterns,
+an empty state and an expandable exact-value table. `AdminDistributionChart` compares counts on a
+shared scale without assuming exclusive categories. Their feature page owns API requests and validation.
+`DiscordStatusPreview.caption` can describe a read-only inspection instead of the settings editor.
+`DiscordMessagePreview` reuses the safe `DiscordText` formatting subset for local examples; it never
+interprets HTML or sends messages. Keep examples and effective saved configuration visibly distinct.

@@ -8,6 +8,7 @@ import Pagination from '../../../components/Pagination.js'
 import {
   BooleanStatus,
   Button,
+  ButtonLink,
   CopyableValue,
   FormActions,
   FormField,
@@ -264,6 +265,12 @@ export default function ServerList() {
                       <td>{date(server.createdAt)}</td>
                       <td>
                         <div class="flex flex-wrap gap-2">
+                          <ButtonLink
+                            size="sm"
+                            href={`/dashboard/admins/previews?serverID=${encodeURIComponent(server.id)}`}
+                          >
+                            {t('admin_previews.preview', 'Preview')}
+                          </ButtonLink>
                           <Button size="sm" onClick={() => openEdit(server)}>
                             {t('admin_v6.edit', 'Edit')}
                           </Button>

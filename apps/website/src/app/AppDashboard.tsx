@@ -31,6 +31,8 @@ export const DashboardPageHeader: Component<{ admin?: boolean }> = (props) => {
       if (section === 'servers') return t('admin_v6.nav_servers', 'Game servers')
       if (section === 'users') return t('admin_v6.nav_users', 'User accounts')
       if (section === 'premium') return t('admin_v6.nav_premium', 'Premium access')
+      if (section === 'monitoring') return t('admin_monitoring.title', 'Monitoring')
+      if (section === 'previews') return t('admin_previews.title', 'Server previews')
       if (section === 'impersonate' || section === 'stop-impersonate')
         return t('dashboard.menu.admin.impersonate', 'Support access')
       return t('admin_v6.nav_overview', 'Overview')

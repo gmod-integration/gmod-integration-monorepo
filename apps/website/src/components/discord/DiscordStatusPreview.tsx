@@ -8,10 +8,11 @@ interface DiscordStatusPreviewProps {
   loading?: boolean
   error?: string
   onRetry?: () => void
+  caption?: string
 }
 
 /** Small, safe subset of Discord formatting; message text is never interpreted as HTML. */
-const DiscordText: Component<{ text: string }> = (props) => {
+export const DiscordText: Component<{ text: string }> = (props) => {
   const tokens = () => props.text.split(/(\*\*[^*\n]+\*\*|`[^`\n]+`|__[^_\n]+__|~~[^~\n]+~~)/g)
   return (
     <For each={tokens()}>
@@ -70,10 +71,11 @@ const DiscordStatusPreview: Component<DiscordStatusPreviewProps> = (props) => {
       </div>
       <div class="discord-preview-body flex min-w-0 flex-col gap-4 p-4 sm:p-5">
         <p class="text-xs leading-relaxed text-base-content/50">
-          {t(
-            'dashboard.server.status.preview.caption',
-            'Edits update this preview only. Save to update the configuration and an existing message; publish to send a new message.',
-          )}
+          {props.caption ??
+            t(
+              'dashboard.server.status.preview.caption',
+              'Edits update this preview only. Save to update the configuration and an existing message; publish to send a new message.',
+            )}
         </p>
         <Show when={props.error}>
           <div role="alert" class="border border-base-200 rounded-lg p-3 flex flex-col gap-2 items-start">

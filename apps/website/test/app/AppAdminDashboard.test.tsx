@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
-import { renderWithProviders } from '../testUtils.js'
+import { historyAt, renderWithProviders } from '../testUtils.js'
 import { AppAdminDashboard } from '../../src/app/AppAdminDashboard.js'
 import { acceptAuthSession, resetAuthentication } from '../../src/utils/authClient.js'
 import { sessionFixture } from '../authFixture.js'
@@ -19,6 +19,20 @@ beforeEach(() => {
 })
 
 describe('Admin dashboard shell', () => {
+  it.each([
+    ['monitoring', 'Monitoring'],
+    ['previews', 'Server previews'],
+  ])('names the %s page in its heading and breadcrumb', async (path, title) => {
+    renderWithProviders(
+      () => (
+        <AppAdminDashboard>
+          <div>Page</div>
+        </AppAdminDashboard>
+      ),
+      { path: '*', history: historyAt(`/dashboard/admins/${path}`) },
+    )
+    await screen.findByRole('heading', { level: 1, name: title })
+  })
   it('composes the named admin navigation and page content after server verification', async () => {
     renderWithProviders(() => (
       <AppAdminDashboard>

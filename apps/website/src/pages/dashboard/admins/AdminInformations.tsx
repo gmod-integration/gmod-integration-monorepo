@@ -1,13 +1,24 @@
-import { createResource, For, Show } from 'solid-js'
+import { createResource, createSignal, For, Show } from 'solid-js'
 import { AdminOverviewSchema, type AdminOverview } from '@gmod/schema/admin/AdminDashboardSchema.js'
+import { AdminAnalyticsSchema, type AdminAnalyticsDays } from '@gmod/schema/admin/AdminAnalyticsSchema.js'
 import AdminPanel from '../../../components/AdminPanel.js'
-import { AsyncState, Button, ButtonLink } from '../../../components/ui/index.js'
+import { AsyncState, Button, ButtonLink, FormField } from '../../../components/ui/index.js'
 import { useI18n } from '../../../i18n.js'
 import { adminGet } from './adminApi.js'
+import AdminRegistrationsChart, { type RegistrationMetric } from './AdminRegistrationsChart.js'
+import AdminDistributionChart from './AdminDistributionChart.js'
 
 export default function AdminInformations() {
   const { t, locale } = useI18n()
   const [overview, { refetch }] = createResource(async () => AdminOverviewSchema.parse(await adminGet('/overview')))
+  const [days, setDays] = createSignal<AdminAnalyticsDays>(30)
+  const [selectedMetric, setSelectedMetric] = createSignal<RegistrationMetric>('all')
+  const [analytics, { refetch: refreshAnalytics }] = createResource(days, async (window) => {
+    const result = AdminAnalyticsSchema.parse(await adminGet('/analytics', { days: window }))
+    if (result.days !== window) throw new Error('Unexpected analytics period')
+    return result
+  })
+  const history = () => (analytics.error ? undefined : analytics())
   const data = () => (overview.error ? undefined : overview())
   const number = (value: number) => value.toLocaleString(locale())
   const metric = (value: AdminOverview) => [
@@ -29,6 +40,7 @@ export default function AdminInformations() {
     },
   ]
   const languageName = (language: string) => {
+    if (!language.trim()) return t('admin_v6.language_unspecified', 'Unspecified')
     try {
       return new Intl.DisplayNames([locale()], { type: 'language' }).of(language) || language
     } catch {
@@ -45,7 +57,13 @@ export default function AdminInformations() {
         )}
         icon="layout-dashboard"
         actions={
-          <Button loading={overview.loading} onClick={() => void refetch()}>
+          <Button
+            loading={overview.loading || analytics.loading}
+            onClick={() => {
+              void refetch()
+              void refreshAnalytics()
+            }}
+          >
             {t('admin_v6.refresh', 'Refresh')}
           </Button>
         }
@@ -72,6 +90,64 @@ export default function AdminInformations() {
                 </p>
               </>
             )}
+          </Show>
+        </AsyncState>
+      </AdminPanel>
+      <AdminPanel
+        title={t('admin_v6.daily_registrations', 'Daily registrations')}
+        description={t(
+          'admin_v6.registrations_description',
+          'Registration dates of communities, game servers and accounts still stored. UTC days; today is incomplete.',
+        )}
+        icon="chart-no-axes-combined"
+        actions={
+          <Button size="sm" loading={analytics.loading} onClick={() => void refreshAnalytics()}>
+            {t('admin_v6.refresh_chart', 'Refresh chart')}
+          </Button>
+        }
+      >
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <FormField id="admin-analytics-window" label={t('admin_v6.analytics_window', 'Period')}>
+            <select
+              id="admin-analytics-window"
+              class="select w-full"
+              value={days()}
+              onChange={(event) => {
+                const value = Number(event.currentTarget.value)
+                if (value === 7 || value === 30 || value === 90) setDays(value)
+              }}
+            >
+              <option value="7">{t('admin_v6.last_7_days', 'Last 7 days')}</option>
+              <option value="30">{t('admin_v6.last_30_days', 'Last 30 days')}</option>
+              <option value="90">{t('admin_v6.last_90_days', 'Last 90 days')}</option>
+            </select>
+          </FormField>
+          <FormField id="admin-analytics-metric" label={t('admin_v6.analytics_metric', 'Show')}>
+            <select
+              id="admin-analytics-metric"
+              class="select w-full"
+              value={selectedMetric()}
+              onChange={(event) => {
+                const value = event.currentTarget.value
+                if (value === 'all' || value === 'communities' || value === 'servers' || value === 'accounts')
+                  setSelectedMetric(value)
+              }}
+            >
+              <option value="all">{t('admin_v6.all_registrations', 'All registrations')}</option>
+              <option value="communities">{t('admin_v6.communities', 'Communities')}</option>
+              <option value="servers">{t('admin_v6.game_servers', 'Game servers')}</option>
+              <option value="accounts">{t('admin_v6.user_accounts', 'User accounts')}</option>
+            </select>
+          </FormField>
+        </div>
+        <AsyncState
+          loading={analytics.loading}
+          error={analytics.error}
+          onRetry={() => void refreshAnalytics()}
+          errorLabel={t('admin_v6.analytics_load_error', 'Unable to load registration history. Try again.')}
+        >
+          <Show when={history()}>
+            {(value) => <AdminRegistrationsChart data={value()} metric={selectedMetric()} />}
           </Show>
         </AsyncState>
       </AdminPanel>
@@ -129,18 +205,17 @@ export default function AdminInformations() {
                 </ButtonLink>
               }
             >
-              <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <dt class="text-sm text-base-content/65">{t('admin_v6.manual_premium', 'Manual Premium grants')}</dt>
-                  <dd class="mt-1 text-xl font-semibold tabular-nums">{number(value().totals.manualPremium)}</dd>
-                </div>
-                <div>
-                  <dt class="text-sm text-base-content/65">
-                    {t('admin_v6.gmodstore_premium', 'GmodStore communities')}
-                  </dt>
-                  <dd class="mt-1 text-xl font-semibold tabular-nums">{number(value().totals.gmodstorePremium)}</dd>
-                </div>
-              </dl>
+              <AdminDistributionChart
+                label={t('admin_v6.access_sources', 'Premium access sources')}
+                items={[
+                  { label: t('admin_v6.manual_premium', 'Manual Premium grants'), value: value().totals.manualPremium },
+                  {
+                    label: t('admin_v6.gmodstore_premium', 'GmodStore communities'),
+                    value: value().totals.gmodstorePremium,
+                  },
+                ]}
+                emptyLabel={t('admin_v6.no_recorded_premium_sources', 'No active recorded Premium grants.')}
+              />
               <p class="text-sm text-base-content/60">
                 {t(
                   'admin_v6.overlapping_access',
@@ -149,35 +224,11 @@ export default function AdminInformations() {
               </p>
             </AdminPanel>
             <AdminPanel title={t('admin_v6.communities_by_language', 'Communities by bot language')} icon="globe">
-              <Show
-                when={value().languages.length}
-                fallback={
-                  <p class="text-sm text-base-content/60">
-                    {t('admin_v6.no_languages', 'No language data is available yet.')}
-                  </p>
-                }
-              >
-                <ul class="flex min-w-0 flex-col gap-4" role="list">
-                  <For each={value().languages}>
-                    {(item) => (
-                      <li>
-                        <div class="mb-2 flex items-center justify-between gap-3">
-                          <span class="min-w-0 break-words">{languageName(item.language)}</span>
-                          <strong class="tabular-nums">{number(item.count)}</strong>
-                        </div>
-                        <div class="h-2 overflow-hidden rounded-full bg-base-200" aria-hidden="true">
-                          <div
-                            class="h-full rounded-full bg-primary"
-                            style={{
-                              width: `${Math.min(100, (item.count / Math.max(1, value().totals.guilds)) * 100)}%`,
-                            }}
-                          />
-                        </div>
-                      </li>
-                    )}
-                  </For>
-                </ul>
-              </Show>
+              <AdminDistributionChart
+                label={t('admin_v6.communities_by_language', 'Communities by bot language')}
+                items={value().languages.map((item) => ({ label: languageName(item.language), value: item.count }))}
+                emptyLabel={t('admin_v6.no_languages', 'No language data is available yet.')}
+              />
             </AdminPanel>
           </div>
         )}

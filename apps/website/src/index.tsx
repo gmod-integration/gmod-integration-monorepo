@@ -47,6 +47,8 @@ const Impersonate = lazy(() => import('./pages/dashboard/admins/Impersonate.js')
 const AdminServerList = lazy(() => import('./pages/dashboard/admins/ServerList.js'))
 const AdminUserList = lazy(() => import('./pages/dashboard/admins/UserList.js'))
 const AdminPremiumList = lazy(() => import('./pages/dashboard/admins/PremiumList.js'))
+const AdminMonitoring = lazy(() => import('./pages/dashboard/admins/AdminMonitoring.js'))
+const ServerPreviews = lazy(() => import('./pages/dashboard/admins/ServerPreviews.js'))
 
 const root = document.getElementById('root')
 
@@ -75,6 +77,8 @@ render(
         <Route path="/servers" component={AdminServerList} />
         <Route path="/users" component={AdminUserList} />
         <Route path="/premium" component={AdminPremiumList} />
+        <Route path="/monitoring" component={AdminMonitoring} />
+        <Route path="/previews" component={ServerPreviews} />
         <Route path="/impersonate" component={Impersonate} />
         <Route path="/stop-impersonate" component={Impersonate} />
         <Route path="*" component={NotFound} />
