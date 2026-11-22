@@ -25,6 +25,8 @@ describe('shared access policy', () => {
   it('keeps historical custom bot access separate from premium', () => {
     expect(hasCapability({ ...free, premium: true }, 'bot.custom')).toBe(false)
     expect(hasCapability({ ...free, customBot: true }, 'bot.custom')).toBe(true)
+    expect(capabilityLimit({ ...free, premium: true }, 'bot.custom')).toBe(0)
+    expect(capabilityLimit({ ...free, customBot: true }, 'bot.custom')).toBe(1)
   })
   it('caps only effective resources, preserving the provided stable order and original data', () => {
     const saved = ['first', 'second', 'third', 'fourth']

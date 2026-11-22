@@ -791,6 +791,20 @@ describe('usersControllers', () => {
   })
 
   describe('putGuildLinks', () => {
+    it.each([{ alias: 'Renamed' }, { active: true }])(
+      'does not activate or retain an unsafe legacy link through a partial update: %j',
+      async (body) => {
+        const guild = {
+          id: 'g1',
+          getLink: vi.fn().mockResolvedValueOnce({ id: 1, url: 'javascript:alert(1)', alias: 'Old', active: true }),
+        }
+        const res = makeRes()
+        await c.putGuildLinks({ params: { linkID: '1' }, guild, body } as any, res)
+        expect(res.status).toHaveBeenCalledWith(400)
+        expect(res.send).toHaveBeenCalledWith({ error: 'invalid_link' })
+        expect(prismaMock.gm_server_links.update).not.toHaveBeenCalled()
+      },
+    )
     it.each(['javascript:alert(1)', 'data:text/html,invalid', 'file:///tmp/example'])(
       'refuses an unsupported URL before reading or writing a link: %s',
       async (url) => {
@@ -1124,6 +1138,24 @@ describe('usersControllers', () => {
     })
 
     describe('putServerStatusButtons', () => {
+      it('rejects enabling a legacy button whose saved URL is unsafe without publishing it', async () => {
+        const server = {
+          id: 's1',
+          findStatusButton: vi.fn().mockResolvedValueOnce({
+            id: 1,
+            name: 'Old',
+            emoji: '',
+            url: 'javascript:alert(1)',
+            enable: false,
+          }),
+        }
+        const res = makeRes()
+        await c.putServerStatusButtons({ params: { buttonID: '1' }, server, body: { enable: true } } as any, res)
+        expect(res.status).toHaveBeenCalledWith(400)
+        expect(res.send).toHaveBeenCalledWith({ error: 'invalid_status_button' })
+        expect(prismaMock.gm_status_button.update).not.toHaveBeenCalled()
+        expect(bullmqMocks.enqueueDiscordServerStatusRefresh).not.toHaveBeenCalled()
+      })
       it.each(['javascript:alert(1)', 'data:text/html,invalid', 'file:///tmp/example'])(
         'refuses unsupported button URLs without triggering status publication: %s',
         async (url) => {
@@ -1964,6 +1996,16 @@ describe('usersControllers', () => {
   })
 
   describe('patchGuildBotInstance', () => {
+    it('preserves the entitlement refusal so the HTTP boundary can return its actual access status', async () => {
+      const error = new AccessDeniedError('bot.custom', 'upgrade_required')
+      const guild = { updateBotInstanceToken: vi.fn().mockRejectedValueOnce(error), getBotClientInfo: vi.fn() }
+      const res = makeRes()
+      await expect(
+        c.patchGuildBotInstance({ guild, panelUser: { user: {} }, body: { token: 'newtok' } } as any, res),
+      ).rejects.toBe(error)
+      expect(guild.getBotClientInfo).not.toHaveBeenCalled()
+      expect(res.send).not.toHaveBeenCalled()
+    })
     it('returns 400 on missing token', async () => {
       badArgumentMock.mockReturnValueOnce(true)
       const res = makeRes()

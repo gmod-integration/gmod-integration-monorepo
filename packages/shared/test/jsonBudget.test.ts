@@ -32,6 +32,18 @@ describe('JSON structural budget', () => {
     ])
       expect(hasJSONBudget(value, budget)).toBe(false)
   })
+  it('counts property names toward the total text limit before reading an over-budget value', () => {
+    const exact = { ['a'.repeat(20)]: null, ['b'.repeat(20)]: null, ['c'.repeat(10)]: null }
+    expect(hasJSONBudget(exact, budget)).toBe(true)
+    const oversized = { ['a'.repeat(20)]: null, ['b'.repeat(20)]: null }
+    Object.defineProperty(oversized, 'c'.repeat(11), {
+      enumerable: true,
+      get: () => {
+        throw new Error('An over-budget key must be rejected before its value is read')
+      },
+    })
+    expect(hasJSONBudget(oversized, budget)).toBe(false)
+  })
   it('rejects prototype keys, cycles and non-JSON values', () => {
     const cycle: unknown[] = []
     cycle.push(cycle)

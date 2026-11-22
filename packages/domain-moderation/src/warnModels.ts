@@ -246,7 +246,8 @@ export async function handleWarnInteraction(interaction: ButtonInteraction) {
     if (offset < 0) offset = 0
   } else if (interaction.customId === 'warn_next') {
     offset = offset + limit
-  } else if (interaction.customId === 'warn_refresh') {
+  } else {
+    // The action whitelist above leaves only refresh after previous and next are handled.
     offset = 0
   }
 

@@ -525,4 +525,103 @@ describe('authenticated addon dispatcher', () => {
     expect((await handleAddonRequest(server(), request('/servers/s1/errors', body))).status).toBe(200)
     expect(mocks.errors).toHaveBeenCalledWith({ ...body, stack: [], id: '12345' }, { serverID: 's1', steamID64: '' })
   })
+
+  it('rejects lookup and player-tool requests with the wrong method before accessing their models', async () => {
+    expect((await handleAddonRequest(server(), request(`/users?steamID64=${id}`, {}))).status).toBe(404)
+    expect(
+      (await handleAddonRequest(server(), request(`/clients/${id}/servers/s1/screenshots`, undefined, 'GET'))).status,
+    ).toBe(404)
+    expect(mocks.user).not.toHaveBeenCalled()
+    expect(mocks.screenshot).not.toHaveBeenCalled()
+    expect(mocks.rate).not.toHaveBeenCalled()
+  })
+
+  it('returns an empty player snapshot when no statistics exist', async () => {
+    const target = server()
+    vi.mocked(target.getPlayerStats).mockResolvedValueOnce(null as never)
+    expect(await handleAddonRequest(target, request(`/servers/s1/players/${id}`, undefined, 'GET'))).toEqual({
+      status: 200,
+      body: {},
+    })
+  })
+
+  it.each([
+    ['spawn', {}],
+    ['dark-rp/drop-money', { player: actor(), amount: '100', entity: {} }],
+    ['dark-rp/drop-money', { player: actor(), amount: 100, entity: null }],
+    ['dark-rp/picked-up-cheque', { playerChequeTarget: actor(), amount: 100, entity: {} }],
+    ['ch-atm/send-money', { player: actor(), amount: 100, receiver: actor('invalid') }],
+    ['ch-atm/take-money', { player: actor(), amount: 100 }],
+    ['ch-atm/receive-money', { player: actor(), amount: 100, reason: 3 }],
+  ])('rejects incomplete telemetry for %s without logging or invoking economy effects', async (event, body) => {
+    expect((await handleAddonRequest(server(), request(`/servers/s1/players/${id}/${event}`, body))).status).toBe(400)
+    for (const key of ['log', 'drop', 'pickup', 'cheque', 'take', 'receive', 'send'] as const)
+      expect(mocks[key]).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { unexpected: true },
+    [null],
+    [{ endpoint: 42, data: {} }],
+    [{ endpoint: `/servers/s1/players/${id}/spawn`, data: null }],
+    [{ endpoint: '/users?steamID64=' + id, data: { player: actor() } }],
+  ])('rejects a malformed telemetry batch before any partial processing: %j', async (body) => {
+    expect((await handleAddonRequest(server(), request('/servers/s1/logs', body))).status).toBe(400)
+    expect(mocks.log).not.toHaveBeenCalled()
+  })
+
+  it('stops a validated batch after an economy processor refuses its first event', async () => {
+    const failure = { status: 503, body: { error: 'economy_unavailable' } }
+    mocks.deposit.mockResolvedValueOnce(failure)
+    const result = await handleAddonRequest(
+      server(),
+      request('/servers/s1/logs', [
+        { endpoint: `/servers/s1/players/${id}/ch-atm/deposit-money`, data: { player: actor(), amount: 100 } },
+        { endpoint: `/servers/s1/players/${id}/spawn`, data: { player: actor() } },
+      ]),
+    )
+    expect(result).toEqual(failure)
+    expect(mocks.deposit).toHaveBeenCalledOnce()
+    expect(mocks.log).not.toHaveBeenCalled()
+  })
+
+  it('propagates storage failures during configuration saves without returning a success acknowledgement', async () => {
+    const failure = new Error('Configuration storage unavailable')
+    mocks.config.mockRejectedValueOnce(failure)
+    await expect(handleAddonRequest(server(), request('/servers/s1/config', { debug: true }))).rejects.toBe(failure)
+  })
+
+  it('rejects non-object operation bodies and malformed warning imports before any processing', async () => {
+    expect((await handleAddonRequest(server(), request('/servers/s1/config', []))).status).toBe(400)
+    expect(
+      (await handleAddonRequest(server(), request('/servers/s1/warns', { warns: [{ playerSteamID64: id }] }))).status,
+    ).toBe(400)
+    expect(mocks.config).not.toHaveBeenCalled()
+    expect(mocks.warns).not.toHaveBeenCalled()
+  })
+
+  it('imports an offline warning using the supplied administrator player identity', async () => {
+    const target = server()
+    expect(
+      (
+        await handleAddonRequest(
+          target,
+          request(`/servers/s1/players/${id}/warns`, { admin: actor(otherID), reason: 'Reason', date: 1_800_000_000 }),
+        )
+      ).status,
+    ).toBe(200)
+    expect(mocks.warns).toHaveBeenCalledExactlyOnceWith(target, [
+      { playerSteamID64: id, adminSteamID64: otherID, reason: 'Reason', date: 1_800_000_000 },
+    ])
+    expect(mocks.warn).not.toHaveBeenCalled()
+  })
+
+  it('normalizes a numeric client-error ID without accepting a server realm on the player channel', async () => {
+    const body = { ...error(), realm: 'client', id: 123, identifier: id }
+    await handleAddonRequest(server(), request(`/clients/${id}/servers/s1/errors`, body))
+    expect(mocks.errors).toHaveBeenCalledWith({ ...body, id: '123' }, { serverID: 's1', steamID64: id })
+    mocks.errors.mockClear()
+    expect((await handleAddonRequest(server(), request(`/clients/${id}/servers/s1/errors`, error()))).status).toBe(403)
+    expect(mocks.errors).not.toHaveBeenCalled()
+  })
 })

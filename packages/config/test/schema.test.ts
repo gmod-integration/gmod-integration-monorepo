@@ -47,9 +47,19 @@ function validEnv(overrides: Record<string, string | undefined> = {}) {
 describe('ConfigSchema', () => {
   it('trusts no proxy by default and validates explicit proxy peers', () => {
     expect(ConfigSchema.parse(validEnv()).API_TRUSTED_PROXIES).toBe('')
-    for (const value of ['loopback', '127.0.0.1,172.20.0.0/16', '::1,fd00::/64'])
+    for (const value of ['loopback', '127.0.0.1,172.20.0.0/16', '::1,fd00::/64', '127.0.0.1/32', '::1/128'])
       expect(ConfigSchema.safeParse(validEnv({ API_TRUSTED_PROXIES: value })).success).toBe(true)
-    for (const value of ['true', '*', '0.0.0.0/0', '::/0', '198.51.100.1/33', 'malformed.example', '::1/129'])
+    for (const value of [
+      'true',
+      '*',
+      '0.0.0.0/0',
+      '::/0',
+      '198.51.100.1/33',
+      'malformed.example',
+      '::1/129',
+      '127.0.0.1/24/1',
+      '::1/64/1',
+    ])
       expect(ConfigSchema.safeParse(validEnv({ API_TRUSTED_PROXIES: value })).success).toBe(false)
   })
 

@@ -50,6 +50,39 @@ describe('administration operational monitoring', () => {
     mocks.eval.mockRejectedValueOnce(new Error('Redis unavailable'))
     expect((await listAdminConnections({})).presence).toBe('unavailable')
   })
+  it('scopes connections to the selected guild and keeps empty names and missing leases readable', async () => {
+    mocks.servers.mockResolvedValueOnce([{ id: 's1', name: '', guild: 'g1', gm_guild: { name: '' } }])
+    mocks.eval.mockResolvedValueOnce([now, 0, 0])
+    const result = await listAdminConnections({ guildID: 'g1', orderBy: 'ASC' })
+    expect(result.items[0]).toMatchObject({ name: '', guildName: '', activeSockets: 0, leaseExpiresAt: null })
+    expect(mocks.count).toHaveBeenCalledWith({ where: { guild: 'g1' } })
+    expect(mocks.servers).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { guild: 'g1' }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] }),
+    )
+  })
+  it('does not ask Redis for presence when the selected connection page is empty', async () => {
+    mocks.count.mockResolvedValueOnce(0)
+    mocks.servers.mockResolvedValueOnce([])
+    expect(await listAdminConnections({ offset: 500 })).toMatchObject({
+      items: [],
+      total: 0,
+      observedAt: null,
+      presence: 'ready',
+      query: { offset: 0 },
+    })
+    expect(mocks.eval).not.toHaveBeenCalled()
+  })
+  it.each([null, [now, 0, now + 90_000], [now, 1, 0], [now, 0.5, now + 90_000]])(
+    'marks malformed or contradictory lease counts unavailable: %j',
+    async (value) => {
+      mocks.eval.mockResolvedValueOnce(value)
+      expect(await listAdminConnections({})).toMatchObject({
+        presence: 'unavailable',
+        observedAt: null,
+        items: [{ activeSockets: null, leaseExpiresAt: null }],
+      })
+    },
+  )
   it('rejects malformed filters before accessing any provider', async () => {
     for (const operation of [listAdminConnections, listAdminErrors, listAdminBugs]) {
       await expect(operation({ limit: 10_000, includeTokens: true })).rejects.toMatchObject({ status: 400 })
@@ -109,6 +142,48 @@ describe('administration operational monitoring', () => {
     expect(sql.sql).toContain('reports DESC')
     expect(sql.values.slice(-2)).toEqual([25, 0])
   })
+  it.each(['client', 'menu'])(
+    'keeps all-source error results grouped, normalizes realm %s and applies ascending report order',
+    async (realm) => {
+      mocks.aggregate.mockReturnValueOnce({ toArray: async () => [{ total: 1 }] }).mockReturnValueOnce({
+        toArray: async () => [
+          {
+            _id: { error: 'Synthetic error', realm, name: '' },
+            reports: 2,
+            serverCount: 1,
+            occurrences: 3,
+            firstSeenAt: new Date(now),
+            lastSeenAt: new Date(now),
+          },
+        ],
+      })
+      const result = await listAdminErrors({ source: 'all', sort: 'reports', orderBy: 'ASC' })
+      expect(result.items[0]).toMatchObject({ realm: realm === 'client' ? 'client' : 'unknown', reports: 2 })
+      const pipeline = mocks.aggregate.mock.calls[1][0]
+      expect(pipeline[0].$match).not.toHaveProperty('$and')
+      expect(pipeline).toContainEqual({ $sort: { reports: 1, lastSeenAt: -1, _id: 1 } })
+      expect(pipeline).not.toContainEqual({ $match: { reports: { $gte: 2 } } })
+    },
+  )
+  it('reports an empty incident collection as zero with deterministic chronological ordering', async () => {
+    const errors = await listAdminErrors({ source: 'all', orderBy: 'ASC' })
+    expect(errors).toMatchObject({ total: 0, items: [], query: { offset: 0 } })
+    expect(mocks.aggregate.mock.calls[1][0]).toContainEqual({ $sort: { lastSeenAt: 1, _id: 1 } })
+    const bugs = await listAdminBugs({ state: 'all', orderBy: 'ASC' })
+    expect(bugs).toMatchObject({ total: 0, items: [], query: { offset: 0 } })
+    const sql = mocks.raw.mock.calls[1][0]
+    expect(sql.sql).toContain('lastSeenAt ASC, signature ASC')
+    expect(sql.sql).not.toContain("status = 'open'")
+    expect(sql.values).toContain(1)
+  })
+  it.each([-1, 0.5, Number.MAX_SAFE_INTEGER + 1])(
+    'rejects an invalid incident aggregate rather than manufacturing a count: %s',
+    async (total) => {
+      mocks.raw.mockResolvedValueOnce([{ total }])
+      await expect(listAdminBugs({})).rejects.toThrow('Invalid monitoring aggregate')
+      expect(mocks.raw).toHaveBeenCalledOnce()
+    },
+  )
   it('does not turn provider failure into zero incidents', async () => {
     mocks.raw.mockRejectedValueOnce(new Error('Storage unavailable'))
     await expect(listAdminBugs({})).rejects.toThrow('Storage unavailable')

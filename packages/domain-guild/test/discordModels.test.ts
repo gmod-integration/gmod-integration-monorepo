@@ -344,6 +344,39 @@ describe('discordModels', () => {
       expect(wsAddMock).not.toHaveBeenCalled()
     })
 
+    it.each(['unmapped', 'disabled'])(
+      'ignores added and removed %s roles while an enabled mapping remains held',
+      async (kind) => {
+        const server = {
+          id: 's1',
+          getEffectiveSetting: vi.fn().mockResolvedValueOnce('both'),
+          getEffectiveSyncRoles: vi.fn().mockResolvedValueOnce([
+            { roleID: 'kept', enable: true, userGroup: 'vip' },
+            { roleID: 'disabled-added', enable: false, userGroup: 'admin' },
+            { roleID: 'disabled-removed', enable: false, userGroup: 'admin' },
+          ]),
+        }
+        getServersFromDiscordGuildIDMock.mockResolvedValueOnce([server])
+        getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+        redisMock.get.mockResolvedValueOnce(null)
+        const kept = ['kept', { id: 'kept' }] as [string, { id: string }]
+        const oldRoles = makeRoleCollection([kept, [`${kind}-removed`, { id: `${kind}-removed` }]])
+        const newRoles = makeRoleCollection([kept, [`${kind}-added`, { id: `${kind}-added` }]])
+        const add = vi.fn()
+        const remove = vi.fn()
+        const member = { guild: { id: 'g1' }, id: 'u1', roles: { cache: newRoles, add, remove } }
+        await updateRolesToGmod(
+          member as any,
+          { roles: { cache: oldRoles } } as any,
+          { roles: { cache: newRoles } } as any,
+        )
+        expect(wsAddMock).not.toHaveBeenCalled()
+        expect(add).not.toHaveBeenCalled()
+        expect(remove).not.toHaveBeenCalled()
+        expect(redisMock.set).not.toHaveBeenCalled()
+      },
+    )
+
     it('removes the mapped in-game group when a synced role is removed (roleID not pending in addIDs)', async () => {
       const syncRoles = [{ roleID: 'r1', enable: true, userGroup: 'vip' }]
       const server = {

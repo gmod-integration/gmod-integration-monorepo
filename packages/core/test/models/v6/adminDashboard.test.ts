@@ -262,6 +262,86 @@ describe('platform administration projections and bounded lists', () => {
     expect(mocks.sessionGroups).not.toHaveBeenCalled()
     expect(mocks.cache).not.toHaveBeenCalled()
   })
+  it('projects legacy empty guild labels without resolving unrelated entitlements', async () => {
+    mocks.raw.mockResolvedValueOnce([{ total: 1n }]).mockResolvedValueOnce([{ ...guild(), name: '', language: '' }])
+    expect(await listAdminGuilds({ premium: 'gmodstore' })).toMatchObject({
+      items: [{ name: '', language: 'en', gmodstore: false }],
+    })
+    expect(mocks.raw.mock.calls[0][0].sql).toContain('gm_gmodstore_purchases')
+    expect(mocks.access).not.toHaveBeenCalled()
+  })
+  it('combines verified/private server search with bounded ordering', async () => {
+    mocks.serverList.mockResolvedValueOnce([{ ...server(), name: '', gm_guild: { name: '' } }])
+    mocks.cache.mockResolvedValueOnce(['v6.0.0', null])
+    const result = await listAdminServers({ search: 'Example', verified: 'verified', visibility: 'private' })
+    expect(result.items[0]).toMatchObject({ name: '', guildName: '', recentlyActive: false, lastSeenAt: null })
+    expect(mocks.serverList.mock.calls[0][0].where).toEqual({
+      verified: true,
+      isPublic: false,
+      OR: [
+        { id: { contains: 'Example' } },
+        { name: { contains: 'Example' } },
+        { guild: { contains: 'Example' } },
+        { gm_guild: { name: { contains: 'Example' } } },
+      ],
+    })
+  })
+  it.each([null, [], [null]])('keeps an invalid cache response unknown: %j', async (cache) => {
+    mocks.serverList.mockResolvedValueOnce([server()])
+    mocks.cache.mockResolvedValueOnce(cache)
+    expect((await listAdminServers({})).items[0]).toMatchObject({
+      recentlyActive: null,
+      addonVersion: null,
+      lastSeenAt: null,
+    })
+  })
+  it.each([-600_000, 600_000])(
+    'does not call a server recently active for a stale or future timestamp: %s',
+    async (delta) => {
+      const timestamp = new Date(Date.now() + delta).toISOString()
+      mocks.serverList.mockResolvedValueOnce([server()])
+      mocks.cache.mockResolvedValueOnce(['v6.0.0', timestamp])
+      expect((await listAdminServers({})).items[0]).toMatchObject({ recentlyActive: false, lastSeenAt: timestamp })
+    },
+  )
+  it('bounds cached server version and activity fields before interpreting them', async () => {
+    mocks.serverList.mockResolvedValueOnce([server()])
+    mocks.cache.mockResolvedValueOnce(['1'.repeat(65), '2'.repeat(64)])
+    expect((await listAdminServers({})).items[0]).toMatchObject({
+      recentlyActive: null,
+      addonVersion: null,
+      lastSeenAt: null,
+    })
+  })
+  it.each([
+    '{invalid json',
+    'null',
+    '42',
+    '{}',
+    JSON.stringify({ avatarURL: 42 }),
+    JSON.stringify({ avatarURL: 'x'.repeat(2049) }),
+    'x'.repeat(16_385),
+    JSON.stringify({ avatarURL: 'not a URL' }),
+    JSON.stringify({ avatarURL: 'file:///etc/passwd' }),
+    JSON.stringify({ avatarURL: 'https://user:secret@example.test/avatar.png' }),
+  ])('omits malformed or unsafe cached avatar data (case %#)', async (profile) => {
+    mocks.userList.mockResolvedValueOnce([
+      { id: '123', username: 'Example', steam: '', createdAt: date, updatedAt: date },
+    ])
+    mocks.cache.mockResolvedValueOnce([profile])
+    const result = await listAdminUsers({})
+    expect(result.items[0]).toMatchObject({ username: 'Example', steamID64: null, activeSessions: 0, lastSeenAt: null })
+    expect(result.items[0]).not.toHaveProperty('avatarURL')
+  })
+  it('uses session creation when the active session has not recorded last-seen activity yet', async () => {
+    mocks.userList.mockResolvedValueOnce([
+      { id: '123', username: 'Example', steam: null, createdAt: date, updatedAt: date },
+    ])
+    mocks.sessionGroups.mockResolvedValueOnce([
+      { discordID: '123', _count: { _all: 1 }, _max: { lastSeenAt: null, creationDate: date } },
+    ])
+    expect((await listAdminUsers({})).items[0]).toMatchObject({ activeSessions: 1, lastSeenAt: date.toISOString() })
+  })
   it('returns distinct counters and seven-day registrations without manufactured percentages', async () => {
     mocks.guildAggregate.mockResolvedValueOnce({ _sum: { member: null } })
     mocks.raw.mockResolvedValueOnce([{ manualPremium: 1n, gmodstorePremium: 2n }])
@@ -305,6 +385,19 @@ describe('platform administration projections and bounded lists', () => {
 })
 
 describe('confirmed administrative changes', () => {
+  it('rejects malformed targets before querying or mutating a server', async () => {
+    await expect(updateAdminServer('', { name: 'Example', reason: 'Support request' })).rejects.toMatchObject({
+      status: 400,
+    })
+    expect(mocks.serverFind).not.toHaveBeenCalled()
+    expect(mocks.serverUpdate).not.toHaveBeenCalled()
+  })
+  it('rejects invalid list filters before reading directory records', async () => {
+    await expect(listAdminServers({ visibility: 'secret' })).rejects.toMatchObject({ status: 400 })
+    await expect(listAdminUsers({ rank: 'administrator' })).rejects.toMatchObject({ status: 400 })
+    expect(mocks.serverList).not.toHaveBeenCalled()
+    expect(mocks.userList).not.toHaveBeenCalled()
+  })
   it('updates only submitted public server properties and never returns a token', async () => {
     const result = await updateAdminServer('s1', { name: 'Renamed', verified: true, reason: 'Support request' })
     expect(mocks.serverUpdate).toHaveBeenCalledWith(
@@ -333,6 +426,13 @@ describe('confirmed administrative changes', () => {
     expect(await resetAdminServerToken('s1', { confirm: 's1', reason: 'Support request' })).toEqual({ reset: true })
     expect(remove).toHaveBeenCalledOnce()
     expect(reset).toHaveBeenCalledOnce()
+  })
+  it('does not delete or reset a missing server even with the right confirmation', async () => {
+    mocks.domainServer.mockResolvedValue(null)
+    for (const operation of [deleteAdminServer, resetAdminServerToken])
+      await expect(operation('missing', { confirm: 'missing', reason: 'Support request' })).rejects.toMatchObject({
+        status: 404,
+      })
   })
   it('grants only the local manual source, preserving existing transaction metadata', async () => {
     expect(await updateAdminPremium('g1', { enabled: true, reason: 'Support request' })).toMatchObject({

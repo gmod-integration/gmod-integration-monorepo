@@ -8,6 +8,10 @@ import {
 } from '../../src/server/CustomBotProfileSchema.js'
 
 describe('custom bot profile contracts', () => {
+  it.each([1, 2, 3])('accepts bounded upload bytes with each valid base64 padding length (%s bytes)', (length) => {
+    const encoded = Buffer.alloc(length).toString('base64')
+    expect(CustomBotAvatarSchema.safeParse(`data:image/png;base64,${encoded}`).success).toBe(true)
+  })
   it('accepts explicit profile changes and bounded raster uploads without a credential field', () => {
     expect(CustomBotProfileCommandSchema.parse({ username: ' Example ', status: 'disabled' })).toEqual({
       username: 'Example',

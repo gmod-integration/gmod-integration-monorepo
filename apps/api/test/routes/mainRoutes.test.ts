@@ -77,6 +77,21 @@ describe('mainRoutes', () => {
   })
 
   describe('GET /screenshots/:filename', () => {
+    it('uses the PNG content type for a legacy PNG object with no stored MIME metadata', async () => {
+      s3SendMock.mockResolvedValueOnce({ Body: Readable.from(['png-bytes']) })
+      const response = await request(makeApp()).get('/screenshots/file.PNG')
+      expect(response.status).toBe(200)
+      expect(response.headers['content-type']).toContain('image/png')
+      expect(response.body.toString()).toBe('png-bytes')
+    })
+    it('does not infer a raster MIME type for an unknown extension or disclose a non-stream body', async () => {
+      s3SendMock.mockResolvedValueOnce({ Body: 'private stored content' })
+      const response = await request(makeApp()).get('/screenshots/file.html')
+      expect(response.status).toBe(404)
+      expect(response.headers['cache-control']).toBe('no-store')
+      expect(response.text).toBe('Screenshot not found')
+      expect(response.text).not.toContain('private stored content')
+    })
     it.each(['image/svg+xml', 'text/html', 'application/octet-stream'])(
       'refuses a non-raster stored content type: %s',
       async (contentType) => {

@@ -187,6 +187,17 @@ describe('discord/index', () => {
   })
 
   describe('loadDiscordSlave / addNewClient (via a valid token+intents path)', () => {
+    it('starts one client when multiple purchase records point to the same guild', async () => {
+      mockStartupPurchases([
+        { guild: 'duplicate-discovery', token: 'first-fixture' },
+        { guild: 'duplicate-discovery', token: 'second-fixture' },
+      ])
+      await loadDiscordSlave()
+      expect(prismaMock.gm_gmodstore_purchases.findFirst).toHaveBeenCalledExactlyOnceWith({
+        where: { guild: 'duplicate-discovery', revoke: false },
+      })
+      expect(forkMock).toHaveBeenCalledOnce()
+    })
     it('starts a bot instance for each non-revoked purchase with a guild+token, skipping incomplete rows', async () => {
       mockStartupPurchases([
         { guild: '', token: 'tok' }, // missing guild -> skipped

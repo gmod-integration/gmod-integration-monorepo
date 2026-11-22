@@ -51,6 +51,11 @@ describe('AddonRequestSchema', () => {
     expect(AddonRequestSchema.safeParse({ ...base, body: [text, text] }).success).toBe(false)
     expect(AddonRequestSchema.safeParse({ ...base, body: Array(10_001).fill(0) }).success).toBe(false)
   })
+  it('includes object keys in the payload character budget at the exact limit', () => {
+    const key = 'k'.repeat(ADDON_MAX_MESSAGE_BYTES)
+    expect(AddonRequestSchema.safeParse({ ...base, body: { [key]: null } }).success).toBe(true)
+    expect(AddonRequestSchema.safeParse({ ...base, body: { [key + 'x']: null } }).success).toBe(false)
+  })
 })
 
 describe('addon privileged command schemas', () => {

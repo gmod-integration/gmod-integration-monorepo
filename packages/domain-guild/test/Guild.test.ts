@@ -567,6 +567,30 @@ describe('Guild', () => {
       expect(prismaMock.gm_guild_settings.create).not.toHaveBeenCalled()
       expect(prismaMock.gm_guild_settings.update).not.toHaveBeenCalled()
     })
+
+    it('updates only the activity when no Discord identity fields are changed', async () => {
+      redisMock.get.mockResolvedValue(JSON.stringify('disabled'))
+      prismaMock.gm_guild_settings.findFirst.mockResolvedValueOnce(null)
+      await makeGuild().updateBotInstanceInfo({ status: 'rotate' })
+      expect(enqueueDiscordGuildUpdateBotProfileMock).not.toHaveBeenCalled()
+      expect(prismaMock.gm_guild_settings.create).toHaveBeenCalledWith({
+        data: { guildID: 'g1', setting: 'bot_status', value: 'rotate' },
+      })
+    })
+
+    it('allows an avatar-only command without resetting the name or activity', async () => {
+      const avatar =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg=='
+      enqueueDiscordGuildUpdateBotProfileMock.mockResolvedValueOnce({ updated: true })
+      await makeGuild().updateBotInstanceInfo({ avatar })
+      expect(enqueueDiscordGuildUpdateBotProfileMock).toHaveBeenCalledWith({
+        guildID: 'g1',
+        username: undefined,
+        avatar,
+      })
+      expect(prismaMock.gm_guild_settings.create).not.toHaveBeenCalled()
+      expect(prismaMock.gm_guild_settings.update).not.toHaveBeenCalled()
+    })
   })
 
   describe('getAdmins', () => {

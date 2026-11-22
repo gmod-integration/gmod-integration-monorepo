@@ -12,9 +12,9 @@ describe('uploaded custom bot avatars', () => {
       vi.stubGlobal('fetch', request)
       try {
         const input = await sharp({ create: { width: 1200, height: 600, channels: 4, background: '#123456' } })
-          .png()
+          .toFormat(format)
           .toBuffer()
-        const output = await prepareCustomBotAvatar(dataURL(input))
+        const output = await prepareCustomBotAvatar(dataURL(input, format))
         expect(Buffer.isBuffer(output)).toBe(true)
         const metadata = await sharp(output).metadata()
         expect(metadata).toMatchObject({ format: 'png', width: 512, height: 256 })
@@ -44,5 +44,19 @@ describe('uploaded custom bot avatars', () => {
       .png()
       .toBuffer()
     await expect(prepareCustomBotAvatar(dataURL(png, 'jpeg'))).rejects.toThrow('image')
+  })
+  it('rejects non-canonical base64 before decoding an avatar image', async () => {
+    // The low padding bits are nonzero; permissive decoders accept these bytes but re-encode differently.
+    await expect(prepareCustomBotAvatar('data:image/png;base64,iVBORw0KGgp=')).rejects.toThrow('avatar upload')
+  })
+  it('bounds height independently and refuses a JPEG declared as PNG', async () => {
+    const tall = await sharp({ create: { width: 1, height: 4097, channels: 3, background: 'white' } })
+      .png()
+      .toBuffer()
+    await expect(prepareCustomBotAvatar(dataURL(tall))).rejects.toThrow('dimensions')
+    const jpeg = await sharp({ create: { width: 2, height: 2, channels: 3, background: 'white' } })
+      .jpeg()
+      .toBuffer()
+    await expect(prepareCustomBotAvatar(dataURL(jpeg, 'png'))).rejects.toThrow('image')
   })
 })
