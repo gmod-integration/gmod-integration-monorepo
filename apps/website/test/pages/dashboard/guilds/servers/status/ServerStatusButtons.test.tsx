@@ -9,7 +9,7 @@ import {
   statusButton,
   viewport,
 } from './statusTestHelpers.js'
-import { okJson } from '../testHelpers.js'
+import { okJson, errJson } from '../testHelpers.js'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn(),
@@ -20,8 +20,6 @@ const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const api = fetchAPI as Mock
 const ready = () => vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Button' })).toBeEnabled())
 const editModal = () => document.getElementById('edit_status_button')!
-const mainSave = () => screen.getByRole('button', { name: 'Save buttons' })
-const mainCancel = () => mainSave().parentElement!.querySelector('button')!
 const previews = () => api.mock.calls.filter(([path]) => path === PREVIEW)
 async function addButton() {
   await fireEvent.click(screen.getByRole('button', { name: 'Add Button' }))
@@ -44,6 +42,23 @@ afterEach(() => {
 })
 
 describe('status button card editing', () => {
+  it('confirms removal, restores a failed deletion and allows retry', async () => {
+    const network = installNetwork(api)
+    const { container } = renderStatus()
+    await ready()
+    await fireEvent.click(container.querySelector('tbody [aria-label="Delete"]')!)
+    const modal = screen.getByRole('dialog', { name: 'Delete this item?' })
+    expect(puts(network)).toHaveLength(0)
+    network.mockResolvedValueOnce({ ...errJson(), status: 503 })
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+    expect(container.querySelector('tbody')).toHaveTextContent('Website')
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(modal).not.toHaveAttribute('open'))
+    expect(container.querySelector('tbody')).not.toHaveTextContent('Website')
+    expect(puts(network)).toHaveLength(2)
+  })
+
   it('labels both enabled and disabled saved buttons with visible text', async () => {
     installNetwork(api, {
       configuration: configuration({
@@ -57,19 +72,20 @@ describe('status button card editing', () => {
     expect(table.getByText('Disabled')).toBeInTheDocument()
   })
 
-  it('adds a complete button only to the draft, cancels the button card and never creates a server row', async () => {
+  it('keeps new buttons local until confirmation, then saves them automatically', async () => {
     const network = installNetwork(api)
     const { container } = renderStatus()
     await ready()
-    const modal = await addButton()
-    expect(within(modal).getByRole('button', { name: 'Apply to draft' })).toBeEnabled()
-    await fireEvent.click(within(modal).getByRole('button', { name: 'Apply to draft' }))
-    expect(container.querySelector('tbody')).toHaveTextContent('Community')
+    let modal = await addButton()
+    expect(within(modal).getByRole('button', { name: 'Create' })).toBeEnabled()
     expect(puts(network)).toHaveLength(0)
-    expect(api.mock.calls.filter(([path]) => path.endsWith('/status/buttons'))).toHaveLength(0)
-    await fireEvent.click(mainCancel())
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
     expect(container.querySelector('tbody')).not.toHaveTextContent('Community')
-    expect(mainSave()).toBeDisabled()
+    modal = await addButton()
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Create' }))
+    expect(container.querySelector('tbody')).toHaveTextContent('Community')
+    await vi.waitFor(() => expect(puts(network)).toHaveLength(1))
+    expect(api.mock.calls.filter(([path]) => path.endsWith('/status/buttons'))).toHaveLength(0)
   })
   it('previews a modal draft and restores the saved preview on Cancel', async () => {
     const network = installNetwork(api)
@@ -83,7 +99,7 @@ describe('status button card editing', () => {
     await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
     await vi.waitFor(() => expect(previews().at(-1)?.[2].buttons[0].name).toBe('Website'))
     expect(puts(network)).toHaveLength(0)
-    expect(mainSave()).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Save buttons' })).not.toBeInTheDocument()
   })
   it.each(['close', 'cancel'])('discards button edits on a native dialog %s event', async (eventName) => {
     installNetwork(api)
@@ -95,7 +111,7 @@ describe('status button card editing', () => {
     await vi.waitFor(() => expect(previews().at(-1)?.[2].buttons[0].name).toBe('Temporary'))
     modal.dispatchEvent(new Event(eventName))
     await vi.waitFor(() => expect(previews().at(-1)?.[2].buttons[0].name).toBe('Website'))
-    expect(mainSave()).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Save buttons' })).not.toBeInTheDocument()
   })
   it('validates names and URL schemes before applying a modal draft', async () => {
     const network = installNetwork(api)
@@ -103,7 +119,7 @@ describe('status button card editing', () => {
     await ready()
     await fireEvent.click(screen.getByRole('button', { name: 'Add Button' }))
     const modal = editModal()
-    const apply = within(modal).getByRole('button', { name: 'Apply to draft' })
+    const apply = within(modal).getByRole('button', { name: 'Create' })
     expect(apply).toBeDisabled()
     await fireEvent.input(within(modal).getByLabelText('Button label'), { target: { value: 'Unsafe' } })
     await fireEvent.input(within(modal).getByLabelText('URL'), { target: { value: 'javascript:alert(1)' } })
@@ -117,13 +133,12 @@ describe('status button card editing', () => {
     renderStatus()
     await ready()
     const modal = await addButton()
-    await fireEvent.click(within(modal).getByRole('button', { name: 'Apply to draft' }))
     network.mockImplementationOnce(async (_url, request) => {
       const submitted = JSON.parse(String(request.body))
       submitted.configuration.buttons[1].id = 2
       return okJson({ ...submitted, revision: 'b'.repeat(64), sync: 'applied' })
     })
-    await fireEvent.click(mainSave())
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Create' }))
     await vi.waitFor(() => expect(puts(network)).toHaveLength(1))
     const body = JSON.parse(String(puts(network)[0][1].body))
     expect(body.configuration.buttons[1]).toEqual({
@@ -132,12 +147,8 @@ describe('status button card editing', () => {
       url: 'https://community.example.test',
       enable: true,
     })
-    await vi.waitFor(() => {
-      expect(mainSave()).toBeDisabled()
-      expect(mainCancel()).toBeEnabled()
-    })
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Button' })).toBeEnabled())
     await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
-    await fireEvent.click(screen.getByRole('button', { name: 'Save message' }))
     await vi.waitFor(() => expect(puts(network)).toHaveLength(2))
     expect(JSON.parse(String(puts(network)[1][1].body)).configuration.buttons[1].id).toBe(2)
   })
@@ -180,7 +191,7 @@ describe('status button card editing', () => {
     const modal = editModal()
     await fireEvent.input(within(modal).getByLabelText('Button label'), { target: { value: 'Repaired' } })
     await fireEvent.input(within(modal).getByLabelText('URL'), { target: { value: 'https://example.com' } })
-    await fireEvent.click(within(modal).getByRole('button', { name: 'Apply to draft' }))
-    expect(mainSave()).toBeEnabled()
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(screen.getByText('Repaired')).toBeInTheDocument())
   })
 })

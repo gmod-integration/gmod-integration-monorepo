@@ -75,9 +75,8 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
       .closest<HTMLElement>('.dashboard-panel')!
     expect(destination).not.toBe(content)
     expect(within(destination).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
-    expect(content.querySelector('.dashboard-panel-footer')).toContainElement(
-      within(content).getByRole('button', { name: 'Save' }),
-    )
+    expect(within(content).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(within(content).getByRole('status')).toBeInTheDocument()
   })
 
   it('renders the configured logs channel and a Remove Channel button', async () => {
@@ -94,57 +93,47 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
     await vi.waitFor(() => expect(screen.queryByRole('button', { name: 'Remove destination' })).not.toBeInTheDocument())
   })
 
-  it('keeps both content settings local and cancels the whole section', async () => {
+  it('automatically batches both content settings into one save', async () => {
     renderPage()
     await waitForLoaded()
     const hide = screen.getByRole('checkbox', { name: 'Hide IP addresses in Discord logs' })
     const file = screen.getByRole('checkbox', { name: 'Attach event data as a file' })
-    const save = screen.getByRole('button', { name: 'Save' })
-    expect(save).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     await fireEvent.click(hide)
     await fireEvent.click(file)
     expect(saveDashboardSettings).not.toHaveBeenCalled()
     expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'PUT')).toBe(false)
-    await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    expect(hide).not.toBeChecked()
-    expect(file).not.toBeChecked()
-    expect(save).toBeDisabled()
-    await fireEvent.click(hide)
-    await fireEvent.click(file)
-    await fireEvent.click(save)
     await vi.waitFor(() =>
       expect(saveDashboardSettings).toHaveBeenCalledWith('server', { log_hide_ip: true, log_include_file: true }),
     )
-    await vi.waitFor(() => expect(screen.getByText('Saved')).toBeInTheDocument())
+    expect(hide).toBeChecked()
+    expect(file).toBeChecked()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
   })
-
-  it('retains the section after failure, permits retry and blocks duplicate pending saves', async () => {
+  it('retains content after an autosave failure and retries while keeping inputs editable', async () => {
     renderPage()
     await waitForLoaded()
     const checkbox = screen.getByRole('checkbox', { name: 'Hide IP addresses in Discord logs' })
-    await fireEvent.click(checkbox)
     vi.mocked(saveDashboardSettings).mockRejectedValueOnce(new Error('Offline'))
-    const save = screen.getByRole('button', { name: 'Save' })
-    await fireEvent.click(save)
+    await fireEvent.click(checkbox)
     await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
     expect(checkbox).toBeChecked()
     let finish!: () => void
     vi.mocked(saveDashboardSettings).mockImplementationOnce(
       () =>
         new Promise((resolve) => {
-          finish = () => resolve({ settings: { log_hide_ip: true, log_include_file: false }, sync: 'applied' })
+          finish = () => resolve({ settings: { log_hide_ip: true, log_include_file: false }, sync: 'pending' })
         }),
     )
-    await fireEvent.click(save)
-    await fireEvent.click(save)
-    expect(checkbox).toBeDisabled()
+    const retry = screen.getByRole('button', { name: 'Try again' })
+    await fireEvent.click(retry)
+    await fireEvent.click(retry)
+    expect(checkbox).toBeEnabled()
     expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
     finish()
-    await vi.waitFor(() => expect(checkbox).toBeEnabled())
+    await vi.waitFor(() => expect(screen.getByText('Saved. Synchronization is pending.')).toBeInTheDocument())
     expect(checkbox).toBeChecked()
-    expect(save).toBeDisabled()
   })
-
   it('shows a retryable error when content fails to load and never presents false default settings', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string) =>
       Promise.resolve(endpoint === HIDE_IP_URL ? errJson() : okJson({})),

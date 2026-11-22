@@ -15,23 +15,23 @@ buttons and fields are 32 px high. Use `size="sm"` and `select-sm`/`input-sm` to
 
 Boolean settings use native checkbox inputs with the shared `toggle toggle-sm` switch presentation.
 Pair them with the existing `FormField` or `SettingRow` label and preserve their descriptions,
-keyboard interaction and disabled states. Switches update a local draft until the card is saved.
+keyboard interaction and disabled states. Existing settings save automatically after a valid change.
 
-Independent settings use peer `AdminPanel` cards inside `.settings-card-grid`. Each card owns one
-saved snapshot and local draft; place its `FormActions` in the panel's `footer`, together with its
-validation, pending and success feedback. Saving or cancelling one card preserves the others' drafts.
-Keep dependent fields in the same card and atomic transaction. Search and category filters may hide
-cards, but their forms stay at page scope so drafts survive. The grid adapts to its available width;
-setting labels stack above controls in narrow cards even on desktop.
+Group related settings in `AdminPanel` cards, using `SettingGroup` and `SettingRow` inside the card
+when they share a purpose. Use `.settings-card-grid` for at most two columns; cards stretch to the same
+height within each row and collapse to one column on smaller screens. Keep help notices inset from
+headers and tables, including in panels with `type="none"`.
+
+Existing settings save automatically after a valid change. Show compact `AutosaveFeedback` beside
+the setting or inside its card instead of repeated Save/Cancel footers. Related values still share a
+saved snapshot and an atomic request; preserve edits when filtering or hiding a group.
 
 `AdminPanel` is a section named by its heading and accepts an optional `id` for stable anchors.
 `SettingGroup` remains a subsection inside a card, with optional `actions` beside its heading.
-Status content and link buttons have separate cards and Save/Cancel footers; publication has its own
-card and command. Status writes share one server revision and are serialized. Each PUT merges the
-submitted card's draft with the sibling's saved values. Adopt the accepted scope, canonical button IDs
-and revision without applying or discarding the sibling's draft. Validate the submitted payload and its
-capabilities independently from the combined live preview. Legacy invalid saved buttons must be
-repaired before saving message settings. Never place a Save/Cancel bar in a separate sibling card.
+Status content and link buttons share one server revision and serialize automatic writes. Each request
+merges its changed group with the sibling's saved values, preserving pending edits in the sibling.
+Confirming a button modal schedules its automatic save; deletion and publication remain explicit
+commands. Adopt canonical button IDs from the response and retain synchronization-pending feedback.
 
 Read-only states share `StatusBadge`: a visible label, an optional decorative icon, and a semantic
 `tone` (`success`, `neutral`, `warning`, `danger`, `info`). Use the default 24 px size in tables/cards
@@ -55,7 +55,7 @@ own contracts.
 | `CopyButton`      | Standalone clipboard action             | `value`, optional `label`, `disabled` and `class`. Shares pending, copied and retryable error feedback with `CopyableValue`.                                                                                                       |
 | `LanguageFlag`    | Language selector artwork               | Typed `locale`, decorative SVG from local assets, fixed 24×16 dimensions. English uses the British flag. Pair with the visible native language name.                                                                               |
 | `FormField`       | Labelled input, select or textarea      | `id`, `label`, optional `description`, `error`, `required`. The child control uses the same `id`.                                                                                                                                  |
-| `FormActions`     | Save/cancel and feedback                | `onSave`, optional `onCancel`, `pending`, `disabled`, `dirty`, `error`, `success`, `message`, custom labels. Cancel precedes primary Save. Pending blocks both; validation disables only Save.                                     |
+| `FormActions`     | Modal save/cancel and feedback          | `onSave`, optional `onCancel`, `pending`, `disabled`, `dirty`, `error`, `success`, `message`, custom labels. Cancel precedes primary Save. Pending blocks both; validation disables only Save.                                     |
 | `AsyncState`      | Loading, error, empty and ready content | `loading`, `error`, `empty`, optional labels and `onRetry`; content in children. Handles states in that order. Errors use safe translated copy.                                                                                    |
 | `TableState`      | These states inside a table             | `AsyncState` props plus `colSpan`. Renders valid `tr`/`td` state content. Place inside `tbody`.                                                                                                                                    |
 | `PageState`       | Full-page authentication and status     | `icon`, `title`, optional `description`, `status` and action children. Provides a labelled section and one page heading; `status` announces redirect progress.                                                                     |
@@ -219,45 +219,44 @@ Choose the editing surface by purpose:
 
 | Purpose                                                            | Surface                                | Persistence                                                              |
 | ------------------------------------------------------------------ | -------------------------------------- | ------------------------------------------------------------------------ |
-| Related business settings, including one switch or destination     | Inline `SettingGroup` and `SettingRow` | One local draft with Save/Cancel for that group.                         |
+| Existing settings, including switches and destinations             | Inline `SettingGroup` and `SettingRow` | Save valid changes automatically with compact feedback.                  |
 | Independent entity creation/editing or a secret                    | Complete `AdminModal` form             | Add opens an empty local draft; Create/Save submits the complete object. |
 | Publication/removal, deletion, token reset or a bulk command       | `ConfirmActionDialog`                  | Name the target and consequence; execute only after confirmation.        |
-| Interface preferences such as theme, language, sorting and filters | Immediate control                      | Update immediately; they do not change business configuration.           |
+| Interface preferences such as theme, language, sorting and filters | Immediate control                      | Update immediately.                                                      |
 
-Business settings never autosave. Typing, selecting and toggling change only a local draft. A saved
-summary or row retains the last accepted data until Save succeeds. Do not POST a placeholder object
-when Add is clicked, or split creation into an initial request followed by a required edit.
-
-Save is available only when the draft differs from its saved snapshot and passes validation. Cancel
-restores the saved values for the entire group. Cancel, Escape and the close button discard a modal
-draft; opening again uses the saved values. Filtering, searching or collapsing a section must preserve
-its draft, so keep the form owner mounted outside conditional field rendering.
-
-Save starts one request, disables relevant controls and blocks dismissal while pending. Success updates
-saved data and closes an entity dialog; inline groups show saved feedback. Failure preserves the draft
-with an inline error and permits retry. Cancel stays usable when validation disables Save.
-
-`createDraftForm` in `src/hooks/createDraftForm.ts` provides this lifecycle and registers navigation
-protection automatically:
+Use `createDraftForm` with `allowPendingEdits: true` and `createAutosave` for existing settings.
+Typing is debounced for 400 ms; only dirty, valid, available values are submitted. Writes are serialized
+and edits made during a request are preserved for the next save. A failed request keeps the draft and
+shows Retry instead of retrying indefinitely. No request is made for initial hydration or invalid input.
 
 ```tsx
 const form = createDraftForm({
   initial: savedValues,
+  allowPendingEdits: true,
   validate: validateValues,
   errorMessage: () => t('ui.save_error'),
 })
-const submit = () => form.save((snapshot) => persistDraft(snapshot))
+const autosave = createAutosave({
+  form,
+  save: () => form.save((snapshot) => persistSettings(snapshot)),
+  enabled: () => !settings.loading && !settings.error,
+})
 
-<FormActions
-  dirty={form.dirty()}
-  disabled={!form.valid()}
-  pending={form.pending()}
-  error={form.error()}
-  success={form.success()}
-  onSave={submit}
-  onCancel={form.discard}
-/>
+<AutosaveFeedback state={autosave} />
 ```
+
+`AutosaveFeedback` accepts optional `message` content for saved-but-pending synchronization. It shows
+saving, saved and failure feedback without ordinary Save/Cancel buttons. Inputs can remain editable
+while a setting saves; commands that remove/reset the same entity wait until its queued writes finish.
+
+Entity and secret modals retain explicit Create/Save/Cancel. Confirm only a complete validated object;
+do not POST a placeholder when Add is clicked. Cancel, Escape and close discard the modal draft.
+Pending requests block duplicate submissions and dismissal. Success updates saved data and closes
+the dialog; failure retains values and offers another attempt. Use `FormActions` for these editors.
+
+`createDraftForm` in `src/hooks/createDraftForm.ts` provides the shared lifecycle and registers
+navigation protection automatically. Filtering, searching and collapsing sections preserve values;
+keep the form owner mounted outside conditional field rendering.
 
 It exposes `draft()`, `saved()`, `dirty()`, `errors()`, `valid()`, `pending()`, `error()`, `success()`,
 `setDraft(valueOrUpdater)`, `patch(partial)`, `reset(values)`, `discard()` and `save(persist)`.
@@ -274,8 +273,8 @@ Manual editors register `useDraftGuard({ dirty, pending, discard })` from `src/h
 `DraftEditingProvider` protects route changes and browser unloads; pending operations cannot be
 discarded through the route dialog. Shared selectors and confirmation dialogs also register their state.
 
-Selectors follow the same explicit confirmation rule. Choosing an option alone does not publish or
-change the configured destination. Pass the current choice when available.
+Inline selectors for existing settings save automatically. Dedicated channel-selection dialogs and
+entity editors retain explicit confirmation and receive the current choice when available.
 
 Use primary for Save/Send, secondary for Cancel, ghost for compact editing and danger for removal.
 Publication/removal remain separate, explicitly labelled actions. Explain why Save is unavailable when
@@ -297,9 +296,9 @@ saves with unrelated per-key requests and then report the whole group as saved.
 Status settings and buttons share `StatusConfigurationProvider` and
 `GET/PUT /v6/guilds/:guildID/servers/:serverID/status/configuration`. The PUT includes the configuration
 and saved revision; conflicts preserve both card drafts and offer explicitly reloading the accepted
-values. A button modal applies changes to the buttons card's draft. Each card saves its own changes
-alongside the other card's saved values, sharing a revision and a single write in flight. The preview
-combines both drafts without publishing. Publication requires both cards to be saved or cancelled.
+values. A button modal applies changes to the buttons card's draft. Each group automatically saves its changes alongside the sibling's saved values, sharing a revision
+and a single write in flight. The preview combines both drafts; publication waits for pending changes
+to finish saving.
 
 Autoroles have no separate activation flag: every stored autorole is active. Adding selects and
 confirms a role; deleting removes future automatic assignment without stripping existing members.
@@ -405,7 +404,7 @@ scroll horizontally.
 - The screenshot lightbox may retain its specialized layout and native dialog submit controls.
 - Extend the common component when another feature needs the same behavior. Keep domain-specific
   rendering in its feature; avoid adding competing modal, pagination or generic button wrappers.
-- Test cancellation, failed save/retry, duplicate pending clicks, accessible actions and table states.
+- Test autosave batching, validation, in-flight edits, failed save/retry, modal cancellation, accessible actions and table states.
 
 Dashboard ESLint rules reject copied native `btn` controls and clickable `<i>` actions. Use `Button`
 and `IconButton`; the screenshot lightbox is the explicit specialized exception.

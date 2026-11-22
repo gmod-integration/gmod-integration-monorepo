@@ -197,23 +197,21 @@ describe('ServerRoles unified editing', () => {
     await loaded()
     expect(screen.getByRole('button', { name: 'Add role mapping' })).not.toBeDisabled()
   })
-  it('keeps direction changes local, cancels them and saves explicitly with the accepted baseline', async () => {
+  it('autosaves direction changes without Save or Cancel controls and accepts the response', async () => {
     renderPage()
     await loaded()
     const select = input('server-roles-direction')
     const group = within(select.closest('.dashboard-panel')!)
+    expect(group.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(group.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
     await fireEvent.change(select, { target: { value: 'both' } })
     expect(saveDashboardSettings).not.toHaveBeenCalled()
-    await fireEvent.click(group.getByRole('button', { name: 'Cancel' }))
-    expect(select).toHaveValue('gmod-to-discord')
-    await fireEvent.change(select, { target: { value: 'both' } })
-    await fireEvent.click(group.getByRole('button', { name: 'Save' }))
     await vi.waitFor(() =>
       expect(saveDashboardSettings).toHaveBeenCalledWith('server', { sync_role_direction: 'both' }),
     )
-    await vi.waitFor(() => expect(group.getByRole('button', { name: 'Save' })).toBeDisabled())
     expect(select).toHaveValue('both')
     expect(group.getByRole('status')).toBeInTheDocument()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
   })
   it('retains a failed direction draft for retry and reports a pending synchronization honestly', async () => {
     renderPage()
@@ -222,14 +220,13 @@ describe('ServerRoles unified editing', () => {
     const group = within(select.closest('.dashboard-panel')!)
     await fireEvent.change(select, { target: { value: 'both' } })
     ;(saveDashboardSettings as Mock).mockRejectedValueOnce(new Error('offline'))
-    await fireEvent.click(group.getByRole('button', { name: 'Save' }))
     await vi.waitFor(() => expect(group.getByRole('alert')).toBeInTheDocument())
     expect(select).toHaveValue('both')
     ;(saveDashboardSettings as Mock).mockResolvedValueOnce({
       settings: { sync_role_direction: 'both' },
       sync: 'pending',
     })
-    await fireEvent.click(group.getByRole('button', { name: 'Save' }))
+    await fireEvent.click(group.getByRole('button', { name: 'Try again' }))
     await vi.waitFor(() => expect(group.getByText('Saved. Synchronization is pending.')).toBeInTheDocument())
   })
   it('only offers unsynchronized roles when creating and gates paid directions for free guilds', async () => {

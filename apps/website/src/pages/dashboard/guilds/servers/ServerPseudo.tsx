@@ -21,8 +21,10 @@ import {
   TableState,
   Icon,
   SettingRow,
+  AutosaveFeedback,
 } from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
+import { createAutosave } from '../../../../hooks/createAutosave.js'
 import { saveDashboardSettings } from '../../../../utils/dashboardSettings.js'
 
 type PseudoRule = { id: number; enabled: boolean; role: string; name: string; prefix: string }
@@ -44,6 +46,7 @@ const ServerPseudo: Component = () => {
   const [removing, setRemoving] = createSignal<PseudoRule>()
   const settings = createDraftForm({
     initial: { direction: 'disable', format: '' },
+    allowPendingEdits: true,
     validate: (draft) => ({
       ...(!['disable', 'gmod-to-discord', 'discord-to-gmod', 'both'].includes(draft.direction)
         ? { direction: t('ui.invalid_value', 'Check this value.') }
@@ -130,6 +133,11 @@ const ServerPseudo: Component = () => {
     })
     if (saved) closeDialog('edit_role_modal')
   }
+  const autosave = createAutosave({
+    form: settings,
+    save: saveSettings,
+    enabled: () => !configuration.loading && !configuration.error && directionWriteAllowed(),
+  })
   const pagination = createListPagination<PseudoRule>(() => (!rules.error ? rules() : undefined))
 
   return (
@@ -236,7 +244,7 @@ const ServerPseudo: Component = () => {
         title={t('dashboard.server.pseudo.pseudo', 'Nickname synchronization')}
         description={t(
           'dashboard.server.pseudo.description',
-          'Synchronize player names between the game and Discord for linked accounts. Choose the direction and nickname format, then save this section.',
+          'Synchronize player names between the game and Discord for linked accounts. Changes to the direction and nickname format are saved automatically.',
         )}
         info={t(
           'dashboard.server.pseudo.info',
@@ -244,17 +252,8 @@ const ServerPseudo: Component = () => {
         )}
         icon="arrow-left-right"
         footer={
-          <FormActions
-            dirty={settings.dirty()}
-            pending={settings.pending()}
-            error={settings.error()}
-            success={settings.success()}
-            disabled={configuration.loading || !!configuration.error || !settings.valid() || !directionWriteAllowed()}
-            onSave={() => void saveSettings()}
-            onCancel={() => {
-              settings.discard()
-              setSyncPending(false)
-            }}
+          <AutosaveFeedback
+            state={autosave}
             message={
               syncPending() && !settings.dirty()
                 ? t('ui.sync_pending', 'Saved. Synchronization is pending.')
@@ -273,7 +272,7 @@ const ServerPseudo: Component = () => {
           title={t('dashboard.server.pseudo.pseudoSyncDirection', 'Nickname synchronization direction')}
           description={t(
             'settings.sync_direction_help',
-            'This direction applies to every rule below. Save to apply your changes.',
+            'This direction applies to every rule below. Changes are saved automatically.',
           )}
         >
           <select
@@ -281,7 +280,7 @@ const ServerPseudo: Component = () => {
             class="select w-full"
             aria-describedby="server-pseudo-direction-description"
             value={settings.draft().direction}
-            disabled={configuration.loading || !!configuration.error || settings.pending()}
+            disabled={configuration.loading || !!configuration.error}
             onChange={(event) => settings.patch({ direction: event.currentTarget.value })}
           >
             <option value="disable">{t('dashboard.server.pseudo.disable', 'Disable')}</option>
@@ -299,7 +298,7 @@ const ServerPseudo: Component = () => {
           title={t('dashboard.server.pseudo.format', 'Format')}
           description={t(
             'settings.nickname_format_help',
-            'Edit the nickname template and review the preview before saving.',
+            'Edit the nickname template and review the live preview. Changes are saved automatically.',
           )}
           stacked
         >
@@ -307,7 +306,7 @@ const ServerPseudo: Component = () => {
             id="pseudo-format"
             class="input w-full font-mono"
             value={settings.draft().format}
-            disabled={configuration.loading || !!configuration.error || settings.pending()}
+            disabled={configuration.loading || !!configuration.error}
             aria-invalid={!!settings.errors().format}
             aria-describedby="pseudo-format-description"
             onInput={(event) => settings.patch({ format: event.currentTarget.value })}

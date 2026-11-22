@@ -148,7 +148,7 @@ const GuildAutoRole: Component = () => {
           </>
         }
       >
-        <p class="px-4 pt-4 text-sm text-base-content/65">
+        <p class="settings-notice">
           {t(
             'dashboard.guild.auto_role.active_help',
             'Every role listed here is automatically assigned to new members.',

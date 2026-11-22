@@ -15,4 +15,5 @@ export { IconButton, IconButtonLink, type IconButtonProps, type IconButtonLinkPr
 export { CopyableValue, CopyButton, type CopyableValueProps, type CopyButtonProps } from './CopyableValue.js'
 export { FormField, type FormFieldProps } from './FormField.js'
 export { FormActions, type FormActionsProps } from './FormActions.js'
+export { AutosaveFeedback } from './AutosaveFeedback.js'
 export { AsyncState, TableState, type AsyncStateProps, type TableStateProps } from './AsyncState.js'

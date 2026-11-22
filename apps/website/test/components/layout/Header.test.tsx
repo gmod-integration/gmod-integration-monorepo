@@ -128,6 +128,7 @@ describe('Header navigation', () => {
       expect(within(navigation).getByRole('link', { name })).toHaveAttribute('href', href)
     }
     expect(screen.getByRole('link', { name: 'Sign in with Discord' })).toHaveAttribute('href', '/login')
+    expect(screen.queryByRole('link', { name: /^Notifications/ })).not.toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
@@ -310,11 +311,16 @@ describe('Header notifications', () => {
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(() => <Header />)
     await vi.waitFor(() => expect(notificationCount()).toBe(unreadCount))
-    openUserMenu()
     const notifications = screen.getByRole('link', { name: /^Notifications/ })
-    expect(notifications).toHaveTextContent(
-      unreadCount === 0 ? /^Notifications$/ : unreadCount > 9 ? '9+' : String(unreadCount),
-    )
+    expect(notifications).toHaveAttribute('href', '/notifications')
+    expect(notifications).toHaveAccessibleName(unreadCount > 0 ? `Notifications (${unreadCount})` : 'Notifications')
+    expect(notifications.previousElementSibling).toBe(screen.getByRole('button', { name: 'Theme: Automatic' }))
+    expect(notifications).toHaveTextContent(unreadCount === 0 ? /^$/ : unreadCount > 9 ? '9+' : String(unreadCount))
+    const trigger = openUserMenu()
+    const menu = document.getElementById('user-navigation')!
+    expect(within(menu).queryByRole('link', { name: /^Notifications/ })).not.toBeInTheDocument()
+    fireEvent.click(notifications)
+    expect(trigger).toHaveAttribute('aria-expanded', 'false')
     expect(fetchMock.mock.calls.filter(([url]) => url.includes('/notifications/count'))).toHaveLength(1)
   })
 
@@ -329,8 +335,9 @@ describe('Header notifications', () => {
           expect(console.error).toHaveBeenCalledWith('Failed to load notification count:', expect.any(Error)),
         )
       }
-      openUserMenu()
       expect(screen.getByRole('link', { name: 'Notifications' })).toBeInTheDocument()
+      openUserMenu()
+      expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument()
       expect(notificationCount()).toBe(0)
     },
   )

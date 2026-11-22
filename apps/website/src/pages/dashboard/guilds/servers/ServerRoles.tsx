@@ -18,8 +18,10 @@ import {
   AsyncState,
   Icon,
   SettingRow,
+  AutosaveFeedback,
 } from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
+import { createAutosave } from '../../../../hooks/createAutosave.js'
 import { saveDashboardSettings } from '../../../../utils/dashboardSettings.js'
 import { useI18n } from '../../../../i18n.js'
 import DiscordRole from '../../../../components/discord/DiscordRole.js'
@@ -94,6 +96,7 @@ const ServerRoles: Component = () => {
   }
   const direction = createDraftForm({
     initial: { value: 'gmod-to-discord' },
+    allowPendingEdits: true,
     validate: (draft) =>
       !['discord-to-gmod', 'gmod-to-discord', 'both'].includes(draft.value) ||
       (!reverseAccess.allowed() && draft.value !== 'gmod-to-discord')
@@ -126,6 +129,11 @@ const ServerRoles: Component = () => {
       }
     })
   }
+  const autosave = createAutosave({
+    form: direction,
+    save: saveDirection,
+    enabled: () => !storedDirection.loading && !storedDirection.error,
+  })
   const pagination = createListPagination<RoleRule>(() => (!rules.error ? rules() : undefined))
 
   return (
@@ -242,17 +250,8 @@ const ServerRoles: Component = () => {
         )}
         icon="arrow-left-right"
         footer={
-          <FormActions
-            dirty={direction.dirty()}
-            pending={direction.pending()}
-            error={direction.error()}
-            success={direction.success()}
-            disabled={storedDirection.loading || !!storedDirection.error || !direction.valid()}
-            onSave={() => void saveDirection()}
-            onCancel={() => {
-              direction.discard()
-              setSyncPending(false)
-            }}
+          <AutosaveFeedback
+            state={autosave}
             message={
               syncPending() && !direction.dirty()
                 ? t('ui.sync_pending', 'Saved. Synchronization is pending.')
@@ -271,7 +270,7 @@ const ServerRoles: Component = () => {
           title={t('dashboard.server.roles.sync_direction', 'Role synchronization direction')}
           description={t(
             'settings.sync_direction_help',
-            'This direction applies to every rule below. Save to apply your changes.',
+            'This direction applies to every rule below. Changes are saved automatically.',
           )}
         >
           <select
@@ -279,7 +278,7 @@ const ServerRoles: Component = () => {
             aria-describedby="server-roles-direction-description"
             class="select w-full max-w-xs"
             value={direction.draft().value}
-            disabled={storedDirection.loading || !!storedDirection.error || direction.pending()}
+            disabled={storedDirection.loading || !!storedDirection.error}
             onChange={(event) => direction.patch({ value: event.currentTarget.value })}
           >
             <option value="discord-to-gmod" disabled={!reverseAccess.allowed()}>
@@ -301,7 +300,7 @@ const ServerRoles: Component = () => {
         title={t('dashboard.server.roles.role_sync', 'Role mappings')}
         description={t(
           'dashboard.server.roles.role_sync_description',
-          'Each active rule links one Discord role to a game user group. Save the synchronization direction separately from these rules.',
+          'Each active rule links one Discord role to a game user group. The synchronization direction is saved automatically.',
         )}
         type="none"
         footer={

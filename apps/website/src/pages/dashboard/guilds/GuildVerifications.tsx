@@ -17,8 +17,10 @@ import {
   TableState,
   SettingRow,
   AsyncState,
+  AutosaveFeedback,
 } from '../../../components/ui/index.js'
 import { createDraftForm } from '../../../hooks/createDraftForm.js'
+import { createAutosave } from '../../../hooks/createAutosave.js'
 import { saveDashboardSettings } from '../../../utils/dashboardSettings.js'
 import AdminChannelSelector from '../../../components/AdminChannelSelector.js'
 import { useI18n } from '../../../i18n.js'
@@ -64,6 +66,7 @@ const GuildVerification: Component = () => {
   })
   const [syncPending, setSyncPending] = createSignal(false)
   const prefs = createDraftForm<Preferences>({
+    allowPendingEdits: true,
     initial: { verification_dont_mp: false, verification_dont_join_support: false },
     errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
   })
@@ -94,6 +97,17 @@ const GuildVerification: Component = () => {
       return { ...draft, ...result.settings } as Preferences
     })
   }
+
+  const preferencesAutosave = createAutosave({
+    form: prefs,
+    save: savePreferences,
+    enabled: () =>
+      !preferencesUnavailable() &&
+      (preferenceAccess.allowed() ||
+        !Object.entries(prefs.draft()).some(
+          ([key, value]) => value && value !== prefs.saved()[key as keyof Preferences],
+        )),
+  })
 
   const [editingRoleID, setEditingRoleID] = createSignal('')
   const roleForm = createDraftForm<VerificationRole>({
@@ -422,28 +436,14 @@ const GuildVerification: Component = () => {
         </AdminPanel>
         <AdminPanel
           title={t('settings.verification_preferences', 'Member experience')}
-          description={t('settings.explicit_save', 'Changes apply only when you save this section.')}
+          description={t('ui.autosave', 'Changes are saved automatically.')}
           icon="user-round"
           footer={
-            <FormActions
-              dirty={prefs.dirty()}
-              pending={prefs.pending()}
-              disabled={
-                preferencesUnavailable() ||
-                (!preferenceAccess.allowed() &&
-                  Object.entries(prefs.draft()).some(
-                    ([key, value]) => value && value !== prefs.saved()[key as keyof Preferences],
-                  ))
-              }
-              error={prefs.error()}
-              success={prefs.success()}
+            <AutosaveFeedback
+              state={preferencesAutosave}
               message={
-                prefs.success() && !prefs.dirty() && syncPending()
-                  ? t('ui.sync_pending', 'Changes saved. Synchronization is pending.')
-                  : undefined
+                syncPending() && !prefs.dirty() ? t('ui.sync_pending', 'Saved. Synchronization is pending.') : undefined
               }
-              onSave={savePreferences}
-              onCancel={prefs.discard}
             />
           }
         >
@@ -474,9 +474,7 @@ const GuildVerification: Component = () => {
                   type="checkbox"
                   class="toggle toggle-md"
                   disabled={
-                    preferencesUnavailable() ||
-                    prefs.pending() ||
-                    (!preferenceAccess.allowed() && !prefs.draft().verification_dont_mp)
+                    preferencesUnavailable() || (!preferenceAccess.allowed() && !prefs.draft().verification_dont_mp)
                   }
                   checked={prefs.draft().verification_dont_mp}
                   onChange={(event) => prefs.patch({ verification_dont_mp: event.currentTarget.checked })}
@@ -503,7 +501,6 @@ const GuildVerification: Component = () => {
                   class="toggle toggle-md"
                   disabled={
                     preferencesUnavailable() ||
-                    prefs.pending() ||
                     (!preferenceAccess.allowed() && !prefs.draft().verification_dont_join_support)
                   }
                   checked={prefs.draft().verification_dont_join_support}

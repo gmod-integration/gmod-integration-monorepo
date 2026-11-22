@@ -11,13 +11,15 @@ import { fetchAPI } from '../../../../utils/api.js'
 import {
   Button,
   CopyableValue,
-  FormActions,
+  AutosaveFeedback,
   Icon,
   StatusBadge,
   SettingGroup,
   SettingRow,
 } from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
+import { createAutosave } from '../../../../hooks/createAutosave.js'
+import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket.js'
 
 const ServerInformations: Component = () => {
   const { t } = useI18n()
@@ -39,6 +41,7 @@ const ServerInformations: Component = () => {
   })
   const editor = createDraftForm({
     initial: editable(server()),
+    allowPendingEdits: true,
     validate: (draft) => ({
       ...(!draft.name.trim() ? { name: t('ui.required', 'This field is required.') } : {}),
       ...(draft.port && (!/^\d+$/.test(draft.port) || Number(draft.port) < 1 || Number(draft.port) > 65535)
@@ -85,6 +88,7 @@ const ServerInformations: Component = () => {
     persistServer({ ...server(), ...(await response.json()) })
     setShowToken(false)
   }
+  const autosave = createAutosave({ form: editor, save: editServer })
 
   onMount(() => {
     const intervalId = setInterval(() => {
@@ -125,20 +129,10 @@ const ServerInformations: Component = () => {
         title={t('dashboard.server.server_informations.informations', 'Server details')}
         description={t(
           'settings.server_edit_help',
-          'Edit the server identity and connection details, then save your changes together.',
+          'Edit the server identity and connection details. Changes are saved automatically.',
         )}
         icon="server"
-        footer={
-          <FormActions
-            dirty={editor.dirty()}
-            pending={editor.pending()}
-            error={editor.error()}
-            success={editor.success()}
-            disabled={!editor.valid()}
-            onSave={() => void editServer()}
-            onCancel={editor.discard}
-          />
-        }
+        footer={<AutosaveFeedback state={autosave} />}
       >
         <SettingGroup title={t('settings.server_identity', 'Identity and visibility')} icon="server">
           <For each={fields.slice(0, 3)}>
@@ -159,7 +153,6 @@ const ServerInformations: Component = () => {
                   id={`server-edit-${key}`}
                   type={key === 'image' ? 'url' : 'text'}
                   class="input w-full"
-                  disabled={editor.pending()}
                   value={editor.draft()[key]}
                   aria-invalid={!!editor.errors()[key]}
                   aria-describedby={`server-edit-${key}-description${editor.errors()[key] ? ` server-edit-${key}-error` : ''}`}
@@ -187,7 +180,6 @@ const ServerInformations: Component = () => {
               id="server-edit-public"
               type="checkbox"
               class="toggle"
-              disabled={editor.pending()}
               checked={editor.draft().isPublic}
               aria-describedby="server-edit-public-description"
               onChange={(event) => editor.patch({ isPublic: event.currentTarget.checked })}
@@ -220,7 +212,6 @@ const ServerInformations: Component = () => {
                   class="input w-full"
                   type="text"
                   inputmode={key === 'port' ? 'numeric' : undefined}
-                  disabled={editor.pending()}
                   value={editor.draft()[key]}
                   aria-invalid={!!editor.errors()[key]}
                   aria-describedby={editor.errors()[key] ? `server-edit-${key}-error` : undefined}
@@ -239,6 +230,7 @@ const ServerInformations: Component = () => {
         )}
         icon="link"
       >
+        <NeedWebsocket />
         <SettingGroup
           title={t('server_setup.credentials', 'Server credentials')}
           description={t(
@@ -433,14 +425,14 @@ const ServerInformations: Component = () => {
                     <p>
                       {t(
                         'dashboard.server.server_informations.websocket_fallback_part1',
-                        'The live connection is unavailable. Features that require it cannot operate. Check the addon connection and install the',
+                        'The live connection is unavailable, so none of the addon’s game integrations can operate. Check the server console and make sure the required',
                       )}{' '}
-                      <a href="/docs/getting-started/installation#dll" class="link">
+                      <a href="https://docs.gmod-integration.com/getting-started/installation#dll" class="link">
                         {t('dashboard.server.server_informations.gwsocket_module', 'GWSockets module')}
                       </a>{' '}
                       {t(
                         'dashboard.server.server_informations.websocket_fallback_part2',
-                        'if it is missing from your game server.',
+                        'is installed for your server’s operating system and architecture, then restart the game server and test the connection again.',
                       )}
                     </p>
                   </Show>
@@ -449,7 +441,7 @@ const ServerInformations: Component = () => {
                 <p>
                   {t(
                     'dashboard.server.server_informations.websocket_success',
-                    'The addon has a live connection. Features that need real-time communication can use it.',
+                    'The addon is connected through GWSockets. Its game integrations can communicate with Gmod Integration.',
                   )}
                 </p>
               </Show>
@@ -526,7 +518,11 @@ const ServerInformations: Component = () => {
               'Generate a new token, then update it in your Garry’s Mod configuration.',
             )}
           >
-            <Button variant="warning" disabled={editor.pending()} onClick={() => showDialog('reset-server-token')}>
+            <Button
+              variant="warning"
+              disabled={editor.pending() || editor.dirty()}
+              onClick={() => showDialog('reset-server-token')}
+            >
               {t('dashboard.server.server_informations.reset_server_token', 'Reset Server Token')}
             </Button>
           </SettingRow>
@@ -534,7 +530,11 @@ const ServerInformations: Component = () => {
             title={t('settings.server_removal', 'Remove server')}
             description={t('settings.server_delete_hint', 'Remove this server from the community and its dashboard.')}
           >
-            <Button variant="danger" disabled={editor.pending()} onClick={() => showDialog('delete-server')}>
+            <Button
+              variant="danger"
+              disabled={editor.pending() || editor.dirty()}
+              onClick={() => showDialog('delete-server')}
+            >
               {t('dashboard.server.server_informations.delete_server', 'Delete Server')}
             </Button>
           </SettingRow>

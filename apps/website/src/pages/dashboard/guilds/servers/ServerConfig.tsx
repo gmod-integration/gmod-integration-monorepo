@@ -3,11 +3,12 @@ import {
   Button,
   Icon,
   IconButton,
-  FormActions,
+  AutosaveFeedback,
   SettingRow,
   type IconName,
 } from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
+import { createAutosave } from '../../../../hooks/createAutosave.js'
 import { saveDashboardSettings } from '../../../../utils/dashboardSettings.js'
 import { batch, type Component, createResource, createSignal, For, Index, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel.js'
@@ -163,12 +164,12 @@ const ServerConfig: Component = () => {
   const categories: SettingCategory[] = [
     {
       id: 'general',
-      titleKey: 'settings.general',
-      title: 'General',
-      descriptionKey: 'settings.general_description',
-      description: 'Language and support information shown to players.',
+      titleKey: 'settings.general_administration',
+      title: 'General and administration',
+      descriptionKey: 'settings.general_administration_description',
+      description: 'Language, support information and administrator access.',
       icon: 'globe',
-      keys: ['ig_language', 'ig_supportLink'],
+      keys: ['ig_language', 'ig_supportLink', 'ig_maintenance', 'ig_adminRank'],
     },
     {
       id: 'access',
@@ -187,15 +188,6 @@ const ServerConfig: Component = () => {
       description: 'Synchronize sanctions between Discord and the game server.',
       icon: 'ban',
       keys: ['ig_syncBan', 'ig_syncTimeout', 'ig_syncKick', 'ig_filterOnBan'],
-    },
-    {
-      id: 'administration',
-      titleKey: 'settings.administration',
-      title: 'Administration',
-      descriptionKey: 'settings.administration_description',
-      description: 'Manage administrator access and maintenance mode.',
-      icon: 'user-round-cog',
-      keys: ['ig_maintenance', 'ig_adminRank'],
     },
     {
       id: 'advanced',
@@ -302,6 +294,7 @@ const ServerConfig: Component = () => {
   const makeForm = (group: SettingCategory) =>
     createDraftForm<ConfigValues>({
       initial: groupValues(group, {}),
+      allowPendingEdits: true,
       validate: (draft) => validate(group, draft),
       errorMessage: () => t('ui.save_error', 'Unable to save the changes.'),
     })
@@ -323,7 +316,7 @@ const ServerConfig: Component = () => {
     })
     return settings
   })
-  const unavailable = (form: ConfigForm) => serverConfig.loading || !!serverConfig.error || form.pending()
+  const unavailable = (_form: ConfigForm) => serverConfig.loading || !!serverConfig.error
   const rankList = () => formFor('ig_adminRank').draft().ig_adminRank as string[]
   const updateRanks = (ranks: string[]) => formFor('ig_adminRank').patch({ ig_adminRank: ranks })
   const saveGroup = async (group: SettingCategory) => {
@@ -341,26 +334,28 @@ const ServerConfig: Component = () => {
       return groupValues(group, { ...serialized, ...result.settings })
     })
   }
-  const renderActions = (group: SettingCategory) => {
-    const form = forms.get(group.id)!
+  const autosaves = new Map(
+    categories.map((group) => [
+      group.id,
+      createAutosave({
+        form: forms.get(group.id)!,
+        save: () => saveGroup(group),
+        enabled: () => !serverConfig.loading && !serverConfig.error,
+      }),
+    ]),
+  )
+  const renderFeedback = (group: SettingCategory) => {
     return (
-      <FormActions
-        dirty={form.dirty()}
-        disabled={unavailable(form) || !form.valid()}
-        pending={form.pending()}
-        error={form.error()}
-        success={form.success()}
-        onSave={() => void saveGroup(group)}
-        onCancel={() => {
-          form.discard()
-          setSyncPending((previous) => ({ ...previous, [group.id]: false }))
-        }}
-        message={
-          !form.dirty() && form.success() && syncPending()[group.id]
-            ? t('ui.sync_pending', 'Changes saved. Synchronization is pending.')
-            : undefined
-        }
-      />
+      <div class="settings-save-feedback">
+        <AutosaveFeedback
+          state={autosaves.get(group.id)!}
+          message={
+            !forms.get(group.id)!.dirty() && syncPending()[group.id]
+              ? t('ui.sync_pending', 'Changes saved. Synchronization is pending.')
+              : undefined
+          }
+        />
+      </div>
     )
   }
 
@@ -517,7 +512,7 @@ const ServerConfig: Component = () => {
         type="none"
         description={t(
           'dashboard.server.config.description',
-          'Configure player access and addon behavior on this game server. Save each section separately; a saved change may still be waiting to reach the addon.',
+          'Configure player access and addon behavior on this game server. Changes are saved automatically; synchronization with the addon can take a moment.',
         )}
       >
         <div class="settings-browser">
@@ -535,7 +530,7 @@ const ServerConfig: Component = () => {
             </label>
             <p class="settings-autosave">
               <Icon name="circle-check" size={15} />
-              {t('settings.explicit_save', 'Changes apply only when you save this section.')}
+              {t('ui.autosave', 'Changes are saved automatically.')}
             </p>
           </div>
           <div class="settings-categories" role="group" aria-label={t('settings.categories', 'Setting categories')}>
@@ -591,9 +586,9 @@ const ServerConfig: Component = () => {
                 title={t(group.titleKey, group.title)}
                 description={t(group.descriptionKey, group.description)}
                 icon={group.icon}
-                footer={renderActions(group)}
               >
                 <For each={matchingKeys(group)}>{(key) => renderSetting(key)}</For>
+                {renderFeedback(group)}
               </AdminPanel>
             )}
           </For>

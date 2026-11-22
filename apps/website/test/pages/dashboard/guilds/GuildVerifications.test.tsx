@@ -119,6 +119,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
     ;(fetchAPI as Mock).mockReset()
     ;(saveDashboardSettings as Mock).mockReset()
+    ;(saveDashboardSettings as Mock).mockImplementation(async (_scope, settings) => ({ settings, sync: 'applied' }))
     setupFetchAPI()
     guildRolesMutate(defaultGuildRoles())
     guildChannelsMutate([])
@@ -233,38 +234,28 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     await vi.waitFor(() => expect(within(table(container)).queryByText('@Moderator')).not.toBeInTheDocument())
   })
 
-  it('saves member preferences together only on Save and restores saved values on Cancel', async () => {
+  it('automatically saves member preferences together without Save or Cancel controls', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
     const { container } = renderWithProviders(() => <GuildVerification />)
     await waitForLoaded()
     const group = screen.getByText('Member experience').closest('section')!
     const dm = container.querySelector<HTMLInputElement>('#verification-dm')!
     const support = container.querySelector<HTMLInputElement>('#verification-support')!
-    expect(within(group).getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(within(group).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(within(group).queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
     await fireEvent.click(dm)
     await fireEvent.click(support)
     expect(saveDashboardSettings).not.toHaveBeenCalled()
-    expect(dm).toBeChecked()
-    expect(support).toBeChecked()
-    await fireEvent.click(within(group).getByRole('button', { name: 'Cancel' }))
-    expect(dm).not.toBeChecked()
-    expect(support).not.toBeChecked()
-    await fireEvent.click(dm)
-    await fireEvent.click(support)
-    ;(saveDashboardSettings as Mock).mockResolvedValue({
-      settings: { verification_dont_mp: true, verification_dont_join_support: true },
-      sync: 'applied',
-    })
-    await fireEvent.click(within(group).getByRole('button', { name: 'Save' }))
     await vi.waitFor(() =>
       expect(saveDashboardSettings).toHaveBeenCalledWith('guild', {
         verification_dont_mp: true,
         verification_dont_join_support: true,
       }),
     )
-    await vi.waitFor(() => expect(within(group).getByRole('button', { name: 'Save' })).toBeDisabled())
+    expect(dm).toBeChecked()
+    expect(support).toBeChecked()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
   })
-
   it('keeps changed preferences on failure, permits retry and sends only changed keys', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
     const { container } = renderWithProviders(() => <GuildVerification />)
@@ -273,18 +264,17 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     const dm = container.querySelector<HTMLInputElement>('#verification-dm')!
     await fireEvent.click(dm)
     ;(saveDashboardSettings as Mock).mockRejectedValue(new Error('network'))
-    await fireEvent.click(within(group).getByRole('button', { name: 'Save' }))
     await vi.waitFor(() => expect(within(group).getByRole('alert')).toBeInTheDocument())
     expect(dm).toBeChecked()
     ;(saveDashboardSettings as Mock).mockResolvedValue({ settings: { verification_dont_mp: true }, sync: 'pending' })
-    await fireEvent.click(within(group).getByRole('button', { name: 'Save' }))
+    await fireEvent.click(within(group).getByRole('button', { name: /try again|retry/i }))
     await vi.waitFor(() =>
       expect(saveDashboardSettings).toHaveBeenLastCalledWith('guild', { verification_dont_mp: true }),
     )
     await vi.waitFor(() => expect(within(group).getByText('Saved. Synchronization is pending.')).toBeInTheDocument())
   })
 
-  it('keeps the member experience draft when a role edit is canceled or saved', async () => {
+  it('keeps autosaved member preferences when a role edit is canceled or saved', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
     const { container } = renderWithProviders(() => <GuildVerification />)
     await waitForLoaded()
@@ -297,40 +287,35 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     await fireEvent.change(within(modal).getByLabelText('Active'), { target: { value: 'false' } })
     await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
     expect(dm).toBeChecked()
-    expect(within(preferences).getByRole('button', { name: 'Save' })).toBeEnabled()
-
     await fireEvent.click(edit)
     await fireEvent.change(within(modal).getByLabelText('Active'), { target: { value: 'false' } })
     ;(fetchAPI as Mock).mockResolvedValue(okJson({ roleID: 'r1', isGiveRole: true, enabled: false }))
     await fireEvent.click(within(modal).getByRole('button', { name: 'Save' }))
     await vi.waitFor(() => expect(modal.open).toBe(false))
-    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(saveDashboardSettings).toHaveBeenCalledWith('guild', { verification_dont_mp: true }))
     expect(dm).toBeChecked()
-    await fireEvent.click(within(preferences).getByRole('button', { name: 'Cancel' }))
-    expect(dm).not.toBeChecked()
     expect(within(table(container)).getAllByRole('row')[1]).toHaveTextContent('Disabled')
   })
-
-  it('blocks preference changes and duplicate saves while awaiting the batch response', async () => {
+  it('keeps preference controls editable and queues changes made during an autosave', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
     const { container } = renderWithProviders(() => <GuildVerification />)
     await waitForLoaded()
-    const group = screen.getByText('Member experience').closest('section')!
     const dm = container.querySelector<HTMLInputElement>('#verification-dm')!
+    const support = container.querySelector<HTMLInputElement>('#verification-support')!
+    const resolveSaves: ((value: unknown) => void)[] = []
+    ;(saveDashboardSettings as Mock).mockImplementation(() => new Promise((resolve) => resolveSaves.push(resolve)))
     await fireEvent.click(dm)
-    let resolveSave!: (value: unknown) => void
-    ;(saveDashboardSettings as Mock).mockImplementation(() => new Promise((resolve) => (resolveSave = resolve)))
-    const save = within(group).getByRole('button', { name: 'Save' })
-    await fireEvent.click(save)
-    await fireEvent.click(save)
+    await vi.waitFor(() => expect(saveDashboardSettings).toHaveBeenCalledTimes(1))
+    expect(dm).toBeEnabled()
+    await fireEvent.click(support)
     expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
-    expect(dm).toBeDisabled()
-    expect(within(group).getByRole('button', { name: 'Cancel' })).toBeDisabled()
-    resolveSave({ settings: { verification_dont_mp: true }, sync: 'applied' })
-    await vi.waitFor(() => expect(save).toBeDisabled())
-    await vi.waitFor(() => expect(dm).not.toBeDisabled())
+    resolveSaves[0]({ settings: { verification_dont_mp: true }, sync: 'applied' })
+    await vi.waitFor(() => expect(saveDashboardSettings).toHaveBeenCalledTimes(2))
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('guild', { verification_dont_join_support: true })
+    resolveSaves[1]({ settings: { verification_dont_join_support: true }, sync: 'applied' })
+    await vi.waitFor(() => expect(dm).toBeChecked())
+    expect(support).toBeChecked()
   })
-
   it('disables premium preferences for a free guild', async () => {
     const { container } = renderWithProviders(() => <GuildVerification />)
     await waitForLoaded()
@@ -342,7 +327,6 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     setupFetchAPI({ dontMP: { value: true }, dontJoinSupport: { value: true } })
     const { container } = renderWithProviders(() => <GuildVerification />)
     await waitForLoaded()
-    const group = screen.getByText('Member experience').closest('section')!
     const dm = container.querySelector<HTMLInputElement>('#verification-dm')!
     const support = container.querySelector<HTMLInputElement>('#verification-support')!
     await vi.waitFor(() => expect(dm).toBeChecked())
@@ -350,9 +334,8 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     await fireEvent.click(dm)
     expect(support).toBeChecked()
     vi.mocked(saveDashboardSettings).mockResolvedValue({ settings: { verification_dont_mp: false }, sync: 'applied' })
-    await fireEvent.click(within(group).getByRole('button', { name: 'Save' }))
     await vi.waitFor(() => expect(saveDashboardSettings).toHaveBeenCalledWith('guild', { verification_dont_mp: false }))
-    await vi.waitFor(() => expect(within(group).getByRole('button', { name: 'Save' })).toBeDisabled())
+    await vi.waitFor(() => expect(dm).toBeDisabled())
     expect(dm).not.toBeChecked()
     expect(dm).toBeDisabled()
     expect(support).toBeChecked()

@@ -75,7 +75,9 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     setWebSocketServerStatus({ ...defaultWSStatus })
     vi.mocked(sendWebSocketMessage).mockClear()
     ;(fetchAPI as Mock).mockReset()
-    ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
+    ;(fetchAPI as Mock).mockImplementation((_endpoint, method, body) =>
+      Promise.resolve(okJson(method === 'PUT' ? { ...baseServer, ...body } : {})),
+    )
   })
 
   it('renders server information from localStorage', () => {
@@ -84,7 +86,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     expect(screen.getByLabelText('Description')).toHaveValue('A cool server')
     expect(screen.getByLabelText('Server address')).toHaveValue('1.2.3.4')
     expect(screen.getByLabelText('Port')).toHaveValue('27015')
-    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     expect(screen.getByText('s1')).toBeInTheDocument()
   })
 
@@ -137,6 +139,13 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       expect(container.textContent).toContain('gmod-integration version')
       expect(container.innerHTML).not.toContain('secret-token')
       expect(screen.getByRole('button', { name: 'Copy the server token command' })).toBeEnabled()
+      const setup = within(screen.getByRole('region', { name: 'Connect the Gmod Integration addon' }))
+      expect(setup.getByRole('note')).toHaveTextContent('GWSockets is required')
+      expect(setup.getByRole('note')).toHaveTextContent('then restart the server')
+      expect(setup.getByRole('link', { name: 'GWSockets' })).toHaveAttribute(
+        'href',
+        'https://docs.gmod-integration.com/getting-started/installation#dll',
+      )
     })
 
     it('copies complete commands with the current credentials without revealing the token', async () => {
@@ -196,6 +205,9 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       expect(screen.queryByText('Received')).not.toBeInTheDocument()
       expect(screen.queryByText('Compatible')).not.toBeInTheDocument()
       expect(screen.getByText(/The addon connection could not be verified/)).toBeInTheDocument()
+      expect(screen.getByRole('note')).toHaveTextContent('GWSockets is required')
+      expect(screen.queryByText(/GWSockets is missing|GWSockets is not installed/)).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Name')).toBeEnabled()
     })
 
     it('clears a verified state when the dashboard transport stops', async () => {
@@ -266,7 +278,9 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       renderPage()
       expect(screen.getByText('A request was received from the addon within the last minute.')).toBeInTheDocument()
       expect(
-        screen.getByText('The addon has a live connection. Features that need real-time communication can use it.'),
+        screen.getByText(
+          'The addon is connected through GWSockets. Its game integrations can communicate with Gmod Integration.',
+        ),
       ).toBeInTheDocument()
       expect(screen.getByText('The reported addon version is compatible with the current service.')).toBeInTheDocument()
       expect(screen.getByText('Received')).toBeInTheDocument()
@@ -308,7 +322,9 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
 
       await vi.waitFor(() =>
         expect(
-          screen.getByText('The addon has a live connection. Features that need real-time communication can use it.'),
+          screen.getByText(
+            'The addon is connected through GWSockets. Its game integrations can communicate with Gmod Integration.',
+          ),
         ).toBeInTheDocument(),
       )
       expect(screen.getByText('Connected')).toBeInTheDocument()
@@ -337,35 +353,41 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
   })
 
   describe('editing the server inline', () => {
-    it('keeps all edits local and Cancel restores the saved values', async () => {
+    it('automatically batches inline changes without Save or Cancel controls', async () => {
       renderPage()
-      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Unsaved name' } })
-      await fireEvent.input(screen.getByLabelText('Description'), { target: { value: 'Unsaved description' } })
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Updated name' } })
+      await fireEvent.input(screen.getByLabelText('Description'), { target: { value: 'Updated description' } })
       await fireEvent.click(screen.getByRole('checkbox', { name: 'Show in server ranking' }))
       expect(fetchAPI).not.toHaveBeenCalled()
       expect(JSON.parse(localStorage.getItem('server')!).name).toBe('My Server')
-      await fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-      expect(screen.getByLabelText('Name')).toHaveValue('My Server')
-      expect(screen.getByLabelText('Description')).toHaveValue('A cool server')
-      expect(screen.getByRole('checkbox', { name: 'Show in server ranking' })).toBeChecked()
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+      await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('server')!).name).toBe('Updated name'))
+      expect(screen.getByLabelText('Description')).toHaveValue('Updated description')
+      expect(screen.getByRole('checkbox', { name: 'Show in server ranking' })).not.toBeChecked()
+      expect(fetchAPI).toHaveBeenCalledTimes(1)
       expect(document.getElementById('edit_server')).not.toBeInTheDocument()
     })
-    it('validates the name, port and image URL before allowing Save', async () => {
+    it('waits for a valid name, port and image URL before autosaving', async () => {
+      vi.useFakeTimers()
       renderPage()
-      const save = screen.getByRole('button', { name: 'Save' })
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: ' ' } })
-      expect(save).toBeDisabled()
+      await vi.advanceTimersByTimeAsync(450)
+      expect(fetchAPI).not.toHaveBeenCalled()
       await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'New name' } })
       await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '70000' } })
-      expect(save).toBeDisabled()
+      await vi.advanceTimersByTimeAsync(450)
+      expect(fetchAPI).not.toHaveBeenCalled()
       await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '27015' } })
       await fireEvent.input(screen.getByLabelText('Image URL'), { target: { value: 'invalid' } })
-      expect(save).toBeDisabled()
-      await fireEvent.input(screen.getByLabelText('Image URL'), { target: { value: 'https://example.com/server.png' } })
-      expect(save).not.toBeDisabled()
+      await vi.advanceTimersByTimeAsync(450)
       expect(fetchAPI).not.toHaveBeenCalled()
+      await fireEvent.input(screen.getByLabelText('Image URL'), { target: { value: 'https://example.com/server.png' } })
+      await vi.advanceTimersByTimeAsync(450)
+      expect(fetchAPI).toHaveBeenCalledTimes(1)
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('New name')
     })
-    it('locks the whole form, prevents duplicate saves and retains a failed draft', async () => {
+    it('preserves edits made during a pending autosave and retries a failed request', async () => {
       let finish!: (value: ReturnType<typeof errJson>) => void
       ;(fetchAPI as Mock).mockReturnValueOnce(
         new Promise((resolve) => {
@@ -374,20 +396,19 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       )
       renderPage()
       const name = screen.getByLabelText('Name')
-      const save = screen.getByRole('button', { name: 'Save' })
       await fireEvent.input(name, { target: { value: 'Draft name' } })
-      await fireEvent.click(save)
-      await fireEvent.click(save)
-      expect(fetchAPI).toHaveBeenCalledTimes(1)
-      expect(save).toBeDisabled()
-      expect(name).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledTimes(1))
+      expect(name).toBeEnabled()
       expect(screen.getByRole('button', { name: 'Reset Server Token' })).toBeDisabled()
+      await fireEvent.input(name, { target: { value: 'Latest name' } })
+      expect(fetchAPI).toHaveBeenCalledTimes(1)
       finish(errJson())
       await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
-      expect(name).toHaveValue('Draft name')
+      expect(name).toHaveValue('Latest name')
       expect(JSON.parse(localStorage.getItem('server')!).name).toBe('My Server')
-      expect(save).not.toBeDisabled()
+      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('server')!).name).toBe('Latest name'))
+      expect(fetchAPI).toHaveBeenCalledTimes(2)
     })
     it('saves every editable field together, updates storage and accepts the server response', async () => {
       const updated = {
@@ -407,7 +428,6 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       await fireEvent.input(screen.getByLabelText('Server address'), { target: { value: '5.6.7.8' } })
       await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '27016' } })
       await fireEvent.click(screen.getByRole('checkbox', { name: 'Show in server ranking' }))
-      await fireEvent.click(screen.getByRole('button', { name: 'Save' }))
       await vi.waitFor(() =>
         expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'PUT', {
           name: 'New Name',
@@ -421,7 +441,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       await vi.waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument())
       expect(JSON.parse(localStorage.getItem('server')!)).toEqual(updated)
       expect(screen.getByLabelText('Name')).toHaveValue('New Name')
-      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     })
   })
   describe('confirmed server commands', () => {
@@ -449,18 +469,24 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'DELETE')
       expect(localStorage.getItem('server')).toBeNull()
     })
-    it('explains token invalidation and preserves unsaved information while resetting', async () => {
-      ;(fetchAPI as Mock).mockResolvedValue(okJson({ ...baseServer, token: 'new-token' }))
+    it('waits for information autosave before allowing a confirmed token reset', async () => {
+      ;(fetchAPI as Mock).mockImplementation((_endpoint, method, body) =>
+        Promise.resolve(okJson(method === 'PUT' ? { ...baseServer, ...body } : { token: 'new-token' })),
+      )
       renderPage()
-      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Unsaved name' } })
-      await fireEvent.click(screen.getByRole('button', { name: 'Reset Server Token' }))
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Updated name' } })
+      const reset = screen.getByRole('button', { name: 'Reset Server Token' })
+      expect(reset).toBeDisabled()
+      await vi.waitFor(() => expect(reset).toBeEnabled())
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('Updated name')
+      await fireEvent.click(reset)
       const confirm = within(document.getElementById('reset-server-token')!)
-      expect(confirm.getByText(/My Server — The current token will stop working/)).toBeInTheDocument()
-      expect(fetchAPI).not.toHaveBeenCalled()
+      expect(confirm.getByText(/Updated name — The current token will stop working/)).toBeInTheDocument()
+      expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'POST')).toBe(false)
       await fireEvent.click(confirm.getByRole('button', { name: 'Reset Server Token' }))
       await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('server')!).token).toBe('new-token'))
-      expect(screen.getByLabelText('Name')).toHaveValue('Unsaved name')
-      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('My Server')
+      expect(screen.getByLabelText('Name')).toHaveValue('Updated name')
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('Updated name')
       await fireEvent.click(screen.getByRole('button', { name: 'Show Token' }))
       expect(screen.getByText('new-token')).toBeInTheDocument()
       expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1/token', 'POST')

@@ -18,6 +18,7 @@ import {
   type StatusConfigurationButton,
 } from '@gmod/schema/server/StatusConfigurationSchema.js'
 import { createDraftForm } from '../../../../../hooks/createDraftForm.js'
+import { createAutosave } from '../../../../../hooks/createAutosave.js'
 import { refreshAccess } from '../../../../../utils/accessEvents.js'
 import { getAPIUrl, getUrlWithActualParams } from '../../../../../utils/api.js'
 import { useI18n } from '../../../../../i18n.js'
@@ -56,6 +57,7 @@ function createStatusConfiguration() {
     saveError()[scope] || t('ui.save_error', 'Unable to save. Please try again.')
   const messageForm = createDraftForm<StatusConfiguration['settings']>({
     initial: defaultStatusConfiguration.settings,
+    allowPendingEdits: true,
     validate: (settings) =>
       StatusConfigurationSchema.safeParse({ settings, buttons: [] }).success
         ? {}
@@ -77,7 +79,6 @@ function createStatusConfiguration() {
     dirty: () => messageForm.dirty() || buttonsForm.dirty(),
     pending: () => messageForm.pending() || buttonsForm.pending(),
     patch: (values: Partial<StatusConfiguration>) => {
-      if (form.pending()) return
       batch(() => {
         if (values.settings) messageForm.setDraft(values.settings)
         if (values.buttons) buttonsForm.patch({ buttons: values.buttons })
@@ -195,11 +196,24 @@ function createStatusConfiguration() {
       return { buttons: accepted.buttons }
     })
   }
+  const canAutosave = (scope: StatusScope) =>
+    ready() && !form.pending() && !stagedButton() && !conflict() && !validationError(scope) && !accessError(scope)
+  const messageAutosave = createAutosave({
+    form: messageForm,
+    save: () => save('message'),
+    enabled: () => canAutosave('message'),
+  })
+  const buttonsAutosave = createAutosave({
+    form: buttonsForm,
+    save: () => save('buttons'),
+    enabled: () => canAutosave('buttons'),
+  })
   return {
     form,
     messageForm,
     buttonsForm,
     formFor,
+    autosaveFor: (scope: StatusScope) => (scope === 'message' ? messageAutosave : buttonsAutosave),
     ready,
     accessError,
     validationError,

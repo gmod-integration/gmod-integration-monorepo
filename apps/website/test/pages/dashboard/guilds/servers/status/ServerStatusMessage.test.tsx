@@ -59,7 +59,7 @@ describe('status publication is a separate command', () => {
     await ready()
     await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
     expect(screen.getByRole('button', { name: 'Publish status message' })).toBeDisabled()
-    expect(screen.getByText('Save or cancel your changes before publishing a message.')).toBeInTheDocument()
+    expect(screen.getByText('Wait for your changes to finish saving before publishing a message.')).toBeInTheDocument()
     await fireEvent.click(screen.getByRole('button', { name: 'Publish status message' }))
     expect(commands(api)).toHaveLength(0)
     expect(puts(network)).toHaveLength(0)
@@ -139,7 +139,7 @@ describe('status publication is a separate command', () => {
     await ready()
     expect(screen.getByRole('button', { name: 'Publish status message' })).toBeDisabled()
     await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
-    expect(screen.getByRole('button', { name: 'Save message' })).toBeEnabled()
+    await vi.waitFor(() => expect(screen.getByRole('checkbox', { name: /Show Player List/ })).toBeChecked())
   })
   it('updates the preview for inline format edits without a format-specific Save', async () => {
     installNetwork(api, {

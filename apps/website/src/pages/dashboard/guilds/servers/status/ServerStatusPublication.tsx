@@ -189,7 +189,7 @@ const ServerStatusPublication: Component = () => {
         </div>
         <Show when={editor.form.dirty()}>
           <p class="settings-notice">
-            {t('editing.publish_saved_first', 'Save or cancel your changes before publishing a message.')}
+            {t('editing.publish_saved_first', 'Wait for your changes to finish saving before publishing a message.')}
           </p>
         </Show>
       </AdminPanel>

@@ -1,7 +1,7 @@
 import { DashboardChannelConfigurationSchema } from '@gmod/schema/server/DashboardChannelSchema.js'
 import { type Component, createEffect, createResource, createSignal, Show } from 'solid-js'
 import { showDialog } from '../../../../../utils/dialog.js'
-import { AsyncState, Button, FormActions, SettingRow } from '../../../../../components/ui/index.js'
+import { AsyncState, Button, AutosaveFeedback, SettingRow } from '../../../../../components/ui/index.js'
 import AdminPanel from '../../../../../components/AdminPanel'
 import DiscordChannel from '../../../../../components/discord/DiscordChannel'
 import { guildChannelsRefetch } from '../../GuildInformations'
@@ -9,6 +9,7 @@ import { useI18n } from '../../../../../i18n'
 import { fetchAPI } from '../../../../../utils/api'
 import AdminChannelSelector from '../../../../../components/AdminChannelSelector'
 import { createDraftForm } from '../../../../../hooks/createDraftForm.js'
+import { createAutosave } from '../../../../../hooks/createAutosave.js'
 import { saveDashboardSettings } from '../../../../../utils/dashboardSettings.js'
 import ConfirmActionDialog from '../../../../../components/ConfirmActionDialog.js'
 
@@ -52,6 +53,7 @@ export const ServerLogsParameters: Component = () => {
   })
   const form = createDraftForm({
     initial: { log_hide_ip: false, log_include_file: false },
+    allowPendingEdits: true,
     errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
   })
   createEffect(() => {
@@ -62,6 +64,11 @@ export const ServerLogsParameters: Component = () => {
       const result = await saveDashboardSettings('server', snapshot)
       setSyncPending(result.sync === 'pending')
     })
+  const autosave = createAutosave({
+    form,
+    save: saveContent,
+    enabled: () => !content.loading && !content.error,
+  })
 
   const sendLogChannel = async (channelID: string) => {
     const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/logs/channels', 'POST', {
@@ -150,22 +157,17 @@ export const ServerLogsParameters: Component = () => {
         </AdminPanel>
         <AdminPanel
           title={t('settings.log_content', 'Log content')}
-          description={t('editing.section_help', 'Edit these settings, then save this section to apply them.')}
+          description={t('ui.autosave', 'Changes are saved automatically.')}
           icon="scroll-text"
           footer={
             !content.loading && !content.error ? (
-              <FormActions
-                dirty={form.dirty()}
-                pending={form.pending()}
-                error={form.error()}
-                success={form.success()}
+              <AutosaveFeedback
+                state={autosave}
                 message={
                   syncPending() && !form.dirty()
                     ? t('ui.sync_pending', 'Saved. Synchronization is pending.')
                     : undefined
                 }
-                onSave={() => void saveContent()}
-                onCancel={form.discard}
               />
             ) : undefined
           }
@@ -181,7 +183,6 @@ export const ServerLogsParameters: Component = () => {
                 aria-describedby="logs-hide-ip-description"
                 type="checkbox"
                 class="toggle toggle-md"
-                disabled={form.pending()}
                 checked={form.draft().log_hide_ip}
                 onChange={(event) => form.patch({ log_hide_ip: event.currentTarget.checked })}
               />
@@ -196,7 +197,6 @@ export const ServerLogsParameters: Component = () => {
                 aria-describedby="logs-attach-file-description"
                 type="checkbox"
                 class="toggle toggle-md"
-                disabled={form.pending()}
                 checked={form.draft().log_include_file}
                 onChange={(event) => form.patch({ log_include_file: event.currentTarget.checked })}
               />

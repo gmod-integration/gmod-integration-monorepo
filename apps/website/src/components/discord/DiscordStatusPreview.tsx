@@ -74,7 +74,7 @@ const DiscordStatusPreview: Component<DiscordStatusPreviewProps> = (props) => {
           {props.caption ??
             t(
               'dashboard.server.status.preview.caption',
-              'Edits update this preview only. Save to update the configuration and an existing message; publish to send a new message.',
+              'Settings and confirmed button changes are saved automatically and update an existing message. Publish to send a new message.',
             )}
         </p>
         <Show when={props.error}>

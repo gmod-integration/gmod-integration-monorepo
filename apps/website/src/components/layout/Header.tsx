@@ -7,7 +7,15 @@ import { fetchAPI } from '../../utils/api'
 import { notificationCount, updateNotificationCount } from '../../utils/notificationStore'
 import { setThemeMode, type ThemeMode, themeMode } from '../../utils/theme'
 import { authSession, authStatus } from '../../utils/authClient.js'
-import { ButtonLink, DiscordAvatar, Icon, LanguageFlag, StatusBadge, type IconName } from '../ui/index.js'
+import {
+  ButtonLink,
+  DiscordAvatar,
+  Icon,
+  IconButtonLink,
+  LanguageFlag,
+  StatusBadge,
+  type IconName,
+} from '../ui/index.js'
 
 type Language = {
   code: Locale
@@ -130,11 +138,6 @@ export const Header: Component = () => {
           title: t('main.account', 'Account'),
           icon: 'user-round',
           href: '/account',
-        },
-        {
-          title: t('main.notifications', 'Notifications'),
-          icon: 'bell',
-          href: '/notifications',
         },
         {
           title: t('auth.stop_impersonation', 'Return to your account'),
@@ -350,6 +353,26 @@ export const Header: Component = () => {
           >
             <Icon name={currentThemeOption().icon} size={19} />
           </button>
+          <Show when={isLogged()}>
+            <IconButtonLink
+              href="/notifications"
+              size="md"
+              class="header-control relative"
+              label={`${t('main.notifications', 'Notifications')}${notificationCount() > 0 ? ` (${notificationCount().toLocaleString(locale())})` : ''}`}
+              onClick={() => {
+                setIsOpen(false)
+                setLanguageOpen(false)
+                setPublicNavigationOpen(false)
+              }}
+            >
+              <Icon name="bell" size={19} />
+              <Show when={notificationCount() > 0}>
+                <StatusBadge tone="info" size="sm" class="absolute -top-1 -right-1" aria-hidden="true">
+                  {notificationCount() > 9 ? '9+' : notificationCount()}
+                </StatusBadge>
+              </Show>
+            </IconButtonLink>
+          </Show>
         </div>
 
         <Show when={isLogged()}>
@@ -412,11 +435,6 @@ export const Header: Component = () => {
                                   <Icon name={icon} size={17} />
                                 </div>
                                 {title}
-                                <Show when={href === '/notifications' && notificationCount() > 0}>
-                                  <StatusBadge tone="info" size="sm" class="ml-2">
-                                    {notificationCount() > 9 ? '9+' : notificationCount()}
-                                  </StatusBadge>
-                                </Show>
                               </A>
                             </li>
                           </Show>

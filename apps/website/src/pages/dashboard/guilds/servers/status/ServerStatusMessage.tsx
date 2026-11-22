@@ -12,7 +12,7 @@ const ServerStatusMessage: Component = () => {
   const { t } = useI18n()
   const chartAccess = useFeatureAccess('status.chart')
   const editor = useStatusConfiguration()
-  const unavailable = () => !editor.ready() || editor.form.pending()
+  const unavailable = () => !editor.ready()
   const variables = [
     ['name', 'playerName', 'Player Name'],
     ['steamID64', 'playerSteamID64', 'Player SteamID64'],
@@ -31,10 +31,7 @@ const ServerStatusMessage: Component = () => {
   return (
     <AdminPanel
       title={t('settings.message_content', 'Message content')}
-      description={t(
-        'editing.status_message_scope',
-        'Save this card to update the player list and chart. Link buttons are saved separately.',
-      )}
+      description={t('editing.status_message_scope', 'Changes to the player list and chart are saved automatically.')}
       icon="sliders-horizontal"
       footer={<StatusCardActions scope="message" />}
     >

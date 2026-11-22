@@ -43,18 +43,12 @@ function row(container: HTMLElement, label: string) {
 function section(container: HTMLElement, name: string) {
   return container.querySelector<HTMLElement>(`#config-${name}`)!
 }
-function save(container: HTMLElement, name: string) {
-  return within(section(container, name)).getByRole('button', { name: 'Save', hidden: true })
-}
-function cancel(container: HTMLElement, name: string) {
-  return within(section(container, name)).getByRole('button', { name: 'Cancel', hidden: true })
-}
 async function ready(container: HTMLElement) {
   await vi.waitFor(() =>
     expect(row(container, 'Block Discord-banned players').querySelector('input')).not.toBeDisabled(),
   )
 }
-const writes = () => (fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')
+const autosave = () => vi.advanceTimersByTimeAsync(450)
 
 beforeEach(() => {
   localStorage.clear()
@@ -70,32 +64,27 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('server configuration section drafts', () => {
-  it('shows thematic settings, their defaults and explicit section-saving guidance', async () => {
+describe('server configuration autosave', () => {
+  it('groups settings in four peer cards without per-card save and cancel buttons', async () => {
     const { container } = renderPage()
     await ready(container)
     expect(screen.getByText('In-game addon settings')).toBeInTheDocument()
     expect(screen.getByText('GWSockets')).toBeInTheDocument()
-    expect(screen.getByText('Changes apply only when you save this section.')).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'General' })).toContainElement(row(container, 'Addon Language'))
-    expect(screen.getByRole('region', { name: 'Access and verification' })).toContainElement(
-      row(container, 'Account-linking time limit (seconds)'),
-    )
+    expect(screen.getAllByText('Changes are saved automatically.').length).toBeGreaterThan(0)
+    const general = screen.getByRole('region', { name: 'General and administration' })
+    const access = screen.getByRole('region', { name: 'Access and verification' })
+    expect(general).toContainElement(row(container, 'Addon Language'))
+    expect(general).toContainElement(row(container, 'Game administrator groups'))
+    expect(general.parentElement).toBe(access.parentElement)
+    expect(container.querySelectorAll('.settings-card-grid > .dashboard-panel')).toHaveLength(4)
     expect(container.querySelectorAll('.settings-row')).toHaveLength(16)
     expect(row(container, 'Log Timestamp Format').querySelector('input')).toHaveValue('%H:%M:%S')
-    for (const name of ['general', 'access', 'moderation', 'administration', 'advanced'])
-      expect(save(container, name)).toBeDisabled()
-    const general = screen.getByRole('region', { name: 'General' })
-    const access = screen.getByRole('region', { name: 'Access and verification' })
-    expect(general.parentElement).toBe(access.parentElement)
-    expect(general).not.toContainElement(access)
-    expect(general.querySelector('.dashboard-panel-footer')).toContainElement(save(container, 'general'))
-    expect(screen.getByRole('region', { name: 'Advanced settings' })).toContainElement(
-      row(container, 'Required Garry’s Mod client branch'),
-    )
+    expect(screen.queryByRole('button', { name: 'Save', hidden: true })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cancel', hidden: true })).not.toBeInTheDocument()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  it('disables every control type while loading and does not expose a default as editable after a failed read', async () => {
+  it('keeps all controls unavailable during loading and after a failed initial read', async () => {
     vi.mocked(fetchAPI).mockImplementation(() => new Promise(() => {}))
     const first = renderPage()
     expect(row(first.container, 'Block Discord-banned players').querySelector('input')).toBeDisabled()
@@ -109,7 +98,7 @@ describe('server configuration section drafts', () => {
     const second = renderPage()
     await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
     expect(row(second.container, 'Block Discord-banned players').querySelector('input')).toBeDisabled()
-    expect(save(second.container, 'moderation')).toBeDisabled()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
   it('recovers a failed configuration read with retry', async () => {
@@ -120,18 +109,16 @@ describe('server configuration section drafts', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await ready(container)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  it('searches translated descriptions, filters categories and resets an empty search', async () => {
+  it('searches descriptions, filters categories and resets an empty search without saving', async () => {
     const { container } = renderPage()
     await ready(container)
     const search = screen.getByRole('searchbox', { name: 'Search settings' })
     await fireEvent.input(search, { target: { value: 'automatic material downloading' } })
     expect(container.querySelectorAll('.settings-row')).toHaveLength(1)
     expect(row(container, 'Redownload Materials')).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Advanced settings' })).toContainElement(
-      row(container, 'Redownload Materials'),
-    )
     await fireEvent.click(screen.getByRole('button', { name: /Moderation/ }))
     expect(screen.getByText('No settings match your search in this category.')).toBeInTheDocument()
     await fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
@@ -149,91 +136,65 @@ describe('server configuration section drafts', () => {
     expect(row(container, 'Vérifier la liaison avant l’entrée en jeu')).toBeInTheDocument()
   })
 
-  it('keeps bool, select and text edits local until their own section is saved', async () => {
+  it('automatically saves toggles, select choices and batched text changes', async () => {
     const { container } = renderPage()
     await ready(container)
-    const timeout = within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox')
-    await fireEvent.click(timeout)
+    vi.useFakeTimers()
+    await fireEvent.click(within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox'))
     await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
       target: { value: 'https://new.example' },
     })
     await fireEvent.change(within(row(container, 'Addon Language')).getByRole('combobox'), { target: { value: 'fr' } })
-    await new Promise((resolve) => setTimeout(resolve, 550))
-    expect(writes()).toHaveLength(0)
     expect(saveDashboardSettings).not.toHaveBeenCalled()
-    expect(save(container, 'general')).not.toBeDisabled()
-    expect(save(container, 'moderation')).not.toBeDisabled()
-    await fireEvent.click(save(container, 'general'))
-    await vi.waitFor(() =>
-      expect(saveDashboardSettings).toHaveBeenCalledWith('server', {
-        ig_supportLink: 'https://new.example',
-        ig_language: 'fr',
-      }),
-    )
-    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
-    expect(save(container, 'general')).toBeDisabled()
-    expect(save(container, 'moderation')).not.toBeDisabled()
-    expect(timeout).toBeChecked()
-    await fireEvent.click(save(container, 'moderation'))
-    await vi.waitFor(() => expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { ig_syncTimeout: true }))
-    expect(save(container, 'moderation')).toBeDisabled()
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', {
+      ig_supportLink: 'https://new.example',
+      ig_language: 'fr',
+    })
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_syncTimeout: true })
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
   })
 
-  it('cancels only its section back to the last confirmed values without writing', async () => {
+  it('still saves edits when their card becomes hidden by a category or search filter', async () => {
     const { container } = renderPage()
     await ready(container)
-    const input = within(row(container, 'Support Link')).getByRole('textbox')
-    await fireEvent.input(input, { target: { value: 'https://draft.example' } })
-    await fireEvent.click(within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox'))
-    await fireEvent.click(cancel(container, 'general'))
-    expect(input).toHaveValue('https://support.example.com')
-    expect(save(container, 'general')).toBeDisabled()
-    expect(save(container, 'moderation')).not.toBeDisabled()
-    expect(saveDashboardSettings).not.toHaveBeenCalled()
-  })
-
-  it('keeps section drafts when hidden by search or category changes', async () => {
-    const { container } = renderPage()
-    await ready(container)
+    vi.useFakeTimers()
     await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
       target: { value: 'https://draft.example' },
     })
     await fireEvent.click(screen.getByRole('button', { name: /Moderation/ }))
     expect(container.querySelector('#ig_supportLink')).not.toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: /General/ }))
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_supportLink: 'https://draft.example' })
+    await fireEvent.click(screen.getByRole('button', { name: /General and administration/ }))
     expect(within(row(container, 'Support Link')).getByRole('textbox')).toHaveValue('https://draft.example')
     await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'nothing-matches' } })
     await fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
     expect(within(row(container, 'Support Link')).getByRole('textbox')).toHaveValue('https://draft.example')
-    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  it('keeps a failed draft for correction and retries the same complete section without false success', async () => {
+  it('preserves a failed value and retries only when requested without looping', async () => {
     const { container } = renderPage()
     await ready(container)
-    const input = within(row(container, 'Support Link')).getByRole('textbox')
-    await fireEvent.input(input, { target: { value: 'https://draft.example' } })
+    vi.useFakeTimers()
     vi.mocked(saveDashboardSettings).mockRejectedValueOnce(new Error('Offline'))
-    await fireEvent.click(save(container, 'general'))
-    await vi.waitFor(() => expect(within(section(container, 'general')).getByRole('alert')).toBeInTheDocument())
-    expect(input).toHaveValue('https://draft.example')
-    expect(save(container, 'general')).not.toBeDisabled()
-    expect(within(section(container, 'general')).queryByText('Changes saved.')).not.toBeInTheDocument()
-    await fireEvent.click(save(container, 'general'))
-    await vi.waitFor(() => expect(save(container, 'general')).toBeDisabled())
-    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
-    expect(
-      vi
-        .mocked(saveDashboardSettings)
-        .mock.calls.every(([, values]) => values.ig_supportLink === 'https://draft.example'),
-    ).toBe(true)
-  })
-
-  it('blocks duplicate submissions and locks only the section being saved', async () => {
-    const { container } = renderPage()
-    await ready(container)
     const input = within(row(container, 'Support Link')).getByRole('textbox')
     await fireEvent.input(input, { target: { value: 'https://draft.example' } })
+    await autosave()
+    expect(within(section(container, 'general')).getByRole('alert')).toBeInTheDocument()
+    expect(input).toHaveValue('https://draft.example')
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    await fireEvent.click(within(section(container, 'general')).getByRole('button', { name: 'Try again' }))
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
+    expect(within(section(container, 'general')).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('queues changes typed during an in-flight request without disabling the input or losing edits', async () => {
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
     let finish!: (value: Awaited<ReturnType<typeof saveDashboardSettings>>) => void
     vi.mocked(saveDashboardSettings).mockImplementationOnce(
       () =>
@@ -241,79 +202,78 @@ describe('server configuration section drafts', () => {
           finish = resolve
         }),
     )
-    await fireEvent.click(save(container, 'general'))
-    await fireEvent.click(save(container, 'general'))
+    const input = within(row(container, 'Support Link')).getByRole('textbox')
+    await fireEvent.input(input, { target: { value: 'https://first.example' } })
+    await autosave()
     expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
-    expect(input).toBeDisabled()
-    expect(cancel(container, 'general')).toBeDisabled()
-    expect(within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox')).not.toBeDisabled()
-    finish({ settings: { ig_supportLink: 'https://accepted.example' }, sync: 'applied' })
-    await vi.waitFor(() => expect(input).not.toBeDisabled())
-    expect(input).toHaveValue('https://accepted.example')
-    expect(save(container, 'general')).toBeDisabled()
-    await fireEvent.input(input, { target: { value: 'https://another.example' } })
-    await fireEvent.click(cancel(container, 'general'))
-    expect(input).toHaveValue('https://accepted.example')
+    expect(input).not.toBeDisabled()
+    await fireEvent.input(input, { target: { value: 'https://second.example' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    finish({ settings: { ig_supportLink: 'https://first.example' }, sync: 'applied' })
+    await autosave()
+    expect(input).toHaveValue('https://second.example')
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { ig_supportLink: 'https://second.example' })
   })
 
-  it('distinguishes a stored section waiting for synchronization from a failed save', async () => {
+  it('distinguishes accepted storage pending addon synchronization from a failed save', async () => {
     const { container } = renderPage()
     await ready(container)
+    vi.useFakeTimers()
     vi.mocked(saveDashboardSettings).mockResolvedValueOnce({ settings: { ig_syncTimeout: true }, sync: 'pending' })
     await fireEvent.click(within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox'))
-    await fireEvent.click(save(container, 'moderation'))
-    await vi.waitFor(() =>
-      expect(
-        within(section(container, 'moderation')).getByText('Saved. Synchronization is pending.'),
-      ).toBeInTheDocument(),
-    )
-    expect(save(container, 'moderation')).toBeDisabled()
+    await autosave()
+    expect(within(section(container, 'moderation')).getByText('Saved. Synchronization is pending.')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it.each(['invalid-url', 'javascript:alert(1)'])(
-    'rejects invalid or unsupported support URLs before a request: %s',
+    'keeps an invalid support URL local until corrected: %s',
     async (value) => {
       const { container } = renderPage()
       await ready(container)
+      vi.useFakeTimers()
       const input = within(row(container, 'Support Link')).getByRole('textbox')
       await fireEvent.input(input, { target: { value } })
+      await autosave()
       expect(input).toHaveAttribute('aria-invalid', 'true')
       expect(within(row(container, 'Support Link')).getByRole('alert')).toBeInTheDocument()
-      expect(save(container, 'general')).toBeDisabled()
-      await fireEvent.click(save(container, 'general'))
       expect(saveDashboardSettings).not.toHaveBeenCalled()
       await fireEvent.input(input, { target: { value: '' } })
-      expect(save(container, 'general')).not.toBeDisabled()
+      await autosave()
+      expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_supportLink: '' })
     },
   )
 
-  it.each(['', '-1', '1.5'])('requires a non-negative integer kick delay: %s', async (value) => {
+  it.each(['', '-1', '1.5'])('does not save an invalid kick delay: %s', async (value) => {
     const { container } = renderPage()
     await ready(container)
+    vi.useFakeTimers()
     const input = within(row(container, 'Account-linking time limit (seconds)')).getByRole('spinbutton')
     await fireEvent.input(input, { target: { value } })
-    expect(save(container, 'access')).toBeDisabled()
+    await autosave()
     expect(input).toHaveAttribute('aria-invalid', 'true')
     expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  it('saves numeric delays as numbers and treats typing the unchanged number as clean', async () => {
+  it('saves numeric delays as numbers without writing unchanged values', async () => {
     const { container } = renderPage()
     await ready(container)
+    vi.useFakeTimers()
     const input = within(row(container, 'Account-linking time limit (seconds)')).getByRole('spinbutton')
     await fireEvent.input(input, { target: { value: '120' } })
-    expect(save(container, 'access')).toBeDisabled()
+    await autosave()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
     await fireEvent.input(input, { target: { value: '0' } })
-    await fireEvent.click(save(container, 'access'))
-    await vi.waitFor(() =>
-      expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_verifyOnReadyKickTime: 0 }),
-    )
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_verifyOnReadyKickTime: 0 })
   })
 
-  it('keeps rank additions local, rejects blank and duplicate names, then saves a normalized object', async () => {
+  it('holds invalid rank rows locally, then automatically saves the normalized complete rank map', async () => {
     const { container } = renderPage()
     await ready(container)
+    vi.useFakeTimers()
     const ranks = row(container, 'Game administrator groups')
     expect(
       within(ranks)
@@ -321,18 +281,17 @@ describe('server configuration section drafts', () => {
         .map((input) => (input as HTMLInputElement).value),
     ).toEqual(['mod', 'superadmin'])
     await fireEvent.click(within(ranks).getByRole('button', { name: 'Add rank' }))
-    expect(save(container, 'administration')).toBeDisabled()
+    await autosave()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
     const inputs = within(ranks).getAllByRole('textbox')
     await fireEvent.input(inputs[2], { target: { value: 'mod' } })
-    expect(save(container, 'administration')).toBeDisabled()
-    await fireEvent.input(inputs[2], { target: { value: ' admin ' } })
+    await autosave()
     expect(saveDashboardSettings).not.toHaveBeenCalled()
-    await fireEvent.click(save(container, 'administration'))
-    await vi.waitFor(() =>
-      expect(saveDashboardSettings).toHaveBeenCalledWith('server', {
-        ig_adminRank: { mod: true, superadmin: true, admin: true },
-      }),
-    )
+    await fireEvent.input(inputs[2], { target: { value: ' admin ' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', {
+      ig_adminRank: { mod: true, superadmin: true, admin: true },
+    })
     expect(
       within(ranks)
         .getAllByRole('textbox')
@@ -340,44 +299,47 @@ describe('server configuration section drafts', () => {
     ).toEqual(['admin', 'mod', 'superadmin'])
   })
 
-  it('restores removed ranks on cancellation without persisting their deletion', async () => {
+  it('automatically persists a removed administrator rank', async () => {
     const { container } = renderPage()
     await ready(container)
+    vi.useFakeTimers()
     const ranks = row(container, 'Game administrator groups')
     await fireEvent.click(within(ranks).getAllByRole('button', { name: 'Remove' })[0])
+    await autosave()
     expect(within(ranks).getAllByRole('textbox')).toHaveLength(1)
-    await fireEvent.click(cancel(container, 'administration'))
-    expect(within(ranks).getAllByRole('textbox')).toHaveLength(2)
-    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_adminRank: { superadmin: true } })
   })
 
   it.each(['{"owner":true}', '[object Object]', '{broken', null])(
-    'normalizes a legacy rank value without mutating the response fixture: %s',
+    'normalizes legacy rank values without writing or mutating the fixture: %s',
     async (ranks) => {
       const fixture = { ...settings(), ig_adminRank: ranks }
       mockFetch(fixture)
       const { container } = renderPage()
       await ready(container)
-      const values = within(row(container, 'Game administrator groups'))
-        .getAllByRole('textbox')
-        .map((input) => (input as HTMLInputElement).value)
-      expect(values).toEqual(ranks === '{"owner":true}' ? ['owner'] : ['superadmin'])
+      expect(
+        within(row(container, 'Game administrator groups'))
+          .getAllByRole('textbox')
+          .map((input) => (input as HTMLInputElement).value),
+      ).toEqual(ranks === '{"owner":true}' ? ['owner'] : ['superadmin'])
       expect(fixture.ig_adminRank).toBe(ranks)
+      expect(saveDashboardSettings).not.toHaveBeenCalled()
     },
   )
 
-  it('does not send an unfinished draft when the page is unmounted', async () => {
+  it('cancels a queued write when unmounted', async () => {
     const { container, unmount } = renderPage()
     await ready(container)
+    vi.useFakeTimers()
     await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
       target: { value: 'https://draft.example' },
     })
     unmount()
+    await autosave()
     expect(saveDashboardSettings).not.toHaveBeenCalled()
-    expect(writes()).toHaveLength(0)
   })
 
-  it('exposes hidden dirty sections to the navigation guard and unregisters them on unmount', async () => {
+  it('keeps pending hidden edits registered until saved and unregisters forms on unmount', async () => {
     const entries: DraftEntry[] = []
     const unregister = vi.fn()
     const { container, unmount } = renderWithProviders(
@@ -399,13 +361,14 @@ describe('server configuration section drafts', () => {
       },
     )
     await ready(container)
+    vi.useFakeTimers()
     expect(entries.every((entry) => !entry.dirty())).toBe(true)
     await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
       target: { value: 'https://unsaved.example' },
     })
     await fireEvent.click(screen.getByRole('button', { name: /Moderation/ }))
     expect(entries.filter((entry) => entry.dirty())).toHaveLength(1)
-    entries.find((entry) => entry.dirty())!.discard()
+    await autosave()
     expect(entries.every((entry) => !entry.dirty())).toBe(true)
     unmount()
     expect(unregister).toHaveBeenCalledTimes(entries.length)

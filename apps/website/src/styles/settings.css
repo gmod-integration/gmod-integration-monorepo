@@ -129,6 +129,18 @@
   margin-top: 2px;
   color: var(--dashboard-accent);
 }
+.dashboard-panel-body.is-flush > .settings-notice {
+  margin: 20px 24px;
+}
+.settings-save-feedback {
+  margin-top: auto;
+  color: var(--dashboard-muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.settings-save-feedback:empty {
+  display: none;
+}
 .settings-browser {
   display: flex;
   flex-direction: column;
@@ -299,6 +311,9 @@
   }
 }
 @media (max-width: 767px) {
+  .dashboard-panel-body.is-flush > .settings-notice {
+    margin: 18px;
+  }
   .dashboard-panel-body.is-flush > :is(.settings-browser, .settings-group, .settings-advanced) {
     padding-inline: 18px;
   }

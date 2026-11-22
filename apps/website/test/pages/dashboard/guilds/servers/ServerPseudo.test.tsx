@@ -71,7 +71,7 @@ describe('ServerPseudo unified editing', () => {
     expect(input('pseudo-format-preview')).toHaveAttribute('readonly')
     expect(document.getElementById('edit_format')).not.toBeInTheDocument()
   })
-  it('groups direction and format into one local draft and Cancel restores both', async () => {
+  it('previews direction and format changes before automatically saving them together', async () => {
     renderPage()
     await loaded()
     const group = within(input('pseudo-format').closest('.dashboard-panel')!)
@@ -80,9 +80,16 @@ describe('ServerPseudo unified editing', () => {
     expect(input('pseudo-format-preview')).toHaveValue('[Admin] John Doe')
     expect(saveDashboardSettings).not.toHaveBeenCalled()
     expect(writes()).toHaveLength(0)
-    await fireEvent.click(group.getByRole('button', { name: 'Cancel' }))
-    expect(input('server-pseudo-direction')).toHaveValue('gmod-to-discord')
-    expect(input('pseudo-format')).toHaveValue('{rolePrefix} {plyName}')
+    expect(group.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(group.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+    await vi.waitFor(() =>
+      expect(saveDashboardSettings).toHaveBeenCalledWith('server', {
+        sync_pseudo_direction: 'both',
+        pseudoFormat: '[{roleName}] {plyName}',
+      }),
+    )
+    expect(input('server-pseudo-direction')).toHaveValue('both')
+    expect(input('pseudo-format')).toHaveValue('[{roleName}] {plyName}')
   })
   it('saves the whole settings section atomically and preserves the accepted baseline', async () => {
     renderPage()
@@ -90,7 +97,6 @@ describe('ServerPseudo unified editing', () => {
     const group = within(input('pseudo-format').closest('.dashboard-panel')!)
     await fireEvent.change(input('server-pseudo-direction'), { target: { value: 'both' } })
     await fireEvent.input(input('pseudo-format'), { target: { value: '{plyName}' } })
-    await fireEvent.click(group.getByRole('button', { name: 'Save' }))
     await vi.waitFor(() =>
       expect(saveDashboardSettings).toHaveBeenCalledWith('server', {
         sync_pseudo_direction: 'both',
@@ -100,21 +106,21 @@ describe('ServerPseudo unified editing', () => {
     await vi.waitFor(() => expect(group.getByRole('status')).toBeInTheDocument())
     expect(input('server-pseudo-direction')).toHaveValue('both')
     expect(input('pseudo-format')).toHaveValue('{plyName}')
-    expect(group.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
   })
   it('validates the enabled format and keeps a failed settings draft available to retry', async () => {
     renderPage()
     await loaded()
     const group = within(input('pseudo-format').closest('.dashboard-panel')!)
     await fireEvent.input(input('pseudo-format'), { target: { value: ' ' } })
-    expect(group.getByRole('button', { name: 'Save' })).toBeDisabled()
+    expect(input('pseudo-format')).toHaveAttribute('aria-invalid', 'true')
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
     await fireEvent.input(input('pseudo-format'), { target: { value: '{plyName}' } })
     ;(saveDashboardSettings as Mock).mockRejectedValueOnce(new Error('offline'))
-    await fireEvent.click(group.getByRole('button', { name: 'Save' }))
     await vi.waitFor(() => expect(group.getByRole('alert')).toBeInTheDocument())
     expect(input('pseudo-format')).toHaveValue('{plyName}')
     ;(saveDashboardSettings as Mock).mockResolvedValueOnce({ settings: { pseudoFormat: '{plyName}' }, sync: 'pending' })
-    await fireEvent.click(group.getByRole('button', { name: 'Save' }))
+    await fireEvent.click(group.getByRole('button', { name: 'Try again' }))
     await vi.waitFor(() => expect(group.getByText('Saved. Synchronization is pending.')).toBeInTheDocument())
   })
   it('requires the group and creates a complete rule only on Create', async () => {

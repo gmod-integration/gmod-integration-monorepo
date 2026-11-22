@@ -134,7 +134,7 @@ describe('DiscordStatusPreview', () => {
     expect(screen.getByRole('heading', { name: 'Prévisualisation Discord en direct' })).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Les modifications mettent uniquement cet aperçu à jour. Enregistrez pour mettre à jour la configuration et un message existant ; publiez pour envoyer un nouveau message.',
+        'Les réglages et les modifications de boutons confirmées sont enregistrés automatiquement et mettent à jour un message existant. Publiez pour envoyer un nouveau message.',
       ),
     ).toBeInTheDocument()
     expect(
@@ -151,7 +151,7 @@ describe('DiscordStatusPreview', () => {
     expect(screen.getByRole('heading', { name: 'Live Discord preview' })).toBeInTheDocument()
     expect(
       screen.getByText(
-        'Edits update this preview only. Save to update the configuration and an existing message; publish to send a new message.',
+        'Settings and confirmed button changes are saved automatically and update an existing message. Publish to send a new message.',
       ),
     ).toBeInTheDocument()
     expect(

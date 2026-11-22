@@ -64,6 +64,7 @@ function renderPage(Page: Component, path: string) {
 }
 const modal = (id: string) => within(document.getElementById(id)!)
 const mutations = () => (fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')
+const statusWrites = () => (globalThis.fetch as Mock).mock.calls.filter(([, request]) => request?.method === 'PUT')
 const quotaNotice = 'You have reached the limit for this feature.'
 
 beforeEach(() => {
@@ -108,7 +109,13 @@ beforeEach(() => {
   guildRolesMutate(roles)
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => json({ configuration: statusConfiguration, revision: 'a'.repeat(64) })),
+    vi.fn(async (_url: string, request?: RequestInit) =>
+      json(
+        request?.method === 'PUT'
+          ? { ...JSON.parse(String(request.body)), revision: 'b'.repeat(64), sync: 'applied' }
+          : { configuration: statusConfiguration, revision: 'a'.repeat(64) },
+      ),
+    ),
   )
   vi.spyOn(window, 'matchMedia').mockReturnValue(
     Object.assign(new EventTarget(), { matches: true, media: '(min-width: 1280px)' }) as MediaQueryList,
@@ -116,6 +123,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   setAuthSession(undefined)
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
@@ -207,7 +215,7 @@ describe('Premium changes during editing', () => {
     const editor = modal('edit_status_button')
     await fireEvent.input(editor.getByLabelText('Button label'), { target: { value: 'New button' } })
     await fireEvent.input(editor.getByLabelText('URL'), { target: { value: 'https://draft.example.com' } })
-    const apply = editor.getByRole('button', { name: 'Apply to draft' })
+    const apply = editor.getByRole('button', { name: 'Create' })
     expect(apply).toBeEnabled()
     setAccess(snapshot(false))
     expect(apply).toBeDisabled()
@@ -221,112 +229,98 @@ describe('Premium changes during editing', () => {
     const setAccess = renderPage(ServerStatus, '/dashboard/guilds/g1/config/servers/s1/status')
     const chart = () => screen.getByRole('checkbox', { name: /Show player activity chart/ })
     await vi.waitFor(() => expect(chart()).toBeEnabled())
+    vi.useFakeTimers()
     await fireEvent.click(chart())
-    const save = screen.getByRole('button', { name: 'Save message' })
-    expect(save).toBeEnabled()
     setAccess(snapshot(true, { validUntil: '2000-01-01T00:00:00.000Z' }))
-    expect(save).toBeDisabled()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(statusWrites()).toHaveLength(0)
     expect(chart()).toBeChecked()
-    const actions = within(save.closest('.ui-form-actions')!)
-    expect(actions.getByText(/Access could not be verified/)).toBeInTheDocument()
-    expect(actions.queryByText('This feature requires Premium.')).not.toBeInTheDocument()
-    expect(actions.getByRole('button', { name: 'Cancel' })).toBeEnabled()
+    const message = within(screen.getByRole('region', { name: 'Message content' }))
+    expect(message.getByRole('alert')).toHaveTextContent('Access could not be verified')
+    expect(message.queryByText('This feature requires Premium.')).not.toBeInTheDocument()
+    expect(message.queryByRole('button', { name: 'Save message' })).not.toBeInTheDocument()
+    setAccess(snapshot(true))
+    await vi.advanceTimersByTimeAsync(400)
+    expect(statusWrites()).toHaveLength(1)
+    expect(JSON.parse(String(statusWrites()[0][1].body)).configuration.settings.show_status_chart).toBe(true)
   })
 
   it('saves button cleanup without applying an unsaved chart that lost Premium access', async () => {
-    const network = vi.fn(async (_url: string, request?: RequestInit) =>
-      json(
-        request?.method === 'PUT'
-          ? { ...JSON.parse(String(request.body)), revision: 'b'.repeat(64), sync: 'applied' }
-          : { configuration: statusConfiguration, revision: 'a'.repeat(64) },
-      ),
-    )
-    vi.stubGlobal('fetch', network)
     const setAccess = renderPage(ServerStatus, '/dashboard/guilds/g1/config/servers/s1/status')
     const chart = () => screen.getByRole('checkbox', { name: /Show player activity chart/ })
     await vi.waitFor(() => expect(chart()).toBeEnabled())
+    vi.useFakeTimers()
     await fireEvent.click(chart())
     setAccess(snapshot(false))
-    expect(screen.getByRole('button', { name: 'Save message' })).toBeDisabled()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(statusWrites()).toHaveLength(0)
     await fireEvent.click(within(screen.getByRole('table')).getAllByRole('button', { name: 'Delete' })[0])
-    const save = screen.getByRole('button', { name: 'Save buttons' })
-    expect(save).toBeEnabled()
-    await fireEvent.click(save)
-    await vi.waitFor(() =>
-      expect(network.mock.calls.filter(([, request]) => request?.method === 'PUT')).toHaveLength(1),
-    )
-    await vi.waitFor(() => {
-      expect(save).toBeDisabled()
-      expect(within(save.closest('.ui-form-actions')!).getByRole('button', { name: 'Cancel' })).toBeEnabled()
-    })
-    const writes = network.mock.calls.filter(([, request]) => request?.method === 'PUT')
-    expect(writes).toHaveLength(1)
-    expect(JSON.parse(String(writes[0][1]!.body)).configuration).toEqual({
+    expect(statusWrites()).toHaveLength(0)
+    await fireEvent.click(modal('remove-status-button').getByRole('button', { name: 'Delete' }))
+    await vi.advanceTimersByTimeAsync(0)
+    expect(statusWrites()).toHaveLength(1)
+    expect(JSON.parse(String(statusWrites()[0][1].body)).configuration).toEqual({
       settings: statusConfiguration.settings,
       buttons: statusButtons.slice(1),
     })
     expect(chart()).toBeChecked()
-    expect(screen.getByRole('button', { name: 'Save message' })).toBeDisabled()
     expect(screen.getByRole('table')).not.toHaveTextContent('Button 1')
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(statusWrites()).toHaveLength(1)
+    expect(within(screen.getByRole('region', { name: 'Message content' })).getByRole('alert')).toHaveTextContent(
+      'This feature requires Premium.',
+    )
   })
 
-  it('saves a free message edit while an unsaved fourth button is blocked by the free quota', async () => {
-    const network = vi.fn(async (_url: string, request?: RequestInit) =>
-      json(
-        request?.method === 'PUT'
-          ? { ...JSON.parse(String(request.body)), revision: 'b'.repeat(64), sync: 'applied' }
-          : { configuration: statusConfiguration, revision: 'a'.repeat(64) },
-      ),
-    )
-    vi.stubGlobal('fetch', network)
+  it('automatically saves a free message edit while an unsaved fourth button is blocked by the free quota', async () => {
     const setAccess = renderPage(ServerStatus, '/dashboard/guilds/g1/config/servers/s1/status')
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Button' })).toBeEnabled())
+    vi.useFakeTimers()
     await fireEvent.click(screen.getByRole('button', { name: 'Add Button' }))
     const editor = modal('edit_status_button')
     await fireEvent.input(editor.getByLabelText('Button label'), { target: { value: 'Fourth button' } })
     await fireEvent.input(editor.getByLabelText('URL'), { target: { value: 'https://draft.example.com' } })
-    await fireEvent.click(editor.getByRole('button', { name: 'Apply to draft' }))
+    await fireEvent.click(editor.getByRole('button', { name: 'Create' }))
     setAccess(snapshot(false))
-    expect(screen.getByRole('button', { name: 'Save buttons' })).toBeDisabled()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(statusWrites()).toHaveLength(0)
     await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
-    const save = screen.getByRole('button', { name: 'Save message' })
-    expect(save).toBeEnabled()
-    await fireEvent.click(save)
-    await vi.waitFor(() =>
-      expect(network.mock.calls.filter(([, request]) => request?.method === 'PUT')).toHaveLength(1),
-    )
-    await vi.waitFor(() => {
-      expect(save).toBeDisabled()
-      expect(within(save.closest('.ui-form-actions')!).getByRole('button', { name: 'Cancel' })).toBeEnabled()
-    })
-    const writes = network.mock.calls.filter(([, request]) => request?.method === 'PUT')
-    expect(writes).toHaveLength(1)
-    expect(JSON.parse(String(writes[0][1]!.body)).configuration).toEqual({
+    await vi.advanceTimersByTimeAsync(400)
+    expect(statusWrites()).toHaveLength(1)
+    expect(JSON.parse(String(statusWrites()[0][1].body)).configuration).toEqual({
       settings: { ...statusConfiguration.settings, show_player_list_status: true },
       buttons: statusButtons,
     })
     expect(screen.getByRole('table')).toHaveTextContent('Fourth button')
-    expect(screen.getByRole('button', { name: 'Save buttons' })).toBeDisabled()
-    expect(
-      within(screen.getByRole('button', { name: 'Save buttons' }).closest('.ui-form-actions')!).getByText(quotaNotice),
-    ).toBeInTheDocument()
+    expect(within(screen.getByRole('region', { name: 'Status Buttons' })).getByRole('alert')).toHaveTextContent(
+      quotaNotice,
+    )
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(statusWrites()).toHaveLength(1)
   })
 
-  it('holds newly applied buttons for access revalidation while retaining the button draft', async () => {
+  it('holds newly confirmed buttons for access revalidation while retaining the button draft', async () => {
     const setAccess = renderPage(ServerStatus, '/dashboard/guilds/g1/config/servers/s1/status')
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Button' })).toBeEnabled())
+    vi.useFakeTimers()
     await fireEvent.click(screen.getByRole('button', { name: 'Add Button' }))
     const editor = modal('edit_status_button')
     await fireEvent.input(editor.getByLabelText('Button label'), { target: { value: 'Draft button' } })
     await fireEvent.input(editor.getByLabelText('URL'), { target: { value: 'https://draft.example.com' } })
-    await fireEvent.click(editor.getByRole('button', { name: 'Apply to draft' }))
-    const save = screen.getByRole('button', { name: 'Save buttons' })
-    expect(save).toBeEnabled()
+    await fireEvent.click(editor.getByRole('button', { name: 'Create' }))
     setAccess(snapshot(true, { validUntil: '2000-01-01T00:00:00.000Z' }))
-    expect(save).toBeDisabled()
-    expect(within(save.closest('.ui-form-actions')!).getByText(/Access could not be verified/)).toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(statusWrites()).toHaveLength(0)
+    expect(within(screen.getByRole('region', { name: 'Status Buttons' })).getByRole('alert')).toHaveTextContent(
+      'Access could not be verified',
+    )
     expect(screen.getByRole('table')).toHaveTextContent('Draft button')
     setAccess(snapshot(true))
-    expect(save).toBeEnabled()
+    await vi.advanceTimersByTimeAsync(400)
+    expect(statusWrites()).toHaveLength(1)
+    expect(JSON.parse(String(statusWrites()[0][1].body)).configuration.buttons).toEqual([
+      ...statusButtons,
+      { name: 'Draft button', emoji: '', url: 'https://draft.example.com', enable: false },
+    ])
   })
 })

@@ -8,6 +8,7 @@ import {
 import AdminPanel from '../../../../../components/AdminPanel.js'
 import StatusCardActions from './StatusCardActions.js'
 import AdminModal from '../../../../../components/AdminModal.js'
+import ConfirmActionDialog from '../../../../../components/ConfirmActionDialog.js'
 import {
   BooleanStatus,
   Button,
@@ -45,6 +46,7 @@ const ServerStatusButtons: Component = () => {
   const [open, setOpen] = createSignal(false)
   const [index, setIndex] = createSignal<number>()
   const [emojiPicker, setEmojiPicker] = createSignal(false)
+  const [removing, setRemoving] = createSignal<number>()
   const buttonForm = createDraftForm<StatusConfigurationButton>({
     initial: emptyButton(),
     validate: (draft) => {
@@ -98,6 +100,24 @@ const ServerStatusButtons: Component = () => {
   }
   return (
     <>
+      <ConfirmActionDialog
+        id="remove-status-button"
+        title={t('ui.confirm_delete', 'Delete this item?')}
+        description={removing() === undefined ? '' : editor.form.draft().buttons[removing()!]?.name}
+        confirmLabel={t('ui.delete', 'Delete')}
+        disabled={unavailable()}
+        onConfirm={async () => {
+          const row = removing()
+          if (row === undefined || unavailable()) throw new Error('No button selected')
+          const previous = editor.buttonsForm.draft().buttons
+          editor.form.patch({ buttons: previous.filter((_, index) => index !== row) })
+          if (!(await editor.save('buttons'))) {
+            editor.buttonsForm.setDraft({ buttons: previous })
+            throw new Error('Status button removal failed')
+          }
+        }}
+        onSuccess={() => setRemoving(undefined)}
+      />
       <AdminModal
         id="edit_status_button"
         title={
@@ -111,10 +131,7 @@ const ServerStatusButtons: Component = () => {
         size="wide"
       >
         <p class="settings-notice">
-          {t(
-            'editing.status_buttons_scope',
-            'Apply each button to this card’s draft, then save the buttons to update Discord.',
-          )}
+          {t('editing.status_buttons_scope', 'Confirm the button to save it and update Discord automatically.')}
         </p>
         <FormField
           id="status-button-name"
@@ -230,7 +247,7 @@ const ServerStatusButtons: Component = () => {
             !buttonForm.valid() ||
             (index() === undefined && !quotaAccess.canCreate(editor.form.draft().buttons.length))
           }
-          saveLabel={t('editing.apply_draft', 'Apply to draft')}
+          saveLabel={index() === undefined ? t('ui.create', 'Create') : t('ui.save', 'Save')}
           onSave={apply}
           onCancel={() => {
             closeDialog('edit_status_button')
@@ -242,7 +259,7 @@ const ServerStatusButtons: Component = () => {
         title={t('dashboard.server.status.status_buttons', 'Status Buttons')}
         description={t(
           'dashboard.server.status.status_buttons_description',
-          'Add links to useful pages, such as your shop or Workshop collection. Apply each button to the draft, then save this card.',
+          'Add links to useful pages, such as your shop or Workshop collection. Confirmed changes are saved automatically.',
         )}
         type="none"
         footer={<StatusCardActions scope="buttons" />}
@@ -314,11 +331,10 @@ const ServerStatusButtons: Component = () => {
                             icon="trash-2"
                             variant="danger"
                             disabled={unavailable()}
-                            onClick={() =>
-                              editor.form.patch({
-                                buttons: editor.form.draft().buttons.filter((_, current) => current !== row()),
-                              })
-                            }
+                            onClick={() => {
+                              setRemoving(row())
+                              showDialog('remove-status-button')
+                            }}
                           />
                         </div>
                       </td>
