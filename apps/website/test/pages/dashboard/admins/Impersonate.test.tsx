@@ -35,6 +35,40 @@ describe('server-tracked administrative delegation', () => {
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Access Target' })).toBeInTheDocument())
     expect(screen.queryByRole('button', { name: 'Access Self' })).not.toBeInTheDocument()
   })
+  it('excludes the current identity before paging and delegates to a target on a later page', async () => {
+    const targets = Array.from({ length: 51 }, (_, index) => ({
+      discordID: `target${index + 1}`,
+      username: `Target ${index + 1}`,
+    }))
+    ;(fetchAPI as Mock).mockResolvedValue({
+      ok: true,
+      json: async () => [...targets.slice(0, 24), { discordID: 'u1', username: 'Self' }, ...targets.slice(24)],
+    })
+    const network = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify(
+          sessionFixture({
+            user: { ...sessionFixture().user, id: 'target51' },
+            session: { ...sessionFixture().session, id: 'delegated', actorDiscordID: 'u1' },
+          }),
+        ),
+      ),
+    )
+    vi.stubGlobal('fetch', network)
+    const history = renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Access Target 25' })).toBeInTheDocument())
+    expect(screen.getAllByRole('button', { name: /^Access Target/ })).toHaveLength(25)
+    expect(screen.queryByRole('button', { name: 'Access Self' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Access Target 26' })).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByRole('button', { name: 'Access Target 26' })).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getAllByRole('button', { name: /^Access Target/ })).toHaveLength(1)
+    await fireEvent.click(screen.getByRole('button', { name: 'Access Target 51' }))
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds'))
+    expect(network.mock.calls[0][1].body).toBe(JSON.stringify({ discordID: 'target51' }))
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
+  })
   it('starts a delegated session using CSRF and cookies and leaves browser preferences intact', async () => {
     localStorage.setItem('theme', 'dark')
     const network = vi.fn().mockResolvedValue(

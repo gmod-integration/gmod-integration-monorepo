@@ -211,4 +211,36 @@ describe('ServerPseudo unified editing', () => {
     expect(options[2]).toBeDisabled()
     expect(options[3]).toBeDisabled()
   })
+  it('keeps the format draft while paging and edits the nickname rule on the selected page', async () => {
+    const manyRows = Array.from({ length: 26 }, (_, index) => ({
+      id: index + 1,
+      enabled: true,
+      role: `group-${index + 1}`,
+      name: `Name ${index + 1}`,
+      prefix: `[${index + 1}]`,
+    }))
+    const original = (fetchAPI as Mock).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((endpoint, method, body) =>
+      endpoint === URL && method === 'GET' ? Promise.resolve(okJson(manyRows)) : original(endpoint, method, body),
+    )
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByText('group-1')).toBeInTheDocument())
+    await fireEvent.input(input('pseudo-format'), { target: { value: 'Draft {plyName}' } })
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('group-26')).toBeInTheDocument()
+    expect(input('pseudo-format')).toHaveValue('Draft {plyName}')
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(input('pseudo-role-group')).toHaveValue('group-26')
+    await fireEvent.input(input('pseudo-role-name'), { target: { value: 'Updated 26' } })
+    write = () => okJson({ ...manyRows[25], name: 'Updated 26' })
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(screen.getByText('Updated 26')).toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(
+      URL + '/26',
+      'PUT',
+      expect.objectContaining({ role: 'group-26', name: 'Updated 26' }),
+    )
+    expect(input('pseudo-format')).toHaveValue('Draft {plyName}')
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+  })
 })

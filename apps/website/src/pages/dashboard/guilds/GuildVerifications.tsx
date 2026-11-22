@@ -1,3 +1,5 @@
+import Pagination from '../../../components/Pagination.js'
+import { createListPagination } from '../../../hooks/createListPagination.js'
 import { FeatureGate, SuspendedFeature } from '../../../components/FeatureGate.js'
 import { useFeatureAccess } from '../../../components/AccessProvider.js'
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
@@ -157,6 +159,7 @@ const GuildVerification: Component = () => {
             ? previous.map((role) => (role.roleID === updated.roleID ? updated : role))
             : [...previous, updated],
         )
+        if (!editingRoleID()) pagination.onChange({ ...pagination.query(), offset: pagination.total() - 1 })
         return updated
       })
     )
@@ -188,6 +191,8 @@ const GuildVerification: Component = () => {
   createEffect(() => {
     if (!verifyRoles.loading && !verifyRoles.error) setRolesToCheck(verifyRoles().map((role) => role.roleID))
   })
+
+  const pagination = createListPagination<VerificationRole>(() => (!verifyRoles.error ? verifyRoles() : undefined))
 
   return (
     <>
@@ -549,21 +554,31 @@ const GuildVerification: Component = () => {
           </>
         }
         footer={
-          <SettingRow
-            title={t('settings.verification_existing_members', 'Existing members')}
-            description={t(
-              'dashboard.guild.verification.check',
-              'Apply automatic roles to existing members and verification role rules to members with linked Steam and Discord accounts. Available once every 24 hours on Discord servers with up to 1,000 members.',
-            )}
-          >
-            <Button
-              variant="warning"
-              disabled={lastVerify.loading || !!lastVerify.error || lastVerify() === false}
-              onClick={() => showDialog('check_verification_roles')}
+          <>
+            {!verifyRoles.loading && !verifyRoles.error && pagination.visible() ? (
+              <Pagination
+                standalone
+                query={pagination.query()}
+                total={pagination.total()}
+                onChange={pagination.onChange}
+              />
+            ) : undefined}
+            <SettingRow
+              title={t('settings.verification_existing_members', 'Existing members')}
+              description={t(
+                'dashboard.guild.verification.check',
+                'Apply automatic roles to existing members and verification role rules to members with linked Steam and Discord accounts. Available once every 24 hours on Discord servers with up to 1,000 members.',
+              )}
             >
-              {t('dashboard.guild.verification.check_button', 'Apply roles to existing members')}
-            </Button>
-          </SettingRow>
+              <Button
+                variant="warning"
+                disabled={lastVerify.loading || !!lastVerify.error || lastVerify() === false}
+                onClick={() => showDialog('check_verification_roles')}
+              >
+                {t('dashboard.guild.verification.check_button', 'Apply roles to existing members')}
+              </Button>
+            </SettingRow>
+          </>
         }
       >
         <div class="min-w-0 w-full overflow-x-auto">
@@ -590,12 +605,12 @@ const GuildVerification: Component = () => {
                 onRetry={() => void refetchRoles()}
               />
               {/* Bug fix: also gate on !verifyRoles.error - `verifyRoles()` is read unguarded below
-                (via <For each={verifyRoles()}>), and reading a resource accessor while it's in an
+                (via <For each={pagination.items()}>), and reading a resource accessor while it's in an
                 error state re-throws that error, which crashed the render (leaving it stuck on
                 the loading state forever) and made the `Match when={verifyRoles.error}` message
                 below unreachable. Mirrors the same fix already applied to ServerPlayers.tsx. */}
               <Show when={!verifyRoles.loading && !verifyRoles.error}>
-                <For each={verifyRoles()}>
+                <For each={pagination.items()}>
                   {(role) => (
                     <tr>
                       <td>

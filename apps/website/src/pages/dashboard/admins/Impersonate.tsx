@@ -5,6 +5,8 @@ import { authCommand, authSession } from '../../../utils/authClient.js'
 import { useI18n } from '../../../i18n.js'
 import { AsyncState, Button } from '../../../components/ui/index.js'
 import { createAsyncAction } from '../../../hooks/createAsyncAction.js'
+import { createListPagination } from '../../../hooks/createListPagination.js'
+import Pagination from '../../../components/Pagination.js'
 import { For, onMount, Show } from 'solid-js'
 
 type Target = { discordID: string; username?: string }
@@ -21,6 +23,9 @@ const Impersonate: Component = () => {
     if (!Array.isArray(value)) throw new Error('Invalid user list')
     return value
   })
+  const availableUsers = () =>
+    (users.error ? [] : (users() ?? [])).filter((user) => user.discordID !== authSession()?.user.id)
+  const pagination = createListPagination(availableUsers)
   async function begin(discordID: string) {
     if (await action.run(() => authCommand('/impersonations', { discordID }))) navigate('/dashboard/guilds')
   }
@@ -50,20 +55,28 @@ const Impersonate: Component = () => {
           <AsyncState
             loading={users.loading}
             error={users.error}
-            empty={!users()?.length}
+            empty={!availableUsers().length}
             emptyLabel={t('admin.users_empty', 'No user accounts are available for support access.')}
           >
             <div class="flex flex-wrap gap-4">
-              <For each={users()}>
+              <For each={pagination.items()}>
                 {(user) => (
-                  <Show when={user.discordID !== authSession()?.user.id}>
-                    <Button class="max-w-full" loading={action.pending()} onClick={() => void begin(user.discordID)}>
-                      {t('admin.open_account', 'Access {1}', user.username || user.discordID)}
-                    </Button>
-                  </Show>
+                  <Button class="max-w-full" loading={action.pending()} onClick={() => void begin(user.discordID)}>
+                    {t('admin.open_account', 'Access {1}', user.username || user.discordID)}
+                  </Button>
                 )}
               </For>
             </div>
+            <Show when={pagination.visible()}>
+              <div class="pt-4">
+                <Pagination
+                  standalone
+                  query={pagination.query()}
+                  total={pagination.total()}
+                  onChange={pagination.onChange}
+                />
+              </div>
+            </Show>
           </AsyncState>
         }
       >

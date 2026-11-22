@@ -244,4 +244,27 @@ describe('ServerRoles unified editing', () => {
       within(input('server-roles-direction')).getByRole('option', { name: 'Both directions', hidden: true }),
     ).toBeDisabled()
   })
+  it('paginates mappings while preserving the synchronization draft and all assigned role choices', async () => {
+    const manyRows = Array.from({ length: 26 }, (_, index) => ({
+      serverID: 's1',
+      roleID: `r${index + 1}`,
+      userGroup: `group-${index + 1}`,
+      enable: true,
+    }))
+    const original = (fetchAPI as Mock).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((endpoint, method, body) =>
+      endpoint === URL && method === 'GET' ? Promise.resolve(okJson(manyRows)) : original(endpoint, method, body),
+    )
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByText('group-1')).toBeInTheDocument())
+    await fireEvent.change(input('server-roles-direction'), { target: { value: 'both' } })
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('group-26')).toBeInTheDocument()
+    expect(screen.queryByText('group-1')).not.toBeInTheDocument()
+    expect(input('server-roles-direction')).toHaveValue('both')
+    await fireEvent.click(screen.getByRole('button', { name: 'Add role mapping' }))
+    expect(modal().queryByRole('option', { name: 'Admin' })).not.toBeInTheDocument()
+    expect(writes()).toHaveLength(0)
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+  })
 })

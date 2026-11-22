@@ -1,3 +1,5 @@
+import Pagination from '../../../../components/Pagination.js'
+import { createListPagination } from '../../../../hooks/createListPagination.js'
 import { FeatureGate, SuspendedFeature } from '../../../../components/FeatureGate.js'
 import { useFeatureAccess } from '../../../../components/AccessProvider.js'
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
@@ -122,10 +124,13 @@ const ServerPseudo: Component = () => {
       mutate((previous) =>
         isNew ? [...previous, updated] : previous.map((row) => (row.id === updated.id ? updated : row)),
       )
+      if (isNew) pagination.onChange({ ...pagination.query(), offset: pagination.total() - 1 })
       return updated
     })
     if (saved) closeDialog('edit_role_modal')
   }
+  const pagination = createListPagination<PseudoRule>(() => (!rules.error ? rules() : undefined))
+
   return (
     <>
       <NeedWebsocket />
@@ -343,6 +348,16 @@ const ServerPseudo: Component = () => {
           'Choose the display name and prefix supplied by each game user group. These rules do not create or assign Discord roles.',
         )}
         type="none"
+        footer={
+          !rules.loading && !rules.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
         icon="list"
         actions={
           <FeatureGate
@@ -383,7 +398,7 @@ const ServerPseudo: Component = () => {
                 empty={!rules.loading && !rules.error && rules().length === 0}
                 onRetry={() => void refetch()}
               >
-                <For each={!rules.error ? rules() : []}>
+                <For each={pagination.items()}>
                   {(row) => (
                     <tr>
                       <td>

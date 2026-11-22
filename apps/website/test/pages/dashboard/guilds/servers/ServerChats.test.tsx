@@ -383,4 +383,32 @@ describe('ServerChats unified editing', () => {
       }),
     )
   })
+  it('paginates filter rules while keeping the independent relay draft intact', async () => {
+    const manyRows = Array.from({ length: 26 }, (_, index) => ({
+      ...filter(),
+      id: index + 1,
+      trigger: `message-${index + 1}`,
+    }))
+    const original = (fetchAPI as Mock).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((endpoint, method, body) =>
+      endpoint === URL + '/filters' && method === 'GET'
+        ? Promise.resolve(okJson(manyRows))
+        : original(endpoint, method, body),
+    )
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByText('message-1')).toBeInTheDocument())
+    await fireEvent.change(input('chat-direction'), { target: { value: 'both' } })
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('message-26')).toBeInTheDocument()
+    expect(input('chat-direction')).toHaveValue('both')
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(input('chat-rule-trigger')).toHaveValue('message-26')
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText('message-26')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Previous page' }))
+    expect(screen.getByText('message-1')).toBeInTheDocument()
+    expect(input('chat-direction')).toHaveValue('both')
+    expect(writes()).toHaveLength(0)
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+  })
 })

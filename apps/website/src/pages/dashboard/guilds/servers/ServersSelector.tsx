@@ -1,11 +1,13 @@
 import { Button, Icon } from '../../../../components/ui/index.js'
-import { createResource, createSignal, For, Match, Switch, type Component } from 'solid-js'
+import { createResource, createSignal, For, Match, Show, Switch, type Component } from 'solid-js'
 import { A, useNavigate } from '@solidjs/router'
 import defaultServer from '../../../../assets/defaultServer.png'
 import { useI18n } from '../../../../i18n.js'
 import { FeatureGate } from '../../../../components/FeatureGate.js'
 import { useFeatureAccess } from '../../../../components/AccessProvider.js'
 import { fetchAPI, getUrlWithActualParams } from '../../../../utils/api.js'
+import Pagination from '../../../../components/Pagination.js'
+import { createListPagination } from '../../../../hooks/createListPagination.js'
 
 type ServerSummary = { id: string; name: string; ip: string; port: number; image?: string }
 
@@ -31,6 +33,7 @@ const ServerList: Component = () => {
       `${server.name} ${server.ip}:${server.port}`.toLocaleLowerCase().includes(term),
     )
   }
+  const pagination = createListPagination(filteredServers, { resetKey: search })
   const cannotCreate = () =>
     creating() || servers.loading || Boolean(servers.error) || !quotaAccess.canCreate(servers()?.length || 0)
 
@@ -121,7 +124,7 @@ const ServerList: Component = () => {
             </label>
             <div class="dashboard-entity-grid grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
               <For
-                each={filteredServers()}
+                each={pagination.items()}
                 fallback={
                   <p
                     role="status"
@@ -162,6 +165,14 @@ const ServerList: Component = () => {
                 )}
               </For>
             </div>
+            <Show when={pagination.visible()}>
+              <Pagination
+                standalone
+                query={pagination.query()}
+                total={pagination.total()}
+                onChange={pagination.onChange}
+              />
+            </Show>
             {createFailed() && (
               <p role="alert" class="text-error text-center">
                 {t('ui.create_server_failed', 'The server could not be created. Please try again.')}

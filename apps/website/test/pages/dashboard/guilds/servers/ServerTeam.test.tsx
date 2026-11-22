@@ -220,4 +220,27 @@ describe('ServerTeam unified editing', () => {
       expect(fetchAPI).toHaveBeenCalledWith(URL + '/1', 'PUT', { teamName: 'admins', enable: false }),
     )
   })
+  it('paginates team mappings and deletes the targeted row from the last page', async () => {
+    const manyRows = Array.from({ length: 26 }, (_, index) => ({
+      id: index + 1,
+      serverID: 's1',
+      roleID: 'r1',
+      teamName: `team-${index + 1}`,
+      enable: true,
+    }))
+    const original = (fetchAPI as Mock).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((endpoint, method, body) =>
+      endpoint === URL && method === 'GET' ? Promise.resolve(okJson(manyRows)) : original(endpoint, method, body),
+    )
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByText('team-1')).toBeInTheDocument())
+    expect(screen.getByRole('table').querySelectorAll('tbody tr')).toHaveLength(25)
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('team-26')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete team role mapping' }))
+    await fireEvent.click(within(document.getElementById('delete-role-sync')!).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(screen.getByText('team-1')).toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(URL + '/26', 'DELETE')
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
+  })
 })

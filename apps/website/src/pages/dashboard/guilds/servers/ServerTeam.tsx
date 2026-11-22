@@ -1,3 +1,5 @@
+import Pagination from '../../../../components/Pagination.js'
+import { createListPagination } from '../../../../hooks/createListPagination.js'
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel.js'
@@ -72,10 +74,13 @@ const ServerTeam: Component = () => {
       mutate((previous) =>
         isNew ? [...previous, updated] : previous.map((row) => (row.id === updated.id ? updated : row)),
       )
+      if (isNew) pagination.onChange({ ...pagination.query(), offset: pagination.total() - 1 })
       return updated
     })
     if (saved) closeDialog('edit_role_modal')
   }
+  const pagination = createListPagination<TeamRule>(() => (!rules.error ? rules() : undefined))
+
   return (
     <>
       <MissingRolePermission />
@@ -182,6 +187,16 @@ const ServerTeam: Component = () => {
           'Assign a Discord role while a linked player is in a specific game team or job. The role is removed when the player changes team or leaves the game.',
         )}
         type="none"
+        footer={
+          !rules.loading && !rules.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
         icon="users"
         actions={
           <>
@@ -222,7 +237,7 @@ const ServerTeam: Component = () => {
                 empty={!rules.loading && !rules.error && rules().length === 0}
                 onRetry={() => void refetch()}
               >
-                <For each={!rules.error ? rules() : []}>
+                <For each={pagination.items()}>
                   {(row) => (
                     <tr>
                       <td>

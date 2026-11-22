@@ -1,3 +1,5 @@
+import Pagination from '../../../../components/Pagination.js'
+import { createListPagination } from '../../../../hooks/createListPagination.js'
 import { FeatureGate, SuspendedFeature } from '../../../../components/FeatureGate.js'
 import { useFeatureAccess } from '../../../../components/AccessProvider.js'
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
@@ -84,6 +86,7 @@ const ServerRoles: Component = () => {
       mutate((previous) =>
         isNew ? [...previous, updated] : previous.map((row) => (row.roleID === updated.roleID ? updated : row)),
       )
+      if (isNew) pagination.onChange({ ...pagination.query(), offset: pagination.total() - 1 })
       return updated
     })
     if (saved) closeDialog('edit_role_modal')
@@ -122,6 +125,8 @@ const ServerRoles: Component = () => {
       }
     })
   }
+  const pagination = createListPagination<RoleRule>(() => (!rules.error ? rules() : undefined))
+
   return (
     <>
       <MissingRolePermission />
@@ -298,6 +303,16 @@ const ServerRoles: Component = () => {
           'Each active rule links one Discord role to a game user group. Save the synchronization direction separately from these rules.',
         )}
         type="none"
+        footer={
+          !rules.loading && !rules.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
         icon="shield-check"
         actions={
           <FeatureGate
@@ -334,7 +349,7 @@ const ServerRoles: Component = () => {
                 empty={!rules.loading && !rules.error && rules().length === 0}
                 onRetry={() => void refetch()}
               >
-                <For each={!rules.error ? rules() : []}>
+                <For each={pagination.items()}>
                   {(row) => (
                     <tr>
                       <td>

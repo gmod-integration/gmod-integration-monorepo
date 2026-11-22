@@ -1,3 +1,5 @@
+import Pagination from '../../../components/Pagination.js'
+import { createListPagination } from '../../../hooks/createListPagination.js'
 import { FeatureGate } from '../../../components/FeatureGate.js'
 import { useFeatureAccess } from '../../../components/AccessProvider.js'
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
@@ -74,6 +76,7 @@ const GuildLinks: Component = () => {
       mutate((previous) =>
         draft.id ? previous?.map((link) => (link.id === updated.id ? updated : link)) : [...(previous ?? []), updated],
       )
+      if (!draft.id) pagination.onChange({ ...pagination.query(), offset: pagination.total() - 1 })
       return updated
     })
     if (saved) closeDialog('edit_select_link')
@@ -84,6 +87,8 @@ const GuildLinks: Component = () => {
     if (!response.ok) throw new Error('Link deletion failed')
     mutate((previous) => previous?.filter((existing) => existing.id !== link.id))
   }
+
+  const pagination = createListPagination<Link>(() => (!links.error ? links() : undefined))
 
   return (
     <>
@@ -204,6 +209,16 @@ const GuildLinks: Component = () => {
           'Create named shortcuts to your website, workshop or other useful pages. Members retrieve active links with /link in Discord.',
         )}
         type="none"
+        footer={
+          !links.loading && !links.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
       >
         <div class="min-w-0 w-full overflow-x-auto">
           <table class="table border-b border-base-300 rounded-none">
@@ -217,7 +232,7 @@ const GuildLinks: Component = () => {
             </thead>
             <tbody>
               <Show when={!links.loading && !links.error}>
-                <For each={links()}>
+                <For each={pagination.items()}>
                   {(link) => (
                     <tr>
                       <td>

@@ -23,6 +23,15 @@ const guilds = [
   { id: 'g3', name: 'Gamma', isPremium: false, hasBot: true, isOwner: false, icon: null },
   { id: 'g4', name: 'Delta', isPremium: false, hasBot: false, isOwner: true, icon: null },
 ]
+const manyGuilds = () =>
+  Array.from({ length: 51 }, (_, index) => ({
+    id: `g${index + 1}`,
+    name: `Community ${String(index + 1).padStart(3, '0')}`,
+    isPremium: true,
+    hasBot: true,
+    isOwner: true,
+    icon: null,
+  }))
 const response = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status })
 const cards = () =>
   screen
@@ -132,6 +141,37 @@ describe('Community selection', () => {
     expect(fetchAPI).toHaveBeenCalledTimes(1)
     await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'unknown' } })
     expect(screen.getByRole('status')).toHaveTextContent('No results match your search.')
+  })
+
+  it('searches the full community list and resets paging when a search changes', async () => {
+    vi.mocked(fetchAPI).mockResolvedValue(response(manyGuilds()))
+    renderGuilds()
+    await vi.waitFor(() => expect(cards()).toHaveLength(25))
+    expect(screen.queryByRole('link', { name: /Community 026/ })).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByRole('link', { name: /Community 026/ })).toBeInTheDocument()
+    await fireEvent.input(screen.getByRole('searchbox', { name: 'Search communities' }), {
+      target: { value: 'community' },
+    })
+    expect(screen.getByRole('link', { name: /Community 001/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Page 1 of 3' })).toBeInTheDocument()
+    await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'Community 051' } })
+    expect(cards()).toHaveLength(1)
+    expect(screen.getByRole('link', { name: /Community 051/ })).toBeInTheDocument()
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
+    expect(window.localStorage.getItem('guilds')).toBeNull()
+  })
+
+  it('preserves community selection and link navigation on later pages', async () => {
+    const large = manyGuilds()
+    vi.mocked(fetchAPI).mockResolvedValue(response(large))
+    const { history } = renderGuilds()
+    await vi.waitFor(() => expect(cards()).toHaveLength(25))
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    await fireEvent.click(screen.getByRole('link', { name: /Community 026/ }))
+    expect(JSON.parse(window.localStorage.getItem('guilds')!)).toEqual(large[25])
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/g26/config'))
   })
 
   it('stores a selected community and navigates to its configuration', async () => {

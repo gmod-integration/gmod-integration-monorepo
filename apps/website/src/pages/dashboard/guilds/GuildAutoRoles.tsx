@@ -1,3 +1,5 @@
+import Pagination from '../../../components/Pagination.js'
+import { createListPagination } from '../../../hooks/createListPagination.js'
 import { FeatureGate } from '../../../components/FeatureGate.js'
 import { useFeatureAccess } from '../../../components/AccessProvider.js'
 import { showDialog } from '../../../utils/dialog.js'
@@ -49,8 +51,11 @@ const GuildAutoRole: Component = () => {
     if (!newLink.ok) throw new Error('Role creation failed')
     const verifyRole = await newLink.json()
     mutate((prevVerifyRole) => (prevVerifyRole ? [...prevVerifyRole, verifyRole] : [verifyRole]))
+    pagination.onChange({ ...pagination.query(), offset: pagination.total() - 1 })
     return verifyRole
   }
+
+  const pagination = createListPagination<AutoRole>(() => (!autoRoles.error ? autoRoles() : undefined))
 
   return (
     <>
@@ -104,6 +109,16 @@ const GuildAutoRole: Component = () => {
           'Choose the Discord roles assigned automatically when a new member joins this Discord server.',
         )}
         type="none"
+        footer={
+          !autoRoles.loading && !autoRoles.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
         icon="users"
         actions={
           <>
@@ -162,7 +177,7 @@ const GuildAutoRole: Component = () => {
                 onRetry={() => void refetchRoles()}
               />
               <Show when={!autoRoles.loading && !autoRoles.error}>
-                <For each={autoRoles()}>
+                <For each={pagination.items()}>
                   {(role) => (
                     <tr>
                       <td>

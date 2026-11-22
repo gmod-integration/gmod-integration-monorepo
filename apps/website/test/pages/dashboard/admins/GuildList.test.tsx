@@ -110,4 +110,32 @@ describe('pages/dashboard/admins/GuildList.tsx', () => {
     expect(screen.getByText('en')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
   })
+
+  it('paginates all sorted communities and returns to the first page when its size changes', async () => {
+    const guilds = Array.from({ length: 51 }, (_, index) => ({
+      name: `Community ${index + 1}`,
+      guild: `g${index + 1}`,
+      language: 'en',
+      member: index + 1,
+      createdAt: '2024-01-01T00:00:00.000Z',
+      updatedAt: '2024-02-01T00:00:00.000Z',
+    }))
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(guilds)))
+    vi.stubGlobal('fetch', fetchMock)
+    renderGuildList()
+    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'Community 51' })).toBeInTheDocument())
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(25)
+    expect(screen.queryByRole('heading', { name: 'Community 26' })).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByRole('heading', { name: 'Community 26' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Community 51' })).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(1)
+    expect(screen.getByRole('heading', { name: 'Community 1' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
+    await fireEvent.change(screen.getByRole('combobox', { name: 'Rows per page' }), { target: { value: '50' } })
+    expect(screen.getByRole('button', { name: 'Page 1 of 2' })).toBeInTheDocument()
+    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(50)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
 })

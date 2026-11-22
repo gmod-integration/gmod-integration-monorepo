@@ -84,6 +84,33 @@ describe('pages/dashboard/guilds/servers/ServersSelector.tsx', () => {
     expect(fetchAPI).toHaveBeenCalledTimes(1)
   })
 
+  it('paginates servers while searching the complete list and preserving full-list creation limits', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
+    const many = Array.from({ length: 51 }, (_, index) => ({
+      id: `s${index + 1}`,
+      name: `Host ${String(index + 1).padStart(3, '0')}`,
+      ip: `10.0.0.${index + 1}`,
+      port: 27015,
+    }))
+    vi.mocked(fetchAPI).mockResolvedValue(okJson(many) as Response)
+    renderList()
+    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'Host 001' })).toBeInTheDocument())
+    expect(screen.getAllByText('Configure server')).toHaveLength(25)
+    expect(screen.getByText('51 / 1 used')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByRole('heading', { name: 'Host 026' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Host 001' })).not.toBeInTheDocument()
+    await fireEvent.input(screen.getByRole('searchbox', { name: 'Search servers' }), { target: { value: 'Host' } })
+    expect(screen.getByRole('button', { name: 'Page 1 of 3' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Host 001' })).toBeInTheDocument()
+    await fireEvent.input(screen.getByRole('searchbox'), { target: { value: '10.0.0.51' } })
+    expect(screen.getAllByText('Configure server')).toHaveLength(1)
+    expect(screen.getByRole('heading', { name: 'Host 051' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add server' })).toBeDisabled()
+    expect(screen.getByText('51 / 1 used')).toBeInTheDocument()
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
+  })
+
   it('sets the selected server in localStorage and links to its config page when a card is clicked', async () => {
     ;(fetchAPI as any).mockResolvedValue(okJson(servers))
     const history = renderList()

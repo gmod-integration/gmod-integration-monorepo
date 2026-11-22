@@ -203,4 +203,21 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsTriggers.tsx', () => {
       expect(container.querySelectorAll('tbody tr')).toHaveLength(1)
     })
   })
+  it('paginates alerts and opens the trigger belonging to the selected page', async () => {
+    const triggers = Array.from({ length: 26 }, (_, index) => trigger({ id: index + 1, value: String(index + 100) }))
+    ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) =>
+      Promise.resolve(okJson(endpoint === TRIGGERS_URL && method === 'GET' ? triggers : [])),
+    )
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByText('100')).toBeInTheDocument())
+    expect(screen.getByRole('table').querySelectorAll('tbody tr')).toHaveLength(25)
+    const pager = screen.getByRole('navigation', { name: 'Pagination' })
+    expect(pager.closest('table')).toBeNull()
+    await fireEvent.click(within(pager).getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('125')).toBeInTheDocument()
+    expect(screen.queryByText('100')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    expect(within(document.getElementById('edit_log_trigger')!).getByPlaceholderText('Value')).toHaveValue('125')
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')).toHaveLength(0)
+  })
 })

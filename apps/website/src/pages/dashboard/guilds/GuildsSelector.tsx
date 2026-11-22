@@ -18,6 +18,8 @@ import { authStatus } from '../../../utils/authClient.js'
 import { useI18n } from '../../../i18n.js'
 import { INVITE_URL } from '../../../utils/utils.js'
 import { fetchAPI } from '../../../utils/api.js'
+import Pagination from '../../../components/Pagination.js'
+import { createListPagination } from '../../../hooks/createListPagination.js'
 
 type GuildSummary = {
   id: string
@@ -49,6 +51,7 @@ const GuildsSelector: Component = () => {
     const term = search().trim().toLocaleLowerCase()
     return (guilds.error ? [] : guilds() || []).filter((guild) => guild.name.toLocaleLowerCase().includes(term))
   }
+  const pagination = createListPagination(filteredGuilds, { resetKey: search })
   const inviteTimers = new Set<ReturnType<typeof setInterval>>()
 
   createEffect(() => {
@@ -153,7 +156,7 @@ const GuildsSelector: Component = () => {
             </Match>
             <Match when={!guilds.loading}>
               <For
-                each={filteredGuilds()}
+                each={pagination.items()}
                 fallback={
                   <p
                     role="status"
@@ -221,6 +224,9 @@ const GuildsSelector: Component = () => {
             </Match>
           </Switch>
         </div>
+        <Show when={!guilds.loading && !guilds.error && pagination.visible()}>
+          <Pagination standalone query={pagination.query()} total={pagination.total()} onChange={pagination.onChange} />
+        </Show>
       </div>
     </>
   )

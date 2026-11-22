@@ -1,3 +1,5 @@
+import Pagination from '../../../../../components/Pagination.js'
+import { createListPagination } from '../../../../../hooks/createListPagination.js'
 import { type Component, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../../../components/AdminPanel.js'
 import { useI18n } from '../../../../../i18n.js'
@@ -176,6 +178,7 @@ export const ServerLogsTriggers: Component = () => {
       mutateLogTrigger((previous) =>
         creating ? [...previous, accepted] : previous.map((row) => (row.id === accepted.id ? accepted : row)),
       )
+      if (creating) pagination.onChange({ ...pagination.query(), offset: pagination.total() - 1 })
       return accepted
     })
     if (saved) {
@@ -190,6 +193,8 @@ export const ServerLogsTriggers: Component = () => {
     const data = ((await res.json()) as log_trigger).id
     mutateLogTrigger((prev) => prev.filter((row) => row.id !== data))
   }
+
+  const pagination = createListPagination<log_trigger>(() => (!logTriggers.error ? logTriggers() : undefined))
 
   return (
     <>
@@ -448,6 +453,16 @@ export const ServerLogsTriggers: Component = () => {
           'Send a Discord notification when a server event matches a condition, such as a money drop above a chosen amount.',
         )}
         type="none"
+        footer={
+          !logTriggers.loading && !logTriggers.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
       >
         <SuspendedFeature
           capability="logs.triggers"
@@ -477,7 +492,7 @@ export const ServerLogsTriggers: Component = () => {
               empty={!logTriggers.loading && !logTriggers.error && logTriggers().length === 0}
               onRetry={() => void refetch()}
             >
-              <For each={logTriggers()}>
+              <For each={pagination.items()}>
                 {(trigger) => (
                   <tr>
                     <ColorsLogsType category={trigger.log_type} />

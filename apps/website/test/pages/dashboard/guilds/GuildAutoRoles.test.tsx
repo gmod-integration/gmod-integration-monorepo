@@ -259,4 +259,29 @@ describe('pages/dashboard/guilds/GuildAutoRoles.tsx', () => {
       expect(screen.getByText('Add Role')).toBeInTheDocument()
     })
   })
+  it('paginates roles without making assigned roles on other pages available for creation', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    const roles = Array.from({ length: 27 }, (_, index) => ({
+      id: `r${index + 1}`,
+      name: `Role ${index + 1}`,
+      color: 0,
+      colorHex: '#000000',
+    }))
+    setupFetchAPI({ autoRoles: roles.slice(0, 26).map((role) => ({ roleID: role.id })), guildRolesList: roles })
+    guildRolesMutate(roles)
+    renderWithProviders(() => <GuildAutoRoles />)
+    const table = screen.getByRole('table')
+    await vi.waitFor(() => expect(within(table).getByText('@Role 1')).toBeInTheDocument())
+    expect(table.querySelectorAll('tbody tr')).toHaveLength(25)
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(within(table).getByText('@Role 26')).toBeInTheDocument()
+    expect(table.querySelectorAll('tbody tr')).toHaveLength(1)
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Role' }))
+    const selector = document.querySelector<HTMLDialogElement>('#select_role_modal')!
+    await vi.waitFor(() => expect(within(selector).getByRole('combobox')).toBeEnabled())
+    const choices = within(selector).getAllByRole('option')
+    expect(choices.map((option) => option.getAttribute('value'))).toContain('r27')
+    expect(choices.map((option) => option.getAttribute('value'))).not.toContain('r1')
+    expect(choices.map((option) => option.getAttribute('value'))).not.toContain('r26')
+  })
 })

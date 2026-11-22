@@ -1,3 +1,5 @@
+import Pagination from '../../../../components/Pagination.js'
+import { createListPagination } from '../../../../hooks/createListPagination.js'
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel.js'
@@ -190,6 +192,7 @@ const ServerChats: Component = () => {
       mutateRules((previous) =>
         isNew ? [...previous, updated] : previous.map((row) => (row.id === updated.id ? updated : row)),
       )
+      if (isNew) pagination.onChange({ ...pagination.query(), offset: pagination.total() - 1 })
       return updated
     })
     if (saved) closeDialog('edit_rule_modal')
@@ -210,6 +213,8 @@ const ServerChats: Component = () => {
     anonymize: t('dashboard.server.chat.anonymize', 'Anonymize'),
   })
   const label = (value: string) => labels()[value as keyof ReturnType<typeof labels>] || value
+  const pagination = createListPagination<ChatFilter>(() => (!rules.error ? rules() : undefined))
+
   return (
     <>
       <NeedWebsocket />
@@ -561,6 +566,16 @@ const ServerChats: Component = () => {
         )}
         icon="list"
         type="none"
+        footer={
+          !rules.loading && !rules.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
         actions={
           <FeatureGate capability="chat.filters" loading={rules.loading} error={rules.error} showQuota={false}>
             <Button
@@ -597,7 +612,7 @@ const ServerChats: Component = () => {
                 empty={!rules.loading && !rules.error && rules().length === 0}
                 onRetry={() => void refetchRules()}
               >
-                <For each={!rules.error ? rules() : []}>
+                <For each={pagination.items()}>
                   {(row) => (
                     <tr>
                       <td>{label(row.element)}</td>

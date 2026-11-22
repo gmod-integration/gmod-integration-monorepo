@@ -469,4 +469,30 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     expect(screen.getByRole('button', { name: 'Add Role' })).toBeDisabled()
     expect(screen.getByText('2 / 2 used')).toBeInTheDocument()
   })
+  it('paginates verification rules while keeping bulk application a separate full-list command', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    const roles = Array.from({ length: 26 }, (_, index) => ({
+      id: `r${index + 1}`,
+      name: `Role ${index + 1}`,
+      color: 0,
+      colorHex: '#000000',
+    }))
+    setupFetchAPI({
+      verifyRoles: roles.map((role) => ({ roleID: role.id, isGiveRole: true, enabled: true })),
+      guildRolesList: roles,
+    })
+    guildRolesMutate(roles)
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await vi.waitFor(() => expect(within(table(container)).getByText('@Role 1')).toBeInTheDocument())
+    expect(table(container).querySelectorAll('tbody tr')).toHaveLength(25)
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(within(table(container)).getByText('@Role 26')).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
+    expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')).toHaveLength(0)
+    await fireEvent.click(screen.getByRole('button', { name: 'Apply roles to existing members' }))
+    const confirmation = within(document.getElementById('check_verification_roles')!)
+    await fireEvent.click(confirmation.getByRole('button', { name: 'Apply roles to existing members' }))
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(CHECK_URL, 'POST'))
+    expect(within(table(container)).getByText('@Role 26')).toBeInTheDocument()
+  })
 })

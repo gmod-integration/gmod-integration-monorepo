@@ -310,4 +310,82 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
       expect(screen.getByText('2 / 2 used')).toBeInTheDocument()
     })
   })
+  it('paginates large link lists and edits the selected link on a later page', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    const links = Array.from({ length: 26 }, (_, index) => ({
+      id: index + 1,
+      alias: `Link ${index + 1}`,
+      url: `https://example.com/${index + 1}`,
+      active: true,
+    }))
+    setupFetchAPI(links)
+    const { container } = renderWithProviders(() => <GuildLinks />)
+    await vi.waitFor(() => expect(screen.getByText('Link 1')).toBeInTheDocument())
+    expect(screen.getByRole('table').querySelectorAll('tbody tr')).toHaveLength(25)
+    const pager = screen.getByRole('navigation', { name: 'Pagination' })
+    expect(pager.closest('table')).toBeNull()
+    await fireEvent.click(within(pager).getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('Link 26')).toBeInTheDocument()
+    expect(screen.queryByText('Link 1')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Edit' }))
+    const editor = within(container.querySelector<HTMLDialogElement>('#edit_select_link')!)
+    await fireEvent.input(editor.getByLabelText(/^Alias/), { target: { value: 'Updated 26' } })
+    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({ ...links[25], alias: 'Updated 26' }))
+    await fireEvent.click(editor.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(screen.getByText('Updated 26')).toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(`${LINKS_URL}/26`, 'PUT', {
+      alias: 'Updated 26',
+      url: 'https://example.com/26',
+      active: true,
+    })
+    await fireEvent.click(within(pager).getByRole('button', { name: 'Previous page' }))
+    expect(screen.getByText('Link 1')).toBeInTheDocument()
+    expect(screen.queryByText('Updated 26')).not.toBeInTheDocument()
+  })
+
+  it('uses the full link count for quotas and clamps after deleting the last page', async () => {
+    const links = Array.from({ length: 26 }, (_, index) => ({
+      id: index + 1,
+      alias: `Link ${index + 1}`,
+      url: `https://example.com/${index + 1}`,
+      active: true,
+    }))
+    setupFetchAPI(links)
+    renderWithProviders(() => <GuildLinks />)
+    await vi.waitFor(() => expect(screen.getByText('26 / 2 used')).toBeInTheDocument())
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByRole('button', { name: 'Add Link' })).toBeDisabled()
+    expect(screen.getByText('26 / 2 used')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    const confirmation = screen.getByRole('dialog', { name: 'Delete Link 26?' })
+    await fireEvent.click(within(confirmation).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(screen.getByText('Link 1')).toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(`${LINKS_URL}/26`, 'DELETE')
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
+    expect(screen.getByText('25 / 2 used')).toBeInTheDocument()
+  })
+  it('reveals a newly created link when it starts a new page', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    const links = Array.from({ length: 25 }, (_, index) => ({
+      id: index + 1,
+      alias: `Link ${index + 1}`,
+      url: `https://example.com/${index + 1}`,
+      active: true,
+    }))
+    setupFetchAPI(links)
+    renderWithProviders(() => <GuildLinks />)
+    await vi.waitFor(() => expect(screen.getByText('Link 1')).toBeInTheDocument())
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Link' }))
+    const editor = within(document.getElementById('edit_select_link')!)
+    await fireEvent.input(editor.getByLabelText(/^Alias/), { target: { value: 'New link' } })
+    await fireEvent.input(editor.getByLabelText(/^URL/), { target: { value: 'https://new.example.com' } })
+    ;(fetchAPI as Mock).mockResolvedValueOnce(
+      okJson({ id: 26, alias: 'New link', url: 'https://new.example.com', active: false }),
+    )
+    await fireEvent.click(editor.getByRole('button', { name: 'Create' }))
+    await vi.waitFor(() => expect(screen.getByText('New link')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Page 2 of 2' })).toBeInTheDocument()
+    expect(screen.getByRole('table').querySelectorAll('tbody tr')).toHaveLength(1)
+    expect(screen.queryByText('Link 1')).not.toBeInTheDocument()
+  })
 })
