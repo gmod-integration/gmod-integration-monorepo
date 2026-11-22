@@ -59,7 +59,6 @@ import {
   processGetUserGmodStorePurchases,
   processGetUserSessions,
   processLogOut,
-  processPatchUserNotifications,
   processPostAutoRoles,
   processPostGmodPurchase,
   processPostServerLogsTrigger,
@@ -1292,22 +1291,6 @@ export async function deleteServerPseudo(req: Request, res: Response) {
   const roleID = getSingleParam(req.params.roleID)
   const result = await processDeleteServerPseudo(String(serverID), roleID)
   return res.status(result.status).send(result.body)
-}
-
-export async function getUserNotifications(req: Request, res: Response) {
-  const discordID = getSingleParam(req.params.discordID)
-  return res.json(
-    await prisma.gm_users_notifications.findMany({
-      where: { discordID },
-    }),
-  )
-}
-
-export async function patchUserNotifications(req: Request, res: Response) {
-  const discordID = getSingleParam(req.params.discordID)
-  const notificationID = getSingleParam(req.params.notificationID)
-  const result = await processPatchUserNotifications(String(discordID), notificationID)
-  return res.status(result.status).json(result.body)
 }
 
 export async function getUserDataRequest(req: Request, res: Response) {

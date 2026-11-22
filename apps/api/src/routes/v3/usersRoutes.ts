@@ -65,7 +65,6 @@ import {
   getUserDataRequest,
   getUserGmodStorePurchases,
   getUserGuildsOwnOrAdmins,
-  getUserNotifications,
   getUserSessions,
   getVerificationCheck,
   getVerificationMessage,
@@ -73,7 +72,6 @@ import {
   logOut,
   oauthLogin,
   patchGuildBotInstance,
-  patchUserNotifications,
   postAutoRoles,
   postGmodPurchase,
   postGmodToDiscordFilter,
@@ -117,6 +115,12 @@ import { getAllPanelUsers } from '@/controllers/v3/usersAdminControllers.js'
 import { getServerErrors } from '@/controllers/website/WebsiteErrorsControllers.js'
 import { getIGSettings, postIGSettings } from '@/controllers/v3/serversControllers.js'
 import { putServerStatusChannel } from '@/controllers/v3/users/ServerStatusChannelControllers.js'
+import {
+  getNotifications,
+  getNotificationCount,
+  patchNotification,
+  patchAllNotifications,
+} from '@/controllers/v3/users/UserNotificationsControllers.js'
 
 const router = express.Router()
 
@@ -134,8 +138,10 @@ router.delete('/:discordID/gmod-store/:guildID', asyncHandler(deleteUserGmodPurc
 router.get('/:discordID/verifications/token', asyncHandler(postUserStartVerification))
 router.get('/:discordID/servers', asyncHandler(getPublicServers))
 router.get('/:discordID/servers/ranking', asyncHandler(getPublicServerRanking))
-router.get('/:discordID/notifications', asyncHandler(getUserNotifications))
-router.patch('/:discordID/notifications/:notificationID', asyncHandler(patchUserNotifications))
+router.get('/:discordID/notifications', asyncHandler(getNotifications))
+router.get('/:discordID/notifications/count', asyncHandler(getNotificationCount))
+router.patch('/:discordID/notifications/mark-all-read', asyncHandler(patchAllNotifications))
+router.patch('/:discordID/notifications/:notificationID', asyncHandler(patchNotification))
 router.get('/:discordID/data-requests', asyncHandler(getUserDataRequest))
 router.post('/:discordID/data-requests', asyncHandler(postUserDataRequest))
 

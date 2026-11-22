@@ -74,7 +74,6 @@ const prismaMock: any = {
   users: { count: vi.fn() },
   gm_gmodstore_purchases: { findFirst: vi.fn(), update: vi.fn() },
   gm_server_pseudo: { findFirst: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  gm_users_notifications: { findFirst: vi.fn(), update: vi.fn() },
   gm_server_warn: { count: vi.fn(), findMany: vi.fn() },
   gm_server_screenshots: { findMany: vi.fn(), count: vi.fn() },
   gm_server_ban: { findMany: vi.fn() },
@@ -103,7 +102,6 @@ const {
   processGetUserGmodStorePurchases,
   processPutServerPseudo,
   processDeleteServerPseudo,
-  processPatchUserNotifications,
   processGetServerLogs,
   processGetServerWarns,
   processGetGuildBans,
@@ -920,21 +918,6 @@ describe('usersControllerModels', () => {
       const result = await processDeleteServerPseudo('s1', '1')
       expect(prismaMock.gm_server_pseudo.delete).toHaveBeenCalledWith({ where: { id: 1, serverID: 's1' } })
       expect(result).toEqual({ status: 200, body: { id: 1 } })
-    })
-  })
-
-  describe('processPatchUserNotifications', () => {
-    it('returns 404 when the notification is not found', async () => {
-      prismaMock.gm_users_notifications.findFirst.mockResolvedValueOnce(null)
-      const result = await processPatchUserNotifications('d1', '1')
-      expect(result.status).toBe(404)
-    })
-
-    it('marks the notification as read', async () => {
-      prismaMock.gm_users_notifications.findFirst.mockResolvedValueOnce({ id: 1 })
-      prismaMock.gm_users_notifications.update.mockResolvedValueOnce({ id: 1, read: true })
-      const result = await processPatchUserNotifications('d1', '1')
-      expect(result).toEqual({ status: 200, body: { id: 1, read: true } })
     })
   })
 

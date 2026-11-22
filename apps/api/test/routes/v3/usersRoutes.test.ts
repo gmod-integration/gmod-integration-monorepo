@@ -1,4 +1,9 @@
-import { describe, expect, it, vi } from 'vitest'
+import express from 'express'
+import request from 'supertest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const notificationDatabase = vi.hoisted(() => ({ findMany: vi.fn(), count: vi.fn(), updateMany: vi.fn() }))
+vi.mock('@gmod/infra-prisma', () => ({ default: { gm_users_notifications: notificationDatabase } }))
 
 vi.mock('@/controllers/v3/usersControllers.js', () => ({
   createGuildVerificationsRoles: vi.fn(),
@@ -66,7 +71,6 @@ vi.mock('@/controllers/v3/usersControllers.js', () => ({
   getUserDataRequest: vi.fn(),
   getUserGmodStorePurchases: vi.fn(),
   getUserGuildsOwnOrAdmins: vi.fn(),
-  getUserNotifications: vi.fn(),
   getUserSessions: vi.fn(),
   getVerificationCheck: vi.fn(),
   getVerificationMessage: vi.fn(),
@@ -74,7 +78,6 @@ vi.mock('@/controllers/v3/usersControllers.js', () => ({
   logOut: vi.fn(),
   oauthLogin: vi.fn(),
   patchGuildBotInstance: vi.fn(),
-  patchUserNotifications: vi.fn(),
   postAutoRoles: vi.fn(),
   postGmodPurchase: vi.fn(),
   postGmodToDiscordFilter: vi.fn(),
@@ -152,5 +155,135 @@ describe('usersRoutes', () => {
     expect(preview).toBeGreaterThan(guild)
     expect(preview).toBeGreaterThan(server)
     expect(router.stack[preview].route.methods.post).toBe(true)
+  })
+})
+
+describe('notification HTTP contracts with real routes, controllers and models', () => {
+  let notifications: { id: number; discordID: string; read: boolean; createdAt: string }[]
+  const endpoint = '/v3/users/owner/notifications'
+  const app = express()
+  app.use('/v3/users', router)
+  app.use((_error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    res.status(500).json({ error: 'Unexpected error' })
+  })
+
+  beforeEach(() => {
+    notifications = [
+      { id: 1, discordID: 'owner', read: false, createdAt: '2026-11-22T10:00:00Z' },
+      { id: 2, discordID: 'owner', read: false, createdAt: '2026-11-22T12:00:00Z' },
+      { id: 3, discordID: 'owner', read: true, createdAt: '2026-11-22T11:00:00Z' },
+      { id: 4, discordID: 'other', read: false, createdAt: '2026-11-22T12:00:00Z' },
+    ]
+    notificationDatabase.findMany
+      .mockReset()
+      .mockImplementation(async ({ where }) =>
+        notifications.filter((notification) => notification.discordID === where.discordID),
+      )
+    notificationDatabase.count
+      .mockReset()
+      .mockImplementation(
+        async ({ where }) =>
+          notifications.filter((notification) => notification.discordID === where.discordID && !notification.read)
+            .length,
+      )
+    notificationDatabase.updateMany.mockReset().mockImplementation(async ({ where }) => {
+      const matching = notifications.filter(
+        (notification) =>
+          notification.discordID === where.discordID &&
+          (where.id === undefined || notification.id === where.id) &&
+          (where.read === undefined || notification.read === where.read),
+      )
+      matching.forEach((notification) => {
+        notification.read = true
+      })
+      return { count: matching.length }
+    })
+    // Authentication is a boundary stub; the real route must invoke it before any notification handler.
+    vi.mocked(userValidator).mockImplementation((req, res, next) => {
+      if (req.header('x-test-user') !== req.params.discordID) return res.status(401).json({ error: 'Unauthorized' })
+      next()
+    })
+  })
+
+  it('returns the list and its actual unread count for the authenticated account', async () => {
+    const response = await request(app).get(endpoint).set('x-test-user', 'owner')
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual({ notifications: notifications.slice(0, 3), unreadCount: 2 })
+    expect(notificationDatabase.findMany).toHaveBeenCalledWith({
+      where: { discordID: 'owner' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    })
+  })
+
+  it('mounts the header count endpoint and counts unread items only', async () => {
+    const response = await request(app).get(`${endpoint}/count`).set('x-test-user', 'owner')
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual({ unreadCount: 2 })
+    expect(notificationDatabase.count).toHaveBeenCalledWith({ where: { discordID: 'owner', read: false } })
+  })
+
+  it('returns the remaining count after reading one item, including repeated reads', async () => {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await request(app).patch(`${endpoint}/1`).set('x-test-user', 'owner')
+      expect(response.status).toBe(200)
+      expect(response.body).toEqual({ unreadCount: 1 })
+    }
+    expect(notifications.find((notification) => notification.id === 2)?.read).toBe(false)
+  })
+
+  it('mounts mark-all-read before the dynamic ID route and leaves other accounts untouched', async () => {
+    const response = await request(app).patch(`${endpoint}/mark-all-read`).set('x-test-user', 'owner')
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual({ unreadCount: 0 })
+    expect(notificationDatabase.updateMany).toHaveBeenCalledWith({
+      where: { discordID: 'owner', read: false },
+      data: { read: true },
+    })
+    expect(notifications.find((notification) => notification.id === 4)?.read).toBe(false)
+  })
+
+  it('does not hide a notification arriving between marking all and recounting', async () => {
+    notificationDatabase.count.mockImplementationOnce(async () => 1)
+    const response = await request(app).patch(`${endpoint}/mark-all-read`).set('x-test-user', 'owner')
+    expect(response.body).toEqual({ unreadCount: 1 })
+  })
+
+  it('returns the same 404 for a missing item and another account’s item', async () => {
+    for (const id of [4, 999]) {
+      const response = await request(app).patch(`${endpoint}/${id}`).set('x-test-user', 'owner')
+      expect(response.status).toBe(404)
+      expect(response.body).toEqual({ error: 'Notification not found' })
+    }
+    expect(notifications.find((notification) => notification.id === 4)?.read).toBe(false)
+    expect(notificationDatabase.count).not.toHaveBeenCalled()
+  })
+
+  it.each(['0', '-1', '1.5', '1abc', '2147483648'])(
+    'rejects an invalid notification ID %s without querying storage',
+    async (id) => {
+      const response = await request(app).patch(`${endpoint}/${id}`).set('x-test-user', 'owner')
+      expect(response.status).toBe(400)
+      expect(notificationDatabase.updateMany).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    ['get', ''],
+    ['get', '/count'],
+    ['patch', '/1'],
+    ['patch', '/mark-all-read'],
+  ] as const)('requires account authentication for %s %s', async (method, path) => {
+    const response = await request(app)[method](`${endpoint}${path}`)
+    expect(response.status).toBe(401)
+    expect(notificationDatabase.findMany).not.toHaveBeenCalled()
+    expect(notificationDatabase.count).not.toHaveBeenCalled()
+    expect(notificationDatabase.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('does not turn a failed unread query into a successful zero count', async () => {
+    notificationDatabase.count.mockRejectedValueOnce(new Error('storage unavailable'))
+    const response = await request(app).get(`${endpoint}/count`).set('x-test-user', 'owner')
+    expect(response.status).toBe(500)
+    expect(response.body).not.toHaveProperty('unreadCount')
   })
 })

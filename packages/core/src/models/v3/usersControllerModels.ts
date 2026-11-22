@@ -612,34 +612,6 @@ export async function processDeleteServerPseudo(serverID: string, roleID: unknow
   return ok(pseudo)
 }
 
-export async function processPatchUserNotifications(
-  discordID: string,
-  notificationID: unknown,
-): Promise<EndpointResult> {
-  const notification = await prisma.gm_users_notifications.findFirst({
-    where: {
-      id: Number(notificationID),
-      discordID,
-    },
-  })
-
-  if (!notification) {
-    return notFound({ error: 'Notification not found' })
-  }
-
-  const updated = await prisma.gm_users_notifications.update({
-    where: {
-      id: notification.id,
-      discordID,
-    },
-    data: {
-      read: true,
-    },
-  })
-
-  return ok(updated)
-}
-
 export async function processGetServerLogs(
   serverID: string,
   query: {

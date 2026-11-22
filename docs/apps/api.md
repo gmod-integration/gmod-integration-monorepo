@@ -56,6 +56,21 @@ Controllers should stay thin (rule of thumb: extract past ~10 lines, see
 [best-practices.md](../best-practices.md)); the actual server/guild/user logic lives in `@gmod/domain-*`
 classes, not in the controller.
 
+## Account notifications
+
+The authenticated v3 user routes share the dashboard's notification contract:
+`GET /users/:discordID/notifications` returns `{notifications, unreadCount}`, while
+`GET /users/:discordID/notifications/count` returns `{unreadCount}`. The list is ordered newest first.
+`PATCH /users/:discordID/notifications/:notificationID` marks one owned item as read; the static
+`PATCH /users/:discordID/notifications/mark-all-read` route marks the account's unread items as read.
+Both mutation responses contain the freshly queried `{unreadCount}`. Reading an item again is
+idempotent; a missing or foreign item returns 404. Invalid positive integer IDs return 400 before
+storage access. Every read and update is scoped to the authenticated route's Discord account.
+
+The handlers delegate to `@gmod/core/models/v3/userNotificationModels.js`.
+`apps/api/test/routes/v3/usersRoutes.test.ts` exercises the mounted Express routes with real
+notification controllers and models, replacing only authentication and storage boundaries.
+
 ## Dashboard authentication
 
 `/v6/auth` owns application sessions independently of Discord access-token expiry:

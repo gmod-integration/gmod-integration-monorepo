@@ -112,7 +112,6 @@ const prismaMock: any = {
     delete: vi.fn(),
   },
   gm_server_pseudo: { count: vi.fn(), findMany: vi.fn(), create: vi.fn() },
-  gm_users_notifications: { findMany: vi.fn() },
   gm_users_data_request: { findMany: vi.fn(), findFirst: vi.fn() },
   gm_server_report_bugs: { findMany: vi.fn() },
 }
@@ -139,7 +138,6 @@ const modelMocks = {
   processGetUserGmodStorePurchases: vi.fn(),
   processGetUserSessions: vi.fn(),
   processLogOut: vi.fn(),
-  processPatchUserNotifications: vi.fn(),
   processPostAutoRoles: vi.fn(),
   processPostGmodPurchase: vi.fn(),
   processPostServerLogsTrigger: vi.fn(),
@@ -2090,19 +2088,6 @@ describe('usersControllers', () => {
     modelMocks.processDeleteServerPseudo.mockResolvedValueOnce({ status: 200, body: {} })
     await c.deleteServerPseudo({ params: { serverID: 's1', roleID: 'r1' } } as any, makeRes())
     expect(modelMocks.processDeleteServerPseudo).toHaveBeenCalledWith('s1', 'r1')
-  })
-
-  it('getUserNotifications sends the notifications', async () => {
-    prismaMock.gm_users_notifications.findMany.mockResolvedValueOnce([{ id: 1 }])
-    const res = makeRes()
-    await c.getUserNotifications({ params: { discordID: 'd1' } } as any, res)
-    expect(res.json).toHaveBeenCalledWith([{ id: 1 }])
-  })
-
-  it('patchUserNotifications delegates to processPatchUserNotifications', async () => {
-    modelMocks.processPatchUserNotifications.mockResolvedValueOnce({ status: 200, body: {} })
-    await c.patchUserNotifications({ params: { discordID: 'd1', notificationID: '1' } } as any, makeRes())
-    expect(modelMocks.processPatchUserNotifications).toHaveBeenCalledWith('d1', '1')
   })
 
   it('getUserDataRequest sends the requests', async () => {
