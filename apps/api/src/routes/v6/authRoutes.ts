@@ -1,7 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod'
 import prisma from '@gmod/infra-prisma'
-import redis from '@gmod/infra-redis'
+import { getDiscordProfile } from '@gmod/core/models/discordProfile.js'
 import {
   actorCookieName,
   AuthSessionError,
@@ -55,28 +55,18 @@ function matchesActor(delegated: AuthSession, actor: AuthSession) {
 async function snapshot(session: AuthSession) {
   const user = await prisma.gm_user.findFirst({ where: { id: session.discordID } })
   if (!user) throw denied()
-  let profile: Record<string, unknown> = {}
-  try {
-    const cached = await redis.get(`gmi:auth:profile:${session.discordID}`)
-    if (cached) {
-      const value: unknown = JSON.parse(cached)
-      if (value && typeof value === 'object' && !Array.isArray(value)) profile = value as Record<string, unknown>
-    }
-  } catch {
-    /* A profile-cache outage must not invalidate an application session. */
-  }
-  const text = (key: string, fallback = '') => (typeof profile[key] === 'string' ? (profile[key] as string) : fallback)
+  const profile = await getDiscordProfile(session.discordID)
   return {
     authenticated: true,
     user: {
       id: session.discordID,
       username: user.username || '',
       rank: user.rank || 'user',
-      globalName: text('globalName', user.username || ''),
-      displayName: text('displayName', user.username || ''),
-      avatarURL: text('avatarURL'),
-      displayAvatarURL: text('avatarURL'),
-      discriminator: text('discriminator'),
+      globalName: profile.globalName || user.username || '',
+      displayName: profile.displayName || user.username || '',
+      avatarURL: profile.avatarURL,
+      displayAvatarURL: profile.avatarURL,
+      discriminator: profile.discriminator,
     },
     session: {
       id: session.id,

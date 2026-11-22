@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   user: vi.fn(),
   cache: vi.fn(),
+  cacheSet: vi.fn(),
+  profileUser: vi.fn(),
   panelFindMany: vi.fn(),
   panelFindFirst: vi.fn(),
   panelUpdateMany: vi.fn(),
@@ -39,7 +41,8 @@ vi.mock('@gmod/infra-prisma', () => ({
   },
 }))
 vi.mock('@gmod/infra-prisma/privacy.js', () => ({ isErasureBlocked: vi.fn().mockResolvedValue(false) }))
-vi.mock('@gmod/infra-redis', () => ({ default: { get: mocks.cache, publish: mocks.publish } }))
+vi.mock('@gmod/infra-redis', () => ({ default: { get: mocks.cache, set: mocks.cacheSet, publish: mocks.publish } }))
+vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({ enqueueMainClientFetchUser: mocks.profileUser }))
 vi.mock('@gmod/shared/logger.js', () => ({ gmLog: vi.fn() }))
 vi.mock('@gmod/config', () => ({
   ConfigAuth: { credentialEncryptionKey: 'test-auth-signing-key-that-is-long-enough' },
@@ -95,6 +98,8 @@ beforeEach(() => {
   mocks.ticket.mockResolvedValue({ ticket: 'ephemeral-ticket', expiresAt: new Date(Date.now() + 30_000).toISOString() })
   mocks.user.mockResolvedValue({ id: '123', username: 'Alice', rank: 'user' })
   mocks.cache.mockResolvedValue(null)
+  mocks.cacheSet.mockResolvedValue('OK')
+  mocks.profileUser.mockResolvedValue(null)
 })
 
 describe('v6 browser authentication contract', () => {
@@ -122,6 +127,39 @@ describe('v6 browser authentication contract', () => {
     })
     mocks.user.mockResolvedValueOnce(null)
     expect((await request(app()).get('/v6/auth/session')).status).toBe(401)
+  })
+
+  it('rehydrates an expired Discord avatar while preserving the authenticated session identity', async () => {
+    current = { ...current, discordID: '456' }
+    mocks.profileUser.mockResolvedValueOnce({
+      id: '456',
+      username: 'Discord username',
+      displayName: 'Discord display name',
+      avatarURL: 'https://api.example.test/avatars/discord/456',
+    })
+    const response = await request(app()).get('/v6/auth/session')
+    expect(response.status).toBe(200)
+    expect(response.body.user).toMatchObject({
+      id: '456',
+      username: 'Alice',
+      rank: 'user',
+      globalName: 'Discord display name',
+      avatarURL: 'https://api.example.test/avatars/discord/456',
+      displayAvatarURL: 'https://api.example.test/avatars/discord/456',
+    })
+    expect(response.body.session.id).toBe(id)
+    expect(mocks.profileUser).toHaveBeenCalledWith('456', 1500)
+  })
+
+  it('retains authenticated identity when cache and Discord profile hydration are unavailable', async () => {
+    current = { ...current, discordID: '789' }
+    mocks.cache.mockRejectedValueOnce(new Error('Cache unavailable'))
+    mocks.profileUser.mockRejectedValueOnce(new Error('Discord unavailable'))
+    mocks.cacheSet.mockRejectedValueOnce(new Error('Cache unavailable'))
+    const response = await request(app()).get('/v6/auth/session')
+    expect(response.status).toBe(200)
+    expect(response.body.user).toMatchObject({ id: '789', username: 'Alice', avatarURL: '' })
+    expect(response.body.csrfToken).toBe(csrfTokenForSession(current))
   })
 
   it('rejects absent sessions before issuing a socket ticket or listing devices', async () => {

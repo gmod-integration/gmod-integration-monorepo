@@ -15,6 +15,7 @@ src/
     gm_server_logs.js   MongoDB-backed server logs (chat/kill/event history), used by apps/api and by
                          domain-compliance for GDPR export/erasure
   models/
+    discordProfile.js  best-effort Discord profile decoration for browser sessions
     gmod/         gmodErrorsModels.js — in-game error report shapes
     v3/           one file per v3 API resource (clients, guilds, leaderboard, main, servers,
                    serversPlayers, steam, usersAdmin, users) — request/response models consumed by
@@ -38,6 +39,12 @@ src/
 `core` depends on domain and infrastructure packages. Do not introduce a reverse dependency that creates
 a cycle. Existing compliance exports and moderation localization consume specific core modules; the
 workspace architecture check verifies their actual imports and declared dependencies.
+
+`models/discordProfile.js` reads the shared profile cache and restores missing avatar decoration
+through the existing Discord queue adapter. Cache and provider deadlines, deduplicated lookups and a
+short retry cooldown keep profile failures separate from authentication. The returned names and
+avatar URL contain presentation data only; session identity and permissions still come from the
+authenticated session and database user.
 
 ## Used by
 
