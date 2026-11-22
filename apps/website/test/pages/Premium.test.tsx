@@ -116,20 +116,19 @@ describe('pages/Premium.tsx', () => {
       }
     })
 
-    it('renders a check icon for a true value and a times icon for a false value', () => {
-      const { container } = renderWithProviders(() => <Premium />)
+    it('names included and excluded features instead of relying on color or an icon alone', () => {
+      renderWithProviders(() => <Premium />)
       const row = screen.getByText('Sync Chat - Customisation').closest('tr')!
       // free_value: false, premium_value: true
-      expect(row.querySelector('svg[data-icon="x"].text-error')).toBeInTheDocument()
-      expect(row.querySelector('svg[data-icon="check"].text-success')).toBeInTheDocument()
-      expect(container.querySelectorAll('svg[data-icon="check"].text-success').length).toBeGreaterThan(1)
+      expect(within(row).getByText('Not included')).toBeVisible()
+      expect(within(row).getByText('Included')).toBeVisible()
     })
 
     it('renders an infinity icon when the value equals the translated "infinite" string', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('Servers').closest('tr')!
       expect(within(row).getByText('1 server')).toBeInTheDocument() // free_value: raw text
-      expect(row.querySelector('svg[data-icon="infinity"].text-primary')).toBeInTheDocument() // premium_value: infinite
+      expect(within(row).getByText('Infinite')).toBeVisible()
     })
 
     it('uses the shared button limits for both plans', () => {
@@ -143,7 +142,7 @@ describe('pages/Premium.tsx', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('Game logs in the dashboard').closest('tr')!
       expect(within(row).getByText('Latest 500 entries')).toBeInTheDocument()
-      expect(row.querySelector('svg[data-icon="infinity"].text-primary')).toBeInTheDocument()
+      expect(within(row).getByText('Infinite')).toBeVisible()
     })
 
     it('wraps an in-development feature name in a warning tooltip instead of rendering it plainly', () => {

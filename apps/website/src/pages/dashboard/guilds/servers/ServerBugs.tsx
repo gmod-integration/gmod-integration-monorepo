@@ -2,7 +2,7 @@ import { type Component, createResource, createSignal, For, Show } from 'solid-j
 import Pagination from '../../../../components/Pagination.js'
 import { createListPagination } from '../../../../hooks/createListPagination.js'
 import AdminPanel from '../../../../components/AdminPanel'
-import { IconButton, TableState, Icon } from '../../../../components/ui/index.js'
+import { IconButton, TableState, Icon, StatusBadge } from '../../../../components/ui/index.js'
 import { useI18n } from '../../../../i18n'
 import { fetchAPI, getAPIUrl } from '../../../../utils/api'
 
@@ -17,6 +17,22 @@ enum Importance {
   HIGH = 'high',
   TRIVIAL = 'trivial',
   CRITICAL = 'critical',
+}
+
+const importanceAppearance = (importance: Importance) => {
+  switch (importance) {
+    case Importance.CRITICAL:
+      return { tone: 'danger', icon: 'circle-alert' } as const
+    case Importance.HIGH:
+      return { tone: 'warning', icon: 'triangle-alert' } as const
+    case Importance.MEDIUM:
+      return { tone: 'info', icon: 'info' } as const
+    case Importance.LOW:
+    case Importance.TRIVIAL:
+      return { tone: 'neutral', icon: 'info' } as const
+    default:
+      return { tone: 'neutral', icon: 'circle-help' } as const
+  }
 }
 
 interface AddReportBugs {
@@ -48,7 +64,14 @@ const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
         <td class="w-1/6 text-nowrap">{props.steamID64}</td>
         {/*<td class="w-1/12">{props.status}</td>*/}
         <td class="w-1/12">
-          {t(`dashboard.server.bugsReport.importance_levels.${props.importance}`, props.importance)}
+          <StatusBadge
+            tone={importanceAppearance(props.importance).tone}
+            icon={importanceAppearance(props.importance).icon}
+          >
+            {Object.values(Importance).includes(props.importance)
+              ? t(`dashboard.server.bugsReport.importance_levels.${props.importance}`, props.importance)
+              : t('ui.unknown', 'Unknown')}
+          </StatusBadge>
         </td>
         <td class="wrap-break-word">{shortDescription}</td>
         <td>

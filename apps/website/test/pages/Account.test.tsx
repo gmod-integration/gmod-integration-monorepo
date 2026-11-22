@@ -417,6 +417,7 @@ describe('pages/Account.tsx', () => {
       const currentRow = rows.find((r) => r.textContent?.includes('1.2.3.4'))!
       const otherRow = rows.find((r) => r.textContent?.includes('5.6.7.8'))!
       expect(currentRow.querySelector('svg[data-icon="user-check"]')).toBeInTheDocument()
+      expect(within(currentRow).getByText('Current Session')).toBeVisible()
       expect(currentRow.querySelector('svg[data-icon="trash-2"]')).not.toBeInTheDocument()
       expect(otherRow.querySelector('svg[data-icon="trash-2"]')).toBeInTheDocument()
       // session.id.substring(0, 8) - both fixture ids share the "session-" prefix.

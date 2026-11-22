@@ -7,7 +7,7 @@ import { fetchAPI } from '../../utils/api'
 import { notificationCount, updateNotificationCount } from '../../utils/notificationStore'
 import { setThemeMode, type ThemeMode, themeMode } from '../../utils/theme'
 import { authSession, authStatus } from '../../utils/authClient.js'
-import { ButtonLink, DiscordAvatar, Icon, LanguageFlag, type IconName } from '../ui/index.js'
+import { ButtonLink, DiscordAvatar, Icon, LanguageFlag, StatusBadge, type IconName } from '../ui/index.js'
 
 type Language = {
   code: Locale
@@ -413,9 +413,9 @@ export const Header: Component = () => {
                                 </div>
                                 {title}
                                 <Show when={href === '/notifications' && notificationCount() > 0}>
-                                  <span class="badge badge-warning ml-2">
+                                  <StatusBadge tone="info" size="sm" class="ml-2">
                                     {notificationCount() > 9 ? '9+' : notificationCount()}
-                                  </span>
+                                  </StatusBadge>
                                 </Show>
                               </A>
                             </li>

@@ -1,5 +1,5 @@
 import { useAccess } from '../../../components/AccessProvider.js'
-import { AsyncState, Button, Icon } from '../../../components/ui/index.js'
+import { AsyncState, BooleanStatus, Button, Icon, StatusBadge } from '../../../components/ui/index.js'
 import type { TypeDiscordChannel, TypeDiscordRole } from '../../../utils/types/DiscordTypes.js'
 import { type Component, createEffect, createResource, on, onCleanup, Show } from 'solid-js'
 import { getGuild } from '../../../utils/utils'
@@ -189,23 +189,27 @@ const GuildInformations: Component = () => {
             </span>
           </AsyncState>
         </div>
-        <div class="flex w-fit items-center">
-          <span class="mr-2">{t('dashboard.guild.information.premium', 'Premium')}:</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <span>{t('dashboard.guild.information.premium', 'Premium')}:</span>
           <Show
             when={access.ready() && access.snapshot()?.state === 'ready'}
             fallback={
-              <span class="text-base-content/60">
-                {access.loading()
-                  ? t('ui.loading', 'Loading…')
-                  : t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')}
-              </span>
+              <div class="flex flex-wrap items-center gap-2">
+                <StatusBadge
+                  tone={access.loading() ? 'info' : 'warning'}
+                  icon={access.loading() ? 'loader-circle' : 'info'}
+                >
+                  {access.loading() ? t('ui.loading', 'Loading…') : t('ui.unknown', 'Unknown')}
+                </StatusBadge>
+                <Show when={!access.loading()}>
+                  <span class="text-base-content/60">
+                    {t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')}
+                  </span>
+                </Show>
+              </div>
             }
           >
-            {access.snapshot()?.premium ? (
-              <Icon name="check" class="text-success" />
-            ) : (
-              <Icon name="x" class="text-error" />
-            )}
+            <BooleanStatus value={access.snapshot()?.premium} />
           </Show>
         </div>
         <div>

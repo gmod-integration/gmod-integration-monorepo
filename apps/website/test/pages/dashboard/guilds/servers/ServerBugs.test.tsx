@@ -154,6 +154,34 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
     expect(cells[2]).toHaveTextContent('High')
   })
 
+  it('shows localized severity badges and keeps unsupported importance values explicitly unknown', async () => {
+    const levels = [
+      ['critical', 'Critical', 'danger', 'circle-alert'],
+      ['high', 'High', 'warning', 'triangle-alert'],
+      ['medium', 'Medium', 'info', 'info'],
+      ['low', 'Low', 'neutral', 'info'],
+      ['trivial', 'Minor', 'neutral', 'info'],
+      ['unexpected', 'Unknown', 'neutral', 'circle-help'],
+    ] as const
+    setupFetchAPI(
+      levels.map(([importance], index) => ({
+        ...defaultBugs()[0],
+        id: index + 1,
+        steamID64: `importance-${importance}`,
+        importance,
+      })),
+    )
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByText('importance-critical')).toBeInTheDocument())
+    for (const [importance, label, tone, icon] of levels) {
+      const row = screen.getByText(`importance-${importance}`).closest<HTMLElement>('tr')!
+      const badge = within(row).getByText(label).closest('[data-tone]')!
+      expect(badge).toHaveAttribute('data-tone', tone)
+      expect(badge.querySelector(`svg[data-icon="${icon}"]`)).toBeInTheDocument()
+    }
+    expect(screen.queryByText('unexpected', { exact: true })).not.toBeInTheDocument()
+  })
+
   it('renders the full description unshortened when at or under 160 characters', async () => {
     const { container } = renderPage()
     await waitForLoaded()

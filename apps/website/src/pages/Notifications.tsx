@@ -1,4 +1,4 @@
-import { AsyncState, Button, Icon, IconButton } from '../components/ui/index.js'
+import { AsyncState, Button, Icon, IconButton, StatusBadge } from '../components/ui/index.js'
 import { type Component, createResource, createSignal, For, Show } from 'solid-js'
 import Pagination from '../components/Pagination.js'
 import { createListPagination } from '../hooks/createListPagination.js'
@@ -10,6 +10,21 @@ import { notificationCount, updateNotificationCount } from '../utils/notificatio
 import { createAsyncAction } from '../hooks/createAsyncAction.js'
 
 type Notification = { id: number; type: string; message: string; read: boolean; createdAt: string }
+
+const notificationAppearance = (type: string) => {
+  switch (type) {
+    case 'error':
+      return { tone: 'danger', icon: 'circle-alert' } as const
+    case 'warning':
+      return { tone: 'warning', icon: 'triangle-alert' } as const
+    case 'success':
+      return { tone: 'success', icon: 'circle-check' } as const
+    case 'info':
+      return { tone: 'info', icon: 'info' } as const
+    default:
+      return { tone: 'neutral', icon: 'tag' } as const
+  }
+}
 
 const Notifications: Component = () => {
   const { t, locale } = useI18n()
@@ -93,9 +108,9 @@ const Notifications: Component = () => {
                 {t('notifications.title', 'Notifications')}
               </h1>
               <Show when={notificationCount() > 0}>
-                <span class="rounded-full border border-primary/15 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                <StatusBadge tone="info" size="sm">
                   {notificationCount()}
-                </span>
+                </StatusBadge>
               </Show>
             </div>
             <p class="max-w-2xl text-sm leading-relaxed text-base-content/55">
@@ -156,21 +171,13 @@ const Notifications: Component = () => {
                     <span
                       class={`notification-item-icon mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${notification.read ? 'bg-base-200/40 text-base-content/35' : 'bg-primary/10 text-primary'}`}
                     >
-                      <Icon
-                        name={
-                          notification.type === 'error' || notification.type === 'warning'
-                            ? 'circle-alert'
-                            : notification.type === 'success'
-                              ? 'circle-check'
-                              : 'info'
-                        }
-                        size={19}
-                      />
+                      <Icon name={notificationAppearance(notification.type).icon} size={19} />
                     </span>
                     <div class="notification-item-copy flex min-w-0 flex-1 flex-col gap-2">
                       <div class="flex flex-wrap items-center gap-2">
-                        <span
-                          class={`badge badge-sm ${notification.type === 'error' ? 'badge-error' : notification.type === 'warning' ? 'badge-warning' : 'badge-success'}`}
+                        <StatusBadge
+                          tone={notificationAppearance(notification.type).tone}
+                          icon={notificationAppearance(notification.type).icon}
                         >
                           {notification.type === 'error'
                             ? t('notifications.types.error', 'Error')
@@ -181,7 +188,7 @@ const Notifications: Component = () => {
                                 : notification.type === 'info'
                                   ? t('notifications.types.info', 'Information')
                                   : notification.type}
-                        </span>
+                        </StatusBadge>
                         <time dateTime={notification.createdAt} class="text-xs text-base-content/45">
                           {date(notification.createdAt)}
                         </time>

@@ -188,6 +188,10 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       // isValidHTTPRequest is false, so the version block also shows the HTTP-fallback text, not
       // the outdated/success text.
       expect(screen.getByText(/The addon version cannot be checked without recent server activity/)).toBeInTheDocument()
+      expect(screen.getByText('Not received')).toBeInTheDocument()
+      expect(screen.getByText('Disconnected')).toBeInTheDocument()
+      expect(screen.getByText('Unknown')).toBeInTheDocument()
+      expect(screen.queryByText('Outdated')).not.toBeInTheDocument()
     })
 
     it('shows success content when websocket connected, request fresh, and version up to date', () => {
@@ -203,6 +207,9 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
         screen.getByText('The addon has a live connection. Features that need real-time communication can use it.'),
       ).toBeInTheDocument()
       expect(screen.getByText('The reported addon version is compatible with the current service.')).toBeInTheDocument()
+      expect(screen.getByText('Received')).toBeInTheDocument()
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+      expect(screen.getByText('Compatible')).toBeInTheDocument()
     })
 
     it('treats versionComparator -1 as a valid (up to date) version', () => {
@@ -223,11 +230,14 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       })
       renderPage()
       expect(screen.getByText(/The reported addon version is outdated/)).toBeInTheDocument()
+      expect(screen.getByText('Outdated')).toBeInTheDocument()
+      expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
     })
 
     it('reactively updates when webSocketServerStatus changes after mount', async () => {
       renderPage()
       expect(screen.getByText(/The live connection is unavailable/)).toBeInTheDocument()
+      expect(screen.getByText('Disconnected')).toBeInTheDocument()
 
       setWebSocketServerStatus({
         ...defaultWSStatus,
@@ -239,6 +249,8 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
           screen.getByText('The addon has a live connection. Features that need real-time communication can use it.'),
         ).toBeInTheDocument(),
       )
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+      expect(screen.queryByText('Disconnected')).not.toBeInTheDocument()
     })
   })
 

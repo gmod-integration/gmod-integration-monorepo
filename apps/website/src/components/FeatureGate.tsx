@@ -36,7 +36,7 @@ export const FeatureGate: ParentComponent<{
       </Show>
       <Show when={blocked()}>
         <div role="note" class="flex flex-wrap items-center gap-2 text-sm text-base-content/65">
-          <Icon name="crown" size={15} />
+          <Icon name="crown" size={15} class="ui-premium-icon" />
           <span>
             {!access.allowed()
               ? props.capability === 'bot.custom'

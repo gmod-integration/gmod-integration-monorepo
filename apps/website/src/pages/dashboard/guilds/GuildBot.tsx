@@ -4,7 +4,15 @@ import { closeDialog, showDialog } from '../../../utils/dialog.js'
 import { type Component, createResource, createSignal, onCleanup, Show } from 'solid-js'
 import AdminPanel from '../../../components/AdminPanel.js'
 import AdminModal from '../../../components/AdminModal.js'
-import { AsyncState, Button, FormActions, FormField, Icon, SettingRow } from '../../../components/ui/index.js'
+import {
+  AsyncState,
+  Button,
+  FormActions,
+  FormField,
+  Icon,
+  SettingRow,
+  StatusBadge,
+} from '../../../components/ui/index.js'
 import { createAsyncAction } from '../../../hooks/createAsyncAction.js'
 import { useDraftGuard } from '../../../hooks/draftRegistry.js'
 import { A } from '@solidjs/router'
@@ -392,7 +400,26 @@ const GuildBot: Component = () => {
                   />
                 </dd>
                 <dt class="text-base-content/70">{t('dashboard.guild.bot.status', 'Discord activity')}</dt>
-                <dd>{getNameOf(bot()!.status)}</dd>
+                <dd>
+                  <StatusBadge
+                    tone={
+                      bot()!.status === 'disabled'
+                        ? 'neutral'
+                        : ['guildMemberCount', 'playerCount', 'rotate'].includes(bot()!.status)
+                          ? 'info'
+                          : 'warning'
+                    }
+                    icon={
+                      bot()!.status === 'disabled'
+                        ? 'x'
+                        : ['guildMemberCount', 'playerCount', 'rotate'].includes(bot()!.status)
+                          ? 'activity'
+                          : 'info'
+                    }
+                  >
+                    {getNameOf(bot()!.status)}
+                  </StatusBadge>
+                </dd>
               </dl>
             </AdminPanel>
             <Show when={customAccess.allowed() || bot()!.purchased}>
@@ -405,6 +432,11 @@ const GuildBot: Component = () => {
                       : t('settings.bot_invite_hint', 'Invite the custom bot before editing its identity.')
                   }
                 >
+                  <StatusBadge tone={bot()!.onGuild ? 'success' : 'warning'} icon={bot()!.onGuild ? 'check' : 'x'}>
+                    {bot()!.onGuild
+                      ? t('settings.bot_member', 'In this server')
+                      : t('settings.bot_not_member', 'Not in this server')}
+                  </StatusBadge>
                   <Button
                     disabled={busy()}
                     onClick={inviteBot}

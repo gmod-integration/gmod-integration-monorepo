@@ -1,5 +1,5 @@
 import { capabilityLimit, hasCapability, type CapabilityKey } from '@gmod/schema/server/AccessPolicySchema.js'
-import { Icon } from '../components/ui/index.js'
+import { BooleanStatus, Icon, StatusBadge } from '../components/ui/index.js'
 import { type Component, createMemo, For, Show } from 'solid-js'
 import { useI18n } from '../i18n.js'
 
@@ -11,6 +11,24 @@ const Premium: Component = () => {
     const count = capabilityLimit(identity(premium), key)
     return count === null ? t('premium.infinite', 'infinite') : t(label, '{1}', count)
   }
+
+  const FeatureValue: Component<{ value: boolean | string }> = (props) => (
+    <>
+      {typeof props.value === 'boolean' ? (
+        <BooleanStatus
+          value={props.value}
+          trueLabel={t('premium.included', 'Included')}
+          falseLabel={t('premium.not_included', 'Not included')}
+        />
+      ) : props.value === t('premium.infinite', 'infinite') ? (
+        <StatusBadge tone="info" icon="infinity">
+          {props.value}
+        </StatusBadge>
+      ) : (
+        props.value
+      )}
+    </>
+  )
 
   type Feature = {
     name: string
@@ -592,26 +610,10 @@ const Premium: Component = () => {
                             <Show when={!feature.inDev}>{feature.name}</Show>
                           </td>
                           <td class="text-center text-xs">
-                            {feature.free_value === true ? (
-                              <Icon name="check" size={17} class="text-success" />
-                            ) : feature.free_value === false ? (
-                              <Icon name="x" size={17} class="text-error" />
-                            ) : feature.free_value === t('premium.infinite', 'infinite') ? (
-                              <Icon name="infinity" size={17} class="text-primary" />
-                            ) : (
-                              feature.free_value
-                            )}
+                            <FeatureValue value={feature.free_value} />
                           </td>
                           <td class="text-center text-xs">
-                            {feature.premium_value === true ? (
-                              <Icon name="check" size={17} class="text-success" />
-                            ) : feature.premium_value === false ? (
-                              <Icon name="x" size={17} class="text-error" />
-                            ) : feature.premium_value === t('premium.infinite', 'infinite') ? (
-                              <Icon name="infinity" size={17} class="text-primary" />
-                            ) : (
-                              feature.premium_value
-                            )}
+                            <FeatureValue value={feature.premium_value} />
                           </td>
                         </tr>
                       )}

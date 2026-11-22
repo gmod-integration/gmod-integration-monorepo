@@ -6,6 +6,7 @@ import {
   FormField,
   Icon,
   IconButton,
+  StatusBadge,
   TableState,
 } from '../components/ui/index.js'
 import { batch, type Component, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
@@ -489,13 +490,9 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                               </div>
                             }
                           >
-                            <span
-                              class="inline-flex items-center gap-2 rounded-full bg-success/10 px-2.5 py-1 text-xs text-success"
-                              data-tip={t('account.current_session', 'Current Session')}
-                            >
-                              <Icon name="user-check" size={15} />
-                              <span class="sr-only">{t('account.current_session', 'Current Session')}</span>
-                            </span>
+                            <StatusBadge tone="info" icon="user-check">
+                              {t('account.current_session', 'Current Session')}
+                            </StatusBadge>
                           </Show>
                         </td>
                       </tr>
@@ -588,13 +585,14 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                           {new Date(request.expirationDate).toLocaleString(locale())}
                         </td>
                         <td>
-                          <span
-                            class={`inline-flex rounded-full px-2.5 py-1 text-xs ${new Date(request.expirationDate) > new Date() ? 'bg-success/10 text-success' : 'bg-base-200 text-base-content/50'}`}
+                          <StatusBadge
+                            tone={new Date(request.expirationDate) > new Date() ? 'success' : 'neutral'}
+                            icon={new Date(request.expirationDate) > new Date() ? 'check' : 'x'}
                           >
                             {new Date(request.expirationDate) > new Date()
                               ? t('account.active', 'Download available')
                               : t('account.expired', 'Download expired')}
-                          </span>
+                          </StatusBadge>
                         </td>
                         <td class="text-center">
                           <Show

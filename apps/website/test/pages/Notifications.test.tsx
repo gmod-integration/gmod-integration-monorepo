@@ -99,16 +99,37 @@ describe('pages/Notifications.tsx', () => {
     expect(rows[2]).toHaveTextContent('All good')
     expect(rows[3]).toHaveTextContent('Something broke')
 
-    // badge classes: error -> badge-error, warning -> badge-warning, success/other -> badge-success
-    expect(rows[3].querySelector('.badge-error')).toBeInTheDocument()
-    expect(rows[1].querySelector('.badge-warning')).toBeInTheDocument()
-    expect(rows[2].querySelector('.badge-success')).toBeInTheDocument()
-    expect(rows[0].querySelector('.badge-success')).toBeInTheDocument() // 'info' type falls back to success
+    for (const [row, label, tone, icon] of [
+      [3, 'Error', 'danger', 'circle-alert'],
+      [1, 'Warning', 'warning', 'triangle-alert'],
+      [2, 'Success', 'success', 'circle-check'],
+      [0, 'Information', 'info', 'info'],
+    ] as const) {
+      const badge = within(rows[row]).getByText(label).closest('[data-tone]')!
+      expect(badge).toHaveAttribute('data-tone', tone)
+      expect(badge.querySelector(`svg[data-icon="${icon}"]`)).toBeInTheDocument()
+    }
 
     // read row (Careful) is dimmed and shows the eye-slash icon instead of a clickable eye
     expect(rows[1].querySelector('svg[data-icon="eye-off"]')).toBeInTheDocument()
     expect(rows[1].querySelector('svg[data-icon="eye"]')).not.toBeInTheDocument()
     expect(rows[0].querySelector('svg[data-icon="eye"]')).toBeInTheDocument()
+  })
+
+  it('keeps unknown notification types neutral and preserves their supplied label', async () => {
+    ;(fetchAPI as Mock).mockResolvedValue(
+      jsonResponse({
+        notifications: [
+          { id: 8, type: 'custom-event', message: 'Custom update', read: true, createdAt: '2024-01-01T00:00:00.000Z' },
+        ],
+        unreadCount: 0,
+      }),
+    )
+    renderWithProviders(() => <Notifications />)
+    await vi.waitFor(() => expect(screen.getByText('Custom update')).toBeInTheDocument())
+    const badge = screen.getByText('custom-event').closest('[data-tone]')!
+    expect(badge).toHaveAttribute('data-tone', 'neutral')
+    expect(badge.querySelector('svg[data-icon="tag"]')).toBeInTheDocument()
   })
 
   it('shows the Mark All Read button only when there are unread notifications', async () => {

@@ -186,6 +186,20 @@ describe('public server ranking', () => {
     expect(offlineCard.querySelector('time')).toHaveAttribute('datetime', offline.lastSeenAt)
   })
 
+  it('keeps an online server distinct from an unknown player count', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok(response([server(1, { online: true, status: null })]))),
+    )
+    renderWithProviders(() => <Servers />)
+    await waitForCard('Server 1')
+    const card = screen.getByRole('heading', { name: 'Server 1' }).closest('article')!
+    const playerMetric = within(card).getByText('Players').parentElement!
+    expect(within(card).getByText('Online')).toBeInTheDocument()
+    expect(within(playerMetric).getByText('Unknown')).toBeInTheDocument()
+    expect(within(card).queryByText('Offline')).not.toBeInTheDocument()
+  })
+
   it('disables missing Discord destinations and uses safe information fallbacks', async () => {
     vi.stubGlobal(
       'fetch',

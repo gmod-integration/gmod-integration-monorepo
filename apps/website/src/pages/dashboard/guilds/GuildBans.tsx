@@ -1,5 +1,5 @@
-import { type Component, createResource, For, Show } from 'solid-js'
-import { TableState, Icon } from '../../../components/ui/index.js'
+import { type Component, createResource, For } from 'solid-js'
+import { TableState, StatusBadge } from '../../../components/ui/index.js'
 import Pagination from '../../../components/Pagination.js'
 import { createListPagination } from '../../../hooks/createListPagination.js'
 import AdminPanel from '../../../components/AdminPanel'
@@ -104,14 +104,16 @@ const GuildBans: Component = () => {
                     </td>
                     <td>
                       <div class="flex gap-2 justify-center">
-                        <Show when={ban.discordAlsoBanned}>
-                          <div
-                            class="tooltip tooltip-warning"
-                            data-tip={t('dashboard.guild.bans.also_banned_discord', 'Also banned on Discord')}
-                          >
-                            <Icon name="message-circle" class="text-warning" />
-                          </div>
-                        </Show>
+                        <StatusBadge
+                          tone={ban.discordAlsoBanned ? 'warning' : 'neutral'}
+                          icon={ban.discordAlsoBanned ? 'message-circle' : ban.linkedDiscordID ? 'circle-help' : 'link'}
+                        >
+                          {ban.discordAlsoBanned
+                            ? t('dashboard.guild.bans.also_banned_discord', 'Also banned on Discord')
+                            : ban.linkedDiscordID
+                              ? t('dashboard.guild.bans.no_matching_ban', 'No match in these records')
+                              : t('dashboard.guild.bans.no_linked_account', 'No linked account')}
+                        </StatusBadge>
                       </div>
                     </td>
                   </tr>
@@ -171,14 +173,16 @@ const GuildBans: Component = () => {
                     </td>
                     <td>
                       <div class="flex gap-2 justify-center">
-                        <Show when={ban.gmodAlsoBanned}>
-                          <div
-                            class="tooltip tooltip-warning"
-                            data-tip={t('dashboard.guild.bans.also_banned_gmod', 'Also banned on GMod')}
-                          >
-                            <Icon name="gamepad-2" class="text-warning" />
-                          </div>
-                        </Show>
+                        <StatusBadge
+                          tone={ban.gmodAlsoBanned ? 'warning' : 'neutral'}
+                          icon={ban.gmodAlsoBanned ? 'gamepad-2' : ban.linkedSteamID64 ? 'circle-help' : 'link'}
+                        >
+                          {ban.gmodAlsoBanned
+                            ? t('dashboard.guild.bans.also_banned_gmod', 'Also banned on GMod')
+                            : ban.linkedSteamID64
+                              ? t('dashboard.guild.bans.no_matching_ban', 'No match in these records')
+                              : t('dashboard.guild.bans.no_linked_account', 'No linked account')}
+                        </StatusBadge>
                       </div>
                     </td>
                   </tr>

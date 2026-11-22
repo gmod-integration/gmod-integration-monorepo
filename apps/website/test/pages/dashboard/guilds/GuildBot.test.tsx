@@ -87,6 +87,17 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     await vi.waitFor(() => expect(screen.getByText('Unknown')).toBeInTheDocument())
   })
 
+  it('names bot membership separately from its configured Discord activity', async () => {
+    ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ onGuild: false, status: 'disabled' })))
+    renderWithProviders(() => <GuildBot />)
+    const connection = await screen.findByRole('region', { name: 'Connection and credentials' })
+    const identity = screen.getByRole('region', { name: 'Identity and presence' })
+    expect(within(connection).getByText('Not in this server')).toBeInTheDocument()
+    expect(within(connection).getByRole('button', { name: 'Invite to this Discord server' })).toBeVisible()
+    expect(within(identity).getByText('No activity')).toBeInTheDocument()
+    expect(within(connection).queryByText('Disconnected')).not.toBeInTheDocument()
+  })
+
   it('edits and saves the custom bot from the edit modal', async () => {
     ;(fetchAPI as any).mockResolvedValue(jsonResponse(baseBot({ username: 'OldName', status: 'disabled' })))
     const { container } = renderWithProviders(() => <GuildBot />)

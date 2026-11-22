@@ -8,7 +8,15 @@ import AdminPanel from '../../../../components/AdminPanel.js'
 import defaultServer from '../../../../assets/defaultServer.png'
 import { useI18n } from '../../../../i18n.js'
 import { fetchAPI } from '../../../../utils/api.js'
-import { Button, CopyableValue, FormActions, Icon, SettingGroup, SettingRow } from '../../../../components/ui/index.js'
+import {
+  Button,
+  CopyableValue,
+  FormActions,
+  Icon,
+  StatusBadge,
+  SettingGroup,
+  SettingRow,
+} from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
 
 const ServerInformations: Component = () => {
@@ -335,17 +343,13 @@ const ServerInformations: Component = () => {
       >
         <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 p-5">
           <article class="min-w-0 rounded-xl border border-base-200 p-4">
-            <div class="flex items-center gap-3 mb-3">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
               <div class="font-semibold text-sm">
                 {t('dashboard.server.server_informations.http_request_title', 'Recent server activity')}
               </div>
-              <div class="ml-auto flex items-center justify-center">
-                <Icon
-                  name="arrow-down-to-line"
-                  size={22}
-                  class={` ${isValidHTTPRequest() ? 'text-success' : 'text-error'} text-3xl`}
-                />
-              </div>
+              <StatusBadge tone={isValidHTTPRequest() ? 'success' : 'warning'} icon="arrow-down-to-line">
+                {isValidHTTPRequest() ? t('ui.received', 'Received') : t('ui.not_received', 'Not received')}
+              </StatusBadge>
             </div>
             <div class="text-xs leading-relaxed text-base-content/60">
               <Show
@@ -380,17 +384,13 @@ const ServerInformations: Component = () => {
             </div>
           </article>
           <article class="min-w-0 rounded-xl border border-base-200 p-4">
-            <div class="flex items-center gap-3 mb-3">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
               <div class="font-semibold text-sm">
                 {t('dashboard.server.server_informations.websocket_title', 'Live connection (WebSocket)')}
               </div>
-              <div class="ml-auto flex items-center justify-center">
-                <Icon
-                  name="arrow-left-right"
-                  size={22}
-                  class={` ${isValidWSConnection() ? 'text-success' : 'text-error'} text-3xl`}
-                />
-              </div>
+              <StatusBadge tone={isValidWSConnection() ? 'success' : 'warning'} icon="arrow-left-right">
+                {isValidWSConnection() ? t('ui.connected', 'Connected') : t('ui.disconnected', 'Disconnected')}
+              </StatusBadge>
             </div>
             <div class="text-xs leading-relaxed text-base-content/60">
               <Show
@@ -421,17 +421,17 @@ const ServerInformations: Component = () => {
             </div>
           </article>
           <article class="min-w-0 rounded-xl border border-base-200 p-4">
-            <div class="flex items-center gap-3 mb-3">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
               <div class="font-semibold text-sm">
                 {t('dashboard.server.server_informations.version_title', 'Addon version')}
               </div>
-              <div class="ml-auto flex items-center justify-center">
-                <Icon
-                  name="tag"
-                  size={22}
-                  class={` ${!isValidHTTPRequest() ? 'text-warning' : isValidVersion() ? 'text-success' : 'text-error'} text-3xl`}
-                />
-              </div>
+              <StatusBadge tone={isValidHTTPRequest() && isValidVersion() ? 'success' : 'warning'} icon="tag">
+                {!isValidHTTPRequest()
+                  ? t('ui.unknown', 'Unknown')
+                  : isValidVersion()
+                    ? t('ui.compatible', 'Compatible')
+                    : t('ui.outdated', 'Outdated')}
+              </StatusBadge>
             </div>
             <div class="text-xs leading-relaxed text-base-content/60">
               <Show

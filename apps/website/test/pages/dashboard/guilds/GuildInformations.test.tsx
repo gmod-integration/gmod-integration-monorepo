@@ -98,17 +98,18 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
     expect(screen.getByText('Loading…')).toBeInTheDocument()
   })
 
-  it('shows a check icon when the guild is premium, a times icon otherwise', async () => {
-    const { container, unmount } = renderPage()
+  it('shows a readable enabled or disabled Premium state', async () => {
+    const { unmount } = renderPage()
     await waitForAdminsLoaded()
-    expect(container.querySelector('svg[data-icon="x"]')).toBeInTheDocument()
-    expect(container.querySelector('svg[data-icon="check"].text-success')).not.toBeInTheDocument()
+    expect(screen.getByText('Disabled')).toBeInTheDocument()
+    expect(screen.queryByText('Enabled')).not.toBeInTheDocument()
     unmount()
 
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', name: 'My Guild', isPremium: true }))
-    const { container: container2 } = renderPage()
+    renderPage()
     await waitForAdminsLoaded()
-    expect(container2.querySelector('svg[data-icon="check"].text-success')).toBeInTheDocument()
+    expect(screen.getByText('Enabled')).toBeInTheDocument()
+    expect(screen.queryByText('Disabled')).not.toBeInTheDocument()
   })
 
   it('shows unverifiable Premium status without claiming the guild has lost access', async () => {
@@ -121,6 +122,8 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       </MemoryRouter>
     ))
     await waitForAdminsLoaded()
+    expect(screen.getByText('Unknown')).toBeInTheDocument()
+    expect(screen.queryByText('Disabled')).not.toBeInTheDocument()
     expect(screen.getByText('Access could not be verified. Your saved configuration is preserved.')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /upgrade/i })).not.toBeInTheDocument()
   })

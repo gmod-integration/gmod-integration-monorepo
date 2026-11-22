@@ -115,10 +115,12 @@ describe('pages/dashboard/guilds/GuildBans.tsx', () => {
     const { container } = renderWithProviders(() => <GuildBans />)
     await waitForLoaded()
 
-    const rows = container.querySelectorAll('tbody tr')
+    const rows = container.querySelectorAll<HTMLElement>('tbody tr')
     // First GMod row (765) is cross-flagged, second (766) is not.
     expect(rows[0].querySelector('svg[data-icon="message-circle"]')).toBeInTheDocument()
+    expect(within(rows[0]).getByText('Also banned on Discord')).toBeInTheDocument()
     expect(rows[1].querySelector('svg[data-icon="message-circle"]')).not.toBeInTheDocument()
+    expect(within(rows[1]).getByText('No linked account')).toBeInTheDocument()
   })
 
   it('flags a Discord ban whose linked account is also banned on GMod', async () => {
@@ -127,9 +129,41 @@ describe('pages/dashboard/guilds/GuildBans.tsx', () => {
     await vi.waitFor(() => expect(screen.getByText('Cheater#0001')).toBeInTheDocument())
 
     const discordTable = container.querySelectorAll('table')[1]
-    const rows = discordTable.querySelectorAll('tbody tr')
+    const rows = discordTable.querySelectorAll<HTMLElement>('tbody tr')
     expect(rows[0].querySelector('svg[data-icon="gamepad-2"]')).toBeInTheDocument()
+    expect(within(rows[0]).getByText('Also banned on GMod')).toBeInTheDocument()
     expect(rows[1].querySelector('svg[data-icon="gamepad-2"]')).not.toBeInTheDocument()
+    expect(within(rows[1]).getByText('No linked account')).toBeInTheDocument()
+  })
+
+  it('distinguishes a linked account without a matching record from an account without a link', async () => {
+    const data = defaultBansRaw()
+    data.gmodBans.push({
+      ...data.gmodBans[0],
+      id: 3,
+      userSteamID64: '767',
+      linkedDiscordID: 'd3',
+      discordAlsoBanned: false,
+    })
+    data.discordBans.push({
+      ...data.discordBans[0],
+      id: 'd3',
+      tag: 'Linked#0003',
+      reason: 'Linked account without a matching record',
+      linkedSteamID64: '767',
+      gmodAlsoBanned: false,
+    })
+    setupFetchAPI(data)
+    renderWithProviders(() => <GuildBans />)
+    await waitForLoaded()
+    for (const identity of ['767', 'Linked#0003']) {
+      const row = screen.getByText(identity).closest<HTMLElement>('tr')!
+      const label = within(row).getByText('No match in these records')
+      expect(label.closest('[data-tone]')).toHaveAttribute('data-tone', 'neutral')
+      expect(within(row).queryByText('No linked account')).not.toBeInTheDocument()
+    }
+    expect(screen.getAllByText('No linked account')).toHaveLength(2)
+    expect(screen.queryByText(/not banned/i)).not.toBeInTheDocument()
   })
 
   it('shows loading spinners while bans is loading', () => {

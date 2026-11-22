@@ -1,4 +1,4 @@
-import { Icon } from '../components/ui/index.js'
+import { Icon, StatusBadge } from '../components/ui/index.js'
 import { useAccess } from '../components/AccessProvider.js'
 import { upgradeHref } from '../components/FeatureGate.js'
 import { type Component, type ParentProps, Show } from 'solid-js'
@@ -32,20 +32,21 @@ export const PremiumBadge: Component<PremiumBadgeProps> = (props) => {
             }}
             data-tip={t('main.premium', 'Premium')}
           >
-            <Icon name="crown" class="text-amber-400" />
+            <Icon name="crown" class="ui-premium-icon" />
           </A>
         }
       >
         <A
           href={upgradeHref()}
-          class="badge badge-outline text-amber-400 py-3 flex tooltip tooltip-warning"
+          class="inline-flex max-w-full tooltip tooltip-warning"
           classList={{
             'mr-2': !props.noMargin,
           }}
           data-tip={t('main.buy_premium', 'This feature requires Premium for this Discord community.')}
         >
-          <Icon name="crown" />
-          <span class="ml-2">{t('tools.premium', 'Premium')}</span>
+          <StatusBadge tone="warning" icon="crown">
+            {t('tools.premium', 'Premium')}
+          </StatusBadge>
         </A>
       </Show>
     </Show>

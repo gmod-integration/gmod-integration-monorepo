@@ -1,4 +1,4 @@
-import { AsyncState, Button, ButtonLink, FormField, Icon } from '../components/ui/index.js'
+import { AsyncState, Button, ButtonLink, FormField, Icon, StatusBadge } from '../components/ui/index.js'
 import { createResource, createSignal, For, onCleanup, Show, type Component } from 'solid-js'
 import {
   PublicServerRankingResponseSchema,
@@ -81,15 +81,12 @@ const Servers: Component = () => {
                 >
                   #{props.server.rank}
                 </span>
-                <span
-                  class={`inline-flex items-center gap-1.5 text-[10px] font-medium ${props.server.online ? 'text-success' : 'text-base-content/40'}`}
+                <StatusBadge
+                  tone={props.server.online ? 'success' : 'neutral'}
+                  icon={props.server.online ? 'circle-check' : 'circle-x'}
                 >
-                  <span
-                    class={`h-1.5 w-1.5 rounded-full ${props.server.online ? 'bg-success' : 'bg-base-content/30'}`}
-                    aria-hidden="true"
-                  />
                   {props.server.online ? t('servers.online', 'Online') : t('servers.offline', 'Offline')}
-                </span>
+                </StatusBadge>
               </div>
               <h3 class="wrap-break-word text-base font-semibold leading-snug tracking-tight">{name()}</h3>
             </div>
@@ -103,9 +100,16 @@ const Servers: Component = () => {
             <div class="min-w-0">
               <dt class="mb-1 text-[10px] font-medium text-base-content/40">{t('servers.players', 'Players')}</dt>
               <dd class="font-medium">
-                {props.server.online && props.server.status
-                  ? `${props.server.status.players}/${props.server.status.maxPlayers}`
-                  : t('servers.offline', 'Offline')}
+                {props.server.online && props.server.status ? (
+                  `${props.server.status.players}/${props.server.status.maxPlayers}`
+                ) : (
+                  <StatusBadge
+                    tone={props.server.online ? 'warning' : 'neutral'}
+                    icon={props.server.online ? 'info' : 'circle-x'}
+                  >
+                    {props.server.online ? t('ui.unknown', 'Unknown') : t('servers.offline', 'Offline')}
+                  </StatusBadge>
+                )}
               </dd>
             </div>
             <div class="min-w-0">
