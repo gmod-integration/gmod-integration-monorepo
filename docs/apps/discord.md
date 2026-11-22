@@ -123,3 +123,12 @@ resources. Username and avatar changes share one Discord profile edit after imag
 failures return a generic profile error rather than details from Discord or the image processor.
 Deploy the API, website and Discord workers together for this upload contract; old jobs carrying URL
 or path avatars are rejected and are not converted into downloads.
+
+## Bot departure and community retention
+
+A guild-departure event only permits cleanup when it comes from the currently effective client
+instance. When that client is a custom bot, its departed credential cannot establish whether the main
+bot is still present. The handler stops the custom client and performs a fresh guild lookup using the
+main client. A successful lookup or an ambiguous failure preserves the community, purchase and profile
+metadata. Cleanup is permitted for an authoritative main-client departure or a confirmed unknown-guild
+response from that independent lookup. Events from replaced instances leave shared data intact.
