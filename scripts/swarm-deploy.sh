@@ -146,7 +146,6 @@ load_required_with_fallback() {
 # Required for Traefik host-rule interpolation in docker-stack.swarm.yml
 load_required API_HOST
 load_required WS_HOST
-load_required TRAEFIK_DASHBOARD_HOST
 
 # Required for stateful services interpolation in docker-stack.swarm.yml
 load_required_with_fallback MARIA_USER MARIADB_USER
@@ -172,7 +171,6 @@ echo "  env file:        $ENV_FILE"
 echo "  compose file:    $STACK_FILE"
 echo "  API_HOST:        $API_HOST"
 echo "  WS_HOST:         $WS_HOST"
-echo "  DASHBOARD_HOST:  $TRAEFIK_DASHBOARD_HOST"
 
 if [[ "$DRY_RUN" == "true" ]]; then
   echo "Dry-run enabled, command not executed."

@@ -10,7 +10,7 @@ services:
     volumes:
       - gmod_integration_api_dev_mariadb_data:/var/lib/mysql
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
     env_file:
       - .env
 
@@ -20,7 +20,7 @@ services:
     volumes:
       - gmod_integration_api_dev_redis_data:/data
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
 
   mongo:
     image: mongo:latest
@@ -28,7 +28,7 @@ services:
     volumes:
       - gmod_integration_api_dev_mongo_data:/data/db
     ports:
-      - "27017:27017"
+      - "127.0.0.1:27017:27017"
 
   minio:
     # MinIO no longer publishes pullable images; Chainguard ships a free build of the same server.
@@ -43,8 +43,8 @@ services:
     volumes:
       - gmod_integration_api_dev_minio_data:/data
     ports:
-      - "9060:9000"
-      - "9065:9001"
+      - "127.0.0.1:9060:9000"
+      - "127.0.0.1:9065:9001"
     env_file:
       - .env
 

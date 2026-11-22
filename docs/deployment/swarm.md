@@ -7,6 +7,10 @@ This guide explains how to start and operate the `gmod` stack with Docker Swarm.
 - Docker Engine installed
 - A valid `.env` at repository root
 - Logged in to GHCR if images are private (`docker login ghcr.io`)
+- A TLS-terminating ingress such as the Cloudflare Tunnel described below, with direct origin access
+  restricted to trusted ingress clients
+- Access to a Swarm manager for data-service administration; database and object-storage ports are not
+  published by the stack
 
 ## 1. Initialize Swarm (once)
 
@@ -48,14 +52,15 @@ Expected target replicas:
 - `gmod_minio`: `1/1`
 - `gmod_traefik`: `1/1`
 
-Traefik dashboard:
+The Traefik management API and dashboard are disabled. Traefik publishes only the HTTP ingress on
+port 80; the stack does not publish ports 443, 8080 or 9100. Prometheus metrics remain available to
+trusted tasks on `gmod_net` at `http://traefik:9100/metrics`, without a public route. Check services
+through Docker's manager commands and the logs below.
 
-```bash
-# Direct port (no host rule): http://<SERVER_IP>:8080/dashboard/
-# API endpoint:              http://<SERVER_IP>:8080/api/overview
-```
-
-Host-rule access is still available on port 80 with `TRAEFIK_DASHBOARD_HOST` (default `traefik.localhost`).
+MariaDB, Redis, MongoDB and both MinIO interfaces are reachable only through the stack's overlay
+network. Run administrative clients inside an appropriate service/task on that network, or use an
+explicitly protected administration path. Do not add public database or console port mappings.
+The root Compose file is for local development: its data-service ports bind to `127.0.0.1` only.
 
 Migration logs:
 
@@ -158,13 +163,20 @@ Cron example (daily at 03:30):
 ## 8. Production FQDN (Cloudflare Tunnel)
 
 In Swarm, app services are behind Traefik. Do not route Cloudflare directly to `53136` or `53139`.
+The supplied stack expects HTTPS/WSS to terminate at the ingress and sends HTTP over the local
+Tunnel origin path. It does not install Traefik certificates or publish a direct HTTPS listener.
+Use public `https://` API/website URLs and a `wss://` WebSocket URL in application configuration.
+
+Docker Swarm's published port 80 is not restricted to loopback by this template. Restrict direct
+access with Docker-aware firewall/network controls so untrusted clients cannot bypass the ingress.
+The TLS boundary and the immediate proxy addresses trusted by the API must match the actual
+installation; an edge certificate alone does not protect a publicly reachable HTTP origin.
 
 Set production hosts in `.env`:
 
 ```bash
 API_HOST=api.your-domain.com
 WS_HOST=ws.your-domain.com
-TRAEFIK_DASHBOARD_HOST=traefik.your-domain.com
 ```
 
 Deploy/redeploy:
@@ -181,12 +193,19 @@ ingress:
     service: http://localhost:80
   - hostname: ws.your-domain.com
     service: http://localhost:80
-  - hostname: traefik.your-domain.com
-    service: http://localhost:80
   - service: http_status:404
 ```
 
 Local-only defaults like `api.localhost` and `ws.localhost` are intended for local testing, not production DNS.
+`TRAEFIK_DASHBOARD_HOST` is no longer used or required by the deployment script.
+
+For a deployment terminating TLS directly in Traefik, supply a separate reviewed configuration with
+certificates/resolver, HTTPS routers, an HTTP-to-HTTPS redirect and port 443 publication before using
+that topology. Do not assume the Tunnel-oriented template provides direct HTTPS.
+
+These configuration changes take effect when the stack is redeployed or the development Compose
+services are recreated. Editing the files does not change ports on existing containers. Preserve data
+volumes and confirm backup/recovery before applying an operational change.
 
 ## Troubleshooting
 
