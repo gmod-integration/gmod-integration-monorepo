@@ -2,6 +2,7 @@ import { createSignal, createUniqueId, For, Show, type Component } from 'solid-j
 import { A, useLocation } from '@solidjs/router'
 import { useI18n } from '../../../i18n.js'
 import { Icon, type IconName } from '../../ui/index.js'
+import { authSession } from '../../../utils/authClient.js'
 
 export const AdminMenu: Component = () => {
   const { t } = useI18n()
@@ -30,11 +31,14 @@ export const AdminMenu: Component = () => {
   }
   const links = (): { label: string; icon: IconName; url: string }[] => [
     {
-      label: t('dashboard.menu.admin.information', 'Information'),
-      icon: 'info',
+      label: t('admin_v6.nav_overview', 'Overview'),
+      icon: 'layout-dashboard',
       url: '/dashboard/admins/informations',
     },
     { label: t('main.guilds', 'Discord communities'), icon: 'server', url: '/dashboard/admins/guilds' },
+    { label: t('admin_v6.nav_servers', 'Game servers'), icon: 'gamepad-2', url: '/dashboard/admins/servers' },
+    { label: t('admin_v6.nav_users', 'User accounts'), icon: 'users', url: '/dashboard/admins/users' },
+    { label: t('admin_v6.nav_premium', 'Premium access'), icon: 'crown', url: '/dashboard/admins/premium' },
     {
       label: t('dashboard.menu.admin.impersonate', 'Support access'),
       icon: 'user-round-cog',
@@ -49,6 +53,9 @@ export const AdminMenu: Component = () => {
       data-mobile-open={mobileOpen()}
       onMouseEnter={() => setHoverExpand(true)}
       onMouseLeave={() => setHoverExpand(false)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setMobileOpen(false)
+      }}
     >
       <div class="dashboard-context">
         <span class="dashboard-context-icon">
@@ -74,9 +81,21 @@ export const AdminMenu: Component = () => {
       <nav id={navigationId} aria-label={t('dashboard.menu.admin.title', 'Admin')} class="dashboard-navigation">
         <div class="dashboard-nav-group">
           <Show when={expanded()}>
-            <p class="dashboard-nav-group-title">{t('dashboard.ui.overview', 'Overview')}</p>
+            <p class="dashboard-nav-group-title">{t('admin_v6.platform', 'Platform')}</p>
           </Show>
-          <For each={links()}>
+          <For
+            each={
+              authSession()?.session.actorDiscordID
+                ? [
+                    {
+                      label: t('auth.stop_impersonation', 'Return to your account'),
+                      icon: 'user-round-cog' as IconName,
+                      url: '/dashboard/admins/stop-impersonate',
+                    },
+                  ]
+                : links()
+            }
+          >
             {(link) => (
               <A
                 href={link.url}

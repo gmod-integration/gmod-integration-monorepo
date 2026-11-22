@@ -1,4 +1,4 @@
-import { createEffect, on, type Component } from 'solid-js'
+import { createEffect, on, type Accessor, type Component, type JSX } from 'solid-js'
 import AdminModal from './AdminModal.js'
 import { FormActions } from './ui/FormActions.js'
 import { createAsyncAction } from '../hooks/createAsyncAction.js'
@@ -12,6 +12,8 @@ export type ConfirmActionDialogProps = {
   description?: string
   confirmLabel?: string
   variant?: 'primary' | 'danger' | 'warning'
+  children?: JSX.Element | ((pending: Accessor<boolean>) => JSX.Element)
+  disabled?: boolean
   onConfirm: () => Promise<unknown>
   onSuccess?: () => void
 }
@@ -36,13 +38,16 @@ const ConfirmActionDialog: Component<ConfirmActionDialogProps> = (props) => {
       onClose={action.reset}
       onCancel={action.reset}
     >
+      {typeof props.children === 'function' ? props.children(action.pending) : props.children}
       <FormActions
         pending={action.pending()}
         error={action.error()}
+        disabled={props.disabled}
         saveLabel={props.confirmLabel ?? t('ui.confirm', 'Confirm')}
         saveVariant={props.variant ?? 'danger'}
         onCancel={() => closeDialog(props.id)}
         onSave={async () => {
+          if (props.disabled) return
           if (await action.run(props.onConfirm)) {
             closeDialog(props.id)
             props.onSuccess?.()

@@ -1,141 +1,103 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../../testUtils.js'
 import GuildList from '../../../../src/pages/dashboard/admins/GuildList.js'
+import { fetchAPI } from '../../../../src/utils/api.js'
+import { failed, guildFixture, ok, pageFixture } from './adminFixtures.js'
 
+vi.mock('../../../../src/utils/api.js', () => ({ fetchAPI: vi.fn() }))
+beforeEach(() => {
+  localStorage.clear()
+  vi.mocked(fetchAPI).mockReset()
+})
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
 })
-
-// GuildList.tsx's top-level return is a Fragment whose only child is a <Show>. In this test
-// environment (duplicate solid-js copies installed - see `apps/website/node_modules/solid-js`
-// vs the repo-root copy), mounting a Show as the direct/first child of the render root means the
-// resource's loading->loaded signal update never reaches the DOM (verified with a minimal
-// createSignal+Show repro with no resource/router involved at all - real app behavior is
-// unaffected, wrapping the render call in a plain host <div> is enough to route around it).
-function renderGuildList() {
-  return renderWithProviders(() => (
+const renderPage = () =>
+  renderWithProviders(() => (
     <div>
       <GuildList />
     </div>
   ))
-}
 
-describe('pages/dashboard/admins/GuildList.tsx', () => {
-  it('shows a loading placeholder while the guild list resource is loading', () => {
-    const fetchMock = vi.fn().mockReturnValue(new Promise(() => {}))
-    vi.stubGlobal('fetch', fetchMock)
-
-    renderGuildList()
-
-    expect(screen.getByRole('status')).toHaveTextContent('Loading…')
-  })
-
-  it.each(['http', 'network'])('distinguishes a %s failure from an empty list and allows retry', async (failure) => {
-    const fetchMock = vi.fn()
-    if (failure === 'http') fetchMock.mockResolvedValueOnce(new Response('{}', { status: 500 }))
-    else fetchMock.mockRejectedValueOnce(new Error('Network unavailable'))
-    fetchMock.mockResolvedValueOnce(
-      new Response(
-        JSON.stringify([
-          {
-            name: 'Recovered community',
-            guild: 'g1',
-            language: 'en',
-            member: 5,
-            createdAt: '2024-01-01T00:00:00.000Z',
-            updatedAt: '2024-02-01T00:00:00.000Z',
-          },
-        ]),
-      ),
-    )
-    vi.stubGlobal('fetch', fetchMock)
-
-    renderGuildList()
-
-    await vi.waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the Discord communities.'),
-    )
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.queryByText('No communities to display.')).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading')).not.toBeInTheDocument()
-
+describe('administrative community directory', () => {
+  it('distinguishes failure from empty data and retries the request', async () => {
+    vi.mocked(fetchAPI)
+      .mockResolvedValueOnce(failed() as Response)
+      .mockImplementation(async (endpoint) => ok(pageFixture(endpoint, [guildFixture()])) as Response)
+    renderPage()
+    await screen.findByRole('alert')
+    expect(screen.queryByText('No items to display.')).not.toBeInTheDocument()
     await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'Recovered community' })).toBeInTheDocument())
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    await screen.findByText('Example community')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
-
-  it('shows an empty state only after a successful response with no communities', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('[]')))
-    renderGuildList()
-
-    await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('No communities to display.'))
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
-  })
-
-  it('sorts guilds by member desc and renders every guild card field', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify([
-          {
-            name: 'Small Guild',
-            guild: 'g1',
-            language: 'en',
-            member: 5,
-            createdAt: '2024-01-01T00:00:00.000Z',
-            updatedAt: '2024-02-01T00:00:00.000Z',
-          },
-          {
-            name: 'Big Guild',
-            guild: 'g2',
-            language: 'fr',
-            member: 500,
-            createdAt: '2024-03-01T00:00:00.000Z',
-            updatedAt: '2024-04-01T00:00:00.000Z',
-          },
-        ]),
+  it('fetches pages from the server and resets offset on search or filters', async () => {
+    const guilds = Array.from({ length: 51 }, (_, index) =>
+      guildFixture({ id: `community-${index + 1}`, name: `Community ${index + 1}`, members: index + 1 }),
+    ).reverse()
+    vi.mocked(fetchAPI).mockImplementation(async (endpoint) => {
+      const parameters = new URL(endpoint, 'http://local.test').searchParams
+      const offset = Number(parameters.get('offset') || 0)
+      const rows = guilds.filter((guild) =>
+        guild.name.toLowerCase().includes((parameters.get('search') || '').toLowerCase()),
+      )
+      return ok(pageFixture(endpoint, rows.slice(offset, offset + 25), rows.length)) as Response
+    })
+    renderPage()
+    await screen.findByText('Community 51')
+    expect(screen.queryByText('Community 26')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    await screen.findByText('Community 26')
+    expect(new URL(vi.mocked(fetchAPI).mock.calls.at(-1)![0], 'http://local.test').searchParams.get('offset')).toBe(
+      '25',
+    )
+    await fireEvent.input(screen.getByRole('searchbox', { name: 'Search' }), { target: { value: 'Community 1' } })
+    await fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+    await screen.findByText('Community 19')
+    const searched = new URL(vi.mocked(fetchAPI).mock.calls.at(-1)![0], 'http://local.test').searchParams
+    expect(searched.get('offset')).toBe('0')
+    expect(searched.get('search')).toBe('Community 1')
+    await fireEvent.change(screen.getByRole('combobox', { name: 'Access source' }), { target: { value: 'manual' } })
+    await vi.waitFor(() =>
+      expect(new URL(vi.mocked(fetchAPI).mock.calls.at(-1)![0], 'http://local.test').searchParams.get('premium')).toBe(
+        'manual',
       ),
     )
-    vi.stubGlobal('fetch', fetchMock)
-
-    renderGuildList()
-
-    await vi.waitFor(() => expect(screen.getByText('Big Guild')).toBeInTheDocument())
-    const titles = screen.getAllByRole('heading', { level: 2 })
-    expect(titles.map((h) => h.textContent)).toEqual(['Big Guild', 'Small Guild'])
-    expect(screen.getByText('g1')).toBeInTheDocument()
-    expect(screen.getByText('en')).toBeInTheDocument()
-    expect(screen.getByText('5')).toBeInTheDocument()
   })
-
-  it('paginates all sorted communities and returns to the first page when its size changes', async () => {
-    const guilds = Array.from({ length: 51 }, (_, index) => ({
-      name: `Community ${index + 1}`,
-      guild: `g${index + 1}`,
-      language: 'en',
-      member: index + 1,
-      createdAt: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-02-01T00:00:00.000Z',
-    }))
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(guilds)))
-    vi.stubGlobal('fetch', fetchMock)
-    renderGuildList()
-    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'Community 51' })).toBeInTheDocument())
-    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(25)
-    expect(screen.queryByRole('heading', { name: 'Community 26' })).not.toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
-    expect(screen.getByRole('heading', { name: 'Community 26' })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Community 51' })).not.toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
-    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(1)
-    expect(screen.getByRole('heading', { name: 'Community 1' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
-    await fireEvent.change(screen.getByRole('combobox', { name: 'Rows per page' }), { target: { value: '50' } })
-    expect(screen.getByRole('button', { name: 'Page 1 of 2' })).toBeInTheDocument()
-    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(50)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+  it('copies exact IDs and inspects unknown effective access without claiming it is disabled', async () => {
+    const guild = guildFixture({ manualPremium: true })
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    vi.mocked(fetchAPI).mockImplementation(async (endpoint) => {
+      if (endpoint.startsWith(`/v6/admin/guilds/${guild.id}`))
+        return ok({
+          guild,
+          access: {
+            guildID: guild.id,
+            premium: false,
+            customBot: false,
+            state: 'unknown',
+            sources: [],
+            revision: 'r1',
+            validUntil: '2099-01-01T00:00:00.000Z',
+          },
+        }) as Response
+      return ok(pageFixture(endpoint, [guild])) as Response
+    })
+    renderPage()
+    await screen.findByText('Example community')
+    await fireEvent.click(screen.getByRole('button', { name: 'Copy community ID' }))
+    expect(writeText).toHaveBeenCalledWith(guild.id)
+    await fireEvent.click(screen.getByRole('button', { name: 'Inspect' }))
+    const dialog = screen.getByRole('dialog', { name: 'Community details' })
+    await within(dialog).findByText('Access verification unavailable')
+    expect(within(dialog).getAllByText('Unknown')).toHaveLength(2)
+    expect(within(dialog).queryByText('Disabled')).not.toBeInTheDocument()
+    expect(within(dialog).getByRole('link', { name: 'View this community’s servers' })).toHaveAttribute(
+      'href',
+      `/dashboard/admins/servers?guildID=${guild.id}`,
+    )
   })
 })

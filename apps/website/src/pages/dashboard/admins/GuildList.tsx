@@ -1,89 +1,243 @@
-import { type Component, createResource, For, Show } from 'solid-js'
-
-import { fetchAPI } from '../../../utils/api'
-import { useI18n } from '../../../i18n.js'
-import { AsyncState } from '../../../components/ui/index.js'
+import { createResource, createSignal, For, Show } from 'solid-js'
+import {
+  AdminGuildDetailSchema,
+  AdminGuildRowSchema,
+  type AdminGuildRow,
+} from '@gmod/schema/admin/AdminDashboardSchema.js'
+import AdminModal from '../../../components/AdminModal.js'
+import AdminPanel from '../../../components/AdminPanel.js'
 import Pagination from '../../../components/Pagination.js'
-import { createListPagination } from '../../../hooks/createListPagination.js'
+import {
+  AsyncState,
+  BooleanStatus,
+  Button,
+  ButtonLink,
+  CopyableValue,
+  FormField,
+  StatusBadge,
+  TableState,
+} from '../../../components/ui/index.js'
+import { useI18n } from '../../../i18n.js'
+import { closeDialog, showDialog } from '../../../utils/dialog.js'
+import { adminGet, createAdminList } from './adminApi.js'
+import AdminListToolbar from './AdminListToolbar.js'
 
-type AdminGuild = {
-  name: string
-  guild: string
-  language: string
-  member: number
-  createdAt: string
-  updatedAt: string
-}
-
-const fetchGuildList = async (): Promise<AdminGuild[]> => {
-  const res = await fetchAPI('/users/:discordID/admins/guilds', 'GET')
-  if (!res.ok) throw new Error('Discord communities request failed')
-  const data: AdminGuild[] = await res.json()
-  return data.sort((a, b) => b.member - a.member)
-}
-
-const GuildList: Component = () => {
+export default function GuildList() {
   const { t, locale } = useI18n()
-  const [guildList, { refetch }] = createResource('guildList', fetchGuildList)
-  const pagination = createListPagination(() => (guildList.error ? undefined : guildList()))
-
+  const list = createAdminList<AdminGuildRow>('/guilds', { sort: 'members', premium: 'all' }, AdminGuildRowSchema)
+  const [search, setSearch] = createSignal('')
+  const [selected, setSelected] = createSignal<AdminGuildRow>()
+  const [detail, { refetch: refetchDetail }] = createResource(
+    () => selected()?.id,
+    async (id) => AdminGuildDetailSchema.parse(await adminGet(`/guilds/${encodeURIComponent(id)}`)),
+  )
+  const page = () => (list.results.error ? undefined : list.results())
+  const inspection = () => (detail.error ? undefined : detail())
+  const inspect = (guild: AdminGuildRow) => {
+    setSelected(guild)
+    showDialog('admin-community-details')
+  }
+  const date = (value: string) => new Date(value).toLocaleString(locale())
   return (
     <>
-      <p class="text-sm text-base-content/65">
-        {t(
-          'admin.communities_description',
-          'Registered Discord communities, ordered by member count. Dates refer to their records in Gmod Integration.',
+      <AdminPanel
+        title={t('admin_v6.communities', 'Communities')}
+        description={t(
+          'admin_v6.communities_description',
+          'Find registered Discord communities and inspect their current access sources.',
         )}
-      </p>
-      <AsyncState
-        loading={guildList.loading}
-        error={guildList.error}
-        empty={!guildList.loading && !guildList.error && guildList()?.length === 0}
-        errorLabel={t('admin.communities_load_error', 'Unable to load the Discord communities. Try again.')}
-        emptyLabel={t('admin.communities_empty', 'No communities to display.')}
-        onRetry={() => void refetch()}
+        icon="users"
+        type="none"
+        footer={
+          <Show when={!list.results.loading && page()}>
+            <Pagination standalone query={list.query()} total={page()?.total ?? 0} onChange={list.paginate} />
+          </Show>
+        }
       >
-        <div class="flex flex-wrap gap-4">
-          <For each={pagination.items()}>
-            {(guild) => (
-              <div class="card min-w-0 w-full max-w-[400px] shadow-md border border-base-200">
-                <div class="card-body min-w-0 [overflow-wrap:anywhere]">
-                  <h2 class="card-title text-xl">{guild.name}</h2>
-                  <p class="text-base-content/50">
-                    {t('admin.community_id', 'Discord server ID')}: <span>{guild.guild}</span>
+        <AdminListToolbar
+          id="admin-communities"
+          search={search()}
+          onSearchInput={setSearch}
+          onSearch={() => list.change({ search: search().trim() })}
+          sort={list.query().sort}
+          onSort={(sort) => list.change({ sort })}
+          sorts={[
+            { value: 'members', label: t('admin_v6.members', 'Members') },
+            { value: 'name', label: t('admin_v6.name', 'Name') },
+            { value: 'createdAt', label: t('admin_v6.registered', 'Registered') },
+          ]}
+          orderBy={list.query().orderBy}
+          onOrder={(orderBy) => list.change({ orderBy })}
+          loading={list.results.loading}
+          onRefresh={() => void list.refetch()}
+        >
+          <FormField id="admin-communities-premium" label={t('admin_v6.access_source', 'Access source')}>
+            <select
+              id="admin-communities-premium"
+              class="select"
+              value={String(list.query().premium)}
+              onChange={(event) => list.change({ premium: event.currentTarget.value })}
+            >
+              <option value="all">{t('admin_v6.all_sources', 'All sources')}</option>
+              <option value="manual">{t('admin_v6.manual_grant', 'Manual grant')}</option>
+              <option value="gmodstore">GmodStore</option>
+              <option value="none">{t('admin_v6.no_recorded_grant', 'No active recorded grant')}</option>
+            </select>
+          </FormField>
+        </AdminListToolbar>
+        <Show when={!list.results.loading && page()}>
+          <p class="px-4 pb-3 text-sm text-base-content/65">
+            {t('admin_v6.results', '{1} results', (page()?.total ?? 0).toLocaleString(locale()))}
+          </p>
+        </Show>
+        <div class="min-w-0 w-full overflow-x-auto">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>{t('admin_v6.community', 'Community')}</th>
+                <th>{t('admin_v6.members', 'Members')}</th>
+                <th>{t('admin_v6.game_servers', 'Game servers')}</th>
+                <th>{t('admin_v6.access_sources', 'Premium access sources')}</th>
+                <th>{t('admin_v6.bot_language', 'Bot language')}</th>
+                <th>{t('ui.actions', 'Actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <TableState
+                colSpan={6}
+                loading={list.results.loading}
+                error={list.results.error}
+                empty={!page()?.items.length}
+                emptyLabel={t('admin_v6.communities_empty', 'No communities match these filters.')}
+                errorLabel={t('admin_v6.communities_failed', 'The communities could not be loaded. Try again.')}
+                onRetry={() => void list.refetch()}
+              >
+                <For each={page()?.items ?? []}>
+                  {(guild) => (
+                    <tr>
+                      <td>
+                        <div class="flex min-w-0 flex-col items-start gap-2">
+                          <strong class="max-w-72 break-words">{guild.name || guild.id}</strong>
+                          <CopyableValue
+                            value={guild.id}
+                            label={t('admin_v6.copy_community_id', 'Copy community ID')}
+                          />
+                        </div>
+                      </td>
+                      <td class="tabular-nums">{guild.members.toLocaleString(locale())}</td>
+                      <td>
+                        <ButtonLink
+                          size="sm"
+                          variant="ghost"
+                          href={`/dashboard/admins/servers?guildID=${encodeURIComponent(guild.id)}`}
+                        >
+                          {guild.serverCount.toLocaleString(locale())}
+                        </ButtonLink>
+                      </td>
+                      <td>
+                        <div class="flex flex-wrap gap-2">
+                          <Show when={guild.manualPremium}>
+                            <StatusBadge tone="info">{t('admin_v6.manual_grant', 'Manual grant')}</StatusBadge>
+                          </Show>
+                          <Show when={guild.gmodstore}>
+                            <StatusBadge tone="success">GmodStore</StatusBadge>
+                          </Show>
+                          <Show when={!guild.manualPremium && !guild.gmodstore}>
+                            <StatusBadge>{t('admin_v6.no_recorded_grant', 'No active recorded grant')}</StatusBadge>
+                          </Show>
+                        </div>
+                      </td>
+                      <td>{guild.language.toUpperCase()}</td>
+                      <td>
+                        <Button size="sm" onClick={() => inspect(guild)}>
+                          {t('admin_v6.inspect', 'Inspect')}
+                        </Button>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </TableState>
+            </tbody>
+          </table>
+        </div>
+      </AdminPanel>
+      <AdminModal
+        id="admin-community-details"
+        title={t('admin_v6.community_details', 'Community details')}
+        size="wide"
+        onClose={() => setSelected(undefined)}
+        footer={<Button onClick={() => closeDialog('admin-community-details')}>{t('ui.close', 'Close')}</Button>}
+      >
+        <AsyncState loading={detail.loading} error={detail.error} onRetry={() => void refetchDetail()}>
+          <Show when={inspection()}>
+            {(value) => (
+              <div class="settings-card-grid">
+                <AdminPanel title={value().guild.name || value().guild.id} icon="users">
+                  <CopyableValue
+                    value={value().guild.id}
+                    label={t('admin_v6.copy_community_id', 'Copy community ID')}
+                  />
+                  <dl class="flex flex-col gap-3">
+                    <div>
+                      <dt class="text-sm text-base-content/65">{t('admin_v6.members', 'Members')}</dt>
+                      <dd>{value().guild.members.toLocaleString(locale())}</dd>
+                    </div>
+                    <div>
+                      <dt class="text-sm text-base-content/65">{t('admin_v6.registered', 'Registered')}</dt>
+                      <dd>{date(value().guild.createdAt)}</dd>
+                    </div>
+                    <div>
+                      <dt class="text-sm text-base-content/65">{t('admin_v6.updated', 'Updated')}</dt>
+                      <dd>{date(value().guild.updatedAt)}</dd>
+                    </div>
+                  </dl>
+                  <ButtonLink href={`/dashboard/admins/servers?guildID=${encodeURIComponent(value().guild.id)}`}>
+                    {t('admin_v6.view_community_servers', 'View this community’s servers')}
+                  </ButtonLink>
+                </AdminPanel>
+                <AdminPanel
+                  title={t('admin_v6.effective_access', 'Effective access')}
+                  icon="shield-check"
+                  description={t(
+                    'admin_v6.effective_access_description',
+                    'Resolved access can include several sources. An unavailable provider is shown as unknown.',
+                  )}
+                >
+                  <Show when={value().access.state !== 'ready'}>
+                    <StatusBadge tone="warning">
+                      {t('admin_v6.access_unknown', 'Access verification unavailable')}
+                    </StatusBadge>
+                  </Show>
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <span>Premium</span>
+                    <BooleanStatus value={value().access.state === 'ready' ? value().access.premium : undefined} />
+                  </div>
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <span>{t('admin_v6.custom_bot', 'Custom bot access')}</span>
+                    <BooleanStatus value={value().access.state === 'ready' ? value().access.customBot : undefined} />
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <For each={value().access.sources}>
+                      {(source) => (
+                        <StatusBadge tone="info">
+                          {source === 'legacy'
+                            ? t('admin_v6.manual_grant', 'Manual grant')
+                            : source === 'gmodstore'
+                              ? 'GmodStore'
+                              : 'Discord'}
+                        </StatusBadge>
+                      )}
+                    </For>
+                  </div>
+                  <p class="text-xs text-base-content/60">
+                    {t('admin_v6.access_valid_until', 'Snapshot valid until {1}', date(value().access.validUntil))}
                   </p>
-                  <p class="text-base-content/50">
-                    {t('admin.bot_language', 'Bot language')}: <span>{guild.language}</span>
-                  </p>
-                  <p class="text-base-content/50">
-                    {t('admin.members', 'Members')}: <span>{guild.member.toLocaleString(locale())}</span>
-                  </p>
-                  <p class="text-base-content/50">
-                    {t('admin.registered_at', 'Registered')}:{' '}
-                    <span>{new Date(guild.createdAt).toLocaleString(locale())}</span>
-                  </p>
-                  <p class="text-base-content/50">
-                    {t('admin.updated_at', 'Record updated')}:{' '}
-                    <span>{new Date(guild.updatedAt).toLocaleString(locale())}</span>
-                  </p>
-                </div>
+                </AdminPanel>
               </div>
             )}
-          </For>
-        </div>
-        <Show when={pagination.visible()}>
-          <div class="pt-4">
-            <Pagination
-              standalone
-              query={pagination.query()}
-              total={pagination.total()}
-              onChange={pagination.onChange}
-            />
-          </div>
-        </Show>
-      </AsyncState>
+          </Show>
+        </AsyncState>
+      </AdminModal>
     </>
   )
 }
-
-export default GuildList

@@ -28,9 +28,12 @@ export const DashboardPageHeader: Component<{ admin?: boolean }> = (props) => {
     if (props.admin) {
       const section = location.pathname.split('/').at(-1)
       if (section === 'guilds') return t('main.guilds', 'Discord communities')
+      if (section === 'servers') return t('admin_v6.nav_servers', 'Game servers')
+      if (section === 'users') return t('admin_v6.nav_users', 'User accounts')
+      if (section === 'premium') return t('admin_v6.nav_premium', 'Premium access')
       if (section === 'impersonate' || section === 'stop-impersonate')
         return t('dashboard.menu.admin.impersonate', 'Support access')
-      return t('dashboard.menu.admin.information', 'Information')
+      return t('admin_v6.nav_overview', 'Overview')
     }
     const route = serverRoute()
     if (route) {

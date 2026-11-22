@@ -162,7 +162,7 @@ export const Header: Component = () => {
           icon: 'wrench',
           href: '/dashboard/admins/informations',
           condition: () => {
-            return isAdmin()
+            return isAdmin() && !authSession()?.session.actorDiscordID
           },
         },
       ],

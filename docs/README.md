@@ -46,6 +46,7 @@ responsibilities, gotchas, what depends on it and what it depends on).
 | `docs`          | The Docusaurus site that publishes the **product** documentation (this `./docs` folder is not part of it).                                           | [docs/apps/docs.md](./apps/docs.md)                   |
 
 The [website UI catalogue](./apps/website-ui.md) lists reusable components and interaction rules.
+The [admin dashboard contract](./apps/admin-dashboard.md) describes platform administration and its API.
 
 ### `packages/*` — shared code
 

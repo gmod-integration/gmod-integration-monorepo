@@ -192,6 +192,17 @@ The endpoint enqueues `serverStatusPreview`; it does not save settings or create
 Invalid drafts return 400 and worker timeouts return 503, allowing the editor to retry without
 publishing partial changes.
 
+## Platform administration
+
+`/v6/admin` exposes platform statistics, paginated community/server/user/Premium directories and
+administrative mutations. Every route requires the operator's own application session and a current
+`developer` rank from the database; delegated support sessions are refused. Origin and CSRF checks
+use the shared session helpers. Mutations validate strict payloads and record the actor, target and
+reason. Server token rotation returns an acknowledgement without exposing the replacement secret.
+
+See [the admin dashboard contract](./admin-dashboard.md) for endpoints, safeguards and the required
+Premium grant migration before deployment.
+
 ## Discord side effects
 
 `api` never imports `discord.js` directly. Anything Discord-related is enqueued via

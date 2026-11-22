@@ -1,23 +1,35 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { renderWithProviders } from '../testUtils.js'
 import { AppAdminDashboard } from '../../src/app/AppAdminDashboard.js'
+import { acceptAuthSession, resetAuthentication } from '../../src/utils/authClient.js'
+import { sessionFixture } from '../authFixture.js'
 
-afterEach(() => cleanup())
-beforeEach(() => window.localStorage.clear())
+vi.mock('../../src/utils/api.js', () => ({
+  fetchAPI: vi.fn(async () => new Response(JSON.stringify({ authorized: true, discordID: 'u1' }))),
+}))
+
+afterEach(() => {
+  cleanup()
+  resetAuthentication()
+})
+beforeEach(() => {
+  window.localStorage.clear()
+  acceptAuthSession(sessionFixture({ user: { ...sessionFixture().user, rank: 'developer' } }))
+})
 
 describe('Admin dashboard shell', () => {
-  it('composes the named admin navigation and page content', () => {
+  it('composes the named admin navigation and page content after server verification', async () => {
     renderWithProviders(() => (
       <AppAdminDashboard>
         <div data-testid="page">Admin page</div>
       </AppAdminDashboard>
     ))
-    expect(screen.getByRole('navigation', { name: 'Admin' })).toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getByRole('navigation', { name: 'Admin' })).toBeInTheDocument())
     expect(screen.getByTestId('page')).toHaveTextContent('Admin page')
   })
 
-  it('contains page failures and recovers through the same retry control as the guild dashboard', () => {
+  it('contains page failures and recovers through the same retry control as the guild dashboard', async () => {
     let shouldFail = true
     function FailablePage() {
       if (shouldFail) throw new Error('admin page crashed')
@@ -30,8 +42,10 @@ describe('Admin dashboard shell', () => {
         </AppAdminDashboard>
       )),
     ).not.toThrow()
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'This page could not be displayed. Try again to reload its content.',
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'This page could not be displayed. Try again to reload its content.',
+      ),
     )
     expect(screen.getByRole('navigation', { name: 'Admin' })).toBeInTheDocument()
 

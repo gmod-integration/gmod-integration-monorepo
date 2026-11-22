@@ -57,6 +57,16 @@ header and footer remain available while a page loads. Home statistics show plac
 request without suspending the landing page. `JsonViewer` registers only the JSON syntax highlighter,
 keeping unrelated language definitions out of the generated chunks.
 
+## Internal administration
+
+`/dashboard/admins` provides the overview, communities, servers, users, Premium and support pages.
+The shell verifies the operator's own developer session with the v6 API before mounting protected
+content; delegated sessions retain the return action without gaining platform administration access.
+Directories use server pagination and shared search/filter controls. Business commands require explicit
+confirmation or Save/Cancel, and failures preserve drafts. See the
+[admin dashboard contracts](./admin-dashboard.md) for authorization, API shapes, audit reasons, support
+session limits and the non-destructive manual Premium migration.
+
 ## Server ranking
 
 `/servers` requests the authenticated, paginated `/v3/users/:discordID/servers/ranking` endpoint.

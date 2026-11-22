@@ -113,7 +113,16 @@ for its Discord server ID.
 | `PremiumBadge`, `BuyPremiumBtn`, `PremiumOnly`    | `utils/premium.tsx`, `components/PremiumOnly.tsx` | Shared premium access presentation.                                                                                                                                                                                                                                                             |
 | `ServerActivityChart`, `AdminChart`, `JsonViewer` | `components/`                                     | Charts and structured data display.                                                                                                                                                                                                                                                             |
 
+`ConfirmActionDialog.disabled` gates confirmation. Its optional `children` can be a render callback
+receiving the pending accessor, so contextual fields such as a required reason can be disabled while
+the command runs.
+
 ## Authentication and session recovery
+
+The [internal admin dashboard](./admin-dashboard.md) applies these controls to six protected pages.
+Its server-verified guard for the operator's own developer session mounts content after confirmation;
+delegated sessions retain the return path. Shared admin list helpers preserve server pagination and
+filters, and mutation handlers validate acknowledgements before closing drafts or confirmations.
 
 `AuthProvider` in `components/AuthProvider.tsx` owns the shared session lifecycle. Read `authSession()`
 and `authStatus()` from `utils/authClient.ts`; `checking`, `signed_out`, `temporarily_unavailable` and

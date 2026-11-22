@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { A } from '@solidjs/router'
+import { createSignal } from 'solid-js'
 import ConfirmActionDialog from '../../src/components/ConfirmActionDialog.js'
 import { DraftEditingProvider } from '../../src/components/DraftEditingProvider.js'
 import { renderWithProviders } from '../testUtils.js'
@@ -9,6 +10,39 @@ beforeEach(() => localStorage.clear())
 afterEach(cleanup)
 
 describe('confirmation dialog interactions', () => {
+  it('validates extra confirmation fields and locks them while the command is pending', async () => {
+    const [reason, setReason] = createSignal('')
+    let finish!: () => void
+    const confirm = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
+    )
+    const { container } = renderWithProviders(() => (
+      <ConfirmActionDialog id="review" title="Review change" disabled={reason().trim().length < 5} onConfirm={confirm}>
+        {(pending) => (
+          <label>
+            Reason
+            <input value={reason()} disabled={pending()} onInput={(event) => setReason(event.currentTarget.value)} />
+          </label>
+        )}
+      </ConfirmActionDialog>
+    ))
+    const dialog = container.querySelector<HTMLDialogElement>('#review')!
+    dialog.showModal()
+    const button = within(dialog).getByRole('button', { name: 'Confirm' })
+    const field = within(dialog).getByRole('textbox', { name: 'Reason' })
+    expect(button).toBeDisabled()
+    await fireEvent.input(field, { target: { value: 'Support review' } })
+    await fireEvent.click(button)
+    expect(field).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    await fireEvent.click(button)
+    expect(confirm).toHaveBeenCalledOnce()
+    finish()
+    await vi.waitFor(() => expect(dialog.open).toBe(false))
+  })
   it('cancels a rejected command without retrying and clears the old error when reopened', async () => {
     const confirm = vi.fn().mockRejectedValue(new Error('Offline'))
     const { container } = renderWithProviders(() => (

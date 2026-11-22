@@ -1,104 +1,66 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../../testUtils.js'
 import AdminInformations from '../../../../src/pages/dashboard/admins/AdminInformations.js'
+import { fetchAPI } from '../../../../src/utils/api.js'
+import { failed, ok, overviewFixture } from './adminFixtures.js'
 
-afterEach(() => {
-  cleanup()
-  vi.unstubAllGlobals()
+vi.mock('../../../../src/utils/api.js', () => ({ fetchAPI: vi.fn() }))
+beforeEach(() => {
+  localStorage.clear()
+  vi.mocked(fetchAPI).mockReset()
 })
-
-// See GuildList.test.tsx for why the render call is wrapped in a plain host <div>: this
-// component's top-level return is also a Fragment whose first child is a <Show>, which hits the
-// same test-environment-only (duplicate solid-js copies) reactivity gap.
-function renderAdminInformations() {
-  return renderWithProviders(() => (
+afterEach(cleanup)
+const renderPage = () =>
+  renderWithProviders(() => (
     <div>
       <AdminInformations />
     </div>
   ))
-}
 
-const adminData = {
-  guild: {
-    total: 120,
-    language: [
-      { label: 'en', value: 80 },
-      { label: 'fr', value: 40 },
-    ],
-  },
-  server: { total: 45 },
-  user: {
-    total: 1000,
-    totalDiscordMembers: 900,
-    totalDiscordUser: 700,
-    totalVerified: 600,
-    totalUnverified: 400,
-    totalSteamUser: 500,
-  },
-}
-
-describe('pages/dashboard/admins/AdminInformations.tsx', () => {
-  it('shows the shared loading state while service statistics are loading', () => {
-    const fetchMock = vi.fn().mockReturnValue(new Promise(() => {}))
-    vi.stubGlobal('fetch', fetchMock)
-
-    renderAdminInformations()
-
-    expect(screen.getByRole('status')).toHaveTextContent('Loading…')
-    expect(screen.queryByText('Service overview')).not.toBeInTheDocument()
+describe('platform overview', () => {
+  it('waits for the v6 overview and exposes a recoverable error', async () => {
+    vi.mocked(fetchAPI)
+      .mockResolvedValueOnce(failed() as Response)
+      .mockResolvedValueOnce(ok(overviewFixture()) as Response)
+    renderPage()
+    await screen.findByRole('alert')
+    expect(screen.queryByText('120')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await screen.findByText('120')
+    expect(fetchAPI).toHaveBeenCalledWith('/v6/admin/overview', 'GET')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
-
-  it.each(['http', 'network'])(
-    'shows a recoverable %s failure instead of an endless loading placeholder',
-    async (failure) => {
-      const fetchMock = vi.fn()
-      if (failure === 'http') fetchMock.mockResolvedValueOnce(new Response('{}', { status: 500 }))
-      else fetchMock.mockRejectedValueOnce(new Error('Network unavailable'))
-      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(adminData)))
-      vi.stubGlobal('fetch', fetchMock)
-
-      const { container } = renderAdminInformations()
-
-      await vi.waitFor(() =>
-        expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the service statistics.'),
-      )
-      expect(screen.queryByRole('status')).not.toBeInTheDocument()
-      expect(container.querySelector('.skeleton')).not.toBeInTheDocument()
-      expect(screen.queryByText('Service overview')).not.toBeInTheDocument()
-      expect(container.querySelector('svg')).not.toBeInTheDocument()
-
-      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-      await vi.waitFor(() => expect(screen.getByText('120')).toBeInTheDocument())
-      expect(fetchMock).toHaveBeenCalledTimes(2)
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-      expect(screen.getByText('Communities by bot language')).toBeInTheDocument()
-    },
-  )
-
-  it('renders general/user stats, percentages, the guild-language pie chart, and refetches on click', async () => {
-    // A fresh Response per call - refetch() re-reads .json() on the resolved value, and a
-    // Response body can only be consumed once.
-    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(new Response(JSON.stringify(adminData))))
-    vi.stubGlobal('fetch', fetchMock)
-
-    renderAdminInformations()
-
-    await vi.waitFor(() => expect(screen.getByText('Discord communities')).toBeInTheDocument())
-    expect(screen.getByText('120')).toBeInTheDocument()
-    expect(screen.getByText('45')).toBeInTheDocument()
-    expect(screen.getByText('1,000')).toBeInTheDocument()
-    expect(screen.getByText(/900 - 90%/)).toBeInTheDocument()
-    expect(screen.getByText(/700 - 70%/)).toBeInTheDocument()
-    expect(screen.getByText(/600 - 60%/)).toBeInTheDocument()
-    expect(screen.getByText(/400 - 40%/)).toBeInTheDocument()
-    expect(screen.getByText('Communities by bot language')).toBeInTheDocument()
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    fireEvent.click(screen.getByText('Refresh statistics'))
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    // Let the refetch's resource state settle back to resolved before the test (and its
-    // cleanup()) tears the tree down, so nothing is disposed mid-flight.
-    await vi.waitFor(() => expect(screen.getByText('Discord communities')).toBeInTheDocument())
+  it('shows distinct platform counts and accessible language text, then refreshes', async () => {
+    vi.mocked(fetchAPI).mockImplementation(async () => ok(overviewFixture()) as Response)
+    renderPage()
+    await screen.findByText('120')
+    expect(screen.getByText('700')).toBeInTheDocument()
+    expect(screen.getByText('900')).toBeInTheDocument()
+    expect(screen.getByText('24')).toBeInTheDocument()
+    expect(screen.getByText('English')).toBeInTheDocument()
+    expect(screen.getByText('French')).toBeInTheDocument()
+    expect(screen.getByText(/Memberships are counted per community/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Manage Premium' })).toHaveAttribute('href', '/dashboard/admins/premium')
+    await fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledTimes(2))
+    await screen.findByText('120')
+  })
+  it('handles an empty platform without fictitious percentages or invalid numbers', async () => {
+    const empty = overviewFixture()
+    for (const key of Object.keys(empty.totals) as (keyof typeof empty.totals)[]) empty.totals[key] = 0
+    empty.recent = { days: 7, guilds: 0, servers: 0, users: 0 }
+    empty.languages = []
+    vi.mocked(fetchAPI).mockResolvedValue(ok(empty) as Response)
+    const { container } = renderPage()
+    await screen.findByText('No language data is available yet.')
+    expect(container.textContent).not.toMatch(/NaN|Infinity|\d%/)
+    expect(screen.getByText('New in the last 7 days')).toBeInTheDocument()
+  })
+  it('rejects malformed overview data instead of displaying fabricated zero totals', async () => {
+    vi.mocked(fetchAPI).mockResolvedValue(ok({ totals: {} }) as Response)
+    renderPage()
+    await screen.findByRole('alert')
+    expect(screen.queryByText('0')).not.toBeInTheDocument()
   })
 })

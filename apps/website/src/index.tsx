@@ -3,7 +3,7 @@ import { render } from 'solid-js/web'
 import { lazy } from 'solid-js'
 
 import './index.css'
-import { Route, Router } from '@solidjs/router'
+import { Navigate, Route, Router } from '@solidjs/router'
 import NotFound from './pages/NotFound.js'
 import Login from './pages/Login.js'
 import Logout from './pages/Logout.js'
@@ -44,6 +44,9 @@ const ServerWarns = lazy(() => import('./pages/dashboard/guilds/servers/ServerWa
 const GuildList = lazy(() => import('./pages/dashboard/admins/GuildList.js'))
 const AdminInformations = lazy(() => import('./pages/dashboard/admins/AdminInformations.js'))
 const Impersonate = lazy(() => import('./pages/dashboard/admins/Impersonate.js'))
+const AdminServerList = lazy(() => import('./pages/dashboard/admins/ServerList.js'))
+const AdminUserList = lazy(() => import('./pages/dashboard/admins/UserList.js'))
+const AdminPremiumList = lazy(() => import('./pages/dashboard/admins/PremiumList.js'))
 
 const root = document.getElementById('root')
 
@@ -66,8 +69,12 @@ render(
       <Route path="/servers" component={Servers} />
       <Route path="/notifications" component={Notifications} />
       <Route path="/dashboard/admins" component={AppAdminDashboard}>
+        <Route path="/" component={() => <Navigate href="/dashboard/admins/informations" />} />
         <Route path="/informations" component={AdminInformations} />
         <Route path="/guilds" component={GuildList} />
+        <Route path="/servers" component={AdminServerList} />
+        <Route path="/users" component={AdminUserList} />
+        <Route path="/premium" component={AdminPremiumList} />
         <Route path="/impersonate" component={Impersonate} />
         <Route path="/stop-impersonate" component={Impersonate} />
         <Route path="*" component={NotFound} />

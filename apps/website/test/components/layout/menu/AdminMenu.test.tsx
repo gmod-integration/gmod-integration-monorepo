@@ -38,12 +38,12 @@ describe('Admin navigation', () => {
   it('exposes only implemented destinations and identifies the current page', () => {
     renderAt()
     const navigation = screen.getByRole('navigation', { name: 'Admin' })
-    expect(within(navigation).getAllByRole('link')).toHaveLength(3)
-    expect(within(navigation).getByRole('link', { name: 'Information' })).toHaveAttribute(
+    expect(within(navigation).getAllByRole('link')).toHaveLength(6)
+    expect(within(navigation).getByRole('link', { name: 'Overview' })).toHaveAttribute(
       'href',
       '/dashboard/admins/informations',
     )
-    expect(within(navigation).getByRole('link', { name: 'Information' })).toHaveAttribute('aria-current', 'page')
+    expect(within(navigation).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
     expect(within(navigation).getByRole('link', { name: 'Discord communities' })).toHaveAttribute(
       'href',
       '/dashboard/admins/guilds',
@@ -63,7 +63,7 @@ describe('Admin navigation', () => {
     fireEvent.click(screen.getByRole('link', { name: 'Discord communities' }))
     await vi.waitFor(() => expect(history.get()).toBe('/dashboard/admins/guilds'))
     expect(screen.getByRole('link', { name: 'Discord communities' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Information' })).not.toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current', 'page')
   })
 
   it('keeps navigation available on an unmatched route without marking a destination current', () => {
@@ -81,19 +81,19 @@ describe('Admin navigation', () => {
     fireEvent.click(collapse, { detail: 0 })
     const expand = screen.getByRole('button', { name: 'Expand' })
     expect(expand).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByRole('link', { name: 'Information' })).toHaveAttribute('title', 'Information')
-    expect(screen.queryByText('Information')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('title', 'Overview')
+    expect(screen.queryByText('Overview')).not.toBeInTheDocument()
     expect(window.localStorage.getItem('admin-navigation-collapsed')).toBe('true')
 
     fireEvent.mouseEnter(screen.getByRole('complementary'))
     expect(expand).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('Information')).toBeInTheDocument()
+    expect(screen.getByText('Overview')).toBeInTheDocument()
     fireEvent.mouseLeave(screen.getByRole('complementary'))
     expect(expand).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.queryByText('Information')).not.toBeInTheDocument()
+    expect(screen.queryByText('Overview')).not.toBeInTheDocument()
     fireEvent.click(expand)
     expect(screen.getByRole('button', { name: 'Collapse' })).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByText('Information')).toBeInTheDocument()
+    expect(screen.getByText('Overview')).toBeInTheDocument()
   })
 
   it('restores the collapsed preference when mounted again', () => {
