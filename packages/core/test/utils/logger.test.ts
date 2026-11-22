@@ -123,6 +123,52 @@ describe('logger', () => {
   })
 
   describe('logServer', () => {
+    it.each([
+      'dark_rp_drop_money',
+      'dark_rp_picked_up_money',
+      'ch_atm_send_money',
+      'ch_atm_receive_money',
+      'ch_atm_take_money',
+      'ch_atm_withdraw_money',
+      'ch_atm_deposit_money',
+    ])('stores and broadcasts one canonical player snapshot for %s', async (type) => {
+      const input = {
+        player: { steamID64: '76561198000000001', name: 'Player' },
+        receiver: { steamID64: '76561198000000002', name: 'Recipient' },
+        amount: 20,
+      }
+      await logServer(makeServer(), type, input)
+      expect(addLogMock).toHaveBeenCalledTimes(1)
+      const saved = addLogMock.mock.calls[0][0].data
+      expect(saved.ply).toMatchObject({ steamID64: input.player.steamID64, name: 'Player' })
+      expect(saved).not.toHaveProperty('player')
+      expect(saved.amount).toBe(20)
+      expect(input).toHaveProperty('player')
+      expect(wsAddMock).toHaveBeenCalledExactlyOnceWith(
+        'wsSendToAllClientsOfServer',
+        expect.objectContaining({ data: { type, data: saved } }),
+      )
+    })
+
+    it.each([{ steamID64: '76561198000000002', name: 'Attacker' }, { class: 'trigger_hurt' }])(
+      'stores one attacker snapshot for a death with attacker %j',
+      async (attacker) => {
+        await logServer(makeServer(), 'player_death', {
+          attacker,
+          player: { steamID64: '76561198000000001', name: 'Victim' },
+        })
+        expect(addLogMock).toHaveBeenCalledTimes(1)
+        const saved = addLogMock.mock.calls[0][0].data
+        expect(saved.plyAttacker).toMatchObject(attacker)
+        expect(saved.plyTarget).toMatchObject({ name: 'Victim' })
+        expect(saved).not.toHaveProperty('attacker')
+        expect(wsAddMock).toHaveBeenCalledExactlyOnceWith(
+          'wsSendToAllClientsOfServer',
+          expect.objectContaining({ data: { type: 'player_death', data: saved } }),
+        )
+      },
+    )
+
     it('does not broadcast or relay an event rejected by the storage privacy barrier', async () => {
       addLogMock.mockResolvedValueOnce(false)
       const server = makeServer({

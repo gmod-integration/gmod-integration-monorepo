@@ -17,7 +17,8 @@ vi.mock('@gmod/infra-prisma', () => ({
 
 configServerMock = { dev: false }
 
-vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => [{ name: 'v1.2.3' }] }))
+const initialTagFetch = vi.fn().mockResolvedValue({ json: async () => [{ name: 'v1.2.3' }] })
+vi.stubGlobal('fetch', initialTagFetch)
 vi.useFakeTimers()
 
 const {
@@ -129,16 +130,36 @@ describe('tools', () => {
       expect(versionComparator('1.0.0', 'v1.0.1')).toBe(-1)
     })
 
-    it('returns 1 when version1 is greater at some character', () => {
+    it('returns 1 when version1 is greater', () => {
       expect(versionComparator('2.0.0', '1.0.0')).toBe(1)
     })
 
-    it('returns -1 when version1 is lesser at some character', () => {
+    it('returns -1 when version1 is lesser', () => {
       expect(versionComparator('1.0.0', '2.0.0')).toBe(-1)
     })
+
+    it.each([
+      ['5.2.9', 'v5.2.10', -1],
+      ['v5.2.10', '5.2.9', 1],
+      ['1.20.0', '1.3.0', 1],
+      ['9.99.99', '10.0.0', -1],
+      ['v10.12.30', '10.12.30', 0],
+    ])('compares numeric release components: %s vs %s', (left, right, expected) => {
+      expect(versionComparator(left, right)).toBe(expected)
+    })
+
+    it.each(['Unknown', '', '5.2', '5.2.10-preview', '999999999999999999999.0.0'])(
+      'does not order an unavailable or unsupported version: %s',
+      (value) => expect(versionComparator(value, '5.2.10')).toBe(0),
+    )
   })
 
   describe('lastGmodIntegrationTag refresh interval', () => {
+    it('looks up tags in the actual addon repository', () => {
+      expect(initialTagFetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/gmod-integration/gmod-integration/tags',
+      )
+    })
     it('refreshes the tag from the GitHub API every 10 minutes', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => [{ name: 'v9.9.9' }] }))
       await vi.advanceTimersByTimeAsync(1000 * 60 * 10)

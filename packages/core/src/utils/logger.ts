@@ -436,12 +436,10 @@ export async function logServer(server: Server, type: string, data?: any) {
     // of falling back gracefully like this try/catch is meant to.
     try {
       const attacker = new PlayerGmod(data.attacker)
-      dataToSave.attacker = attacker
       dataToSave.plyAttacker = attacker
       dscList.push((await getTranslate('steamID64', lang)) + ': `' + attacker.steamID64 + '`')
       dscList.push((await getTranslate('name', lang)) + ': `' + attacker.name + '`')
     } catch (error) {
-      dataToSave.attacker = data.attacker
       dataToSave.plyAttacker = data.attacker
       dscList.push((await getTranslate('entity', lang)) + ': `' + data.attacker.class + '`')
     }
@@ -497,7 +495,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     entity,
      */
     dataToSave.amount = amount
-    dataToSave.player = data.player
     dataToSave.entity = data.entity
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
@@ -511,7 +508,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     const amount = data.amount || 0
     dataToSave.amount = amount
     dataToSave.entity = data.entity
-    dataToSave.player = data.player
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
@@ -541,7 +537,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     const amount = data.amount || 0
     dataToSave.amount = amount
     dataToSave.receiver = data.receiver
-    dataToSave.player = data.player
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
     dscList.push('\n')
     dscList.push((await getTranslate('sender', lang)) + ':')
@@ -560,7 +555,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     const amount = data.amount || 0
     dataToSave.amount = amount
     dataToSave.reason = data.reason
-    dataToSave.player = data.player
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
@@ -574,7 +568,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     const amount = data.amount || 0
     dataToSave.amount = amount
     dataToSave.reason = data.reason
-    dataToSave.player = data.player
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
@@ -586,7 +579,6 @@ export async function logServer(server: Server, type: string, data?: any) {
      */
     const amount = data.amount || 0
     dataToSave.amount = amount
-    dataToSave.player = data.player
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
@@ -597,7 +589,6 @@ export async function logServer(server: Server, type: string, data?: any) {
      */
     const amount = data.amount || 0
     dataToSave.amount = amount
-    dataToSave.player = data.player
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')

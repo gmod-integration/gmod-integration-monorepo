@@ -110,7 +110,7 @@ export function todoControllers(req: Request, res: Response) {
 }
 
 async function fetchLastTag() {
-  return await fetch('https://api.github.com/repos/gmod-integration/lua/tags')
+  return await fetch('https://api.github.com/repos/gmod-integration/gmod-integration/tags')
     .then((response) => response.json())
     .then((data) => {
       return data[0].name
@@ -141,13 +141,20 @@ setInterval(
  * versionComparator('1.0.0', '1.0.0') // 0
  */
 export function versionComparator(version1: string, version2: string) {
-  const v1 = version1.startsWith('v') ? version1.slice(1) : version1
-  const v2 = version2.startsWith('v') ? version2.slice(1) : version2
+  const parse = (value: string) => {
+    const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(value)
+    if (!match) return null
+    const parts = match.slice(1).map(Number)
+    return parts.every(Number.isSafeInteger) ? parts : null
+  }
+  const v1 = parse(version1)
+  const v2 = parse(version2)
+  if (!v1 || !v2) return 0
 
   for (let i = 0; i < v1.length; i++) {
-    if (parseInt(v1[i]) > parseInt(v2[i])) {
+    if (v1[i] > v2[i]) {
       return 1
-    } else if (parseInt(v1[i]) < parseInt(v2[i])) {
+    } else if (v1[i] < v2[i]) {
       return -1
     }
   }

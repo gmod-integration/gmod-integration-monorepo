@@ -69,3 +69,15 @@ storage operation and after existing storage/publication/database boundaries. Va
 become the controlled `invalid_screenshot` upload response; invalid optional bug-report attachments
 continue to be omitted without discarding the textual report. No legacy stored object is decoded on
 read by this workflow.
+
+## Addon versions and log actor snapshots
+
+The latest addon tag is read from `gmod-integration/gmod-integration` on GitHub and refreshed every ten
+minutes. Release comparisons use numeric major/minor/patch components, so `5.2.10` sorts after `5.2.9`.
+Unsupported version strings retain the legacy zero return value; missing version metadata must be
+handled separately by callers rather than treated as proof of an exact version match.
+
+New economy logs store their player once under `data.ply`; death logs use `data.plyTarget` and
+`data.plyAttacker`. The live dashboard broadcast uses the same canonical payload as storage. Trigger
+templates still receive the original event's `data.player` before storage normalization. Historical
+records are not rewritten by this change.
