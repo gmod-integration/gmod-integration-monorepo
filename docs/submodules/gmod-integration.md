@@ -9,6 +9,8 @@ The legacy server-info response projects only ID, name and community, matching t
 fields used by connection checks. Admin config snapshots and console output omit the stored token;
 the in-game token field accepts a new value and displays only whether a token is configured. Connection
 test callbacks revalidate the recipient's live permission before sending a projected response.
+DNS WebSocket destinations use TLS; the local plaintext exception accepts only exact `localhost` or
+canonical private/loopback IPv4 addresses, with an optional port.
 
 This is a **separate git repository**, pinned as a submodule (`.gitmodules`: `submodules/gmod-integration` →
 `git@github.com:gmod-integration/gmod-integration.git`). Editing it means editing files inside that submodule
