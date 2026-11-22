@@ -570,7 +570,9 @@ export async function getUserStatisticMessage(
     const serverDB = await prisma.gm_server.findFirst({
       where: {
         id: serverInstanceID,
+        guild: guild.id,
       },
+      select: { id: true, name: true },
     })
 
     if (!serverDB) {

@@ -4,11 +4,12 @@ import {
   type ButtonInteraction,
   ButtonStyle,
   EmbedBuilder,
+  MessageFlags,
   type MessageActionRowComponentBuilder,
 } from 'discord.js'
 import { dateToDiscordTimestamp, secToTime } from '../../utils/discordFormat.js'
 import { getTranslate } from '../../utils/localizations.js'
-import { getServerFromID } from '@gmod/domain-server/Server.js'
+import { getDiscordCommunityServer } from './discordServerScope.js'
 import prisma from '@gmod/infra-prisma'
 import { ConfigDiscord } from '@gmod/config'
 
@@ -50,7 +51,8 @@ function ButtonLeaderboardRefresh() {
 
 const defaultCategories = ['total_time', 'total_kill', 'total_death', 'total_connect', 'last_connect', 'first_join']
 
-export async function getServerLeaderboardCategories(serverID: string) {
+export async function getServerLeaderboardCategories(serverID: string, guildID: string) {
+  if (!(await getDiscordCommunityServer(serverID, guildID))) return []
   const serverCategories = defaultCategories.slice()
 
   const categories = await prisma.gm_server_customValues.findMany({
@@ -183,12 +185,13 @@ export async function getLeaderboardMessageEmbed(
   serverID: string,
   category: string,
   lang: string,
+  guildID: string,
   limit: number = 15,
   offset: number = 0,
   order: string = 'DESC',
 ) {
-  const server = await getServerFromID(serverID)
-  if (!server) throw new Error('Server not found')
+  const server = await getDiscordCommunityServer(serverID, guildID)
+  if (!server) return null
 
   const embed = new EmbedBuilder()
     .setTitle(await getTranslate('leaderboard', lang, [server.getName()]))
@@ -273,7 +276,16 @@ export async function handleLeaderboardInteraction(interaction: ButtonInteractio
   if (!interaction.isButton()) return
   if (interaction.user.bot) return
   if (!interaction.guild) return
-  if (!interaction.customId.startsWith('leaderboard_')) return
+  if (
+    ![
+      'leaderboard_first',
+      'leaderboard_previous',
+      'leaderboard_next',
+      'leaderboard_last',
+      'leaderboard_refresh',
+    ].includes(interaction.customId)
+  )
+    return
   const lang = interaction.guild.preferredLocale
 
   const options = await prisma.gm_server_leaderboard_options.findFirst({
@@ -303,22 +315,24 @@ export async function handleLeaderboardInteraction(interaction: ButtonInteractio
     if (offset < 0) offset = 0
   }
 
-  // getLeaderboardMessageEmbed() always resolves to { embed, options } (it throws instead of
-  // returning falsy when the server can't be found), so no falsy guard is needed here.
-  const leaderboardMessage = await getLeaderboardMessageEmbed(options.serverID, options.category, lang, limit, offset)
+  const leaderboardMessage = await getLeaderboardMessageEmbed(
+    options.serverID,
+    options.category,
+    lang,
+    interaction.guild.id,
+    limit,
+    offset,
+  )
+  if (!leaderboardMessage)
+    return interaction.reply({ content: await getTranslate('server_not_found', lang), flags: MessageFlags.Ephemeral })
   const { embed, options: options2nd } = leaderboardMessage
   if (interaction.channel) {
-    interaction.channel.messages.fetch(messageID).then((message) => {
-      message
-        .edit({
-          embeds: [embed],
-          components: [getLeaderboardButtons(options2nd.page === 1, options2nd.page === options2nd.totalPages)],
-        })
-        .then(() => {
-          saveLeaderboardOptions(messageID, options2nd).then(() => {
-            interaction.deferUpdate()
-          })
-        })
+    const message = await interaction.channel.messages.fetch(messageID)
+    await message.edit({
+      embeds: [embed],
+      components: [getLeaderboardButtons(options2nd.page === 1, options2nd.page === options2nd.totalPages)],
     })
+    await saveLeaderboardOptions(messageID, options2nd)
+    await interaction.deferUpdate()
   }
 }

@@ -68,6 +68,25 @@ Platform developer commands use the root `developers.json` allowlist through the
 not the stored database rank. Prefix maintenance commands are limited to `ConfigDiscord.guildID` and
 log their actor/action/target without recording the raw command payload.
 
+`/chart`, server-scoped `/statistic`, `/leaderboard` and `/vote` resolve each supplied server against
+the interaction's Discord community. A public directory flag does not grant cross-community command
+access. The core `getDiscordCommunityServer` helper uses the current server record, and leaderboard
+category suggestions, rendering and every saved pagination action reapply that community boundary.
+Unavailable or unauthorized targets receive the same private response. Autocomplete offers at most
+25 choices and is a convenience rather than an authorization step. The explicit `/statistic global`
+option continues to show platform profile aggregates; it is separate from any game-server identifier.
+
+Vote registration uses one Prisma transaction and a prepared `SELECT … FOR UPDATE` on the matching
+server/community row. The cooldown check and vote creation happen while that row is locked, so Discord bot
+processes cannot create simultaneous votes for the same cooldown window. A changed or removed community
+association aborts registration. The three-hour cooldown is unchanged. A failed Discord notification
+does not undo or misreport the saved vote, and vote notifications disable parsed mentions.
+
+Discord-to-game chat resolves fresh sync mappings for the exact source community/channel, then sends
+only to servers listed in those mappings and still belonging to that community. It also checks each
+server's effective direction. Independent servers with different channels stay separate; several
+servers intentionally mapped to one source channel can receive the same message.
+
 `/warn` and every warning pagination action require the game server to belong to the interaction's
 Discord community. A linked account may view its own warning history; viewing someone else's requires
 the Discord owner or Administrator permission. New replies are private. Interacting with a historical
@@ -91,3 +110,16 @@ a verified empty list, so the dashboard can offer retry feedback.
 ```bash
 bun run discord:dev     # tsx watch apps/discord/src/main.ts --env DEV=true
 ```
+
+## Custom bot profile updates
+
+`guildUpdateBotProfile` rechecks the community's custom-bot capability and refuses the shared main
+client. Its avatar field accepts only uploaded JPEG/PNG data URLs through the shared
+`CustomBotAvatarSchema`; remote URLs and local paths are not supported. `prepareCustomBotAvatar`
+limits decoded input to 2 MiB and 16,777,216 pixels, refuses dimensions over 4096×4096 and multi-page
+images, verifies the raster signature, strips metadata and re-encodes at most 512×512 PNG bytes.
+The worker passes a `Buffer` to `ClientUser.edit`, so the SDK never resolves user-supplied image
+resources. Username and avatar changes share one Discord profile edit after image validation. Worker
+failures return a generic profile error rather than details from Discord or the image processor.
+Deploy the API, website and Discord workers together for this upload contract; old jobs carrying URL
+or path avatars are rejected and are not converted into downloads.

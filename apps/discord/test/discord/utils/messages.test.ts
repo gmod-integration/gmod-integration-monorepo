@@ -313,7 +313,7 @@ describe('discord/utils/messages', () => {
 
   describe('getNotVerifiedMessage', () => {
     it('builds a welcome embed with verification buttons', async () => {
-      const guild = { preferredLocale: 'en' } as any
+      const guild = { id: 'g1', preferredLocale: 'en' } as any
       const member = { user: { username: 'Bob' } } as any
 
       const result = await getNotVerifiedMessage(guild, member)
@@ -369,7 +369,7 @@ describe('discord/utils/messages', () => {
   describe('getProfileMessage', () => {
     it('falls back to default rank/trust and "never"/"not_verified" placeholders when no DB user exists', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce(null)
-      const guild = { preferredLocale: 'en' } as any
+      const guild = { id: 'g1', preferredLocale: 'en' } as any
       const user = { id: 'u1', username: 'Bob', displayAvatarURL: () => 'https://avatar.example/u1' } as any
 
       const result = await getProfileMessage(guild, user)
@@ -392,7 +392,7 @@ describe('discord/utils/messages', () => {
         lastVerification: new Date(1700000000000),
         steamID64: '76500000000000001',
       })
-      const guild = { preferredLocale: 'en' } as any
+      const guild = { id: 'g1', preferredLocale: 'en' } as any
       const user = { id: 'u1', username: 'Bob', displayAvatarURL: () => 'https://avatar.example/u1' } as any
 
       const result = await getProfileMessage(guild, user)
@@ -411,14 +411,20 @@ describe('discord/utils/messages', () => {
   describe('getUserStatisticMessage', () => {
     it('returns user_not_linked when no steamid is given and no DB user is linked', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce(null)
-      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'global', { preferredLocale: 'en' } as any)
+      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'global', {
+        id: 'g1',
+        preferredLocale: 'en',
+      } as any)
       expect(result).toEqual({ content: 'user_not_linked', ephemeral: true })
     })
 
     it('returns user_not_found for the global scope when no stats row exists', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64: '765' })
       prismaMock.gm_user_steam.findFirst.mockResolvedValueOnce(null)
-      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'global', { preferredLocale: 'en' } as any)
+      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'global', {
+        id: 'g1',
+        preferredLocale: 'en',
+      } as any)
       expect(result).toEqual({ content: 'user_not_found', ephemeral: true })
     })
 
@@ -435,7 +441,7 @@ describe('discord/utils/messages', () => {
       const result: any = await getUserStatisticMessage(
         { id: 'u1' } as any,
         'global',
-        { preferredLocale: 'en' } as any,
+        { id: 'g1', preferredLocale: 'en' } as any,
         '765',
       )
       expect(getUserFromDiscordIDMock).not.toHaveBeenCalled()
@@ -458,7 +464,7 @@ describe('discord/utils/messages', () => {
       const result: any = await getUserStatisticMessage(
         { id: 'u1' } as any,
         'global',
-        { preferredLocale: 'en' } as any,
+        { id: 'g1', preferredLocale: 'en' } as any,
         '765',
       )
       const embed = result.embeds[0].toJSON()
@@ -471,16 +477,41 @@ describe('discord/utils/messages', () => {
       expect(lastJoinField.value).toBe('Never')
     })
 
+    it('binds the server lookup to the current Discord community before reading its statistics', async () => {
+      prismaMock.gm_server.findFirst.mockResolvedValueOnce(null)
+      await getUserStatisticMessage(
+        { id: 'u1' } as any,
+        'foreign-server',
+        { id: 'g1', preferredLocale: 'en' } as any,
+        '765',
+      )
+      expect(prismaMock.gm_server.findFirst).toHaveBeenCalledWith({
+        where: { id: 'foreign-server', guild: 'g1' },
+        select: { id: true, name: true },
+      })
+      expect(prismaMock.gm_server_stat.findFirst).not.toHaveBeenCalled()
+    })
+
     it('returns server_not_found for a non-global scope when the server does not exist', async () => {
       prismaMock.gm_server.findFirst.mockResolvedValueOnce(null)
-      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'srv1', { preferredLocale: 'en' } as any, '765')
+      const result = await getUserStatisticMessage(
+        { id: 'u1' } as any,
+        'srv1',
+        { id: 'g1', preferredLocale: 'en' } as any,
+        '765',
+      )
       expect(result).toEqual({ content: 'server_not_found', ephemeral: true })
     })
 
     it('returns user_or_server_not_found for a non-global scope when there is no per-server stat row', async () => {
       prismaMock.gm_server.findFirst.mockResolvedValueOnce({ id: 'srv1', name: 'Server One' })
       prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce(null)
-      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'srv1', { preferredLocale: 'en' } as any, '765')
+      const result = await getUserStatisticMessage(
+        { id: 'u1' } as any,
+        'srv1',
+        { id: 'g1', preferredLocale: 'en' } as any,
+        '765',
+      )
       expect(result).toEqual({ content: 'user_or_server_not_found', ephemeral: true })
     })
 
@@ -501,7 +532,7 @@ describe('discord/utils/messages', () => {
       const result: any = await getUserStatisticMessage(
         { id: 'u1' } as any,
         'srv1',
-        { preferredLocale: 'en-US' } as any,
+        { id: 'g1', preferredLocale: 'en-US' } as any,
         '765',
       )
       const embed = result.embeds[0].toJSON()
@@ -533,7 +564,7 @@ describe('discord/utils/messages', () => {
       const result: any = await getUserStatisticMessage(
         { id: 'u1' } as any,
         'srv1',
-        { preferredLocale: 'en' } as any,
+        { id: 'g1', preferredLocale: 'en' } as any,
         '765',
       )
       const embed = result.embeds[0].toJSON()
@@ -561,7 +592,7 @@ describe('discord/utils/messages', () => {
         custom_values: null,
       })
 
-      await getUserStatisticMessage({ id: 'u1' } as any, 'srv1', { preferredLocale: 'en' } as any, null)
+      await getUserStatisticMessage({ id: 'u1' } as any, 'srv1', { id: 'g1', preferredLocale: 'en' } as any, null)
 
       expect(getUserFromDiscordIDMock).toHaveBeenCalledWith('u1')
       expect(prismaMock.gm_server_stat.findFirst).toHaveBeenCalledWith(

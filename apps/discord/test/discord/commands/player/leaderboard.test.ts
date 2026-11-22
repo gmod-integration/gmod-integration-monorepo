@@ -48,15 +48,25 @@ describe('commands/player/leaderboard execute', () => {
     expect(result).toBeUndefined()
   })
 
-  it('replies with a failure message when leaderboard data cannot be retrieved', async () => {
+  it('rejects a missing server without calling the leaderboard reader', async () => {
     const interaction = makeInteraction()
     interaction.options.getString.mockReturnValue(null)
     getLeaderboardMessageEmbedMock.mockResolvedValueOnce(null)
 
     await leaderboard.execute(interaction)
 
-    expect(getLeaderboardMessageEmbedMock).toHaveBeenCalledWith(null, 'total_time', 'en-US')
-    expect(interaction.reply).toHaveBeenCalledWith({ content: 'Failed to retrieve leaderboard data.', ephemeral: true })
+    expect(getLeaderboardMessageEmbedMock).not.toHaveBeenCalled()
+    expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', flags: expect.anything() })
+  })
+
+  it('uses the same private unavailable-server response when a scoped reader denies access', async () => {
+    const interaction = makeInteraction()
+    interaction.options.getString.mockImplementation((name: string) => (name === 'server' ? 'foreign' : null))
+    getLeaderboardMessageEmbedMock.mockResolvedValueOnce(null)
+    await leaderboard.execute(interaction)
+    expect(getLeaderboardMessageEmbedMock).toHaveBeenCalledWith('foreign', 'total_time', 'en-US', 'g1')
+    expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', flags: expect.anything() })
+    expect(saveLeaderboardOptionsMock).not.toHaveBeenCalled()
   })
 
   it('replies with the embed and buttons and saves leaderboard options on success', async () => {
@@ -74,7 +84,7 @@ describe('commands/player/leaderboard execute', () => {
     await leaderboard.execute(interaction)
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(getLeaderboardMessageEmbedMock).toHaveBeenCalledWith('s1', 'kills', 'en-US')
+    expect(getLeaderboardMessageEmbedMock).toHaveBeenCalledWith('s1', 'kills', 'en-US', 'g1')
     expect(getLeaderboardButtonsMock).toHaveBeenCalledWith(true, false)
     expect(reply).toHaveBeenCalledWith({
       embeds: ['e1'],
@@ -132,7 +142,7 @@ describe('commands/player/leaderboard autocomplete', () => {
 
     await leaderboard.autocomplete(interaction)
 
-    expect(getServerLeaderboardCategoriesMock).toHaveBeenCalledWith('s1')
+    expect(getServerLeaderboardCategoriesMock).toHaveBeenCalledWith('s1', 'g1')
     expect(interaction.respond).toHaveBeenCalledWith([{ name: 'kills', value: 'kills' }])
   })
 

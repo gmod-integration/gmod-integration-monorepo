@@ -12,17 +12,18 @@ export async function processDiscordMessageToGmod(message: Message) {
       guild: message.guild.id,
       channel: message.channel.id,
     },
+    select: { server: true },
   })
 
   if (!channels || channels.length === 0) {
     return
   }
 
+  const targetIDs = new Set(channels.map((channel) => channel.server))
   const serversInfo = await getServersFromDiscordGuildID(message.guild.id)
 
   for (const server of serversInfo) {
-    const syncChatChannel = await server.getSyncChatChannel()
-    if (!syncChatChannel) continue
+    if (!targetIDs.has(server.getID()) || server.getGuildID() !== message.guild.id) continue
 
     const syncChatDirection = await server.getEffectiveSetting('syncChatDirection')
     if (syncChatDirection !== 'both' && syncChatDirection !== 'discordToGmod') continue
