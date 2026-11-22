@@ -84,6 +84,7 @@ model gm_guild_premium {
   guildID     String   @id @db.VarChar(255)
   transaction String?  @db.Text
   buyer       String?  @db.Text
+  revoked     Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

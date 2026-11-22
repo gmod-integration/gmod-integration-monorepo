@@ -1,0 +1,65 @@
+import { describe, expect, it } from 'vitest'
+import {
+  AdminGuildListQuerySchema,
+  AdminServerListQuerySchema,
+  AdminUserListQuerySchema,
+  AdminServerUpdateSchema,
+  AdminServerCommandSchema,
+  AdminPremiumUpdateSchema,
+  AdminRankChangeSchema,
+  AdminRevokeSessionsSchema,
+} from '../../src/admin/AdminDashboardSchema.js'
+
+describe('administration request contracts', () => {
+  it('parses bounded flat pagination and normalizes search text', () => {
+    expect(AdminGuildListQuerySchema.parse({ offset: '25', limit: '50', search: ' example ' })).toEqual({
+      offset: 25,
+      limit: 50,
+      search: 'example',
+      sort: 'createdAt',
+      orderBy: 'DESC',
+      premium: 'all',
+    })
+  })
+  it.each([
+    { limit: '1000' },
+    { offset: '-1' },
+    { sort: 'token' },
+    { search: 'x'.repeat(101) },
+    { unexpected: true },
+    { limit: ['25'] },
+    { offset: false },
+    { offset: '' },
+  ])('rejects ambiguous or unbounded list input %j', (query) => {
+    expect(AdminGuildListQuerySchema.safeParse(query).success).toBe(false)
+  })
+  it('restricts filters and sorts to the requested resource', () => {
+    expect(AdminServerListQuerySchema.safeParse({ rank: 'developer' }).success).toBe(false)
+    expect(AdminUserListQuerySchema.safeParse({ sort: 'lastSeenAt' }).success).toBe(false)
+    expect(AdminUserListQuerySchema.safeParse({ rank: 'owner' }).success).toBe(false)
+    expect(
+      AdminServerListQuerySchema.parse({ guildID: 'guild-1', verified: 'verified', visibility: 'public' }),
+    ).toMatchObject({ guildID: 'guild-1', verified: 'verified', visibility: 'public' })
+  })
+  it('requires a meaningful reason and an actual editable server value', () => {
+    expect(AdminServerUpdateSchema.safeParse({ reason: 'Support request' }).success).toBe(false)
+    expect(AdminServerUpdateSchema.safeParse({ name: ' ', reason: 'Support request' }).success).toBe(false)
+    expect(AdminServerUpdateSchema.safeParse({ token: 'secret', reason: 'Support request' }).success).toBe(false)
+    expect(AdminServerUpdateSchema.parse({ name: ' New name ', verified: true, reason: ' Support request ' })).toEqual({
+      name: 'New name',
+      verified: true,
+      reason: 'Support request',
+    })
+  })
+  it('uses explicit typed confirmation and refuses extra mutation keys', () => {
+    for (const schema of [AdminServerCommandSchema, AdminRevokeSessionsSchema]) {
+      expect(schema.safeParse({ confirm: 'server-1', reason: 'Support request' }).success).toBe(true)
+      expect(schema.safeParse({ reason: 'Support request' }).success).toBe(false)
+      expect(schema.safeParse({ confirm: 'server-1', reason: 'test' }).success).toBe(false)
+    }
+    expect(
+      AdminPremiumUpdateSchema.safeParse({ enabled: true, transaction: 'invented', reason: 'Support request' }).success,
+    ).toBe(false)
+    expect(AdminRankChangeSchema.safeParse({ rank: 'owner', reason: 'Support request' }).success).toBe(false)
+  })
+})

@@ -245,11 +245,11 @@ async function resolve(guildID: string, generation: number): Promise<AccessSnaps
     /* A cache outage cannot remove a database entitlement. */
   }
   const [legacy, purchase] = await Promise.all([
-    prisma.gm_guild_premium.findFirst({ where: { guildID } }),
+    prisma.gm_guild_premium.findFirst({ where: { guildID, revoked: false } }),
     prisma.gm_gmodstore_purchases.findFirst({ where: { guild: guildID, revoke: false } }),
   ])
   const sources: AccessSnapshot['sources'] = []
-  if (legacy) sources.push('legacy')
+  if (legacy && legacy.revoked !== true) sources.push('legacy')
   if (purchase) sources.push('gmodstore')
   let state: AccessSnapshot['state'] = 'ready'
   let expires = Infinity

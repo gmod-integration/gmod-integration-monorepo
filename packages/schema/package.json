@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./admin/*.js": "./src/admin/*.ts",
     "./bullmq.js": "./src/bullmq.ts",
     "./db/*.js": "./src/db/*.ts",
     "./gmod/*.js": "./src/gmod/*.ts",

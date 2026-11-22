@@ -69,11 +69,42 @@ describe('one authoritative entitlement resolution', () => {
       state: 'ready',
     })
     expect(mocks.purchase).toHaveBeenCalledWith({ where: { guild: 'g1', revoke: false } })
+    expect(mocks.legacy).toHaveBeenCalledWith({ where: { guildID: 'g1', revoked: false } })
     expect(fetch).not.toHaveBeenCalled()
     mocks.legacy.mockResolvedValue(null)
     mocks.purchase.mockResolvedValue(null)
     vi.mocked(fetch).mockResolvedValue(respond([entitlement()]) as Response)
     expect(await resolveGuildAccess('g1')).toMatchObject({ premium: true, customBot: false, sources: ['discord'] })
+  })
+  it('does not grant access from a revoked local record even when its financial metadata remains', async () => {
+    mocks.legacy.mockResolvedValue({
+      guildID: 'g1',
+      revoked: true,
+      transaction: 'legacy-transaction',
+      buyer: 'legacy-buyer',
+    })
+    expect(await resolveGuildAccess('g1')).toMatchObject({
+      premium: false,
+      customBot: false,
+      sources: [],
+      state: 'ready',
+    })
+    expect(fetch).toHaveBeenCalledOnce()
+  })
+  it('retains purchased or Discord access independently of a revoked local grant', async () => {
+    mocks.legacy.mockResolvedValue({ guildID: 'g1', revoked: true })
+    mocks.purchase.mockResolvedValueOnce({ guild: 'g1', revoke: false })
+    expect(await resolveGuildAccess('g1')).toMatchObject({ premium: true, customBot: true, sources: ['gmodstore'] })
+    vi.mocked(fetch).mockResolvedValue(respond([entitlement()]) as Response)
+    expect(await resolveGuildAccess('g1')).toMatchObject({ premium: true, customBot: false, sources: ['discord'] })
+  })
+  it('restores a re-enabled local grant without requiring provider changes', async () => {
+    mocks.legacy
+      .mockResolvedValueOnce({ guildID: 'g1', revoked: true })
+      .mockResolvedValueOnce({ guildID: 'g1', revoked: false, transaction: 'preserved', buyer: 'preserved' })
+    expect(await resolveGuildAccess('g1')).toMatchObject({ premium: false, sources: [] })
+    await invalidateGuildAccess('g1')
+    expect(await resolveGuildAccess('g1')).toMatchObject({ premium: true, sources: ['legacy'] })
   })
   it.each([
     { guild_id: 'other' },

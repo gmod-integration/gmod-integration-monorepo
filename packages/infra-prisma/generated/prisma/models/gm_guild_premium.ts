@@ -28,6 +28,7 @@ export type Gm_guild_premiumMinAggregateOutputType = {
   guildID: string | null
   transaction: string | null
   buyer: string | null
+  revoked: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -36,6 +37,7 @@ export type Gm_guild_premiumMaxAggregateOutputType = {
   guildID: string | null
   transaction: string | null
   buyer: string | null
+  revoked: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -44,6 +46,7 @@ export type Gm_guild_premiumCountAggregateOutputType = {
   guildID: number
   transaction: number
   buyer: number
+  revoked: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -54,6 +57,7 @@ export type Gm_guild_premiumMinAggregateInputType = {
   guildID?: true
   transaction?: true
   buyer?: true
+  revoked?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -62,6 +66,7 @@ export type Gm_guild_premiumMaxAggregateInputType = {
   guildID?: true
   transaction?: true
   buyer?: true
+  revoked?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -70,6 +75,7 @@ export type Gm_guild_premiumCountAggregateInputType = {
   guildID?: true
   transaction?: true
   buyer?: true
+  revoked?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -151,6 +157,7 @@ export type Gm_guild_premiumGroupByOutputType = {
   guildID: string
   transaction: string | null
   buyer: string | null
+  revoked: boolean
   createdAt: Date
   updatedAt: Date
   _count: Gm_guild_premiumCountAggregateOutputType | null
@@ -180,6 +187,7 @@ export type gm_guild_premiumWhereInput = {
   guildID?: Prisma.StringFilter<"gm_guild_premium"> | string
   transaction?: Prisma.StringNullableFilter<"gm_guild_premium"> | string | null
   buyer?: Prisma.StringNullableFilter<"gm_guild_premium"> | string | null
+  revoked?: Prisma.BoolFilter<"gm_guild_premium"> | boolean
   createdAt?: Prisma.DateTimeFilter<"gm_guild_premium"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_guild_premium"> | Date | string
 }
@@ -188,6 +196,7 @@ export type gm_guild_premiumOrderByWithRelationInput = {
   guildID?: Prisma.SortOrder
   transaction?: Prisma.SortOrderInput | Prisma.SortOrder
   buyer?: Prisma.SortOrderInput | Prisma.SortOrder
+  revoked?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _relevance?: Prisma.gm_guild_premiumOrderByRelevanceInput
@@ -200,6 +209,7 @@ export type gm_guild_premiumWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.gm_guild_premiumWhereInput | Prisma.gm_guild_premiumWhereInput[]
   transaction?: Prisma.StringNullableFilter<"gm_guild_premium"> | string | null
   buyer?: Prisma.StringNullableFilter<"gm_guild_premium"> | string | null
+  revoked?: Prisma.BoolFilter<"gm_guild_premium"> | boolean
   createdAt?: Prisma.DateTimeFilter<"gm_guild_premium"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_guild_premium"> | Date | string
 }, "guildID">
@@ -208,6 +218,7 @@ export type gm_guild_premiumOrderByWithAggregationInput = {
   guildID?: Prisma.SortOrder
   transaction?: Prisma.SortOrderInput | Prisma.SortOrder
   buyer?: Prisma.SortOrderInput | Prisma.SortOrder
+  revoked?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.gm_guild_premiumCountOrderByAggregateInput
@@ -222,6 +233,7 @@ export type gm_guild_premiumScalarWhereWithAggregatesInput = {
   guildID?: Prisma.StringWithAggregatesFilter<"gm_guild_premium"> | string
   transaction?: Prisma.StringNullableWithAggregatesFilter<"gm_guild_premium"> | string | null
   buyer?: Prisma.StringNullableWithAggregatesFilter<"gm_guild_premium"> | string | null
+  revoked?: Prisma.BoolWithAggregatesFilter<"gm_guild_premium"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"gm_guild_premium"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"gm_guild_premium"> | Date | string
 }
@@ -230,6 +242,7 @@ export type gm_guild_premiumCreateInput = {
   guildID: string
   transaction?: string | null
   buyer?: string | null
+  revoked?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -238,6 +251,7 @@ export type gm_guild_premiumUncheckedCreateInput = {
   guildID: string
   transaction?: string | null
   buyer?: string | null
+  revoked?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -246,6 +260,7 @@ export type gm_guild_premiumUpdateInput = {
   guildID?: Prisma.StringFieldUpdateOperationsInput | string
   transaction?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buyer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revoked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -254,6 +269,7 @@ export type gm_guild_premiumUncheckedUpdateInput = {
   guildID?: Prisma.StringFieldUpdateOperationsInput | string
   transaction?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buyer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revoked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -262,6 +278,7 @@ export type gm_guild_premiumCreateManyInput = {
   guildID: string
   transaction?: string | null
   buyer?: string | null
+  revoked?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -270,6 +287,7 @@ export type gm_guild_premiumUpdateManyMutationInput = {
   guildID?: Prisma.StringFieldUpdateOperationsInput | string
   transaction?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buyer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revoked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -278,6 +296,7 @@ export type gm_guild_premiumUncheckedUpdateManyInput = {
   guildID?: Prisma.StringFieldUpdateOperationsInput | string
   transaction?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   buyer?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  revoked?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -292,6 +311,7 @@ export type gm_guild_premiumCountOrderByAggregateInput = {
   guildID?: Prisma.SortOrder
   transaction?: Prisma.SortOrder
   buyer?: Prisma.SortOrder
+  revoked?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -300,6 +320,7 @@ export type gm_guild_premiumMaxOrderByAggregateInput = {
   guildID?: Prisma.SortOrder
   transaction?: Prisma.SortOrder
   buyer?: Prisma.SortOrder
+  revoked?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -308,6 +329,7 @@ export type gm_guild_premiumMinOrderByAggregateInput = {
   guildID?: Prisma.SortOrder
   transaction?: Prisma.SortOrder
   buyer?: Prisma.SortOrder
+  revoked?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -322,6 +344,7 @@ export type gm_guild_premiumSelect<ExtArgs extends runtime.Types.Extensions.Inte
   guildID?: boolean
   transaction?: boolean
   buyer?: boolean
+  revoked?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["gm_guild_premium"]>
@@ -332,11 +355,12 @@ export type gm_guild_premiumSelectScalar = {
   guildID?: boolean
   transaction?: boolean
   buyer?: boolean
+  revoked?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type gm_guild_premiumOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"guildID" | "transaction" | "buyer" | "createdAt" | "updatedAt", ExtArgs["result"]["gm_guild_premium"]>
+export type gm_guild_premiumOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"guildID" | "transaction" | "buyer" | "revoked" | "createdAt" | "updatedAt", ExtArgs["result"]["gm_guild_premium"]>
 
 export type $gm_guild_premiumPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "gm_guild_premium"
@@ -345,6 +369,7 @@ export type $gm_guild_premiumPayload<ExtArgs extends runtime.Types.Extensions.In
     guildID: string
     transaction: string | null
     buyer: string | null
+    revoked: boolean
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["gm_guild_premium"]>
@@ -719,6 +744,7 @@ export interface gm_guild_premiumFieldRefs {
   readonly guildID: Prisma.FieldRef<"gm_guild_premium", 'String'>
   readonly transaction: Prisma.FieldRef<"gm_guild_premium", 'String'>
   readonly buyer: Prisma.FieldRef<"gm_guild_premium", 'String'>
+  readonly revoked: Prisma.FieldRef<"gm_guild_premium", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"gm_guild_premium", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"gm_guild_premium", 'DateTime'>
 }

@@ -202,6 +202,7 @@ export const Gm_guild_premiumScalarFieldEnum = {
   guildID: 'guildID',
   transaction: 'transaction',
   buyer: 'buyer',
+  revoked: 'revoked',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
