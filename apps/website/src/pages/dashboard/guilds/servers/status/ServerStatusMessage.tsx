@@ -1,7 +1,7 @@
 import { type Component, For, Show } from 'solid-js'
 import { useFeatureAccess } from '../../../../../components/AccessProvider.js'
 import { FeatureGate, SuspendedFeature } from '../../../../../components/FeatureGate.js'
-import { SettingRow } from '../../../../../components/ui/index.js'
+import { Checkbox, SettingRow } from '../../../../../components/ui/index.js'
 import AdminPanel from '../../../../../components/AdminPanel.js'
 import StatusCardActions from './StatusCardActions.js'
 import { PremiumBadge } from '../../../../../utils/premium.js'
@@ -46,11 +46,9 @@ const ServerStatusMessage: Component = () => {
           'Include the connected players and customize the information shown for each one.',
         )}
       >
-        <input
+        <Checkbox
           id="status-show-players"
           aria-describedby="status-show-players-description"
-          type="checkbox"
-          class="toggle toggle-sm"
           checked={editor.form.draft().settings.show_player_list_status}
           disabled={unavailable()}
           onChange={(event) =>
@@ -116,11 +114,9 @@ const ServerStatusMessage: Component = () => {
         }
         description={t('settings.status_chart_help', 'Add a chart of player activity to the status message.')}
       >
-        <input
+        <Checkbox
           id="status-show-chart"
           aria-describedby="status-show-chart-description"
-          type="checkbox"
-          class="toggle toggle-sm"
           checked={editor.form.draft().settings.show_status_chart}
           disabled={unavailable() || (!chartAccess.allowed() && !editor.form.draft().settings.show_status_chart)}
           onChange={(event) =>

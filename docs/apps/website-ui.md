@@ -13,6 +13,12 @@ and sizes as `IconButton`, plus native link attributes. Preserve `href`, `downlo
 instead of replacing link behavior with a click handler. Standard controls are 38 px high; small
 buttons and fields are 32 px high. Use `size="sm"` and `select-sm`/`input-sm` together in compact groups.
 
+`Checkbox` provides an alternative to the switch presentation for boolean inputs. It forwards native
+input attributes and events, including `id`, `checked`, `disabled`, `ref` and `aria-describedby`. Pair
+it with the existing `FormField` or `SettingRow` label. The square is 20 px with a 32 px pointer target,
+visible keyboard focus and a muted disabled state. The status message content card demonstrates this
+variant; using it does not change the draft or explicit-save contract.
+
 Independent settings use peer `AdminPanel` cards inside `.settings-card-grid`. Each card owns one
 saved snapshot and local draft; place its `FormActions` in the panel's `footer`, together with its
 validation, pending and success feedback. Saving or cancelling one card preserves the others' drafts.
