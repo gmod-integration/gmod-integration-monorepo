@@ -99,7 +99,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('renders player rows with formatted time, connect count, rank and bypass icons', async () => {
+  it('renders player rows with formatted time, connect count, rank and explicit bypass permissions', async () => {
     const { container } = renderPage()
     await waitForLoaded()
     expect(screen.getByText('Bob')).toBeInTheDocument()
@@ -112,10 +112,10 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
     const cells = aliceRow.querySelectorAll('td')
     expect(cells[1]).toHaveTextContent('1') // rank
     expect(cells[3]).toHaveTextContent('5') // total_connect
-    expect(aliceRow.querySelector('svg[data-icon="check"].text-success')).toBeInTheDocument()
+    expect(aliceRow.querySelectorAll('td')[4]).toHaveTextContent('Yes')
 
     const bobRow = Array.from(dataRows).find((r) => r.textContent?.includes('Bob')) as HTMLElement
-    expect(bobRow.querySelector('svg[data-icon="x"].text-error')).toBeInTheDocument()
+    expect(bobRow.querySelectorAll('td')[4]).toHaveTextContent('No')
   })
 
   it('renders a steam profile link per row using the steam_id', async () => {
@@ -332,7 +332,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       )
       const rows = container.querySelectorAll('tbody tr')
       const aliceRow = Array.from(rows).find((r) => r.textContent?.includes('Alice')) as HTMLElement
-      expect(aliceRow.querySelector('svg[data-icon="x"].text-error')).toBeInTheDocument()
+      expect(aliceRow.querySelectorAll('td')[4]).toHaveTextContent('No')
     })
 
     it('does not update the row when saving fails', async () => {
@@ -353,7 +353,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       )
       const rows = container.querySelectorAll('tbody tr')
       const aliceRow = Array.from(rows).find((r) => r.textContent?.includes('Alice')) as HTMLElement
-      expect(aliceRow.querySelector('svg[data-icon="check"].text-success')).toBeInTheDocument()
+      expect(aliceRow.querySelectorAll('td')[4]).toHaveTextContent('Yes')
     })
   })
   it('names the selected player and requires a permission change before Save', async () => {
@@ -398,6 +398,6 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
     ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({ steam_id: '76500000000000001', bypassMaintenance: false }))
     await fireEvent.click(save)
     await vi.waitFor(() => expect(dialog).not.toHaveAttribute('open'))
-    expect(screen.getByText('Alice').closest('tr')?.querySelector('svg[data-icon="x"]')).toBeInTheDocument()
+    expect(screen.getByText('Alice').closest('tr')?.querySelectorAll('td')[4]).toHaveTextContent('No')
   })
 })

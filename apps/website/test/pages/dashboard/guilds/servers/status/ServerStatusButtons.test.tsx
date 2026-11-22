@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
-import { configuration, installNetwork, PREVIEW, puts, renderStatus, viewport } from './statusTestHelpers.js'
+import {
+  configuration,
+  installNetwork,
+  PREVIEW,
+  puts,
+  renderStatus,
+  statusButton,
+  viewport,
+} from './statusTestHelpers.js'
 import { okJson } from '../testHelpers.js'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
@@ -36,6 +44,19 @@ afterEach(() => {
 })
 
 describe('status button card editing', () => {
+  it('labels both enabled and disabled saved buttons with visible text', async () => {
+    installNetwork(api, {
+      configuration: configuration({
+        buttons: [statusButton(), statusButton({ id: 2, name: 'Disabled link', enable: false })],
+      }),
+    })
+    renderStatus()
+    await ready()
+    const table = within(screen.getByRole('table'))
+    expect(table.getByText('Enabled')).toBeInTheDocument()
+    expect(table.getByText('Disabled')).toBeInTheDocument()
+  })
+
   it('adds a complete button only to the draft, cancels the button card and never creates a server row', async () => {
     const network = installNetwork(api)
     const { container } = renderStatus()

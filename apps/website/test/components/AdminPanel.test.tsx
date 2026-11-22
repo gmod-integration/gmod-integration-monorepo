@@ -33,7 +33,7 @@ describe('components/AdminPanel.tsx', () => {
 
   it('renders a translated badge when badge prop is provided', () => {
     renderWithProviders(() => <AdminPanel title="t" description="d" badge={linkBadge.NEW} />)
-    expect(screen.getByText('New')).toBeInTheDocument()
+    expect(screen.getByText('New').closest('[data-tone]')).toHaveAttribute('data-tone', 'info')
   })
 
   it('does not render the info row when info is absent', () => {

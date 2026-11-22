@@ -198,6 +198,7 @@ describe('Production dashboard navigation', () => {
     renderWithProviders(() => <DashboardMenu />, { path: '*', history })
     const rewards = screen.getByRole('link', { name: 'Rewards' })
     expect(rewards).toHaveAttribute('aria-disabled', 'true')
+    expect(within(rewards).getByText('Soon').closest('[data-tone]')).toHaveAttribute('data-tone', 'neutral')
     fireEvent.click(rewards)
     expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1')
   })

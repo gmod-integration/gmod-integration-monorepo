@@ -83,8 +83,20 @@ describe('ServerChats unified editing', () => {
     await loaded()
     expect(group(destinationSelect()).getByText('#general')).toBeInTheDocument()
     expect(within(screen.getByRole('table')).getByText('Contains')).toBeInTheDocument()
+    expect(within(screen.getByRole('table')).getByText('Enabled')).toBeInTheDocument()
     expect(input('chat-default-behavior')).toHaveValue('true')
     expect(input('chat-prevent-ping')).not.toBeChecked()
+  })
+  it('labels disabled saved filters in the table', async () => {
+    const original = (fetchAPI as Mock).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((endpoint, method, body) =>
+      endpoint === URL + '/filters' && method === 'GET'
+        ? Promise.resolve(okJson([{ ...filter(), active: false }]))
+        : original(endpoint, method, body),
+    )
+    renderPage()
+    await loaded()
+    expect(within(screen.getByRole('table')).getByText('Disabled')).toBeInTheDocument()
   })
   it('edits the destination inline and Cancel keeps the saved channel', async () => {
     renderPage()

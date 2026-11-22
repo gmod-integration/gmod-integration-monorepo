@@ -16,6 +16,11 @@
   --dashboard-primary: #6375ee;
   --dashboard-tint: #8191ff14;
   --dashboard-shadow: 0 4px 20px #00000010;
+  --status-success: #70dfae;
+  --status-neutral: #a4afc2;
+  --status-warning: #f4cb75;
+  --status-danger: #ff9c9c;
+  --status-info: #a5b4fc;
   --color-base-100: #1b202b;
   --color-base-200: #272e3d;
   --color-base-300: #343e50;
@@ -41,6 +46,11 @@
   --dashboard-primary: #586be4;
   --dashboard-tint: #586be40c;
   --dashboard-shadow: 0 4px 20px #25355605;
+  --status-success: #146c43;
+  --status-neutral: #526078;
+  --status-warning: #865603;
+  --status-danger: #b42332;
+  --status-info: #4155ae;
   --color-base-100: #ffffff;
   --color-base-200: #edf1f7;
   --color-base-300: #dfe5f0;
@@ -51,6 +61,55 @@
   display: inline-block;
   flex-shrink: 0;
   vertical-align: middle;
+}
+.ui-status-badge {
+  --status-color: var(--status-neutral, #a4afc2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 24px;
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--status-color) 24%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--status-color) 10%, var(--dashboard-surface, #1b202b));
+  color: var(--status-color);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+.ui-status-badge[data-size='sm'] {
+  min-height: 20px;
+  padding: 1px 6px;
+  font-size: 10px;
+}
+.ui-status-badge[data-tone='success'] {
+  --status-color: var(--status-success, #70dfae);
+}
+.ui-status-badge[data-tone='warning'] {
+  --status-color: var(--status-warning, #f4cb75);
+}
+.ui-status-badge[data-tone='danger'] {
+  --status-color: var(--status-danger, #ff9c9c);
+}
+.ui-status-badge[data-tone='info'] {
+  --status-color: var(--status-info, #a5b4fc);
+}
+.ui-status-badge-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ui-boolean-status {
+  min-width: max-content;
+  white-space: nowrap;
+}
+.ui-premium-icon {
+  color: var(--status-warning, #f4cb75);
 }
 .ui-copyable {
   display: inline-flex;
@@ -372,15 +431,14 @@
 }
 .dashboard-nav-label {
   flex: 1;
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .dashboard-nav-badge {
-  border: 1px solid var(--dashboard-border);
-  border-radius: 5px;
-  padding: 1px 5px;
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--dashboard-muted);
+  flex-shrink: 0;
+  max-width: 48%;
+  margin-left: auto;
 }
 .dashboard-sidebar-footer {
   margin-top: auto;
@@ -1111,7 +1169,7 @@
     width: 100%;
   }
   .dashboard-shell .status-buttons-table :is(th, td) {
-    padding: 12px 8px;
+    padding: 12px 5px;
   }
   .dashboard-shell .status-buttons-table :is(th, td):nth-child(3) {
     display: none;

@@ -9,6 +9,7 @@ import AdminModal from '../../../../components/AdminModal.js'
 import ConfirmActionDialog from '../../../../components/ConfirmActionDialog.js'
 import { guildRoles } from '../GuildInformations.js'
 import {
+  BooleanStatus,
   Button,
   IconButton,
   FormActions,
@@ -337,7 +338,7 @@ const ServerRoles: Component = () => {
               <tr>
                 <th>{t('dashboard.server.roles.role_name', 'Discord role')}</th>
                 <th>{t('dashboard.server.roles.user_group', 'Game user group')}</th>
-                <th>{t('dashboard.server.roles.status', 'Active')}</th>
+                <th class="text-center">{t('dashboard.server.roles.status', 'Active')}</th>
                 <th>{t('dashboard.server.roles.actions', 'Actions')}</th>
               </tr>
             </thead>
@@ -359,7 +360,7 @@ const ServerRoles: Component = () => {
                         <TextValue value={row.userGroup} />
                       </td>
                       <td>
-                        <Icon name={row.enable ? 'check' : 'x'} class={row.enable ? 'text-success' : 'text-error'} />
+                        <BooleanStatus value={row.enable} />
                       </td>
                       <td>
                         <div class="flex gap-2">

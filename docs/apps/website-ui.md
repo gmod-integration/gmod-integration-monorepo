@@ -29,6 +29,19 @@ and revision without applying or discarding the sibling's draft. Validate the su
 capabilities independently from the combined live preview. Legacy invalid saved buttons must be
 repaired before saving message settings. Never place a Save/Cancel bar in a separate sibling card.
 
+Read-only states share `StatusBadge`: a visible label, an optional decorative icon, and a semantic
+`tone` (`success`, `neutral`, `warning`, `danger`, `info`). Use the default 24 px size in tables/cards
+and `size="sm"` (20 px) for navigation markers and counts. Long labels wrap, and each tone has shared
+light/dark colors. Static badges do not announce themselves as live status regions.
+
+`BooleanStatus` formats a boolean as translated Enabled/Disabled with a check/cross and keeps these
+short labels on one line. Disabled is
+neutral; missing values show Unknown. Optional `trueLabel`, `falseLabel` and `unknownLabel` preserve
+domain wording, such as Yes/No for maintenance access. Connection state, severity and membership
+retain their specific labels through `StatusBadge`. Keep incomplete or unknown data distinct from an
+actual negative state. Quota explanations, field validation and interactive switches retain their
+own contracts.
+
 | Component         | Purpose                                 | Contract                                                                                                                                                                                                                           |
 | ----------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Button`          | Text actions                            | Native attributes; `variant`: `primary`, `secondary`, `ghost`, `danger`, `warning`; `size`: `sm`, `md`; `loading` blocks clicks and retains the label. Default `type="button"`.                                                    |

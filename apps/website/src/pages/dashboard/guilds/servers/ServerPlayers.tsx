@@ -1,6 +1,7 @@
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
-import { type Component, createResource, createSignal, For, Show } from 'solid-js'
+import { type Component, createResource, createSignal, For } from 'solid-js'
 import {
+  BooleanStatus,
   Button,
   FormActions,
   FormField,
@@ -348,11 +349,11 @@ const ServerPlayer: Component = () => {
                     <td class="w-1/6 text-center">{player.total_connect}</td>
                     <td class="w-1/6 text-center">
                       <div class="flex gap-2 justify-center">
-                        {player.bypassMaintenance ? (
-                          <Icon name="check" class="text-success" />
-                        ) : (
-                          <Icon name="x" class="text-error" />
-                        )}
+                        <BooleanStatus
+                          value={player.bypassMaintenance}
+                          trueLabel={t('dashboard.server.edit_player.yes', 'Yes')}
+                          falseLabel={t('dashboard.server.edit_player.no', 'No')}
+                        />
                       </div>
                     </td>
                     <td class="w-1/6">

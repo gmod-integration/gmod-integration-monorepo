@@ -7,7 +7,7 @@ import { type Component, createResource, createSignal, For, Show } from 'solid-j
 import AdminPanel from '../../../components/AdminPanel.js'
 import AdminModal from '../../../components/AdminModal.js'
 import ConfirmActionDialog from '../../../components/ConfirmActionDialog.js'
-import { AsyncState, Button, FormActions, FormField, IconButton, Icon } from '../../../components/ui/index.js'
+import { BooleanStatus, AsyncState, Button, FormActions, FormField, IconButton } from '../../../components/ui/index.js'
 import { createDraftForm } from '../../../hooks/createDraftForm.js'
 import { useI18n } from '../../../i18n.js'
 import { fetchAPI } from '../../../utils/api.js'
@@ -242,18 +242,9 @@ const GuildLinks: Component = () => {
                         <LinkValue url={link.url} />
                       </td>
                       <td>
-                        <span
-                          class="flex justify-center"
-                          aria-label={
-                            link.active ? t('dashboard.guild.links.yes', 'Yes') : t('dashboard.guild.links.no', 'No')
-                          }
-                        >
-                          <Icon
-                            name={link.active ? 'check' : 'x'}
-                            class={link.active ? 'text-success' : 'text-error'}
-                            aria-hidden="true"
-                          />
-                        </span>
+                        <div class="flex justify-center">
+                          <BooleanStatus value={link.active} />
+                        </div>
                       </td>
                       <td>
                         <div class="flex gap-2 justify-center">

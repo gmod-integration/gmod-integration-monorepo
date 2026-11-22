@@ -4,7 +4,7 @@ import { isDev } from 'solid-js/web'
 import { useI18n } from '../../../i18n.js'
 import { getUrlWithActualParams } from '../../../utils/api.js'
 import { getGuild, getServer } from '../../../utils/utils.js'
-import { Icon, type IconName } from '../../ui/index.js'
+import { Icon, StatusBadge, type IconName } from '../../ui/index.js'
 
 export enum linkBadge {
   SOON = 'Soon',
@@ -219,6 +219,8 @@ export const DashboardMenu: Component = () => {
         icon: item.icon,
         href: getUrlWithActualParams(item.url),
         badge: item.badge ? t('main.badge_' + item.badge, item.badge) : undefined,
+        badgeTone:
+          item.badge === linkBadge.NEW || item.badge === linkBadge.UPDATED ? ('info' as const) : ('neutral' as const),
         disabled: item.badge === linkBadge.SOON && !isDev,
       })),
   )
@@ -322,7 +324,9 @@ export const DashboardMenu: Component = () => {
                     <Show when={showLabels()}>
                       <span class="dashboard-nav-label">{link.label}</span>
                       <Show when={link.badge}>
-                        <span class="dashboard-nav-badge">{link.badge}</span>
+                        <StatusBadge tone={link.badgeTone} size="sm" class="dashboard-nav-badge">
+                          {link.badge}
+                        </StatusBadge>
                       </Show>
                     </Show>
                   </A>

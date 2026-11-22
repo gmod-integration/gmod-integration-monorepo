@@ -77,8 +77,8 @@ describe('ServerRoles unified editing', () => {
     expect(screen.getByText('admins')).toBeInTheDocument()
     const table = screen.getByRole('table')
     expect(table.querySelectorAll('tbody tr')).toHaveLength(2)
-    expect(table.querySelector('svg[data-icon="check"]')).toBeInTheDocument()
-    expect(table.querySelector('svg[data-icon="x"]')).toBeInTheDocument()
+    expect(within(table).getByText('Enabled')).toBeInTheDocument()
+    expect(within(table).getByText('Disabled')).toBeInTheDocument()
   })
   it('creates one complete mapping only after explicit confirmation', async () => {
     renderPage()

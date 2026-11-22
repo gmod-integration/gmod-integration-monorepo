@@ -9,12 +9,12 @@ import AdminPanel from '../../../components/AdminPanel.js'
 import AdminModal from '../../../components/AdminModal.js'
 import ConfirmActionDialog from '../../../components/ConfirmActionDialog.js'
 import {
+  BooleanStatus,
   Button,
   IconButton,
   FormActions,
   FormField,
   TableState,
-  Icon,
   SettingRow,
   AsyncState,
 } from '../../../components/ui/index.js'
@@ -623,11 +623,7 @@ const GuildVerification: Component = () => {
                       </td>
                       <td>
                         <div class="flex gap-2 justify-center">
-                          {role.enabled ? (
-                            <Icon name="check" class="text-success" />
-                          ) : (
-                            <Icon name="x" class="text-error" />
-                          )}
+                          <BooleanStatus value={role.enabled} />
                         </div>
                       </td>
                       <td>

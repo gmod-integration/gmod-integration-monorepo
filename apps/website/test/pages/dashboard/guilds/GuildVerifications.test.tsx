@@ -130,8 +130,8 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     expect(within(table(container)).getByText('Give Role')).toBeInTheDocument()
     expect(within(table(container)).getByText('Remove Role')).toBeInTheDocument()
     const rows = within(table(container)).getAllByRole('row').slice(1)
-    expect(rows[0].querySelector('svg[data-icon="check"]')).toBeInTheDocument()
-    expect(rows[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
+    expect(rows[0]).toHaveTextContent('Enabled')
+    expect(rows[1]).toHaveTextContent('Disabled')
   })
 
   it('shows loading and keeps table actions unavailable while roles load', () => {
@@ -201,7 +201,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson({ roleID: 'r1', isGiveRole: true, enabled: false }))
     await fireEvent.click(save)
     await vi.waitFor(() => expect(modal.open).toBe(false))
-    expect(within(table(container)).getAllByRole('row')[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
+    expect(within(table(container)).getAllByRole('row')[1]).toHaveTextContent('Disabled')
   })
 
   it('discards a role edit on Cancel and sends no request before Save', async () => {
@@ -308,7 +308,7 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     expect(dm).toBeChecked()
     await fireEvent.click(within(preferences).getByRole('button', { name: 'Cancel' }))
     expect(dm).not.toBeChecked()
-    expect(within(table(container)).getAllByRole('row')[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
+    expect(within(table(container)).getAllByRole('row')[1]).toHaveTextContent('Disabled')
   })
 
   it('blocks preference changes and duplicate saves while awaiting the batch response', async () => {

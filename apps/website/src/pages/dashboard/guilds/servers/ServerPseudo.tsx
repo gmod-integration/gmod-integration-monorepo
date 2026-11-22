@@ -12,6 +12,7 @@ import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket.js'
 import { fetchAPI } from '../../../../utils/api.js'
 import { TextValue } from '../../../../components/popup/TextValue.js'
 import {
+  BooleanStatus,
   AsyncState,
   Button,
   FormActions,
@@ -386,7 +387,7 @@ const ServerPseudo: Component = () => {
                 <th>{t('dashboard.server.pseudo.userGroup', 'Game user group')}</th>
                 <th>{t('dashboard.server.pseudo.name', 'Display name for {roleName}')}</th>
                 <th>{t('dashboard.server.pseudo.prefix', 'Prefix for {rolePrefix}')}</th>
-                <th>{t('dashboard.server.pseudo.active', 'Active')}</th>
+                <th class="text-center">{t('dashboard.server.pseudo.active', 'Active')}</th>
                 <th>{t('dashboard.server.pseudo.actions', 'Actions')}</th>
               </tr>
             </thead>
@@ -411,7 +412,7 @@ const ServerPseudo: Component = () => {
                         <TextValue value={row.prefix} />
                       </td>
                       <td>
-                        <Icon name={row.enabled ? 'check' : 'x'} class={row.enabled ? 'text-success' : 'text-error'} />
+                        <BooleanStatus value={row.enabled} />
                       </td>
                       <td>
                         <div class="flex gap-2">

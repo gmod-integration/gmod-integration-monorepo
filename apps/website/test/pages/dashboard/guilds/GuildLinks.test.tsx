@@ -53,8 +53,8 @@ describe('pages/dashboard/guilds/GuildLinks.tsx', () => {
     expect(screen.getByText('example.com')).toBeInTheDocument()
     expect(screen.getByText('docs.example.com')).toBeInTheDocument()
     const rows = screen.getAllByRole('row').slice(1)
-    expect(rows[0].querySelector('svg[data-icon="check"]')).toBeInTheDocument()
-    expect(rows[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
+    expect(rows[0]).toHaveTextContent('Enabled')
+    expect(rows[1]).toHaveTextContent('Disabled')
   })
 
   it('shows a loading spinner and hides the table body while links is loading', () => {

@@ -8,7 +8,7 @@ import { guildRoles, guildRolesRefetch } from './GuildInformations.js'
 import AdminPanel from '../../../components/AdminPanel.js'
 import ConfirmActionDialog from '../../../components/ConfirmActionDialog.js'
 import AdminRoleSelector from '../../../components/AdminRoleSelector.js'
-import { Button, IconButton, TableState, Icon } from '../../../components/ui/index.js'
+import { BooleanStatus, Button, IconButton, TableState } from '../../../components/ui/index.js'
 import { useI18n } from '../../../i18n.js'
 import DiscordRole from '../../../components/discord/DiscordRole.js'
 import MissingRolePermission, { setRolesToCheck } from '../../../components/popup/MissingRolePermission.js'
@@ -184,10 +184,7 @@ const GuildAutoRole: Component = () => {
                         <DiscordRole roleID={role.roleID} />
                       </td>
                       <td class="text-center">
-                        <span class="inline-flex items-center gap-2 text-success">
-                          <Icon name="check" size={15} />
-                          {t('ui.enabled', 'Enabled')}
-                        </span>
+                        <BooleanStatus value={true} />
                       </td>
                       <td>
                         <div class="flex gap-2 justify-center">

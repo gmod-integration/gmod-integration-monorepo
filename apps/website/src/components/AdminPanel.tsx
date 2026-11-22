@@ -5,7 +5,7 @@ import { useI18n } from '../i18n.js'
 import { useAccess } from './AccessProvider.js'
 import { upgradeHref } from './FeatureGate.js'
 import { premium, PremiumBadge } from '../utils/premium.js'
-import { Icon, type IconName } from './ui/index.js'
+import { Icon, StatusBadge, type IconName } from './ui/index.js'
 
 interface AdminPanelProps {
   id?: string
@@ -44,7 +44,9 @@ const AdminPanel: Component<AdminPanelProps> = (props) => {
                 {props.title}
               </h2>
               <Show when={props.badge}>
-                <div class="badge badge-outline">{t('main.badge_' + props.badge, props.badge)}</div>
+                <StatusBadge tone={props.badge === 'New' || props.badge === 'Updated' ? 'info' : 'neutral'}>
+                  {t('main.badge_' + props.badge, props.badge)}
+                </StatusBadge>
               </Show>
               <Show when={props.premium && access.ready() && access.snapshot()?.state === 'ready' && !premium()}>
                 <PremiumBadge />

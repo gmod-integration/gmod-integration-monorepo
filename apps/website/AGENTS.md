@@ -9,6 +9,9 @@ Generic shared exports live in `src/components/ui/index.ts`; extend them when a 
 - Use `ButtonLink` for navigation and `PageState` for full-page authentication, redirects and empty states.
 - Reuse `AdminPanel`, `AdminModal`, the channel/role selectors and `Pagination`; avoid competing wrappers.
 - Use `IconButton` for icon actions. A clickable `<i>` or `<span>` is not a button.
+- Read-only states use `StatusBadge` with visible text, or `BooleanStatus` for enabled/disabled values.
+  Disabled settings are neutral; failures use the danger tone. Missing values remain unknown.
+  Use the compact size for navigation markers and counts, and the default size in tables and cards.
 - All UI icons use the shared `Icon` and typed `IconName` registry backed by `lucide-solid`.
   Add named Lucide imports there; do not reintroduce icon fonts, proprietary packs or external icon CSS.
 - Keep API requests in the page or feature hook. Shared controls do not know endpoints.

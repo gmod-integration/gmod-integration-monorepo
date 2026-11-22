@@ -206,7 +206,9 @@
     "availability_note": "Les fonctionnalités signalées en développement ne sont pas encore disponibles. Le bot personnalisé est propre à l’offre GmodStore.",
     "discount_until": "Réduction de {1} % jusqu’au {2}",
     "default_message": "Message par défaut",
-    "custom_message": "Message personnalisé"
+    "custom_message": "Message personnalisé",
+    "included": "Inclus",
+    "not_included": "Non inclus"
   },
   "tools": {
     "needRolesPerms": "Le bot ne peut pas attribuer ou retirer ces rôles. Accordez-lui la permission Gérer les rôles et placez son rôle le plus élevé au-dessus des rôles concernés dans Discord : {1}",
@@ -1236,7 +1238,9 @@
         "also_banned_gmod": "Compte Steam lié également banni sur Garry's Mod",
         "failed_to_load": "Impossible de charger les bannissements. Réessayez.",
         "gmod_empty": "Aucun bannissement Garry's Mod enregistré pour ces serveurs.",
-        "discord_empty": "Aucun bannissement Discord trouvé sur ce serveur."
+        "discord_empty": "Aucun bannissement Discord trouvé sur ce serveur.",
+        "no_matching_ban": "Aucune correspondance dans ces données",
+        "no_linked_account": "Aucun compte lié"
       }
     },
     "menu": {
@@ -1360,7 +1364,14 @@
     "error_message": "Erreur : {1}",
     "page_error": "Cette page n’a pas pu être affichée. Réessayez pour recharger son contenu.",
     "page_of": "Page {1} sur {2}",
-    "last_page": "Dernière page"
+    "last_page": "Dernière page",
+    "unknown": "Inconnu",
+    "received": "Reçue",
+    "not_received": "Non reçue",
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "compatible": "Compatible",
+    "outdated": "À mettre à jour"
   },
   "settings": {
     "access": "Accès et vérification",
@@ -1427,7 +1438,9 @@
     "image_url_invalid": "Saisissez une URL d’image HTTP ou HTTPS.",
     "server_reset_confirm": "Le jeton actuel cessera de fonctionner. Après la réinitialisation, mettez-le à jour dans votre configuration Garry’s Mod.",
     "server_delete_confirm": "Supprimer ce serveur et ses données du tableau de bord. Cette action est irréversible.",
-    "server_edit_help": "Modifiez l’identité et la connexion du serveur, puis enregistrez l’ensemble des modifications."
+    "server_edit_help": "Modifiez l’identité et la connexion du serveur, puis enregistrez l’ensemble des modifications.",
+    "bot_member": "Présent sur ce serveur",
+    "bot_not_member": "Absent de ce serveur"
   },
   "editing": {
     "remove_channel": "Retirer cette destination ? Les prochains messages ne seront plus envoyés dans ce salon.",

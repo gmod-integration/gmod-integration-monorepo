@@ -206,7 +206,9 @@
     "availability_note": "Features marked In development are not available yet. The custom bot feature is specific to the GmodStore offer.",
     "discount_until": "{1}% off until {2}",
     "default_message": "Default message",
-    "custom_message": "Custom message"
+    "custom_message": "Custom message",
+    "included": "Included",
+    "not_included": "Not included"
   },
   "tools": {
     "needRolesPerms": "The bot cannot assign or remove these roles. Give it the Manage Roles permission and place its highest role above the affected roles in Discord: {1}",
@@ -1234,7 +1236,9 @@
         "gmod_empty": "No GMod bans found.",
         "discord_empty": "No Discord bans found.",
         "cross_platform_help": "Cross-platform indicators require linked Steam and Discord accounts. No indicator can also mean that no linked account was found.",
-        "no_reason": "No reason provided"
+        "no_reason": "No reason provided",
+        "no_matching_ban": "No match in these records",
+        "no_linked_account": "No linked account"
       }
     },
     "menu": {
@@ -1357,7 +1361,14 @@
     "error_message": "Error: {1}",
     "page_error": "This page could not be displayed. Try again to reload its content.",
     "page_of": "Page {1} of {2}",
-    "last_page": "Last page"
+    "last_page": "Last page",
+    "unknown": "Unknown",
+    "received": "Received",
+    "not_received": "Not received",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "compatible": "Compatible",
+    "outdated": "Outdated"
   },
   "settings": {
     "access": "Access and verification",
@@ -1424,7 +1435,9 @@
     "image_url_invalid": "Enter an HTTP or HTTPS image URL.",
     "server_reset_confirm": "The current token will stop working. Update it in your Garry’s Mod configuration after resetting it.",
     "server_delete_confirm": "Remove this server and its dashboard data. This cannot be undone.",
-    "server_edit_help": "Edit the server identity and connection details, then save your changes together."
+    "server_edit_help": "Edit the server identity and connection details, then save your changes together.",
+    "bot_member": "In this server",
+    "bot_not_member": "Not in this server"
   },
   "editing": {
     "remove_channel": "Remove this destination? Future messages will no longer be sent to this channel.",

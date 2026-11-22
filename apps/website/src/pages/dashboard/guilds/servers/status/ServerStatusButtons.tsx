@@ -8,7 +8,15 @@ import {
 import AdminPanel from '../../../../../components/AdminPanel.js'
 import StatusCardActions from './StatusCardActions.js'
 import AdminModal from '../../../../../components/AdminModal.js'
-import { Button, FormActions, FormField, Icon, IconButton, TableState } from '../../../../../components/ui/index.js'
+import {
+  BooleanStatus,
+  Button,
+  FormActions,
+  FormField,
+  Icon,
+  IconButton,
+  TableState,
+} from '../../../../../components/ui/index.js'
 import { LinkValue } from '../../../../../components/popup/LinkValue.js'
 import { createDraftForm } from '../../../../../hooks/createDraftForm.js'
 import { showDialog, closeDialog } from '../../../../../utils/dialog.js'
@@ -290,10 +298,7 @@ const ServerStatusButtons: Component = () => {
                       </td>
                       <td>
                         <div class="flex justify-center">
-                          <Icon
-                            name={button.enable ? 'check' : 'x'}
-                            class={button.enable ? 'text-success' : 'text-error'}
-                          />
+                          <BooleanStatus value={button.enable} />
                         </div>
                       </td>
                       <td>

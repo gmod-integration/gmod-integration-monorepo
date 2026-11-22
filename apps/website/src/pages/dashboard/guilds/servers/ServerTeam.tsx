@@ -6,7 +6,15 @@ import AdminPanel from '../../../../components/AdminPanel.js'
 import AdminModal from '../../../../components/AdminModal.js'
 import ConfirmActionDialog from '../../../../components/ConfirmActionDialog.js'
 import { guildRoles } from '../GuildInformations.js'
-import { Button, IconButton, FormActions, FormField, TableState, Icon } from '../../../../components/ui/index.js'
+import {
+  BooleanStatus,
+  Button,
+  IconButton,
+  FormActions,
+  FormField,
+  TableState,
+  Icon,
+} from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
 import { useI18n } from '../../../../i18n.js'
 import DiscordRole from '../../../../components/discord/DiscordRole.js'
@@ -225,7 +233,7 @@ const ServerTeam: Component = () => {
               <tr>
                 <th>{t('dashboard.server.team_roles.role_name', 'Discord Role')}</th>
                 <th>{t('dashboard.server.team_roles.team_name', 'Game team or job name')}</th>
-                <th>{t('dashboard.server.team_roles.status', 'Active')}</th>
+                <th class="text-center">{t('dashboard.server.team_roles.status', 'Active')}</th>
                 <th>{t('dashboard.server.team_roles.actions', 'Actions')}</th>
               </tr>
             </thead>
@@ -247,7 +255,7 @@ const ServerTeam: Component = () => {
                         <TextValue value={row.teamName} />
                       </td>
                       <td>
-                        <Icon name={row.enable ? 'check' : 'x'} class={row.enable ? 'text-success' : 'text-error'} />
+                        <BooleanStatus value={row.enable} />
                       </td>
                       <td>
                         <div class="flex gap-2">

@@ -15,13 +15,13 @@ import { FeatureGate, SuspendedFeature } from '../../../../components/FeatureGat
 import { fetchAPI } from '../../../../utils/api.js'
 import { TextValue } from '../../../../components/popup/TextValue.js'
 import {
+  BooleanStatus,
   Button,
   FormActions,
   FormField,
   IconButton,
   TableState,
   AsyncState,
-  Icon,
   SettingRow,
 } from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
@@ -600,7 +600,7 @@ const ServerChats: Component = () => {
                 <th>{t('dashboard.server.chat.operator', 'Match condition')}</th>
                 <th>{t('dashboard.server.chat.trigger', 'Value to match')}</th>
                 <th>{t('dashboard.server.chat.actions_on_match', 'Action when matched')}</th>
-                <th>{t('dashboard.server.chat.active', 'Active')}</th>
+                <th class="text-center">{t('dashboard.server.chat.active', 'Active')}</th>
                 <th>{t('dashboard.server.chat.actions', 'Actions')}</th>
               </tr>
             </thead>
@@ -622,7 +622,7 @@ const ServerChats: Component = () => {
                       </td>
                       <td>{label(row.action)}</td>
                       <td>
-                        <Icon name={row.active ? 'check' : 'x'} class={row.active ? 'text-success' : 'text-error'} />
+                        <BooleanStatus value={row.active} />
                       </td>
                       <td>
                         <div class="flex gap-2">
