@@ -108,8 +108,12 @@ export function createAddonGateway(options: AddonGatewayOptions) {
       if (!entry.pending && now() - entry.createdAt > RECENT_REQUEST_TTL_MS) recent.delete(id)
     }
     if (recent.size >= MAX_RECENT_REQUESTS) {
-      const oldest = [...recent].find(([, entry]) => !entry.pending)
-      if (oldest) recent.delete(oldest[0])
+      for (const [id, entry] of recent) {
+        if (!entry.pending) {
+          recent.delete(id)
+          break
+        }
+      }
     }
   }
 
@@ -198,8 +202,9 @@ export function createAddonGateway(options: AddonGatewayOptions) {
       const bytes = Buffer.byteLength(raw)
       if (active >= MAX_ACTIVE_REQUESTS || activeBytes + bytes > MAX_ACTIVE_BYTES)
         return reply(id, failure(429, 'too_many_requests'))
+      // At most four entries can be pending. A full 128-entry cache therefore always has
+      // a settled entry to evict before this insertion; pending mutations are never evicted.
       prune()
-      if (recent.size >= MAX_RECENT_REQUESTS) return reply(id, failure(429, 'too_many_requests'))
       active++
       activeBytes += bytes
       const entry: RecentRequest = {
@@ -210,30 +215,29 @@ export function createAddonGateway(options: AddonGatewayOptions) {
       }
       // Reserve the ID synchronously before dispatch, including when a duplicate arrives in flight.
       recent.set(id, entry)
-      let timeout: ReturnType<typeof setTimeout> | undefined
-      const operation = Promise.resolve()
-        .then(async () => {
-          await options.onActivity?.()
-          return (options.dispatch ?? handleAddonRequest)(server, parsed.data)
-        })
-        .catch(() => failure(500, 'request_failed'))
-        .finally(() => {
-          active--
-          activeBytes -= bytes
-          entry.pending = false
-          if (timeout) {
-            clearTimeout(timeout)
-            timers.delete(timeout)
-          }
-        })
-      const expired = new Promise<AddonResult>((resolve) => {
-        timeout = setTimeout(() => {
-          if (timeout) timers.delete(timeout)
+      entry.response = new Promise<AddonResult>((resolve) => {
+        const timeout = setTimeout(() => {
+          timers.delete(timeout)
           resolve(failure(504, 'delivery_uncertain'))
         }, options.timeoutMs ?? 25_000)
         timers.set(timeout, () => resolve(failure(503, 'connection_closed')))
+        // The timer exists before work is queued. Timeout/disconnect settles only the reply;
+        // reservations remain held until the actual operation finishes, even after uncertainty.
+        void Promise.resolve()
+          .then(async () => {
+            await options.onActivity?.()
+            return (options.dispatch ?? handleAddonRequest)(server, parsed.data)
+          })
+          .catch(() => failure(500, 'request_failed'))
+          .finally(() => {
+            active--
+            activeBytes -= bytes
+            entry.pending = false
+            clearTimeout(timeout)
+            timers.delete(timeout)
+          })
+          .then(resolve)
       })
-      entry.response = Promise.race([operation, expired])
       reply(id, await entry.response)
     } catch {
       reply(id, failure(503, 'service_unavailable'))

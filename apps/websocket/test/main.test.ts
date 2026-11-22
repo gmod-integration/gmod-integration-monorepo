@@ -133,9 +133,10 @@ vi.mock('@gmod/infra-bullmq', () => ({ connection: {} }))
 const acceptAddonCommandResultMock = vi.fn().mockResolvedValue(undefined)
 vi.mock('@gmod/infra-websocket/addonCommands.js', () => ({ acceptAddonCommandResult: acceptAddonCommandResultMock }))
 
+const consoleQueueAddMock = vi.fn().mockResolvedValue(undefined)
 vi.mock('@gmod/infra-websocket/queues.js', () => ({
   wsSendToServerQueue: { name: 'wsSendToServer' },
-  wsSendToAllClientsOfServerQueue: { name: 'wsSendToAllClientsOfServer' },
+  wsSendToAllClientsOfServerQueue: { name: 'wsSendToAllClientsOfServer', add: consoleQueueAddMock },
 }))
 
 let capturedWss: FakeWebSocketServer | undefined
@@ -247,8 +248,8 @@ describe('apps/websocket main()', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
     return ws
   }
-  async function connectServer(id: string, ws = makeFakeWs()) {
-    const req = { headers: { id, token: 'tok' }, url: '/' }
+  async function connectServer(id: string, ws = makeFakeWs(), headers = {}) {
+    const req = { headers: { id, token: 'tok', ...headers }, url: '/' }
     getServerFromIDMock.mockResolvedValueOnce({ isValidToken: () => true })
     expect(await verify(req)).toEqual([true])
     capturedWss!.emit('connection', ws, req)
@@ -477,6 +478,16 @@ describe('apps/websocket main()', () => {
   })
 
   describe('connection heartbeat', () => {
+    it('does not install a heartbeat when the readiness write closes the addon transport', async () => {
+      vi.useFakeTimers()
+      const ws = makeFakeWs()
+      ws.send.mockImplementationOnce(() => ws.emit('close'))
+      await connectServer('closed-during-ready', ws)
+      await vi.advanceTimersByTimeAsync(60_000)
+      expect(ws.ping).not.toHaveBeenCalled()
+      expect(ws.listenerCount('pong')).toBe(0)
+      expect(presences[0].closed).toBe(true)
+    })
     it('pings, accepts pong and clears its timer when closed', async () => {
       vi.useFakeTimers()
       const ws = makeFakeWs()
@@ -1049,6 +1060,59 @@ describe('apps/websocket main()', () => {
   })
 
   describe('authenticated addon command acknowledgements', () => {
+    it.each(['v1.2.3', 'v1.2.3-beta.1', ['v1.2.3'], 'private invalid version', '1.2.3-' + 'x'.repeat(64)])(
+      'records only a bounded semantic addon version from request headers: %j',
+      async (version) => {
+        const id = 'version-activity'
+        const ws = await connectServer(id, makeFakeWs(), { 'gmod-integrations-version': version })
+        getServerFromIDMock.mockResolvedValueOnce({ getID: () => id, isValidToken: () => true })
+        redisMock.set.mockClear()
+        await ws.listeners('message')[0](
+          Buffer.from(
+            JSON.stringify({ action: 'addon.request', id: 'activity', method: 'GET', endpoint: `/servers/${id}` }),
+          ),
+          false,
+        )
+        expect(redisMock.set).toHaveBeenCalledWith(`server:${id}:last_request`, expect.any(String))
+        if (typeof version === 'string' && version.length <= 64 && version.startsWith('v1.2.3'))
+          expect(redisMock.set).toHaveBeenCalledWith(`server:${id}:version`, version)
+        else expect(redisMock.set.mock.calls.some(([key]: [string]) => key === `server:${id}:version`)).toBe(false)
+      },
+    )
+    it.each(['allowed', 'missing-server', 'expired-capability'] as const)(
+      'rechecks console access before broadcasting addon output: %s',
+      async (access) => {
+        const id = 'console-output'
+        const ws = await connectServer(id)
+        const server = { getID: () => id, getGuildID: () => 'g1', isValidToken: () => true }
+        getServerFromIDMock
+          .mockResolvedValueOnce(server)
+          .mockResolvedValueOnce(access === 'missing-server' ? undefined : server)
+        accessMock.mockResolvedValueOnce({
+          guildID: 'g1',
+          premium: access === 'allowed',
+          customBot: false,
+          state: 'ready',
+          sources: [],
+          revision: 'console',
+          validUntil: '2030-01-01T00:00:00.000Z',
+        })
+        consoleQueueAddMock.mockClear()
+        await ws.listeners('message')[0](
+          Buffer.from(JSON.stringify({ action: 'console_live_exporter', data: { data: 'private console output' } })),
+          false,
+        )
+        if (access === 'allowed')
+          expect(consoleQueueAddMock).toHaveBeenCalledExactlyOnceWith('wsSendToAllClientsOfServer', {
+            id,
+            action: 'console_live_exporter',
+            data: { data: 'private console output' },
+          })
+        else expect(consoleQueueAddMock).not.toHaveBeenCalled()
+        expect(JSON.stringify(gmLogMock.mock.calls)).not.toContain('private console output')
+        accessMock.mockReset()
+      },
+    )
     it('routes an execution acknowledgement with the authenticated server identity', async () => {
       const ws = await connectServer('rcon-command-result')
       getServerFromIDMock.mockResolvedValueOnce({ isValidToken: () => true, getID: () => 'rcon-command-result' })
@@ -1152,6 +1216,109 @@ describe('apps/websocket main()', () => {
       expect(redisMock.incr).toHaveBeenCalledWith('ws:send-to-server:ack:r2')
       expect(redisMock.expire).toHaveBeenCalledWith('ws:send-to-server:ack:r2', 5)
     })
+  })
+
+  describe('dashboard authorization races and backpressure', () => {
+    it.each(
+      (['status', 'broadcast'] as const).flatMap((delivery) =>
+        Array.from({ length: 32 }, (_, turn) => [delivery, turn] as const),
+      ),
+    )('never delivers after close during a %s request at asynchronous turn %i', async (delivery, turn) => {
+      const ws = await connectClient('closing-delivery')
+      const pending =
+        delivery === 'status'
+          ? ws.listeners('message')[0](JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
+          : simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+      // Explore close interleavings across the session, revision and permission promises through
+      // the public message/delivery callbacks, without reaching into the client's private state.
+      for (let index = 0; index < turn; index++) await Promise.resolve()
+      const deliveredBeforeClose = ws.send.mock.calls.length
+      ws.emit('close')
+      await pending
+      expect(ws.send).toHaveBeenCalledTimes(deliveredBeforeClose)
+    })
+
+    it.each(['revision', 'invalidation', 'close'] as const)(
+      'refuses a permission snapshot changed during the final revision read: %s',
+      async (change) => {
+        const ws = await connectClient('final-read-race')
+        await subscriberHandlers.message(
+          'gmi:discord:guild-permissions-invalidated',
+          JSON.stringify({ guildID: 'g1', revision: 'refresh' }),
+        )
+        redisMock.mget.mockResolvedValueOnce([null, null]).mockImplementationOnce(async () => {
+          if (change === 'invalidation')
+            await subscriberHandlers.message(
+              'gmi:discord:guild-permissions-invalidated',
+              JSON.stringify({ guildID: 'g1', revision: 'changed-again' }),
+            )
+          if (change === 'close') ws.emit('close')
+          return change === 'revision' ? ['changed-durably', null] : [null, null]
+        })
+        await ws.listeners('message')[0](JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
+        expect(ws.send).not.toHaveBeenCalled()
+        expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(2)
+      },
+    )
+
+    it('suppresses delivery after a socket closes during session validation', async () => {
+      const ws = await connectClient('closed-while-validating')
+      validateSessionMock.mockImplementationOnce(async (id) => {
+        ws.emit('close')
+        return sessions.get(id)
+      })
+      await ws.listeners('message')[0](JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
+      expect(ws.send).not.toHaveBeenCalled()
+      expect(isServerPresentMock).not.toHaveBeenCalledWith('srv-status')
+    })
+
+    it('does not register message processing when a session is revoked during initial permission lookup', async () => {
+      getUserGuildsWithPermsForPanelMock.mockImplementationOnce(async () => {
+        sessions.delete('revoked-before-listener')
+        return [{ id: 'g1' }]
+      })
+      const ws = await connectClient('revoked-before-listener')
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Session revoked')
+      expect(ws.listenerCount('message')).toBe(0)
+    })
+
+    it('drops excess concurrent status requests and releases the budget after both requests finish', async () => {
+      const ws = await connectClient('slow-status-validation')
+      const resolveSessions: ((value: unknown) => void)[] = []
+      validateSessionMock.mockClear().mockImplementation(() => new Promise((resolve) => resolveSessions.push(resolve)))
+      const handle = ws.listeners('message')[0]
+      const packet = JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } })
+      const first = handle(packet)
+      const second = handle(packet)
+      await handle(packet)
+      expect(resolveSessions).toHaveLength(2)
+      expect(ws.close).not.toHaveBeenCalled()
+      validateSessionMock.mockImplementation(async (id) => sessions.get(id) || null)
+      resolveSessions.forEach((resolve) => resolve(sessions.get('slow-status-validation')))
+      await Promise.all([first, second])
+      expect(ws.send).toHaveBeenCalledTimes(2)
+      await handle(packet)
+      expect(ws.send).toHaveBeenCalledTimes(3)
+    })
+
+    it('ignores a session revocation message without a string session identifier', async () => {
+      const ws = await connectClient('valid-revocation-target')
+      await subscriberHandlers.message('gmi:auth:session-revoked', JSON.stringify({ sessionID: 42 }))
+      expect(ws.close).not.toHaveBeenCalled()
+      await ws.listeners('message')[0](JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
+      expect(ws.send).toHaveBeenCalledOnce()
+    })
+
+    it.each(['not json', '{}', '{"guildID":"g1","revision":""}'])(
+      'ignores malformed permission invalidation without discarding a valid snapshot: %s',
+      async (payload) => {
+        const ws = await connectClient('valid-permissions')
+        await subscriberHandlers.message('gmi:discord:guild-permissions-invalidated', payload)
+        await ws.listeners('message')[0](JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
+        expect(ws.send).toHaveBeenCalledOnce()
+        expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledOnce()
+      },
+    )
   })
 
   describe('gracefulShutdown', () => {
