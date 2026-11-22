@@ -338,6 +338,18 @@ in `AdminPanel.footer`, outside the table and its horizontal scrolling body, so 
 visible on narrow screens. The default table-row output and `colSpan` remain available for older
 layouts. Public lists use the same `PaginationControls` presentation while retaining their own query
 shape and page-size limits. Both exports live in `components/Pagination.tsx`.
+
+Lists whose API returns a complete snapshot use `createListPagination` from
+`hooks/createListPagination.ts`. It slices the displayed rows with the shared 25/50/250/500 page sizes,
+returns `query`, `total`, `onChange` and `visible` for the existing `Pagination`, and clamps the page
+after deletion or filtering. Pass a search accessor as `resetKey` to return to the first page when the
+search changes. Controls stay hidden when the complete list fits within 25 rows. Each list owns its
+pager, including GMod and Discord bans and the account's sessions and exports.
+
+Keep full snapshots for quotas, permission checks, selectors, cross-platform ban indicators and bulk
+actions. Paginate only the rendered collection, so changing pages never changes an editor's draft or
+the scope of an action such as marking all notifications as read. New entries navigate to their page.
+This hook changes presentation; existing API limits and server pagination contracts still apply.
 Use wrapping action groups and horizontal overflow for wide data; do not make the whole dashboard
 scroll horizontally.
 

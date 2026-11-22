@@ -9,6 +9,8 @@ import {
   TableState,
 } from '../components/ui/index.js'
 import { batch, type Component, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import Pagination from '../components/Pagination.js'
+import { createListPagination } from '../hooks/createListPagination.js'
 import AdminPanel from '../components/AdminPanel.js'
 import { getDiscordUser } from '../utils/utils'
 import DashboardMiddleware from '../middleware/DashboardMiddleware'
@@ -127,7 +129,9 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
   const [userDataRequest, { mutate: mutateUserDataRequest }] = createResource(
     'userDataRequest',
     async (): Promise<UserDataRequest[]> => {
-      return await fetchAPI('/users/:discordID/data-requests', 'GET').then(async (res) => (await res.json()) || [])
+      const response = await fetchAPI('/users/:discordID/data-requests', 'GET')
+      const value: unknown = await response.json()
+      return Array.isArray(value) ? value : []
     },
     { initialValue: [] },
   )
@@ -143,6 +147,9 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
     },
     { initialValue: [] },
   )
+
+  const sessionsPagination = createListPagination(() => (!userSessions.error ? userSessions() : undefined))
+  const exportsPagination = createListPagination(() => (!userDataRequest.error ? userDataRequest() : undefined))
 
   async function unlinkGmodStorePurchase() {
     if (
@@ -197,7 +204,10 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
       edited = true
       setShowRequestLoading(false)
       if (response.ok) {
-        mutateUserDataRequest((prev) => [...prev, json])
+        const requests = [...userDataRequest(), json]
+        mutateUserDataRequest(requests)
+        const query = exportsPagination.query()
+        exportsPagination.onChange({ ...query, offset: Math.floor((requests.length - 1) / query.limit) * query.limit })
       } else {
         Errors(
           json.error ||
@@ -421,6 +431,16 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
             'These devices and browsers can access your account. End a session to sign it out; your current session is marked separately.',
           )}
           type="none"
+          footer={
+            !userSessions.loading && !userSessions.error && sessionsPagination.visible() ? (
+              <Pagination
+                standalone
+                query={sessionsPagination.query()}
+                total={sessionsPagination.total()}
+                onChange={sessionsPagination.onChange}
+              />
+            ) : undefined
+          }
         >
           <div class="min-w-0 w-full overflow-x-auto">
             <table class="table w-full noBorderBottomTable">
@@ -443,7 +463,7 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                   error={userSessions.error}
                   empty={!userSessions.loading && !userSessions.error && userSessions().length === 0}
                 >
-                  <For each={userSessions()}>
+                  <For each={sessionsPagination.items()}>
                     {(session) => (
                       <tr>
                         <td class="font-mono text-xs">{session.id.substring(0, 8)}</td>
@@ -501,27 +521,37 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
           )}
           type="none"
           footer={
-            <div class="flex flex-wrap gap-3">
-              <Button onClick={userDataRequestCreate} loading={requestAction.pending()}>
-                <Icon name="download" size={16} />
-                {t('account.request_my_data', 'Prepare a copy of my data')}
-              </Button>
-              <Button
-                variant="danger"
-                disabled={!!authSession()?.session.actorDiscordID}
-                title={
-                  authSession()?.session.actorDiscordID
-                    ? t('auth.impersonation_erasure', 'Return to your own account before requesting erasure.')
-                    : undefined
-                }
-                onClick={() => {
-                  resetErasureDialog()
-                  showDialog('account-erasure')
-                }}
-              >
-                <Icon name="trash-2" size={16} />
-                {t('account.delete_my_data', 'Request account erasure')}
-              </Button>
+            <div class="flex flex-col gap-4">
+              <Show when={!userDataRequest.loading && !userDataRequest.error && exportsPagination.visible()}>
+                <Pagination
+                  standalone
+                  query={exportsPagination.query()}
+                  total={exportsPagination.total()}
+                  onChange={exportsPagination.onChange}
+                />
+              </Show>
+              <div class="flex flex-wrap gap-3">
+                <Button onClick={userDataRequestCreate} loading={requestAction.pending()}>
+                  <Icon name="download" size={16} />
+                  {t('account.request_my_data', 'Prepare a copy of my data')}
+                </Button>
+                <Button
+                  variant="danger"
+                  disabled={!!authSession()?.session.actorDiscordID}
+                  title={
+                    authSession()?.session.actorDiscordID
+                      ? t('auth.impersonation_erasure', 'Return to your own account before requesting erasure.')
+                      : undefined
+                  }
+                  onClick={() => {
+                    resetErasureDialog()
+                    showDialog('account-erasure')
+                  }}
+                >
+                  <Icon name="trash-2" size={16} />
+                  {t('account.delete_my_data', 'Request account erasure')}
+                </Button>
+              </div>
             </div>
           }
         >
@@ -548,7 +578,7 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                     !showRequestLoading()
                   }
                 >
-                  <For each={userDataRequest()}>
+                  <For each={exportsPagination.items()}>
                     {(request) => (
                       <tr>
                         <td class="whitespace-nowrap text-base-content/60">

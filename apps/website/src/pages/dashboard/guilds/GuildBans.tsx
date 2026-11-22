@@ -1,5 +1,7 @@
 import { type Component, createResource, For, Show } from 'solid-js'
 import { TableState, Icon } from '../../../components/ui/index.js'
+import Pagination from '../../../components/Pagination.js'
+import { createListPagination } from '../../../hooks/createListPagination.js'
 import AdminPanel from '../../../components/AdminPanel'
 import { useI18n } from '../../../i18n'
 import { fetchAPI } from '../../../utils/api'
@@ -38,6 +40,8 @@ const fetchBans = async (): Promise<GuildBansData> => {
 const GuildBans: Component = () => {
   const [bans, { refetch }] = createResource('guildBans', fetchBans)
   const { t } = useI18n()
+  const gmodPagination = createListPagination(() => (!bans.error ? bans()?.gmodBans : undefined))
+  const discordPagination = createListPagination(() => (!bans.error ? bans()?.discordBans : undefined))
 
   return (
     <>
@@ -54,6 +58,16 @@ const GuildBans: Component = () => {
           "View up to 1,000 recent bans recorded by the Garry's Mod servers linked to this Discord server. The Discord indicator identifies matching bans on Discord.",
         )}
         type="none"
+        footer={
+          !bans.loading && !bans.error && gmodPagination.visible() ? (
+            <Pagination
+              standalone
+              query={gmodPagination.query()}
+              total={gmodPagination.total()}
+              onChange={gmodPagination.onChange}
+            />
+          ) : undefined
+        }
       >
         <table class="table border-b border-base-300 rounded-none">
           <thead>
@@ -76,7 +90,7 @@ const GuildBans: Component = () => {
               emptyLabel={t('dashboard.guild.bans.gmod_empty', 'No GMod bans found.')}
               onRetry={() => void refetch()}
             >
-              <For each={bans()?.gmodBans}>
+              <For each={gmodPagination.items()}>
                 {(ban) => (
                   <tr>
                     <td>
@@ -115,6 +129,16 @@ const GuildBans: Component = () => {
           'View bans from this Discord server. The GMod indicator identifies linked Steam accounts found in the game-server ban records above.',
         )}
         type="none"
+        footer={
+          !bans.loading && !bans.error && discordPagination.visible() ? (
+            <Pagination
+              standalone
+              query={discordPagination.query()}
+              total={discordPagination.total()}
+              onChange={discordPagination.onChange}
+            />
+          ) : undefined
+        }
       >
         <table class="table border-b border-base-300 rounded-none">
           <thead>
@@ -136,7 +160,7 @@ const GuildBans: Component = () => {
               emptyLabel={t('dashboard.guild.bans.discord_empty', 'No Discord bans found.')}
               onRetry={() => void refetch()}
             >
-              <For each={bans()?.discordBans}>
+              <For each={discordPagination.items()}>
                 {(ban) => (
                   <tr>
                     <td>

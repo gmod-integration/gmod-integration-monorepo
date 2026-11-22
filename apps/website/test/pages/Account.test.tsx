@@ -464,6 +464,68 @@ describe('pages/Account.tsx', () => {
     })
   })
 
+  it('paginates sessions and exports independently, reclamping after the last visible session is revoked', async () => {
+    const sessions = Array.from({ length: 26 }, (_, index) => ({
+      ...defaultSessions()[1],
+      id: `session-${index + 1}`,
+      ip: `10.0.0.${index + 1}`,
+      isCurrent: index === 0,
+    }))
+    const dataRequests = Array.from({ length: 26 }, (_, index) => ({
+      ...defaultDataRequests()[0],
+      downloadLink: `https://data.example.test/export-${index + 1}`,
+      code: `code-${index + 1}`,
+    }))
+    setupFetchAPI({ sessions, dataRequests })
+    renderAccount()
+    await waitForLoaded()
+    const sessionCard = within(screen.getByRole('region', { name: 'Manage Sessions' }))
+    const exportCard = within(screen.getByRole('region', { name: 'Manage Data' }))
+    expect(sessionCard.getAllByRole('row')).toHaveLength(26)
+    expect(exportCard.getAllByRole('row')).toHaveLength(26)
+    expect(sessionCard.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
+    expect(exportCard.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
+    await fireEvent.click(sessionCard.getByRole('button', { name: 'Next page' }))
+    expect(sessionCard.getByText('10.0.0.26')).toBeInTheDocument()
+    expect(exportCard.getByRole('button', { name: 'Page 1 of 2' })).toBeInTheDocument()
+    await fireEvent.click(exportCard.getByRole('button', { name: 'Next page' }))
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    await fireEvent.click(exportCard.getByRole('button', { name: 'Download your data' }))
+    expect(open).toHaveBeenCalledWith('https://data.example.test/export-26?code=code-26')
+    await fireEvent.click(sessionCard.getByRole('button', { name: 'Sign out this session' }))
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${SESSIONS_URL}/session-26`, 'DELETE'))
+    await vi.waitFor(() => expect(sessionCard.getByText('10.0.0.1')).toBeInTheDocument())
+    expect(sessionCard.queryByText('10.0.0.26')).not.toBeInTheDocument()
+    expect(sessionCard.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
+    expect(exportCard.getByRole('button', { name: 'Page 2 of 2' })).toBeInTheDocument()
+  })
+
+  it('shows a newly prepared export even when it belongs on a later page', async () => {
+    const dataRequests = Array.from({ length: 26 }, (_, index) => ({
+      ...defaultDataRequests()[0],
+      downloadLink: `https://data.example.test/export-${index + 1}`,
+      code: `code-${index + 1}`,
+    }))
+    setupFetchAPI({ dataRequests })
+    renderAccount()
+    await waitForLoaded()
+    const card = within(screen.getByRole('region', { name: 'Manage Data' }))
+    expect(card.getByRole('button', { name: 'Page 1 of 2' })).toBeInTheDocument()
+    ;(fetchAPI as Mock).mockResolvedValueOnce(
+      jsonResponse({
+        ...defaultDataRequests()[0],
+        downloadLink: 'https://data.example.test/new-export',
+        code: 'new-code',
+      }),
+    )
+    await fireEvent.click(card.getByRole('button', { name: 'Prepare a copy of my data' }))
+    await vi.waitFor(() => expect(card.getByRole('button', { name: 'Page 2 of 2' })).toBeInTheDocument())
+    expect(card.getAllByRole('row')).toHaveLength(3)
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    await fireEvent.click(card.getAllByRole('button', { name: 'Download your data' })[1])
+    expect(open).toHaveBeenCalledWith('https://data.example.test/new-export?code=new-code')
+  })
+
   describe('data requests panel', () => {
     it('shows Active for a non-expired request and Expired for an expired one, with matching action icons', async () => {
       setupFetchAPI({ dataRequests: defaultDataRequests() })

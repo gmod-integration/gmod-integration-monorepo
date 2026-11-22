@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../testUtils.js'
 import ServerBugs from '../../../../../src/pages/dashboard/guilds/servers/ServerBugs.js'
 import { fetchAPI, getAPIUrl } from '../../../../../src/utils/api.js'
@@ -114,6 +114,34 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
     const rows = container.querySelectorAll('tbody tr')
     expect(rows[0]).toHaveTextContent('76500000000000002') // 2024-01-05, most recent
     expect(rows[1]).toHaveTextContent('76500000000000001') // 2024-01-01
+  })
+
+  it('counts reports rather than expanded rows and preserves the selected report across pages', async () => {
+    const reports = Array.from({ length: 26 }, (_, index) => ({
+      ...defaultBugs()[0],
+      id: index + 1,
+      steamID64: `player-${index + 1}`,
+      description: `Bug number ${index + 1}`,
+      actual: `Actual result ${index + 1}`,
+      createdAt: new Date(Date.UTC(2024, 0, 1, 0, index)).toISOString(),
+    }))
+    setupFetchAPI(reports)
+    const { container } = renderPage()
+    await vi.waitFor(() => expect(screen.getByText('player-26')).toBeInTheDocument())
+    const newest = rowFor(container, 'player-26')
+    await fireEvent.click(within(newest).getByRole('button', { name: 'Show More' }))
+    expect(screen.getByText('Actual result 26')).toBeInTheDocument()
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(26)
+    const pagination = screen.getByRole('navigation', { name: 'Pagination' })
+    expect(pagination.closest('table')).toBeNull()
+    expect(within(pagination).getByRole('button', { name: 'Page 1 of 2' })).toBeInTheDocument()
+    await fireEvent.click(within(pagination).getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('player-1')).toBeInTheDocument()
+    expect(screen.queryByText('Actual result 26')).not.toBeInTheDocument()
+    expect(screen.queryByText('Actual result 1')).not.toBeInTheDocument()
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(1)
+    await fireEvent.click(within(pagination).getByRole('button', { name: 'Previous page' }))
+    expect(screen.getByText('Actual result 26')).toBeInTheDocument()
   })
 
   it('renders each row with formatted date, steam id and importance', async () => {

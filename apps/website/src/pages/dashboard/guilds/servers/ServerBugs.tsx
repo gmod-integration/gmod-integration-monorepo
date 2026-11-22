@@ -1,4 +1,6 @@
 import { type Component, createResource, createSignal, For, Show } from 'solid-js'
+import Pagination from '../../../../components/Pagination.js'
+import { createListPagination } from '../../../../hooks/createListPagination.js'
 import AdminPanel from '../../../../components/AdminPanel'
 import { IconButton, TableState, Icon } from '../../../../components/ui/index.js'
 import { useI18n } from '../../../../i18n'
@@ -28,14 +30,12 @@ interface AddReportBugs {
   steps: string
   id: number
   createAt: Date
+  expanded: boolean
+  onToggle: () => void
 }
 
-const [selectReport, setSelectReport] = createSignal(0)
-const [hasLoadScreenshot, setHasLoadScreenshot] = createSignal(false)
-let idxLog = 0
 const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
-  idxLog++
-  const localIdxLog = idxLog
+  const [hasLoadScreenshot, setHasLoadScreenshot] = createSignal(false)
   let shortDescription = props.description.substring(0, 160)
   if (props.description.length > 160) {
     shortDescription += '...'
@@ -58,20 +58,16 @@ const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
               variant="ghost"
               size="sm"
               label={t('dashboard.server.actions.showMore', 'Show More')}
-              aria-expanded={selectReport() === localIdxLog}
+              aria-expanded={props.expanded}
               onClick={() => {
                 setHasLoadScreenshot(false)
-                if (selectReport() === localIdxLog) {
-                  setSelectReport(0)
-                } else {
-                  setSelectReport(localIdxLog)
-                }
+                props.onToggle()
               }}
             >
-              <Show when={selectReport() === localIdxLog}>
+              <Show when={props.expanded}>
                 <Icon name="chevron-up" />
               </Show>
-              <Show when={selectReport() !== localIdxLog}>
+              <Show when={!props.expanded}>
                 <Icon name="chevron-down" />
               </Show>
             </IconButton>
@@ -79,7 +75,7 @@ const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
         </td>
       </tr>
 
-      <Show when={selectReport() === localIdxLog}>
+      <Show when={props.expanded}>
         <tr>
           <td colspan="5">
             <h3 class="font-bold">{t('dashboard.server.screenshot', 'Screenshot')}</h3>
@@ -148,6 +144,8 @@ const ServerBugs: Component = () => {
   })
 
   const { t } = useI18n()
+  const [selectedReport, setSelectedReport] = createSignal<number>()
+  const pagination = createListPagination(() => (!bugsReport.error ? bugsReport() : undefined))
 
   return (
     <>
@@ -158,6 +156,16 @@ const ServerBugs: Component = () => {
           'Read reports submitted by players. Expand a report to see what happened, the expected result and steps to reproduce it.',
         )}
         type="none"
+        footer={
+          !bugsReport.loading && !bugsReport.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
       >
         <table class="table">
           <thead>
@@ -180,7 +188,7 @@ const ServerBugs: Component = () => {
               empty={!bugsReport.loading && !bugsReport.error && bugsReport()?.length === 0}
               onRetry={() => void refetch()}
             >
-              <For each={bugsReport()}>
+              <For each={pagination.items()}>
                 {(reportData) => (
                   <AddReportBugsComponent
                     status={reportData.status}
@@ -192,6 +200,8 @@ const ServerBugs: Component = () => {
                     screenshot={reportData.screenshot}
                     steps={reportData.steps}
                     id={reportData.id}
+                    expanded={selectedReport() === reportData.id}
+                    onToggle={() => setSelectedReport(selectedReport() === reportData.id ? undefined : reportData.id)}
                     createAt={new Date(reportData.createdAt)}
                   />
                 )}

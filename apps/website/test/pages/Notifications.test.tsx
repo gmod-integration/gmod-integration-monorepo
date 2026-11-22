@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../testUtils.js'
 import { fetchAPI } from '../../src/utils/api.js'
 import { Errors } from '../../src/components/layout/Errors.js'
@@ -185,6 +185,34 @@ describe('pages/Notifications.tsx', () => {
 
     await vi.waitFor(() => expect(Errors).toHaveBeenCalledWith('Failed to mark the notification as read'))
     expect(notificationCount()).toBe(3)
+  })
+
+  it('paginates messages while mark-all-read updates notifications on every page', async () => {
+    const notifications = Array.from({ length: 26 }, (_, index) => ({
+      id: index + 1,
+      type: 'info',
+      message: `Notification ${index + 1}`,
+      read: false,
+      createdAt: new Date(Date.UTC(2024, 0, 1, 0, index)).toISOString(),
+    }))
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ notifications, unreadCount: 26 }))
+    renderWithProviders(() => <Notifications />)
+    await vi.waitFor(() => expect(screen.getByText('Notification 26')).toBeInTheDocument())
+    expect(screen.getAllByRole('listitem')).toHaveLength(25)
+    expect(screen.queryByText('Notification 1')).not.toBeInTheDocument()
+    const pagination = within(screen.getByRole('navigation', { name: 'Pagination' }))
+    await fireEvent.click(pagination.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('Notification 1')).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    ;(fetchAPI as Mock).mockResolvedValue(jsonResponse({ unreadCount: 0 }))
+    await fireEvent.click(screen.getByTitle('Mark All as Read'))
+    await vi.waitFor(() => expect(notificationCount()).toBe(0))
+    expect(screen.getByText('Notification 1').closest('li')).toHaveAttribute('data-read', 'true')
+    await fireEvent.click(pagination.getByRole('button', { name: 'Previous page' }))
+    expect(screen.getAllByRole('listitem')).toHaveLength(25)
+    expect(screen.queryAllByRole('button', { name: 'Mark as Read' })).toHaveLength(0)
+    expect(screen.getAllByRole('listitem').every((item) => item.dataset.read === 'true')).toBe(true)
+    expect(fetchAPI).toHaveBeenLastCalledWith('/users/:discordID/notifications/mark-all-read', 'PATCH')
   })
 
   it('marks all notifications as read on button click', async () => {

@@ -1,5 +1,7 @@
 import { AsyncState, Button, Icon, IconButton } from '../components/ui/index.js'
 import { type Component, createResource, createSignal, For, Show } from 'solid-js'
+import Pagination from '../components/Pagination.js'
+import { createListPagination } from '../hooks/createListPagination.js'
 import DashboardMiddleware from '../middleware/DashboardMiddleware.js'
 import { useI18n } from '../i18n.js'
 import { Errors } from '../components/layout/Errors.js'
@@ -32,6 +34,8 @@ const Notifications: Component = () => {
         : []
     },
   )
+
+  const pagination = createListPagination(() => (!userNotifications.error ? userNotifications() : undefined))
 
   async function setNotificationsAsRead(id: number) {
     if (action.pending()) return
@@ -142,7 +146,7 @@ const Notifications: Component = () => {
               class="notification-list overflow-hidden rounded-2xl border border-base-content/10 bg-base-100"
               aria-label={t('notifications.title', 'Notifications')}
             >
-              <For each={userNotifications()}>
+              <For each={pagination.items()}>
                 {(notification) => (
                   <li
                     class="notification-item flex min-w-0 gap-4 border-b border-base-content/8 p-5 last:border-b-0 sm:p-6"
@@ -211,6 +215,14 @@ const Notifications: Component = () => {
                 )}
               </For>
             </ul>
+            <Show when={pagination.visible()}>
+              <Pagination
+                standalone
+                query={pagination.query()}
+                total={pagination.total()}
+                onChange={pagination.onChange}
+              />
+            </Show>
           </Show>
         </AsyncState>
       </div>

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../../testUtils.js'
 import GuildBans from '../../../../src/pages/dashboard/guilds/GuildBans.js'
 import { fetchAPI } from '../../../../src/utils/api.js'
@@ -71,6 +71,44 @@ describe('pages/dashboard/guilds/GuildBans.tsx', () => {
     expect(screen.getByText('766')).toBeInTheDocument()
     expect(screen.getByText('Cheater#0001')).toBeInTheDocument()
     expect(screen.getByText('Rando#0002')).toBeInTheDocument()
+  })
+
+  it('paginates each platform independently and keeps controls outside the tables', async () => {
+    const gmodBans = Array.from({ length: 55 }, (_, index) => ({
+      ...defaultBansRaw().gmodBans[0],
+      id: index + 1,
+      userSteamID64: `steam-${index + 1}`,
+      reason: `game-reason-${index + 1}`,
+    }))
+    const discordBans = Array.from({ length: 55 }, (_, index) => ({
+      ...defaultBansRaw().discordBans[0],
+      id: `discord-${index + 1}`,
+      tag: `Discord user ${index + 1}`,
+    }))
+    setupFetchAPI({ gmodBans, discordBans })
+    renderWithProviders(() => <GuildBans />)
+    await vi.waitFor(() => expect(screen.getByText('steam-1')).toBeInTheDocument())
+    const game = within(screen.getByRole('region', { name: 'GMod Bans' }))
+    const discord = within(screen.getByRole('region', { name: 'Discord Bans' }))
+    expect(game.getAllByRole('row')).toHaveLength(26)
+    expect(game.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
+    expect(discord.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
+    await fireEvent.click(game.getByRole('button', { name: 'Next page' }))
+    expect(game.queryByText('steam-1')).not.toBeInTheDocument()
+    expect(game.getByText('steam-26')).toBeInTheDocument()
+    expect(game.getByRole('button', { name: 'Page 2 of 3' })).toBeInTheDocument()
+    expect(discord.getByText('Discord user 1')).toBeInTheDocument()
+    expect(discord.getByRole('button', { name: 'Page 1 of 3' })).toBeInTheDocument()
+    await fireEvent.click(discord.getByRole('button', { name: 'Next page' }))
+    expect(discord.getByText('Discord user 26')).toBeInTheDocument()
+    expect(game.getByText('steam-26')).toBeInTheDocument()
+    await fireEvent.change(game.getByRole('combobox', { name: 'Rows per page' }), { target: { value: '50' } })
+    expect(game.getByText('steam-1')).toBeInTheDocument()
+    expect(game.getAllByRole('row')).toHaveLength(51)
+    await fireEvent.click(game.getByRole('button', { name: 'Next page' }))
+    expect(game.getAllByRole('row')).toHaveLength(6)
+    expect(game.getByRole('button', { name: 'Next page' })).toBeDisabled()
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
   })
 
   it('flags a GMod ban whose linked account is also banned on Discord', async () => {
