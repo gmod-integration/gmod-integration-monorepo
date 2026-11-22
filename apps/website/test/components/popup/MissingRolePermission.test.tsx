@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { ErrorBoundary } from 'solid-js/web'
 import { renderWithProviders } from '../../testUtils.js'
+import type * as APIModule from '../../../src/utils/api.js'
 
 vi.mock('../../../src/utils/api.js', async (importActual) => {
-  const actual = await importActual<typeof import('../../../src/utils/api.js')>()
+  const actual = await importActual<typeof APIModule>()
   return {
     ...actual,
     // GuildInformations.tsx's module-level guildRoles/guildChannels resources also go through
@@ -24,32 +25,24 @@ const { fetchAPI } = await import('../../../src/utils/api.js')
 const MissingRolePermission = (await import('../../../src/components/popup/MissingRolePermission.js')).default
 const { setRolesToCheck } = await import('../../../src/components/popup/MissingRolePermission.js')
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 function mockSubordination(response: Record<string, { name: string; editable: boolean }>) {
-  ;(fetchAPI as any).mockImplementation((endpoint: string) => {
+  vi.mocked(fetchAPI).mockImplementation((endpoint: string) => {
     if (endpoint.includes('/bot/roles/subordination')) {
-      return Promise.resolve({ ok: true, json: async () => response })
+      return Promise.resolve({ ok: true, json: async () => response } as Response)
     }
-    return Promise.resolve({ ok: true, json: async () => [] })
+    return Promise.resolve({ ok: true, json: async () => [] } as Response)
   })
-}
-
-// `<For>` bound to a value that only becomes available after a `createResource` resolves does not
-// visibly update the DOM in this test environment - confirmed with a minimal repro outside this
-// component too (plain `createResource` + `<For>`, no custom code involved), so it's a harness
-// limitation rather than anything specific to this component. Waiting for the mocked fetch to
-// settle still drives the real `uneditableRoles` memo (and its missing/not-editable branches) for
-// coverage purposes; we just can't assert on the rendered role text afterwards.
-async function waitForSubordinationFetch() {
-  await vi.waitFor(() =>
-    expect(fetchAPI).toHaveBeenCalledWith(expect.stringContaining('/bot/roles/subordination'), 'GET'),
-  )
-  await new Promise((resolve) => setTimeout(resolve, 10))
 }
 
 describe('components/popup/MissingRolePermission.tsx', () => {
   beforeEach(() => {
+    vi.mocked(fetchAPI).mockClear()
+    setRolesToCheck([])
     guildRolesMutate([
       { id: 'r1', name: 'RoleOne', color: 111, colorHex: '#111111' },
       { id: 'r2', name: 'RoleTwo', color: 222, colorHex: '#222222' },
@@ -95,18 +88,54 @@ describe('components/popup/MissingRolePermission.tsx', () => {
     await vi.waitFor(() => expect(screen.getByText('@RoleOne')).toBeInTheDocument())
   })
 
-  it('does not crash the tree when the subordination fetch rejects', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    ;(fetchAPI as any).mockImplementation(() => Promise.reject(new Error('network down')))
+  it('shows loading without claiming that unknown permissions are missing', async () => {
+    vi.mocked(fetchAPI).mockImplementation(() => new Promise(() => {}))
     setRolesToCheck(['r1'])
-    renderWithProviders(() => (
-      <ErrorBoundary fallback={(err) => <div data-testid="boundary-error">{err.message}</div>}>
-        <MissingRolePermission />
-      </ErrorBoundary>
-    ))
-    await vi.waitFor(() =>
-      expect(errorSpy).toHaveBeenCalledWith('Error fetching bot role subordination:', expect.any(Error)),
-    )
-    errorSpy.mockRestore()
+    renderWithProviders(() => <MissingRolePermission />)
+    expect(screen.getByRole('status')).toHaveTextContent('Loading')
+    expect(screen.queryByText(/cannot assign or remove these roles/)).not.toBeInTheDocument()
+  })
+
+  it.each(['network', 'http', 'json', 'shape'] as const)(
+    'keeps a %s failure inside the permission check and retries successfully',
+    async (failure) => {
+      vi.mocked(fetchAPI).mockImplementation(async () => {
+        if (failure === 'network') throw new Error('network down')
+        return {
+          ok: failure !== 'http',
+          json: async () => {
+            if (failure === 'json') throw new SyntaxError('Invalid JSON')
+            if (failure === 'shape') return { r1: { name: 'RoleOne' } }
+            return { r1: { name: 'RoleOne', editable: false } }
+          },
+        } as Response
+      })
+      setRolesToCheck(['r1'])
+      renderWithProviders(() => (
+        <ErrorBoundary fallback={(err) => <div data-testid="boundary-error">{err.message}</div>}>
+          <MissingRolePermission />
+        </ErrorBoundary>
+      ))
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+      expect(screen.queryByTestId('boundary-error')).not.toBeInTheDocument()
+      expect(screen.queryByText(/cannot assign or remove these roles/)).not.toBeInTheDocument()
+      mockSubordination({ r1: { name: 'RoleOne', editable: false } })
+      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(screen.getByText('@RoleOne')).toBeInTheDocument())
+      expect(screen.getByText(/cannot assign or remove these roles/)).toBeInTheDocument()
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('boundary-error')).not.toBeInTheDocument()
+    },
+  )
+
+  it('updates the warning when the roles to check change', async () => {
+    mockSubordination({ r1: { name: 'RoleOne', editable: true }, r2: { name: 'RoleTwo', editable: false } })
+    setRolesToCheck(['r1'])
+    const { container } = renderWithProviders(() => <MissingRolePermission />)
+    await vi.waitFor(() => expect(container).toBeEmptyDOMElement())
+    setRolesToCheck(['r2'])
+    expect(screen.getByText('@RoleTwo')).toBeInTheDocument()
+    setRolesToCheck([])
+    expect(container).toBeEmptyDOMElement()
   })
 })

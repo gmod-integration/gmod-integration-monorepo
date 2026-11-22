@@ -1,6 +1,7 @@
 import type * as APIModule from '../../../../src/utils/api.js'
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
+import { ErrorBoundary } from 'solid-js'
 import { renderWithProviders } from '../../../testUtils.js'
 import { clearDialogGlobals, okJson, errJson } from './servers/testHelpers.js'
 
@@ -133,6 +134,32 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     const rows = within(table(container)).getAllByRole('row').slice(1)
     expect(rows[0]).toHaveTextContent('Enabled')
     expect(rows[1]).toHaveTextContent('Disabled')
+  })
+
+  it('keeps verification settings available when the bot permission lookup fails and retries it locally', async () => {
+    const fallback = (fetchAPI as Mock).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((endpoint: string, ...args: unknown[]) =>
+      endpoint.includes(SUBORDINATION_URL_PART)
+        ? Promise.reject(new Error('Permission lookup unavailable'))
+        : fallback(endpoint, ...args),
+    )
+    renderWithProviders(() => (
+      <ErrorBoundary fallback={<div>Verification page crashed</div>}>
+        <GuildVerification />
+      </ErrorBoundary>
+    ))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled())
+    expect(screen.queryByText('Verification page crashed')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Verification Roles' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Disable private verification reminders')).toBeInTheDocument()
+    expect(screen.getByText('@Admin')).toBeInTheDocument()
+
+    setupFetchAPI()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument())
+    expect(screen.queryByText('Verification page crashed')).not.toBeInTheDocument()
+    expect(screen.getByText('@Admin')).toBeInTheDocument()
+    expect((fetchAPI as Mock).mock.calls.every(([, method]) => method === 'GET')).toBe(true)
   })
 
   it('shows loading and keeps table actions unavailable while roles load', () => {
