@@ -21,6 +21,7 @@
     "@gmod/shared": "workspace:*",
     "@gmod/infra-minio": "workspace:*",
     "@gmod/domain-access": "workspace:*",
-    "@gmod/domain-auth": "workspace:*"
+    "@gmod/domain-auth": "workspace:*",
+    "@gmod/schema": "workspace:*"
   }
 }

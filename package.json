@@ -152,5 +152,11 @@
     "@gmod/shared": "workspace:*",
     "@gmod/domain-access": "workspace:*",
     "@gmod/domain-auth": "workspace:*"
+  },
+  "overrides": {
+    "tinypool": "2.1.2",
+    "serialize-javascript": "7.1.4",
+    "effect": "3.22.5",
+    "qs": "6.17.1"
   }
 }
