@@ -115,7 +115,9 @@ const redisMock: any = {
   del: vi.fn().mockResolvedValue(undefined),
   incr: vi.fn().mockResolvedValue(undefined),
   expire: vi.fn().mockResolvedValue(undefined),
-  publish: vi.fn().mockResolvedValue(undefined),
+  publish: vi.fn(async (channel: string, payload: string) => {
+    if (channel === 'ws:send-to-clients:broadcast') await subscriberHandlers.message(channel, payload)
+  }),
   duplicate: vi.fn(() => redisSubscriberMock),
 }
 const gracefulShutdownRedisMock = vi.fn().mockResolvedValue(undefined)
@@ -189,6 +191,7 @@ describe('apps/websocket main()', () => {
     expect(connectPrismaMock).toHaveBeenCalled()
     expect(redisMock.duplicate).toHaveBeenCalled()
     expect(redisSubscriberMock.subscribe).toHaveBeenCalledWith('ws:send-to-server:broadcast')
+    expect(redisSubscriberMock.subscribe).toHaveBeenCalledWith('ws:send-to-clients:broadcast')
     expect(capturedWss?.opts.port).toBe(9999)
     expect(capturedWorkers['wsSendToServer']).toBeDefined()
     expect(capturedWorkers['wsSendToAllClientsOfServer']).toBeDefined()
@@ -1063,6 +1066,25 @@ describe('apps/websocket main()', () => {
   })
 
   describe('subscriber handlers', () => {
+    it('delivers a dashboard broadcast once through the same subscriber as remote replicas', async () => {
+      const ws = await connectClient('dashboard-broadcast')
+      const data = { id: 'srv-bulk', action: 'server_logs', data: { live: true } }
+      await capturedWorkers.wsSendToAllClientsOfServer.processor({ data })
+      expect(redisMock.publish).toHaveBeenCalledWith('ws:send-to-clients:broadcast', JSON.stringify(data))
+      expect(ws.send).toHaveBeenCalledTimes(1)
+    })
+    it.each([null, {}, { id: 1 }, { id: '' }, { id: 'srv-bulk', action: 1 }, { id: 'srv-bulk', action: '' }])(
+      'ignores an invalid dashboard broadcast %j',
+      async (value) => {
+        const ws = await connectClient('invalid-dashboard-broadcast')
+        await subscriberHandlers.message('ws:send-to-clients:broadcast', JSON.stringify(value))
+        expect(ws.send).not.toHaveBeenCalled()
+      },
+    )
+    it('logs malformed dashboard broadcasts without disrupting the subscriber', async () => {
+      await subscriberHandlers.message('ws:send-to-clients:broadcast', '{bad json')
+      expect(gmLogMock).toHaveBeenCalledWith('websocket', 'Invalid dashboard broadcast message', true)
+    })
     it.each([
       ['gmi:auth:session-revoked', 'sessionID', 'Invalid session revocation message'],
       ['gmi:privacy:revoked', 'discordID', 'Invalid privacy revocation message'],

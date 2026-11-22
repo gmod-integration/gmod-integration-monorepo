@@ -56,6 +56,7 @@ const clients = {
 }
 
 const WS_SEND_TO_SERVER_BROADCAST_CHANNEL = 'ws:send-to-server:broadcast'
+const WS_SEND_TO_CLIENTS_BROADCAST_CHANNEL = 'ws:send-to-clients:broadcast'
 const WS_SEND_TO_SERVER_ACK_PREFIX = 'ws:send-to-server:ack:'
 const WS_SEND_TO_SERVER_ACK_WAIT_MS = 600
 const WS_SEND_TO_SERVER_ACK_TTL_SECONDS = 5
@@ -390,6 +391,23 @@ export async function main() {
       }
       return
     }
+    if (channel === WS_SEND_TO_CLIENTS_BROADCAST_CHANNEL) {
+      try {
+        const message = JSON.parse(payload)
+        if (
+          !message ||
+          typeof message.id !== 'string' ||
+          !message.id ||
+          typeof message.action !== 'string' ||
+          !message.action
+        )
+          return
+        await wsSendToAllClientsOfServer(message.id, message.action, message.data)
+      } catch {
+        gmLog('websocket', 'Invalid dashboard broadcast message', true)
+      }
+      return
+    }
     if (channel !== WS_SEND_TO_SERVER_BROADCAST_CHANNEL) {
       return
     }
@@ -419,6 +437,7 @@ export async function main() {
   })
 
   await wsSendToServerSubscriber.subscribe(WS_SEND_TO_SERVER_BROADCAST_CHANNEL)
+  await wsSendToServerSubscriber.subscribe(WS_SEND_TO_CLIENTS_BROADCAST_CHANNEL)
   await wsSendToServerSubscriber.subscribe(PRIVACY_REVOCATION_CHANNEL)
   await wsSendToServerSubscriber.subscribe(AUTH_SESSION_REVOCATION_CHANNEL)
   await wsSendToServerSubscriber.subscribe(DISCORD_GUILD_PERMISSIONS_CHANNEL)
@@ -668,7 +687,8 @@ export async function main() {
   wsSendToAllClientsOfServerWorker = new Worker(
     wsSendToAllClientsOfServerQueue.name,
     async (job) => {
-      await wsSendToAllClientsOfServer(job.data.id, job.data.action, job.data.data)
+      // The subscriber is the only delivery path, including on this replica, so no socket gets a local echo twice.
+      await redis.publish(WS_SEND_TO_CLIENTS_BROADCAST_CHANNEL, JSON.stringify(job.data))
     },
     {
       connection,
