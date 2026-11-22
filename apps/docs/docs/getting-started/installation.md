@@ -1,5 +1,6 @@
 ---
 sidebar_position: 1
+description: Install the Gmod Integration Discord bot, Workshop addon and required server module to connect your Garry's Mod server to Discord.
 ---
 
 # Installation

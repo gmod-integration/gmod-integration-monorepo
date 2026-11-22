@@ -1,5 +1,6 @@
 ---
 sidebar_position: 2
+description: Connect your Garry's Mod server to Discord using the Gmod Integration dashboard, server ID and token.
 ---
 
 # Configuration
