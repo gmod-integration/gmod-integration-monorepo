@@ -339,10 +339,9 @@ when a feature is disabled. Explain verified dependencies and place dependent co
 parent option; do not infer a dependency from a setting name alone. Keep sensitive actions apart from
 routine editing. Shared setting layouts live in `src/styles/settings.css`.
 
-Server configuration supports local search in translated labels/descriptions and category filters.
-Advanced compatibility and troubleshooting controls are collapsed initially and open automatically
-when selected or matched by search. Defaults remain available in each setting's disclosure. Filtering
-does not cancel a pending save or reset draft values.
+Server configuration opens directly onto four settings cards, with all settings visible and no
+separate search, category-filter or result-count panel. Defaults remain available in each setting's
+disclosure. Each card keeps its own draft and automatic save feedback.
 
 ```tsx
 <div class="min-w-0 w-full overflow-x-auto">

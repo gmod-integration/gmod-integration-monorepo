@@ -17,9 +17,7 @@ import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket.js'
 import { fetchAPI } from '../../../../utils/api.js'
 
 const ServerConfig: Component = () => {
-  const { t, locale } = useI18n()
-  const [search, setSearch] = createSignal('')
-  const [category, setCategory] = createSignal('all')
+  const { t } = useI18n()
   const isBooleanOption = (info: { acceptedValues: unknown }) =>
     Array.isArray(info.acceptedValues) &&
     (info.acceptedValues as Array<unknown>).includes(true) &&
@@ -199,33 +197,6 @@ const ServerConfig: Component = () => {
       keys: ['ig_clientBranch', 'ig_debug', 'ig_redownloadMaterials', 'ig_logTimestamp'],
     },
   ]
-  const normalizeSearch = (value: string) =>
-    value
-      .toLocaleLowerCase(locale())
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-  const matchingKeys = (group: SettingCategory) =>
-    group.keys.filter((key) => {
-      const query = normalizeSearch(search().trim())
-      return (
-        !query ||
-        normalizeSearch(
-          [
-            t(configInfo[key].labelKey, key),
-            t(configInfo[key].descriptionKey, ''),
-            t(group.titleKey, group.title),
-          ].join(' '),
-        ).includes(query)
-      )
-    })
-  const visibleCategories = () =>
-    categories.filter((group) => (category() === 'all' || category() === group.id) && matchingKeys(group).length > 0)
-  const visibleCount = () => visibleCategories().reduce((total, group) => total + matchingKeys(group).length, 0)
-  const resetFilters = () => {
-    setSearch('')
-    setCategory('all')
-  }
-
   type ConfigValues = Partial<Record<SettingKey, unknown>>
   const normalizeValue = (key: SettingKey, value: unknown) => {
     const fallback = configInfo[key].defaultValue
@@ -299,7 +270,7 @@ const ServerConfig: Component = () => {
       errorMessage: () => t('ui.save_error', 'Unable to save the changes.'),
     })
   type ConfigForm = ReturnType<typeof makeForm>
-  // Forms live at page scope: hiding a category or a search result never discards its draft.
+  // Each settings group owns its saved snapshot and pending edits.
   const forms = new Map(categories.map((group) => [group.id, makeForm(group)]))
   const [syncPending, setSyncPending] = createSignal<Record<string, boolean>>({})
   const formFor = (key: SettingKey) => forms.get(categories.find((group) => group.keys.includes(key))!.id)!
@@ -507,89 +478,22 @@ const ServerConfig: Component = () => {
   return (
     <>
       <NeedWebsocket />
-      <AdminPanel
-        title={t('dashboard.server.config.title', 'In-game addon settings')}
-        type="none"
-        description={t(
-          'dashboard.server.config.description',
-          'Configure player access and addon behavior on this game server. Synchronization with the addon can take a moment.',
-        )}
-      >
-        <div class="settings-browser">
-          <div class="settings-toolbar">
-            <label class="settings-search">
-              <Icon name="search" size={17} />
-              <span class="sr-only">{t('settings.search', 'Search settings')}</span>
-              <input
-                type="search"
-                class="input w-full"
-                placeholder={t('settings.search_placeholder', 'Search by name or description…')}
-                value={search()}
-                onInput={(event) => setSearch(event.currentTarget.value)}
-              />
-            </label>
-          </div>
-          <div class="settings-categories" role="group" aria-label={t('settings.categories', 'Setting categories')}>
-            <Button
-              size="sm"
-              variant="ghost"
-              class="settings-category"
-              aria-pressed={category() === 'all'}
-              onClick={() => setCategory('all')}
+      <AsyncState loading={serverConfig.loading} error={serverConfig.error} onRetry={() => void refetch()} />
+      <div class="settings-card-grid">
+        <For each={categories}>
+          {(group) => (
+            <AdminPanel
+              id={`config-${group.id}`}
+              title={t(group.titleKey, group.title)}
+              description={t(group.descriptionKey, group.description)}
+              icon={group.icon}
             >
-              {t('settings.all', 'All settings')}
-              <span>{Object.keys(configInfo).length}</span>
-            </Button>
-            <For each={categories}>
-              {(group) => (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  class="settings-category"
-                  aria-pressed={category() === group.id}
-                  onClick={() => setCategory(group.id)}
-                >
-                  <Icon name={group.icon} size={15} />
-                  {t(group.titleKey, group.title)}
-                  <span>{group.keys.length}</span>
-                </Button>
-              )}
-            </For>
-          </div>
-          <p class="settings-results" aria-live="polite">
-            {visibleCount()} {t('settings.results', 'settings shown')}
-          </p>
-        </div>
-        <AsyncState loading={serverConfig.loading} error={serverConfig.error} onRetry={() => void refetch()} />
-      </AdminPanel>
-      <Show
-        when={visibleCount() > 0}
-        fallback={
-          <div class="settings-empty">
-            <Icon name="search" size={25} />
-            <p>{t('settings.no_results', 'No settings match your search in this category.')}</p>
-            <Button size="sm" onClick={resetFilters}>
-              {t('settings.reset_filters', 'Reset filters')}
-            </Button>
-          </div>
-        }
-      >
-        <div class="settings-card-grid">
-          <For each={visibleCategories()}>
-            {(group) => (
-              <AdminPanel
-                id={`config-${group.id}`}
-                title={t(group.titleKey, group.title)}
-                description={t(group.descriptionKey, group.description)}
-                icon={group.icon}
-              >
-                <For each={matchingKeys(group)}>{(key) => renderSetting(key)}</For>
-                {renderFeedback(group)}
-              </AdminPanel>
-            )}
-          </For>
-        </div>
-      </Show>
+              <For each={group.keys}>{(key) => renderSetting(key)}</For>
+              {renderFeedback(group)}
+            </AdminPanel>
+          )}
+        </For>
+      </div>
     </>
   )
 }

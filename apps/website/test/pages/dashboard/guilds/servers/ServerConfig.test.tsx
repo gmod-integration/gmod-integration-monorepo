@@ -65,10 +65,13 @@ afterEach(() => {
 })
 
 describe('server configuration autosave', () => {
-  it('groups settings in four peer cards without per-card save and cancel buttons', async () => {
+  it('shows four settings cards directly without search filters or per-card save and cancel buttons', async () => {
     const { container } = renderPage()
     await ready(container)
-    expect(screen.getByText('In-game addon settings')).toBeInTheDocument()
+    expect(screen.queryByText('In-game addon settings')).not.toBeInTheDocument()
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /All settings/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reset filters' })).not.toBeInTheDocument()
     expect(screen.getByText('GWSockets')).toBeInTheDocument()
     expect(screen.queryByText('Changes are saved automatically.')).not.toBeInTheDocument()
     const general = screen.getByRole('region', { name: 'General and administration' })
@@ -112,28 +115,13 @@ describe('server configuration autosave', () => {
     expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  it('searches descriptions, filters categories and resets an empty search without saving', async () => {
-    const { container } = renderPage()
-    await ready(container)
-    const search = screen.getByRole('searchbox', { name: 'Search settings' })
-    await fireEvent.input(search, { target: { value: 'automatic material downloading' } })
-    expect(container.querySelectorAll('.settings-row')).toHaveLength(1)
-    expect(row(container, 'Redownload Materials')).toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: /Moderation/ }))
-    expect(screen.getByText('No settings match your search in this category.')).toBeInTheDocument()
-    await fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
-    expect(search).toHaveValue('')
-    expect(container.querySelectorAll('.settings-row')).toHaveLength(16)
-    expect(saveDashboardSettings).not.toHaveBeenCalled()
-  })
-
-  it('matches French labels without requiring accents', async () => {
+  it('renders the setting labels in French without changing their saved values', async () => {
     localStorage.setItem('locale', 'fr')
     const { container } = renderPage()
     await vi.waitFor(() => expect(container.querySelector('#ig_forcePlayerLink')).not.toBeDisabled())
-    await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'verifier la liaison' } })
-    expect(container.querySelectorAll('.settings-row')).toHaveLength(1)
+    expect(container.querySelectorAll('.settings-row')).toHaveLength(16)
     expect(row(container, 'Vérifier la liaison avant l’entrée en jeu')).toBeInTheDocument()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
   it('automatically saves toggles, select choices and batched text changes', async () => {
@@ -153,24 +141,6 @@ describe('server configuration autosave', () => {
     })
     expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_syncTimeout: true })
     expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
-  })
-
-  it('still saves edits when their card becomes hidden by a category or search filter', async () => {
-    const { container } = renderPage()
-    await ready(container)
-    vi.useFakeTimers()
-    await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
-      target: { value: 'https://draft.example' },
-    })
-    await fireEvent.click(screen.getByRole('button', { name: /Moderation/ }))
-    expect(container.querySelector('#ig_supportLink')).not.toBeInTheDocument()
-    await autosave()
-    expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_supportLink: 'https://draft.example' })
-    await fireEvent.click(screen.getByRole('button', { name: /General and administration/ }))
-    expect(within(row(container, 'Support Link')).getByRole('textbox')).toHaveValue('https://draft.example')
-    await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'nothing-matches' } })
-    await fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))
-    expect(within(row(container, 'Support Link')).getByRole('textbox')).toHaveValue('https://draft.example')
   })
 
   it('preserves a failed value and retries only when requested without looping', async () => {
@@ -339,7 +309,7 @@ describe('server configuration autosave', () => {
     expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  it('keeps pending hidden edits registered until saved and unregisters forms on unmount', async () => {
+  it('keeps pending edits registered until saved and unregisters forms on unmount', async () => {
     const entries: DraftEntry[] = []
     const unregister = vi.fn()
     const { container, unmount } = renderWithProviders(
@@ -366,7 +336,6 @@ describe('server configuration autosave', () => {
     await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
       target: { value: 'https://unsaved.example' },
     })
-    await fireEvent.click(screen.getByRole('button', { name: /Moderation/ }))
     expect(entries.filter((entry) => entry.dirty())).toHaveLength(1)
     await autosave()
     expect(entries.every((entry) => !entry.dirty())).toBe(true)
