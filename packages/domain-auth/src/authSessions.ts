@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto'
 import { ConfigAuth, ConfigDiscord, ConfigServer } from '@gmod/config'
+import { isDeveloper } from '@gmod/config/developers.js'
 import prisma from '@gmod/infra-prisma'
 import { isErasureBlocked } from '@gmod/infra-prisma/privacy.js'
 import redis from '@gmod/infra-redis'
@@ -145,6 +146,7 @@ async function eligible(row: SessionRow | null): Promise<AuthSession | null> {
     return null
   let expiresAt = session.expiresAt
   if (session.actorSessionID) {
+    if (!isDeveloper(session.actorDiscordID)) return null
     const actor = await prisma.gm_panelToken.findFirst({ where: { id: session.actorSessionID, revoke: false } })
     const parent = actor ? asSession(actor) : null
     if (!parent || parent.actorDiscordID || parent.discordID !== session.actorDiscordID) return null
@@ -207,6 +209,11 @@ export async function createApplicationSession(
   metadata: SessionMetadata = {},
   options: { actorDiscordID?: string; actorSessionID?: string; ttlSeconds?: number } = {},
 ): Promise<{ token: string; session: AuthSession }> {
+  if (
+    !!options.actorDiscordID !== !!options.actorSessionID ||
+    (options.actorDiscordID && !isDeveloper(options.actorDiscordID))
+  )
+    throw new AuthSessionError(403, 'forbidden', 'Developer access is required for support.')
   if (
     (await isErasureBlocked(discordID)) ||
     (options.actorDiscordID && (await isErasureBlocked(options.actorDiscordID)))

@@ -11,6 +11,7 @@
     "./index.js": "./src/index.ts",
     "./schema.js": "./src/schema.ts",
     "./infrastructure.js": "./src/infrastructure.ts",
+    "./developers.js": "./src/developers.ts",
     "./website.js": "./src/website.ts",
     "./website-runtime.js": "./dist/website.js"
   },

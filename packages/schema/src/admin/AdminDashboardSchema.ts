@@ -39,7 +39,7 @@ export const AdminServerListQuerySchema = baseQuery
   .strict()
 export const AdminUserListQuerySchema = baseQuery
   .extend({
-    sort: z.enum(['createdAt', 'updatedAt', 'username', 'rank', 'id']).default('createdAt'),
+    sort: z.enum(['createdAt', 'updatedAt', 'username', 'id']).default('createdAt'),
     rank: AdminRankSchema.optional(),
   })
   .strict()
@@ -98,7 +98,7 @@ export const AdminUserRowSchema = z
     id: z.string(),
     username: z.string(),
     steamID64: z.string().nullable(),
-    rank: z.string(),
+    rank: AdminRankSchema,
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
     lastSeenAt: z.string().datetime().nullable(),
@@ -152,7 +152,6 @@ export const AdminServerUpdateSchema = z
   )
 export const AdminServerCommandSchema = z.object({ confirm: AdminIDSchema, reason: AdminReasonSchema }).strict()
 export const AdminPremiumUpdateSchema = z.object({ enabled: z.boolean(), reason: AdminReasonSchema }).strict()
-export const AdminRankChangeSchema = z.object({ rank: AdminRankSchema, reason: AdminReasonSchema }).strict()
 export const AdminRevokeSessionsSchema = z.object({ confirm: AdminIDSchema, reason: AdminReasonSchema }).strict()
 export const AdminPremiumMutationResultSchema = z
   .object({

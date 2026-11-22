@@ -16,7 +16,6 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   reset: vi.fn(),
   grant: vi.fn(),
-  rank: vi.fn(),
   revoke: vi.fn(),
 }))
 vi.mock('@gmod/config', () => ({
@@ -44,14 +43,14 @@ vi.mock('@gmod/core/models/v6/adminDashboard.js', () => ({
   updateAdminPremium: mocks.grant,
 }))
 vi.mock('@gmod/core/models/v6/adminUserManagement.js', () => ({
-  changeAdminUserRank: mocks.rank,
   revokeAdminUserSessions: mocks.revoke,
 }))
 const { csrfTokenForSession } = await import('@gmod/domain-auth/authSessions.js')
 const { default: router } = await import('../../../src/routes/v6/adminRoutes.js')
+const developerID = '333650866747867137'
 const auth = () => ({
   id: 'session-admin',
-  discordID: 'operator',
+  discordID: developerID,
   tokenHash: 'sha256:fixture',
   createdAt: new Date(),
   lastSeenAt: new Date(),
@@ -75,7 +74,7 @@ const app = () => {
 beforeEach(() => {
   vi.resetAllMocks()
   mocks.session.mockResolvedValue(auth())
-  mocks.operator.mockResolvedValue({ id: 'operator', rank: 'developer' })
+  mocks.operator.mockResolvedValue({ id: developerID, rank: 'developer' })
   for (const key of [
     'overview',
     'guilds',
@@ -87,7 +86,6 @@ beforeEach(() => {
     'remove',
     'reset',
     'grant',
-    'rank',
     'revoke',
   ] as const)
     mocks[key].mockResolvedValue({ acknowledged: true })
@@ -105,19 +103,25 @@ describe('platform admin API and own-session authorization', () => {
   it('provides a non-cacheable fresh access acknowledgement', async () => {
     const result = await request(app()).get('/v6/admin/access')
     expect(result.status).toBe(200)
-    expect(result.body).toEqual({ authorized: true, discordID: 'operator' })
+    expect(result.body).toEqual({ authorized: true, discordID: developerID })
     expect(result.headers['cache-control']).toBe('no-store')
-    expect(mocks.operator).toHaveBeenCalledWith({ where: { id: 'operator' }, select: { id: true, rank: true } })
+    expect(mocks.operator).toHaveBeenCalledWith({ where: { id: developerID }, select: { id: true } })
   })
-  it.each([null, { rank: 'user' }, { rank: 'Developer' }])(
-    'rejects an absent or non-developer operator %j',
-    async (operator) => {
-      mocks.operator.mockResolvedValue(operator)
-      const result = await request(app()).get('/v6/admin/overview')
-      expect(result.status).toBe(403)
-      expect(mocks.overview).not.toHaveBeenCalled()
-    },
-  )
+  it('rejects an unlisted operator even with a stored developer rank', async () => {
+    mocks.session.mockResolvedValue({ ...auth(), discordID: 'unlisted' })
+    mocks.operator.mockResolvedValue({ id: 'unlisted', rank: 'developer' })
+    expect((await request(app()).get('/v6/admin/overview')).status).toBe(403)
+    expect(mocks.operator).not.toHaveBeenCalled()
+    expect(mocks.overview).not.toHaveBeenCalled()
+  })
+  it('authorizes the listed owner independently of the stored rank', async () => {
+    mocks.operator.mockResolvedValue({ id: developerID, rank: 'user' })
+    expect((await request(app()).get('/v6/admin/overview')).status).toBe(200)
+  })
+  it('rejects a listed operator whose account no longer exists', async () => {
+    mocks.operator.mockResolvedValue(null)
+    expect((await request(app()).get('/v6/admin/overview')).status).toBe(403)
+  })
   it('rejects an unavailable or revoked session before database/list access', async () => {
     mocks.session.mockResolvedValue(null)
     expect((await request(app()).get('/v6/admin/users')).status).toBe(401)
@@ -136,9 +140,10 @@ describe('platform admin API and own-session authorization', () => {
   })
   it('requires CSRF on cookie mutations and rejects foreign origins', async () => {
     expect(
-      (await write('put', '/users/target/rank', { rank: 'user', reason: 'Support correction' }, false)).status,
+      (await write('post', '/users/target/revoke-sessions', { confirm: 'target', reason: 'Support correction' }, false))
+        .status,
     ).toBe(403)
-    expect(mocks.rank).not.toHaveBeenCalled()
+    expect(mocks.revoke).not.toHaveBeenCalled()
     const foreign = await request(app()).get('/v6/admin/access').set('Origin', 'https://foreign.example.test')
     expect(foreign.status).toBe(403)
     expect(mocks.operator).not.toHaveBeenCalled()
@@ -157,9 +162,15 @@ describe('platform admin API and own-session authorization', () => {
   })
   it('normalizes bounded paging and rejects sort injection or unknown query fields', async () => {
     expect(
-      (await request(app()).get('/v6/admin/users?limit=25&offset=50&search=target&sort=rank&orderBy=ASC')).status,
+      (await request(app()).get('/v6/admin/users?limit=25&offset=50&search=target&sort=username&orderBy=ASC')).status,
     ).toBe(200)
-    expect(mocks.users).toHaveBeenCalledWith({ limit: 25, offset: 50, search: 'target', sort: 'rank', orderBy: 'ASC' })
+    expect(mocks.users).toHaveBeenCalledWith({
+      limit: 25,
+      offset: 50,
+      search: 'target',
+      sort: 'username',
+      orderBy: 'ASC',
+    })
     mocks.users.mockClear()
     expect((await request(app()).get('/v6/admin/users?sort=token')).status).toBe(400)
     expect((await request(app()).get('/v6/admin/users?limit=5000')).status).toBe(400)
@@ -174,15 +185,15 @@ describe('platform admin API and own-session authorization', () => {
   ] as const)('validates and audits %s %s', async (method, path, body, key) => {
     expect((await write(method, path, body)).status).toBe(200)
     expect(mocks[key]).toHaveBeenCalledWith(key === 'grant' ? 'g1' : 's1', body)
-    expect(mocks.log).toHaveBeenCalledWith('admin', expect.stringContaining('"actor":"operator"'))
+    expect(mocks.log).toHaveBeenCalledWith('admin', expect.stringContaining(`"actor":"${developerID}"`))
   })
   it('binds account mutations to the actor and selected account', async () => {
-    const body = { rank: 'developer', reason: 'Support correction' }
-    expect((await write('put', '/users/target/rank', body)).status).toBe(200)
-    expect(mocks.rank).toHaveBeenCalledWith('operator', 'target', body)
+    expect((await write('put', '/users/target/rank', { rank: 'developer', reason: 'Support correction' })).status).toBe(
+      404,
+    )
     const revoke = { confirm: 'target', reason: 'Support correction' }
     expect((await write('post', '/users/target/revoke-sessions', revoke)).status).toBe(200)
-    expect(mocks.revoke).toHaveBeenCalledWith('operator', 'target', revoke)
+    expect(mocks.revoke).toHaveBeenCalledWith(developerID, 'target', revoke)
   })
   it('rejects unknown fields and missing confirmation/reason before side effects', async () => {
     expect((await write('put', '/guilds/g1/premium', { enabled: true, reason: 'x' })).status).toBe(400)

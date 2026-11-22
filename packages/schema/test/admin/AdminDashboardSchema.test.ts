@@ -6,7 +6,6 @@ import {
   AdminServerUpdateSchema,
   AdminServerCommandSchema,
   AdminPremiumUpdateSchema,
-  AdminRankChangeSchema,
   AdminRevokeSessionsSchema,
 } from '../../src/admin/AdminDashboardSchema.js'
 
@@ -36,6 +35,7 @@ describe('administration request contracts', () => {
   it('restricts filters and sorts to the requested resource', () => {
     expect(AdminServerListQuerySchema.safeParse({ rank: 'developer' }).success).toBe(false)
     expect(AdminUserListQuerySchema.safeParse({ sort: 'lastSeenAt' }).success).toBe(false)
+    expect(AdminUserListQuerySchema.safeParse({ sort: 'rank' }).success).toBe(false)
     expect(AdminUserListQuerySchema.safeParse({ rank: 'owner' }).success).toBe(false)
     expect(
       AdminServerListQuerySchema.parse({ guildID: 'guild-1', verified: 'verified', visibility: 'public' }),
@@ -60,6 +60,5 @@ describe('administration request contracts', () => {
     expect(
       AdminPremiumUpdateSchema.safeParse({ enabled: true, transaction: 'invented', reason: 'Support request' }).success,
     ).toBe(false)
-    expect(AdminRankChangeSchema.safeParse({ rank: 'owner', reason: 'Support request' }).success).toBe(false)
   })
 })

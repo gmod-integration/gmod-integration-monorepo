@@ -1,4 +1,5 @@
 import prisma from '@gmod/infra-prisma'
+import { developerDiscordIDs, getPlatformRank } from '@gmod/config/developers.js'
 import { Prisma } from '@gmod/infra-prisma/client.js'
 import redis from '@gmod/infra-redis'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
@@ -235,7 +236,9 @@ export async function listAdminUsers(rawQuery: unknown): Promise<AdminListRespon
   if (!parsed.success) throw invalid()
   const query = parsed.data
   const where: Prisma.gm_userWhereInput = {
-    ...(query.rank ? { rank: query.rank } : {}),
+    ...(query.rank
+      ? { id: query.rank === 'developer' ? { in: [...developerDiscordIDs] } : { notIn: [...developerDiscordIDs] } }
+      : {}),
     ...(query.search
       ? {
           OR: [
@@ -250,7 +253,7 @@ export async function listAdminUsers(rawQuery: unknown): Promise<AdminListRespon
   const accepted = clamped(query, total)
   const rows = await prisma.gm_user.findMany({
     where,
-    select: { id: true, username: true, steam: true, rank: true, createdAt: true, updatedAt: true },
+    select: { id: true, username: true, steam: true, createdAt: true, updatedAt: true },
     skip: accepted.offset,
     take: accepted.limit,
     orderBy: [{ [accepted.sort]: accepted.orderBy.toLowerCase() }, { id: 'asc' }],
@@ -278,7 +281,7 @@ export async function listAdminUsers(rawQuery: unknown): Promise<AdminListRespon
         id: row.id,
         username: row.username || '',
         steamID64: row.steam || null,
-        rank: row.rank,
+        rank: getPlatformRank(row.id),
         createdAt: iso(row.createdAt),
         updatedAt: iso(row.updatedAt),
         lastSeenAt: seen ? new Date(seen).toISOString() : null,

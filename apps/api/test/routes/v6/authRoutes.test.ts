@@ -192,10 +192,10 @@ describe('v6 browser authentication contract', () => {
   })
 
   it('validates delegation targets and remaining actor lifetime before creating credentials', async () => {
-    mocks.user.mockResolvedValue({ id: '123', rank: 'developer' })
-    expect((await post('/impersonations', { discordID: '123' })).status).toBe(400)
+    current = { ...current, discordID: '333650866747867137' }
+    expect((await post('/impersonations', { discordID: '333650866747867137' })).status).toBe(400)
     expect((await post('/impersonations', { discordID: 'arbitrary' })).status).toBe(400)
-    mocks.user.mockResolvedValueOnce({ id: '123', rank: 'developer' }).mockResolvedValueOnce(null)
+    mocks.user.mockResolvedValueOnce(null)
     expect((await post('/impersonations', { discordID: '456' })).status).toBe(404)
     current = { ...current, expiresAt: new Date(0) }
     expect((await post('/impersonations', { discordID: '456' })).status).toBe(401)
@@ -289,23 +289,38 @@ describe('v6 browser authentication contract', () => {
     expect(mocks.ticket).toHaveBeenCalledWith(current)
   })
 
+  it('does not accept a stored developer rank for an unlisted account', async () => {
+    mocks.user.mockResolvedValue({ id: '123', rank: 'developer' })
+    expect((await post('/impersonations', { discordID: '456' })).status).toBe(403)
+    const response = await request(app()).get('/v6/auth/session')
+    expect(response.body.user.rank).toBe('user')
+    expect(mocks.create).not.toHaveBeenCalled()
+  })
+
   it('requires developer access for a delegated session and never reuses a target bearer', async () => {
     expect((await post('/impersonations', { discordID: '456' })).status).toBe(403)
+    current = { ...current, discordID: '333650866747867137' }
     mocks.user.mockImplementation(async ({ where }) => ({
       id: where.id,
       username: 'Name',
       rank: where.id === '123' ? 'developer' : 'user',
     }))
-    const delegated = { ...current, id: 'delegated', discordID: '456', actorDiscordID: '123', actorSessionID: id }
+    const delegated = {
+      ...current,
+      id: 'delegated',
+      discordID: '456',
+      actorDiscordID: '333650866747867137',
+      actorSessionID: id,
+    }
     mocks.create.mockResolvedValueOnce({ token: 'delegated-cookie', session: delegated })
     const response = await post('/impersonations', { discordID: '456' })
     expect(response.status).toBe(200)
-    expect(response.body.session).toMatchObject({ id: 'delegated', actorDiscordID: '123' })
+    expect(response.body.session).toMatchObject({ id: 'delegated', actorDiscordID: '333650866747867137' })
     expect(JSON.stringify(response.body)).not.toMatch(/delegated-cookie|presented-credential/)
     expect(mocks.create).toHaveBeenCalledWith(
       '456',
       expect.any(Object),
-      expect.objectContaining({ actorDiscordID: '123', actorSessionID: id }),
+      expect.objectContaining({ actorDiscordID: '333650866747867137', actorSessionID: id }),
     )
   })
 
@@ -323,12 +338,12 @@ describe('delegation recovery with real cookie, session and CSRF validation', ()
   const actorToken = 'actor-cookie-secret'
   const delegatedToken = 'delegated-cookie-secret'
   const otherActorToken = 'other-actor-cookie-secret'
-  const actor = (): Sessions.AuthSession => ({ ...session(), id: 'actor-session' })
+  const actor = (): Sessions.AuthSession => ({ ...session(), discordID: '333650866747867137', id: 'actor-session' })
   const delegated = (): Sessions.AuthSession => ({
     ...session(),
     id: 'delegated-session',
     discordID: '456',
-    actorDiscordID: '123',
+    actorDiscordID: '333650866747867137',
     actorSessionID: 'actor-session',
   })
   function row(auth: Sessions.AuthSession, token: string) {
@@ -427,7 +442,7 @@ describe('delegation recovery with real cookie, session and CSRF validation', ()
     const response = await recover().set('X-CSRF-Token', csrf(actorRow())).send({})
     expect(response.status).toBe(200)
     expect(response.body.session.id).toBe('actor-session')
-    expect(response.body.user.id).toBe('123')
+    expect(response.body.user.id).toBe('333650866747867137')
     expect(response.headers['set-cookie'][0]).toContain(`__Host-gmi_session=${actorToken};`)
     expect(response.headers['set-cookie'][1]).toContain('__Host-gmi_actor_session=;')
     expect(actorRow().revoke).toBe(false)
@@ -463,7 +478,7 @@ describe('delegation recovery with real cookie, session and CSRF validation', ()
   })
 
   it('refuses a delegation linked to another valid parent without changing either session', async () => {
-    const otherActor = row({ ...actor(), id: 'other-parent', discordID: '789' }, otherActorToken)
+    const otherActor = row({ ...actor(), id: 'other-parent' }, otherActorToken)
     rows.set(otherActor.id, otherActor)
     delegatedRow().actorSessionID = otherActor.id
     delegatedRow().actorDiscordID = otherActor.discordID

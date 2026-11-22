@@ -6,8 +6,9 @@ import {
   resolveRequestSession,
 } from '@gmod/domain-auth/authSessions.js'
 import prisma from '@gmod/infra-prisma'
+import { isDeveloper } from '@gmod/config/developers.js'
 
-/** Platform administration requires the operator's own live session and current database rank. */
+/** Platform administration requires an own live session and the root developer allowlist. */
 export async function adminSession(req: Request, res: Response, next: NextFunction) {
   res.setHeader('Cache-Control', 'no-store')
   assertTrustedOrigin(req)
@@ -20,12 +21,13 @@ export async function adminSession(req: Request, res: Response, next: NextFuncti
       'own_admin_session_required',
       'Return to your own account to administer the platform.',
     )
+  if (!isDeveloper(session.discordID))
+    throw new AuthSessionError(403, 'forbidden', 'Platform administrator access is required.')
   const operator = await prisma.gm_user.findFirst({
     where: { id: session.discordID },
-    select: { id: true, rank: true },
+    select: { id: true },
   })
-  if (operator?.rank !== 'developer')
-    throw new AuthSessionError(403, 'forbidden', 'Platform administrator access is required.')
+  if (!operator) throw new AuthSessionError(403, 'forbidden', 'Platform administrator access is required.')
   req.authSession = session
   next()
 }

@@ -1,6 +1,7 @@
 import express, { type Request, type Response, type NextFunction } from 'express'
 import { z } from 'zod'
 import prisma from '@gmod/infra-prisma'
+import { getPlatformRank, isDeveloper } from '@gmod/config/developers.js'
 import { getDiscordProfile } from '@gmod/core/models/discordProfile.js'
 import {
   actorCookieName,
@@ -61,7 +62,7 @@ async function snapshot(session: AuthSession) {
     user: {
       id: session.discordID,
       username: user.username || '',
-      rank: user.rank || 'user',
+      rank: getPlatformRank(session.discordID),
       globalName: profile.globalName || user.username || '',
       displayName: profile.displayName || user.username || '',
       avatarURL: profile.avatarURL,
@@ -194,8 +195,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const actor = req.authSession!
     ownSession(actor)
-    const operator = await prisma.gm_user.findFirst({ where: { id: actor.discordID } })
-    if (operator?.rank !== 'developer') throw new AuthSessionError(403, 'forbidden', 'Developer access is required.')
+    if (!isDeveloper(actor.discordID)) throw new AuthSessionError(403, 'forbidden', 'Developer access is required.')
     const input = z
       .object({ discordID: z.string().regex(/^\d{1,255}$/) })
       .strict()

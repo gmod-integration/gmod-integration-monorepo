@@ -1,12 +1,9 @@
 import prisma from '@gmod/infra-prisma'
+import { isDeveloper } from '@gmod/config/developers.js'
 import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 import { revokeApplicationSession } from '@gmod/domain-auth/authSessions.js'
 import { gmLog } from '@gmod/shared/logger.js'
-import {
-  AdminIDSchema,
-  AdminRankChangeSchema,
-  AdminRevokeSessionsSchema,
-} from '@gmod/schema/admin/AdminDashboardSchema.js'
+import { AdminIDSchema, AdminRevokeSessionsSchema } from '@gmod/schema/admin/AdminDashboardSchema.js'
 
 export class AdminUserActionError extends Error {
   constructor(
@@ -32,50 +29,12 @@ async function targetAccount(actorID: string, targetID: string) {
   if (await isErasureBlocked(targetID)) throw missing()
 }
 
-export async function changeAdminUserRank(actorID: string, targetID: string, body: unknown) {
-  const input = AdminRankChangeSchema.safeParse(body)
-  if (!input.success) throw invalid()
-  await targetAccount(actorID, targetID)
-  const result = await prisma.$transaction(async (tx) => {
-    // Lock the developer set and both identities in a stable order. Concurrent administrators cannot
-    // demote one another using ranks that were read before the first transaction committed.
-    const accounts = await tx.$queryRaw<{ id: string; rank: string }[]>`
-      SELECT id, rank FROM gm_user
-      WHERE rank = 'developer' OR id = ${actorID} OR id = ${targetID}
-      ORDER BY id FOR UPDATE
-    `
-    if (accounts.find((account) => account.id === actorID)?.rank !== 'developer') throw denied()
-    const target = accounts.find((account) => account.id === targetID)
-    if (!target) throw missing()
-    if (target.rank === input.data.rank) return { changed: false, rank: target.rank }
-    if (target.rank === 'developer' && accounts.filter((account) => account.rank === 'developer').length < 2)
-      throw new AdminUserActionError(409, 'last_administrator', 'The last platform administrator must be retained.')
-    await tx.gm_user.update({ where: { id: targetID }, data: { rank: input.data.rank } })
-    return { changed: true, rank: input.data.rank }
-  })
-  gmLog(
-    'admin',
-    JSON.stringify({
-      action: 'user_rank_changed',
-      actor: actorID,
-      target: targetID,
-      rank: result.rank,
-      changed: result.changed,
-      reason: input.data.reason,
-    }),
-  )
-  return result
-}
-
 export async function revokeAdminUserSessions(actorID: string, targetID: string, body: unknown) {
   const input = AdminRevokeSessionsSchema.safeParse(body)
   if (!input.success || input.data.confirm !== targetID) throw invalid()
   await targetAccount(actorID, targetID)
-  const [actor, target] = await Promise.all([
-    prisma.gm_user.findFirst({ where: { id: actorID }, select: { rank: true } }),
-    prisma.gm_user.findFirst({ where: { id: targetID }, select: { id: true } }),
-  ])
-  if (actor?.rank !== 'developer') throw denied()
+  if (!isDeveloper(actorID)) throw denied()
+  const target = await prisma.gm_user.findFirst({ where: { id: targetID }, select: { id: true } })
   if (!target) throw missing()
   if (target.id === actorID)
     throw new AdminUserActionError(403, 'own_account_protected', 'Manage your own account from Account settings.')

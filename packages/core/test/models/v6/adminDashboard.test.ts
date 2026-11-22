@@ -243,6 +243,20 @@ describe('platform administration projections and bounded lists', () => {
     expect(mocks.cache).toHaveBeenCalledExactlyOnceWith('gmi:auth:profile:123')
     expect(JSON.stringify(result)).not.toContain('secret')
   })
+  it('derives displayed roles from the static allowlist instead of stored ranks', async () => {
+    mocks.userList.mockResolvedValueOnce([
+      { id: '333650866747867137', username: 'Owner', steam: null, rank: 'user', createdAt: date, updatedAt: date },
+      { id: 'unlisted', username: 'Other', steam: null, rank: 'developer', createdAt: date, updatedAt: date },
+    ])
+    const result = await listAdminUsers({ rank: 'developer' })
+    expect(result.items.map((user) => user.rank)).toEqual(['developer', 'user'])
+    expect(mocks.userList.mock.calls[0][0].where).toEqual({ id: { in: ['333650866747867137'] } })
+    expect(mocks.userList.mock.calls[0][0].select.rank).toBeUndefined()
+  })
+  it('filters regular accounts using the allowlist rather than database role values', async () => {
+    await listAdminUsers({ rank: 'user' })
+    expect(mocks.userList.mock.calls[0][0].where).toEqual({ id: { notIn: ['333650866747867137'] } })
+  })
   it('does not resolve profiles or query all sessions for an empty user page', async () => {
     expect((await listAdminUsers({})).items).toEqual([])
     expect(mocks.sessionGroups).not.toHaveBeenCalled()

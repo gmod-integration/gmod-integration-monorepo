@@ -5,7 +5,6 @@ import {
   AdminIDSchema,
   AdminPremiumListQuerySchema,
   AdminPremiumUpdateSchema,
-  AdminRankChangeSchema,
   AdminRevokeSessionsSchema,
   AdminServerCommandSchema,
   AdminServerListQuerySchema,
@@ -107,15 +106,6 @@ router.put(
     const result = await (await models()).updateAdminPremium(id, input)
     audit(input.enabled ? 'premium_grant_added' : 'premium_grant_removed', req.authSession!.discordID, id, input.reason)
     res.json(result)
-  }),
-)
-router.put(
-  '/users/:userID/rank',
-  asyncHandler(async (req, res) => {
-    const id = parse(AdminIDSchema, req.params.userID)
-    const input = parse(AdminRankChangeSchema, req.body)
-    const { changeAdminUserRank } = await import('@gmod/core/models/v6/adminUserManagement.js')
-    res.json(await changeAdminUserRank(req.authSession!.discordID, id, input))
   }),
 )
 router.post(

@@ -183,19 +183,36 @@ describe('application session identity and lifetime', () => {
     expect(updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { revoke: true } }))
   })
 
+  it('refuses existing delegated sessions after their operator is absent from the static allowlist', async () => {
+    findFirst.mockResolvedValueOnce(
+      row({ id: 'delegated', discordID: 'target', actorDiscordID: 'former-developer', actorSessionID: 'parent' }),
+    )
+    expect(await validateApplicationSession('delegated')).toBeNull()
+    expect(findFirst).toHaveBeenCalledOnce()
+  })
+
+  it('refuses creating a support session for an unlisted operator before storing credentials', async () => {
+    await expect(
+      createApplicationSession('target', {}, { actorDiscordID: 'former-developer', actorSessionID: 'parent' }),
+    ).rejects.toMatchObject({ status: 403 })
+    expect(create).not.toHaveBeenCalled()
+  })
+
   it('requires a live matching actor session for delegation', async () => {
     const delegated = row({
       id: 'delegated',
       discordID: 'target',
-      actorDiscordID: 'operator',
+      actorDiscordID: '333650866747867137',
       actorSessionID: 'parent',
     })
     findFirst
       .mockResolvedValueOnce(delegated)
-      .mockResolvedValueOnce(row({ id: 'parent', discordID: 'operator', revoke: true }))
+      .mockResolvedValueOnce(row({ id: 'parent', discordID: '333650866747867137', revoke: true }))
     expect(await validateApplicationSession('delegated')).toBeNull()
-    findFirst.mockResolvedValueOnce(delegated).mockResolvedValueOnce(row({ id: 'parent', discordID: 'operator' }))
-    expect(await validateApplicationSession('delegated')).toMatchObject({ actorDiscordID: 'operator' })
+    findFirst
+      .mockResolvedValueOnce(delegated)
+      .mockResolvedValueOnce(row({ id: 'parent', discordID: '333650866747867137' }))
+    expect(await validateApplicationSession('delegated')).toMatchObject({ actorDiscordID: '333650866747867137' })
   })
 })
 

@@ -1,4 +1,5 @@
 import prisma from '@gmod/infra-prisma'
+import { getPlatformRank, isDeveloper } from '@gmod/config/developers.js'
 import { isErasureBlocked } from './privacy.js'
 
 export class User {
@@ -11,19 +12,18 @@ export class User {
   constructor({
     steamID64,
     discordID,
-    rank,
     lastVerification,
     trustLevel,
   }: {
     steamID64: string | null
     discordID: string
-    rank: string
+    rank?: string
     lastVerification: Date | null
     trustLevel: number
   }) {
     this.steamID64 = steamID64
     this.discordID = discordID
-    this.rank = rank
+    this.rank = getPlatformRank(discordID)
     this.lastVerification = lastVerification
     this.trustLevel = trustLevel
   }
@@ -37,7 +37,7 @@ export class User {
   }
 
   isDeveloper() {
-    return this.rank === 'developer'
+    return isDeveloper(this.discordID)
   }
 }
 

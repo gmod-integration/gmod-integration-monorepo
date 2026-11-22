@@ -17,15 +17,24 @@ describe('User', () => {
     expect(user.getSteamID64()).toBe('765')
   })
 
-  it('isDeveloper() is true only for rank "developer"', () => {
+  it('isDeveloper() depends only on the root allowlist, never a stored rank', () => {
     const dev = new User({
+      steamID64: null,
+      discordID: '333650866747867137',
+      rank: 'user',
+      lastVerification: null,
+      trustLevel: 50,
+    })
+    const notDev = new User({
       steamID64: null,
       discordID: 'd1',
       rank: 'developer',
       lastVerification: null,
       trustLevel: 50,
     })
-    const notDev = new User({ steamID64: null, discordID: 'd1', rank: 'user', lastVerification: null, trustLevel: 50 })
+    expect(dev.rank).toBe('developer')
+    expect(notDev.rank).toBe('user')
+    notDev.rank = 'developer'
     expect(dev.isDeveloper()).toBe(true)
     expect(notDev.isDeveloper()).toBe(false)
   })
