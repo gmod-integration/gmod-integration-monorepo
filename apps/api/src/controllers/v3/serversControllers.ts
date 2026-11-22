@@ -52,7 +52,8 @@ export async function serverStop(req: Request, res: Response) {
 }
 
 export async function getInfo(req: Request, res: Response) {
-  return res.status(200).json(req.server)
+  const server = req.server!
+  return res.status(200).json({ id: server.id, name: server.name, guild: server.guild })
 }
 
 export async function getPublicToken(req: Request, res: Response) {
