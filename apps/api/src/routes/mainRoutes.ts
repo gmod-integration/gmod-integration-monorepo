@@ -63,7 +63,17 @@ router.get('/screenshots/:filename', async (req, res) => {
 
     const response = await s3.send(command)
 
-    res.setHeader('Content-Type', response.ContentType || 'image/jpeg')
+    const contentType =
+      response.ContentType ||
+      (/\.(?:jpeg|jpg)$/i.test(filename) ? 'image/jpeg' : /\.png$/i.test(filename) ? 'image/png' : '')
+    if (contentType !== 'image/jpeg' && contentType !== 'image/png') {
+      if (response.Body instanceof Readable) response.Body.destroy()
+      res.setHeader('Cache-Control', 'no-store')
+      return res.status(404).send('Screenshot not found')
+    }
+    res.setHeader('Content-Type', contentType)
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox")
+    res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('Cache-Control', 'public, max-age=3600')
     res.status(200)
 

@@ -43,7 +43,8 @@ export async function saveScreenshot(
   title: string | undefined,
 ) {
   await assertPersonalDataAllowed(undefined, player.steamID64)
-  const format = captureData.format || 'jpeg'
+  const format = captureData?.format || 'jpeg'
+  if (format !== 'jpeg' && format !== 'png') throw new Error('Unsupported screenshot format.')
   const dateFormatted = new Date().toISOString().replace(/T/g, '_').replace(/\..+/, '').replace(/:/g, '-')
   const filename = `${dateFormatted}_${player.steamID64}_${randomUUID()}.${format}`
 

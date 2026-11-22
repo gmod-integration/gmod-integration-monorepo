@@ -85,6 +85,17 @@ describe('clientsModels', () => {
   })
 
   describe('saveScreenshot', () => {
+    it.each(['svg+xml', 'html', '../png'])(
+      'refuses unsupported formats before uploading or recording them: %s',
+      async (format) => {
+        await expect(saveScreenshot('AAAA', { format }, fakePlayer, makeServer(), 'Capture')).rejects.toThrow(
+          'Unsupported screenshot format',
+        )
+        expect(s3SendMock).not.toHaveBeenCalled()
+        expect(prismaMock.gm_server_screenshots.create).not.toHaveBeenCalled()
+      },
+    )
+
     it('removes an upload that finishes after erasure starts instead of publishing or registering it', async () => {
       isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
       s3SendMock.mockResolvedValue({})

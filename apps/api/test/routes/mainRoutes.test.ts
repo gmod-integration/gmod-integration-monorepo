@@ -77,11 +77,26 @@ describe('mainRoutes', () => {
   })
 
   describe('GET /screenshots/:filename', () => {
+    it.each(['image/svg+xml', 'text/html', 'application/octet-stream'])(
+      'refuses a non-raster stored content type: %s',
+      async (contentType) => {
+        const body = Readable.from(['unsupported content'])
+        s3SendMock.mockResolvedValueOnce({ ContentType: contentType, Body: body })
+        const response = await request(makeApp()).get('/screenshots/file1.jpeg')
+        expect(response.status).toBe(404)
+        expect(response.headers['cache-control']).toBe('no-store')
+        expect(response.text).not.toContain('unsupported content')
+        expect(body.destroyed).toBe(true)
+      },
+    )
+
     it('streams the screenshot body on success', async () => {
       s3SendMock.mockResolvedValueOnce({ ContentType: 'image/jpeg', Body: Readable.from(['screenshot-bytes']) })
       const response = await request(makeApp()).get('/screenshots/file1.jpeg')
       expect(response.status).toBe(200)
       expect(response.body.toString()).toBe('screenshot-bytes')
+      expect(response.headers['content-security-policy']).toBe("default-src 'none'; sandbox")
+      expect(response.headers['x-content-type-options']).toBe('nosniff')
     })
 
     it('defaults the content type when none is returned', async () => {
