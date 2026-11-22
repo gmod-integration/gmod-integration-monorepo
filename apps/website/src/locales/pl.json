@@ -276,6 +276,111 @@
         "title": "Base de données des lecteurs",
         "description": "Voir tous les joueurs qui ont rejoint votre serveur, vous pouvez voir leur nom, steam id, discord id, date de jointure, date de la dernière jointure, temps total passé sur votre serveur, avertissements totaux, bans total ect... Vous pouvez également rechercher un lecteur par nom, steam id ou discord id."
       }
+    },
+    "catalog": {
+      "eyebrow": "Więcej niż most czatu",
+      "title": "Jedna społeczność. Wszystkie połączenia.",
+      "description": "Od pierwszego połączenia gracza po kolejne zgłoszenie błędu — połącz działanie gry i Discorda.",
+      "documentation": "Czytaj poradniki",
+      "explore": "Poznaj funkcje",
+      "all": "Wszystkie funkcje",
+      "availability": "Niektóre funkcje wymagają Premium, zakupu w GmodStore lub zgodnego dodatku. Limity zależą od planu.",
+      "compare_plans": "Porównaj plany",
+      "groups": {
+        "status": {
+          "title": "Status serwera",
+          "intro": "Pokaż społeczności, co dzieje się w grze, bezpośrednio na Discordzie.",
+          "one": "Połączenie, liczba graczy, mapa i tryb gry",
+          "two": "Własne wiadomości o statusie i interaktywne przyciski",
+          "three": "Podgląd wiadomości przed publikacją",
+          "four": "Wykresy aktywności graczy"
+        },
+        "chat": {
+          "title": "Czat i zrzuty ekranu",
+          "intro": "Udostępniaj rozmowy i wyjątkowe chwile między grą a Discordem.",
+          "one": "Czat gry na wybranym kanale Discorda",
+          "two": "Wiadomości z Discorda do gry i filtry",
+          "three": "Zrzuty ekranu graczy z tytułem i szczegółami",
+          "four": "Galeria zrzutów i udostępnianie na Discordzie"
+        },
+        "accounts": {
+          "title": "Połączone konta",
+          "intro": "Rozpoznawaj graczy i witaj nowych członków społeczności.",
+          "one": "Połączone profile Steam i Discord",
+          "two": "Wiadomości weryfikacyjne i reguły ról",
+          "three": "Automatyczne role po dołączeniu do Discorda",
+          "four": "Opcjonalne przypomnienia o weryfikacji i preferencje członków"
+        },
+        "sync": {
+          "title": "Role i pseudonimy",
+          "intro": "Połącz tożsamości w grze i role Discorda według własnych zasad.",
+          "one": "Grupy graczy połączone z rolami Discorda",
+          "two": "Role Discorda dla zawodów lub drużyn w grze",
+          "three": "Reguły pseudonimów, prefiksy, sufiksy i formaty",
+          "four": "Opcjonalna synchronizacja ról i nazw z Discorda do gry"
+        },
+        "players": {
+          "title": "Gracze i aktywność",
+          "intro": "Znajdź graczy z poszczególnych sesji i śledź ich postępy.",
+          "one": "Historia graczy, czas gry i liczba połączeń",
+          "two": "Statystyki graczy, zabójstwa i zgony",
+          "three": "Wykresy aktywności i czasu w zawodach",
+          "four": "Rankingi i obsługiwane własne statystyki"
+        },
+        "moderation": {
+          "title": "Moderacja i dostęp",
+          "intro": "Decyduj, kto może grać, i miej dane moderacji pod ręką.",
+          "one": "Bany między platformami i kontrole przy wejściu",
+          "two": "Historia ostrzeżeń AWarn3 z administratorem i powodem",
+          "three": "Tryb konserwacji z dostępem dla wybranych graczy",
+          "four": "Wymagane powiązanie kont, gałąź klienta i kontrola Family Sharing"
+        },
+        "diagnostics": {
+          "title": "Logi i diagnostyka",
+          "intro": "Zachowaj kontekst zdarzeń na swoim serwerze.",
+          "one": "Logi zdarzeń gry i kanały docelowe Discorda",
+          "two": "Akcje zdarzeń z własnymi warunkami",
+          "three": "Błędy Lua z czasem i śladem stosu",
+          "four": "Zgłoszenia błędów z gry z krokami i zrzutami ekranu"
+        },
+        "community": {
+          "title": "Narzędzia społeczności",
+          "intro": "Zarządzaj serwerem i nadaj społeczności własny charakter.",
+          "one": "Linki społeczności i publiczny ranking serwerów",
+          "two": "Głosy na serwer i powiadomienia na Discordzie",
+          "three": "Polecenia konsoli RCON kontrolowane uprawnieniami",
+          "four": "Własny profil i aktywność bota"
+        }
+      }
+    },
+    "presentation": {
+      "style_label": "Wygląd",
+      "hero_label": "Sekcja główna",
+      "stats_label": "Statystyki",
+      "panorama": "Panorama",
+      "console": "Konsola",
+      "editorial": "Redakcyjny",
+      "ribbon": "Pasek",
+      "spotlight": "Duże liczby",
+      "ledger": "Rejestr",
+      "headline_first": "Twój serwer.",
+      "headline_second": "Twoja społeczność.",
+      "headline_accent": "Połączone.",
+      "discover": "Poznaj funkcje",
+      "preview_label": "Spojrzenie na twój Discord",
+      "preview_caption": "Przykład integracji w twojej społeczności.",
+      "community_kicker": "W społeczności",
+      "community_title": "Połączeni w liczbach.",
+      "community_note": "Łączne wartości zapisane w Gmod Integration.",
+      "metric_guild": "Społeczności Discorda",
+      "metric_guild_detail": "Zarejestrowane społeczności",
+      "metric_server": "Serwery gry",
+      "metric_server_detail": "Zarejestrowane serwery",
+      "metric_verified": "Połączone konta",
+      "metric_verified_detail": "Steam połączony z Discordem",
+      "closing_kicker": "Z twojego serwera na twój Discord",
+      "closing_title": "Połącz swoją społeczność.",
+      "closing_description": "Skorzystaj z poradnika instalacji, połącz serwer i wybierz funkcje potrzebne twojej społeczności."
     }
   },
   "dashboard": {

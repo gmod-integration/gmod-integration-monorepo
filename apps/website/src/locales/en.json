@@ -328,6 +328,111 @@
         "title": "Player Database",
         "description": "Find players recorded by your game server and view their Steam ID, linked Discord account and available activity information. This list includes previous players, not just those currently online."
       }
+    },
+    "catalog": {
+      "eyebrow": "More than a chat bridge",
+      "title": "One community. All the connections.",
+      "description": "From a player’s first connection to the next bug report, keep your game and Discord working together.",
+      "documentation": "Read the guides",
+      "explore": "Explore features",
+      "all": "All features",
+      "availability": "Some features require Premium, a GmodStore purchase or a compatible addon. Limits depend on your plan.",
+      "compare_plans": "Compare plans",
+      "groups": {
+        "status": {
+          "title": "Server status",
+          "intro": "Give your community a window into the game, directly in Discord.",
+          "one": "Connection, player count, map and game mode",
+          "two": "Custom status messages and interactive buttons",
+          "three": "Preview your status message before publishing",
+          "four": "Player activity charts"
+        },
+        "chat": {
+          "title": "Chat & screenshots",
+          "intro": "Keep conversations and memorable moments moving between both worlds.",
+          "one": "Game chat sent to your chosen Discord channel",
+          "two": "Discord-to-game relay and message filters",
+          "three": "Player screenshots with titles and capture details",
+          "four": "Screenshot gallery and Discord sharing"
+        },
+        "accounts": {
+          "title": "Linked accounts",
+          "intro": "Recognize your players and welcome new community members.",
+          "one": "Linked Steam and Discord profiles",
+          "two": "Verification messages and role rules",
+          "three": "Automatic roles when members join Discord",
+          "four": "Optional verification reminders and member preferences"
+        },
+        "sync": {
+          "title": "Roles & nicknames",
+          "intro": "Let game identities and Discord roles follow the rules you choose.",
+          "one": "Game usergroups connected to Discord roles",
+          "two": "Discord roles for in-game jobs or teams",
+          "three": "Nickname rules, prefixes, suffixes and custom formats",
+          "four": "Optional Discord-to-game role and nickname sync"
+        },
+        "players": {
+          "title": "Players & activity",
+          "intro": "Find the people behind the sessions and follow their progress.",
+          "one": "Player history, playtime and connection counts",
+          "two": "Player statistics, kills and deaths",
+          "three": "Activity and time-per-job charts",
+          "four": "Leaderboards and supported custom statistics"
+        },
+        "moderation": {
+          "title": "Moderation & access",
+          "intro": "Decide who can play and keep moderation records within reach.",
+          "one": "Cross-platform ban records and entry checks",
+          "two": "AWarn3 warning history with administrator and reason",
+          "three": "Maintenance mode with per-player access",
+          "four": "Required account links, client branch and Family Sharing checks"
+        },
+        "diagnostics": {
+          "title": "Logs & diagnostics",
+          "intro": "Keep the context you need when something happens on the server.",
+          "one": "Game-event logs and Discord destinations",
+          "two": "Event actions with conditions you define",
+          "three": "Lua errors with timestamps and stack traces",
+          "four": "In-game bug reports with steps and screenshots"
+        },
+        "community": {
+          "title": "Community tools",
+          "intro": "Manage your server and give your community its own identity.",
+          "one": "Community links and public server rankings",
+          "two": "Server votes and Discord vote notifications",
+          "three": "Permission-controlled console commands with RCON",
+          "four": "Custom bot profile and activity"
+        }
+      }
+    },
+    "presentation": {
+      "style_label": "Appearance",
+      "hero_label": "Hero",
+      "stats_label": "Statistics",
+      "panorama": "Panorama",
+      "console": "Console",
+      "editorial": "Editorial",
+      "ribbon": "Ribbon",
+      "spotlight": "Big numbers",
+      "ledger": "Register",
+      "headline_first": "Your server.",
+      "headline_second": "Your community.",
+      "headline_accent": "Connected.",
+      "discover": "Explore the features",
+      "preview_label": "A glimpse of your Discord",
+      "preview_caption": "Example of the integration in your community.",
+      "community_kicker": "Across the community",
+      "community_title": "Connected, in numbers.",
+      "community_note": "Totals recorded on Gmod Integration.",
+      "metric_guild": "Discord communities",
+      "metric_guild_detail": "Registered communities",
+      "metric_server": "Game servers",
+      "metric_server_detail": "Registered servers",
+      "metric_verified": "Linked accounts",
+      "metric_verified_detail": "Steam connected to Discord",
+      "closing_kicker": "From your server to your Discord",
+      "closing_title": "Bring your community together.",
+      "closing_description": "Follow the setup guide, connect your server and choose the features that work for your community."
     }
   },
   "dashboard": {

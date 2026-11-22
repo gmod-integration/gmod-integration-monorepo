@@ -276,6 +276,111 @@
         "title": "Base de données des lecteurs",
         "description": "Voir tous les joueurs qui ont rejoint votre serveur, vous pouvez voir leur nom, steam id, discord id, date de jointure, date de la dernière jointure, temps total passé sur votre serveur, avertissements totaux, bans total ect... Vous pouvez également rechercher un lecteur par nom, steam id ou discord id."
       }
+    },
+    "catalog": {
+      "eyebrow": "Bir sohbet köprüsünden fazlası",
+      "title": "Tek topluluk. Tüm bağlantılar.",
+      "description": "Oyuncunun ilk bağlantısından sonraki hata raporuna kadar oyun ve Discord’un birlikte çalışmasını sağlayın.",
+      "documentation": "Rehberleri okuyun",
+      "explore": "Özellikleri keşfedin",
+      "all": "Tüm özellikler",
+      "availability": "Bazı özellikler Premium, GmodStore satın alımı veya uyumlu bir eklenti gerektirir. Sınırlar planınıza bağlıdır.",
+      "compare_plans": "Planları karşılaştırın",
+      "groups": {
+        "status": {
+          "title": "Sunucu durumu",
+          "intro": "Topluluğunuza oyunda neler olduğunu doğrudan Discord’da gösterin.",
+          "one": "Bağlantı, oyuncu sayısı, harita ve oyun modu",
+          "two": "Özel durum mesajları ve etkileşimli düğmeler",
+          "three": "Yayımlamadan önce durum mesajını önizleyin",
+          "four": "Oyuncu etkinlik grafikleri"
+        },
+        "chat": {
+          "title": "Sohbet ve görüntüler",
+          "intro": "Sohbetleri ve güzel anları oyun ile Discord arasında paylaşın.",
+          "one": "Oyun sohbetini seçilen Discord kanalına gönderme",
+          "two": "Discord’dan oyuna aktarım ve mesaj filtreleri",
+          "three": "Başlık ve çekim bilgileriyle oyuncu ekran görüntüleri",
+          "four": "Ekran görüntüsü galerisi ve Discord’da paylaşım"
+        },
+        "accounts": {
+          "title": "Bağlı hesaplar",
+          "intro": "Oyuncularınızı tanıyın ve yeni topluluk üyelerini karşılayın.",
+          "one": "Bağlı Steam ve Discord profilleri",
+          "two": "Doğrulama mesajları ve rol kuralları",
+          "three": "Discord’a katılan üyelere otomatik roller",
+          "four": "İsteğe bağlı doğrulama hatırlatmaları ve üye tercihleri"
+        },
+        "sync": {
+          "title": "Roller ve takma adlar",
+          "intro": "Oyundaki kimlikleri ve Discord rollerini kendi kurallarınızla bağlayın.",
+          "one": "Oyun gruplarını Discord rollerine bağlama",
+          "two": "Oyun içi meslekler veya takımlar için Discord rolleri",
+          "three": "Takma ad kuralları, önekler, sonekler ve biçimler",
+          "four": "Discord’dan oyuna isteğe bağlı rol ve ad eşitleme"
+        },
+        "players": {
+          "title": "Oyuncular ve etkinlik",
+          "intro": "Oturumlardaki oyuncuları bulun ve gelişimlerini takip edin.",
+          "one": "Oyuncu geçmişi, oyun süresi ve bağlantı sayıları",
+          "two": "Oyuncu istatistikleri, öldürmeler ve ölümler",
+          "three": "Etkinlik ve meslek başına süre grafikleri",
+          "four": "Sıralamalar ve desteklenen özel istatistikler"
+        },
+        "moderation": {
+          "title": "Moderasyon ve erişim",
+          "intro": "Kimin oynayabileceğini belirleyin ve moderasyon kayıtlarını elinizin altında tutun.",
+          "one": "Platformlar arası yasak kayıtları ve giriş kontrolleri",
+          "two": "Yönetici ve gerekçeyle AWarn3 uyarı geçmişi",
+          "three": "Oyuncu bazında erişimli bakım modu",
+          "four": "Zorunlu hesap bağlantısı, istemci dalı ve Family Sharing kontrolleri"
+        },
+        "diagnostics": {
+          "title": "Günlükler ve tanılama",
+          "intro": "Sunucuda yaşanan olayların ayrıntılarını saklayın.",
+          "one": "Oyun olay günlükleri ve Discord hedefleri",
+          "two": "Belirlediğiniz koşullarla olay eylemleri",
+          "three": "Zaman damgası ve yığın izleriyle Lua hataları",
+          "four": "Adımlar ve ekran görüntüleriyle oyun içi hata raporları"
+        },
+        "community": {
+          "title": "Topluluk araçları",
+          "intro": "Sunucunuzu yönetin ve topluluğunuza kendi kimliğini kazandırın.",
+          "one": "Topluluk bağlantıları ve herkese açık sunucu sıralamaları",
+          "two": "Sunucu oyları ve Discord oy bildirimleri",
+          "three": "İzinlerle denetlenen RCON konsol komutları",
+          "four": "Özel bot profili ve etkinliği"
+        }
+      }
+    },
+    "presentation": {
+      "style_label": "Görünüm",
+      "hero_label": "Ana bölüm",
+      "stats_label": "İstatistikler",
+      "panorama": "Panorama",
+      "console": "Konsol",
+      "editorial": "Editoryal",
+      "ribbon": "Şerit",
+      "spotlight": "Büyük sayılar",
+      "ledger": "Kayıt",
+      "headline_first": "Sunucunuz.",
+      "headline_second": "Topluluğunuz.",
+      "headline_accent": "Birbirine bağlı.",
+      "discover": "Özellikleri keşfedin",
+      "preview_label": "Discord’unuza bir bakış",
+      "preview_caption": "Topluluğunuzdaki entegrasyondan bir örnek.",
+      "community_kicker": "Topluluk genelinde",
+      "community_title": "Sayılarla bağlantılar.",
+      "community_note": "Gmod Integration’da kaydedilen toplamlar.",
+      "metric_guild": "Discord toplulukları",
+      "metric_guild_detail": "Kayıtlı topluluklar",
+      "metric_server": "Oyun sunucuları",
+      "metric_server_detail": "Kayıtlı sunucular",
+      "metric_verified": "Bağlı hesaplar",
+      "metric_verified_detail": "Steam ve Discord bağlantısı",
+      "closing_kicker": "Sunucunuzdan Discord’unuza",
+      "closing_title": "Topluluğunuzu bir araya getirin.",
+      "closing_description": "Kurulum rehberini izleyin, sunucunuzu bağlayın ve topluluğunuz için uygun özellikleri seçin."
     }
   },
   "dashboard": {

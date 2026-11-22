@@ -276,6 +276,111 @@
         "title": "Spelersdatabase",
         "description": "Bekijk alle spelers die zich bij uw server hebben aangesloten, u kunt hun naam, stoom-id, discord-id, join-datum, laatste join-datum, totale tijd die op uw server, totale waarschuwingen, totale verbod ect... U kunt ook zoeken naar een speler op naam, stoom-id of discord-id."
       }
+    },
+    "catalog": {
+      "eyebrow": "Meer dan een chatbrug",
+      "title": "Eén community. Alle verbindingen.",
+      "description": "Van de eerste verbinding van een speler tot de volgende bugmelding: laat je game en Discord samenwerken.",
+      "documentation": "Lees de handleidingen",
+      "explore": "Ontdek de functies",
+      "all": "Alle functies",
+      "availability": "Sommige functies vereisen Premium, een GmodStore-aankoop of een compatibele addon. Limieten hangen af van je abonnement.",
+      "compare_plans": "Vergelijk abonnementen",
+      "groups": {
+        "status": {
+          "title": "Serverstatus",
+          "intro": "Laat je community rechtstreeks in Discord zien wat er in de game gebeurt.",
+          "one": "Verbinding, spelersaantal, map en spelmodus",
+          "two": "Eigen statusberichten en interactieve knoppen",
+          "three": "Bekijk statusberichten voordat je ze publiceert",
+          "four": "Grafieken van spelersactiviteit"
+        },
+        "chat": {
+          "title": "Chat & screenshots",
+          "intro": "Deel gesprekken en bijzondere momenten tussen beide werelden.",
+          "one": "Gamechat in het gekozen Discord-kanaal",
+          "two": "Berichten van Discord naar de game en berichtfilters",
+          "three": "Screenshots van spelers met titel en opnamedetails",
+          "four": "Screenshotgalerij en delen op Discord"
+        },
+        "accounts": {
+          "title": "Gekoppelde accounts",
+          "intro": "Herken je spelers en verwelkom nieuwe communityleden.",
+          "one": "Gekoppelde Steam- en Discord-profielen",
+          "two": "Verificatieberichten en rolregels",
+          "three": "Automatische rollen bij toetreden tot Discord",
+          "four": "Optionele verificatieherinneringen en ledenvoorkeuren"
+        },
+        "sync": {
+          "title": "Rollen & bijnamen",
+          "intro": "Verbind game-identiteiten en Discord-rollen volgens jouw regels.",
+          "one": "Spelersgroepen gekoppeld aan Discord-rollen",
+          "two": "Discord-rollen voor beroepen of teams in de game",
+          "three": "Bijnaamregels, voorvoegsels, achtervoegsels en formaten",
+          "four": "Optionele rol- en naamsynchronisatie van Discord naar de game"
+        },
+        "players": {
+          "title": "Spelers & activiteit",
+          "intro": "Vind de spelers achter elke sessie en volg hun voortgang.",
+          "one": "Spelershistorie, speeltijd en verbindingen",
+          "two": "Spelersstatistieken, kills en sterfgevallen",
+          "three": "Grafieken van activiteit en tijd per beroep",
+          "four": "Ranglijsten en ondersteunde eigen statistieken"
+        },
+        "moderation": {
+          "title": "Moderatie & toegang",
+          "intro": "Bepaal wie kan spelen en houd moderatiegegevens binnen handbereik.",
+          "one": "Banregistraties tussen platforms en toegangscontroles",
+          "two": "AWarn3-waarschuwingen met beheerder en reden",
+          "three": "Onderhoudsmodus met toegang per speler",
+          "four": "Verplichte accountkoppeling, clientversie en Family Sharing-controles"
+        },
+        "diagnostics": {
+          "title": "Logs & diagnose",
+          "intro": "Bewaar de context wanneer er iets op je server gebeurt.",
+          "one": "Logs van gamegebeurtenissen en Discord-bestemmingen",
+          "two": "Gebeurtenisacties met eigen voorwaarden",
+          "three": "Lua-fouten met tijdstempels en stacktraces",
+          "four": "Bugmeldingen vanuit de game met stappen en screenshots"
+        },
+        "community": {
+          "title": "Communitytools",
+          "intro": "Beheer je server en geef je community een eigen identiteit.",
+          "one": "Communitylinks en openbare serverranglijst",
+          "two": "Serverstemmen en meldingen in Discord",
+          "three": "RCON-consoleopdrachten op basis van rechten",
+          "four": "Aangepast botprofiel en activiteit"
+        }
+      }
+    },
+    "presentation": {
+      "style_label": "Weergave",
+      "hero_label": "Hoofdsectie",
+      "stats_label": "Statistieken",
+      "panorama": "Panorama",
+      "console": "Console",
+      "editorial": "Redactioneel",
+      "ribbon": "Strook",
+      "spotlight": "Grote getallen",
+      "ledger": "Register",
+      "headline_first": "Jouw server.",
+      "headline_second": "Jouw community.",
+      "headline_accent": "Verbonden.",
+      "discover": "Ontdek de functies",
+      "preview_label": "Een kijkje in jouw Discord",
+      "preview_caption": "Voorbeeld van de integratie in je community.",
+      "community_kicker": "Binnen de community",
+      "community_title": "Verbonden, in cijfers.",
+      "community_note": "Totalen geregistreerd bij Gmod Integration.",
+      "metric_guild": "Discord-community’s",
+      "metric_guild_detail": "Geregistreerde community’s",
+      "metric_server": "Gameservers",
+      "metric_server_detail": "Geregistreerde servers",
+      "metric_verified": "Gekoppelde accounts",
+      "metric_verified_detail": "Steam gekoppeld aan Discord",
+      "closing_kicker": "Van jouw server naar jouw Discord",
+      "closing_title": "Breng je community samen.",
+      "closing_description": "Volg de installatiehandleiding, verbind je server en kies de functies die bij je community passen."
     }
   },
   "dashboard": {

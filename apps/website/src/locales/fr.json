@@ -328,6 +328,111 @@
         "title": "Base de données des joueurs",
         "description": "Retrouvez les joueurs enregistrés par votre serveur de jeu, leur identifiant Steam, leur compte Discord associé et leur activité disponible. Cette liste comprend les anciens joueurs, pas seulement ceux qui sont en ligne."
       }
+    },
+    "catalog": {
+      "eyebrow": "Bien plus qu’un relais de chat",
+      "title": "Votre communauté, connectée.",
+      "description": "De la première connexion d’un joueur au prochain rapport de bug, faites fonctionner le jeu et Discord ensemble.",
+      "documentation": "Consulter les guides",
+      "explore": "Explorer les fonctionnalités",
+      "all": "Tout afficher",
+      "availability": "Certaines fonctions nécessitent Premium, un achat GmodStore ou un addon compatible. Les limites dépendent de votre offre.",
+      "compare_plans": "Comparer les offres",
+      "groups": {
+        "status": {
+          "title": "Statut du serveur",
+          "intro": "Donnez une vue sur le jeu à votre communauté, directement dans Discord.",
+          "one": "Connexion, nombre de joueurs, carte et mode de jeu",
+          "two": "Messages de statut personnalisés et boutons interactifs",
+          "three": "Aperçu du message avant sa publication",
+          "four": "Graphiques de l’activité des joueurs"
+        },
+        "chat": {
+          "title": "Chat et captures",
+          "intro": "Faites circuler les conversations et les bons moments entre les deux univers.",
+          "one": "Chat du jeu envoyé dans le salon Discord choisi",
+          "two": "Relais Discord vers le jeu et filtres de messages",
+          "three": "Captures des joueurs avec titre et détails",
+          "four": "Galerie de captures et partage sur Discord"
+        },
+        "accounts": {
+          "title": "Comptes liés",
+          "intro": "Identifiez vos joueurs et accueillez les nouveaux membres.",
+          "one": "Profils Steam et Discord liés",
+          "two": "Messages de vérification et règles de rôles",
+          "three": "Rôles automatiques à l’arrivée sur Discord",
+          "four": "Rappels de vérification et préférences des membres"
+        },
+        "sync": {
+          "title": "Rôles et pseudos",
+          "intro": "Faites suivre aux identités du jeu et aux rôles Discord les règles de votre choix.",
+          "one": "Groupes du jeu associés aux rôles Discord",
+          "two": "Rôles Discord liés aux métiers ou équipes en jeu",
+          "three": "Règles de pseudos, préfixes, suffixes et formats",
+          "four": "Synchronisation optionnelle des rôles et pseudos de Discord vers le jeu"
+        },
+        "players": {
+          "title": "Joueurs et activité",
+          "intro": "Retrouvez les joueurs derrière les sessions et suivez leur progression.",
+          "one": "Historique des joueurs, temps de jeu et connexions",
+          "two": "Statistiques des joueurs, éliminations et morts",
+          "three": "Graphiques d’activité et du temps par métier",
+          "four": "Classements et statistiques personnalisées compatibles"
+        },
+        "moderation": {
+          "title": "Modération et accès",
+          "intro": "Choisissez qui peut jouer et gardez les informations de modération à portée de main.",
+          "one": "Bannissements croisés et contrôles à l’entrée",
+          "two": "Historique AWarn3 avec administrateur et motif",
+          "three": "Maintenance avec accès défini par joueur",
+          "four": "Comptes liés obligatoires, branche du jeu et partage familial"
+        },
+        "diagnostics": {
+          "title": "Logs et diagnostics",
+          "intro": "Gardez le contexte nécessaire quand quelque chose se passe sur le serveur.",
+          "one": "Logs des événements du jeu et destinations Discord",
+          "two": "Actions sur événements avec vos conditions",
+          "three": "Erreurs Lua horodatées et traces d’exécution",
+          "four": "Rapports de bugs en jeu avec étapes et captures"
+        },
+        "community": {
+          "title": "Outils de communauté",
+          "intro": "Pilotez le serveur et donnez une identité à votre communauté.",
+          "one": "Liens de communauté et classement public des serveurs",
+          "two": "Votes pour le serveur et notifications Discord",
+          "three": "Commandes console RCON contrôlées par permissions",
+          "four": "Profil et activité du bot personnalisés"
+        }
+      }
+    },
+    "presentation": {
+      "style_label": "Apparence",
+      "hero_label": "Hero",
+      "stats_label": "Statistiques",
+      "panorama": "Panorama",
+      "console": "Console",
+      "editorial": "Éditorial",
+      "ribbon": "Bandeau",
+      "spotlight": "Grands chiffres",
+      "ledger": "Registre",
+      "headline_first": "Votre serveur.",
+      "headline_second": "Votre communauté.",
+      "headline_accent": "Connectés.",
+      "discover": "Explorer les fonctionnalités",
+      "preview_label": "Un aperçu de votre Discord",
+      "preview_caption": "Exemple de l’intégration dans votre communauté.",
+      "community_kicker": "Du jeu à Discord",
+      "community_title": "La communauté en chiffres.",
+      "community_note": "Totaux enregistrés sur Gmod Integration.",
+      "metric_guild": "Communautés Discord",
+      "metric_guild_detail": "Communautés enregistrées",
+      "metric_server": "Serveurs de jeu",
+      "metric_server_detail": "Serveurs enregistrés",
+      "metric_verified": "Comptes liés",
+      "metric_verified_detail": "Steam relié à Discord",
+      "closing_kicker": "De votre serveur à votre Discord",
+      "closing_title": "Faites le lien avec votre communauté.",
+      "closing_description": "Suivez le guide d’installation, connectez votre serveur et choisissez les fonctions utiles à votre communauté."
     }
   },
   "dashboard": {
