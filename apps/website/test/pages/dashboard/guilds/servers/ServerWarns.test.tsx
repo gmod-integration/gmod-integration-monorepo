@@ -68,6 +68,16 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
     setupFetchAPI()
   })
 
+  it('shows an unavailable warning history separately from empty data and retries the read', async () => {
+    ;(fetchAPI as Mock).mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+    renderPage()
+    await screen.findByText('Unable to load warning history. Try again.')
+    expect(screen.queryByText(/No warnings have been received/)).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('renders the panel title, description and the AWarn3 addon notice', () => {
     renderPage()
     expect(screen.getByText('Warnings')).toBeInTheDocument()

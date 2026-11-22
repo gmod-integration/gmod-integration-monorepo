@@ -62,6 +62,45 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 describe('administration monitoring', () => {
+  it('submits incident searches and combines period, recurrence and state filters without changing other sources', async () => {
+    renderWithProviders(AdminMonitoring)
+    await screen.findByText('Example recurring report')
+    const panel = screen.getByRole('region', { name: 'Recurring player bug reports' })
+    const connectionsBefore = vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/connections')).length
+    await fireEvent.input(within(panel).getByRole('searchbox', { name: 'Search' }), {
+      target: { value: 'texture problem' },
+    })
+    await fireEvent.submit(within(panel).getByRole('searchbox').closest('form')!)
+    await fireEvent.change(within(panel).getByRole('combobox', { name: 'Period' }), { target: { value: '30' } })
+    await fireEvent.change(within(panel).getByRole('combobox', { name: 'Recurrence' }), { target: { value: 'false' } })
+    await fireEvent.change(within(panel).getByRole('combobox', { name: 'Report state' }), { target: { value: 'all' } })
+    await vi.waitFor(() => {
+      const query = new URL(vi.mocked(fetchAPI).mock.calls.at(-1)![0], 'http://local.test').searchParams
+      expect(query.get('search')).toBe('texture problem')
+      expect(query.get('days')).toBe('30')
+      expect(query.get('recurringOnly')).toBe('false')
+      expect(query.get('state')).toBe('all')
+    })
+    await vi.waitFor(() => expect(within(panel).getByRole('button', { name: 'Refresh' })).toBeEnabled())
+    const requests = vi.mocked(fetchAPI).mock.calls.length
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Refresh' }))
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledTimes(requests + 1))
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/connections'))).toHaveLength(
+      connectionsBefore,
+    )
+  })
+
+  it('retries unavailable connection monitoring independently of the incident lists', async () => {
+    vi.mocked(fetchAPI).mockImplementationOnce(async () => failed() as Response)
+    renderWithProviders(AdminMonitoring)
+    const panel = screen.getByRole('region', { name: 'WebSocket connections' })
+    await within(panel).findByRole('alert')
+    await screen.findByText('Example Lua failure')
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Try again' }))
+    await within(panel).findByText('Example 1')
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/errors'))).toHaveLength(1)
+  })
+
   it('keeps each source independent and paginates registered server leases on the backend', async () => {
     renderWithProviders(AdminMonitoring)
     const panel = screen.getByRole('region', { name: 'WebSocket connections' })

@@ -11,6 +11,8 @@ import {
 } from './statusTestHelpers.js'
 import { okJson, errJson } from '../testHelpers.js'
 
+// Exercise the picker event contract without the vendor's IndexedDB/network initialization.
+vi.mock('emoji-picker-element', () => ({}))
 vi.mock('../../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn(),
   getAPIUrl: () => '',
@@ -42,6 +44,27 @@ afterEach(() => {
 })
 
 describe('status button card editing', () => {
+  it('previews typed and picked emoji locally and discards both choices on cancellation', async () => {
+    const network = installNetwork(api)
+    const { container } = renderStatus()
+    await ready()
+    await fireEvent.click(container.querySelector('tbody [aria-label="Edit"]')!)
+    const modal = editModal()
+    const field = within(modal).getByRole('textbox', { name: 'Icon' })
+    await fireEvent.input(field, { target: { value: '🌍' } })
+    const pickerButton = within(modal).getByRole('button', { name: 'Select an Emoji' })
+    await fireEvent.click(pickerButton)
+    expect(pickerButton).toHaveAttribute('aria-expanded', 'true')
+    const picker = modal.querySelector('emoji-picker')!
+    picker.dispatchEvent(new CustomEvent('emoji-click', { detail: { unicode: '🛠️' } }))
+    expect(field).toHaveValue('🛠️')
+    expect(pickerButton).toHaveAttribute('aria-expanded', 'false')
+    await vi.waitFor(() => expect(previews().at(-1)?.[2].buttons[0].emoji).toBe('🛠️'))
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+    await vi.waitFor(() => expect(previews().at(-1)?.[2].buttons[0].emoji).toBe('🎮'))
+    expect(puts(network)).toHaveLength(0)
+  })
+
   it('confirms removal, restores a failed deletion and allows retry', async () => {
     const network = installNetwork(api)
     const { container } = renderStatus()

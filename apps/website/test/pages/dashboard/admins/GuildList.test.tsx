@@ -22,6 +22,48 @@ const renderPage = () =>
   ))
 
 describe('administrative community directory', () => {
+  it('retries details separately and displays every verified source before closing the inspection', async () => {
+    const guild = guildFixture({ gmodstore: true })
+    let attempts = 0
+    vi.mocked(fetchAPI).mockImplementation(async (endpoint) => {
+      if (endpoint.startsWith(`/v6/admin/guilds/${guild.id}`)) {
+        attempts++
+        return (
+          attempts === 1
+            ? failed()
+            : ok({
+                guild,
+                access: {
+                  guildID: guild.id,
+                  premium: true,
+                  customBot: true,
+                  state: 'ready',
+                  sources: ['legacy', 'gmodstore', 'discord'],
+                  revision: 'verified',
+                  validUntil: '2099-01-01T00:00:00.000Z',
+                },
+              })
+        ) as Response
+      }
+      return ok(pageFixture(endpoint, [guild])) as Response
+    })
+    renderPage()
+    await fireEvent.click(await screen.findByRole('button', { name: 'Inspect' }))
+    let dialog = screen.getByRole('dialog', { name: 'Community details' })
+    await within(dialog).findByRole('alert')
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }))
+    await within(dialog).findByText('Manual grant')
+    expect(within(dialog).getByText('GmodStore')).toBeInTheDocument()
+    expect(within(dialog).getByText('Discord')).toBeInTheDocument()
+    expect(within(dialog).getAllByText('Enabled')).toHaveLength(2)
+    await fireEvent.click(within(dialog).getAllByRole('button', { name: 'Close' }).at(-1)!)
+    expect(dialog).not.toHaveAttribute('open')
+    await fireEvent.click(screen.getByRole('button', { name: 'Inspect' }))
+    dialog = screen.getByRole('dialog', { name: 'Community details' })
+    await fireEvent.click(within(dialog).getAllByRole('button', { name: 'Close' })[0])
+    expect(dialog).not.toHaveAttribute('open')
+  })
+
   it('distinguishes failure from empty data and retries the request', async () => {
     vi.mocked(fetchAPI)
       .mockResolvedValueOnce(failed() as Response)

@@ -78,6 +78,18 @@ describe('ServerChats unified editing', () => {
     ;(saveDashboardSettings as Mock).mockImplementation(async (_scope, settings) => ({ settings, sync: 'applied' }))
     guildChannelsMutate(channels)
   })
+  it('discards an unfinished rule on native Escape without writing it', async () => {
+    renderPage()
+    await loaded()
+    await createDraft()
+    const dialog = document.getElementById('edit_rule_modal')!
+    const cancellation = new Event('cancel', { cancelable: true })
+    await fireEvent(dialog, cancellation)
+    expect(cancellation.defaultPrevented).toBe(false)
+    expect(input('chat-rule-trigger')).toHaveValue('')
+    expect(writes()).toHaveLength(0)
+  })
+
   it('renders the saved channel and filter values', async () => {
     renderPage()
     await loaded()

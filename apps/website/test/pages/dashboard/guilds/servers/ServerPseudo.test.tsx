@@ -63,6 +63,18 @@ describe('ServerPseudo unified editing', () => {
     })
     ;(saveDashboardSettings as Mock).mockImplementation(async (_scope, settings) => ({ settings, sync: 'applied' }))
   })
+  it('discards an unfinished rule on native Escape without writing it', async () => {
+    renderPage()
+    await loaded()
+    await createDraft()
+    const dialog = document.getElementById('edit_role_modal')!
+    const cancellation = new Event('cancel', { cancelable: true })
+    await fireEvent(dialog, cancellation)
+    expect(cancellation.defaultPrevented).toBe(false)
+    expect(input('pseudo-role-group')).toHaveValue('')
+    expect(writes()).toHaveLength(0)
+  })
+
   it('renders the saved rules and keeps the format preview beside its draft', async () => {
     renderPage()
     await loaded()

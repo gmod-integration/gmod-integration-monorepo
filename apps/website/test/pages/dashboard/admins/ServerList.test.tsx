@@ -35,6 +35,49 @@ async function editDialog() {
 }
 
 describe('administrative game server management', () => {
+  it('combines community, verification and visibility filters and follows a changed community URL', async () => {
+    listRequests(serverFixture({ verified: true }))
+    const history = historyAt('/dashboard/admins/servers')
+    renderWithProviders(ServerList, { path: '*', history })
+    await screen.findByText('Example server')
+    await fireEvent.input(screen.getByRole('textbox', { name: 'Community ID' }), { target: { value: 'target-guild' } })
+    await fireEvent.submit(screen.getByRole('searchbox').closest('form')!)
+    await fireEvent.change(screen.getByRole('combobox', { name: 'Verification' }), { target: { value: 'verified' } })
+    await fireEvent.change(screen.getByRole('combobox', { name: 'Visibility' }), { target: { value: 'public' } })
+    await vi.waitFor(() => {
+      const query = new URL(vi.mocked(fetchAPI).mock.calls.at(-1)![0], 'http://test.local').searchParams
+      expect(query.get('guildID')).toBe('target-guild')
+      expect(query.get('verified')).toBe('verified')
+      expect(query.get('visibility')).toBe('public')
+    })
+    history.set({ value: '/dashboard/admins/servers?guildID=other-community', replace: false })
+    await vi.waitFor(() => expect(screen.getByRole('textbox', { name: 'Community ID' })).toHaveValue('other-community'))
+    expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('guildID=other-community'), 'GET')
+    expect(mutations()).toHaveLength(0)
+  })
+
+  it('includes a changed public visibility flag in the confirmed atomic server edit', async () => {
+    const server = serverFixture()
+    vi.mocked(fetchAPI).mockImplementation(async (endpoint, method) =>
+      method === 'PATCH'
+        ? (ok({ ...server, isPublic: true }) as Response)
+        : (ok(pageFixture(endpoint, [server])) as Response),
+    )
+    renderPage()
+    const dialog = await editDialog()
+    await fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Public server directory' }))
+    await fireEvent.input(within(dialog).getByRole('textbox', { name: 'Reason for this action' }), {
+      target: { value: 'Publish the community server' },
+    })
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
+    await screen.findByText('Server changes saved.')
+    expect(mutations()[0]).toEqual([
+      '/v6/admin/servers/server-1',
+      'PATCH',
+      { isPublic: true, reason: 'Publish the community server' },
+    ])
+  })
+
   it('keeps community filters in server pagination and displays unknown activity accurately', async () => {
     const server = serverFixture({ recentlyActive: null, addonVersion: null, lastSeenAt: null })
     vi.mocked(fetchAPI).mockImplementation(async (endpoint) => ok(pageFixture(endpoint, [server], 60)) as Response)

@@ -45,6 +45,16 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
     setupFetchAPI()
   })
 
+  it('recovers a failed destination lookup without presenting the failure as an empty channel', async () => {
+    ;(fetchAPI as Mock).mockResolvedValueOnce(errJson())
+    renderPage()
+    await screen.findByRole('alert')
+    expect(screen.queryByText('No channel selected')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
+    expect(screen.getByText('No channel selected')).toBeInTheDocument()
+  })
+
   it('shows "No channel selected" when no channel is configured', async () => {
     renderPage()
     await waitForLoaded()

@@ -10,6 +10,22 @@ beforeEach(() => localStorage.clear())
 afterEach(cleanup)
 
 describe('confirmation dialog interactions', () => {
+  it('clears a rejected command on native Escape without sending another request', async () => {
+    const confirm = vi.fn().mockRejectedValue(new Error('Offline'))
+    const { container } = renderWithProviders(() => (
+      <ConfirmActionDialog id="escape-command" title="Remove rule" onConfirm={confirm} />
+    ))
+    const dialog = container.querySelector<HTMLDialogElement>('#escape-command')!
+    dialog.showModal()
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm' }))
+    await within(dialog).findByRole('alert')
+    const cancellation = new Event('cancel', { cancelable: true })
+    await fireEvent(dialog, cancellation)
+    expect(cancellation.defaultPrevented).toBe(false)
+    expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument()
+    expect(confirm).toHaveBeenCalledTimes(1)
+  })
+
   it('validates extra confirmation fields and locks them while the command is pending', async () => {
     const [reason, setReason] = createSignal('')
     let finish!: () => void

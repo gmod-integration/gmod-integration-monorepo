@@ -129,6 +129,21 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
   })
 
   describe('column sorting', () => {
+    it.each([
+      ['Total playtime', 'total_time'],
+      ['Connections', 'total_connect'],
+      ['Maintenance access', 'bypassMaintenance'],
+    ])('requests %s ordering on the server', async (label, key) => {
+      renderPage()
+      await waitForLoaded()
+      await fireEvent.click(screen.getByRole('button', { name: label }))
+      await vi.waitFor(() =>
+        expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining(`searchColum=${key}`), 'GET'),
+      )
+      await waitForLoaded()
+      expect(screen.getByRole('columnheader', { name: label })).toHaveAttribute('aria-sort', 'ascending')
+    })
+
     it('exposes focusable sort controls and announces the active column and direction', async () => {
       const { container } = renderPage()
       await waitForLoaded()
@@ -219,6 +234,13 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       expect(container.querySelector('.loading-spinner')).not.toBeInTheDocument()
       expect(screen.queryByText('Alice')).not.toBeInTheDocument()
     })
+  })
+
+  it('explains an empty player search without treating it as an unavailable history', async () => {
+    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({ rows: [], query: { total: 0, limit: 50, offset: 0 } }))
+    renderPage()
+    await screen.findByText('No players match this search. Try another name, SteamID64 or rank, or clear the search.')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   describe('pagination', () => {

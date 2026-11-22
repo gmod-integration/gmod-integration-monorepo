@@ -70,6 +70,18 @@ describe('ServerTeam unified editing', () => {
     guildRolesMutate(guildRoles)
     guildChannelsMutate([])
   })
+  it('discards an unfinished rule on native Escape without writing it', async () => {
+    renderPage()
+    await loaded()
+    await createDraft()
+    const dialog = document.getElementById('edit_role_modal')!
+    const cancellation = new Event('cancel', { cancelable: true })
+    await fireEvent(dialog, cancellation)
+    expect(cancellation.defaultPrevented).toBe(false)
+    expect(input('teams-mapping')).toHaveValue('')
+    expect(writes()).toHaveLength(0)
+  })
+
   it('renders loaded mappings, statuses and the role names', async () => {
     renderPage()
     await loaded()

@@ -35,6 +35,43 @@ const access = (state = 'ready') => ({
 })
 
 describe('administrative Premium grants', () => {
+  it('filters recorded purchases and retries, refreshes and reopens effective access independently', async () => {
+    mockDirectory([], [{ ...guildRow(), gmodstore: true }])
+    const directory = vi.mocked(fetchAPI).getMockImplementation()!
+    let detailRequests = 0
+    vi.mocked(fetchAPI).mockImplementation(async (...args) => {
+      if (args[0].endsWith(`/guilds/${guildRow().id}`)) {
+        detailRequests++
+        return detailRequests === 1
+          ? response({}, 503)
+          : response({ guild: guildRow(), access: { ...access(), sources: [] } })
+      }
+      return directory(...args)
+    })
+    renderPage()
+    await screen.findByText('Example community')
+    await fireEvent.change(screen.getByRole('combobox', { name: 'Recorded access' }), {
+      target: { value: 'gmodstore' },
+    })
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('premium=gmodstore'), 'GET'),
+    )
+    await fireEvent.click(await screen.findByRole('button', { name: 'Access details' }))
+    let dialog = screen.getByRole('dialog', { name: 'Access for Example community' })
+    await within(dialog).findByText('Unable to verify access. Try again.')
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Try again' }))
+    await within(dialog).findByText('No verified source')
+    expect(within(dialog).getByText('Enabled')).toBeInTheDocument()
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Refresh access' }))
+    await vi.waitFor(() => expect(detailRequests).toBe(3))
+    await vi.waitFor(() => expect(within(dialog).getByRole('button', { name: 'Refresh access' })).toBeEnabled())
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Access details' }))
+    dialog = screen.getByRole('dialog', { name: 'Access for Example community' })
+    await within(dialog).findByText('No verified source')
+    expect(detailRequests).toBe(4)
+  })
+
   it('distinguishes recorded grants from effective provider access and keeps unknown verification visible', async () => {
     const directory = vi.mocked(fetchAPI).getMockImplementation()!
     vi.mocked(fetchAPI).mockImplementation(async (...args) =>

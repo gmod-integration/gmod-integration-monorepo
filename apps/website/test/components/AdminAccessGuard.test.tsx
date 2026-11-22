@@ -31,6 +31,17 @@ afterEach(() => {
 })
 
 describe('server-verified internal administrator guard', () => {
+  it('offers an explicit retry after the initial administrator verification is unavailable', async () => {
+    acceptAuthSession(developer())
+    vi.mocked(fetchAPI).mockResolvedValueOnce(response({}, 503))
+    renderGuard()
+    await screen.findByText('Administrator access could not be verified')
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await screen.findByRole('textbox', { name: 'Draft' })
+    expect(fetchAPI).toHaveBeenCalledTimes(2)
+  })
+
   it('keeps page effects unmounted until a matching own-session acknowledgement', async () => {
     acceptAuthSession(developer())
     let complete!: (value: Response) => void

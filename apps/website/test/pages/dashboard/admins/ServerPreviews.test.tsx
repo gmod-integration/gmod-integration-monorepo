@@ -35,6 +35,33 @@ afterEach(cleanup)
 const render = (path = '/dashboard/admins/previews?serverID=s1') =>
   renderWithProviders(ServerPreviews, { path: '*', history: historyAt(path) })
 describe('read-only server previews', () => {
+  it.each(['Server previews', 'Recent screenshots'])(
+    'retries failed capture data from %s and preserves status independently',
+    async (panelName) => {
+      let fail = true
+      vi.mocked(fetchAPI).mockImplementation(async (endpoint) =>
+        endpoint.includes('status-preview')
+          ? (ok(status) as Response)
+          : fail
+            ? (failed() as Response)
+            : (ok({ ...details, screenshots: [] }) as Response),
+      )
+      render()
+      const panel = screen.getByRole('region', { name: panelName })
+      await within(panel).findByRole('alert')
+      await screen.findByText('Example bot')
+      fail = false
+      await fireEvent.click(within(panel).getByRole('button', { name: 'Try again' }))
+      await screen.findByText('No supported screenshots in the latest capture records.')
+      const statusPanel = screen.getByRole('region', { name: 'Saved status message' })
+      await fireEvent.click(within(statusPanel).getByRole('button', { name: 'Refresh' }))
+      await vi.waitFor(() =>
+        expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('status-preview'))).toHaveLength(2),
+      )
+      expect(vi.mocked(fetchAPI).mock.calls.every(([, method]) => method === 'GET')).toBe(true)
+    },
+  )
+
   it('renders saved status, recent captures and a safe local message without any mutation', async () => {
     const { container } = render()
     await screen.findByRole('img', { name: 'Example capture' })

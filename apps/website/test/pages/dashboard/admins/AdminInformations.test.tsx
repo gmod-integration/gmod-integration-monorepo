@@ -29,6 +29,18 @@ const useValidResponses = () =>
     )
 
 describe('platform overview', () => {
+  it('refreshes the daily-registration chart without reloading the overview totals', async () => {
+    useValidResponses()
+    renderPage()
+    const panel = screen.getByRole('region', { name: 'Daily registrations' })
+    await within(panel).findByRole('img', { name: /Daily registration trends in UTC/ })
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Refresh chart' }))
+    await vi.waitFor(() =>
+      expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/analytics'))).toHaveLength(2),
+    )
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.endsWith('/overview'))).toHaveLength(1)
+  })
+
   it('waits for the v6 overview and exposes a recoverable error', async () => {
     let unavailable = true
     vi.mocked(fetchAPI).mockImplementation(async (endpoint) =>
