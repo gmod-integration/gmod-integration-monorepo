@@ -9,6 +9,9 @@ node_modules
 dist
 logs
 coverage
+backup
+**/__pycache__
+**/*.py[cod]
 **/*.log
 apps/website/node_modules
 apps/website/dist

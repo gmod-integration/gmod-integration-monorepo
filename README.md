@@ -128,7 +128,6 @@ Set FQDN env values in `.env` before deploy:
 ```bash
 API_HOST=api.your-domain.com
 WS_HOST=ws.your-domain.com
-TRAEFIK_DASHBOARD_HOST=traefik.your-domain.com
 ```
 
 Cloudflare Tunnel example:
@@ -139,18 +138,19 @@ ingress:
     service: http://localhost:80
   - hostname: ws.your-domain.com
     service: http://localhost:80
-  - hostname: traefik.your-domain.com
-    service: http://localhost:80
   - service: http_status:404
 ```
 
 Prod routing summary:
 
-| Protocol | Local Endpoint | Public Endpoint         |
-| -------- | -------------- | ----------------------- |
-| http     | localhost:80   | api.your-domain.com     |
-| http     | localhost:80   | ws.your-domain.com      |
-| http     | localhost:80   | traefik.your-domain.com |
+| Protocol | Local Endpoint | Public Endpoint     |
+| -------- | -------------- | ------------------- |
+| http     | localhost:80   | api.your-domain.com |
+| http     | localhost:80   | ws.your-domain.com  |
+
+Production releases require a coordinated outage and cold backup before checked-in migrations.
+Use the [deployment and recovery guide](docs/deployment/swarm.md); the wrapper leaves all writers
+stopped on failure and starts exactly one Discord worker. Traefik's dashboard is disabled.
 
 ## Set FQDN in Garry's Mod
 

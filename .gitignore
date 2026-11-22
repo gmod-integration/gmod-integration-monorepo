@@ -1,6 +1,8 @@
 *.log
 node_modules
 coverage
+__pycache__/
+*.py[cod]
 .idea
 qodana.yaml
 .env

@@ -74,23 +74,33 @@ the same release; delegates issued by an operator absent from that list are then
 This release changes persisted credentials and the browser/gateway protocol. Do not mix old and new
 services: old binaries cannot read newly encrypted grants or hashed application credentials.
 
-1. Back up the database and keep the existing encryption material available for recovery. Configure
+1. Pause automatic deployers and external writers. Back up all four datastores and keep the existing
+   encryption material and matching release artifacts available for recovery. Configure
    stable auth key material and the correct website/API/WS origins on all services.
 2. Prepare the release with `bun install --frozen-lockfile`, `bun run prisma:generate`,
    `bun run build` and `bun run --cwd apps/website build`.
 3. Stop the old API, Discord workers and WebSocket gateways, including any process that imports the
    old automatic refresh timer. Keep the previous website from issuing authenticated traffic during
    the transition.
-4. Apply the checked-in migrations with `bun run prisma:migrate:prod` against the intended database.
+4. For Swarm, use the [coordinated release wrapper](../deployment/swarm.md) with explicit `--quiesce`
+   and a new `--backup-dir`. It cold-backs up all datastores and recovery configuration, deploys with
+   application replicas at zero, runs checked-in `prisma migrate deploy` once, then starts the matching
+   release only after confirmed success. For a manual deployment, apply the checked-in migrations with
+   `bun run prisma:migrate:prod` against the intended database while every writer remains stopped.
    The migration `20261121170000_auth_sessions` adds session deadlines/actor fields and provider
    credential versioning, and widens encrypted token columns. Never use `prisma:reset` for this upgrade.
-5. Start all backend services from the same new release, then publish the matching website. Verify
+5. Start all backend services from the same new release (exactly one Discord worker), then publish
+   the matching website. API/WebSocket/Discord startup checks migration checksums, not just a users
+   table. A failed migration keeps application replicas at zero. Verify
    login, legacy conversion, a CSRF-protected save, two browser tabs, logout and gateway reconnection.
    Check refresh-worker errors and provider retry behavior before resuming normal traffic.
 
 The code change prepares this procedure; it does not apply migrations or alter a running deployment.
 After new encrypted/hashed writes, rolling back binaries alone is insufficient. Restore a consistent
-database/release backup or use a reviewed forward repair; do not restore erased personal data.
+database/release backup, its stable auth key material and the matching website, or use a reviewed
+forward repair; do not restore erased personal data. The recovery guide provides a destructive restore
+with an explicit destination/confirmation, image/key compatibility checks and verified archives.
+An isolated real restore test is required before production rollout; mock tests alone are insufficient.
 
 Configuration: `AUTH_SESSION_ABSOLUTE_TTL_SECONDS` defaults to `2592000` (minimum 300),
 `AUTH_SESSION_IDLE_TTL_SECONDS` defaults to `604800` (minimum 60, clamped to the absolute lifetime).

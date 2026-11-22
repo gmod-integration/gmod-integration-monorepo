@@ -28,6 +28,7 @@ services:
           - node.role == manager
 
   api:
+    stop_grace_period: 120s
     image: ${API_IMAGE:-ghcr.io/gmod-integration/gmod-integration-api:latest}
     env_file:
       - .env
@@ -50,21 +51,22 @@ services:
       - |
         i=1
         while [ "$$i" -le 120 ]; do
-          if bun -e "import * as mariadb from 'mariadb'; (async () => { try { const c = await mariadb.createConnection({ host: process.env.MARIA_HOST || 'mariadb', port: Number(process.env.MARIA_PORT || 3306), user: process.env.MARIA_USER, password: process.env.MARIA_PASSWORD, database: process.env.MARIA_NAME }); const rows = await c.query(\"SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users' LIMIT 1\"); await c.end(); process.exit(Array.isArray(rows) && rows.length > 0 ? 0 : 1); } catch { process.exit(1); } })();"; then
-            echo "MariaDB schema ready, starting API"
+          if bun scripts/swarm-migration-status.ts; then
+            echo "Checked-in migrations applied, starting API"
             exec bun apps/api/src/gm_integration_api.ts
           fi
-          echo "Waiting for MariaDB schema (users table) before API start ($$i/120)..."
+          echo "Waiting for checked-in migrations before API start ($$i/120)..."
           i=$$(($$i+1))
           sleep 5
         done
-        echo "MariaDB schema not ready for API after 120 attempts"
+        echo "Checked-in migrations not applied for API after 120 attempts"
         exit 1
     networks:
       - gmod_net
     deploy:
       mode: replicated
-      replicas: 2
+      # Only the coordinated release script enables application writers.
+      replicas: 0
       restart_policy:
         condition: any
         delay: 5s
@@ -91,6 +93,7 @@ services:
         - traefik.http.services.api.loadbalancer.server.port=53136
 
   websocket:
+    stop_grace_period: 120s
     image: ${WEBSOCKET_IMAGE:-ghcr.io/gmod-integration/gmod-integration-websocket:latest}
     env_file:
       - .env
@@ -113,21 +116,22 @@ services:
       - |
         i=1
         while [ "$$i" -le 120 ]; do
-          if bun -e "import * as mariadb from 'mariadb'; (async () => { try { const c = await mariadb.createConnection({ host: process.env.MARIA_HOST || 'mariadb', port: Number(process.env.MARIA_PORT || 3306), user: process.env.MARIA_USER, password: process.env.MARIA_PASSWORD, database: process.env.MARIA_NAME }); const rows = await c.query(\"SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users' LIMIT 1\"); await c.end(); process.exit(Array.isArray(rows) && rows.length > 0 ? 0 : 1); } catch { process.exit(1); } })();"; then
-            echo "MariaDB schema ready, starting WebSocket"
+          if bun scripts/swarm-migration-status.ts; then
+            echo "Checked-in migrations applied, starting WebSocket"
             exec bun apps/websocket/src/index.ts
           fi
-          echo "Waiting for MariaDB schema (users table) before WebSocket start ($$i/120)..."
+          echo "Waiting for checked-in migrations before WebSocket start ($$i/120)..."
           i=$$(($$i+1))
           sleep 5
         done
-        echo "MariaDB schema not ready for WebSocket after 120 attempts"
+        echo "Checked-in migrations not applied for WebSocket after 120 attempts"
         exit 1
     networks:
       - gmod_net
     deploy:
       mode: replicated
-      replicas: 2
+      # Only the coordinated release script enables application writers.
+      replicas: 0
       restart_policy:
         condition: any
         delay: 5s
@@ -154,6 +158,7 @@ services:
         - traefik.http.services.websocket.loadbalancer.server.port=53139
 
   discord:
+    stop_grace_period: 120s
     image: ${DISCORD_IMAGE:-ghcr.io/gmod-integration/gmod-integration-discord:latest}
     env_file:
       - .env
@@ -176,21 +181,22 @@ services:
       - |
         i=1
         while [ "$$i" -le 120 ]; do
-          if bun -e "import * as mariadb from 'mariadb'; (async () => { try { const c = await mariadb.createConnection({ host: process.env.MARIA_HOST || 'mariadb', port: Number(process.env.MARIA_PORT || 3306), user: process.env.MARIA_USER, password: process.env.MARIA_PASSWORD, database: process.env.MARIA_NAME }); const rows = await c.query(\"SELECT 1 FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'users' LIMIT 1\"); await c.end(); process.exit(Array.isArray(rows) && rows.length > 0 ? 0 : 1); } catch { process.exit(1); } })();"; then
-            echo "MariaDB schema ready, starting Discord"
+          if bun scripts/swarm-migration-status.ts; then
+            echo "Checked-in migrations applied, starting Discord"
             exec bun apps/discord/src/main.ts
           fi
-          echo "Waiting for MariaDB schema (users table) before Discord start ($$i/120)..."
+          echo "Waiting for checked-in migrations before Discord start ($$i/120)..."
           i=$$(($$i+1))
           sleep 5
         done
-        echo "MariaDB schema not ready for Discord after 120 attempts"
+        echo "Checked-in migrations not applied for Discord after 120 attempts"
         exit 1
     networks:
       - gmod_net
     deploy:
       mode: replicated
-      replicas: 2
+      # Only the coordinated release script enables application writers.
+      replicas: 0
       restart_policy:
         condition: any
         delay: 5s
@@ -199,19 +205,20 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
-        order: start-first
+        order: stop-first
         monitor: 120s
         failure_action: rollback
         max_failure_ratio: 0
       rollback_config:
         parallelism: 1
         delay: 5s
-        order: start-first
+        order: stop-first
         monitor: 30s
         failure_action: pause
 
   mariadb:
-    image: mariadb:latest
+    stop_grace_period: 120s
+    image: ${MARIADB_IMAGE:-mariadb:latest}
     env_file:
       - .env
     environment:
@@ -259,32 +266,21 @@ services:
           echo "MariaDB not reachable after 120 attempts"
           exit 1
         fi
-        export MARIA_URL="mysql://$${MARIA_USER}:$${MARIA_PASSWORD}@mariadb:$${MARIA_PORT:-3306}/$${MARIA_NAME}"
-        echo "Running prisma db push against mariadb"
-        i=1
-        while [ "$$i" -le 30 ]; do
-          bunx prisma db push --schema packages/infra-prisma/schema.prisma && exit 0
-          echo "prisma db push failed (attempt $$i/30), retrying in 5s..."
-          i=$$(($$i+1))
-          sleep 5
-        done
-        echo "prisma db push failed after 30 attempts"
-        exit 1
+        echo "Applying checked-in Prisma migrations"
+        exec bun scripts/swarm-migrate.ts
     networks:
       - gmod_net
     deploy:
-      replicas: 1
+      replicas: 0
       restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 3
-        window: 30s
+        condition: none
       placement:
         constraints:
           - node.role == manager
 
   redis:
-    image: redis:latest
+    stop_grace_period: 120s
+    image: ${REDIS_IMAGE:-redis:latest}
     command:
       - redis-server
       - --maxmemory
@@ -312,7 +308,8 @@ services:
           - node.role == manager
 
   mongo:
-    image: mongo:latest
+    stop_grace_period: 120s
+    image: ${MONGO_IMAGE:-mongo:latest}
     volumes:
       - gmod_mongo_data:/data/db
     networks:
@@ -329,10 +326,11 @@ services:
           - node.role == manager
 
   minio:
+    stop_grace_period: 120s
     # MinIO no longer publishes pullable images (quay.io/minio is private, Docker Hub minio/minio
     # is gone); Chainguard ships a free build of the same server. Run as root like the old image
     # so the existing root-owned data in gmod_minio_data stays readable without a chown.
-    image: cgr.dev/chainguard/minio:latest
+    image: ${MINIO_IMAGE:-cgr.dev/chainguard/minio:latest}
     user: "0:0"
     command: server /data --console-address ':9001'
     env_file:
