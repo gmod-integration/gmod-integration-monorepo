@@ -312,12 +312,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-@media (max-width: 1279px) {
-  .is-dashboard .header-workspace-label {
-    display: none;
+@media (min-width: 1024px) {
+  .is-dashboard .public-navigation {
+    position: absolute;
+    left: 50%;
+    width: max-content;
+    transform: translateX(-50%);
   }
 }
-@media (max-width: 1023px) {
+@media (min-width: 1280px) and (max-width: 1399px) {
+  .is-dashboard .header-user-name {
+    max-width: 90px;
+  }
+}
+@media (max-width: 1279px) {
+  .is-dashboard .header-workspace-label,
   .is-dashboard .header-user-name {
     display: none;
   }
