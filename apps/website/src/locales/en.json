@@ -1152,6 +1152,7 @@
         "description": "Review this Discord server, its dashboard administrators and its Premium access.",
         "guild_name": "Discord server name",
         "guild_id": "Discord server ID",
+        "copy_guild_id": "Copy Discord server ID",
         "admins": "Admins",
         "premium": "Premium",
         "warning": "These administrators can change bot settings for this Discord server and its linked Garry's Mod servers.",

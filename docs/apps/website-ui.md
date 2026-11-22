@@ -94,6 +94,12 @@ selector artwork, while action icons remain in the Lucide registry.
 
 Paths below are relative to `apps/website/src`.
 
+`DiscordUser` in `components/discord/DiscordUser.tsx` renders a read-only `@name` mention from
+`user: { id: string; name?: string | null }`, without fetching a profile. Missing or blank names fall
+back to `@ID`; keep Discord IDs as strings. Mentions wrap long names and use the shared light/dark
+accent tokens. The community overview uses these mentions for administrators and `CopyableValue`
+for its Discord server ID.
+
 | Component                                         | Source                                            | Purpose                                                                                                                                                                                                                                                                                         |
 | ------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `AdminPanel`                                      | `components/AdminPanel.tsx`                       | Section heading, description, premium/badge/info, optional header `actions` and `footer`. `type="none"` leaves the body unpadded for tables.                                                                                                                                                    |

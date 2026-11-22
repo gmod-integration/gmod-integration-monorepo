@@ -1152,6 +1152,7 @@
         "description": "Consultez les informations de ce serveur Discord, les administrateurs de son tableau de bord et son accès Premium.",
         "guild_name": "Nom du serveur Discord",
         "guild_id": "Identifiant du serveur Discord",
+        "copy_guild_id": "Copier l’identifiant du serveur Discord",
         "admins": "Administrateurs",
         "premium": "Premium",
         "warning": "Ces administrateurs peuvent modifier les paramètres du bot pour ce serveur Discord et ses serveurs Garry's Mod associés.",

@@ -1,7 +1,8 @@
 import { useAccess } from '../../../components/AccessProvider.js'
-import { AsyncState, BooleanStatus, Button, Icon, StatusBadge } from '../../../components/ui/index.js'
+import { AsyncState, BooleanStatus, Button, CopyableValue, Icon, StatusBadge } from '../../../components/ui/index.js'
+import DiscordUser from '../../../components/discord/DiscordUser.js'
 import type { TypeDiscordChannel, TypeDiscordRole } from '../../../utils/types/DiscordTypes.js'
-import { type Component, createEffect, createResource, on, onCleanup, Show } from 'solid-js'
+import { type Component, createEffect, createResource, For, on, onCleanup, Show } from 'solid-js'
 import { getGuild } from '../../../utils/utils'
 import AdminPanel from '../../../components/AdminPanel'
 import { useLocation, useNavigate } from '@solidjs/router'
@@ -54,29 +55,18 @@ export const [guildChannels, { mutate: guildChannelsMutate, refetch: guildChanne
 //   fetchGuildEmoji,
 // );
 
-class GuildAdmin {
-  id: number
+interface GuildAdmin {
+  id: string
   name: string
-  avatar: string
-
-  constructor(id: number, name: string, avatar: string) {
-    this.id = id
-    this.name = name
-    this.avatar = avatar
-  }
+  avatar: string | null
 }
 
-async function fetchAdmins() {
-  const adminsList: GuildAdmin[] = []
+async function fetchAdmins(): Promise<GuildAdmin[]> {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/admins', 'GET')
   if (!res.ok) {
     throw new Error('Dashboard administrators request failed')
   }
-  const admins = await res.json()
-  for (const admin of admins) {
-    adminsList.push(new GuildAdmin(admin.id, admin.name, admin.avatar))
-  }
-  return adminsList
+  return await res.json()
 }
 
 const GuildInformations: Component = () => {
@@ -156,13 +146,16 @@ const GuildInformations: Component = () => {
           'Review this Discord server, its dashboard administrators and its Premium access.',
         )}
       >
-        <div class="flex w-fit items-center">
-          <span class="mr-2">{t('dashboard.guild.information.guild_name', 'Discord server name')}:</span>
-          <span>{getGuild().name}</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <span>{t('dashboard.guild.information.guild_name', 'Discord server name')}:</span>
+          <span class="min-w-0 wrap-anywhere">{getGuild().name}</span>
         </div>
-        <div class="flex w-fit items-center">
-          <span class="mr-2">{t('dashboard.guild.information.guild_id', 'Discord server ID')}:</span>
-          <span>{getGuild().id}</span>
+        <div class="flex flex-wrap items-center gap-2">
+          <span>{t('dashboard.guild.information.guild_id', 'Discord server ID')}:</span>
+          <CopyableValue
+            value={getGuild().id ?? ''}
+            label={t('dashboard.guild.information.copy_guild_id', 'Copy Discord server ID')}
+          />
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <span class="mr-2">{t('dashboard.guild.information.admins', 'Admins')}:</span>
@@ -180,13 +173,19 @@ const GuildInformations: Component = () => {
             )}
             onRetry={() => void refetchAdmins()}
           >
-            <span>
-              {!guildAdmins.error
-                ? guildAdmins()
-                    .map((admin) => admin.name)
-                    .join(', ')
-                : ''}
-            </span>
+            <ul
+              class="flex min-w-0 max-w-full flex-wrap items-center gap-2"
+              role="list"
+              aria-label={t('dashboard.guild.information.admins', 'Admins')}
+            >
+              <For each={!guildAdmins.error ? guildAdmins() : []}>
+                {(admin) => (
+                  <li class="min-w-0 max-w-full">
+                    <DiscordUser user={admin} />
+                  </li>
+                )}
+              </For>
+            </ul>
           </AsyncState>
         </div>
         <div class="flex flex-wrap items-center gap-2">

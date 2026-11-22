@@ -34,12 +34,13 @@ afterEach(async () => {
   setupFetchAPI()
   await guildChannelsRefetch()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 function defaultAdmins() {
   return [
-    { id: 1, name: 'Admin One', avatar: 'a1' },
-    { id: 2, name: 'Admin Two', avatar: 'a2' },
+    { id: '123456789012345678', name: 'Admin One', avatar: null },
+    { id: '987654321098765432', name: 'Admin Two', avatar: null },
   ]
 }
 
@@ -81,12 +82,44 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
     await guildChannelsRefetch()
   })
 
-  it('renders guild name, id and the joined admin list once loaded', async () => {
+  it('renders guild name, id and individual admin mentions once loaded', async () => {
     renderPage()
     await waitForAdminsLoaded()
     expect(screen.getByText('My Guild')).toBeInTheDocument()
     expect(screen.getByText('g1')).toBeInTheDocument()
-    expect(screen.getByText('Admin One, Admin Two')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Admins' })).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getByText('@Admin One')).toHaveAttribute('title', '123456789012345678')
+    expect(screen.getByText('@Admin Two')).toHaveAttribute('title', '987654321098765432')
+  })
+
+  it('copies the full Discord server ID without losing snowflake precision', async () => {
+    const guildID = '1051881514020917408'
+    window.localStorage.setItem('guilds', JSON.stringify({ id: guildID, name: 'My Guild', isPremium: false }))
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    renderPage(`/dashboard/guilds/${guildID}/config`)
+    await waitForAdminsLoaded()
+    expect(screen.getByText(guildID)).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Copy Discord server ID' }))
+    expect(writeText).toHaveBeenCalledWith(guildID)
+    await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Copied!'))
+  })
+
+  it('keeps an administrator identifiable when its display name is unavailable', async () => {
+    const userID = '987654321098765432'
+    setupFetchAPI({ admins: [{ id: userID, name: ' ', avatar: null }] })
+    renderPage()
+    await waitForAdminsLoaded()
+    expect(screen.getByText(`@${userID}`)).toBeInTheDocument()
+  })
+
+  it('preserves an explicit empty state when no administrators are returned', async () => {
+    setupFetchAPI({ admins: [] })
+    renderPage()
+    await waitForAdminsLoaded()
+    expect(screen.getByText('No dashboard administrators were returned for this community.')).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Admins' })).not.toBeInTheDocument()
   })
 
   it('shows "Loading..." for admins while the admins request is pending', () => {
