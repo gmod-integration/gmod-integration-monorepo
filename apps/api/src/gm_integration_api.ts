@@ -4,7 +4,7 @@ import { ConfigPrivacy, ConfigServer } from '@gmod/config'
 import '@gmod/core/utils/update-log.js'
 import express, { type NextFunction, type Request, type Response } from 'express'
 import { gmLog } from '@gmod/shared/logger.js'
-import rawBodyMiddleware from '@/middleware/rawBodyMiddleware.js'
+import { requestBudget } from '@/middleware/requestBudget.js'
 import loggerMiddleware from '@/middleware/v3/loggers.js'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -24,7 +24,7 @@ let stopDiscordTokenRefreshWorker: (() => void) | undefined
 
 // Express
 export const app = express()
-app.set('trust proxy', true)
+app.set('trust proxy', ConfigServer.trustedProxies?.length ? ConfigServer.trustedProxies : false)
 
 const allowedCorsOrigins = new Set<string>()
 for (const candidate of [ConfigServer.websiteUrl, ConfigServer.domain]) {
@@ -41,7 +41,7 @@ app.use(useragent.express())
 let inShutdown = false
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (inShutdown) {
-    if (req.path === '/v6' || req.path.startsWith('/v6/')) {
+    if (req.path.toLowerCase() === '/v6' || req.path.toLowerCase().startsWith('/v6/')) {
       res.setHeader('Cache-Control', 'no-store')
       res
         .status(503)
@@ -146,12 +146,15 @@ app.use(
   }),
 )
 
-// Raw Body
-app.use(rawBodyMiddleware)
-
 // Body Parser
+app.use('/v6', express.json({ limit: '256kb', type: 'application/json' }))
 app.use(express.json({ limit: ConfigServer.bodyLimit, type: 'application/json' }))
-app.use(express.urlencoded({ limit: ConfigServer.bodyLimit, extended: true }))
+// Runtime body-parser supports depth; the shared legacy type declarations omit this option.
+const v6FormOptions = { limit: '256kb', extended: true, parameterLimit: 100, depth: 4 }
+const legacyFormOptions = { limit: ConfigServer.bodyLimit, extended: true, parameterLimit: 200, depth: 8 }
+app.use('/v6', express.urlencoded(v6FormOptions))
+app.use(express.urlencoded(legacyFormOptions))
+app.use(requestBudget)
 
 // Logger
 app.use(loggerMiddleware)

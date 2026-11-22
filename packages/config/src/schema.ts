@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isIP } from 'node:net'
 
 const MIN_SECRET_LENGTH = 17
 const forbiddenSecretValues = new Set(['secret', 'root'])
@@ -24,6 +25,26 @@ function strongSecretSchema(key: string) {
 
 export const ConfigSchema = z.object({
   DEV: z.enum(['true', 'false']).default('false'),
+  API_TRUSTED_PROXIES: z
+    .string()
+    .default('')
+    .refine(
+      (value) =>
+        value.split(',').every((part) => {
+          const entry = part.trim()
+          if (!entry || ['loopback', 'linklocal', 'uniquelocal'].includes(entry)) return true
+          const parts = entry.split('/')
+          if (parts.length > 2) return false
+          const [address, prefix] = parts
+          const family = isIP(address)
+          return (
+            !!family &&
+            (prefix === undefined ||
+              (/^\d+$/.test(prefix) && Number(prefix) > 0 && Number(prefix) <= (family === 4 ? 32 : 128)))
+          )
+        }),
+      'Use a comma-separated list of trusted proxy IPs or non-global CIDRs.',
+    ),
   SENTRY_DSN: z.string().url().optional(),
   SENTRY_AUTH_TOKEN: z.string().min(1).optional(),
 

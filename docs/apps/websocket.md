@@ -120,3 +120,12 @@ node_modules/.bin/vitest run apps/websocket/test --config apps/websocket/vitest.
 ```bash
 bun run websocket:dev
 ```
+
+## Dashboard request budgets
+
+Authenticated dashboard sockets accept text frames up to 16 KiB, at most 30 messages per 10-second
+window and two concurrent metadata operations. Binary/oversized frames and excessive cadence close the socket
+with 1008 before JSON parsing or identity/provider reads. Polls beyond the two in-flight operations
+are ignored without disconnecting a healthy client when a provider is slow. Each accepted handler releases its slot after
+success, failure or early return. Server-status identifiers are bounded to 255 safe characters before
+a community permission lookup. Addon transport frames keep their separate contract and limits.

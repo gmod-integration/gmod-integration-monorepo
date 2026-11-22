@@ -82,3 +82,11 @@ to exercise connection settings without supplying unrelated credentials or openi
 
 The workspace-root lookup means `@gmod/config` behaves differently depending on _where_ `.env` actually is —
 it is always the repo root `.env`, regardless of which app/package imports it from.
+
+## Reverse proxy peers
+
+`API_TRUSTED_PROXIES` defaults to the empty string, so forwarded identity headers are ignored.
+`ConfigServer.trustedProxies` projects an explicit comma-separated IP/CIDR allowlist; Express named
+ranges `loopback`, `linklocal` and `uniquelocal` are accepted when intentionally configured. Global
+`0.0.0.0/0`, `::/0`, wildcards, hostnames and boolean shortcuts are rejected. Keep the allowlist limited
+to the actual reverse proxy peers and restart API replicas after configuration changes.

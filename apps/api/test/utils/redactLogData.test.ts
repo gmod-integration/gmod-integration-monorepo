@@ -2,6 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { redactLogData } from '../../src/utils/redactLogData.js'
 
 describe('redactLogData', () => {
+  it('omits encoded avatar and nested image uploads without logging their bytes', () => {
+    expect(
+      redactLogData({ avatar: 'data:image/png;base64,cHJpdmF0ZQ==', nested: ['data:image/jpeg;base64,cHJpdmF0ZQ=='] }),
+    ).toEqual({ avatar: '[IMAGE]', nested: ['[IMAGE]'] })
+  })
   it('also redacts one-time OAuth state, PKCE verifiers and socket tickets', () => {
     expect(
       redactLogData({ state: 'private', code_verifier: 'private', ticket: 'private', redirect: '/account' }),

@@ -51,10 +51,10 @@ describe('loggerMiddleware', () => {
     expect(gmLogMock.mock.calls.at(-1)?.[1]).not.toContain('private')
   })
 
-  it('prefers the cf-connecting-ip header over req.ip', () => {
+  it('uses the resolved peer IP instead of trusting arbitrary Cloudflare headers', () => {
     const next = vi.fn()
     loggerMiddleware(makeReq({ headers: { 'cf-connecting-ip': '9.9.9.9' } }), {} as any, next)
-    expect(gmLogMock).toHaveBeenCalledWith('api', expect.stringContaining('IP: 9.9.9.9'))
+    expect(gmLogMock).toHaveBeenCalledWith('api', expect.stringContaining('IP: 1.2.3.4'))
   })
 
   it('redacts the bug-report screenshot payload', () => {

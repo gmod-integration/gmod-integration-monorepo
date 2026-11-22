@@ -5,15 +5,15 @@ import { redactLogData } from '@/utils/redactLogData.js'
 export default (req: Request, res: Response, next: NextFunction) => {
   const method = req.method
   const url = req.url.split('?')[0]
-  const ip = req.headers['cf-connecting-ip'] || req.ip
+  const ip = req.ip
   const id = url.split('/')[2]
   const query = JSON.stringify(redactLogData(req.query))
 
   const cpBody = structuredClone(req.body)
 
-  if (url.endsWith('/bugs') && cpBody && cpBody.screenshot && cpBody.screenshot.screenshot) {
+  if (url.toLowerCase().endsWith('/bugs') && cpBody && cpBody.screenshot && cpBody.screenshot.screenshot) {
     cpBody.screenshot.screenshot = '[IMAGE]'
-  } else if (url.endsWith('/screenshots') && cpBody && cpBody.screenshot) {
+  } else if (url.toLowerCase().endsWith('/screenshots') && cpBody && cpBody.screenshot) {
     cpBody.screenshot = '[IMAGE]'
   }
 

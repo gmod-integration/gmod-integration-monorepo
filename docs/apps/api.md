@@ -27,7 +27,7 @@ src/
   middleware/
     v3/                    serverValidator, clientValidator, userValidator, loggers
     webhooks/               gmodStoreValidator
-    errorMiddleware.ts, asyncHandler.ts, rawBodyMiddleware.ts
+    errorMiddleware.ts, asyncHandler.ts, requestBudget.ts
 ```
 
 ## Request pattern
@@ -230,3 +230,25 @@ bun run dev                # tsx watch, from repo root
 # or
 turbo run dev --parallel   # all apps at once
 ```
+
+## Request parsing and proxy peers
+
+v6 requests are parsed with a 256 KiB decoded-body limit. Form requests also have bounded parameter
+counts and nesting. Legacy transports retain their 10 MiB parser limit, followed by a shared iterative
+JSON budget before schema validation or logging: depth 16, 8,192 nodes, 500 array entries and 256 keys per
+object. Ordinary strings are limited to 64 KiB and total characters to 256 KiB. Only existing legacy
+custom-bot routes permit a 3 MiB image string budget and legacy screenshot/bug uploads retain a 10 MiB
+image budget. Query parameters have a smaller structural budget. Status configuration rejects more
+than 25 buttons before validating individual entries. These checks classify paths case-insensitively,
+matching Express routing. Unsupported structures return a bounded error without reflecting input.
+
+There is no independent raw-body stream collector. A future signature protocol requiring exact bytes
+must use a route-specific, size-limited parser/verify operation. Image data URLs and credentials are
+redacted before request logging. HTTP/HTTPS URL rules apply to link and status-button edits as well as
+creation; an invalid legacy entry can still be disabled.
+
+Proxy trust is disabled by default. `API_TRUSTED_PROXIES` is an explicit comma-separated list of proxy
+IP addresses/CIDRs or Express's named private ranges. Configure only the actual trusted immediate
+peers, and prevent direct access to an origin intended for a tunnel. Global IPv4/IPv6 CIDRs and boolean
+trust shortcuts are rejected. Session/request metadata and logs use the peer address resolved by
+Express, not an arbitrary `CF-Connecting-IP` header.

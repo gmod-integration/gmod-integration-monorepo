@@ -94,6 +94,9 @@ export const ConfigInstance = {
 export const ConfigServer = {
   dev: config.DEV === 'true',
   bodyLimit: '10mb',
+  trustedProxies: config.API_TRUSTED_PROXIES.split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
   sentryDSN: config.SENTRY_DSN,
   domain: config.DOMAIN_URL,
   screenshotChannel: config.SCREENSHOTS_CHANNEL_ID,

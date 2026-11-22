@@ -2,6 +2,8 @@ import {
   DashboardChannelConfigurationSchema,
   DashboardChatConfigurationSchema,
 } from '@gmod/schema/server/DashboardChannelSchema.js'
+import { DashboardLinkSchema } from '@gmod/schema/server/DashboardEntitiesSchema.js'
+import { StatusConfigurationButtonSchema } from '@gmod/schema/server/StatusConfigurationSchema.js'
 import {
   CustomBotProfileCommandSchema,
   CustomBotTokenCommandSchema,
@@ -291,7 +293,9 @@ export async function postGuildLinks(req: Request, res: Response) {
 export async function putGuildLinks(req: Request, res: Response) {
   const linkID = getSingleParam(req.params.linkID)
   const guild = req.guild!
-  const { url, alias, active } = req.body
+  const patch = DashboardLinkSchema.partial().safeParse(req.body)
+  if (!patch.success) return res.status(400).send({ error: 'invalid_link' })
+  const { url, alias, active } = patch.data
 
   const link = await guild.getLink(Number(linkID))
   if (!link) {
@@ -300,6 +304,12 @@ export async function putGuildLinks(req: Request, res: Response) {
     })
   }
 
+  if (
+    (active ?? link.active) &&
+    !DashboardLinkSchema.safeParse({ url: url ?? link.url, alias: alias ?? link.alias, active: active ?? link.active })
+      .success
+  )
+    return res.status(400).send({ error: 'invalid_link' })
   return res.send(
     await prisma.gm_server_links.update({
       where: {
@@ -470,7 +480,9 @@ export async function getServerStatusButtons(req: Request, res: Response) {
 export async function putServerStatusButtons(req: Request, res: Response) {
   const server = req.server!
   const buttonID = getSingleParam(req.params.buttonID)
-  const { name, emoji, url, enable } = req.body
+  const patch = StatusConfigurationButtonSchema.omit({ id: true }).partial().safeParse(req.body)
+  if (!patch.success) return res.status(400).send({ error: 'invalid_status_button' })
+  const { name, emoji, url, enable } = patch.data
 
   const button = await server.findStatusButton(Number(buttonID))
   if (!button) {
@@ -479,6 +491,16 @@ export async function putServerStatusButtons(req: Request, res: Response) {
     })
   }
 
+  if (
+    (enable ?? button.enable) &&
+    !StatusConfigurationButtonSchema.omit({ id: true }).safeParse({
+      name: name ?? button.name,
+      emoji: emoji ?? button.emoji,
+      url: url ?? button.url,
+      enable: enable ?? button.enable,
+    }).success
+  )
+    return res.status(400).send({ error: 'invalid_status_button' })
   const updateButton = await prisma.gm_status_button.update({
     where: {
       id: button.id,

@@ -7,6 +7,16 @@ import { LinkValue } from '../../../src/components/popup/LinkValue.js'
 afterEach(() => cleanup())
 
 describe('components/popup/LinkValue.tsx', () => {
+  it.each(['javascript:alert(1)', 'data:text/html,unsafe', 'file:///tmp/example', '//untrusted.example'])(
+    'renders unsupported legacy values as copyable text instead of navigation: %s',
+    (url) => {
+      renderWithProviders(() => <LinkValue url={url} />)
+      expect(screen.queryByRole('link')).not.toBeInTheDocument()
+      expect(screen.getByText(url)).toBeInTheDocument()
+      expect(screen.getByRole('button')).toBeEnabled()
+    },
+  )
+
   it('uses the explicit text prop when provided', () => {
     renderWithProviders(() => <LinkValue url="https://example.com/path" text="Custom label" />)
     const link = screen.getByRole('link')
@@ -24,9 +34,9 @@ describe('components/popup/LinkValue.tsx', () => {
     expect(screen.getByRole('link')).toHaveTextContent('example.com')
   })
 
-  it('renders an empty link when the url has no content left after stripping the protocol', () => {
+  it('keeps a malformed URL inert when its label has no content after stripping the protocol', () => {
     const { container } = renderWithProviders(() => <LinkValue url="https://" />)
-    expect(container.querySelector('a')).toBeEmptyDOMElement()
+    expect(container.querySelector('a')).toBeNull()
   })
 
   it('updates the derived label when an edited URL changes', () => {

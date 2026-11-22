@@ -531,6 +531,18 @@ describe('apps/websocket main()', () => {
   })
 
   describe('session-bound client sockets', () => {
+    it.each([
+      ['oversized text', Buffer.alloc(16385), false],
+      ['binary frame', Buffer.from('{}'), true],
+    ])('closes %s before resolving any status metadata', async (_label, frame, binary) => {
+      const ws = await connectClient('bounded-client-frame')
+      isServerPresentMock.mockClear()
+      ws.emit('message', frame, binary)
+      await Promise.resolve()
+      expect(ws.close).toHaveBeenCalledWith(1008, 'Message budget exceeded')
+      expect(isServerPresentMock).not.toHaveBeenCalled()
+    })
+
     it('suppresses a status response when its socket is revoked during the final permission revision read', async () => {
       const ws = await connectClient('revoked-during-final-permission-read')
       redisMock.mget.mockResolvedValueOnce([null, null]).mockImplementationOnce(async () => {

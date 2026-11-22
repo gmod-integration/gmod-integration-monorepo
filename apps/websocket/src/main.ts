@@ -27,6 +27,7 @@ import { ADDON_MAX_FRAME_BYTES, createAddonGateway } from './addonGateway.js'
 import { connection } from '@gmod/infra-bullmq'
 import { wsSendToServerQueue, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js'
 import { createServerPresence, isServerPresent } from './serverPresence.js'
+import { createDashboardMessageBudget } from './dashboardMessageBudget.js'
 import { acceptAddonCommandResult } from '@gmod/infra-websocket/addonCommands.js'
 
 interface wsClientClient {
@@ -584,14 +585,26 @@ export async function main() {
         scheduleSessionCheck(client)
         gmLog('websocket', 'Client connected: ' + session.discordID)
 
-        ws.on('message', async (message: string) => {
+        const messageBudget = createDashboardMessageBudget()
+        ws.on('message', async (message: Buffer | string, binary = false) => {
+          const decision = binary ? 'rejected' : messageBudget.enter(message)
+          if (decision === 'busy') return
+          if (decision === 'rejected') {
+            closeClient(client, 'Message budget exceeded', 1008)
+            return
+          }
           try {
-            const info = JSON.parse(message)
+            const info = JSON.parse(message.toString())
             if (!info || typeof info !== 'object' || !info.action) return
             if (!(await validClient(client))) return
             if (info.action === 'server_status') {
               const serverID = info.data?.serverID
-              if (typeof serverID !== 'string' || !(await refreshClientPermissions(client))) return
+              if (
+                typeof serverID !== 'string' ||
+                !/^[a-zA-Z0-9_-]{1,255}$/.test(serverID) ||
+                !(await refreshClientPermissions(client))
+              )
+                return
               if (!client.serverAdminListID.includes(serverID)) {
                 await wsSendToClient(client, { action: 'error', error: 'forbidden', serverID })
                 return
@@ -612,6 +625,8 @@ export async function main() {
             }
           } catch {
             gmLog('websocket', 'Error processing client message', true)
+          } finally {
+            messageBudget.release()
           }
         })
       } catch {

@@ -25,3 +25,10 @@ core, a domain package, infrastructure clients or an application.
 The workspace architecture check validates imports and declared dependencies together to prevent
 cross-application imports and dependency cycles. Tests for the three primitives live in
 `packages/shared/test`.
+
+## JSON structural budgets
+
+`@gmod/shared/jsonBudget.js` exports `hasJSONBudget(value, budget)`, an iterative preflight for decoded
+JSON. Callers supply depth, node, array, object-key and string/total-character limits. It rejects cycles,
+non-JSON objects, non-finite numbers and reserved prototype keys without recursively allocating schema
+errors. It complements transport byte limits and typed route validation; it grants no authority.

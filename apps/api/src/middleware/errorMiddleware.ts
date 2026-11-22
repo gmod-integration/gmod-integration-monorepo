@@ -7,6 +7,8 @@ import { AuthSessionError } from '@gmod/domain-auth/authSessions.js'
 import { DiscordOAuthError } from '@gmod/domain-auth/discordOAuth.js'
 
 export default async (err: Error, req: Request, res: Response, _next: NextFunction) => {
+  const path = req.path?.toLowerCase()
+  const v6 = path === '/v6' || path?.startsWith('/v6/')
   if (
     err instanceof AuthSessionError ||
     err instanceof DiscordOAuthError ||
@@ -18,7 +20,7 @@ export default async (err: Error, req: Request, res: Response, _next: NextFuncti
     const code = detail.code === 'grant_rejected' ? 'discord_reauth_required' : detail.code
     res
       .status(detail.code === 'grant_rejected' ? 403 : detail.status || 503)
-      .json({ error: req.path?.startsWith('/v6') ? { code, message: detail.message } : code })
+      .json({ error: v6 ? { code, message: detail.message } : code })
     return
   }
   if (err instanceof AccessDeniedError) {
@@ -32,35 +34,44 @@ export default async (err: Error, req: Request, res: Response, _next: NextFuncti
     }
     res
       .status(err.status)
-      .json(
-        req.path?.startsWith('/v6')
-          ? { error: detail }
-          : { error: err.code, capability: err.capability, limit: err.limit, used: err.used },
-      )
+      .json(v6 ? { error: detail } : { error: err.code, capability: err.capability, limit: err.limit, used: err.used })
     return
   }
   if ('code' in err && err.code === 'personal_data_erasure_blocked') {
     res.setHeader('Cache-Control', 'no-store')
     res.status(409).json({
-      error: req.path?.startsWith('/v6')
+      error: v6
         ? { code: 'personal_data_erasure_blocked', message: 'Account erasure is in progress.' }
         : 'personal_data_erasure_blocked',
     })
     return
   }
-  // Parsing and CORS failures happen before the versioned router is entered. They must still
-  // use its public error contract, and parser errors can contain the raw receipt-bearing body.
-  if (req.path === '/v6' || req.path?.startsWith('/v6/')) {
+  // Parser failures may carry the original credential-bearing body. Never log or reflect it.
+  const type = 'type' in err ? err.type : undefined
+  const parserStatus = ['entity.parse.failed', 'querystring.parse.rangeError'].includes(String(type))
+    ? 400
+    : ['entity.too.large', 'parameters.too.many'].includes(String(type))
+      ? 413
+      : ['encoding.unsupported', 'charset.unsupported'].includes(String(type))
+        ? 415
+        : undefined
+  if (parserStatus) {
     res.setHeader('Cache-Control', 'no-store')
-    const type = 'type' in err ? err.type : undefined
+    res
+      .status(parserStatus)
+      .json(
+        v6
+          ? { error: { code: 'invalid_request', message: 'The request body is invalid or exceeds its limits.' } }
+          : { error: 'invalid_request' },
+      )
+    return
+  }
+  if (v6) {
+    res.setHeader('Cache-Control', 'no-store')
     const [status, code, message] =
-      type === 'entity.parse.failed'
-        ? ([400, 'invalid_request', 'The request body must be valid JSON.'] as const)
-        : type === 'entity.too.large'
-          ? ([413, 'invalid_request', 'The request body is too large.'] as const)
-          : err.message === 'Not allowed by CORS'
-            ? ([403, 'origin_forbidden', 'This origin is not allowed.'] as const)
-            : ([503, 'service_unavailable', 'This service is temporarily unavailable. Try again later.'] as const)
+      err.message === 'Not allowed by CORS'
+        ? ([403, 'origin_forbidden', 'This origin is not allowed.'] as const)
+        : ([503, 'service_unavailable', 'This service is temporarily unavailable. Try again later.'] as const)
     res.status(status).json({ error: { code, message } })
     return
   }

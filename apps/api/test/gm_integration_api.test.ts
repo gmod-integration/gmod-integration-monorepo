@@ -71,6 +71,46 @@ describe('gm_integration_api', () => {
     vi.restoreAllMocks()
   })
 
+  it('does not trust forwarded identity headers by default', async () => {
+    expect(app.get('trust proxy')).toBe(false)
+    await request(app).get('/unknown').set('X-Forwarded-For', '192.0.2.55').set('CF-Connecting-IP', '192.0.2.56')
+    const logs = gmLogMock.mock.calls
+      .filter(([category]) => category === 'api')
+      .map(([, message]) => message)
+      .join(' ')
+    expect(logs).not.toContain('192.0.2.55')
+    expect(logs).not.toContain('192.0.2.56')
+  })
+  it.each(['/v6/settings', '/V6/settings'])(
+    'bounds decoded JSON before schemas and keeps the versioned error contract: %s',
+    async (path) => {
+      const response = await request(app)
+        .post(path)
+        .send({ value: 'x'.repeat(300000) })
+      expect(response.status).toBe(413)
+      expect(response.body).toMatchObject({ error: { code: 'invalid_request' } })
+      expect(response.body.error).not.toHaveProperty('body')
+    },
+  )
+  it('bounds form parameter count and depth using the client error contract', async () => {
+    const parameters = Array.from({ length: 101 }, (_, i) => `field${i}=x`).join('&')
+    const tooMany = await request(app).post('/v6/settings').type('form').send(parameters)
+    expect(tooMany.status).toBe(413)
+    expect(tooMany.body).toMatchObject({ error: { code: 'invalid_request' } })
+    const nested = await request(app).post('/V6/settings').type('form').send('a[b][c][d][e][f][g]=x')
+    expect(nested.status).toBe(400)
+    expect(nested.body).toMatchObject({ error: { code: 'invalid_request' } })
+  })
+  it.each(['/v3/users/u1/guilds/g1/bot', '/V6/settings'])(
+    'keeps malformed credential-bearing JSON out of responses and logs: %s',
+    async (path) => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const result = await request(app).put(path).type('json').send('{"token":"private-fixture",')
+      expect(result.status).toBe(400)
+      expect(JSON.stringify(result.body)).not.toContain('private-fixture')
+      expect(consoleError).not.toHaveBeenCalled()
+    },
+  )
   it('responds 404 for an unmatched route', async () => {
     const response = await request(app).get('/totally-unknown-route')
     expect(response.status).toBe(404)

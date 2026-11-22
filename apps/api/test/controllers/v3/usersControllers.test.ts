@@ -764,6 +764,18 @@ describe('usersControllers', () => {
   })
 
   describe('putGuildLinks', () => {
+    it.each(['javascript:alert(1)', 'data:text/html,invalid', 'file:///tmp/example'])(
+      'refuses an unsupported URL before reading or writing a link: %s',
+      async (url) => {
+        const guild = { id: 'g1', getLink: vi.fn() }
+        const res = makeRes()
+        await c.putGuildLinks({ params: { linkID: '1' }, guild, body: { url } } as any, res)
+        expect(res.status).toHaveBeenCalledWith(400)
+        expect(guild.getLink).not.toHaveBeenCalled()
+        expect(prismaMock.gm_server_links.update).not.toHaveBeenCalled()
+      },
+    )
+
     it('returns 404 when the link is not found', async () => {
       const guild = { getLink: vi.fn().mockResolvedValueOnce(null), id: 'g1' }
       const res = makeRes()
@@ -780,13 +792,17 @@ describe('usersControllers', () => {
       const res = makeRes()
 
       await c.putGuildLinks(
-        { params: { linkID: '1' }, guild, body: { url: 'new', alias: undefined, active: undefined } } as any,
+        {
+          params: { linkID: '1' },
+          guild,
+          body: { url: 'https://example.test/new', alias: undefined, active: undefined },
+        } as any,
         res,
       )
 
       expect(prismaMock.gm_server_links.update).toHaveBeenCalledWith({
         where: { id: 1, guild: 'g1' },
-        data: { url: 'new', alias: 'a', active: true },
+        data: { url: 'https://example.test/new', alias: 'a', active: true },
       })
     })
 
@@ -1081,6 +1097,18 @@ describe('usersControllers', () => {
     })
 
     describe('putServerStatusButtons', () => {
+      it.each(['javascript:alert(1)', 'data:text/html,invalid', 'file:///tmp/example'])(
+        'refuses unsupported button URLs without triggering status publication: %s',
+        async (url) => {
+          const server = { id: 's1', findStatusButton: vi.fn() }
+          const res = makeRes()
+          await c.putServerStatusButtons({ params: { buttonID: '1' }, server, body: { url } } as any, res)
+          expect(res.status).toHaveBeenCalledWith(400)
+          expect(server.findStatusButton).not.toHaveBeenCalled()
+          expect(bullmqMocks.enqueueDiscordServerStatusRefresh).not.toHaveBeenCalled()
+        },
+      )
+
       it('returns 404 when the button is not found', async () => {
         const server = { id: 's1', findStatusButton: vi.fn().mockResolvedValueOnce(null) }
         const res = makeRes()
@@ -1091,7 +1119,9 @@ describe('usersControllers', () => {
       it('updates the button and refreshes status when enabled', async () => {
         const server = {
           id: 's1',
-          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: false }),
+          findStatusButton: vi
+            .fn()
+            .mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'https://example.test', enable: false }),
         }
         prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: true })
         const res = makeRes()
@@ -1105,26 +1135,34 @@ describe('usersControllers', () => {
       it('overwrites name/emoji/url when given, keeping the existing enable value', async () => {
         const server = {
           id: 's1',
-          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'old', emoji: 'oe', url: 'ou', enable: true }),
+          findStatusButton: vi
+            .fn()
+            .mockResolvedValueOnce({ id: 1, name: 'old', emoji: 'oe', url: 'https://example.test/old', enable: true }),
         }
         prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: true })
         const res = makeRes()
 
         await c.putServerStatusButtons(
-          { params: { buttonID: '1' }, server, body: { name: 'new', emoji: 'ne', url: 'nu' } } as any,
+          {
+            params: { buttonID: '1' },
+            server,
+            body: { name: 'new', emoji: 'ne', url: 'https://example.test/new' },
+          } as any,
           res,
         )
 
         expect(prismaMock.gm_status_button.update).toHaveBeenCalledWith({
           where: { id: 1, server: 's1' },
-          data: { name: 'new', emoji: 'ne', url: 'nu', enable: true },
+          data: { name: 'new', emoji: 'ne', url: 'https://example.test/new', enable: true },
         })
       })
 
       it('refreshes the message when a previously enabled button is disabled', async () => {
         const server = {
           id: 's1',
-          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: true }),
+          findStatusButton: vi
+            .fn()
+            .mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'https://example.test', enable: true }),
         }
         prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: false })
         const res = makeRes()
@@ -1137,7 +1175,9 @@ describe('usersControllers', () => {
       it('does not refresh while editing a button that remains inactive', async () => {
         const server = {
           id: 's1',
-          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: false }),
+          findStatusButton: vi
+            .fn()
+            .mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'https://example.test', enable: false }),
         }
         prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: false })
         await c.putServerStatusButtons({ params: { buttonID: '1' }, server, body: { name: 'Draft' } } as any, makeRes())
