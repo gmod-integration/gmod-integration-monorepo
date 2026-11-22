@@ -467,6 +467,45 @@ describe('authenticated addon dispatcher', () => {
     expect((await handleAddonRequest(server(), request(`/clients/${id}/servers/s1/bugs`, body))).status).toBe(400)
   })
 
+  it.each([null, 'malformed capture', { screenshot: 'incomplete capture' }])(
+    'preserves a report with an invalid optional attachment and returns its bounded partial success',
+    async (screenshot) => {
+      const body = {
+        player: actor(),
+        description: 'Description',
+        importance: 'low',
+        steps: 'Steps',
+        expected: 'Expected',
+        actual: 'Actual',
+        screenshot,
+      }
+      const acknowledgement = { success: true, saved: true, attachment: 'failed' }
+      mocks.bug.mockResolvedValueOnce(acknowledgement)
+      expect(await handleAddonRequest(server(), request(`/clients/${id}/servers/s1/bugs`, body))).toEqual({
+        status: 200,
+        body: acknowledgement,
+      })
+      expect(mocks.bug).toHaveBeenCalledExactlyOnceWith(expect.anything(), expect.objectContaining({ screenshot }))
+    },
+  )
+
+  it('does not report acceptance when privacy controls refused the bug report', async () => {
+    mocks.bug.mockResolvedValueOnce({ skip: true, message: 'Personal data collection is disabled' })
+    expect(
+      await handleAddonRequest(
+        server(),
+        request(`/clients/${id}/servers/s1/bugs`, {
+          player: actor(),
+          description: 'Description',
+          importance: 'low',
+          steps: 'Steps',
+          expected: 'Expected',
+          actual: 'Actual',
+        }),
+      ),
+    ).toEqual({ status: 403, body: { error: 'personal_data_collection_disabled' } })
+  })
+
   it('binds client and server Lua errors to their authenticated realm and server scope', async () => {
     const target = server()
     await handleAddonRequest(target, request('/servers/s1/errors', error()))

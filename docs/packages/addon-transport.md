@@ -73,6 +73,12 @@ When Discord is unavailable or no screenshot destination is configured, the save
 and the player receives an explicit notice instead of a false delivery confirmation. These results
 contain only booleans and the fixed `delivery` values `unavailable` or `not_configured`.
 
+Bug report acknowledgements contain only `success: true`, `saved: true` and the attachment outcome
+`none`, `saved` or `failed`. Invalid optional capture metadata or capture-storage errors do not discard
+an otherwise valid report. The client closes the accepted form and explains a failed attachment without
+resending the report. Older acknowledgements without attachment metadata are shown as unconfirmed when
+a capture was submitted. No stored report, screenshot URL or exception details are returned to the player.
+
 Game-to-Discord chat returns a failed acknowledgement when its relay rejects the message or is
 unreachable. Configured filtering and disabled relay directions remain intentional skips. Backend
 and administrator diagnostics are rate limited and exclude chat contents and webhook credentials.
@@ -80,6 +86,10 @@ The backend relay address is configured with `DISCORD_RELAY_URL`; development de
 relay on port `3002`, independently of the addon's WebSocket tunnel.
 
 ## Verification and release order
+
+The bug-report client checks the optional capture against the relay's raw JSON and compressed transfer
+budgets before sending anything. An attachment that cannot fit is replaced by the bounded failure
+marker and the report is sent once. This does not retry an already sent or uncertain operation.
 
 Run the schema/core/gateway TypeScript suites and `python3 submodules/gmod-integration/scripts/test_lua.py`.
 The Lua runner checks transport and relay behavior with mocked engine APIs; it is not a dedicated GMod

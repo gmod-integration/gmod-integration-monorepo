@@ -62,6 +62,11 @@ const jpegBytes = await sharp({ create: { width: 4, height: 2, channels: 3, back
   .toBuffer()
 const jpeg = `data:image/jpeg;base64,${jpegBytes.toString('base64')}`
 const fakePlayer = { steamID64: '765', name: 'Bob' } as any
+const bugCapture = () => ({
+  screenshot: jpeg,
+  captureData: { format: 'jpeg', w: 4, h: 2, x: 0, y: 0, quality: 95 },
+  size: '1KB',
+})
 
 function makeServer(overrides: Record<string, any> = {}) {
   return {
@@ -502,22 +507,50 @@ describe('clientsModels', () => {
       expect(prismaMock.gm_server_report_bugs.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ screenshot: '' }) }),
       )
-      expect(result).toEqual({ id: 1 })
+      expect(result).toEqual({ success: true, saved: true, attachment: 'none' })
     })
 
-    it('skips saving the screenshot when its sub-fields are incomplete', async () => {
+    it.each([
+      null,
+      [],
+      'private malformed capture',
+      { invalid: true },
+      { screenshot: jpeg },
+      { ...bugCapture(), size: undefined },
+    ])(
+      'accepts the report but explicitly marks malformed or incomplete attachment metadata as failed',
+      async (screenshot) => {
+        prismaMock.gm_server_report_bugs.create.mockResolvedValueOnce({ id: 1, description: 'private report' })
+        const result = await reportBugPayload(makeServer(), {
+          player: fakePlayer,
+          description: 'desc',
+          importance: 'high',
+          steps: 'steps',
+          expected: 'expected',
+          actual: 'actual',
+          screenshot,
+        })
+        expect(result).toEqual({ success: true, saved: true, attachment: 'failed' })
+        expect(s3SendMock).not.toHaveBeenCalled()
+        expect(prismaMock.gm_server_report_bugs.create).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ data: expect.objectContaining({ screenshot: '' }) }),
+        )
+      },
+    )
+
+    it('treats an empty legacy attachment table as an intentionally unsubmitted capture', async () => {
       prismaMock.gm_server_report_bugs.create.mockResolvedValueOnce({ id: 1 })
-
-      await reportBugPayload(makeServer(), {
-        player: fakePlayer,
-        description: 'desc',
-        importance: 'high',
-        steps: 'steps',
-        expected: 'expected',
-        actual: 'actual',
-        screenshot: { screenshot: jpeg },
-      })
-
+      expect(
+        await reportBugPayload(makeServer(), {
+          player: fakePlayer,
+          description: 'desc',
+          importance: 'high',
+          steps: 'steps',
+          expected: 'expected',
+          actual: 'actual',
+          screenshot: {},
+        }),
+      ).toEqual({ success: true, saved: true, attachment: 'none' })
       expect(s3SendMock).not.toHaveBeenCalled()
     })
 
@@ -526,41 +559,47 @@ describe('clientsModels', () => {
       prismaMock.gm_server_screenshots.create.mockResolvedValueOnce({})
       prismaMock.gm_server_report_bugs.create.mockResolvedValueOnce({ id: 1 })
 
-      await reportBugPayload(makeServer(), {
+      const result = await reportBugPayload(makeServer(), {
         player: fakePlayer,
         description: 'desc',
         importance: 'high',
         steps: 'steps',
         expected: 'expected',
         actual: 'actual',
-        screenshot: { screenshot: jpeg, captureData: { format: 'jpeg' }, size: 100 },
+        screenshot: bugCapture(),
       })
 
       expect(prismaMock.gm_server_report_bugs.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ screenshot: expect.stringContaining('.jpeg') }) }),
       )
+      expect(result).toEqual({ success: true, saved: true, attachment: 'saved' })
     })
 
-    it('falls back to an empty screenshot name and logs when saveScreenshot fails', async () => {
-      s3SendMock.mockResolvedValueOnce({})
-      prismaMock.gm_server_screenshots.create.mockRejectedValueOnce(new Error('db down'))
-      prismaMock.gm_server_report_bugs.create.mockResolvedValueOnce({ id: 1 })
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      await reportBugPayload(makeServer(), {
-        player: fakePlayer,
-        description: 'desc',
-        importance: 'high',
-        steps: 'steps',
-        expected: 'expected',
-        actual: 'actual',
-        screenshot: { screenshot: jpeg, captureData: { format: 'jpeg' }, size: 100 },
-      })
-
-      expect(errorSpy).toHaveBeenCalled()
-      expect(prismaMock.gm_server_report_bugs.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ screenshot: '' }) }),
-      )
-    })
+    it.each(['bucket', 'object', 'metadata'])(
+      'retains the report when screenshot %s storage fails without leaking an exception',
+      async (stage) => {
+        const failure = new Error('private screenshot bytes, report contents and storage credentials')
+        if (stage === 'bucket') createBucketIfNotExistsMock.mockRejectedValueOnce(failure)
+        if (stage === 'object') s3SendMock.mockRejectedValueOnce(failure)
+        if (stage === 'metadata') prismaMock.gm_server_screenshots.create.mockRejectedValueOnce(failure)
+        prismaMock.gm_server_report_bugs.create.mockResolvedValueOnce({ id: 1, description: 'private report' })
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const result = await reportBugPayload(makeServer(), {
+          player: fakePlayer,
+          description: 'desc',
+          importance: 'high',
+          steps: 'steps',
+          expected: 'expected',
+          actual: 'actual',
+          screenshot: bugCapture(),
+        })
+        expect(result).toEqual({ success: true, saved: true, attachment: 'failed' })
+        expect(errorSpy).not.toHaveBeenCalled()
+        expect(prismaMock.gm_server_report_bugs.create).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({ data: expect.objectContaining({ screenshot: '' }) }),
+        )
+        errorSpy.mockRestore()
+      },
+    )
   })
 })

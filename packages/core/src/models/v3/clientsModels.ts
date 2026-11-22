@@ -12,6 +12,11 @@ import { createBucketIfNotExists, s3 } from '@gmod/infra-minio'
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import { enqueueMainClientUploadScreenshot } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { assertPersonalDataAllowed, isErasureBlocked, PersonalDataErasureError } from '@gmod/domain-user/privacy.js'
+import {
+  GmodBugReportAcknowledgementSchema,
+  GmodBugReportAttachmentSchema,
+  type GmodBugReportAcknowledgement,
+} from '@gmod/schema/gmod/GmodBugReportSchema.js'
 
 type MissingArgumentsResponse<T extends Record<string, unknown>> = {
   error: 'missing_arguments'
@@ -200,14 +205,31 @@ export async function reportBugPayload(server: Server, payload: any) {
     return { skip: true, message: 'Personal data collection is disabled' }
 
   let screenshotName = ''
-  if (screenshot) {
-    const { screenshot: screenshotData, captureData, size } = screenshot
-    if (screenshotData && captureData && size) {
-      const screenshotResult = await saveScreenshot(screenshotData, captureData, player, server, '').catch((error) => {
-        console.error(error)
-        return { internUrl: '', filename: '' }
-      })
-      screenshotName = screenshotResult.filename
+  const screenshotRequested =
+    screenshot !== undefined &&
+    !(
+      screenshot &&
+      typeof screenshot === 'object' &&
+      !Array.isArray(screenshot) &&
+      Object.keys(screenshot).length === 0
+    )
+  let attachment: GmodBugReportAcknowledgement['attachment'] = screenshotRequested ? 'failed' : 'none'
+  if (screenshotRequested) {
+    const parsed = GmodBugReportAttachmentSchema.safeParse(screenshot)
+    if (parsed.success) {
+      try {
+        const screenshotResult = await saveScreenshot(
+          parsed.data.screenshot,
+          parsed.data.captureData,
+          player,
+          server,
+          '',
+        )
+        screenshotName = screenshotResult.filename
+        attachment = 'saved'
+      } catch {
+        // The report remains useful without its optional capture. Do not expose storage exceptions.
+      }
     }
   }
 
@@ -229,5 +251,5 @@ export async function reportBugPayload(server: Server, payload: any) {
     await prisma.gm_server_report_bugs.deleteMany({ where: { id: report.id } })
     return { skip: true, message: 'Personal data collection is disabled' }
   }
-  return report
+  return GmodBugReportAcknowledgementSchema.parse({ success: true, saved: true, attachment })
 }

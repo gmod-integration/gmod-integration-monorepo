@@ -47,5 +47,22 @@ describe('clientsControllers', () => {
       await reportBugs({ server: {}, body: {} } as any, res)
       expect(res.status).toHaveBeenCalledWith(200)
     })
+
+    it('keeps a saved report successful while returning the failed attachment outcome', async () => {
+      const result = { success: true, saved: true, attachment: 'failed' }
+      reportBugPayloadMock.mockResolvedValueOnce(result)
+      const res = makeRes()
+      await reportBugs({ server: {}, body: {} } as any, res)
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(res.json).toHaveBeenCalledExactlyOnceWith(result)
+    })
+
+    it('does not acknowledge a report that privacy controls prevented from being saved', async () => {
+      reportBugPayloadMock.mockResolvedValueOnce({ skip: true, message: 'Personal data collection is disabled' })
+      const res = makeRes()
+      await reportBugs({ server: {}, body: {} } as any, res)
+      expect(res.status).toHaveBeenCalledWith(403)
+      expect(res.json).toHaveBeenCalledExactlyOnceWith({ error: 'personal_data_collection_disabled' })
+    })
   })
 })

@@ -97,7 +97,8 @@ const bug = z
     steps: text(16_384),
     expected: text(16_384),
     actual: text(16_384),
-    screenshot: z.union([screenshotData, z.object({}).strict()]).optional(),
+    // Attachment validation must not discard the report itself; the model returns its separate outcome.
+    screenshot: z.unknown().optional(),
   })
   .passthrough()
 const errorBody = z
@@ -328,6 +329,8 @@ export async function handleAddonRequest(server: Server, rawRequest: AddonReques
       )
     const result =
       client[3] === 'screenshots' ? await uploadScreenshotPayload(server, body) : await reportBugPayload(server, body)
+    if (client[3] === 'bugs' && 'skip' in result)
+      return { status: 403, body: { error: 'personal_data_collection_disabled' } }
     return { status: 'error' in result ? 400 : 200, body: result }
   }
   const path = scopedPath(server, request.endpoint)
