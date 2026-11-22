@@ -157,7 +157,6 @@ export const ServerLogsParameters: Component = () => {
         </AdminPanel>
         <AdminPanel
           title={t('settings.log_content', 'Log content')}
-          description={t('ui.autosave', 'Changes are saved automatically.')}
           icon="scroll-text"
           footer={
             !content.loading && !content.error ? (

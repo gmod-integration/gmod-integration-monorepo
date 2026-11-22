@@ -70,7 +70,7 @@ describe('server configuration autosave', () => {
     await ready(container)
     expect(screen.getByText('In-game addon settings')).toBeInTheDocument()
     expect(screen.getByText('GWSockets')).toBeInTheDocument()
-    expect(screen.getAllByText('Changes are saved automatically.').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Changes are saved automatically.')).not.toBeInTheDocument()
     const general = screen.getByRole('region', { name: 'General and administration' })
     const access = screen.getByRole('region', { name: 'Access and verification' })
     expect(general).toContainElement(row(container, 'Addon Language'))

@@ -608,6 +608,9 @@
   padding: 16px 24px;
   border-color: var(--dashboard-border);
 }
+.site-shell :is(.dashboard-panel-footer, .settings-row-feedback):empty {
+  display: none;
+}
 .site-shell .dashboard-panel-footer > .ui-form-actions {
   margin-top: 0;
   padding-top: 0;

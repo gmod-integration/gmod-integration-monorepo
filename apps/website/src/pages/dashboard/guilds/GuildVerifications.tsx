@@ -436,7 +436,6 @@ const GuildVerification: Component = () => {
         </AdminPanel>
         <AdminPanel
           title={t('settings.verification_preferences', 'Member experience')}
-          description={t('ui.autosave', 'Changes are saved automatically.')}
           icon="user-round"
           footer={
             <AutosaveFeedback

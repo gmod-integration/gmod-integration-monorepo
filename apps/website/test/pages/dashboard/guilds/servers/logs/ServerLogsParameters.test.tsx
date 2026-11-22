@@ -76,7 +76,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
     expect(destination).not.toBe(content)
     expect(within(destination).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     expect(within(content).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
-    expect(within(content).getByRole('status')).toBeInTheDocument()
+    expect(within(content).queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('renders the configured logs channel and a Remove Channel button', async () => {

@@ -127,10 +127,7 @@ const ServerInformations: Component = () => {
       />
       <AdminPanel
         title={t('dashboard.server.server_informations.informations', 'Server details')}
-        description={t(
-          'settings.server_edit_help',
-          'Edit the server identity and connection details. Changes are saved automatically.',
-        )}
+        description={t('settings.server_edit_help', 'Edit the server identity and connection details.')}
         icon="server"
         footer={<AutosaveFeedback state={autosave} />}
       >

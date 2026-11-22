@@ -512,7 +512,7 @@ const ServerConfig: Component = () => {
         type="none"
         description={t(
           'dashboard.server.config.description',
-          'Configure player access and addon behavior on this game server. Changes are saved automatically; synchronization with the addon can take a moment.',
+          'Configure player access and addon behavior on this game server. Synchronization with the addon can take a moment.',
         )}
       >
         <div class="settings-browser">
@@ -528,10 +528,6 @@ const ServerConfig: Component = () => {
                 onInput={(event) => setSearch(event.currentTarget.value)}
               />
             </label>
-            <p class="settings-autosave">
-              <Icon name="circle-check" size={15} />
-              {t('ui.autosave', 'Changes are saved automatically.')}
-            </p>
           </div>
           <div class="settings-categories" role="group" aria-label={t('settings.categories', 'Setting categories')}>
             <Button

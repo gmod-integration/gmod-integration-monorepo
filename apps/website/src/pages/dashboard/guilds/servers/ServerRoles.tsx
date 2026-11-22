@@ -268,10 +268,7 @@ const ServerRoles: Component = () => {
         <SettingRow
           controlId="server-roles-direction"
           title={t('dashboard.server.roles.sync_direction', 'Role synchronization direction')}
-          description={t(
-            'settings.sync_direction_help',
-            'This direction applies to every rule below. Changes are saved automatically.',
-          )}
+          description={t('settings.sync_direction_help', 'This direction applies to every rule below.')}
         >
           <select
             id="server-roles-direction"
@@ -300,7 +297,7 @@ const ServerRoles: Component = () => {
         title={t('dashboard.server.roles.role_sync', 'Role mappings')}
         description={t(
           'dashboard.server.roles.role_sync_description',
-          'Each active rule links one Discord role to a game user group. The synchronization direction is saved automatically.',
+          'Each active rule links one Discord role to a game user group.',
         )}
         type="none"
         footer={

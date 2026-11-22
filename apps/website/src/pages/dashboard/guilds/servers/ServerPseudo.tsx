@@ -244,7 +244,7 @@ const ServerPseudo: Component = () => {
         title={t('dashboard.server.pseudo.pseudo', 'Nickname synchronization')}
         description={t(
           'dashboard.server.pseudo.description',
-          'Synchronize player names between the game and Discord for linked accounts. Changes to the direction and nickname format are saved automatically.',
+          'Synchronize player names between the game and Discord for linked accounts.',
         )}
         info={t(
           'dashboard.server.pseudo.info',
@@ -270,10 +270,7 @@ const ServerPseudo: Component = () => {
         <SettingRow
           controlId="server-pseudo-direction"
           title={t('dashboard.server.pseudo.pseudoSyncDirection', 'Nickname synchronization direction')}
-          description={t(
-            'settings.sync_direction_help',
-            'This direction applies to every rule below. Changes are saved automatically.',
-          )}
+          description={t('settings.sync_direction_help', 'This direction applies to every rule below.')}
         >
           <select
             id="server-pseudo-direction"
@@ -296,10 +293,7 @@ const ServerPseudo: Component = () => {
         <SettingRow
           controlId="pseudo-format"
           title={t('dashboard.server.pseudo.format', 'Format')}
-          description={t(
-            'settings.nickname_format_help',
-            'Edit the nickname template and review the live preview. Changes are saved automatically.',
-          )}
+          description={t('settings.nickname_format_help', 'Edit the nickname template and review the live preview.')}
           stacked
         >
           <input

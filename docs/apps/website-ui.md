@@ -246,7 +246,8 @@ const autosave = createAutosave({
 ```
 
 `AutosaveFeedback` accepts optional `message` content for saved-but-pending synchronization. It shows
-saving, saved and failure feedback without ordinary Save/Cancel buttons. Inputs can remain editable
+saving, saved and failure feedback, remaining hidden before any activity rather than repeating an
+automatic-save notice. Inputs can remain editable
 while a setting saves; commands that remove/reset the same entity wait until its queued writes finish.
 
 Entity and secret modals retain explicit Create/Save/Cancel. Confirm only a complete validated object;

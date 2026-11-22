@@ -388,7 +388,7 @@ const ServerChats: Component = () => {
       <p class="text-sm text-base-content/60">
         {t(
           'dashboard.server.chat.set_channel',
-          'Relay messages between your game server and a Discord channel. Destination and relay settings are saved automatically; configure filter rules below.',
+          'Relay messages between your game server and a Discord channel. Configure filter rules below.',
         )}
       </p>
       <div class="settings-card-grid">
@@ -433,10 +433,7 @@ const ServerChats: Component = () => {
             <SettingRow
               controlId="chat-direction"
               title={t('dashboard.server.chat.sync_direction', 'Chat relay direction')}
-              description={t(
-                'settings.chat_direction_help',
-                'Choose which side can send messages through the relay. Changes are saved automatically.',
-              )}
+              description={t('settings.chat_direction_help', 'Choose which side can send messages through the relay.')}
             >
               <select
                 id="chat-direction"

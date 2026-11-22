@@ -42,6 +42,7 @@ describe('automatic settings persistence', () => {
     const { input } = renderEditor(persist)
     await vi.advanceTimersByTimeAsync(500)
     expect(persist).not.toHaveBeenCalled()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
     await fireEvent.input(input, { target: { value: 'First' } })
     await vi.advanceTimersByTimeAsync(250)
     await fireEvent.input(input, { target: { value: 'Final' } })
@@ -50,6 +51,7 @@ describe('automatic settings persistence', () => {
     await vi.advanceTimersByTimeAsync(1)
     expect(persist).toHaveBeenCalledExactlyOnceWith({ name: 'Final' })
     expect(input).toHaveValue('Canonical')
+    expect(screen.getByRole('status')).toHaveTextContent('Saved')
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
   })
 
