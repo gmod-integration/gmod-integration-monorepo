@@ -1,4 +1,6 @@
 import type * as NodeCrypto from 'node:crypto'
+import sharp from 'sharp'
+import { SCREENSHOT_MAX_BASE64_LENGTH } from '../../../src/utils/boundedRasterScreenshot.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
@@ -55,6 +57,10 @@ vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 const { saveScreenshot, sendScreenshotToDiscord, uploadScreenshotPayload, reportBugPayload } =
   await import('../../../src/models/v3/clientsModels.js')
 
+const jpegBytes = await sharp({ create: { width: 4, height: 2, channels: 3, background: '#335577' } })
+  .jpeg()
+  .toBuffer()
+const jpeg = `data:image/jpeg;base64,${jpegBytes.toString('base64')}`
 const fakePlayer = { steamID64: '765', name: 'Bob' } as any
 
 function makeServer(overrides: Record<string, any> = {}) {
@@ -97,9 +103,15 @@ describe('clientsModels', () => {
     )
 
     it('removes an upload that finishes after erasure starts instead of publishing or registering it', async () => {
-      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
-      s3SendMock.mockResolvedValue({})
-      await expect(saveScreenshot('AAAA', {}, fakePlayer, makeServer(), 'Private')).rejects.toThrow(
+      let blocked = false
+      isErasureBlockedMock.mockImplementation(async () => blocked)
+      s3SendMock
+        .mockImplementationOnce(async () => {
+          blocked = true
+          return {}
+        })
+        .mockResolvedValue({})
+      await expect(saveScreenshot(jpeg, {}, fakePlayer, makeServer(), 'Private')).rejects.toThrow(
         'Personal data collection is disabled',
       )
       expect(s3SendMock).toHaveBeenCalledTimes(2)
@@ -116,17 +128,41 @@ describe('clientsModels', () => {
       expect(prismaMock.gm_server_screenshots.create).not.toHaveBeenCalled()
       expect(enqueueMainClientUploadScreenshotMock).not.toHaveBeenCalled()
     })
+    it('does not store an image when erasure starts while it is being validated', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      await expect(saveScreenshot(jpeg, {}, fakePlayer, makeServer(), 'Private')).rejects.toThrow(
+        'Personal data collection is disabled',
+      )
+      expect(createBucketIfNotExistsMock).not.toHaveBeenCalled()
+      expect(s3SendMock).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_screenshots.create).not.toHaveBeenCalled()
+    })
+    it.each([
+      'AAAA',
+      'https://example.test/capture.png',
+      'data:image/png;base64,PHN2Zy8+',
+      'A'.repeat(SCREENSHOT_MAX_BASE64_LENGTH + 4),
+    ])('rejects unsupported, malformed or oversized image content before storage', async (image) => {
+      await expect(saveScreenshot(image, {}, fakePlayer, makeServer(), 'Capture')).rejects.toThrow()
+      expect(createBucketIfNotExistsMock).not.toHaveBeenCalled()
+      expect(s3SendMock).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_screenshots.create).not.toHaveBeenCalled()
+    })
+    it('re-encodes the stored bytes to match the selected format while preserving capture metadata', async () => {
+      s3SendMock.mockResolvedValue({})
+      const capture = { format: 'png', x: 0, y: 0, w: 4, h: 2, quality: 95 }
+      await saveScreenshot(jpeg, capture, fakePlayer, makeServer(), 'Capture')
+      const command = s3SendMock.mock.calls[0][0]
+      expect(command.input.ContentType).toBe('image/png')
+      expect(await sharp(command.input.Body).metadata()).toMatchObject({ format: 'png', width: 4, height: 2 })
+      expect(command.input.Body.equals(jpegBytes)).toBe(false)
+      expect(prismaMock.gm_server_screenshots.create.mock.calls[0][0].data.captureData).toBe(JSON.stringify(capture))
+    })
     it('uploads to S3 and persists the DB row, skipping Discord upload when no channel is configured', async () => {
       s3SendMock.mockResolvedValueOnce({})
       prismaMock.gm_server_screenshots.create.mockResolvedValueOnce({})
 
-      const result = await saveScreenshot(
-        'data:image/jpeg;base64,AAAA',
-        { format: 'jpeg' },
-        fakePlayer,
-        makeServer(),
-        'My title',
-      )
+      const result = await saveScreenshot(jpeg, { format: 'jpeg' }, fakePlayer, makeServer(), 'My title')
 
       expect(createBucketIfNotExistsMock).toHaveBeenCalledWith('gmi-players-screenshots')
       expect(enqueueMainClientUploadScreenshotMock).not.toHaveBeenCalled()
@@ -138,7 +174,7 @@ describe('clientsModels', () => {
       s3SendMock.mockResolvedValueOnce({})
       prismaMock.gm_server_screenshots.create.mockResolvedValueOnce({})
 
-      const result = await saveScreenshot('data:image/jpeg;base64,AAAA', {}, fakePlayer, makeServer(), undefined)
+      const result = await saveScreenshot(jpeg, {}, fakePlayer, makeServer(), undefined)
 
       expect(result.filename).toContain('.jpeg')
     })
@@ -148,7 +184,7 @@ describe('clientsModels', () => {
       prismaMock.gm_server_screenshots.create.mockResolvedValueOnce({})
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-      await saveScreenshot('data:image/jpeg;base64,AAAA', { format: 'png' }, fakePlayer, makeServer(), 'title')
+      await saveScreenshot(jpeg, { format: 'png' }, fakePlayer, makeServer(), 'title')
 
       expect(errorSpy).toHaveBeenCalledWith('Error uploading players screenshot to S3:', expect.any(Error))
     })
@@ -162,13 +198,7 @@ describe('clientsModels', () => {
       enqueueMainClientUploadScreenshotMock.mockResolvedValueOnce('https://discord.example/file.jpeg')
 
       try {
-        const result = await saveScreenshot(
-          'data:image/jpeg;base64,AAAA',
-          { format: 'jpeg' },
-          fakePlayer,
-          makeServer(),
-          'title',
-        )
+        const result = await saveScreenshot(jpeg, { format: 'jpeg' }, fakePlayer, makeServer(), 'title')
         expect(result.discordUrl).toBe('https://discord.example/file.jpeg')
       } finally {
         ;(ConfigServer as any).screenshotChannel = original
@@ -184,13 +214,7 @@ describe('clientsModels', () => {
       enqueueMainClientUploadScreenshotMock.mockRejectedValueOnce(new Error('upload failed'))
 
       try {
-        const result = await saveScreenshot(
-          'data:image/jpeg;base64,AAAA',
-          { format: 'jpeg' },
-          fakePlayer,
-          makeServer(),
-          'title',
-        )
+        const result = await saveScreenshot(jpeg, { format: 'jpeg' }, fakePlayer, makeServer(), 'title')
         expect(result.discordUrl).toBe('')
       } finally {
         ;(ConfigServer as any).screenshotChannel = original
@@ -252,6 +276,19 @@ describe('clientsModels', () => {
   })
 
   describe('uploadScreenshotPayload', () => {
+    it('returns a controlled validation error without storage or publication for invalid image bytes', async () => {
+      expect(
+        await uploadScreenshotPayload(makeServer(), {
+          player: fakePlayer,
+          screenshot: 'AAAA',
+          captureData: { format: 'png' },
+          size: '1KB',
+        }),
+      ).toEqual({ error: 'invalid_screenshot' })
+      expect(s3SendMock).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
     it('does not upload or save a screenshot when collection is already disabled', async () => {
       isErasureBlockedMock.mockResolvedValueOnce(true)
       expect(
@@ -289,7 +326,7 @@ describe('clientsModels', () => {
       try {
         const result = await uploadScreenshotPayload(server, {
           player: fakePlayer,
-          screenshot: 'data:image/jpeg;base64,AAAA',
+          screenshot: jpeg,
           captureData: { format: 'jpeg' },
           size: 100,
           title: 'title',
@@ -375,7 +412,7 @@ describe('clientsModels', () => {
         steps: 'steps',
         expected: 'expected',
         actual: 'actual',
-        screenshot: { screenshot: 'data:image/jpeg;base64,AAAA' },
+        screenshot: { screenshot: jpeg },
       })
 
       expect(s3SendMock).not.toHaveBeenCalled()
@@ -393,7 +430,7 @@ describe('clientsModels', () => {
         steps: 'steps',
         expected: 'expected',
         actual: 'actual',
-        screenshot: { screenshot: 'data:image/jpeg;base64,AAAA', captureData: { format: 'jpeg' }, size: 100 },
+        screenshot: { screenshot: jpeg, captureData: { format: 'jpeg' }, size: 100 },
       })
 
       expect(prismaMock.gm_server_report_bugs.create).toHaveBeenCalledWith(
@@ -414,7 +451,7 @@ describe('clientsModels', () => {
         steps: 'steps',
         expected: 'expected',
         actual: 'actual',
-        screenshot: { screenshot: 'data:image/jpeg;base64,AAAA', captureData: { format: 'jpeg' }, size: 100 },
+        screenshot: { screenshot: jpeg, captureData: { format: 'jpeg' }, size: 100 },
       })
 
       expect(errorSpy).toHaveBeenCalled()

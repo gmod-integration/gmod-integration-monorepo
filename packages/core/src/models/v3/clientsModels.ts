@@ -1,3 +1,4 @@
+import { prepareRasterScreenshot, ScreenshotValidationError } from '../../utils/boundedRasterScreenshot.js'
 import { getRandomDiscordRelay } from '../../utils/tools.js'
 import { ConfigDiscord, ConfigServer } from '@gmod/config'
 import { EmbedBuilder } from 'discord.js'
@@ -44,13 +45,14 @@ export async function saveScreenshot(
 ) {
   await assertPersonalDataAllowed(undefined, player.steamID64)
   const format = captureData?.format || 'jpeg'
-  if (format !== 'jpeg' && format !== 'png') throw new Error('Unsupported screenshot format.')
+  if (format !== 'jpeg' && format !== 'png') throw new ScreenshotValidationError('Unsupported screenshot format.')
   const dateFormatted = new Date().toISOString().replace(/T/g, '_').replace(/\..+/, '').replace(/:/g, '-')
   const filename = `${dateFormatted}_${player.steamID64}_${randomUUID()}.${format}`
 
   // Save screenshot to be usable in the website
-  const base64Data = screenshot.replace(/^data:image\/\w+;base64,/, '')
-  const buffer = Buffer.from(base64Data, 'base64')
+  const buffer = await prepareRasterScreenshot(screenshot, format)
+  // Collection may have been disabled while the raster decoder was running.
+  await assertPersonalDataAllowed(undefined, player.steamID64)
   const internUrl = `${ConfigServer.domain}/screenshots/${filename}`
   await createBucketIfNotExists('gmi-players-screenshots')
   await s3
@@ -175,9 +177,14 @@ export async function uploadScreenshotPayload(server: Server, payload: any) {
   if (await isErasureBlocked(undefined, player.steamID64))
     return { skip: true, message: 'Personal data collection is disabled' }
 
-  const { discordUrl, filename, internUrl } = await saveScreenshot(screenshot, captureData, player, server, title)
-  await sendScreenshotToDiscord(discordUrl, internUrl, filename, player, server, title)
-  return { success: true }
+  try {
+    const { discordUrl, filename, internUrl } = await saveScreenshot(screenshot, captureData, player, server, title)
+    await sendScreenshotToDiscord(discordUrl, internUrl, filename, player, server, title)
+    return { success: true }
+  } catch (error) {
+    if (error instanceof ScreenshotValidationError) return { error: 'invalid_screenshot' as const }
+    throw error
+  }
 }
 
 export async function reportBugPayload(server: Server, payload: any) {

@@ -51,3 +51,21 @@ authenticated session and database user.
 `apps/api` most heavily (v3 models, Express types, DB logging), and Discord/WebSocket workflows where
 shared application logic is needed. `utils/logger.js` owns server event logging; operational messages
 come from `@gmod/shared/logger.js`.
+
+## Screenshot image storage
+
+`utils/boundedRasterScreenshot.js` is the common raster boundary used by `models/v3/clientsModels.js`
+for ordinary screenshot uploads and optional bug-report captures, regardless of HTTP or addon
+transport. It accepts canonical inline base64 or JPEG/PNG data URLs, capped at 10 MiB of base64 payload
+(approximately 7.5 MiB decoded); the surrounding HTTP/body and WebSocket/frame limits still apply.
+Only decoded JPEG/PNG signatures are accepted. Input dimensions are limited to 8192 per side and
+32,000,000 pixels with a single page; normal 3840×2160 captures remain supported. The image is decoded
+and re-encoded to the selected PNG or JPEG format (JPEG quality95), stripping metadata and trailing
+content before storage. Encoded output is limited to 10 MiB. Sharp receives only Buffer input.
+
+Capture-coordinate/quality metadata retains its existing JSON shape; it does not determine decoder
+limits. Personal-data collection is checked before decoding, again immediately before the first
+storage operation and after existing storage/publication/database boundaries. Validation failures
+become the controlled `invalid_screenshot` upload response; invalid optional bug-report attachments
+continue to be omitted without discarding the textual report. No legacy stored object is decoded on
+read by this workflow.
