@@ -599,6 +599,8 @@
         "adjustedTime": "Temps de connexion ajusté",
         "branch": "Branche du client Garry’s Mod",
         "status_message": "Message de statut",
+        "publication": "Publication sur Discord",
+        "publication_description": "Publiez le message de statut enregistré dans un salon Discord, ou retirez le message actuel.",
         "status_buttons": "Boutons de statut",
         "button_icon": "Icône",
         "active": "Actif",
@@ -606,7 +608,7 @@
         "remove_status": "Retirer le message publié",
         "title": "Message de statut Discord",
         "description": "Préparez le message de statut du serveur, les informations des joueurs et les boutons de lien. Enregistrez la configuration, puis publiez le message dans un salon Discord.",
-        "status_buttons_description": "Ajoutez des liens utiles, comme votre boutique ou votre collection Workshop. Appliquez chaque bouton au brouillon, puis enregistrez toute la configuration du statut.",
+        "status_buttons_description": "Ajoutez des liens utiles, comme votre boutique ou votre collection Workshop. Appliquez chaque bouton au brouillon, puis enregistrez cette carte.",
         "preview": {
           "title": "Prévisualisation Discord en direct",
           "simulation": "Simulation",
@@ -1440,7 +1442,12 @@
     "invalid_status": "Vérifiez les noms et les URL des boutons avant d’enregistrer.",
     "apply_draft": "Appliquer au brouillon",
     "delete_trigger": "Supprimer le déclencheur ?",
-    "delete_trigger_help": "L’action liée à cet événement ne sera plus exécutée. Cette action est irréversible."
+    "delete_trigger_help": "L’action liée à cet événement ne sera plus exécutée. Cette action est irréversible.",
+    "save_status_message": "Enregistrer le message",
+    "save_status_buttons": "Enregistrer les boutons",
+    "status_message_scope": "Enregistrez cette carte pour modifier la liste des joueurs et le graphique. Les boutons de lien sont enregistrés séparément.",
+    "status_buttons_scope": "Appliquez chaque bouton au brouillon de cette carte, puis enregistrez les boutons pour mettre à jour Discord.",
+    "status_saved_buttons_invalid": "Corrigez et enregistrez les boutons de lien existants avant d’enregistrer le message."
   },
   "access": {
     "unavailable": "Les droits n’ont pas pu être vérifiés. Votre configuration enregistrée est conservée.",

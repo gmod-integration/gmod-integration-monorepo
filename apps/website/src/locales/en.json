@@ -600,13 +600,15 @@
         "adjustedTime": "Adjusted connection time",
         "branch": "Garry’s Mod client branch",
         "status_message": "Status Message",
+        "publication": "Publish to Discord",
+        "publication_description": "Publish the saved status message in a Discord channel, or remove the current message.",
         "status_buttons": "Status Buttons",
         "button_icon": "Icon",
         "active": "Active",
         "actions": "Actions",
         "remove_status": "Remove published message",
         "description": "Prepare the server status message, player information and link buttons. Save the configuration, then publish the message in a Discord channel.",
-        "status_buttons_description": "Add links to useful pages, such as your shop or Workshop collection. Apply each button to the draft, then save the complete status configuration.",
+        "status_buttons_description": "Add links to useful pages, such as your shop or Workshop collection. Apply each button to the draft, then save this card.",
         "preview": {
           "title": "Live Discord preview",
           "simulation": "Simulation",
@@ -1437,7 +1439,12 @@
     "invalid_status": "Check the button names and URLs before saving.",
     "apply_draft": "Apply to draft",
     "delete_trigger": "Delete trigger?",
-    "delete_trigger_help": "The selected event action will stop running. This cannot be undone."
+    "delete_trigger_help": "The selected event action will stop running. This cannot be undone.",
+    "save_status_message": "Save message",
+    "save_status_buttons": "Save buttons",
+    "status_message_scope": "Save this card to update the player list and chart. Link buttons are saved separately.",
+    "status_buttons_scope": "Apply each button to this card’s draft, then save the buttons to update Discord.",
+    "status_saved_buttons_invalid": "Repair and save the existing link buttons before saving the message."
   },
   "access": {
     "unavailable": "Access could not be verified. Your saved configuration is preserved.",

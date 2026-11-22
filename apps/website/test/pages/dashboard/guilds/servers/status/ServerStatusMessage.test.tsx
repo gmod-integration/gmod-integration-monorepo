@@ -139,7 +139,7 @@ describe('status publication is a separate command', () => {
     await ready()
     expect(screen.getByRole('button', { name: 'Publish status message' })).toBeDisabled()
     await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
-    expect(screen.getByRole('button', { name: 'Save status configuration' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save message' })).toBeEnabled()
   })
   it('updates the preview for inline format edits without a format-specific Save', async () => {
     installNetwork(api, {

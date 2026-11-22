@@ -26,7 +26,9 @@ Generic shared exports live in `src/components/ui/index.ts`; extend them when a 
 - `createDraftForm` registers navigation protection automatically. Manual editors use `useDraftGuard`;
   include pending operations, and unregister on unmount. Do not bypass `DraftEditingProvider`.
 - Save related settings atomically through the v6 APIs and `saveDashboardSettings`; send changed keys
-  together. Status message and button edits share one configuration draft and revision. An accepted save
+  together. Each independent card owns its draft and Save/Cancel footer. Status message and button
+  cards keep separate drafts and share one server revision; serialize their writes and merge each
+  submitted draft with the sibling's saved values, preserving the sibling's unsaved changes. An accepted save
   with `sync: 'pending'` means synchronization is awaiting confirmation; retain that feedback separately.
 - Use `showDialog` / `closeDialog` from `utils/dialog.ts`, never implicit element-id globals.
 - All UI text comes from `useI18n`; format dates and numbers with the selected locale.

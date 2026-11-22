@@ -13,6 +13,22 @@ and sizes as `IconButton`, plus native link attributes. Preserve `href`, `downlo
 instead of replacing link behavior with a click handler. Standard controls are 38 px high; small
 buttons and fields are 32 px high. Use `size="sm"` and `select-sm`/`input-sm` together in compact groups.
 
+Independent settings use peer `AdminPanel` cards inside `.settings-card-grid`. Each card owns one
+saved snapshot and local draft; place its `FormActions` in the panel's `footer`, together with its
+validation, pending and success feedback. Saving or cancelling one card preserves the others' drafts.
+Keep dependent fields in the same card and atomic transaction. Search and category filters may hide
+cards, but their forms stay at page scope so drafts survive. The grid adapts to its available width;
+setting labels stack above controls in narrow cards even on desktop.
+
+`AdminPanel` is a section named by its heading and accepts an optional `id` for stable anchors.
+`SettingGroup` remains a subsection inside a card, with optional `actions` beside its heading.
+Status content and link buttons have separate cards and Save/Cancel footers; publication has its own
+card and command. Status writes share one server revision and are serialized. Each PUT merges the
+submitted card's draft with the sibling's saved values. Adopt the accepted scope, canonical button IDs
+and revision without applying or discarding the sibling's draft. Validate the submitted payload and its
+capabilities independently from the combined live preview. Legacy invalid saved buttons must be
+repaired before saving message settings. Never place a Save/Cancel bar in a separate sibling card.
+
 | Component         | Purpose                                 | Contract                                                                                                                                                                                                                           |
 | ----------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Button`          | Text actions                            | Native attributes; `variant`: `primary`, `secondary`, `ghost`, `danger`, `warning`; `size`: `sm`, `md`; `loading` blocks clicks and retains the label. Default `type="button"`.                                                    |
@@ -243,9 +259,10 @@ saves with unrelated per-key requests and then report the whole group as saved.
 
 Status settings and buttons share `StatusConfigurationProvider` and
 `GET/PUT /v6/guilds/:guildID/servers/:serverID/status/configuration`. The PUT includes the configuration
-and saved revision; conflicts preserve the draft and offer reloading the accepted values. A button
-modal applies changes to the status draft, then the page saves that configuration as one unit. The
-preview reads the draft without publishing. Publication requires a saved configuration.
+and saved revision; conflicts preserve both card drafts and offer explicitly reloading the accepted
+values. A button modal applies changes to the buttons card's draft. Each card saves its own changes
+alongside the other card's saved values, sharing a revision and a single write in flight. The preview
+combines both drafts without publishing. Publication requires both cards to be saved or cancelled.
 
 Autoroles have no separate activation flag: every stored autorole is active. Adding selects and
 confirms a role; deleting removes future automatic assignment without stripping existing members.

@@ -123,6 +123,17 @@ const ServerInformations: Component = () => {
           'Edit the server identity and connection details, then save your changes together.',
         )}
         icon="server"
+        footer={
+          <FormActions
+            dirty={editor.dirty()}
+            pending={editor.pending()}
+            error={editor.error()}
+            success={editor.success()}
+            disabled={!editor.valid()}
+            onSave={() => void editServer()}
+            onCancel={editor.discard}
+          />
+        }
       >
         <SettingGroup title={t('settings.server_identity', 'Identity and visibility')} icon="server">
           <For each={fields.slice(0, 3)}>
@@ -214,15 +225,6 @@ const ServerInformations: Component = () => {
             )}
           </For>
         </SettingGroup>
-        <FormActions
-          dirty={editor.dirty()}
-          pending={editor.pending()}
-          error={editor.error()}
-          success={editor.success()}
-          disabled={!editor.valid()}
-          onSave={() => void editServer()}
-          onCancel={editor.discard}
-        />
       </AdminPanel>
       <AdminPanel
         title={t('server_setup.title', 'Connect the Gmod Integration addon')}

@@ -6,6 +6,7 @@ import {
   type StatusConfigurationButton,
 } from '@gmod/schema/server/StatusConfigurationSchema.js'
 import AdminPanel from '../../../../../components/AdminPanel.js'
+import StatusCardActions from './StatusCardActions.js'
 import AdminModal from '../../../../../components/AdminModal.js'
 import { Button, FormActions, FormField, Icon, IconButton, TableState } from '../../../../../components/ui/index.js'
 import { LinkValue } from '../../../../../components/popup/LinkValue.js'
@@ -102,7 +103,10 @@ const ServerStatusButtons: Component = () => {
         size="wide"
       >
         <p class="settings-notice">
-          {t('editing.status_scope', 'Changes to the message and its buttons are saved together.')}
+          {t(
+            'editing.status_buttons_scope',
+            'Apply each button to this card’s draft, then save the buttons to update Discord.',
+          )}
         </p>
         <FormField
           id="status-button-name"
@@ -230,9 +234,10 @@ const ServerStatusButtons: Component = () => {
         title={t('dashboard.server.status.status_buttons', 'Status Buttons')}
         description={t(
           'dashboard.server.status.status_buttons_description',
-          'Add links to useful pages, such as your shop or Workshop collection. Apply each button to the draft, then save the complete status configuration.',
+          'Add links to useful pages, such as your shop or Workshop collection. Apply each button to the draft, then save this card.',
         )}
         type="none"
+        footer={<StatusCardActions scope="buttons" />}
         actions={
           <FeatureGate
             capability="status.buttons"

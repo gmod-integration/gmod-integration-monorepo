@@ -1,6 +1,7 @@
 import { authenticatedFetch } from '../../../../../utils/authClient.js'
 import { useFeatureAccess } from '../../../../../components/AccessProvider.js'
 import {
+  batch,
   createContext,
   createEffect,
   createResource,
@@ -31,6 +32,8 @@ export const defaultStatusConfiguration: StatusConfiguration = {
   buttons: [],
 }
 
+export type StatusScope = 'message' | 'buttons'
+
 function configurationURL() {
   return `${getAPIUrl(false)}${getUrlWithActualParams('/v6/guilds/:guildID/servers/:serverID/status/configuration')}`
 }
@@ -41,21 +44,47 @@ function createStatusConfiguration() {
   const buttonAccess = useFeatureAccess('status.buttons')
   const preview = useStatusPreview()
   const [revision, setRevision] = createSignal('')
-  const [saveError, setSaveError] = createSignal('')
+  const [saveError, setSaveError] = createSignal<Partial<Record<StatusScope, string>>>({})
   const [conflict, setConflict] = createSignal(false)
-  const [syncPending, setSyncPending] = createSignal(false)
+  const [conflictScope, setConflictScope] = createSignal<StatusScope>()
+  const [syncPending, setSyncPending] = createSignal<Partial<Record<StatusScope, boolean>>>({})
   const [stagedButton, setStagedButton] = createSignal<{
     index: number | undefined
     button: StatusConfigurationButton
   }>()
-  const form = createDraftForm<StatusConfiguration>({
-    initial: defaultStatusConfiguration,
-    validate: (draft) =>
-      StatusConfigurationSchema.safeParse(draft).success
+  const errorMessage = (scope: StatusScope) =>
+    saveError()[scope] || t('ui.save_error', 'Unable to save. Please try again.')
+  const messageForm = createDraftForm<StatusConfiguration['settings']>({
+    initial: defaultStatusConfiguration.settings,
+    validate: (settings) =>
+      StatusConfigurationSchema.safeParse({ settings, buttons: [] }).success
         ? {}
-        : { buttons: t('ui.invalid_value', 'Check the entered values.') },
-    errorMessage: () => saveError() || t('ui.save_error', 'Unable to save. Please try again.'),
+        : { status_player_list_format: t('ui.invalid_value', 'Check the entered values.') },
+    errorMessage: () => errorMessage('message'),
   })
+  const buttonsForm = createDraftForm<Pick<StatusConfiguration, 'buttons'>>({
+    initial: { buttons: [] },
+    validate: ({ buttons }) =>
+      StatusConfigurationSchema.safeParse({ settings: defaultStatusConfiguration.settings, buttons }).success
+        ? {}
+        : { buttons: t('editing.invalid_status', 'Check the button names and URLs before saving.') },
+    errorMessage: () => errorMessage('buttons'),
+  })
+  // The preview combines both local drafts. Persistence always uses the sibling's saved values.
+  const form = {
+    draft: (): StatusConfiguration => ({ settings: messageForm.draft(), buttons: buttonsForm.draft().buttons }),
+    saved: (): StatusConfiguration => ({ settings: messageForm.saved(), buttons: buttonsForm.saved().buttons }),
+    dirty: () => messageForm.dirty() || buttonsForm.dirty(),
+    pending: () => messageForm.pending() || buttonsForm.pending(),
+    patch: (values: Partial<StatusConfiguration>) => {
+      if (form.pending()) return
+      batch(() => {
+        if (values.settings) messageForm.setDraft(values.settings)
+        if (values.buttons) buttonsForm.patch({ buttons: values.buttons })
+      })
+    },
+  }
+  const formFor = (scope: StatusScope) => (scope === 'message' ? messageForm : buttonsForm)
   const [configuration, { refetch }] = createResource(async () => {
     const response = await authenticatedFetch(configurationURL(), {})
     if (!response.ok) throw new Error('Status configuration unavailable')
@@ -67,10 +96,14 @@ function createStatusConfiguration() {
       () => {
         if (configuration.loading || configuration.error || !configuration()) return
         const snapshot = configuration()!
-        form.reset(snapshot.configuration)
-        setRevision(snapshot.revision)
-        setConflict(false)
-        setSyncPending(false)
+        batch(() => {
+          messageForm.reset(snapshot.configuration.settings)
+          buttonsForm.reset({ buttons: snapshot.configuration.buttons })
+          setRevision(snapshot.revision)
+          setConflict(false)
+          setConflictScope(undefined)
+          setSyncPending({})
+        })
       },
     ),
   )
@@ -83,16 +116,32 @@ function createStatusConfiguration() {
     preview?.setButtons(buttons)
   })
   const ready = () => !configuration.loading && !configuration.error && !!configuration()
-  const accessError = () => {
-    if (form.draft().settings.show_status_chart && !form.saved().settings.show_status_chart && !chartAccess.allowed())
+  const submission = (scope: StatusScope): StatusConfiguration => ({
+    settings: scope === 'message' ? messageForm.draft() : messageForm.saved(),
+    buttons: scope === 'buttons' ? buttonsForm.draft().buttons : buttonsForm.saved().buttons,
+  })
+  const validationError = (scope: StatusScope) => {
+    if (StatusConfigurationSchema.safeParse(submission(scope)).success) return undefined
+    return scope === 'message' && messageForm.valid()
+      ? t(
+          'editing.status_saved_buttons_invalid',
+          'Repair and save the existing link buttons before saving the message.',
+        )
+      : scope === 'message'
+        ? t('ui.invalid_value', 'Check the entered values.')
+        : t('editing.invalid_status', 'Check the button names and URLs before saving.')
+  }
+  const accessError = (scope: StatusScope) => {
+    const submitted = submission(scope)
+    if (submitted.settings.show_status_chart && !messageForm.saved().show_status_chart && !chartAccess.allowed())
       return !chartAccess.ready() || chartAccess.snapshot()?.state !== 'ready'
         ? t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')
         : t('access.upgrade_required', 'This feature requires Premium.')
     const limit = buttonAccess.limit()
-    const buttons = form.draft().buttons
-    const savedIDs = new Set(form.saved().buttons.map((button) => button.id))
+    const buttons = submitted.buttons
+    const savedIDs = new Set(buttonsForm.saved().buttons.map((button) => button.id))
     const createsButtons =
-      buttons.length > form.saved().buttons.length ||
+      buttons.length > buttonsForm.saved().buttons.length ||
       buttons.some((button) => button.id === undefined || !savedIDs.has(button.id))
     if (createsButtons && !buttonAccess.ready())
       return t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')
@@ -102,41 +151,65 @@ function createStatusConfiguration() {
         : t('access.quota_reached', 'You have reached the limit for this feature.')
     return undefined
   }
-  async function save() {
-    if (!ready() || stagedButton() || accessError()) return false
-    setSaveError('')
-    return form.save(async (draft) => {
-      const response = await authenticatedFetch(configurationURL(), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ configuration: StatusConfigurationSchema.parse(draft), revision: revision() }),
-      })
-      if (response.status === 403 || response.ok) refreshAccess()
-      if (!response.ok) {
-        if (response.status === 409) {
-          setConflict(true)
-          setSaveError(t('editing.conflict', 'The saved values changed. Reload them before saving again.'))
-        }
-        throw new Error('Status configuration save failed')
+  async function persist(scope: StatusScope, submitted: StatusConfiguration) {
+    const response = await authenticatedFetch(configurationURL(), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ configuration: StatusConfigurationSchema.parse(submitted), revision: revision() }),
+    })
+    if (response.status === 403 || response.ok) refreshAccess()
+    if (!response.ok) {
+      if (response.status === 409) {
+        setConflict(true)
+        setConflictScope(scope)
+        setSaveError((previous) => ({
+          ...previous,
+          [scope]: t('editing.conflict', 'The saved values changed. Reload them before saving again.'),
+        }))
       }
-      const accepted = StatusConfigurationSaveResponseSchema.parse(await response.json())
-      setRevision(accepted.revision)
-      setSyncPending(accepted.sync === 'pending')
-      setConflict(false)
-      preview?.refetch()
-      return accepted.configuration
+      throw new Error('Status configuration save failed')
+    }
+    const accepted = StatusConfigurationSaveResponseSchema.parse(await response.json())
+    setRevision(accepted.revision)
+    setSyncPending((previous) => ({ ...previous, [scope]: accepted.sync === 'pending' }))
+    setConflict(false)
+    setConflictScope(undefined)
+    preview?.refetch()
+    return accepted.configuration
+  }
+  async function save(scope: StatusScope) {
+    // A single revision protects the full configuration. Never allow two writes in flight.
+    if (!ready() || form.pending() || stagedButton() || conflict() || validationError(scope) || accessError(scope))
+      return false
+    setSaveError((previous) => ({ ...previous, [scope]: undefined }))
+    if (scope === 'message') {
+      return messageForm.save(async (settings) => {
+        const accepted = await persist(scope, { settings, buttons: buttonsForm.saved().buttons })
+        if (!buttonsForm.dirty() && JSON.stringify(accepted.buttons) !== JSON.stringify(buttonsForm.saved().buttons))
+          buttonsForm.reset({ buttons: accepted.buttons })
+        return accepted.settings
+      })
+    }
+    return buttonsForm.save(async ({ buttons }) => {
+      const accepted = await persist(scope, { settings: messageForm.saved(), buttons })
+      return { buttons: accepted.buttons }
     })
   }
   return {
     form,
+    messageForm,
+    buttonsForm,
+    formFor,
     ready,
     accessError,
+    validationError,
     loading: () => configuration.loading,
     loadError: () => configuration.error,
     refetch,
     save,
     conflict,
-    syncPending,
+    conflictScope,
+    syncPending: (scope: StatusScope) => syncPending()[scope] === true,
     stageButton: setStagedButton,
   }
 }

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { configuration, installNetwork, PREVIEW, puts, renderStatus, viewport } from './statusTestHelpers.js'
+import { okJson } from '../testHelpers.js'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn(),
@@ -11,7 +12,7 @@ const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const api = fetchAPI as Mock
 const ready = () => vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Button' })).toBeEnabled())
 const editModal = () => document.getElementById('edit_status_button')!
-const mainSave = () => screen.getByRole('button', { name: 'Save status configuration' })
+const mainSave = () => screen.getByRole('button', { name: 'Save buttons' })
 const mainCancel = () => mainSave().parentElement!.querySelector('button')!
 const previews = () => api.mock.calls.filter(([path]) => path === PREVIEW)
 async function addButton() {
@@ -34,8 +35,8 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('status buttons share the status draft', () => {
-  it('adds a complete button only to the draft, cancels the aggregate and never creates a server row', async () => {
+describe('status button card editing', () => {
+  it('adds a complete button only to the draft, cancels the button card and never creates a server row', async () => {
     const network = installNetwork(api)
     const { container } = renderStatus()
     await ready()
@@ -90,12 +91,17 @@ describe('status buttons share the status draft', () => {
     await fireEvent.click(apply)
     expect(puts(network)).toHaveLength(0)
   })
-  it('saves a new button with the rest of the status in one PUT without client-selected IDs', async () => {
+  it('saves a new button with saved message settings in one PUT without client-selected IDs', async () => {
     const network = installNetwork(api)
     renderStatus()
     await ready()
     const modal = await addButton()
     await fireEvent.click(within(modal).getByRole('button', { name: 'Apply to draft' }))
+    network.mockImplementationOnce(async (_url, request) => {
+      const submitted = JSON.parse(String(request.body))
+      submitted.configuration.buttons[1].id = 2
+      return okJson({ ...submitted, revision: 'b'.repeat(64), sync: 'applied' })
+    })
     await fireEvent.click(mainSave())
     await vi.waitFor(() => expect(puts(network)).toHaveLength(1))
     const body = JSON.parse(String(puts(network)[0][1].body))
@@ -105,6 +111,14 @@ describe('status buttons share the status draft', () => {
       url: 'https://community.example.test',
       enable: true,
     })
+    await vi.waitFor(() => {
+      expect(mainSave()).toBeDisabled()
+      expect(mainCancel()).toBeEnabled()
+    })
+    await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
+    await fireEvent.click(screen.getByRole('button', { name: 'Save message' }))
+    await vi.waitFor(() => expect(puts(network)).toHaveLength(2))
+    expect(JSON.parse(String(puts(network)[1][1].body)).configuration.buttons[1].id).toBe(2)
   })
   it('enforces the free button limit before opening creation', async () => {
     localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))

@@ -11,6 +11,8 @@ import ServerRoles from '../../src/pages/dashboard/guilds/servers/ServerRoles.js
 import ServerStatus from '../../src/pages/dashboard/guilds/servers/status/ServerStatus.js'
 import { guildRolesMutate } from '../../src/pages/dashboard/guilds/GuildInformations.js'
 import { fetchAPI } from '../../src/utils/api.js'
+import { setAuthSession } from '../../src/utils/authClient.js'
+import { normalizeDiscordUserPayload } from '../../src/utils/event.js'
 import { historyAt } from '../testUtils.js'
 
 vi.mock('../../src/utils/api.js', () => ({
@@ -66,6 +68,16 @@ const quotaNotice = 'You have reached the limit for this feature.'
 
 beforeEach(() => {
   localStorage.clear()
+  setAuthSession({
+    authenticated: true,
+    user: normalizeDiscordUserPayload({ id: 'u1' }),
+    session: {
+      id: 'test-session',
+      expiresAt: '2099-01-01T00:00:00.000Z',
+      absoluteExpiresAt: '2099-01-01T00:00:00.000Z',
+    },
+    csrfToken: 'test-csrf',
+  })
   ;(fetchAPI as Mock).mockReset().mockImplementation(async (path: string, method: string) => {
     if (path.endsWith('/status/preview'))
       return json({
@@ -104,6 +116,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   cleanup()
+  setAuthSession(undefined)
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -209,7 +222,7 @@ describe('Premium changes during editing', () => {
     const chart = () => screen.getByRole('checkbox', { name: /Show player activity chart/ })
     await vi.waitFor(() => expect(chart()).toBeEnabled())
     await fireEvent.click(chart())
-    const save = screen.getByRole('button', { name: 'Save status configuration' })
+    const save = screen.getByRole('button', { name: 'Save message' })
     expect(save).toBeEnabled()
     setAccess(snapshot(true, { validUntil: '2000-01-01T00:00:00.000Z' }))
     expect(save).toBeDisabled()
@@ -220,7 +233,86 @@ describe('Premium changes during editing', () => {
     expect(actions.getByRole('button', { name: 'Cancel' })).toBeEnabled()
   })
 
-  it('holds newly applied buttons for access revalidation while retaining the aggregate draft', async () => {
+  it('saves button cleanup without applying an unsaved chart that lost Premium access', async () => {
+    const network = vi.fn(async (_url: string, request?: RequestInit) =>
+      json(
+        request?.method === 'PUT'
+          ? { ...JSON.parse(String(request.body)), revision: 'b'.repeat(64), sync: 'applied' }
+          : { configuration: statusConfiguration, revision: 'a'.repeat(64) },
+      ),
+    )
+    vi.stubGlobal('fetch', network)
+    const setAccess = renderPage(ServerStatus, '/dashboard/guilds/g1/config/servers/s1/status')
+    const chart = () => screen.getByRole('checkbox', { name: /Show player activity chart/ })
+    await vi.waitFor(() => expect(chart()).toBeEnabled())
+    await fireEvent.click(chart())
+    setAccess(snapshot(false))
+    expect(screen.getByRole('button', { name: 'Save message' })).toBeDisabled()
+    await fireEvent.click(within(screen.getByRole('table')).getAllByRole('button', { name: 'Delete' })[0])
+    const save = screen.getByRole('button', { name: 'Save buttons' })
+    expect(save).toBeEnabled()
+    await fireEvent.click(save)
+    await vi.waitFor(() =>
+      expect(network.mock.calls.filter(([, request]) => request?.method === 'PUT')).toHaveLength(1),
+    )
+    await vi.waitFor(() => {
+      expect(save).toBeDisabled()
+      expect(within(save.closest('.ui-form-actions')!).getByRole('button', { name: 'Cancel' })).toBeEnabled()
+    })
+    const writes = network.mock.calls.filter(([, request]) => request?.method === 'PUT')
+    expect(writes).toHaveLength(1)
+    expect(JSON.parse(String(writes[0][1]!.body)).configuration).toEqual({
+      settings: statusConfiguration.settings,
+      buttons: statusButtons.slice(1),
+    })
+    expect(chart()).toBeChecked()
+    expect(screen.getByRole('button', { name: 'Save message' })).toBeDisabled()
+    expect(screen.getByRole('table')).not.toHaveTextContent('Button 1')
+  })
+
+  it('saves a free message edit while an unsaved fourth button is blocked by the free quota', async () => {
+    const network = vi.fn(async (_url: string, request?: RequestInit) =>
+      json(
+        request?.method === 'PUT'
+          ? { ...JSON.parse(String(request.body)), revision: 'b'.repeat(64), sync: 'applied' }
+          : { configuration: statusConfiguration, revision: 'a'.repeat(64) },
+      ),
+    )
+    vi.stubGlobal('fetch', network)
+    const setAccess = renderPage(ServerStatus, '/dashboard/guilds/g1/config/servers/s1/status')
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Button' })).toBeEnabled())
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Button' }))
+    const editor = modal('edit_status_button')
+    await fireEvent.input(editor.getByLabelText('Button label'), { target: { value: 'Fourth button' } })
+    await fireEvent.input(editor.getByLabelText('URL'), { target: { value: 'https://draft.example.com' } })
+    await fireEvent.click(editor.getByRole('button', { name: 'Apply to draft' }))
+    setAccess(snapshot(false))
+    expect(screen.getByRole('button', { name: 'Save buttons' })).toBeDisabled()
+    await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
+    const save = screen.getByRole('button', { name: 'Save message' })
+    expect(save).toBeEnabled()
+    await fireEvent.click(save)
+    await vi.waitFor(() =>
+      expect(network.mock.calls.filter(([, request]) => request?.method === 'PUT')).toHaveLength(1),
+    )
+    await vi.waitFor(() => {
+      expect(save).toBeDisabled()
+      expect(within(save.closest('.ui-form-actions')!).getByRole('button', { name: 'Cancel' })).toBeEnabled()
+    })
+    const writes = network.mock.calls.filter(([, request]) => request?.method === 'PUT')
+    expect(writes).toHaveLength(1)
+    expect(JSON.parse(String(writes[0][1]!.body)).configuration).toEqual({
+      settings: { ...statusConfiguration.settings, show_player_list_status: true },
+      buttons: statusButtons,
+    })
+    expect(screen.getByRole('table')).toHaveTextContent('Fourth button')
+    expect(screen.getByRole('button', { name: 'Save buttons' })).toBeDisabled()
+    expect(
+      within(screen.getByRole('button', { name: 'Save buttons' }).closest('.ui-form-actions')!).getByText(quotaNotice),
+    ).toBeInTheDocument()
+  })
+
+  it('holds newly applied buttons for access revalidation while retaining the button draft', async () => {
     const setAccess = renderPage(ServerStatus, '/dashboard/guilds/g1/config/servers/s1/status')
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add Button' })).toBeEnabled())
     await fireEvent.click(screen.getByRole('button', { name: 'Add Button' }))
@@ -228,7 +320,7 @@ describe('Premium changes during editing', () => {
     await fireEvent.input(editor.getByLabelText('Button label'), { target: { value: 'Draft button' } })
     await fireEvent.input(editor.getByLabelText('URL'), { target: { value: 'https://draft.example.com' } })
     await fireEvent.click(editor.getByRole('button', { name: 'Apply to draft' }))
-    const save = screen.getByRole('button', { name: 'Save status configuration' })
+    const save = screen.getByRole('button', { name: 'Save buttons' })
     expect(save).toBeEnabled()
     setAccess(snapshot(true, { validUntil: '2000-01-01T00:00:00.000Z' }))
     expect(save).toBeDisabled()

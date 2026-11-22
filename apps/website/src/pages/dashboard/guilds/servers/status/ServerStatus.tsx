@@ -1,12 +1,13 @@
-import { createSignal, createUniqueId, onCleanup, onMount, Show, type Component, type JSX } from 'solid-js'
+import { createSignal, createUniqueId, onCleanup, onMount, type Component, type JSX } from 'solid-js'
 import 'emoji-picker-element'
 import ServerStatusButtons from './ServerStatusButtons.js'
 import ServerStatusMessage from './ServerStatusMessage.js'
+import ServerStatusPublication from './ServerStatusPublication.js'
 import { StatusPreviewProvider, useStatusPreview } from './StatusPreviewContext.js'
 import DiscordStatusPreview from '../../../../../components/discord/DiscordStatusPreview.js'
-import { AsyncState, Button, FormActions, Icon } from '../../../../../components/ui/index.js'
+import { Button, Icon } from '../../../../../components/ui/index.js'
 import { useI18n } from '../../../../../i18n.js'
-import { StatusConfigurationProvider, useStatusConfiguration } from './StatusConfigurationContext.js'
+import { StatusConfigurationProvider } from './StatusConfigurationContext.js'
 
 const LivePreview: Component = () => {
   const preview = useStatusPreview()!
@@ -21,44 +22,6 @@ const LivePreview: Component = () => {
 }
 
 type StatusTab = 'configuration' | 'preview'
-
-const StatusSaveActions: Component = () => {
-  const editor = useStatusConfiguration()
-  const { t } = useI18n()
-  return (
-    <div class="rounded-xl border border-base-200 bg-base-100 p-5">
-      <AsyncState loading={editor.loading()} error={editor.loadError()} onRetry={() => void editor.refetch()} />
-      <Show when={editor.syncPending()}>
-        <p role="status" class="settings-notice">
-          {t('editing.sync_pending', 'The configuration is saved. The Discord update has not been confirmed yet.')}
-        </p>
-      </Show>
-      <Show when={editor.conflict()}>
-        <Button onClick={() => void editor.refetch()}>
-          {t('editing.reload_saved', 'Discard changes and reload saved values')}
-        </Button>
-      </Show>
-      <FormActions
-        dirty={editor.form.dirty()}
-        pending={editor.form.pending()}
-        disabled={!editor.ready() || !editor.form.valid() || !!editor.accessError()}
-        error={editor.form.error()}
-        success={editor.form.success()}
-        onSave={() => void editor.save()}
-        onCancel={editor.form.discard}
-        saveLabel={t('editing.save_status', 'Save status configuration')}
-        message={
-          editor.accessError() ||
-          (!editor.form.valid() && editor.ready()
-            ? t('editing.invalid_status', 'Check the button names and URLs before saving.')
-            : editor.form.dirty()
-              ? t('editing.status_scope', 'Changes to the message and its buttons are saved together.')
-              : undefined)
-        }
-      />
-    </div>
-  )
-}
 
 const ServerStatus: Component = () => {
   const { t } = useI18n()
@@ -145,9 +108,9 @@ const ServerStatus: Component = () => {
             class="status-editor-panel status-settings-stack min-w-0 flex-col gap-6"
             classList={{ flex: wide() || selected() === 'configuration' }}
           >
+            <ServerStatusPublication />
             <ServerStatusMessage />
             <ServerStatusButtons />
-            <StatusSaveActions />
           </div>
           <div
             id={`${id}-preview-panel`}
