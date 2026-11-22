@@ -129,3 +129,6 @@ with 1008 before JSON parsing or identity/provider reads. Polls beyond the two i
 are ignored without disconnecting a healthy client when a provider is slow. Each accepted handler releases its slot after
 success, failure or early return. Server-status identifiers are bounded to 255 safe characters before
 a community permission lookup. Addon transport frames keep their separate contract and limits.
+
+Addon JSON bodies additionally cap individual collections at 512 entries and the complete decoded tree
+at 32,768 nodes before recursive entity validation, retaining the 12 MiB frame/string budget for captures.

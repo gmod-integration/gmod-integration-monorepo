@@ -12,7 +12,7 @@ function isBoundedJSON(value: unknown): boolean {
   let characters = 0
   while (pending.length) {
     const entry = pending.pop()!
-    if (++nodes > 100_000 || entry.depth > 24) return false
+    if (++nodes > 32_768 || entry.depth > 24) return false
     const current = entry.value
     if (current === null || typeof current === 'boolean') continue
     if (typeof current === 'string') {
@@ -28,7 +28,7 @@ function isBoundedJSON(value: unknown): boolean {
     seen.add(current)
     if (!Array.isArray(current) && Object.getPrototypeOf(current) !== Object.prototype) return false
     const entries = Object.entries(current)
-    if (entries.length > 10_000) return false
+    if (entries.length > 512) return false
     for (const [key, child] of entries) {
       characters += key.length
       if (characters > ADDON_MAX_MESSAGE_BYTES) return false

@@ -21,6 +21,16 @@ describe('HTTP request structural limits', () => {
       expect(JSON.stringify(result.body).length).toBeLessThan(150)
     },
   )
+  it.each(['/v3/users/u1/guilds/g1/servers/s1/status/preview', '/V3/USERS/u1/GUILDS/g1/SERVERS/s1/STATUS/PREVIEW'])(
+    'bounds legacy status preview buttons before schema work: %s',
+    async (path) => {
+      const result = await request(app())
+        .post(path)
+        .send({ buttons: new Array(26).fill({}) })
+      expect(result.status).toBe(413)
+      expect(result.body).toEqual({ error: 'invalid_request' })
+    },
+  )
   it('bounds generic arrays, depth, keys and text without reflecting the submitted payload', async () => {
     for (const value of [
       { a: new Array(501).fill({ private: 'marker' }) },

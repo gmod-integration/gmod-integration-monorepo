@@ -87,3 +87,17 @@ describe('addon privileged command schemas', () => {
     expect(AddonCommandResultSchema.safeParse({ ...result, output: 'sensitive' }).success).toBe(false)
   })
 })
+
+describe('addon collection allocation budgets', () => {
+  it('rejects oversized nested player collections before any downstream entity schema', () => {
+    const envelope = {
+      action: 'addon.request',
+      id: 'bounded-request',
+      method: 'POST',
+      endpoint: '/status',
+      body: { playersList: new Array(513).fill({}) },
+    }
+    expect(AddonRequestSchema.safeParse(envelope).success).toBe(false)
+    expect(AddonRequestSchema.safeParse({ ...envelope, body: { playersList: [{ example: true }] } }).success).toBe(true)
+  })
+})

@@ -34,7 +34,9 @@ export const requestBudget: RequestHandler = (req, res, next) => {
         }
       : bodyBudget
   const body = req.body as unknown
-  const statusButtons = /^\/v6\/guilds\/[^/]+\/servers\/[^/]+\/status\/configuration\/?$/.test(path)
+  const statusButtons =
+    /^\/v6\/guilds\/[^/]+\/servers\/[^/]+\/status\/configuration\/?$/.test(path) ||
+    /^\/v3\/users\/[^/]+\/guilds\/[^/]+\/servers\/[^/]+\/status\/preview\/?$/.test(path)
   const tooManyButtons =
     statusButtons &&
     body &&
