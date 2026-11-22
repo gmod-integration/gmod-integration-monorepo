@@ -5,6 +5,8 @@ description: Connect your Garry's Mod server to Discord using the Gmod Integrati
 
 # Configuration
 
+Before entering credentials, install the required [GWSockets server module](installation.md#dll) and fully restart the dedicated server. All connected addon features depend on it; the Workshop addon and valid credentials alone cannot establish a connection.
+
 ## Create Server
 
 To connect you guild to you gmod server, you will need to create a new server for your guild by clicking the `Create Server` of the server list page.
@@ -27,6 +29,8 @@ gmod-integration config set token YOUR_SERVER_TOKEN
 ```
 
 Your server will now attempt to connect to Gmod Integration and if everything is correct you should see a success message with your server name and id in the console.
+
+If the console reports that GWSockets is unavailable, install the module matching the server process's operating system and architecture in `garrysmod/lua/bin/`, then fully stop and start the server. A map change is not sufficient. If GWSockets is loaded but the connection fails, check the server ID, token, WebSocket address and outbound connectivity.
 
 Example:
 

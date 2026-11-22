@@ -179,14 +179,14 @@ describe('clientsModels', () => {
       expect(result.filename).toContain('.jpeg')
     })
 
-    it('logs and continues when the S3 upload fails', async () => {
+    it('stops before registration or publication when the S3 upload fails', async () => {
       s3SendMock.mockRejectedValueOnce(new Error('s3 down'))
-      prismaMock.gm_server_screenshots.create.mockResolvedValueOnce({})
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      await saveScreenshot(jpeg, { format: 'png' }, fakePlayer, makeServer(), 'title')
-
-      expect(errorSpy).toHaveBeenCalledWith('Error uploading players screenshot to S3:', expect.any(Error))
+      await expect(saveScreenshot(jpeg, { format: 'png' }, fakePlayer, makeServer(), 'title')).rejects.toThrow(
+        's3 down',
+      )
+      expect(prismaMock.gm_server_screenshots.create).not.toHaveBeenCalled()
+      expect(enqueueMainClientUploadScreenshotMock).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
     })
 
     it('uploads to the configured Discord channel and returns its URL', async () => {
@@ -239,6 +239,35 @@ describe('clientsModels', () => {
       expect(result).toEqual({ skip: true, message: 'Channel not found' })
     })
 
+    it('does not publish an embed with an empty attachment URL', async () => {
+      await expect(
+        sendScreenshotToDiscord(
+          '',
+          'https://gmod-integration.com/capture',
+          'file.jpeg',
+          fakePlayer,
+          makeServer(),
+          'title',
+        ),
+      ).rejects.toThrow('Discord screenshot upload unavailable')
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
+    it.each([401, 404, 429, 500])('does not report a relay HTTP %s response as delivered', async (status) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status }))
+      await expect(
+        sendScreenshotToDiscord(
+          'https://cdn.example/capture.jpeg',
+          'https://gmod-integration.com/capture',
+          'file.jpeg',
+          fakePlayer,
+          makeServer(),
+          'title',
+        ),
+      ).rejects.toThrow('Discord screenshot delivery could not be confirmed')
+      expect(fetch).toHaveBeenCalledTimes(1)
+    })
+
     it('sends the embed via the relay using the given title', async () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true })
       vi.stubGlobal('fetch', fetchMock)
@@ -276,6 +305,80 @@ describe('clientsModels', () => {
   })
 
   describe('uploadScreenshotPayload', () => {
+    const payload = () => ({ player: fakePlayer, screenshot: jpeg, captureData: { format: 'jpeg' }, size: '1KB' })
+    async function withUploadChannel(operation: () => Promise<void>) {
+      const { ConfigServer } = await import('@gmod/config')
+      const original = ConfigServer.screenshotChannel
+      ConfigServer.screenshotChannel = 'ch1'
+      try {
+        await operation()
+      } finally {
+        ConfigServer.screenshotChannel = original
+      }
+    }
+
+    it('does not acknowledge persistence when screenshot storage fails', async () => {
+      s3SendMock.mockRejectedValueOnce(new Error('private storage failure'))
+      await expect(uploadScreenshotPayload(makeServer(), payload())).rejects.toThrow('private storage failure')
+      expect(prismaMock.gm_server_screenshots.create).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
+    it('acknowledges the saved panel capture separately from an unconfigured Discord destination', async () => {
+      const server = makeServer({ getScreenshotsChannel: vi.fn().mockResolvedValue(null) })
+      expect(await uploadScreenshotPayload(server, payload())).toEqual({
+        success: true,
+        saved: true,
+        discordDelivered: false,
+        delivery: 'not_configured',
+      })
+      expect(prismaMock.gm_server_screenshots.create).toHaveBeenCalledTimes(1)
+      expect(fetch).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_screenshots.deleteMany).not.toHaveBeenCalled()
+    })
+
+    it.each(['missing', 'empty', 'failed'])(
+      'preserves the panel capture when Discord upload is %s',
+      async (failure) => {
+        await withUploadChannel(async () => {
+          if (failure === 'failed')
+            enqueueMainClientUploadScreenshotMock.mockRejectedValueOnce(new Error('worker failed'))
+          else enqueueMainClientUploadScreenshotMock.mockResolvedValueOnce(failure === 'empty' ? '' : undefined)
+          expect(await uploadScreenshotPayload(makeServer(), payload())).toEqual({
+            success: true,
+            saved: true,
+            discordDelivered: false,
+            delivery: 'unavailable',
+          })
+          expect(prismaMock.gm_server_screenshots.create).toHaveBeenCalledTimes(1)
+          expect(prismaMock.gm_server_screenshots.deleteMany).not.toHaveBeenCalled()
+          expect(fetch).not.toHaveBeenCalled()
+        })
+      },
+    )
+
+    it.each(['http', 'network'])(
+      'retains a saved screenshot after a %s publication failure without replaying it',
+      async (failure) => {
+        await withUploadChannel(async () => {
+          enqueueMainClientUploadScreenshotMock.mockResolvedValueOnce('https://cdn.example/capture.jpeg')
+          const network = vi.fn()
+          if (failure === 'http') network.mockResolvedValue({ ok: false, status: 530 })
+          else network.mockRejectedValue(new Error('private relay response'))
+          vi.stubGlobal('fetch', network)
+          expect(await uploadScreenshotPayload(makeServer(), payload())).toEqual({
+            success: true,
+            saved: true,
+            discordDelivered: false,
+            delivery: 'unavailable',
+          })
+          expect(network).toHaveBeenCalledTimes(1)
+          expect(prismaMock.gm_server_screenshots.create).toHaveBeenCalledTimes(1)
+          expect(prismaMock.gm_server_screenshots.deleteMany).not.toHaveBeenCalled()
+        })
+      },
+    )
+
     it('returns a controlled validation error without storage or publication for invalid image bytes', async () => {
       expect(
         await uploadScreenshotPayload(makeServer(), {
@@ -332,7 +435,7 @@ describe('clientsModels', () => {
           title: 'title',
         })
 
-        expect(result).toEqual({ success: true })
+        expect(result).toEqual({ success: true, saved: true, discordDelivered: true })
       } finally {
         ;(ConfigServer as any).screenshotChannel = original
       }

@@ -136,27 +136,38 @@ export async function sendPlayerSay(server: Server, player: PlayerGmod, text: st
     outputStr = outputStr.replace(/@/g, '@\u200B')
   }
 
-  const webhookRelay = await fetch(getRandomDiscordRelay(), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: 'Bearer ' + ConfigDiscord.barerTokenRelay,
-    },
-    body: JSON.stringify({
-      webhookID: syncChatChannel.id,
-      webhookToken: syncChatChannel.token,
-      data: {
-        username: anonymous ? 'Anonymous' : player.name ? player.name : 'Unknown',
-        avatarURL: anonymous
-          ? 'https://i.imgur.com/MfkZJfm.jpeg'
-          : await getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
-        content: outputStr,
+  let webhookRelay: Response
+  try {
+    webhookRelay = await fetch(getRandomDiscordRelay(), {
+      method: 'POST',
+      signal: AbortSignal.timeout(15_000),
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: 'Bearer ' + ConfigDiscord.barerTokenRelay,
       },
-    }),
-  })
+      body: JSON.stringify({
+        webhookID: syncChatChannel.id,
+        webhookToken: syncChatChannel.token,
+        data: {
+          username: anonymous ? 'Anonymous' : player.name ? player.name : 'Unknown',
+          avatarURL: anonymous
+            ? 'https://i.imgur.com/MfkZJfm.jpeg'
+            : await getSteamUserAvatarLarge(player.steamID64).catch(() => 'https://i.imgur.com/MfkZJfm.jpeg'),
+          content: outputStr,
+        },
+      }),
+    })
+  } catch {
+    return { failed: true, status: 503, message: 'Webhook relay is unavailable' }
+  }
 
   if (!webhookRelay.ok) {
-    return { skip: true, failed: true, message: `Webhook relay failed with status ${webhookRelay.status}` }
+    return {
+      failed: true,
+      status: 502,
+      relayStatus: webhookRelay.status,
+      message: `Webhook relay failed with status ${webhookRelay.status}`,
+    }
   }
 
   return { success: true }

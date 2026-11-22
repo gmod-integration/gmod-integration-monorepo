@@ -75,6 +75,21 @@ export const ConfigSchema = z.object({
   OAUTH_PANEL_URL: z.string().url(),
   OAUTH_REDIRECT_URL: z.string().url(),
   BARER_DISCORD_RELAY: z.string().min(1),
+  DISCORD_RELAY_URL: z.preprocess(
+    (value) => (typeof value === 'string' ? value.trim() || undefined : value),
+    z
+      .string()
+      .url()
+      .refine((value) => {
+        try {
+          const url = new URL(value)
+          return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password
+        } catch {
+          return false
+        }
+      }, 'Use an HTTP or HTTPS relay URL without credentials.')
+      .optional(),
+  ),
 
   DISCORD_GUILD_PREMIUM_ROLE_ID: z.string().min(1),
   DISCORD_GUILD_GMODSTORE_PREMIUM_ROLE_ID: z.string().min(1),

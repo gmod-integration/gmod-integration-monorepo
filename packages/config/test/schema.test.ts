@@ -58,6 +58,24 @@ describe('ConfigSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('allows an optional HTTP relay destination and treats blank values as unset', () => {
+    expect(ConfigSchema.parse(validEnv()).DISCORD_RELAY_URL).toBeUndefined()
+    expect(ConfigSchema.parse(validEnv({ DISCORD_RELAY_URL: '   ' })).DISCORD_RELAY_URL).toBeUndefined()
+    expect(ConfigSchema.parse(validEnv({ DISCORD_RELAY_URL: ' http://127.0.0.1:3002 ' })).DISCORD_RELAY_URL).toBe(
+      'http://127.0.0.1:3002',
+    )
+    expect(ConfigSchema.parse(validEnv({ DISCORD_RELAY_URL: 'https://relay.example.com' })).DISCORD_RELAY_URL).toBe(
+      'https://relay.example.com',
+    )
+  })
+
+  it.each(['not-a-url', 'file:///tmp/relay', 'ftp://relay.example.com', 'https://user:secret@relay.example.com'])(
+    'rejects an invalid or credential-bearing Discord relay URL: %s',
+    (value) => {
+      expect(ConfigSchema.safeParse(validEnv({ DISCORD_RELAY_URL: value })).success).toBe(false)
+    },
+  )
+
   it('provides separate, bounded session lifetime defaults and an optional encryption key', () => {
     const parsed = ConfigSchema.parse(validEnv())
     expect(parsed.AUTH_SESSION_ABSOLUTE_TTL_SECONDS).toBe(2592000)

@@ -33,6 +33,15 @@ cp apps/webhook-relay/.env.example apps/webhook-relay/.env
 turbo dev
 ```
 
+### Garry's Mod addon prerequisite
+
+The dedicated Garry's Mod server must have [GWSockets](https://github.com/FredyH/GWSockets/releases)
+installed in `garrysmod/lua/bin/`. Choose the binary for the server's operating system and **process
+architecture**, then fully stop and start the server through its hosting panel or service manager.
+A map change is insufficient. The Workshop addon alone cannot connect: all connected addon features
+use GWSockets, while local configuration and diagnostics remain available when it is missing.
+See the [installation guide](apps/docs/docs/getting-started/installation.md#dll).
+
 ### Sample development data
 
 After signing in to the local dashboard, preview and create sample data for your existing development
@@ -145,9 +154,13 @@ Prod routing summary:
 
 ## Set FQDN in Garry's Mod
 
-Don't forget to change Garry's Mod configuration to point to your dev instance instead of the public one, using the following command in your console:
+After installing GWSockets and restarting the dedicated server, point the addon at your development
+WebSocket gateway. Use a bare hostname, with an optional port, without a URL scheme or path:
 
 ```bash
-gmod-integration config set apiFQDN "https://api-dev.your-domain.com"
-gmod-integration config set websocketFQDN "https://ws-dev.your-domain.com"
+gmod-integration config set websocketFQDN "ws-dev.your-domain.com"
+gmod-integration config try
 ```
+
+The addon uses WebSocket for all connected features; `apiFQDN` is a legacy persisted setting.
+The dashboard still uses the HTTP API for authentication, settings and data.

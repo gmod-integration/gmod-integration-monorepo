@@ -55,18 +55,14 @@ export async function saveScreenshot(
   await assertPersonalDataAllowed(undefined, player.steamID64)
   const internUrl = `${ConfigServer.domain}/screenshots/${filename}`
   await createBucketIfNotExists('gmi-players-screenshots')
-  await s3
-    .send(
-      new PutObjectCommand({
-        Bucket: 'gmi-players-screenshots',
-        Key: filename,
-        Body: buffer,
-        ContentType: `image/${format}`,
-      }),
-    )
-    .catch((err) => {
-      console.error('Error uploading players screenshot to S3:', err)
-    })
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: 'gmi-players-screenshots',
+      Key: filename,
+      Body: buffer,
+      ContentType: `image/${format}`,
+    }),
+  )
 
   const ensureStillAllowed = async () => {
     if (!(await isErasureBlocked(undefined, player.steamID64))) return
@@ -120,6 +116,7 @@ export async function sendScreenshotToDiscord(
   if (!channelInfo) {
     return { skip: true, message: 'Channel not found' }
   }
+  if (!discordUrl) throw new Error('Discord screenshot upload unavailable')
 
   const embed = new EmbedBuilder()
     .setImage(discordUrl)
@@ -133,6 +130,7 @@ export async function sendScreenshotToDiscord(
 
   const webhookRelay = await fetch(getRandomDiscordRelay(), {
     method: 'POST',
+    signal: AbortSignal.timeout(12_000),
     headers: {
       'Content-Type': 'application/json',
       Authorization: 'Bearer ' + ConfigDiscord.barerTokenRelay,
@@ -147,18 +145,7 @@ export async function sendScreenshotToDiscord(
       },
     }),
   })
-  //
-  // if (!webhookRelay.ok) {
-  //   await prisma.gm_server_screenshot_channels.delete({
-  //     where: {
-  //       server_adminCmd: {
-  //         server: server.getID(),
-  //         adminCmd: channelInfo.adminCmd,
-  //       },
-  //     },
-  //   });
-  //   return { skip: true, message: 'Webhook not found' };
-  // }
+  if (!webhookRelay.ok) throw new Error('Discord screenshot delivery could not be confirmed')
 
   return { success: true }
 }
@@ -179,8 +166,17 @@ export async function uploadScreenshotPayload(server: Server, payload: any) {
 
   try {
     const { discordUrl, filename, internUrl } = await saveScreenshot(screenshot, captureData, player, server, title)
-    await sendScreenshotToDiscord(discordUrl, internUrl, filename, player, server, title)
-    return { success: true }
+    // The capture is already persisted. A Discord failure must not erase it or replay an uncertain send.
+    try {
+      const delivery = await sendScreenshotToDiscord(discordUrl, internUrl, filename, player, server, title)
+      if ('skip' in delivery) {
+        if (delivery.message !== 'Channel not found') return delivery
+        return { success: true, saved: true, discordDelivered: false, delivery: 'not_configured' as const }
+      }
+      return { success: true, saved: true, discordDelivered: true }
+    } catch {
+      return { success: true, saved: true, discordDelivered: false, delivery: 'unavailable' as const }
+    }
   } catch (error) {
     if (error instanceof ScreenshotValidationError) return { error: 'invalid_screenshot' as const }
     throw error

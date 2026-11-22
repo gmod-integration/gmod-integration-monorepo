@@ -67,6 +67,18 @@ fields, enforces per-player rate windows and cleans up on timeout/disconnect. As
 60 seconds, forwarding after 65 seconds, and the client wait after 90 seconds. Client responses contain
 only a sanitized outcome, never the stored report, image or server configuration.
 
+Screenshot acknowledgements distinguish storage from Discord publication: `saved: true` confirms
+the capture is available in the panel; `discordDelivered: true` additionally confirms publication.
+When Discord is unavailable or no screenshot destination is configured, the saved capture is kept
+and the player receives an explicit notice instead of a false delivery confirmation. These results
+contain only booleans and the fixed `delivery` values `unavailable` or `not_configured`.
+
+Game-to-Discord chat returns a failed acknowledgement when its relay rejects the message or is
+unreachable. Configured filtering and disabled relay directions remain intentional skips. Backend
+and administrator diagnostics are rate limited and exclude chat contents and webhook credentials.
+The backend relay address is configured with `DISCORD_RELAY_URL`; development defaults to the local
+relay on port `3002`, independently of the addon's WebSocket tunnel.
+
 ## Verification and release order
 
 Run the schema/core/gateway TypeScript suites and `python3 submodules/gmod-integration/scripts/test_lua.py`.

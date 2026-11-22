@@ -1,16 +1,10 @@
 import { getEmojis } from 'unicode-emoji'
-import { ConfigServer } from '@gmod/config'
+import { ConfigDiscord } from '@gmod/config'
 import prisma from '@gmod/infra-prisma'
 import { type Request, type Response } from 'express'
 
 export function getRandomDiscordRelay() {
-  const relays = []
-  if (ConfigServer.dev) {
-    relays.push('https://dsc-relay-dev.gmod-integration.com')
-  } else {
-    relays.push('https://1-dsc-relay.gmod-integration.com')
-  }
-  return relays[Math.floor(Math.random() * relays.length)]
+  return ConfigDiscord.relayUrl
 }
 
 export function getEmojiVersion(emoji: string) {

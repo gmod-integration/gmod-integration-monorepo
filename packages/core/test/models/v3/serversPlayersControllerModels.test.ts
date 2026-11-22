@@ -110,15 +110,47 @@ describe('serversPlayersControllerModels', () => {
         expect(error).not.toHaveBeenCalled()
       },
     )
-    it('logs a failed chat relay without rejecting the addon’s accepted player event', async () => {
-      sendPlayerSayMock.mockResolvedValueOnce({ failed: true, message: 'Configured webhook no longer exists' })
+    it.each([
+      { status: 502, relayStatus: 530, code: 'chat_relay_failed', detail: 'HTTP 530' },
+      { status: 503, relayStatus: undefined, code: 'chat_relay_unavailable', detail: 'relay unavailable' },
+    ])(
+      'returns an honest $status acknowledgement for a failed relay',
+      async ({ status, relayStatus, code, detail }) => {
+        sendPlayerSayMock.mockResolvedValueOnce({ failed: true, status, relayStatus, message: 'private upstream data' })
+        const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+        const server = makeServer({ getID: () => `failed-${status}` })
+        expect(
+          await processPlayerSay(server, '765', {
+            player: validPlayerPayload(),
+            text: 'private chat',
+            teamOnly: false,
+          }),
+        ).toEqual({ status, body: { error: code } })
+        expect(error).toHaveBeenCalledExactlyOnceWith(
+          `[chat sync] gmod->discord relay failed for server failed-${status}: ${detail}`,
+        )
+      },
+    )
+
+    it('limits sanitized failure logs to one per server per minute while still rejecting every failed send', async () => {
+      sendPlayerSayMock.mockResolvedValue({
+        failed: true,
+        status: 502,
+        relayStatus: 401,
+        message: 'private credential',
+      })
       const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-      expect(
-        await processPlayerSay(makeServer(), '765', { player: validPlayerPayload(), text: 'hello', teamOnly: false }),
-      ).toMatchObject({ status: 200 })
+      const time = vi.spyOn(Date, 'now').mockReturnValue(1000)
+      const server = makeServer({ getID: () => 'bounded-diagnostics' })
+      const body = { player: validPlayerPayload(), text: 'private chat message', teamOnly: false }
+      expect(await processPlayerSay(server, '765', body)).toEqual({ status: 502, body: { error: 'chat_relay_failed' } })
+      expect(await processPlayerSay(server, '765', body)).toEqual({ status: 502, body: { error: 'chat_relay_failed' } })
       expect(error).toHaveBeenCalledExactlyOnceWith(
-        '[chat sync] gmod->discord relay failed for server s1: Configured webhook no longer exists',
+        '[chat sync] gmod->discord relay failed for server bounded-diagnostics: HTTP 401',
       )
+      time.mockReturnValue(61_000)
+      await processPlayerSay(server, '765', body)
+      expect(error).toHaveBeenCalledTimes(2)
     })
     it('returns 400 with missing_arguments when required fields are absent', async () => {
       badArgumentMock.mockReturnValueOnce(true)

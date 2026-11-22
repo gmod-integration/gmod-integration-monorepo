@@ -33,6 +33,8 @@ function getInvalidPlayerResult(player: PlayerGmod): EndpointResult {
   return bad({ error: 'player_bad_format', arguments: player.isValidGetInformations() })
 }
 
+const chatRelayFailureLogs = new Map<string, number>()
+
 export async function processPlayerSay(server: Server, steamID64Param: unknown, body: any): Promise<EndpointResult> {
   const steamID64 = getStringValue(steamID64Param)
   const { player, text, teamOnly } = body
@@ -58,10 +60,24 @@ export async function processPlayerSay(server: Server, steamID64Param: unknown, 
 
   const result = await sendPlayerSay(server, player, text, teamOnly)
   if (result && 'failed' in result && result.failed) {
-    // A genuine relay failure (e.g. the configured Discord webhook was deleted/invalid) is
-    // silently swallowed by the GMod addon's fire-and-forget http.post, so log it server-side -
-    // otherwise nobody finds out the sync is broken until an admin notices chat isn't relaying.
-    console.error(`[chat sync] gmod->discord relay failed for server ${server.getID()}: ${result.message}`)
+    const unavailable = result.status === 503
+    const status = unavailable ? 503 : 502
+    const serverID = server.getID()
+    const now = Date.now()
+    const lastLog = chatRelayFailureLogs.get(serverID)
+    if (lastLog === undefined || now - lastLog >= 60_000) {
+      const relayStatus = result.relayStatus
+      const detail =
+        typeof relayStatus === 'number' && Number.isInteger(relayStatus) && relayStatus >= 100 && relayStatus <= 599
+          ? `HTTP ${relayStatus}`
+          : unavailable
+            ? 'relay unavailable'
+            : 'relay rejected the message'
+      console.error(`[chat sync] gmod->discord relay failed for server ${serverID}: ${detail}`)
+      chatRelayFailureLogs.set(serverID, now)
+      if (chatRelayFailureLogs.size > 1024) chatRelayFailureLogs.delete(chatRelayFailureLogs.keys().next().value!)
+    }
+    return { status, body: { error: unavailable ? 'chat_relay_unavailable' : 'chat_relay_failed' } }
   }
   return ok()
 }

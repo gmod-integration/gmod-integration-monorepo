@@ -189,13 +189,27 @@ describe('serversPlayersModels', () => {
       expect(body.data.content).toContain('@​everyone')
     })
 
-    it('returns a failed skip result when the relay responds not-ok', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
+    it.each([401, 404, 530])('distinguishes upstream HTTP %i from an intentional skipped message', async (status) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status }))
       await expect(sendPlayerSay(makeServer(), makePlayer(), 'hi', false)).resolves.toEqual({
-        skip: true,
         failed: true,
-        message: 'Webhook relay failed with status 404',
+        status: 502,
+        relayStatus: status,
+        message: `Webhook relay failed with status ${status}`,
       })
+    })
+
+    it('reports an unreachable relay without exposing the network exception or message', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('private credential and upstream URL')))
+      await expect(sendPlayerSay(makeServer(), makePlayer(), 'private player message', false)).resolves.toEqual({
+        failed: true,
+        status: 503,
+        message: 'Webhook relay is unavailable',
+      })
+      expect(fetch).toHaveBeenCalledExactlyOnceWith(
+        'https://relay.example',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
     })
 
     it('falls back to the default avatar when the Steam avatar lookup fails', async () => {

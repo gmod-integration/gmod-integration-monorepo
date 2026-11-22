@@ -62,4 +62,25 @@ describe('packages/infra-steam src/index.ts', () => {
     )
     expect(result).toBe('https://gmod-integration.com/avatars/steam/76561198219049673')
   })
+
+  it.each(['getSteamUserSummary', 'getSteamUserAvatars', 'getSteamUserAvatarLarge'] as const)(
+    '%s rejects when Steam fails instead of leaving the caller pending',
+    async (helper) => {
+      const unavailable = new Error('Steam unavailable')
+      getUserSummaryMock.mockRejectedValueOnce(unavailable)
+      const module = await import('../src/index.js')
+
+      await expect(module[helper]('76561198219049673')).rejects.toBe(unavailable)
+      expect(ensureAvatarStoredMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it('rejects an avatar-storage failure so delivery callers can handle it', async () => {
+    const unavailable = new Error('Avatar storage unavailable')
+    getUserSummaryMock.mockResolvedValueOnce({ avatar: { large: 'https://steamcdn.example.com/large.jpg' } })
+    ensureAvatarStoredMock.mockRejectedValueOnce(unavailable)
+    const { getSteamUserAvatarLarge } = await import('../src/index.js')
+
+    await expect(getSteamUserAvatarLarge('76561198219049673')).rejects.toBe(unavailable)
+  })
 })

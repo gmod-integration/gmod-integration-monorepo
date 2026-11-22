@@ -120,6 +120,9 @@ export const ConfigDiscord = {
   oauthPanelRedirect: config.OAUTH_REDIRECT_URL,
   invite: config.DISCORD_BOT_INVITE_URL,
   barerTokenRelay: config.BARER_DISCORD_RELAY,
+  relayUrl:
+    config.DISCORD_RELAY_URL ||
+    (config.DEV === 'true' ? 'http://127.0.0.1:3002' : 'https://1-dsc-relay.gmod-integration.com'),
   premiumRoleID: config.DISCORD_GUILD_PREMIUM_ROLE_ID,
   gmodStorePremiumRoleID: config.DISCORD_GUILD_GMODSTORE_PREMIUM_ROLE_ID,
   discordPremiumRoleID: config.DISCORD_GUILD_DISCORD_PREMIUM_ROLE_ID,

@@ -65,6 +65,14 @@ depend on it. Migration/rekeying needs an explicit plan before the original iden
 Everything. Every app and most `packages/*` import `@gmod/config` for ports, URLs, and credentials instead of
 `process.env`.
 
+`ConfigDiscord.relayUrl` reads optional `DISCORD_RELAY_URL`. A blank value selects the local relay at
+`http://127.0.0.1:3002` when `DEV=true`, or `https://1-dsc-relay.gmod-integration.com` otherwise.
+Only HTTP/HTTPS URLs without embedded credentials are accepted; authentication remains in
+`BARER_DISCORD_RELAY`, matching the standalone relay's `BARER_TOKEN`. Chat and screenshot publication
+share this destination. A healthy addon WebSocket does not confirm Discord delivery. When services
+run in separate containers, explicitly set a relay URL reachable from the backend containers, and
+restart the API/WebSocket/Discord services after changing it.
+
 Infrastructure adapters import their specific getter from `@gmod/config/infrastructure.js`:
 
 | Getter                | Precedence and defaults                                                                                                                                                                                |

@@ -1,9 +1,9 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-let configServerMock: { dev: boolean }
+const configDiscordMock = { relayUrl: 'https://1-dsc-relay.gmod-integration.com' }
 vi.mock('@gmod/config', () => ({
-  get ConfigServer() {
-    return configServerMock
+  get ConfigDiscord() {
+    return configDiscordMock
   },
 }))
 
@@ -14,8 +14,6 @@ const createNotificationMock = vi.fn()
 vi.mock('@gmod/infra-prisma', () => ({
   default: { gm_users_notifications: { create: createNotificationMock } },
 }))
-
-configServerMock = { dev: false }
 
 const initialTagFetch = vi.fn().mockResolvedValue({ json: async () => [{ name: 'v1.2.3' }] })
 vi.stubGlobal('fetch', initialTagFetch)
@@ -43,16 +41,13 @@ describe('tools', () => {
   })
 
   describe('getRandomDiscordRelay', () => {
-    it('returns the prod relay when not in dev mode', () => {
-      configServerMock.dev = false
-      expect(getRandomDiscordRelay()).toBe('https://1-dsc-relay.gmod-integration.com')
-    })
-
-    it('returns the dev relay when in dev mode', () => {
-      configServerMock.dev = true
-      expect(getRandomDiscordRelay()).toBe('https://dsc-relay-dev.gmod-integration.com')
-      configServerMock.dev = false
-    })
+    it.each(['https://1-dsc-relay.gmod-integration.com', 'http://127.0.0.1:3002', 'https://relay.example.com'])(
+      'uses the configured relay rather than an unrelated fixed endpoint: %s',
+      (relayUrl) => {
+        configDiscordMock.relayUrl = relayUrl
+        expect(getRandomDiscordRelay()).toBe(relayUrl)
+      },
+    )
   })
 
   describe('getEmojiVersion', () => {
