@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const resolveSessionMock = vi.fn()
 const assertSessionRequestMock = vi.fn()
 const readSessionCredentialMock = vi.fn()
+const assertTrustedOriginMock = vi.fn()
 vi.mock('@gmod/domain-auth/authSessions.js', () => ({
   resolveRequestSession: resolveSessionMock,
   assertSessionRequest: assertSessionRequestMock,
   readSessionCredential: readSessionCredentialMock,
+  assertTrustedOrigin: assertTrustedOriginMock,
 }))
 const getPanelUserMock = vi.fn()
 vi.mock('@gmod/domain-user/PanelUser.js', () => ({ getPanelUserFromDiscordID: getPanelUserMock }))
@@ -38,6 +40,10 @@ const res = (): any => {
   return response
 }
 beforeEach(() => {
+  assertTrustedOriginMock.mockReset().mockImplementation((request) => {
+    if (request.headers.origin && !['https://site.test', 'https://api.test'].includes(request.headers.origin))
+      throw Object.assign(new Error('This origin is not allowed.'), { status: 403, code: 'origin_forbidden' })
+  })
   resolveSessionMock.mockReset().mockResolvedValue(current)
   assertSessionRequestMock.mockReset()
   readSessionCredentialMock.mockReset().mockReturnValue('cookie-token-A')
@@ -71,9 +77,18 @@ describe('v6 exact session context', () => {
   })
   it('rejects a foreign Origin before touching a session', async () => {
     const response = res()
-    await dashboardSession(req({ headers: { origin: 'https://other.test' } }), response, vi.fn())
-    expect(response.status).toHaveBeenCalledWith(403)
+    await expect(
+      dashboardSession(req({ headers: { origin: 'https://other.test' } }), response, vi.fn()),
+    ).rejects.toMatchObject({ status: 403, code: 'origin_forbidden' })
     expect(resolveSessionMock).not.toHaveBeenCalled()
+  })
+  it('accepts the configured API documentation origin through the shared origin guard', async () => {
+    const request = req({ headers: { origin: 'https://api.test' } })
+    const next = vi.fn()
+    await dashboardSession(request, res(), next)
+    expect(assertTrustedOriginMock).toHaveBeenCalledWith(request)
+    expect(assertSessionRequestMock).toHaveBeenCalledWith(request, current)
+    expect(next).toHaveBeenCalled()
   })
   it('rejects missing and revoked sessions without looking up a latest session', async () => {
     resolveSessionMock.mockResolvedValue(null)

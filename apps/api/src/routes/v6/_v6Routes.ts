@@ -1,6 +1,10 @@
 import express, { type ErrorRequestHandler, type Response } from 'express'
-import { ConfigServer } from '@gmod/config'
-import { AuthSessionError, assertSessionRequest, resolveRequestSession } from '@gmod/domain-auth/authSessions.js'
+import {
+  AuthSessionError,
+  assertSessionRequest,
+  assertTrustedOrigin,
+  resolveRequestSession,
+} from '@gmod/domain-auth/authSessions.js'
 import { DiscordOAuthError } from '@gmod/domain-auth/discordOAuth.js'
 import { getAccountErasureStatus, requestAccountErasure } from '@gmod/domain-compliance/accountErasure.js'
 import {
@@ -16,10 +20,10 @@ import statusSettingsRoutes from './statusSettingsRoutes.js'
 import accessRoutes from './accessRoutes.js'
 import authRoutes from './authRoutes.js'
 import adminRoutes from './adminRoutes.js'
+import docsRoutes from './docsRoutes.js'
 import { AccessDeniedError } from '@gmod/domain-access/index.js'
 
 const router = express.Router()
-const expectedOrigin = new URL(ConfigServer.websiteUrl).origin
 const errorResponse = (res: Response, status: number, code: string, message: string) =>
   res.status(status).json({ error: { code, message } })
 
@@ -38,6 +42,7 @@ router.get('/', (_req, res) => {
   res.json({ status: 'ok', version: 'v6' })
 })
 
+router.use('/docs', docsRoutes)
 router.use(dashboardSettingsRoutes)
 router.use(statusSettingsRoutes)
 router.use(accessRoutes)
@@ -47,9 +52,7 @@ router.use('/admin', adminRoutes)
 router.post(
   '/account/erasure-requests',
   asyncHandler(async (req, res) => {
-    if (req.headers.origin !== undefined && req.headers.origin !== expectedOrigin) {
-      return errorResponse(res, 403, 'origin_forbidden', 'This origin cannot request account erasure.')
-    }
+    assertTrustedOrigin(req)
     const session = await resolveRequestSession(req, { touch: false })
     if (!session) return errorResponse(res, 401, 'unauthorized', 'A valid session is required.')
     assertSessionRequest(req, session)

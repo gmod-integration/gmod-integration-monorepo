@@ -3,6 +3,13 @@
 Real-time WebSocket gateway. Entry point: [`src/main.ts`](../../apps/websocket/src/main.ts). Default internal
 port `53139` (see root [README.md](../../README.md)).
 
+## Interactive reference
+
+The API serves a WebSocket message catalogue and dashboard test console at `/v6/docs` (locally,
+`http://localhost:53136/v6/docs`, WebSocket tab). Download the AsyncAPI 3.0 document from
+`/v6/docs/asyncapi.json`; HTTP contracts are available alongside it in `/v6/docs/openapi.json`.
+See [the API developer reference](./api.md#interactive-developer-reference) for session setup.
+
 ## Two kinds of connections
 
 Both connect to the same `WebSocketServer`. The handshake stores a verified connection type, which the
@@ -83,18 +90,35 @@ ack key (`ws:send-to-server:ack:<requestId>`) that the original worker polls for
 
 `wsSendToAllClientsOfServerQueue` fans out to every authorized dashboard socket scoped to a given server
 (`serverAdminListID`), including multiple tabs, with session and permission checks before delivery.
+Its BullMQ worker publishes the message on `ws:send-to-clients:broadcast`; every gateway replica
+subscribes and delivers to its own sockets. The publishing replica uses that same subscriber path,
+without a second local send. Each replica independently revalidates sessions, erasure state and
+guild/server permissions before delivery, so receiving a broadcast does not grant access.
+
+These live notifications use Redis pub/sub without replay or a delivery acknowledgement. Clients
+can retrieve available log history through HTTP after missing notifications during a disconnection
+or Redis outage; this is not an automatic replay on reconnect. The queue does not make an individual
+dashboard notification durable.
+
+Server status uses shared Redis presence rather than the gateway's local connection list. Each
+authenticated addon connection owns a unique member in `ws:server-presence:<serverID>`, with a
+90-second lease renewed on heartbeat pongs. Redis supplies the clock and atomically removes expired
+members before reads/renewals. A connection close or gateway shutdown removes only that connection's
+member after any in-flight renewal completes. Closing an older socket therefore cannot remove its
+replacement's presence or recreate its own lease. A crashed gateway's last lease expires within
+90 seconds, so status can briefly remain connected after an unobserved process failure.
 
 ## Structure
 
 ```text
 src/
-  main.ts    everything: WebSocketServer, verifyClient auth, both connection handlers, the two BullMQ
-             workers (wsSendToServerWorker, wsSendToAllClientsOfServerWorker), graceful shutdown.
+  main.ts             WebSocketServer, verifyClient auth, connection handlers, BullMQ workers,
+                      Redis broadcasts, graceful shutdown.
+  serverPresence.ts   Per-connection Redis leases shared across gateway replicas.
   index.ts
 ```
 
-`src/main.ts` owns authentication, connection registration and queue delivery.
-`src/addonGateway.ts` owns the addon request lifecycle, limits and correlated replies.
+Connection handling and BullMQ workers are the natural seams for a further split if `main.ts` grows.
 
 ## Addon request protocol
 

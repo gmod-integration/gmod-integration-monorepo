@@ -2,6 +2,23 @@
 
 Express HTTP API. Entry point: [`src/gm_integration_api.ts`](../../apps/api/src/gm_integration_api.ts).
 
+## Interactive developer reference
+
+Open `/v6/docs` on the API origin (locally, `http://localhost:53136/v6/docs`). The HTTP tab exposes
+the currently implemented v6 routes through Swagger UI, with request/response schemas and live
+requests. The WebSocket tab provides the message catalogue, examples and a dashboard connection
+console. These references describe mounted contracts, not the future v6 roadmap.
+
+Machine-readable documents are available at `/v6/docs/openapi.json` and `/v6/docs/asyncapi.json`.
+The UI and its assets are served locally by the API, without a documentation CDN.
+
+Sign in through the dashboard before testing cookie-authenticated operations. The developer console
+reads the HTTP session and obtains the current CSRF token; mutations use the same session and
+authorization checks as other clients. Each WebSocket connection obtains a fresh single-use ticket.
+The browser console covers dashboard messages; native addon connections require the `id` and `token`
+headers described in the AsyncAPI contract. See [the gateway reference](./websocket.md) for lifecycle,
+delivery limits and the distinction between dashboard and addon messages.
+
 ## Who talks to it
 
 - The GMod addon (submodule), authenticated with a server token/ID.

@@ -1,15 +1,18 @@
 import type { NextFunction, Request, Response } from 'express'
-import { assertSessionRequest, resolveRequestSession, readSessionCredential } from '@gmod/domain-auth/authSessions.js'
+import {
+  assertSessionRequest,
+  assertTrustedOrigin,
+  resolveRequestSession,
+  readSessionCredential,
+} from '@gmod/domain-auth/authSessions.js'
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
 import { Guild } from '@gmod/domain-guild/Guild.js'
 import { getSingleParam } from '../../utils/requestParams.js'
-import { ConfigServer } from '@gmod/config'
 
 export async function dashboardSession(req: Request, res: Response, next: NextFunction) {
   res.setHeader('Cache-Control', 'no-store')
-  if (req.headers.origin && req.headers.origin !== new URL(ConfigServer.websiteUrl).origin)
-    return res.status(403).json({ error: { code: 'origin_forbidden', message: 'This origin is not allowed.' } })
+  assertTrustedOrigin(req)
   const session = await resolveRequestSession(req, { touch: true })
   if (!session)
     return res.status(401).json({ error: { code: 'unauthorized', message: 'A valid session is required.' } })

@@ -92,6 +92,11 @@ function assertError(response: request.Response, status: number, code: string) {
 }
 
 describe('v6 erasure routes with real Express authentication flow', () => {
+  it('accepts the configured API documentation origin with an explicit authorized session', async () => {
+    const response = await post().set('Origin', 'https://api.example.test')
+    expect(response.status).toBe(202)
+    expect(mocks.requestErasure).toHaveBeenCalledTimes(1)
+  })
   it('refuses erasure from a delegated session even when its parent is valid', async () => {
     const actor = {
       id: 'actor',

@@ -90,6 +90,20 @@ beforeEach(() => {
 })
 
 describe('dashboard section endpoints and session authorization', () => {
+  it('supports cookie-authenticated saves from the API docs origin while still requiring CSRF', async () => {
+    const perform = () =>
+      request(app())
+        .put(serverURL)
+        .set('Origin', 'https://api.example.test')
+        .set('Cookie', '__Host-gmi_session=session-token')
+    expect((await perform().send({ settings: { log_hide_ip: true } })).status).toBe(403)
+    expect(mocks.saveServer).not.toHaveBeenCalled()
+    const saved = await perform()
+      .set('X-CSRF-Token', csrf())
+      .send({ settings: { log_hide_ip: true } })
+    expect(saved.status).toBe(200)
+    expect(mocks.saveServer).toHaveBeenCalledTimes(1)
+  })
   it('rejects invalid community settings without saving or dropping the authenticated session', async () => {
     const response = await put(guildURL, { settings: { unknown: true } })
     expect(response.status).toBe(400)
