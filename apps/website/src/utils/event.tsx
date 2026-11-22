@@ -1,4 +1,5 @@
 import { createSignal } from 'solid-js'
+import { getDiscordAvatarUrl } from './discordAvatar.js'
 
 export type DiscordUserState = {
   id: string
@@ -16,13 +17,20 @@ export function normalizeDiscordUserPayload(payload: unknown): DiscordUserState 
     const value: unknown = Reflect.get(payload, key)
     return typeof value === 'string' ? value : ''
   }
-  const avatarURL = field('displayAvatarURL') || field('avatarURL')
-  const displayName = field('globalName') || field('displayName') || field('username')
+  const avatarURL = getDiscordAvatarUrl({
+    id: field('id'),
+    discriminator: field('discriminator'),
+    avatar: field('avatar'),
+    avatarURL: field('avatarURL'),
+    displayAvatarURL: field('displayAvatarURL'),
+  })
+  const globalName = field('globalName') || field('global_name')
+  const displayName = globalName || field('displayName') || field('username')
 
   return {
     id: field('id'),
     username: field('username'),
-    globalName: field('globalName') || displayName,
+    globalName: globalName || displayName,
     displayName: field('displayName') || displayName,
     discriminator: field('discriminator'),
     avatarURL: field('avatarURL') || avatarURL,

@@ -59,6 +59,11 @@ All UI icons use `Icon` from the same barrel, with a typed `IconName` (`pencil`,
 [`lucide-solid`](https://lucide.dev/guide/packages/lucide-solid), compatible with the website's Solid 1.
 Icons are decorative by default; put accessible names on their button or link. `IconButton` accepts the
 same typed names. User-supplied emoji and Discord message content retain their original appearance.
+User identity images use `DiscordAvatar` with the current authenticated Discord profile. Prefer its
+resolved avatar URL, including the application's avatar proxy. Accounts without a custom image use
+Discord's default avatar; failed custom images fall back once before using a generic icon. Keep the
+profile reactive so session refreshes update both the header and account card. Bot previews use the
+bot's Discord avatar, while game and Steam identities retain their own images.
 The former icon-font stylesheets and proprietary font assets are removed.
 Language flags use the local `LanguageFlag` assets rather than Lucide or emoji fonts; these are language
 selector artwork, while action icons remain in the Lucide registry.

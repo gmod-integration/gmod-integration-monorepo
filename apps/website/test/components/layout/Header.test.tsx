@@ -237,7 +237,10 @@ describe('Header authenticated identity', () => {
     renderWithProviders(() => <Header />)
     expect(isLogged()).toBe(true)
     expect(localStorage.getItem('accessToken')).toBeNull()
-    expect(screen.getByAltText('Discord avatar')).toHaveAttribute('src', 'https://cdn/b.png')
+    expect(screen.getByRole('button', { name: 'Bobby' }).querySelector('img')).toHaveAttribute(
+      'src',
+      'https://cdn/b.png',
+    )
     expect(initWebSocket).not.toHaveBeenCalled()
   })
   it('does not infer sign-in from a browser profile or bearer cache', () => {
@@ -253,7 +256,29 @@ describe('Header authenticated identity', () => {
     renderWithProviders(() => <Header />)
     const trigger = screen.getByRole('button', { name: 'Bobby' })
     expect(trigger).toHaveAttribute('aria-label', 'Bobby')
-    expect(screen.queryByAltText('Discord avatar')).not.toBeInTheDocument()
+    expect(trigger.querySelector('img')).not.toBeInTheDocument()
+  })
+  it('uses the Discord default avatar for an authenticated account without a custom avatar', () => {
+    setValidAuth({ user: { id: '123456789012345678', username: 'bob', globalName: 'Bobby', discriminator: '0' } })
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+    expect(screen.getByRole('button', { name: 'Bobby' }).querySelector('img')).toHaveAttribute(
+      'src',
+      'https://cdn.discordapp.com/embed/avatars/0.png',
+    )
+  })
+  it('updates the avatar when the authenticated Discord profile refreshes', () => {
+    setValidAuth()
+    vi.stubGlobal('fetch', makeFetchMock())
+    renderWithProviders(() => <Header />)
+    acceptAuthSession({
+      ...authSession()!,
+      user: { ...authSession()!.user, avatarURL: 'https://cdn/new.png', displayAvatarURL: 'https://cdn/new.png' },
+    })
+    expect(screen.getByRole('button', { name: 'Bobby' }).querySelector('img')).toHaveAttribute(
+      'src',
+      'https://cdn/new.png',
+    )
   })
   it('uses the authenticated rank for the developer destination', () => {
     setValidAuth()

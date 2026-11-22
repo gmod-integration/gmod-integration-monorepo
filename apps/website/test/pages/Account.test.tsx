@@ -12,7 +12,7 @@ import {
 } from '../../src/utils/websocket.js'
 import Account from '../../src/pages/Account.js'
 import type * as ApiModule from '../../src/utils/api.js'
-import { AUTH_STORAGE_KEY } from '../../src/utils/authClient.js'
+import { acceptAuthSession, authSession, AUTH_STORAGE_KEY, resetAuthentication } from '../../src/utils/authClient.js'
 
 vi.mock('../../src/utils/api.js', async (importOriginal) => {
   const actual = await importOriginal<typeof ApiModule>()
@@ -110,6 +110,7 @@ function stubLocation(href = 'http://localhost:3000/account') {
 
 describe('pages/Account.tsx', () => {
   beforeEach(() => {
+    resetAuthentication()
     window.localStorage.clear()
     window.sessionStorage.clear()
     setWebSocketSignal(null)
@@ -134,6 +135,22 @@ describe('pages/Account.tsx', () => {
     )
     renderAccount()
     expect(document.querySelector('img[src="https://cdn.discordapp.com/avatar.png"]')).toBeInTheDocument()
+  })
+  it('refreshes the Discord identity and avatar after the session profile updates', () => {
+    renderAccount()
+    acceptAuthSession({
+      ...authSession()!,
+      user: {
+        ...authSession()!.user,
+        globalName: 'Bob Updated',
+        displayName: 'Bob Updated',
+        avatarURL: 'https://cdn.discordapp.com/updated-avatar.webp',
+        displayAvatarURL: 'https://cdn.discordapp.com/updated-avatar.webp',
+      },
+    })
+    const identity = screen.getByRole('region', { name: /^Discord$/ })
+    expect(within(identity).getByText('Bob Updated')).toBeInTheDocument()
+    expect(identity.querySelector('img')).toHaveAttribute('src', 'https://cdn.discordapp.com/updated-avatar.webp')
   })
 
   it('rejects malformed session data while other optional resources retain their empty states', async () => {

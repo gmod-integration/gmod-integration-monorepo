@@ -7,7 +7,7 @@ import { fetchAPI } from '../../utils/api'
 import { notificationCount, updateNotificationCount } from '../../utils/notificationStore'
 import { setThemeMode, type ThemeMode, themeMode } from '../../utils/theme'
 import { authSession, authStatus } from '../../utils/authClient.js'
-import { ButtonLink, Icon, LanguageFlag, type IconName } from '../ui/index.js'
+import { ButtonLink, DiscordAvatar, Icon, LanguageFlag, type IconName } from '../ui/index.js'
 
 type Language = {
   code: Locale
@@ -374,12 +374,7 @@ export const Header: Component = () => {
                 }}
               >
                 <div class="header-user-avatar rounded-full overflow-hidden flex items-center justify-center bg-base-200">
-                  <Show
-                    when={discordUser().displayAvatarURL || discordUser().avatarURL}
-                    fallback={<Icon name="user-round" size={17} />}
-                  >
-                    <img alt="Discord avatar" src={discordUser().displayAvatarURL || discordUser().avatarURL} />
-                  </Show>
+                  <DiscordAvatar user={discordUser()} class="h-full w-full" />
                 </div>
                 <p class="header-user-name font-medium text-base-content">
                   {discordUser().globalName || discordUser().displayName || discordUser().username}

@@ -1,4 +1,13 @@
-import { AsyncState, Button, ButtonLink, FormField, Icon, IconButton, TableState } from '../components/ui/index.js'
+import {
+  AsyncState,
+  Button,
+  ButtonLink,
+  DiscordAvatar,
+  FormField,
+  Icon,
+  IconButton,
+  TableState,
+} from '../components/ui/index.js'
 import { batch, type Component, createResource, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import AdminPanel from '../components/AdminPanel.js'
 import { getDiscordUser } from '../utils/utils'
@@ -80,7 +89,8 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
     }
   }
 
-  const [localUser] = createSignal(getDiscordUser())
+  const cachedUser = getDiscordUser()
+  const localUser = () => authSession()?.user ?? cachedUser
   const [user, { refetch: refetchUser }] = createResource('steamUser', fetchUser)
   const [showRequestLoading, setShowRequestLoading] = createSignal(false)
   const [unlinkingGmodStorePurchase, setUnlinkingGmodStorePurchase] = createSignal(false)
@@ -312,16 +322,7 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
           >
             <div class="account-identity flex min-w-0 items-center gap-4">
               <div class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-primary/15 bg-primary/10 text-primary">
-                <Show
-                  when={localUser().displayAvatarURL || localUser().avatarURL}
-                  fallback={<Icon name="user-round" size={25} />}
-                >
-                  <img
-                    src={localUser().displayAvatarURL || localUser().avatarURL}
-                    alt=""
-                    class="h-full w-full object-cover"
-                  />
-                </Show>
+                <DiscordAvatar user={localUser()} class="h-full w-full" />
               </div>
               <div class="min-w-0">
                 <p class="truncate text-base font-semibold">

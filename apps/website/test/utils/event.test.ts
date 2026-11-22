@@ -69,4 +69,24 @@ describe('utils/event.tsx normalizeDiscordUserPayload', () => {
       displayName: 'Global',
     })
   })
+
+  it('normalizes raw Discord OAuth names and custom avatars for the connected profile', () => {
+    const avatar = '0123456789abcdef0123456789abcdef'
+    expect(normalizeDiscordUserPayload({ id: '4194304', username: 'bob', global_name: 'Bobby', avatar })).toMatchObject(
+      {
+        id: '4194304',
+        globalName: 'Bobby',
+        displayName: 'Bobby',
+        avatarURL: `https://cdn.discordapp.com/avatars/4194304/${avatar}.webp`,
+        displayAvatarURL: `https://cdn.discordapp.com/avatars/4194304/${avatar}.webp`,
+      },
+    )
+  })
+
+  it('uses the account’s Discord default avatar when its normalized profile has no custom image', () => {
+    expect(normalizeDiscordUserPayload({ id: '4194304', username: 'bob', discriminator: '0' })).toMatchObject({
+      avatarURL: 'https://cdn.discordapp.com/embed/avatars/1.png',
+      displayAvatarURL: 'https://cdn.discordapp.com/embed/avatars/1.png',
+    })
+  })
 })
