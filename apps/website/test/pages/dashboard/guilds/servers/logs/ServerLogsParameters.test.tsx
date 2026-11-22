@@ -69,6 +69,15 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogsParameters.tsx', () => {
     renderPage()
     await waitForLoaded()
     await vi.waitFor(() => expect(screen.getByText('No Logs Channel')).toBeInTheDocument())
+    const destination = screen.getByText('No Logs Channel').closest<HTMLElement>('.dashboard-panel')!
+    const content = screen
+      .getByRole('checkbox', { name: 'Hide IP addresses in Discord logs' })
+      .closest<HTMLElement>('.dashboard-panel')!
+    expect(destination).not.toBe(content)
+    expect(within(destination).queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(content.querySelector('.dashboard-panel-footer')).toContainElement(
+      within(content).getByRole('button', { name: 'Save' }),
+    )
   })
 
   it('renders the configured logs channel and a Remove Channel button', async () => {

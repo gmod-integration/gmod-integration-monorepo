@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
+import { cleanup, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../testUtils.js'
 import AdminPanel from '../../src/components/AdminPanel.js'
 import { linkBadge } from '../../src/components/layout/menu/DashboardMenu.js'
@@ -86,11 +86,20 @@ describe('components/AdminPanel.tsx', () => {
 
   it('supports shared header actions and footer without requiring a description', () => {
     renderWithProviders(() => (
-      <AdminPanel title="Links" actions={<button>Add a link</button>} footer={<span>2 links</span>}>
+      <AdminPanel
+        id="community-links"
+        title="Links"
+        actions={<button>Add a link</button>}
+        footer={<span>2 links</span>}
+      >
         <span>Configuration</span>
       </AdminPanel>
     ))
-    expect(screen.getByRole('heading', { name: 'Links' })).toBeInTheDocument()
+    const card = screen.getByRole('region', { name: 'Links' })
+    expect(card).toHaveAttribute('id', 'community-links')
+    expect(within(card).getByRole('heading', { name: 'Links' })).toBeInTheDocument()
+    expect(within(card).getByRole('button', { name: 'Add a link' })).toBeInTheDocument()
+    expect(within(card).getByText('2 links')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add a link' })).toBeInTheDocument()
     expect(screen.getByText('2 links')).toBeInTheDocument()
     expect(screen.getByText('Configuration')).toBeInTheDocument()

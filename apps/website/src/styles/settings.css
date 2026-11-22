@@ -8,10 +8,15 @@
 }
 .settings-group-heading {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 10px;
   padding: 0 0 16px;
   border-bottom: 1px solid var(--dashboard-border);
+}
+.settings-group-heading > div:not(.settings-group-actions) {
+  flex: 1;
+  min-width: min(100%, 12rem);
 }
 .settings-group-heading > .ui-icon {
   margin-top: 2px;
@@ -283,6 +288,15 @@
 }
 .settings-danger .settings-group-heading > .ui-icon {
   color: var(--color-error);
+}
+@container (max-width: 38rem) {
+  .settings-card-grid .settings-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+  .settings-card-grid .settings-row-copy {
+    padding-top: 0;
+  }
 }
 @media (max-width: 767px) {
   .dashboard-panel-body.is-flush > :is(.settings-browser, .settings-group, .settings-advanced) {

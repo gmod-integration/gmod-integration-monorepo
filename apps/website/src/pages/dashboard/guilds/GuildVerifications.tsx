@@ -13,7 +13,6 @@ import {
   FormField,
   TableState,
   Icon,
-  SettingGroup,
   SettingRow,
   AsyncState,
 } from '../../../components/ui/index.js'
@@ -357,16 +356,14 @@ const GuildVerification: Component = () => {
         />
       </AdminModal>
 
-      <AdminPanel
-        title={t('dashboard.guild.verification.verification_panel_title', 'Verification')}
-        description={t(
+      <p class="text-sm leading-relaxed text-base-content/60">
+        {t(
           'dashboard.guild.verification.verification_panel_description',
           'Help members link their Steam and Discord accounts. Publish the verification message, choose their experience and configure which Discord roles verification gives or removes.',
         )}
-        icon="shield-check"
-        type="none"
-      >
-        <SettingGroup
+      </p>
+      <div class="settings-card-grid">
+        <AdminPanel
           title={t('settings.verification_message', 'Verification entry point')}
           description={t(
             'settings.verification_message_hint',
@@ -417,11 +414,33 @@ const GuildVerification: Component = () => {
               </Show>
             </AsyncState>
           </SettingRow>
-        </SettingGroup>
-        <SettingGroup
+        </AdminPanel>
+        <AdminPanel
           title={t('settings.verification_preferences', 'Member experience')}
           description={t('settings.explicit_save', 'Changes apply only when you save this section.')}
           icon="user-round"
+          footer={
+            <FormActions
+              dirty={prefs.dirty()}
+              pending={prefs.pending()}
+              disabled={
+                preferencesUnavailable() ||
+                (!preferenceAccess.allowed() &&
+                  Object.entries(prefs.draft()).some(
+                    ([key, value]) => value && value !== prefs.saved()[key as keyof Preferences],
+                  ))
+              }
+              error={prefs.error()}
+              success={prefs.success()}
+              message={
+                prefs.success() && !prefs.dirty() && syncPending()
+                  ? t('ui.sync_pending', 'Changes saved. Synchronization is pending.')
+                  : undefined
+              }
+              onSave={savePreferences}
+              onCancel={prefs.discard}
+            />
+          }
         >
           <FeatureGate
             capability="verification.preferences"
@@ -488,30 +507,8 @@ const GuildVerification: Component = () => {
               </div>
             </SettingRow>
           </AsyncState>
-          <div class="p-4">
-            <FormActions
-              dirty={prefs.dirty()}
-              pending={prefs.pending()}
-              disabled={
-                preferencesUnavailable() ||
-                (!preferenceAccess.allowed() &&
-                  Object.entries(prefs.draft()).some(
-                    ([key, value]) => value && value !== prefs.saved()[key as keyof Preferences],
-                  ))
-              }
-              error={prefs.error()}
-              success={prefs.success()}
-              message={
-                prefs.success() && !prefs.dirty() && syncPending()
-                  ? t('ui.sync_pending', 'Changes saved. Synchronization is pending.')
-                  : undefined
-              }
-              onSave={savePreferences}
-              onCancel={prefs.discard}
-            />
-          </div>
-        </SettingGroup>
-      </AdminPanel>
+        </AdminPanel>
+      </div>
 
       <AdminPanel
         title={t('dashboard.guild.verification.verification_roles_panel_title', 'Verification Roles')}

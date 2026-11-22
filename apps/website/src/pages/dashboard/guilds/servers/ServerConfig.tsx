@@ -4,7 +4,6 @@ import {
   Icon,
   IconButton,
   FormActions,
-  SettingGroup,
   SettingRow,
   type IconName,
 } from '../../../../components/ui/index.js'
@@ -160,7 +159,6 @@ const ServerConfig: Component = () => {
     description: string
     icon: IconName
     keys: SettingKey[]
-    advanced?: boolean
   }
   const categories: SettingCategory[] = [
     {
@@ -207,7 +205,6 @@ const ServerConfig: Component = () => {
       description: 'Client compatibility, troubleshooting and log formatting.',
       icon: 'sliders-horizontal',
       keys: ['ig_clientBranch', 'ig_debug', 'ig_redownloadMaterials', 'ig_logTimestamp'],
-      advanced: true,
     },
   ]
   const normalizeSearch = (value: string) =>
@@ -573,57 +570,35 @@ const ServerConfig: Component = () => {
           </p>
         </div>
         <AsyncState loading={serverConfig.loading} error={serverConfig.error} onRetry={() => void refetch()} />
-        <Show
-          when={visibleCount() > 0}
-          fallback={
-            <div class="settings-empty">
-              <Icon name="search" size={25} />
-              <p>{t('settings.no_results', 'No settings match your search in this category.')}</p>
-              <Button size="sm" onClick={resetFilters}>
-                {t('settings.reset_filters', 'Reset filters')}
-              </Button>
-            </div>
-          }
-        >
+      </AdminPanel>
+      <Show
+        when={visibleCount() > 0}
+        fallback={
+          <div class="settings-empty">
+            <Icon name="search" size={25} />
+            <p>{t('settings.no_results', 'No settings match your search in this category.')}</p>
+            <Button size="sm" onClick={resetFilters}>
+              {t('settings.reset_filters', 'Reset filters')}
+            </Button>
+          </div>
+        }
+      >
+        <div class="settings-card-grid">
           <For each={visibleCategories()}>
             {(group) => (
-              <Show
-                when={!group.advanced}
-                fallback={
-                  <details
-                    id="config-advanced"
-                    class="settings-advanced"
-                    open={!!search().trim() || category() === 'advanced'}
-                  >
-                    <summary>
-                      <Icon name={group.icon} />
-                      <span>
-                        <strong>{t(group.titleKey, group.title)}</strong>
-                        <span>{t(group.descriptionKey, group.description)}</span>
-                      </span>
-                      <Icon name="chevron-down" size={16} />
-                    </summary>
-                    <div class="settings-advanced-content">
-                      <For each={matchingKeys(group)}>{(key) => renderSetting(key)}</For>
-                      {renderActions(group)}
-                    </div>
-                  </details>
-                }
+              <AdminPanel
+                id={`config-${group.id}`}
+                title={t(group.titleKey, group.title)}
+                description={t(group.descriptionKey, group.description)}
+                icon={group.icon}
+                footer={renderActions(group)}
               >
-                <SettingGroup
-                  id={`config-${group.id}`}
-                  title={t(group.titleKey, group.title)}
-                  description={t(group.descriptionKey, group.description)}
-                  icon={group.icon}
-                >
-                  <For each={matchingKeys(group)}>{(key) => renderSetting(key)}</For>
-                  {renderActions(group)}
-                </SettingGroup>
-              </Show>
+                <For each={matchingKeys(group)}>{(key) => renderSetting(key)}</For>
+              </AdminPanel>
             )}
           </For>
-        </Show>
-      </AdminPanel>
+        </div>
+      </Show>
     </>
   )
 }

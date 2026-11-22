@@ -85,7 +85,14 @@ describe('server configuration section drafts', () => {
     expect(row(container, 'Log Timestamp Format').querySelector('input')).toHaveValue('%H:%M:%S')
     for (const name of ['general', 'access', 'moderation', 'administration', 'advanced'])
       expect(save(container, name)).toBeDisabled()
-    expect(container.querySelector<HTMLDetailsElement>('.settings-advanced')!.open).toBe(false)
+    const general = screen.getByRole('region', { name: 'General' })
+    const access = screen.getByRole('region', { name: 'Access and verification' })
+    expect(general.parentElement).toBe(access.parentElement)
+    expect(general).not.toContainElement(access)
+    expect(general.querySelector('.dashboard-panel-footer')).toContainElement(save(container, 'general'))
+    expect(screen.getByRole('region', { name: 'Advanced settings' })).toContainElement(
+      row(container, 'Required Garry’s Mod client branch'),
+    )
   })
 
   it('disables every control type while loading and does not expose a default as editable after a failed read', async () => {
@@ -122,7 +129,9 @@ describe('server configuration section drafts', () => {
     await fireEvent.input(search, { target: { value: 'automatic material downloading' } })
     expect(container.querySelectorAll('.settings-row')).toHaveLength(1)
     expect(row(container, 'Redownload Materials')).toBeInTheDocument()
-    expect(container.querySelector<HTMLDetailsElement>('.settings-advanced')!.open).toBe(true)
+    expect(screen.getByRole('region', { name: 'Advanced settings' })).toContainElement(
+      row(container, 'Redownload Materials'),
+    )
     await fireEvent.click(screen.getByRole('button', { name: /Moderation/ }))
     expect(screen.getByText('No settings match your search in this category.')).toBeInTheDocument()
     await fireEvent.click(screen.getByRole('button', { name: 'Reset filters' }))

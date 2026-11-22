@@ -280,6 +280,32 @@ describe('pages/dashboard/guilds/GuildBot.tsx', () => {
     expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PATCH')).toHaveLength(0)
   })
 
+  it('opens each card action in its own editor and keeps a canceled secret out of identity saves', async () => {
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot()))
+    const { container } = renderWithProviders(() => <GuildBot />)
+    await waitForLoaded()
+    const identity = screen.getByText('Identity and presence').closest('.dashboard-panel') as HTMLElement
+    const connection = screen.getByText('Connection and credentials').closest('.dashboard-panel') as HTMLElement
+    await fireEvent.click(within(connection).getByRole('button', { name: 'Setup Custom Bot' }))
+    const setup = container.querySelector<HTMLDialogElement>('#setup_bot')!
+    await fireEvent.input(within(setup).getByLabelText(/^Bot token/), { target: { value: 'discarded-secret' } })
+    await fireEvent.click(within(setup).getByRole('button', { name: 'Cancel' }))
+
+    await fireEvent.click(within(identity).getByRole('button', { name: 'Edit Custom Bot' }))
+    const editor = container.querySelector<HTMLDialogElement>('#edit_bot')!
+    await fireEvent.input(within(editor).getByLabelText(/^Name/), { target: { value: 'Updated identity' } })
+    vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot({ username: 'Updated identity' })))
+    await fireEvent.click(within(editor).getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(editor.open).toBe(false))
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'PATCH')).toHaveLength(0)
+    expect(fetchAPI).toHaveBeenCalledWith(
+      '/users/:discordID/guilds/:guildID/bot',
+      'PUT',
+      expect.objectContaining({ username: 'Updated identity', token: '' }),
+    )
+    expect(within(connection).getByRole('button', { name: 'Setup Custom Bot' })).toBeEnabled()
+  })
+
   it('allows disabling the saved premium presence while preserving custom bot access', async () => {
     localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false, customBot: true }))
     vi.mocked(fetchAPI).mockResolvedValue(jsonResponse(baseBot({ status: 'playerCount' })))

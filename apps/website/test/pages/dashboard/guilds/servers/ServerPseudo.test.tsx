@@ -71,7 +71,7 @@ describe('ServerPseudo unified editing', () => {
   it('groups direction and format into one local draft and Cancel restores both', async () => {
     renderPage()
     await loaded()
-    const group = within(input('pseudo-format').closest('.settings-group')!)
+    const group = within(input('pseudo-format').closest('.dashboard-panel')!)
     await fireEvent.change(input('server-pseudo-direction'), { target: { value: 'both' } })
     await fireEvent.input(input('pseudo-format'), { target: { value: '[{roleName}] {plyName}' } })
     expect(input('pseudo-format-preview')).toHaveValue('[Admin] John Doe')
@@ -84,7 +84,7 @@ describe('ServerPseudo unified editing', () => {
   it('saves the whole settings section atomically and preserves the accepted baseline', async () => {
     renderPage()
     await loaded()
-    const group = within(input('pseudo-format').closest('.settings-group')!)
+    const group = within(input('pseudo-format').closest('.dashboard-panel')!)
     await fireEvent.change(input('server-pseudo-direction'), { target: { value: 'both' } })
     await fireEvent.input(input('pseudo-format'), { target: { value: '{plyName}' } })
     await fireEvent.click(group.getByRole('button', { name: 'Save' }))
@@ -102,7 +102,7 @@ describe('ServerPseudo unified editing', () => {
   it('validates the enabled format and keeps a failed settings draft available to retry', async () => {
     renderPage()
     await loaded()
-    const group = within(input('pseudo-format').closest('.settings-group')!)
+    const group = within(input('pseudo-format').closest('.dashboard-panel')!)
     await fireEvent.input(input('pseudo-format'), { target: { value: ' ' } })
     expect(group.getByRole('button', { name: 'Save' })).toBeDisabled()
     await fireEvent.input(input('pseudo-format'), { target: { value: '{plyName}' } })

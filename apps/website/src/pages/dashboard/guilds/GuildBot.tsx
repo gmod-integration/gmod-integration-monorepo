@@ -4,15 +4,7 @@ import { closeDialog, showDialog } from '../../../utils/dialog.js'
 import { type Component, createResource, createSignal, onCleanup, Show } from 'solid-js'
 import AdminPanel from '../../../components/AdminPanel.js'
 import AdminModal from '../../../components/AdminModal.js'
-import {
-  AsyncState,
-  Button,
-  FormActions,
-  FormField,
-  Icon,
-  SettingGroup,
-  SettingRow,
-} from '../../../components/ui/index.js'
+import { AsyncState, Button, FormActions, FormField, Icon, SettingRow } from '../../../components/ui/index.js'
 import { createAsyncAction } from '../../../hooks/createAsyncAction.js'
 import { useDraftGuard } from '../../../hooks/draftRegistry.js'
 import { A } from '@solidjs/router'
@@ -352,37 +344,43 @@ const GuildBot: Component = () => {
         />
       </AdminModal>
 
-      <AdminPanel
-        title={t('dashboard.guild.bot.custom_bot', 'Custom Bot')}
-        description={t(
+      <p class="text-sm leading-relaxed text-base-content/60">
+        {t(
           'dashboard.guild.bot.edit_bot_info',
           'Configure the identity, displayed activity and connection of your custom Discord bot. Set its token and invite it to this Discord server before editing its identity.',
         )}
-        icon="bot"
-        type="none"
-        actions={
-          <FeatureGate capability="bot.custom" loading={bot.loading} error={bot.error} showQuota={false}>
-            <Button
-              variant="primary"
-              disabled={
-                busy() || !customAccess.allowed() || bot.loading || !!bot.error || !bot()?.custom || !bot()?.onGuild
-              }
-              onClick={openEditor}
-            >
-              {t('dashboard.guild.bot.edit_custom_bot', 'Edit Custom Bot')}
-            </Button>
-          </FeatureGate>
-        }
+      </p>
+      <AsyncState
+        loading={bot.loading}
+        loadingLabel={t('dashboard.guild.bot.loading', 'Loading...')}
+        error={!!bot.error}
+        onRetry={() => void refreshBot()}
       >
-        <AsyncState
-          loading={bot.loading}
-          loadingLabel={t('dashboard.guild.bot.loading', 'Loading...')}
-          error={!!bot.error}
-          onRetry={() => void refreshBot()}
-        >
-          <Show when={!bot.loading && !bot.error}>
-            <SettingGroup title={t('settings.bot_identity', 'Identity and presence')} icon="user-round">
-              <dl class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 min-w-0 p-5">
+        <Show when={!bot.loading && !bot.error}>
+          <div class="settings-card-grid">
+            <AdminPanel
+              title={t('settings.bot_identity', 'Identity and presence')}
+              icon="user-round"
+              footer={
+                <FeatureGate capability="bot.custom" loading={bot.loading} error={bot.error} showQuota={false}>
+                  <Button
+                    variant="primary"
+                    disabled={
+                      busy() ||
+                      !customAccess.allowed() ||
+                      bot.loading ||
+                      !!bot.error ||
+                      !bot()?.custom ||
+                      !bot()?.onGuild
+                    }
+                    onClick={openEditor}
+                  >
+                    {t('dashboard.guild.bot.edit_custom_bot', 'Edit Custom Bot')}
+                  </Button>
+                </FeatureGate>
+              }
+            >
+              <dl class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 min-w-0">
                 <dt class="text-base-content/70">{t('dashboard.guild.bot.name', 'Name')}</dt>
                 <dd class="break-words">{bot()!.username}</dd>
                 <dt class="text-base-content/70">{t('dashboard.guild.bot.avatar', 'Avatar')}</dt>
@@ -396,9 +394,9 @@ const GuildBot: Component = () => {
                 <dt class="text-base-content/70">{t('dashboard.guild.bot.status', 'Discord activity')}</dt>
                 <dd>{getNameOf(bot()!.status)}</dd>
               </dl>
-            </SettingGroup>
+            </AdminPanel>
             <Show when={customAccess.allowed() || bot()!.purchased}>
-              <SettingGroup title={t('settings.bot_connection', 'Connection and credentials')} icon="link">
+              <AdminPanel title={t('settings.bot_connection', 'Connection and credentials')} icon="link">
                 <SettingRow
                   title={t('settings.bot_membership', 'Discord server')}
                   description={
@@ -427,16 +425,16 @@ const GuildBot: Component = () => {
                     {t('dashboard.guild.bot.setup_custom_bot', 'Setup Custom Bot')}
                   </Button>
                 </SettingRow>
-              </SettingGroup>
+                <Show when={popupError()}>
+                  <p role="alert" class="text-error">
+                    {t('ui.popup_blocked', 'Allow pop-ups for this site to invite the bot.')}
+                  </p>
+                </Show>
+              </AdminPanel>
             </Show>
-          </Show>
-        </AsyncState>
-        <Show when={popupError()}>
-          <p role="alert" class="text-error">
-            {t('ui.popup_blocked', 'Allow pop-ups for this site to invite the bot.')}
-          </p>
+          </div>
         </Show>
-      </AdminPanel>
+      </AsyncState>
     </>
   )
 }

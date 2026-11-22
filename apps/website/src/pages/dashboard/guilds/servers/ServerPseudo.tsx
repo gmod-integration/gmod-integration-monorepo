@@ -17,7 +17,6 @@ import {
   IconButton,
   TableState,
   Icon,
-  SettingGroup,
   SettingRow,
 } from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
@@ -237,83 +236,8 @@ const ServerPseudo: Component = () => {
           'dashboard.server.pseudo.info',
           'Discord prevents bots from changing the server owner’s nickname. The bot also needs permission to manage the target member’s nickname.',
         )}
-      >
-        <AsyncState
-          loading={configuration.loading}
-          error={configuration.error}
-          onRetry={() => void refetchConfiguration()}
-        />
-        <SettingGroup title={t('settings.sync_behavior', 'Synchronization behavior')} icon="arrow-left-right">
-          <SettingRow
-            controlId="server-pseudo-direction"
-            title={t('dashboard.server.pseudo.pseudoSyncDirection', 'Nickname synchronization direction')}
-            description={t(
-              'settings.sync_direction_help',
-              'This direction applies to every rule below. Save to apply your changes.',
-            )}
-          >
-            <select
-              id="server-pseudo-direction"
-              class="select w-full"
-              aria-describedby="server-pseudo-direction-description"
-              value={settings.draft().direction}
-              disabled={configuration.loading || !!configuration.error || settings.pending()}
-              onChange={(event) => settings.patch({ direction: event.currentTarget.value })}
-            >
-              <option value="disable">{t('dashboard.server.pseudo.disable', 'Disable')}</option>
-              <option value="gmod-to-discord">
-                {t('dashboard.server.pseudo.fromGmodToDiscord', 'Game → Discord')}
-              </option>
-              <option value="discord-to-gmod" disabled={!reverseAccess.allowed()}>
-                {t('dashboard.server.pseudo.fromDiscordToGmod', 'Discord → game')}
-              </option>
-              <option value="both" disabled={!reverseAccess.allowed()}>
-                {t('dashboard.server.pseudo.bothWays', 'Both directions')}
-              </option>
-            </select>
-          </SettingRow>
-          <SettingRow
-            controlId="pseudo-format"
-            title={t('dashboard.server.pseudo.format', 'Format')}
-            description={t(
-              'settings.nickname_format_help',
-              'Edit the nickname template and review the preview before saving.',
-            )}
-            stacked
-          >
-            <input
-              id="pseudo-format"
-              class="input w-full font-mono"
-              value={settings.draft().format}
-              disabled={configuration.loading || !!configuration.error || settings.pending()}
-              aria-invalid={!!settings.errors().format}
-              aria-describedby="pseudo-format-description"
-              onInput={(event) => settings.patch({ format: event.currentTarget.value })}
-            />
-            <Show when={settings.errors().format}>
-              <p class="text-error text-sm">{settings.errors().format}</p>
-            </Show>
-            <div class="flex flex-col gap-2 w-full">
-              <label for="pseudo-format-preview" class="text-sm">
-                {t('dashboard.server.pseudo.preview', 'Preview')}
-              </label>
-              <input
-                id="pseudo-format-preview"
-                class="input w-full"
-                value={renderFormat(settings.draft().format)}
-                readOnly
-              />
-            </div>
-          </SettingRow>
-          <details class="settings-advanced">
-            <summary>{t('dashboard.server.pseudo.variables', 'Variables')}</summary>
-            <ul class="text-base-content/60 list-inside">
-              <li>{`{plyName} — ${t('dashboard.server.pseudo.playerName', 'Player Name')}`}</li>
-              <li>{`{plySteamID64} — ${t('dashboard.server.pseudo.playerSteamID64', 'Player SteamID64')}`}</li>
-              <li>{`{rolePrefix} — ${t('dashboard.server.pseudo.rolePrefix', 'Game group prefix')}`}</li>
-              <li>{`{roleName} — ${t('dashboard.server.pseudo.roleName', 'Game group display name')}`}</li>
-            </ul>
-          </details>
+        icon="arrow-left-right"
+        footer={
           <FormActions
             dirty={settings.dirty()}
             pending={settings.pending()}
@@ -331,12 +255,86 @@ const ServerPseudo: Component = () => {
                 : undefined
             }
           />
-          <FeatureGate capability="sync.nicknames.reverse" showQuota={false} />
-          <SuspendedFeature
-            capability="sync.nicknames.reverse"
-            active={['both', 'discord-to-gmod'].includes(settings.saved().direction)}
+        }
+      >
+        <AsyncState
+          loading={configuration.loading}
+          error={configuration.error}
+          onRetry={() => void refetchConfiguration()}
+        />
+        <SettingRow
+          controlId="server-pseudo-direction"
+          title={t('dashboard.server.pseudo.pseudoSyncDirection', 'Nickname synchronization direction')}
+          description={t(
+            'settings.sync_direction_help',
+            'This direction applies to every rule below. Save to apply your changes.',
+          )}
+        >
+          <select
+            id="server-pseudo-direction"
+            class="select w-full"
+            aria-describedby="server-pseudo-direction-description"
+            value={settings.draft().direction}
+            disabled={configuration.loading || !!configuration.error || settings.pending()}
+            onChange={(event) => settings.patch({ direction: event.currentTarget.value })}
+          >
+            <option value="disable">{t('dashboard.server.pseudo.disable', 'Disable')}</option>
+            <option value="gmod-to-discord">{t('dashboard.server.pseudo.fromGmodToDiscord', 'Game → Discord')}</option>
+            <option value="discord-to-gmod" disabled={!reverseAccess.allowed()}>
+              {t('dashboard.server.pseudo.fromDiscordToGmod', 'Discord → game')}
+            </option>
+            <option value="both" disabled={!reverseAccess.allowed()}>
+              {t('dashboard.server.pseudo.bothWays', 'Both directions')}
+            </option>
+          </select>
+        </SettingRow>
+        <SettingRow
+          controlId="pseudo-format"
+          title={t('dashboard.server.pseudo.format', 'Format')}
+          description={t(
+            'settings.nickname_format_help',
+            'Edit the nickname template and review the preview before saving.',
+          )}
+          stacked
+        >
+          <input
+            id="pseudo-format"
+            class="input w-full font-mono"
+            value={settings.draft().format}
+            disabled={configuration.loading || !!configuration.error || settings.pending()}
+            aria-invalid={!!settings.errors().format}
+            aria-describedby="pseudo-format-description"
+            onInput={(event) => settings.patch({ format: event.currentTarget.value })}
           />
-        </SettingGroup>
+          <Show when={settings.errors().format}>
+            <p class="text-error text-sm">{settings.errors().format}</p>
+          </Show>
+          <div class="flex flex-col gap-2 w-full">
+            <label for="pseudo-format-preview" class="text-sm">
+              {t('dashboard.server.pseudo.preview', 'Preview')}
+            </label>
+            <input
+              id="pseudo-format-preview"
+              class="input w-full"
+              value={renderFormat(settings.draft().format)}
+              readOnly
+            />
+          </div>
+        </SettingRow>
+        <details class="settings-advanced">
+          <summary>{t('dashboard.server.pseudo.variables', 'Variables')}</summary>
+          <ul class="text-base-content/60 list-inside">
+            <li>{`{plyName} — ${t('dashboard.server.pseudo.playerName', 'Player Name')}`}</li>
+            <li>{`{plySteamID64} — ${t('dashboard.server.pseudo.playerSteamID64', 'Player SteamID64')}`}</li>
+            <li>{`{rolePrefix} — ${t('dashboard.server.pseudo.rolePrefix', 'Game group prefix')}`}</li>
+            <li>{`{roleName} — ${t('dashboard.server.pseudo.roleName', 'Game group display name')}`}</li>
+          </ul>
+        </details>
+        <FeatureGate capability="sync.nicknames.reverse" showQuota={false} />
+        <SuspendedFeature
+          capability="sync.nicknames.reverse"
+          active={['both', 'discord-to-gmod'].includes(settings.saved().direction)}
+        />
       </AdminPanel>
       <AdminPanel
         title={t('dashboard.server.pseudo.rules_title', 'Nickname rules by game group')}

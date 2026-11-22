@@ -20,7 +20,6 @@ import {
   TableState,
   AsyncState,
   Icon,
-  SettingGroup,
   SettingRow,
 } from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
@@ -359,20 +358,36 @@ const ServerChats: Component = () => {
           }}
         />
       </AdminModal>
-      <AdminPanel
-        title={t('dashboard.server.chat.chats', 'Chat relay')}
-        description={t(
+      <p class="text-sm text-base-content/60">
+        {t(
           'dashboard.server.chat.set_channel',
           'Relay messages between your game server and a Discord channel. Choose the destination, then save the relay direction and any filters you need.',
         )}
-      >
-        <SettingGroup title={t('settings.chat_destination', 'Discord destination')} icon="messages-square">
+      </p>
+      <div class="settings-card-grid">
+        <AdminPanel
+          title={t('settings.chat_destination', 'Discord destination')}
+          icon="messages-square"
+          footer={
+            <FormActions
+              dirty={destination.dirty()}
+              pending={destination.pending()}
+              error={destination.error()}
+              success={destination.success()}
+              disabled={
+                channel.loading ||
+                !!channel.error ||
+                guildChannels.loading ||
+                !!guildChannels.error ||
+                !destination.valid()
+              }
+              onSave={() => void saveDestination()}
+              onCancel={destination.discard}
+            />
+          }
+        >
           <AsyncState loading={channel.loading} error={channel.error} onRetry={() => void refetchChannel()} />
-          <SettingRow
-            title={t('dashboard.server.chat.chats_channels', 'Saved destination')}
-            description={t('settings.channel_draft_help', 'Choose a destination, then save to apply it.')}
-            stacked
-          >
+          <SettingRow title={t('dashboard.server.chat.chats_channels', 'Saved destination')} stacked>
             <Show
               when={destination.saved().channelID}
               fallback={
@@ -389,28 +404,37 @@ const ServerChats: Component = () => {
               disabled={channel.loading || !!channel.error || destination.pending()}
             />
           </SettingRow>
-          <FormActions
-            dirty={destination.dirty()}
-            pending={destination.pending()}
-            error={destination.error()}
-            success={destination.success()}
-            disabled={
-              channel.loading ||
-              !!channel.error ||
-              guildChannels.loading ||
-              !!guildChannels.error ||
-              !destination.valid()
-            }
-            onSave={() => void saveDestination()}
-            onCancel={destination.discard}
-          />
           <Show when={destination.saved().channelID}>
             <Button variant="ghost" onClick={() => showDialog('remove-chat-channel')} disabled={destination.pending()}>
               {t('dashboard.server.chat.remove_channel', 'Remove destination')}
             </Button>
           </Show>
-        </SettingGroup>
-        <SettingGroup title={t('settings.sync_behavior', 'Synchronization behavior')} icon="arrow-left-right">
+        </AdminPanel>
+        <AdminPanel
+          title={t('settings.sync_behavior', 'Synchronization behavior')}
+          icon="arrow-left-right"
+          footer={
+            <FormActions
+              dirty={behavior.dirty()}
+              pending={behavior.pending()}
+              error={behavior.error()}
+              success={behavior.success()}
+              disabled={
+                storedBehavior.loading || !!storedBehavior.error || !behavior.valid() || !directionWriteAllowed()
+              }
+              onSave={() => void saveBehavior()}
+              onCancel={() => {
+                behavior.discard()
+                setSyncPending(false)
+              }}
+              message={
+                syncPending() && !behavior.dirty()
+                  ? t('ui.sync_pending', 'Saved. Synchronization is pending.')
+                  : undefined
+              }
+            />
+          }
+        >
           <AsyncState
             loading={storedBehavior.loading}
             error={storedBehavior.error}
@@ -459,89 +483,76 @@ const ServerChats: Component = () => {
               onChange={(event) => behavior.patch({ preventPing: event.currentTarget.checked })}
             />
           </SettingRow>
-          <FormActions
-            dirty={behavior.dirty()}
-            pending={behavior.pending()}
-            error={behavior.error()}
-            success={behavior.success()}
-            disabled={storedBehavior.loading || !!storedBehavior.error || !behavior.valid() || !directionWriteAllowed()}
-            onSave={() => void saveBehavior()}
-            onCancel={() => {
-              behavior.discard()
-              setSyncPending(false)
-            }}
-            message={
-              syncPending() && !behavior.dirty()
-                ? t('ui.sync_pending', 'Saved. Synchronization is pending.')
-                : undefined
-            }
-          />
           <FeatureGate capability="chat.reverse" showQuota={false} />
           <SuspendedFeature
             capability="chat.reverse"
             active={['both', 'discordToGmod'].includes(behavior.saved().direction)}
           />
-        </SettingGroup>
-      </AdminPanel>
-      <AdminPanel
-        title={t('dashboard.server.chat.gmod_to_discord_filter', 'Game-to-Discord message filtering')}
-        description={t(
-          'settings.chat_default_help',
-          'Choose whether game messages are relayed or blocked by default. Configure exceptions in the rules below.',
-        )}
-        icon="sliders-horizontal"
-      >
-        <FeatureGate
-          capability="chat.relay_default"
-          loading={storedRelay.loading}
-          error={storedRelay.error}
-          showQuota={false}
-        />
-        <SuspendedFeature
-          capability="chat.relay_default"
-          active={!storedRelay.loading && !storedRelay.error && storedRelay()?.value === false}
-        />
-        <AsyncState loading={storedRelay.loading} error={storedRelay.error} onRetry={() => void refetchRelay()} />
-        <SettingRow
-          controlId="chat-default-behavior"
-          title={t('dashboard.server.chat.default_behavior', 'Default action')}
-        >
-          <select
-            id="chat-default-behavior"
-            class="select w-full"
-            value={String(relay.draft().all)}
-            disabled={
-              storedRelay.loading ||
-              !!storedRelay.error ||
-              relay.pending() ||
-              (!relayAccess.allowed() && relay.draft().all)
-            }
-            onChange={(event) => relay.patch({ all: event.currentTarget.value === 'true' })}
-          >
-            <option value="true">
-              {t('dashboard.server.chat.relay_all_messages', 'Relay unless a rule blocks the message')}
-            </option>
-            <option value="false">
-              {t('dashboard.server.chat.block_all_messages', 'Block unless a rule relays the message')}
-            </option>
-          </select>
-        </SettingRow>
-        <FormActions
-          dirty={relay.dirty()}
-          pending={relay.pending()}
-          error={relay.error()}
-          success={relay.success()}
-          disabled={storedRelay.loading || !!storedRelay.error || (!relayAccess.allowed() && !relay.draft().all)}
-          onSave={() => void saveRelay()}
-          onCancel={() => {
-            relay.discard()
-            setRelayPending(false)
-          }}
-          message={
-            relayPending() && !relay.dirty() ? t('ui.sync_pending', 'Saved. Synchronization is pending.') : undefined
+        </AdminPanel>
+        <AdminPanel
+          title={t('dashboard.server.chat.gmod_to_discord_filter', 'Game-to-Discord message filtering')}
+          description={t(
+            'settings.chat_default_help',
+            'Choose whether game messages are relayed or blocked by default. Configure exceptions in the rules below.',
+          )}
+          icon="sliders-horizontal"
+          footer={
+            <FormActions
+              dirty={relay.dirty()}
+              pending={relay.pending()}
+              error={relay.error()}
+              success={relay.success()}
+              disabled={storedRelay.loading || !!storedRelay.error || (!relayAccess.allowed() && !relay.draft().all)}
+              onSave={() => void saveRelay()}
+              onCancel={() => {
+                relay.discard()
+                setRelayPending(false)
+              }}
+              message={
+                relayPending() && !relay.dirty()
+                  ? t('ui.sync_pending', 'Saved. Synchronization is pending.')
+                  : undefined
+              }
+            />
           }
-        />
-      </AdminPanel>
+        >
+          <FeatureGate
+            capability="chat.relay_default"
+            loading={storedRelay.loading}
+            error={storedRelay.error}
+            showQuota={false}
+          />
+          <SuspendedFeature
+            capability="chat.relay_default"
+            active={!storedRelay.loading && !storedRelay.error && storedRelay()?.value === false}
+          />
+          <AsyncState loading={storedRelay.loading} error={storedRelay.error} onRetry={() => void refetchRelay()} />
+          <SettingRow
+            controlId="chat-default-behavior"
+            title={t('dashboard.server.chat.default_behavior', 'Default action')}
+          >
+            <select
+              id="chat-default-behavior"
+              class="select w-full"
+              value={String(relay.draft().all)}
+              disabled={
+                storedRelay.loading ||
+                !!storedRelay.error ||
+                relay.pending() ||
+                (!relayAccess.allowed() && relay.draft().all)
+              }
+              onChange={(event) => relay.patch({ all: event.currentTarget.value === 'true' })}
+            >
+              <option value="true">
+                {t('dashboard.server.chat.relay_all_messages', 'Relay unless a rule blocks the message')}
+              </option>
+              <option value="false">
+                {t('dashboard.server.chat.block_all_messages', 'Block unless a rule relays the message')}
+              </option>
+            </select>
+          </SettingRow>
+        </AdminPanel>
+      </div>
       <AdminPanel
         title={t('settings.chat_rules', 'Filter rules')}
         description={t(

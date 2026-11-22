@@ -14,7 +14,6 @@ import {
   TableState,
   AsyncState,
   Icon,
-  SettingGroup,
   SettingRow,
 } from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
@@ -235,38 +234,8 @@ const ServerRoles: Component = () => {
           'dashboard.server.roles.description',
           'Map game user groups to Discord roles for players with linked accounts. The selected direction determines which side updates the other.',
         )}
-      >
-        <AsyncState
-          loading={storedDirection.loading}
-          error={storedDirection.error}
-          onRetry={() => void refetchDirection()}
-        />
-        <SettingGroup title={t('settings.sync_behavior', 'Synchronization behavior')} icon="arrow-left-right">
-          <SettingRow
-            controlId="server-roles-direction"
-            title={t('dashboard.server.roles.sync_direction', 'Role synchronization direction')}
-            description={t(
-              'settings.sync_direction_help',
-              'This direction applies to every rule below. Save to apply your changes.',
-            )}
-          >
-            <select
-              id="server-roles-direction"
-              aria-describedby="server-roles-direction-description"
-              class="select w-full max-w-xs"
-              value={direction.draft().value}
-              disabled={storedDirection.loading || !!storedDirection.error || direction.pending()}
-              onChange={(event) => direction.patch({ value: event.currentTarget.value })}
-            >
-              <option value="discord-to-gmod" disabled={!reverseAccess.allowed()}>
-                {t('dashboard.server.roles.discord_to_server', 'Discord → game')}
-              </option>
-              <option value="gmod-to-discord">{t('dashboard.server.roles.server_to_discord', 'Game → Discord')}</option>
-              <option value="both" disabled={!reverseAccess.allowed()}>
-                {t('dashboard.server.roles.both_directions', 'Both directions')}
-              </option>
-            </select>
-          </SettingRow>
+        icon="arrow-left-right"
+        footer={
           <FormActions
             dirty={direction.dirty()}
             pending={direction.pending()}
@@ -284,12 +253,43 @@ const ServerRoles: Component = () => {
                 : undefined
             }
           />
-          <FeatureGate capability="sync.roles.reverse" showQuota={false} />
-          <SuspendedFeature
-            capability="sync.roles.reverse"
-            active={['both', 'discord-to-gmod'].includes(direction.saved().value)}
-          />
-        </SettingGroup>
+        }
+      >
+        <AsyncState
+          loading={storedDirection.loading}
+          error={storedDirection.error}
+          onRetry={() => void refetchDirection()}
+        />
+        <SettingRow
+          controlId="server-roles-direction"
+          title={t('dashboard.server.roles.sync_direction', 'Role synchronization direction')}
+          description={t(
+            'settings.sync_direction_help',
+            'This direction applies to every rule below. Save to apply your changes.',
+          )}
+        >
+          <select
+            id="server-roles-direction"
+            aria-describedby="server-roles-direction-description"
+            class="select w-full max-w-xs"
+            value={direction.draft().value}
+            disabled={storedDirection.loading || !!storedDirection.error || direction.pending()}
+            onChange={(event) => direction.patch({ value: event.currentTarget.value })}
+          >
+            <option value="discord-to-gmod" disabled={!reverseAccess.allowed()}>
+              {t('dashboard.server.roles.discord_to_server', 'Discord → game')}
+            </option>
+            <option value="gmod-to-discord">{t('dashboard.server.roles.server_to_discord', 'Game → Discord')}</option>
+            <option value="both" disabled={!reverseAccess.allowed()}>
+              {t('dashboard.server.roles.both_directions', 'Both directions')}
+            </option>
+          </select>
+        </SettingRow>
+        <FeatureGate capability="sync.roles.reverse" showQuota={false} />
+        <SuspendedFeature
+          capability="sync.roles.reverse"
+          active={['both', 'discord-to-gmod'].includes(direction.saved().value)}
+        />
       </AdminPanel>
       <AdminPanel
         title={t('dashboard.server.roles.role_sync', 'Role mappings')}

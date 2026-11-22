@@ -39,7 +39,7 @@ function renderPage() {
 const input = (id: string) => document.getElementById(id) as HTMLInputElement
 const modal = () => within(document.getElementById('edit_rule_modal')!)
 const destinationSelect = () => screen.getByRole('combobox', { name: 'Select a Channel' }) as HTMLSelectElement
-const group = (control: Element) => within(control.closest('.settings-group')!)
+const group = (control: Element) => within(control.closest('.dashboard-panel')!)
 const writes = () => (fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')
 async function loaded() {
   await vi.waitFor(() => {
@@ -206,6 +206,44 @@ describe('ServerChats unified editing', () => {
     await vi.waitFor(() => expect(saveDashboardSettings).toHaveBeenCalledWith('server', { chat_sync_relay_all: false }))
     await vi.waitFor(() => expect(panel.getByRole('status')).toBeInTheDocument())
     expect(select).toHaveValue('false')
+  })
+  it('saves and cancels each card without applying or discarding the other card drafts', async () => {
+    renderPage()
+    await loaded()
+    const destination = destinationSelect()
+    const direction = input('chat-direction')
+    const defaults = input('chat-default-behavior')
+    const destinationCard = group(destination)
+    const behaviorCard = group(direction)
+    const defaultCard = group(defaults)
+    expect(destination.closest('.dashboard-panel')).not.toBe(direction.closest('.dashboard-panel'))
+    expect(direction.closest('.dashboard-panel')).not.toBe(defaults.closest('.dashboard-panel'))
+    await fireEvent.change(destination, { target: { value: 'c2' } })
+    await fireEvent.change(direction, { target: { value: 'both' } })
+    await fireEvent.click(input('chat-prevent-ping'))
+    await fireEvent.change(defaults, { target: { value: 'false' } })
+
+    write = () => okJson({ channel: 'c2' })
+    await fireEvent.click(destinationCard.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(destinationCard.getByRole('button', { name: 'Save' })).toBeDisabled())
+    expect(fetchAPI).toHaveBeenCalledWith(URL, 'POST', { channelID: 'c2' })
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    expect(direction).toHaveValue('both')
+    expect(input('chat-prevent-ping')).toBeChecked()
+    expect(defaults).toHaveValue('false')
+    expect(behaviorCard.getByRole('button', { name: 'Save' })).not.toBeDisabled()
+    expect(defaultCard.getByRole('button', { name: 'Save' })).not.toBeDisabled()
+
+    await fireEvent.click(behaviorCard.getByRole('button', { name: 'Cancel' }))
+    expect(direction).toHaveValue('gmodToDiscord')
+    expect(input('chat-prevent-ping')).not.toBeChecked()
+    expect(destination).toHaveValue('c2')
+    expect(defaults).toHaveValue('false')
+    expect(defaultCard.getByRole('button', { name: 'Save' })).not.toBeDisabled()
+    await fireEvent.click(defaultCard.getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() =>
+      expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', { chat_sync_relay_all: false }),
+    )
   })
   it('requires a trigger and creates exactly one complete filter on Create', async () => {
     renderPage()

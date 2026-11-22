@@ -284,6 +284,33 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     await vi.waitFor(() => expect(within(group).getByText('Saved. Synchronization is pending.')).toBeInTheDocument())
   })
 
+  it('keeps the member experience draft when a role edit is canceled or saved', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    const preferences = screen.getByText('Member experience').closest('.dashboard-panel') as HTMLElement
+    const dm = within(preferences).getByLabelText('Disable private verification reminders')
+    await fireEvent.click(dm)
+    const edit = screen.getAllByRole('button', { name: 'Edit' })[0]
+    await fireEvent.click(edit)
+    const modal = container.querySelector<HTMLDialogElement>('#edit_role_modal')!
+    await fireEvent.change(within(modal).getByLabelText('Active'), { target: { value: 'false' } })
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Cancel' }))
+    expect(dm).toBeChecked()
+    expect(within(preferences).getByRole('button', { name: 'Save' })).toBeEnabled()
+
+    await fireEvent.click(edit)
+    await fireEvent.change(within(modal).getByLabelText('Active'), { target: { value: 'false' } })
+    ;(fetchAPI as Mock).mockResolvedValue(okJson({ roleID: 'r1', isGiveRole: true, enabled: false }))
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(modal.open).toBe(false))
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    expect(dm).toBeChecked()
+    await fireEvent.click(within(preferences).getByRole('button', { name: 'Cancel' }))
+    expect(dm).not.toBeChecked()
+    expect(within(table(container)).getAllByRole('row')[1].querySelector('svg[data-icon="x"]')).toBeInTheDocument()
+  })
+
   it('blocks preference changes and duplicate saves while awaiting the batch response', async () => {
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
     const { container } = renderWithProviders(() => <GuildVerification />)

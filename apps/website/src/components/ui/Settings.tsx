@@ -7,6 +7,7 @@ export interface SettingGroupProps {
   title: string
   description?: string
   icon?: IconName
+  actions?: JSX.Element
   children: JSX.Element
 }
 
@@ -25,6 +26,9 @@ export function SettingGroup(props: SettingGroupProps) {
             <p>{props.description}</p>
           </Show>
         </div>
+        <Show when={props.actions}>
+          <div class="settings-group-actions">{props.actions}</div>
+        </Show>
       </header>
       <div class="settings-group-content">{props.children}</div>
     </section>

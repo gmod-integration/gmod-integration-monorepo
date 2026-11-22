@@ -1,4 +1,4 @@
-import { Show, type Component, type JSX } from 'solid-js'
+import { createUniqueId, Show, type Component, type JSX } from 'solid-js'
 import { A } from '@solidjs/router'
 import type { linkBadge } from './layout/menu/DashboardMenu.js'
 import { useI18n } from '../i18n.js'
@@ -8,6 +8,7 @@ import { premium, PremiumBadge } from '../utils/premium.js'
 import { Icon, type IconName } from './ui/index.js'
 
 interface AdminPanelProps {
+  id?: string
   title: string
   description?: string
   children?: JSX.Element
@@ -23,9 +24,14 @@ interface AdminPanelProps {
 const AdminPanel: Component<AdminPanelProps> = (props) => {
   const { t } = useI18n()
   const access = useAccess()
+  const headingId = createUniqueId()
   return (
     <>
-      <div class="dashboard-panel border border-base-200 rounded-lg flex flex-col min-w-0">
+      <section
+        id={props.id}
+        aria-labelledby={headingId}
+        class="dashboard-panel border border-base-200 rounded-lg flex flex-col min-w-0"
+      >
         <div class="dashboard-panel-header flex flex-col gap-4 p-4">
           <div class="flex flex-wrap gap-4 items-center justify-between min-w-0">
             <div class="flex flex-wrap gap-3 items-center min-w-0">
@@ -34,7 +40,9 @@ const AdminPanel: Component<AdminPanelProps> = (props) => {
                   <Icon name={props.icon!} />
                 </span>
               </Show>
-              <h2 class="dashboard-panel-title text-xl font-bold">{props.title}</h2>
+              <h2 id={headingId} class="dashboard-panel-title text-xl font-bold">
+                {props.title}
+              </h2>
               <Show when={props.badge}>
                 <div class="badge badge-outline">{t('main.badge_' + props.badge, props.badge)}</div>
               </Show>
@@ -82,7 +90,7 @@ const AdminPanel: Component<AdminPanelProps> = (props) => {
         <Show when={props.footer}>
           <div class="dashboard-panel-footer border-t border-base-200 p-4">{props.footer}</div>
         </Show>
-      </div>
+      </section>
     </>
   )
 }

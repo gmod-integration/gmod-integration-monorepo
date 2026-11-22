@@ -1,6 +1,6 @@
 import { type Component, createEffect, createResource, createSignal, Show } from 'solid-js'
 import { showDialog } from '../../../../../utils/dialog.js'
-import { AsyncState, Button, FormActions, SettingRow, SettingGroup } from '../../../../../components/ui/index.js'
+import { AsyncState, Button, FormActions, SettingRow } from '../../../../../components/ui/index.js'
 import AdminPanel from '../../../../../components/AdminPanel'
 import DiscordChannel from '../../../../../components/discord/DiscordChannel'
 import { guildChannelsRefetch } from '../../GuildInformations'
@@ -100,55 +100,74 @@ export const ServerLogsParameters: Component = () => {
         confirmLabel={t('dashboard.server.logs.button.remove_channel', 'Remove destination')}
         onConfirm={removeLogChannel}
       />
-      <AdminPanel
-        title={t('dashboard.server.logs.title.logs_channel', 'Logs Channel')}
-        description={t(
-          'dashboard.server.logs.description.logs_channel',
-          'Send server event logs to a Discord text channel. This destination is separate from the event history below.',
-        )}
-      >
-        <AsyncState loading={logsChannel.loading} error={logsChannel.error} onRetry={() => void refetchChannel()}>
-          <SettingRow
-            title={t('dashboard.server.logs.label.chats_channels', 'Discord destination')}
-            description={t(
-              'dashboard.server.logs.destination_help',
-              'Choose a channel and save the selection to receive future logs there.',
-            )}
-          >
-            <div class="flex w-full min-w-0 items-center gap-2">
-              <Show
-                when={!logsChannel.loading && logsChannel().channelID}
-                fallback={
-                  <span class="text-base-content/60">
-                    {t('dashboard.server.logs.no_logs_channel', 'No Logs Channel')}
-                  </span>
-                }
-              >
-                <DiscordChannel channelID={logsChannel().channelID} />
-              </Show>
-            </div>
-            <Button
-              variant="primary"
-              size="sm"
-              disabled={logsChannel.loading || !!logsChannel.error}
-              onClick={() => {
-                showDialog('select_channel_modal')
-                guildChannelsRefetch()
-              }}
+      <div class="settings-card-grid">
+        <AdminPanel
+          title={t('dashboard.server.logs.title.logs_channel', 'Logs Channel')}
+          description={t(
+            'dashboard.server.logs.description.logs_channel',
+            'Send server event logs to a Discord text channel. This destination is separate from the event history below.',
+          )}
+        >
+          <AsyncState loading={logsChannel.loading} error={logsChannel.error} onRetry={() => void refetchChannel()}>
+            <SettingRow
+              title={t('dashboard.server.logs.label.chats_channels', 'Discord destination')}
+              description={t(
+                'dashboard.server.logs.destination_help',
+                'Choose a channel and save the selection to receive future logs there.',
+              )}
             >
-              {t('dashboard.server.logs.button.select_channel', 'Select Channel')}
-            </Button>
-            <Show when={!logsChannel.loading && logsChannel().channelID}>
-              <Button variant="ghost" size="sm" onClick={() => showDialog('remove-logs-channel')}>
-                {t('dashboard.server.logs.button.remove_channel', 'Remove destination')}
+              <div class="flex w-full min-w-0 items-center gap-2">
+                <Show
+                  when={!logsChannel.loading && logsChannel().channelID}
+                  fallback={
+                    <span class="text-base-content/60">
+                      {t('dashboard.server.logs.no_logs_channel', 'No Logs Channel')}
+                    </span>
+                  }
+                >
+                  <DiscordChannel channelID={logsChannel().channelID} />
+                </Show>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={logsChannel.loading || !!logsChannel.error}
+                onClick={() => {
+                  showDialog('select_channel_modal')
+                  guildChannelsRefetch()
+                }}
+              >
+                {t('dashboard.server.logs.button.select_channel', 'Select Channel')}
               </Button>
-            </Show>
-          </SettingRow>
-        </AsyncState>
-        <SettingGroup
+              <Show when={!logsChannel.loading && logsChannel().channelID}>
+                <Button variant="ghost" size="sm" onClick={() => showDialog('remove-logs-channel')}>
+                  {t('dashboard.server.logs.button.remove_channel', 'Remove destination')}
+                </Button>
+              </Show>
+            </SettingRow>
+          </AsyncState>
+        </AdminPanel>
+        <AdminPanel
           title={t('settings.log_content', 'Log content')}
           description={t('editing.section_help', 'Edit these settings, then save this section to apply them.')}
           icon="scroll-text"
+          footer={
+            !content.loading && !content.error ? (
+              <FormActions
+                dirty={form.dirty()}
+                pending={form.pending()}
+                error={form.error()}
+                success={form.success()}
+                message={
+                  syncPending() && !form.dirty()
+                    ? t('ui.sync_pending', 'Saved. Synchronization is pending.')
+                    : undefined
+                }
+                onSave={() => void saveContent()}
+                onCancel={form.discard}
+              />
+            ) : undefined
+          }
         >
           <AsyncState loading={content.loading} error={content.error} onRetry={() => void refetchContent()}>
             <SettingRow
@@ -181,20 +200,9 @@ export const ServerLogsParameters: Component = () => {
                 onChange={(event) => form.patch({ log_include_file: event.currentTarget.checked })}
               />
             </SettingRow>
-            <FormActions
-              dirty={form.dirty()}
-              pending={form.pending()}
-              error={form.error()}
-              success={form.success()}
-              message={
-                syncPending() && !form.dirty() ? t('ui.sync_pending', 'Saved. Synchronization is pending.') : undefined
-              }
-              onSave={() => void saveContent()}
-              onCancel={form.discard}
-            />
           </AsyncState>
-        </SettingGroup>
-      </AdminPanel>
+        </AdminPanel>
+      </div>
     </>
   )
 }
