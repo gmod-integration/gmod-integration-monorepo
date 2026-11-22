@@ -47,6 +47,7 @@ delivery across reconnects. Already-sent requests are never replayed automatical
 be uncertain. Only unsent, unexpired requests can survive a transient disconnect. Credential changes
 clear pending and queued work. Reconnection uses exponential backoff from 1 to 60 seconds with jitter;
 an unanswered protocol handshake expires after 15 seconds.
+Final lifecycle packets during engine shutdown are best effort: teardown may end before their replies.
 
 Every request revalidates server credentials, including requests for cached results. Invalid frames,
 excessive traffic and revoked credentials close the connection. Logs identify operations without
