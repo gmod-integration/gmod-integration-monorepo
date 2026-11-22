@@ -9,21 +9,23 @@ const wsBaseUrl = WEBSITE_CONFIG.wsUrl
 
 export const [webSocketSignal, setWebSocketSignal] = createSignal<WebSocket | null>(null)
 export const [webSocketLogsMessages, setWebSocketLogsMessages] = createSignal([] as any[])
-export const [webSocketServerStatus, setWebSocketServerStatus] = createSignal({
-  isWebSocketConnected: false,
-  lastRequest: new Date(new Date().getTime() - 1000 * 60 * 2),
-  version: '',
-  versionComparator: 1,
-  serverID: '',
-  action: 'server_status',
-} as {
+type ServerStatus = {
   isWebSocketConnected: boolean
   lastRequest: Date
   version: string
   versionComparator: number
   serverID: string
   action: string
+}
+const unverifiedServerStatus = (): ServerStatus => ({
+  isWebSocketConnected: false,
+  lastRequest: new Date(0),
+  version: '',
+  versionComparator: 1,
+  serverID: '',
+  action: 'server_status',
 })
+export const [webSocketServerStatus, setWebSocketServerStatus] = createSignal(unverifiedServerStatus())
 
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined
 let attempt = 0
@@ -54,6 +56,7 @@ export function stopWebSocket() {
   reconnectTimer = undefined
   const previous = webSocketSignal()
   setWebSocketSignal(null)
+  setWebSocketServerStatus(unverifiedServerStatus())
   if (previous) {
     previous.onclose = null
     previous.onmessage = null
@@ -84,6 +87,7 @@ export async function initWebSocket(forceClose = false) {
   const existing = webSocketSignal()
   if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) return
   if (connecting) return connecting
+  setWebSocketServerStatus(unverifiedServerStatus())
   clearTimeout(reconnectTimer)
   reconnectTimer = undefined
   const current = generation
@@ -118,7 +122,7 @@ export async function initWebSocket(forceClose = false) {
         refreshAccess()
       }
       ws.onmessage = (event) => {
-        if (current !== generation) return
+        if (current !== generation || webSocketSignal() !== ws) return
         try {
           const data = JSON.parse(event.data)
           if (!data || !data.action) return
@@ -128,15 +132,16 @@ export async function initWebSocket(forceClose = false) {
             else if (data.action === 'server_status') {
               data.lastRequest = new Date(data.lastRequest)
               setWebSocketServerStatus(data)
-            }
+            } else if (data.action === 'error') setWebSocketServerStatus(unverifiedServerStatus())
           }
         } catch {
           /* Malformed live updates do not invalidate the application session. */
         }
       }
       ws.onclose = async (event) => {
-        if (current !== generation || stopped) return
-        if (webSocketSignal() === ws) setWebSocketSignal(null)
+        if (current !== generation || stopped || webSocketSignal() !== ws) return
+        setWebSocketSignal(null)
+        setWebSocketServerStatus(unverifiedServerStatus())
         if (event.code === 4003) {
           stopWebSocket()
           setAuthStatus('reauth_required')

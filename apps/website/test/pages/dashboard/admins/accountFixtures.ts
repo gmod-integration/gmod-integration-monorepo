@@ -32,15 +32,8 @@ export function adminIdentity() {
 }
 export const response = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
 export function mockDirectory(users: AdminUserRow[] = [userRow()], guilds: AdminGuildRow[] = [guildRow()]) {
-  vi.mocked(fetchAPI).mockImplementation(async (endpoint, method, body) => {
-    if (method !== 'GET')
-      return response(
-        endpoint.endsWith('/rank')
-          ? { changed: true, rank: (body as { rank: string }).rank }
-          : endpoint.endsWith('/revoke-sessions')
-            ? { revoked: true }
-            : { updated: true },
-      )
+  vi.mocked(fetchAPI).mockImplementation(async (endpoint, method) => {
+    if (method !== 'GET') return response(endpoint.endsWith('/revoke-sessions') ? { revoked: true } : { updated: true })
     const url = new URL(endpoint, 'http://test.local')
     const source = url.pathname.endsWith('/users') ? users : guilds
     const search = url.searchParams.get('search')?.toLowerCase() || ''

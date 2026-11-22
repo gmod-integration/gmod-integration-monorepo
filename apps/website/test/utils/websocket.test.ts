@@ -77,6 +77,14 @@ async function connect() {
   return FakeWebSocket.instances[0]
 }
 const emit = (ws: FakeWebSocket, data: unknown) => ws.onmessage?.({ data: JSON.stringify(data) })
+const serverStatus = (connected = true) => ({
+  action: 'server_status',
+  serverID: 's1',
+  isWebSocketConnected: connected,
+  lastRequest: new Date().toISOString(),
+  version: '1.2.3',
+  versionComparator: 0,
+})
 
 describe('cookie authenticated WebSocket transport', () => {
   it('uses a short ticket and never puts persistent credentials in the URL', () => {
@@ -140,6 +148,61 @@ describe('cookie authenticated WebSocket transport', () => {
     await vi.advanceTimersByTimeAsync(1600)
     expect(FakeWebSocket.instances).toHaveLength(2)
     expect(vi.mocked(fetch).mock.calls).toHaveLength(2)
+  })
+  it('clears the last verified addon status immediately when the dashboard disconnects', async () => {
+    vi.useFakeTimers()
+    localStorage.setItem('server', JSON.stringify({ id: 's1' }))
+    const ws = await connect()
+    ws.readyState = FakeWebSocket.OPEN
+    ws.onopen?.()
+    emit(ws, serverStatus())
+    expect(webSocketServerStatus().isWebSocketConnected).toBe(true)
+    ws.readyState = 3
+    await ws.onclose?.({ code: 1006 })
+    expect(webSocketServerStatus().serverID).toBe('')
+    expect(webSocketServerStatus().lastRequest.getTime()).toBe(0)
+    expect(webSocketServerStatus().isWebSocketConnected).toBe(false)
+    await vi.advanceTimersByTimeAsync(1600)
+    const replacement = FakeWebSocket.instances[1]
+    expect(webSocketServerStatus().serverID).toBe('')
+    emit(replacement, serverStatus(false))
+    expect(webSocketServerStatus().serverID).toBe('s1')
+    expect(webSocketServerStatus().isWebSocketConnected).toBe(false)
+  })
+  it('clears addon status when stopping or changing the application session', async () => {
+    localStorage.setItem('server', JSON.stringify({ id: 's1' }))
+    const ws = await connect()
+    emit(ws, serverStatus())
+    acceptAuthSession({ ...session, session: { ...session.session, id: 'support-session' } })
+    await initWebSocket()
+    expect(ws.close).toHaveBeenCalledOnce()
+    expect(webSocketServerStatus().serverID).toBe('')
+    emit(FakeWebSocket.instances[1], serverStatus())
+    stopWebSocket()
+    expect(webSocketServerStatus().serverID).toBe('')
+    expect(webSocketServerStatus().lastRequest.getTime()).toBe(0)
+  })
+  it('ignores queued updates and closes from an older socket after replacement', async () => {
+    localStorage.setItem('server', JSON.stringify({ id: 's1' }))
+    const previous = await connect()
+    const lateMessage = previous.onmessage!
+    const lateClose = previous.onclose!
+    previous.readyState = 3
+    await initWebSocket()
+    const replacement = FakeWebSocket.instances[1]
+    emit(replacement, serverStatus())
+    lateMessage({ data: JSON.stringify(serverStatus(false)) })
+    await lateClose({ code: 4003 })
+    expect(webSocketSignal()).toBe(replacement)
+    expect(webSocketServerStatus().isWebSocketConnected).toBe(true)
+    expect(authStatus()).toBe('authenticated')
+  })
+  it('invalidates cached status after losing access to the selected server', async () => {
+    localStorage.setItem('server', JSON.stringify({ id: 's1' }))
+    const ws = await connect()
+    emit(ws, serverStatus())
+    emit(ws, { action: 'error', error: 'forbidden', serverID: 's1' })
+    expect(webSocketServerStatus().serverID).toBe('')
   })
   it('stops pending reconnection and ignores old callbacks at logout', async () => {
     vi.useFakeTimers()
@@ -240,7 +303,7 @@ describe('cookie authenticated WebSocket transport', () => {
     emit(ws, { action: 'server_logs', serverID: 's1', data: 'first' })
     emit(ws, { action: 'server_logs', serverID: 's1', data: 'second' })
     expect(webSocketLogsMessages()).toEqual(['second', 'first'])
-    emit(ws, { action: 'server_status', serverID: 's1', lastRequest: '2026-01-01T00:00:00.000Z', version: '1.2' })
+    emit(ws, serverStatus())
     expect(webSocketServerStatus().lastRequest).toBeInstanceOf(Date)
     expect(() => ws.onmessage?.({ data: '{bad' })).not.toThrow()
   })

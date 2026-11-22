@@ -4,7 +4,7 @@ import { historyAt, renderWithProviders } from '../../../../testUtils.js'
 import ServerInformations from '../../../../../src/pages/dashboard/guilds/servers/ServerInformations.js'
 import { fetchAPI } from '../../../../../src/utils/api.js'
 import type * as WebSocketUtilities from '../../../../../src/utils/websocket.js'
-import { setWebSocketServerStatus, sendWebSocketMessage } from '../../../../../src/utils/websocket.js'
+import { setWebSocketServerStatus, sendWebSocketMessage, stopWebSocket } from '../../../../../src/utils/websocket.js'
 import { okJson, errJson } from './testHelpers.js'
 import { DraftEditingProvider } from '../../../../../src/components/DraftEditingProvider.js'
 
@@ -64,7 +64,7 @@ const defaultWSStatus = {
   lastRequest: new Date(0),
   version: '',
   versionComparator: 1,
-  serverID: '',
+  serverID: 's1',
   action: 'server_status',
 }
 
@@ -73,6 +73,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     window.localStorage.clear()
     setServerLocalStorage()
     setWebSocketServerStatus({ ...defaultWSStatus })
+    vi.mocked(sendWebSocketMessage).mockClear()
     ;(fetchAPI as Mock).mockReset()
     ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
   })
@@ -181,6 +182,67 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
   })
 
   describe('connection status panel', () => {
+    it('keeps another server status unknown instead of reusing its successful checks', () => {
+      setWebSocketServerStatus({
+        ...defaultWSStatus,
+        serverID: 'other-server',
+        isWebSocketConnected: true,
+        lastRequest: new Date(),
+        versionComparator: 0,
+      })
+      renderPage()
+      expect(screen.getAllByText('Unknown')).toHaveLength(3)
+      expect(screen.queryByText('Connected')).not.toBeInTheDocument()
+      expect(screen.queryByText('Received')).not.toBeInTheDocument()
+      expect(screen.queryByText('Compatible')).not.toBeInTheDocument()
+      expect(screen.getByText(/The addon connection could not be verified/)).toBeInTheDocument()
+    })
+
+    it('clears a verified state when the dashboard transport stops', async () => {
+      setWebSocketServerStatus({
+        ...defaultWSStatus,
+        isWebSocketConnected: true,
+        lastRequest: new Date(),
+        versionComparator: 0,
+      })
+      renderPage()
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+      stopWebSocket()
+      await vi.waitFor(() => expect(screen.getAllByText('Unknown')).toHaveLength(3))
+      expect(screen.queryByText('Connected')).not.toBeInTheDocument()
+      expect(screen.queryByText('Disconnected')).not.toBeInTheDocument()
+      expect(screen.getByText(/Recent addon activity could not be verified/)).toBeInTheDocument()
+    })
+
+    it('does not retain a successful status when navigating to another server', async () => {
+      setWebSocketServerStatus({
+        ...defaultWSStatus,
+        isWebSocketConnected: true,
+        lastRequest: new Date(),
+        versionComparator: 0,
+      })
+      const { history } = renderPage()
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+      history.set({ value: '/dashboard/guilds/g1/config/servers/another-server' })
+      await vi.waitFor(() => expect(screen.getAllByText('Unknown')).toHaveLength(3))
+      expect(screen.queryByText('Connected')).not.toBeInTheDocument()
+    })
+
+    it('expires recent activity even when no new status frame arrives', () => {
+      vi.useFakeTimers()
+      setWebSocketServerStatus({
+        ...defaultWSStatus,
+        isWebSocketConnected: true,
+        lastRequest: new Date(),
+        versionComparator: 0,
+      })
+      renderPage()
+      expect(screen.getByText('Received')).toBeInTheDocument()
+      vi.advanceTimersByTime(62_000)
+      expect(screen.getByText('Not received')).toBeInTheDocument()
+      expect(screen.queryByText('Compatible')).not.toBeInTheDocument()
+    })
+
     it('shows all-invalid fallback content by default (never connected)', () => {
       renderPage()
       expect(screen.getByText(/No request has been received from the addon in the last minute/)).toBeInTheDocument()

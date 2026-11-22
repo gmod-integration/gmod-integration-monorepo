@@ -47,51 +47,31 @@ describe('administrative user directory', () => {
     expect(mutations()).toHaveLength(0)
   })
 
-  it('keeps own actions disabled and requires an explicit role choice for an unknown legacy rank', async () => {
-    mockDirectory([userRow('u1', 'Self'), { ...userRow(), rank: 'legacy-moderator' }])
+  it('shows effective roles as read-only and protects the current account', async () => {
+    mockDirectory([{ ...userRow('u1', 'Self'), rank: 'developer' }, userRow()])
     renderPage()
     const self = (await screen.findByText('@Self')).closest('tr')!
-    expect(within(self).getByRole('button', { name: 'Edit role' })).toBeDisabled()
+    expect(within(self).getByText('Developer')).toBeInTheDocument()
     expect(within(self).getByRole('button', { name: 'Revoke sessions' })).toBeDisabled()
+    expect(within(self).queryByRole('link', { name: 'Support access' })).not.toBeInTheDocument()
     const row = (await screen.findByText('@Target')).closest('tr')!
-    await fireEvent.click(within(row).getByRole('button', { name: 'Edit role' }))
-    const dialog = screen.getByRole('dialog', { name: 'Edit role for Target' })
-    expect(within(dialog).getByRole('combobox', { name: 'Role' })).toHaveValue('legacy-moderator')
-    await fireEvent.input(within(dialog).getByRole('textbox', { name: 'Reason' }), {
-      target: { value: 'Review the access request' },
-    })
-    expect(within(dialog).getByRole('button', { name: 'Save' })).toBeDisabled()
-    await fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(within(row).getByText('User')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Edit role/ })).not.toBeInTheDocument()
+    expect(document.getElementById('admin-user-rank')).not.toBeInTheDocument()
+    expect(screen.getByText(/Developer access is managed by the platform operator/)).toBeInTheDocument()
+    expect(screen.queryByText(/developers\.json/)).not.toBeInTheDocument()
     expect(mutations()).toHaveLength(0)
   })
 
-  it('preserves a rejected role draft and retries only after explicit Save', async () => {
-    const directory = vi.mocked(fetchAPI).getMockImplementation()!
-    let reject = true
-    vi.mocked(fetchAPI).mockImplementation(async (...args) =>
-      args[1] === 'PUT' ? response({ changed: true, rank: 'developer' }, reject ? 403 : 200) : directory(...args),
-    )
+  it('filters the directory by effective role without changing access', async () => {
+    mockDirectory([userRow(), { ...userRow('other-developer', 'Developer account'), rank: 'developer' }])
     renderPage()
-    await fireEvent.click((await screen.findAllByRole('button', { name: 'Edit role' }))[0])
-    const dialog = screen.getByRole('dialog', { name: 'Edit role for Target' })
-    await fireEvent.change(within(dialog).getByLabelText('Role'), { target: { value: 'developer' } })
-    await fireEvent.input(within(dialog).getByRole('textbox', { name: 'Reason' }), {
-      target: { value: 'Grant access after review' },
-    })
+    await screen.findByText('@Target')
+    await fireEvent.change(screen.getByRole('combobox', { name: 'Role' }), { target: { value: 'developer' } })
+    await screen.findByText('@Developer account')
+    await vi.waitFor(() => expect(screen.queryByText('@Target')).not.toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('rank=developer'), 'GET')
     expect(mutations()).toHaveLength(0)
-    await fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
-    await vi.waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument())
-    expect(within(dialog).getByLabelText('Role')).toHaveValue('developer')
-    expect(within(dialog).getByRole('textbox', { name: 'Reason' })).toHaveValue('Grant access after review')
-    reject = false
-    await fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
-    await vi.waitFor(() => expect(dialog).not.toHaveAttribute('open'))
-    expect(mutations()).toHaveLength(2)
-    expect(mutations()[1]).toEqual([
-      '/v6/admin/users/123456789012345678/rank',
-      'PUT',
-      { rank: 'developer', reason: 'Grant access after review' },
-    ])
   })
 
   it('requires a reason before revocation and blocks duplicate pending commands', async () => {
@@ -122,33 +102,17 @@ describe('administrative user directory', () => {
     await vi.waitFor(() => expect(dialog).not.toHaveAttribute('open'))
   })
 
-  it.each([{}, { rank: 'user', changed: true }, { rank: 'developer', changed: 'yes' }])(
-    'preserves the role draft when a 200 response does not confirm the selected role: %j',
-    async (malformed) => {
-      const directory = vi.mocked(fetchAPI).getMockImplementation()!
-      let accepted = false
-      vi.mocked(fetchAPI).mockImplementation(async (...args) =>
-        args[1] === 'PUT' ? response(accepted ? { changed: false, rank: 'developer' } : malformed) : directory(...args),
-      )
-      renderPage()
-      await fireEvent.click(await screen.findByRole('button', { name: 'Edit role' }))
-      const dialog = screen.getByRole('dialog', { name: 'Edit role for Target' })
-      await fireEvent.change(within(dialog).getByLabelText('Role'), { target: { value: 'developer' } })
-      await fireEvent.input(within(dialog).getByRole('textbox', { name: 'Reason' }), {
-        target: { value: 'Grant access after review' },
-      })
-      await fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
-      await vi.waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument())
-      expect(dialog).toHaveAttribute('open')
-      expect(within(dialog).getByLabelText('Role')).toHaveValue('developer')
-      expect(within(dialog).getByRole('textbox', { name: 'Reason' })).toHaveValue('Grant access after review')
-      expect(vi.mocked(fetchAPI).mock.calls.filter(([, method]) => method === 'GET')).toHaveLength(1)
-      accepted = true
-      await fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }))
-      await vi.waitFor(() => expect(dialog).not.toHaveAttribute('open'))
-      expect(mutations()).toHaveLength(2)
-    },
-  )
+  it('cancels session revocation without sending a command', async () => {
+    renderPage()
+    await fireEvent.click(await screen.findByRole('button', { name: 'Revoke sessions' }))
+    const dialog = screen.getByRole('dialog', { name: 'Revoke sessions for Target?' })
+    await fireEvent.input(within(dialog).getByRole('textbox', { name: 'Reason' }), {
+      target: { value: 'Account owner requested sign-out' },
+    })
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(dialog).not.toHaveAttribute('open')
+    expect(mutations()).toHaveLength(0)
+  })
 
   it.each([{}, { revoked: false }, { revoked: 'true' }])(
     'keeps revocation open when a 200 response does not confirm success: %j',

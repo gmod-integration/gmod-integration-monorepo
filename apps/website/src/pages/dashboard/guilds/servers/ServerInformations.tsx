@@ -1,5 +1,5 @@
 import { showDialog } from '../../../../utils/dialog.js'
-import { type Component, createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { type Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { getServer } from '../../../../utils/utils.js'
 import { sendWebSocketMessage, webSocketServerStatus } from '../../../../utils/websocket.js'
 import { useNavigate, useParams } from '@solidjs/router'
@@ -25,6 +25,8 @@ const ServerInformations: Component = () => {
   const params = useParams()
   const [server, setServer] = createSignal(getServer())
   const [showToken, setShowToken] = createSignal(false)
+  const [now, setNow] = createSignal(Date.now())
+  const serverID = () => params.serverID || server().id
   const idCommand = () => `gmod-integration config set id "${server().id || ''}"`
   const tokenCommand = () => `gmod-integration config set token "${server().token || ''}"`
   const editable = (value: ReturnType<typeof getServer>) => ({
@@ -86,25 +88,20 @@ const ServerInformations: Component = () => {
 
   onMount(() => {
     const intervalId = setInterval(() => {
-      sendWebSocketMessage('server_status', { serverID: server().id })
+      setNow(Date.now())
+      sendWebSocketMessage('server_status', { serverID: serverID() })
     }, 2000)
 
     onCleanup(() => clearInterval(intervalId))
   })
 
-  const [isValidWSConnection, setIsValidWSConnection] = createSignal(webSocketServerStatus().isWebSocketConnected)
-  const [isValidHTTPRequest, setIsValidHTTPRequest] = createSignal(
-    webSocketServerStatus().lastRequest.getTime() > new Date().getTime() - 1000 * 60,
-  )
-  const [isValidVersion, setIsValidVersion] = createSignal(
-    webSocketServerStatus().versionComparator == 0 || webSocketServerStatus().versionComparator == -1,
-  )
-
-  createEffect(() => {
-    setIsValidWSConnection(webSocketServerStatus().isWebSocketConnected)
-    setIsValidHTTPRequest(webSocketServerStatus().lastRequest.getTime() > new Date().getTime() - 1000 * 60)
-    setIsValidVersion(webSocketServerStatus().versionComparator == 0 || webSocketServerStatus().versionComparator == -1)
-  }, [webSocketServerStatus()])
+  const status = () => {
+    const snapshot = webSocketServerStatus()
+    return snapshot.serverID === serverID() ? snapshot : undefined
+  }
+  const isValidWSConnection = () => status()?.isWebSocketConnected === true
+  const isValidHTTPRequest = () => (status()?.lastRequest.getTime() ?? 0) > now() - 60_000
+  const isValidVersion = () => [0, -1].includes(status()?.versionComparator ?? 1)
 
   return (
     <>
@@ -347,31 +344,50 @@ const ServerInformations: Component = () => {
               <div class="font-semibold text-sm">
                 {t('dashboard.server.server_informations.http_request_title', 'Recent server activity')}
               </div>
-              <StatusBadge tone={isValidHTTPRequest() ? 'success' : 'warning'} icon="arrow-down-to-line">
-                {isValidHTTPRequest() ? t('ui.received', 'Received') : t('ui.not_received', 'Not received')}
+              <StatusBadge
+                tone={!status() ? 'neutral' : isValidHTTPRequest() ? 'success' : 'warning'}
+                icon="arrow-down-to-line"
+              >
+                {!status()
+                  ? t('ui.unknown', 'Unknown')
+                  : isValidHTTPRequest()
+                    ? t('ui.received', 'Received')
+                    : t('ui.not_received', 'Not received')}
               </StatusBadge>
             </div>
             <div class="text-xs leading-relaxed text-base-content/60">
               <Show
                 when={isValidHTTPRequest()}
                 fallback={
-                  <p>
-                    {t(
-                      'dashboard.server.server_informations.http_request_fallback_part1',
-                      'No request has been received from the addon in the last minute. Check that the server is running and that you installed the',
-                    )}{' '}
-                    <a href="/workshop" class="link">
-                      {t('dashboard.server.server_informations.workshop_content', 'workshop content')}
-                    </a>{' '}
-                    {t(
-                      'dashboard.server.server_informations.http_request_fallback_part2',
-                      'and entered the correct server ID and token. See the',
-                    )}{' '}
-                    <a href="/docs/getting-started/configuration" class="link">
-                      {t('dashboard.server.server_informations.documentation', 'documentation')}
-                    </a>{' '}
-                    {t('dashboard.server.server_informations.http_request_fallback_part3', 'for setup instructions.')}
-                  </p>
+                  <Show
+                    when={status()}
+                    fallback={
+                      <p>
+                        {t(
+                          'dashboard.server.server_informations.http_request_unknown',
+                          'Recent addon activity could not be verified. Check the dashboard connection and try again.',
+                        )}
+                      </p>
+                    }
+                  >
+                    <p>
+                      {t(
+                        'dashboard.server.server_informations.http_request_fallback_part1',
+                        'No request has been received from the addon in the last minute. Check that the server is running and that you installed the',
+                      )}{' '}
+                      <a href="/workshop" class="link">
+                        {t('dashboard.server.server_informations.workshop_content', 'workshop content')}
+                      </a>{' '}
+                      {t(
+                        'dashboard.server.server_informations.http_request_fallback_part2',
+                        'and entered the correct server ID and token. See the',
+                      )}{' '}
+                      <a href="/docs/getting-started/configuration" class="link">
+                        {t('dashboard.server.server_informations.documentation', 'documentation')}
+                      </a>{' '}
+                      {t('dashboard.server.server_informations.http_request_fallback_part3', 'for setup instructions.')}
+                    </p>
+                  </Show>
                 }
               >
                 <p>
@@ -388,27 +404,46 @@ const ServerInformations: Component = () => {
               <div class="font-semibold text-sm">
                 {t('dashboard.server.server_informations.websocket_title', 'Live connection (WebSocket)')}
               </div>
-              <StatusBadge tone={isValidWSConnection() ? 'success' : 'warning'} icon="arrow-left-right">
-                {isValidWSConnection() ? t('ui.connected', 'Connected') : t('ui.disconnected', 'Disconnected')}
+              <StatusBadge
+                tone={!status() ? 'neutral' : isValidWSConnection() ? 'success' : 'warning'}
+                icon="arrow-left-right"
+              >
+                {!status()
+                  ? t('ui.unknown', 'Unknown')
+                  : isValidWSConnection()
+                    ? t('ui.connected', 'Connected')
+                    : t('ui.disconnected', 'Disconnected')}
               </StatusBadge>
             </div>
             <div class="text-xs leading-relaxed text-base-content/60">
               <Show
                 when={isValidWSConnection()}
                 fallback={
-                  <p>
-                    {t(
-                      'dashboard.server.server_informations.websocket_fallback_part1',
-                      'The live connection is unavailable. Features that require it cannot operate. Check the addon connection and install the',
-                    )}{' '}
-                    <a href="/docs/getting-started/installation#dll" class="link">
-                      {t('dashboard.server.server_informations.gwsocket_module', 'GWSockets module')}
-                    </a>{' '}
-                    {t(
-                      'dashboard.server.server_informations.websocket_fallback_part2',
-                      'if it is missing from your game server.',
-                    )}
-                  </p>
+                  <Show
+                    when={status()}
+                    fallback={
+                      <p>
+                        {t(
+                          'dashboard.server.server_informations.websocket_unknown',
+                          'The addon connection could not be verified. Check the dashboard connection and try again.',
+                        )}
+                      </p>
+                    }
+                  >
+                    <p>
+                      {t(
+                        'dashboard.server.server_informations.websocket_fallback_part1',
+                        'The live connection is unavailable. Features that require it cannot operate. Check the addon connection and install the',
+                      )}{' '}
+                      <a href="/docs/getting-started/installation#dll" class="link">
+                        {t('dashboard.server.server_informations.gwsocket_module', 'GWSockets module')}
+                      </a>{' '}
+                      {t(
+                        'dashboard.server.server_informations.websocket_fallback_part2',
+                        'if it is missing from your game server.',
+                      )}
+                    </p>
+                  </Show>
                 }
               >
                 <p>
@@ -425,7 +460,10 @@ const ServerInformations: Component = () => {
               <div class="font-semibold text-sm">
                 {t('dashboard.server.server_informations.version_title', 'Addon version')}
               </div>
-              <StatusBadge tone={isValidHTTPRequest() && isValidVersion() ? 'success' : 'warning'} icon="tag">
+              <StatusBadge
+                tone={!isValidHTTPRequest() ? 'neutral' : isValidVersion() ? 'success' : 'warning'}
+                icon="tag"
+              >
                 {!isValidHTTPRequest()
                   ? t('ui.unknown', 'Unknown')
                   : isValidVersion()
