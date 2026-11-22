@@ -788,7 +788,8 @@
         "button_name_help": "Texte affiché sur le bouton dans Discord, jusqu’à 80 caractères.",
         "button_url_help": "Adresse HTTP ou HTTPS ouverte lorsqu’un membre clique sur le bouton.",
         "button_active_help": "Les boutons actifs apparaissent dans le message de statut après l’enregistrement de la configuration.",
-        "format_help": "Modèle répété pour chaque joueur connecté. Utilisez les variables ci-dessous, comme {name} et {ping}, puis vérifiez l’aperçu Discord."
+        "format_help": "Modèle répété pour chaque joueur connecté. Utilisez les variables ci-dessous, comme {name} et {ping}, puis vérifiez l’aperçu Discord.",
+        "timeLastTeamChange": "Temps depuis le dernier changement d’équipe"
       },
       "importance": "Importance",
       "description": "Description",
@@ -1490,7 +1491,24 @@
     "compatible": "Compatible",
     "outdated": "À mettre à jour",
     "actions": "Actions",
-    "saving": "Enregistrement…"
+    "saving": "Enregistrement…",
+    "template_variables": {
+      "title": "Variables disponibles",
+      "syntax": "Syntaxe",
+      "format": "Format",
+      "example": "Exemple",
+      "template_example": "Exemple de modèle",
+      "copy": "Copier {1}",
+      "text": "Texte",
+      "number": "Nombre",
+      "duration": "Durée (ex. 1h 2m 3s)",
+      "raw": "Valeur brute",
+      "formatting": "Mise en forme disponible",
+      "bold": "Gras",
+      "inline_code": "Code en ligne",
+      "underline": "Souligné",
+      "strikethrough": "Barré"
+    }
   },
   "settings": {
     "access": "Accès et vérification",

@@ -82,6 +82,16 @@ Discord's default avatar; failed custom images fall back once before using a gen
 profile reactive so session refreshes update both the header and account card. Bot previews use the
 bot's Discord avatar, while game and Steam identities retain their own images.
 The former icon-font stylesheets and proprietary font assets are removed.
+
+`TemplateVariables` presents template help with literal, copyable tokens, descriptions, value formats
+and examples. Pass each complete `token`, including its actual braces: nickname/status templates use
+`{name}`-style tokens, while log events use `{{data.path.to.var}}`. Labels and format descriptions are
+translated by the caller. Optional `syntax`, `example: {template, result}` and `formatting` entries
+explain only the syntax supported by that field. The disclosure never modifies a draft or sends a
+request; copying uses `CopyableValue` feedback. It renders nothing for an empty reference and adds no
+top separator, so it can follow a `SettingRow` without duplicating its border. Keep event-specific
+variables reactive and do not advertise fields missing from the selected event.
+
 Language flags use the local `LanguageFlag` assets rather than Lucide or emoji fonts; these are language
 selector artwork, while action icons remain in the Lucide registry.
 

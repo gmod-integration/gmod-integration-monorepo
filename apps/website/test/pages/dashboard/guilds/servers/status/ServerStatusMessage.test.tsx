@@ -158,4 +158,29 @@ describe('status publication is a separate command', () => {
     expect(document.getElementById('edit_format')).not.toBeInTheDocument()
     expect(commands(api)).toHaveLength(0)
   })
+  it('keeps a player-list draft intact while copying its variables and consulting formatting guidance', async () => {
+    const network = installNetwork(api, {
+      configuration: configuration({
+        settings: { show_player_list_status: true, status_player_list_format: '{name}', show_status_chart: false },
+      }),
+    })
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    renderStatus()
+    await ready()
+    const format = screen.getByLabelText('Player List Format')
+    await fireEvent.input(format, { target: { value: '**{name}** - {team}' } })
+    const reference = screen.getByText('Available variables').closest('details')!
+    await fireEvent.click(reference.querySelector('summary')!)
+    expect(within(reference).getByText('Supported formatting')).toBeInTheDocument()
+    expect(within(reference).getAllByText(/1h\s?2m\s?3s/).length).toBeGreaterThan(0)
+    await fireEvent.click(within(reference).getByRole('button', { name: 'Copy {timeLastTeamChange}' }))
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith('{timeLastTeamChange}'))
+    expect(format).toHaveValue('**{name}** - {team}')
+    await vi.waitFor(() => expect(puts(network)).toHaveLength(1))
+    expect(JSON.parse(String(puts(network)[0][1].body)).configuration.settings.status_player_list_format).toBe(
+      '**{name}** - {team}',
+    )
+    expect(commands(api)).toHaveLength(0)
+  })
 })

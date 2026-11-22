@@ -42,7 +42,10 @@ async function createDraft() {
   await fireEvent.input(input('pseudo-role-prefix'), { target: { value: '[V]' } })
   await fireEvent.click(input('pseudo-role-active'))
 }
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.unstubAllGlobals()
+})
 describe('ServerPseudo unified editing', () => {
   beforeEach(() => {
     window.localStorage.clear()
@@ -70,6 +73,27 @@ describe('ServerPseudo unified editing', () => {
     expect(input('pseudo-format-preview')).toHaveValue('A John Doe')
     expect(input('pseudo-format-preview')).toHaveAttribute('readonly')
     expect(document.getElementById('edit_format')).not.toBeInTheDocument()
+  })
+  it('copies nickname variables without replacing the draft or adding an autosave', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    renderPage()
+    await loaded()
+    await fireEvent.input(input('pseudo-format'), { target: { value: 'Draft {plyName}' } })
+    const reference = screen.getByText('Available variables').closest('details')!
+    await fireEvent.click(reference.querySelector('summary')!)
+    for (const token of ['{plyName}', '{plySteamID64}', '{rolePrefix}', '{roleName}']) {
+      expect(within(reference).getByRole('button', { name: `Copy ${token}` })).toBeInTheDocument()
+    }
+    await fireEvent.click(within(reference).getByRole('button', { name: 'Copy {rolePrefix}' }))
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith('{rolePrefix}'))
+    expect(input('pseudo-format')).toHaveValue('Draft {plyName}')
+    expect(input('pseudo-format-preview')).toHaveValue('Draft John Doe')
+    await vi.waitFor(() =>
+      expect(saveDashboardSettings).toHaveBeenCalledWith('server', { pseudoFormat: 'Draft {plyName}' }),
+    )
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    expect(writes()).toHaveLength(0)
   })
   it('previews direction and format changes before automatically saving them together', async () => {
     renderPage()
@@ -167,7 +191,7 @@ describe('ServerPseudo unified editing', () => {
     await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
     await vi.waitFor(() => expect(modal().getByRole('alert')).toBeInTheDocument())
     expect(document.getElementById('edit_role_modal')).toHaveAttribute('open')
-    expect(screen.getByText('Admin')).toBeInTheDocument()
+    expect(within(screen.getByRole('table')).getByText('Admin')).toBeInTheDocument()
     write = () => okJson({ ...rows()[0], name: 'Super Admin' })
     await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
     await vi.waitFor(() => expect(screen.getByText('Super Admin')).toBeInTheDocument())

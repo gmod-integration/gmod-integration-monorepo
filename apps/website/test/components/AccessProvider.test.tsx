@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { A, MemoryRouter, Route, useNavigate } from '@solidjs/router'
-import { createSignal } from 'solid-js'
+import { createSignal, Show } from 'solid-js'
 import {
   AccessProvider,
   useAccess,
@@ -11,7 +11,7 @@ import {
 import { FeatureGate } from '../../src/components/FeatureGate.js'
 import { PremiumBadge } from '../../src/utils/premium.js'
 import { I18nProvider } from '../../src/i18n.js'
-import { historyAt } from '../testUtils.js'
+import { historyAt, renderWithProviders } from '../testUtils.js'
 import { refreshAccess } from '../../src/utils/accessEvents.js'
 
 const snapshot = (overrides: Partial<DashboardAccessSnapshot> = {}): DashboardAccessSnapshot => ({
@@ -75,6 +75,44 @@ afterEach(() => {
 })
 
 describe('authoritative reactive access', () => {
+  it('omits an empty feature wrapper and preserves controls while quota feedback changes', () => {
+    const [showControl, setShowControl] = createSignal(false)
+    const [showQuota, setShowQuota] = createSignal(false)
+    renderWithProviders(() => (
+      <div data-testid="feature-slot">
+        <FeatureGate capability="sync.roles.rules" showQuota={showQuota()}>
+          <Show when={showControl()}>
+            <input aria-label="Rule draft" value="Keep my draft" />
+          </Show>
+        </FeatureGate>
+      </div>
+    ))
+    const slot = screen.getByTestId('feature-slot')
+    expect(slot.children).toHaveLength(0)
+
+    setShowQuota(true)
+    expect(screen.getByText('0 / 4 used')).toBeInTheDocument()
+    setShowQuota(false)
+    expect(slot.children).toHaveLength(0)
+
+    setShowControl(true)
+    const field = screen.getByRole('textbox', { name: 'Rule draft' })
+    setShowQuota(true)
+    expect(screen.getByText('0 / 4 used')).toBeInTheDocument()
+    setShowQuota(false)
+    expect(screen.getByRole('textbox', { name: 'Rule draft' })).toBe(field)
+    expect(field).toHaveValue('Keep my draft')
+
+    setShowControl(false)
+    expect(slot.children).toHaveLength(0)
+  })
+
+  it('retains upgrade feedback when a blocked feature has no controls or quota', () => {
+    renderWithProviders(() => <FeatureGate capability="sync.roles.reverse" showQuota={false} />)
+    expect(screen.getByRole('note')).toHaveTextContent('This feature requires Premium.')
+    expect(screen.getByRole('link', { name: 'View Premium plans' })).toBeInTheDocument()
+  })
+
   it('fails closed outside a provider and safely accepts a refresh without manufacturing rights', async () => {
     const Probe = () => {
       const access = useAccess()

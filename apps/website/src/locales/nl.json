@@ -699,7 +699,8 @@
         "delete_confirmation": "Weet u zeker dat u deze knop wilt verwijderen?",
         "premium_limit": "Beperkt tot 2 knoppen voor gratis gebruikers",
         "required_field": "Dit veld is vereist",
-        "invalid_url": "Ongeldig URL-formaat"
+        "invalid_url": "Ongeldig URL-formaat",
+        "timeLastTeamChange": "Tijd sinds de laatste teamwissel"
       },
       "importance": "Belang",
       "description": "Omschrijving",
@@ -1260,7 +1261,24 @@
     "copy": "Kopiëren",
     "copied": "Gekopieerd!",
     "copy_error": "Kopiëren is niet gelukt. Probeer het opnieuw.",
-    "saving": "Opslaan…"
+    "saving": "Opslaan…",
+    "template_variables": {
+      "title": "Beschikbare variabelen",
+      "syntax": "Syntaxis",
+      "format": "Formaat",
+      "example": "Voorbeeld",
+      "template_example": "Sjabloonvoorbeeld",
+      "copy": "{1} kopiëren",
+      "text": "Tekst",
+      "number": "Getal",
+      "duration": "Duur (bijv. 1h 2m 3s)",
+      "raw": "Ruwe waarde",
+      "formatting": "Ondersteunde opmaak",
+      "bold": "Vet",
+      "inline_code": "Inlinecode",
+      "underline": "Onderstreept",
+      "strikethrough": "Doorgestreept"
+    }
   },
   "settings": {
     "access": "Toegang en verificatie",

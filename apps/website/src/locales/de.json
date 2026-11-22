@@ -699,7 +699,8 @@
         "delete_confirmation": "Sind Sie sicher, dass Sie diesen Button löschen möchten?",
         "premium_limit": "Limitiert auf 2 Tasten für kostenlose Benutzer",
         "required_field": "Dieses Feld ist erforderlich",
-        "invalid_url": "Ungültiges URL-Format"
+        "invalid_url": "Ungültiges URL-Format",
+        "timeLastTeamChange": "Zeit seit dem letzten Teamwechsel"
       },
       "importance": "Bedeutung",
       "description": "Warenbezeichnung",
@@ -1260,7 +1261,24 @@
     "copy": "Kopieren",
     "copied": "Kopiert!",
     "copy_error": "Kopieren nicht möglich. Bitte versuche es erneut.",
-    "saving": "Wird gespeichert…"
+    "saving": "Wird gespeichert…",
+    "template_variables": {
+      "title": "Verfügbare Variablen",
+      "syntax": "Syntax",
+      "format": "Format",
+      "example": "Beispiel",
+      "template_example": "Vorlagenbeispiel",
+      "copy": "{1} kopieren",
+      "text": "Text",
+      "number": "Zahl",
+      "duration": "Dauer (z. B. 1h 2m 3s)",
+      "raw": "Rohwert",
+      "formatting": "Unterstützte Formatierung",
+      "bold": "Fett",
+      "inline_code": "Inline-Code",
+      "underline": "Unterstrichen",
+      "strikethrough": "Durchgestrichen"
+    }
   },
   "settings": {
     "access": "Zugang und Verifizierung",

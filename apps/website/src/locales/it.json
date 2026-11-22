@@ -699,7 +699,8 @@
         "delete_confirmation": "Eliminare veramente questo pulsante?",
         "premium_limit": "Limitato a 2 pulsanti per utenti gratuiti",
         "required_field": "Questo campo è obbligatorio",
-        "invalid_url": "Formato URL non valido"
+        "invalid_url": "Formato URL non valido",
+        "timeLastTeamChange": "Tempo dall’ultimo cambio di squadra"
       },
       "importance": "Importanza",
       "description": "Designazione delle merci",
@@ -1260,7 +1261,24 @@
     "copy": "Copia",
     "copied": "Copiato!",
     "copy_error": "Impossibile copiare. Riprova.",
-    "saving": "Salvataggio…"
+    "saving": "Salvataggio…",
+    "template_variables": {
+      "title": "Variabili disponibili",
+      "syntax": "Sintassi",
+      "format": "Formato",
+      "example": "Esempio",
+      "template_example": "Esempio di modello",
+      "copy": "Copia {1}",
+      "text": "Testo",
+      "number": "Numero",
+      "duration": "Durata (es. 1h 2m 3s)",
+      "raw": "Valore grezzo",
+      "formatting": "Formattazione supportata",
+      "bold": "Grassetto",
+      "inline_code": "Codice in linea",
+      "underline": "Sottolineato",
+      "strikethrough": "Barrato"
+    }
   },
   "settings": {
     "access": "Accesso e verifica",

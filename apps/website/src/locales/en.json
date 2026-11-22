@@ -788,7 +788,8 @@
         "button_name_help": "Text displayed on the button in Discord, up to 80 characters.",
         "button_url_help": "HTTP or HTTPS address opened when a member clicks the button.",
         "button_active_help": "Active buttons appear in the status message after the configuration is saved.",
-        "format_help": "Template repeated for each connected player. Use the variables below, such as {name} and {ping}, and check the Discord preview."
+        "format_help": "Template repeated for each connected player. Use the variables below, such as {name} and {ping}, and check the Discord preview.",
+        "timeLastTeamChange": "Time since the last team change"
       },
       "importance": "Importance",
       "description": "Description",
@@ -1487,7 +1488,24 @@
     "compatible": "Compatible",
     "outdated": "Outdated",
     "actions": "Actions",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "template_variables": {
+      "title": "Available variables",
+      "syntax": "Syntax",
+      "format": "Format",
+      "example": "Example",
+      "template_example": "Template example",
+      "copy": "Copy {1}",
+      "text": "Text",
+      "number": "Number",
+      "duration": "Duration (e.g. 1h 2m 3s)",
+      "raw": "Raw value",
+      "formatting": "Supported formatting",
+      "bold": "Bold",
+      "inline_code": "Inline code",
+      "underline": "Underline",
+      "strikethrough": "Strikethrough"
+    }
   },
   "settings": {
     "access": "Access and verification",

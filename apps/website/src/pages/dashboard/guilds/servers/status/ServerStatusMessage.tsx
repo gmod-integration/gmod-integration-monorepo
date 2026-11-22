@@ -1,7 +1,7 @@
-import { type Component, For, Show } from 'solid-js'
+import { type Component, Show } from 'solid-js'
 import { useFeatureAccess } from '../../../../../components/AccessProvider.js'
 import { FeatureGate, SuspendedFeature } from '../../../../../components/FeatureGate.js'
-import { SettingRow } from '../../../../../components/ui/index.js'
+import { SettingRow, TemplateVariables } from '../../../../../components/ui/index.js'
 import AdminPanel from '../../../../../components/AdminPanel.js'
 import StatusCardActions from './StatusCardActions.js'
 import { PremiumBadge } from '../../../../../utils/premium.js'
@@ -13,20 +13,89 @@ const ServerStatusMessage: Component = () => {
   const chartAccess = useFeatureAccess('status.chart')
   const editor = useStatusConfiguration()
   const unavailable = () => !editor.ready()
-  const variables = [
-    ['name', 'playerName', 'Player Name'],
-    ['steamID64', 'playerSteamID64', 'Player SteamID64'],
-    ['team', 'team', 'Team'],
-    ['userGroup', 'userGroup', 'User Group'],
-    ['connectTime', 'connectTime', 'Connect Time'],
-    ['kills', 'kills', 'Kills'],
-    ['deaths', 'deaths', 'Deaths'],
-    ['position', 'position', 'Position'],
-    ['angle', 'angle', 'Angle'],
-    ['fps', 'fps', 'FPS'],
-    ['ping', 'ping', 'Ping'],
-    ['adjustedTime', 'adjustedTime', 'Adjusted Time'],
-    ['branch', 'branch', 'Branch'],
+  const variables = () => [
+    {
+      token: '{name}',
+      label: t('dashboard.server.status.playerName', 'Player Name'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: 'John Doe',
+    },
+    {
+      token: '{steamID64}',
+      label: t('dashboard.server.status.playerSteamID64', 'Player SteamID64'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: '76500000000000000',
+    },
+    {
+      token: '{team}',
+      label: t('dashboard.server.status.team', 'Team'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: 'Citizen',
+    },
+    {
+      token: '{userGroup}',
+      label: t('dashboard.server.status.userGroup', 'User Group'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: 'admin',
+    },
+    {
+      token: '{connectTime}',
+      label: t('dashboard.server.status.connectTime', 'Connect Time'),
+      format: t('ui.template_variables.duration', 'Duration (e.g. 1h 2m 3s)'),
+      example: '1h 2m 3s',
+    },
+    {
+      token: '{timeLastTeamChange}',
+      label: t('dashboard.server.status.timeLastTeamChange', 'Time since the last team change'),
+      format: t('ui.template_variables.duration', 'Duration (e.g. 1h 2m 3s)'),
+      example: '12m 5s',
+    },
+    {
+      token: '{kills}',
+      label: t('dashboard.server.status.kills', 'Kills'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '12',
+    },
+    {
+      token: '{deaths}',
+      label: t('dashboard.server.status.deaths', 'Deaths'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '3',
+    },
+    {
+      token: '{position}',
+      label: t('dashboard.server.status.position', 'Position'),
+      format: t('ui.template_variables.raw', 'Raw value'),
+    },
+    {
+      token: '{angle}',
+      label: t('dashboard.server.status.angle', 'Angle'),
+      format: t('ui.template_variables.raw', 'Raw value'),
+    },
+    {
+      token: '{fps}',
+      label: t('dashboard.server.status.fps', 'FPS'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '144',
+    },
+    {
+      token: '{ping}',
+      label: t('dashboard.server.status.ping', 'Ping'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '24',
+    },
+    {
+      token: '{adjustedTime}',
+      label: t('dashboard.server.status.adjustedTime', 'Adjusted Time'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '3600',
+    },
+    {
+      token: '{branch}',
+      label: t('dashboard.server.status.branch', 'Branch'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: 'x86-64',
+    },
   ]
   return (
     <AdminPanel
@@ -85,21 +154,17 @@ const ServerStatusMessage: Component = () => {
                 })
               }
             />
-            <details class="settings-advanced w-full">
-              <summary>{t('dashboard.server.pseudo.variables', 'Variables')}</summary>
-              <ul class="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                <For each={variables}>
-                  {([variable, label, fallback]) => (
-                    <li class="flex items-center gap-2">
-                      <code class="text-xs text-primary">{`{${variable}}`}</code>
-                      <span class="text-xs text-base-content/55">
-                        {t(`dashboard.server.status.${label}`, fallback)}
-                      </span>
-                    </li>
-                  )}
-                </For>
-              </ul>
-            </details>
+            <TemplateVariables
+              variables={variables()}
+              syntax="{variable}"
+              example={{ template: '{connectTime} - {name} ({ping})', result: '1h 2m 3s - John Doe (24)' }}
+              formatting={[
+                { token: '**text**', label: t('ui.template_variables.bold', 'Bold') },
+                { token: '`text`', label: t('ui.template_variables.inline_code', 'Inline code') },
+                { token: '__text__', label: t('ui.template_variables.underline', 'Underline') },
+                { token: '~~text~~', label: t('ui.template_variables.strikethrough', 'Strikethrough') },
+              ]}
+            />
           </SettingRow>
         </div>
       </Show>

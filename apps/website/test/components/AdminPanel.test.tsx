@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { cleanup, screen, within } from '@solidjs/testing-library'
+import { createSignal, Show } from 'solid-js'
 import { renderWithProviders } from '../testUtils.js'
 import AdminPanel from '../../src/components/AdminPanel.js'
 import { linkBadge } from '../../src/components/layout/menu/DashboardMenu.js'
+import { AutosaveFeedback } from '../../src/components/ui/AutosaveFeedback.js'
 
 afterEach(() => cleanup())
 
@@ -72,16 +74,93 @@ describe('components/AdminPanel.tsx', () => {
   })
 
   it('applies gap/padding classes when type is not "none"', () => {
-    const { container } = renderWithProviders(() => <AdminPanel title="t" description="d" />)
+    const { container } = renderWithProviders(() => (
+      <AdminPanel title="t" description="d">
+        <span>Settings</span>
+      </AdminPanel>
+    ))
     const childrenWrapper = container.querySelector('hr + div')
     expect(childrenWrapper).toHaveClass('gap-4', 'p-4')
   })
 
   it('omits gap/padding classes when type is "none"', () => {
-    const { container } = renderWithProviders(() => <AdminPanel title="t" description="d" type="none" />)
+    const { container } = renderWithProviders(() => (
+      <AdminPanel title="t" description="d" type="none">
+        <span>Settings</span>
+      </AdminPanel>
+    ))
     const childrenWrapper = container.querySelector('hr + div')
     expect(childrenWrapper).not.toHaveClass('gap-4')
     expect(childrenWrapper).not.toHaveClass('p-4')
+  })
+
+  it('omits the padded body and header divider when its children render nothing', () => {
+    const [visible, setVisible] = createSignal(false)
+    const { container } = renderWithProviders(() => (
+      <AdminPanel title="Conditional content" footer={<span>Footer content</span>}>
+        <Show when={visible()}>
+          <span>Body content</span>
+        </Show>
+        {false}
+        {undefined}
+      </AdminPanel>
+    ))
+    expect(container.querySelector('.dashboard-panel-body')).not.toBeInTheDocument()
+    expect(container.querySelector('.dashboard-panel-divider')).not.toBeInTheDocument()
+    expect(screen.getByText('Footer content').closest('.dashboard-panel-footer')).toBeInTheDocument()
+
+    setVisible(true)
+    expect(screen.getByText('Body content').closest('.dashboard-panel-body')).toHaveClass('p-4')
+    expect(container.querySelectorAll('.dashboard-panel-divider')).toHaveLength(1)
+
+    setVisible(false)
+    expect(container.querySelector('.dashboard-panel-body')).not.toBeInTheDocument()
+    expect(container.querySelector('.dashboard-panel-divider')).not.toBeInTheDocument()
+    expect(screen.getByText('Footer content')).toBeInTheDocument()
+  })
+
+  it('renders a footer only while autosave feedback has content and preserves the body', () => {
+    const initial = { queued: false, pending: false, error: undefined as string | undefined, success: false }
+    const [state, setState] = createSignal(initial)
+    const { container } = renderWithProviders(() => (
+      <AdminPanel
+        title="Autosaving settings"
+        footer={
+          <AutosaveFeedback
+            state={{
+              queued: () => state().queued,
+              pending: () => state().pending,
+              error: () => state().error,
+              success: () => state().success,
+              retry: async () => {},
+            }}
+          />
+        }
+      >
+        <input aria-label="Nickname format" value="{plyName}" />
+      </AdminPanel>
+    ))
+    const field = screen.getByRole('textbox', { name: 'Nickname format' })
+    expect(container.querySelector('.dashboard-panel-footer')).not.toBeInTheDocument()
+
+    setState({ ...initial, queued: true })
+    expect(screen.getByRole('status')).toHaveTextContent('Saving')
+    expect(screen.getByRole('status').closest('.dashboard-panel-footer')).toBeInTheDocument()
+
+    setState({ ...initial, pending: true })
+    expect(container.querySelector('.settings-autosave')).toHaveAttribute('aria-busy', 'true')
+
+    setState({ ...initial, error: 'Save failed' })
+    expect(screen.getByRole('alert')).toHaveTextContent('Save failed')
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+
+    setState({ ...initial, success: true })
+    expect(screen.getByRole('status')).toHaveTextContent('Saved')
+
+    setState(initial)
+    expect(container.querySelector('.dashboard-panel-footer')).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Nickname format' })).toBe(field)
+    expect(container.querySelectorAll('.dashboard-panel-divider')).toHaveLength(1)
   })
 
   it('supports shared header actions and footer without requiring a description', () => {

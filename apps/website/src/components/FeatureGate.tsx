@@ -1,4 +1,4 @@
-import { Show, type ParentComponent } from 'solid-js'
+import { children, Show, type ParentComponent } from 'solid-js'
 import type { CapabilityKey } from '@gmod/schema/server/AccessPolicySchema.js'
 import { useFeatureAccess, useAccess } from './AccessProvider.js'
 import { useI18n } from '../i18n.js'
@@ -26,8 +26,8 @@ export const FeatureGate: ParentComponent<{
   const blocked = () =>
     known() && access.snapshot()?.state === 'ready' && (!access.allowed() || (quota() !== null && used() >= quota()!))
   const needsUpgrade = () => blocked() && !access.snapshot()?.premium && props.capability !== 'bot.custom'
-  return (
-    <div class="flex min-w-0 flex-col gap-2">
+  const content = children(() => (
+    <>
       {props.children}
       <Show when={known() && props.showQuota !== false && access.allowed() && quota() !== null}>
         <span class="text-xs text-base-content/60">
@@ -69,7 +69,12 @@ export const FeatureGate: ParentComponent<{
           {t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')}
         </p>
       </Show>
-    </div>
+    </>
+  ))
+  return (
+    <Show when={content.toArray().some((value) => value != null && typeof value !== 'boolean' && value !== '')}>
+      <div class="flex min-w-0 flex-col gap-2">{content()}</div>
+    </Show>
   )
 }
 

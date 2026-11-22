@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
+import { cleanup, screen, within } from '@solidjs/testing-library'
 import { lazy, type Component } from 'solid-js'
 import { historyAt, renderWithProviders } from '../testUtils.js'
 import { App } from '../../src/app/App.js'
@@ -80,7 +80,14 @@ describe('app/App.tsx', () => {
       },
     )
     expect(screen.getByRole('link', { name: 'Gmod Integration' })).toBeInTheDocument()
-    expect(screen.queryByRole('navigation', { name: 'Main navigation' })).not.toBeInTheDocument()
+    const navigation = screen.getByRole('navigation', { name: 'Main navigation' })
+    for (const [name, href] of [
+      ['Documentation', '/docs'],
+      ['Invite the bot', '/invite'],
+      ['Premium', '/premium'],
+    ]) {
+      expect(within(navigation).getByRole('link', { name })).toHaveAttribute('href', href)
+    }
     expect(screen.queryByText('Services')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Language' })).toBeInTheDocument()
     expect(screen.getByRole('main')).toHaveTextContent('Dashboard content')

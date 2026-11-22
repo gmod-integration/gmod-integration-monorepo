@@ -22,6 +22,7 @@ import {
   Icon,
   SettingRow,
   AutosaveFeedback,
+  TemplateVariables,
 } from '../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
 import { createAutosave } from '../../../../hooks/createAutosave.js'
@@ -320,15 +321,36 @@ const ServerPseudo: Component = () => {
             />
           </div>
         </SettingRow>
-        <details class="settings-advanced">
-          <summary>{t('dashboard.server.pseudo.variables', 'Variables')}</summary>
-          <ul class="text-base-content/60 list-inside">
-            <li>{`{plyName} — ${t('dashboard.server.pseudo.playerName', 'Player Name')}`}</li>
-            <li>{`{plySteamID64} — ${t('dashboard.server.pseudo.playerSteamID64', 'Player SteamID64')}`}</li>
-            <li>{`{rolePrefix} — ${t('dashboard.server.pseudo.rolePrefix', 'Game group prefix')}`}</li>
-            <li>{`{roleName} — ${t('dashboard.server.pseudo.roleName', 'Game group display name')}`}</li>
-          </ul>
-        </details>
+        <TemplateVariables
+          syntax="{variable}"
+          variables={[
+            {
+              token: '{plyName}',
+              label: t('dashboard.server.pseudo.playerName', 'Player Name'),
+              format: t('ui.template_variables.text', 'Text'),
+              example: 'John Doe',
+            },
+            {
+              token: '{plySteamID64}',
+              label: t('dashboard.server.pseudo.playerSteamID64', 'Player SteamID64'),
+              format: t('ui.template_variables.text', 'Text'),
+              example: '76500000000000000',
+            },
+            {
+              token: '{rolePrefix}',
+              label: t('dashboard.server.pseudo.rolePrefix', 'Game group prefix'),
+              format: t('ui.template_variables.text', 'Text'),
+              example: 'A',
+            },
+            {
+              token: '{roleName}',
+              label: t('dashboard.server.pseudo.roleName', 'Game group display name'),
+              format: t('ui.template_variables.text', 'Text'),
+              example: 'Admin',
+            },
+          ]}
+          example={{ template: '[{rolePrefix}] {plyName}', result: '[A] John Doe' }}
+        />
         <FeatureGate capability="sync.nicknames.reverse" showQuota={false} />
         <SuspendedFeature
           capability="sync.nicknames.reverse"

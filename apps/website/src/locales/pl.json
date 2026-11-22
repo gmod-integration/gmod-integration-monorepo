@@ -699,7 +699,8 @@
         "delete_confirmation": "Voulez-vous vraiment supprimer ce bouton ?",
         "premium_limit": "Limité à 2 boutons pour les utilisateurs gratuits",
         "required_field": "Ce champ est requis",
-        "invalid_url": "Format URL non valide"
+        "invalid_url": "Format URL non valide",
+        "timeLastTeamChange": "Czas od ostatniej zmiany drużyny"
       },
       "importance": "Importance",
       "description": "Désignation des marchandises",
@@ -1260,7 +1261,24 @@
     "copy": "Kopiuj",
     "copied": "Skopiowano!",
     "copy_error": "Nie można skopiować. Spróbuj ponownie.",
-    "saving": "Zapisywanie…"
+    "saving": "Zapisywanie…",
+    "template_variables": {
+      "title": "Dostępne zmienne",
+      "syntax": "Składnia",
+      "format": "Format",
+      "example": "Przykład",
+      "template_example": "Przykład szablonu",
+      "copy": "Kopiuj {1}",
+      "text": "Tekst",
+      "number": "Liczba",
+      "duration": "Czas trwania (np. 1h 2m 3s)",
+      "raw": "Wartość surowa",
+      "formatting": "Obsługiwane formatowanie",
+      "bold": "Pogrubienie",
+      "inline_code": "Kod w wierszu",
+      "underline": "Podkreślenie",
+      "strikethrough": "Przekreślenie"
+    }
   },
   "settings": {
     "access": "Dostęp i weryfikacja",

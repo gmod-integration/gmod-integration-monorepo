@@ -1,4 +1,4 @@
-import { createUniqueId, Show, type Component, type JSX } from 'solid-js'
+import { children, createUniqueId, Show, type Component, type JSX } from 'solid-js'
 import { A } from '@solidjs/router'
 import type { linkBadge } from './layout/menu/DashboardMenu.js'
 import { useI18n } from '../i18n.js'
@@ -25,6 +25,10 @@ const AdminPanel: Component<AdminPanelProps> = (props) => {
   const { t } = useI18n()
   const access = useAccess()
   const headingId = createUniqueId()
+  const body = children(() => props.children)
+  const footer = children(() => props.footer)
+  const hasContent = (content: JSX.Element[]) =>
+    content.some((value) => value != null && typeof value !== 'boolean' && value !== '')
   return (
     <>
       <section
@@ -77,20 +81,21 @@ const AdminPanel: Component<AdminPanelProps> = (props) => {
           </Show>
         </div>
 
-        <hr class="dashboard-panel-divider border-base-200" />
-
-        <div
-          class="dashboard-panel-body flex flex-col min-w-0"
-          classList={{
-            'is-flush': props.type === 'none',
-            'gap-4': !props.type || props.type != 'none',
-            'p-4': !props.type || props.type != 'none',
-          }}
-        >
-          {props.children}
-        </div>
-        <Show when={props.footer}>
-          <div class="dashboard-panel-footer border-t border-base-200 p-4">{props.footer}</div>
+        <Show when={hasContent(body.toArray())}>
+          <hr class="dashboard-panel-divider border-base-200" />
+          <div
+            class="dashboard-panel-body flex flex-col min-w-0"
+            classList={{
+              'is-flush': props.type === 'none',
+              'gap-4': !props.type || props.type != 'none',
+              'p-4': !props.type || props.type != 'none',
+            }}
+          >
+            {body()}
+          </div>
+        </Show>
+        <Show when={hasContent(footer.toArray())}>
+          <div class="dashboard-panel-footer border-t border-base-200 p-4">{footer()}</div>
         </Show>
       </section>
     </>

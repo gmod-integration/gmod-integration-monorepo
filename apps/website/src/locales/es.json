@@ -699,7 +699,8 @@
         "delete_confirmation": "¿Seguro que quiere borrar este botón?",
         "premium_limit": "Limitado a 2 botones para usuarios gratuitos",
         "required_field": "Este campo es necesario",
-        "invalid_url": "Formato URL no válido"
+        "invalid_url": "Formato URL no válido",
+        "timeLastTeamChange": "Tiempo desde el último cambio de equipo"
       },
       "importance": "Importancia",
       "description": "Descripción",
@@ -1260,7 +1261,24 @@
     "copy": "Copiar",
     "copied": "¡Copiado!",
     "copy_error": "No se pudo copiar. Inténtalo de nuevo.",
-    "saving": "Guardando…"
+    "saving": "Guardando…",
+    "template_variables": {
+      "title": "Variables disponibles",
+      "syntax": "Sintaxis",
+      "format": "Formato",
+      "example": "Ejemplo",
+      "template_example": "Ejemplo de plantilla",
+      "copy": "Copiar {1}",
+      "text": "Texto",
+      "number": "Número",
+      "duration": "Duración (p. ej. 1h 2m 3s)",
+      "raw": "Valor sin formato",
+      "formatting": "Formato compatible",
+      "bold": "Negrita",
+      "inline_code": "Código en línea",
+      "underline": "Subrayado",
+      "strikethrough": "Tachado"
+    }
   },
   "settings": {
     "access": "Acceso y verificación",

@@ -699,7 +699,8 @@
         "delete_confirmation": "Voulez-vous vraiment supprimer ce bouton ?",
         "premium_limit": "Limité à 2 boutons pour les utilisateurs gratuits",
         "required_field": "Ce champ est requis",
-        "invalid_url": "Format URL non valide"
+        "invalid_url": "Format URL non valide",
+        "timeLastTeamChange": "Son takım değişikliğinden beri geçen süre"
       },
       "importance": "Importance",
       "description": "Désignation des marchandises",
@@ -1260,7 +1261,24 @@
     "copy": "Kopyala",
     "copied": "Kopyalandı!",
     "copy_error": "Kopyalanamadı. Lütfen tekrar deneyin.",
-    "saving": "Kaydediliyor…"
+    "saving": "Kaydediliyor…",
+    "template_variables": {
+      "title": "Kullanılabilir değişkenler",
+      "syntax": "Sözdizimi",
+      "format": "Biçim",
+      "example": "Örnek",
+      "template_example": "Şablon örneği",
+      "copy": "{1} kopyala",
+      "text": "Metin",
+      "number": "Sayı",
+      "duration": "Süre (ör. 1h 2m 3s)",
+      "raw": "Ham değer",
+      "formatting": "Desteklenen biçimlendirme",
+      "bold": "Kalın",
+      "inline_code": "Satır içi kod",
+      "underline": "Altı çizili",
+      "strikethrough": "Üstü çizili"
+    }
   },
   "settings": {
     "access": "Erişim ve doğrulama",

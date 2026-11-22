@@ -10,7 +10,14 @@ import { fetchAPI } from '../../../../../utils/api.js'
 import { useFeatureAccess } from '../../../../../components/AccessProvider.js'
 import { FeatureGate, SuspendedFeature } from '../../../../../components/FeatureGate.js'
 import { TextValue } from '../../../../../components/popup/TextValue.js'
-import { Button, FormActions, FormField, IconButton, TableState } from '../../../../../components/ui/index.js'
+import {
+  Button,
+  FormActions,
+  FormField,
+  IconButton,
+  TableState,
+  TemplateVariables,
+} from '../../../../../components/ui/index.js'
 import { createDraftForm } from '../../../../../hooks/createDraftForm.js'
 import ConfirmActionDialog from '../../../../../components/ConfirmActionDialog.js'
 import { closeDialog, showDialog } from '../../../../../utils/dialog.js'
@@ -159,6 +166,34 @@ export const ServerLogsTriggers: Component = () => {
     },
   })
   const editedTrigger = form.draft
+  const playerVariablePath = () =>
+    editedTrigger().log_type === 'dark_rp_picked_up_cheque' ? 'data.playerChequeTarget' : 'data.player'
+  const eventVariables = () => [
+    {
+      token: `{{${playerVariablePath()}.steamID64}}`,
+      label: t('dashboard.server.logs_trigger.steamID64', 'SteamID64'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: '76500000000000000',
+    },
+    {
+      token: `{{${playerVariablePath()}.name}}`,
+      label: t('dashboard.server.logs_trigger.name', 'Name'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: 'John Doe',
+    },
+    {
+      token: `{{${playerVariablePath()}.team.name}}`,
+      label: t('dashboard.server.logs_trigger.team', 'Team'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: 'Citizen',
+    },
+    {
+      token: '{{data.amount}}',
+      label: t('dashboard.server.logs_trigger.amount', 'Amount'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '1000',
+    },
+  ]
   const unavailable = () => logTriggers.loading || !!logTriggers.error || form.pending() || !featureAccess.allowed()
   function discard() {
     if (form.pending()) return
@@ -347,40 +382,7 @@ export const ServerLogsTriggers: Component = () => {
           </div>
           <div class="fieldset">
             <label class="label" for="log-trigger-message">
-              <span>
-                {t('dashboard.server.logs_trigger.message', 'Message')}{' '}
-                <details class="dropdown dropdown-top dropdown-right">
-                  <summary class="link">
-                    ({t('dashboard.server.logs_trigger.message_show_vars', 'Insert event values')})
-                  </summary>
-                  <div class="flex flex-col menu dropdown-content bg-base-100 rounded-box z-1 w-80 gap-2 p-2 shadow-2xl border border-base-200">
-                    {/*add a description for ply var: you can use custom var with {{data.ply.steamID64}} for example */}
-                    <p class="text-base-content/50">
-                      {t(
-                        'dashboard.server.logs_trigger.message_show_vars_description',
-                        'Insert event values with {{data.path.to.var}}. Available fields depend on the event; these player fields apply when the event includes a player.',
-                        ['{{data.path.to.var}}'],
-                      )}
-                      :
-                    </p>
-                    <ul class="flex flex-col text-sm text-base-content/50">
-                      <li>
-                        {'{{data.player.steamID64}}'} : {t('dashboard.server.logs_trigger.steamID64', 'SteamID64')}
-                      </li>
-                      <li>
-                        {'{{data.player.name}}'} : {t('dashboard.server.logs_trigger.name', 'Name')}
-                      </li>
-                      <li>
-                        {'{{data.player.team.name}}'} : {t('dashboard.server.logs_trigger.team', 'Team')}
-                      </li>
-                      <li>
-                        {'{{data.amount}}'} : {t('dashboard.server.logs_trigger.amount', 'Amount')}
-                      </li>
-                      <li>...</li>
-                    </ul>
-                  </div>
-                </details>
-              </span>
+              <span>{t('dashboard.server.logs_trigger.message', 'Message')}</span>
             </label>
             <textarea
               id="log-trigger-message"
@@ -404,6 +406,24 @@ export const ServerLogsTriggers: Component = () => {
                 {form.errors().message}
               </p>
             </Show>
+            <TemplateVariables
+              variables={eventVariables()}
+              syntax="{{data.path.to.var}}"
+              description={t(
+                'dashboard.server.logs_trigger.message_show_vars_description',
+                'Insert event values with {{data.path.to.var}}. Available fields depend on the event; these player fields apply when the event includes a player.',
+              )}
+              example={{
+                template: `{{${playerVariablePath()}.name}} — {{data.amount}}`,
+                result: 'John Doe — 1000',
+              }}
+              formatting={[
+                { token: '**text**', label: t('ui.template_variables.bold', 'Bold') },
+                { token: '`text`', label: t('ui.template_variables.inline_code', 'Inline code') },
+                { token: '__text__', label: t('ui.template_variables.underline', 'Underline') },
+                { token: '~~text~~', label: t('ui.template_variables.strikethrough', 'Strikethrough') },
+              ]}
+            />
           </div>
         </Show>
         <FeatureGate
