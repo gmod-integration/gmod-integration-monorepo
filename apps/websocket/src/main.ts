@@ -26,6 +26,7 @@ import { lastGmodIntegrationTag, versionComparator } from '@gmod/core/utils/tool
 import { ADDON_MAX_FRAME_BYTES, createAddonGateway } from './addonGateway.js'
 import { connection } from '@gmod/infra-bullmq'
 import { wsSendToServerQueue, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js'
+import { createServerPresence, isServerPresent } from './serverPresence.js'
 import { acceptAddonCommandResult } from '@gmod/infra-websocket/addonCommands.js'
 
 interface wsClientClient {
@@ -45,6 +46,7 @@ interface wsClientClient {
 interface wsClientServer {
   id: string
   ws: any
+  presence: ReturnType<typeof createServerPresence>
 }
 
 const clients = {
@@ -63,6 +65,7 @@ type VerifiedHandshake =
 const verifiedHandshakes = new WeakMap<object, VerifiedHandshake>()
 const socketStops = new Map<any, () => void>()
 const closedSockets = new WeakSet<object>()
+const pendingPresenceClosures = new Set<Promise<void>>()
 const PERMISSION_RECHECK_MS = 30_000
 
 let inShutdown = false
@@ -70,6 +73,15 @@ let wss: WebSocketServer | undefined
 let wsSendToServerSubscriber: ReturnType<typeof redis.duplicate> | undefined
 let wsSendToServerWorker: Worker | undefined
 let wsSendToAllClientsOfServerWorker: Worker | undefined
+
+function closeServerPresence(server: wsClientServer) {
+  const closing = server.presence.close().catch(() => {
+    gmLog('websocket', 'Server presence cleanup temporarily unavailable', true)
+  })
+  pendingPresenceClosures.add(closing)
+  void closing.then(() => pendingPresenceClosures.delete(closing))
+  return closing
+}
 
 function getWsSendToServerAckKey(requestId: string) {
   return `${WS_SEND_TO_SERVER_ACK_PREFIX}${requestId}`
@@ -309,7 +321,12 @@ export async function gracefulShutdown() {
     clearTimeout(client.expiryTimer)
     client.ws.close(1001, 'Service restarting')
   }
-  for (const server of clients.server) server.ws.close(1001, 'Service restarting')
+  for (const server of clients.server) {
+    server.ws.close(1001, 'Service restarting')
+    void closeServerPresence(server)
+  }
+  clients.server = []
+  await Promise.all(pendingPresenceClosures)
 
   await wsSendToServerWorker?.close()
   await wsSendToAllClientsOfServerWorker?.close()
@@ -451,6 +468,10 @@ export async function main() {
 
   wss.on('connection', async function connectionWS(ws, req) {
     ws.once('close', () => closedSockets.add(ws))
+    if (inShutdown) {
+      ws.close(1001, 'Service restarting')
+      return
+    }
     const verified = verifiedHandshakes.get(req)
     verifiedHandshakes.delete(req)
     if (!verified) {
@@ -462,6 +483,7 @@ export async function main() {
       const id = verified.serverID
       const existingClient = clients.server.find((client) => client.id === id)
       if (existingClient) {
+        void closeServerPresence(existingClient)
         try {
           existingClient.ws.close()
         } catch {
@@ -470,11 +492,22 @@ export async function main() {
         clients.server = clients.server.filter((client) => client.id !== id)
       }
 
-      clients.server.push({ id: id.toString(), ws })
+      const client: wsClientServer = { id, ws, presence: createServerPresence(id, randomUUID()) }
+      clients.server.push(client)
       gmLog('websocket', 'Server connected: ' + id)
+
+      const refreshPresence = () => {
+        void client.presence.refresh().catch(() => {
+          gmLog('websocket', 'Server presence renewal temporarily unavailable', true)
+          ws.close(1013, 'Presence unavailable')
+        })
+      }
+      ws.on('pong', refreshPresence)
 
       ws.on('close', () => {
         clients.server = clients.server.filter((client) => client.ws !== ws)
+        ws.removeListener('pong', refreshPresence)
+        void closeServerPresence(client)
         gmLog('websocket', 'Server disconnected: ' + id)
       })
 
@@ -508,6 +541,16 @@ export async function main() {
       })
       ws.on('message', (message: Buffer, binary: boolean) => addon.receive(message, binary))
       ws.once('close', () => addon.close())
+      try {
+        await client.presence.refresh()
+      } catch {
+        clients.server = clients.server.filter((candidate) => candidate !== client)
+        await closeServerPresence(client)
+        ws.close(1013, 'Presence unavailable')
+        return
+      }
+      // A close, replacement or shutdown may have happened while Redis was registering the lease.
+      if (!clients.server.includes(client)) return
       addon.ready()
     } else {
       const session = verified.session
@@ -553,9 +596,10 @@ export async function main() {
                 await wsSendToClient(client, { action: 'error', error: 'forbidden', serverID })
                 return
               }
-              const [version, lastRequest] = await Promise.all([
+              const [version, lastRequest, connected] = await Promise.all([
                 redis.get(`server:${serverID}:version`),
                 redis.get(`server:${serverID}:last_request`),
+                isServerPresent(serverID),
               ])
               await wsSendToClient(client, {
                 action: 'server_status',
@@ -563,7 +607,7 @@ export async function main() {
                 version,
                 versionComparator: version ? versionComparator(lastGmodIntegrationTag, version) : 1,
                 lastRequest: lastRequest ? new Date(lastRequest) : new Date(Date.now() - 120_000),
-                isWebSocketConnected: !!clients.server.find((server) => server.id === serverID),
+                isWebSocketConnected: connected,
               })
             }
           } catch {

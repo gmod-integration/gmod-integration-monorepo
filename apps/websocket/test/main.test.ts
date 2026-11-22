@@ -78,6 +78,28 @@ vi.mock('@gmod/infra-prisma', () => ({
 }))
 
 const subscriberHandlers: Record<string, (...args: any[]) => any> = {}
+const presences: any[] = []
+function makePresence(serverID: string, connectionID: string) {
+  const presence = {
+    serverID,
+    connectionID,
+    closed: false,
+    refresh: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn(async () => {
+      presence.closed = true
+    }),
+  }
+  presences.push(presence)
+  return presence
+}
+const createServerPresenceMock = vi.fn(makePresence)
+const isServerPresentMock = vi.fn(async (serverID: string) =>
+  presences.some((presence) => presence.serverID === serverID && !presence.closed),
+)
+vi.mock('../src/serverPresence.js', () => ({
+  createServerPresence: createServerPresenceMock,
+  isServerPresent: isServerPresentMock,
+}))
 const redisSubscriberMock = {
   on: vi.fn((event: string, cb: any) => {
     subscriberHandlers[event] = cb
@@ -188,9 +210,17 @@ describe('apps/websocket main()', () => {
     getUserGuildsWithPermsForPanelMock.mockReset().mockResolvedValue([{ id: 'g1' }])
     getServersFromDiscordGuildIDMock.mockReset().mockResolvedValue([{ id: 'srv-status' }, { id: 'srv-bulk' }])
     isErasureBlockedMock.mockReset().mockResolvedValue(false)
+    createServerPresenceMock.mockReset().mockImplementation(makePresence)
+    isServerPresentMock
+      .mockReset()
+      .mockImplementation(async (serverID) =>
+        presences.some((presence) => presence.serverID === serverID && !presence.closed),
+      )
   })
-  afterEach(() => {
+  afterEach(async () => {
     for (const socket of openedSockets.splice(0)) socket.emit('close')
+    await Promise.resolve()
+    presences.length = 0
     sessions.clear()
     tickets.clear()
     vi.useRealTimers()
@@ -335,6 +365,8 @@ describe('apps/websocket main()', () => {
       const ws2 = makeFakeWs()
       await connectServer('srv-a', ws2)
       expect(ws1.close).toHaveBeenCalled()
+      expect(presences[0].close).toHaveBeenCalled()
+      expect(presences[1].close).not.toHaveBeenCalled()
     })
 
     it('swallows an error thrown while closing the replaced socket', async () => {
@@ -398,6 +430,47 @@ describe('apps/websocket main()', () => {
       expect(ws.send.mock.calls.map(([payload]: [string]) => JSON.parse(payload)).at(-1)).toMatchObject({ status: 200 })
       expect(saveIGSettings).toHaveBeenCalledWith({ foo: 'bar' })
     })
+
+    it('closes a server whose initial presence registration fails', async () => {
+      createServerPresenceMock.mockImplementationOnce((id, connectionID) => {
+        const presence = makePresence(id, connectionID)
+        presence.refresh.mockRejectedValueOnce(new Error('Redis unavailable'))
+        return presence
+      })
+      const ws = await connectServer('presence-registration-error')
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(ws.close).toHaveBeenCalledWith(1013, 'Presence unavailable')
+      expect(presences[0].close).toHaveBeenCalled()
+      expect(ws.listenerCount('pong')).toBe(1)
+    })
+
+    it('does not start a heartbeat if the server closes during presence registration', async () => {
+      let finish!: () => void
+      createServerPresenceMock.mockImplementationOnce((id, connectionID) => {
+        const presence = makePresence(id, connectionID)
+        presence.refresh.mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              finish = resolve
+            }),
+        )
+        return presence
+      })
+      const ws = await connectServer('presence-close-during-registration')
+      ws.emit('close')
+      finish()
+      await Promise.resolve()
+      expect(presences[0].close).toHaveBeenCalled()
+      expect(ws.listenerCount('pong')).toBe(0)
+    })
+
+    it('logs a presence cleanup failure while keeping other connections available', async () => {
+      const ws = await connectServer('presence-cleanup-error')
+      presences[0].close.mockRejectedValueOnce(new Error('Redis unavailable'))
+      ws.emit('close')
+      await Promise.resolve()
+      expect(gmLogMock).toHaveBeenCalledWith('websocket', 'Server presence cleanup temporarily unavailable', true)
+    })
   })
 
   describe('connection heartbeat', () => {
@@ -408,6 +481,7 @@ describe('apps/websocket main()', () => {
       vi.advanceTimersByTime(30_000)
       expect(ws.ping).toHaveBeenCalledTimes(1)
       ws.emit('pong')
+      expect(presences[0].refresh).toHaveBeenCalledTimes(2)
       vi.advanceTimersByTime(30_000)
       expect(ws.ping).toHaveBeenCalledTimes(2)
       ws.emit('close')
@@ -445,6 +519,14 @@ describe('apps/websocket main()', () => {
       vi.advanceTimersByTime(90_000)
       expect(ws.ping).toHaveBeenCalledTimes(1)
       expect(ws.close).toHaveBeenCalled()
+    })
+    it('closes a server when its presence can no longer be renewed', async () => {
+      const ws = await connectServer('presence-renewal-error')
+      presences[0].refresh.mockRejectedValueOnce(new Error('Redis unavailable'))
+      ws.emit('pong')
+      await Promise.resolve()
+      expect(ws.close).toHaveBeenCalledWith(1013, 'Presence unavailable')
+      expect(gmLogMock).toHaveBeenCalledWith('websocket', 'Server presence renewal temporarily unavailable', true)
     })
   })
 
@@ -708,6 +790,14 @@ describe('apps/websocket main()', () => {
         versionComparator: 1,
         isWebSocketConnected: false,
       })
+    })
+    it('reports an addon connected to another replica without requiring a local socket', async () => {
+      const ws = await connectClient('status-remote-addon')
+      isServerPresentMock.mockResolvedValueOnce(true)
+      ws.emit('message', JSON.stringify({ action: 'server_status', data: { serverID: 'srv-status' } }))
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(isServerPresentMock).toHaveBeenCalledWith('srv-status')
+      expect(JSON.parse(ws.send.mock.calls[0][0]).isWebSocketConnected).toBe(true)
     })
     it('revalidates the session again after reading status and suppresses a response revoked in flight', async () => {
       const ws = await connectClient('revoked-during-status')
@@ -1039,7 +1129,21 @@ describe('apps/websocket main()', () => {
       redisSubscriberMock.unsubscribe.mockRejectedValueOnce(new Error('unsubscribe boom'))
       redisSubscriberMock.quit.mockRejectedValueOnce(new Error('quit boom'))
       try {
-        await gracefulShutdown()
+        let finishPresenceCleanup!: () => void
+        presences[0].close.mockImplementationOnce(
+          () =>
+            new Promise<void>((resolve) => {
+              finishPresenceCleanup = () => {
+                presences[0].closed = true
+                resolve()
+              }
+            }),
+        )
+        const shutdown = gracefulShutdown()
+        await Promise.resolve()
+        expect(gracefulShutdownRedisMock).not.toHaveBeenCalled()
+        finishPresenceCleanup()
+        await shutdown
         expect(capturedWorkers['wsSendToServer'].close).toHaveBeenCalled()
         expect(capturedWorkers['wsSendToAllClientsOfServer'].close).toHaveBeenCalled()
         expect(redisSubscriberMock.unsubscribe).toHaveBeenCalled()
@@ -1049,6 +1153,14 @@ describe('apps/websocket main()', () => {
         expect(exitSpy).toHaveBeenCalledWith(0)
         expect(browser.close).toHaveBeenCalledWith(1001, 'Service restarting')
         expect(addon.close).toHaveBeenCalledWith(1001, 'Service restarting')
+        expect(presences[0].close).toHaveBeenCalled()
+        expect(presences[0].closed).toBe(true)
+        expect(presences[0].close.mock.invocationCallOrder[0]).toBeLessThan(
+          gracefulShutdownRedisMock.mock.invocationCallOrder[0],
+        )
+
+        const late = await connectServer('late-during-shutdown')
+        expect(late.close).toHaveBeenCalledWith(1001, 'Service restarting')
 
         capturedWorkers['wsSendToServer'].close.mockClear()
         await gracefulShutdown()
