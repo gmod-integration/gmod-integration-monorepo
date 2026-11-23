@@ -32,6 +32,37 @@ export const ServerStatisticsQuerySchema = z
   })
 
 export const ServerStatisticsSessionDurationKeySchema = z.enum(['under15m', '15to60m', '1to3h', 'over3h'])
+export const ServerStatisticsCountriesSchema = z
+  .object({
+    available: z.boolean(),
+    totalPlayers: count,
+    items: z
+      .array(
+        z
+          .object({
+            country: z
+              .string()
+              .regex(/^[A-Z]{2}$/)
+              .nullable(),
+            players: count.min(1),
+          })
+          .strict(),
+      )
+      .max(300),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      value.totalPlayers !== value.items.reduce((total, item) => total + item.players, 0) ||
+      new Set(value.items.map((item) => item.country)).size !== value.items.length ||
+      (!value.available && value.totalPlayers !== 0)
+    )
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Country counts must describe one complete distribution.',
+      })
+  })
+
 export const ServerStatisticsResponseSchema = z
   .object({
     period: z
@@ -71,6 +102,7 @@ export const ServerStatisticsResponseSchema = z
     topPlayers: z
       .array(z.object({ steamID64: z.string(), name: z.string(), playedSeconds: count, sessions: count }).strict())
       .max(10),
+    countries: ServerStatisticsCountriesSchema,
     live: z
       .object({
         updatedAt: instant.nullable(),

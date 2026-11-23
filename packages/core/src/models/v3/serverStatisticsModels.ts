@@ -5,6 +5,7 @@ import {
   ServerStatisticsResponseSchema,
   type ServerStatisticsResponse,
 } from '@gmod/schema/server/ServerStatisticsSchema.js'
+import { getServerCountryStatistics } from './serverCountryStatistics.js'
 
 const HOUR = 3_600_000
 const DAY = 24 * HOUR
@@ -57,7 +58,7 @@ function branchesFromSnapshot(serialized: string | null): ServerStatisticsRespon
     .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
 }
 
-/** Aggregates retained records in SQL. Session metrics belong to the interval in which the session ended. */
+/** Aggregates retained records. Session metrics belong to the interval in which the session ended. */
 export async function processGetServerStatistics(
   serverID: string,
   rawQuery: unknown,
@@ -103,6 +104,7 @@ export async function processGetServerStatistics(
     durationRows,
     topRows,
     snapshot,
+    countries,
   ] = await Promise.all([
     prisma.gm_server_stat.count({ where: { server_id: serverID } }),
     prisma.$queryRaw<PopulationRow[]>(Prisma.sql`
@@ -161,6 +163,7 @@ export async function processGetServerStatistics(
       where: { id: serverID },
       select: { updatedAt: true, players: true, maxPlayers: true, playersList: true },
     }),
+    getServerCountryStatistics(serverID, from, to),
   ])
   const populationByTime = new Map(populationRows.map((row) => [row.at, row]))
   const arrivalsByTime = new Map(arrivalRows.map((row) => [row.at, row]))
@@ -230,6 +233,7 @@ export async function processGetServerStatistics(
         playedSeconds: numeric(row.playedSeconds),
         sessions: numeric(row.sessions),
       })),
+      countries,
       live: {
         updatedAt: snapshot?.updatedAt.toISOString() ?? null,
         online,

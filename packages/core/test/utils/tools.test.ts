@@ -90,6 +90,18 @@ describe('tools', () => {
     it('returns the address unchanged when there is no colon', () => {
       expect(ipGetIP('127.0.0.1')).toBe('127.0.0.1')
     })
+
+    it('preserves IPv6 and removes only an explicit bracketed port', () => {
+      expect(ipGetIP('2001:4860:4860::8888')).toBe('2001:4860:4860::8888')
+      expect(ipGetIP('[2001:4860:4860::8888]:27015')).toBe('2001:4860:4860::8888')
+      expect(ipGetIP('[::1]')).toBe('::1')
+      expect(ipGetIP('::ffff:8.8.8.8')).toBe('::ffff:8.8.8.8')
+    })
+
+    it('keeps invalid addresses intact so they remain unknown to country lookup', () => {
+      for (const address of ['Unknown', '[invalid]:27015', '999.0.0.1:27015', 'invalid:27015'])
+        expect(ipGetIP(address)).toBe(address)
+    })
   })
 
   describe('addNotification', () => {

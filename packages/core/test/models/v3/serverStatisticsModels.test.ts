@@ -7,6 +7,10 @@ const prismaMock = vi.hoisted(() => ({
   gm_server_status: { findUnique: vi.fn() },
 }))
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
+const countryStatisticsMock = vi.hoisted(() => vi.fn())
+vi.mock('../../../src/models/v3/serverCountryStatistics.js', () => ({
+  getServerCountryStatistics: countryStatisticsMock,
+}))
 const { processGetServerStatistics } = await import('../../../src/models/v3/serverStatisticsModels.js')
 const now = new Date('2026-11-23T12:00:00.000Z')
 const DAY = 86_400_000
@@ -38,6 +42,7 @@ beforeEach(() => {
   prismaMock.$queryRaw.mockReset()
   prismaMock.gm_server_stat.count.mockReset().mockResolvedValue(0)
   prismaMock.gm_server_status.findUnique.mockReset().mockResolvedValue(null)
+  countryStatisticsMock.mockReset().mockResolvedValue({ available: true, totalPlayers: 0, items: [] })
 })
 
 describe('server statistics', () => {
@@ -61,6 +66,7 @@ describe('server statistics', () => {
     expect(prismaMock.$queryRaw).not.toHaveBeenCalled()
     expect(prismaMock.gm_server_stat.count).not.toHaveBeenCalled()
     expect(prismaMock.gm_server_status.findUnique).not.toHaveBeenCalled()
+    expect(countryStatisticsMock).not.toHaveBeenCalled()
   })
 
   it('fills empty UTC intervals with unknown population and zero completed activity', async () => {
@@ -97,10 +103,19 @@ describe('server statistics', () => {
     expect(body.heatmap[167]).toEqual({ day: 6, hour: 23, average: null, samples: 0 })
     expect(body.sessionDurations.map((row) => row.count)).toEqual([0, 0, 0, 0])
     expect(body.live).toEqual({ updatedAt: null, online: false, players: 0, maxPlayers: 0, branches: [] })
+    expect(body.countries).toEqual({ available: true, totalPlayers: 0, items: [] })
   })
 
   it('combines bounded SQL aggregates, weights averages by observations and keeps missing data distinct from zero', async () => {
     prismaMock.gm_server_stat.count.mockResolvedValue(100)
+    countryStatisticsMock.mockResolvedValue({
+      available: true,
+      totalPlayers: 3,
+      items: [
+        { country: 'FR', players: 2 },
+        { country: null, players: 1 },
+      ],
+    })
     aggregates({
       population: [
         { at: '2026-11-22T00:00:00.000Z', average: { toString: () => '12.5' }, peak: 15, samples: 2n },
@@ -147,6 +162,14 @@ describe('server statistics', () => {
     expect(body.topPlayers).toEqual([
       { steamID64: '76561198000000001', name: 'Player', playedSeconds: 3600, sessions: 2 },
     ])
+    expect(body.countries).toEqual({
+      available: true,
+      totalPlayers: 3,
+      items: [
+        { country: 'FR', players: 2 },
+        { country: null, players: 1 },
+      ],
+    })
     expect(() => JSON.stringify(body)).not.toThrow()
   })
 
@@ -178,6 +201,18 @@ describe('server statistics', () => {
     expect(queries[5].sql).toContain('time >= 10800')
     expect(queries[6].sql).toContain('LIMIT 10')
     expect(prismaMock.gm_server_stat.count).toHaveBeenCalledWith({ where: { server_id: serverID } })
+    expect(countryStatisticsMock).toHaveBeenCalledWith(serverID, from, now)
+  })
+
+  it('preserves other statistics when the country log store is unavailable', async () => {
+    aggregates()
+    countryStatisticsMock.mockResolvedValue({ available: false, totalPlayers: 0, items: [] })
+    prismaMock.gm_server_stat.count.mockResolvedValue(42)
+    const result = await processGetServerStatistics('server', {}, now)
+    expect(result.status).toBe(200)
+    const body = ServerStatisticsResponseSchema.parse(result.body)
+    expect(body.summary.registeredPlayers).toBe(42)
+    expect(body.countries).toEqual({ available: false, totalPlayers: 0, items: [] })
   })
 
   it('normalizes offset dates, clamps a small browser clock drift and supports the 90-day custom limit', async () => {

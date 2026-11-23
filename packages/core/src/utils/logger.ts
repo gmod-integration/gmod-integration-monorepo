@@ -12,6 +12,7 @@ import { resolveGuildPreferredLocale } from './guildLocaleCache.js'
 import { enqueueDiscordGuildSendLogMessage } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
+import { PlayerSteamID64Schema } from '@gmod/schema/user/PlayerProfileSchema.js'
 
 export enum LogLevel {
   MINIMAL = 'minimal',
@@ -314,7 +315,10 @@ export async function logServer(server: Server, type: string, data?: any) {
     //
   }
 
-  const playerInvolvedSteamID64: any = []
+  const connectingPlayer = type === 'player_connect' ? PlayerSteamID64Schema.safeParse(data.steamID64) : null
+  const connectingSteamID64 = connectingPlayer?.success ? connectingPlayer.data : undefined
+  // Keep the explicit joining identity even when a newer Steam ID is outside the legacy scan prefix.
+  const playerInvolvedSteamID64: string[] = connectingSteamID64 ? [connectingSteamID64] : []
   const dataString = JSON.stringify(data)
   const regex = /7656119\d{10}/g
   let match
@@ -334,6 +338,7 @@ export async function logServer(server: Server, type: string, data?: any) {
 
   const dscList = []
   if (type === 'player_connect') {
+    dataToSave.steamID64 = connectingSteamID64 ?? null
     const name = data.name || 'Unknown'
     dataToSave.name = name
     const address = ipGetIP(data.address || 'Unknown')

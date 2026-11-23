@@ -16,6 +16,7 @@
     "@gmod/domain-server": "workspace:*",
     "@gmod/domain-user": "workspace:*",
     "@gmod/infra-bullmq": "workspace:*",
+    "@gmod/infra-geoip": "workspace:*",
     "@gmod/infra-minio": "workspace:*",
     "@gmod/infra-mongo": "workspace:*",
     "@gmod/infra-prisma": "workspace:*",

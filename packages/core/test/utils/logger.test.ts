@@ -214,6 +214,50 @@ describe('logger', () => {
       )
     })
 
+    it('persists the explicit joining Steam ID even when a name contains an earlier unrelated ID', async () => {
+      const joiningID = '76561198000000001'
+      const otherID = '76561198000000099'
+      // The WebSocket transport appends steamID64 after the body, so the name is scanned first.
+      const body = { name: `Player ${otherID}`, address: '8.8.8.8:27015', steamID64: joiningID }
+      expect(JSON.stringify(body).indexOf(otherID)).toBeLessThan(JSON.stringify(body).indexOf(joiningID))
+      await logServer(makeServer(), 'player_connect', body)
+      expect(addLogMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ steamID64: joiningID, name: body.name }),
+          playerInvolvedSteamID64: [joiningID, otherID],
+        }),
+      )
+    })
+
+    it('retains newer explicit Steam IDs outside the legacy scan prefix for erasure and attribution', async () => {
+      const steamID64 = '76561200000000000'
+      await logServer(makeServer(), 'player_connect', { name: 'New player', steamID64 })
+      expect(isErasureBlockedMock).toHaveBeenCalledWith(undefined, steamID64)
+      expect(addLogMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ steamID64 }),
+          playerInvolvedSteamID64: [steamID64],
+        }),
+      )
+    })
+
+    it('blocks a newer joining Steam ID when its erasure guard is active', async () => {
+      const steamID64 = '76561200000000000'
+      isErasureBlockedMock.mockImplementation(async (_discordID, id) => id === steamID64)
+      await logServer(makeServer(), 'player_connect', { name: 'Erased player', steamID64 })
+      expect(addLogMock).not.toHaveBeenCalled()
+      expect(wsAddMock).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
+    it('does not infer a joining identity from the name when the explicit ID is invalid', async () => {
+      await logServer(makeServer(), 'player_connect', {
+        name: 'Player 76561198000000099',
+        steamID64: 'invalid',
+      })
+      expect(addLogMock.mock.calls[0][0].data.steamID64).toBeNull()
+    })
+
     it('pushes a wsSendToAllClientsOfServer update after saving the log', async () => {
       const server = makeServer()
       await logServer(server, 'server_start')

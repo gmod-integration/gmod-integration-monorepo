@@ -167,11 +167,22 @@ distribution, median duration, active players and the top-player list cover sess
 the selected interval, attributed to their end time. They exclude sessions still in progress.
 The registered-player total is explicitly all-time.
 
+Player countries count distinct players with a retained connection event on this server in the
+selected interval, using each player's latest connection in that interval. This population differs
+from completed-session players: connections are counted even if the session is still running.
+MongoDB groups connections by player and then address; the API resolves those addresses locally
+through `@gmod/infra-geoip` and returns only country totals. Missing, private and invalid addresses
+remain in the unknown category and percentage denominator. Logs that have been erased or are no
+longer retained are excluded. New connection logs store the joining player's explicit Steam ID;
+legacy logs require one unambiguous subject, since names may contain unrelated Steam IDs. VPNs/proxies
+and database age affect these estimates. A bounded MongoDB failure marks only the country panel
+unavailable, preserving the independently stored SQL statistics.
+
 The client-branch distribution describes only the latest connected-player snapshot, independent of
 the selected historical period. Snapshots older than five minutes are shown as unavailable for live
 statistics. Graphs provide readable exact-value tables and explicit loading, error and empty states.
 The shared HTTP schemas are in `@gmod/schema/server/ServerStatisticsSchema.js`; the core model
-aggregates the data in SQL rather than loading entire histories in the API process.
+aggregates the data in SQL and MongoDB rather than loading entire histories in the API process.
 MariaDB connections explicitly use UTC, matching Prisma's timestamp serialization and the date
 buckets. The server/date indexes for arrivals and completed sessions ship in the
 `20261123140000_server_statistics_indexes` migration.

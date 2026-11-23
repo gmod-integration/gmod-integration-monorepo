@@ -48,6 +48,17 @@ const fixture = (endpoint = '', empty = false): ServerStatisticsResponse => {
       { key: 'over3h', count: 0 },
     ],
     topPlayers: empty ? [] : [{ steamID64: '76561198000000001', name: 'Alice', playedSeconds: 5400, sessions: 2 }],
+    countries: {
+      available: true,
+      totalPlayers: empty ? 0 : 6,
+      items: empty
+        ? []
+        : [
+            { country: null, players: 3 },
+            { country: 'FR', players: 2 },
+            { country: 'US', players: 1 },
+          ],
+    },
     live: {
       updatedAt: empty ? null : new Date().toISOString(),
       online: !empty,
@@ -123,6 +134,40 @@ describe('server statistics', () => {
     await screen.findByText('Alice')
   })
 
+  it('shows localized country names and percentages including players with unknown countries', async () => {
+    renderPage()
+    const countries = await screen.findByRole('region', { name: 'Player countries' })
+    expect(within(countries).getByText('Players with a recorded connection: 6')).toBeInTheDocument()
+    expect(within(countries).getByRole('img', { name: 'France: 2 (33.3%)' })).toBeInTheDocument()
+    expect(within(countries).getByRole('img', { name: 'United States: 1 (16.7%)' })).toBeInTheDocument()
+    expect(within(countries).getByRole('img', { name: 'Unknown country: 3 (50%)' })).toBeInTheDocument()
+    expect(within(countries).getByRole('link', { name: 'MaxMind' })).toHaveAttribute('href', 'https://www.maxmind.com')
+    await fireEvent.click(within(countries).getByText('View chart data'))
+    expect(within(countries).getByRole('table', { name: 'Player countries' })).toBeInTheDocument()
+    expect(within(countries).getByRole('row', { name: 'Unknown country 3 (50%)' })).toBeInTheDocument()
+  })
+
+  it('keeps unavailable country data distinct from no connections while showing other statistics', async () => {
+    const data = fixture()
+    data.countries = { available: false, totalPlayers: 0, items: [] }
+    vi.mocked(fetchAPI).mockResolvedValue(ok(data))
+    renderPage()
+    const countries = await screen.findByRole('region', { name: 'Player countries' })
+    expect(within(countries).getByText('Player countries are temporarily unavailable.')).toBeInTheDocument()
+    expect(within(countries).queryByText('No recorded player connections for this period.')).not.toBeInTheDocument()
+    expect(within(countries).queryByText(/Players with a recorded connection/)).not.toBeInTheDocument()
+    expect(screen.getByText('Alice')).toBeInTheDocument()
+  })
+
+  it('counts recorded connections as activity even when there are no completed sessions or samples', async () => {
+    const data = fixture('', true)
+    data.countries = { available: true, totalPlayers: 1, items: [{ country: 'FR', players: 1 }] }
+    vi.mocked(fetchAPI).mockResolvedValue(ok(data))
+    renderPage()
+    await screen.findByRole('img', { name: 'France: 1 (100%)' })
+    expect(screen.queryByText(/No recorded activity for this period/)).not.toBeInTheDocument()
+  })
+
   it('blocks invalid custom ranges without presenting previous data under new dates', async () => {
     renderPage()
     await screen.findByText('Alice')
@@ -181,6 +226,11 @@ describe('server statistics', () => {
     expect(screen.getByRole('heading', { name: 'Statistiques du serveur' })).toBeInTheDocument()
     expect(screen.getByText('8 / 32 joueurs')).toBeInTheDocument()
     expect(screen.getByText(/Dernier relevé :/)).toHaveTextContent('UTC')
+    const countries = screen.getByRole('region', { name: 'Pays des joueurs' })
+    const percent = (1 / 6).toLocaleString('fr', { style: 'percent', maximumFractionDigits: 1 })
+    expect(within(countries).getByRole('img', { name: `États-Unis: 1 (${percent})` })).toBeInTheDocument()
+    expect(within(countries).getAllByText('Pays inconnu').length).toBeGreaterThan(0)
+    expect(within(countries).getByText('Joueurs avec une connexion enregistrée : 6')).toBeInTheDocument()
     expect(container.textContent).toContain('66,7')
     expect(container.textContent).not.toMatch(/\{[12]\}/)
     await fireEvent.change(screen.getByRole('combobox', { name: 'Période' }), { target: { value: 'custom' } })
@@ -195,6 +245,9 @@ describe('server statistics', () => {
     expect(screen.getByText('No server snapshot')).toBeInTheDocument()
     expect(screen.queryByRole('img', { name: 'Player population' })).not.toBeInTheDocument()
     expect(screen.queryByText('Current player branches')).not.toBeInTheDocument()
+    const countries = screen.getByRole('region', { name: 'Player countries' })
+    expect(within(countries).getByText('No recorded player connections for this period.')).toBeInTheDocument()
+    expect(within(countries).queryByRole('img')).not.toBeInTheDocument()
     expect(container.textContent).not.toMatch(/NaN|Infinity/)
   })
 

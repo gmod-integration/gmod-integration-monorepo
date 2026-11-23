@@ -73,6 +73,7 @@ Nothing in `apps/*` should contain business logic that another app also needs â€
 | `infra-websocket`   | BullMQ queues used to push messages to the `websocket` app from other apps.                                                  | [docs/packages/infra-websocket.md](./packages/infra-websocket.md)     |
 | `infra-minio`       | S3-compatible object storage (avatars, screenshots, GDPR export archives).                                                   | [docs/packages/infra-minio.md](./packages/infra-minio.md)             |
 | `infra-steam`       | Steam Web API client (user summaries, avatars).                                                                              | [docs/packages/infra-steam.md](./packages/infra-steam.md)             |
+| `infra-geoip`       | Offline country estimates for game-player connection addresses.                                                              | [docs/packages/infra-geoip.md](./packages/infra-geoip.md)             |
 | `locales`           | Raw translation JSON files consumed by `core`'s localization utilities and the website.                                      | [docs/packages/locales.md](./packages/locales.md)                     |
 
 ### `submodules/*` â€” the actual Garry's Mod addon

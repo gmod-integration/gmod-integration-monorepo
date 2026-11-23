@@ -2,6 +2,7 @@ import { getEmojis } from 'unicode-emoji'
 import { ConfigDiscord } from '@gmod/config'
 import prisma from '@gmod/infra-prisma'
 import { type Request, type Response } from 'express'
+import { isIP } from 'node:net'
 
 export function getRandomDiscordRelay() {
   return ConfigDiscord.relayUrl
@@ -80,9 +81,11 @@ export function badArgument(list: any[]) {
 }
 
 export function ipGetIP(ip: string) {
-  if (ip.includes(':')) {
-    return ip.split(':')[0]
-  }
+  if (isIP(ip)) return ip
+  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(ip)
+  if (bracketed && isIP(bracketed[1])) return bracketed[1]
+  const ipv4WithPort = /^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/.exec(ip)
+  if (ipv4WithPort && isIP(ipv4WithPort[1]) === 4) return ipv4WithPort[1]
   return ip
 }
 

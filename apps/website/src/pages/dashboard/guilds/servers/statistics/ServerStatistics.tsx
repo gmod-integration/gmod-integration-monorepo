@@ -59,12 +59,16 @@ export default function ServerStatistics() {
   const number = (value: number) => decimal(value, locale())
   const hours = (seconds: number) => `${number(seconds / 3600)} ${t('server_statistics.hours_unit', 'h')}`
   const minutes = (seconds: number) => `${number(seconds / 60)} ${t('server_statistics.minutes_unit', 'min')}`
+  const countryNames = createMemo(() => new Intl.DisplayNames([locale()], { type: 'region' }))
+  const countryLabel = (country: string | null) =>
+    country === null ? t('server_statistics.unknown_country', 'Unknown country') : countryNames().of(country) || country
   const liveIsRecent = (value: ServerStatisticsResponse) =>
     value.live.online && value.live.updatedAt !== null && new Date(value.live.updatedAt).getTime() >= now() - 300_000
   const empty = (value: ServerStatisticsResponse) =>
     !value.population.some((point) => point.samples > 0) &&
     value.summary.completedSessions === 0 &&
-    value.summary.newPlayers === 0
+    value.summary.newPlayers === 0 &&
+    value.countries.totalPlayers === 0
   const metrics = (value: ServerStatisticsResponse) => [
     {
       label: t('server_statistics.registered_players', 'Registered players'),
@@ -173,7 +177,7 @@ export default function ServerStatistics() {
         <p class="text-sm text-base-content/65">
           {t(
             'server_statistics.sessions_note',
-            'Only completed sessions are counted. Their full duration is assigned to the time they ended, including sessions that started before the period. Ongoing sessions are excluded.',
+            'Session metrics count only completed sessions. Their full duration is assigned to the time they ended, including sessions that started before the period. Ongoing sessions are excluded.',
           )}
         </p>
         <AsyncState
@@ -301,6 +305,61 @@ export default function ServerStatistics() {
                   }))}
                   emptyLabel={t('server_statistics.no_sessions', 'No completed sessions for this period.')}
                 />
+              </AdminPanel>
+              <AdminPanel
+                title={t('server_statistics.countries', 'Player countries')}
+                description={t(
+                  'server_statistics.countries_help',
+                  'Unique players who connected during this period, grouped by the country estimated from their last connection.',
+                )}
+                icon="globe"
+              >
+                <Show
+                  when={value().countries.available}
+                  fallback={
+                    <p class="text-sm text-base-content/65">
+                      {t('server_statistics.countries_unavailable', 'Player countries are temporarily unavailable.')}
+                    </p>
+                  }
+                >
+                  <p class="text-sm text-base-content/65">
+                    {t(
+                      'server_statistics.country_players',
+                      'Players with a recorded connection: {1}',
+                      number(value().countries.totalPlayers),
+                    )}
+                  </p>
+                  <div class="max-h-96 overflow-y-auto">
+                    <StatisticsBarChart
+                      label={t('server_statistics.countries', 'Player countries')}
+                      items={value().countries.items.map((item) => ({
+                        label: countryLabel(item.country),
+                        value: item.players,
+                        detail: (item.players / Math.max(1, value().countries.totalPlayers)).toLocaleString(locale(), {
+                          style: 'percent',
+                          maximumFractionDigits: 1,
+                        }),
+                      }))}
+                      emptyLabel={t(
+                        'server_statistics.no_countries',
+                        'No recorded player connections for this period.',
+                      )}
+                    />
+                  </div>
+                  <p class="text-sm text-base-content/65">
+                    {t(
+                      'server_statistics.countries_estimate',
+                      'Country estimates may differ when players use a VPN or proxy.',
+                    )}
+                  </p>
+                  <p class="text-xs text-base-content/60">
+                    {t('server_statistics.countries_attribution', 'Country estimates use GeoLite2 data by')}{' '}
+                    <a href="https://www.maxmind.com" target="_blank" rel="noopener noreferrer" class="link">
+                      MaxMind
+                    </a>
+                    .
+                  </p>
+                </Show>
               </AdminPanel>
               <AdminPanel
                 title={t('server_statistics.live', 'Current server snapshot')}
