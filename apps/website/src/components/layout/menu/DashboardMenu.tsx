@@ -294,7 +294,7 @@ export const DashboardMenu: Component = () => {
           aria-label={t('dashboard.menu.back', 'Back')}
           title={onlyShowEmoji() ? t('dashboard.menu.back', 'Back') : undefined}
         >
-          <Icon name="arrow-left" size={17} />
+          <Icon name="arrow-left" size={20} />
           <Show when={showLabels()}>
             <span>{t('dashboard.menu.back', 'Back')}</span>
           </Show>
@@ -320,7 +320,7 @@ export const DashboardMenu: Component = () => {
                       else setMobileOpen(false)
                     }}
                   >
-                    <Icon name={link.icon} size={18} />
+                    <Icon name={link.icon} size={20} />
                     <Show when={showLabels()}>
                       <span class="dashboard-nav-label">{link.label}</span>
                       <Show when={link.badge}>
@@ -345,7 +345,7 @@ export const DashboardMenu: Component = () => {
           aria-expanded={!onlyShowEmoji()}
           onClick={toggleCollapsed}
         >
-          <Icon name={onlyShowEmoji() ? 'panel-left-open' : 'panel-left-close'} size={18} />
+          <Icon name={onlyShowEmoji() ? 'panel-left-open' : 'panel-left-close'} size={20} />
           <Show when={showLabels()}>
             <span>
               {onlyShowEmoji() ? t('dashboard.menu.expand', 'Expand') : t('dashboard.menu.collapse', 'Collapse')}

@@ -53,6 +53,11 @@ describe('pages/Premium.tsx', () => {
     expect(container.querySelector('.premium-comparison')).toHaveTextContent(
       'Les fonctionnalités signalées en développement ne sont pas encore disponibles.',
     )
+    const comparison = container.querySelector<HTMLElement>('.premium-comparison')!
+    expect(within(comparison).getAllByRole('img', { name: 'Inclus' }).length).toBeGreaterThan(0)
+    expect(within(comparison).getAllByRole('img', { name: 'Non inclus' }).length).toBeGreaterThan(0)
+    expect(within(comparison).getAllByRole('img', { name: 'Infini' }).length).toBeGreaterThan(0)
+    expect(within(comparison).queryAllByRole('img', { name: 'Included' })).toHaveLength(0)
     const purchase = screen.getByRole('heading', { name: 'Achat unique' }).closest('a')!
     const expectedDate = new Date('2024-09-22T23:59:59').toLocaleDateString('fr')
     expect(within(purchase).getByText(`Réduction de 15 % jusqu’au ${expectedDate}`)).toBeInTheDocument()
@@ -116,33 +121,37 @@ describe('pages/Premium.tsx', () => {
       }
     })
 
-    it('names included and excluded features instead of relying on color or an icon alone', () => {
+    it('uses plain inclusion icons with translated accessible names and no badges or visible status text', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('Sync Chat - Customisation').closest('tr')!
       // free_value: false, premium_value: true
-      expect(within(row).getByText('Not included')).toBeVisible()
-      expect(within(row).getByText('Included')).toBeVisible()
+      expect(within(row).getByRole('img', { name: 'Not included' })).toHaveAttribute('data-icon', 'x')
+      expect(within(row).getByRole('img', { name: 'Included' })).toHaveAttribute('data-icon', 'check')
+      expect(within(row).queryByText('Not included')).not.toBeInTheDocument()
+      expect(within(row).queryByText('Included')).not.toBeInTheDocument()
+      expect(row.querySelector('.ui-status-badge, .badge')).not.toBeInTheDocument()
     })
 
     it('renders an infinity icon when the value equals the translated "infinite" string', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('Servers').closest('tr')!
-      expect(within(row).getByText('1 server')).toBeInTheDocument() // free_value: raw text
-      expect(within(row).getByText('Infinite')).toBeVisible()
+      expect(within(row).getByText('1')).toBeInTheDocument()
+      expect(within(row).getByRole('img', { name: 'Infinite' })).toHaveAttribute('data-icon', 'infinity')
+      expect(within(row).queryByText('Infinite')).not.toBeInTheDocument()
     })
 
     it('uses the shared button limits for both plans', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('Server Status - Buttons Limit').closest('tr')!
-      expect(within(row).getByText('3 buttons')).toBeInTheDocument()
-      expect(within(row).getByText('25 buttons')).toBeInTheDocument()
+      expect(within(row).getByText('3')).toBeInTheDocument()
+      expect(within(row).getByText('25')).toBeInTheDocument()
     })
 
     it('uses the shared history window instead of a conflicting duration', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('Game logs in the dashboard').closest('tr')!
-      expect(within(row).getByText('Latest 500 entries')).toBeInTheDocument()
-      expect(within(row).getByText('Infinite')).toBeVisible()
+      expect(within(row).getByText('500')).toBeInTheDocument()
+      expect(within(row).getByRole('img', { name: 'Infinite' })).toHaveAttribute('data-icon', 'infinity')
     })
 
     it('wraps an in-development feature name in a warning tooltip instead of rendering it plainly', () => {

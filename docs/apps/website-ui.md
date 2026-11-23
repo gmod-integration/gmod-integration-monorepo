@@ -46,6 +46,9 @@ retain their specific labels through `StatusBadge`. Keep incomplete or unknown d
 actual negative state. Quota explanations, field validation and interactive switches retain their
 own contracts.
 
+The public Premium comparison uses plain check, cross and infinity icons with translated accessible
+names. Its quota cells show localized numbers; avoid badge wrappers or visible status labels there.
+
 | Component         | Purpose                                 | Contract                                                                                                                                                                                                                           |
 | ----------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Button`          | Text actions                            | Native attributes; `variant`: `primary`, `secondary`, `ghost`, `danger`, `warning`; `size`: `sm`, `md`; `loading` blocks clicks and retains the label. Default `type="button"`.                                                    |
@@ -405,6 +408,9 @@ scroll horizontally.
 - The public header shares the website controls and closes competing menus. Below the desktop
   breakpoint, navigation opens with an explicitly labelled button and closes on Escape, outside click
   or link selection. The footer has one landmark and grouped navigation.
+- Sidebar icons use a consistent 20 px size. In the collapsed desktop rail, center the context,
+  navigation, back and collapse controls on one axis, including when the rail scrolls. Mobile navigation
+  keeps its labelled rows aligned to the start.
 - Legal documents share `pages/legal/LegalDocument.tsx`: a responsive table of contents and scrollable
   tables. Preserve the document content, links and explicit revision date when changing presentation.
 - Common spacing: `gap-2` for controls, `gap-4`/`p-4` for sections, `gap-6` between major areas.

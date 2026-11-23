@@ -108,7 +108,7 @@ export const AdminMenu: Component = () => {
                 title={onlyShowEmoji() ? link.label : undefined}
                 onClick={() => setMobileOpen(false)}
               >
-                <Icon name={link.icon} size={18} />
+                <Icon name={link.icon} size={20} />
                 <Show when={expanded()}>
                   <span class="dashboard-nav-label">{link.label}</span>
                 </Show>
@@ -126,7 +126,7 @@ export const AdminMenu: Component = () => {
           aria-expanded={expanded()}
           onClick={toggleCollapsed}
         >
-          <Icon name={onlyShowEmoji() ? 'panel-left-open' : 'panel-left-close'} size={18} />
+          <Icon name={onlyShowEmoji() ? 'panel-left-open' : 'panel-left-close'} size={20} />
           <Show when={expanded()}>
             <span>
               {onlyShowEmoji() ? t('dashboard.menu.expand', 'Expand') : t('dashboard.menu.collapse', 'Collapse')}

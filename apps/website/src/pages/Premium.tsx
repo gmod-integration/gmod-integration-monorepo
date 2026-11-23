@@ -1,5 +1,5 @@
 import { capabilityLimit, hasCapability, type CapabilityKey } from '@gmod/schema/server/AccessPolicySchema.js'
-import { BooleanStatus, Icon, StatusBadge } from '../components/ui/index.js'
+import { Icon } from '../components/ui/index.js'
 import { type Component, createMemo, For, Show } from 'solid-js'
 import { useI18n } from '../i18n.js'
 
@@ -7,23 +7,33 @@ const Premium: Component = () => {
   const { t, locale } = useI18n()
   const identity = (premium: boolean) => ({ premium, customBot: false, state: 'ready' as const })
   const included = (key: CapabilityKey, premium: boolean) => hasCapability(identity(premium), key)
-  const limit = (key: CapabilityKey, premium: boolean, label: string) => {
+  const limit = (key: CapabilityKey, premium: boolean) => {
     const count = capabilityLimit(identity(premium), key)
-    return count === null ? t('premium.infinite', 'infinite') : t(label, '{1}', count)
+    return count === null ? t('premium.infinite', 'infinite') : count
   }
 
-  const FeatureValue: Component<{ value: boolean | string }> = (props) => (
+  const FeatureValue: Component<{ value: boolean | string | number }> = (props) => (
     <>
       {typeof props.value === 'boolean' ? (
-        <BooleanStatus
-          value={props.value}
-          trueLabel={t('premium.included', 'Included')}
-          falseLabel={t('premium.not_included', 'Not included')}
+        <Icon
+          name={props.value ? 'check' : 'x'}
+          size={18}
+          class={`mx-auto ${props.value ? 'text-success' : 'text-base-content/40'}`}
+          role="img"
+          aria-hidden={false}
+          aria-label={props.value ? t('premium.included', 'Included') : t('premium.not_included', 'Not included')}
         />
       ) : props.value === t('premium.infinite', 'infinite') ? (
-        <StatusBadge tone="info" icon="infinity">
-          {props.value}
-        </StatusBadge>
+        <Icon
+          name="infinity"
+          size={18}
+          class="mx-auto text-primary"
+          role="img"
+          aria-hidden={false}
+          aria-label={props.value}
+        />
+      ) : typeof props.value === 'number' ? (
+        props.value.toLocaleString(locale())
       ) : (
         props.value
       )}
@@ -32,8 +42,8 @@ const Premium: Component = () => {
 
   type Feature = {
     name: string
-    free_value: boolean | string
-    premium_value: boolean | string
+    free_value: boolean | string | number
+    premium_value: boolean | string | number
     inDev?: boolean
   }
 
@@ -60,13 +70,13 @@ const Premium: Component = () => {
     },
     ['auto_roles_limit']: {
       name: t('access.auto_roles_limit', 'Automatic roles - Limit'),
-      free_value: limit('guild.auto_roles', false, 'premium.guild_roles'),
-      premium_value: limit('guild.auto_roles', true, 'premium.guild_roles'),
+      free_value: limit('guild.auto_roles', false),
+      premium_value: limit('guild.auto_roles', true),
     },
     ['nickname_rules_limit']: {
       name: t('access.nickname_rules_limit', 'Nickname rules - Limit'),
-      free_value: limit('sync.nicknames.rules', false, 'premium.guild_roles'),
-      premium_value: limit('sync.nicknames.rules', true, 'premium.guild_roles'),
+      free_value: limit('sync.nicknames.rules', false),
+      premium_value: limit('sync.nicknames.rules', true),
     },
     ['chat_filters']: {
       name: t('access.chat_filters', 'Chat filters'),
@@ -85,13 +95,13 @@ const Premium: Component = () => {
     },
     ['errors_history']: {
       name: t('access.errors_history', 'Error history'),
-      free_value: limit('errors.history', false, 'access.history_count'),
-      premium_value: limit('errors.history', true, 'access.history_count'),
+      free_value: limit('errors.history', false),
+      premium_value: limit('errors.history', true),
     },
     ['server_status_buttons_limit']: {
       ['name']: t('premium.server_status_buttons_limit', 'Server Status - Buttons Limit'),
-      ['free_value']: limit('status.buttons', false, 'access.count_buttons'),
-      ['premium_value']: limit('status.buttons', true, 'access.count_buttons'),
+      ['free_value']: limit('status.buttons', false),
+      ['premium_value']: limit('status.buttons', true),
     },
     ['sync_player_name']: {
       ['name']: t('premium.sync_player_name', 'Sync Player Name'),
@@ -137,7 +147,7 @@ const Premium: Component = () => {
     },
     ['guild_link']: {
       ['name']: t('premium.guild_link', 'Community links'),
-      ['free_value']: limit('guild.links', false, 'access.count_links'),
+      ['free_value']: limit('guild.links', false),
       ['premium_value']: true,
     },
     ['logs_relay']: {
@@ -147,7 +157,7 @@ const Premium: Component = () => {
     },
     ['logs']: {
       ['name']: t('premium.logs', 'Game logs in the dashboard'),
-      ['free_value']: limit('logs.history', false, 'access.history_count'),
+      ['free_value']: limit('logs.history', false),
       ['premium_value']: t('premium.infinite', 'infinite'),
     },
     ['players']: {
@@ -177,7 +187,7 @@ const Premium: Component = () => {
     },
     ['servers']: {
       ['name']: t('premium.servers', 'Servers'),
-      ['free_value']: limit('guild.servers', false, 'premium.guild_server'),
+      ['free_value']: limit('guild.servers', false),
       ['premium_value']: t('premium.infinite', 'infinite'),
     },
     ['sync_bans']: {
@@ -192,7 +202,7 @@ const Premium: Component = () => {
     },
     ['sync_roles_limit']: {
       ['name']: t('premium.sync_roles_limit', 'Sync Role - Limit'),
-      ['free_value']: limit('sync.roles.rules', false, 'premium.guild_roles'),
+      ['free_value']: limit('sync.roles.rules', false),
       ['premium_value']: t('premium.infinite', 'infinite'),
     },
     ['sync_kicks']: {
@@ -240,7 +250,7 @@ const Premium: Component = () => {
     },
     ['guild_verification_role_limit']: {
       ['name']: t('premium.guild_verification_role_limit', 'Verification role limit'),
-      ['free_value']: limit('verification.roles', false, 'premium.guild_roles'),
+      ['free_value']: limit('verification.roles', false),
       ['premium_value']: t('premium.infinite', 'infinite'),
     },
     ['force_ply_link']: {
