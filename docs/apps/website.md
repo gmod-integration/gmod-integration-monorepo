@@ -13,7 +13,7 @@ src/
     AppDashboard.tsx    dashboard shell (guild/server management)
     AppAdminDashboard.tsx  internal admin views
   pages/
-    Home.tsx, Login.tsx, Logout.tsx, Account.tsx, Servers.tsx, Premium.tsx, Notifications.tsx, ToDo.tsx,
+    Home.tsx, Login.tsx, Logout.tsx, Account.tsx, PlayerProfile.tsx, Servers.tsx, Premium.tsx, Notifications.tsx, ToDo.tsx,
     NotFound.tsx
     legal/             French/English legal content and shared accessible document renderer
     dashboard/          dashboard sub-pages
@@ -83,6 +83,20 @@ Each card includes a seven-day chart of daily peak player counts. Historical act
 map/mode remain visible after the server goes offline. Missing days remain gaps, and an empty history
 has an explicit placeholder. Discord buttons use validated invitations returned by the worker; missing
 permissions disable the invitation button without hiding the server.
+
+## Player profiles
+
+Authenticated users can open `/profile` for their linked Steam player or `/players/:steamID64` for
+another recorded player. The account menu and linked Steam card open the user's profile; player names
+and profile actions in the server player directory open the corresponding player's profile.
+
+Profiles display the stored trust score out of 100 (including zero; unavailable scores stay unknown),
+aggregate playtime, kills, deaths and connection counts, and paginated per-server statistics. The owner
+can see all their recorded servers; other users see only public servers. Summary totals and activity
+dates use that same visibility filter, and another player's displayed name comes from a visible server.
+The page explains this visibility and handles missing Steam links, missing players, errors and empty
+statistics separately. Dates and numbers follow the selected language. Last activity is the last stored
+statistics update, which may include administrative edits; it is not live player presence.
 
 ## Discord status preview
 

@@ -222,6 +222,7 @@ describe('pages/Account.tsx', () => {
       const panel = screen.getByRole('heading', { name: 'Steam' }).closest<HTMLElement>('.dashboard-panel')!
       expect(within(panel).getByText('Steam Player')).toBeInTheDocument()
       expect(within(panel).getByText('76500000000000000')).toBeInTheDocument()
+      expect(within(panel).getByRole('link', { name: 'View player profile' })).toHaveAttribute('href', '/profile')
       expect(panel.querySelector('img')).toHaveAttribute('src', 'https://cdn.example.com/steam-player.jpg')
       expect(panel.querySelector('img')).toHaveAttribute('alt', '')
       expect(screen.queryByRole('button', { name: 'Link Steam Account' })).not.toBeInTheDocument()

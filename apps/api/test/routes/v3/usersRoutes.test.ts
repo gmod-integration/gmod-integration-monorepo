@@ -121,6 +121,7 @@ vi.mock('@/middleware/v3/userValidator.js', () => ({
   userValidator: vi.fn(),
 }))
 vi.mock('@/controllers/v3/usersAdminControllers.js', () => ({ getAllPanelUsers: vi.fn() }))
+vi.mock('@/controllers/website/WebsitePlayerProfileControllers.js', () => ({ getPlayerProfile: vi.fn() }))
 vi.mock('@/controllers/website/WebsiteErrorsControllers.js', () => ({
   getServerErrors: vi.fn(),
   getServerErrorsChannel: vi.fn(),
@@ -174,6 +175,18 @@ describe('usersRoutes', () => {
     expect(profile).toBeLessThan(guildAdministration)
     expect(router.stack[profile].route.methods.get).toBe(true)
   })
+
+  it.each(['/:discordID/player-profile', '/:discordID/players/:steamID64'])(
+    'registers player profile %s after account authentication and before administration restrictions',
+    (path) => {
+      const profile = router.stack.findIndex((layer: any) => layer.route?.path === path)
+      const authentication = router.stack.findIndex((layer: any) => layer.handle === userValidator)
+      const administration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+      expect(profile).toBeGreaterThan(authentication)
+      expect(profile).toBeLessThan(administration)
+      expect(router.stack[profile].route.methods.get).toBe(true)
+    },
+  )
 
   it('protects draft previews with both guild-administrator and server access checks', () => {
     const preview = router.stack.findIndex(

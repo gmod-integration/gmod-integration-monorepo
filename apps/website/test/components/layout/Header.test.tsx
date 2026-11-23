@@ -351,6 +351,7 @@ describe('Header authenticated identity', () => {
     expect(isLogged()).toBe(true)
     openUserMenu()
     expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'My player profile' })).toHaveAttribute('href', '/profile')
   })
 })
 

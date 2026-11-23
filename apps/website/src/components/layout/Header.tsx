@@ -135,6 +135,11 @@ export const Header: Component = () => {
       title: 'User',
       content: [
         {
+          title: t('player_profile.my_profile', 'My player profile'),
+          icon: 'gamepad-2',
+          href: '/profile',
+        },
+        {
           title: t('main.account', 'Account'),
           icon: 'user-round',
           href: '/account',

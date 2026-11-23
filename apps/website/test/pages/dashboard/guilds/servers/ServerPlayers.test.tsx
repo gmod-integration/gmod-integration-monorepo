@@ -126,6 +126,12 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAccessibleName('Open Steam profile')
     expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    const row = screen.getByRole('link', { name: 'Alice' }).closest('tr')!
+    expect(within(row).getByRole('link', { name: 'Alice' })).toHaveAttribute('href', '/players/76500000000000001')
+    expect(within(row).getByRole('link', { name: 'View player profile' })).toHaveAttribute(
+      'href',
+      '/players/76500000000000001',
+    )
   })
 
   describe('column sorting', () => {

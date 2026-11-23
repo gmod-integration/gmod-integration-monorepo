@@ -127,6 +127,7 @@ import {
   deleteServerBugReportsChannel,
 } from '@/controllers/website/WebsiteBugReportsControllers.js'
 import { getIGSettings, postIGSettings } from '@/controllers/v3/serversControllers.js'
+import { getPlayerProfile } from '@/controllers/website/WebsitePlayerProfileControllers.js'
 import { putServerStatusChannel } from '@/controllers/v3/users/ServerStatusChannelControllers.js'
 import {
   getNotifications,
@@ -143,6 +144,8 @@ router.get('/login', asyncHandler(oauthLogin))
 router.use('/:discordID', userValidator)
 router.get('/:discordID', asyncHandler(findCurrentUser))
 router.get('/:discordID/steam-profile', asyncHandler(getSteamProfile))
+router.get('/:discordID/player-profile', asyncHandler(getPlayerProfile))
+router.get('/:discordID/players/:steamID64', asyncHandler(getPlayerProfile))
 router.post('/:discordID/logout', asyncHandler(logOut))
 router.get('/:discordID/sessions', asyncHandler(getUserSessions))
 router.delete('/:discordID/sessions/:sessionID', asyncHandler(deleteUserSession))

@@ -402,6 +402,10 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                     >
                       {t('account.id', 'ID')}: <span class="font-mono">{user()?.steamID64}</span>
                     </p>
+                    <ButtonLink href="/profile" variant="ghost" size="sm" class="mt-3">
+                      <Icon name="user-round" size={16} />
+                      {t('player_profile.view_profile', 'View player profile')}
+                    </ButtonLink>
                   </div>
                 </div>
               </Show>

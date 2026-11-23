@@ -17,6 +17,7 @@ const Premium = lazy(() => import('./pages/Premium.js'))
 const Terms = lazy(() => import('./pages/legal/Terms.js'))
 const Privacy = lazy(() => import('./pages/legal/Privacy.js'))
 const Account = lazy(() => import('./pages/Account.js'))
+const PlayerProfile = lazy(() => import('./pages/PlayerProfile.js'))
 const Servers = lazy(() => import('./pages/Servers.js'))
 const Notifications = lazy(() => import('./pages/Notifications.js'))
 const GuildsSelector = lazy(() => import('./pages/dashboard/guilds/GuildsSelector.js'))
@@ -64,6 +65,8 @@ render(
       <Route path="/" component={Home} />
       <Route path="/premium" component={Premium} />
       <Route path="/account" component={Account} />
+      <Route path="/profile" component={PlayerProfile} />
+      <Route path="/players/:steamID64" component={PlayerProfile} />
       <Route path="/legal/privacy" component={Privacy} />
       <Route path="/legal/terms" component={Terms} />
       <Route path="/login" component={Login} />

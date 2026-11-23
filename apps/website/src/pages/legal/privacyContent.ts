@@ -4,8 +4,8 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
   en: {
     title: 'Privacy Policy',
     updatedLabel: 'Last updated',
-    updatedDate: '21 November 2026',
-    updatedISO: '2026-11-21',
+    updatedDate: '23 November 2026',
+    updatedISO: '2026-11-23',
     sections: [
       {
         title: 'Scope and contact',
@@ -95,6 +95,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'Recipients and visibility',
         paragraphs: [
+          'Signed-in website users can view player profiles showing the Steam identifier, a name recorded on a public server, the available trust score and statistics from public servers. Private server statistics are visible to the player through their linked account and to authorized administrators through server management.',
           'Recipients include service personnel handling operations or support, authorized community administrators and infrastructure providers needed for delivery. Chat, logs, reports and screenshots can be sent to the Discord channels or game recipients selected by the community. Screenshot handling can include a configured service moderation channel.',
           'Discord, Valve/Steam and GmodStore are external recipients of data needed for the integrations or purchases you use. For example, chat synchronization sends the message and associated display information to Discord. The fact that this transmission is part of the requested feature does not make the recipient internal to Gmod Integration. These platforms apply their own privacy policies to their services; Discord acts as a controller for its own service.',
           'Cloudflare is an infrastructure provider for the website and network delivery. Technical providers act as processors where they process data on our behalf and instructions, under the applicable agreement. Other recipients may act as independent controllers; being an external provider does not by itself determine the legal role. Sentry processes server-side error and performance diagnostics when enabled; browser monitoring is disabled in this version.',
@@ -198,8 +199,8 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
   fr: {
     title: 'Politique de confidentialité',
     updatedLabel: 'Dernière mise à jour',
-    updatedDate: '21 novembre 2026',
-    updatedISO: '2026-11-21',
+    updatedDate: '23 novembre 2026',
+    updatedISO: '2026-11-23',
     sections: [
       {
         title: 'Périmètre et contact',
@@ -289,6 +290,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'Destinataires et visibilité',
         paragraphs: [
+          'Les utilisateurs connectés au site peuvent consulter les profils de joueurs indiquant l’identifiant Steam, un pseudonyme enregistré sur un serveur public, le score de confiance disponible et les statistiques des serveurs publics. Les statistiques des serveurs privés sont visibles par le joueur depuis son compte lié et par les administrateurs autorisés dans la gestion du serveur.',
           'Les destinataires incluent les personnes chargées de l’exploitation ou de l’assistance, les administrateurs autorisés et les prestataires techniques nécessaires au service. Le chat, les journaux, les signalements et les captures peuvent être transmis aux salons Discord ou destinataires en jeu choisis par la communauté. Le traitement des captures peut inclure un salon de modération du service configuré à cet effet.',
           'Discord, Valve/Steam et GmodStore sont des destinataires externes des données nécessaires aux intégrations ou achats utilisés. Par exemple, la synchronisation du chat transmet à Discord le message et les informations d’affichage associées. Le fait que cet envoi fasse partie de la fonction demandée ne rend pas son destinataire interne à Gmod Integration. Ces plateformes appliquent leurs propres politiques à leurs services ; Discord agit comme responsable du traitement pour son propre service.',
           'Cloudflare est un prestataire d’infrastructure pour le site et sa diffusion réseau. Les prestataires techniques sont sous-traitants lorsqu’ils traitent les données pour notre compte et sur nos instructions, dans le cadre de l’accord applicable. D’autres destinataires peuvent être responsables de leurs propres traitements ; le statut de prestataire externe ne détermine pas à lui seul le rôle juridique. Sentry traite le diagnostic des erreurs et performances côté serveur lorsqu’il est activé ; la surveillance du navigateur est désactivée dans cette version.',

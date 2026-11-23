@@ -14,7 +14,10 @@ const AppContent: ParentComponent = (props) => {
   const { t } = useI18n()
   const location = useLocation()
   const dashboard = () => location.pathname.startsWith('/dashboard')
-  const protectedPage = () => dashboard() || ['/account', '/notifications'].includes(location.pathname)
+  const protectedPage = () =>
+    dashboard() ||
+    ['/account', '/notifications', '/profile'].includes(location.pathname) ||
+    location.pathname.startsWith('/players/')
   return (
     <div class="site-shell">
       <AuthProvider>

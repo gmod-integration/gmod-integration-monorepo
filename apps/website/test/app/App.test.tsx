@@ -127,36 +127,41 @@ describe('app/App.tsx', () => {
     )
     await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds'))
   })
-  it('waits for authoritative identity before mounting an account editor and retains site navigation', async () => {
-    resetAuthentication()
-    setAuthStatus('checking')
-    let finish!: (response: Response) => void
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockImplementation((url: string) =>
-        url.endsWith('/auth/session')
-          ? new Promise<Response>((resolve) => {
-              finish = resolve
-            })
-          : Promise.resolve(new Response('0')),
-      ),
-    )
-    renderWithProviders(
-      () => (
-        <App>
-          <h1>Private account editor</h1>
-        </App>
-      ),
-      {
-        path: '*',
-        history: historyAt('/account'),
-        session: false,
-      },
-    )
-    expect(screen.queryByRole('heading', { name: 'Private account editor' })).not.toBeInTheDocument()
-    expect(screen.getByRole('main')).toHaveTextContent('Loading…')
-    expect(screen.getByRole('link', { name: 'Gmod Integration' })).toBeInTheDocument()
-    finish(new Response(JSON.stringify(sessionFixture())))
-    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'Private account editor' })).toBeInTheDocument())
-  })
+  it.each(['/account', '/profile', '/players/76500000000000001'])(
+    'waits for authoritative identity before mounting protected content at %s and retains site navigation',
+    async (path) => {
+      resetAuthentication()
+      setAuthStatus('checking')
+      let finish!: (response: Response) => void
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation((url: string) =>
+          url.endsWith('/auth/session')
+            ? new Promise<Response>((resolve) => {
+                finish = resolve
+              })
+            : Promise.resolve(new Response('0')),
+        ),
+      )
+      renderWithProviders(
+        () => (
+          <App>
+            <h1>Private account editor</h1>
+          </App>
+        ),
+        {
+          path: '*',
+          history: historyAt(path),
+          session: false,
+        },
+      )
+      expect(screen.queryByRole('heading', { name: 'Private account editor' })).not.toBeInTheDocument()
+      expect(screen.getByRole('main')).toHaveTextContent('Loading…')
+      expect(screen.getByRole('link', { name: 'Gmod Integration' })).toBeInTheDocument()
+      finish(new Response(JSON.stringify(sessionFixture())))
+      await vi.waitFor(() =>
+        expect(screen.getByRole('heading', { name: 'Private account editor' })).toBeInTheDocument(),
+      )
+    },
+  )
 })

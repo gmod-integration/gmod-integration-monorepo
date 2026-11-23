@@ -147,5 +147,26 @@ describe('utils/api.tsx', () => {
       expect(headers.get('X-CSRF-Token')).toBe('csrf-token')
       expect(headers.has('Authorization')).toBe(false)
     })
+
+    it('forwards optional cancellation through the authenticated request', async () => {
+      acceptAuthSession(sessionFixture())
+      const controller = new AbortController()
+      const fetchMock = vi.fn(
+        (_input: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal!.addEventListener('abort', () => reject(init.signal!.reason), { once: true })
+          }),
+      )
+      vi.stubGlobal('fetch', fetchMock)
+
+      const request = fetchAPI('/guilds/g1/roles', 'GET', undefined, { signal: controller.signal })
+      const rejection = expect(request).rejects.toMatchObject({ name: 'AbortError' })
+      controller.abort()
+
+      await rejection
+      expect(fetchMock).toHaveBeenCalledOnce()
+      expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'include', method: 'GET' })
+      expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(true)
+    })
   })
 })

@@ -16,7 +16,7 @@ describe('pages/legal/Privacy.tsx', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument()
     expect(screen.getByRole('article')).toHaveAttribute('lang', 'en')
-    expect(screen.getByText('21 November 2026')).toHaveAttribute('datetime', '2026-11-21')
+    expect(screen.getByText('23 November 2026')).toHaveAttribute('datetime', '2026-11-23')
     expect(screen.getByRole('table', { name: 'Data processed according to the features used' })).toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'Retention criteria and access limits' })).toBeInTheDocument()
     screen.getAllByRole('columnheader').forEach((heading) => expect(heading).toHaveAttribute('scope', 'col'))
@@ -45,7 +45,7 @@ describe('pages/legal/Privacy.tsx', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Politique de confidentialité' })).toBeInTheDocument()
     expect(screen.getByRole('article')).toHaveAttribute('lang', 'fr')
-    expect(screen.getByText('21 novembre 2026')).toHaveAttribute('datetime', '2026-11-21')
+    expect(screen.getByText('23 novembre 2026')).toHaveAttribute('datetime', '2026-11-23')
     expect(screen.getByRole('table', { name: 'Critères de conservation et limites d’accès' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Conditions d’utilisation' })).toHaveAttribute('href', '/legal/terms')
 

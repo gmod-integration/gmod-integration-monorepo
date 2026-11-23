@@ -49,7 +49,12 @@ export function getUrlWithActualParams(url: string) {
   return resolveActorParams(resolveScopeParams(url))
 }
 
-export async function fetchAPI(endpoint: string, method: string, body?: unknown) {
+export async function fetchAPI(
+  endpoint: string,
+  method: string,
+  body?: unknown,
+  options: Pick<RequestInit, 'signal'> = {},
+) {
   // Navigation during cookie restoration must not retarget the original community/server read.
   const scopedEndpoint = resolveScopeParams(endpoint)
   const url = () => {
@@ -62,6 +67,7 @@ export async function fetchAPI(endpoint: string, method: string, body?: unknown)
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(body),
+    ...options,
   })
   if (response.status === 403 || (response.ok && method !== 'GET')) refreshAccess()
   return response

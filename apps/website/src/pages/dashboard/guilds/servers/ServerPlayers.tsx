@@ -342,7 +342,9 @@ const ServerPlayer: Component = () => {
                 {(player) => (
                   <tr>
                     <td class="w-1/4 truncate overflow-hidden text-ellipsis whitespace-nowrap">
-                      <span>{player.name}</span>
+                      <a class="text-primary hover:underline" href={`/players/${encodeURIComponent(player.steam_id)}`}>
+                        {player.name || player.steam_id}
+                      </a>
                     </td>
                     <td class="w-1/6 text-center">{player.rank}</td>
                     <td class="w-1/6 text-center">{convertSecToTime(player.total_time)}</td>
@@ -358,6 +360,13 @@ const ServerPlayer: Component = () => {
                     </td>
                     <td class="w-1/6">
                       <div class="flex gap-2 justify-center">
+                        <IconButtonLink
+                          href={`/players/${encodeURIComponent(player.steam_id)}`}
+                          variant="ghost"
+                          size="sm"
+                          label={t('player_profile.view_profile', 'View player profile')}
+                          icon="user-round"
+                        />
                         <IconButtonLink
                           href={`https://steamcommunity.com/profiles/${player.steam_id}`}
                           target="_blank"
