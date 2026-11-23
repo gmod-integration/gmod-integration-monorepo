@@ -57,6 +57,11 @@ header and footer remain available while a page loads. Home statistics show plac
 request without suspending the landing page. `JsonViewer` registers only the JSON syntax highlighter,
 keeping unrelated language definitions out of the generated chunks.
 
+The homepage uses the Console hero and Ribbon statistics without visitor-facing design selectors.
+The integration preview tabs remain interactive. Statistics show non-negative safe integer totals in
+the selected locale; invalid or missing totals stay unknown. The ribbon becomes label/value rows on
+narrow screens so translated labels and large numbers remain readable.
+
 ## Internal administration
 
 `/dashboard/admins` provides the overview, communities, servers, users, Premium and support pages.

@@ -80,60 +80,39 @@ describe('Home', () => {
     renderWithProviders(() => <Home />)
     const statistics = screen.getByRole('region', { name: 'Community statistics' })
     await vi.waitFor(() => expect(statistics).toHaveAttribute('aria-busy', 'false'))
-    expect(within(statistics).getAllByText('—')).toHaveLength(2)
+    expect(within(statistics).getAllByText('—')).toHaveLength(3)
     expect(within(statistics).queryByText('0')).not.toBeInTheDocument()
-    expect(within(statistics).getByText('12')).toBeInTheDocument()
+    expect(within(statistics).queryByText('12')).not.toBeInTheDocument()
   })
 
-  it('switches hero and statistics independently and restores the chosen combination on the next visit', async () => {
-    const fetchMock = vi.fn().mockImplementation(() => Promise.resolve(response(validStats)))
-    vi.stubGlobal('fetch', fetchMock)
-    const firstVisit = renderWithProviders(() => <Home />)
-    const heroChoices = screen.getByRole('group', { name: 'Hero' })
-    const statsChoices = screen.getByRole('group', { name: 'Statistics' })
-    expect(within(heroChoices).getByRole('button', { name: 'Console' })).toHaveAttribute('aria-pressed', 'true')
-    expect(within(statsChoices).getByRole('button', { name: 'Ribbon' })).toHaveAttribute('aria-pressed', 'true')
-
-    await fireEvent.click(within(heroChoices).getByRole('button', { name: 'Panorama' }))
-    await fireEvent.click(within(statsChoices).getByRole('button', { name: 'Register' }))
-    expect(within(heroChoices).getByRole('button', { name: 'Panorama' })).toHaveAttribute('aria-pressed', 'true')
-    expect(within(heroChoices).getByRole('button', { name: 'Console' })).toHaveAttribute('aria-pressed', 'false')
-    expect(JSON.parse(window.localStorage.getItem('gmod-home-appearance')!)).toEqual({
-      hero: 'panorama',
-      stats: 'ledger',
-    })
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-
-    firstVisit.unmount()
-    renderWithProviders(() => <Home />)
-    expect(
-      within(screen.getByRole('group', { name: 'Hero' })).getByRole('button', { name: 'Panorama' }),
-    ).toHaveAttribute('aria-pressed', 'true')
-    expect(
-      within(screen.getByRole('group', { name: 'Statistics' })).getByRole('button', { name: 'Register' }),
-    ).toHaveAttribute('aria-pressed', 'true')
-  })
-
-  it('falls back to usable appearance choices when saved settings are invalid and storage writes fail', async () => {
-    window.localStorage.setItem('gmod-home-appearance', JSON.stringify({ hero: 'missing', stats: 'missing' }))
+  it('keeps the selected Console and Ribbon presentation for visitors with an old design preference', async () => {
+    window.localStorage.setItem('gmod-home-appearance', JSON.stringify({ hero: 'panorama', stats: 'ledger' }))
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(validStats)))
+    const { container } = renderWithProviders(() => <Home />)
+    expect(container.querySelector('.home-redesign')).toHaveAttribute('data-hero', 'console')
+    expect(container.querySelector('.home-redesign')).toHaveAttribute('data-stats', 'ribbon')
+    expect(screen.queryByRole('group', { name: 'Hero' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Statistics' })).not.toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'A glimpse of your Discord' })).toBeInTheDocument()
+  })
+
+  it('formats large totals with the chosen language and preserves genuine zero counts', async () => {
+    window.localStorage.setItem('locale', 'fr')
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ guild: 0, server: 12345, verifyUser: 67890 })))
     renderWithProviders(() => <Home />)
-    const heroChoices = screen.getByRole('group', { name: 'Hero' })
-    expect(within(heroChoices).getByRole('button', { name: 'Console' })).toHaveAttribute('aria-pressed', 'true')
-    const storagePrototype = Object.getPrototypeOf(window.localStorage)
-    vi.spyOn(storagePrototype, 'setItem').mockImplementation(() => {
-      throw new Error('Storage unavailable')
-    })
-    await fireEvent.click(within(heroChoices).getByRole('button', { name: 'Editorial' }))
-    expect(within(heroChoices).getByRole('button', { name: 'Editorial' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
+    const statistics = screen.getByRole('region', { name: 'Statistiques des communautés' })
+    await vi.waitFor(() => expect(statistics).toHaveAttribute('aria-busy', 'false'))
+    expect(
+      within(statistics)
+        .getAllByRole('definition')
+        .map((value) => value.firstElementChild?.textContent),
+    ).toEqual([0, 12345, 67890].map((number) => number.toLocaleString('fr')))
   })
 
   it('lets visitors switch the Console preview between actual integration screenshots', async () => {
     const fetchMock = vi.fn().mockResolvedValue(response(validStats))
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(() => <Home />)
-    await fireEvent.click(within(screen.getByRole('group', { name: 'Hero' })).getByRole('button', { name: 'Console' }))
     const preview = screen.getByRole('group', { name: 'A glimpse of your Discord' })
     const figure = preview.closest('figure')!
     const initialImage = within(figure).getByRole('img', { name: 'Server Status' }).getAttribute('src')

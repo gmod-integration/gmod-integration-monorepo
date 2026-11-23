@@ -94,7 +94,7 @@ export async function seedDevelopment(args = process.argv.slice(2)) {
     closeRedis = gracefulShutdownRedis
     const writeData = async () => {
       await writeDevSeed(prisma, mongoClient, data)
-      const keys = ['stats']
+      const keys = ['stats', 'stats:v2']
       for (const serverID of data.serverIds) {
         keys.push(`server:${serverID}:gmodToDiscordFilter`, `server:${serverID}:logsTrigger`)
       }
