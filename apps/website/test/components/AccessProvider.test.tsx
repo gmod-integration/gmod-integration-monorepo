@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, render, screen, within } from '@solidjs/testing-library'
 import { A, MemoryRouter, Route, useNavigate } from '@solidjs/router'
 import { createSignal, Show } from 'solid-js'
 import {
@@ -283,11 +283,31 @@ describe('authoritative reactive access', () => {
     await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Access could not be verified'))
     await fireEvent.input(screen.getByLabelText('Draft'), { target: { value: 'Keep my draft' } })
     network.mockResolvedValueOnce(response(snapshot({ premium: true, serverID: 's1' })))
-    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await fireEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Try again' }))
     await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled())
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Draft')).toHaveValue('Keep my draft')
     expect(network).toHaveBeenCalledTimes(2)
+  })
+
+  it('retries unavailable rights beside the blocked feature without clearing its draft', async () => {
+    const network = vi.fn().mockResolvedValueOnce(response({}, 503))
+    vi.stubGlobal('fetch', network)
+    renderRemote()
+    const feature = within(screen.getByRole('button', { name: 'Add rule' }).parentElement!)
+    await vi.waitFor(() => expect(feature.getByRole('status')).toHaveTextContent('Access could not be verified'))
+    await fireEvent.input(screen.getByLabelText('Draft'), { target: { value: 'Keep this edit' } })
+    const retry = feature.getByRole('button', { name: 'Try again' })
+    const resumed = deferredResponse()
+    network.mockReturnValueOnce(resumed.promise)
+    await fireEvent.click(retry)
+    expect(network).toHaveBeenCalledTimes(2)
+    expect(feature.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add rule' })).toBeDisabled()
+    resumed.resolve(response(snapshot({ premium: true, serverID: 's1' })))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Add rule' })).toBeEnabled())
+    expect(screen.getByLabelText('Draft')).toHaveValue('Keep this edit')
+    expect(screen.queryByRole('link', { name: 'View Premium plans' })).not.toBeInTheDocument()
   })
 
   it('refreshes when the document becomes visible and unregisters browser listeners on unmount', async () => {

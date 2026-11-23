@@ -2,7 +2,7 @@ import { children, Show, type ParentComponent } from 'solid-js'
 import type { CapabilityKey } from '@gmod/schema/server/AccessPolicySchema.js'
 import { useFeatureAccess, useAccess } from './AccessProvider.js'
 import { useI18n } from '../i18n.js'
-import { ButtonLink, Icon } from './ui/index.js'
+import { Button, ButtonLink, Icon } from './ui/index.js'
 
 export function upgradeHref() {
   const id = useAccess().snapshot()?.guildID
@@ -65,9 +65,14 @@ export const FeatureGate: ParentComponent<{
             (access.snapshot()?.state === 'unknown' && (!access.allowed() || !access.canCreate(used()))))
         }
       >
-        <p role="status" class="text-sm text-base-content/60">
-          {t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')}
-        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <p role="status" class="text-sm text-base-content/60">
+            {t('access.unavailable', 'Access could not be verified. Your saved configuration is preserved.')}
+          </p>
+          <Button variant="ghost" size="sm" loading={access.loading()} onClick={access.refresh}>
+            {t('ui.retry', 'Try again')}
+          </Button>
+        </div>
       </Show>
     </>
   ))

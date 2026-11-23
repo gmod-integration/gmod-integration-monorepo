@@ -183,6 +183,11 @@ configuration availability distinct.
 | `FeatureGate`      | `components/FeatureGate.tsx`    | Keeps children mounted and visible. Shows shared quota, reason and contextual upgrade link. Pass the list's `loading` and `error`; failed/unknown data never becomes an upgrade demand. Disable the action using the matching hook.                                                                                           |
 | `SuspendedFeature` | `components/FeatureGate.tsx`    | Explains that a stored paid configuration is suspended after verified loss of access. It does not discard or persist data.                                                                                                                                                                                                    |
 
+Access reads can share initial cookie restoration. If a read begun before authentication fails after
+the session is restored, the provider rechecks once with that session; a successful initial read stays
+shared. A second failure remains unavailable. `FeatureGate` offers a nearby retry action, preserving
+the editor and its drafts while rights are checked again. Session presence alone never grants access.
+
 ```tsx
 const access = useFeatureAccess('sync.roles.rules')
 <FeatureGate capability="sync.roles.rules" used={rows().length} loading={rows.loading} error={rows.error}>

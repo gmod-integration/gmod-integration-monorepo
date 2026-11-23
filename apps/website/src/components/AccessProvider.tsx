@@ -7,6 +7,7 @@ import {
   onMount,
   Show,
   useContext,
+  untrack,
   type Accessor,
   type ParentComponent,
 } from 'solid-js'
@@ -92,7 +93,12 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
     setLoading(true)
     setError(false)
     setPermissionDenied(false)
-    const operation = { target, controller: new AbortController(), revalidate: false }
+    const operation = {
+      target,
+      controller: new AbortController(),
+      revalidate: false,
+      sessionIDAtStart: untrack(() => authSession()?.session.id),
+    }
     pending = operation
     try {
       const path = `/v6/guilds/${encodeURIComponent(target.guildID)}${target.serverID ? `/servers/${encodeURIComponent(target.serverID)}` : ''}/access`
@@ -114,6 +120,9 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
       if (active && current === generation) {
         setSnapshot(undefined)
         setError(true)
+        // A failed pre-login read may finish after initial cookie restoration. Retry once with
+        // that session instead of leaving its authenticated editor with the earlier failure.
+        if (!operation.sessionIDAtStart && authSession()?.session.id) operation.revalidate = true
       }
     } finally {
       if (pending === operation) {
