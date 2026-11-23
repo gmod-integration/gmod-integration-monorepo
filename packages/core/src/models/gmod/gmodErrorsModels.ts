@@ -2,6 +2,9 @@ import { capabilityLimit, resolveGuildAccess } from '@gmod/domain-access/index.j
 import { getServerFromID } from '@gmod/domain-server/Server.js'
 import { Query } from '../../classes/db/Query.js'
 import { GmodErrors, getErrorsByServer } from '@gmod/domain-gmod/GmodErrors.js'
+import { enqueueDiscordServerLuaError } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { gmLog } from '@gmod/shared/logger.js'
+import { getLuaErrorChannel } from './luaErrorChannels.js'
 
 export class InvalidErrorPayloadError extends Error {
   constructor() {
@@ -44,7 +47,21 @@ export async function reportGmodErrorPayload(
     throw new InvalidErrorPayloadError()
   }
 
-  return await parsedError.save()
+  const saved = await parsedError.save()
+  if (saved?.acknowledged) {
+    try {
+      if (!(await getLuaErrorChannel(serverID)).channelID) return saved
+      await enqueueDiscordServerLuaError({
+        serverID,
+        errorID: saved.insertedId.toHexString(),
+        report: parsedError,
+      })
+    } catch {
+      // Report storage is authoritative even when Discord delivery cannot be queued.
+      gmLog('warn', 'A Lua error was saved, but its Discord notification could not be queued.')
+    }
+  }
+  return saved
 }
 
 export async function reportGmodErrorPayloadSafe(

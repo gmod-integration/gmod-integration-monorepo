@@ -718,6 +718,17 @@
         },
         "actions": {
           "actions": "Maßnahmen"
+        },
+        "channel": {
+          "title": "Lua-Fehler auf Discord",
+          "description": "Sende künftige Lua-Fehlerberichte vom Spielserver und von Spielern an einen Discord-Textkanal. Gespeicherte Fehler bleiben unten verfügbar.",
+          "destination": "Discord-Zielkanal",
+          "destination_help": "Wähle einen Kanal und bestätige die Auswahl, um dort neue Fehlerberichte zu erhalten.",
+          "select": "Kanal auswählen",
+          "remove": "Ziel entfernen",
+          "empty": "Kein Zielkanal",
+          "load_error": "Das Ziel für Lua-Fehler konnte nicht geladen werden.",
+          "remove_help": "Keine Lua-Fehler mehr an dieses Ziel senden? Der Discord-Kanal und der gespeicherte Fehlerverlauf bleiben erhalten."
         }
       },
       "logs_trigger": {

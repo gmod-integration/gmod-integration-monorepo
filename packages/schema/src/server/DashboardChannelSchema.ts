@@ -5,6 +5,7 @@ export const DashboardChannelConfigurationSchema = z.object({
   channelID: z.string().max(255).optional(),
   adminCmd: z.boolean().optional(),
 })
+export const LuaErrorChannelRequestSchema = z.object({ channelID: z.string().regex(/^\d{17,20}$/) }).strict()
 export const DashboardChatConfigurationSchema = z.object({
   channel: z.string().max(255).optional(),
 })

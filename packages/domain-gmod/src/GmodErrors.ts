@@ -15,7 +15,7 @@ const collection = db.collection('errors')
 export class GmodErrors {
   public readonly serverID: string
   public readonly count: number
-  public readonly realm: string
+  public readonly realm: GmodErrorsInput['realm']
   public readonly error: string
   public readonly stack: string
   public readonly name: string

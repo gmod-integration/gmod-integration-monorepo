@@ -5,6 +5,11 @@ import { FakeCollection, makeChannel, makeGuild, makeGuildClient, makeJob, makeM
 
 const accessMock = vi.hoisted(() => vi.fn())
 const prepareAvatarMock = vi.hoisted(() => vi.fn())
+const luaErrorsMocks = vi.hoisted(() => ({ validate: vi.fn(), send: vi.fn() }))
+vi.mock('../../../src/discord/utils/luaErrors.js', () => ({
+  validateLuaErrorsChannel: luaErrorsMocks.validate,
+  sendLuaError: luaErrorsMocks.send,
+}))
 vi.mock('../../../src/discord/utils/customBotAvatar.js', () => ({ prepareCustomBotAvatar: prepareAvatarMock }))
 vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
   ...(await importOriginal<typeof DomainAccess>()),
@@ -90,6 +95,8 @@ function processor() {
 }
 
 function resetAllMocks() {
+  luaErrorsMocks.validate.mockReset().mockResolvedValue({ valid: true })
+  luaErrorsMocks.send.mockReset().mockResolvedValue(undefined)
   accessMock.mockReset().mockResolvedValue(access())
   gmLogMock.mockClear()
   prismaMock.gm_guild_verify_msg.findFirst.mockReset()
@@ -118,6 +125,31 @@ function lastReplyPayload() {
 
 describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
   beforeEach(() => resetAllMocks())
+
+  it('dispatches scoped Lua-error channel validation and returns only its safe result', async () => {
+    luaErrorsMocks.validate.mockResolvedValueOnce({ valid: false, reason: 'missing_permissions' })
+    const data = { serverID: 'server', channelID: '111111111111111111', correlationId: 'reply' }
+    await processor()(makeJob('serverErrorsChannelValidate', data))
+    expect(luaErrorsMocks.validate).toHaveBeenCalledExactlyOnceWith(data.serverID, data.channelID)
+    expect(lastReplyPayload()).toEqual({ correlationId: 'reply', valid: false, reason: 'missing_permissions' })
+    await expect(
+      processor()(makeJob('serverErrorsChannelValidate', { ...data, channelID: 'foreign', valid: true })),
+    ).rejects.toThrow()
+    expect(luaErrorsMocks.validate).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches only strict saved Lua-error payloads without reply secrets or supplied destinations', async () => {
+    const data = {
+      serverID: 'server',
+      errorID: '0123456789abcdef01234567',
+      report: { error: 'boom', stack: 'line1', realm: 'server', count: 1, uptime: 10 },
+    }
+    await processor()(makeJob('serverLuaError', data))
+    expect(luaErrorsMocks.send).toHaveBeenCalledExactlyOnceWith(data)
+    expect(redisMock.set).not.toHaveBeenCalled()
+    await expect(processor()(makeJob('serverLuaError', { ...data, channelID: '111111111111111111' }))).rejects.toThrow()
+    expect(luaErrorsMocks.send).toHaveBeenCalledOnce()
+  })
 
   it('replies to a fresh scoped member role lookup without returning member data', async () => {
     const guildID = '111111111111111111',

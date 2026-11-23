@@ -16,7 +16,8 @@ src/
                          domain-compliance for GDPR export/erasure
   models/
     discordProfile.js  best-effort Discord profile decoration for browser sessions
-    gmod/         gmodErrorsModels.js — in-game error report shapes
+    gmod/         gmodErrorsModels.js — in-game error reports and best-effort Discord notifications
+                  luaErrorChannels.js — validated, server-scoped Lua error destination configuration
     v3/           one file per v3 API resource (clients, guilds, leaderboard, main, servers,
                    serversPlayers, steam, usersAdmin, users) — request/response models consumed by
                    apps/api's v3 controllers
@@ -51,6 +52,20 @@ authenticated session and database user.
 `apps/api` most heavily (v3 models, Express types, DB logging), and Discord/WebSocket workflows where
 shared application logic is needed. `utils/logger.js` owns server event logging; operational messages
 come from `@gmod/shared/logger.js`.
+
+## Lua error notifications
+
+Both server and client error ingestion use `models/gmod/gmodErrorsModels.js`. A notification is queued
+only after an acknowledged MongoDB save and only when a destination is configured. Erasure-blocked
+reports are not published. Configuration or queue failures preserve the successful save and log a
+fixed message without report contents.
+
+`models/gmod/luaErrorChannels.js` stores only the Discord channel ID in the existing
+`gm_server_settings` key `lua_errors_channel`; no migration or webhook credential is needed. Channel
+assignment validates fresh guild membership, text-channel scope and bot permissions through the
+Discord BullMQ adapter before replacing the previous value. Reads and removal need no bot snapshot.
+The notification worker rechecks the current binding and erasure policy before sending a bounded
+embed with mentions disabled. It does not retry uncertain sends or replay earlier saved history.
 
 ## Screenshot image storage
 

@@ -718,6 +718,17 @@
         },
         "actions": {
           "actions": "Acties"
+        },
+        "channel": {
+          "title": "Lua-fouten op Discord",
+          "description": "Stuur toekomstige Lua-foutrapporten van de spelserver en spelers naar een Discord-tekstkanaal. Opgeslagen fouten blijven hieronder beschikbaar.",
+          "destination": "Discord-doelkanaal",
+          "destination_help": "Kies een kanaal en bevestig je keuze om daar nieuwe foutrapporten te ontvangen.",
+          "select": "Kanaal kiezen",
+          "remove": "Bestemming verwijderen",
+          "empty": "Geen doelkanaal",
+          "load_error": "De bestemming voor Lua-fouten kon niet worden geladen.",
+          "remove_help": "Geen Lua-fouten meer naar deze bestemming sturen? Het Discord-kanaal en de opgeslagen foutgeschiedenis blijven behouden."
         }
       },
       "logs_trigger": {

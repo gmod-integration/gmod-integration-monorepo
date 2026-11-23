@@ -10,6 +10,10 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
   getUrlWithActualParams: vi.fn((s: string) => s),
 }))
 
+vi.mock('../../../../../../src/pages/dashboard/guilds/servers/errors/ServerErrorsParameters.js', () => ({
+  ServerErrorsParameters: () => <div data-testid="lua-errors-destination" />,
+}))
+
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const { default: ServerErrors } =
   await import('../../../../../../src/pages/dashboard/guilds/servers/errors/ServerErrors.js')

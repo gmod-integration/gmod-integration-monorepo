@@ -456,6 +456,56 @@ export const DiscordGuildSendLogMessageReplySchema = z.object({
 
 export type DiscordGuildSendLogMessageReply = z.infer<typeof DiscordGuildSendLogMessageReplySchema>
 
+export const DiscordServerErrorsChannelValidationReasonSchema = z.enum([
+  'channel_not_found',
+  'unsupported_channel',
+  'missing_permissions',
+  'provider_unavailable',
+  'server_not_found',
+])
+export const DiscordServerErrorsChannelValidateJobSchema = z
+  .object({
+    serverID: z.string().min(1).max(255),
+    channelID: z.string().regex(/^\d{17,20}$/),
+    correlationId: z.string().min(1),
+    timestamp: z.coerce.date().optional(),
+  })
+  .strict()
+export type DiscordServerErrorsChannelValidateJob = z.infer<typeof DiscordServerErrorsChannelValidateJobSchema>
+export const DiscordServerErrorsChannelValidateReplySchema = z
+  .object({
+    correlationId: z.string().min(1),
+    valid: z.boolean(),
+    reason: DiscordServerErrorsChannelValidationReasonSchema.optional(),
+  })
+  .strict()
+export type DiscordServerErrorsChannelValidation = Omit<
+  z.infer<typeof DiscordServerErrorsChannelValidateReplySchema>,
+  'correlationId'
+>
+
+export const DiscordServerLuaErrorReportSchema = z
+  .object({
+    error: z.string().max(2048),
+    stack: z.string().max(8192),
+    name: z.string().max(128).optional(),
+    realm: z.enum(['client', 'server']),
+    steamID64: z.union([z.literal(''), z.string().regex(/^\d{17}$/)]).optional(),
+    workshopID: z.union([z.literal(''), z.string().regex(/^\d{1,20}$/)]).optional(),
+    uptime: z.number().finite().nonnegative(),
+    count: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  })
+  .strict()
+export const DiscordServerLuaErrorJobSchema = z
+  .object({
+    serverID: z.string().min(1).max(255),
+    errorID: z.string().regex(/^[a-f\d]{24}$/),
+    report: DiscordServerLuaErrorReportSchema,
+    timestamp: z.coerce.date().optional(),
+  })
+  .strict()
+export type DiscordServerLuaErrorJob = z.infer<typeof DiscordServerLuaErrorJobSchema>
+
 export const DiscordServerStatusRecordSchema = z.object({
   server: z.string().min(1, 'server required'),
   channel: z.string().min(1, 'channel required'),

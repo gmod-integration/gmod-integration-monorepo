@@ -19,6 +19,12 @@ const accessSnapshot = (premium = true) => ({
 vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: vi.fn().mockResolvedValue({ guild: 'g1' }) }))
 const gmodErrorsFromMock = vi.fn()
 const getErrorsByServerMock = vi.fn()
+const enqueueLuaErrorMock = vi.fn()
+const errorChannelMock = vi.fn()
+const logMock = vi.fn()
+vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({ enqueueDiscordServerLuaError: enqueueLuaErrorMock }))
+vi.mock('../../../src/models/gmod/luaErrorChannels.js', () => ({ getLuaErrorChannel: errorChannelMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: logMock }))
 vi.mock('@gmod/domain-gmod/GmodErrors.js', () => ({
   GmodErrors: { from: gmodErrorsFromMock },
   getErrorsByServer: getErrorsByServerMock,
@@ -38,9 +44,61 @@ describe('gmodErrorsModels', () => {
     accessMock.mockReset().mockResolvedValue(accessSnapshot())
     gmodErrorsFromMock.mockReset()
     getErrorsByServerMock.mockReset()
+    enqueueLuaErrorMock.mockReset().mockResolvedValue(undefined)
+    errorChannelMock.mockReset().mockResolvedValue({})
+    logMock.mockReset()
   })
 
   describe('reportGmodErrorPayload', () => {
+    it.each(['server', 'client'] as const)('queues a saved %s error only for a configured server', async (realm) => {
+      const insertedId = { toHexString: () => 'aaaaaaaaaaaaaaaaaaaaaaaa' }
+      const saved = { acknowledged: true, insertedId }
+      const report = {
+        error: 'boom',
+        stack: '["line1"]',
+        name: 'addon',
+        realm,
+        count: 1,
+        uptime: 1,
+        steamID64: '76561198012345678',
+        workshopID: '123',
+        save: vi.fn().mockResolvedValueOnce(saved),
+      }
+      gmodErrorsFromMock.mockReturnValueOnce(report)
+      errorChannelMock.mockResolvedValueOnce({ channelID: '333333333333333333' })
+      expect(await reportGmodErrorPayload({}, { serverID: 'trusted-server', steamID64: report.steamID64 })).toBe(saved)
+      expect(errorChannelMock).toHaveBeenCalledExactlyOnceWith('trusted-server')
+      expect(enqueueLuaErrorMock).toHaveBeenCalledExactlyOnceWith({
+        serverID: 'trusted-server',
+        errorID: insertedId.toHexString(),
+        report,
+      })
+    })
+    it.each([undefined, { acknowledged: false }, { acknowledged: true }])(
+      'does not publish erased, unconfirmed or unconfigured reports: %j',
+      async (saved) => {
+        gmodErrorsFromMock.mockReturnValueOnce({ save: vi.fn().mockResolvedValueOnce(saved) })
+        expect(await reportGmodErrorPayload({}, { serverID: 's1', steamID64: '765' })).toBe(saved)
+        expect(enqueueLuaErrorMock).not.toHaveBeenCalled()
+      },
+    )
+    it.each(['configuration', 'queue'])(
+      'preserves the saved report when the %s notification step fails',
+      async (step) => {
+        const saved = { acknowledged: true, insertedId: { toHexString: () => 'aaaaaaaaaaaaaaaaaaaaaaaa' } }
+        gmodErrorsFromMock.mockReturnValueOnce({ save: vi.fn().mockResolvedValueOnce(saved) })
+        if (step === 'configuration') errorChannelMock.mockRejectedValueOnce(new Error('private database detail'))
+        else {
+          errorChannelMock.mockResolvedValueOnce({ channelID: '333333333333333333' })
+          enqueueLuaErrorMock.mockRejectedValueOnce(new Error('private queue detail'))
+        }
+        expect(await reportGmodErrorPayload({}, { serverID: 's1', steamID64: '765' })).toBe(saved)
+        expect(logMock).toHaveBeenCalledExactlyOnceWith(
+          'warn',
+          'A Lua error was saved, but its Discord notification could not be queued.',
+        )
+      },
+    )
     it('parses the payload, saves it, and returns the result', async () => {
       const saveMock = vi.fn().mockResolvedValueOnce({ id: 1 })
       gmodErrorsFromMock.mockReturnValueOnce({ save: saveMock })

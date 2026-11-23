@@ -718,6 +718,17 @@
         },
         "actions": {
           "actions": "Actions"
+        },
+        "channel": {
+          "title": "Discord’da Lua hataları",
+          "description": "Oyun sunucusu ve oyunculardan gelen yeni Lua hata raporlarını bir Discord metin kanalına gönderin. Kaydedilen hatalar aşağıda erişilebilir kalır.",
+          "destination": "Hedef Discord kanalı",
+          "destination_help": "Yeni hata raporlarını almak için bir kanal seçin ve seçimi onaylayın.",
+          "select": "Kanal seç",
+          "remove": "Hedefi kaldır",
+          "empty": "Hedef kanal yok",
+          "load_error": "Lua hatalarının hedefi yüklenemedi.",
+          "remove_help": "Bu hedefe Lua hataları göndermeyi durdurmak istiyor musunuz? Discord kanalı ve kayıtlı hata geçmişi korunur."
         }
       },
       "logs_trigger": {

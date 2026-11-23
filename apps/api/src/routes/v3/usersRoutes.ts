@@ -115,7 +115,12 @@ import {
 } from '@/middleware/v3/userValidator.js'
 import asyncHandler from '@/middleware/asyncHandler.js'
 import { getAllPanelUsers } from '@/controllers/v3/usersAdminControllers.js'
-import { getServerErrors } from '@/controllers/website/WebsiteErrorsControllers.js'
+import {
+  getServerErrors,
+  getServerErrorsChannel,
+  postServerErrorsChannel,
+  deleteServerErrorsChannel,
+} from '@/controllers/website/WebsiteErrorsControllers.js'
 import { getIGSettings, postIGSettings } from '@/controllers/v3/serversControllers.js'
 import { putServerStatusChannel } from '@/controllers/v3/users/ServerStatusChannelControllers.js'
 import {
@@ -160,6 +165,27 @@ router.get(
   userAdminGuildScopeValidator,
   userServerValidator,
   asyncHandler(getIGSettings),
+)
+
+// Destination reads and removal remain available without a Discord metadata snapshot.
+// Setting a destination validates the live channel through the core model after authorization.
+router.get(
+  '/:discordID/guilds/:guildID/servers/:serverID/errors/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(getServerErrorsChannel),
+)
+router.post(
+  '/:discordID/guilds/:guildID/servers/:serverID/errors/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(postServerErrorsChannel),
+)
+router.delete(
+  '/:discordID/guilds/:guildID/servers/:serverID/errors/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(deleteServerErrorsChannel),
 )
 
 router.delete(
@@ -264,9 +290,6 @@ router.delete(
 
 // Errors
 router.get('/:discordID/guilds/:guildID/servers/:serverID/errors', asyncHandler(getServerErrors))
-// router.get('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(getServerErrorsChannel));
-// router.post('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(postServerErrorsChannel));
-// router.delete('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(deleteServerErrorsChannel));
 
 // Vote
 router.get('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(getVoteChannels))

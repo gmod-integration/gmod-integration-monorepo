@@ -814,7 +814,18 @@
         "realm_client": "Player client",
         "realm_server": "Game server",
         "load_error": "Unable to load error reports. Try again.",
-        "empty": "No Lua errors have been received for this server."
+        "empty": "No Lua errors have been received for this server.",
+        "channel": {
+          "title": "Lua errors on Discord",
+          "description": "Send future Lua error reports from the game server and players to a Discord text channel. Saved errors remain available below.",
+          "destination": "Discord destination",
+          "destination_help": "Choose a channel and confirm the selection to receive new error reports there.",
+          "select": "Select a channel",
+          "remove": "Remove destination",
+          "empty": "No destination channel",
+          "load_error": "Unable to load the Lua error destination.",
+          "remove_help": "Stop sending Lua errors to this destination? The Discord channel and saved error history will be kept."
+        }
       },
       "logs_trigger": {
         "edit_trigger": "Edit Trigger",

@@ -814,7 +814,18 @@
         "realm_client": "Client du joueur",
         "realm_server": "Serveur de jeu",
         "load_error": "Impossible de charger les rapports d’erreurs. Réessayez.",
-        "empty": "Aucune erreur Lua n’a été reçue pour ce serveur."
+        "empty": "Aucune erreur Lua n’a été reçue pour ce serveur.",
+        "channel": {
+          "title": "Erreurs Lua sur Discord",
+          "description": "Envoyez les prochains rapports d’erreurs Lua du serveur de jeu et des joueurs dans un salon textuel Discord. Les erreurs enregistrées restent disponibles ci-dessous.",
+          "destination": "Salon Discord de destination",
+          "destination_help": "Choisissez un salon et confirmez la sélection pour y recevoir les nouveaux rapports d’erreurs.",
+          "select": "Choisir un salon",
+          "remove": "Retirer la destination",
+          "empty": "Aucun salon de destination",
+          "load_error": "Impossible de charger la destination des erreurs Lua.",
+          "remove_help": "Arrêter l’envoi des erreurs Lua vers cette destination ? Le salon Discord et l’historique des erreurs seront conservés."
+        }
       },
       "logs_trigger": {
         "edit_trigger": "Modifier le déclencheur",

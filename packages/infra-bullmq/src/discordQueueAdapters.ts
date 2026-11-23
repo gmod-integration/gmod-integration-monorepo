@@ -44,6 +44,11 @@ import {
   DiscordGuildBansReplySchema,
   DiscordGuildSendLogMessageJobSchema,
   DiscordGuildSendLogMessageReplySchema,
+  DiscordServerErrorsChannelValidateJobSchema,
+  DiscordServerErrorsChannelValidateReplySchema,
+  DiscordServerLuaErrorJobSchema,
+  type DiscordServerErrorsChannelValidation,
+  type DiscordServerLuaErrorJob,
   DiscordServerStatusCreateJobSchema,
   DiscordServerStatusCreateReplySchema,
   DiscordServerStatusPreviewJobSchema,
@@ -81,7 +86,7 @@ import {
   type DiscordServerVoteChannelRecord,
   type DiscordServerSyncChatRecord,
 } from './schemas.js'
-import { randomUUID } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import redis from '@gmod/infra-redis'
 import { JobPriority } from './priorities.js'
 import type { StatusMessagePreviewInput, StatusMessagePreview } from '@gmod/schema/server/StatusMessagePreviewSchema.js'
@@ -741,6 +746,59 @@ export async function enqueueDiscordGuildBans(
 
   const reply = await waitForReply(correlationId, (value) => DiscordGuildBansReplySchema.parse(value), timeoutMs)
   return reply.bans
+}
+
+export async function enqueueDiscordServerErrorsChannelValidate(
+  serverID: string,
+  channelID: string,
+  timeoutMs = 7000,
+): Promise<DiscordServerErrorsChannelValidation> {
+  const correlationId = randomUUID()
+  const payload = DiscordServerErrorsChannelValidateJobSchema.parse({
+    serverID,
+    channelID,
+    correlationId,
+    timestamp: new Date(),
+  })
+  await discordGuildOpsQueue.add('serverErrorsChannelValidate', payload, {
+    priority: JobPriority.INTERACTIVE,
+    attempts: 1,
+    removeOnComplete: true,
+  })
+  const reply = await waitForReply(
+    correlationId,
+    (value) => DiscordServerErrorsChannelValidateReplySchema.parse(value),
+    timeoutMs,
+  )
+  return { valid: reply.valid, ...(reply.reason !== undefined ? { reason: reply.reason } : {}) }
+}
+
+/** Queue only an acknowledged saved report; Discord failures do not undo its history. */
+export async function enqueueDiscordServerLuaError(data: Omit<DiscordServerLuaErrorJob, 'timestamp'>): Promise<void> {
+  const source = data.report
+  const payload = DiscordServerLuaErrorJobSchema.parse({
+    serverID: data.serverID,
+    errorID: data.errorID,
+    timestamp: new Date(),
+    report: {
+      error: source.error.slice(0, 2048),
+      stack: source.stack.slice(0, 8192),
+      ...(source.name !== undefined ? { name: source.name.slice(0, 128) } : {}),
+      realm: source.realm,
+      ...(source.steamID64 !== undefined ? { steamID64: source.steamID64 } : {}),
+      ...(source.workshopID !== undefined ? { workshopID: source.workshopID } : {}),
+      uptime: source.uptime,
+      count: source.count,
+    },
+  })
+  const identity = createHash('sha256').update(data.serverID).update('\0').update(data.errorID).digest('hex')
+  await discordGuildOpsQueue.add('serverLuaError', payload, {
+    jobId: `lua-error-${identity}`,
+    priority: JobPriority.NORMAL,
+    attempts: 1,
+    removeOnComplete: true,
+    removeOnFail: true,
+  })
 }
 
 export async function enqueueDiscordGuildSendLogMessage(

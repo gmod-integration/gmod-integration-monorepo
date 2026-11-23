@@ -27,6 +27,8 @@ import {
   DiscordGuildAdminsJobSchema,
   DiscordGuildBansJobSchema,
   DiscordGuildSendLogMessageJobSchema,
+  DiscordServerErrorsChannelValidateJobSchema,
+  DiscordServerLuaErrorJobSchema,
   DiscordServerStatusCreateJobSchema,
   DiscordServerStatusPreviewJobSchema,
   DiscordServerStatusDeleteJobSchema,
@@ -58,6 +60,8 @@ import {
   type DiscordGuildAdminsJob,
   type DiscordGuildBansJob,
   type DiscordGuildSendLogMessageJob,
+  type DiscordServerErrorsChannelValidateJob,
+  type DiscordServerLuaErrorJob,
   type DiscordServerStatusCreateJob,
   type DiscordServerStatusPreviewJob,
   type DiscordServerStatusDeleteJob,
@@ -87,6 +91,7 @@ import { getPublicGuildInvite } from '../utils/publicInvite.js'
 import { renderStatusPreview } from '../utils/statusPreview.js'
 import { prepareCustomBotAvatar } from '../utils/customBotAvatar.js'
 import { getGuildMemberRole } from '../utils/memberRole.js'
+import { sendLuaError, validateLuaErrorsChannel } from '../utils/luaErrors.js'
 
 async function writeReply(correlationId: string, payload: unknown) {
   await redis.set(`bullmq:reply:${correlationId}`, JSON.stringify(payload), 'EX', 30)
@@ -617,6 +622,8 @@ export const discordMainClientOpsWorker = new Worker<
 )
 
 export const discordGuildOpsWorker = new Worker<
+  | DiscordServerErrorsChannelValidateJob
+  | DiscordServerLuaErrorJob
   | DiscordGuildMemberRoleJob
   | DiscordGuildPublicInviteJob
   | DiscordGuildSnapshotJob
@@ -647,6 +654,8 @@ export const discordGuildOpsWorker = new Worker<
   'discord-guildOps',
   async (
     job: Job<
+      | DiscordServerErrorsChannelValidateJob
+      | DiscordServerLuaErrorJob
       | DiscordGuildMemberRoleJob
       | DiscordGuildPublicInviteJob
       | DiscordGuildSnapshotJob
@@ -675,6 +684,16 @@ export const discordGuildOpsWorker = new Worker<
       | DiscordGuildRemoveSyncRolesJob
     >,
   ) => {
+    if (job.name === 'serverErrorsChannelValidate') {
+      const payload = DiscordServerErrorsChannelValidateJobSchema.parse(job.data)
+      const result = await validateLuaErrorsChannel(payload.serverID, payload.channelID)
+      await writeReply(payload.correlationId, { correlationId: payload.correlationId, ...result })
+      return
+    }
+    if (job.name === 'serverLuaError') {
+      await sendLuaError(DiscordServerLuaErrorJobSchema.parse(job.data))
+      return
+    }
     if (job.name === 'guildMemberRole') {
       const payload = DiscordGuildMemberRoleJobSchema.parse(job.data)
       const result = await getGuildMemberRole(payload.guildID, payload.discordID, payload.roleID)

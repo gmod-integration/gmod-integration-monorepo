@@ -718,6 +718,17 @@
         },
         "actions": {
           "actions": "Medidas"
+        },
+        "channel": {
+          "title": "Errores de Lua en Discord",
+          "description": "Envía los próximos informes de errores de Lua del servidor de juego y de los jugadores a un canal de texto de Discord. Los errores guardados seguirán disponibles abajo.",
+          "destination": "Canal de destino de Discord",
+          "destination_help": "Elige un canal y confirma la selección para recibir allí nuevos informes de errores.",
+          "select": "Seleccionar un canal",
+          "remove": "Eliminar destino",
+          "empty": "Sin canal de destino",
+          "load_error": "No se pudo cargar el destino de los errores de Lua.",
+          "remove_help": "¿Dejar de enviar errores de Lua a este destino? Se conservarán el canal de Discord y el historial de errores guardado."
         }
       },
       "logs_trigger": {

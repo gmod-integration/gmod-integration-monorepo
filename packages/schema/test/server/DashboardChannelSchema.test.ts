@@ -2,9 +2,17 @@ import { describe, expect, it } from 'vitest'
 import {
   DashboardChannelConfigurationSchema,
   DashboardChatConfigurationSchema,
+  LuaErrorChannelRequestSchema,
 } from '../../src/server/DashboardChannelSchema.js'
 
 describe('browser channel configuration projections', () => {
+  it('requires an exact Discord destination identifier and rejects target overrides', () => {
+    const channelID = '333333333333333333'
+    expect(LuaErrorChannelRequestSchema.parse({ channelID })).toEqual({ channelID })
+    for (const value of ['', '1', '1'.repeat(21), 123, null])
+      expect(LuaErrorChannelRequestSchema.safeParse({ channelID: value }).success).toBe(false)
+    expect(LuaErrorChannelRequestSchema.safeParse({ channelID, serverID: 'foreign' }).success).toBe(false)
+  })
   it('keeps only channel display settings, including for old records carrying unexpected credentials', () => {
     const raw = {
       channelID: 'channel-1',

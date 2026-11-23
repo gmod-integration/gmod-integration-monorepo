@@ -718,6 +718,17 @@
         },
         "actions": {
           "actions": "Actions"
+        },
+        "channel": {
+          "title": "Błędy Lua na Discordzie",
+          "description": "Wysyłaj przyszłe raporty błędów Lua z serwera gry i od graczy do kanału tekstowego Discord. Zapisane błędy pozostaną dostępne poniżej.",
+          "destination": "Docelowy kanał Discord",
+          "destination_help": "Wybierz kanał i potwierdź wybór, aby otrzymywać tam nowe raporty błędów.",
+          "select": "Wybierz kanał",
+          "remove": "Usuń miejsce docelowe",
+          "empty": "Brak kanału docelowego",
+          "load_error": "Nie udało się wczytać miejsca docelowego błędów Lua.",
+          "remove_help": "Przestać wysyłać błędy Lua do tego miejsca? Kanał Discord i zapisana historia błędów zostaną zachowane."
         }
       },
       "logs_trigger": {

@@ -7,6 +7,7 @@ import JsonViewer from '../../../../../components/JsonViewer'
 import { fetchAPI } from '../../../../../utils/api'
 import { type ClientQuery, QuerySort, type ServerQuery } from '../../../../../utils/types/QueryTypes'
 import Pagination from '../../../../../components/Pagination'
+import { ServerErrorsParameters } from './ServerErrorsParameters.js'
 
 interface ErrorsSchema {
   serverID: string
@@ -166,6 +167,7 @@ const ServerErrors: Component = () => {
 
   return (
     <>
+      <ServerErrorsParameters />
       <AdminPanel
         title={t('dashboard.server.errors.title', 'Errors')}
         description={t(
