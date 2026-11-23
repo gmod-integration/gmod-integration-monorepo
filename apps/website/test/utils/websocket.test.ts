@@ -68,6 +68,7 @@ beforeEach(() => {
 })
 afterEach(() => {
   stopWebSocket()
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
   vi.useRealTimers()
 })
@@ -148,6 +149,77 @@ describe('cookie authenticated WebSocket transport', () => {
     await vi.advanceTimersByTimeAsync(1600)
     expect(FakeWebSocket.instances).toHaveLength(2)
     expect(vi.mocked(fetch).mock.calls).toHaveLength(2)
+  })
+  it('preserves pending backoff across repeated initializations and same-session refreshes', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const ws = await connect()
+    ws.readyState = 3
+    await ws.onclose?.({ code: 1006 })
+    await Promise.all([initWebSocket(), initWebSocket()])
+    acceptAuthSession({ ...session, csrfToken: 'refreshed-csrf' })
+    await initWebSocket()
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(999)
+    expect(fetch).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    expect(FakeWebSocket.instances).toHaveLength(2)
+  })
+  it('increases backoff when connections open but immediately fail backend verification', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    let ws = await connect()
+    for (const [index, delay] of [1000, 2000, 4000, 8000].entries()) {
+      ws.readyState = FakeWebSocket.OPEN
+      ws.onopen?.()
+      await vi.advanceTimersByTimeAsync(100)
+      ws.readyState = 3
+      await ws.onclose?.({ code: 1013 })
+      await vi.advanceTimersByTimeAsync(delay - 1)
+      expect(fetch).toHaveBeenCalledTimes(index + 1)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(fetch).toHaveBeenCalledTimes(index + 2)
+      ws = FakeWebSocket.instances[index + 1]
+    }
+  })
+  it('resets backoff after the replacement connection stays open', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const previous = await connect()
+    previous.readyState = 3
+    await previous.onclose?.({ code: 1006 })
+    await vi.advanceTimersByTimeAsync(1000)
+    const ws = FakeWebSocket.instances[1]
+    ws.readyState = FakeWebSocket.OPEN
+    ws.onopen?.()
+    await vi.advanceTimersByTimeAsync(10_000)
+    ws.readyState = 3
+    await ws.onclose?.({ code: 1006 })
+    await vi.advanceTimersByTimeAsync(999)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(fetch).toHaveBeenCalledTimes(3)
+  })
+  it.each(['explicit reconnect', 'account change'])('replaces a pending retry after an %s', async (reason) => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const previous = await connect()
+    previous.readyState = 3
+    await previous.onclose?.({ code: 1006 })
+    if (reason === 'account change') {
+      acceptAuthSession({ ...session, session: { ...session.session, id: 'replacement-session' } })
+    }
+    await initWebSocket(reason === 'explicit reconnect')
+    expect(fetch).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(500)
+    const ws = FakeWebSocket.instances[1]
+    ws.readyState = 3
+    await ws.onclose?.({ code: 1006 })
+    await vi.advanceTimersByTimeAsync(999)
+    expect(fetch).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(fetch).toHaveBeenCalledTimes(3)
   })
   it('clears the last verified addon status immediately when the dashboard disconnects', async () => {
     vi.useFakeTimers()
@@ -285,6 +357,34 @@ describe('cookie authenticated WebSocket transport', () => {
       expect.objectContaining({ credentials: 'include' }),
     )
   })
+  it('ignores a delayed policy-close session check after explicit replacement', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(Math, 'random').mockReturnValue(0)
+    const previous = await connect()
+    let finish!: (value: Response) => void
+    const network = vi.fn().mockImplementation((url: string) =>
+      url.endsWith('/session')
+        ? new Promise<Response>((resolve) => {
+            finish = resolve
+          })
+        : Promise.resolve(new Response(JSON.stringify({ ticket: 'replacement-ticket' }))),
+    )
+    vi.stubGlobal('fetch', network)
+    previous.readyState = 3
+    const pendingClose = previous.onclose?.({ code: 1008 })
+    await initWebSocket(true)
+    const ws = FakeWebSocket.instances[1]
+    finish(new Response(JSON.stringify(session)))
+    await pendingClose
+    expect(network).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(500)
+    ws.readyState = 3
+    await ws.onclose?.({ code: 1006 })
+    await vi.advanceTimersByTimeAsync(999)
+    expect(network).toHaveBeenCalledTimes(2)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(network).toHaveBeenCalledTimes(3)
+  })
   it('rejects a malformed ticket and obtains a fresh one after bounded backoff', async () => {
     vi.useFakeTimers()
     acceptAuthSession(session)
@@ -295,6 +395,8 @@ describe('cookie authenticated WebSocket transport', () => {
     vi.stubGlobal('fetch', network)
     await initWebSocket()
     expect(FakeWebSocket.instances).toHaveLength(0)
+    await initWebSocket()
+    expect(network).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(1600)
     expect(network).toHaveBeenCalledTimes(2)
     expect(FakeWebSocket.instances).toHaveLength(1)

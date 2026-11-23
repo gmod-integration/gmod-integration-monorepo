@@ -28,6 +28,7 @@ const unverifiedServerStatus = (): ServerStatus => ({
 export const [webSocketServerStatus, setWebSocketServerStatus] = createSignal(unverifiedServerStatus())
 
 let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+let stableConnectionTimer: ReturnType<typeof setTimeout> | undefined
 let attempt = 0
 let stopped = true
 let generation = 0
@@ -54,6 +55,9 @@ export function stopWebSocket() {
   connectedSessionID = undefined
   clearTimeout(reconnectTimer)
   reconnectTimer = undefined
+  clearTimeout(stableConnectionTimer)
+  stableConnectionTimer = undefined
+  attempt = 0
   const previous = webSocketSignal()
   setWebSocketSignal(null)
   setWebSocketServerStatus(unverifiedServerStatus())
@@ -87,9 +91,10 @@ export async function initWebSocket(forceClose = false) {
   const existing = webSocketSignal()
   if (existing && (existing.readyState === WebSocket.OPEN || existing.readyState === WebSocket.CONNECTING)) return
   if (connecting) return connecting
+  if (reconnectTimer) return
   setWebSocketServerStatus(unverifiedServerStatus())
-  clearTimeout(reconnectTimer)
-  reconnectTimer = undefined
+  clearTimeout(stableConnectionTimer)
+  stableConnectionTimer = undefined
   const current = generation
   // The pending ticket belongs to this identity too, before a socket exists.
   connectedSessionID = sessionID
@@ -114,11 +119,16 @@ export async function initWebSocket(forceClose = false) {
       connectedSessionID = authSession()?.session.id
       setWebSocketSignal(ws)
       ws.onopen = () => {
-        if (current !== generation) {
+        if (current !== generation || webSocketSignal() !== ws) {
           ws.close()
           return
         }
-        attempt = 0
+        // The upgrade can open before backend permission checks close a rejected connection.
+        stableConnectionTimer = setTimeout(() => {
+          if (current !== generation || stopped || webSocketSignal() !== ws || ws.readyState !== WebSocket.OPEN) return
+          stableConnectionTimer = undefined
+          attempt = 0
+        }, 10_000)
         refreshAccess('background')
       }
       ws.onmessage = (event) => {
@@ -140,6 +150,8 @@ export async function initWebSocket(forceClose = false) {
       }
       ws.onclose = async (event) => {
         if (current !== generation || stopped || webSocketSignal() !== ws) return
+        clearTimeout(stableConnectionTimer)
+        stableConnectionTimer = undefined
         setWebSocketSignal(null)
         setWebSocketServerStatus(unverifiedServerStatus())
         if (event.code === 4003) {
@@ -148,6 +160,7 @@ export async function initWebSocket(forceClose = false) {
           return
         }
         if (event.code === 1008 || event.code === 4401) await refreshAuthSession()
+        if (current !== generation || stopped) return
         if (authStatus() !== 'signed_out') reconnect()
       }
       ws.onerror = () => {

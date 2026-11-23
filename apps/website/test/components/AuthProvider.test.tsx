@@ -4,6 +4,7 @@ import { createSignal } from 'solid-js'
 import { AuthProvider } from '../../src/components/AuthProvider.js'
 import {
   AUTH_STORAGE_KEY,
+  acceptAuthSession,
   authenticatedFetch,
   authStatus,
   broadcastAuthChange,
@@ -47,6 +48,21 @@ describe('application authentication provider', () => {
     await vi.waitFor(() => expect(isLogged()).toBe(true))
     expect(initWebSocket).toHaveBeenCalled()
     expect(localStorage.getItem('accessToken')).toBeNull()
+  })
+  it('keeps transport startup tied to the session identity rather than profile or expiry refreshes', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify(sessionFixture()))))
+    renderProvider()
+    await vi.waitFor(() => expect(authStatus()).toBe('authenticated'))
+    expect(initWebSocket).toHaveBeenCalledTimes(1)
+    const current = sessionFixture()
+    acceptAuthSession({
+      ...current,
+      user: { ...current.user, displayName: 'Updated profile' },
+      session: { ...current.session, expiresAt: '2099-02-01T00:00:00.000Z' },
+    })
+    expect(initWebSocket).toHaveBeenCalledTimes(1)
+    acceptAuthSession({ ...current, session: { ...current.session, id: 'replacement-session' } })
+    expect(initWebSocket).toHaveBeenCalledTimes(2)
   })
   it('retains a typed draft and session when a foreground check fails temporarily', async () => {
     const network = vi.fn().mockResolvedValue(new Response(JSON.stringify(sessionFixture())))

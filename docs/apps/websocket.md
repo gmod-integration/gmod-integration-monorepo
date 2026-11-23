@@ -31,6 +31,12 @@ ticket. Tickets have a maximum lifetime of 30 seconds, bounded by session expiry
 consumes them with `GETDEL`; only their hash is used in the Redis key. HTTP bearer clients can also request
 a ticket. Supplied browser origins must pass the shared origin check.
 
+Dashboard startup follows the application session identity without subscribing to socket state. A
+transport closure retries after 1, 2, 4, 8, 16 and then 30 seconds, with up to 500 ms of jitter; repeated
+initialization and same-session profile or expiry refreshes preserve that delay. The failure counter
+resets only after a connection stays open for 10 seconds. Logout cancels retries, and an explicit
+restart or a different session discards the previous connection and its retry state.
+
 ## Sessions, permissions and connection lifecycle
 
 Multiple tabs may connect using the same session, and multiple sessions may belong to the same account.

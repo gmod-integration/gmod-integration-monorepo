@@ -1,4 +1,4 @@
-import { createEffect, onCleanup, onMount, Show, type ParentComponent } from 'solid-js'
+import { createEffect, createMemo, onCleanup, onMount, Show, untrack, type ParentComponent } from 'solid-js'
 import {
   AUTH_STORAGE_KEY,
   authSession,
@@ -14,6 +14,7 @@ import { WEBSITE_CONFIG } from '../config.js'
 /** Session recovery never unmounts editors or replaces a network failure with a login redirect. */
 export const AuthProvider: ParentComponent = (props) => {
   const { t } = useI18n()
+  const sessionID = createMemo(() => authSession()?.session.id)
   onMount(() => {
     if (!['/login', '/logout'].includes(window.location.pathname)) void refreshAuthSession()
     const resume = () => {
@@ -35,10 +36,15 @@ export const AuthProvider: ParentComponent = (props) => {
     })
   })
   createEffect(() => {
+    const identity = sessionID()
+    const status = authStatus()
+    // Socket signals and same-session profile refreshes must not bypass reconnect backoff.
+    if (status === 'signed_out') untrack(stopWebSocket)
+    else if (identity && status === 'authenticated') untrack(() => void initWebSocket())
+  })
+  createEffect(() => {
     const session = authSession()
-    if (authStatus() === 'signed_out') stopWebSocket()
-    else if (session && authStatus() === 'authenticated') {
-      void initWebSocket()
+    if (session && authStatus() === 'authenticated') {
       const delay = Date.parse(session.session.expiresAt) - Date.now()
       const timer = setTimeout(() => void refreshAuthSession(), Math.min(2_147_483_647, Math.max(1_000, delay)))
       onCleanup(() => clearTimeout(timer))
