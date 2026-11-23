@@ -95,6 +95,12 @@ request; copying uses `CopyableValue` feedback. It renders nothing for an empty 
 top separator, so it can follow a `SettingRow` without duplicating its border. Keep event-specific
 variables reactive and do not advertise fields missing from the selected event.
 
+`ReportChannelSettings` shares Discord destination selection for Lua errors and bug reports. Feature
+wrappers retain their endpoints through `createReportChannelRequests` and pass load/save/remove
+callbacks, translated labels and unique dialog IDs. Selection and removal require confirmation;
+failed or mismatched acknowledgements preserve the current destination and permit retry. Destination
+loading remains independent of the report history.
+
 Language flags use the local `LanguageFlag` assets rather than Lucide or emoji fonts; these are language
 selector artwork, while action icons remain in the Lucide registry.
 

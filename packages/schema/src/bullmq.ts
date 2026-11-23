@@ -506,6 +506,15 @@ export const DiscordServerLuaErrorJobSchema = z
   .strict()
 export type DiscordServerLuaErrorJob = z.infer<typeof DiscordServerLuaErrorJobSchema>
 
+/** Only persisted report identities cross the queue; content and destinations are read at delivery. */
+export const DiscordServerBugReportJobSchema = z
+  .object({
+    serverID: z.string().min(1).max(255),
+    reportID: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  })
+  .strict()
+export type DiscordServerBugReportJob = z.infer<typeof DiscordServerBugReportJobSchema>
+
 export const DiscordServerStatusRecordSchema = z.object({
   server: z.string().min(1, 'server required'),
   channel: z.string().min(1, 'channel required'),

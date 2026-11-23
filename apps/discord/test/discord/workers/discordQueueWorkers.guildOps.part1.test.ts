@@ -6,6 +6,8 @@ import { FakeCollection, makeChannel, makeGuild, makeGuildClient, makeJob, makeM
 const accessMock = vi.hoisted(() => vi.fn())
 const prepareAvatarMock = vi.hoisted(() => vi.fn())
 const luaErrorsMocks = vi.hoisted(() => ({ validate: vi.fn(), send: vi.fn() }))
+const sendBugReportMock = vi.hoisted(() => vi.fn())
+vi.mock('../../../src/discord/utils/bugReports.js', () => ({ sendBugReport: sendBugReportMock }))
 vi.mock('../../../src/discord/utils/luaErrors.js', () => ({
   validateLuaErrorsChannel: luaErrorsMocks.validate,
   sendLuaError: luaErrorsMocks.send,
@@ -95,6 +97,7 @@ function processor() {
 }
 
 function resetAllMocks() {
+  sendBugReportMock.mockReset().mockResolvedValue(undefined)
   luaErrorsMocks.validate.mockReset().mockResolvedValue({ valid: true })
   luaErrorsMocks.send.mockReset().mockResolvedValue(undefined)
   accessMock.mockReset().mockResolvedValue(access())
@@ -125,6 +128,16 @@ function lastReplyPayload() {
 
 describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
   beforeEach(() => resetAllMocks())
+
+  it('dispatches only persisted bug report identities without caller content or destinations', async () => {
+    const data = { serverID: 'server', reportID: 42 }
+    await processor()(makeJob('serverBugReport', data))
+    expect(sendBugReportMock).toHaveBeenCalledExactlyOnceWith(data)
+    expect(redisMock.set).not.toHaveBeenCalled()
+    for (const extra of [{ channelID: 'foreign' }, { report: { description: 'private' } }, { reportID: -1 }])
+      await expect(processor()(makeJob('serverBugReport', { ...data, ...extra }))).rejects.toThrow()
+    expect(sendBugReportMock).toHaveBeenCalledOnce()
+  })
 
   it('dispatches scoped Lua-error channel validation and returns only its safe result', async () => {
     luaErrorsMocks.validate.mockResolvedValueOnce({ valid: false, reason: 'missing_permissions' })

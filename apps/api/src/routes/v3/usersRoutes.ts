@@ -121,6 +121,11 @@ import {
   postServerErrorsChannel,
   deleteServerErrorsChannel,
 } from '@/controllers/website/WebsiteErrorsControllers.js'
+import {
+  getServerBugReportsChannel,
+  postServerBugReportsChannel,
+  deleteServerBugReportsChannel,
+} from '@/controllers/website/WebsiteBugReportsControllers.js'
 import { getIGSettings, postIGSettings } from '@/controllers/v3/serversControllers.js'
 import { putServerStatusChannel } from '@/controllers/v3/users/ServerStatusChannelControllers.js'
 import {
@@ -186,6 +191,25 @@ router.delete(
   userAdminGuildScopeValidator,
   userServerValidator,
   asyncHandler(deleteServerErrorsChannel),
+)
+
+router.get(
+  '/:discordID/guilds/:guildID/servers/:serverID/bugs/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(getServerBugReportsChannel),
+)
+router.post(
+  '/:discordID/guilds/:guildID/servers/:serverID/bugs/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(postServerBugReportsChannel),
+)
+router.delete(
+  '/:discordID/guilds/:guildID/servers/:serverID/bugs/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(deleteServerBugReportsChannel),
 )
 
 router.delete(

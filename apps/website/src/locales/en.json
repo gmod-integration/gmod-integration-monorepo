@@ -455,6 +455,17 @@
           "medium": "Medium",
           "high": "High",
           "critical": "Critical"
+        },
+        "channel": {
+          "title": "Bug reports on Discord",
+          "description": "Send new player bug reports to a Discord text channel. Saved reports and screenshots remain available below.",
+          "destination": "Discord destination",
+          "destination_help": "Choose a channel and confirm the selection to receive new bug reports there.",
+          "select": "Select a channel",
+          "remove": "Remove destination",
+          "empty": "No destination channel",
+          "load_error": "Unable to load the bug report destination.",
+          "remove_help": "Stop sending bug reports to this destination? The Discord channel and saved reports will be kept."
         }
       },
       "chat": {

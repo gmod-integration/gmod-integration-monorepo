@@ -391,7 +391,18 @@
       },
       "bugsReport": {
         "title": "Rapport sur les bogues",
-        "description": "Liste de tous les bogues signalés sur votre serveur"
+        "description": "Liste de tous les bogues signalés sur votre serveur",
+        "channel": {
+          "title": "Zgłoszenia błędów na Discordzie",
+          "description": "Wysyłaj nowe zgłoszenia błędów od graczy na kanał tekstowy Discorda. Zapisane zgłoszenia i zrzuty ekranu pozostają dostępne poniżej.",
+          "destination": "Docelowy kanał Discord",
+          "destination_help": "Wybierz kanał i potwierdź wybór, aby otrzymywać na nim nowe zgłoszenia błędów.",
+          "select": "Wybierz kanał",
+          "remove": "Usuń miejsce docelowe",
+          "empty": "Brak kanału docelowego",
+          "load_error": "Nie udało się wczytać kanału zgłoszeń błędów.",
+          "remove_help": "Przestać wysyłać zgłoszenia błędów do tego kanału? Kanał Discorda i zapisane zgłoszenia zostaną zachowane."
+        }
       },
       "chat": {
         "chats": "Chats",

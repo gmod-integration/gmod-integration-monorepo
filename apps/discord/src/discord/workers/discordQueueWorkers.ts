@@ -29,6 +29,7 @@ import {
   DiscordGuildSendLogMessageJobSchema,
   DiscordServerErrorsChannelValidateJobSchema,
   DiscordServerLuaErrorJobSchema,
+  DiscordServerBugReportJobSchema,
   DiscordServerStatusCreateJobSchema,
   DiscordServerStatusPreviewJobSchema,
   DiscordServerStatusDeleteJobSchema,
@@ -62,6 +63,7 @@ import {
   type DiscordGuildSendLogMessageJob,
   type DiscordServerErrorsChannelValidateJob,
   type DiscordServerLuaErrorJob,
+  type DiscordServerBugReportJob,
   type DiscordServerStatusCreateJob,
   type DiscordServerStatusPreviewJob,
   type DiscordServerStatusDeleteJob,
@@ -92,6 +94,7 @@ import { renderStatusPreview } from '../utils/statusPreview.js'
 import { prepareCustomBotAvatar } from '../utils/customBotAvatar.js'
 import { getGuildMemberRole } from '../utils/memberRole.js'
 import { sendLuaError, validateLuaErrorsChannel } from '../utils/luaErrors.js'
+import { sendBugReport } from '../utils/bugReports.js'
 
 async function writeReply(correlationId: string, payload: unknown) {
   await redis.set(`bullmq:reply:${correlationId}`, JSON.stringify(payload), 'EX', 30)
@@ -622,6 +625,7 @@ export const discordMainClientOpsWorker = new Worker<
 )
 
 export const discordGuildOpsWorker = new Worker<
+  | DiscordServerBugReportJob
   | DiscordServerErrorsChannelValidateJob
   | DiscordServerLuaErrorJob
   | DiscordGuildMemberRoleJob
@@ -654,6 +658,7 @@ export const discordGuildOpsWorker = new Worker<
   'discord-guildOps',
   async (
     job: Job<
+      | DiscordServerBugReportJob
       | DiscordServerErrorsChannelValidateJob
       | DiscordServerLuaErrorJob
       | DiscordGuildMemberRoleJob
@@ -692,6 +697,10 @@ export const discordGuildOpsWorker = new Worker<
     }
     if (job.name === 'serverLuaError') {
       await sendLuaError(DiscordServerLuaErrorJobSchema.parse(job.data))
+      return
+    }
+    if (job.name === 'serverBugReport') {
+      await sendBugReport(DiscordServerBugReportJobSchema.parse(job.data))
       return
     }
     if (job.name === 'guildMemberRole') {

@@ -41,9 +41,15 @@ vi.mock('@gmod/infra-minio', () => ({
 }))
 
 const enqueueMainClientUploadScreenshotMock = vi.fn()
+const enqueueBugReportMock = vi.fn()
+const bugReportChannelMock = vi.fn()
+const logMock = vi.fn()
 vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
   enqueueMainClientUploadScreenshot: enqueueMainClientUploadScreenshotMock,
+  enqueueDiscordServerBugReport: enqueueBugReportMock,
 }))
+vi.mock('../../../src/models/gmod/bugReportChannels.js', () => ({ getBugReportChannel: bugReportChannelMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: logMock }))
 
 const getTranslateMock = vi.fn(async (key: string) => key)
 vi.mock('../../../src/utils/localizations.js', () => ({ getTranslate: getTranslateMock }))
@@ -86,6 +92,9 @@ describe('clientsModels', () => {
     createBucketIfNotExistsMock.mockReset()
     s3SendMock.mockReset()
     enqueueMainClientUploadScreenshotMock.mockReset()
+    enqueueBugReportMock.mockReset().mockResolvedValue(undefined)
+    bugReportChannelMock.mockReset().mockResolvedValue({})
+    logMock.mockReset()
     getTranslateMock.mockClear()
     for (const table of Object.values(prismaMock)) {
       for (const fn of Object.values(table as Record<string, any>)) {
@@ -448,6 +457,67 @@ describe('clientsModels', () => {
   })
 
   describe('reportBugPayload', () => {
+    const validBug = {
+      player: fakePlayer,
+      description: 'desc',
+      importance: 'high',
+      steps: 'steps',
+      expected: 'expected',
+      actual: 'actual',
+    }
+    it.each(['none', 'saved', 'failed'] as const)(
+      'queues only the trusted saved identity after persistence, with attachment outcome %s',
+      async (attachment) => {
+        bugReportChannelMock.mockResolvedValueOnce({ channelID: '333333333333333333' })
+        prismaMock.gm_server_report_bugs.create.mockImplementationOnce(async () => {
+          expect(enqueueBugReportMock).not.toHaveBeenCalled()
+          return { id: 42 }
+        })
+        s3SendMock.mockResolvedValue({})
+        prismaMock.gm_server_screenshots.create.mockResolvedValue({})
+        const screenshot = attachment === 'none' ? undefined : attachment === 'saved' ? bugCapture() : { invalid: true }
+        expect(
+          await reportBugPayload(makeServer(), { ...validBug, screenshot, serverID: 'foreign', reportID: 999 }),
+        ).toEqual({
+          success: true,
+          saved: true,
+          attachment,
+        })
+        expect(bugReportChannelMock).toHaveBeenCalledExactlyOnceWith('s1')
+        expect(enqueueBugReportMock).toHaveBeenCalledExactlyOnceWith('s1', 42)
+      },
+    )
+    it('does not queue a notification without a configured destination', async () => {
+      prismaMock.gm_server_report_bugs.create.mockResolvedValueOnce({ id: 42 })
+      expect(await reportBugPayload(makeServer(), validBug)).toMatchObject({ saved: true })
+      expect(enqueueBugReportMock).not.toHaveBeenCalled()
+    })
+    it.each(['configuration', 'queue'])(
+      'preserves the saved report and acknowledgement after a %s failure',
+      async (stage) => {
+        prismaMock.gm_server_report_bugs.create.mockResolvedValueOnce({ id: 42 })
+        if (stage === 'configuration') bugReportChannelMock.mockRejectedValueOnce(new Error('private details'))
+        else {
+          bugReportChannelMock.mockResolvedValueOnce({ channelID: '333333333333333333' })
+          enqueueBugReportMock.mockRejectedValueOnce(new Error('private details'))
+        }
+        expect(await reportBugPayload(makeServer(), validBug)).toEqual({
+          success: true,
+          saved: true,
+          attachment: 'none',
+        })
+        expect(logMock).toHaveBeenCalledExactlyOnceWith(
+          'warn',
+          'A bug report was saved, but its Discord notification could not be queued.',
+        )
+      },
+    )
+    it('does not queue anything after a failed report write', async () => {
+      prismaMock.gm_server_report_bugs.create.mockRejectedValueOnce(new Error('storage unavailable'))
+      await expect(reportBugPayload(makeServer(), validBug)).rejects.toThrow('storage unavailable')
+      expect(enqueueBugReportMock).not.toHaveBeenCalled()
+      expect(bugReportChannelMock).not.toHaveBeenCalled()
+    })
     it('does not register a private report or screenshot when collection is already disabled', async () => {
       isErasureBlockedMock.mockResolvedValueOnce(true)
       expect(
@@ -462,6 +532,7 @@ describe('clientsModels', () => {
       ).toEqual({ skip: true, message: 'Personal data collection is disabled' })
       expect(s3SendMock).not.toHaveBeenCalled()
       expect(prismaMock.gm_server_report_bugs.create).not.toHaveBeenCalled()
+      expect(enqueueBugReportMock).not.toHaveBeenCalled()
     })
     it('removes exactly the bug report whose deferred write finishes after erasure starts', async () => {
       let blocked = false
@@ -486,6 +557,7 @@ describe('clientsModels', () => {
       resolveWrite({ id: 42 })
       await expect(operation).resolves.toMatchObject({ skip: true })
       expect(prismaMock.gm_server_report_bugs.deleteMany).toHaveBeenCalledExactlyOnceWith({ where: { id: 42 } })
+      expect(enqueueBugReportMock).not.toHaveBeenCalled()
     })
     it('returns a missing_arguments error when required fields are absent', async () => {
       const result = await reportBugPayload(makeServer(), { player: fakePlayer })

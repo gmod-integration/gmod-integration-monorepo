@@ -47,6 +47,7 @@ import {
   DiscordServerErrorsChannelValidateJobSchema,
   DiscordServerErrorsChannelValidateReplySchema,
   DiscordServerLuaErrorJobSchema,
+  DiscordServerBugReportJobSchema,
   type DiscordServerErrorsChannelValidation,
   type DiscordServerLuaErrorJob,
   DiscordServerStatusCreateJobSchema,
@@ -794,6 +795,19 @@ export async function enqueueDiscordServerLuaError(data: Omit<DiscordServerLuaEr
   const identity = createHash('sha256').update(data.serverID).update('\0').update(data.errorID).digest('hex')
   await discordGuildOpsQueue.add('serverLuaError', payload, {
     jobId: `lua-error-${identity}`,
+    priority: JobPriority.NORMAL,
+    attempts: 1,
+    removeOnComplete: true,
+    removeOnFail: true,
+  })
+}
+
+/** Reports remain durable in SQL; queue only their identity and never retry an uncertain publication. */
+export async function enqueueDiscordServerBugReport(serverID: string, reportID: number): Promise<void> {
+  const payload = DiscordServerBugReportJobSchema.parse({ serverID, reportID })
+  const identity = createHash('sha256').update(serverID).update('\0').update(String(reportID)).digest('hex')
+  await discordGuildOpsQueue.add('serverBugReport', payload, {
+    jobId: `bug-report-${identity}`,
     priority: JobPriority.NORMAL,
     attempts: 1,
     removeOnComplete: true,

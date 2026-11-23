@@ -391,7 +391,18 @@
       },
       "bugsReport": {
         "title": "Informe de fallos",
-        "description": "Lista de todos los errores reportados en su servidor"
+        "description": "Lista de todos los errores reportados en su servidor",
+        "channel": {
+          "title": "Informes de errores en Discord",
+          "description": "Envía los nuevos informes de errores de los jugadores a un canal de texto de Discord. Los informes y las capturas guardados siguen disponibles abajo.",
+          "destination": "Canal de destino de Discord",
+          "destination_help": "Elige un canal y confirma la selección para recibir allí los nuevos informes de errores.",
+          "select": "Seleccionar un canal",
+          "remove": "Eliminar destino",
+          "empty": "Sin canal de destino",
+          "load_error": "No se pudo cargar el destino de los informes de errores.",
+          "remove_help": "¿Dejar de enviar informes de errores a este destino? Se conservarán el canal de Discord y los informes guardados."
+        }
       },
       "chat": {
         "chats": "Charlas",

@@ -455,6 +455,17 @@
           "medium": "Moyenne",
           "high": "Élevée",
           "critical": "Critique"
+        },
+        "channel": {
+          "title": "Rapports de bugs sur Discord",
+          "description": "Envoyez les nouveaux rapports de bugs des joueurs dans un salon textuel Discord. Les rapports et captures enregistrés restent disponibles ci-dessous.",
+          "destination": "Salon Discord de destination",
+          "destination_help": "Choisissez un salon et confirmez la sélection pour y recevoir les nouveaux rapports de bugs.",
+          "select": "Choisir un salon",
+          "remove": "Retirer la destination",
+          "empty": "Aucun salon de destination",
+          "load_error": "Impossible de charger le salon des rapports de bugs.",
+          "remove_help": "Arrêter l’envoi des rapports de bugs vers cette destination ? Le salon Discord et les rapports enregistrés seront conservés."
         }
       },
       "chat": {

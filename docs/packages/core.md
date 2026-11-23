@@ -17,7 +17,8 @@ src/
   models/
     discordProfile.js  best-effort Discord profile decoration for browser sessions
     gmod/         gmodErrorsModels.js — in-game error reports and best-effort Discord notifications
-                  luaErrorChannels.js — validated, server-scoped Lua error destination configuration
+                  reportChannels.js — shared validation and storage for report destinations
+                  luaErrorChannels.js / bugReportChannels.js — independent destination bindings
     v3/           one file per v3 API resource (clients, guilds, leaderboard, main, servers,
                    serversPlayers, steam, usersAdmin, users) — request/response models consumed by
                    apps/api's v3 controllers
@@ -60,12 +61,26 @@ only after an acknowledged MongoDB save and only when a destination is configure
 reports are not published. Configuration or queue failures preserve the successful save and log a
 fixed message without report contents.
 
-`models/gmod/luaErrorChannels.js` stores only the Discord channel ID in the existing
-`gm_server_settings` key `lua_errors_channel`; no migration or webhook credential is needed. Channel
+`models/gmod/reportChannels.js` stores only the Discord channel ID in existing
+`gm_server_settings`, under independent `lua_errors_channel` and `bug_reports_channel` keys;
+no migration or webhook credential is needed. Channel
 assignment validates fresh guild membership, text-channel scope and bot permissions through the
 Discord BullMQ adapter before replacing the previous value. Reads and removal need no bot snapshot.
 The notification worker rechecks the current binding and erasure policy before sending a bounded
 embed with mentions disabled. It does not retry uncertain sends or replay earlier saved history.
+
+## Bug report notifications
+
+`models/v3/clientsModels.js` persists reports and checks erasure state before consulting
+`models/gmod/bugReportChannels.js`. When configured, it queues only the trusted server ID and saved
+report ID. Screenshot, description and player data are not copied into queue payloads. Configuration
+or enqueue failures preserve the existing acknowledgement, including optional capture outcomes.
+
+The Discord worker reads the current report and destination, validates fresh guild/channel permissions,
+then rechecks the saved identity, binding and erasure policy before publication. A removed report or
+destination is skipped. Embeds bound their fields and disable mentions; screenshot previews use only
+canonical saved filenames under the configured API origin. Full text and optional screenshots remain
+available in the panel, independently of Discord delivery.
 
 ## Screenshot image storage
 

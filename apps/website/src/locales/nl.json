@@ -391,7 +391,18 @@
       },
       "bugsReport": {
         "title": "Rapport over bugs",
-        "description": "Lijst van alle bugs die op uw server zijn gemeld"
+        "description": "Lijst van alle bugs die op uw server zijn gemeld",
+        "channel": {
+          "title": "Bugmeldingen op Discord",
+          "description": "Stuur nieuwe bugmeldingen van spelers naar een Discord-tekstkanaal. Opgeslagen meldingen en screenshots blijven hieronder beschikbaar.",
+          "destination": "Discord-doelkanaal",
+          "destination_help": "Kies een kanaal en bevestig de selectie om daar nieuwe bugmeldingen te ontvangen.",
+          "select": "Kanaal kiezen",
+          "remove": "Bestemming verwijderen",
+          "empty": "Geen doelkanaal",
+          "load_error": "De bestemming voor bugmeldingen kon niet worden geladen.",
+          "remove_help": "Geen bugmeldingen meer naar deze bestemming sturen? Het Discord-kanaal en opgeslagen meldingen blijven behouden."
+        }
       },
       "chat": {
         "chats": "Gesprekken",

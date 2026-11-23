@@ -391,7 +391,18 @@
       },
       "bugsReport": {
         "title": "Fehlerbericht",
-        "description": "Liste aller auf Ihrem Server gemeldeten Fehler"
+        "description": "Liste aller auf Ihrem Server gemeldeten Fehler",
+        "channel": {
+          "title": "Fehlerberichte auf Discord",
+          "description": "Sende neue Fehlerberichte von Spielern an einen Discord-Textkanal. Gespeicherte Berichte und Screenshots bleiben unten verfügbar.",
+          "destination": "Discord-Zielkanal",
+          "destination_help": "Wähle einen Kanal und bestätige die Auswahl, um dort neue Fehlerberichte zu erhalten.",
+          "select": "Kanal auswählen",
+          "remove": "Ziel entfernen",
+          "empty": "Kein Zielkanal",
+          "load_error": "Das Ziel für Fehlerberichte konnte nicht geladen werden.",
+          "remove_help": "Keine Fehlerberichte mehr an dieses Ziel senden? Der Discord-Kanal und gespeicherte Berichte bleiben erhalten."
+        }
       },
       "chat": {
         "chats": "Chats",

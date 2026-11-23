@@ -10,7 +10,12 @@ import { type PlayerGmod } from '../../classes/v3/PlayerGmod.js'
 import { getTranslate } from '../../utils/localizations.js'
 import { createBucketIfNotExists, s3 } from '@gmod/infra-minio'
 import { DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
-import { enqueueMainClientUploadScreenshot } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import {
+  enqueueMainClientUploadScreenshot,
+  enqueueDiscordServerBugReport,
+} from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { gmLog } from '@gmod/shared/logger.js'
+import { getBugReportChannel } from '../gmod/bugReportChannels.js'
 import { assertPersonalDataAllowed, isErasureBlocked, PersonalDataErasureError } from '@gmod/domain-user/privacy.js'
 import {
   GmodBugReportAcknowledgementSchema,
@@ -250,6 +255,11 @@ export async function reportBugPayload(server: Server, payload: any) {
   if (await isErasureBlocked(undefined, player.steamID64)) {
     await prisma.gm_server_report_bugs.deleteMany({ where: { id: report.id } })
     return { skip: true, message: 'Personal data collection is disabled' }
+  }
+  try {
+    if ((await getBugReportChannel(server.id)).channelID) await enqueueDiscordServerBugReport(server.id, report.id)
+  } catch {
+    gmLog('warn', 'A bug report was saved, but its Discord notification could not be queued.')
   }
   return GmodBugReportAcknowledgementSchema.parse({ success: true, saved: true, attachment })
 }

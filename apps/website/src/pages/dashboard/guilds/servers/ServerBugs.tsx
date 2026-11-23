@@ -5,6 +5,7 @@ import AdminPanel from '../../../../components/AdminPanel'
 import { IconButton, TableState, Icon, StatusBadge } from '../../../../components/ui/index.js'
 import { useI18n } from '../../../../i18n'
 import { fetchAPI, getAPIUrl } from '../../../../utils/api'
+import { ServerBugsParameters } from './ServerBugsParameters.js'
 
 enum Status {
   OPEN = 'open',
@@ -172,6 +173,7 @@ const ServerBugs: Component = () => {
 
   return (
     <>
+      <ServerBugsParameters />
       <AdminPanel
         title={t('dashboard.server.bugsReport.title', 'Bug reports')}
         description={t(

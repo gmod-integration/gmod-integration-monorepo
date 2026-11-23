@@ -391,7 +391,18 @@
       },
       "bugsReport": {
         "title": "Rapporto bug",
-        "description": "Elenco di tutti i bug segnalati sul server"
+        "description": "Elenco di tutti i bug segnalati sul server",
+        "channel": {
+          "title": "Segnalazioni di bug su Discord",
+          "description": "Invia le nuove segnalazioni di bug dei giocatori a un canale di testo Discord. Le segnalazioni e gli screenshot salvati restano disponibili qui sotto.",
+          "destination": "Canale Discord di destinazione",
+          "destination_help": "Scegli un canale e conferma la selezione per ricevere le nuove segnalazioni di bug.",
+          "select": "Seleziona un canale",
+          "remove": "Rimuovi destinazione",
+          "empty": "Nessun canale di destinazione",
+          "load_error": "Impossibile caricare la destinazione delle segnalazioni di bug.",
+          "remove_help": "Interrompere l’invio delle segnalazioni di bug a questa destinazione? Il canale Discord e le segnalazioni salvate verranno conservati."
+        }
       },
       "chat": {
         "chats": "Chat",

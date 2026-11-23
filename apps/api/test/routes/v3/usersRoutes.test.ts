@@ -127,6 +127,11 @@ vi.mock('@/controllers/website/WebsiteErrorsControllers.js', () => ({
   postServerErrorsChannel: vi.fn(),
   deleteServerErrorsChannel: vi.fn(),
 }))
+vi.mock('@/controllers/website/WebsiteBugReportsControllers.js', () => ({
+  getServerBugReportsChannel: vi.fn(),
+  postServerBugReportsChannel: vi.fn(),
+  deleteServerBugReportsChannel: vi.fn(),
+}))
 vi.mock('@/controllers/v3/serversControllers.js', () => ({ getIGSettings: vi.fn(), postIGSettings: vi.fn() }))
 vi.mock('@/controllers/v3/users/ServerStatusChannelControllers.js', () => ({ putServerStatusChannel: vi.fn() }))
 
@@ -198,6 +203,18 @@ describe('usersRoutes', () => {
     'authorizes Lua-error destination %s before loading Discord metadata',
     (method) => {
       const path = '/:discordID/guilds/:guildID/servers/:serverID/errors/channels'
+      const endpoint = router.stack.findIndex((layer: any) => layer.route?.path === path && layer.route.methods[method])
+      expect(endpoint).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
+      expect(endpoint).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator))
+      expect(router.stack[endpoint].route.stack[0].handle).toBe(userAdminGuildScopeValidator)
+      expect(router.stack[endpoint].route.stack[1].handle).toBe(userServerValidator)
+    },
+  )
+
+  it.each(['get', 'post', 'delete'])(
+    'authorizes bug-report destination %s before loading Discord metadata',
+    (method) => {
+      const path = '/:discordID/guilds/:guildID/servers/:serverID/bugs/channels'
       const endpoint = router.stack.findIndex((layer: any) => layer.route?.path === path && layer.route.methods[method])
       expect(endpoint).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
       expect(endpoint).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator))
