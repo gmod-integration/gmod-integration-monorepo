@@ -1,44 +1,49 @@
-graph TD
-  CF["Cloudflare Tunnel"]
+%% Sources : docker-stack.swarm.yml, scripts/swarm-ops.py, docs/deployment/swarm.md.
+%% Configuration versionnée ; ne décrit pas l'état d'un hôte en production.
+flowchart TB
+  CLIENTS["Dashboard / addon GMod"]
+  TUNNEL["Cloudflare Tunnel<br/>HTTPS / WSS"]
 
-  subgraph Swarm["Docker Swarm stack: gmod"]
-    TRAEFIK["Traefik (1 replica)<br/>ports 80 / 443 / 8080"]
+  subgraph SWARM["Docker Swarm — réseau privé gmod_net"]
+    TRAEFIK["Traefik ×1<br/>port publié : 80"]
 
-    subgraph AppsReplicated["apps, 2 replicas each"]
-      API["gmod_api x2"]
-      WSVC["gmod_websocket x2"]
-      DISCORDSVC["gmod_discord x2"]
+    subgraph BACKEND["Services actifs après une release réussie"]
+      API["API ×2 par défaut<br/>53136 privé"]
+      WS["WebSocket ×2 par défaut<br/>53139 privé"]
+      BOT["Discord ×1<br/>bot + workers"]
     end
 
-    subgraph Stateful["stateful services, 1 replica each"]
-      MARIADB[("gmod_mariadb")]
-      REDIS[("gmod_redis")]
-      MONGO[("gmod_mongo")]
-      MINIO[("gmod_minio")]
+    subgraph DATA["Données — 1 instance par service, aucun port publié"]
+      MARIA[("MariaDB<br/>3306")]
+      REDIS[("Redis<br/>6379")]
+      MONGO[("MongoDB<br/>27017")]
+      MINIO[("MinIO<br/>S3 : 9000<br/>console : 9001")]
     end
 
-    MIGRATE["gmod_prisma-migrate<br/>runs db push, then exits"]
+    VOLUMES["4 volumes persistants<br/>manager propriétaire"]
+    MIGRATE["Migration ponctuelle<br/>prisma migrate deploy"]
   end
 
-  CF -->|api.your-domain.com| TRAEFIK
-  CF -->|ws.your-domain.com| TRAEFIK
-  CF -->|traefik.your-domain.com| TRAEFIK
+  RELEASE["Release contrôlée<br/>scripts/swarm-deploy.sh"]
+  EXTERNAL["Hébergement séparé<br/>website, docs, webhook-relay"]
+  DISCORD["Discord Gateway / API"]
 
-  TRAEFIK --> API
-  TRAEFIK --> WSVC
+  CLIENTS -->|"API_HOST / WS_HOST"| TUNNEL
+  TUNNEL -->|"HTTP :80, Host conservé"| TRAEFIK
+  TRAEFIK -->|"API_HOST"| API
+  TRAEFIK -->|"WS_HOST"| WS
+  BACKEND -->|"packages infra-*"| DATA
+  DATA -->|"persistance locale"| VOLUMES
+  BOT <-->|"connexions sortantes"| DISCORD
+  RELEASE -.->|"après sauvegarde, sauf bootstrap"| MIGRATE
+  MIGRATE --> MARIA
+  RELEASE -.->|"activation si migration réussie"| BACKEND
 
-  API --> MARIADB
-  API --> REDIS
-  API --> MONGO
-  API --> MINIO
-
-  WSVC --> REDIS
-  WSVC --> MARIADB
-
-  DISCORDSVC --> MARIADB
-  DISCORDSVC --> REDIS
-  DISCORDSVC --> MONGO
-
-  MIGRATE --> MARIADB
-
-  API -.BullMQ jobs via REDIS.-> DISCORDSVC
+  classDef client fill:#eff6ff,stroke:#2563eb,color:#172554
+  classDef service fill:#ecfdf5,stroke:#059669,color:#064e3b
+  classDef storage fill:#fff7ed,stroke:#ea580c,color:#7c2d12
+  classDef external fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95
+  class CLIENTS client
+  class TRAEFIK,API,WS,BOT,MIGRATE service
+  class MARIA,REDIS,MONGO,MINIO,VOLUMES storage
+  class TUNNEL,RELEASE,EXTERNAL,DISCORD external

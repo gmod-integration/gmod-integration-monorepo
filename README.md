@@ -9,6 +9,13 @@ in core and domain packages. Infrastructure connection settings come from the de
 [`@gmod/config/infrastructure.js` getters](./docs/packages/config.md), keeping adapters independent of
 unrelated service credentials during isolated tests.
 
+## Architecture diagrams
+
+Open the [illustrated architecture guide](./docs/architectures/README.md) for the system overview,
+addon connection, dashboard sessions, application flows, Discord/BullMQ bridge, WebSocket delivery,
+package dependencies and production deployment. Diagrams are documented in French, rendered inline
+with Mermaid, and available as editable `.mmd` files.
+
 ## Production Setup
 
 For prod setup, please refer to the [self-hosted documentation](https://docs.gmod-integration.com/self-hosted/install).

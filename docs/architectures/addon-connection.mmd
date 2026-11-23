@@ -1,0 +1,46 @@
+sequenceDiagram
+    participant Player as Joueur GMod (client Lua)
+    participant Lua as Addon du serveur dédié (GWSockets)
+    participant WS as apps/websocket + addonGateway
+    participant Auth as domain-server + stockage des identifiants
+    participant Core as core/models/gmod/addonTransport
+    participant Infra as Domaines + bases + intégrations
+
+    Lua->>WS: Connexion WSS<br/>En-têtes id, token, gmod-integrations-version
+    WS->>Auth: Charger le serveur et valider son token
+    Auth-->>WS: Serveur authentifié
+    WS->>WS: Enregistrer la socket et la présence Redis
+    WS-->>Lua: action = addon.ready, protocol = 1
+    Note over Lua,WS: Délai de confirmation du protocole : 15 s.<br/>La connexion de transport seule ne suffit pas.
+
+    opt Capture, rapport de bug ou erreur du joueur
+        Player->>Lua: Canal net autorisé, JSON compressé en fragments
+        Lua->>Lua: Valider les tailles, quotas et champs<br/>Reconstruire serveur et identité du joueur
+    end
+
+    Lua->>Lua: gmInte.api prépare la requête<br/>File FIFO bornée, au plus 4 requêtes simultanées
+    Lua->>WS: addon.request (id, method, endpoint, body)
+    WS->>WS: Valider le schéma et les limites
+    WS->>Auth: Revérifier les identifiants à chaque requête
+    Auth-->>WS: Serveur authentifié ou fermeture de connexion
+    WS->>WS: Dédupliquer par id et contenu sur cette connexion
+
+    alt Requête nouvelle et autorisée
+        WS->>Core: handleAddonRequest(server, request)
+        Core->>Core: Vérifier endpoint, serveur ciblé et payload
+        Core->>Infra: Exécuter le modèle partagé<br/>Droits, persistance et intégrations existantes
+        Infra-->>Core: Résultat de l'opération
+        Core-->>WS: status + body
+        WS-->>Lua: addon.response (même id, status, body)
+    else Requête identique déjà connue
+        WS-->>Lua: Résultat déjà calculé ou en cours
+    end
+
+    Note over WS,Core: Un id réutilisé avec un autre contenu est rejeté.<br/>Cache borné, conservé au plus 2 min pour les requêtes terminées.<br/>Après 25 s : réponse delivery_uncertain.<br/>Le travail garde sa place jusqu'à sa fin.
+
+    Lua->>Lua: Exécuter le callback de succès ou d'échec
+    opt Réponse à un outil du joueur
+        Lua-->>Player: Résultat filtré, sans identifiants ni contenu privé
+    end
+
+    Note over Lua,WS: Après coupure : reconnexion exponentielle de 1 à 60 s avec aléa.<br/>Seules les requêtes non envoyées et non expirées restent en file.<br/>Une requête envoyée n'est jamais rejouée automatiquement.<br/>Changement d'identifiants : purge des requêtes en attente.

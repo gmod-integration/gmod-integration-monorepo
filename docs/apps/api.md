@@ -21,7 +21,8 @@ delivery limits and the distinction between dashboard and addon messages.
 
 ## Who talks to it
 
-- The GMod addon (submodule), authenticated with a server token/ID.
+- Older GMod addons through compatibility HTTP routes, authenticated with a server token/ID. The
+  current addon uses the [WebSocket gateway](./websocket.md), which calls shared models directly.
 - `apps/website` (dashboard), authenticated as a panel user.
 - External webhooks (GmodStore purchases).
 
