@@ -148,13 +148,13 @@ export type Gm_discordTokenAggregateArgs<ExtArgs extends runtime.Types.Extension
   _count?: true | Gm_discordTokenCountAggregateInputType
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   *
+   * 
    * Select which fields to average
   **/
   _avg?: Gm_discordTokenAvgAggregateInputType
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   *
+   * 
    * Select which fields to sum
   **/
   _sum?: Gm_discordTokenSumAggregateInputType

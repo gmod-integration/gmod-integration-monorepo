@@ -3,6 +3,8 @@ import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 import {
   PlayerProfileQuerySchema,
   PlayerProfileResponseSchema,
+  PlayerDiscordIDSchema,
+  PlayerIdentifierSchema,
   PlayerSteamID64Schema,
   type PlayerProfileResponse,
 } from '@gmod/schema/user/PlayerProfileSchema.js'
@@ -16,31 +18,70 @@ export async function processGetPlayerProfile(
   steamID64Param: unknown,
   rawQuery: unknown,
   now = new Date(),
+  provider: 'auto' | 'steam' | 'discord' = 'auto',
 ): Promise<ProfileResult> {
   const parsedQuery = PlayerProfileQuerySchema.safeParse(rawQuery)
   if (!parsedQuery.success) return { status: 400, body: { error: 'invalid_player_profile_query' } }
-  if (steamID64Param !== undefined && !PlayerSteamID64Schema.safeParse(steamID64Param).success)
-    return { status: 400, body: { error: 'invalid_steam_id' } }
+  const identifierSchema = provider === 'steam' ? PlayerSteamID64Schema : PlayerIdentifierSchema
+  if (steamID64Param !== undefined && !identifierSchema.safeParse(steamID64Param).success)
+    return {
+      status: 400,
+      body: { error: provider === 'steam' ? 'invalid_steam_id' : 'invalid_player_id' },
+    }
 
   const viewer = await prisma.gm_user.findUnique({
     where: { id: viewerDiscordID },
     select: { id: true, steam: true, username: true, trust: true },
   })
   if (!viewer) return notFound()
-  const steamID64 = steamID64Param === undefined ? viewer.steam : (steamID64Param as string)
-  if (!steamID64) return { status: 404, body: { error: 'steam_not_linked' } }
+  let steamID64: string | null | undefined
+  let linkedUser: { id: string; trust: number | null } | null = null
+  if (steamID64Param === undefined || (provider !== 'steam' && steamID64Param === viewer.id)) {
+    steamID64 = viewer.steam
+    linkedUser = viewer
+  } else if (provider !== 'discord' && steamID64Param === viewer.steam) {
+    steamID64 = viewer.steam
+    linkedUser = viewer
+  } else {
+    const target = steamID64Param as string
+    const discordUser =
+      provider !== 'steam'
+        ? await prisma.gm_user.findUnique({
+            where: { id: target },
+            select: { id: true, steam: true, trust: true },
+          })
+        : null
+    if (discordUser) {
+      linkedUser = discordUser
+      steamID64 = discordUser.steam
+    } else if (provider === 'discord' || !PlayerSteamID64Schema.safeParse(target).success) {
+      return notFound()
+    } else {
+      steamID64 = target
+    }
+  }
+  if (!steamID64)
+    return steamID64Param === undefined ? { status: 404, body: { error: 'steam_not_linked' } } : notFound()
   if (!PlayerSteamID64Schema.safeParse(steamID64).success) return { status: 400, body: { error: 'invalid_steam_id' } }
 
   const ownProfile = viewer.steam === steamID64
-  if (await isErasureBlocked(ownProfile ? viewer.id : undefined, steamID64)) return notFound()
-  const linkedUser = ownProfile
+  if (await isErasureBlocked(ownProfile ? viewer.id : linkedUser?.id, steamID64)) return notFound()
+  linkedUser ||= ownProfile
     ? viewer
     : await prisma.gm_user.findFirst({ where: { steam: steamID64 }, select: { id: true, trust: true } })
   if (linkedUser && (await isErasureBlocked(linkedUser.id, steamID64))) return notFound()
 
   const where = { steam_id: steamID64, ...(ownProfile ? {} : { gm_server: { isPublic: true } }) }
-  const { limit, offset } = parsedQuery.data
-  const [storedPlayer, summary, latestVisible, records] = await Promise.all([
+  const moderationWhere = { userSteamID64: steamID64, ...(ownProfile ? {} : { gm_server: { isPublic: true } }) }
+  const moderationSelect = {
+    id: true,
+    serverID: true,
+    reason: true,
+    createdAt: true,
+    gm_server: { select: { name: true } },
+  } as const
+  const { limit, offset, warningOffset, banOffset } = parsedQuery.data
+  const [storedPlayer, summary, latestVisible, records, warningsTotal, bansTotal, warnings, bans] = await Promise.all([
     ownProfile
       ? prisma.gm_user_steam.findUnique({
           where: { steam_id: steamID64 },
@@ -84,16 +125,33 @@ export async function processGetPlayerProfile(
         },
       },
     }),
+    prisma.gm_server_warn.count({ where: moderationWhere }),
+    prisma.gm_server_ban.count({ where: moderationWhere }),
+    prisma.gm_server_warn.findMany({
+      where: moderationWhere,
+      select: moderationSelect,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+      skip: warningOffset,
+    }),
+    prisma.gm_server_ban.findMany({
+      where: moderationWhere,
+      select: { ...moderationSelect, time: true },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: limit,
+      skip: banOffset,
+    }),
   ])
 
   // An erased account, or one with only private records, has no profile for another visitor.
-  if (!ownProfile && summary._count._all === 0) return notFound()
+  if (!ownProfile && summary._count._all === 0 && warningsTotal === 0 && bansTotal === 0) return notFound()
   if (await isErasureBlocked(linkedUser?.id, steamID64)) return notFound()
   const trust = linkedUser?.trust
 
   const body: PlayerProfileResponse = {
     player: {
       steamID64,
+      discordID: PlayerDiscordIDSchema.safeParse(linkedUser?.id).success ? linkedUser!.id : null,
       name:
         (ownProfile ? storedPlayer?.username || viewer.username : latestVisible?.name) ||
         latestVisible?.name ||
@@ -133,6 +191,32 @@ export async function processGetPlayerProfile(
       }
     }),
     pagination: { total: summary._count._all, limit, offset },
+    moderation: {
+      warnings: warnings.map((warning) => ({
+        id: warning.id,
+        serverID: warning.serverID,
+        serverName: warning.gm_server.name || '',
+        reason: warning.reason || '',
+        createdAt: warning.createdAt.toISOString(),
+      })),
+      bans: bans.map((ban) => {
+        // Garry's Mod reports ban durations in minutes; zero denotes a permanent ban.
+        const durationMinutes = Math.max(0, ban.time)
+        const expiresAt = durationMinutes > 0 ? new Date(ban.createdAt.getTime() + durationMinutes * 60_000) : null
+        return {
+          id: ban.id,
+          serverID: ban.serverID,
+          serverName: ban.gm_server.name || '',
+          reason: ban.reason || '',
+          createdAt: ban.createdAt.toISOString(),
+          durationMinutes,
+          expiresAt: expiresAt?.toISOString() ?? null,
+          active: ban.time >= 0 && (expiresAt === null || expiresAt.getTime() > now.getTime()),
+        }
+      }),
+      warningsPagination: { total: warningsTotal, limit, offset: warningOffset },
+      bansPagination: { total: bansTotal, limit, offset: banOffset },
+    },
   }
   return { status: 200, body: PlayerProfileResponseSchema.parse(body) }
 }

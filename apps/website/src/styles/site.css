@@ -11,7 +11,6 @@
   line-height: 1.35;
 }
 .player-profile-note,
-.player-profile-trust-help,
 .player-profile-created {
   color: var(--dashboard-muted);
   font-size: 0.875rem;
@@ -20,10 +19,8 @@
   margin-top: 6px;
 }
 .player-profile-identity {
-  display: grid;
+  display: block;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.45fr);
-  gap: 28px;
   padding: 28px;
 }
 .player-profile-player {
@@ -61,36 +58,117 @@
 .player-profile-created {
   margin-top: 6px;
 }
-.player-profile-trust {
+.player-profile-lookup {
   display: flex;
-  flex-direction: column;
+  min-width: 0;
   align-items: flex-start;
-  gap: 12px;
-  border-left: 1px solid var(--dashboard-border);
-  padding-left: 28px;
+  flex-wrap: wrap;
+  gap: 20px;
+  border: 1px solid var(--dashboard-border);
+  padding: 24px;
 }
-.player-profile-trust h3 {
+.player-profile-lookup .ui-form-field {
+  flex: 1 1 320px;
+}
+.player-profile-lookup > .ui-button {
+  margin-top: 32px;
+}
+.player-profile-identifiers {
+  display: grid;
+  min-width: 0;
+  gap: 12px;
+  margin-top: 16px;
+}
+.player-profile-identifiers dt {
+  color: var(--dashboard-muted);
+  font-size: 0.875rem;
+}
+.player-profile-identifiers dd {
+  display: flex;
+  min-width: 0;
+  margin-top: 4px;
+}
+.player-profile-identifiers .ui-copyable {
+  max-width: 100%;
+}
+.player-profile-identifiers .ui-copyable-value {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.player-profile-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+.player-profile-moderation-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+.player-profile-sanctions {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+}
+.player-profile-sanctions > header h3 {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 1rem;
   font-weight: 600;
 }
-.player-profile-trust-score {
-  font-size: 2rem;
-  font-weight: 650;
-  line-height: 1;
+.player-profile-sanction-count {
+  margin-left: auto;
+  color: var(--dashboard-muted);
+  font-size: 0.875rem;
   font-variant-numeric: tabular-nums;
 }
-.player-profile-trust-score span {
-  color: var(--dashboard-muted);
-  font-size: 1rem;
-  font-weight: 400;
+.player-profile-sanction-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 20px;
 }
-.player-profile-trust meter {
-  width: 100%;
-  height: 12px;
-  accent-color: var(--dashboard-accent);
+.player-profile-sanction-list > li + li {
+  border-top: 1px solid var(--dashboard-border);
+  padding-top: 20px;
+}
+.player-profile-sanction-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.player-profile-sanction-heading strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.player-profile-sanction-reason {
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.player-profile-sanction-list dl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-top: 14px;
+  font-size: 0.875rem;
+}
+.player-profile-sanction-list dt {
+  color: var(--dashboard-muted);
+}
+.player-profile-sanction-list dd {
+  margin-top: 3px;
+}
+.player-profile-sanctions > .player-profile-pagination {
+  margin-top: auto;
 }
 .player-profile-summary {
   display: grid;
@@ -203,29 +281,29 @@
   }
 }
 @media (max-width: 640px) {
-  .player-profile-identity,
-  .player-profile-server-grid {
+  .player-profile-server-grid,
+  .player-profile-moderation-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   .player-profile-identity,
-  .player-profile-server {
+  .player-profile-server,
+  .player-profile-sanctions,
+  .player-profile-lookup {
     padding: 20px;
   }
   .player-profile-player {
     flex-direction: column;
     gap: 14px;
   }
-  .player-profile-trust {
-    border-top: 1px solid var(--dashboard-border);
-    border-left: 0;
-    padding-top: 24px;
-    padding-left: 0;
-  }
   .player-profile-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .player-profile-summary > div {
     padding: 16px;
+  }
+  .player-profile-lookup > .ui-button {
+    width: 100%;
+    margin-top: 0;
   }
 }
 

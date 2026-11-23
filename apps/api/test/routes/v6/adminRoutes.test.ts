@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   reset: vi.fn(),
   grant: vi.fn(),
+  partner: vi.fn(),
   revoke: vi.fn(),
 }))
 vi.mock('@gmod/config', () => ({
@@ -41,6 +42,7 @@ vi.mock('@gmod/core/models/v6/adminDashboard.js', () => ({
   deleteAdminServer: mocks.remove,
   resetAdminServerToken: mocks.reset,
   updateAdminPremium: mocks.grant,
+  updateAdminPartner: mocks.partner,
 }))
 vi.mock('@gmod/core/models/v6/adminUserManagement.js', () => ({
   revokeAdminUserSessions: mocks.revoke,
@@ -86,6 +88,7 @@ beforeEach(() => {
     'remove',
     'reset',
     'grant',
+    'partner',
     'revoke',
   ] as const)
     mocks[key].mockResolvedValue({ acknowledged: true })
@@ -194,6 +197,47 @@ describe('platform admin API and own-session authorization', () => {
     const revoke = { confirm: 'target', reason: 'Support correction' }
     expect((await write('post', '/users/target/revoke-sessions', revoke)).status).toBe(200)
     expect(mocks.revoke).toHaveBeenCalledWith(developerID, 'target', revoke)
+  })
+  it.each([true, false])('audits the accepted partner decision %s for the selected community', async (enabled) => {
+    const body = { enabled, reason: 'Partnership reviewed' }
+    mocks.partner.mockResolvedValueOnce({ guildID: 'g1', partner: enabled })
+    const result = await write('patch', '/guilds/g1/partner', body)
+    expect(result.status).toBe(200)
+    expect(result.body).toEqual({ guildID: 'g1', partner: enabled })
+    expect(mocks.partner).toHaveBeenCalledExactlyOnceWith('g1', body)
+    expect(mocks.log).toHaveBeenCalledWith(
+      'admin',
+      JSON.stringify({
+        action: enabled ? 'guild_partner_added' : 'guild_partner_removed',
+        actor: developerID,
+        target: 'g1',
+        reason: body.reason,
+      }),
+    )
+    expect(mocks.grant).not.toHaveBeenCalled()
+  })
+
+  it('refuses partner changes without an own platform-admin session and valid CSRF', async () => {
+    const body = { enabled: true, reason: 'Partnership reviewed' }
+    expect((await write('patch', '/guilds/g1/partner', body, false)).status).toBe(403)
+    mocks.session.mockResolvedValueOnce({ ...auth(), discordID: 'guild-owner' })
+    expect((await write('patch', '/guilds/g1/partner', body)).status).toBe(403)
+    mocks.session.mockResolvedValueOnce({ ...auth(), actorDiscordID: 'other-user', actorSessionID: 'parent' })
+    expect((await write('patch', '/guilds/g1/partner', body)).status).toBe(403)
+    expect(mocks.partner).not.toHaveBeenCalled()
+    expect(mocks.log).not.toHaveBeenCalled()
+  })
+
+  it('rejects extra partner grant fields and incomplete commands without a write or audit', async () => {
+    for (const body of [
+      { enabled: true },
+      { enabled: 'true', reason: 'Partnership reviewed' },
+      { enabled: true, reason: 'x' },
+      { enabled: true, reason: 'Partnership reviewed', manualPremium: true },
+    ])
+      expect((await write('patch', '/guilds/g1/partner', body)).status).toBe(400)
+    expect(mocks.partner).not.toHaveBeenCalled()
+    expect(mocks.log).not.toHaveBeenCalled()
   })
   it('rejects unknown fields and missing confirmation/reason before side effects', async () => {
     expect((await write('put', '/guilds/g1/premium', { enabled: true, reason: 'x' })).status).toBe(400)

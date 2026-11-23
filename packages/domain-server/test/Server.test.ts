@@ -703,7 +703,7 @@ describe('Server', () => {
   describe('editStatusChannelAndMessage', () => {
     it('returns early and logs when there is no status record', async () => {
       prismaMock.gm_status.findFirst.mockResolvedValueOnce(null)
-      await makeServer().editStatusChannelAndMessage({})
+      await expect(makeServer().editStatusChannelAndMessage({})).resolves.toBe(false)
       expect(resolveDiscordGuildClientMock).not.toHaveBeenCalled()
     })
 
@@ -884,9 +884,28 @@ describe('Server', () => {
       })
       buildDiscordStatusMessageMock.mockResolvedValueOnce({ content: 'updated' })
 
-      await makeServer().editStatusChannelAndMessage({ players: 5 })
+      await expect(makeServer().editStatusChannelAndMessage({ players: 5 })).resolves.toBe(true)
 
       expect(editMock).toHaveBeenCalledWith({ content: 'updated' })
+    })
+
+    it('reports failure when Discord rejects the edit', async () => {
+      const editMock = vi.fn().mockRejectedValueOnce(new Error('Discord unavailable'))
+      prismaMock.gm_status.findFirst.mockResolvedValueOnce({ channel: 'ch1', message: 'm1' })
+      resolveDiscordGuildClientMock.mockResolvedValueOnce({
+        user: { id: 'bot1' },
+        guilds: { fetch: vi.fn().mockResolvedValue({ preferredLocale: 'en' }) },
+        channels: {
+          fetch: vi.fn().mockResolvedValue({
+            isTextBased: () => true,
+            messages: { fetch: vi.fn().mockResolvedValue({ author: { id: 'bot1' }, edit: editMock }) },
+          }),
+        },
+      })
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await expect(makeServer().editStatusChannelAndMessage(null)).resolves.toBe(false)
+      expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Discord unavailable' }))
     })
 
     it('silently returns when the discord bridge is not configured', async () => {
@@ -1806,6 +1825,52 @@ describe('Server', () => {
     })
 
     describe('statusRoutine', () => {
+      beforeEach(() => {
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2026-11-23T12:00:00Z'))
+      })
+
+      afterEach(() => {
+        vi.useRealTimers()
+      })
+
+      function publishedServer(ageMinutes = 15) {
+        const target = { server: 's1', channel: 'ch1', message: 'm1' }
+        const heartbeat = { id: 's1', updatedAt: new Date(Date.now() - ageMinutes * 60 * 1000) }
+        const cache = new Map<string, string>()
+        const edit = vi.fn().mockResolvedValue(undefined)
+        prismaMock.gm_status.findMany.mockResolvedValue([target])
+        prismaMock.gm_status.findFirst.mockResolvedValue(target)
+        prismaMock.gm_server.findFirst.mockResolvedValue({ id: 's1', guild: 'g1', token: 'tok1' })
+        prismaMock.gm_server_status.findFirst.mockImplementation(async ({ where }: any) => {
+          const { gte, lte, gt } = where.updatedAt
+          return (gte === undefined || heartbeat.updatedAt >= gte) &&
+            (lte === undefined || heartbeat.updatedAt <= lte) &&
+            (gt === undefined || heartbeat.updatedAt > gt)
+            ? heartbeat
+            : null
+        })
+        redisMock.get.mockImplementation(async (key: string) => cache.get(key) ?? null)
+        redisMock.set.mockImplementation(async (key: string, value: string) => {
+          cache.set(key, value)
+          return 'OK'
+        })
+        resolveDiscordGuildClientMock.mockResolvedValue({
+          user: { id: 'bot1' },
+          guilds: { fetch: vi.fn().mockResolvedValue({ preferredLocale: 'en' }) },
+          channels: {
+            fetch: vi.fn().mockResolvedValue({
+              isTextBased: () => true,
+              messages: { fetch: vi.fn().mockResolvedValue({ author: { id: 'bot1' }, edit }) },
+            }),
+          },
+        })
+        buildDiscordStatusMessageMock.mockImplementation(async (_server, data) => ({
+          content: data ? 'online' : 'offline',
+        }))
+        return { target, heartbeat, cache, edit }
+      }
+
       it('deletes the status row when the server no longer exists', async () => {
         prismaMock.gm_status.findMany.mockResolvedValueOnce([{ server: 's-missing' }])
         prismaMock.gm_server.findFirst.mockResolvedValueOnce(null)
@@ -1815,27 +1880,158 @@ describe('Server', () => {
         expect(prismaMock.gm_status.delete).toHaveBeenCalledWith({ where: { server: 's-missing' } })
       })
 
-      it('skips servers whose status is not in the 6-10 minute stale window', async () => {
-        prismaMock.gm_status.findMany.mockResolvedValueOnce([{ server: 's1' }])
-        prismaMock.gm_server.findFirst.mockResolvedValueOnce({ id: 's1', token: 'tok1' })
-        prismaMock.gm_server_status.findFirst.mockResolvedValueOnce(null)
+      it('leaves fresh heartbeats online', async () => {
+        const { edit } = publishedServer(5)
 
         await statusRoutine()
 
-        expect(prismaMock.gm_status.delete).not.toHaveBeenCalled()
+        expect(edit).not.toHaveBeenCalled()
+        expect(redisMock.set).not.toHaveBeenCalled()
       })
 
-      it('refreshes the status message for servers in the stale window', async () => {
-        prismaMock.gm_status.findMany.mockResolvedValueOnce([{ server: 's1' }])
-        prismaMock.gm_server.findFirst.mockResolvedValueOnce({ id: 's1', token: 'tok1' })
-        prismaMock.gm_server_status.findFirst
-          .mockResolvedValueOnce({ id: 's1' }) // stale-window check inside statusRoutine
-          .mockResolvedValueOnce({ id: 's1' }) // getStatusData() inside editStatusChannelAndMessage
-        prismaMock.gm_status.findFirst.mockResolvedValueOnce(null) // editStatusChannelAndMessage's own lookup
+      it.each([7, 15, 24 * 60])('recovers an offline message with a heartbeat %i minutes old', async (age) => {
+        const { edit, heartbeat, target } = publishedServer(age)
 
         await statusRoutine()
 
-        expect(resolveDiscordGuildClientMock).not.toHaveBeenCalled()
+        expect(buildDiscordStatusMessageMock).toHaveBeenCalledWith(expect.any(Server), null, 'en')
+        expect(edit).toHaveBeenCalledExactlyOnceWith({ content: 'offline' })
+        expect(redisMock.set).toHaveBeenCalledWith(
+          'server:s1:status:offline',
+          JSON.stringify([heartbeat.updatedAt.toISOString(), target.channel, target.message]),
+          'EX',
+          7 * 24 * 60 * 60,
+        )
+      })
+
+      it('keeps an acknowledged offline message unchanged on subsequent sweeps', async () => {
+        const { edit } = publishedServer()
+
+        await statusRoutine()
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(1)
+      })
+
+      it.each(['heartbeat', 'channel', 'message'] as const)('refreshes again after the %s changes', async (changed) => {
+        const { edit, heartbeat, target } = publishedServer(60)
+        await statusRoutine()
+        if (changed === 'heartbeat') heartbeat.updatedAt = new Date(Date.now() - 15 * 60 * 1000)
+        else target[changed] = 'replacement'
+
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(2)
+      })
+
+      it('does not overwrite a heartbeat that becomes live during the sweep', async () => {
+        const { heartbeat, edit } = publishedServer()
+        redisMock.get.mockImplementationOnce(async () => {
+          heartbeat.updatedAt = new Date()
+          return null
+        })
+
+        await statusRoutine()
+
+        expect(edit).not.toHaveBeenCalled()
+        expect(redisMock.set).not.toHaveBeenCalled()
+      })
+
+      it('restores live data when a heartbeat arrives during the Discord edit', async () => {
+        const { heartbeat, edit, cache } = publishedServer()
+        edit.mockImplementationOnce(async () => {
+          heartbeat.updatedAt = new Date()
+        })
+
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(2)
+        expect(buildDiscordStatusMessageMock).toHaveBeenNthCalledWith(1, expect.any(Server), null, 'en')
+        expect(buildDiscordStatusMessageMock).toHaveBeenLastCalledWith(expect.any(Server), heartbeat, 'en')
+        expect(edit).toHaveBeenLastCalledWith({ content: 'online' })
+        expect(cache.size).toBe(0)
+      })
+
+      it('still updates Discord when its acknowledgement cache cannot be read', async () => {
+        const { edit } = publishedServer()
+        redisMock.get.mockRejectedValueOnce(new Error('Redis unavailable'))
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(1)
+        expect(errorSpy).toHaveBeenCalledWith(
+          'Error reading offline status acknowledgement for server s1:',
+          expect.objectContaining({ message: 'Redis unavailable' }),
+        )
+      })
+
+      it('logs a failed acknowledgement write and retries the unacknowledged message', async () => {
+        const { edit, cache } = publishedServer()
+        redisMock.set.mockRejectedValueOnce(new Error('Redis unavailable'))
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await statusRoutine()
+        expect(cache.size).toBe(0)
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(2)
+        expect(cache.size).toBe(1)
+        expect(errorSpy).toHaveBeenCalledWith(
+          'Error recording offline status acknowledgement for server s1:',
+          expect.objectContaining({ message: 'Redis unavailable' }),
+        )
+      })
+
+      it('retries a failed Discord edit without acknowledging it', async () => {
+        const { edit, cache } = publishedServer()
+        edit.mockRejectedValueOnce(new Error('Discord unavailable'))
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await statusRoutine()
+        expect(cache.size).toBe(0)
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(2)
+        expect(cache.size).toBe(1)
+      })
+
+      it('continues with later servers after one server fails', async () => {
+        const { target, edit } = publishedServer()
+        prismaMock.gm_status.findMany.mockResolvedValue([{ ...target, server: 'broken' }, target])
+        prismaMock.gm_server.findFirst.mockRejectedValueOnce(new Error('server read failed'))
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await statusRoutine()
+
+        expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({ message: 'server read failed' }))
+        expect(edit).toHaveBeenCalledTimes(1)
+      })
+
+      it('skips an overlapping sweep and releases the guard after completion', async () => {
+        const { edit } = publishedServer()
+        let finishEdit!: () => void
+        edit.mockImplementationOnce(() => new Promise<void>((resolve) => (finishEdit = resolve)))
+        const pending = statusRoutine()
+        await vi.waitFor(() => expect(edit).toHaveBeenCalledTimes(1))
+
+        await statusRoutine()
+        expect(prismaMock.gm_status.findMany).toHaveBeenCalledTimes(1)
+        finishEdit()
+        await pending
+        await statusRoutine()
+
+        expect(prismaMock.gm_status.findMany).toHaveBeenCalledTimes(2)
+      })
+
+      it('releases the guard after a sweep-wide database failure', async () => {
+        const { edit } = publishedServer()
+        prismaMock.gm_status.findMany.mockRejectedValueOnce(new Error('database unavailable'))
+
+        await expect(statusRoutine()).rejects.toThrow('database unavailable')
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(1)
       })
     })
   })

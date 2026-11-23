@@ -11,9 +11,25 @@ vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 const inviteMock = vi.fn()
 vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({ enqueueDiscordGuildPublicInvite: inviteMock }))
 
+const accessMock = vi.fn()
+vi.mock('@gmod/domain-access/index.js', () => ({ resolveGuildAccess: accessMock }))
+
 const { processGetPublicServerRanking } = await import('../../../src/models/v3/publicServerRankingModels.js')
 const now = new Date('2026-11-20T12:00:00.000Z')
 const DAY = 24 * 60 * 60 * 1000
+
+function access(overrides: Record<string, unknown> = {}) {
+  return {
+    guildID: 'community',
+    premium: false,
+    customBot: false,
+    state: 'ready',
+    sources: [],
+    revision: 'rev',
+    validUntil: new Date(now.getTime() + 60_000).toISOString(),
+    ...overrides,
+  }
+}
 
 function record(id: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -24,6 +40,7 @@ function record(id: string, overrides: Record<string, unknown> = {}) {
     image: '/server.svg',
     ip: '192.0.2.10',
     port: '27015',
+    gm_guild: { isPartner: false },
     gm_server_status: {
       hostname: `Hostname ${id}`,
       players: 12,
@@ -58,6 +75,7 @@ beforeEach(() => {
     .mockReset()
     .mockResolvedValue([{ gameMode: '' }, { gameMode: 'darkrp' }, { gameMode: 'sandbox' }])
   inviteMock.mockReset().mockResolvedValue('https://discord.gg/dev-community')
+  accessMock.mockReset().mockResolvedValue(access())
 })
 
 afterEach(() => vi.useRealTimers())
@@ -82,6 +100,7 @@ describe('public server ranking', () => {
     }
     expect(prismaMock.$queryRaw).not.toHaveBeenCalled()
     expect(inviteMock).not.toHaveBeenCalled()
+    expect(accessMock).not.toHaveBeenCalled()
   })
 
   it('returns a bounded page, serializable vote counts, real activity gaps and one invitation per community', async () => {
@@ -102,6 +121,8 @@ describe('public server ranking', () => {
     ])
     expect(body.servers[1].activity).toEqual([])
     expect(inviteMock).toHaveBeenCalledExactlyOnceWith('community')
+    expect(accessMock).toHaveBeenCalledExactlyOnceWith('community')
+    expect(body.servers.every((row) => row.premium === false && row.partner === false)).toBe(true)
     const rankingQuery = prismaMock.$queryRaw.mock.calls[0][0]
     expect(rankingQuery.sql).toContain('ROW_NUMBER() OVER (ORDER BY vote DESC, id ASC)')
     expect(rankingQuery.sql).toContain('LIMIT ? OFFSET ?')
@@ -116,6 +137,117 @@ describe('public server ranking', () => {
     expect(select.where).toEqual({ id: { in: ['s1', 's2'] }, isPublic: true })
     expect(select.select.token).toBeUndefined()
     expect(select.select.gm_server_status.select.playersList).toBeUndefined()
+    expect(select.select.gm_guild).toEqual({ select: { isPartner: true } })
+  })
+
+  it.each(['discord', 'gmodstore', 'legacy'])(
+    'uses authoritative %s Premium access without inferring partnership',
+    async (source) => {
+      setupPage([record('s1')])
+      accessMock.mockResolvedValueOnce(access({ premium: true, customBot: source === 'gmodstore', sources: [source] }))
+
+      const result = await processGetPublicServerRanking({})
+      const body = PublicServerRankingResponseSchema.parse(result.body)
+
+      expect(body.servers[0]).toMatchObject({ premium: true, partner: false })
+    },
+  )
+
+  it('keeps partner and Premium flags independent without changing vote-based order or pagination', async () => {
+    setupPage(
+      [
+        record('free-partner', { guild: 'partner', gm_guild: { isPartner: true } }),
+        record('paid', { guild: 'paid' }),
+        record('both', { guild: 'both', gm_guild: { isPartner: true } }),
+      ],
+      50,
+    )
+    accessMock.mockImplementation(async (guildID: string) => access({ guildID, premium: guildID !== 'partner' }))
+
+    const result = await processGetPublicServerRanking({})
+    const body = PublicServerRankingResponseSchema.parse(result.body)
+
+    expect(body.servers.map(({ id, rank, vote, premium, partner }) => ({ id, rank, vote, premium, partner }))).toEqual([
+      { id: 'free-partner', rank: 1, vote: 99, premium: false, partner: true },
+      { id: 'paid', rank: 2, vote: 98, premium: true, partner: false },
+      { id: 'both', rank: 3, vote: 97, premium: true, partner: true },
+    ])
+    expect(body.pagination).toEqual({ total: 50, offset: 0, limit: 10 })
+  })
+
+  it('does not advertise Premium when entitlement resolution is uncertain', async () => {
+    setupPage()
+    accessMock.mockResolvedValueOnce(access({ premium: true, state: 'unknown' }))
+
+    const result = await processGetPublicServerRanking({})
+    const body = PublicServerRankingResponseSchema.parse(result.body)
+
+    expect(body.servers.every((server) => server.premium === false)).toBe(true)
+    expect(body.servers.every((server) => server.discordUrl === 'https://discord.gg/dev-community')).toBe(true)
+    expect(accessMock).toHaveBeenCalledExactlyOnceWith('community')
+  })
+
+  it('does not advertise Premium that expires while its invitation is pending', async () => {
+    setupPage()
+    let finishInvite!: (invite: string) => void
+    inviteMock.mockImplementationOnce(() => new Promise<string>((resolve) => (finishInvite = resolve)))
+    accessMock.mockResolvedValueOnce(
+      access({ premium: true, validUntil: new Date(now.getTime() + 1000).toISOString() }),
+    )
+    const pending = processGetPublicServerRanking({})
+    await vi.waitFor(() => expect(accessMock).toHaveBeenCalledTimes(1))
+
+    vi.setSystemTime(new Date(now.getTime() + 2000))
+    finishInvite('https://discord.gg/dev-community')
+    const result = await pending
+    const body = PublicServerRankingResponseSchema.parse(result.body)
+
+    expect(body.servers.every((server) => server.premium === false)).toBe(true)
+    expect(body.servers.every((server) => server.discordUrl === 'https://discord.gg/dev-community')).toBe(true)
+    expect(accessMock).toHaveBeenCalledExactlyOnceWith('community')
+  })
+
+  it.each(['invalid', '2026-11-20T11:59:59.000Z'])(
+    'does not advertise an invalid or expired Premium deadline: %s',
+    async (validUntil) => {
+      setupPage()
+      accessMock.mockResolvedValueOnce(access({ premium: true, validUntil }))
+
+      const result = await processGetPublicServerRanking({})
+
+      expect(
+        PublicServerRankingResponseSchema.parse(result.body).servers.every((server) => server.premium === false),
+      ).toBe(true)
+    },
+  )
+
+  it('preserves the directory and partner badge if access lookup fails', async () => {
+    setupPage([record('s1', { gm_guild: { isPartner: true } })])
+    accessMock.mockRejectedValueOnce(new Error('Entitlement provider unavailable'))
+
+    const result = await processGetPublicServerRanking({})
+    const body = PublicServerRankingResponseSchema.parse(result.body)
+
+    expect(result.status).toBe(200)
+    expect(body.servers[0]).toMatchObject({
+      premium: false,
+      partner: true,
+      discordUrl: 'https://discord.gg/dev-community',
+    })
+  })
+
+  it('preserves Premium and partner badges if the independent invitation lookup fails', async () => {
+    setupPage([record('s1', { gm_guild: { isPartner: true } })])
+    accessMock.mockResolvedValueOnce(access({ premium: true }))
+    inviteMock.mockRejectedValueOnce(new Error('Discord unavailable'))
+
+    const result = await processGetPublicServerRanking({})
+
+    expect(PublicServerRankingResponseSchema.parse(result.body).servers[0]).toMatchObject({
+      premium: true,
+      partner: true,
+      discordUrl: null,
+    })
   })
 
   it('uses bound literal search patterns, exact mode filters and a fresh snapshot cutoff for online pages', async () => {
@@ -210,6 +342,7 @@ describe('public server ranking', () => {
     expect(prismaMock.gm_server.findMany).not.toHaveBeenCalled()
     expect(prismaMock.$queryRaw).toHaveBeenCalledTimes(4)
     expect(inviteMock).not.toHaveBeenCalled()
+    expect(accessMock).not.toHaveBeenCalled()
   })
 
   it('keeps the directory available if Discord fails and never returns arbitrary or unsafe invitation URLs', async () => {
@@ -238,5 +371,6 @@ describe('public server ranking', () => {
     const body = PublicServerRankingResponseSchema.parse(result.body)
     expect(body.servers.map((row) => row.id)).toEqual(['s1'])
     expect(body.servers[0].activity[0].players).toBe(0)
+    expect(accessMock).toHaveBeenCalledExactlyOnceWith('community')
   })
 })

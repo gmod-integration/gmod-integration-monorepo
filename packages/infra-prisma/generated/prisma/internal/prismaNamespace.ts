@@ -3923,6 +3923,7 @@ export const Gm_guildScalarFieldEnum = {
   name: 'name',
   member: 'member',
   language: 'language',
+  isPartner: 'isPartner',
   addDate: 'addDate',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -5224,14 +5225,14 @@ export type Enumgm_server_logs_triggers_actionFieldRefInput<$PrismaModel> = Fiel
  * Reference to a field of type 'Json'
  */
 export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
-
+    
 
 
 /**
  * Reference to a field of type 'QueryMode'
  */
 export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
-
+    
 
 
 /**

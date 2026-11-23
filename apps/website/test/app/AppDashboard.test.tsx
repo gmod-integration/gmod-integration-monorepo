@@ -67,6 +67,10 @@ describe('Guild dashboard shell', () => {
     expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toHaveTextContent('Sandbox One')
     history.set({ value: '/dashboard/guilds/g1/config/servers/s1/logs', replace: true })
     await vi.waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Logs' })).toBeInTheDocument())
+    history.set({ value: '/dashboard/guilds/g1/config/servers/s1/statistics', replace: true })
+    await vi.waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Statistics' })).toBeInTheDocument())
+    history.set({ value: '/dashboard/guilds/g1/config/servers/s1/map', replace: true })
+    await vi.waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Map' })).toBeInTheDocument())
   })
 
   it('catches a page failure, keeps navigation available and retries rendering', () => {

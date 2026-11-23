@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   raw: vi.fn(),
   guildCount: vi.fn(),
   guildFind: vi.fn(),
+  guildUpdate: vi.fn(),
   guildAggregate: vi.fn(),
   guildLanguages: vi.fn(),
   serverCount: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock('@gmod/infra-prisma', () => ({
     gm_guild: {
       count: mocks.guildCount,
       findFirst: mocks.guildFind,
+      updateMany: mocks.guildUpdate,
       aggregate: mocks.guildAggregate,
       groupBy: mocks.guildLanguages,
     },
@@ -60,6 +62,7 @@ const {
   deleteAdminServer,
   resetAdminServerToken,
   updateAdminPremium,
+  updateAdminPartner,
   AdminDashboardError,
 } = await import('../../../src/models/v6/adminDashboard.js')
 
@@ -72,6 +75,7 @@ const guild = () => ({
   serverCount: 2n,
   manualPremium: 1n,
   gmodstore: 0,
+  partner: 1,
   createdAt: date,
   updatedAt: date,
   token: 'never return',
@@ -112,6 +116,7 @@ beforeEach(() => {
   mocks.sessionGroups.mockResolvedValue([])
   mocks.cache.mockImplementation(async (...keys: string[]) => keys.map(() => null))
   mocks.guildFind.mockResolvedValue({ guild: 'g1' })
+  mocks.guildUpdate.mockResolvedValue({ count: 1 })
   mocks.serverFind.mockResolvedValue({ id: 's1' })
   mocks.serverUpdate.mockResolvedValue(server())
   mocks.access.mockResolvedValue(access())
@@ -137,12 +142,13 @@ describe('platform administration projections and bounded lists', () => {
       expect(result).toMatchObject({
         total: 31,
         query: { offset: 25, limit: 25, premium: 'manual' },
-        items: [{ id: 'g1', members: 10, serverCount: 2, manualPremium: true, gmodstore: false }],
+        items: [{ id: 'g1', members: 10, serverCount: 2, manualPremium: true, gmodstore: false, partner: true }],
       })
       expect(JSON.stringify(result)).not.toContain('never return')
       const sql = mocks.raw.mock.calls[1][0]
       expect(sql.sql).toContain('ORDER BY g.member ASC')
       expect(sql.sql).toContain('EXISTS')
+      expect(sql.sql).toContain('g.isPartner AS partner')
       expect(sql.sql).not.toContain(search)
       expect(sql.values).toContain("%x=%' OR 1==1 --%")
       expect(sql.values.slice(-2)).toEqual([25, 25])
@@ -385,6 +391,35 @@ describe('platform administration projections and bounded lists', () => {
 })
 
 describe('confirmed administrative changes', () => {
+  it.each([true, false])('sets the partner badge to %s without changing Premium grants or access', async (enabled) => {
+    expect(await updateAdminPartner('g1', { enabled, reason: 'Partnership reviewed' })).toEqual({
+      guildID: 'g1',
+      partner: enabled,
+    })
+    expect(mocks.guildUpdate).toHaveBeenCalledExactlyOnceWith({
+      where: { guild: 'g1' },
+      data: { isPartner: enabled },
+    })
+    expect(mocks.grantUpsert).not.toHaveBeenCalled()
+    expect(mocks.grantUpdate).not.toHaveBeenCalled()
+    expect(mocks.invalidate).not.toHaveBeenCalled()
+    expect(mocks.access).not.toHaveBeenCalled()
+  })
+
+  it('rejects invalid partner commands before a database write and reports missing communities', async () => {
+    for (const input of [{ enabled: true }, { enabled: true, reason: 'Partnership approved', manualPremium: true }])
+      await expect(updateAdminPartner('g1', input)).rejects.toMatchObject({ status: 400, code: 'invalid_request' })
+    await expect(updateAdminPartner('', { enabled: true, reason: 'Partnership approved' })).rejects.toMatchObject({
+      status: 400,
+    })
+    expect(mocks.guildUpdate).not.toHaveBeenCalled()
+    mocks.guildUpdate.mockResolvedValueOnce({ count: 0 })
+    await expect(updateAdminPartner('missing', { enabled: false, reason: 'Partnership ended' })).rejects.toMatchObject({
+      status: 404,
+      code: 'not_found',
+    })
+  })
+
   it('rejects malformed targets before querying or mutating a server', async () => {
     await expect(updateAdminServer('', { name: 'Example', reason: 'Support request' })).rejects.toMatchObject({
       status: 400,

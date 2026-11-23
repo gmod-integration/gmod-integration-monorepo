@@ -111,6 +111,7 @@ describe('infrastructure configuration', () => {
       user: 'account',
       password: 'password-for-test',
       database: 'gmod',
+      timezone: '+00:00',
     })
   })
 })

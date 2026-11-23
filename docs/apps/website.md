@@ -45,6 +45,12 @@ feedback. `ButtonLink` preserves native navigation semantics while matching `But
 provides the authentication, redirect and missing-page presentation. The footer uses a single landmark.
 Dates and numbers follow the selected UI locale.
 
+GWSockets guidance is shown until the selected Garry's Mod server's WebSocket connection is
+confirmed. A matching server-status reply and an open dashboard transport hide the notice; browser
+connectivity alone does not. Server changes and disconnects show it again until confirmation.
+The notice polls status on pages that need it, sharing throttled requests with connection details.
+Installation guidance states that WebSocket is mandatory for the entire addon.
+
 Dashboard settings use shared `SettingGroup`/`SettingRow` layouts, with global behavior separated from
 rule lists and channel actions kept beside their destination. Server configuration groups the options
 by purpose and supports translated search and category filters. Advanced options and defaults use
@@ -79,24 +85,96 @@ It displays 10 servers by default (25 and 50 are available), with search, game-m
 filters. Changing a filter resets the page. The first three results on page one are highlighted without
 duplicating them in the remaining list; ranks use votes from the last thirty days.
 
+Cards show independent Premium and Partner badges for their Discord community. Premium comes from
+the shared entitlement resolver; unavailable verification does not award the badge or hide the card.
+Partnership is assigned in the platform administration community directory and applies to all listed
+servers belonging to that community. Both badges can appear together without changing vote order.
+
 Each card includes a seven-day chart of daily peak player counts. Historical activity and the last-known
 map/mode remain visible after the server goes offline. Missing days remain gaps, and an empty history
 has an explicit placeholder. Discord buttons use validated invitations returned by the worker; missing
 permissions disable the invitation button without hiding the server.
 
+## Map viewer
+
+Map is a private server-dashboard page at
+`/dashboard/guilds/:guildID/config/servers/:serverID/map`, linked from the server Activity menu.
+The former public `/map` page and public-ranking map links have been removed.
+The page reads the selected server's map through the authorized `/v3/users/:discordID/guilds/:guildID/servers/:serverID/map`
+endpoint and embeds Map Forge at
+`https://map-forge.linv.dev/api/embed/<name>?view=3d&theme=<resolved-theme>&labels=1`.
+Map names come from the server snapshot, with no arbitrary picker, query override or default map.
+
+The page focuses on the viewer, with reload and external-open actions in its header. Server status,
+mode, player counts and update timestamps are not displayed here. Absent or invalid map names have
+an empty state. Visible pages poll every fifteen seconds and clean up requests/timers on unmount.
+An unchanged map preserves the iframe and its camera during automatic refresh. Map changes, theme
+changes and explicit viewer reloads replace it; manual reload first reads the selected server's map.
+
+Viewer styles are imported directly from the lazy page's colocated `ServerMap.css`, so stale global
+CSS import expansion in the dev server cannot leave the map unstyled. The responsive viewport has a
+minimum height, and explicit iframe width/height attributes prevent the native 150 px height even
+before styles are applied.
+
+The embed supplies 2D/3D controls, loading feedback and render errors. Only maps published on Map Forge
+can render; iframe load is not treated as proof of success. The page has no player-position markers
+yet. The addon currently records positions only with status snapshots every forty to fifty-five
+seconds; the external embed also needs a marker-message bridge before it can display player telemetry.
+
 ## Player profiles
 
-Authenticated users can open `/profile` for their linked Steam player or `/players/:steamID64` for
-another recorded player. The account menu and linked Steam card open the user's profile; player names
-and profile actions in the server player directory open the corresponding player's profile.
+Authenticated users can open `/profile` for their linked Steam player or `/players/:playerID` with
+either a Steam ID64 or a linked Discord ID. The page also provides an ID lookup. Explicit
+`/players/steam/:steamID64` and `/players/discord/:discordID` links disambiguate numeric IDs;
+automatic lookup prefers a known Discord account before treating an unmatched seventeen-digit ID
+as Steam. The account menu and linked Steam card open the user's profile; player names and profile
+actions in the server player directory open the corresponding player's profile.
 
-Profiles display the stored trust score out of 100 (including zero; unavailable scores stay unknown),
-aggregate playtime, kills, deaths and connection counts, and paginated per-server statistics. The owner
+Profiles display aggregate playtime, kills, deaths and connection counts, and paginated per-server
+statistics. The stored trust score remains available to internal account/API logic but is not shown
+on the player profile. The owner
 can see all their recorded servers; other users see only public servers. Summary totals and activity
 dates use that same visibility filter, and another player's displayed name comes from a visible server.
-The page explains this visibility and handles missing Steam links, missing players, errors and empty
-statistics separately. Dates and numbers follow the selected language. Last activity is the last stored
-statistics update, which may include administrative edits; it is not live player presence.
+Profiles show copyable Steam/Discord identifiers and external profile links. Share uses the native
+browser share sheet when available, with a clipboard fallback; a separate copy action always provides
+the stable explicit Steam profile URL. Report player opens Discord support, with guidance to include
+that URL. It does not create a report record or issue a sanction.
+
+Recorded warnings and bans have separate pagination, server names, reasons and dates. Owners can see
+their own sanctions on all servers; other visitors only see public-server sanctions. Moderator IDs
+are omitted. A public moderation record can make a profile visible even without gameplay statistics.
+Ban duration is recorded in minutes, with zero indicating permanence; expiry and status are calculated
+from that duration. An early unban may not be reflected because the addon records ban additions.
+
+The page explains visibility and handles missing Steam links, missing players, errors and empty
+statistics or moderation histories separately. Dates and numbers follow the selected language.
+Last activity is the last stored statistics update, which may include administrative edits;
+it is not live player presence.
+
+## Server statistics
+
+Each managed server has a Statistics entry at
+`/dashboard/guilds/:guildID/config/servers/:serverID/statistics`. It reads
+`GET /v3/users/:discordID/guilds/:guildID/servers/:serverID/statistics` after account, guild-administrator
+and server-membership checks. These database-only reads do not require a Discord metadata snapshot.
+Responses are private and use `Cache-Control: no-store`.
+
+The page offers rolling 24-hour, seven-day and thirty-day periods, plus a custom UTC interval of at
+most ninety days. Population uses hourly buckets for intervals up to forty-eight hours and daily
+buckets otherwise; unobserved buckets remain unknown. A UTC weekday/hour heatmap exposes sampled
+attendance. New-player counts use the first recorded arrival. Session counts, hours, duration
+distribution, median duration, active players and the top-player list cover sessions completed in
+the selected interval, attributed to their end time. They exclude sessions still in progress.
+The registered-player total is explicitly all-time.
+
+The client-branch distribution describes only the latest connected-player snapshot, independent of
+the selected historical period. Snapshots older than five minutes are shown as unavailable for live
+statistics. Graphs provide readable exact-value tables and explicit loading, error and empty states.
+The shared HTTP schemas are in `@gmod/schema/server/ServerStatisticsSchema.js`; the core model
+aggregates the data in SQL rather than loading entire histories in the API process.
+MariaDB connections explicitly use UTC, matching Prisma's timestamp serialization and the date
+buckets. The server/date indexes for arrivals and completed sessions ship in the
+`20261123140000_server_statistics_indexes` migration.
 
 ## Discord status preview
 

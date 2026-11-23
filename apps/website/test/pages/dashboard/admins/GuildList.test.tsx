@@ -21,7 +21,190 @@ const renderPage = () =>
     </div>
   ))
 
+function partnerDirectory(partner = false) {
+  const guild = guildFixture({ partner })
+  const update = vi.fn(async (enabled: boolean) => {
+    guild.partner = enabled
+    return ok({ guildID: guild.id, partner: enabled }) as Response
+  })
+  vi.mocked(fetchAPI).mockImplementation(async (endpoint, method, body) => {
+    if (method === 'PATCH') return update((body as { enabled: boolean }).enabled)
+    if (endpoint === `/v6/admin/guilds/${guild.id}`)
+      return ok({
+        guild,
+        access: {
+          guildID: guild.id,
+          premium: false,
+          customBot: false,
+          state: 'ready',
+          sources: [],
+          revision: 'r1',
+          validUntil: '2099-01-01T00:00:00.000Z',
+        },
+      }) as Response
+    return ok(pageFixture(endpoint, [guild])) as Response
+  })
+  return { guild, update }
+}
+
+async function partnerDialog(remove = false) {
+  await fireEvent.click(await screen.findByRole('button', { name: remove ? 'Remove partner' : 'Add partner' }))
+  return screen.getByRole('dialog', {
+    name: remove ? 'Remove partner status from Example community?' : 'Mark Example community as a partner?',
+  })
+}
+
 describe('administrative community directory', () => {
+  it('confirms a named partnership with a valid reason and refreshes its status independently from Premium', async () => {
+    const { guild, update } = partnerDirectory()
+    renderPage()
+    const dialog = await partnerDialog()
+    expect(within(dialog).getByText(/Premium access is unchanged/)).toBeInTheDocument()
+    const reason = within(dialog).getByRole('textbox', { name: 'Reason' })
+    const confirm = within(dialog).getByRole('button', { name: 'Add partner' })
+    expect(confirm).toBeDisabled()
+    await fireEvent.input(reason, { target: { value: ' ab ' } })
+    expect(confirm).toBeDisabled()
+    await fireEvent.input(reason, { target: { value: 'x'.repeat(501) } })
+    expect(confirm).toBeDisabled()
+    await fireEvent.input(reason, { target: { value: '  Agreed community partnership  ' } })
+    await fireEvent.click(confirm)
+
+    await screen.findByText('Partner status was updated.')
+    await vi.waitFor(() => expect(dialog).not.toHaveAttribute('open'))
+    expect(update).toHaveBeenCalledExactlyOnceWith(true)
+    expect(fetchAPI).toHaveBeenCalledWith(`/v6/admin/guilds/${guild.id}/partner`, 'PATCH', {
+      enabled: true,
+      reason: 'Agreed community partnership',
+    })
+    await screen.findByRole('button', { name: 'Remove partner' })
+    const row = screen.getByText('Example community').closest('tr')!
+    expect(within(row).getByText('Partner')).toBeInTheDocument()
+    expect(within(row).getByText('No active recorded grant')).toBeInTheDocument()
+  })
+
+  it('removes partnership while retaining recorded Premium sources', async () => {
+    const { guild, update } = partnerDirectory(true)
+    guild.manualPremium = true
+    guild.gmodstore = true
+    renderPage()
+    const dialog = await partnerDialog(true)
+    await fireEvent.input(within(dialog).getByRole('textbox', { name: 'Reason' }), {
+      target: { value: 'Partnership agreement ended' },
+    })
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Remove partner' }))
+
+    await screen.findByRole('button', { name: 'Add partner' })
+    expect(update).toHaveBeenCalledExactlyOnceWith(false)
+    const row = screen.getByText('Example community').closest('tr')!
+    expect(within(row).getByText('Not a partner')).toBeInTheDocument()
+    expect(within(row).getByText('Manual grant')).toBeInTheDocument()
+    expect(within(row).getByText('GmodStore')).toBeInTheDocument()
+  })
+
+  it('keeps a failed partnership reason, blocks duplicate submissions and prevents dismissal while pending', async () => {
+    const { update } = partnerDirectory()
+    let complete!: (value: Response) => void
+    update.mockImplementationOnce(() => new Promise<Response>((resolve) => (complete = resolve)))
+    renderPage()
+    const dialog = await partnerDialog()
+    const reason = within(dialog).getByRole('textbox', { name: 'Reason' })
+    await fireEvent.input(reason, { target: { value: 'Reviewed partner application' } })
+    const confirm = within(dialog).getByRole('button', { name: 'Add partner' })
+    await fireEvent.click(confirm)
+    await fireEvent.click(confirm)
+    expect(update).toHaveBeenCalledOnce()
+    expect(reason).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Close' })).toBeDisabled()
+    const cancel = new Event('cancel', { cancelable: true })
+    dialog.dispatchEvent(cancel)
+    expect(cancel.defaultPrevented).toBe(true)
+
+    complete(failed() as Response)
+    await within(dialog).findByRole('alert')
+    expect(dialog).toHaveAttribute('open')
+    expect(reason).toHaveValue('Reviewed partner application')
+    expect(reason).toBeEnabled()
+    await fireEvent.click(confirm)
+    await screen.findByText('Partner status was updated.')
+    expect(update).toHaveBeenCalledTimes(2)
+  })
+
+  it('cancels an unsubmitted partnership change and starts a new draft when reopened', async () => {
+    const { update } = partnerDirectory()
+    renderPage()
+    let dialog = await partnerDialog()
+    await fireEvent.input(within(dialog).getByRole('textbox', { name: 'Reason' }), {
+      target: { value: 'A draft decision' },
+    })
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+    expect(dialog).not.toHaveAttribute('open')
+    expect(update).not.toHaveBeenCalled()
+    dialog = await partnerDialog()
+    expect(within(dialog).getByRole('textbox', { name: 'Reason' })).toHaveValue('')
+  })
+
+  it.each(['guild', 'state'] as const)(
+    'rejects a successful HTTP response with the wrong %s acknowledgement',
+    async (wrong) => {
+      const { guild, update } = partnerDirectory()
+      update.mockResolvedValueOnce(
+        ok({ guildID: wrong === 'guild' ? 'another-community' : guild.id, partner: wrong !== 'state' }) as Response,
+      )
+      renderPage()
+      const dialog = await partnerDialog()
+      await fireEvent.input(within(dialog).getByRole('textbox', { name: 'Reason' }), {
+        target: { value: 'Reviewed partner application' },
+      })
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Add partner' }))
+      await within(dialog).findByRole('alert')
+      expect(dialog).toHaveAttribute('open')
+      expect(within(dialog).getByRole('textbox', { name: 'Reason' })).toHaveValue('Reviewed partner application')
+      expect(screen.queryByText('Partner status was updated.')).not.toBeInTheDocument()
+    },
+  )
+
+  it('reports an accepted partner change separately when refreshing the directory fails', async () => {
+    const { update } = partnerDirectory()
+    const directory = vi.mocked(fetchAPI).getMockImplementation()!
+    vi.mocked(fetchAPI).mockImplementation(async (...args) =>
+      args[1] === 'GET' && update.mock.calls.length > 0 ? (failed() as Response) : directory(...args),
+    )
+    renderPage()
+    const dialog = await partnerDialog()
+    await fireEvent.input(within(dialog).getByRole('textbox', { name: 'Reason' }), {
+      target: { value: 'Reviewed partner application' },
+    })
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Add partner' }))
+    await screen.findByText('Partner status was updated.')
+    await screen.findByRole('alert')
+    await vi.waitFor(() => expect(dialog).not.toHaveAttribute('open'))
+    expect(update).toHaveBeenCalledOnce()
+    expect(screen.getByRole('alert')).toHaveTextContent('The communities could not be loaded. Try again.')
+  })
+
+  it('refreshes an inspected community after changing its partnership', async () => {
+    const { guild } = partnerDirectory()
+    renderPage()
+    await fireEvent.click(await screen.findByRole('button', { name: 'Inspect' }))
+    const detail = screen.getByRole('dialog', { name: 'Community details' })
+    await within(detail).findByText('Not a partner')
+    const dialog = await partnerDialog()
+    await fireEvent.input(within(dialog).getByRole('textbox', { name: 'Reason' }), {
+      target: { value: 'Reviewed partner application' },
+    })
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Add partner' }))
+    await screen.findByText('Partner status was updated.')
+    await vi.waitFor(() =>
+      expect(
+        vi.mocked(fetchAPI).mock.calls.filter(([endpoint]) => endpoint === `/v6/admin/guilds/${guild.id}`),
+      ).toHaveLength(2),
+    )
+    await vi.waitFor(() => expect(within(detail).getAllByText('Partner')).toHaveLength(2))
+    expect(within(detail).queryByText('Not a partner')).not.toBeInTheDocument()
+  })
+
   it('retries details separately and displays every verified source before closing the inspection', async () => {
     const guild = guildFixture({ gmodstore: true })
     let attempts = 0

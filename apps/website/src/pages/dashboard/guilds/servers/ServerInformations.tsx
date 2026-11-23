@@ -1,7 +1,7 @@
 import { showDialog } from '../../../../utils/dialog.js'
 import { type Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
 import { getServer } from '../../../../utils/utils.js'
-import { sendWebSocketMessage, webSocketServerStatus } from '../../../../utils/websocket.js'
+import { requestServerStatus, webSocketServerStatus } from '../../../../utils/websocket.js'
 import { useNavigate, useParams } from '@solidjs/router'
 import ConfirmActionDialog from '../../../../components/ConfirmActionDialog.js'
 import AdminPanel from '../../../../components/AdminPanel.js'
@@ -93,7 +93,7 @@ const ServerInformations: Component = () => {
   onMount(() => {
     const intervalId = setInterval(() => {
       setNow(Date.now())
-      sendWebSocketMessage('server_status', { serverID: serverID() })
+      requestServerStatus(serverID())
     }, 2000)
 
     onCleanup(() => clearInterval(intervalId))

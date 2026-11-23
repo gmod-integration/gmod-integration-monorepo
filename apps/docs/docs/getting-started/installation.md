@@ -13,7 +13,7 @@ description: Install the Gmod Integration Discord bot, Workshop addon and requir
 
 :::danger GWSockets is required
 
-All connected Gmod Integration features use GWSockets. Without this module, the addon cannot connect or exchange data with the platform. Adding the Workshop content alone is not enough.
+GWSockets and a working WebSocket connection are mandatory for the entire Gmod Integration addon. Without them, the addon is unusable. Adding the Workshop content alone is not enough.
 
 Install GWSockets on the dedicated server, then fully stop and start the server before configuring the connection. Players do not need to install the module.
 
@@ -56,7 +56,7 @@ This prints the DLL name and download URL for your server. Choose the module for
 3. Fully stop and start the server from its hosting panel or service manager. Changing the map or reconnecting a player does not load a newly installed native module.
 4. Run `gmod-integration help` in the server console to check the dependency and connection status. Then follow [Configuration](configuration.md) to set the server ID and token.
 
-The configuration menu remains available for setup and diagnostics when the module is missing, but connected features remain unavailable until GWSockets loads successfully.
+The addon becomes usable only after GWSockets loads successfully and the server establishes its WebSocket connection.
 
 ![alt text](installation_dll_detect.png)
 

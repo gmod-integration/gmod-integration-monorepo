@@ -128,6 +128,16 @@ export const DashboardMenu: Component = () => {
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/status',
         },
         {
+          icon: 'map',
+          label: t('main.map', 'Map'),
+          url: '/dashboard/guilds/:guildID/config/servers/:serverID/map',
+        },
+        {
+          icon: 'chart-no-axes-combined',
+          label: t('server_statistics.title', 'Statistics'),
+          url: '/dashboard/guilds/:guildID/config/servers/:serverID/statistics',
+        },
+        {
           icon: 'contact',
           label: t('dashboard.menu.servers.roles', 'Role synchronization'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/roles',
@@ -236,6 +246,7 @@ export const DashboardMenu: Component = () => {
     if (
       [
         'players',
+        'map',
         'warns',
         'logs',
         'errors',

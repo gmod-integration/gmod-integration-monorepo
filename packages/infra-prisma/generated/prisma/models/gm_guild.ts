@@ -39,6 +39,7 @@ export type Gm_guildMinAggregateOutputType = {
   name: string | null
   member: number | null
   language: string | null
+  isPartner: boolean | null
   addDate: Date | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -49,6 +50,7 @@ export type Gm_guildMaxAggregateOutputType = {
   name: string | null
   member: number | null
   language: string | null
+  isPartner: boolean | null
   addDate: Date | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -59,6 +61,7 @@ export type Gm_guildCountAggregateOutputType = {
   name: number
   member: number
   language: number
+  isPartner: number
   addDate: number
   createdAt: number
   updatedAt: number
@@ -79,6 +82,7 @@ export type Gm_guildMinAggregateInputType = {
   name?: true
   member?: true
   language?: true
+  isPartner?: true
   addDate?: true
   createdAt?: true
   updatedAt?: true
@@ -89,6 +93,7 @@ export type Gm_guildMaxAggregateInputType = {
   name?: true
   member?: true
   language?: true
+  isPartner?: true
   addDate?: true
   createdAt?: true
   updatedAt?: true
@@ -99,6 +104,7 @@ export type Gm_guildCountAggregateInputType = {
   name?: true
   member?: true
   language?: true
+  isPartner?: true
   addDate?: true
   createdAt?: true
   updatedAt?: true
@@ -196,6 +202,7 @@ export type Gm_guildGroupByOutputType = {
   name: string
   member: number
   language: string
+  isPartner: boolean
   addDate: Date | null
   createdAt: Date
   updatedAt: Date
@@ -229,6 +236,7 @@ export type gm_guildWhereInput = {
   name?: Prisma.StringFilter<"gm_guild"> | string
   member?: Prisma.IntFilter<"gm_guild"> | number
   language?: Prisma.StringFilter<"gm_guild"> | string
+  isPartner?: Prisma.BoolFilter<"gm_guild"> | boolean
   addDate?: Prisma.DateTimeNullableFilter<"gm_guild"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"gm_guild"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_guild"> | Date | string
@@ -247,6 +255,7 @@ export type gm_guildOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   member?: Prisma.SortOrder
   language?: Prisma.SortOrder
+  isPartner?: Prisma.SortOrder
   addDate?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -269,6 +278,7 @@ export type gm_guildWhereUniqueInput = Prisma.AtLeast<{
   name?: Prisma.StringFilter<"gm_guild"> | string
   member?: Prisma.IntFilter<"gm_guild"> | number
   language?: Prisma.StringFilter<"gm_guild"> | string
+  isPartner?: Prisma.BoolFilter<"gm_guild"> | boolean
   addDate?: Prisma.DateTimeNullableFilter<"gm_guild"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"gm_guild"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"gm_guild"> | Date | string
@@ -287,6 +297,7 @@ export type gm_guildOrderByWithAggregationInput = {
   name?: Prisma.SortOrder
   member?: Prisma.SortOrder
   language?: Prisma.SortOrder
+  isPartner?: Prisma.SortOrder
   addDate?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -305,6 +316,7 @@ export type gm_guildScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"gm_guild"> | string
   member?: Prisma.IntWithAggregatesFilter<"gm_guild"> | number
   language?: Prisma.StringWithAggregatesFilter<"gm_guild"> | string
+  isPartner?: Prisma.BoolWithAggregatesFilter<"gm_guild"> | boolean
   addDate?: Prisma.DateTimeNullableWithAggregatesFilter<"gm_guild"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"gm_guild"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"gm_guild"> | Date | string
@@ -315,6 +327,7 @@ export type gm_guildCreateInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -333,6 +346,7 @@ export type gm_guildUncheckedCreateInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -351,6 +365,7 @@ export type gm_guildUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -369,6 +384,7 @@ export type gm_guildUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -387,6 +403,7 @@ export type gm_guildCreateManyInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -397,6 +414,7 @@ export type gm_guildUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -407,6 +425,7 @@ export type gm_guildUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -423,6 +442,7 @@ export type gm_guildCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   member?: Prisma.SortOrder
   language?: Prisma.SortOrder
+  isPartner?: Prisma.SortOrder
   addDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -437,6 +457,7 @@ export type gm_guildMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   member?: Prisma.SortOrder
   language?: Prisma.SortOrder
+  isPartner?: Prisma.SortOrder
   addDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -447,6 +468,7 @@ export type gm_guildMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   member?: Prisma.SortOrder
   language?: Prisma.SortOrder
+  isPartner?: Prisma.SortOrder
   addDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -582,6 +604,7 @@ export type gm_guildCreateWithoutGm_guild_auto_rolesInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -599,6 +622,7 @@ export type gm_guildUncheckedCreateWithoutGm_guild_auto_rolesInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -632,6 +656,7 @@ export type gm_guildUpdateWithoutGm_guild_auto_rolesInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -649,6 +674,7 @@ export type gm_guildUncheckedUpdateWithoutGm_guild_auto_rolesInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -666,6 +692,7 @@ export type gm_guildCreateWithoutGm_guild_verify_msgInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -683,6 +710,7 @@ export type gm_guildUncheckedCreateWithoutGm_guild_verify_msgInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -716,6 +744,7 @@ export type gm_guildUpdateWithoutGm_guild_verify_msgInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -733,6 +762,7 @@ export type gm_guildUncheckedUpdateWithoutGm_guild_verify_msgInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -750,6 +780,7 @@ export type gm_guildCreateWithoutGm_guild_verify_roleInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -767,6 +798,7 @@ export type gm_guildUncheckedCreateWithoutGm_guild_verify_roleInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -800,6 +832,7 @@ export type gm_guildUpdateWithoutGm_guild_verify_roleInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -817,6 +850,7 @@ export type gm_guildUncheckedUpdateWithoutGm_guild_verify_roleInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -834,6 +868,7 @@ export type gm_guildCreateWithoutGm_serverInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -851,6 +886,7 @@ export type gm_guildUncheckedCreateWithoutGm_serverInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -884,6 +920,7 @@ export type gm_guildUpdateWithoutGm_serverInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -901,6 +938,7 @@ export type gm_guildUncheckedUpdateWithoutGm_serverInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -918,6 +956,7 @@ export type gm_guildCreateWithoutGm_server_linksInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -935,6 +974,7 @@ export type gm_guildUncheckedCreateWithoutGm_server_linksInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -968,6 +1008,7 @@ export type gm_guildUpdateWithoutGm_server_linksInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -985,6 +1026,7 @@ export type gm_guildUncheckedUpdateWithoutGm_server_linksInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1002,6 +1044,7 @@ export type gm_guildCreateWithoutGm_guild_verification_checkInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1019,6 +1062,7 @@ export type gm_guildUncheckedCreateWithoutGm_guild_verification_checkInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1052,6 +1096,7 @@ export type gm_guildUpdateWithoutGm_guild_verification_checkInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1069,6 +1114,7 @@ export type gm_guildUncheckedUpdateWithoutGm_guild_verification_checkInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1086,6 +1132,7 @@ export type gm_guildCreateWithoutGm_guild_webooksInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1103,6 +1150,7 @@ export type gm_guildUncheckedCreateWithoutGm_guild_webooksInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1136,6 +1184,7 @@ export type gm_guildUpdateWithoutGm_guild_webooksInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1153,6 +1202,7 @@ export type gm_guildUncheckedUpdateWithoutGm_guild_webooksInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1170,6 +1220,7 @@ export type gm_guildCreateWithoutGm_sync_chatInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1187,6 +1238,7 @@ export type gm_guildUncheckedCreateWithoutGm_sync_chatInput = {
   name?: string
   member?: number
   language?: string
+  isPartner?: boolean
   addDate?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1220,6 +1272,7 @@ export type gm_guildUpdateWithoutGm_sync_chatInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1237,6 +1290,7 @@ export type gm_guildUncheckedUpdateWithoutGm_sync_chatInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   member?: Prisma.IntFieldUpdateOperationsInput | number
   language?: Prisma.StringFieldUpdateOperationsInput | string
+  isPartner?: Prisma.BoolFieldUpdateOperationsInput | boolean
   addDate?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1339,6 +1393,7 @@ export type gm_guildSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   name?: boolean
   member?: boolean
   language?: boolean
+  isPartner?: boolean
   addDate?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1360,12 +1415,13 @@ export type gm_guildSelectScalar = {
   name?: boolean
   member?: boolean
   language?: boolean
+  isPartner?: boolean
   addDate?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type gm_guildOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"guild" | "name" | "member" | "language" | "addDate" | "createdAt" | "updatedAt", ExtArgs["result"]["gm_guild"]>
+export type gm_guildOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"guild" | "name" | "member" | "language" | "isPartner" | "addDate" | "createdAt" | "updatedAt", ExtArgs["result"]["gm_guild"]>
 export type gm_guildInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   gm_guild_auto_roles?: boolean | Prisma.gm_guild$gm_guild_auto_rolesArgs<ExtArgs>
   gm_guild_verification_check?: boolean | Prisma.gm_guild$gm_guild_verification_checkArgs<ExtArgs>
@@ -1395,6 +1451,7 @@ export type $gm_guildPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     name: string
     member: number
     language: string
+    isPartner: boolean
     addDate: Date | null
     createdAt: Date
     updatedAt: Date
@@ -1779,6 +1836,7 @@ export interface gm_guildFieldRefs {
   readonly name: Prisma.FieldRef<"gm_guild", 'String'>
   readonly member: Prisma.FieldRef<"gm_guild", 'Int'>
   readonly language: Prisma.FieldRef<"gm_guild", 'String'>
+  readonly isPartner: Prisma.FieldRef<"gm_guild", 'Boolean'>
   readonly addDate: Prisma.FieldRef<"gm_guild", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"gm_guild", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"gm_guild", 'DateTime'>

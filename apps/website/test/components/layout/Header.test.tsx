@@ -119,6 +119,7 @@ describe('Header navigation', () => {
     expect(screen.getByRole('link', { name: 'Gmod Integration' }).querySelector('img')).toHaveAttribute('alt', '')
     expect(screen.getByRole('link', { name: 'Gmod Integration' })).toHaveAttribute('href', '/')
     const navigation = screen.getByRole('navigation', { name: 'Main navigation' })
+    expect(within(navigation).queryByRole('link', { name: 'Map' })).not.toBeInTheDocument()
     for (const [name, href] of [
       ['Invite the bot', '/invite'],
       ['Help and support', '/discord'],
@@ -143,6 +144,7 @@ describe('Header navigation', () => {
       renderWithProviders(() => <Header />, { path: '*', history: historyAt(path) })
       const header = screen.getByRole('banner')
       const navigation = within(header).getByRole('navigation', { name: 'Main navigation' })
+      expect(within(navigation).queryByRole('link', { name: 'Map' })).not.toBeInTheDocument()
       for (const [name, href] of [
         ['Documentation', '/docs'],
         ['Invite the bot', '/invite'],

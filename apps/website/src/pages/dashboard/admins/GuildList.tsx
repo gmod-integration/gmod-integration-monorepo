@@ -2,10 +2,13 @@ import { createResource, createSignal, For, Show } from 'solid-js'
 import {
   AdminGuildDetailSchema,
   AdminGuildRowSchema,
+  AdminPartnerMutationResultSchema,
+  AdminPartnerUpdateSchema,
   type AdminGuildRow,
 } from '@gmod/schema/admin/AdminDashboardSchema.js'
 import AdminModal from '../../../components/AdminModal.js'
 import AdminPanel from '../../../components/AdminPanel.js'
+import ConfirmActionDialog from '../../../components/ConfirmActionDialog.js'
 import Pagination from '../../../components/Pagination.js'
 import {
   AsyncState,
@@ -19,7 +22,7 @@ import {
 } from '../../../components/ui/index.js'
 import { useI18n } from '../../../i18n.js'
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
-import { adminGet, createAdminList } from './adminApi.js'
+import { adminGet, adminMutate, createAdminList } from './adminApi.js'
 import AdminListToolbar from './AdminListToolbar.js'
 
 export default function GuildList() {
@@ -27,6 +30,11 @@ export default function GuildList() {
   const list = createAdminList<AdminGuildRow>('/guilds', { sort: 'members', premium: 'all' }, AdminGuildRowSchema)
   const [search, setSearch] = createSignal('')
   const [selected, setSelected] = createSignal<AdminGuildRow>()
+  const [partnerTarget, setPartnerTarget] = createSignal<AdminGuildRow>()
+  const [partnerEnabled, setPartnerEnabled] = createSignal(false)
+  const [partnerReason, setPartnerReason] = createSignal('')
+  const [partnerPending, setPartnerPending] = createSignal(false)
+  const [partnerSaved, setPartnerSaved] = createSignal(false)
   const [detail, { refetch: refetchDetail }] = createResource(
     () => selected()?.id,
     async (id) => AdminGuildDetailSchema.parse(await adminGet(`/guilds/${encodeURIComponent(id)}`)),
@@ -36,6 +44,14 @@ export default function GuildList() {
   const inspect = (guild: AdminGuildRow) => {
     setSelected(guild)
     showDialog('admin-community-details')
+  }
+  const changePartner = (guild: AdminGuildRow) => {
+    if (partnerPending()) return
+    setPartnerTarget(guild)
+    setPartnerEnabled(!guild.partner)
+    setPartnerReason('')
+    setPartnerSaved(false)
+    showDialog('admin-community-partner')
   }
   const date = (value: string) => new Date(value).toLocaleString(locale())
   return (
@@ -54,6 +70,11 @@ export default function GuildList() {
           </Show>
         }
       >
+        <Show when={partnerSaved()}>
+          <p role="status" class="px-4 pt-4 text-sm text-success">
+            {t('admin_v6.partner_saved', 'Partner status was updated.')}
+          </p>
+        </Show>
         <AdminListToolbar
           id="admin-communities"
           search={search()}
@@ -98,13 +119,14 @@ export default function GuildList() {
                 <th>{t('admin_v6.members', 'Members')}</th>
                 <th>{t('admin_v6.game_servers', 'Game servers')}</th>
                 <th>{t('admin_v6.access_sources', 'Premium access sources')}</th>
+                <th>{t('admin_v6.partner', 'Partner')}</th>
                 <th>{t('admin_v6.bot_language', 'Bot language')}</th>
                 <th>{t('ui.actions', 'Actions')}</th>
               </tr>
             </thead>
             <tbody>
               <TableState
-                colSpan={6}
+                colSpan={7}
                 loading={list.results.loading}
                 error={list.results.error}
                 empty={!page()?.items.length}
@@ -147,11 +169,30 @@ export default function GuildList() {
                           </Show>
                         </div>
                       </td>
+                      <td>
+                        <BooleanStatus
+                          value={guild.partner}
+                          trueLabel={t('admin_v6.partner', 'Partner')}
+                          falseLabel={t('admin_v6.not_partner', 'Not a partner')}
+                        />
+                      </td>
                       <td>{guild.language.toUpperCase()}</td>
                       <td>
-                        <Button size="sm" onClick={() => inspect(guild)}>
-                          {t('admin_v6.inspect', 'Inspect')}
-                        </Button>
+                        <div class="flex flex-wrap gap-2">
+                          <Button size="sm" onClick={() => inspect(guild)}>
+                            {t('admin_v6.inspect', 'Inspect')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={guild.partner ? 'warning' : 'primary'}
+                            disabled={partnerPending()}
+                            onClick={() => changePartner(guild)}
+                          >
+                            {guild.partner
+                              ? t('admin_v6.partner_remove', 'Remove partner')
+                              : t('admin_v6.partner_add', 'Add partner')}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -161,6 +202,74 @@ export default function GuildList() {
           </table>
         </div>
       </AdminPanel>
+      <ConfirmActionDialog
+        id="admin-community-partner"
+        title={
+          partnerEnabled()
+            ? t(
+                'admin_v6.partner_add_for',
+                'Mark {1} as a partner?',
+                partnerTarget()?.name || partnerTarget()?.id || '',
+              )
+            : t(
+                'admin_v6.partner_remove_for',
+                'Remove partner status from {1}?',
+                partnerTarget()?.name || partnerTarget()?.id || '',
+              )
+        }
+        description={t(
+          'admin_v6.partner_consequence',
+          'This changes the public Partner badge for this community’s listed servers. Premium access is unchanged.',
+        )}
+        variant={partnerEnabled() ? 'primary' : 'warning'}
+        confirmLabel={
+          partnerEnabled() ? t('admin_v6.partner_add', 'Add partner') : t('admin_v6.partner_remove', 'Remove partner')
+        }
+        disabled={partnerReason().trim().length < 5 || partnerReason().trim().length > 500}
+        onConfirm={async () => {
+          const guild = partnerTarget()
+          if (!guild) throw new Error('Missing community')
+          const command = AdminPartnerUpdateSchema.parse({ enabled: partnerEnabled(), reason: partnerReason() })
+          setPartnerPending(true)
+          try {
+            const accepted = AdminPartnerMutationResultSchema.parse(
+              await adminMutate(`/guilds/${encodeURIComponent(guild.id)}/partner`, 'PATCH', command),
+            )
+            if (accepted.guildID !== guild.id || accepted.partner !== command.enabled)
+              throw new Error('Invalid partner acknowledgement')
+            setPartnerSaved(true)
+            void Promise.resolve()
+              .then(() => list.refetch())
+              .catch(() => undefined)
+            if (selected()?.id === guild.id)
+              void Promise.resolve()
+                .then(() => refetchDetail())
+                .catch(() => undefined)
+          } finally {
+            setPartnerPending(false)
+          }
+        }}
+      >
+        {(pending) => (
+          <FormField
+            id="admin-partner-reason"
+            label={t('admin_v6.reason', 'Reason')}
+            description={t('admin_v6.reason_help', 'Explain this administrative action in 5 to 500 characters.')}
+            required
+          >
+            <textarea
+              id="admin-partner-reason"
+              class="textarea w-full"
+              rows={3}
+              maxLength={500}
+              value={partnerReason()}
+              disabled={pending()}
+              aria-describedby="admin-partner-reason-description"
+              onInput={(event) => setPartnerReason(event.currentTarget.value)}
+            />
+          </FormField>
+        )}
+      </ConfirmActionDialog>
       <AdminModal
         id="admin-community-details"
         title={t('admin_v6.community_details', 'Community details')}
@@ -181,6 +290,16 @@ export default function GuildList() {
                     <div>
                       <dt class="text-sm text-base-content/65">{t('admin_v6.members', 'Members')}</dt>
                       <dd>{value().guild.members.toLocaleString(locale())}</dd>
+                    </div>
+                    <div>
+                      <dt class="text-sm text-base-content/65">{t('admin_v6.partner', 'Partner')}</dt>
+                      <dd>
+                        <BooleanStatus
+                          value={value().guild.partner}
+                          trueLabel={t('admin_v6.partner', 'Partner')}
+                          falseLabel={t('admin_v6.not_partner', 'Not a partner')}
+                        />
+                      </dd>
                     </div>
                     <div>
                       <dt class="text-sm text-base-content/65">{t('admin_v6.registered', 'Registered')}</dt>

@@ -31,6 +31,8 @@ const ServerList = lazy(() => import('./pages/dashboard/guilds/servers/ServersSe
 const ServerInformations = lazy(() => import('./pages/dashboard/guilds/servers/ServerInformations.js'))
 const ServerConfig = lazy(() => import('./pages/dashboard/guilds/servers/ServerConfig.js'))
 const ServerStatus = lazy(() => import('./pages/dashboard/guilds/servers/status/ServerStatus.js'))
+const ServerMap = lazy(() => import('./pages/dashboard/guilds/servers/ServerMap.js'))
+const ServerStatistics = lazy(() => import('./pages/dashboard/guilds/servers/statistics/ServerStatistics.js'))
 const ServerPlayer = lazy(() => import('./pages/dashboard/guilds/servers/ServerPlayers.js'))
 const ServerRoles = lazy(() => import('./pages/dashboard/guilds/servers/ServerRoles.js'))
 const ServerChats = lazy(() => import('./pages/dashboard/guilds/servers/ServerChats.js'))
@@ -66,6 +68,8 @@ render(
       <Route path="/premium" component={Premium} />
       <Route path="/account" component={Account} />
       <Route path="/profile" component={PlayerProfile} />
+      <Route path="/players/discord/:discordID" component={PlayerProfile} />
+      <Route path="/players/steam/:steamID64" component={PlayerProfile} />
       <Route path="/players/:steamID64" component={PlayerProfile} />
       <Route path="/legal/privacy" component={Privacy} />
       <Route path="/legal/terms" component={Terms} />
@@ -98,6 +102,8 @@ render(
         <Route path="/config/servers/:serverID" component={ServerInformations} />
         <Route path="/config/servers/:serverID/config" component={ServerConfig} />
         <Route path="/config/servers/:serverID/status" component={ServerStatus} />
+        <Route path="/config/servers/:serverID/map" component={ServerMap} />
+        <Route path="/config/servers/:serverID/statistics" component={ServerStatistics} />
         <Route path="/config/servers/:serverID/players" component={ServerPlayer} />
         <Route path="/config/servers/:serverID/votes" component={ServerVote} />
         <Route path="/config/servers/:serverID/roles" component={ServerRoles} />

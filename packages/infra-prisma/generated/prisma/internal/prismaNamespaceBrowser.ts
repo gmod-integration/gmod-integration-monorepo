@@ -171,6 +171,7 @@ export const Gm_guildScalarFieldEnum = {
   name: 'name',
   member: 'member',
   language: 'language',
+  isPartner: 'isPartner',
   addDate: 'addDate',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'

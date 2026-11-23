@@ -87,6 +87,16 @@ const Servers: Component = () => {
                 >
                   {props.server.online ? t('servers.online', 'Online') : t('servers.offline', 'Offline')}
                 </StatusBadge>
+                <Show when={props.server.premium}>
+                  <StatusBadge tone="info" icon="crown">
+                    {t('servers.premium_badge', 'Premium')}
+                  </StatusBadge>
+                </Show>
+                <Show when={props.server.partner}>
+                  <StatusBadge tone="success" icon="shield-check">
+                    {t('servers.partner_badge', 'Partner')}
+                  </StatusBadge>
+                </Show>
               </div>
               <h3 class="wrap-break-word text-base font-semibold leading-snug tracking-tight">{name()}</h3>
             </div>

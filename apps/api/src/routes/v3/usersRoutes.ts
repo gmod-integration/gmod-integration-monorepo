@@ -127,7 +127,13 @@ import {
   deleteServerBugReportsChannel,
 } from '@/controllers/website/WebsiteBugReportsControllers.js'
 import { getIGSettings, postIGSettings } from '@/controllers/v3/serversControllers.js'
-import { getPlayerProfile } from '@/controllers/website/WebsitePlayerProfileControllers.js'
+import { getServerStatistics } from '@/controllers/website/WebsiteStatisticsControllers.js'
+import { getServerMap } from '@/controllers/website/WebsiteMapControllers.js'
+import {
+  getPlayerProfile,
+  getPlayerProfileByDiscord,
+  getPlayerProfileBySteam,
+} from '@/controllers/website/WebsitePlayerProfileControllers.js'
 import { putServerStatusChannel } from '@/controllers/v3/users/ServerStatusChannelControllers.js'
 import {
   getNotifications,
@@ -145,6 +151,8 @@ router.use('/:discordID', userValidator)
 router.get('/:discordID', asyncHandler(findCurrentUser))
 router.get('/:discordID/steam-profile', asyncHandler(getSteamProfile))
 router.get('/:discordID/player-profile', asyncHandler(getPlayerProfile))
+router.get('/:discordID/players/discord/:targetDiscordID', asyncHandler(getPlayerProfileByDiscord))
+router.get('/:discordID/players/steam/:steamID64', asyncHandler(getPlayerProfileBySteam))
 router.get('/:discordID/players/:steamID64', asyncHandler(getPlayerProfile))
 router.post('/:discordID/logout', asyncHandler(logOut))
 router.get('/:discordID/sessions', asyncHandler(getUserSessions))
@@ -167,7 +175,19 @@ router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds))
 router.get('/:discordID/admins/informations', asyncHandler(getAdminInformations))
 router.get('/:discordID/admins/panel-users', asyncHandler(getAllPanelUsers))
 
-// Reading stored addon configuration needs account/guild/server authorization, not Discord metadata.
+// Stored analytics and addon configuration need account/guild/server authorization, not Discord metadata.
+router.get(
+  '/:discordID/guilds/:guildID/servers/:serverID/map',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(getServerMap),
+)
+router.get(
+  '/:discordID/guilds/:guildID/servers/:serverID/statistics',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(getServerStatistics),
+)
 router.get(
   '/:discordID/guilds/:guildID/servers/:serverID/config',
   userAdminGuildScopeValidator,

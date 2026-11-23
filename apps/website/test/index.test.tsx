@@ -39,6 +39,11 @@ const publicRoutes = [
   ['/', 'pages/Home'],
   ['/premium', 'pages/Premium'],
   ['/account', 'pages/Account'],
+  ['/profile', 'pages/PlayerProfile'],
+  ['/players/76561198000000001', 'pages/PlayerProfile'],
+  ['/players/333650866747867137', 'pages/PlayerProfile'],
+  ['/players/discord/333650866747867137', 'pages/PlayerProfile'],
+  ['/players/steam/76561198000000001', 'pages/PlayerProfile'],
   ['/legal/privacy', 'pages/legal/Privacy'],
   ['/legal/terms', 'pages/legal/Terms'],
   ['/login', 'pages/Login'],
@@ -62,6 +67,7 @@ const serverRoutes = [
   ['', 'pages/dashboard/guilds/servers/ServerInformations'],
   ['/config', 'pages/dashboard/guilds/servers/ServerConfig'],
   ['/status', 'pages/dashboard/guilds/servers/status/ServerStatus'],
+  ['/map', 'pages/dashboard/guilds/servers/ServerMap'],
   ['/players', 'pages/dashboard/guilds/servers/ServerPlayers'],
   ['/votes', 'pages/dashboard/guilds/servers/ServerVote'],
   ['/roles', 'pages/dashboard/guilds/servers/ServerRoles'],
@@ -159,6 +165,7 @@ describe('website entrypoint routing', () => {
   })
 
   it.each([
+    ['/map', undefined],
     ['/missing-public-page', undefined],
     ['/dashboard/guilds/community-42/missing-page', 'guild-shell'],
     ['/dashboard/admins/missing-page', 'admin-shell'],

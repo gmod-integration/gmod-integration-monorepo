@@ -32,6 +32,8 @@ export const PublicRankedServerSchema = z.object({
   vote: z.number().int().nonnegative(),
   rank: z.number().int().positive(),
   online: z.boolean(),
+  premium: z.boolean().default(false),
+  partner: z.boolean().default(false),
   discordUrl: DiscordInviteUrlSchema.nullable(),
   lastSeenAt: z.string().datetime().nullable(),
   status: z

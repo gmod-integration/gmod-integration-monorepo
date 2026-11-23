@@ -81,18 +81,43 @@ avatar failures preserve an already resolved name with a `null` avatar URL.
 ## Player profiles
 
 `GET /v3/users/:discordID/player-profile` resolves the authenticated account's linked Steam player;
-`GET /v3/users/:discordID/players/:steamID64` reads a specific recorded player. Both require the
-existing user-session middleware and return `Cache-Control: no-store`. An unlinked own account returns
-404 `steam_not_linked`; a missing or erased target returns 404. Invalid Steam identifiers and pagination
-return 400. Neither route creates player records or contacts Steam or Discord for profile decoration.
+`GET /v3/users/:discordID/players/:steamID64` accepts either a Steam ID64 or a linked Discord ID.
+Explicit `/players/steam/:steamID64` and `/players/discord/:targetDiscordID` variants remove numeric
+ambiguity. Auto lookup first matches the viewer's own identifiers, then a stored Discord account,
+then an unmatched seventeen-digit Steam identifier. All variants require the existing user-session
+middleware and return `Cache-Control: no-store`. An unlinked own account returns 404 `steam_not_linked`;
+a missing, unlinked Discord target or erased target returns 404. Invalid identifiers and pagination
+return 400. These reads do not create player records or contact Steam or Discord for decoration.
 
 The shared `PlayerProfileResponseSchema` defines a minimized `player` identity, a `summary` calculated
-across all visible statistics, paginated `servers` and `pagination`. Owners see their own private and
-public servers; other viewers see only public servers, including for totals, names and activity dates.
-`limit` defaults to 10 and accepts 10, 25 or 50; `offset` defaults to zero. Trust is the stored account
-score, nullable when unavailable; zero is preserved. Responses omit credentials, player IP addresses,
-email, manual whitelist access and arbitrary custom statistics. Erasure is checked before and after
-reads. The thin controller delegates to `@gmod/core/models/v3/playerProfileModels.js`.
+across all visible statistics, paginated `servers`, `pagination`, and `moderation` with warnings,
+bans and separate pagination for each. The identity includes nullable `discordID` alongside `steamID64`.
+Owners see their own private and public servers; other viewers see only public servers for statistics
+and moderation, including totals, names, reasons and activity dates. A public moderation-only profile
+is visible even without recorded statistics. `limit` defaults to 10 and accepts 10, 25 or 50;
+`offset`, `warningOffset` and `banOffset` are independent and default to zero.
+
+Sanctions expose only their ID, server ID/name, reason and creation time. Bans additionally include
+`durationMinutes`, nullable `expiresAt` (permanent when duration is zero), and `active`, calculated
+from the recorded duration rather than live server state. Early unbans may not be reflected.
+Trust is the stored account score, nullable when unavailable; zero is preserved. Responses omit
+credentials, moderator identities, player IP addresses, email, manual whitelist access and arbitrary
+custom statistics. Erasure is checked before and after reads. Thin controllers delegate to
+`@gmod/core/models/v3/playerProfileModels.js`.
+
+## Server map snapshot
+
+`GET /v3/users/:discordID/guilds/:guildID/servers/:serverID/map` requires the matching account session,
+guild administrator rights and membership of that server in the guild. It is registered before the
+middleware that loads Discord bot metadata, so database reads do not wait for a bot snapshot.
+The response uses `Cache-Control: no-store` and the strict `ServerMapSnapshotSchema`.
+
+Only `serverID`, `map`, `gameMode`, `players`, `maxPlayers`, `updatedAt` and `online` are returned.
+The latest stored map is preserved when stale; `online` means its timestamp is no more than five
+minutes old with at most sixty seconds of clock lead. Missing snapshots return null data and false.
+Invalid map names become null, and the page does not substitute another map. Player telemetry,
+addresses and server credentials are excluded. The thin controller delegates to
+`@gmod/core/models/v3/serverMapModels.js`.
 
 ## Custom bot removal
 

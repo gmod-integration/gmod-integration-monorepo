@@ -4,7 +4,7 @@ import { historyAt, renderWithProviders } from '../../../../testUtils.js'
 import ServerInformations from '../../../../../src/pages/dashboard/guilds/servers/ServerInformations.js'
 import { fetchAPI } from '../../../../../src/utils/api.js'
 import type * as WebSocketUtilities from '../../../../../src/utils/websocket.js'
-import { setWebSocketServerStatus, sendWebSocketMessage, stopWebSocket } from '../../../../../src/utils/websocket.js'
+import { setWebSocketServerStatus, requestServerStatus, stopWebSocket } from '../../../../../src/utils/websocket.js'
 import { okJson, errJson } from './testHelpers.js'
 import { DraftEditingProvider } from '../../../../../src/components/DraftEditingProvider.js'
 
@@ -18,7 +18,7 @@ vi.mock('../../../../../src/utils/websocket.js', async (importOriginal) => {
   const actual = await importOriginal<typeof WebSocketUtilities>()
   return {
     ...actual,
-    sendWebSocketMessage: vi.fn(),
+    requestServerStatus: vi.fn(),
   }
 })
 
@@ -73,7 +73,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     window.localStorage.clear()
     setServerLocalStorage()
     setWebSocketServerStatus({ ...defaultWSStatus })
-    vi.mocked(sendWebSocketMessage).mockClear()
+    vi.mocked(requestServerStatus).mockClear()
     ;(fetchAPI as Mock).mockReset()
     ;(fetchAPI as Mock).mockImplementation((_endpoint, method, body) =>
       Promise.resolve(okJson(method === 'PUT' ? { ...baseServer, ...body } : {})),
@@ -341,14 +341,14 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     it('sends a server_status websocket message every 2s while mounted', () => {
       vi.useFakeTimers()
       renderPage()
-      expect(sendWebSocketMessage).not.toHaveBeenCalled()
+      expect(requestServerStatus).not.toHaveBeenCalled()
 
       vi.advanceTimersByTime(2000)
-      expect(sendWebSocketMessage).toHaveBeenCalledTimes(1)
-      expect(sendWebSocketMessage).toHaveBeenLastCalledWith('server_status', { serverID: 's1' })
+      expect(requestServerStatus).toHaveBeenCalledTimes(1)
+      expect(requestServerStatus).toHaveBeenLastCalledWith('s1')
 
       vi.advanceTimersByTime(2000)
-      expect(sendWebSocketMessage).toHaveBeenCalledTimes(2)
+      expect(requestServerStatus).toHaveBeenCalledTimes(2)
     })
   })
 

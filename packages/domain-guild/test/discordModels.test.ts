@@ -821,6 +821,10 @@ describe('discordModels', () => {
 
       const result = await getUserGuildsWithPermsForPanel(panelUser as any)
 
+      expect(prismaMock.gm_guild.findMany).toHaveBeenCalledWith({
+        select: { guild: true },
+        where: { guild: { in: ['g1', 'g2'] } },
+      })
       expect(result).toEqual([
         { id: 'g1', name: 'Guild One', icon: 'stored-icon-1', hasBot: true, isOwner: true, isPremium: true },
         { id: 'g2', name: 'Guild Two', icon: 'stored-icon-2', hasBot: false, isOwner: false, isPremium: false },

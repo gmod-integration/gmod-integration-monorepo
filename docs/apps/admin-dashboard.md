@@ -7,7 +7,7 @@ the eight pages are lazy-loaded from `apps/website/src/pages/dashboard/admins/`.
 | Page        | Route suffix    | Current behavior                                                                                                                                                                                                                                                     |
 | ----------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Overview    | `/informations` | Separate counts for communities, game servers, Discord accounts, linked accounts, Steam profiles, memberships, active sessions and recorded Premium sources; daily registrations over 7/30/90 UTC days, community languages and recorded Premium source comparisons. |
-| Communities | `/guilds`       | Search/filter the community directory, inspect effective access and its sources, and open the community's server directory.                                                                                                                                          |
+| Communities | `/guilds`       | Search/filter the community directory, inspect effective access and its sources, manage the Partner designation, and open the community's server directory.                                                                                                          |
 | Servers     | `/servers`      | Filter by community, verification and visibility; inspect recent activity and addon version; edit identity/flags, rotate a token or delete a server.                                                                                                                 |
 | Users       | `/users`        | Search/filter accounts, inspect Discord/Steam identity, effective read-only role and active sessions, revoke another account's sessions or start support access.                                                                                                     |
 | Premium     | `/premium`      | Inspect recorded manual/GmodStore sources and effective access separately; add or remove a local manual grant.                                                                                                                                                       |
@@ -106,6 +106,12 @@ session revocation additionally send `confirm` matching the target ID.
 | Rotate server token     | `POST /servers/:serverID/reset-token` | `{ reset: true }`; the replacement secret is not returned.                             |
 | Revoke account sessions | `POST /users/:userID/revoke-sessions` | `{ revoked: true }`.                                                                   |
 | Change manual Premium   | `PUT /guilds/:guildID/premium`        | `{ guildID, manualPremium, access, pending }` matching the submitted target and grant. |
+| Change Partner badge    | `PATCH /guilds/:guildID/partner`      | `{ guildID, partner }` matching the submitted target and designation.                  |
+
+The Partner action takes `{ enabled, reason }` and uses the same platform-only session and audit
+checks as other administration commands. It persists `gm_guild.isPartner`, initially false, and
+controls the badge on that community's public server cards. It does not change Premium entitlements.
+Community administrators cannot assign it through their ordinary settings endpoints.
 
 The UI validates command acknowledgements before closing or displaying success. A failed request or
 malformed success response preserves the draft/confirmation for retry. Pending work blocks duplicate

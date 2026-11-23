@@ -1,9 +1,31 @@
 import { describe, expect, it } from 'vitest'
 import {
   DiscordInviteUrlSchema,
+  PublicRankedServerSchema,
   PublicServerRankingQuerySchema,
   PublicServerRankingResponseSchema,
 } from '../../src/server/PublicServerRankingSchema.js'
+
+function server() {
+  return {
+    id: 'server-1',
+    guild: 'guild-1',
+    name: 'Server',
+    description: '',
+    image: '',
+    ip: '192.0.2.1',
+    port: '27015',
+    vote: 4,
+    rank: 1,
+    online: false,
+    premium: false,
+    partner: false,
+    discordUrl: null,
+    lastSeenAt: '2026-11-20T10:00:00.000Z',
+    status: { hostname: 'Server', players: 2, maxPlayers: 32, gameMode: 'sandbox', map: 'gm_construct' },
+    activity: [{ at: '2026-11-19T00:00:00.000Z', players: 12 }],
+  }
+}
 
 describe('public server ranking contract', () => {
   it('defaults to ten rows and validates bounded filters and page sizes', () => {
@@ -61,24 +83,9 @@ describe('public server ranking contract', () => {
   })
 
   it('represents historical activity for an offline server without a Discord invitation', () => {
-    const server = {
-      id: 'server-1',
-      guild: 'guild-1',
-      name: 'Server',
-      description: '',
-      image: '',
-      ip: '192.0.2.1',
-      port: '27015',
-      vote: 4,
-      rank: 1,
-      online: false,
-      discordUrl: null,
-      lastSeenAt: '2026-11-20T10:00:00.000Z',
-      status: { hostname: 'Server', players: 2, maxPlayers: 32, gameMode: 'sandbox', map: 'gm_construct' },
-      activity: [{ at: '2026-11-19T00:00:00.000Z', players: 12 }],
-    }
+    const ranked = server()
     const response = {
-      servers: [server],
+      servers: [ranked],
       pagination: { total: 1, limit: 10, offset: 0 },
       filters: { gameModes: ['sandbox'] },
     }
@@ -87,11 +94,31 @@ describe('public server ranking contract', () => {
     expect(
       PublicServerRankingResponseSchema.safeParse({
         ...response,
-        servers: [{ ...server, activity: [{ at: 'invalid-date', players: -1 }] }],
+        servers: [{ ...ranked, activity: [{ at: 'invalid-date', players: -1 }] }],
       }).success,
     ).toBe(false)
     expect(
-      PublicServerRankingResponseSchema.safeParse({ ...response, servers: [{ ...server, rank: 0 }] }).success,
+      PublicServerRankingResponseSchema.safeParse({ ...response, servers: [{ ...ranked, rank: 0 }] }).success,
     ).toBe(false)
+  })
+
+  it('defaults missing badges from an older API response to false', () => {
+    const older = { ...server(), premium: undefined, partner: undefined }
+
+    expect(PublicRankedServerSchema.parse(older)).toMatchObject({ premium: false, partner: false })
+  })
+
+  it.each([
+    { premium: true, partner: false },
+    { premium: false, partner: true },
+    { premium: true, partner: true },
+  ])('preserves distinct Premium and partner flags: %j', (badges) => {
+    expect(PublicRankedServerSchema.parse({ ...server(), ...badges })).toMatchObject(badges)
+  })
+
+  it.each(['premium', 'partner'])('requires a boolean for %s instead of coercing truthy values', (flag) => {
+    for (const value of ['true', 'false', 1, 0, null, {}]) {
+      expect(PublicRankedServerSchema.safeParse({ ...server(), [flag]: value }).success).toBe(false)
+    }
   })
 })

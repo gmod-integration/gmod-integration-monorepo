@@ -72,6 +72,7 @@ export const AdminGuildRowSchema = z
     serverCount: z.number().int().nonnegative(),
     manualPremium: z.boolean(),
     gmodstore: z.boolean(),
+    partner: z.boolean().default(false),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
   })
@@ -152,6 +153,7 @@ export const AdminServerUpdateSchema = z
   )
 export const AdminServerCommandSchema = z.object({ confirm: AdminIDSchema, reason: AdminReasonSchema }).strict()
 export const AdminPremiumUpdateSchema = z.object({ enabled: z.boolean(), reason: AdminReasonSchema }).strict()
+export const AdminPartnerUpdateSchema = z.object({ enabled: z.boolean(), reason: AdminReasonSchema }).strict()
 export const AdminRevokeSessionsSchema = z.object({ confirm: AdminIDSchema, reason: AdminReasonSchema }).strict()
 export const AdminPremiumMutationResultSchema = z
   .object({
@@ -162,3 +164,5 @@ export const AdminPremiumMutationResultSchema = z
   })
   .strict()
 export type AdminPremiumMutationResult = z.infer<typeof AdminPremiumMutationResultSchema>
+export const AdminPartnerMutationResultSchema = z.object({ guildID: z.string(), partner: z.boolean() }).strict()
+export type AdminPartnerMutationResult = z.infer<typeof AdminPartnerMutationResultSchema>

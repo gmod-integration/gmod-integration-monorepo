@@ -201,7 +201,7 @@
     "needRolesPerms": "De bot heeft geen rechten om rollen aan gebruikers toe te wijzen of te verwijderen. Zet de bot-rol hoger in de rollijst, de rol is aangetast: {1}",
     "needWS_required": "GWSockets is verplicht",
     "needWS_1": "Installeer de",
-    "needWS_2": "module in garrysmod/lua/bin op je dedicated Garry’s Mod-server. Kies de versie voor het besturingssysteem en de architectuur van de server en herstart de server. Zonder deze module kan de addon geen verbinding maken en werken de spelintegraties niet. De lokale addonconfiguratie blijft beschikbaar.",
+    "needWS_2": "module in garrysmod/lua/bin op je dedicated Garry’s Mod-server. Kies de versie voor het besturingssysteem en de architectuur van de server en herstart de server. WebSocket is verplicht voor de volledige addon; zonder WebSocket-verbinding is de addon niet bruikbaar.",
     "needAddon": "Om deze functie te gebruiken moet u de addon(s installeren):",
     "needAddon2": "om goed te werken.",
     "upgrade_now": "Nu upgraden",

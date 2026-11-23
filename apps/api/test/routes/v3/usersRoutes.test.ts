@@ -121,7 +121,13 @@ vi.mock('@/middleware/v3/userValidator.js', () => ({
   userValidator: vi.fn(),
 }))
 vi.mock('@/controllers/v3/usersAdminControllers.js', () => ({ getAllPanelUsers: vi.fn() }))
-vi.mock('@/controllers/website/WebsitePlayerProfileControllers.js', () => ({ getPlayerProfile: vi.fn() }))
+vi.mock('@/controllers/website/WebsiteStatisticsControllers.js', () => ({ getServerStatistics: vi.fn() }))
+vi.mock('@/controllers/website/WebsiteMapControllers.js', () => ({ getServerMap: vi.fn() }))
+vi.mock('@/controllers/website/WebsitePlayerProfileControllers.js', () => ({
+  getPlayerProfile: vi.fn(),
+  getPlayerProfileByDiscord: vi.fn(),
+  getPlayerProfileBySteam: vi.fn(),
+}))
 vi.mock('@/controllers/website/WebsiteErrorsControllers.js', () => ({
   getServerErrors: vi.fn(),
   getServerErrorsChannel: vi.fn(),
@@ -176,17 +182,19 @@ describe('usersRoutes', () => {
     expect(router.stack[profile].route.methods.get).toBe(true)
   })
 
-  it.each(['/:discordID/player-profile', '/:discordID/players/:steamID64'])(
-    'registers player profile %s after account authentication and before administration restrictions',
-    (path) => {
-      const profile = router.stack.findIndex((layer: any) => layer.route?.path === path)
-      const authentication = router.stack.findIndex((layer: any) => layer.handle === userValidator)
-      const administration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
-      expect(profile).toBeGreaterThan(authentication)
-      expect(profile).toBeLessThan(administration)
-      expect(router.stack[profile].route.methods.get).toBe(true)
-    },
-  )
+  it.each([
+    '/:discordID/player-profile',
+    '/:discordID/players/:steamID64',
+    '/:discordID/players/discord/:targetDiscordID',
+    '/:discordID/players/steam/:steamID64',
+  ])('registers player profile %s after account authentication and before administration restrictions', (path) => {
+    const profile = router.stack.findIndex((layer: any) => layer.route?.path === path)
+    const authentication = router.stack.findIndex((layer: any) => layer.handle === userValidator)
+    const administration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+    expect(profile).toBeGreaterThan(authentication)
+    expect(profile).toBeLessThan(administration)
+    expect(router.stack[profile].route.methods.get).toBe(true)
+  })
 
   it('protects draft previews with both guild-administrator and server access checks', () => {
     const preview = router.stack.findIndex(
@@ -210,6 +218,28 @@ describe('usersRoutes', () => {
     expect(router.stack[configuration].route.stack[1].handle).toBe(userServerValidator)
     const writes = router.stack.findIndex((layer: any) => layer.route?.path === path && layer.route.methods.post)
     expect(writes).toBeGreaterThan(snapshot)
+  })
+
+  it('authorizes server statistics with guild and server checks without loading Discord metadata', () => {
+    const endpoint = router.stack.findIndex(
+      (layer: any) => layer.route?.path === '/:discordID/guilds/:guildID/servers/:serverID/statistics',
+    )
+    expect(endpoint).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
+    expect(endpoint).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator))
+    expect(router.stack[endpoint].route.methods.get).toBe(true)
+    expect(router.stack[endpoint].route.stack[0].handle).toBe(userAdminGuildScopeValidator)
+    expect(router.stack[endpoint].route.stack[1].handle).toBe(userServerValidator)
+  })
+
+  it('authorizes the map snapshot for the selected guild and server without requiring Discord metadata', () => {
+    const endpoint = router.stack.findIndex(
+      (layer: any) => layer.route?.path === '/:discordID/guilds/:guildID/servers/:serverID/map',
+    )
+    expect(endpoint).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
+    expect(endpoint).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator))
+    expect(router.stack[endpoint].route.methods.get).toBe(true)
+    expect(router.stack[endpoint].route.stack[0].handle).toBe(userAdminGuildScopeValidator)
+    expect(router.stack[endpoint].route.stack[1].handle).toBe(userServerValidator)
   })
 
   it.each(['get', 'post', 'delete'])(

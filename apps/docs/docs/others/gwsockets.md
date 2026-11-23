@@ -1,6 +1,6 @@
 # Install GWSockets
 
-GWSockets is the native WebSocket client required by Gmod Integration. All connected addon features use it to exchange data with the platform. Without GWSockets, the addon cannot connect; installing only the Workshop content is not sufficient.
+GWSockets is the native WebSocket client required by Gmod Integration. GWSockets and a working WebSocket connection are mandatory for the entire addon: without them, the addon is unusable. Installing only the Workshop content is not sufficient.
 
 Install the module on the dedicated server. Players do not need to install it on their computers.
 
@@ -12,4 +12,4 @@ Install the module on the dedicated server. Players do not need to install it on
 4. Fully stop and start the server through its hosting panel or service manager. A map change or player reconnection does not load a newly installed native module.
 5. Run `gmod-integration help` in the server console, then [configure the server ID and token](../getting-started/configuration.md).
 
-If GWSockets is still unavailable after a restart, check the DLL's filename, server directory and process architecture. The addon reports the dependency failure in the server console and to authorized in-game administrators. Local configuration remains available, but connected features require the module to load successfully.
+If GWSockets is still unavailable after a restart, check the DLL's filename, server directory and process architecture. The addon reports the dependency failure in the server console and to authorized in-game administrators. It cannot function until the module loads successfully and the WebSocket connection is established.

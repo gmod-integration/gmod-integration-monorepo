@@ -6,6 +6,9 @@ import {
   AdminServerUpdateSchema,
   AdminServerCommandSchema,
   AdminPremiumUpdateSchema,
+  AdminPartnerUpdateSchema,
+  AdminPartnerMutationResultSchema,
+  AdminGuildRowSchema,
   AdminRevokeSessionsSchema,
 } from '../../src/admin/AdminDashboardSchema.js'
 
@@ -60,5 +63,41 @@ describe('administration request contracts', () => {
     expect(
       AdminPremiumUpdateSchema.safeParse({ enabled: true, transaction: 'invented', reason: 'Support request' }).success,
     ).toBe(false)
+  })
+
+  it('requires an explicit partner decision and reason without accepting grant fields', () => {
+    expect(AdminPartnerUpdateSchema.parse({ enabled: true, reason: ' Partnership approved ' })).toEqual({
+      enabled: true,
+      reason: 'Partnership approved',
+    })
+    for (const input of [
+      { enabled: 'true', reason: 'Partnership approved' },
+      { enabled: true },
+      { enabled: true, reason: 'short'.slice(0, 4) },
+      { enabled: true, reason: 'x'.repeat(501) },
+      { enabled: true, reason: 'Partnership approved', manualPremium: true },
+    ])
+      expect(AdminPartnerUpdateSchema.safeParse(input).success).toBe(false)
+    expect(AdminPartnerMutationResultSchema.parse({ guildID: 'g1', partner: false })).toEqual({
+      guildID: 'g1',
+      partner: false,
+    })
+    expect(AdminPartnerMutationResultSchema.safeParse({ guildID: 'g1', partner: true, access: {} }).success).toBe(false)
+  })
+
+  it('defaults older guild responses to no partner badge', () => {
+    const guild = {
+      id: 'g1',
+      name: 'Guild',
+      language: 'en',
+      members: 1,
+      serverCount: 1,
+      manualPremium: false,
+      gmodstore: false,
+      createdAt: '2026-11-23T00:00:00.000Z',
+      updatedAt: '2026-11-23T00:00:00.000Z',
+    }
+    expect(AdminGuildRowSchema.parse(guild).partner).toBe(false)
+    expect(AdminGuildRowSchema.parse({ ...guild, partner: true }).partner).toBe(true)
   })
 })

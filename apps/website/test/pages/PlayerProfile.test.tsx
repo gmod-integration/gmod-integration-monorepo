@@ -8,6 +8,7 @@ import { historyAt, renderWithProviders } from '../testUtils.js'
 
 const STEAM = '76561198000000001'
 const OTHER_STEAM = '76561198000000002'
+const DISCORD = '333650866747867137'
 const joined = '2026-10-01T10:00:00.000Z'
 const active = '2026-11-22T15:30:00.000Z'
 
@@ -34,7 +35,7 @@ function server(index = 1, overrides: Partial<PlayerProfileServer> = {}): Player
 
 function profile(overrides: Partial<PlayerProfileResponse> = {}): PlayerProfileResponse {
   return {
-    player: { steamID64: STEAM, name: 'Ely', avatarURL: null, trustLevel: 0, registeredAt: joined },
+    player: { steamID64: STEAM, discordID: DISCORD, name: 'Ely', avatarURL: null, trustLevel: 0, registeredAt: joined },
     summary: {
       servers: 1,
       totalTime: 7_200,
@@ -46,6 +47,12 @@ function profile(overrides: Partial<PlayerProfileResponse> = {}): PlayerProfileR
     },
     servers: [server()],
     pagination: { total: 1, limit: 10, offset: 0 },
+    moderation: {
+      warnings: [],
+      bans: [],
+      warningsPagination: { total: 0, limit: 10, offset: 0 },
+      bansPagination: { total: 0, limit: 10, offset: 0 },
+    },
     ...overrides,
   }
 }
@@ -66,7 +73,74 @@ afterEach(() => {
 })
 
 describe('player profile', () => {
-  it('loads the linked player, preserves zero trust and presents recorded server statistics', async () => {
+  it('shows and copies both platform identifiers and links the linked Discord account', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok(profile())),
+    )
+    renderWithProviders(() => <PlayerProfile />)
+    await ready()
+    expect(screen.getByText(STEAM)).toBeInTheDocument()
+    expect(screen.getByText(DISCORD)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open Discord profile' })).toHaveAttribute(
+      'href',
+      `https://discord.com/users/${DISCORD}`,
+    )
+    await fireEvent.click(screen.getByRole('button', { name: 'Copy Steam ID' }))
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(STEAM))
+    await fireEvent.click(screen.getByRole('button', { name: 'Copy Discord ID' }))
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith(DISCORD))
+  })
+
+  it('explains a missing Discord link without inventing an identity or profile link', async () => {
+    const value = profile()
+    value.player.discordID = null
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok(value)),
+    )
+    renderWithProviders(() => <PlayerProfile />)
+    await ready()
+    expect(screen.getByText('No linked Discord account')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open Discord profile' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Copy Discord ID' })).not.toBeInTheDocument()
+  })
+
+  it.each([
+    ['/players/:steamID64', `/players/${DISCORD}`, `/players/${DISCORD}`],
+    ['/players/discord/:discordID', '/players/discord/12345678901234567', '/players/discord/12345678901234567'],
+    ['/players/steam/:steamID64', `/players/steam/${STEAM}`, `/players/steam/${STEAM}`],
+  ])('loads both generic identifiers and explicit platform routes through %s', async (path, address, endpoint) => {
+    const fetchMock = vi.fn(async () => ok(profile()))
+    vi.stubGlobal('fetch', fetchMock)
+    renderWithProviders(() => <PlayerProfile />, { path, history: historyAt(address) })
+    await ready()
+    expect(lastURL(fetchMock).pathname).toBe(`/v3/users/123456789012345678${endpoint}`)
+  })
+
+  it('validates player lookup and opens the requested Discord or Steam identifier', async () => {
+    const fetchMock = vi.fn(async () => ok(profile()))
+    vi.stubGlobal('fetch', fetchMock)
+    const history = historyAt(`/players/${STEAM}`)
+    renderWithProviders(() => <PlayerProfile />, { path: '/players/:steamID64', history })
+    await ready()
+    const input = screen.getByRole('textbox', { name: 'Find a player' })
+    await fireEvent.input(input, { target: { value: '../not-an-id' } })
+    await fireEvent.submit(input.closest('form')!)
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter an ID containing 17 to 20 digits.')
+    expect(history.get()).toBe(`/players/${STEAM}`)
+    await fireEvent.input(input, { target: { value: `  ${DISCORD}  ` } })
+    await fireEvent.submit(input.closest('form')!)
+    await vi.waitFor(() => expect(lastURL(fetchMock).pathname.endsWith(`/players/${DISCORD}`)).toBe(true))
+    expect(history.get()).toBe(`/players/${DISCORD}`)
+    expect(input).toHaveValue(DISCORD)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('loads the linked player and presents recorded server statistics', async () => {
     const fetchMock = vi.fn(async () => ok(profile()))
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(() => <PlayerProfile />)
@@ -75,7 +149,7 @@ describe('player profile', () => {
     expect(lastURL(fetchMock).pathname).toBe('/v3/users/123456789012345678/player-profile')
     expect(lastURL(fetchMock).searchParams.get('limit')).toBe('10')
     expect(lastURL(fetchMock).searchParams.get('offset')).toBe('0')
-    expect(screen.getByRole('meter', { name: 'Trust level' })).toHaveAttribute('value', '0')
+    expect(screen.queryByRole('meter')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open Steam profile' })).toHaveAttribute(
       'href',
       `https://steamcommunity.com/profiles/${STEAM}`,
@@ -96,7 +170,24 @@ describe('player profile', () => {
     expect(screen.getByRole('region', { name: 'Activity overview' })).toHaveTextContent('2 h 0 min')
   })
 
-  it('loads another player from the route and distinguishes unknown trust from zero', async () => {
+  it.each([0, 75, null])('hides the trust factor when the response contains %s', async (trustLevel) => {
+    const value = profile()
+    value.player.trustLevel = trustLevel
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok(value)),
+    )
+    const { container } = renderWithProviders(() => <PlayerProfile />)
+    await ready()
+
+    expect(screen.queryByRole('meter')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Trust level' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Current trust score recorded by Gmod Integration.')).not.toBeInTheDocument()
+    expect(container.querySelector('.player-profile-trust')).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Ely' })).toContainElement(screen.getByText(STEAM))
+  })
+
+  it('loads another player from the route with their recorded server state', async () => {
     const value = profile()
     value.player.trustLevel = null
     value.player.registeredAt = null
@@ -111,8 +202,7 @@ describe('player profile', () => {
 
     expect(lastURL(fetchMock).pathname).toBe(`/v3/users/123456789012345678/players/${STEAM}`)
     expect(screen.queryByRole('meter')).not.toBeInTheDocument()
-    const trust = screen.getByRole('region', { name: 'Trust level' })
-    expect(within(trust).getByText('Unknown')).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Trust level' })).not.toBeInTheDocument()
     expect(screen.queryByText('Profile created')).not.toBeInTheDocument()
     expect(screen.getByText('Server offline')).toBeInTheDocument()
     expect(screen.getByText('Private server')).toBeInTheDocument()
@@ -129,12 +219,15 @@ describe('player profile', () => {
     expect(screen.queryByRole('meter')).not.toBeInTheDocument()
   })
 
-  it('shows a missing player state and handles invalid route identities without a request', async () => {
+  it.each([
+    ['/players/:steamID64', '/players/not-a-steam-id'],
+    ['/players/steam/:steamID64', '/players/steam/222222222222222222'],
+  ])('rejects invalid identities in %s without a request', async (path, initialPath) => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
     renderWithProviders(() => <PlayerProfile />, {
-      path: '/players/:steamID64',
-      history: historyAt('/players/not-a-steam-id'),
+      path,
+      history: historyAt(initialPath),
     })
     await vi.waitFor(() =>
       expect(screen.getByRole('heading', { name: 'Player profile not found' })).toBeInTheDocument(),
@@ -269,12 +362,132 @@ describe('player profile', () => {
     renderWithProviders(() => <PlayerProfile />)
     await ready()
     expect(screen.getByRole('heading', { name: 'Profil joueur' })).toBeInTheDocument()
-    expect(screen.getByRole('meter', { name: 'Niveau de confiance' })).toBeInTheDocument()
+    expect(screen.queryByRole('meter')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Niveau de confiance' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Modération enregistrée' })).toBeInTheDocument()
+    expect(screen.getByText('Aucun avertissement enregistré sur les serveurs visibles pour vous.')).toBeInTheDocument()
     expect(screen.getAllByText('Dernière activité enregistrée')).toHaveLength(2)
     expect(
       within(screen.getByRole('region', { name: 'Aperçu de l’activité' })).getByText(
         new Intl.NumberFormat('fr').format(12_345).replace(/\s/g, ' '),
       ),
     ).toBeInTheDocument()
+  })
+
+  it('shows recorded reasons as text, per-server attribution and permanent, active and expired bans', async () => {
+    const value = profile()
+    const reason = '<script>Unsafe player content</script>'
+    value.moderation = {
+      warnings: [{ id: 1, serverID: 's1', serverName: 'Warning server', reason, createdAt: joined }],
+      warningsPagination: { total: 1, limit: 10, offset: 0 },
+      bans: [
+        {
+          id: 2,
+          serverID: 's2',
+          serverName: 'Permanent ban server',
+          reason: 'Repeated abuse',
+          createdAt: joined,
+          durationMinutes: 0,
+          expiresAt: null,
+          active: true,
+        },
+        {
+          id: 3,
+          serverID: 's3',
+          serverName: 'Temporary ban server',
+          reason: 'Spam',
+          createdAt: joined,
+          durationMinutes: 60,
+          expiresAt: active,
+          active: false,
+        },
+      ],
+      bansPagination: { total: 2, limit: 10, offset: 0 },
+    }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok(value)),
+    )
+    const { container } = renderWithProviders(() => <PlayerProfile />)
+    await ready()
+    const moderation = screen.getByRole('region', { name: 'Recorded moderation' })
+    expect(moderation).toHaveTextContent('Other players can only see public servers.')
+    expect(within(moderation).getByText(reason)).toBeInTheDocument()
+    expect(container.querySelector('script')).not.toBeInTheDocument()
+    const warnings = within(moderation).getByRole('region', { name: /^Warnings/ })
+    expect(warnings).toHaveTextContent('Warning server')
+    expect(warnings.querySelector('time')).toHaveAttribute('datetime', joined)
+    const bans = within(moderation).getByRole('region', { name: /^Bans/ })
+    expect(bans).toHaveTextContent('Permanent ban server')
+    expect(within(bans).getByText('Permanent')).toBeInTheDocument()
+    expect(within(bans).getByText('Active')).toBeInTheDocument()
+    expect(within(bans).getByText('Expired')).toBeInTheDocument()
+    expect(within(bans).getByText('1 h 0 min')).toBeInTheDocument()
+    expect(bans.querySelector(`time[datetime="${active}"]`)).toBeInTheDocument()
+  })
+
+  it('paginates warnings, bans and statistics independently and resets them when switching players', async () => {
+    const fetchMock = vi.fn(async (input: string) => {
+      const query = new URL(input).searchParams
+      const warningOffset = Number(query.get('warningOffset'))
+      const banOffset = Number(query.get('banOffset'))
+      const offset = Number(query.get('offset'))
+      const value = profile()
+      value.pagination = { total: 23, limit: 10, offset }
+      value.servers = [server(offset + 1)]
+      value.moderation = {
+        warnings: [
+          {
+            id: warningOffset + 1,
+            serverID: 's1',
+            serverName: `Warning server ${warningOffset + 1}`,
+            reason: 'Warning',
+            createdAt: joined,
+          },
+        ],
+        warningsPagination: { total: 23, limit: 10, offset: warningOffset },
+        bans: [
+          {
+            id: banOffset + 1,
+            serverID: 's1',
+            serverName: `Ban server ${banOffset + 1}`,
+            reason: 'Ban',
+            createdAt: joined,
+            durationMinutes: 0,
+            expiresAt: null,
+            active: true,
+          },
+        ],
+        bansPagination: { total: 12, limit: 10, offset: banOffset },
+      }
+      return ok(value)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const history = historyAt(`/players/${STEAM}`)
+    renderWithProviders(() => <PlayerProfile />, { path: '/players/:steamID64', history })
+    await ready()
+    const warningSection = () => screen.getByRole('region', { name: /^Warnings/ })
+    const banSection = () => screen.getByRole('region', { name: /^Bans/ })
+    await fireEvent.click(within(warningSection()).getByRole('button', { name: 'Next page' }))
+    await vi.waitFor(() => expect(screen.getByText('Warning server 11')).toBeInTheDocument())
+    expect(lastURL(fetchMock).searchParams.get('warningOffset')).toBe('10')
+    expect(lastURL(fetchMock).searchParams.get('banOffset')).toBe('0')
+    expect(lastURL(fetchMock).searchParams.get('offset')).toBe('0')
+    await fireEvent.click(within(banSection()).getByRole('button', { name: 'Next page' }))
+    await vi.waitFor(() => expect(screen.getByText('Ban server 11')).toBeInTheDocument())
+    expect(lastURL(fetchMock).searchParams.get('warningOffset')).toBe('10')
+    expect(lastURL(fetchMock).searchParams.get('banOffset')).toBe('10')
+    expect(within(banSection()).getByRole('button', { name: 'Next page' })).toBeDisabled()
+    const statistics = screen.getByRole('region', { name: 'Statistics by server' })
+    await fireEvent.click(within(statistics).getByRole('button', { name: 'Next page' }))
+    await vi.waitFor(() => expect(screen.getByRole('heading', { name: 'Server 11' })).toBeInTheDocument())
+    expect(lastURL(fetchMock).searchParams.get('offset')).toBe('10')
+    expect(lastURL(fetchMock).searchParams.get('warningOffset')).toBe('10')
+    expect(lastURL(fetchMock).searchParams.get('banOffset')).toBe('10')
+    history.set({ value: `/players/${OTHER_STEAM}` })
+    await vi.waitFor(() => expect(lastURL(fetchMock).pathname.endsWith(OTHER_STEAM)).toBe(true))
+    await vi.waitFor(() => expect(screen.getByText('Warning server 1')).toBeInTheDocument())
+    for (const parameter of ['offset', 'warningOffset', 'banOffset'])
+      expect(lastURL(fetchMock).searchParams.get(parameter)).toBe('0')
   })
 })

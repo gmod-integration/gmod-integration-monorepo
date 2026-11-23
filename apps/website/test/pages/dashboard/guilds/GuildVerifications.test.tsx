@@ -245,6 +245,28 @@ describe('pages/dashboard/guilds/GuildVerifications.tsx', () => {
     expect((fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')).toHaveLength(0)
   })
 
+  it('refreshes the Discord hierarchy without resetting an open verification role draft', async () => {
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    const { container } = renderWithProviders(() => <GuildVerification />)
+    await waitForLoaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0])
+    const modal = container.querySelector<HTMLDialogElement>('#edit_role_modal')!
+    await fireEvent.change(within(modal).getByLabelText('Active'), { target: { value: 'false' } })
+    const fallback = (fetchAPI as Mock).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((endpoint: string, ...args: unknown[]) =>
+      endpoint.includes(SUBORDINATION_URL_PART)
+        ? Promise.resolve(okJson({ r1: { name: 'Admin', editable: false }, r2: { name: 'Moderator', editable: true } }))
+        : fallback(endpoint, ...args),
+    )
+
+    window.dispatchEvent(new Event('focus'))
+    await vi.waitFor(() => expect(screen.getByText(/cannot assign or remove these roles/)).toBeInTheDocument())
+    expect(modal.open).toBe(true)
+    expect(within(modal).getByLabelText('Active')).toHaveValue('false')
+    expect(within(modal).getByRole('button', { name: 'Save' })).toBeEnabled()
+    expect((fetchAPI as Mock).mock.calls.every(([, method]) => method === 'GET')).toBe(true)
+  })
+
   it('confirms the named role before deleting and retains it after a failed request', async () => {
     const { container } = renderWithProviders(() => <GuildVerification />)
     await waitForLoaded()

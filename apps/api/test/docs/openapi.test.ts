@@ -77,7 +77,7 @@ describe('v6 OpenAPI contract', () => {
       methods.filter((method) => method in item).map((method) => `${method.toUpperCase()} ${path}`),
     )
     expect(described.sort()).toEqual(actual.sort())
-    expect(described).toHaveLength(35)
+    expect(described).toHaveLength(36)
     expect(new Set(described).size).toBe(described.length)
   })
 

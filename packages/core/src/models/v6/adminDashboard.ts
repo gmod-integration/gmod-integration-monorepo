@@ -13,6 +13,7 @@ import {
   AdminServerUpdateSchema,
   AdminServerCommandSchema,
   AdminPremiumUpdateSchema,
+  AdminPartnerUpdateSchema,
   type AdminGuildRow,
   type AdminGuildDetail,
   type AdminServerRow,
@@ -21,6 +22,7 @@ import {
   type AdminListQuery,
   type AdminListResponse,
   type AdminPremiumMutationResult,
+  type AdminPartnerMutationResult,
 } from '@gmod/schema/admin/AdminDashboardSchema.js'
 
 export class AdminDashboardError extends Error {
@@ -61,6 +63,7 @@ type GuildRecord = {
   serverCount: number | bigint
   manualPremium: boolean | bigint | number
   gmodstore: boolean | bigint | number
+  partner: boolean | bigint | number
   createdAt: Date | string
   updatedAt: Date | string
 }
@@ -72,13 +75,14 @@ const guildRow = (row: GuildRecord): AdminGuildRow => ({
   serverCount: count(row.serverCount),
   manualPremium: !!Number(row.manualPremium),
   gmodstore: !!Number(row.gmodstore),
+  partner: !!Number(row.partner),
   createdAt: iso(row.createdAt),
   updatedAt: iso(row.updatedAt),
 })
 
 const manualGrant = Prisma.sql`EXISTS (SELECT 1 FROM gm_guild_premium p WHERE p.guildID = g.guild AND p.revoked = false)`
 const storeGrant = Prisma.sql`EXISTS (SELECT 1 FROM gm_gmodstore_purchases p WHERE p.guild = g.guild AND p.revoke = false)`
-const guildSelect = Prisma.sql`g.guild AS id, g.name, g.language, g.member AS members, g.createdAt, g.updatedAt,
+const guildSelect = Prisma.sql`g.guild AS id, g.name, g.language, g.member AS members, g.isPartner AS partner, g.createdAt, g.updatedAt,
   (SELECT COUNT(*) FROM gm_server s WHERE s.guild = g.guild) AS serverCount,
   ${manualGrant} AS manualPremium, ${storeGrant} AS gmodstore`
 
@@ -412,4 +416,16 @@ export async function updateAdminPremium(guildID: string, input: unknown): Promi
     pending = true
   }
   return { guildID: target, manualPremium: parsed.data.enabled, access, pending: pending || access.state !== 'ready' }
+}
+
+export async function updateAdminPartner(guildID: string, input: unknown): Promise<AdminPartnerMutationResult> {
+  const target = id(guildID)
+  const parsed = AdminPartnerUpdateSchema.safeParse(input)
+  if (!parsed.success) throw invalid()
+  const result = await prisma.gm_guild.updateMany({
+    where: { guild: target },
+    data: { isPartner: parsed.data.enabled },
+  })
+  if (!result.count) throw missing()
+  return { guildID: target, partner: parsed.data.enabled }
 }

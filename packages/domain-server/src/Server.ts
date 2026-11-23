@@ -564,11 +564,11 @@ export class Server extends BaseClass {
     })
   }
 
-  async editStatusChannelAndMessage(msgData: any) {
+  async editStatusChannelAndMessage(msgData: any): Promise<boolean> {
     const serverStatusInfo = await this.getStatusChannelAndMessage()
     if (!serverStatusInfo) {
       gmLog('status', `Status channel not found for server ${this.getID()}`, true)
-      return
+      return false
     }
 
     try {
@@ -581,13 +581,13 @@ export class Server extends BaseClass {
           // Guild no longer exists or bot has been kicked
           gmLog('status', `Guild ${this.getGuildID()} unknown – cleaning up status record.`, true)
           await prisma.gm_status.delete({ where: { server: this.getID() } })
-          return
+          return false
         }
         throw err
       }
       if (!guild) {
         gmLog('status', `Guild fetch returned null for server ${this.getID()}`, true)
-        return
+        return false
       }
 
       let channel
@@ -598,20 +598,20 @@ export class Server extends BaseClass {
           // channel deleted or otherwise not found
           gmLog('status', `Channel ${serverStatusInfo.channel} no longer exists – removing record.`, true)
           await prisma.gm_status.delete({ where: { server: this.getID() } })
-          return
+          return false
         }
         throw err
       }
 
       if (!channel) {
         gmLog('status', `Channel not found for server ${this.getID()}`, true)
-        return
+        return false
       }
 
       let message
       if (!channel.isTextBased()) {
         gmLog('status', `Channel is not text based for server ${this.getID()}`, true)
-        return
+        return false
       }
 
       // is message exists?
@@ -622,46 +622,43 @@ export class Server extends BaseClass {
           // Message deleted or otherwise not found
           gmLog('status', `Message ${serverStatusInfo.message} no longer exists – removing record.`, true)
           await prisma.gm_status.delete({ where: { server: this.getID() } })
-          return
+          return false
         }
         if (err.code === 50001) {
           // Missing Access - bot no longer has permission to access the channel/message
           gmLog('status', `Missing access to message ${serverStatusInfo.message} – removing record.`, true)
           await prisma.gm_status.delete({ where: { server: this.getID() } })
-          return
+          return false
         }
         throw err
       }
 
       if (!message) {
         gmLog('status', `Message not found for server ${this.getID()}`, true)
-        return
+        return false
       }
 
       // is same author?
       if (message.author.id !== dscClient.user?.id) {
         gmLog('status', `Message author is not the bot for server ${this.getID()}`, true)
-        return
+        return false
       }
 
       const lang = guild.preferredLocale
       const newMsgContent = await buildDiscordStatusMessage(this, msgData, lang)
       await message.edit(newMsgContent)
+      return true
     } catch (error: any) {
       if (
         error?.message === 'Discord guild client resolver is not configured' ||
         error?.message === 'Discord status message builder is not configured'
       ) {
-        return
+        return false
       }
 
       gmLog('status', `Error updating status message for server ${this.getID()}: ${error.message}`, true)
       console.error(error)
-      // await prisma.gm_status.delete({
-      //   where: {
-      //     server: this.getID(),
-      //   },
-      // });
+      return false
     }
   }
 
@@ -1441,33 +1438,63 @@ export async function createServer(guildID: string, store: Pick<Prisma.Transacti
   return new Server(server)
 }
 
+let statusRoutineRunning = false
+
 export async function statusRoutine() {
-  const serversStatusChannel = await prisma.gm_status.findMany()
+  if (statusRoutineRunning) return
+  statusRoutineRunning = true
+  try {
+    const serversStatusChannel = await prisma.gm_status.findMany()
+    for (const statusChannel of serversStatusChannel) {
+      try {
+        const server = await getServerFromID(statusChannel.server)
+        if (!server) {
+          await prisma.gm_status.delete({ where: { server: statusChannel.server } })
+          continue
+        }
 
-  for (const statusChannel of serversStatusChannel) {
-    const server = await getServerFromID(statusChannel.server)
-    if (!server) {
-      await prisma.gm_status.delete({
-        where: {
-          server: statusChannel.server,
-        },
-      })
-      continue
+        const statusInfo = await prisma.gm_server_status.findFirst({
+          where: {
+            id: server.getID(),
+            updatedAt: { lte: new Date(Date.now() - 6 * 60 * 1000) },
+          },
+        })
+        if (!statusInfo) continue
+
+        const cacheKey = `server:${server.getID()}:status:offline`
+        const revision = JSON.stringify([
+          statusInfo.updatedAt.toISOString(),
+          statusChannel.channel,
+          statusChannel.message,
+        ])
+        try {
+          if ((await redis.get(cacheKey)) === revision) continue
+        } catch (error) {
+          console.error(`Error reading offline status acknowledgement for server ${server.getID()}:`, error)
+        }
+
+        // A heartbeat may have arrived while the sweep was reading its candidate.
+        if (await server.getStatusData()) continue
+        if (await server.editStatusChannelAndMessage(null)) {
+          // Discord I/O may have overlapped a reconnect and its online message refresh.
+          const liveStatus = await server.getStatusData()
+          if (liveStatus) {
+            await server.editStatusChannelAndMessage(liveStatus)
+            continue
+          }
+          // Bound abandoned cache entries; unchanged offline messages need at most a weekly refresh.
+          try {
+            await redis.set(cacheKey, revision, 'EX', 7 * 24 * 60 * 60)
+          } catch (error) {
+            console.error(`Error recording offline status acknowledgement for server ${server.getID()}:`, error)
+          }
+        }
+      } catch (error) {
+        gmLog('status', `Error refreshing offline status for server ${statusChannel.server}`, true)
+        console.error(error)
+      }
     }
-
-    const statusInfo = await prisma.gm_server_status.findFirst({
-      where: {
-        id: server.getID(),
-        updatedAt: {
-          gte: new Date(new Date().getTime() - 10 * 60 * 1000), // 10 minutes ago
-          lte: new Date(new Date().getTime() - 6 * 60 * 1000), // 6 minutes ago
-        },
-      },
-    })
-
-    // Only update if status is between 6-10 minutes old
-    if (!statusInfo) continue
-
-    await server.editStatusChannelAndMessage(await server.getStatusData())
+  } finally {
+    statusRoutineRunning = false
   }
 }

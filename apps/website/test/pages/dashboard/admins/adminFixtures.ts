@@ -8,6 +8,7 @@ export const guildFixture = (changes: Partial<AdminGuildRow> = {}): AdminGuildRo
   serverCount: 2,
   manualPremium: false,
   gmodstore: false,
+  partner: false,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-11-01T00:00:00.000Z',
   ...changes,

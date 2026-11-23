@@ -30,6 +30,20 @@ Discord bridge that lets this package trigger Discord effects without importing 
 
 `apps/api`, `apps/discord`, `apps/websocket`, `@gmod/domain-guild`, `@gmod/domain-moderation`.
 
+## Discord status recovery
+
+The Discord process checks published server messages every 30 seconds. A heartbeat older than six
+minutes is offline, including after an extended Discord outage. The sweep retries failed message
+edits and isolates each server's failure so later servers can still refresh. Overlapping sweeps in
+the same process are skipped.
+
+Only a confirmed Discord edit records an offline acknowledgement in Redis. Its value identifies the
+last heartbeat and the channel/message target; a newer heartbeat or replacement message needs its
+own acknowledgement. Entries expire after seven days to bound abandoned cache entries while avoiding
+repeated Discord edits for servers that stay offline. A fresh heartbeat discovered during the sweep
+keeps or restores the message online, including when it arrives during a Discord edit. Redis cache
+failures do not prevent the message edit from being attempted.
+
 ## Whitelist mode
 
 The panel calls the existing maintenance gate **Whitelist mode**. Persisted `ig_maintenance`,

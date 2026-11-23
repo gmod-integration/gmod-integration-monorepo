@@ -6,6 +6,7 @@ import {
   initWebSocket,
   stopWebSocket,
   sendWebSocketMessage,
+  requestServerStatus,
   webSocketSignal,
   webSocketLogsMessages,
   setWebSocketLogsMessages,
@@ -321,6 +322,38 @@ describe('cookie authenticated WebSocket transport', () => {
     expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ action: 'ping', data: { x: 1 } }))
     ws.readyState = 3
     expect(sendWebSocketMessage('ping', {})).toBe(false)
+  })
+  it('shares status polls for one server and transport while checking a different server immediately', async () => {
+    vi.useFakeTimers()
+    const ws = await connect()
+    expect(requestServerStatus('s1')).toBe(false)
+    ws.readyState = FakeWebSocket.OPEN
+    expect(requestServerStatus(undefined)).toBe(false)
+    expect(requestServerStatus(':serverID')).toBe(false)
+    expect(requestServerStatus('s1')).toBe(true)
+    expect(requestServerStatus('s1')).toBe(false)
+    expect(requestServerStatus('s2')).toBe(true)
+    expect(ws.send.mock.calls.map(([value]) => JSON.parse(value))).toEqual([
+      { action: 'server_status', data: { serverID: 's1' } },
+      { action: 'server_status', data: { serverID: 's2' } },
+    ])
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(requestServerStatus('s1')).toBe(true)
+    stopWebSocket()
+    await initWebSocket()
+    const reconnected = FakeWebSocket.instances.at(-1)!
+    reconnected.readyState = FakeWebSocket.OPEN
+    expect(requestServerStatus('s1')).toBe(true)
+    expect(reconnected.send).toHaveBeenCalledOnce()
+  })
+  it('tolerates a transport closing during a status send without consuming its next poll', async () => {
+    const ws = await connect()
+    ws.readyState = FakeWebSocket.OPEN
+    ws.send.mockImplementationOnce(() => {
+      throw new Error('Transport closed')
+    })
+    expect(requestServerStatus('s1')).toBe(false)
+    expect(requestServerStatus('s1')).toBe(true)
   })
   it('refreshes access when the transport opens and tolerates an error until close', async () => {
     const refresh = vi.fn()

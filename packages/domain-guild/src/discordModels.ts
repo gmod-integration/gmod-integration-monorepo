@@ -254,6 +254,7 @@ export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
   const permGuildsID = permGuilds.map((guild) => guild.id)
 
   const rows = await prisma.gm_guild.findMany({
+    select: { guild: true },
     where: {
       guild: {
         in: permGuildsID,

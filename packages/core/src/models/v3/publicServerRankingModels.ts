@@ -1,6 +1,7 @@
 import prisma from '@gmod/infra-prisma'
 import { Prisma } from '@gmod/infra-prisma/client.js'
 import { enqueueDiscordGuildPublicInvite } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { resolveGuildAccess } from '@gmod/domain-access/index.js'
 import {
   DiscordInviteUrlSchema,
   PublicServerRankingQuerySchema,
@@ -101,6 +102,7 @@ export async function processGetPublicServerRanking(
         image: true,
         ip: true,
         port: true,
+        gm_guild: { select: { isPartner: true } },
         gm_server_status: {
           select: { hostname: true, players: true, maxPlayers: true, gameMode: true, map: true, updatedAt: true },
         },
@@ -114,16 +116,27 @@ export async function processGetPublicServerRanking(
     `),
   ])
   const guilds = [...new Set(records.map((row) => row.guild))]
-  const invites = new Map(
+  const guildMetadata = new Map(
     await Promise.all(
       guilds.map(async (guild) => {
-        try {
-          const invite = DiscordInviteUrlSchema.safeParse(await enqueueDiscordGuildPublicInvite(guild))
-          return [guild, invite.success ? invite.data : null] as const
-        } catch {
-          // A missing bot permission must not make the ranking unavailable.
-          return [guild, null] as const
-        }
+        const [inviteResult, accessResult] = await Promise.allSettled([
+          enqueueDiscordGuildPublicInvite(guild),
+          resolveGuildAccess(guild),
+        ])
+        const invite = inviteResult.status === 'fulfilled' ? DiscordInviteUrlSchema.safeParse(inviteResult.value) : null
+        // Optional community metadata must not make the public ranking unavailable.
+        return [
+          guild,
+          {
+            discordUrl: invite?.success ? invite.data : null,
+            premiumUntil:
+              accessResult.status === 'fulfilled' &&
+              accessResult.value.state === 'ready' &&
+              accessResult.value.premium === true
+                ? Date.parse(accessResult.value.validUntil)
+                : 0,
+          },
+        ] as const
       }),
     ),
   )
@@ -134,6 +147,8 @@ export async function processGetPublicServerRanking(
     // A server can have become private between the ranking and details reads.
     if (!record) continue
     const snapshot = record.gm_server_status
+    const metadata = guildMetadata.get(record.guild)
+    const premiumUntil = metadata?.premiumUntil ?? 0
     servers.push({
       id: record.id,
       guild: record.guild,
@@ -145,8 +160,10 @@ export async function processGetPublicServerRanking(
       vote: Number(row.vote),
       rank: Number(row.rankingPosition),
       online: !!snapshot && snapshot.updatedAt >= onlineSince,
+      premium: Number.isFinite(premiumUntil) && premiumUntil > Date.now(),
+      partner: record.gm_guild.isPartner === true,
       lastSeenAt: snapshot?.updatedAt.toISOString() || null,
-      discordUrl: invites.get(record.guild) || null,
+      discordUrl: metadata?.discordUrl || null,
       status: snapshot
         ? {
             hostname: snapshot.hostname,

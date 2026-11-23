@@ -41,6 +41,8 @@ export function getMariaDbConfig(env: Environment = process.env) {
     user: env.MARIA_USER,
     password: env.MARIA_PASSWORD,
     database: env.MARIA_NAME,
+    // Prisma binds and reads timestamps as UTC; SQL date buckets must use the same timezone.
+    timezone: '+00:00',
     connectionLimit: isDev ? Math.min(connectionLimit, 10) : connectionLimit,
   }
 }

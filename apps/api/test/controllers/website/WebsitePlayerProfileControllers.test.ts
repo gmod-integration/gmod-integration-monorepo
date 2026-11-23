@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const profile = vi.hoisted(() => ({ get: vi.fn() }))
 vi.mock('@gmod/core/models/v3/playerProfileModels.js', () => ({ processGetPlayerProfile: profile.get }))
-const { getPlayerProfile } = await import('../../../src/controllers/website/WebsitePlayerProfileControllers.js')
+const { getPlayerProfile, getPlayerProfileByDiscord, getPlayerProfileBySteam } =
+  await import('../../../src/controllers/website/WebsitePlayerProfileControllers.js')
 
 function response() {
   const res: any = {}
@@ -39,6 +40,19 @@ describe('player profile controller', () => {
     expect(profile.get).toHaveBeenCalledExactlyOnceWith('viewer', undefined, {})
     expect(res.status).toHaveBeenCalledWith(404)
     expect(res.json).toHaveBeenCalledWith({ error: 'steam_not_linked' })
+  })
+
+  it.each([
+    [getPlayerProfileByDiscord, 'discord', { targetDiscordID: '333650866747867137' }, '333650866747867137'],
+    [getPlayerProfileBySteam, 'steam', { steamID64: '76561198000000001' }, '76561198000000001'],
+  ] as const)('passes an explicit identity namespace to %s', async (controller, provider, params, target) => {
+    profile.get.mockResolvedValueOnce({ status: 200, body: { player: {} } })
+    const res = response()
+    const query = { warningOffset: '10', banOffset: '20' }
+    await controller({ panelUser: { discordID: 'viewer' }, params, query } as any, res)
+    expect(profile.get).toHaveBeenCalledExactlyOnceWith('viewer', target, query, undefined, provider)
+    expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
+    expect(res.status).toHaveBeenCalledWith(200)
   })
 
   it('propagates storage failures to the shared handler', async () => {

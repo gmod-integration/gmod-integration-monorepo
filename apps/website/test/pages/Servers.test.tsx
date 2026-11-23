@@ -18,6 +18,8 @@ function server(rank: number, overrides: Partial<PublicRankedServer> = {}): Publ
     vote: 100 - rank,
     rank,
     online: true,
+    premium: false,
+    partner: false,
     discordUrl: 'https://discord.gg/real-community',
     lastSeenAt: '2026-11-20T12:00:00.000Z',
     status: { hostname: `Host ${rank}`, players: 5, maxPlayers: 32, gameMode: 'sandbox', map: 'gm_construct' },
@@ -60,6 +62,20 @@ beforeEach(() => {
 })
 
 describe('public server ranking', () => {
+  it('shows map names without linking public visitors to server administration and keeps missing maps unknown', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok(response([server(1), server(2, { status: null })]))),
+    )
+    renderWithProviders(() => <Servers />)
+    await waitForCard()
+    expect(screen.getByText('gm_construct')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'gm_construct' })).not.toBeInTheDocument()
+    const missingMap = screen.getByRole('heading', { name: 'Server 2' }).closest('article')!
+    expect(within(missingMap).queryByRole('link', { name: 'gm_construct' })).not.toBeInTheDocument()
+    expect(within(missingMap).getByText('Map').nextElementSibling).toHaveTextContent('—')
+  })
+
   it('requests the first ten servers and presents the top three without duplicate cards', async () => {
     const fetchMock = mockPages()
     const { container } = renderWithProviders(() => <Servers />)
@@ -83,6 +99,81 @@ describe('public server ranking', () => {
     expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Back to the first page' })).toBeDisabled()
     expect(screen.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
+  })
+
+  it.each([
+    { premium: false, partner: false },
+    { premium: true, partner: false },
+    { premium: false, partner: true },
+    { premium: true, partner: true },
+  ])('renders API badges independently on featured and regular cards: %j', async (badges) => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true, partner: true }))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok(response([server(1, badges), server(2), server(3), server(4, badges)]))),
+    )
+    renderWithProviders(() => <Servers />)
+    await waitForCard()
+
+    for (const rank of [1, 4]) {
+      const card = screen.getByRole('heading', { name: `Host ${rank}` }).closest('article')!
+      expect(within(card).queryByText('Premium') !== null).toBe(badges.premium)
+      expect(within(card).queryByText('Partner') !== null).toBe(badges.partner)
+      expect(within(card).getByText('Online')).toBeInTheDocument()
+      expect(within(card).getByText(`#${rank}`)).toBeInTheDocument()
+    }
+  })
+
+  it('replaces badges with the next page server values', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          ok(
+            response(
+              Array.from({ length: 10 }, (_, i) => server(i + 1, { premium: true })),
+              11,
+            ),
+          ),
+        )
+        .mockResolvedValueOnce(ok(response([server(11, { partner: true })], 11, 10))),
+    )
+    renderWithProviders(() => <Servers />)
+    await waitForCard()
+    expect(screen.getAllByText('Premium')).toHaveLength(10)
+    expect(screen.queryByText('Partner')).not.toBeInTheDocument()
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    await waitForCard('Host 11')
+    expect(screen.queryByText('Premium')).not.toBeInTheDocument()
+    expect(screen.getByText('Partner')).toBeInTheDocument()
+    expect(screen.getAllByRole('article')).toHaveLength(1)
+  })
+
+  it('shows translated badge labels on an offline server', async () => {
+    localStorage.setItem('locale', 'fr')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok(response([server(1, { premium: true, partner: true, online: false })]))),
+    )
+    renderWithProviders(() => <Servers />)
+    await waitForCard()
+    const card = screen.getByRole('heading', { name: 'Host 1' }).closest('article')!
+    expect(within(card).getByText('Premium')).toBeInTheDocument()
+    expect(within(card).getByText('Partenaire')).toBeInTheDocument()
+  })
+
+  it('renders legacy ranking responses without inventing premium or partner badges', async () => {
+    const { premium: _premium, partner: _partner, ...legacyServer } = server(1)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok({ ...response([], 1), servers: [legacyServer] })),
+    )
+    renderWithProviders(() => <Servers />)
+    await waitForCard()
+    expect(screen.queryByText('Premium')).not.toBeInTheDocument()
+    expect(screen.queryByText('Partner')).not.toBeInTheDocument()
   })
 
   it('navigates next, previous, last and first pages with correct boundaries', async () => {

@@ -326,13 +326,32 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 2: server CRUD job p
       const statusData = { players: 5 }
       const server = {
         getStatusData: vi.fn().mockResolvedValue(statusData),
-        editStatusChannelAndMessage: vi.fn().mockResolvedValue(undefined),
+        editStatusChannelAndMessage: vi.fn().mockResolvedValue(true),
       }
       getServerFromIDMock.mockResolvedValueOnce(server)
       await processor()(makeJob('serverStatusRefresh', { serverID: 's1', correlationId: 'c1' }))
       expect(server.editStatusChannelAndMessage).toHaveBeenCalledWith(statusData)
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', refreshed: true })
     })
+
+    it.each(['guildOps', 'dedicated'] as const)(
+      'reports an unsuccessful edit through the %s queue without acknowledging a refresh',
+      async (queue) => {
+        const server = {
+          getStatusData: vi.fn().mockResolvedValue(null),
+          editStatusChannelAndMessage: vi.fn().mockResolvedValue(false),
+        }
+        getServerFromIDMock.mockResolvedValueOnce(server)
+        const run = queue === 'guildOps' ? processor() : (discordStatusRefreshWorker as unknown as FakeWorker).processor
+        await run(makeJob('serverStatusRefresh', { serverID: 's1', correlationId: 'failed-edit' }))
+        expect(server.editStatusChannelAndMessage).toHaveBeenCalledWith(null)
+        expect(lastReplyPayload()).toEqual({
+          correlationId: 'failed-edit',
+          refreshed: false,
+          error: 'Status message could not be refreshed',
+        })
+      },
+    )
 
     it('replies refreshed=false with the error message when it throws', async () => {
       getServerFromIDMock.mockRejectedValueOnce(new Error('db down'))
@@ -352,7 +371,7 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 2: server CRUD job p
       const statusData = { players: 3 }
       const server = {
         getStatusData: vi.fn().mockResolvedValue(statusData),
-        editStatusChannelAndMessage: vi.fn().mockResolvedValue(undefined),
+        editStatusChannelAndMessage: vi.fn().mockResolvedValue(true),
       }
       getServerFromIDMock.mockResolvedValueOnce(server)
       await statusWorker().processor(makeJob('serverStatusRefresh', { serverID: 's1', correlationId: 'c2' }))

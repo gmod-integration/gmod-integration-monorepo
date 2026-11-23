@@ -7,7 +7,8 @@ Existing HTTP routes remain available for older installations during transition.
 
 ## Connection and messages
 
-GWSockets is required on the dedicated server. The handshake sends `id`, `token` and
+GWSockets and a working WebSocket connection are mandatory for the entire addon; without them,
+the addon is unusable. GWSockets must be installed on the dedicated server. The handshake sends `id`, `token` and
 `gmod-integrations-version` headers over WSS (WS is allowed for local development addresses).
 Only `{ "action": "addon.ready", "protocol": 1 }` confirms the authenticated application protocol.
 

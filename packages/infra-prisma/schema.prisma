@@ -51,6 +51,7 @@ model gm_guild {
   name                        String                        @default("") @db.VarChar(255)
   member                      Int                           @default(0)
   language                    String                        @default("en") @db.VarChar(255)
+  isPartner                   Boolean                       @default(false)
   addDate                     DateTime?                     @default(now()) @db.Timestamp(0)
   createdAt                   DateTime                      @default(now())
   updatedAt                   DateTime                      @updatedAt
@@ -372,6 +373,7 @@ model gm_server_stat {
   gm_user_steam     gm_user_steam @relation(fields: [steam_id], references: [steam_id], onDelete: Cascade, map: "gm_server_stat_gm_user_steam_steam_id_fk")
 
   @@id([server_id, steam_id])
+  @@index([server_id, first_join], map: "gm_server_stat_server_id_first_join_idx")
   @@index([steam_id], map: "gm_server_stat_gm_user_steam_steam_id_fk")
 }
 
@@ -404,6 +406,7 @@ model gm_server_stat_session {
   gm_user_steam       gm_user_steam? @relation(fields: [steamID64], references: [steam_id], onDelete: Cascade, map: "gm_server_stat_session_ibfk_126")
 
   @@index([serverID], map: "gm_server_stat_session_1_gm_user_steam_steam_id_fk")
+  @@index([serverID, sessionEndTimeStamp], map: "gm_server_stat_session_serverID_end_idx")
   @@index([steamID64], map: "gm_server_stat_session_gm_user_steam_steam_id_fk")
 }
 

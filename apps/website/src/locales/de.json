@@ -201,7 +201,7 @@
     "needRolesPerms": "Der Bot hat nicht die Berechtigung, den Benutzern Rollen zuzuweisen oder zu entfernen. Setzen Sie die Bot-Rolle höher in der Rollenliste, betroffene Rollen: {1}",
     "needWS_required": "GWSockets ist erforderlich",
     "needWS_1": "Installiere das",
-    "needWS_2": "Modul in garrysmod/lua/bin auf deinem dedizierten Garry’s-Mod-Server. Wähle die Version für das Betriebssystem und die Architektur des Servers und starte ihn anschließend neu. Ohne dieses Modul kann sich das Addon nicht verbinden und keine seiner Spielintegrationen funktioniert. Die lokale Addon-Konfiguration bleibt verfügbar.",
+    "needWS_2": "Modul in garrysmod/lua/bin auf deinem dedizierten Garry’s-Mod-Server. Wähle die Version für das Betriebssystem und die Architektur des Servers und starte ihn anschließend neu. WebSocket ist für das gesamte Addon zwingend erforderlich. Ohne WebSocket-Verbindung ist das Addon nicht nutzbar.",
     "needAddon": "Um diese Funktion zu nutzen, müssen Sie das Addon(s) installieren:",
     "needAddon2": "richtig zu arbeiten.",
     "upgrade_now": "Jetzt aktualisieren",

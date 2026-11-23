@@ -1501,7 +1501,8 @@ async function processServerStatusRefresh(job: Job) {
       return
     }
 
-    await server.editStatusChannelAndMessage(await server.getStatusData())
+    const refreshed = await server.editStatusChannelAndMessage(await server.getStatusData())
+    if (refreshed !== true) throw new Error('Status message could not be refreshed')
     await writeReply(payload.correlationId, {
       correlationId: payload.correlationId,
       refreshed: true,

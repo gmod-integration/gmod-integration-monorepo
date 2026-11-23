@@ -7,6 +7,7 @@ import {
   AdminIDSchema,
   AdminPremiumListQuerySchema,
   AdminPremiumUpdateSchema,
+  AdminPartnerUpdateSchema,
   AdminRevokeSessionsSchema,
   AdminServerCommandSchema,
   AdminServerListQuerySchema,
@@ -118,6 +119,16 @@ router.put(
     const input = parse(AdminPremiumUpdateSchema, req.body)
     const result = await (await models()).updateAdminPremium(id, input)
     audit(input.enabled ? 'premium_grant_added' : 'premium_grant_removed', req.authSession!.discordID, id, input.reason)
+    res.json(result)
+  }),
+)
+router.patch(
+  '/guilds/:guildID/partner',
+  asyncHandler(async (req, res) => {
+    const id = parse(AdminIDSchema, req.params.guildID)
+    const input = parse(AdminPartnerUpdateSchema, req.body)
+    const result = await (await models()).updateAdminPartner(id, input)
+    audit(input.enabled ? 'guild_partner_added' : 'guild_partner_removed', req.authSession!.discordID, id, input.reason)
     res.json(result)
   }),
 )

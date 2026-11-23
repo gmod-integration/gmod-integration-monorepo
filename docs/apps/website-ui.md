@@ -136,6 +136,11 @@ for its Discord server ID.
 receiving the pending accessor, so contextual fields such as a required reason can be disabled while
 the command runs.
 
+`NeedWebsocket` shows mandatory-addon guidance until the selected game server has a confirmed
+connection. Match the route's server ID against the live status and require the dashboard socket to
+remain open; a browser connection or another server's status is insufficient. Its status polling
+shares `requestServerStatus` with connection details so mounting both does not duplicate requests.
+
 ## Authentication and session recovery
 
 The [internal admin dashboard](./admin-dashboard.md) applies these controls to six protected pages.
@@ -168,6 +173,15 @@ and delegation; target DTOs and browser storage never contain another account's 
 logout, delegation and account cleanup publish only a nonce/time storage notification. Recipients
 reread the cookie, abort superseded requests and ignore stale responses. Keep this notification after
 private-data cleanup so another tab can notice revocation without a WebSocket.
+
+## Discord role hierarchy checks
+
+`MissingRolePermission` rechecks the bot's role hierarchy when the selected community or checked
+roles change, when the page regains focus or visibility, and every 30 seconds while visible.
+The API may reuse its community snapshot for up to 10 seconds. Requests are serialized; results
+from a previous community or role selection cannot replace the current check. Requests time out
+after 15 seconds; unmounting aborts the active request and removes the timers and listeners. Loading
+and failures stay inside `AsyncState`, with retry available and existing form drafts preserved.
 
 ## Capability and quota controls
 

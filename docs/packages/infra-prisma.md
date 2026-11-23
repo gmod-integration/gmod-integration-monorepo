@@ -24,6 +24,11 @@ The `20261123120000_dashboard_lookup_indexes` migration adds nonunique indexes f
 used by authenticated dashboard requests and access resolution without requiring token uniqueness for
 historical records. Apply this migration through the normal deployment migration workflow.
 
+The `20261123160000_guild_partner_badge` migration adds `gm_guild.isPartner`, defaulting to false.
+Only platform administration changes this designation; public ranking responses project it as
+`partner`. Apply the migration before deploying the API that reads or updates the new field, and
+regenerate the Prisma client during the build.
+
 ## Used by
 
 Nearly every `domain-*` package and every app. Always import the shared client (`prisma` default export) —

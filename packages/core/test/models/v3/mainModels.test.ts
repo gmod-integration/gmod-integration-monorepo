@@ -143,6 +143,20 @@ describe('mainModels', () => {
       await vi.advanceTimersByTimeAsync(30000)
       expect(statusRoutineMock).toHaveBeenCalledTimes(2)
     })
+
+    it('logs failed startup and interval sweeps and keeps retrying', async () => {
+      vi.useFakeTimers()
+      const failure = new Error('database unavailable')
+      statusRoutineMock.mockRejectedValueOnce(failure).mockRejectedValueOnce(failure).mockResolvedValue(undefined)
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await routineServerStatusRefresh()
+      await vi.advanceTimersByTimeAsync(60000)
+
+      expect(statusRoutineMock).toHaveBeenCalledTimes(3)
+      expect(errorSpy).toHaveBeenCalledTimes(2)
+      expect(errorSpy).toHaveBeenCalledWith('Error refreshing server statuses:', failure)
+    })
   })
 
   describe('routinePremiumRoleOfMainGuild', () => {

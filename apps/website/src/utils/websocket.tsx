@@ -184,3 +184,24 @@ export function sendWebSocketMessage(event: string, data: any) {
   ws.send(JSON.stringify({ action: event, data }))
   return true
 }
+
+const lastServerStatusRequests = new WeakMap<WebSocket, Map<string, number>>()
+
+/** Share status polling between connection details and dependency guidance. */
+export function requestServerStatus(serverID: string | undefined) {
+  const ws = webSocketSignal()
+  if (!serverID || !/^[\w-]{1,255}$/.test(serverID) || !ws || ws.readyState !== WebSocket.OPEN) return false
+  const now = Date.now()
+  const requests = lastServerStatusRequests.get(ws) ?? new Map<string, number>()
+  const previous = requests.get(serverID)
+  if (previous !== undefined && now >= previous && now - previous < 1_500) return false
+  try {
+    if (!sendWebSocketMessage('server_status', { serverID })) return false
+    requests.set(serverID, now)
+    lastServerStatusRequests.set(ws, requests)
+    return true
+  } catch {
+    // The transport can close between checking its state and sending the request.
+    return false
+  }
+}

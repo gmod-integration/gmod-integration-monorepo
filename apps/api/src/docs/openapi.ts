@@ -32,6 +32,8 @@ import {
   AdminServerCommandSchema,
   AdminPremiumUpdateSchema,
   AdminPremiumMutationResultSchema,
+  AdminPartnerUpdateSchema,
+  AdminPartnerMutationResultSchema,
   AdminRevokeSessionsSchema,
 } from '@gmod/schema/admin/AdminDashboardSchema.js'
 import { AdminAnalyticsQuerySchema, AdminAnalyticsSchema } from '@gmod/schema/admin/AdminAnalyticsSchema.js'
@@ -265,6 +267,14 @@ export function createOpenApiDocument(apiUrl: string) {
           requestBody: body(AdminPremiumUpdateSchema, { enabled: true, reason: 'Support request confirmed' }),
           description:
             'Changes only the manual grant, preserving store entitlements. pending indicates external synchronization is unconfirmed. The reason is audited.',
+        }),
+      },
+      '/admin/guilds/{guildID}/partner': {
+        patch: adminOperation('updateAdminPartner', 'Update a community partner badge', 'AdminPartnerMutation', {
+          parameters: [adminPath('guildID'), csrf],
+          requestBody: body(AdminPartnerUpdateSchema, { enabled: true, reason: 'Partnership approved' }),
+          description:
+            'Changes only the public partner badge. Premium grants and purchased entitlements are preserved. Requires an own platform-administrator session; the reason is audited.',
         }),
       },
       '/admin/users/{userID}/revoke-sessions': {
@@ -635,6 +645,7 @@ export function createOpenApiDocument(apiUrl: string) {
         AdminDeleted: z.object({ deleted: z.literal(true) }),
         AdminReset: z.object({ reset: z.literal(true) }),
         AdminPremiumMutation: AdminPremiumMutationResultSchema,
+        AdminPartnerMutation: AdminPartnerMutationResultSchema,
         AdminConnections: AdminConnectionsSchema,
         AdminErrors: AdminErrorsSchema,
         AdminBugs: AdminBugsSchema,

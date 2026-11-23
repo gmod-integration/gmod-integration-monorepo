@@ -313,6 +313,15 @@ describe('Guild', () => {
       await expect(makeGuild().setSetting('not_real', 1)).rejects.toThrow('Setting not found')
     })
 
+    it.each(['partner', 'isPartner'])(
+      'does not let a community assign its own %s badge through settings',
+      async (setting) => {
+        await expect(makeGuild().setSetting(setting, true)).rejects.toThrow('Setting not found')
+        expect(prismaMock.gm_guild_settings.create).not.toHaveBeenCalled()
+        expect(prismaMock.gm_guild_settings.update).not.toHaveBeenCalled()
+      },
+    )
+
     it('throws for a premium setting on a non-premium guild', async () => {
       prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
       prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)

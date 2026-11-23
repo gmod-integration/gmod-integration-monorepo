@@ -64,6 +64,8 @@ describe('Dashboard navigation', () => {
       'Server and connection',
       'Configuration',
       'Status',
+      'Map',
+      'Statistics',
       'Role synchronization',
       'Team roles',
       'Chat relay',
@@ -88,6 +90,19 @@ describe('Dashboard navigation', () => {
     )
     expect(screen.getByRole('link', { name: 'Role synchronization' })).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: 'Team roles' })).not.toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Statistics' })).toHaveAttribute(
+      'href',
+      '/dashboard/guilds/g1/config/servers/s1/statistics',
+    )
+    expect(screen.getByRole('link', { name: 'Map' })).toHaveAttribute(
+      'href',
+      '/dashboard/guilds/g1/config/servers/s1/map',
+    )
+    expect(
+      within(screen.getByRole('link', { name: 'Map' }).closest('.dashboard-nav-group') as HTMLElement).getByText(
+        'Activity',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('updates the navigation category when moving from a community to a server', async () => {

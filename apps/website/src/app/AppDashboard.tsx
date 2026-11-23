@@ -40,6 +40,8 @@ export const DashboardPageHeader: Component<{ admin?: boolean }> = (props) => {
     const route = serverRoute()
     if (route) {
       const section = route[1] || 'informations'
+      if (section === 'statistics') return t('server_statistics.title', 'Statistics')
+      if (section === 'map') return t('main.map', 'Map')
       const labels: Record<string, [string, string]> = {
         informations: ['informations', 'Informations'],
         config: ['config', 'Configuration'],
