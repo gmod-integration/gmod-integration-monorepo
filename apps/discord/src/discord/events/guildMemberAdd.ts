@@ -4,6 +4,7 @@ import { gmLog } from '@gmod/shared/logger.js'
 import { getNotVerifiedMessage } from '../utils/messages.js'
 import { type GuildMember } from 'discord.js'
 import { Guild } from '@gmod/domain-guild/Guild.js'
+import { refreshGuildMemberPlayerAccess } from '@gmod/domain-guild/playerAccessNotifications.js'
 
 export default {
   name: 'guildMemberAdd',
@@ -31,6 +32,8 @@ export default {
       }
     } catch (err) {
       gmLog('error', `Error in guildMemberAdd: ${err}`)
+    } finally {
+      await refreshGuildMemberPlayerAccess(add_info.guild.id, add_info.user.id).catch(() => {})
     }
   },
 }

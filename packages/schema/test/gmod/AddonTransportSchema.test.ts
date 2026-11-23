@@ -3,12 +3,22 @@ import {
   AddonRequestSchema,
   AddonRconCommandSchema,
   AddonCommandResultSchema,
+  PlayerAccessRefreshCommandSchema,
   ADDON_MAX_MESSAGE_BYTES,
 } from '../../src/gmod/AddonTransportSchema.js'
 
 const base = { action: 'addon.request', id: 'connection-1:request-2', method: 'POST', endpoint: '/servers/s1/status' }
 
 describe('AddonRequestSchema', () => {
+  it('permits only bounded player-access invalidations, never positive grants', () => {
+    const command = { method: 'wsRefreshPlayerAccess', steamID: '76561198012345678' }
+    expect(PlayerAccessRefreshCommandSchema.parse(command)).toEqual(command)
+    expect(PlayerAccessRefreshCommandSchema.parse({ method: command.method })).toEqual({ method: command.method })
+    for (const steamID of ['', '765', 123, '*'])
+      expect(PlayerAccessRefreshCommandSchema.safeParse({ ...command, steamID }).success).toBe(false)
+    expect(PlayerAccessRefreshCommandSchema.safeParse({ ...command, allowed: true }).success).toBe(false)
+    expect(PlayerAccessRefreshCommandSchema.safeParse({ ...command, guildID: 'foreign' }).success).toBe(false)
+  })
   it('accepts a bounded request and a bodyless lookup', () => {
     expect(AddonRequestSchema.safeParse({ ...base, body: { players: 0, available: true } }).success).toBe(true)
     expect(AddonRequestSchema.safeParse({ ...base, method: 'GET' }).success).toBe(true)

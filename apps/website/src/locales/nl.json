@@ -139,7 +139,7 @@
     "guild_verification": "Guild-verificatie",
     "guild_verification_role_limit": "Guild-verificatie - Rollimiet",
     "force_ply_link": "Spelerkoppeling forceren",
-    "maintenance_white_list": "Onderhoud",
+    "maintenance_white_list": "Whitelistmodus",
     "rcon": "Uitvoeren van RCON",
     "reward": "Beloning",
     "free": "Vrij",
@@ -332,7 +332,7 @@
           "intro": "Bepaal wie kan spelen en houd moderatiegegevens binnen handbereik.",
           "one": "Banregistraties tussen platforms en toegangscontroles",
           "two": "AWarn3-waarschuwingen met beheerder en reden",
-          "three": "Onderhoudsmodus met toegang per speler",
+          "three": "Whitelistmodus met handmatige toegang of Discord-rol",
           "four": "Verplichte accountkoppeling, clientversie en Family Sharing-controles"
         },
         "diagnostics": {
@@ -805,19 +805,20 @@
       },
       "edit_player": {
         "title": "Speler bewerken",
-        "bypass_maintenance": "Onderhoud door Pass",
+        "bypass_maintenance": "Handmatige whitelisttoegang",
         "yes": "Ja.",
         "no": "Nee",
-        "save": "Opslaan"
+        "save": "Opslaan",
+        "bypass_help": "Geef deze speler toegang in de whitelistmodus, onafhankelijk van de serverrol. Het verwijderen van deze handmatige vermelding behoudt toegang via de rol of een andere machtiging. Sla op om toe te passen."
       },
       "players_database": {
         "title": "Spelersdatabase",
-        "description": "Lijst van alle spelers op de server",
+        "description": "Bekijk geregistreerde spelers, speeltijd en verbindingen. Bewerk een speler voor handmatige whitelisttoegang; toegang via een rol wordt apart beheerd.",
         "name": "Naam",
         "rank": "Rang",
         "total_time": "Totale tijd",
         "total_connect": "Totaal Verbinding",
-        "bypass_maintenance": "Omleidingsonderhoud",
+        "bypass_maintenance": "Handmatige whitelist",
         "actions": "Acties",
         "steam": "Stoom",
         "edit": "Bewerken"
@@ -1005,8 +1006,8 @@
             "description": "Ondersteuningskoppeling weergegeven wanneer een speler niet aan de vereisten voldoet."
           },
           "ig_maintenance": {
-            "title": "Onderhoudsmodus",
-            "description": "Sta alleen spelers met onderhoudsby pass toe om deel te nemen (speler > bewerken > bypass)"
+            "title": "Whitelistmodus",
+            "description": "Beperk toegang tot toegestane spelers. Een handmatige vermelding onder Spelers of de whitelistrol van de server geeft elk onafhankelijk toegang. Ingestelde spelbeheerdersgroepen zijn ook toegestaan."
           },
           "ig_language": {
             "title": "Add-on taal",
@@ -1018,10 +1019,19 @@
           },
           "ig_adminRank": {
             "title": "Admin-rangen",
-            "description": "Rangen die gemachtigd zijn om de configuratie te bewerken of de onderhoudsmodus over te slaan."
+            "description": "Voer exacte spelgebruikersgroepen in, zoals superadmin. Leden kunnen de addonconfiguratie bewerken en deelnemen in de whitelistmodus. Dit zijn geen Discord-rollen."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Whitelistrol van de server",
+            "description": "Spelers met gekoppelde Steam- en Discord-accounts krijgen via deze rol toegang in de whitelistmodus. Handmatige toegang onder Spelers blijft onafhankelijk. Verliest een speler de rol terwijl de whitelistmodus actief is, dan wordt die verwijderd tenzij een andere machtiging toegang blijft geven."
           }
         },
-        "remove_admin_rank": "Rang verwijderen"
+        "remove_admin_rank": "Rang verwijderen",
+        "whitelist_no_role": "Geen Discord-rol",
+        "whitelist_role_missing": "Niet-beschikbare rol ({1})",
+        "whitelist_roles_loading": "Discord-rollen laden…",
+        "whitelist_roles_error": "Discord-rollen kunnen niet worden geladen. Probeer opnieuw of verwijder de huidige rol.",
+        "whitelist_role_invalid": "Kies een beschikbare Discord-rol of geen rol."
       },
       "team_roles": {
         "error_occurred": "Er is een fout opgetreden bij het ophalen van de rollensynchronisatie.",
@@ -1284,7 +1294,7 @@
     "access": "Toegang en verificatie",
     "access_description": "Kies hoe spelers hun accounts koppelen en bij het verbinden worden geverifieerd.",
     "administration": "Beheer",
-    "administration_description": "Beheer toegang voor beheerders en de onderhoudsmodus.",
+    "administration_description": "Beheer beheerderstoegang en de whitelistmodus.",
     "advanced": "Geavanceerde instellingen",
     "advanced_description": "Clientcompatibiliteit, probleemoplossing en logformaat.",
     "all": "Alle instellingen",

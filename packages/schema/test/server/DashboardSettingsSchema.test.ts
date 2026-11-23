@@ -7,6 +7,15 @@ import {
 } from '../../src/server/DashboardSettingsSchema.js'
 
 describe('dashboard settings storage contracts', () => {
+  it('accepts a Discord whitelist role or removal, while preserving the existing mode key', () => {
+    for (const value of ['', '333333333333333333'])
+      expect(ServerDashboardSettingsSchema.parse({ maintenance_whitelist_role: value, ig_maintenance: true })).toEqual({
+        maintenance_whitelist_role: value,
+        ig_maintenance: true,
+      })
+    for (const value of [null, true, 333, 'role', '1'.repeat(21)])
+      expect(ServerDashboardSettingsSchema.safeParse({ maintenance_whitelist_role: value }).success).toBe(false)
+  })
   it('requires a nonempty explicit patch and rejects unknown settings or wrapper fields', () => {
     expect(ServerDashboardSettingsSchema.safeParse({}).success).toBe(false)
     expect(GuildDashboardSettingsSchema.safeParse({}).success).toBe(false)

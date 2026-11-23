@@ -225,6 +225,28 @@ export const DiscordGuildSnapshotReplySchema = z.object({
 
 export type DiscordGuildSnapshotReply = z.infer<typeof DiscordGuildSnapshotReplySchema>
 
+export const DiscordGuildMemberRoleJobSchema = z
+  .object({
+    guildID: z.string().regex(/^\d{17,20}$/),
+    discordID: z.string().regex(/^\d{17,20}$/),
+    roleID: z.string().regex(/^\d{17,20}$/),
+    correlationId: z.string().min(1),
+    timestamp: z.coerce.date().optional(),
+  })
+  .strict()
+export type DiscordGuildMemberRoleJob = z.infer<typeof DiscordGuildMemberRoleJobSchema>
+
+export const DiscordGuildMemberRoleReplySchema = z
+  .object({
+    correlationId: z.string().min(1),
+    available: z.boolean(),
+    hasRole: z.boolean(),
+    roleExists: z.boolean(),
+  })
+  .strict()
+  .refine((reply) => (reply.available ? !reply.hasRole || reply.roleExists : !reply.hasRole && !reply.roleExists))
+export type DiscordGuildMemberRoleResult = Omit<z.infer<typeof DiscordGuildMemberRoleReplySchema>, 'correlationId'>
+
 export const DiscordGuildVerifyUserJobSchema = z.object({
   guildID: z.string().min(1, 'guildID required'),
   userID: z.string().min(1, 'userID required'),

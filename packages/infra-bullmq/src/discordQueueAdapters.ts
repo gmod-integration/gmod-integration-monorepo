@@ -19,6 +19,9 @@ import {
   MainClientSetPresenceReplySchema,
   DiscordGuildSnapshotJobSchema,
   DiscordGuildSnapshotReplySchema,
+  DiscordGuildMemberRoleJobSchema,
+  DiscordGuildMemberRoleReplySchema,
+  type DiscordGuildMemberRoleResult,
   DiscordGuildVerifyUserJobSchema,
   DiscordGuildVerifyUserReplySchema,
   DiscordGuildRunVerificationCheckJobSchema,
@@ -693,6 +696,29 @@ export async function enqueueDiscordGuildAdmins(
       status: 503,
     })
   return reply.admins
+}
+
+export async function enqueueDiscordGuildMemberRole(
+  guildID: string,
+  discordID: string,
+  roleID: string,
+  timeoutMs = 7000,
+): Promise<DiscordGuildMemberRoleResult> {
+  const correlationId = randomUUID()
+  const payload = DiscordGuildMemberRoleJobSchema.parse({
+    guildID,
+    discordID,
+    roleID,
+    correlationId,
+    timestamp: new Date(),
+  })
+  await discordGuildOpsQueue.add('guildMemberRole', payload, {
+    priority: JobPriority.INTERACTIVE,
+    attempts: 1,
+    removeOnComplete: true,
+  })
+  const reply = await waitForReply(correlationId, (value) => DiscordGuildMemberRoleReplySchema.parse(value), timeoutMs)
+  return { available: reply.available, hasRole: reply.hasRole, roleExists: reply.roleExists }
 }
 
 export async function enqueueDiscordGuildBans(

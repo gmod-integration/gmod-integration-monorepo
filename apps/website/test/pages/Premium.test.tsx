@@ -36,6 +36,7 @@ describe('pages/Premium.tsx', () => {
     const { container } = renderWithProviders(PageWithLanguageSwitch)
     expect(screen.getByRole('heading', { name: 'Monthly subscription' })).toBeInTheDocument()
     expect(screen.getByText('Game logs in the dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Whitelist mode').closest('tr')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'What does Premium add?' })).toBeInTheDocument()
 
     await fireEvent.click(screen.getByRole('button', { name: 'Français' }))
@@ -44,6 +45,7 @@ describe('pages/Premium.tsx', () => {
     expect(within(monthly).getByText('$25.99')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Monthly subscription' })).not.toBeInTheDocument()
     expect(screen.getByText('Journaux de jeu dans le tableau de bord').closest('tr')).toBeInTheDocument()
+    expect(screen.getByText('Mode whitelist').closest('tr')).toBeInTheDocument()
     expect(screen.queryByText('Game logs in the dashboard')).not.toBeInTheDocument()
     const question = screen.getByRole('radio', { name: 'Qu’apporte Premium ?' })
     expect(question.closest('.collapse')).toHaveTextContent(

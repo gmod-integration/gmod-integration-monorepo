@@ -146,7 +146,7 @@
     "guild_verification": "Discord and Steam verification",
     "guild_verification_role_limit": "Verification role limit",
     "force_ply_link": "Require linked player accounts",
-    "maintenance_white_list": "Maintenance",
+    "maintenance_white_list": "Whitelist mode",
     "rcon": "Game console commands (RCON)",
     "reward": "Reward",
     "free": "Free",
@@ -384,7 +384,7 @@
           "intro": "Decide who can play and keep moderation records within reach.",
           "one": "Cross-platform ban records and entry checks",
           "two": "AWarn3 warning history with administrator and reason",
-          "three": "Maintenance mode with per-player access",
+          "three": "Whitelist mode with manual or Discord-role access",
           "four": "Required account links, client branch and Family Sharing checks"
         },
         "diagnostics": {
@@ -917,20 +917,20 @@
       },
       "edit_player": {
         "title": "Edit player access",
-        "bypass_maintenance": "Allow access during maintenance",
+        "bypass_maintenance": "Manual whitelist access",
         "yes": "Yes",
         "no": "No",
         "save": "Save",
-        "bypass_help": "Allow this player to join while maintenance mode is enabled. Save to apply this permission."
+        "bypass_help": "Allow this player to join in whitelist mode independently of the Server whitelist role. Disabling this manual entry keeps any access provided by the role or another permission. Save to apply."
       },
       "players_database": {
         "title": "Player records",
-        "description": "View recorded players, their total playtime and connection count. Edit a player to manage maintenance access.",
+        "description": "View recorded players, their total playtime and connection count. Edit a player to manage manual whitelist access; role-based access is handled separately.",
         "name": "Name",
         "rank": "Rank",
         "total_time": "Total playtime",
         "total_connect": "Connections",
-        "bypass_maintenance": "Maintenance access",
+        "bypass_maintenance": "Manual whitelist",
         "actions": "Actions",
         "steam": "Open Steam profile",
         "edit": "Edit",
@@ -1155,8 +1155,8 @@
             "description": "HTTP or HTTPS help link displayed when a player is refused entry. Leave empty to show no support link."
           },
           "ig_maintenance": {
-            "title": "Maintenance Mode",
-            "description": "Restrict entry to players allowed to bypass maintenance. Manage each player’s bypass in Players; Discord administrators and configured game administrator groups are also exempt."
+            "title": "Whitelist mode",
+            "description": "Restrict access to whitelisted players. Manual access in Players and the Server whitelist role grant access independently. Configured game administrator groups are also allowed."
           },
           "ig_language": {
             "title": "Addon Language",
@@ -1168,13 +1168,22 @@
           },
           "ig_adminRank": {
             "title": "Game administrator groups",
-            "description": "Enter exact game user groups, such as superadmin. Members can edit the addon configuration and bypass maintenance. These are not Discord roles."
+            "description": "Enter exact game user groups, such as superadmin. Members can edit the addon configuration and join in whitelist mode. These are not Discord roles."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Server whitelist",
+            "description": "Players with linked Steam and Discord accounts can join in whitelist mode through this role. Manual access granted in Players works independently. If a player loses the role while whitelist mode is on, they are removed unless another permission still grants access."
           }
         },
         "remove_admin_rank": "Remove rank",
         "invalid_delay": "Enter a whole number of seconds, 0 or greater.",
         "invalid_support_url": "Enter an HTTP or HTTPS link, or leave this field empty.",
-        "invalid_admin_ranks": "Enter a different, non-empty game user group on each row."
+        "invalid_admin_ranks": "Enter a different, non-empty game user group on each row.",
+        "whitelist_no_role": "No Discord role",
+        "whitelist_role_missing": "Unavailable role ({1})",
+        "whitelist_roles_loading": "Loading Discord roles…",
+        "whitelist_roles_error": "Unable to load Discord roles. Try again, or remove the current role.",
+        "whitelist_role_invalid": "Choose an available Discord role or no role."
       }
     },
     "guild": {
@@ -1524,7 +1533,7 @@
     "access": "Access and verification",
     "access_description": "Choose how players link their accounts and are verified when joining.",
     "administration": "Administration",
-    "administration_description": "Manage administrator access and maintenance mode.",
+    "administration_description": "Manage administrator access and whitelist mode.",
     "advanced": "Advanced settings",
     "advanced_description": "Client compatibility, troubleshooting and log formatting.",
     "all": "All settings",

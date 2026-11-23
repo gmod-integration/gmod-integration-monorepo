@@ -10,6 +10,7 @@ import type { Prisma, gm_server_logs_triggers, gm_server_sync_chat_filter } from
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
 import { ServerStatusChannel } from './ServerStatusChannel.js'
 import { buildDiscordStatusMessage, resolveDiscordGuildClient } from './discordBridge.js'
+import { getServerPlayerAccess } from './playerAccess.js'
 import {
   resolveGuildAccess,
   assertQuota,
@@ -20,6 +21,10 @@ import {
 } from '@gmod/domain-access/index.js'
 
 const serverSettings: Record<string, any> = {
+  maintenance_whitelist_role: {
+    defaultValue: '',
+    acceptedValues: null,
+  },
   sync_role_direction: {
     defaultValue: 'gmod-to-discord',
     acceptedValues: ['both', 'gmod-to-discord', 'discord-to-gmod'],
@@ -1156,6 +1161,10 @@ export class Server extends BaseClass {
         steam_id: steamID64,
       },
     })
+  }
+
+  async getPlayerAccess(steamID64: string) {
+    return getServerPlayerAccess(this, steamID64)
   }
 
   async createScreenshotChannel(channelID: string) {

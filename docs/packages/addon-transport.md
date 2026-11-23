@@ -56,6 +56,22 @@ explicitly allowlisted and validated in Lua, with no global-function lookup.
 
 ## Player tools
 
+### Whitelist access
+
+Whitelist-mode joins and online rechecks use `GET /servers/:serverID/players/:steamID64/access`.
+Successful replies contain explicit boolean `bypassMaintenance` and `discordAdmin` fields; unknown
+Discord authorization is non-2xx. The original player-statistics endpoint remains independent of
+Discord role availability for normal joins with whitelist mode disabled.
+
+`wsRefreshPlayerAccess` accepts only its method and an optional exact SteamID64. Omitting the ID
+requests a recheck of online players. It invalidates decisions instead of carrying a permission.
+The addon checks current access before expelling a player, preserves local administrator exemptions,
+ignores superseded/disconnected-session replies, and limits online checks to two requests at a time.
+A confirmed denial expels an online player only while whitelist mode remains enabled; provider
+failures retry without treating uncertainty as a denial. New whitelist joins remain fail-closed.
+
+### Screenshots, reports and errors
+
 Players send compressed JSON as paced 30,000-byte base64 chunks through the allowlisted Garry's Mod
 net channel. A player may have one transfer at a time; only screenshots, bugs and client errors are
 accepted. The relay binds server and Steam IDs itself and reconstructs player details from the sender.

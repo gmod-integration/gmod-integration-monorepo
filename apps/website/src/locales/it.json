@@ -139,7 +139,7 @@
     "guild_verification": "Verifica della colpa",
     "guild_verification_role_limit": "Verifica della Gilda - Limite di Ruolo",
     "force_ply_link": "Forza collegamento giocatore",
-    "maintenance_white_list": "Manutenzione",
+    "maintenance_white_list": "Modalità whitelist",
     "rcon": "Esecuzione RCON",
     "reward": "Premio",
     "free": "Libero",
@@ -332,7 +332,7 @@
           "intro": "Decidi chi può giocare e tieni a portata di mano i dati di moderazione.",
           "one": "Registri dei ban tra piattaforme e controlli di accesso",
           "two": "Storico degli avvisi AWarn3 con amministratore e motivo",
-          "three": "Manutenzione con accesso per giocatore",
+          "three": "Modalità whitelist con accesso manuale o tramite ruolo Discord",
           "four": "Account collegati obbligatori, ramo del client e controlli Family Sharing"
         },
         "diagnostics": {
@@ -805,19 +805,20 @@
       },
       "edit_player": {
         "title": "Modifica lettore",
-        "bypass_maintenance": "Manutenzione tramite messaggio",
+        "bypass_maintenance": "Accesso manuale alla whitelist",
         "yes": "Sì",
         "no": "No.",
-        "save": "Salva"
+        "save": "Salva",
+        "bypass_help": "Consenti a questo giocatore di entrare in modalità whitelist indipendentemente dal ruolo del server. Rimuovere questa voce manuale conserva l’accesso tramite il ruolo o altri permessi. Salva per applicare."
       },
       "players_database": {
         "title": "Banca dati dei giocatori",
-        "description": "Elenco di tutti i giocatori nel server",
+        "description": "Consulta i giocatori registrati, il tempo di gioco e le connessioni. Modifica un giocatore per gestire l’accesso manuale alla whitelist; l’accesso tramite ruolo resta separato.",
         "name": "Nome",
         "rank": "Classifica",
         "total_time": "Tempo totale",
         "total_connect": "Totale Connect",
-        "bypass_maintenance": "Manutenzione bypass",
+        "bypass_maintenance": "Whitelist manuale",
         "actions": "Azioni",
         "steam": "Steam",
         "edit": "Modifica"
@@ -1005,8 +1006,8 @@
             "description": "Link di supporto mostrato quando un giocatore non soddisfa i requisiti."
           },
           "ig_maintenance": {
-            "title": "Modalità manutenzione",
-            "description": "Permetti solo ai giocatori con bypass manutenzione di unirsi (giocatore > modifica > bypass)"
+            "title": "Modalità whitelist",
+            "description": "Limita l’accesso ai giocatori autorizzati. Una voce manuale in Giocatori o il ruolo whitelist del server concede accesso indipendentemente. Sono ammessi anche i gruppi di amministratori del gioco configurati."
           },
           "ig_language": {
             "title": "Lingua dell'add-on",
@@ -1018,10 +1019,19 @@
           },
           "ig_adminRank": {
             "title": "Ranghi admin",
-            "description": "Ranghi autorizzati a modificare la configurazione o aggirarare la modalità manutenzione."
+            "description": "Inserisci i gruppi esatti del gioco, come superadmin. I membri possono modificare la configurazione dell’addon ed entrare in modalità whitelist. Non sono ruoli Discord."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Ruolo whitelist del server",
+            "description": "I giocatori con account Steam e Discord collegati possono accedere in modalità whitelist tramite questo ruolo. L’accesso manuale concesso in Giocatori è indipendente. Se un giocatore perde il ruolo mentre la modalità whitelist è attiva, viene espulso salvo che un altro permesso consenta ancora l’accesso."
           }
         },
-        "remove_admin_rank": "Rimuovi grado"
+        "remove_admin_rank": "Rimuovi grado",
+        "whitelist_no_role": "Nessun ruolo Discord",
+        "whitelist_role_missing": "Ruolo non disponibile ({1})",
+        "whitelist_roles_loading": "Caricamento dei ruoli Discord…",
+        "whitelist_roles_error": "Impossibile caricare i ruoli Discord. Riprova o rimuovi il ruolo attuale.",
+        "whitelist_role_invalid": "Scegli un ruolo Discord disponibile o nessun ruolo."
       },
       "team_roles": {
         "error_occurred": "Si è verificato un errore durante la sincronizzazione dei ruoli.",
@@ -1284,7 +1294,7 @@
     "access": "Accesso e verifica",
     "access_description": "Scegli come i giocatori collegano i propri account e vengono verificati all’accesso.",
     "administration": "Amministrazione",
-    "administration_description": "Gestisci l’accesso degli amministratori e la modalità manutenzione.",
+    "administration_description": "Gestisci l’accesso degli amministratori e la modalità whitelist.",
     "advanced": "Impostazioni avanzate",
     "advanced_description": "Compatibilità del client, risoluzione dei problemi e formato dei registri.",
     "all": "Tutte le impostazioni",

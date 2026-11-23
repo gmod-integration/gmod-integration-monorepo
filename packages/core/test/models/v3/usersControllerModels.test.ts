@@ -45,6 +45,8 @@ vi.mock('../../../src/utils/tools.js', () => ({ badArgument: badArgumentMock }))
 const createServerMock = vi.fn()
 const getServerFromIDMock = vi.fn()
 const getServersFromDiscordGuildIDMock = vi.fn()
+const refreshServerPlayerAccessMock = vi.fn()
+vi.mock('@gmod/domain-server/playerAccess.js', () => ({ refreshServerPlayerAccess: refreshServerPlayerAccessMock }))
 vi.mock('@gmod/domain-server/Server.js', () => ({
   createServer: createServerMock,
   getServerFromID: getServerFromIDMock,
@@ -129,6 +131,7 @@ function resetAllMocks() {
   badArgumentMock.mockReset().mockReturnValue(false)
   createServerMock.mockReset()
   getServersFromDiscordGuildIDMock.mockReset()
+  refreshServerPlayerAccessMock.mockReset().mockResolvedValue(true)
   enqueueDiscordGuildReloadBotInstanceMock.mockReset()
   enqueueMainClientHasGuildMock.mockReset()
   redisMock.get.mockReset()
@@ -629,6 +632,25 @@ describe('usersControllerModels', () => {
         data: { bypassMaintenance: true },
       })
       expect(result).toEqual({ status: 200, body: { bypassMaintenance: true } })
+    })
+
+    it.each([true, false])('persists manual access %s before requesting a fresh game decision', async (enabled) => {
+      const steamID = '76561198012345678'
+      const server = {
+        id: 's1',
+        getPlayerStats: vi.fn().mockResolvedValueOnce({ steam_id: steamID, bypassMaintenance: !enabled }),
+      }
+      prismaMock.gm_server_stat.update.mockImplementationOnce(async () => {
+        expect(refreshServerPlayerAccessMock).not.toHaveBeenCalled()
+        return { bypassMaintenance: enabled }
+      })
+      // A notification failure does not roll back the durable manual decision.
+      if (!enabled) refreshServerPlayerAccessMock.mockRejectedValueOnce(new Error('Queue unavailable'))
+      expect(await processPutPlayerBypassMaintenance(server, steamID, enabled)).toEqual({
+        status: 200,
+        body: { bypassMaintenance: enabled },
+      })
+      expect(refreshServerPlayerAccessMock).toHaveBeenCalledExactlyOnceWith('s1', steamID)
     })
 
     it('keeps the existing value when bypassMaintenance is explicitly undefined-but-passed badArgument check', async () => {

@@ -96,6 +96,15 @@ export function createAsyncApiDocument(wsUrl: string, apiUrl: string) {
       content: { type: 'string' },
       avatar: { type: ['string', 'null'] },
     }),
+    PlayerAccessRefresh: {
+      type: 'object',
+      required: ['method'],
+      additionalProperties: false,
+      properties: {
+        method: { type: 'string', const: 'wsRefreshPlayerAccess' },
+        steamID: steamIdentifier,
+      },
+    },
     AddonReady: envelope('action', 'addon.ready', { protocol: { type: 'integer', const: 1 } }),
     AddonRequest: {
       type: 'object',
@@ -242,6 +251,15 @@ export function createAsyncApiDocument(wsUrl: string, apiUrl: string) {
       'addon',
       'server-to-client',
       { method: 'wsPlayerSay', name: 'Example user', content: 'Bonjour', avatar: null },
+    ),
+    refreshPlayerAccess: message(
+      'wsRefreshPlayerAccess',
+      'Recheck player access',
+      'Asks the authenticated addon to fetch a fresh access decision from the backend. Omit steamID to recheck all online players, or supply one 17-digit Steam ID to target that player. This message grants no access and never changes the manual whitelist; existing manual and administrator permissions still apply. It does not acknowledge the eventual access decision.',
+      'PlayerAccessRefresh',
+      'addon',
+      'server-to-client',
+      { method: 'wsRefreshPlayerAccess', steamID: steamID64 },
     ),
     rcon: message(
       'wsAuthorizedRcon',

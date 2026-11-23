@@ -15,6 +15,13 @@ vi.mock('../../../../../src/utils/api.js', () => ({
 vi.mock('../../../../../src/utils/dashboardSettings.js', () => ({ saveDashboardSettings: vi.fn() }))
 
 const CONFIG_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/config'
+const ROLES_URL = '/users/:discordID/guilds/:guildID/roles'
+const WHITELIST_ROLE = '1051881514020917408'
+const OTHER_ROLE = '1051881514020917409'
+const discordRoles = [
+  { id: WHITELIST_ROLE, name: 'Server whitelist' },
+  { id: OTHER_ROLE, name: 'Verified players' },
+]
 const settings = () => ({
   ig_syncBan: true,
   ig_supportLink: 'https://support.example.com',
@@ -22,9 +29,9 @@ const settings = () => ({
   ig_clientBranch: 'dev',
   ig_adminRank: { superadmin: true, mod: true },
 })
-function mockFetch(values: unknown = settings()) {
+function mockFetch(values: unknown = settings(), roles: unknown = []) {
   ;(fetchAPI as Mock).mockImplementation((path: string) =>
-    Promise.resolve(path === CONFIG_URL ? okJson({ settings: values }) : okJson([])),
+    Promise.resolve(path === CONFIG_URL ? okJson({ settings: values }) : okJson(roles)),
   )
 }
 function renderPage() {
@@ -80,7 +87,7 @@ describe('server configuration autosave', () => {
     expect(general).toContainElement(row(container, 'Game administrator groups'))
     expect(general.parentElement).toBe(access.parentElement)
     expect(container.querySelectorAll('.settings-card-grid > .dashboard-panel')).toHaveLength(4)
-    expect(container.querySelectorAll('.settings-row')).toHaveLength(16)
+    expect(container.querySelectorAll('.settings-row')).toHaveLength(17)
     expect(row(container, 'Log Timestamp Format').querySelector('input')).toHaveValue('%H:%M:%S')
     expect(screen.queryByRole('button', { name: 'Save', hidden: true })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Cancel', hidden: true })).not.toBeInTheDocument()
@@ -97,7 +104,9 @@ describe('server configuration autosave', () => {
       within(row(first.container, 'Game administrator groups')).getByRole('button', { name: 'Add rank' }),
     ).toBeDisabled()
     first.unmount()
-    vi.mocked(fetchAPI).mockResolvedValue(errJson() as Response)
+    vi.mocked(fetchAPI).mockImplementation(async (path) =>
+      path === CONFIG_URL ? (errJson() as Response) : (okJson([]) as Response),
+    )
     const second = renderPage()
     await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
     expect(row(second.container, 'Block Discord-banned players').querySelector('input')).toBeDisabled()
@@ -119,8 +128,10 @@ describe('server configuration autosave', () => {
     localStorage.setItem('locale', 'fr')
     const { container } = renderPage()
     await vi.waitFor(() => expect(container.querySelector('#ig_forcePlayerLink')).not.toBeDisabled())
-    expect(container.querySelectorAll('.settings-row')).toHaveLength(16)
+    expect(container.querySelectorAll('.settings-row')).toHaveLength(17)
     expect(row(container, 'Vérifier la liaison avant l’entrée en jeu')).toBeInTheDocument()
+    expect(row(container, 'Mode whitelist')).toBeInTheDocument()
+    expect(row(container, 'Rôle de whitelist du serveur')).toBeInTheDocument()
     expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
@@ -341,5 +352,209 @@ describe('server configuration autosave', () => {
     expect(entries.every((entry) => !entry.dirty())).toBe(true)
     unmount()
     expect(unregister).toHaveBeenCalledTimes(entries.length)
+  })
+})
+
+describe('server whitelist role', () => {
+  it('defaults to no role, explains independent grants and batches the role with whitelist mode', async () => {
+    mockFetch(settings(), discordRoles)
+    const { container } = renderPage()
+    await ready(container)
+    const roleRow = row(container, 'Server whitelist')
+    const select = within(roleRow).getByRole('combobox')
+    await vi.waitFor(() =>
+      expect(within(select).getByRole('option', { name: '@Server whitelist' })).toBeInTheDocument(),
+    )
+    expect(select).toHaveValue('')
+    expect(within(select).getByRole('option', { name: 'No Discord role' })).toBeInTheDocument()
+    expect(roleRow.previousElementSibling).toBe(row(container, 'Whitelist mode'))
+    expect(roleRow).toHaveTextContent('linked Steam and Discord accounts')
+    expect(roleRow).toHaveTextContent('Manual access granted in Players works independently.')
+    expect(roleRow).toHaveTextContent('while whitelist mode is on')
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    vi.useFakeTimers()
+    await fireEvent.change(select, { target: { value: WHITELIST_ROLE } })
+    await fireEvent.click(within(row(container, 'Whitelist mode')).getByRole('checkbox'))
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', {
+      ig_maintenance: true,
+      maintenance_whitelist_role: WHITELIST_ROLE,
+    })
+  })
+
+  it('hydrates the saved role without writing it and permits removing it', async () => {
+    mockFetch({ ...settings(), maintenance_whitelist_role: WHITELIST_ROLE }, discordRoles)
+    const { container } = renderPage()
+    await ready(container)
+    const select = within(row(container, 'Server whitelist')).getByRole('combobox')
+    await vi.waitFor(() =>
+      expect(within(select).getByRole('option', { name: '@Server whitelist' })).toBeInTheDocument(),
+    )
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    vi.useFakeTimers()
+    await fireEvent.change(select, { target: { value: '' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', { maintenance_whitelist_role: '' })
+  })
+
+  it('keeps unrelated settings usable while roles load and populates the selector without writing', async () => {
+    let finish!: (value: Response) => void
+    vi.mocked(fetchAPI).mockImplementation(async (path) =>
+      path === ROLES_URL
+        ? new Promise<Response>((resolve) => {
+            finish = resolve
+          })
+        : (okJson({ settings: settings() }) as Response),
+    )
+    const { container } = renderPage()
+    await ready(container)
+    const roleRow = row(container, 'Server whitelist')
+    const select = within(roleRow).getByRole('combobox')
+    expect(select).toBeDisabled()
+    expect(roleRow).toHaveTextContent('Loading Discord roles…')
+    expect(within(row(container, 'Whitelist mode')).getByRole('checkbox')).not.toBeDisabled()
+    finish(okJson(discordRoles) as Response)
+    await vi.waitFor(() => expect(select).not.toBeDisabled())
+    expect(select).toHaveValue('')
+    expect(within(select).getByRole('option', { name: '@Verified players' })).toHaveValue(OTHER_ROLE)
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+  })
+
+  it.each([null, [{ id: 'invalid', name: 'Invalid' }], [{ id: WHITELIST_ROLE, name: 2 }]])(
+    'rejects malformed roles and retries without discarding the group draft: %j',
+    async (payload) => {
+      mockFetch(settings(), payload)
+      const { container } = renderPage()
+      await ready(container)
+      const roleRow = row(container, 'Server whitelist')
+      await vi.waitFor(() => expect(within(roleRow).getByRole('alert')).toBeInTheDocument())
+      const select = within(roleRow).getByRole('combobox')
+      expect(select).toBeDisabled()
+      vi.useFakeTimers()
+      const support = within(row(container, 'Support Link')).getByRole('textbox')
+      await fireEvent.input(support, { target: { value: 'https://draft.example' } })
+      mockFetch(settings(), discordRoles)
+      await fireEvent.click(within(roleRow).getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(select).not.toBeDisabled())
+      expect(support).toHaveValue('https://draft.example')
+      expect(select).toHaveValue('')
+      expect(saveDashboardSettings).not.toHaveBeenCalled()
+      await autosave()
+      expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', {
+        ig_supportLink: 'https://draft.example',
+      })
+    },
+  )
+
+  it('preserves a deleted role until explicitly cleared without blocking other general settings', async () => {
+    mockFetch({ ...settings(), maintenance_whitelist_role: WHITELIST_ROLE }, [discordRoles[1]])
+    const { container } = renderPage()
+    await ready(container)
+    const select = within(row(container, 'Server whitelist')).getByRole('combobox')
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    expect(within(select).getByRole('option', { name: `Unavailable role (${WHITELIST_ROLE})` })).toBeDisabled()
+    expect(select).not.toBeDisabled()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    vi.useFakeTimers()
+    await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
+      target: { value: 'https://other.example' },
+    })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { ig_supportLink: 'https://other.example' })
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    await fireEvent.change(select, { target: { value: '' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { maintenance_whitelist_role: '' })
+  })
+
+  it('holds an invalid saved role locally until it is cleared', async () => {
+    mockFetch({ ...settings(), maintenance_whitelist_role: '1234567890123456' }, discordRoles)
+    const { container } = renderPage()
+    await ready(container)
+    const roleRow = row(container, 'Server whitelist')
+    const select = within(roleRow).getByRole('combobox')
+    vi.useFakeTimers()
+    await fireEvent.click(within(row(container, 'Whitelist mode')).getByRole('checkbox'))
+    await autosave()
+    expect(select).toHaveAttribute('aria-invalid', 'true')
+    expect(within(roleRow).getByRole('alert')).toHaveTextContent('Choose an available Discord role or no role.')
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    await fireEvent.change(select, { target: { value: '' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', {
+      ig_maintenance: true,
+      maintenance_whitelist_role: '',
+    })
+  })
+
+  it.each(['loading', 'failed'])('permits clearing a saved role when the Discord lookup is %s', async (state) => {
+    vi.mocked(fetchAPI).mockImplementation(async (path) =>
+      path === ROLES_URL
+        ? state === 'loading'
+          ? new Promise<Response>(() => {})
+          : (errJson() as Response)
+        : (okJson({ settings: { ...settings(), maintenance_whitelist_role: WHITELIST_ROLE } }) as Response),
+    )
+    const { container } = renderPage()
+    await ready(container)
+    const roleRow = row(container, 'Server whitelist')
+    const select = within(roleRow).getByRole('combobox')
+    if (state === 'failed') await vi.waitFor(() => expect(within(roleRow).getByRole('alert')).toBeInTheDocument())
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    expect(select).not.toBeDisabled()
+    vi.useFakeTimers()
+    await fireEvent.change(select, { target: { value: '' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', { maintenance_whitelist_role: '' })
+    expect(select).toHaveValue('')
+    expect(select).toBeDisabled()
+  })
+
+  it('preserves the selected role after a failed autosave until an explicit retry', async () => {
+    mockFetch(settings(), discordRoles)
+    const { container } = renderPage()
+    await ready(container)
+    const select = within(row(container, 'Server whitelist')).getByRole('combobox')
+    vi.useFakeTimers()
+    vi.mocked(saveDashboardSettings).mockRejectedValueOnce(new Error('Offline'))
+    await fireEvent.change(select, { target: { value: WHITELIST_ROLE } })
+    await autosave()
+    expect(within(section(container, 'general')).getByRole('alert')).toBeInTheDocument()
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    await fireEvent.click(within(section(container, 'general')).getByRole('button', { name: 'Try again' }))
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { maintenance_whitelist_role: WHITELIST_ROLE })
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    expect(within(section(container, 'general')).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('keeps a role selected during an in-flight autosave and submits it after the first acknowledgement', async () => {
+    mockFetch(settings(), discordRoles)
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    let finish!: (value: Awaited<ReturnType<typeof saveDashboardSettings>>) => void
+    vi.mocked(saveDashboardSettings).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    const select = within(row(container, 'Server whitelist')).getByRole('combobox')
+    await fireEvent.change(select, { target: { value: WHITELIST_ROLE } })
+    await autosave()
+    expect(select).not.toBeDisabled()
+    await fireEvent.change(select, { target: { value: OTHER_ROLE } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    finish({ settings: { maintenance_whitelist_role: WHITELIST_ROLE }, sync: 'applied' })
+    await autosave()
+    expect(select).toHaveValue(OTHER_ROLE)
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { maintenance_whitelist_role: OTHER_ROLE })
   })
 })

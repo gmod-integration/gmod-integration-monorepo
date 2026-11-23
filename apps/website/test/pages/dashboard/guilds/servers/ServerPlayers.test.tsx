@@ -132,7 +132,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
     it.each([
       ['Total playtime', 'total_time'],
       ['Connections', 'total_connect'],
-      ['Maintenance access', 'bypassMaintenance'],
+      ['Manual whitelist', 'bypassMaintenance'],
     ])('requests %s ordering on the server', async (label, key) => {
       renderPage()
       await waitForLoaded()
@@ -147,7 +147,7 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
     it('exposes focusable sort controls and announces the active column and direction', async () => {
       const { container } = renderPage()
       await waitForLoaded()
-      for (const label of ['Name', 'Rank', 'Total playtime', 'Connections', 'Maintenance access']) {
+      for (const label of ['Name', 'Rank', 'Total playtime', 'Connections', 'Manual whitelist']) {
         const header = findHeader(container, label)
         const control = within(header).getByRole('button', { name: label })
         expect(header).toHaveAttribute('scope', 'col')
@@ -328,6 +328,11 @@ describe('pages/dashboard/guilds/servers/ServerPlayers.tsx', () => {
       const select = within(modal).getByRole('combobox') as HTMLSelectElement
       expect(select.value).toBe('true') // Alice.bypassMaintenance === true
       expect(select).not.toBeDisabled()
+      expect(within(modal).getByLabelText('Manual whitelist access')).toBe(select)
+      expect(modal).toHaveTextContent('independently of the Server whitelist role')
+      expect(modal).toHaveTextContent(
+        'Disabling this manual entry keeps any access provided by the role or another permission.',
+      )
     })
 
     it('saves the edited bypassMaintenance value and updates the row icon on success', async () => {

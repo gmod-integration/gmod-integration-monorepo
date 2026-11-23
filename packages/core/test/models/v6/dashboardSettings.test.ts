@@ -52,6 +52,20 @@ beforeEach(() => {
 })
 
 describe('atomic dashboard settings', () => {
+  it('persists a whitelist role before asking the game to recheck players, without sending a grant', async () => {
+    const input = { maintenance_whitelist_role: '333333333333333333' }
+    expect(await saveServerDashboardSettings(server(), input)).toEqual({ settings: input, sync: 'pending' })
+    expect(mocks.serverUpsert).toHaveBeenCalledWith({
+      where: { serverID_setting: { serverID: 'server', setting: 'maintenance_whitelist_role' } },
+      create: { serverID: 'server', setting: 'maintenance_whitelist_role', value: input.maintenance_whitelist_role },
+      update: { value: input.maintenance_whitelist_role },
+    })
+    expect(mocks.enqueue).toHaveBeenCalledExactlyOnceWith('wsSendToServer', {
+      id: 'server',
+      data: { method: 'wsRefreshPlayerAccess' },
+    })
+    expect(mocks.del).toHaveBeenCalledWith('server:server:setting:maintenance_whitelist_role')
+  })
   it('serializes administrator rank maps for storage and addon synchronization as one accepted draft', async () => {
     const input = { ig_adminRank: { superadmin: true as const, moderator: true as const } }
     expect(await saveServerDashboardSettings(server(true), input)).toEqual({ settings: input, sync: 'pending' })

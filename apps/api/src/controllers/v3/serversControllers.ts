@@ -25,7 +25,12 @@ export async function postIGSettings(req: Request, res: Response) {
 export async function getIGSettings(req: Request, res: Response) {
   const server = req.server!
   const settings = await timeRequestStep(res, 'config', () => server.getAllIGSettings())
-  return res.status(200).json({ settings })
+  return res.status(200).json({
+    settings: {
+      ...settings,
+      ...(req.panelUser ? { maintenance_whitelist_role: await server.getSetting('maintenance_whitelist_role') } : {}),
+    },
+  })
 }
 
 export async function postStatus(req: Request, res: Response) {

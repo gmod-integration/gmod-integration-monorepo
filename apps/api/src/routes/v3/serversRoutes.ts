@@ -22,6 +22,7 @@ import {
 import { reportError } from '@/controllers/gmod/GmodErrorsControllers.js'
 import {
   getPlayer,
+  getPlayerAccess,
   playerBan,
   playerChangeGroup,
   playerChangeName,
@@ -55,6 +56,7 @@ router.post('/:serverID/stop', asyncHandler(serverStop))
 router.post('/:serverID/warns', asyncHandler(serverImportWarns))
 router.post('/:serverID/logs', asyncHandler(postMultiLog))
 router.get('/:serverID/players/:steamID64', asyncHandler(getPlayer))
+router.get('/:serverID/players/:steamID64/access', asyncHandler(getPlayerAccess))
 router.post('/:serverID/players/:steamID64/say', asyncHandler(playerSay))
 router.post('/:serverID/players/:steamID64/warns', asyncHandler(playerWarn))
 router.post('/:serverID/players/:steamID64/bans', asyncHandler(playerBan))

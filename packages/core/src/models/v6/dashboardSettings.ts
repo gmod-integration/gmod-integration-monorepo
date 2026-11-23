@@ -36,6 +36,13 @@ export async function saveServerDashboardSettings(server: Server, input: unknown
     const keys = Object.keys(settings).map((setting) => `server:${server.id}:setting:${setting}`)
     if (keys.length) await redis.del(...keys)
     for (const [setting, value] of Object.entries(settings)) {
+      if (setting === 'maintenance_whitelist_role') {
+        sync = 'pending'
+        await wsSendToServerQueue.add('wsSendToServer', {
+          id: server.id,
+          data: { method: 'wsRefreshPlayerAccess' },
+        })
+      }
       if (setting.startsWith('ig_')) {
         // Enqueueing does not acknowledge application by the game server.
         sync = 'pending'

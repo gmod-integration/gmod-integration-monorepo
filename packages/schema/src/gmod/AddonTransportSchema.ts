@@ -1,5 +1,15 @@
 import { z } from 'zod'
 
+export const PlayerAccessRefreshCommandSchema = z
+  .object({
+    method: z.literal('wsRefreshPlayerAccess'),
+    steamID: z
+      .string()
+      .regex(/^\d{17}$/)
+      .optional(),
+  })
+  .strict()
+
 export const ADDON_PROTOCOL_VERSION = 1
 export const ADDON_MAX_MESSAGE_BYTES = 12 * 1024 * 1024
 export const ADDON_MAX_LOG_ENTRIES = 100

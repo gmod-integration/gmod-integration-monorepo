@@ -17,6 +17,12 @@ export async function getPlayer(req: Request, res: Response) {
   return res.send((await server.getPlayerStats(steamID64)) || {})
 }
 
+export async function getPlayerAccess(req: Request, res: Response) {
+  const steamID64 = getSingleParam(req.params.steamID64)
+  res.setHeader('Cache-Control', 'no-store')
+  return res.send(await req.server!.getPlayerAccess(steamID64))
+}
+
 export async function playerSpawn(req: Request, res: Response) {
   const server = req.server!
   await logServer(server, 'player_spawn', req.body)

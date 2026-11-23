@@ -15,6 +15,7 @@ import {
   MainClientSyncPremiumRolesJobSchema,
   MainClientSetPresenceJobSchema,
   DiscordGuildSnapshotJobSchema,
+  DiscordGuildMemberRoleJobSchema,
   DiscordGuildVerifyUserJobSchema,
   DiscordGuildRunVerificationCheckJobSchema,
   DiscordCreateVerificationMessageJobSchema,
@@ -45,6 +46,7 @@ import {
   type MainClientSyncPremiumRolesJob,
   type MainClientSetPresenceJob,
   type DiscordGuildSnapshotJob,
+  type DiscordGuildMemberRoleJob,
   type DiscordGuildVerifyUserJob,
   type DiscordGuildRunVerificationCheckJob,
   type DiscordCreateVerificationMessageJob,
@@ -84,6 +86,7 @@ import { getDiscordEntitlements } from '@gmod/domain-guild/Guild.js'
 import { getPublicGuildInvite } from '../utils/publicInvite.js'
 import { renderStatusPreview } from '../utils/statusPreview.js'
 import { prepareCustomBotAvatar } from '../utils/customBotAvatar.js'
+import { getGuildMemberRole } from '../utils/memberRole.js'
 
 async function writeReply(correlationId: string, payload: unknown) {
   await redis.set(`bullmq:reply:${correlationId}`, JSON.stringify(payload), 'EX', 30)
@@ -614,6 +617,7 @@ export const discordMainClientOpsWorker = new Worker<
 )
 
 export const discordGuildOpsWorker = new Worker<
+  | DiscordGuildMemberRoleJob
   | DiscordGuildPublicInviteJob
   | DiscordGuildSnapshotJob
   | DiscordGuildVerifyUserJob
@@ -643,6 +647,7 @@ export const discordGuildOpsWorker = new Worker<
   'discord-guildOps',
   async (
     job: Job<
+      | DiscordGuildMemberRoleJob
       | DiscordGuildPublicInviteJob
       | DiscordGuildSnapshotJob
       | DiscordGuildVerifyUserJob
@@ -670,6 +675,13 @@ export const discordGuildOpsWorker = new Worker<
       | DiscordGuildRemoveSyncRolesJob
     >,
   ) => {
+    if (job.name === 'guildMemberRole') {
+      const payload = DiscordGuildMemberRoleJobSchema.parse(job.data)
+      const result = await getGuildMemberRole(payload.guildID, payload.discordID, payload.roleID)
+      await writeReply(payload.correlationId, { correlationId: payload.correlationId, ...result })
+      return
+    }
+
     if (job.name === 'guildPublicInvite') {
       const payload = DiscordGuildPublicInviteJobSchema.parse(job.data)
       let inviteUrl: string | null = null

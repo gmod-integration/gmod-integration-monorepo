@@ -339,8 +339,18 @@ export async function handleAddonRequest(server: Server, rawRequest: AddonReques
     if (path === '')
       return ok({ id: server.getID(), name: server.name, guild: server.guild, latestVersion: lastGmodIntegrationTag })
     if (path === '/config') return ok(await server.getAllIGSettings())
-    const target = /^\/players\/(\d{17}|0)$/.exec(path)
-    if (target) return ok((await server.getPlayerStats(target[1])) || {})
+    const target = /^\/players\/(\d{17}|0)\/access$/.exec(path)
+    if (target) {
+      try {
+        return ok(await server.getPlayerAccess(target[1]))
+      } catch (error) {
+        if (error && typeof error === 'object' && 'code' in error && error.code === 'provider_unavailable')
+          return { status: 503, body: { error: 'player_access_unavailable' } }
+        throw error
+      }
+    }
+    const playerStats = /^\/players\/(\d{17}|0)$/.exec(path)
+    if (playerStats) return ok((await server.getPlayerStats(playerStats[1])) || {})
     return notFound()
   }
   if (path === '/stop') {

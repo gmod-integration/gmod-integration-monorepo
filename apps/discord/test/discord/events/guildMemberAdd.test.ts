@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+const refreshAccess = vi.fn().mockResolvedValue(undefined)
+vi.mock('@gmod/domain-guild/playerAccessNotifications.js', () => ({ refreshGuildMemberPlayerAccess: refreshAccess }))
 
 let configDiscordMock: any = { clientID: 'bot-id' }
 vi.mock('@gmod/config', () => ({
@@ -61,6 +63,7 @@ describe('guildMemberAdd event', () => {
     getNotVerifiedMessageMock.mockResolvedValue({ content: 'please verify' })
     prismaMock.gm_guild_settings.findFirst.mockResolvedValue(null)
     effectiveSettingMock.mockResolvedValue(false)
+    refreshAccess.mockReset().mockResolvedValue(undefined)
   })
 
   it('returns immediately when the bot itself joins', async () => {
@@ -70,6 +73,7 @@ describe('guildMemberAdd event', () => {
     await mod.default.execute(addInfo as any)
 
     expect(updateGuildStatMock).not.toHaveBeenCalled()
+    expect(refreshAccess).not.toHaveBeenCalled()
   })
 
   it('logs an error when the guild cannot be found in the client cache', async () => {
@@ -104,6 +108,15 @@ describe('guildMemberAdd event', () => {
     expect(updateGuildStatMock).toHaveBeenCalled()
     expect(addAutoRoleToUserMock).toHaveBeenCalled()
     expect(getNotVerifiedMessageMock).not.toHaveBeenCalled()
+    expect(refreshAccess).toHaveBeenCalledWith('guild1', 'user1')
+  })
+
+  it('does not let an access notification failure interrupt the existing join flow', async () => {
+    refreshAccess.mockRejectedValueOnce(new Error('notification failed'))
+    const mod = await import('../../../src/discord/events/guildMemberAdd.js')
+    await expect(mod.default.execute(makeAddInfo() as any)).resolves.toBeUndefined()
+    expect(addAutoRoleToUserMock).toHaveBeenCalled()
+    expect(verifyUserMock).toHaveBeenCalled()
   })
 
   it('returns without messaging when verification_dont_mp setting is set', async () => {

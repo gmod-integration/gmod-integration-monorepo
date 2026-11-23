@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+const refreshAccess = vi.fn().mockResolvedValue(undefined)
+vi.mock('@gmod/domain-guild/playerAccessNotifications.js', () => ({ refreshGuildMemberPlayerAccess: refreshAccess }))
 
 const invalidatePermissionsMock = vi.fn().mockResolvedValue(undefined)
 vi.mock('@gmod/domain-user/guildPermissions.js', () => ({
@@ -21,6 +23,8 @@ function makeRemoveInfo(overrides: any = {}) {
 describe('guildMemberRemove event', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    refreshAccess.mockReset().mockResolvedValue(undefined)
+    invalidatePermissionsMock.mockReset().mockResolvedValue(undefined)
   })
 
   it('does nothing when the guild is not tracked in the db', async () => {
@@ -32,6 +36,16 @@ describe('guildMemberRemove event', () => {
 
     expect(prismaMock.gm_guild.findFirst).toHaveBeenCalledWith({ where: { guild: 'guild1' } })
     expect(prismaMock.gm_guild.update).not.toHaveBeenCalled()
+    expect(refreshAccess).toHaveBeenCalledWith('guild1', 'member1')
+  })
+
+  it('continues existing member bookkeeping when either invalidation fails', async () => {
+    invalidatePermissionsMock.mockRejectedValueOnce(new Error('permission update failed'))
+    refreshAccess.mockRejectedValueOnce(new Error('notification failed'))
+    prismaMock.gm_guild.findFirst.mockResolvedValueOnce({ guild: 'guild1', member: 2 })
+    const mod = await import('../../../src/discord/events/guildMemberRemove.js')
+    await mod.default.execute(makeRemoveInfo() as any)
+    expect(prismaMock.gm_guild.update).toHaveBeenCalledWith({ where: { guild: 'guild1' }, data: { member: 1 } })
   })
 
   it('decrements the stored member count when the guild is tracked', async () => {

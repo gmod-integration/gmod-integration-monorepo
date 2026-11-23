@@ -28,6 +28,7 @@ export const ServerDashboardSettingsSchema = z
     ig_clientBranch: z.enum(['none', 'dev', 'prerelease', 'x86-64', 'any']),
     ig_supportLink: supportURL,
     ig_maintenance: z.boolean(),
+    maintenance_whitelist_role: z.union([z.literal(''), z.string().regex(/^\d{17,20}$/)]),
     ig_language: z.enum(['en', 'fr', 'de', 'es', 'it', 'tr', 'ru']),
     ig_logTimestamp: text,
     ig_adminRank: z

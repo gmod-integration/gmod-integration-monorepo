@@ -146,7 +146,7 @@
     "guild_verification": "Vérification Discord et Steam",
     "guild_verification_role_limit": "Limite de rôles de vérification",
     "force_ply_link": "Exiger l’association des comptes joueurs",
-    "maintenance_white_list": "Maintenance",
+    "maintenance_white_list": "Mode whitelist",
     "rcon": "Commandes de console du jeu (RCON)",
     "reward": "Récompense",
     "free": "Gratuit",
@@ -384,7 +384,7 @@
           "intro": "Choisissez qui peut jouer et gardez les informations de modération à portée de main.",
           "one": "Bannissements croisés et contrôles à l’entrée",
           "two": "Historique AWarn3 avec administrateur et motif",
-          "three": "Maintenance avec accès défini par joueur",
+          "three": "Mode whitelist avec accès manuel ou par rôle Discord",
           "four": "Comptes liés obligatoires, branche du jeu et partage familial"
         },
         "diagnostics": {
@@ -917,20 +917,20 @@
       },
       "edit_player": {
         "title": "Modifier l’accès du joueur",
-        "bypass_maintenance": "Autoriser l’accès pendant la maintenance",
+        "bypass_maintenance": "Accès manuel à la whitelist",
         "yes": "Oui",
         "no": "Non",
         "save": "Enregistrer",
-        "bypass_help": "Autorisez ce joueur à se connecter lorsque le mode maintenance est activé. Enregistrez pour appliquer cette autorisation."
+        "bypass_help": "Autorisez ce joueur à rejoindre le serveur en mode whitelist indépendamment du rôle de whitelist du serveur. Retirer cet accès manuel conserve les autorisations accordées par le rôle ou une autre permission. Enregistrez pour appliquer."
       },
       "players_database": {
         "title": "Historique des joueurs",
-        "description": "Consultez les joueurs enregistrés, leur temps de jeu cumulé et leur nombre de connexions. Modifiez un joueur pour gérer son accès pendant la maintenance.",
+        "description": "Consultez les joueurs enregistrés, leur temps de jeu cumulé et leur nombre de connexions. Modifiez un joueur pour gérer son accès manuel à la whitelist ; l’accès par rôle reste distinct.",
         "name": "Nom",
         "rank": "Rang",
         "total_time": "Temps de jeu cumulé",
         "total_connect": "Connexions",
-        "bypass_maintenance": "Accès en maintenance",
+        "bypass_maintenance": "Whitelist manuelle",
         "actions": "Actions",
         "steam": "Ouvrir le profil Steam",
         "edit": "Modifier",
@@ -1133,8 +1133,8 @@
             "description": "Lien d’aide HTTP ou HTTPS affiché lorsqu’un joueur ne peut pas rejoindre le serveur. Laissez ce champ vide pour ne pas afficher de lien."
           },
           "ig_maintenance": {
-            "title": "Mode maintenance",
-            "description": "Réservez l’accès aux joueurs autorisés à contourner la maintenance. Gérez cette autorisation dans Joueurs ; les administrateurs Discord et les groupes administrateurs en jeu configurés sont également exemptés."
+            "title": "Mode whitelist",
+            "description": "Réservez l’accès aux joueurs autorisés. L’accès manuel défini dans Joueurs et le rôle de whitelist du serveur accordent l’accès indépendamment l’un de l’autre. Les groupes administrateurs en jeu configurés sont également autorisés."
           },
           "ig_language": {
             "title": "Langue du mod",
@@ -1146,13 +1146,22 @@
           },
           "ig_adminRank": {
             "title": "Groupes administrateurs en jeu",
-            "description": "Indiquez les groupes en jeu exacts, comme superadmin. Leurs membres peuvent modifier la configuration de l’addon et contourner la maintenance. Ce ne sont pas des rôles Discord."
+            "description": "Indiquez les groupes en jeu exacts, comme superadmin. Leurs membres peuvent modifier la configuration de l’addon et rejoindre le serveur en mode whitelist. Ce ne sont pas des rôles Discord."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Rôle de whitelist du serveur",
+            "description": "Les joueurs dont les comptes Steam et Discord sont liés peuvent accéder au mode whitelist avec ce rôle. L’accès manuel accordé dans Joueurs reste indépendant. Si un joueur perd le rôle pendant que le mode whitelist est actif, il est expulsé sauf si une autre autorisation lui donne encore accès."
           }
         },
         "remove_admin_rank": "Retirer ce rang",
         "invalid_delay": "Indiquez un nombre entier de secondes supérieur ou égal à 0.",
         "invalid_support_url": "Indiquez un lien HTTP ou HTTPS, ou laissez ce champ vide.",
-        "invalid_admin_ranks": "Indiquez un groupe en jeu différent et non vide sur chaque ligne."
+        "invalid_admin_ranks": "Indiquez un groupe en jeu différent et non vide sur chaque ligne.",
+        "whitelist_no_role": "Aucun rôle Discord",
+        "whitelist_role_missing": "Rôle indisponible ({1})",
+        "whitelist_roles_loading": "Chargement des rôles Discord…",
+        "whitelist_roles_error": "Impossible de charger les rôles Discord. Réessayez ou retirez le rôle actuel.",
+        "whitelist_role_invalid": "Choisissez un rôle Discord disponible ou aucun rôle."
       },
       "team_roles": {
         "error_occurred": "Une erreur s'est produite lors de la récupération de la synchronisation des rôles.",
@@ -1527,7 +1536,7 @@
     "access": "Accès et vérification",
     "access_description": "Choisissez comment les joueurs lient leurs comptes et sont vérifiés à leur arrivée.",
     "administration": "Administration",
-    "administration_description": "Gérez les accès des administrateurs et le mode maintenance.",
+    "administration_description": "Gérez les accès des administrateurs et le mode whitelist.",
     "advanced": "Réglages avancés",
     "advanced_description": "Compatibilité du client, dépannage et format des journaux.",
     "all": "Tous les réglages",

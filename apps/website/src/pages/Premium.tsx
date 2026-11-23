@@ -259,7 +259,7 @@ const Premium: Component = () => {
       ['premium_value']: true,
     },
     ['maintenance_white_list']: {
-      ['name']: t('premium.maintenance_white_list', 'Maintenance'),
+      ['name']: t('premium.maintenance_white_list', 'Whitelist mode'),
       ['free_value']: true,
       ['premium_value']: true,
     },

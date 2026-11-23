@@ -189,10 +189,10 @@ const ServerPlayer: Component = () => {
       >
         <FormField
           id="player-bypass-maintenance"
-          label={t('dashboard.server.edit_player.bypass_maintenance', 'Allow access during maintenance')}
+          label={t('dashboard.server.edit_player.bypass_maintenance', 'Manual whitelist access')}
           description={t(
             'dashboard.server.edit_player.bypass_help',
-            'Allow this player to join while maintenance mode is enabled. Save to apply this permission.',
+            'Allow this player to join in whitelist mode independently of the Server whitelist role. Disabling this manual entry keeps any access provided by the role or another permission. Save to apply.',
           )}
         >
           <select
@@ -227,7 +227,7 @@ const ServerPlayer: Component = () => {
         title={t('dashboard.server.players_database.title', 'Player records')}
         description={t(
           'dashboard.server.players_database.description',
-          'View recorded players, their total playtime and connection count. Edit a player to manage maintenance access.',
+          'View recorded players, their total playtime and connection count. Edit a player to manage manual whitelist access; role-based access is handled separately.',
         )}
         type="none"
         footer={
@@ -304,7 +304,7 @@ const ServerPlayer: Component = () => {
                   class="ui-table-sort"
                   onClick={() => void sortPlayerBy('bypassMaintenance')}
                 >
-                  {t('dashboard.server.players_database.bypass_maintenance', 'Maintenance access')}{' '}
+                  {t('dashboard.server.players_database.bypass_maintenance', 'Manual whitelist')}{' '}
                   <Icon name={getSortIcon('bypassMaintenance')} />
                 </Button>
               </th>

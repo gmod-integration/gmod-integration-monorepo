@@ -14,6 +14,7 @@ import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/Us
 import { generateToken } from '@gmod/shared/generateToken.js'
 import { badArgument } from '../../utils/tools.js'
 import { createServer, getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
+import { refreshServerPlayerAccess } from '@gmod/domain-server/playerAccess.js'
 import { type Guild } from '@gmod/domain-guild/Guild.js'
 import {
   enqueueDiscordGuildReloadBotInstance,
@@ -323,6 +324,7 @@ export async function processPutPlayerBypassMaintenance(
     },
   })
 
+  await refreshServerPlayerAccess(server.id, playerID).catch(() => false)
   return ok(editPlayer)
 }
 

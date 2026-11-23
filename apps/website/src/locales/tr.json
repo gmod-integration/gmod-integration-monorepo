@@ -139,7 +139,7 @@
     "guild_verification": "Vérification de la guilde",
     "guild_verification_role_limit": "Vérification de la guilde - Limite de rôle",
     "force_ply_link": "Forcer le lien du joueur",
-    "maintenance_white_list": "Entretien",
+    "maintenance_white_list": "Beyaz liste modu",
     "rcon": "Exécution RCON",
     "reward": "Récompenses",
     "free": "Gratuit",
@@ -332,7 +332,7 @@
           "intro": "Kimin oynayabileceğini belirleyin ve moderasyon kayıtlarını elinizin altında tutun.",
           "one": "Platformlar arası yasak kayıtları ve giriş kontrolleri",
           "two": "Yönetici ve gerekçeyle AWarn3 uyarı geçmişi",
-          "three": "Oyuncu bazında erişimli bakım modu",
+          "three": "Elle verilen veya Discord rolüyle sağlanan beyaz liste erişimi",
           "four": "Zorunlu hesap bağlantısı, istemci dalı ve Family Sharing kontrolleri"
         },
         "diagnostics": {
@@ -805,19 +805,20 @@
       },
       "edit_player": {
         "title": "Modifier le lecteur",
-        "bypass_maintenance": "Entretien par passe",
+        "bypass_maintenance": "Elle verilen beyaz liste erişimi",
         "yes": "Oui",
         "no": "Numéro",
-        "save": "Enregistrer"
+        "save": "Enregistrer",
+        "bypass_help": "Bu oyuncunun sunucu rolünden bağımsız olarak beyaz liste modunda katılmasına izin verin. Elle eklenen kaydı kaldırmak, rolün veya başka bir iznin sağladığı erişimi korur. Uygulamak için kaydedin."
       },
       "players_database": {
         "title": "Base de données des joueurs",
-        "description": "Liste de tous les joueurs du serveur",
+        "description": "Kayıtlı oyuncuları, oyun süresini ve bağlantıları görüntüleyin. Elle verilen beyaz liste erişimi için oyuncuyu düzenleyin; rol erişimi ayrı yönetilir.",
         "name": "Dénomination",
         "rank": "Classement",
         "total_time": "Durée totale",
         "total_connect": "Total Connecter",
-        "bypass_maintenance": "Entretien du passage",
+        "bypass_maintenance": "Elle eklenen beyaz liste",
         "actions": "Actions",
         "steam": "vapeur",
         "edit": "Modifier"
@@ -1005,8 +1006,8 @@
             "description": "Oyuncu gereksinimleri karşılamadığında gösterilen destek bağlantısı."
           },
           "ig_maintenance": {
-            "title": "Bakım Modu",
-            "description": "Yalnızca bakım atlamasına sahip oyuncuların katılmasına izin ver (oyuncu > düzenle > atlama)"
+            "title": "Beyaz liste modu",
+            "description": "Erişimi izin verilen oyuncularla sınırlandırın. Oyuncular bölümündeki elle eklenen kayıt veya sunucunun beyaz liste rolü bağımsız olarak erişim sağlar. Yapılandırılmış oyun yönetici grupları da erişebilir."
           },
           "ig_language": {
             "title": "Eklenti Dili",
@@ -1018,10 +1019,19 @@
           },
           "ig_adminRank": {
             "title": "Yönetici Rütbeleri",
-            "description": "Yapılandırmayı düzenlemesi veya bakım modunu atlaması izin verilen rütbeler."
+            "description": "superadmin gibi tam oyun kullanıcı gruplarını girin. Üyeler eklenti ayarlarını düzenleyebilir ve beyaz liste modunda katılabilir. Bunlar Discord rolleri değildir."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Sunucu beyaz liste rolü",
+            "description": "Steam ve Discord hesapları bağlı oyuncular bu rol üzerinden beyaz liste modunda katılabilir. Oyuncular bölümünde elle verilen erişim bağımsızdır. Beyaz liste modu etkinken rolünü kaybeden oyuncu, başka bir izin erişim sağlamıyorsa sunucudan atılır."
           }
         },
-        "remove_admin_rank": "Rütbeyi kaldır"
+        "remove_admin_rank": "Rütbeyi kaldır",
+        "whitelist_no_role": "Discord rolü yok",
+        "whitelist_role_missing": "Kullanılamayan rol ({1})",
+        "whitelist_roles_loading": "Discord rolleri yükleniyor…",
+        "whitelist_roles_error": "Discord rolleri yüklenemedi. Yeniden deneyin veya mevcut rolü kaldırın.",
+        "whitelist_role_invalid": "Kullanılabilir bir Discord rolü seçin veya rol seçmeyin."
       },
       "team_roles": {
         "error_occurred": "Une erreur s'est produite lors de la recherche de la synchronisation des rôles.",
@@ -1284,7 +1294,7 @@
     "access": "Erişim ve doğrulama",
     "access_description": "Oyuncuların hesaplarını nasıl bağlayacağını ve katılırken nasıl doğrulanacağını seçin.",
     "administration": "Yönetim",
-    "administration_description": "Yönetici erişimini ve bakım modunu yönetin.",
+    "administration_description": "Yönetici erişimini ve beyaz liste modunu yönetin.",
     "advanced": "Gelişmiş ayarlar",
     "advanced_description": "İstemci uyumluluğu, sorun giderme ve kayıt biçimi.",
     "all": "Tüm ayarlar",

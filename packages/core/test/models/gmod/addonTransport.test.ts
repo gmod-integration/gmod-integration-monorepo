@@ -105,6 +105,7 @@ const server = () =>
     token: 'never-return-this',
     getAllIGSettings: vi.fn().mockResolvedValue({ ig_debug: false }),
     getPlayerStats: vi.fn().mockResolvedValue({ connectTime: 42 }),
+    getPlayerAccess: vi.fn().mockResolvedValue({ bypassMaintenance: false, discordAdmin: false }),
   }) as unknown as Server
 const request = (endpoint: string, body?: unknown, method: 'GET' | 'POST' = 'POST') =>
   ({
@@ -186,6 +187,35 @@ describe('authenticated addon dispatcher', () => {
     expect(target.getPlayerStats).toHaveBeenCalledWith(id)
     expect((await handleAddonRequest(target, request(`/servers/s2/players/${id}`, undefined, 'GET'))).status).toBe(403)
     expect(target.getPlayerStats).toHaveBeenCalledTimes(1)
+  })
+
+  it('reads whitelist authorization separately from ordinary stats and binds it to this server', async () => {
+    const target = server()
+    expect(await handleAddonRequest(target, request(`/servers/s1/players/${id}/access`, undefined, 'GET'))).toEqual({
+      status: 200,
+      body: { bypassMaintenance: false, discordAdmin: false },
+    })
+    expect(target.getPlayerAccess).toHaveBeenCalledExactlyOnceWith(id)
+    expect(target.getPlayerStats).not.toHaveBeenCalled()
+    expect(
+      (await handleAddonRequest(target, request(`/servers/s2/players/${id}/access`, undefined, 'GET'))).status,
+    ).toBe(403)
+    expect(target.getPlayerAccess).toHaveBeenCalledTimes(1)
+  })
+  it('does not turn an unavailable role lookup into a successful authorization denial', async () => {
+    const target = server()
+    vi.mocked(target.getPlayerAccess).mockRejectedValueOnce(
+      Object.assign(new Error('private provider detail'), { code: 'provider_unavailable' }),
+    )
+    expect(await handleAddonRequest(target, request(`/servers/s1/players/${id}/access`, undefined, 'GET'))).toEqual({
+      status: 503,
+      body: { error: 'player_access_unavailable' },
+    })
+    const failure = new Error('Unexpected failure')
+    vi.mocked(target.getPlayerAccess).mockRejectedValueOnce(failure)
+    await expect(
+      handleAddonRequest(target, request(`/servers/s1/players/${id}/access`, undefined, 'GET')),
+    ).rejects.toBe(failure)
   })
 
   it.each(['/servers/s2/config', `/clients/${id}/servers/s2/screenshots`])(

@@ -119,6 +119,29 @@ function lastReplyPayload() {
 describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
   beforeEach(() => resetAllMocks())
 
+  it('replies to a fresh scoped member role lookup without returning member data', async () => {
+    const guildID = '111111111111111111',
+      discordID = '222222222222222222',
+      roleID = '333333333333333333'
+    const role = { id: roleID, guild: { id: guildID } }
+    const guild = {
+      id: guildID,
+      roles: { fetch: vi.fn().mockResolvedValue(role) },
+      members: {
+        fetch: vi.fn().mockResolvedValue({
+          id: discordID,
+          guild: { id: guildID },
+          partial: false,
+          roles: { cache: new Map([[roleID, role]]) },
+        }),
+      },
+    }
+    getGuildClientMock.mockResolvedValueOnce({ guilds: { fetch: vi.fn().mockResolvedValue(guild) } })
+    await processor()(makeJob('guildMemberRole', { guildID, discordID, roleID, correlationId: 'reply' }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'reply', available: true, hasRole: true, roleExists: true })
+    expect(guild.members.fetch).toHaveBeenCalledWith({ user: discordID, force: true, cache: false })
+  })
+
   describe('guildSnapshot', () => {
     it('fetches independent guild data and its icon concurrently before replying', async () => {
       let finishFetches!: () => void

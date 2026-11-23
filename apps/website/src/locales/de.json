@@ -139,7 +139,7 @@
     "guild_verification": "Gildenprüfung",
     "guild_verification_role_limit": "Guild Verifizierung - Rollenbeschränkung",
     "force_ply_link": "Spieler-Link erzwingen",
-    "maintenance_white_list": "Instandhaltung",
+    "maintenance_white_list": "Whitelist-Modus",
     "rcon": "RCON Ausführung",
     "reward": "Belohnung",
     "free": "Frei",
@@ -332,7 +332,7 @@
           "intro": "Lege den Spielzugang fest und behalte Moderationsdaten im Blick.",
           "one": "Plattformübergreifende Bannlisten und Zugangskontrollen",
           "two": "AWarn3-Verwarnungen mit Administrator und Grund",
-          "three": "Wartungsmodus mit Zugang pro Spieler",
+          "three": "Whitelist-Modus mit manuellem Zugang oder Discord-Rolle",
           "four": "Pflicht zur Kontoverknüpfung, Spielzweig- und Family-Sharing-Prüfung"
         },
         "diagnostics": {
@@ -805,19 +805,20 @@
       },
       "edit_player": {
         "title": "Player bearbeiten",
-        "bypass_maintenance": "ByPass-Wartung",
+        "bypass_maintenance": "Manueller Whitelist-Zugang",
         "yes": "Nein",
         "no": "Nein",
-        "save": "Speichern"
+        "save": "Speichern",
+        "bypass_help": "Gewähre diesem Spieler unabhängig von der Server-Whitelist-Rolle Zugang im Whitelist-Modus. Das Entfernen dieses manuellen Eintrags lässt Zugang über die Rolle oder andere Berechtigungen bestehen. Speichere zum Anwenden."
       },
       "players_database": {
         "title": "Spielerdatenbank",
-        "description": "Liste aller Spieler im Server",
+        "description": "Sieh registrierte Spieler, ihre Spielzeit und Verbindungen ein. Bearbeite Spieler für manuellen Whitelist-Zugang; rollenbasierter Zugang bleibt getrennt.",
         "name": "Bezeichnung",
         "rank": "Rang",
         "total_time": "Gesamtzeit",
         "total_connect": "Gesamtverbindung",
-        "bypass_maintenance": "Bypass-Wartung",
+        "bypass_maintenance": "Manuelle Whitelist",
         "actions": "Maßnahmen",
         "steam": "Dampf",
         "edit": "Bearbeiten"
@@ -1005,8 +1006,8 @@
             "description": "Support-Link angezeigt, wenn ein Spieler die Anforderungen nicht erfüllt."
           },
           "ig_maintenance": {
-            "title": "Wartungsmodus",
-            "description": "Nur Spieler mit Wartungs-Bypass dürfen beitreten (Spieler > bearbeiten > Bypass)"
+            "title": "Whitelist-Modus",
+            "description": "Beschränke den Zugang auf zugelassene Spieler. Ein manueller Eintrag unter Spieler oder die Server-Whitelist-Rolle gewährt jeweils unabhängig Zugang. Konfigurierte Spieladministratorgruppen sind ebenfalls zugelassen."
           },
           "ig_language": {
             "title": "Add-on-Sprache",
@@ -1018,10 +1019,19 @@
           },
           "ig_adminRank": {
             "title": "Admin-Ränge",
-            "description": "Ränge, die berechtigt sind, die Konfiguration zu bearbeiten oder den Wartungsmodus zu umgehen."
+            "description": "Gib genaue Spielbenutzergruppen wie superadmin an. Mitglieder können die Addon-Konfiguration bearbeiten und im Whitelist-Modus beitreten. Dies sind keine Discord-Rollen."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Server-Whitelist-Rolle",
+            "description": "Spieler mit verknüpften Steam- und Discord-Konten erhalten über diese Rolle Zugang im Whitelist-Modus. Manuell gewährter Zugang unter Spieler bleibt unabhängig. Verliert ein Spieler die Rolle bei aktivem Whitelist-Modus, wird er entfernt, sofern keine andere Berechtigung Zugang gewährt."
           }
         },
-        "remove_admin_rank": "Rang entfernen"
+        "remove_admin_rank": "Rang entfernen",
+        "whitelist_no_role": "Keine Discord-Rolle",
+        "whitelist_role_missing": "Nicht verfügbare Rolle ({1})",
+        "whitelist_roles_loading": "Discord-Rollen werden geladen…",
+        "whitelist_roles_error": "Discord-Rollen konnten nicht geladen werden. Versuche es erneut oder entferne die aktuelle Rolle.",
+        "whitelist_role_invalid": "Wähle eine verfügbare Discord-Rolle oder keine Rolle."
       },
       "team_roles": {
         "error_occurred": "Beim Abrufen der Rollen ist ein Fehler aufgetreten.",
@@ -1284,7 +1294,7 @@
     "access": "Zugang und Verifizierung",
     "access_description": "Lege fest, wie Spieler ihre Konten verknüpfen und beim Beitritt verifiziert werden.",
     "administration": "Verwaltung",
-    "administration_description": "Verwalte Administratorzugriff und Wartungsmodus.",
+    "administration_description": "Verwalte Administratorzugriff und Whitelist-Modus.",
     "advanced": "Erweiterte Einstellungen",
     "advanced_description": "Client-Kompatibilität, Fehlerbehebung und Protokollformat.",
     "all": "Alle Einstellungen",

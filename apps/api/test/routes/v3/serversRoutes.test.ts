@@ -23,6 +23,7 @@ vi.mock('@/controllers/v3/serversControllers.js', () => ({
 vi.mock('@/controllers/gmod/GmodErrorsControllers.js', () => ({ reportError: vi.fn() }))
 vi.mock('@/controllers/v3/serversPlayersController.js', () => ({
   getPlayer: vi.fn(),
+  getPlayerAccess: vi.fn(),
   playerBan: vi.fn(),
   playerChangeGroup: vi.fn(),
   playerChangeName: vi.fn(),
@@ -47,6 +48,7 @@ describe('serversRoutes', () => {
     const paths = router.stack.map((layer: any) => layer.route?.path).filter(Boolean)
     expect(paths).toContain('/:serverID')
     expect(paths).toContain('/:serverID/players/:steamID64')
+    expect(paths).toContain('/:serverID/players/:steamID64/access')
     expect(paths).toContain('/:serverID/players/:steamID64/dark-rp/drop-money')
     expect(paths).toContain('/:serverID/players/:steamID64/ch-atm/deposit-money')
   })

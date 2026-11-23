@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import Ajv from 'ajv'
 import { describe, expect, it } from 'vitest'
 import { createAsyncApiDocument } from '../../src/docs/asyncapi.js'
+import { PlayerAccessRefreshCommandSchema } from '@gmod/schema/gmod/AddonTransportSchema.js'
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url))
 const source = (path: string) => readFileSync(resolve(root, path), 'utf8')
@@ -126,12 +127,42 @@ describe('the implemented WebSocket AsyncAPI contract', () => {
     }
   })
 
+  it('documents a strict optional-player access recheck without permitting positive grants', () => {
+    const doc = document()
+    const validate = new Ajv({ allErrors: true }).compile(doc.components.schemas.PlayerAccessRefresh)
+    const method = 'wsRefreshPlayerAccess'
+    for (const [payload, accepted] of [
+      [{ method }, true],
+      [{ method, steamID: '76561198000000001' }, true],
+      [{ method, steamID: '765' }, false],
+      [{ method, steamID: '1'.repeat(18) }, false],
+      [{ method, steamID: null }, false],
+      [{ method, steamID: 123 }, false],
+      [{ method, steamID64: '76561198000000001' }, false],
+      [{ method, bypassMaintenance: true }, false],
+      [{ method, manualWhitelist: [] }, false],
+      [{ method: 'grantPlayerAccess' }, false],
+    ] as const) {
+      expect(validate(payload), JSON.stringify(payload)).toBe(accepted)
+      expect(validate(payload)).toBe(PlayerAccessRefreshCommandSchema.safeParse(payload).success)
+    }
+    expect(doc.components.messages.refreshPlayerAccess).toMatchObject({
+      name: method,
+      'x-client': 'addon',
+      'x-direction': 'server-to-client',
+      payload: { $ref: '#/components/schemas/PlayerAccessRefresh' },
+    })
+    expect(doc.components.messages.refreshPlayerAccess.summary).toContain('grants no access')
+  })
+
   it('documents exactly the emitted addon methods and their installed Lua handlers', () => {
     const producerPaths = [
       'packages/domain-server/src/Server.ts',
       'packages/core/src/models/v6/dashboardSettings.ts',
       'packages/core/src/classes/v3/PlayerGmod.ts',
       'packages/domain-guild/src/discordModels.ts',
+      'packages/domain-guild/src/playerAccessNotifications.ts',
+      'packages/domain-server/src/playerAccess.ts',
       'packages/core/src/models/v3/guildsControllerModels.ts',
       'packages/infra-websocket/src/addonCommands.ts',
     ]
@@ -152,6 +183,7 @@ describe('the implemented WebSocket AsyncAPI contract', () => {
       'modules/sync_pseudos/sv_sync_names.lua',
       'modules/sync_chat/sv_sync_chat.lua',
       'modules/console_commands/sv_rcon.lua',
+      'modules/players_filter_whitelist/sv_filtrers.lua',
     ]
     const luaHandlers = new Set(
       luaPaths.flatMap((path) =>

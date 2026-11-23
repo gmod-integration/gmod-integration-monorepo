@@ -139,7 +139,7 @@
     "guild_verification": "Vérification de la guilde",
     "guild_verification_role_limit": "Vérification de la guilde - Limite de rôle",
     "force_ply_link": "Forcer le lien du joueur",
-    "maintenance_white_list": "Entretien",
+    "maintenance_white_list": "Tryb whitelist",
     "rcon": "Exécution RCON",
     "reward": "Récompenses",
     "free": "Gratuit",
@@ -332,7 +332,7 @@
           "intro": "Decyduj, kto może grać, i miej dane moderacji pod ręką.",
           "one": "Bany między platformami i kontrole przy wejściu",
           "two": "Historia ostrzeżeń AWarn3 z administratorem i powodem",
-          "three": "Tryb konserwacji z dostępem dla wybranych graczy",
+          "three": "Tryb whitelist z ręcznym dostępem lub rolą Discorda",
           "four": "Wymagane powiązanie kont, gałąź klienta i kontrola Family Sharing"
         },
         "diagnostics": {
@@ -805,19 +805,20 @@
       },
       "edit_player": {
         "title": "Modifier le lecteur",
-        "bypass_maintenance": "Entretien par passe",
+        "bypass_maintenance": "Ręczny dostęp do whitelist",
         "yes": "Oui",
         "no": "Numéro",
-        "save": "Enregistrer"
+        "save": "Enregistrer",
+        "bypass_help": "Zezwól graczowi na dołączenie w trybie whitelist niezależnie od roli serwera. Usunięcie ręcznego wpisu zachowuje dostęp z roli lub innych uprawnień. Zapisz, aby zastosować."
       },
       "players_database": {
         "title": "Base de données des joueurs",
-        "description": "Liste de tous les joueurs du serveur",
+        "description": "Przeglądaj zarejestrowanych graczy, czas gry i połączenia. Edytuj gracza, aby zarządzać ręcznym dostępem do whitelist; dostęp z roli jest oddzielny.",
         "name": "Dénomination",
         "rank": "Classement",
         "total_time": "Durée totale",
         "total_connect": "Total Connecter",
-        "bypass_maintenance": "Entretien du passage",
+        "bypass_maintenance": "Ręczna whitelist",
         "actions": "Actions",
         "steam": "vapeur",
         "edit": "Modifier"
@@ -1005,8 +1006,8 @@
             "description": "Link pomocy wyświetlany gdy gracz nie spełnia wymagań."
           },
           "ig_maintenance": {
-            "title": "Tryb konserwacji",
-            "description": "Pozwól tylko graczom z obejściem konserwacji dołączyć (gracz > edytuj > obejście)"
+            "title": "Tryb whitelist",
+            "description": "Ogranicz dostęp do uprawnionych graczy. Ręczny wpis w Graczach lub rola whitelist serwera niezależnie przyznają dostęp. Skonfigurowane grupy administratorów gry również mają dostęp."
           },
           "ig_language": {
             "title": "Język dodatku",
@@ -1018,10 +1019,19 @@
           },
           "ig_adminRank": {
             "title": "Rangi admina",
-            "description": "Rangi uprawnione do edycji konfiguracji lub obejścia trybu konserwacji."
+            "description": "Wpisz dokładne grupy użytkowników gry, np. superadmin. Członkowie mogą edytować konfigurację dodatku i dołączać w trybie whitelist. To nie są role Discorda."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Rola whitelist serwera",
+            "description": "Gracze z połączonymi kontami Steam i Discord mogą uzyskać dostęp w trybie whitelist przez tę rolę. Ręczny dostęp przyznany w Graczach jest niezależny. Utrata roli przy aktywnym trybie whitelist powoduje wyrzucenie gracza, chyba że inne uprawnienie nadal zapewnia dostęp."
           }
         },
-        "remove_admin_rank": "Usuń rangę"
+        "remove_admin_rank": "Usuń rangę",
+        "whitelist_no_role": "Brak roli Discorda",
+        "whitelist_role_missing": "Niedostępna rola ({1})",
+        "whitelist_roles_loading": "Ładowanie ról Discorda…",
+        "whitelist_roles_error": "Nie można wczytać ról Discorda. Spróbuj ponownie lub usuń obecną rolę.",
+        "whitelist_role_invalid": "Wybierz dostępną rolę Discorda lub brak roli."
       },
       "team_roles": {
         "error_occurred": "Une erreur s'est produite lors de la recherche de la synchronisation des rôles.",
@@ -1284,7 +1294,7 @@
     "access": "Dostęp i weryfikacja",
     "access_description": "Wybierz sposób łączenia kont i weryfikacji graczy przy dołączaniu.",
     "administration": "Administracja",
-    "administration_description": "Zarządzaj dostępem administratorów i trybem konserwacji.",
+    "administration_description": "Zarządzaj dostępem administratorów i trybem whitelist.",
     "advanced": "Ustawienia zaawansowane",
     "advanced_description": "Zgodność klienta, rozwiązywanie problemów i format logów.",
     "all": "Wszystkie ustawienia",

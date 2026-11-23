@@ -10,11 +10,14 @@ import {
 import { createDraftForm } from '../../../../hooks/createDraftForm.js'
 import { createAutosave } from '../../../../hooks/createAutosave.js'
 import { saveDashboardSettings } from '../../../../utils/dashboardSettings.js'
-import { batch, type Component, createResource, createSignal, For, Index, Show } from 'solid-js'
+import { batch, type Component, createEffect, createResource, createSignal, For, Index, Show } from 'solid-js'
 import AdminPanel from '../../../../components/AdminPanel.js'
 import { useI18n } from '../../../../i18n.js'
 import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket.js'
 import { fetchAPI } from '../../../../utils/api.js'
+
+type WhitelistRole = { id: string; name: string }
+const isRoleID = (value: unknown): value is string => typeof value === 'string' && /^\d{17,20}$/.test(value)
 
 const ServerConfig: Component = () => {
   const { t } = useI18n()
@@ -127,6 +130,12 @@ const ServerConfig: Component = () => {
       labelKey: 'dashboard.server.config.settings.ig_maintenance.title',
       descriptionKey: 'dashboard.server.config.settings.ig_maintenance.description',
     },
+    maintenance_whitelist_role: {
+      defaultValue: '',
+      acceptedValues: null,
+      labelKey: 'dashboard.server.config.settings.maintenance_whitelist_role.title',
+      descriptionKey: 'dashboard.server.config.settings.maintenance_whitelist_role.description',
+    },
     ig_language: {
       defaultValue: 'en',
       acceptedValues: ['en', 'fr', 'de', 'es', 'it', 'tr', 'ru'],
@@ -167,7 +176,7 @@ const ServerConfig: Component = () => {
       descriptionKey: 'settings.general_administration_description',
       description: 'Language, support information and administrator access.',
       icon: 'globe',
-      keys: ['ig_language', 'ig_supportLink', 'ig_maintenance', 'ig_adminRank'],
+      keys: ['ig_language', 'ig_supportLink', 'ig_maintenance', 'maintenance_whitelist_role', 'ig_adminRank'],
     },
     {
       id: 'access',
@@ -248,6 +257,12 @@ const ServerConfig: Component = () => {
             'Enter an HTTP or HTTPS link, or leave this field empty.',
           )
         }
+      } else if (key === 'maintenance_whitelist_role') {
+        if (value !== '' && !isRoleID(value))
+          errors[key] = t(
+            'dashboard.server.config.whitelist_role_invalid',
+            'Choose an available Discord role or no role.',
+          )
       } else if (key === 'ig_adminRank') {
         const ranks = value as string[]
         const trimmed = ranks.map((rank) => rank.trim())
@@ -287,6 +302,15 @@ const ServerConfig: Component = () => {
     })
     return settings
   })
+  const [roles, { refetch: refetchRoles }] = createResource(async (): Promise<WhitelistRole[]> => {
+    const response = await fetchAPI('/users/:discordID/guilds/:guildID/roles', 'GET')
+    if (!response.ok) throw new Error('Discord roles unavailable')
+    const data: unknown = await response.json()
+    if (!Array.isArray(data) || data.some((role) => !role || !isRoleID(role.id) || typeof role.name !== 'string'))
+      throw new Error('Invalid Discord roles')
+    return data as WhitelistRole[]
+  })
+  const availableRoles = () => (roles.loading || roles.error ? [] : (roles() ?? []))
   const unavailable = (_form: ConfigForm) => serverConfig.loading || !!serverConfig.error
   const rankList = () => formFor('ig_adminRank').draft().ig_adminRank as string[]
   const updateRanks = (ranks: string[]) => formFor('ig_adminRank').patch({ ig_adminRank: ranks })
@@ -374,21 +398,75 @@ const ServerConfig: Component = () => {
             <Show
               when={info.acceptedValues && Array.isArray(info.acceptedValues)}
               fallback={
-                <input
-                  type={key === 'ig_verifyOnReadyKickTime' ? 'number' : key === 'ig_supportLink' ? 'url' : 'text'}
-                  min={key === 'ig_verifyOnReadyKickTime' ? 0 : undefined}
-                  step={key === 'ig_verifyOnReadyKickTime' ? 1 : undefined}
-                  id={key}
-                  aria-describedby={describedBy()}
-                  aria-invalid={!!error() || undefined}
-                  class="input w-full"
-                  value={String(form.draft()[key] ?? info.defaultValue ?? '')}
-                  disabled={unavailable(form)}
-                  onInput={(e) => {
-                    const value = e.currentTarget.value
-                    form.patch({ [key]: key === 'ig_verifyOnReadyKickTime' && value !== '' ? Number(value) : value })
-                  }}
-                />
+                <Show
+                  when={key === 'maintenance_whitelist_role'}
+                  fallback={
+                    <input
+                      type={key === 'ig_verifyOnReadyKickTime' ? 'number' : key === 'ig_supportLink' ? 'url' : 'text'}
+                      min={key === 'ig_verifyOnReadyKickTime' ? 0 : undefined}
+                      step={key === 'ig_verifyOnReadyKickTime' ? 1 : undefined}
+                      id={key}
+                      aria-describedby={describedBy()}
+                      aria-invalid={!!error() || undefined}
+                      class="input w-full"
+                      value={String(form.draft()[key] ?? info.defaultValue ?? '')}
+                      disabled={unavailable(form)}
+                      onInput={(e) => {
+                        const value = e.currentTarget.value
+                        form.patch({
+                          [key]: key === 'ig_verifyOnReadyKickTime' && value !== '' ? Number(value) : value,
+                        })
+                      }}
+                    />
+                  }
+                >
+                  <div class="flex min-w-0 w-full flex-col gap-2">
+                    <select
+                      ref={(select) => {
+                        createEffect(() => {
+                          // Reapply the draft after asynchronous options replace the saved-role placeholder.
+                          availableRoles()
+                          select.value = String(form.draft()[key] ?? '')
+                        })
+                      }}
+                      id={key}
+                      class="select w-full"
+                      aria-describedby={describedBy()}
+                      aria-invalid={!!error() || undefined}
+                      value={String(form.draft()[key] ?? '')}
+                      disabled={unavailable(form) || (!form.draft()[key] && (roles.loading || !!roles.error))}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value
+                        if (value === '' || availableRoles().some((role) => role.id === value))
+                          form.patch({ [key]: value })
+                      }}
+                    >
+                      <option value="">{t('dashboard.server.config.whitelist_no_role', 'No Discord role')}</option>
+                      <Show when={form.draft()[key] && !availableRoles().some((role) => role.id === form.draft()[key])}>
+                        <option value={String(form.draft()[key])} disabled>
+                          {t(
+                            'dashboard.server.config.whitelist_role_missing',
+                            'Unavailable role ({1})',
+                            String(form.draft()[key]),
+                          )}
+                        </option>
+                      </Show>
+                      <For each={availableRoles()}>
+                        {(role) => <option value={role.id}>@{role.name || role.id}</option>}
+                      </For>
+                    </select>
+                    <AsyncState
+                      loading={roles.loading}
+                      error={roles.error}
+                      loadingLabel={t('dashboard.server.config.whitelist_roles_loading', 'Loading Discord roles…')}
+                      errorLabel={t(
+                        'dashboard.server.config.whitelist_roles_error',
+                        'Unable to load Discord roles. Try again, or remove the current role.',
+                      )}
+                      onRetry={() => void refetchRoles()}
+                    />
+                  </div>
+                </Show>
               }
             >
               <Show

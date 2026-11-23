@@ -507,6 +507,16 @@ describe('Server', () => {
       await expect(makeServer().getDBPlayers()).resolves.toEqual([{ id: 1 }])
       await expect(makeServer().getPlayerStats('765')).resolves.toEqual({ id: 2 })
     })
+
+    it('getPlayerAccess preserves a manual whitelist grant without changing stored player statistics', async () => {
+      const stats = { steam_id: '76561198012345678', bypassMaintenance: true, ban: false }
+      prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce(stats)
+      await expect(makeServer().getPlayerAccess(stats.steam_id)).resolves.toEqual({ ...stats, discordAdmin: false })
+      expect(prismaMock.gm_server_stat.findFirst).toHaveBeenCalledWith({
+        where: { server_id: 's1', steam_id: stats.steam_id },
+      })
+      expect(prismaMock.gm_server_stat.update).not.toHaveBeenCalled()
+    })
   })
 
   describe('getBotInstance / getDiscordGuild', () => {
