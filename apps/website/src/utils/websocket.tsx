@@ -119,7 +119,7 @@ export async function initWebSocket(forceClose = false) {
           return
         }
         attempt = 0
-        refreshAccess()
+        refreshAccess('background')
       }
       ws.onmessage = (event) => {
         if (current !== generation || webSocketSignal() !== ws) return

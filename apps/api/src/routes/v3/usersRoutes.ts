@@ -107,6 +107,7 @@ import {
 } from '@/controllers/v3/usersControllers.js'
 import {
   userAdminGuildValidator,
+  userAdminGuildScopeValidator,
   userAdminGuildBotRemovalValidator,
   userAdminValidator,
   userServerValidator,
@@ -152,6 +153,14 @@ router.use('/:discordID/admins', userAdminValidator)
 router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds))
 router.get('/:discordID/admins/informations', asyncHandler(getAdminInformations))
 router.get('/:discordID/admins/panel-users', asyncHandler(getAllPanelUsers))
+
+// Reading stored addon configuration needs account/guild/server authorization, not Discord metadata.
+router.get(
+  '/:discordID/guilds/:guildID/servers/:serverID/config',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(getIGSettings),
+)
 
 router.delete(
   '/:discordID/guilds/:guildID/bot',
@@ -213,7 +222,6 @@ router.delete('/:discordID/guilds/:guildID/servers/:serverID', asyncHandler(dele
 
 // Config
 router.post('/:discordID/guilds/:guildID/servers/:serverID/config', asyncHandler(postIGSettings))
-router.get('/:discordID/guilds/:guildID/servers/:serverID/config', asyncHandler(getIGSettings))
 
 // Settings
 router.get('/:discordID/guilds/:guildID/servers/:serverID/settings', asyncHandler(getServerSettings))

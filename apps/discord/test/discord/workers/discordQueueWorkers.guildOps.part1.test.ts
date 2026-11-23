@@ -120,6 +120,47 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
   beforeEach(() => resetAllMocks())
 
   describe('guildSnapshot', () => {
+    it('fetches independent guild data and its icon concurrently before replying', async () => {
+      let finishFetches!: () => void
+      let finishIcon!: (value: string) => void
+      const pendingFetch = new Promise<void>((resolve) => (finishFetches = resolve))
+      const pendingIcon = new Promise<string>((resolve) => (finishIcon = resolve))
+      const guild = makeGuild('g1')
+      guild.channels.fetch = vi.fn().mockReturnValue(pendingFetch)
+      guild.roles.fetch = vi.fn().mockReturnValue(pendingFetch)
+      guild.emojis.fetch = vi.fn().mockReturnValue(pendingFetch)
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+      ensureAvatarStoredMock.mockReturnValueOnce(pendingIcon)
+
+      const result = processor()(makeJob('guildSnapshot', { guildID: 'g1', correlationId: 'c1' }))
+      try {
+        await vi.waitFor(() => {
+          expect(guild.channels.fetch).toHaveBeenCalledOnce()
+          expect(guild.roles.fetch).toHaveBeenCalledOnce()
+          expect(guild.emojis.fetch).toHaveBeenCalledOnce()
+          expect(ensureAvatarStoredMock).toHaveBeenCalledOnce()
+        })
+        expect(redisMock.set).not.toHaveBeenCalled()
+        finishFetches()
+        await Promise.resolve()
+        expect(redisMock.set).not.toHaveBeenCalled()
+      } finally {
+        finishFetches()
+        finishIcon('stored-icon')
+        await result
+      }
+      expect(lastReplyPayload().guild.icon).toBe('stored-icon')
+    })
+
+    it('does not publish a snapshot if storing its icon fails', async () => {
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(makeGuild('g1')))
+      ensureAvatarStoredMock.mockRejectedValueOnce(new Error('Avatar unavailable'))
+      await expect(processor()(makeJob('guildSnapshot', { guildID: 'g1', correlationId: 'c1' }))).rejects.toThrow(
+        'Avatar unavailable',
+      )
+      expect(redisMock.set).not.toHaveBeenCalled()
+    })
+
     it('replies with guild=null when the guild cannot be fetched', async () => {
       const client = makeGuildClient(null)
       client.guilds.fetch = vi.fn().mockRejectedValueOnce(new Error('nope'))

@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import express from 'express'
+import request from 'supertest'
 
 const resolveRequestSessionMock = vi.fn()
 const assertSessionRequestMock = vi.fn()
@@ -38,6 +40,7 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
 const {
   userValidator,
   userAdminGuildValidator,
+  userAdminGuildScopeValidator,
   userAdminGuildBotRemovalValidator,
   userServerValidator,
   userAdminValidator,
@@ -47,6 +50,7 @@ function makeRes() {
   const res: any = {}
   res.status = vi.fn().mockReturnValue(res)
   res.json = vi.fn().mockReturnValue(res)
+  res.append = vi.fn().mockReturnValue(res)
   return res
 }
 
@@ -279,9 +283,87 @@ describe('userValidator', () => {
     })
   })
 
+  describe('configuration reads without a Discord bot snapshot', () => {
+    const app = express()
+    const settings = { ig_debug: true }
+    const readSettings = vi.fn()
+    app.get(
+      '/users/:discordID/guilds/:guildID/servers/:serverID/config',
+      userValidator,
+      userAdminGuildScopeValidator,
+      userServerValidator,
+      async (req, res) => res.json({ settings: await req.server!.getAllIGSettings() }),
+    )
+    app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+      res.status(503).json({ error: 'provider_unavailable' })
+    })
+    const endpoint = '/users/d1/guilds/g1/servers/s1/config'
+    const get = (url = endpoint) => request(app).get(url).set('Authorization', 'Bearer tok1')
+
+    beforeEach(() => {
+      readSettings.mockReset().mockResolvedValue(settings)
+      getPanelUserFromDiscordIDMock.mockResolvedValue({ isAdminOfGuild: vi.fn().mockResolvedValue(true) })
+      getServerFromIDMock.mockResolvedValue({ getGuildID: () => 'g1', getAllIGSettings: readSettings })
+      enqueueDiscordGuildSnapshotMock.mockRejectedValue(new Error('The Discord worker must not be needed'))
+    })
+
+    it('reads stored settings after authorization even when the Discord worker is unavailable', async () => {
+      const response = await get()
+      expect(response.status).toBe(200)
+      expect(response.body).toEqual({ settings })
+      expect(getServerFromIDMock).toHaveBeenCalledWith('s1')
+      expect(readSettings).toHaveBeenCalledOnce()
+      expect(enqueueDiscordGuildSnapshotMock).not.toHaveBeenCalled()
+      const timings = response.headers['server-timing']
+      for (const step of ['session', 'user', 'permissions', 'server']) {
+        expect(timings).toMatch(new RegExp(`${step};dur=\\d+\\.\\d`))
+      }
+      expect(timings).not.toContain('discord;')
+    })
+
+    it('rejects an anonymous or mismatched account before reading settings', async () => {
+      expect((await request(app).get(endpoint)).status).toBe(401)
+      expect((await get('/users/other/guilds/g1/servers/s1/config')).status).toBe(401)
+      expect(getServerFromIDMock).not.toHaveBeenCalled()
+      expect(readSettings).not.toHaveBeenCalled()
+    })
+
+    it('requires administration of the guild from the route', async () => {
+      const administrator = vi.fn(async (guildID) => guildID === 'g1')
+      getPanelUserFromDiscordIDMock.mockResolvedValue({ isAdminOfGuild: administrator })
+      const response = await get('/users/d1/guilds/g2/servers/s1/config')
+      expect(response.status).toBe(403)
+      expect(administrator).toHaveBeenCalledWith('g2')
+      expect(getServerFromIDMock).not.toHaveBeenCalled()
+      expect(readSettings).not.toHaveBeenCalled()
+    })
+
+    it('rejects a server belonging to another guild without consulting a bot snapshot', async () => {
+      getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'g2', getAllIGSettings: readSettings })
+      expect((await get()).status).toBe(403)
+      expect(readSettings).not.toHaveBeenCalled()
+      expect(enqueueDiscordGuildSnapshotMock).not.toHaveBeenCalled()
+    })
+
+    it('returns 404 for a missing server', async () => {
+      getServerFromIDMock.mockResolvedValueOnce(null)
+      expect((await get()).status).toBe(404)
+      expect(readSettings).not.toHaveBeenCalled()
+    })
+
+    it('forwards a failed administrator lookup without reading settings', async () => {
+      getPanelUserFromDiscordIDMock.mockResolvedValue({
+        isAdminOfGuild: vi.fn().mockRejectedValue(new Error('Discord permissions unavailable')),
+      })
+      expect((await get()).status).toBe(503)
+      expect(getServerFromIDMock).not.toHaveBeenCalled()
+      expect(readSettings).not.toHaveBeenCalled()
+    })
+  })
+
   describe('userServerValidator', () => {
     function makeReq(overrides: Record<string, any> = {}) {
-      return { params: { serverID: 's1' }, dscGuild: { id: 'g1' }, ...overrides } as any
+      return { params: { serverID: 's1' }, guild: { id: 'g1' }, ...overrides } as any
     }
 
     it('returns 404 when the server is not found', async () => {

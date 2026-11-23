@@ -114,6 +114,7 @@ vi.mock('@/controllers/v3/usersControllers.js', () => ({
 
 vi.mock('@/middleware/v3/userValidator.js', () => ({
   userAdminGuildValidator: vi.fn(),
+  userAdminGuildScopeValidator: vi.fn(),
   userAdminGuildBotRemovalValidator: vi.fn(),
   userAdminValidator: vi.fn(),
   userServerValidator: vi.fn(),
@@ -125,8 +126,13 @@ vi.mock('@/controllers/v3/serversControllers.js', () => ({ getIGSettings: vi.fn(
 vi.mock('@/controllers/v3/users/ServerStatusChannelControllers.js', () => ({ putServerStatusChannel: vi.fn() }))
 
 const { default: router } = await import('../../../src/routes/v3/usersRoutes.js')
-const { userValidator, userAdminGuildValidator, userAdminGuildBotRemovalValidator, userServerValidator } =
-  await import('@/middleware/v3/userValidator.js')
+const {
+  userValidator,
+  userAdminGuildValidator,
+  userAdminGuildScopeValidator,
+  userAdminGuildBotRemovalValidator,
+  userServerValidator,
+} = await import('@/middleware/v3/userValidator.js')
 const { getSteamProfile, deleteGuildBotInstance } = await import('@/controllers/v3/usersControllers.js')
 
 describe('usersRoutes', () => {
@@ -168,6 +174,19 @@ describe('usersRoutes', () => {
     expect(preview).toBeGreaterThan(guild)
     expect(preview).toBeGreaterThan(server)
     expect(router.stack[preview].route.methods.post).toBe(true)
+  })
+
+  it('authorizes configuration reads before the middleware that loads Discord metadata', () => {
+    const path = '/:discordID/guilds/:guildID/servers/:serverID/config'
+    const configuration = router.stack.findIndex((layer: any) => layer.route?.path === path && layer.route.methods.get)
+    const authentication = router.stack.findIndex((layer: any) => layer.handle === userValidator)
+    const snapshot = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+    expect(configuration).toBeGreaterThan(authentication)
+    expect(configuration).toBeLessThan(snapshot)
+    expect(router.stack[configuration].route.stack[0].handle).toBe(userAdminGuildScopeValidator)
+    expect(router.stack[configuration].route.stack[1].handle).toBe(userServerValidator)
+    const writes = router.stack.findIndex((layer: any) => layer.route?.path === path && layer.route.methods.post)
+    expect(writes).toBeGreaterThan(snapshot)
   })
 
   it('protects custom-bot removal with account and guild-administrator checks', () => {

@@ -693,16 +693,19 @@ export const discordGuildOpsWorker = new Worker<
         return
       }
 
-      await guild.channels.fetch().catch(() => null)
-      await guild.roles.fetch().catch(() => null)
-      await guild.emojis.fetch().catch(() => null)
+      const [icon] = await Promise.all([
+        ensureAvatarStored('guild', guild.id, guild.iconURL({ extension: 'png', size: 256 })),
+        guild.channels.fetch().catch(() => null),
+        guild.roles.fetch().catch(() => null),
+        guild.emojis.fetch().catch(() => null),
+      ])
 
       await writeReply(payload.correlationId, {
         correlationId: payload.correlationId,
         guild: {
           id: guild.id,
           name: guild.name,
-          icon: await ensureAvatarStored('guild', guild.id, guild.iconURL({ extension: 'png', size: 256 })),
+          icon,
           ownerID: guild.ownerId,
           preferredLocale: guild.preferredLocale,
           channels: guild.channels.cache.map((channel) => ({

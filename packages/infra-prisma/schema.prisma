@@ -42,6 +42,8 @@ model gm_gmodstore_purchases {
   revoke    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([guild, revoke])
 }
 
 model gm_guild {
@@ -140,6 +142,7 @@ model gm_panelToken {
   updatedAt      DateTime @updatedAt
 
   @@index([discordID, revoke, expirationDate])
+  @@index([accessToken, revoke, expirationDate])
   @@index([actorSessionID])
 }
 

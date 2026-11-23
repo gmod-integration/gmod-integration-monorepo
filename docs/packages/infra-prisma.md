@@ -19,6 +19,11 @@ The Prisma client for MariaDB — the relational source of truth (servers, guild
 `packages/infra-prisma/generated/prisma` is generated output (`bun run prisma:generate`) — never edit by hand.
 Schema source: `packages/infra-prisma/schema.prisma`. Migrations: `packages/infra-prisma/migrations`.
 
+The `20261123120000_dashboard_lookup_indexes` migration adds nonunique indexes for session lookup by
+`accessToken`/`revoke`/`expirationDate` and purchase lookup by `guild`/`revoke`. These cover the filters
+used by authenticated dashboard requests and access resolution without requiring token uniqueness for
+historical records. Apply this migration through the normal deployment migration workflow.
+
 ## Used by
 
 Nearly every `domain-*` package and every app. Always import the shared client (`prisma` default export) —

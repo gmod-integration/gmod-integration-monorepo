@@ -12,7 +12,9 @@ import { FeatureGate } from '../../src/components/FeatureGate.js'
 import { PremiumBadge } from '../../src/utils/premium.js'
 import { I18nProvider } from '../../src/i18n.js'
 import { historyAt, renderWithProviders } from '../testUtils.js'
-import { refreshAccess } from '../../src/utils/accessEvents.js'
+import { ACCESS_REFRESH_EVENT, refreshAccess } from '../../src/utils/accessEvents.js'
+import { acceptAuthSession, resetAuthentication } from '../../src/utils/authClient.js'
+import { sessionFixture } from '../authFixture.js'
 
 const snapshot = (overrides: Partial<DashboardAccessSnapshot> = {}): DashboardAccessSnapshot => ({
   guildID: 'g1',
@@ -27,6 +29,13 @@ const snapshot = (overrides: Partial<DashboardAccessSnapshot> = {}): DashboardAc
 })
 const response = (value: unknown, status = 200) =>
   new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } })
+const deferredResponse = () => {
+  let resolve!: (value: Response) => void
+  const promise = new Promise<Response>((finish) => {
+    resolve = finish
+  })
+  return { promise, resolve }
+}
 
 function Harness() {
   const access = useFeatureAccess('sync.roles.rules')
@@ -35,6 +44,7 @@ function Harness() {
   const navigate = useNavigate()
   return (
     <>
+      <output aria-label="Verified community">{access.snapshot()?.guildID}</output>
       <input aria-label="Draft" value={draft()} onInput={(event) => setDraft(event.currentTarget.value)} />
       <FeatureGate capability="sync.roles.rules" used={4}>
         <button disabled={!access.canCreate(4)}>Add rule</button>
@@ -49,9 +59,10 @@ function Harness() {
   )
 }
 function renderRemote() {
-  return render(() => (
+  const history = historyAt('/dashboard/guilds/g1/config/servers/s1/roles')
+  const view = render(() => (
     <MemoryRouter
-      history={historyAt('/dashboard/guilds/g1/config/servers/s1/roles')}
+      history={history}
       root={(props) => (
         <I18nProvider>
           <AccessProvider>{props.children}</AccessProvider>
@@ -59,12 +70,15 @@ function renderRemote() {
       )}
     >
       <Route path="/dashboard/guilds/:guildID/config/servers/:serverID/roles" component={Harness} />
+      <Route path="/dashboard/guilds/:guildID/config/servers/:serverID/config" component={Harness} />
     </MemoryRouter>
   ))
+  return { ...view, history }
 }
 
 beforeEach(() => {
   localStorage.clear()
+  resetAuthentication()
   localStorage.setItem('accessToken', 'session')
 })
 afterEach(() => {
@@ -75,6 +89,131 @@ afterEach(() => {
 })
 
 describe('authoritative reactive access', () => {
+  it('shares an in-flight lookup across browser resume and socket-open refreshes', async () => {
+    const initial = deferredResponse()
+    const resumed = deferredResponse()
+    const network = vi.fn().mockReturnValueOnce(initial.promise).mockReturnValueOnce(resumed.promise)
+    vi.stubGlobal('fetch', network)
+    renderRemote()
+    await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(1))
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    window.dispatchEvent(new Event('focus'))
+    window.dispatchEvent(new Event('storage'))
+    document.dispatchEvent(new Event('visibilitychange'))
+    refreshAccess('background')
+    expect(network).toHaveBeenCalledTimes(1)
+
+    initial.resolve(response(snapshot({ serverID: 's1' })))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Fourth free rule' })).toBeEnabled())
+    expect(network).toHaveBeenCalledTimes(1)
+
+    refreshAccess('background')
+    window.dispatchEvent(new Event('focus'))
+    expect(network).toHaveBeenCalledTimes(2)
+    resumed.resolve(response(snapshot({ premium: true, serverID: 's1' })))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled())
+    expect(network).toHaveBeenCalledTimes(2)
+  })
+
+  it('queues one new lookup for changes made while the previous snapshot is pending', async () => {
+    const initial = deferredResponse()
+    const changed = deferredResponse()
+    const network = vi.fn().mockReturnValueOnce(initial.promise).mockReturnValueOnce(changed.promise)
+    vi.stubGlobal('fetch', network)
+    renderRemote()
+    await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(1))
+    refreshAccess()
+    window.dispatchEvent(new Event(ACCESS_REFRESH_EVENT))
+    await fireEvent.click(screen.getByRole('button', { name: 'Refresh access' }))
+    expect(network).toHaveBeenCalledTimes(1)
+
+    initial.resolve(response(snapshot({ serverID: 's1' })))
+    await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(2))
+    changed.resolve(response(snapshot({ premium: true, serverID: 's1' })))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled())
+    expect(network).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the current snapshot when navigating between pages for the same server', async () => {
+    const network = vi.fn().mockImplementation(async () => response(snapshot({ premium: true, serverID: 's1' })))
+    vi.stubGlobal('fetch', network)
+    const { history } = renderRemote()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled())
+    history.set({ value: '/dashboard/guilds/g1/config/servers/s1/config', replace: true })
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1/config'))
+    expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled()
+    expect(network).toHaveBeenCalledTimes(1)
+  })
+
+  it('aborts an old scope and ignores its late response and queued refresh', async () => {
+    const initial = deferredResponse()
+    const changedScope = deferredResponse()
+    const network = vi.fn().mockReturnValueOnce(initial.promise).mockReturnValueOnce(changedScope.promise)
+    vi.stubGlobal('fetch', network)
+    renderRemote()
+    await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(1))
+    const previousSignal = network.mock.calls[0][1].signal as AbortSignal
+    refreshAccess()
+    await fireEvent.click(screen.getByRole('button', { name: 'Other community' }))
+    await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(2))
+    expect(previousSignal.aborted).toBe(true)
+    changedScope.resolve(response(snapshot({ guildID: 'g2', serverID: 's2', premium: true })))
+    await vi.waitFor(() => expect(screen.getByLabelText('Verified community')).toHaveTextContent('g2'))
+    initial.resolve(response(snapshot({ serverID: 's1' })))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled()
+    expect(screen.getByLabelText('Verified community')).toHaveTextContent('g2')
+    expect(network).toHaveBeenCalledTimes(2)
+  })
+
+  it('shares initial session restoration but replaces requests and rights when the identity changes', async () => {
+    const initial = deferredResponse()
+    const changedSession = deferredResponse()
+    const network = vi
+      .fn()
+      .mockReturnValueOnce(initial.promise)
+      .mockReturnValueOnce(changedSession.promise)
+      .mockImplementation(async () => response(snapshot({ premium: true, serverID: 's1' })))
+    vi.stubGlobal('fetch', network)
+    renderRemote()
+    await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(1))
+    const signal = network.mock.calls[0][1].signal as AbortSignal
+    acceptAuthSession(sessionFixture())
+    refreshAccess('background')
+    expect(network).toHaveBeenCalledTimes(1)
+    const nextSession = sessionFixture()
+    acceptAuthSession({ ...nextSession, session: { ...nextSession.session, id: 'replacement-session' } })
+    expect(signal.aborted).toBe(true)
+    expect(network).toHaveBeenCalledTimes(2)
+    changedSession.resolve(response(snapshot({ premium: true, serverID: 's1' })))
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled())
+    initial.resolve(response(snapshot({ serverID: 's1' })))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled()
+    resetAuthentication()
+    expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeDisabled()
+    expect(screen.getByLabelText('Verified community')).toBeEmptyDOMElement()
+    expect(network).toHaveBeenCalledTimes(2)
+    acceptAuthSession(nextSession)
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled())
+    expect(network).toHaveBeenCalledTimes(3)
+  })
+
+  it('aborts a pending lookup and drops its queued refresh when unmounted', async () => {
+    const initial = deferredResponse()
+    const network = vi.fn().mockReturnValue(initial.promise)
+    vi.stubGlobal('fetch', network)
+    const view = renderRemote()
+    await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(1))
+    const signal = network.mock.calls[0][1].signal as AbortSignal
+    refreshAccess()
+    view.unmount()
+    expect(signal.aborted).toBe(true)
+    initial.resolve(response(snapshot({ serverID: 's1' })))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(network).toHaveBeenCalledTimes(1)
+  })
+
   it('omits an empty feature wrapper and preserves controls while quota feedback changes', () => {
     const [showControl, setShowControl] = createSignal(false)
     const [showQuota, setShowQuota] = createSignal(false)

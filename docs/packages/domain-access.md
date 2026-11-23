@@ -80,6 +80,11 @@ Authenticated `/v6/guilds/:guildID/access` and its server-scoped counterpart ret
 through `AccessProvider`, never a local-storage Premium flag. Scope changes, expiry, foreground refresh
 and access errors trigger revalidation.
 
+Entitlement verification and guild/server usage counts run concurrently after scope authorization;
+usage counts remain live database reads. The provider shares an in-flight read for background refreshes
+and preserves the snapshot when navigating within the same guild/server scope. Mutations and access
+change events during a pending read queue one subsequent refresh so updated quotas are not lost.
+
 The pure catalogue drives gates, quota displays and the comparison page. Network errors and missing
 permissions remain distinct from upgrade requirements. A fresh unknown snapshot permits free actions
 below their limits while paid access remains unavailable pending verification.

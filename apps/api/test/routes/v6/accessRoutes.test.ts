@@ -97,6 +97,8 @@ describe('v6 access endpoint authorization', () => {
     expect(response.status).toBe(200)
     expect(response.body).toEqual(snapshot)
     expect(response.headers['cache-control']).toBe('no-store')
+    for (const step of ['session', 'user', 'permissions', 'access'])
+      expect(response.headers['server-timing']).toMatch(new RegExp(`${step};dur=\\d+\\.\\d`))
     expect(mocks.access).toHaveBeenCalledExactlyOnceWith('guild')
     expect(mocks.admin).toHaveBeenCalledWith('guild')
   })

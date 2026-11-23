@@ -43,6 +43,7 @@ function makeRes() {
   const res: any = {}
   res.status = vi.fn().mockReturnValue(res)
   res.json = vi.fn().mockReturnValue(res)
+  res.append = vi.fn().mockReturnValue(res)
   return res
 }
 
@@ -104,6 +105,7 @@ describe('serversControllers', () => {
     await getIGSettings({ server } as any, res)
     expect(res.status).toHaveBeenCalledWith(200)
     expect(res.json).toHaveBeenCalledWith({ settings: { ig_debug: true } })
+    expect(res.append).toHaveBeenCalledWith('Server-Timing', expect.stringMatching(/^config;dur=\d+\.\d$/))
   })
 
   it('serverImportWarns delegates with req.body.warns', async () => {

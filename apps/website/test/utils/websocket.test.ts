@@ -258,6 +258,10 @@ describe('cookie authenticated WebSocket transport', () => {
       ws.readyState = FakeWebSocket.OPEN
       ws.onopen?.()
       expect(refresh).toHaveBeenCalledOnce()
+      expect(refresh.mock.calls[0][0].detail).toEqual({ reason: 'background' })
+      emit(ws, { action: 'access_changed' })
+      expect(refresh).toHaveBeenCalledTimes(2)
+      expect(refresh.mock.calls[1][0].detail).toEqual({ reason: 'invalidate' })
       expect(() => ws.onerror?.()).not.toThrow()
       const lateOpen = ws.onopen!
       stopWebSocket()

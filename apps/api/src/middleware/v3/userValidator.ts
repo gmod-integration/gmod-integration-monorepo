@@ -7,6 +7,7 @@ import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { type NextFunction, type Request, type Response } from 'express'
 import { enqueueDiscordGuildSnapshot } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { getSingleParam } from '@/utils/requestParams.js'
+import { timeRequestStep } from '@/utils/requestTiming.js'
 export async function userValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const discordID = getSingleParam(req.params.discordID)
@@ -21,13 +22,15 @@ export async function userValidator(req: Request, res: Response, next: NextFunct
       return
     }
 
-    const session = await resolveRequestSession(req, { touch: true })
+    const session = await timeRequestStep(res, 'session', () => resolveRequestSession(req, { touch: true }))
     if (!session || session.discordID !== discordID) {
       res.status(401).json({ error: 'unauthorized' })
       return
     }
     assertSessionRequest(req, session)
-    const panelUser = await getPanelUserFromDiscordID(discordID, readSessionCredential(req) || undefined, session)
+    const panelUser = await timeRequestStep(res, 'user', () =>
+      getPanelUserFromDiscordID(discordID, readSessionCredential(req) || undefined, session),
+    )
     if (!panelUser) {
       res.status(401).json({ error: 'unauthorized' })
       return
@@ -45,9 +48,11 @@ export async function userValidator(req: Request, res: Response, next: NextFunct
 async function requireGuildAdministrator(req: Request, res: Response): Promise<string | null> {
   const guildID = getSingleParam(req.params.guildID)
   const panelUser = req.panelUser!
-  const allowed = ['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET')
-    ? await panelUser.isAdminOfGuild(guildID)
-    : await panelUser.isAdminOfGuild(guildID, { fresh: true })
+  const allowed = await timeRequestStep(res, 'permissions', () =>
+    ['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET')
+      ? panelUser.isAdminOfGuild(guildID)
+      : panelUser.isAdminOfGuild(guildID, { fresh: true }),
+  )
   if (!allowed) {
     res.status(403).json({ error: 'not_admin_of_guild' })
     return null
@@ -55,15 +60,11 @@ async function requireGuildAdministrator(req: Request, res: Response): Promise<s
   return guildID
 }
 
-export async function userAdminGuildBotRemovalValidator(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
+/** Authorize database-only operations without waiting for a Discord bot snapshot. */
+export async function userAdminGuildScopeValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const guildID = await requireGuildAdministrator(req, res)
     if (guildID === null) return
-    // Cleanup must reach the independent main-client check even if no effective bot can supply a snapshot.
     req.guild = new Guild({ id: guildID })
     return next()
   } catch (error) {
@@ -71,11 +72,14 @@ export async function userAdminGuildBotRemovalValidator(
   }
 }
 
+// Cleanup must reach the independent main-client check even if no effective bot can supply a snapshot.
+export const userAdminGuildBotRemovalValidator = userAdminGuildScopeValidator
+
 export async function userAdminGuildValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const guildID = await requireGuildAdministrator(req, res)
     if (guildID === null) return
-    const dscGuild = await enqueueDiscordGuildSnapshot(guildID)
+    const dscGuild = await timeRequestStep(res, 'discord', () => enqueueDiscordGuildSnapshot(guildID))
     if (!dscGuild) {
       res.status(404).json({
         error: 'guild_not_found',
@@ -99,7 +103,7 @@ export async function userServerValidator(req: Request, res: Response, next: Nex
   try {
     const serverID = getSingleParam(req.params.serverID)
 
-    const server = await getServerFromID(serverID)
+    const server = await timeRequestStep(res, 'server', () => getServerFromID(serverID))
     if (!server) {
       res.status(404).json({
         error: 'server_not_found',
@@ -107,7 +111,7 @@ export async function userServerValidator(req: Request, res: Response, next: Nex
       return
     }
 
-    if (server.getGuildID() !== req.dscGuild!.id) {
+    if (server.getGuildID() !== req.guild!.id) {
       res.status(403).json({
         error: 'server_not_in_guild',
       })

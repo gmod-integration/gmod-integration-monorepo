@@ -59,6 +59,22 @@ describe('dashboard access snapshot and usage', () => {
     expect(mocks.tables.gm_status_button.count).toHaveBeenCalledWith({ where: { server: 'server' } })
     expect(JSON.stringify(result)).not.toMatch(/buyer|transaction|token/i)
   })
+  it('reads all usage while entitlement verification and guild counts are still pending', async () => {
+    let resolveAccess!: (value: typeof snapshot) => void
+    let resolveServers!: (value: number) => void
+    mocks.access.mockReturnValueOnce(new Promise((resolve) => (resolveAccess = resolve)))
+    mocks.tables.gm_server.count.mockReturnValueOnce(new Promise((resolve) => (resolveServers = resolve)))
+
+    const result = getDashboardAccess('guild', 'server')
+    try {
+      for (const table of Object.values(mocks.tables)) expect(table.count).toHaveBeenCalledOnce()
+    } finally {
+      resolveAccess(snapshot)
+      resolveServers(2)
+      await result
+    }
+    expect(await result).toMatchObject({ usages: { 'guild.servers': 2, 'status.buttons': 0 } })
+  })
   it('preserves unknown entitlement state rather than advertising a Free plan', async () => {
     mocks.access.mockResolvedValue({ ...snapshot, state: 'unknown' })
     expect(await getDashboardAccess('guild')).toMatchObject({ state: 'unknown', premium: false })

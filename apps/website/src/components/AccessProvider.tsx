@@ -1,6 +1,7 @@
 import {
   createContext,
   createEffect,
+  createMemo,
   createSignal,
   onCleanup,
   onMount,
@@ -18,7 +19,7 @@ import {
   hasCapability,
 } from '@gmod/schema/server/AccessPolicySchema.js'
 import { getAPIUrl } from '../utils/api.js'
-import { authenticatedFetch } from '../utils/authClient.js'
+import { AUTH_CHANGE_EVENT, authenticatedFetch, authSession } from '../utils/authClient.js'
 import { ACCESS_REFRESH_EVENT } from '../utils/accessEvents.js'
 import { useI18n } from '../i18n.js'
 import { Button } from './ui/Button.js'
@@ -55,33 +56,49 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
   const [permissionDenied, setPermissionDenied] = createSignal(false)
   let generation = 0
   let active = true
-  const scope = () => {
-    const match = location.pathname.match(/^\/dashboard\/guilds\/([^/]+)(?:\/config\/servers\/([^/]+))?/)
-    try {
-      return match
-        ? { guildID: decodeURIComponent(match[1]), serverID: match[2] ? decodeURIComponent(match[2]) : undefined }
-        : undefined
-    } catch {
-      return undefined
-    }
-  }
-  async function refresh() {
+  const scope = createMemo(
+    () => {
+      const match = location.pathname.match(/^\/dashboard\/guilds\/([^/]+)(?:\/config\/servers\/([^/]+))?/)
+      try {
+        return match
+          ? { guildID: decodeURIComponent(match[1]), serverID: match[2] ? decodeURIComponent(match[2]) : undefined }
+          : undefined
+      } catch {
+        return undefined
+      }
+    },
+    undefined,
+    { equals: (previous, next) => previous?.guildID === next?.guildID && previous?.serverID === next?.serverID },
+  )
+  let pending: { target: ReturnType<typeof scope>; controller: AbortController; revalidate: boolean } | undefined
+  async function refresh(invalidate = true) {
     if (props.snapshot) return
     const target = scope()
+    if (pending && pending.target === target) {
+      // A change may have happened after the pending read began. Recheck it once afterwards.
+      if (invalidate) pending.revalidate = true
+      return
+    }
+    pending?.controller.abort()
+    pending = undefined
     const current = ++generation
     if (!target) {
       setSnapshot(undefined)
       setLoading(false)
       setError(false)
+      setPermissionDenied(false)
       return
     }
     setLoading(true)
     setError(false)
     setPermissionDenied(false)
+    const operation = { target, controller: new AbortController(), revalidate: false }
+    pending = operation
     try {
       const path = `/v6/guilds/${encodeURIComponent(target.guildID)}${target.serverID ? `/servers/${encodeURIComponent(target.serverID)}` : ''}/access`
       const response = await authenticatedFetch(getAPIUrl(false) + path, {
         cache: 'no-store',
+        signal: operation.controller.signal,
       })
       if (!response.ok) {
         if (active && current === generation) setPermissionDenied(response.status === 403)
@@ -99,43 +116,74 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
         setError(true)
       }
     } finally {
-      if (active && current === generation) setLoading(false)
+      if (pending === operation) {
+        pending = undefined
+        if (active && current === generation) {
+          if (operation.revalidate) void refresh(false)
+          else setLoading(false)
+        }
+      }
     }
   }
   createEffect(() => {
     scope()
     if (!props.snapshot) {
       setSnapshot(undefined)
-      void refresh()
+      void refresh(false)
     }
   })
   createEffect(() => {
     if (props.snapshot || !snapshot()) return
     const delay = Math.max(1_000, Date.parse(snapshot()!.validUntil) - Date.now() + 10)
     if (delay >= 60_000) return // The periodic refresh already covers longer lifetimes.
-    const timeout = setTimeout(() => void refresh(), delay)
+    const timeout = setTimeout(() => void refresh(false), delay)
     onCleanup(() => clearTimeout(timeout))
   })
   onMount(() => {
     if (props.snapshot) return
-    const onRefresh = () => void refresh()
+    let sessionID = authSession()?.session.id
+    const onAuthChange = () => {
+      const previous = sessionID
+      sessionID = authSession()?.session.id
+      // Initial cookie restoration can share the pending lookup; a changed identity cannot.
+      if (!previous) {
+        if (sessionID && !pending && !snapshot()) void refresh(false)
+        return
+      }
+      if (previous === sessionID) return
+      generation++
+      pending?.controller.abort()
+      pending = undefined
+      setSnapshot(undefined)
+      setLoading(false)
+      setError(false)
+      setPermissionDenied(false)
+      if (sessionID) void refresh(false)
+    }
+    const onRefresh = (event: Event) =>
+      void refresh((event as CustomEvent<{ reason?: string }>).detail?.reason !== 'background')
+    const onBackgroundRefresh = () => void refresh(false)
     const onVisible = () => {
-      if (document.visibilityState === 'visible') onRefresh()
+      if (document.visibilityState === 'visible') onBackgroundRefresh()
     }
     window.addEventListener(ACCESS_REFRESH_EVENT, onRefresh)
-    window.addEventListener('focus', onRefresh)
-    window.addEventListener('storage', onRefresh)
+    window.addEventListener(AUTH_CHANGE_EVENT, onAuthChange)
+    window.addEventListener('focus', onBackgroundRefresh)
+    window.addEventListener('storage', onBackgroundRefresh)
     document.addEventListener('visibilitychange', onVisible)
-    const timer = setInterval(onRefresh, 60_000)
+    const timer = setInterval(onBackgroundRefresh, 60_000)
     const expiryTimer = setInterval(() => setNow(Date.now()), 1_000)
     onCleanup(() => {
       active = false
       generation++
+      pending?.controller.abort()
+      pending = undefined
       clearInterval(timer)
       clearInterval(expiryTimer)
       window.removeEventListener(ACCESS_REFRESH_EVENT, onRefresh)
-      window.removeEventListener('focus', onRefresh)
-      window.removeEventListener('storage', onRefresh)
+      window.removeEventListener(AUTH_CHANGE_EVENT, onAuthChange)
+      window.removeEventListener('focus', onBackgroundRefresh)
+      window.removeEventListener('storage', onBackgroundRefresh)
       document.removeEventListener('visibilitychange', onVisible)
     })
   })

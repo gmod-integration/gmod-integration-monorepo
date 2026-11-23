@@ -56,6 +56,19 @@ Controllers should stay thin (rule of thumb: extract past ~10 lines, see
 [best-practices.md](../best-practices.md)); the actual server/guild/user logic lives in `@gmod/domain-*`
 classes, not in the controller.
 
+## Dashboard request latency
+
+Dashboard middleware exposes elapsed milliseconds in the `Server-Timing` response header: `session`
+for authentication, `user` for the account lookup, `permissions` for guild authorization, `discord`
+for the v3 bot snapshot, and `server` for server lookup. Access and addon configuration reads also
+report their endpoint work as `access` and `config`. Inspect these values in the browser Network
+panel to distinguish database, permission and Discord queue waits on the running instance.
+
+Most v3 guild routes wait for a shared bot snapshot, including requests that ultimately return 304.
+The snapshot worker loads channels, roles, emojis and its icon concurrently. Reading stored addon
+configuration bypasses that snapshot while retaining session, guild administrator and server ownership
+checks. Access snapshots resolve entitlements and usage counts concurrently after authorization.
+
 ## Linked Steam profile
 
 `GET /v3/users/:discordID/steam-profile` requires the account's authenticated dashboard session and

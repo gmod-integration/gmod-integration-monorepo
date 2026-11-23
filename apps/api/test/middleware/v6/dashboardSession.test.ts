@@ -34,7 +34,7 @@ const req = (extra: Record<string, unknown> = {}): any => ({
   ...extra,
 })
 const res = (): any => {
-  const response = { status: vi.fn(), json: vi.fn(), setHeader: vi.fn() }
+  const response = { status: vi.fn(), json: vi.fn(), setHeader: vi.fn(), append: vi.fn() }
   response.status.mockReturnValue(response)
   response.json.mockReturnValue(response)
   return response
