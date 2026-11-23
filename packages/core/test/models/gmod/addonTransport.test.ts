@@ -103,6 +103,7 @@ const server = () =>
     name: 'Example server',
     guild: 'g1',
     token: 'never-return-this',
+    isPremium: vi.fn().mockResolvedValue(false),
     getAllIGSettings: vi.fn().mockResolvedValue({ ig_debug: false }),
     getPlayerStats: vi.fn().mockResolvedValue({ connectTime: 42 }),
     getPlayerAccess: vi.fn().mockResolvedValue({ bypassMaintenance: false, discordAdmin: false }),
@@ -129,9 +130,34 @@ describe('authenticated addon dispatcher', () => {
     const result = await handleAddonRequest(server(), request('/servers/s1', undefined, 'GET'))
     expect(result).toEqual({
       status: 200,
-      body: { id: 's1', name: 'Example server', guild: 'g1', latestVersion: '6.0.0' },
+      body: { id: 's1', name: 'Example server', guild: 'g1', latestVersion: '6.0.0', premium: false },
     })
     expect(JSON.stringify(result)).not.toContain('never-return-this')
+  })
+
+  it.each([true, false])('projects the trusted Premium entitlement: %s', async (premium) => {
+    const target = server()
+    vi.mocked(target.isPremium).mockResolvedValue(premium)
+    const result = await handleAddonRequest(target, request('/servers/s1', undefined, 'GET'))
+    expect(result).toMatchObject({ status: 200, body: { premium } })
+    expect((await handleAddonRequest(target, request('/servers/s1', { premium: !premium }, 'GET'))).status).toBe(400)
+    expect(target.isPremium).toHaveBeenCalledOnce()
+  })
+
+  it('does not resolve another server entitlement through a cross-server metadata request', async () => {
+    const target = server()
+    expect(await handleAddonRequest(target, request('/servers/s2', undefined, 'GET'))).toEqual({
+      status: 403,
+      body: { error: 'forbidden' },
+    })
+    expect(target.isPremium).not.toHaveBeenCalled()
+  })
+
+  it('does not turn an entitlement lookup failure into a non-Premium response', async () => {
+    const target = server()
+    const failure = new Error('Entitlement lookup unavailable')
+    vi.mocked(target.isPremium).mockRejectedValue(failure)
+    await expect(handleAddonRequest(target, request('/servers/s1', undefined, 'GET'))).rejects.toBe(failure)
   })
 
   it('returns the settings map expected by the addon and persists configuration using the existing model', async () => {

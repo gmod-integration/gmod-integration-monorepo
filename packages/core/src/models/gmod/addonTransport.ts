@@ -337,7 +337,13 @@ export async function handleAddonRequest(server: Server, rawRequest: AddonReques
   if (path === undefined) return request.endpoint.startsWith('/servers/') ? forbidden() : notFound()
   if (request.method === 'GET') {
     if (path === '')
-      return ok({ id: server.getID(), name: server.name, guild: server.guild, latestVersion: lastGmodIntegrationTag })
+      return ok({
+        id: server.getID(),
+        name: server.name,
+        guild: server.guild,
+        latestVersion: lastGmodIntegrationTag,
+        premium: await server.isPremium(),
+      })
     if (path === '/config') return ok(await server.getAllIGSettings())
     const target = /^\/players\/(\d{17}|0)\/access$/.exec(path)
     if (target) {

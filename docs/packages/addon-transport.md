@@ -34,6 +34,13 @@ warning imports and client screenshots/bugs/errors. Each endpoint is bound to th
 Configuration uses the shared strict settings schema and atomic persistence. Existing feature access,
 privacy safeguards, Discord queue adapters and per-player upload rate windows remain authoritative.
 
+`GET /servers/:serverID` projects the server ID, name, community, latest addon version and a boolean
+`premium` resolved from the authenticated server's entitlement. The in-game admin panel reads this
+metadata when opening and includes only the validated Premium boolean in its token-free settings
+snapshot. An unavailable or unknown entitlement does not become a non-Premium state or an upgrade
+prompt. The GWSockets installation button uses the dedicated server's loaded-module state, independently
+of whether its remote connection is currently working.
+
 ## Delivery and limits
 
 Frames are limited to 12 MiB before JSON parsing. JSON depth, node count, fields and operation payloads
