@@ -28,6 +28,143 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 describe('authoritative browser session client', () => {
+  it.each(['GET', 'HEAD'])('restores a session before resolving an initial %s URL factory', async (method) => {
+    let finish!: (response: Response) => void
+    const restoration = new Promise<Response>((resolve) => {
+      finish = resolve
+    })
+    const url = vi.fn(() => '/private-read')
+    const network = vi
+      .fn()
+      .mockImplementation(async (input: string) => (input.endsWith('/session') ? restoration : json({ loaded: true })))
+    vi.stubGlobal('fetch', network)
+    const pending = authenticatedFetch(url, { method })
+    expect(network).toHaveBeenCalledTimes(1)
+    expect(url).not.toHaveBeenCalled()
+    finish(json(sessionFixture()))
+    expect((await pending).ok).toBe(true)
+    expect(url).toHaveBeenCalledOnce()
+    expect(network.mock.calls.map(([input]) => input)).toEqual([
+      'http://localhost:5001/v6/auth/session',
+      '/private-read',
+    ])
+  })
+  it('does not resolve an initial identity-dependent URL after failed cookie restoration', async () => {
+    const url = vi.fn(() => '/users//guilds')
+    const network = vi.fn().mockResolvedValue(json({}, 503))
+    vi.stubGlobal('fetch', network)
+    await expect(authenticatedFetch(url)).rejects.toThrow('Session unavailable')
+    expect(url).not.toHaveBeenCalled()
+    expect(network).toHaveBeenCalledOnce()
+  })
+  it('cancels one waiting read without cancelling the cookie restoration shared by other readers', async () => {
+    let finish!: (response: Response) => void
+    const restoration = new Promise<Response>((resolve) => {
+      finish = resolve
+    })
+    const network = vi
+      .fn()
+      .mockImplementation(async (input: string) => (input.endsWith('/session') ? restoration : json({ loaded: true })))
+    vi.stubGlobal('fetch', network)
+    const controller = new AbortController()
+    const cancelledURL = vi.fn(() => '/cancelled')
+    const pending = authenticatedFetch(cancelledURL, { signal: controller.signal })
+    const rejection = expect(pending).rejects.toMatchObject({ name: 'AbortError' })
+    const shared = authenticatedFetch(() => '/remaining')
+    expect(network).toHaveBeenCalledOnce()
+    const sharedSignal = network.mock.calls[0][1].signal as AbortSignal
+    controller.abort()
+    await rejection
+    expect(sharedSignal.aborted).toBe(false)
+    finish(json(sessionFixture()))
+    expect((await shared).ok).toBe(true)
+    expect(cancelledURL).not.toHaveBeenCalled()
+    expect(network.mock.calls.map(([input]) => input)).toEqual(['http://localhost:5001/v6/auth/session', '/remaining'])
+  })
+  it('rejects an already-cancelled request before starting a session check', async () => {
+    const network = vi.fn()
+    vi.stubGlobal('fetch', network)
+    const controller = new AbortController()
+    controller.abort()
+    await expect(authenticatedFetch(() => '/private', { signal: controller.signal })).rejects.toMatchObject({
+      name: 'AbortError',
+    })
+    expect(network).not.toHaveBeenCalled()
+  })
+  it('does not dispatch a waiting URL factory after logout in another tab', async () => {
+    let finish!: (response: Response) => void
+    const restoration = new Promise<Response>((resolve) => {
+      finish = resolve
+    })
+    const network = vi.fn().mockReturnValue(restoration)
+    vi.stubGlobal('fetch', network)
+    const url = vi.fn(() => '/private')
+    const pending = authenticatedFetch(url)
+    localStorage.setItem(LOGOUT_PENDING_KEY, 'external-logout')
+    resetAuthentication()
+    finish(json(sessionFixture()))
+    await expect(pending).rejects.toThrow('Logout must be confirmed')
+    expect(url).not.toHaveBeenCalled()
+    expect(network).toHaveBeenCalledOnce()
+  })
+  it('rejects a waiting URL factory superseded by another tab session check', async () => {
+    let finish!: (response: Response) => void
+    const restoration = new Promise<Response>((resolve) => {
+      finish = resolve
+    })
+    const network = vi.fn().mockReturnValueOnce(restoration).mockResolvedValueOnce(json(sessionFixture()))
+    vi.stubGlobal('fetch', network)
+    const url = vi.fn(() => '/private')
+    const pending = authenticatedFetch(url)
+    await revalidateAuthSession()
+    finish(json(sessionFixture()))
+    await expect(pending).rejects.toThrow('session changed')
+    expect(url).not.toHaveBeenCalled()
+    expect(network).toHaveBeenCalledTimes(2)
+  })
+  it('retries a URL factory read once and leaves a repeated refusal unavailable', async () => {
+    acceptAuthSession(sessionFixture())
+    const network = vi
+      .fn()
+      .mockImplementation(async (input: string) =>
+        input.endsWith('/session') ? json(sessionFixture()) : json({}, 401),
+      )
+    vi.stubGlobal('fetch', network)
+    const url = vi.fn(() => '/private')
+    expect((await authenticatedFetch(url)).status).toBe(401)
+    expect(url).toHaveBeenCalledTimes(2)
+    expect(network.mock.calls.map(([input]) => input)).toEqual([
+      '/private',
+      'http://localhost:5001/v6/auth/session',
+      '/private',
+    ])
+  })
+  it('does not replay a factory read when recovery changes a known identity', async () => {
+    acceptAuthSession(sessionFixture())
+    const replacement = sessionFixture({
+      user: { ...sessionFixture().user, id: 'other-account' },
+      session: { ...sessionFixture().session, id: 'other-session' },
+    })
+    const network = vi.fn().mockResolvedValueOnce(json({}, 401)).mockResolvedValueOnce(json(replacement))
+    vi.stubGlobal('fetch', network)
+    const url = vi.fn(() => '/users/u1/private')
+    await expect(authenticatedFetch(url)).rejects.toThrow('session changed')
+    expect(url).toHaveBeenCalledOnce()
+    expect(network).toHaveBeenCalledTimes(2)
+    expect(authSession()?.user.id).toBe('other-account')
+  })
+  it('does not replay a mutation URL factory after an unauthorized response', async () => {
+    const network = vi
+      .fn()
+      .mockImplementation(async (input: string) =>
+        input.endsWith('/session') ? json(sessionFixture()) : json({}, 401),
+      )
+    vi.stubGlobal('fetch', network)
+    const url = vi.fn(() => '/private-write')
+    expect((await authenticatedFetch(url, { method: 'POST', body: '{}' })).status).toBe(401)
+    expect(url).toHaveBeenCalledOnce()
+    expect(network.mock.calls.filter(([, request]) => request.method === 'POST')).toHaveLength(1)
+  })
   it('deduplicates concurrent session checks', async () => {
     const network = vi.fn().mockResolvedValue(json(sessionFixture()))
     vi.stubGlobal('fetch', network)

@@ -1,4 +1,5 @@
 import Pagination from '../../../../components/Pagination.js'
+import { GuildRolesState, retainGuildRoleSelection } from '../../../../components/GuildRolesState.js'
 import { createListPagination } from '../../../../hooks/createListPagination.js'
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For } from 'solid-js'
@@ -104,12 +105,14 @@ const ServerTeam: Component = () => {
         onClose={editor.discard}
         onCancel={editor.discard}
       >
+        <GuildRolesState />
         <FormField
           id="teams-role"
           label={t('dashboard.server.team_roles.role_name', 'Discord Role')}
           error={editor.errors().roleID}
         >
           <select
+            ref={(select) => retainGuildRoleSelection(select, () => editor.draft().roleID)}
             id="teams-role"
             class="select w-full"
             value={editor.draft().roleID}
@@ -216,6 +219,7 @@ const ServerTeam: Component = () => {
           </>
         }
       >
+        <GuildRolesState />
         <p class="settings-notice">
           <Icon name="info" size={16} />
           {t(

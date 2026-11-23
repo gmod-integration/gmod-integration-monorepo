@@ -14,7 +14,7 @@ export function getAPIUrl(withVersion = true) {
   return apiBaseUrl
 }
 
-export function getUrlWithActualParams(url: string) {
+function resolveScopeParams(url: string) {
   // The route and the access snapshot share the same scope on direct links.
   const pathname = typeof window.location?.pathname === 'string' ? window.location.pathname : ''
   const match = pathname.match(/^\/dashboard\/guilds\/([^/]+)(?:\/config\/servers\/([^/]+))?/)
@@ -26,9 +26,7 @@ export function getUrlWithActualParams(url: string) {
     }
   }
   const parameters = {
-    discordID: authSession()?.user.id || localStorage.getItem('discordID') || getDiscordUser().id,
     serverID: routeID(match?.[2]) ?? getServer().id,
-    userID: getDiscordUser().id,
     guildID: routeID(match?.[1]) ?? getGuild().id,
   }
   for (const [key, value] of Object.entries(parameters)) {
@@ -37,9 +35,28 @@ export function getUrlWithActualParams(url: string) {
   return url
 }
 
+function resolveActorParams(url: string) {
+  const parameters = {
+    discordID: authSession()?.user.id || localStorage.getItem('discordID') || getDiscordUser().id,
+    userID: authSession()?.user.id || getDiscordUser().id,
+  }
+  for (const [key, value] of Object.entries(parameters))
+    url = url.replaceAll(`:${key}`, typeof value === 'string' ? encodeURIComponent(value) : '')
+  return url
+}
+
+export function getUrlWithActualParams(url: string) {
+  return resolveActorParams(resolveScopeParams(url))
+}
+
 export async function fetchAPI(endpoint: string, method: string, body?: unknown) {
-  endpoint = getUrlWithActualParams(endpoint)
-  const response = await authenticatedFetch(`${endpoint.startsWith('/v6/') ? apiBaseUrl : API_FQDN}${endpoint}`, {
+  // Navigation during cookie restoration must not retarget the original community/server read.
+  const scopedEndpoint = resolveScopeParams(endpoint)
+  const url = () => {
+    const resolved = resolveActorParams(scopedEndpoint)
+    return `${resolved.startsWith('/v6/') ? apiBaseUrl : API_FQDN}${resolved}`
+  }
+  const response = await authenticatedFetch(url, {
     method,
     headers: {
       'Content-Type': 'application/json',

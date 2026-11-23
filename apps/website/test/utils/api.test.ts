@@ -74,6 +74,59 @@ describe('utils/api.tsx', () => {
       vi.unstubAllGlobals()
     })
 
+    it.each([false, true])(
+      'binds verified account IDs after restoration while keeping the original route scope (stale cache: %s)',
+      async (stale) => {
+        window.history.replaceState(null, '', '/dashboard/guilds/original-guild/config/servers/original-server/roles')
+        if (stale) {
+          localStorage.setItem('discordID', 'old-account')
+          localStorage.setItem('discordUser', JSON.stringify({ id: 'old-account' }))
+        }
+        let finish!: (response: Response) => void
+        const restoration = new Promise<Response>((resolve) => {
+          finish = resolve
+        })
+        const network = vi
+          .fn()
+          .mockImplementation(async (input: string) => (input.endsWith('/session') ? restoration : new Response('{}')))
+        vi.stubGlobal('fetch', network)
+        const pending = fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/players/:userID', 'GET')
+        expect(network).toHaveBeenCalledTimes(1)
+        expect(network.mock.calls[0][0]).toBe('http://localhost:5001/v6/auth/session')
+        window.history.replaceState(null, '', '/dashboard/guilds/new-guild/config/servers/new-server/roles')
+        finish(new Response(JSON.stringify(sessionFixture())))
+        expect((await pending).ok).toBe(true)
+        expect(network.mock.calls[1][0]).toBe(
+          'http://localhost:5001/v3/users/u1/guilds/original-guild/servers/original-server/players/u1',
+        )
+      },
+    )
+
+    it('keeps a pending read on its original community when recovery occurs during navigation', async () => {
+      acceptAuthSession(sessionFixture())
+      window.history.replaceState(null, '', '/dashboard/guilds/original-guild/config/servers/original-server/roles')
+      let finish!: (response: Response) => void
+      const restoration = new Promise<Response>((resolve) => {
+        finish = resolve
+      })
+      let reads = 0
+      const network = vi
+        .fn()
+        .mockImplementation(async (input: string) =>
+          input.endsWith('/session') ? restoration : new Response('{}', { status: ++reads === 1 ? 401 : 200 }),
+        )
+      vi.stubGlobal('fetch', network)
+      const pending = fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/roles', 'GET')
+      await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(2))
+      window.history.replaceState(null, '', '/dashboard/guilds/new-guild/config/servers/new-server/roles')
+      finish(new Response(JSON.stringify(sessionFixture())))
+      expect((await pending).ok).toBe(true)
+      const readsSent = network.mock.calls.filter(([input]) => !input.endsWith('/session')).map(([input]) => input)
+      expect(readsSent).toEqual(
+        Array(2).fill('http://localhost:5001/v3/users/u1/guilds/original-guild/servers/original-server/roles'),
+      )
+    })
+
     it('resolves the endpoint params, sends JSON headers/body, and hits the versioned API base', async () => {
       acceptAuthSession(sessionFixture())
       window.localStorage.setItem('server', JSON.stringify({ id: 's1' }))

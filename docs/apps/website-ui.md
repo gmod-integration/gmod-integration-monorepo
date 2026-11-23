@@ -188,6 +188,15 @@ the session is restored, the provider rechecks once with that session; a success
 shared. A second failure remains unavailable. `FeatureGate` offers a nearby retry action, preserving
 the editor and its drafts while rights are checked again. Session presence alone never grants access.
 
+Account-bound reads through `fetchAPI` wait for initial session restoration before resolving actor
+IDs. Their community/server scope is captured when requested, so recovery does not retarget a read
+after navigation. Session changes, logout and caller cancellation supersede pending reads; mutations
+are never replayed automatically.
+
+`GuildRolesState` exposes loading and retry for shared Discord role metadata separately from saved
+rules and editors. Automatic roles, verification, role mappings and team mappings retain their rows
+and drafts during an outage. Their role selectors restore the visible draft value when options return.
+
 ```tsx
 const access = useFeatureAccess('sync.roles.rules')
 <FeatureGate capability="sync.roles.rules" used={rows().length} loading={rows.loading} error={rows.error}>

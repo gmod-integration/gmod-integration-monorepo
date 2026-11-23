@@ -1,6 +1,7 @@
 import Pagination from '../../../components/Pagination.js'
 import { createListPagination } from '../../../hooks/createListPagination.js'
 import { FeatureGate } from '../../../components/FeatureGate.js'
+import { GuildRolesState } from '../../../components/GuildRolesState.js'
 import { useFeatureAccess } from '../../../components/AccessProvider.js'
 import { showDialog } from '../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
@@ -74,6 +75,7 @@ const GuildAutoRole: Component = () => {
         confirmDisabled={!quotaAccess.canCreate(!autoRoles.error ? autoRoles().length : 0)}
         onConfirm={createVerifyRole}
       >
+        <GuildRolesState />
         <p class="text-sm text-base-content/70">
           {t(
             'dashboard.guild.auto_role.modal_description',
@@ -148,6 +150,7 @@ const GuildAutoRole: Component = () => {
           </>
         }
       >
+        <GuildRolesState />
         <p class="settings-notice">
           {t(
             'dashboard.guild.auto_role.active_help',

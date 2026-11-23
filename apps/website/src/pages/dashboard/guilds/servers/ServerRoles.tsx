@@ -1,6 +1,7 @@
 import Pagination from '../../../../components/Pagination.js'
 import { createListPagination } from '../../../../hooks/createListPagination.js'
 import { FeatureGate, SuspendedFeature } from '../../../../components/FeatureGate.js'
+import { GuildRolesState, retainGuildRoleSelection } from '../../../../components/GuildRolesState.js'
 import { useFeatureAccess } from '../../../../components/AccessProvider.js'
 import { closeDialog, showDialog } from '../../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
@@ -151,12 +152,14 @@ const ServerRoles: Component = () => {
         onClose={editor.discard}
         onCancel={editor.discard}
       >
+        <GuildRolesState />
         <FormField
           id="roles-role"
           label={t('dashboard.server.roles.role_name', 'Discord role')}
           error={editor.errors().roleID}
         >
           <select
+            ref={(select) => retainGuildRoleSelection(select, () => editor.draft().roleID)}
             id="roles-role"
             class="select w-full"
             value={editor.draft().roleID}
@@ -324,6 +327,7 @@ const ServerRoles: Component = () => {
           </FeatureGate>
         }
       >
+        <GuildRolesState />
         <p class="settings-notice">
           <Icon name="info" size={16} />
           {t('settings.rule_setup_help', 'Create a complete rule, then save it to start synchronization.')}

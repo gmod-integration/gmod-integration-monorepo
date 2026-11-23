@@ -2,6 +2,7 @@ import Pagination from '../../../components/Pagination.js'
 import { createListPagination } from '../../../hooks/createListPagination.js'
 import { FeatureGate, SuspendedFeature } from '../../../components/FeatureGate.js'
 import { useFeatureAccess } from '../../../components/AccessProvider.js'
+import { GuildRolesState, retainGuildRoleSelection } from '../../../components/GuildRolesState.js'
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
 import { type Component, createEffect, createResource, createSignal, For, on, Show } from 'solid-js'
 import { guildChannels, guildChannelsRefetch, guildRoles, guildRolesRefetch } from './GuildInformations.js'
@@ -284,6 +285,7 @@ const GuildVerification: Component = () => {
         onClose={roleForm.discard}
         onCancel={roleForm.discard}
       >
+        <GuildRolesState />
         <FormField
           id="guildverifications-field-0"
           label={t('dashboard.guild.verification.role_label', 'Role')}
@@ -294,6 +296,7 @@ const GuildVerification: Component = () => {
           required
         >
           <select
+            ref={(select) => retainGuildRoleSelection(select, () => selectedRole().roleID)}
             id="guildverifications-field-0"
             aria-describedby="guildverifications-field-0-description"
             class="select w-full"
@@ -577,6 +580,7 @@ const GuildVerification: Component = () => {
           </>
         }
       >
+        <GuildRolesState />
         <div class="min-w-0 w-full overflow-x-auto">
           <table class="table border-b border-base-300 rounded-none">
             <thead>

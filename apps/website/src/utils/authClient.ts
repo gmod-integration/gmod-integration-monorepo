@@ -251,17 +251,43 @@ async function sendAuthenticated(input: string, init: RequestInit, current: numb
   }
 }
 
+/** Cancelling one reader must not cancel the cookie check shared by the rest of the application. */
+async function restoreForRequest(signal?: AbortSignal | null) {
+  signal?.throwIfAborted()
+  if (!signal) return refreshAuthSession()
+  let abort!: () => void
+  const interrupted = new Promise<never>((_resolve, reject) => {
+    abort = () => reject(signal.reason)
+    signal.addEventListener('abort', abort, { once: true })
+  })
+  try {
+    return await Promise.race([refreshAuthSession(), interrupted])
+  } finally {
+    signal.removeEventListener('abort', abort)
+  }
+}
+
 /** All authenticated v3/v6 requests use cookies and the same CSRF/session recovery contract. */
-export async function authenticatedFetch(input: string, init: RequestInit = {}): Promise<Response> {
+export async function authenticatedFetch(input: string | (() => string), init: RequestInit = {}): Promise<Response> {
   if (isLogoutPending()) throw new Error('Logout must be confirmed before making authenticated requests')
+  init.signal?.throwIfAborted()
   const method = (init.method || 'GET').toUpperCase()
   const mutation = !['GET', 'HEAD', 'OPTIONS'].includes(method)
-  if (mutation && !authSession()?.csrfToken) await refreshAuthSession()
+  const initial = generation
+  const needsIdentity = typeof input === 'function' && ['GET', 'HEAD'].includes(method) && !authSession()
+  if ((mutation && !authSession()?.csrfToken) || needsIdentity) {
+    const restored = await restoreForRequest(init.signal)
+    if (isLogoutPending()) throw new Error('Logout must be confirmed before making authenticated requests')
+    if (initial !== generation) throw new Error('The session changed while the request was pending')
+    if (needsIdentity && !restored) throw new Error('Session unavailable before resolving the request')
+  }
   if (isLogoutPending()) throw new Error('Logout must be confirmed before making authenticated requests')
+  init.signal?.throwIfAborted()
   const headers = new Headers(init.headers)
   if (mutation && authSession()?.csrfToken) headers.set('X-CSRF-Token', authSession()!.csrfToken)
   const current = generation
-  const response = await sendAuthenticated(input, { ...init, headers }, current)
+  const url = () => (typeof input === 'function' ? input() : input)
+  const response = await sendAuthenticated(url(), { ...init, headers }, current)
   if (response.status === 403) {
     const denied = await response
       .clone()
@@ -272,10 +298,13 @@ export async function authenticatedFetch(input: string, init: RequestInit = {}):
   }
   if (response.status !== 401 || current !== generation) return response
   const before = authSession()?.session.id
-  const updated = await refreshAuthSession()
+  const updated = await restoreForRequest(init.signal)
+  if (isLogoutPending()) throw new Error('Logout must be confirmed before making authenticated requests')
+  if (current !== generation) throw new Error('The session changed while the request was pending')
+  init.signal?.throwIfAborted()
   // GET is safe to retry once. A mutation is never replayed without an idempotency guarantee.
   if (!mutation && updated && updated.session.id === before)
-    return sendAuthenticated(input, { ...init, headers: new Headers(init.headers) }, current)
+    return sendAuthenticated(url(), { ...init, headers: new Headers(init.headers) }, current)
   return response
 }
 
