@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@solidjs/testing-library'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { createSignal } from 'solid-js'
 import { MemoryRouter, Route } from '@solidjs/router'
 import { AccessProvider, type DashboardAccessSnapshot } from '../../../../../src/components/AccessProvider.js'
@@ -36,7 +36,7 @@ class Socket extends EventTarget {
 const setSocket = (socket: Socket | null) => setWebSocketSignal(socket as unknown as WebSocket | null)
 const viewOutput = () => screen.getByRole('log', { name: 'Console output' })
 const commandField = () => screen.getByRole('textbox', { name: 'Console command' }) as HTMLInputElement
-const commandDialog = () => within(document.getElementById('server-console-command')!)
+const commandButton = () => screen.getByRole('button', { name: 'Execute command' }) as HTMLButtonElement
 const response = (body: unknown, status = 200) => ({ ok: status < 400, status, json: async () => body }) as Response
 const commandAck = (status = 'executed', code = 'executed', overrides: object = {}) =>
   response({
@@ -46,7 +46,7 @@ const commandAck = (status = 'executed', code = 'executed', overrides: object = 
     code,
     ...overrides,
   })
-async function openCommand(command = 'status') {
+async function submitCommand(command = 'status') {
   await fireEvent.input(commandField(), { target: { value: command } })
   await fireEvent.submit(commandField().closest('form')!)
 }
@@ -103,32 +103,44 @@ afterEach(() => {
 })
 
 describe('server live console', () => {
-  it('opens a concrete command confirmation without sending and cancels without losing the draft', async () => {
-    const socket = new Socket()
-    setSocket(socket)
-    renderPage()
-    socket.confirm()
-    await openCommand('  say "Server restart in five minutes"  ')
-    expect(document.getElementById('server-console-command')).toHaveAttribute('open')
-    expect(commandDialog().getByRole('heading', { name: 'Execute a command on Sandbox One?' })).toBeInTheDocument()
-    expect(commandDialog().getByText('say "Server restart in five minutes"')).toBeInTheDocument()
-    expect(fetchAPI).not.toHaveBeenCalled()
-    await fireEvent.click(commandDialog().getByRole('button', { name: 'Cancel' }))
-    expect(document.getElementById('server-console-command')).not.toHaveAttribute('open')
-    expect(commandField()).toHaveValue('  say "Server restart in five minutes"  ')
-    expect(fetchAPI).not.toHaveBeenCalled()
-  })
+  it.each(['button', 'form'])(
+    'submits immediately through the %s without opening a confirmation dialog',
+    async (submission) => {
+      const socket = new Socket()
+      setSocket(socket)
+      renderPage()
+      socket.confirm()
+      vi.mocked(fetchAPI).mockImplementationOnce(async () => commandAck())
+      await fireEvent.input(commandField(), { target: { value: '  say "Server restart in five minutes"  ' } })
+      expect(commandButton()).toHaveAccessibleName('Execute command')
+      expect(commandButton().querySelector('svg')).not.toBeNull()
+      expect(commandButton().textContent).toBe('')
+      expect(commandButton().form).toBe(commandField().form)
+      if (submission === 'button') await fireEvent.click(commandButton())
+      else await fireEvent.submit(commandField().form!)
+      expect(document.getElementById('server-console-command')).toBeNull()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(fetchAPI).toHaveBeenCalledExactlyOnceWith(
+        '/v6/guilds/g1/servers/s1/console/commands',
+        'POST',
+        { requestID: expect.stringMatching(/^[a-f0-9-]{36}$/), command: 'say "Server restart in five minutes"' },
+        { signal: expect.any(AbortSignal) },
+      )
+      await vi.waitFor(() => expect(commandField()).toHaveValue(''))
+    },
+  )
 
-  it('executes once after confirmation, captures exact scope and preserves edits made while pending', async () => {
+  it('executes once while pending and preserves edits made before the acknowledgement', async () => {
     const socket = new Socket()
     setSocket(socket)
     renderPage()
     socket.confirm()
     let finish!: (response: Response) => void
     vi.mocked(fetchAPI).mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)))
-    await openCommand('  status  ')
-    await fireEvent.click(commandDialog().getByRole('button', { name: 'Confirm execution' }))
-    await fireEvent.click(commandDialog().getByRole('button', { name: 'Confirm execution' }))
+    await submitCommand('  status  ')
+    expect(commandButton()).toBeDisabled()
+    await fireEvent.click(commandButton())
+    await fireEvent.submit(commandField().form!)
     expect(fetchAPI).toHaveBeenCalledExactlyOnceWith(
       '/v6/guilds/g1/servers/s1/console/commands',
       'POST',
@@ -137,8 +149,9 @@ describe('server live console', () => {
     )
     await fireEvent.input(commandField(), { target: { value: 'sv_password next-draft' } })
     finish(commandAck())
-    await vi.waitFor(() => expect(document.getElementById('server-console-command')).not.toHaveAttribute('open'))
+    await vi.waitFor(() => expect(commandButton()).not.toHaveAttribute('aria-busy', 'true'))
     expect(commandField()).toHaveValue('sv_password next-draft')
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
     expect(
       screen.getByText(
         'The game console accepted the command. This acknowledgement does not include its output or confirm its effects.',
@@ -156,9 +169,8 @@ describe('server live console', () => {
     renderPage()
     socket.confirm()
     vi.mocked(fetchAPI).mockImplementationOnce(async () => commandAck(status, code))
-    await openCommand('status')
-    await fireEvent.click(commandDialog().getByRole('button', { name: 'Confirm execution' }))
-    await vi.waitFor(() => expect(document.getElementById('server-console-command')).not.toHaveAttribute('open'))
+    await submitCommand('status')
+    await vi.waitFor(() => expect(commandButton()).not.toHaveAttribute('aria-busy', 'true'))
     expect(commandField()).toHaveValue(status === 'executed' ? '' : 'status')
     expect(fetchAPI).toHaveBeenCalledTimes(1)
     if (status === 'unknown')
@@ -173,27 +185,20 @@ describe('server live console', () => {
     { serverID: 'other-server' },
     { requestID: '11111111-1111-4111-8111-111111111111' },
     { status: 'executed', code: 'delivery_uncertain' },
-  ])(
-    'rejects a foreign or malformed acknowledgement and prevents reusing its consumed confirmation: %j',
-    async (changes) => {
-      const socket = new Socket()
-      setSocket(socket)
-      renderPage()
-      socket.confirm()
-      vi.mocked(fetchAPI).mockImplementationOnce(async () => commandAck('executed', 'executed', changes))
-      await openCommand('status')
-      await fireEvent.click(commandDialog().getByRole('button', { name: 'Confirm execution' }))
-      await vi.waitFor(() => expect(commandDialog().getByRole('button', { name: 'Confirm execution' })).toBeDisabled())
-      await vi.waitFor(() => expect(commandDialog().getByRole('alert')).toBeInTheDocument())
-      expect(commandField()).toHaveValue('status')
-      await fireEvent.click(commandDialog().getByRole('button', { name: 'Confirm execution' }))
-      expect(fetchAPI).toHaveBeenCalledTimes(1)
-      expect(
-        screen.getAllByText('Command delivery could not be confirmed. Check the game server before trying again.')
-          .length,
-      ).toBeGreaterThan(0)
-    },
-  )
+  ])('rejects a foreign or malformed acknowledgement without automatically retrying: %j', async (changes) => {
+    const socket = new Socket()
+    setSocket(socket)
+    renderPage()
+    socket.confirm()
+    vi.mocked(fetchAPI).mockImplementationOnce(async () => commandAck('executed', 'executed', changes))
+    await submitCommand('status')
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(commandField()).toHaveValue('status')
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Command delivery could not be confirmed. Check the game server before trying again.',
+    )
+  })
 
   it('keeps a rejected pre-dispatch draft when the account lacks dashboard administrator access', async () => {
     const socket = new Socket()
@@ -201,14 +206,33 @@ describe('server live console', () => {
     renderPage()
     socket.confirm()
     vi.mocked(fetchAPI).mockResolvedValueOnce(response({ error: { code: 'forbidden' } }, 403))
-    await openCommand('status')
-    await fireEvent.click(commandDialog().getByRole('button', { name: 'Confirm execution' }))
-    await vi.waitFor(() => expect(commandDialog().getByRole('alert')).toBeInTheDocument())
-    expect(
-      screen.getAllByText('Your dashboard access does not allow console commands on this server.').length,
-    ).toBeGreaterThan(0)
+    await submitCommand('status')
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Your dashboard access does not allow console commands on this server.',
+    )
     expect(commandField()).toHaveValue('status')
     expect(fetchAPI).toHaveBeenCalledTimes(1)
+  })
+
+  it('preserves the draft after a transport failure and creates a fresh ID only for an explicit retry', async () => {
+    const socket = new Socket()
+    setSocket(socket)
+    renderPage()
+    socket.confirm()
+    vi.mocked(fetchAPI).mockRejectedValueOnce(new Error('Synthetic network failure'))
+    await submitCommand('status')
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Command delivery could not be confirmed'),
+    )
+    expect(commandField()).toHaveValue('status')
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
+    const firstID = (vi.mocked(fetchAPI).mock.calls[0][2] as { requestID: string }).requestID
+    vi.mocked(fetchAPI).mockImplementationOnce(async () => commandAck())
+    await fireEvent.submit(commandField().form!)
+    await vi.waitFor(() => expect(commandField()).toHaveValue(''))
+    expect(fetchAPI).toHaveBeenCalledTimes(2)
+    expect((vi.mocked(fetchAPI).mock.calls[1][2] as { requestID: string }).requestID).not.toBe(firstID)
   })
 
   it.each(['route', 'session', 'actor'])(
@@ -220,8 +244,7 @@ describe('server live console', () => {
       socket.confirm()
       let finish!: (response: Response) => void
       vi.mocked(fetchAPI).mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)))
-      await openCommand('status')
-      await fireEvent.click(commandDialog().getByRole('button', { name: 'Confirm execution' }))
+      await submitCommand('status')
       const signal = vi.mocked(fetchAPI).mock.calls[0][3]!.signal as AbortSignal
       if (change === 'route') {
         view.history.set({ value: '/dashboard/guilds/g1/config/servers/s2/console' })
@@ -238,9 +261,7 @@ describe('server live console', () => {
       expect(signal.aborted).toBe(true)
       await fireEvent.input(commandField(), { target: { value: 'new-context-draft' } })
       finish(commandAck())
-      await vi.waitFor(() =>
-        expect(screen.getByRole('button', { name: 'Execute command' })).not.toHaveAttribute('aria-busy', 'true'),
-      )
+      await vi.waitFor(() => expect(commandButton()).not.toHaveAttribute('aria-busy', 'true'))
       expect(commandField()).toHaveValue('new-context-draft')
       expect(
         screen.queryByText(
@@ -251,20 +272,22 @@ describe('server live console', () => {
     },
   )
 
-  it('validates command bytes and disables dispatch without a live authenticated session', async () => {
+  it('validates command bytes and refuses dispatch without a live authenticated session', async () => {
     const socket = new Socket()
     setSocket(socket)
     renderPage()
-    await fireEvent.input(commandField(), { target: { value: 'status' } })
-    expect(screen.getByRole('button', { name: 'Execute command' })).toBeDisabled()
+    await submitCommand('status')
+    expect(commandButton()).toBeDisabled()
+    expect(fetchAPI).not.toHaveBeenCalled()
     socket.confirm()
-    await fireEvent.input(commandField(), { target: { value: 'é'.repeat(4097) } })
-    expect(screen.getByRole('button', { name: 'Execute command' })).toBeDisabled()
+    await submitCommand('é'.repeat(4097))
+    expect(commandButton()).toBeDisabled()
+    expect(fetchAPI).not.toHaveBeenCalled()
     await fireEvent.input(commandField(), { target: { value: 'status' } })
-    expect(screen.getByRole('button', { name: 'Execute command' })).toBeEnabled()
+    expect(commandButton()).toBeEnabled()
     setAuthSession(undefined)
-    await fireEvent.input(commandField(), { target: { value: 'status' } })
-    expect(screen.getByRole('button', { name: 'Execute command' })).toBeDisabled()
+    await submitCommand('status')
+    expect(commandButton()).toBeDisabled()
     expect(fetchAPI).not.toHaveBeenCalled()
   })
 
@@ -275,27 +298,19 @@ describe('server live console', () => {
     renderPage()
     socket.confirm()
     vi.mocked(fetchAPI).mockImplementationOnce(async () => commandAck())
-    await openCommand('status')
-    expect(fetchAPI).not.toHaveBeenCalled()
-    await fireEvent.click(commandDialog().getByRole('button', { name: 'Confirm execution' }))
-    await vi.waitFor(() => expect(document.getElementById('server-console-command')).not.toHaveAttribute('open'))
+    await submitCommand('status')
+    await vi.waitFor(() => expect(commandField()).toHaveValue(''))
     expect(fetchAPI).toHaveBeenCalledTimes(1)
-    expect(commandField()).toHaveValue('')
-    expect(
-      screen.getByText(
-        'Dashboard administrators with access to this server can execute console commands. Each command requires confirmation.',
-      ),
-    ).toBeInTheDocument()
   })
 
   it('does not dispatch console commands without the required capability', async () => {
     const socket = new Socket()
     setSocket(socket)
     renderPage(false)
-    await openCommand('status')
-    expect(document.getElementById('server-console-command')).not.toHaveAttribute('open')
+    await submitCommand('status')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(fetchAPI).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Execute command' })).toBeDisabled()
+    expect(commandButton()).toBeDisabled()
   })
 
   it('preserves a command draft while capability access expires and is refreshed', async () => {
@@ -306,11 +321,11 @@ describe('server live console', () => {
     await fireEvent.input(commandField(), { target: { value: 'status' } })
     view.setPremium(false)
     expect(commandField()).toHaveValue('status')
-    expect(screen.getByRole('button', { name: 'Execute command' })).toBeDisabled()
+    expect(commandButton()).toBeDisabled()
     view.setPremium(true)
     socket.confirm()
     expect(commandField()).toHaveValue('status')
-    expect(screen.getByRole('button', { name: 'Execute command' })).toBeEnabled()
+    expect(commandButton()).toBeEnabled()
     expect(fetchAPI).not.toHaveBeenCalled()
   })
   it('retains valid escaped text whose encoded JSON exceeds 40,000 characters', () => {

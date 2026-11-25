@@ -278,6 +278,7 @@ Choose the editing surface by purpose:
 | Existing settings, including switches and destinations             | Inline `SettingGroup` and `SettingRow` | Save valid changes automatically with compact feedback.                  |
 | Independent entity creation/editing or a secret                    | Complete `AdminModal` form             | Add opens an empty local draft; Create/Save submits the complete object. |
 | Publication/removal, deletion, token reset or a bulk command       | `ConfirmActionDialog`                  | Name the target and consequence; execute only after confirmation.        |
+| Game server console command                                        | Inline input with `IconButton`         | Submit directly with Enter or the button; preserve the draft on failure. |
 | Interface preferences such as theme, language, sorting and filters | Immediate control                      | Update immediately.                                                      |
 
 Use `createDraftForm` with `allowPendingEdits: true` and `createAutosave` for existing settings.

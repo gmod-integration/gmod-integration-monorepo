@@ -7,18 +7,15 @@ import {
   ConsoleRconResponseSchema,
 } from '@gmod/schema/gmod/ConsoleStreamSchema.js'
 import AdminPanel from '../../../../components/AdminPanel.js'
-import ConfirmActionDialog from '../../../../components/ConfirmActionDialog.js'
 import { useFeatureAccess } from '../../../../components/AccessProvider.js'
 import { FeatureGate } from '../../../../components/FeatureGate.js'
-import { Button, FormField, StatusBadge } from '../../../../components/ui/index.js'
+import { Button, FormField, IconButton, StatusBadge } from '../../../../components/ui/index.js'
 import { createAsyncAction } from '../../../../hooks/createAsyncAction.js'
 import { useDraftGuard } from '../../../../hooks/draftRegistry.js'
 import { useI18n } from '../../../../i18n.js'
 import { webSocketSignal } from '../../../../utils/websocket.js'
 import { fetchAPI } from '../../../../utils/api.js'
 import { authSession } from '../../../../utils/authClient.js'
-import { getServer } from '../../../../utils/utils.js'
-import { closeDialog, showDialog } from '../../../../utils/dialog.js'
 
 type StreamState = 'connecting' | 'pending' | 'live' | 'server_offline' | 'unavailable' | 'forbidden'
 const MAX_LINES = 2000
@@ -26,11 +23,9 @@ const MAX_LINES = 2000
 const MAX_CHARACTERS = 128 * 1024
 const RENEW_MS = 10_000
 const ACK_TIMEOUT_MS = 8_000
-const COMMAND_DIALOG = 'server-console-command'
 type CommandIntent = {
   guildID: string
   serverID: string
-  serverName: string
   sessionID: string
   userID: string
   generation: number
@@ -50,8 +45,6 @@ export default function ServerConsole() {
   const [truncated, setTruncated] = createSignal(false)
   const [follow, setFollow] = createSignal(true)
   const [command, setCommand] = createSignal('')
-  const [intent, setIntent] = createSignal<CommandIntent | null>(null)
-  const [attemptUsed, setAttemptUsed] = createSignal(false)
   const [commandFeedback, setCommandFeedback] = createSignal<CommandFeedback | null>(null)
   const commandAction = createAsyncAction({
     errorMessage: () =>
@@ -89,11 +82,8 @@ export default function ServerConsole() {
       commandController?.abort()
       commandController = undefined
       setCommand('')
-      setIntent(null)
       setCommandFeedback(null)
-      setAttemptUsed(false)
       commandAction.reset()
-      closeDialog(COMMAND_DIALOG)
     })
   })
   createEffect(() => {
@@ -102,11 +92,8 @@ export default function ServerConsole() {
       commandGeneration++
       commandController?.abort()
       commandController = undefined
-      setIntent(null)
       setCommandFeedback(null)
-      setAttemptUsed(false)
       commandAction.reset()
-      closeDialog(COMMAND_DIALOG)
     })
   })
   onCleanup(() => {
@@ -121,35 +108,26 @@ export default function ServerConsole() {
     pending.sessionID === currentSession()?.session.id &&
     pending.userID === currentSession()?.user.id &&
     allowed()
-  const openCommand = (event: SubmitEvent) => {
+  const executeCommand = async (event: SubmitEvent) => {
     event.preventDefault()
     const parsed = commandValidation()
     const session = currentSession()
     if (!canCommand() || !parsed.success || !session) return
-    const server = getServer()
-    setIntent({
+    const pending: CommandIntent = {
       guildID: params.guildID,
       serverID: params.serverID,
-      serverName: server.id === params.serverID ? server.name || params.serverID : params.serverID,
       sessionID: session.session.id,
       userID: session.user.id,
       generation: commandGeneration,
       requestID: crypto.randomUUID(),
       command: parsed.data.command,
       rawDraft: command(),
-    })
-    setAttemptUsed(false)
+    }
     setCommandFeedback(null)
     commandAction.reset()
-    showDialog(COMMAND_DIALOG)
-  }
-  const executeCommand = async () => {
-    const pending = intent()
-    if (!pending || attemptUsed() || !canCommand() || !matchesScope(pending)) throw new Error('Command unavailable')
-    setAttemptUsed(true)
     const controller = new AbortController()
     commandController = controller
-    const succeeded = await commandAction.run(async () => {
+    await commandAction.run(async () => {
       try {
         const response = await fetchAPI(
           `/v6/guilds/${encodeURIComponent(pending.guildID)}/servers/${encodeURIComponent(pending.serverID)}/console/commands`,
@@ -203,7 +181,6 @@ export default function ServerConsole() {
         if (commandController === controller) commandController = undefined
       }
     })
-    if (!succeeded) throw new Error('Command delivery failed')
   }
   const commandMessage = () => {
     const result = commandFeedback()
@@ -425,28 +402,6 @@ export default function ServerConsole() {
   }
   return (
     <>
-      <ConfirmActionDialog
-        id={COMMAND_DIALOG}
-        title={t('server_console.confirm_title', 'Execute a command on {1}?', intent()?.serverName || params.serverID)}
-        description={t(
-          'server_console.confirm_description',
-          'The command will run on this game server with console privileges. Review the exact command before confirming.',
-        )}
-        confirmLabel={t('server_console.confirm_execute', 'Confirm execution')}
-        variant="warning"
-        disabled={!intent() || attemptUsed() || !canCommand() || !matchesScope(intent()!)}
-        onConfirm={executeCommand}
-        onSuccess={() => setIntent(null)}
-      >
-        <pre class="overflow-auto whitespace-pre-wrap rounded-lg bg-base-200 p-3 font-mono text-sm [overflow-wrap:anywhere]">
-          {intent()?.command}
-        </pre>
-        <Show when={intent() && attemptUsed() && !commandAction.pending() && commandFeedback()}>
-          <p role="status" class="text-sm text-warning">
-            {commandMessage()}
-          </p>
-        </Show>
-      </ConfirmActionDialog>
       <AdminPanel
         title={t('server_console.title', 'Live server console')}
         description={t(
@@ -515,13 +470,13 @@ export default function ServerConsole() {
                 )}
               </p>
             </Show>
-            <form class="flex min-w-0 flex-col gap-3 border-t border-base-300 pt-4" onSubmit={openCommand}>
+            <form class="flex min-w-0 flex-col gap-3 border-t border-base-300 pt-4" onSubmit={executeCommand}>
               <FormField
                 id="server-console-command-input"
                 label={t('server_console.command', 'Console command')}
                 description={t(
                   'server_console.command_help',
-                  'Dashboard administrators with access to this server can execute console commands. Each command requires confirmation.',
+                  'Dashboard administrators with access to this server can execute console commands. Press Enter or use the button to run the command.',
                 )}
                 error={
                   command().length > 0 && !commandValidation().success
@@ -532,27 +487,30 @@ export default function ServerConsole() {
                     : undefined
                 }
               >
-                <input
-                  id="server-console-command-input"
-                  class="input w-full font-mono"
-                  type="text"
-                  maxLength={8192}
-                  autocomplete="off"
-                  spellcheck={false}
-                  value={command()}
-                  onInput={(event) => setCommand(event.currentTarget.value)}
-                />
+                <div class="flex min-w-0 items-center gap-2">
+                  <input
+                    id="server-console-command-input"
+                    class="input min-w-0 flex-1 font-mono"
+                    type="text"
+                    maxLength={8192}
+                    autocomplete="off"
+                    spellcheck={false}
+                    aria-describedby={`server-console-command-input-description${command().length > 0 && !commandValidation().success ? ' server-console-command-input-error' : ''}`}
+                    aria-invalid={command().length > 0 && !commandValidation().success}
+                    value={command()}
+                    onInput={(event) => setCommand(event.currentTarget.value)}
+                  />
+                  <IconButton
+                    type="submit"
+                    icon={commandAction.pending() ? undefined : 'send'}
+                    label={t('server_console.execute', 'Execute command')}
+                    variant="primary"
+                    size="md"
+                    loading={commandAction.pending()}
+                    disabled={!canCommand() || !commandValidation().success}
+                  />
+                </div>
               </FormField>
-              <div class="flex flex-wrap items-center gap-3">
-                <Button
-                  type="submit"
-                  variant="primary"
-                  loading={commandAction.pending()}
-                  disabled={!canCommand() || !commandValidation().success}
-                >
-                  {t('server_console.execute', 'Execute command')}
-                </Button>
-              </div>
               <Show when={commandFeedback()}>
                 <p
                   role={commandFeedback()?.status === 'executed' ? 'status' : 'alert'}

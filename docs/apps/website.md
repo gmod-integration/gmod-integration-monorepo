@@ -106,8 +106,8 @@ The capture covers Lua `print`, `Msg`, `MsgN` and `MsgC` rather than native engi
 There is no persisted console history. See the [gateway lifecycle](./websocket.md#temporary-server-console-viewers)
 for last-viewer shutdown and the 30-second fallback after abnormal network loss.
 
-The command form captures a server, account session, request UUID and validated single-line command
-before confirmation. Only an explicit confirmation posts to
+The command form captures the current server, account session, request UUID and validated single-line
+command when submitted. Pressing Enter or the execute icon to the right of the input posts directly to
 `/v6/guilds/:guildID/servers/:serverID/console/commands`; page loading and reconnection never execute a
 command. Dashboard access requires Discord administrator permission and an enabled in-game rank on
 the target server, except for the Discord owner or the buyer of an active purchase linked to that
