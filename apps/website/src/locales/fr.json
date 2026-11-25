@@ -2291,7 +2291,7 @@
   "server_console": {
     "title": "Console du serveur en direct",
     "description": "Lisez les messages Lua de votre serveur de jeu pendant que cette page est ouverte. Le flux s’arrête lorsque vous quittez la page ; les messages précédents ne sont pas enregistrés.",
-    "requirements": "Nécessite un addon de jeu à jour. Cette vue reçoit les messages imprimés par les scripts Lua.",
+    "requirements": "Nécessite un addon de jeu à jour. Seules les sorties Lua sont affichées ici ; les sorties des commandes natives restent dans la console du serveur de jeu.",
     "live": "En direct",
     "starting": "Démarrage du flux…",
     "offline": "Serveur de jeu hors ligne",

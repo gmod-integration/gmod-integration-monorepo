@@ -420,7 +420,7 @@ export default function ServerConsole() {
             <p class="text-sm text-base-content/65">
               {t(
                 'server_console.requirements',
-                'Requires an up-to-date game addon. This viewer receives messages printed by Lua scripts.',
+                'Requires an up-to-date game addon. Only Lua output is shown here; native command output remains in the game server console.',
               )}
             </p>
             <div class="flex flex-wrap items-center justify-between gap-3">

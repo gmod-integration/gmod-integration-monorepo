@@ -2288,7 +2288,7 @@
   "server_console": {
     "title": "Live server console",
     "description": "Read Lua messages from your game server while this page is open. The stream stops when you leave this page; previous output is not stored.",
-    "requirements": "Requires an up-to-date game addon. This viewer receives messages printed by Lua scripts.",
+    "requirements": "Requires an up-to-date game addon. Only Lua output is shown here; native command output remains in the game server console.",
     "live": "Live",
     "starting": "Starting the stream…",
     "offline": "Game server offline",

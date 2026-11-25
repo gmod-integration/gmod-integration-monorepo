@@ -190,6 +190,53 @@ describe('detailed console execution outcomes', () => {
 })
 
 describe('panel-authorized console commands', () => {
+  it.each(['false', 'error'] as const)(
+    'waits for a later addon ACK when the queue reports %s before the command deadline',
+    async (failure) => {
+      dispatch.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            setTimeout(() => {
+              if (failure === 'error') reject(new Error('Queue acknowledgement unavailable'))
+              else resolve(false)
+            }, 600)
+          }),
+      )
+      const waiting = enqueuePanelRconAndWaitDetailed(panelInput, 5000)
+      let settled = false
+      void waiting.then(() => (settled = true))
+      await vi.advanceTimersByTimeAsync(0)
+      const packet = dispatch.mock.calls[0][0].data
+      await vi.advanceTimersByTimeAsync(700)
+      expect(settled).toBe(false)
+      expect(await redis.get(`ws:addon-command:${packet.requestID}`)).not.toBeNull()
+      await vi.advanceTimersByTimeAsync(300)
+      await acceptAddonCommandResult(panelInput.serverID, { ...success(packet.requestID), method: 'wsPanelRcon' })
+      await vi.advanceTimersByTimeAsync(50)
+      expect(await waiting).toBe('executed')
+      expect(dispatch).toHaveBeenCalledOnce()
+      expect(await redis.keys('ws:addon-command:*')).toEqual([])
+    },
+  )
+
+  it('keeps a failed queue acknowledgement bounded by the original deadline without dispatching again', async () => {
+    dispatch.mockResolvedValueOnce(false)
+    const reads = vi.spyOn(redis, 'get')
+    const waiting = enqueuePanelRconAndWaitDetailed(panelInput, 1000)
+    let settled = false
+    void waiting.then(() => (settled = true))
+    await vi.advanceTimersByTimeAsync(700)
+    expect(settled).toBe(false)
+    await vi.advanceTimersByTimeAsync(301)
+    expect(await waiting).toBe('delivery_uncertain')
+    expect(dispatch).toHaveBeenCalledOnce()
+    expect(await redis.keys('ws:addon-command:*')).toEqual([])
+    const completedReads = reads.mock.calls.length
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(reads).toHaveBeenCalledTimes(completedReads)
+    expect(dispatch).toHaveBeenCalledOnce()
+  })
+
   it('sends the authenticated panel actor without Steam or an in-game player requirement', async () => {
     dispatch.mockResolvedValueOnce(true)
     const waiting = enqueuePanelRconAndWaitDetailed(panelInput, 100)

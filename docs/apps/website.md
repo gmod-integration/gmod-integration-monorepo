@@ -103,6 +103,9 @@ page or reconnecting starts a fresh subscription. Other dashboard pages are not 
 packets and shows explicit pending/offline/denied/unavailable states. A gateway acknowledgement
 confirms subscription only; a compatible updated addon is required to produce console messages.
 The capture covers Lua `print`, `Msg`, `MsgN` and `MsgC` rather than native engine/binary output.
+For a Lua-output check, submit `lua_run print("Gmod Integration Lua output")` from the command field;
+the printed text appears in the live stream. Native commands such as `status` can execute without
+their native output appearing in this viewer.
 There is no persisted console history. See the [gateway lifecycle](./websocket.md#temporary-server-console-viewers)
 for last-viewer shutdown and the 30-second fallback after abnormal network loss.
 

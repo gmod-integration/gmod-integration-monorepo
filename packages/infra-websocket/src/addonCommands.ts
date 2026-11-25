@@ -66,18 +66,11 @@ async function waitForAddonRcon(input: RconInput, timeoutMs = 5000, detailed = f
   try {
     if (detailed && Date.now() >= expiresAt) return 'delivery_uncertain'
     const delivery = enqueueWSSendToServerAndWait({ id: input.serverID, data: packet }, duration)
-    let deliveryFailed = false
     if (detailed) {
       // The addon ACK is authoritative even when the queue's delivery acknowledgement fails or
-      // arrives later. Poll it while delivery is pending, instead of awaiting the queue first.
-      void delivery.then(
-        (sent) => {
-          deliveryFailed = !sent
-        },
-        () => {
-          deliveryFailed = true
-        },
-      )
+      // times out before remote dispatch finishes. Wait until the original command deadline;
+      // a failed queue acknowledgement does not prove that the command was never delivered.
+      void delivery.catch(() => {})
     } else if (!(await delivery)) return 'delivery_uncertain'
     while (Date.now() < expiresAt) {
       const raw = await redis.get(resultKey)
@@ -86,15 +79,6 @@ async function waitForAddonRcon(input: RconInput, timeoutMs = 5000, detailed = f
         return result.success && result.data.id === requestID && result.data.method === packet.method
           ? result.data.code
           : 'delivery_uncertain'
-      }
-      if (deliveryFailed) {
-        const terminal = await redis.get(resultKey)
-        if (terminal !== null) {
-          const result = AddonCommandResultSchema.safeParse(JSON.parse(terminal))
-          if (result.success && result.data.id === requestID && result.data.method === packet.method)
-            return result.data.code
-        }
-        return 'delivery_uncertain'
       }
       await new Promise((resolve) => setTimeout(resolve, Math.min(50, Math.max(1, expiresAt - Date.now()))))
     }
