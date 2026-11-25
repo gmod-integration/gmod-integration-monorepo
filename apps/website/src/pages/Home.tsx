@@ -2,7 +2,6 @@ import { createResource, createSignal, For, Show, type Component } from 'solid-j
 import statusImage from '../assets/features/servers_status.png'
 import chatImage from '../assets/features/chat.png'
 import verificationImage from '../assets/features/verification.png'
-import wallpaper from '../assets/wallpaper.png'
 import { useI18n } from '../i18n.js'
 import { Button, ButtonLink, Icon } from '../components/ui/index.js'
 import { HomeFeatures } from '../components/home/HomeFeatures.js'
@@ -64,7 +63,7 @@ const Home: Component = () => {
   return (
     <div class="public-home home-redesign" data-hero="console" data-stats="ribbon">
       <div class="home-scene" aria-hidden="true">
-        <img src={wallpaper} alt="" decoding="async" fetchpriority="high" />
+        <div class="home-scene-artwork" />
       </div>
       <section class="home-hero" data-variant="console" aria-label="Gmod Integration">
         <div class="home-hero-copy">
