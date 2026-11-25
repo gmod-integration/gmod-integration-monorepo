@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 vi.mock('../../../src/utils/logger.js', () => ({
   LogLevel: { MINIMAL: 'minimal', NORMAL: 'normal', VERBOSE: 'verbose', ALL: 'all', CUSTOM: 'custom' },
 }))
@@ -38,18 +47,25 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
 }))
 
 const prismaMock: any = {
-  gm_server_stat_team_time: { create: vi.fn() },
-  gm_server_stat: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), findMany: vi.fn() },
-  gm_server_stat_session: { create: vi.fn() },
+  gm_server_stat_team_time: { deleteMany: vi.fn(), create: vi.fn() },
+  gm_server_stat: { deleteMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), findMany: vi.fn() },
+  gm_server_stat_session: { deleteMany: vi.fn(), create: vi.fn() },
   gm_guild_verify_role: { findMany: vi.fn() },
   gm_guild_member: { findMany: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
-const { PlayerGmod, updateDiscordTeamRole, updatePlayerUserGroup, removeDiscordSync, removeServerSync, changeLinkCheckDiscordBan } =
-  await import('../../../src/classes/v3/PlayerGmod.js')
+const {
+  PlayerGmod,
+  updateDiscordTeamRole,
+  updatePlayerUserGroup,
+  removeDiscordSync,
+  removeServerSync,
+  changeLinkCheckDiscordBan,
+} = await import('../../../src/classes/v3/PlayerGmod.js')
 
 function resetAllMocks() {
+  isErasureBlockedMock.mockReset().mockResolvedValue(false)
   getTranslateMock.mockClear()
   secToTimeMock.mockClear()
   getUserFromDiscordIDMock.mockReset()
@@ -193,6 +209,23 @@ describe('PlayerGmod', () => {
   })
 
   describe('saveTeamTime', () => {
+    it('removes only the team-time record inserted while erasure became active', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      prismaMock.gm_server_stat_team_time.create.mockResolvedValueOnce({ id: 123 })
+      await makePlayer().saveTeamTime('s1')
+      expect(prismaMock.gm_server_stat_team_time.deleteMany).toHaveBeenCalledWith({ where: { id: 123 } })
+    })
+    it('does not persist activity for a suppressed player', async () => {
+      isErasureBlockedMock.mockResolvedValue(true)
+      const player = makePlayer()
+      await player.saveTeamTime('s1')
+      await player.saveServerStat('s1')
+      await player.saveServerStatSession('s1')
+      expect(prismaMock.gm_server_stat_team_time.create).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_stat.create).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_stat.update).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_stat_session.create).not.toHaveBeenCalled()
+    })
     it('does nothing when timeLastTeamChange is falsy', async () => {
       const player = makePlayer({ timeLastTeamChange: 0 })
       await player.saveTeamTime('s1')
@@ -216,6 +249,15 @@ describe('PlayerGmod', () => {
   })
 
   describe('saveServerStat', () => {
+    it('removes only this player and server revision after a late write', async () => {
+      const updatedAt = new Date('2026-11-21T10:00:00Z')
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      prismaMock.gm_server_stat.create.mockResolvedValueOnce({ updatedAt })
+      await makePlayer().saveServerStat('s1')
+      expect(prismaMock.gm_server_stat.deleteMany).toHaveBeenCalledWith({
+        where: { server_id: 's1', steam_id: '765', updatedAt },
+      })
+    })
     it('updates the existing stat row, accumulating totals', async () => {
       prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce({ total_time: 10, total_kill: 1, total_death: 1 })
       await makePlayer().saveServerStat('s1')
@@ -241,6 +283,12 @@ describe('PlayerGmod', () => {
   })
 
   describe('saveServerStatSession', () => {
+    it('removes exactly the session inserted while erasure started', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      prismaMock.gm_server_stat_session.create.mockResolvedValueOnce({ id: 123 })
+      await makePlayer().saveServerStatSession('s1')
+      expect(prismaMock.gm_server_stat_session.deleteMany).toHaveBeenCalledWith({ where: { id: 123 } })
+    })
     it('persists a session row', async () => {
       prismaMock.gm_server_stat_session.create.mockResolvedValueOnce({})
       await makePlayer().saveServerStatSession('s1')
@@ -251,14 +299,30 @@ describe('PlayerGmod', () => {
   })
 
   describe('updateDiscordTeamRole', () => {
+    it('does not queue a Discord team mutation for a suppressed Steam identity', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      await updateDiscordTeamRole({ getID: () => 's1' } as any, '765', 'Red')
+      expect(enqueueUpdateDiscordTeamRoleMock).not.toHaveBeenCalled()
+    })
     it('delegates to the bullmq adapter', async () => {
       const server = { getID: () => 's1' } as any
       await updateDiscordTeamRole(server, '765', 'Red')
-      expect(enqueueUpdateDiscordTeamRoleMock).toHaveBeenCalledWith({ serverID: 's1', steamID64: '765', teamName: 'Red' })
+      expect(enqueueUpdateDiscordTeamRoleMock).toHaveBeenCalledWith({
+        serverID: 's1',
+        steamID64: '765',
+        teamName: 'Red',
+      })
     })
   })
 
   describe('updatePlayerUserGroup', () => {
+    it('does not read, persist or queue the rank of a suppressed Steam identity', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      await updatePlayerUserGroup({ getID: () => 's1' } as any, '765', 'admin')
+      expect(prismaMock.gm_server_stat.findFirst).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_stat.update).not.toHaveBeenCalled()
+      expect(enqueueUpdatePlayerUserGroupMock).not.toHaveBeenCalled()
+    })
     it('does nothing when the player stat row does not exist', async () => {
       prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce(null)
       const server = { getID: () => 's1' } as any
@@ -272,7 +336,11 @@ describe('PlayerGmod', () => {
       const server = { getID: () => 's1' } as any
       await updatePlayerUserGroup(server, '765', 'admin')
       expect(prismaMock.gm_server_stat.update).toHaveBeenCalled()
-      expect(enqueueUpdatePlayerUserGroupMock).toHaveBeenCalledWith({ serverID: 's1', steamID64: '765', userGroup: 'admin' })
+      expect(enqueueUpdatePlayerUserGroupMock).toHaveBeenCalledWith({
+        serverID: 's1',
+        steamID64: '765',
+        userGroup: 'admin',
+      })
     })
 
     it('rethrows and logs on failure', async () => {
@@ -350,9 +418,7 @@ describe('PlayerGmod', () => {
 
       await removeServerSync('765')
 
-      expect(prismaMock.gm_server_stat.update).toHaveBeenCalledWith(
-        expect.objectContaining({ data: { rank: 'user' } }),
-      )
+      expect(prismaMock.gm_server_stat.update).toHaveBeenCalledWith(expect.objectContaining({ data: { rank: 'user' } }))
       expect(wsAddMock).toHaveBeenCalledWith(
         'wsSendToServer',
         expect.objectContaining({ data: expect.objectContaining({ method: 'wsPlayerUpdateGroup', add: false }) }),

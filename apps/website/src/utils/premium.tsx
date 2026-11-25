@@ -1,10 +1,13 @@
-import { getGuild } from './utils'
-import { Component, ParentProps, Show } from 'solid-js'
+import { Icon, StatusBadge } from '../components/ui/index.js'
+import { useAccess } from '../components/AccessProvider.js'
+import { upgradeHref } from '../components/FeatureGate.js'
+import { type Component, type ParentProps, Show } from 'solid-js'
 import { useI18n } from '../i18n'
 import { A } from '@solidjs/router'
 
 export function premium() {
-  return getGuild().isPremium
+  const access = useAccess()
+  return access.ready() && access.snapshot()?.premium === true
 }
 
 interface PremiumBadgeProps {
@@ -14,33 +17,36 @@ interface PremiumBadgeProps {
 
 export const PremiumBadge: Component<PremiumBadgeProps> = (props) => {
   const { t } = useI18n()
+  const access = useAccess()
   return (
-    <Show when={!premium()}>
+    <Show when={access.ready() && access.snapshot()?.state === 'ready' && !premium()}>
       <Show
         when={!props.onlyIcon}
         fallback={
           <A
-            href="/premium"
+            href={upgradeHref()}
             class="tooltip"
+            aria-label={t('main.premium', 'Premium')}
             classList={{
               'mr-2': !props.noMargin,
             }}
             data-tip={t('main.premium', 'Premium')}
           >
-            <i class="text-amber-400 fa-solid fa-crown" />
+            <Icon name="crown" class="ui-premium-icon" />
           </A>
         }
       >
         <A
-          href="/premium"
-          class="badge badge-outline text-amber-400 py-3 flex tooltip tooltip-warning"
+          href={upgradeHref()}
+          class="inline-flex max-w-full tooltip tooltip-warning"
           classList={{
             'mr-2': !props.noMargin,
           }}
-          data-tip={t('main.buy_premium', 'This feature is only available to premium users.')}
+          data-tip={t('main.buy_premium', 'This feature requires Premium for this Discord community.')}
         >
-          <i class="fa-solid fa-crown" />
-          <span class="ml-2">{t('tools.premium', 'Premium')}</span>
+          <StatusBadge tone="warning" icon="crown">
+            {t('tools.premium', 'Premium')}
+          </StatusBadge>
         </A>
       </Show>
     </Show>
@@ -53,20 +59,24 @@ interface BuyPremiumBtnProps extends ParentProps {
   hidden?: boolean
 }
 
+/** @deprecated Use FeatureGate with a named capability. This adapter is presentation only. */
 export const BuyPremiumBtn: Component<BuyPremiumBtnProps> = (props) => {
   const { t } = useI18n()
+  const access = useAccess()
+  const blocked = () =>
+    access.ready() && access.snapshot()?.state === 'ready' && !premium() && props.subCondition === false
   return (
-    <Show when={props.hidden !== undefined ? !props.hidden : true}>
-      <Show
-        when={premium() || (props.subCondition !== undefined ? props.subCondition : true)}
-        fallback={
-          <A href={'/premium'} class="btn btn-outline btn-warning">
-            {props.btnText || t('main.buy_premium', 'This feature is only available to premium users.')}
+    <Show when={!props.hidden}>
+      <div class="flex flex-wrap items-center gap-2">
+        <fieldset disabled={blocked()} class="contents">
+          {props.children}
+        </fieldset>
+        <Show when={blocked()}>
+          <A href={upgradeHref()} class="link text-sm">
+            {props.btnText || t('tools.upgrade_now', 'View Premium plans')}
           </A>
-        }
-      >
-        {props.children}
-      </Show>
+        </Show>
+      </div>
     </Show>
   )
 }

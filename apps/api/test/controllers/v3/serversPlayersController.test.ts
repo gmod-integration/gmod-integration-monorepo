@@ -16,6 +16,7 @@ vi.mock('@gmod/core/models/v3/serversPlayersControllerModels.js', () => modelMoc
 
 const {
   getPlayer,
+  getPlayerAccess,
   playerSpawn,
   playerReady,
   playerSay,
@@ -38,6 +39,7 @@ function makeRes() {
   res.status = vi.fn().mockReturnValue(res)
   res.json = vi.fn().mockReturnValue(res)
   res.send = vi.fn().mockReturnValue(res)
+  res.setHeader = vi.fn().mockReturnValue(res)
   return res
 }
 
@@ -48,6 +50,15 @@ describe('serversPlayersController', () => {
   })
 
   describe('getPlayer', () => {
+    it('returns uncached explicit whitelist decisions through the dedicated access endpoint', async () => {
+      const snapshot = { bypassMaintenance: false, discordAdmin: false }
+      const server = { getPlayerAccess: vi.fn().mockResolvedValueOnce(snapshot) }
+      const res = makeRes()
+      await getPlayerAccess({ params: { steamID64: '76561198012345678' }, server } as any, res)
+      expect(server.getPlayerAccess).toHaveBeenCalledWith('76561198012345678')
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
+      expect(res.send).toHaveBeenCalledWith(snapshot)
+    })
     it('sends the found player stats', async () => {
       const server = { getPlayerStats: vi.fn().mockResolvedValueOnce({ id: 1 }) }
       const res = makeRes()
@@ -108,6 +119,14 @@ describe('serversPlayersController', () => {
     expect(logServerMock).toHaveBeenCalledWith(server, 'player_say', { text: 'hi' })
     expect(modelMocks.processPlayerSay).toHaveBeenCalledWith(server, '765', { text: 'hi' })
     expect(res.status).toHaveBeenCalledWith(200)
+  })
+
+  it('normalizes array-valued player identifiers before passing them into domain logic', async () => {
+    modelMocks.processPlayerSay.mockResolvedValueOnce({ status: 200, body: { success: true } })
+    const server = {}
+    await playerSay({ server, params: { steamID64: ['765', '111'] }, body: { text: 'hi' } } as any, makeRes())
+
+    expect(modelMocks.processPlayerSay).toHaveBeenCalledWith(server, '765', { text: 'hi' })
   })
 
   it('playerChangeName logs then delegates to processPlayerChangeName', async () => {

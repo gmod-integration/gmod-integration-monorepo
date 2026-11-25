@@ -17,7 +17,7 @@ vi.mock('bullmq', () => ({ Worker: FakeWorker }))
 vi.mock('@gmod/infra-bullmq', () => ({ connection: {} }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 vi.mock('@gmod/infra-prisma', () => ({ default: {} }))
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromSteamID64: vi.fn() }))

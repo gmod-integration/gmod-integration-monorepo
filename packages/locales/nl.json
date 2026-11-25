@@ -1,0 +1,13 @@
+{
+  "status_of": "Status van {1}",
+  "name": "Naam",
+  "status": "Status",
+  "online": "Online",
+  "offline": "Offline",
+  "players": "Spelers",
+  "map": "Kaart",
+  "gamemode": "Spelmodus",
+  "player_list": "Verbonden spelers",
+  "server-connect": "Verbinden",
+  "access_verification_unavailable": "De toegangsrechten kunnen momenteel niet worden gecontroleerd. Probeer het over enkele ogenblikken opnieuw."
+}

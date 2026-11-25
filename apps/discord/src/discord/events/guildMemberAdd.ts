@@ -1,9 +1,10 @@
 import { ConfigDiscord } from '@gmod/config'
 import { addAutoRoleToUser, updateGuildStat, verifyUser } from '@gmod/domain-guild/discordModels.js'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { getNotVerifiedMessage } from '../utils/messages.js'
 import { type GuildMember } from 'discord.js'
-import prisma from '@gmod/infra-prisma'
+import { Guild } from '@gmod/domain-guild/Guild.js'
+import { refreshGuildMemberPlayerAccess } from '@gmod/domain-guild/playerAccessNotifications.js'
 
 export default {
   name: 'guildMemberAdd',
@@ -21,12 +22,7 @@ export default {
       await addAutoRoleToUser(guild, member).catch(() => {})
 
       if (!(await verifyUser(guild, member))) {
-        const dontMp = await prisma.gm_guild_settings.findFirst({
-          where: {
-            guildID: guild.id,
-            setting: 'verification_dont_mp',
-          },
-        })
+        const dontMp = await new Guild({ id: guild.id }).getEffectiveSetting('verification_dont_mp')
 
         if (dontMp) {
           return
@@ -36,6 +32,8 @@ export default {
       }
     } catch (err) {
       gmLog('error', `Error in guildMemberAdd: ${err}`)
+    } finally {
+      await refreshGuildMemberPlayerAccess(add_info.guild.id, add_info.user.id).catch(() => {})
     }
   },
 }

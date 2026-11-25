@@ -10,10 +10,13 @@
   },
   "dependencies": {
     "@gmod/config": "workspace:*",
+    "@gmod/infra-bullmq": "workspace:*",
     "@gmod/infra-prisma": "workspace:*",
     "@gmod/infra-redis": "workspace:*",
     "@gmod/infra-websocket": "workspace:*",
     "@gmod/schema": "workspace:*",
-    "discord.js": "^14.25.1"
+    "discord.js": "^14.28.1",
+    "@gmod/shared": "workspace:*",
+    "@gmod/domain-access": "workspace:*"
   }
 }

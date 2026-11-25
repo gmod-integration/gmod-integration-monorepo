@@ -13,11 +13,15 @@ const getUserFromDiscordIDMock = vi.fn()
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromDiscordID: getUserFromDiscordIDMock }))
 
 const buttonVerificationWebsiteMock = vi.fn(async () => ({ type: 'button' }))
-vi.mock('../../../../src/discord/utils/buttons.js', () => ({ ButtonVerificationWebsite: buttonVerificationWebsiteMock }))
+vi.mock('../../../../src/discord/utils/buttons.js', () => ({
+  ButtonVerificationWebsite: buttonVerificationWebsiteMock,
+}))
 
+const canViewWarningHistoryMock = vi.fn()
 const getWarnMessageEmbedMock = vi.fn()
 const saveWarnListOptionsMock = vi.fn()
 vi.mock('@gmod/domain-moderation/warnModels.js', () => ({
+  canViewWarningHistory: canViewWarningHistoryMock,
   getWarnMessageEmbed: getWarnMessageEmbedMock,
   saveWarnListOptions: saveWarnListOptionsMock,
 }))
@@ -44,11 +48,33 @@ beforeEach(() => {
   getServerFromIDMock.mockReset()
   getUserFromDiscordIDMock.mockReset()
   buttonVerificationWebsiteMock.mockClear()
+  canViewWarningHistoryMock.mockReset().mockResolvedValue(true)
   getWarnMessageEmbedMock.mockReset()
   saveWarnListOptionsMock.mockReset()
 })
 
 describe('commands/admin/warn execute', () => {
+  it('rejects a manually supplied server from another guild before querying any warnings', async () => {
+    const interaction = makeInteraction()
+    interaction.options.getString.mockReturnValue('foreign-server')
+    getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'other-guild' })
+    await warn.execute(interaction)
+    expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', ephemeral: true })
+    expect(canViewWarningHistoryMock).not.toHaveBeenCalled()
+    expect(getWarnMessageEmbedMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects another Steam profile when the runtime access check denies it', async () => {
+    const interaction = makeInteraction()
+    interaction.options.getString.mockImplementation((name: string) => (name === 'server' ? 's1' : 'another-steam'))
+    getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'g1' })
+    canViewWarningHistoryMock.mockResolvedValueOnce(false)
+    await warn.execute(interaction)
+    expect(canViewWarningHistoryMock).toHaveBeenCalledWith(interaction, 'another-steam')
+    expect(getWarnMessageEmbedMock).not.toHaveBeenCalled()
+    expect(interaction.reply).toHaveBeenCalledWith({ content: 'missing_permission', ephemeral: true })
+  })
+
   it('returns early when there is no guild', async () => {
     const interaction = makeInteraction({ guild: null })
     const result = await warn.execute(interaction)
@@ -63,15 +89,15 @@ describe('commands/admin/warn execute', () => {
     expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', ephemeral: true })
   })
 
-  it('returns an unverified reply payload when steam is not provided and member has no linked steamID64', async () => {
+  it('replies privately with verification instructions when steam is not provided and member has no linked steamID64', async () => {
     const interaction = makeInteraction()
     interaction.options.getString.mockImplementation((name: string) => (name === 'server' ? 's1' : null))
-    getServerFromIDMock.mockResolvedValueOnce({ getID: () => 's1' })
+    getServerFromIDMock.mockResolvedValueOnce({ getID: () => 's1', getGuildID: () => 'g1' })
     getUserFromDiscordIDMock.mockResolvedValueOnce(null)
 
-    const result = await warn.execute(interaction)
+    await warn.execute(interaction)
 
-    expect(result).toEqual(
+    expect(interaction.reply).toHaveBeenCalledWith(
       expect.objectContaining({
         content: 'user_not_verified\n_ _',
         ephemeral: true,
@@ -80,21 +106,21 @@ describe('commands/admin/warn execute', () => {
     expect(getWarnMessageEmbedMock).not.toHaveBeenCalled()
   })
 
-  it('returns an unverified reply payload when the linked user has no steamID64', async () => {
+  it('replies privately with verification instructions when the linked user has no steamID64', async () => {
     const interaction = makeInteraction()
     interaction.options.getString.mockImplementation((name: string) => (name === 'server' ? 's1' : null))
-    getServerFromIDMock.mockResolvedValueOnce({ getID: () => 's1' })
+    getServerFromIDMock.mockResolvedValueOnce({ getID: () => 's1', getGuildID: () => 'g1' })
     getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => null })
 
-    const result = await warn.execute(interaction)
+    await warn.execute(interaction)
 
-    expect(result).toEqual(expect.objectContaining({ ephemeral: true }))
+    expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ ephemeral: true }))
   })
 
   it('resolves steamID64 from the linked discord member when steam option is absent', async () => {
     const interaction = makeInteraction()
     interaction.options.getString.mockImplementation((name: string) => (name === 'server' ? 's1' : null))
-    const server = { getID: () => 's1' }
+    const server = { getID: () => 's1', getGuildID: () => 'g1' }
     getServerFromIDMock.mockResolvedValueOnce(server)
     getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '76561111' })
     getWarnMessageEmbedMock.mockResolvedValueOnce({ embed: 'e', component: 'c', options: { limit: 10 } })
@@ -105,7 +131,7 @@ describe('commands/admin/warn execute', () => {
     await new Promise((resolve) => setTimeout(resolve, 0))
 
     expect(getWarnMessageEmbedMock).toHaveBeenCalledWith(server, '76561111', 'en-US')
-    expect(reply).toHaveBeenCalledWith({ embeds: ['e'], components: ['c'], fetchReply: true })
+    expect(reply).toHaveBeenCalledWith({ embeds: ['e'], components: ['c'], fetchReply: true, ephemeral: true })
     expect(saveWarnListOptionsMock).toHaveBeenCalledWith('msg1', 's1', '76561111', { limit: 10 })
   })
 
@@ -116,7 +142,7 @@ describe('commands/admin/warn execute', () => {
       if (name === 'steam') return '76561122'
       return null
     })
-    const server = { getID: () => 's1' }
+    const server = { getID: () => 's1', getGuildID: () => 'g1' }
     getServerFromIDMock.mockResolvedValueOnce(server)
     getWarnMessageEmbedMock.mockResolvedValueOnce({ embed: 'e', component: 'c', options: {} })
     const reply = vi.fn().mockResolvedValue({ id: 'msg2' })

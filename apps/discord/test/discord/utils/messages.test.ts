@@ -6,7 +6,7 @@ const getTranslateMock = vi.fn(async (key: string, _lang?: string, args?: string
 vi.mock('@gmod/core/utils/localizations.js', () => ({ getTranslate: getTranslateMock }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 vi.mock('@gmod/config', () => ({
   ConfigDiscord: { embedColor: 0x393a41, oauthPanel: 'https://panel.example/oauth' },
@@ -74,7 +74,7 @@ function resetAllMocks() {
 }
 
 function makeServer(
-  overrides: { settings?: Record<string, any>; getServerStatusButtons?: any; name?: string } = {},
+  overrides: { settings?: Record<string, any>; getEffectiveStatusButtons?: any; name?: string } = {},
 ) {
   const settings: Record<string, any> = {
     show_status_chart: false,
@@ -85,8 +85,8 @@ function makeServer(
   return {
     getID: () => 's1',
     getName: () => overrides.name ?? 'My Server',
-    getSetting: vi.fn(async (key: string) => settings[key]),
-    getServerStatusButtons: overrides.getServerStatusButtons ?? vi.fn(async () => []),
+    getEffectiveSetting: vi.fn(async (key: string) => settings[key]),
+    getEffectiveStatusButtons: overrides.getEffectiveStatusButtons ?? vi.fn(async () => []),
   } as any
 }
 
@@ -220,7 +220,11 @@ describe('discord/utils/messages', () => {
 
     it.each([
       ['array input', [{ steamID64: '1', name: 'A', connectTime: 1, userGroup: 'user' }], true],
-      ['valid JSON array string', JSON.stringify([{ steamID64: '1', name: 'A', connectTime: 1, userGroup: 'user' }]), true],
+      [
+        'valid JSON array string',
+        JSON.stringify([{ steamID64: '1', name: 'A', connectTime: 1, userGroup: 'user' }]),
+        true,
+      ],
       ['valid JSON non-array string', '{"a":1}', false],
       ['invalid JSON string', 'not-json{{{', false],
       ['empty string', '', false],
@@ -249,13 +253,32 @@ describe('discord/utils/messages', () => {
       expect(result.files).toEqual([])
     })
 
+    it('renders all 25 paid custom buttons and preserves connection as an embed link when online', async () => {
+      const buttons = Array.from({ length: 25 }, (_, index) => ({
+        name: 'Custom ' + index,
+        emoji: '😀',
+        url: 'https://example.com/' + index,
+      }))
+      const result = await getStatusMessage(
+        makeServer({ getEffectiveStatusButtons: vi.fn(async () => buttons) }),
+        { hostname: 'Online', ip: '192.0.2.1', port: 27015 },
+        'en',
+      )
+      const rendered = result.components.flatMap((row) => row.toJSON().components)
+      expect(rendered).toHaveLength(25)
+      expect(rendered.every((button) => button.label?.includes('Custom'))).toBe(true)
+      expect(result.embeds[0].toJSON().fields).toEqual(
+        expect.arrayContaining([expect.objectContaining({ value: expect.stringContaining('[192.0.2.1:27015](') })]),
+      )
+    })
+
     it('fills rows across the 5-button-per-row limit and drops overflow buttons', async () => {
       const buttons = Array.from({ length: 27 }, (_, i) => ({
         name: `button ${i}`,
         emoji: '😀',
         url: `https://example.com/${i}`,
       }))
-      const server = makeServer({ getServerStatusButtons: vi.fn(async () => buttons) })
+      const server = makeServer({ getEffectiveStatusButtons: vi.fn(async () => buttons) })
       const result = await getStatusMessage(server, {}, 'en')
 
       expect(result.components).toHaveLength(5)
@@ -272,7 +295,7 @@ describe('discord/utils/messages', () => {
         { name: 'unknown emoji', emoji: 'not-an-emoji', url: 'd' }, // no version found -> replaced
         { name: 'classic smile', emoji: '😀', url: 'e' }, // version 1.0 <= 12 -> kept
       ]
-      const server = makeServer({ getServerStatusButtons: vi.fn(async () => buttons) })
+      const server = makeServer({ getEffectiveStatusButtons: vi.fn(async () => buttons) })
       const result = await getStatusMessage(server, {}, 'en')
 
       expect(result.components).toHaveLength(1)
@@ -290,7 +313,7 @@ describe('discord/utils/messages', () => {
 
   describe('getNotVerifiedMessage', () => {
     it('builds a welcome embed with verification buttons', async () => {
-      const guild = { preferredLocale: 'en' } as any
+      const guild = { id: 'g1', preferredLocale: 'en' } as any
       const member = { user: { username: 'Bob' } } as any
 
       const result = await getNotVerifiedMessage(guild, member)
@@ -346,7 +369,7 @@ describe('discord/utils/messages', () => {
   describe('getProfileMessage', () => {
     it('falls back to default rank/trust and "never"/"not_verified" placeholders when no DB user exists', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce(null)
-      const guild = { preferredLocale: 'en' } as any
+      const guild = { id: 'g1', preferredLocale: 'en' } as any
       const user = { id: 'u1', username: 'Bob', displayAvatarURL: () => 'https://avatar.example/u1' } as any
 
       const result = await getProfileMessage(guild, user)
@@ -369,7 +392,7 @@ describe('discord/utils/messages', () => {
         lastVerification: new Date(1700000000000),
         steamID64: '76500000000000001',
       })
-      const guild = { preferredLocale: 'en' } as any
+      const guild = { id: 'g1', preferredLocale: 'en' } as any
       const user = { id: 'u1', username: 'Bob', displayAvatarURL: () => 'https://avatar.example/u1' } as any
 
       const result = await getProfileMessage(guild, user)
@@ -388,14 +411,20 @@ describe('discord/utils/messages', () => {
   describe('getUserStatisticMessage', () => {
     it('returns user_not_linked when no steamid is given and no DB user is linked', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce(null)
-      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'global', { preferredLocale: 'en' } as any)
+      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'global', {
+        id: 'g1',
+        preferredLocale: 'en',
+      } as any)
       expect(result).toEqual({ content: 'user_not_linked', ephemeral: true })
     })
 
     it('returns user_not_found for the global scope when no stats row exists', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64: '765' })
       prismaMock.gm_user_steam.findFirst.mockResolvedValueOnce(null)
-      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'global', { preferredLocale: 'en' } as any)
+      const result = await getUserStatisticMessage({ id: 'u1' } as any, 'global', {
+        id: 'g1',
+        preferredLocale: 'en',
+      } as any)
       expect(result).toEqual({ content: 'user_not_found', ephemeral: true })
     })
 
@@ -412,7 +441,7 @@ describe('discord/utils/messages', () => {
       const result: any = await getUserStatisticMessage(
         { id: 'u1' } as any,
         'global',
-        { preferredLocale: 'en' } as any,
+        { id: 'g1', preferredLocale: 'en' } as any,
         '765',
       )
       expect(getUserFromDiscordIDMock).not.toHaveBeenCalled()
@@ -435,7 +464,7 @@ describe('discord/utils/messages', () => {
       const result: any = await getUserStatisticMessage(
         { id: 'u1' } as any,
         'global',
-        { preferredLocale: 'en' } as any,
+        { id: 'g1', preferredLocale: 'en' } as any,
         '765',
       )
       const embed = result.embeds[0].toJSON()
@@ -448,12 +477,27 @@ describe('discord/utils/messages', () => {
       expect(lastJoinField.value).toBe('Never')
     })
 
+    it('binds the server lookup to the current Discord community before reading its statistics', async () => {
+      prismaMock.gm_server.findFirst.mockResolvedValueOnce(null)
+      await getUserStatisticMessage(
+        { id: 'u1' } as any,
+        'foreign-server',
+        { id: 'g1', preferredLocale: 'en' } as any,
+        '765',
+      )
+      expect(prismaMock.gm_server.findFirst).toHaveBeenCalledWith({
+        where: { id: 'foreign-server', guild: 'g1' },
+        select: { id: true, name: true },
+      })
+      expect(prismaMock.gm_server_stat.findFirst).not.toHaveBeenCalled()
+    })
+
     it('returns server_not_found for a non-global scope when the server does not exist', async () => {
       prismaMock.gm_server.findFirst.mockResolvedValueOnce(null)
       const result = await getUserStatisticMessage(
         { id: 'u1' } as any,
         'srv1',
-        { preferredLocale: 'en' } as any,
+        { id: 'g1', preferredLocale: 'en' } as any,
         '765',
       )
       expect(result).toEqual({ content: 'server_not_found', ephemeral: true })
@@ -465,7 +509,7 @@ describe('discord/utils/messages', () => {
       const result = await getUserStatisticMessage(
         { id: 'u1' } as any,
         'srv1',
-        { preferredLocale: 'en' } as any,
+        { id: 'g1', preferredLocale: 'en' } as any,
         '765',
       )
       expect(result).toEqual({ content: 'user_or_server_not_found', ephemeral: true })
@@ -488,7 +532,7 @@ describe('discord/utils/messages', () => {
       const result: any = await getUserStatisticMessage(
         { id: 'u1' } as any,
         'srv1',
-        { preferredLocale: 'en-US' } as any,
+        { id: 'g1', preferredLocale: 'en-US' } as any,
         '765',
       )
       const embed = result.embeds[0].toJSON()
@@ -520,7 +564,7 @@ describe('discord/utils/messages', () => {
       const result: any = await getUserStatisticMessage(
         { id: 'u1' } as any,
         'srv1',
-        { preferredLocale: 'en' } as any,
+        { id: 'g1', preferredLocale: 'en' } as any,
         '765',
       )
       const embed = result.embeds[0].toJSON()
@@ -548,7 +592,7 @@ describe('discord/utils/messages', () => {
         custom_values: null,
       })
 
-      await getUserStatisticMessage({ id: 'u1' } as any, 'srv1', { preferredLocale: 'en' } as any, null)
+      await getUserStatisticMessage({ id: 'u1' } as any, 'srv1', { id: 'g1', preferredLocale: 'en' } as any, null)
 
       expect(getUserFromDiscordIDMock).toHaveBeenCalledWith('u1')
       expect(prismaMock.gm_server_stat.findFirst).toHaveBeenCalledWith(

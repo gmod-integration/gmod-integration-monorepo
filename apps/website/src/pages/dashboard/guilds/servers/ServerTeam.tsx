@@ -1,263 +1,294 @@
-import { Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
-import AdminPanel from '../../../../components/AdminPanel'
-import { guildRoles } from '../GuildInformations'
-import AdminModal from '../../../../components/AdminModal'
-import { useI18n } from '../../../../i18n'
-import DiscordRole from '../../../../components/discord/DiscordRole'
-import MissingRolePermission, { setRolesToCheck } from '../../../../components/popup/MissingRolePermission'
-import { premium } from '../../../../utils/premium'
-import { fetchAPI } from '../../../../utils/api'
-import { TextValue } from '../../../../components/popup/TextValue'
+import Pagination from '../../../../components/Pagination.js'
+import { GuildRolesState, retainGuildRoleSelection } from '../../../../components/GuildRolesState.js'
+import { createListPagination } from '../../../../hooks/createListPagination.js'
+import { closeDialog, showDialog } from '../../../../utils/dialog.js'
+import { type Component, createEffect, createResource, createSignal, For } from 'solid-js'
+import AdminPanel from '../../../../components/AdminPanel.js'
+import AdminModal from '../../../../components/AdminModal.js'
+import ConfirmActionDialog from '../../../../components/ConfirmActionDialog.js'
+import { guildRoles } from '../GuildInformations.js'
+import {
+  BooleanStatus,
+  Button,
+  IconButton,
+  FormActions,
+  FormField,
+  TableState,
+  Icon,
+} from '../../../../components/ui/index.js'
+import { createDraftForm } from '../../../../hooks/createDraftForm.js'
+import { useI18n } from '../../../../i18n.js'
+import DiscordRole from '../../../../components/discord/DiscordRole.js'
+import MissingRolePermission, { setRolesToCheck } from '../../../../components/popup/MissingRolePermission.js'
+import { useFeatureAccess } from '../../../../components/AccessProvider.js'
+import { FeatureGate, SuspendedFeature } from '../../../../components/FeatureGate.js'
+import { fetchAPI } from '../../../../utils/api.js'
+import { TextValue } from '../../../../components/popup/TextValue.js'
 
-interface RoleSync {
+interface TeamRule {
+  id: number
   serverID: string
   roleID: string
   teamName: string
   enable: boolean
 }
+const URL = '/users/:discordID/guilds/:guildID/servers/:serverID/teams'
+const emptyRule = (): TeamRule => ({ id: 0, serverID: '', roleID: '', teamName: '', enable: false })
 
 const ServerTeam: Component = () => {
   const { t } = useI18n()
-
-  const [selectRole, setSelectRole] = createSignal({} as RoleSync)
-
-  const [rolesSync, { mutate: mutateRolesSync }] = createResource('rolesSync', async () => {
-    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/teams', 'GET').then(async (res) => {
-      if (!res.ok)
-        throw new Error(
-          t('dashboard.server.team_roles.error_occurred', 'An error occurred while fetching the roles sync.'),
-        )
-      return (await res.json()) || {}
-    })
+  const featureAccess = useFeatureAccess('sync.teams')
+  const [creating, setCreating] = createSignal(false)
+  const [removing, setRemoving] = createSignal<TeamRule>()
+  const editor = createDraftForm<TeamRule>({
+    initial: emptyRule(),
+    validate: (draft) => ({
+      ...(!draft.roleID ? { roleID: t('ui.required', 'This field is required.') } : {}),
+      ...(!draft.teamName.trim() ? { teamName: t('ui.required', 'This field is required.') } : {}),
+    }),
+    errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
   })
-
-  // when roles list change call setRolesToCheck([roleID<string>])
+  const [rules, { mutate, refetch }] = createResource(
+    async (): Promise<TeamRule[]> => {
+      const response = await fetchAPI(URL, 'GET')
+      if (!response.ok) throw new Error('Role mappings unavailable')
+      const data = await response.json()
+      if (!Array.isArray(data)) throw new Error('Invalid role mappings')
+      return data
+    },
+    { initialValue: [] },
+  )
+  const available = () => !guildRoles.loading && !guildRoles.error && !rules.loading && !rules.error
+  const canCreate = () => available() && featureAccess.allowed()
   createEffect(() => {
-    if (rolesSync.loading) return
-    const roles = rolesSync().map((role: RoleSync) => role.roleID)
-    setRolesToCheck(roles)
+    if (!rules.loading && !rules.error) setRolesToCheck(rules().map((rule) => rule.roleID))
   })
-
-  async function addRole(id: string) {
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/teams/${id}`, 'POST')
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error(t('dashboard.server.team_roles.error_occurred', 'An error occurred while adding the role.'))
-        }
-      })
-      .then((data) => {
-        mutateRolesSync((prev) => [...prev, data])
-      })
-      .catch((error) => console.error(error))
+  const roleName = (id: string) => (!guildRoles.error ? guildRoles()?.find((role) => role.id === id)?.name || id : id)
+  function begin(row?: TeamRule) {
+    if (!available() || editor.pending() || (!row && !canCreate())) return
+    setCreating(!row)
+    editor.reset(row ? { ...row } : emptyRule())
+    showDialog('edit_role_modal')
   }
-
-  function editRole() {
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/teams/${selectRole().id}`, 'PUT', selectRole())
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error(t('dashboard.server.team_roles.error_occurred', 'An error occurred while editing the role.'))
-        }
+  async function submit() {
+    if (!available() || (creating() && !canCreate()) || (!featureAccess.allowed() && editor.draft().enable)) return
+    const isNew = creating()
+    const saved = await editor.save(async (snapshot) => {
+      const response = await fetchAPI(`${URL}/${isNew ? snapshot.roleID : snapshot.id}`, isNew ? 'POST' : 'PUT', {
+        teamName: snapshot.teamName.trim(),
+        enable: snapshot.enable,
       })
-      .then((data) => {
-        mutateRolesSync((prev) => prev.map((r) => (r.id === data.id ? data : r)))
-      })
-      .catch((error) => console.error(error))
+      if (!response.ok) throw new Error('Role mapping save failed')
+      const updated: TeamRule = await response.json()
+      mutate((previous) =>
+        isNew ? [...previous, updated] : previous.map((row) => (row.id === updated.id ? updated : row)),
+      )
+      if (isNew) pagination.onChange({ ...pagination.query(), offset: pagination.total() - 1 })
+      return updated
+    })
+    if (saved) closeDialog('edit_role_modal')
   }
-
-  function deleteRole(id: string) {
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/teams/${id}`, 'DELETE')
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error(t('dashboard.server.team_roles.error_occurred', 'An error occurred while deleting the role.'))
-        }
-      })
-      .then((data) => {
-        mutateRolesSync((prev) => prev.filter((r) => r.id !== data.id))
-      })
-      .catch((error) => console.error(error))
-  }
+  const pagination = createListPagination<TeamRule>(() => (!rules.error ? rules() : undefined))
 
   return (
     <>
       <MissingRolePermission />
-      <AdminModal title={t('dashboard.server.team_roles.select_role', 'Select Role')} id="select_role_modal">
-        <Show
-          when={!guildRoles.loading && !rolesSync.loading}
-          fallback={<div>{t('dashboard.server.team_roles.loading', 'Loading...')}</div>}
+
+      <AdminModal
+        id="edit_role_modal"
+        title={
+          creating()
+            ? t('dashboard.server.team_roles.add_role_sync', 'Add Role')
+            : t('dashboard.server.team_roles.edit_role_sync', 'Edit team role mapping')
+        }
+        busy={editor.pending()}
+        onClose={editor.discard}
+        onCancel={editor.discard}
+      >
+        <GuildRolesState />
+        <FormField
+          id="teams-role"
+          label={t('dashboard.server.team_roles.role_name', 'Discord Role')}
+          error={editor.errors().roleID}
         >
-          <div class="fieldset">
-            <select
-              class="select"
-              disabled={guildRoles.loading || rolesSync.loading}
-              onchange="select_role_modal.close()"
-              onChange={async (e) => {
-                await addRole(e.currentTarget.value)
-              }}
-            >
-              <option value="0">{t('dashboard.server.team_roles.select_role', 'Select a Role')}</option>
-              <For each={guildRoles()}>
-                {(role) => {
-                  return <option value={role.id}>{role.name}</option>
-                }}
-              </For>
-            </select>
-          </div>
-        </Show>
-      </AdminModal>
-
-      <AdminModal title={t('dashboard.server.team_roles.edit_role_sync', 'Edit Role')} id="edit_role_modal">
-        <Show when={!guildRoles.loading && !rolesSync.loading}>
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.server.team_roles.role_name', 'Discord Role')}</span>
-            </label>
-            <select class="select" disabled>
-              <option selected>{guildRoles().find((r) => r.id === selectRole().roleID)?.name}</option>
-            </select>
-          </div>
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.server.team_roles.team_name', 'Team Name')}</span>
-            </label>
-            <input
-              type="text"
-              class="input"
-              disabled={guildRoles.loading || rolesSync.loading}
-              value={selectRole().teamName}
-              onInput={(e) => {
-                selectRole().teamName = e.currentTarget.value
-              }}
-            />
-          </div>
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.server.team_roles.enable_sync', 'Active')}</span>
-            </label>
-            <select
-              class="select"
-              disabled={guildRoles.loading || rolesSync.loading}
-              value={selectRole().enable ? 'true' : 'false'}
-              onChange={(e) => {
-                selectRole().enable = e.currentTarget.value === 'true'
-              }}
-            >
-              <option value="true">{t('dashboard.server.team_roles.yes', 'Yes')}</option>
-              <option value="false">{t('dashboard.server.team_roles.no', 'No')}</option>
-            </select>
-          </div>
-          <button
-            disabled={guildRoles.loading || rolesSync.loading}
-            class="btn btn-base-200 mt-2"
-            onClick={async () => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              edit_role_modal.close()
-              editRole()
-            }}
+          <select
+            ref={(select) => retainGuildRoleSelection(select, () => editor.draft().roleID)}
+            id="teams-role"
+            class="select w-full"
+            value={editor.draft().roleID}
+            disabled={!creating() || !available() || editor.pending()}
+            aria-invalid={!!editor.errors().roleID}
+            onChange={(event) => editor.patch({ roleID: event.currentTarget.value })}
           >
-            {t('dashboard.server.team_roles.save_changes', 'Save')}
-          </button>
-        </Show>
+            <option value="">{t('dashboard.server.team_roles.select_role', 'Select Role')}</option>
+            <For each={!guildRoles.error ? guildRoles() : []}>
+              {(role) => <option value={role.id}>{role.name}</option>}
+            </For>
+          </select>
+        </FormField>
+        <FormField
+          id="teams-mapping"
+          label={t('dashboard.server.team_roles.team_name', 'Game team or job name')}
+          description={t(
+            'dashboard.server.team_roles.team_help',
+            'Enter the exact team or job name reported by the game server. It must match the name used in game.',
+          )}
+          error={editor.errors().teamName}
+        >
+          <input
+            id="teams-mapping"
+            aria-describedby={`teams-mapping-description${editor.errors().teamName ? ' teams-mapping-error' : ''}`}
+            class="input w-full"
+            value={editor.draft().teamName}
+            disabled={!available() || editor.pending() || !featureAccess.allowed()}
+            aria-invalid={!!editor.errors().teamName}
+            onInput={(event) => editor.patch({ teamName: event.currentTarget.value })}
+          />
+        </FormField>
+        <FormField id="teams-enabled" label={t('dashboard.server.team_roles.enable_sync', 'Active')}>
+          <input
+            id="teams-enabled"
+            type="checkbox"
+            class="toggle"
+            checked={editor.draft().enable}
+            disabled={editor.pending() || (!featureAccess.allowed() && !editor.draft().enable)}
+            onChange={(event) => editor.patch({ enable: event.currentTarget.checked })}
+          />
+        </FormField>
+        <FeatureGate capability="sync.teams" loading={rules.loading} error={rules.error} showQuota={false} />
+        <FormActions
+          dirty={editor.dirty()}
+          pending={editor.pending()}
+          disabled={
+            !available() ||
+            !editor.valid() ||
+            (creating() && !canCreate()) ||
+            (!featureAccess.allowed() && editor.draft().enable)
+          }
+          error={editor.error()}
+          saveLabel={creating() ? t('ui.create', 'Create') : t('ui.save', 'Save')}
+          onSave={() => void submit()}
+          onCancel={() => {
+            editor.discard()
+            closeDialog('edit_role_modal')
+          }}
+        />
       </AdminModal>
-
+      <ConfirmActionDialog
+        id="delete-role-sync"
+        title={t('ui.confirm_delete', 'Delete this item?')}
+        description={
+          removing()
+            ? `${roleName(removing()!.roleID)} — ${removing()!.teamName} — ${t('dashboard.server.team_roles.remove_rule_help', 'Delete this team-to-role mapping. The Discord role and the team in game are kept.')}`
+            : ''
+        }
+        confirmLabel={t('ui.delete', 'Delete')}
+        onConfirm={async () => {
+          const target = removing()
+          if (!target) throw new Error('No role selected')
+          const response = await fetchAPI(`${URL}/${target.id}`, 'DELETE')
+          if (!response.ok) throw new Error('Role removal failed')
+          mutate((previous) => previous.filter((row) => row.id !== target.id))
+        }}
+      />
       <AdminPanel
-        title={t('dashboard.server.team_roles.role', 'Team Role')}
+        title={t('dashboard.server.team_roles.role', 'Discord roles by game team')}
         description={t(
           'dashboard.server.team_roles.role_sync_description',
-          'Add temporary roles to your Discord members when they join a specific team in your game server.',
+          'Assign a Discord role while a linked player is in a specific game team or job. The role is removed when the player changes team or leaves the game.',
         )}
         type="none"
-        premium={true}
+        footer={
+          !rules.loading && !rules.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
+        icon="users"
+        actions={
+          <>
+            <FeatureGate capability="sync.teams" loading={rules.loading} error={rules.error} showQuota={false}>
+              <Button variant="primary" disabled={!canCreate()} onClick={() => begin()}>
+                {t('dashboard.server.team_roles.add_role_sync', 'Add Team Role')}
+              </Button>
+            </FeatureGate>
+          </>
+        }
       >
-        <table class="table border-b border-base-300 rounded-none">
-          <thead>
-            <tr class="text-l">
-              <th>{t('dashboard.server.team_roles.role_name', 'Discord Role')}</th>
-              <th>{t('dashboard.server.team_roles.team_name', 'Team Name')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.server.team_roles.status', 'Active')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.server.team_roles.actions', 'Actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <Show
-              when={!rolesSync.loading}
-              fallback={
-                <div class="flex justify-center h-36">
-                  <div class="loading loading-spinner loading-lg"></div>
-                </div>
-              }
-            >
-              <For each={rolesSync()}>
-                {(roleSync) => (
-                  <tr>
-                    <td>
-                      <DiscordRole role={guildRoles().find((r) => r.id === roleSync.roleID)} />
-                    </td>
-                    <td>
-                      <TextValue value={roleSync.teamName} />
-                    </td>
-                    <td>
-                      <div class="flex gap-2 justify-center">
-                        {roleSync.enable ? (
-                          <i class="fa-solid fa-check text-success"></i>
-                        ) : (
-                          <i class="fa-solid fa-times text-error"></i>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div class="flex gap-2 justify-center">
-                        <div
-                          class="tooltip tooltip-info"
-                          data-tip={t('dashboard.server.team_roles.edit_role_sync', 'Edit')}
-                        >
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-edit"
+        <GuildRolesState />
+        <p class="settings-notice">
+          <Icon name="info" size={16} />
+          {t(
+            'dashboard.server.team_roles.rule_setup_help',
+            'Choose an existing Discord role and a game team. Enable the rule before saving to use it for linked players.',
+          )}
+        </p>
+        <SuspendedFeature
+          capability="sync.teams"
+          active={!rules.loading && !rules.error && rules().some((row) => row.enable)}
+        />
+        <div class="settings-table">
+          <table class="table w-full">
+            <thead>
+              <tr>
+                <th>{t('dashboard.server.team_roles.role_name', 'Discord Role')}</th>
+                <th>{t('dashboard.server.team_roles.team_name', 'Game team or job name')}</th>
+                <th class="text-center">{t('dashboard.server.team_roles.status', 'Active')}</th>
+                <th>{t('dashboard.server.team_roles.actions', 'Actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <TableState
+                colSpan={4}
+                loading={rules.loading}
+                error={rules.error}
+                empty={!rules.loading && !rules.error && rules().length === 0}
+                onRetry={() => void refetch()}
+              >
+                <For each={pagination.items()}>
+                  {(row) => (
+                    <tr>
+                      <td>
+                        <DiscordRole roleID={row.roleID} />
+                      </td>
+                      <td>
+                        <TextValue value={row.teamName} />
+                      </td>
+                      <td class="text-center">
+                        <BooleanStatus value={row.enable} />
+                      </td>
+                      <td>
+                        <div class="flex gap-2">
+                          <IconButton
+                            label={t('dashboard.server.team_roles.edit_role_sync', 'Edit team role mapping')}
+                            icon="pencil"
+                            disabled={editor.pending()}
+                            onClick={() => begin(row)}
+                          />
+                          <IconButton
+                            label={t('dashboard.server.team_roles.delete_role_sync', 'Delete team role mapping')}
+                            icon="trash-2"
+                            variant="danger"
                             onClick={() => {
-                              // @ts-expect-error -- intentional: legacy typing gap
-                              edit_role_modal.showModal()
-                              setSelectRole(roleSync)
+                              setRemoving(row)
+                              showDialog('delete-role-sync')
                             }}
-                          ></i>
+                          />
                         </div>
-                        <div
-                          class="tooltip tooltip-error"
-                          data-tip={t('dashboard.server.team_roles.delete_role_sync', 'Delete')}
-                        >
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-trash text-error"
-                            onClick={() => deleteRole(roleSync.id)}
-                          ></i>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </Show>
-          </tbody>
-        </table>
-
-        <div class="flex gap-4 p-4">
-          <button
-            class="btn btn-base-200"
-            onClick={() => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              select_role_modal.showModal()
-            }}
-            disabled={!premium()}
-          >
-            {t('dashboard.server.team_roles.add_role_sync', 'Add Team Role')}
-          </button>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </TableState>
+            </tbody>
+          </table>
         </div>
       </AdminPanel>
     </>
   )
 }
-
 export default ServerTeam

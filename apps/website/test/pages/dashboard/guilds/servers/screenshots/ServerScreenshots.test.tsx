@@ -5,6 +5,7 @@ import { okJson } from '../testHelpers.js'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn((endpoint: string) => {
+    if (endpoint.endsWith('/screenshots/channel')) return Promise.resolve(okJson({}))
     if (endpoint.includes('/screenshots?')) return Promise.resolve(okJson({ screenshots: [], query: { total: 0 } }))
     return Promise.resolve(okJson([]))
   }),
@@ -25,9 +26,8 @@ vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(
   () => ({ top: 999999, bottom: 0, left: 0, right: 0, width: 0, height: 0, x: 0, y: 0, toJSON() {} }) as DOMRect,
 )
 
-const { default: ServerScreenshots } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshots.js'
-)
+const { default: ServerScreenshots } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshots.js')
 
 afterEach(() => cleanup())
 
@@ -42,6 +42,9 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshots.tsx', () 
   it('renders both the parameters panel and the screenshot list together', async () => {
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('Select Channel')).toBeInTheDocument())
-    await vi.waitFor(() => expect(screen.getByText('End of List')).toBeInTheDocument())
+    await vi.waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('No screenshots have been received for this server.'),
+    )
+    expect(screen.queryByText('All received screenshots have been loaded.')).not.toBeInTheDocument()
   })
 })

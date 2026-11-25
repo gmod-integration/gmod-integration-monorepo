@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true
+  },
+  "include": [
+    "apps/api/src/**/*",
+    "apps/discord/src/**/*",
+    "apps/discord/scripts/**/*.ts",
+    "apps/websocket/src/**/*",
+    "apps/webhook-relay/src/**/*",
+    "packages/*/src/**/*",
+    "scripts/**/*.ts",
+    "prisma.config.ts"
+  ]
+}

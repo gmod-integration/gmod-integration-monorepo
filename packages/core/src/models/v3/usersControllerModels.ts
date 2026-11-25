@@ -1,6 +1,20 @@
+import {
+  listApplicationSessions,
+  resolveApplicationSession,
+  revokeApplicationSession,
+} from '@gmod/domain-auth/authSessions.js'
+import {
+  assertCapability,
+  assertQuota,
+  capabilityLimit,
+  invalidateGuildAccess,
+  resolveGuildAccess,
+} from '@gmod/domain-access/index.js'
 import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js'
-import { generateToken, badArgument } from '../../utils/tools.js'
-import { createServer, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
+import { generateToken } from '@gmod/shared/generateToken.js'
+import { badArgument } from '../../utils/tools.js'
+import { createServer, getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
+import { refreshServerPlayerAccess } from '@gmod/domain-server/playerAccess.js'
 import { type Guild } from '@gmod/domain-guild/Guild.js'
 import {
   enqueueDiscordGuildReloadBotInstance,
@@ -8,6 +22,9 @@ import {
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import redis from '@gmod/infra-redis'
 import prisma from '@gmod/infra-prisma'
+import { getSteamUserSummary } from '@gmod/infra-steam'
+import { ensureAvatarStored } from '@gmod/infra-minio'
+import type { gm_gmodstore_purchases } from '@gmod/infra-prisma/client.js'
 import { getLogsByServer, getTotalLogsByServer } from '../../database/gm_server_logs.js'
 
 type EndpointResult = {
@@ -73,77 +90,64 @@ export async function processGetProfile(steamID64: unknown, discordID: unknown):
   return bad({ error: 'Missing required query parameter' })
 }
 
-export async function processGetUserSessions(discordID: string): Promise<EndpointResult> {
-  const sessions = await prisma.gm_panelToken.findMany({
-    where: {
-      revoke: false,
-      discordID,
-    },
+export async function processGetSteamProfile(discordID: string): Promise<EndpointResult> {
+  const user = await getUserFromDiscordID(discordID)
+  if (!user) return notFound({ error: 'User not found' })
+
+  const steamID64 = user.steamID64
+  let steamProfile: { name: string; avatarURL: string | null } | null = null
+  if (!steamID64) return ok({ steamID64: null, steamProfile })
+
+  let finished = false
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  const decoration = (async () => {
+    const summary = await getSteamUserSummary(steamID64)
+    if (finished || typeof summary.nickname !== 'string' || !summary.nickname.trim()) return
+    const name = summary.nickname
+    steamProfile = { name, avatarURL: null }
+    const avatarURL = await ensureAvatarStored('steam', steamID64, summary.avatar?.large)
+    if (!finished) steamProfile = { name, avatarURL }
+  })().catch(() => {
+    // Steam decoration is optional; the linked identity remains available during provider failures.
   })
 
-  // findMany() always resolves to an array (never null), so no falsy fallback is needed here.
-  return ok(sessions)
+  try {
+    await Promise.race([
+      decoration,
+      new Promise<void>((resolve) => {
+        timeout = setTimeout(resolve, 3_000)
+      }),
+    ])
+  } finally {
+    finished = true
+    clearTimeout(timeout)
+  }
+
+  return ok({ steamID64, steamProfile })
+}
+
+export async function processGetUserSessions(discordID: string, currentSessionID?: string): Promise<EndpointResult> {
+  return ok(await listApplicationSessions(discordID, currentSessionID))
 }
 
 export async function processDeleteUserSession(discordID: string, sessionID: string): Promise<EndpointResult> {
-  const session = await prisma.gm_panelToken.findFirst({
-    where: {
-      discordID,
-      id: sessionID,
-      revoke: false,
-    },
-  })
-
-  if (!session) {
-    return notFound({ error: 'Session not found' })
-  }
-
-  await prisma.gm_panelToken.update({
-    where: {
-      id: sessionID,
-    },
-    data: {
-      revoke: true,
-    },
-  })
-
-  // session was already null-checked above (returning 404), so it's always truthy here.
-  return ok(session)
+  if (!(await revokeApplicationSession(sessionID, discordID))) return notFound({ error: 'Session not found' })
+  return ok({ revoked: true })
 }
 
 export async function processLogOut(discordID: string, accessToken: string): Promise<EndpointResult> {
-  const sessionToken = await prisma.gm_panelToken.findFirst({
-    where: {
-      discordID,
-      accessToken,
-      revoke: false,
-    },
-  })
-
-  if (sessionToken) {
-    await prisma.gm_panelToken.update({
-      where: {
-        id: sessionToken.id,
-      },
-      data: {
-        revoke: true,
-      },
-    })
-  }
-
-  return ok(sessionToken || {})
+  const session = await resolveApplicationSession(accessToken)
+  if (session?.discordID === discordID) await revokeApplicationSession(session.id, discordID)
+  return ok({ revoked: true })
 }
 
 export async function processCreateNewServer(guild: any): Promise<EndpointResult> {
-  const isPremium = await guild.isPremium()
-  const servers = await guild.getServers()
-
-  if (servers.length >= 1 && !isPremium) {
-    return forbidden({ error: 'Server limit reached' })
-  }
-
-  const newServer = await createServer(guild.id)
-  return ok(newServer)
+  const access = await resolveGuildAccess(guild.id)
+  return prisma.$transaction(async (tx) => {
+    await tx.gm_guild.update({ where: { guild: guild.id }, data: { updatedAt: new Date() } })
+    assertQuota(access, 'guild.servers', await tx.gm_server.count({ where: { guild: guild.id } }))
+    return ok(await createServer(guild.id, tx))
+  })
 }
 
 export async function processPutGmodToDiscordFilter(
@@ -159,7 +163,7 @@ export async function processPutGmodToDiscordFilter(
 ): Promise<EndpointResult> {
   const { element, operator, trigger, action, active } = payload
 
-  if (badArgument([element, operator, trigger, action, active])) {
+  if (badArgument([element, operator, trigger, action, active]) && active !== false) {
     return bad({ error: 'missing arguments' })
   }
 
@@ -181,6 +185,11 @@ export async function processPutGmodToDiscordFilter(
     action: action !== undefined ? action : filter.action,
     active: active !== undefined ? active : filter.active,
   }
+
+  const disableOnly =
+    filterData.active === false &&
+    (['element', 'operator', 'trigger', 'action'] as const).every((key) => filterData[key] === filter[key])
+  if (!disableOnly) assertCapability(await resolveGuildAccess(server.guild), 'chat.filters')
 
   const updatedFilter = await prisma.gm_server_sync_chat_filter.update({
     where: {
@@ -315,6 +324,7 @@ export async function processPutPlayerBypassMaintenance(
     },
   })
 
+  await refreshServerPlayerAccess(server.id, playerID).catch(() => false)
   return ok(editPlayer)
 }
 
@@ -346,25 +356,14 @@ export async function processPostUserStartVerification(discordID: string): Promi
 }
 
 export async function processPostAutoRoles(guildID: string, roleID: string): Promise<EndpointResult> {
-  const existingAutoRole = await prisma.gm_guild_auto_roles.findFirst({
-    where: {
-      guildID,
-      roleID,
-    },
+  const access = await resolveGuildAccess(guildID)
+  return prisma.$transaction(async (tx) => {
+    await tx.gm_guild.update({ where: { guild: guildID }, data: { updatedAt: new Date() } })
+    const existingAutoRole = await tx.gm_guild_auto_roles.findFirst({ where: { guildID, roleID } })
+    if (existingAutoRole) return conflict({ error: 'Auto role already exists' })
+    assertQuota(access, 'guild.auto_roles', await tx.gm_guild_auto_roles.count({ where: { guildID } }))
+    return ok(await tx.gm_guild_auto_roles.create({ data: { guildID, roleID } }))
   })
-
-  if (existingAutoRole) {
-    return conflict({ error: 'Auto role already exists' })
-  }
-
-  const autoRole = await prisma.gm_guild_auto_roles.create({
-    data: {
-      guildID,
-      roleID,
-    },
-  })
-
-  return ok(autoRole)
 }
 
 export async function processDeleteAutoRoles(guildID: string, roleID: string): Promise<EndpointResult> {
@@ -444,6 +443,17 @@ export async function processGetAdminInformations(): Promise<EndpointResult> {
   return ok(data)
 }
 
+const purchaseInfoSelect = { steamID64: true, guild: true, revoke: true, createdAt: true, updatedAt: true } as const
+function publicPurchaseInfo(row: Pick<gm_gmodstore_purchases, keyof typeof purchaseInfoSelect>) {
+  return {
+    steamID64: row.steamID64,
+    guild: row.guild,
+    revoke: row.revoke,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  }
+}
+
 export async function processPostGmodPurchase(
   guildID: string,
   discordID: string,
@@ -465,6 +475,8 @@ export async function processPostGmodPurchase(
     return notFound({ error: 'Purchase not found' })
   }
 
+  if (purchase.revoke) return forbidden({ error: 'Purchase revoked' })
+
   await prisma.gm_gmodstore_purchases.update({
     where: {
       steamID64: user.getSteamID64()!,
@@ -474,6 +486,12 @@ export async function processPostGmodPurchase(
     },
   })
 
+  const changedGuilds = [
+    ...new Set([purchase.guild, guildID].filter((id): id is string => typeof id === 'string' && !!id)),
+  ]
+  await Promise.all(changedGuilds.map((id) => invalidateGuildAccess(id).catch(() => {})))
+  if (purchase.guild && purchase.guild !== guildID)
+    await enqueueDiscordGuildReloadBotInstance(purchase.guild).catch(() => false)
   return ok((await guild.getBotClientInfo(panelUser.user)) || {})
 }
 
@@ -505,10 +523,12 @@ export async function processDeleteGmodPurchase(discordID: string, guild: any): 
       guild: '',
       token: '',
     },
+    select: purchaseInfoSelect,
   })
 
+  if (purchase.guild) await invalidateGuildAccess(purchase.guild).catch(() => {})
   await guild.reloadBotInstance()
-  return ok(savedPurchase)
+  return ok(publicPurchaseInfo(savedPurchase))
 }
 
 export async function processDeleteUserGmodPurchase(discordID: string, guildID: string): Promise<EndpointResult> {
@@ -543,32 +563,30 @@ export async function processDeleteUserGmodPurchase(discordID: string, guildID: 
       guild: '',
       token: '',
     },
+    select: purchaseInfoSelect,
   })
+
+  await invalidateGuildAccess(guildID).catch(() => {})
 
   // The purchase is already unlinked at this point. A Discord worker failure must
   // not prevent users from recovering a purchase attached to an inaccessible guild.
   await enqueueDiscordGuildReloadBotInstance(guildID).catch(() => false)
 
-  return ok(savedPurchase)
+  return ok(publicPurchaseInfo(savedPurchase))
 }
 
 export async function processGetUserGmodStorePurchases(discordID: string): Promise<EndpointResult> {
   const user = await getUserFromDiscordID(discordID)
-  if (!user || !user.getSteamID64()) {
-    return notFound({ error: 'User not found or not linked' })
-  }
-
-  const purchases: any = await prisma.gm_gmodstore_purchases.findFirst({
-    where: {
-      steamID64: user.getSteamID64()!,
-    },
+  if (!user || !user.getSteamID64()) return notFound({ error: 'User not found or not linked' })
+  const purchase = await prisma.gm_gmodstore_purchases.findFirst({
+    where: { steamID64: user.getSteamID64()! },
+    select: purchaseInfoSelect,
   })
-
-  if (purchases && purchases.guild) {
-    purchases.hasMainBot = await enqueueMainClientHasGuild(purchases.guild).catch(() => false)
-  }
-
-  return ok(purchases || {})
+  if (!purchase) return ok({})
+  return ok({
+    ...publicPurchaseInfo(purchase),
+    ...(purchase.guild ? { hasMainBot: await enqueueMainClientHasGuild(purchase.guild).catch(() => false) } : {}),
+  })
 }
 
 export async function processPutServerPseudo(
@@ -634,34 +652,6 @@ export async function processDeleteServerPseudo(serverID: string, roleID: unknow
   return ok(pseudo)
 }
 
-export async function processPatchUserNotifications(
-  discordID: string,
-  notificationID: unknown,
-): Promise<EndpointResult> {
-  const notification = await prisma.gm_users_notifications.findFirst({
-    where: {
-      id: Number(notificationID),
-      discordID,
-    },
-  })
-
-  if (!notification) {
-    return notFound({ error: 'Notification not found' })
-  }
-
-  const updated = await prisma.gm_users_notifications.update({
-    where: {
-      id: notification.id,
-      discordID,
-    },
-    data: {
-      read: true,
-    },
-  })
-
-  return ok(updated)
-}
-
 export async function processGetServerLogs(
   serverID: string,
   query: {
@@ -670,6 +660,7 @@ export async function processGetServerLogs(
     sort?: unknown
     orderBy?: unknown
   },
+  guildID?: string,
 ): Promise<EndpointResult> {
   const rawOffset = query.offset?.toString() || '0'
   const rawLimit = query.limit?.toString() || '50'
@@ -691,12 +682,18 @@ export async function processGetServerLogs(
 
   const orderBy = rawOrderBy === 'ASC' ? 'asc' : 'desc'
 
-  const total = await getTotalLogsByServer(serverID)
+  const scope = guildID || (await getServerFromID(serverID))?.guild
+  if (!scope) return notFound({ error: 'Server not found' })
+  const access = await resolveGuildAccess(scope)
+  const readLimit = capabilityLimit(access, 'logs.history')
+  const totalCount = await getTotalLogsByServer(serverID)
+  const total = readLimit === null ? totalCount : Math.min(totalCount, readLimit)
   const logs = await getLogsByServer(serverID, {
     offset,
     limit,
     orderBy,
     sort,
+    readLimit,
   })
 
   return ok({
@@ -774,9 +771,10 @@ export async function processGetServerWarns(
 // ban counts are realistically in the dozens-to-low-hundreds range.
 const GUILD_BANS_ROW_CAP = 1000
 
-export async function processGetGuildBans(guild: Guild): Promise<EndpointResult> {
+export async function processGetGuildBans(guild: Guild, allowedServerIDs?: readonly string[]): Promise<EndpointResult> {
   const servers = await getServersFromDiscordGuildID(guild.id)
-  const serverIDs = servers.map((server) => server.getID())
+  const allowed = allowedServerIDs === undefined ? undefined : new Set(allowedServerIDs)
+  const serverIDs = servers.map((server) => server.getID()).filter((id) => !allowed || allowed.has(id))
 
   const gmodBansRaw = serverIDs.length
     ? await prisma.gm_server_ban.findMany({
@@ -879,9 +877,7 @@ export async function processPostServerLogsTrigger(
     log_type: unknown
   },
 ): Promise<EndpointResult> {
-  if (!(await server.isPremium())) {
-    return forbidden({ error: 'Server is not premium' })
-  }
+  assertCapability(await resolveGuildAccess(server.guild), 'logs.triggers')
 
   const { action, compare, channelID, value, operator, message, log_type } = payload
   if (badArgument([action, compare, channelID, value, operator, message, log_type])) {
@@ -904,9 +900,7 @@ export async function processPutServerLogsTrigger(
     log_type: unknown
   },
 ): Promise<EndpointResult> {
-  if (!(await server.isPremium())) {
-    return forbidden({ error: 'Server is not premium' })
-  }
+  assertCapability(await resolveGuildAccess(server.guild), 'logs.triggers')
 
   const { action, compare, channelID, value, operator, message, log_type } = payload
   if (badArgument([action, compare, channelID, value, operator, message, log_type])) {
@@ -919,9 +913,5 @@ export async function processPutServerLogsTrigger(
 }
 
 export async function processDeleteServerLogsTrigger(server: any, triggerID: unknown): Promise<EndpointResult> {
-  if (!(await server.isPremium())) {
-    return forbidden({ error: 'Server is not premium' })
-  }
-
   return ok(await server.deleteLogsTrigger(Number(triggerID)))
 }

@@ -10,8 +10,13 @@
     ".": "./src/index.ts",
     "./index.js": "./src/index.ts",
     "./schema.js": "./src/schema.ts",
+    "./infrastructure.js": "./src/infrastructure.ts",
+    "./developers.js": "./src/developers.ts",
     "./website.js": "./src/website.ts",
-    "./website-runtime.js": "./dist/website.js"
+    "./website-runtime.js": {
+      "types": "./src/website.ts",
+      "default": "./dist/website.js"
+    }
   },
   "dependencies": {
     "dotenv": "^16.6.1",

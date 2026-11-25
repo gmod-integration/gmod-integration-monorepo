@@ -24,7 +24,7 @@ describe('components/popup/NeedPremium.tsx', () => {
     setGuildPremium(false)
     renderWithProviders(() => <PremiumFeature />)
     expect(screen.getByText('This feature requires a premium plan.')).toBeInTheDocument()
-    const link = screen.getByRole('link', { name: 'Upgrade Now' })
+    const link = screen.getByRole('link', { name: 'View Premium plans' })
     expect(link).toHaveAttribute('href', '/premium')
   })
 

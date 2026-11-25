@@ -1,179 +1,227 @@
-# Swarm Deployment Guide
+# Swarm deployment and recovery
 
-This guide explains how to start and operate the `gmod` stack with Docker Swarm.
+The release wrapper performs a maintenance release: it stops all application writers, takes a cold
+backup of the four datastores and their recovery configuration, deploys the new images with writers
+at zero, runs the checked-in Prisma migrations, and enables the matching API, WebSocket and Discord
+services only after a successful migration task. A direct `docker stack deploy` leaves application
+replicas at zero. Production never uses `prisma db push`.
 
 ## Prerequisites
 
-- Docker Engine installed
-- A valid `.env` at repository root
-- Logged in to GHCR if images are private (`docker login ghcr.io`)
+Use Docker Engine on the Swarm manager that owns all four named data volumes, Python 3.10+, a private
+repository-root `.env`, GHCR authentication if needed, and sufficient disk space for all archives.
+The supplied placement constraints target managers; for multiple managers, pin every datastore to its
+existing owning node before deployment. Local volumes do not migrate with tasks. Recovery refuses a
+running datastore on another node. The release overlay preserves those owner constraints; bootstrap
+pins all four datastores to the manager running the command. Do not run Compose and Swarm against the same data.
 
-## 1. Initialize Swarm (once)
+The wrapper requires immutable `registry@sha256` image digests in `API_IMAGE`, `WEBSOCKET_IMAGE` and
+`DISCORD_IMAGE`, and checks that all three have the same `org.opencontainers.image.revision` commit
+label before stopping anything. The build workflow supplies that label. Keep the matching
+website artifact, addon commit, stack file and source revision. Record exact datastore image digests
+before upgrading them: physical archives require the same datastore versions for the first restore.
+The backup manifest records resolved image IDs, pullable repository digests and actual named-volume
+mounts for this purpose. Normal releases preserve the running datastore digests automatically. Optional
+`MARIADB_IMAGE`, `MONGO_IMAGE`, `REDIS_IMAGE` and `MINIO_IMAGE` overrides must be immutable digests; an
+actual version change also requires a separately reviewed upgrade and `--allow-datastore-upgrade`.
+For first installation, configure those digests explicitly instead of relying on floating defaults.
+
+The build workflow publishes the API, WebSocket and Discord images together when backend, shared,
+migration, deployment or workflow inputs change. The standalone webhook relay publishes independently.
+A manual Build workflow run rebuilds every image to recover an incomplete publication.
+
+Configure stable `AUTH_TOKEN_ENCRYPTION_KEY` (or the existing `DISCORD_CLIENT_SECRET` fallback),
+`PRIVACY_HASH_SECRET`, database credentials, MinIO credentials and correct public origins. Losing the
+auth encryption key makes encrypted Discord grants unreadable. Adding or rotating that key is a
+separate credential migration, not a routine release edit.
+
+Before maintenance, pause the automatic updater/cron and every external writer, including old local
+API/Discord processes and scheduled jobs. Put the website into maintenance mode and stop old frontend
+traffic. The wrapper stops only the explicitly named stack. `swarm-auto-update.sh` cannot provide the
+required backup destination/outage authorization; use its `--check-only` mode while releases are
+coordinated manually. Never automatically retry a failed schema-changing release with old images.
+
+An existing `prisma-migrate` service must be scaled to zero and have no active tasks before maintenance.
+The wrapper refuses an overlapping migration. Backup and restore compare the supplied recovery keys
+and datastore credentials with the effective service/container environments before stopping anything;
+an edited `.env` alone cannot authorize a different running key. These values stay out of manifests and logs.
+
+## Release
+
+Preview configuration without Docker commands, service changes or writes:
+
+```bash
+./scripts/swarm-deploy.sh --env-file .env --stack-name gmod \
+  --quiesce --backup-dir backup/release-20261122 --dry-run
+```
+
+Deploy an existing installation in an agreed maintenance window (use a new backup directory):
+
+```bash
+./scripts/swarm-deploy.sh --env-file .env --stack-name gmod \
+  --quiesce --backup-dir backup/release-20261122
+```
+
+The outage is explicit: `--quiesce` is required. The release backup deliberately leaves old writers
+stopped. The migration service uses `prisma migrate deploy`, never schema push/reset, and a failed or
+timed-out migration leaves all three application services at zero. Application startup independently
+checks every checked-in migration's successful row and exact SQL checksum in `_prisma_migrations`.
+An old `users` table alone cannot admit writers from a new credential/protocol release.
+
+For a genuinely empty first installation only:
 
 ```bash
 docker swarm init
+./scripts/swarm-deploy.sh --env-file .env --stack-name gmod --quiesce --bootstrap
 ```
 
-If Swarm is already initialized, Docker will tell you and you can continue.
+`--bootstrap` refuses an existing stack or its labelled volumes. An installation historically created
+by `db push` needs a reviewed baseline before this procedure: compare its actual schema with the
+checked-in history, back it up, and explicitly mark only migrations whose effects already exist as
+applied using Prisma's `migrate resolve`. Do not mark every migration applied to suppress an error,
+edit old applied SQL, or reset a populated production database. An incomplete/failed migration also
+requires diagnosis and a reviewed repair before another release.
 
-## 2. Deploy the stack
-
-From repository root:
-
-```bash
-./scripts/swarm-deploy.sh
-```
-
-What this does:
-
-- creates/updates services in `docker-stack.swarm.yml`
-- applies rolling updates (`parallelism: 1`, `start-first`)
-- runs `prisma-migrate` service to execute `prisma db push` with retries
-- `api`, `websocket`, and `discord` now wait for MariaDB schema readiness (`users` table) before starting
-
-## 3. Check health
+Expected final counts are API `2/2`, WebSocket `2/2`, Discord **`1/1`**, and each datastore/Traefik
+`1/1`; `prisma-migrate` returns to `0/0`. `API_REPLICAS` and `WEBSOCKET_REPLICAS` can override the first
+two counts. Discord is a singleton: its client registry is process-local and its reload queue has one
+consumer per job, so multiple replicas cannot safely own the same bots. Both Discord update and
+rollback use `stop-first` to prevent an overlap. Scaling Discord above one requires an ownership and
+broadcast design first.
 
 ```bash
 docker stack services gmod
+docker service ps --no-trunc gmod_prisma-migrate
+docker service logs --tail 100 gmod_prisma-migrate
 ```
 
-Expected target replicas:
+Inspect migration diagnostics privately; database records, credentials and provider URLs must not be
+copied into public logs. A nonzero wrapper exit is not permission to start the old binaries.
 
-- `gmod_api`: `2/2`
-- `gmod_websocket`: `2/2`
-- `gmod_discord`: `2/2`
-- `gmod_mariadb`: `1/1`
-- `gmod_redis`: `1/1`
-- `gmod_mongo`: `1/1`
-- `gmod_minio`: `1/1`
-- `gmod_traefik`: `1/1`
+Publish the matching website only after the backend release succeeds. Verify login and legacy session
+conversion, a CSRF-protected save, two tabs, logout, WebSocket reconnection, GWSockets dependency
+reporting, an actual game screenshot and both directions of chat relay. Verify a custom Discord bot
+reload/removal with the single Discord worker. Check refresh-worker/provider retry logs privately,
+then remove maintenance mode and resume reviewed automation. These are runtime acceptance gates;
+unit tests do not replace them.
 
-Traefik dashboard:
+## Cold backup
+
+A coherent cross-store snapshot requires an outage. All API/WebSocket/Discord writers stop first,
+then MariaDB, MongoDB, Redis and MinIO stop gracefully. A dirty/OOM datastore exit aborts the backup.
+The helper mounts volumes read-only, has no network, and creates gzip tar archives. Each file has a
+SHA-256 checksum; `manifest.json` is written last, only after every selected archive completes.
+Directories are `0700` and files `0600`. The private `recovery.env` includes the source configuration,
+including stable auth keys and credentials, so a data-only backup cannot silently lose key material.
+It is sensitive even if SQL tokens are encrypted.
 
 ```bash
-# Direct port (no host rule): http://<SERVER_IP>:8080/dashboard/
-# API endpoint:              http://<SERVER_IP>:8080/api/overview
+./scripts/swarm-backup.sh --env-file .env --stack-name gmod --all \
+  --quiesce --backup-dir backup/maintenance-20261122
 ```
 
-Host-rule access is still available on port 80 with `TRAEFIK_DASHBOARD_HOST` (default `traefik.localhost`).
+A successful standalone backup resumes the original counts, with Discord capped at one worker. `--leave-stopped` keeps the maintenance
+outage in effect. Archive failures leave the backup incomplete and services stopped. A later startup
+failure disables application writers again; a completed snapshot remains available for investigation
+before resuming the matching release. Do not trust a directory without a completed manifest. Stop/pause all
+external writers too; the script cannot make unrelated processes consistent.
 
-Migration logs:
+For off-host storage, install `age` and encrypt every archive and recovery configuration directly:
 
 ```bash
-docker service logs -f gmod_prisma-migrate
+./scripts/swarm-backup.sh --env-file .env --stack-name gmod --all --quiesce \
+  --backup-dir backup/encrypted-20261122 --age-recipient age1YOUR_PUBLIC_RECIPIENT
 ```
 
-Live logs (all services in stack):
+Keep the age private identity outside this host and outside the backup. Checksums detect damage;
+they do not authenticate an attacker-modified manifest. Store bundles in trusted, access-controlled,
+versioned off-host storage and retain a separately trusted manifest/checksum. Retain recovery keys and
+release artifacts together under the same access policy. Unencrypted local bundles need equivalent
+disk/access protection; the tool does not pretend file permissions are encryption.
+
+`--mariadb`, `--mongo`, `--redis` and `--minio` select partial archives, but still stop all stores and
+writers for consistency. Partial restore is an expert repair: it does not recover the rest of the
+application's cross-store state. Prefer `--all` for disaster recovery. A cron job must explicitly
+allow its outage, use a unique directory each time and alert on failure; a backup without a tested
+restore is not a recovery guarantee.
+
+## Restore and rollback
+
+A binary-only rollback is unsafe after the auth release writes hashed sessions/encrypted grants.
+Restore a consistent pre-release bundle, **its matching backend and website releases**, and the same
+auth key material, or use a reviewed forward repair. Do not resurrect erased personal data: reconcile
+any erasure/revocation records after the snapshot before serving traffic again.
+
+Prepare an isolated destination first. Provision the matching stack images/volumes with all writers
+stopped; a direct stack deploy keeps app replicas zero, but briefly starts datastores, so stop them
+before recovery. On a new machine, restore the exact images from the release archive or registry;
+image IDs must match the manifest. Copy the bundle from trusted storage. Extract its configuration to
+a **new** private file without Docker changes:
 
 ```bash
-docker service logs -f --timestamps --tail 50 $(docker stack services gmod --format '{{.Name}}')
+./scripts/swarm-restore.sh --backup-dir backup/maintenance-20261122 \
+  --extract-env /secure/path/recovered.env
 ```
 
-Live logs (apps only: `api`, `websocket`, `discord`):
+Review destination hostnames and ingress settings in that file, while preserving auth keys, database
+credentials and MinIO keys. For encrypted bundles supply `--age-identity /secure/path/identity.txt` to
+each restore/extract command. Avoid printing either file. Then validate the bundle and plan without
+Docker commands or volume changes:
 
 ```bash
-docker service logs -f --timestamps --tail 50 $(docker stack services gmod --format '{{.Name}}' | grep -E '^gmod_(api|websocket|discord)$')
+./scripts/swarm-restore.sh --backup-dir backup/maintenance-20261122 \
+  --env-file /secure/path/recovered.env --stack-name gmod-recovery --dry-run
 ```
 
-Live logs with container prefix (apps only, no `rg` required):
+This dry run verifies archive checksums and safe tar paths, but does not inspect the target daemon,
+prove image compatibility or start services. Actual restore checks the explicit target's volume
+labels/mounts, exact images and effective recovery credentials **before** stopping/wiping anything. It rejects
+absolute paths, traversal, archive links/devices, symlinked input files and incomplete manifests.
 
 ```bash
-zsh -lc '
-trap "kill 0" INT TERM EXIT
-for c in $(docker ps --filter label=com.docker.stack.namespace=gmod --format "{{.Names}}" | grep -E "gmod_(api|websocket|discord)"); do
-  docker logs -f --tail 50 "$c" 2>&1 | sed -u "s/^/[$c] /" &
-done
-wait
-'
+./scripts/swarm-restore.sh --backup-dir backup/maintenance-20261122 \
+  --env-file /secure/path/recovered.env --stack-name gmod-recovery \
+  --quiesce --confirm-restore gmod-recovery
 ```
 
-One service at a time:
+`--confirm-restore` must exactly match the destination stack: this replaces selected named-volume
+contents. Default success leaves all services stopped. `--resume` explicitly starts the backed-up
+replica counts from the matching release, with Discord capped at one worker. On any extraction/start failure keep writers stopped,
+correct the cause and restore the whole bundle again; partially restored volumes are not usable.
+Without `--resume`, start datastores, check their health privately, then API/WebSocket and one Discord
+worker, and publish the matching website only after acceptance. Never start current incompatible
+images over an older snapshot just to make replica counters green.
+
+## Tests
+
+Offline safety and migration-guard tests:
 
 ```bash
-docker service logs -f --tail 100 gmod_api
-docker service logs -f --tail 100 gmod_websocket
-docker service logs -f --tail 100 gmod_discord
-docker service logs -f --tail 100 gmod_mariadb
-docker service logs -f --tail 100 gmod_prisma-migrate
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p test_swarm_ops.py
+bun test scripts/swarm-migration-status.test.ts
 ```
 
-Service/task details:
+Opt-in real Docker acceptance (the same publicly pullable Chainguard MinIO image as the stack; new
+uniquely labelled containers, volumes and a private network; no
+published ports; removes only those fixtures afterward):
 
 ```bash
-docker service ps gmod_api
-docker service ps gmod_websocket
-docker service ps gmod_discord
-docker service ps gmod_mariadb
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/tests/swarm_recovery_roundtrip.py --run-disposable-docker-test
 ```
 
-## 4. Update the stack
+The integration runner writes known SQL/document/Redis/S3 data, takes a cold backup, changes each
+store, restores and reads the original values through all four real services. It separately replays
+Prisma migrations against an empty database. A replay failure returns nonzero and stores diagnostics
+in a private file under `backup/`; success is reported separately from restore success. It does not
+prove a production restore or game/Discord acceptance. Repeat recovery on an isolated destination
+using a real, access-controlled backup before relying on this procedure operationally.
 
-After changing images or stack config:
+## Ingress and operations
 
-```bash
-./scripts/swarm-deploy.sh
-```
-
-## 5. Rollback a service
-
-```bash
-docker service rollback gmod_api
-docker service rollback gmod_websocket
-docker service rollback gmod_discord
-```
-
-## 6. Stop everything (Swarm)
-
-```bash
-docker stack rm gmod
-```
-
-## 7. Backup (Swarm)
-
-Full backup (MariaDB + MongoDB + Redis + MinIO):
-
-```bash
-bash ./scripts/swarm-backup.sh --all
-```
-
-Partial backup examples:
-
-```bash
-bash ./scripts/swarm-backup.sh --mariadb
-bash ./scripts/swarm-backup.sh --mongo --minio
-```
-
-Custom stack/env path:
-
-```bash
-bash ./scripts/swarm-backup.sh --stack-name gmod --env-file .env
-```
-
-Cron example (daily at 03:30):
-
-```bash
-30 3 * * * cd /path/to/gmod-integration-monorepo && bash ./scripts/swarm-backup.sh --all >> backup/cron.log 2>&1
-```
-
-## 8. Production FQDN (Cloudflare Tunnel)
-
-In Swarm, app services are behind Traefik. Do not route Cloudflare directly to `53136` or `53139`.
-
-Set production hosts in `.env`:
-
-```bash
-API_HOST=api.your-domain.com
-WS_HOST=ws.your-domain.com
-TRAEFIK_DASHBOARD_HOST=traefik.your-domain.com
-```
-
-Deploy/redeploy:
-
-```bash
-./scripts/swarm-deploy.sh
-```
-
-Cloudflare Tunnel example (`config.yml`):
+Cloudflare Tunnel routes both API and WebSocket hostnames to Traefik at `http://localhost:80`, preserving
+the host header. Do not target internal ports `53136` or `53139` in Swarm. Keep the HTTP API for panel,
+OAuth, tickets and uploads even though the game transport is exclusively WebSocket. Configure exact
+`API_HOST`/`WS_HOST`, public HTTPS API/website URLs, a WSS gateway URL and the proxy trust boundary.
 
 ```yaml
 ingress:
@@ -181,56 +229,17 @@ ingress:
     service: http://localhost:80
   - hostname: ws.your-domain.com
     service: http://localhost:80
-  - hostname: traefik.your-domain.com
-    service: http://localhost:80
   - service: http_status:404
 ```
 
-Local-only defaults like `api.localhost` and `ws.localhost` are intended for local testing, not production DNS.
+This template terminates HTTPS/WSS at the trusted ingress. Its port 80 is published by Swarm; restrict
+direct access with Docker-aware firewall/network controls. Datastore/admin interfaces are private to
+`gmod_net`. Traefik's dashboard/API are disabled and ports 443, 8080 and 9100 are not published;
+metrics stay private at `http://traefik:9100/metrics`. A direct Traefik TLS deployment needs a separate
+reviewed certificate/router/port configuration. Editing files does not change existing containers.
 
-## Troubleshooting
-
-### `table does not exist`
-
-Schema is missing in MariaDB. Check migration service logs:
-
-```bash
-docker service logs --tail 200 gmod_prisma-migrate
-```
-
-Then redeploy stack:
-
-```bash
-./scripts/swarm-deploy.sh
-```
-
-If you need a different env file:
-
-```bash
-./scripts/swarm-deploy.sh --env-file .env.prod
-```
-
-Note:
-
-- In Swarm, startup order is not strictly enforced.
-- A first `P1001` in `gmod_prisma-migrate` can happen while MariaDB is still booting.
-- With current stack config, migration retries and app startup waits handle this automatically.
-
-### `Too many connections`
-
-- avoid running Compose and Swarm for this project at the same time
-- current stack enforces `MARIA_CONNECTION_LIMIT=10` in app services
-- check MariaDB load/logs:
-
-```bash
-docker service logs --tail 200 gmod_mariadb
-```
-
-### MariaDB env names (`MARIA_*` vs `MARIADB_*`)
-
-You can keep your existing `MARIA_*` variables.
-
-- App services (`api/websocket/discord`) use `MARIA_*`
-- MariaDB service now supports both:
-  - if `MARIADB_*` is set, it is used
-  - if not, Swarm/Compose fallback automatically to `MARIA_*`
+`MARIA_*` values are canonical for applications; legacy `MARIADB_*` aliases are accepted by the wrapper
+without sourcing or evaluating the env file. Environment values are literal, single-line assignments;
+no shell expansion or multiline private keys are supported. Applications have a connection limit of
+10 each. Inspect private database logs if connection pressure remains, and avoid duplicate local
+processes. Keep backups before `docker stack rm`; that removes services, not a verified recovery plan.

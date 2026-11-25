@@ -1,7 +1,10 @@
 import { existsSync, readFileSync } from 'fs'
 import { join } from 'path'
+import { fileURLToPath } from 'node:url'
 import redis from '@gmod/infra-redis'
-import { gmLog } from './logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
+
+const localesDirectory = fileURLToPath(new URL('../../../locales/', import.meta.url))
 
 function insertOptions(str: string, options?: string[]): string {
   if (!options) return str
@@ -15,7 +18,7 @@ function insertOptions(str: string, options?: string[]): string {
 
 function getDefaultTrad(key: string, options?: string[]): string {
   try {
-    const defaultLanguage = JSON.parse(readFileSync(join(process.cwd(), 'packages/locales/en.json'), 'utf8'))
+    const defaultLanguage = JSON.parse(readFileSync(join(localesDirectory, 'en.json'), 'utf8'))
 
     if (key in defaultLanguage) {
       return insertOptions(defaultLanguage[key], options)
@@ -41,10 +44,10 @@ export async function getTranslate(key: string, language?: string, options?: str
   }
 
   try {
-    let filePath = join(process.cwd(), `packages/locales/${language}.json`)
+    let filePath = join(localesDirectory, `${language}.json`)
 
     if (!existsSync(filePath)) {
-      filePath = join(process.cwd(), 'packages/locales/en.json')
+      filePath = join(localesDirectory, 'en.json')
     }
 
     const translate = JSON.parse(readFileSync(filePath, 'utf8'))

@@ -43,6 +43,7 @@ function makeRes() {
   const res: any = {}
   res.status = vi.fn().mockReturnValue(res)
   res.json = vi.fn().mockReturnValue(res)
+  res.append = vi.fn().mockReturnValue(res)
   return res
 }
 
@@ -104,6 +105,20 @@ describe('serversControllers', () => {
     await getIGSettings({ server } as any, res)
     expect(res.status).toHaveBeenCalledWith(200)
     expect(res.json).toHaveBeenCalledWith({ settings: { ig_debug: true } })
+    expect(res.append).toHaveBeenCalledWith('Server-Timing', expect.stringMatching(/^config;dur=\d+\.\d$/))
+  })
+
+  it('includes the backend whitelist role when a panel administrator loads configuration', async () => {
+    const server = {
+      getAllIGSettings: vi.fn().mockResolvedValueOnce({ ig_maintenance: true }),
+      getSetting: vi.fn().mockResolvedValueOnce('333333333333333333'),
+    }
+    const res = makeRes()
+    await getIGSettings({ server, panelUser: { id: 'operator' } } as any, res)
+    expect(server.getSetting).toHaveBeenCalledWith('maintenance_whitelist_role')
+    expect(res.json).toHaveBeenCalledWith({
+      settings: { ig_maintenance: true, maintenance_whitelist_role: '333333333333333333' },
+    })
   })
 
   it('serverImportWarns delegates with req.body.warns', async () => {

@@ -1,6 +1,9 @@
-import { Component, createMemo, ParentProps } from 'solid-js'
+import { createMemo, type Component, type ParentProps } from 'solid-js'
 
-import hljs from 'highlight.js'
+import hljs from 'highlight.js/lib/core'
+import json from 'highlight.js/lib/languages/json'
+
+hljs.registerLanguage('json', json)
 
 interface DataProps extends ParentProps {
   data: object

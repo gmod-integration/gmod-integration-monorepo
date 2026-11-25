@@ -77,7 +77,31 @@
     "loading_message": "Abhängig von Ihrer Datengröße kann das eine Weile dauern.",
     "request_my_data": "Fordern Sie meine Daten",
     "delete_my_data": "Löschen meiner Daten",
-    "error_create_data_request": "Fehler beim Erstellen der Datenanforderung"
+    "error_create_data_request": "Fehler beim Erstellen der Datenanforderung",
+    "description": "Verwalten Sie verknüpfte Konten, Sitzungen und persönliche Daten.",
+    "erasure": {
+      "submit_error": "Die Anfrage konnte nicht bestätigt werden. Versuche es erneut; dieselbe Anfrage wird wiederverwendet.",
+      "title": "Kontolöschung anfordern",
+      "scope": "Dabei werden deine persönlichen Profile, Statistiken, Sitzungen, Dateien und Datenexporte gelöscht.",
+      "retained": "Ein minimaler Anfragenachweis, globale Sperren und die Reputation bleiben erhalten. Communities und gemeinschaftliche Käufe bleiben bestehen.",
+      "new_account": "Wenn du dich nach der Löschung erneut anmeldest, wird ein neues Konto erstellt.",
+      "confirmation": "Gib zur Bestätigung DELETE ein",
+      "signout": "Du wirst abgemeldet, sobald die Anfrage angenommen wurde. Dieser Browser speichert einen Beleg, mit dem du den Fortschritt verfolgen kannst.",
+      "submit": "Löschanfrage bestätigen",
+      "completed": "Die angeforderte Löschung ist abgeschlossen.",
+      "running": "Deine persönlichen Daten werden gelöscht. Du kannst den Fortschritt hier auch nach der Abmeldung verfolgen.",
+      "retry": "Deine Anfrage bleibt erhalten. Die Verarbeitung wird automatisch fortgesetzt; du musst keine weitere Anfrage stellen.",
+      "pending": "Deine Anfrage wurde angenommen und wartet auf die Verarbeitung. Die Löschung ist noch nicht abgeschlossen.",
+      "checking": "Deine Löschanfrage wird geprüft…",
+      "progress": "Fortschritt der Löschung",
+      "completed_date": "Abgeschlossen am",
+      "status_error": "Der Anfragestatus konnte nicht geprüft werden. Versuche es erneut; dein Beleg bleibt erhalten und es wird keine neue Anfrage erstellt.",
+      "paused": "Die automatischen Prüfungen wurden angehalten. Deine Anfrage bleibt aktiv; prüfe erneut, um die Verfolgung fortzusetzen.",
+      "check_again": "Status erneut prüfen",
+      "sign_in_again": "Anmelden und ein neues Konto erstellen",
+      "return_account": "Zurück zum Konto",
+      "external_copies": "Bereits auf Discord geteilte oder in Sicherungen gespeicherte Kopien müssen separat bearbeitet werden. Wende dich dafür an den Support."
+    }
   },
   "premium": {
     "sync_chat": "Chat synchronisieren",
@@ -115,7 +139,7 @@
     "guild_verification": "Gildenprüfung",
     "guild_verification_role_limit": "Guild Verifizierung - Rollenbeschränkung",
     "force_ply_link": "Spieler-Link erzwingen",
-    "maintenance_white_list": "Instandhaltung",
+    "maintenance_white_list": "Whitelist-Modus",
     "rcon": "RCON Ausführung",
     "reward": "Belohnung",
     "free": "Frei",
@@ -175,8 +199,9 @@
   },
   "tools": {
     "needRolesPerms": "Der Bot hat nicht die Berechtigung, den Benutzern Rollen zuzuweisen oder zu entfernen. Setzen Sie die Bot-Rolle höher in der Rollenliste, betroffene Rollen: {1}",
-    "needWS_1": "Diese Funktion erfordert eine",
-    "needWS_2": "Verbindung, um richtig zu arbeiten.",
+    "needWS_required": "GWSockets ist erforderlich",
+    "needWS_1": "Installiere das",
+    "needWS_2": "Modul in garrysmod/lua/bin auf deinem dedizierten Garry’s-Mod-Server. Wähle die Version für das Betriebssystem und die Architektur des Servers und starte ihn anschließend neu. WebSocket ist für das gesamte Addon zwingend erforderlich. Ohne WebSocket-Verbindung ist das Addon nicht nutzbar.",
     "needAddon": "Um diese Funktion zu nutzen, müssen Sie das Addon(s) installieren:",
     "needAddon2": "richtig zu arbeiten.",
     "upgrade_now": "Jetzt aktualisieren",
@@ -205,7 +230,9 @@
     "type": "Art",
     "message": "Nachricht",
     "actions": "Maßnahmen",
-    "mark_as_read": "Als gelesen markieren"
+    "mark_as_read": "Als gelesen markieren",
+    "mark_as_read_error": "Die Benachrichtigung konnte nicht als gelesen markiert werden",
+    "mark_all_read_error": "Die Benachrichtigungen konnten nicht als gelesen markiert werden"
   },
   "home": {
     "hero": {
@@ -249,6 +276,111 @@
         "title": "Spielerdatenbank",
         "description": "Sehen Sie alle Spieler, die Ihrem Server beigetreten sind, können Sie ihren Namen, Dampf-ID, Discord-ID, Join-Datum, letztem Join-Datum, Gesamtzeit auf Ihrem Server, Total Warnungen, Total Bans ect sehen... Sie können auch nach einem Spieler nach Namen, Dampf-ID oder Discord-ID suchen."
       }
+    },
+    "catalog": {
+      "eyebrow": "Mehr als eine Chatbrücke",
+      "title": "Eine Community. Alle Verbindungen.",
+      "description": "Vom ersten Beitritt bis zum nächsten Fehlerbericht arbeiten dein Spielserver und Discord zusammen.",
+      "documentation": "Anleitungen lesen",
+      "explore": "Funktionen entdecken",
+      "all": "Alle Funktionen",
+      "availability": "Einige Funktionen benötigen Premium, einen GmodStore-Kauf oder ein kompatibles Addon. Die Limits richten sich nach deinem Tarif.",
+      "compare_plans": "Tarife vergleichen",
+      "groups": {
+        "status": {
+          "title": "Serverstatus",
+          "intro": "Zeige deiner Community direkt in Discord, was auf dem Server passiert.",
+          "one": "Verbindung, Spielerzahl, Karte und Spielmodus",
+          "two": "Eigene Statusnachrichten und interaktive Schaltflächen",
+          "three": "Statusnachrichten vor dem Veröffentlichen ansehen",
+          "four": "Diagramme zur Spieleraktivität"
+        },
+        "chat": {
+          "title": "Chat & Screenshots",
+          "intro": "Teile Gespräche und besondere Momente zwischen Spiel und Discord.",
+          "one": "Spielchat im gewählten Discord-Kanal",
+          "two": "Nachrichten von Discord ins Spiel und Nachrichtenfilter",
+          "three": "Spieler-Screenshots mit Titel und Aufnahmedetails",
+          "four": "Screenshot-Galerie und Teilen auf Discord"
+        },
+        "accounts": {
+          "title": "Verknüpfte Konten",
+          "intro": "Erkenne deine Spieler und begrüße neue Community-Mitglieder.",
+          "one": "Verknüpfte Steam- und Discord-Profile",
+          "two": "Verifizierungsnachrichten und Rollenregeln",
+          "three": "Automatische Rollen beim Discord-Beitritt",
+          "four": "Optionale Verifizierungserinnerungen und Mitgliedereinstellungen"
+        },
+        "sync": {
+          "title": "Rollen & Namen",
+          "intro": "Verbinde Identitäten im Spiel mit Discord nach deinen Regeln.",
+          "one": "Spielergruppen mit Discord-Rollen verknüpfen",
+          "two": "Discord-Rollen für Jobs oder Teams im Spiel",
+          "three": "Namensregeln, Präfixe, Suffixe und eigene Formate",
+          "four": "Optionale Rollen- und Namenssynchronisierung von Discord ins Spiel"
+        },
+        "players": {
+          "title": "Spieler & Aktivität",
+          "intro": "Finde die Spieler hinter den Sitzungen und verfolge ihre Entwicklung.",
+          "one": "Spielerverlauf, Spielzeit und Verbindungen",
+          "two": "Spielerstatistiken, Kills und Tode",
+          "three": "Diagramme zu Aktivität und Zeit pro Job",
+          "four": "Ranglisten und unterstützte eigene Statistiken"
+        },
+        "moderation": {
+          "title": "Moderation & Zugang",
+          "intro": "Lege den Spielzugang fest und behalte Moderationsdaten im Blick.",
+          "one": "Plattformübergreifende Bannlisten und Zugangskontrollen",
+          "two": "AWarn3-Verwarnungen mit Administrator und Grund",
+          "three": "Whitelist-Modus mit manuellem Zugang oder Discord-Rolle",
+          "four": "Pflicht zur Kontoverknüpfung, Spielzweig- und Family-Sharing-Prüfung"
+        },
+        "diagnostics": {
+          "title": "Logs & Diagnose",
+          "intro": "Behalte den nötigen Kontext für Ereignisse auf deinem Server.",
+          "one": "Spielereignis-Logs und Discord-Zielkanäle",
+          "two": "Ereignisaktionen mit eigenen Bedingungen",
+          "three": "Lua-Fehler mit Zeitstempel und Stacktraces",
+          "four": "Fehlerberichte aus dem Spiel mit Schritten und Screenshots"
+        },
+        "community": {
+          "title": "Community-Werkzeuge",
+          "intro": "Verwalte deinen Server und gib deiner Community eine eigene Identität.",
+          "one": "Community-Links und öffentliche Serverrangliste",
+          "two": "Server-Abstimmungen und Discord-Benachrichtigungen",
+          "three": "Berechtigungsgesteuerte Konsolenbefehle per RCON",
+          "four": "Eigenes Bot-Profil und eigene Aktivität"
+        }
+      }
+    },
+    "presentation": {
+      "style_label": "Darstellung",
+      "hero_label": "Titelbereich",
+      "stats_label": "Statistiken",
+      "panorama": "Panorama",
+      "console": "Konsole",
+      "editorial": "Editorial",
+      "ribbon": "Leiste",
+      "spotlight": "Große Zahlen",
+      "ledger": "Register",
+      "headline_first": "Dein Server.",
+      "headline_second": "Deine Community.",
+      "headline_accent": "Verbunden.",
+      "discover": "Funktionen entdecken",
+      "preview_label": "Ein Einblick in deinen Discord",
+      "preview_caption": "Beispiel für die Integration in deiner Community.",
+      "community_kicker": "In der Community",
+      "community_title": "Verbunden, in Zahlen.",
+      "community_note": "Bei Gmod Integration erfasste Gesamtzahlen.",
+      "metric_guild": "Discord-Communitys",
+      "metric_guild_detail": "Registrierte Communitys",
+      "metric_server": "Spielserver",
+      "metric_server_detail": "Registrierte Server",
+      "metric_verified": "Verknüpfte Konten",
+      "metric_verified_detail": "Steam mit Discord verbunden",
+      "closing_kicker": "Von deinem Server zu deinem Discord",
+      "closing_title": "Bring deine Community zusammen.",
+      "closing_description": "Folge der Installationsanleitung, verbinde deinen Server und wähle die passenden Funktionen für deine Community."
     }
   },
   "dashboard": {
@@ -259,7 +391,18 @@
       },
       "bugsReport": {
         "title": "Fehlerbericht",
-        "description": "Liste aller auf Ihrem Server gemeldeten Fehler"
+        "description": "Liste aller auf Ihrem Server gemeldeten Fehler",
+        "channel": {
+          "title": "Fehlerberichte auf Discord",
+          "description": "Sende neue Fehlerberichte von Spielern an einen Discord-Textkanal. Gespeicherte Berichte und Screenshots bleiben unten verfügbar.",
+          "destination": "Discord-Zielkanal",
+          "destination_help": "Wähle einen Kanal und bestätige die Auswahl, um dort neue Fehlerberichte zu erhalten.",
+          "select": "Kanal auswählen",
+          "remove": "Ziel entfernen",
+          "empty": "Kein Zielkanal",
+          "load_error": "Das Ziel für Fehlerberichte konnte nicht geladen werden.",
+          "remove_help": "Keine Fehlerberichte mehr an dieses Ziel senden? Der Discord-Kanal und gespeicherte Berichte bleiben erhalten."
+        }
       },
       "chat": {
         "chats": "Chats",
@@ -505,8 +648,29 @@
         "active": "Aktiv",
         "actions": "Maßnahmen",
         "remove_status": "Status entfernen",
-        "description": "Hier können Sie Ihre Serverstatusnachricht und Buttons verwalten.",
+        "description": "Bereite die Serverstatusnachricht, Spielerinformationen und Link-Schaltflächen vor. Einstellungen werden automatisch gespeichert; veröffentliche die Nachricht in einem Discord-Kanal, sobald sie bereit ist.",
         "status_buttons_description": "Fügen Sie die Utility-Schaltflächen zu Ihrer Server-Statusnachricht hinzu.",
+        "preview": {
+          "title": "Discord-Livevorschau",
+          "simulation": "Simulation",
+          "simulation_note": "Fiktive Spieler helfen Ihnen, das Layout zu testen. Beim Senden werden die echten Serverdaten verwendet.",
+          "caption": "Einstellungen und bestätigte Schaltflächenänderungen werden automatisch gespeichert und aktualisieren eine vorhandene Nachricht. Veröffentliche, um eine neue Nachricht zu senden.",
+          "loading": "Vorschau wird aktualisiert…",
+          "unavailable": "Vorschau nicht verfügbar.",
+          "error": "Die Vorschau konnte nicht geladen werden.",
+          "buttons_note": "Die Schaltflächen in der Vorschau sind nicht interaktiv.",
+          "chart_alt": "Diagramm der Spieleraktivität auf dem Server",
+          "app": "APP",
+          "confirm_send": "Wählen Sie einen Kanal, prüfen Sie die Vorschau und senden Sie die Nachricht.",
+          "cancel": "Abbrechen",
+          "send": "An Discord senden",
+          "save_error": "Die Statuseinstellungen konnten nicht gespeichert werden.",
+          "send_error": "Die Statusnachricht konnte nicht gesendet werden.",
+          "remove_error": "Die Statusnachricht konnte nicht entfernt werden.",
+          "settings_error": "Die Statuseinstellungen konnten nicht geladen werden.",
+          "unsaved": "Nur Vorschau — speichern Sie, um diese Änderungen auf Discord anzuwenden.",
+          "refresh": "Vorschau aktualisieren"
+        },
         "status_message_description": "Konfigurieren Sie die Statusmeldung, die in Ihrem Discord-Server angezeigt wird.",
         "buttons_panel_title": "Status-Schaltflächen",
         "message_panel_title": "Statusnachricht",
@@ -546,7 +710,8 @@
         "delete_confirmation": "Sind Sie sicher, dass Sie diesen Button löschen möchten?",
         "premium_limit": "Limitiert auf 2 Tasten für kostenlose Benutzer",
         "required_field": "Dieses Feld ist erforderlich",
-        "invalid_url": "Ungültiges URL-Format"
+        "invalid_url": "Ungültiges URL-Format",
+        "timeLastTeamChange": "Zeit seit dem letzten Teamwechsel"
       },
       "importance": "Bedeutung",
       "description": "Warenbezeichnung",
@@ -564,6 +729,17 @@
         },
         "actions": {
           "actions": "Maßnahmen"
+        },
+        "channel": {
+          "title": "Lua-Fehler auf Discord",
+          "description": "Sende künftige Lua-Fehlerberichte vom Spielserver und von Spielern an einen Discord-Textkanal. Gespeicherte Fehler bleiben unten verfügbar.",
+          "destination": "Discord-Zielkanal",
+          "destination_help": "Wähle einen Kanal und bestätige die Auswahl, um dort neue Fehlerberichte zu erhalten.",
+          "select": "Kanal auswählen",
+          "remove": "Ziel entfernen",
+          "empty": "Kein Zielkanal",
+          "load_error": "Das Ziel für Lua-Fehler konnte nicht geladen werden.",
+          "remove_help": "Keine Lua-Fehler mehr an dieses Ziel senden? Der Discord-Kanal und der gespeicherte Fehlerverlauf bleiben erhalten."
         }
       },
       "logs_trigger": {
@@ -646,23 +822,25 @@
         "information": "Unterrichtung",
         "player_metadata": "Player Metadaten",
         "end_of_list": "Ende der Liste",
-        "capture_metadata": "Metadaten erfassen"
+        "capture_metadata": "Metadaten erfassen",
+        "copy_url": "Screenshot-URL kopieren"
       },
       "edit_player": {
         "title": "Player bearbeiten",
-        "bypass_maintenance": "ByPass-Wartung",
+        "bypass_maintenance": "Manueller Whitelist-Zugang",
         "yes": "Nein",
         "no": "Nein",
-        "save": "Speichern"
+        "save": "Speichern",
+        "bypass_help": "Gewähre diesem Spieler unabhängig von der Server-Whitelist-Rolle Zugang im Whitelist-Modus. Das Entfernen dieses manuellen Eintrags lässt Zugang über die Rolle oder andere Berechtigungen bestehen. Speichere zum Anwenden."
       },
       "players_database": {
         "title": "Spielerdatenbank",
-        "description": "Liste aller Spieler im Server",
+        "description": "Sieh registrierte Spieler, ihre Spielzeit und Verbindungen ein. Bearbeite Spieler für manuellen Whitelist-Zugang; rollenbasierter Zugang bleibt getrennt.",
         "name": "Bezeichnung",
         "rank": "Rang",
         "total_time": "Gesamtzeit",
         "total_connect": "Gesamtverbindung",
-        "bypass_maintenance": "Bypass-Wartung",
+        "bypass_maintenance": "Manuelle Whitelist",
         "actions": "Maßnahmen",
         "steam": "Dampf",
         "edit": "Bearbeiten"
@@ -709,9 +887,9 @@
         "http_request_fallback_part3": "für weitere Informationen.",
         "http_request_success": "Herzlichen Glückwunsch, dass Ihr Server korrekt eingerichtet ist, können Sie ihn jetzt konfigurieren.",
         "websocket_title": "WebSocket",
-        "websocket_fallback_part1": "Ihr Server ist nicht mit dem Websocket verbunden, erweiterte Funktionen sind nicht verfügbar, um sie zu verwenden, müssen Sie die",
-        "websocket_fallback_part2": "auf Ihrem Server.",
-        "websocket_success": "Herzlichen Glückwunsch, dass Sie erfolgreich mit Ihrem Server in websocket verbunden sind, erweiterte Funktionen sind jetzt verfügbar.",
+        "websocket_fallback_part1": "Die Live-Verbindung ist nicht verfügbar. Daher funktionieren die Spielintegrationen des Addons nicht. Prüfe die Serverkonsole und stelle sicher, dass das erforderliche",
+        "websocket_fallback_part2": "für das Betriebssystem und die Architektur deines Servers installiert ist. Starte den Spielserver anschließend neu und teste die Verbindung erneut.",
+        "websocket_success": "Das Addon ist über GWSockets verbunden. Seine Spielintegrationen können mit Gmod Integration kommunizieren.",
         "version_title": "Fassung",
         "version_fallback_http_part1": "Wir können nicht die Version Ihres Servers überprüfen, stellen Sie sicher, dass die installiert haben",
         "version_fallback_http_part2": "korrekt und haben Ihre Server-ID & Token vollständig konfiguriert, lesen Sie die",
@@ -796,10 +974,10 @@
       },
       "config": {
         "title": "Configuration",
-        "description": "Manage the in game configuration of this server.",
+        "description": "Verwalte die Spieleinstellungen dieses Servers.",
         "error_occurred": "Beim Abrufen der Serverkonfiguration ist ein Fehler aufgetreten.",
         "default": "Standard",
-        "add_admin_rank": "Add rank",
+        "add_admin_rank": "Rang hinzufügen",
         "settings": {
           "ig_syncBan": {
             "title": "Verbote synchronisieren",
@@ -850,8 +1028,8 @@
             "description": "Support-Link angezeigt, wenn ein Spieler die Anforderungen nicht erfüllt."
           },
           "ig_maintenance": {
-            "title": "Wartungsmodus",
-            "description": "Nur Spieler mit Wartungs-Bypass dürfen beitreten (Spieler > bearbeiten > Bypass)"
+            "title": "Whitelist-Modus",
+            "description": "Beschränke den Zugang auf zugelassene Spieler. Ein manueller Eintrag unter Spieler oder die Server-Whitelist-Rolle gewährt jeweils unabhängig Zugang. Konfigurierte Spieladministratorgruppen sind ebenfalls zugelassen."
           },
           "ig_language": {
             "title": "Add-on-Sprache",
@@ -863,9 +1041,19 @@
           },
           "ig_adminRank": {
             "title": "Admin-Ränge",
-            "description": "Ränge, die berechtigt sind, die Konfiguration zu bearbeiten oder den Wartungsmodus zu umgehen."
+            "description": "Gib genaue Spielbenutzergruppen wie superadmin an. Mitglieder können die Addon-Konfiguration bearbeiten und im Whitelist-Modus beitreten. Dies sind keine Discord-Rollen."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Server-Whitelist-Rolle",
+            "description": "Spieler mit verknüpften Steam- und Discord-Konten erhalten über diese Rolle Zugang im Whitelist-Modus. Manuell gewährter Zugang unter Spieler bleibt unabhängig. Verliert ein Spieler die Rolle bei aktivem Whitelist-Modus, wird er entfernt, sofern keine andere Berechtigung Zugang gewährt."
           }
-        }
+        },
+        "remove_admin_rank": "Rang entfernen",
+        "whitelist_no_role": "Keine Discord-Rolle",
+        "whitelist_role_missing": "Nicht verfügbare Rolle ({1})",
+        "whitelist_roles_loading": "Discord-Rollen werden geladen…",
+        "whitelist_roles_error": "Discord-Rollen konnten nicht geladen werden. Versuche es erneut oder entferne die aktuelle Rolle.",
+        "whitelist_role_invalid": "Wähle eine verfügbare Discord-Rolle oder keine Rolle."
       },
       "team_roles": {
         "error_occurred": "Beim Abrufen der Rollen ist ein Fehler aufgetreten.",
@@ -910,8 +1098,12 @@
         "modal_title": "Automatische Rolle bearbeiten",
         "modal_description": "Bearbeiten Sie die Einstellungen für diese automatische Rolle.",
         "close_button": "Schließen",
-        "failed_to_load": "Die Links können nicht geladen werden",
-        "add_role": "Rolle hinzufügen"
+        "failed_to_load": "Rollen konnten nicht geladen werden.",
+        "add_role": "Rolle hinzufügen",
+        "delete_confirmation": "Neue Mitglieder erhalten diese Rolle nicht mehr automatisch. Bestehende Mitglieder behalten ihre Rolle.",
+        "delete": "Löschen",
+        "premium": "Für kostenlose Nutzer auf 3 automatische Rollen begrenzt.",
+        "active_help": "Alle hier aufgeführten Rollen werden neuen Mitgliedern automatisch zugewiesen."
       },
       "verification": {
         "check_button": "Alle Rollen überprüfen",
@@ -946,7 +1138,13 @@
         "edit_tooltip": "Bearbeiten",
         "delete_tooltip": "Löschen",
         "failed_to_load_links": "Die Links können nicht geladen werden",
-        "add_role_button": "Rolle hinzufügen"
+        "add_role_button": "Rolle hinzufügen",
+        "publish_confirmation": "Verifizierung in #{1} veröffentlichen?",
+        "publish_consequence": "Mitglieder können über diese Nachricht ihre Konten verknüpfen.",
+        "delete_message_confirmation": "Verifizierung in #{1} löschen?",
+        "delete_message_consequence": "Mitglieder können die Verifizierung nicht mehr über diese Nachricht starten.",
+        "delete_role_consequence": "Diese Rolle wird bei der Verifizierung nicht mehr vergeben oder entfernt. Bestehende Mitglieder behalten ihre aktuellen Rollen.",
+        "check_confirmation": "Rollen der Mitglieder von {1} prüfen?"
       },
       "information": {
         "title": "Informationen",
@@ -1003,7 +1201,8 @@
         "edit_link": "Verknüpfung bearbeiten",
         "save": "Speichern",
         "yes": "Nein",
-        "no": "Nein"
+        "no": "Nein",
+        "delete_confirmation": "Diese Verknüpfung steht Mitgliedern danach nicht mehr zur Verfügung."
       }
     },
     "menu": {
@@ -1040,6 +1239,211 @@
         "tickets": "Fahrkarten",
         "teams": "Teams"
       }
+    },
+    "ui": {
+      "overview": "Übersicht",
+      "configuration": "Konfiguration",
+      "activity": "Aktivität",
+      "workspace": "Arbeitsbereich",
+      "workspace_description": "Verwalten Sie Ihre Community und verbundene Server.",
+      "server_description": "Konfigurieren Sie Ihren Server und verfolgen Sie seine Aktivität.",
+      "admin_description": "Verwalten Sie die Plattform und die Communitys.",
+      "navigation": "Navigation",
+      "community": "Community",
+      "breadcrumb": "Brotkrumennavigation"
     }
+  },
+  "ui": {
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "empty": "Noch keine Einträge vorhanden.",
+    "save_error": "Speichern fehlgeschlagen. Bitte versuchen Sie es erneut.",
+    "saved": "Gespeichert",
+    "unsaved": "Nicht gespeicherte Änderungen",
+    "load_error": "Dieser Inhalt konnte nicht geladen werden.",
+    "loading": "Wird geladen…",
+    "retry": "Erneut versuchen",
+    "no_category": "Ohne Kategorie",
+    "remove": "Entfernen",
+    "autosave": "Änderungen werden automatisch gespeichert.",
+    "redirecting": "Weiterleitung…",
+    "logging_out": "Abmelden",
+    "not_found_description": "Die gesuchte Seite existiert nicht.",
+    "back_home": "Zur Startseite",
+    "contents": "Inhalt",
+    "enabled": "Aktiviert",
+    "disabled": "Deaktiviert",
+    "delete_target": "{1} löschen?",
+    "invalid_value": "Gib einen gültigen Wert ein.",
+    "publish": "Veröffentlichen",
+    "delete": "Löschen",
+    "create": "Erstellen",
+    "sync_pending": "Gespeichert. Die Synchronisierung steht noch aus.",
+    "required": "Dieses Feld ist erforderlich.",
+    "confirm_delete": "Diesen Eintrag löschen?",
+    "invalid_url": "Gib eine gültige HTTP- oder HTTPS-URL ein.",
+    "action_error": "Die Aktion ist fehlgeschlagen. Versuche es erneut.",
+    "confirm": "Bestätigen",
+    "leave_title": "Ohne Speichern verlassen?",
+    "wait_saving": "Warte, bis das Speichern abgeschlossen ist, bevor du die Seite verlässt.",
+    "leave_description": "Deine ungespeicherten Änderungen werden verworfen.",
+    "stay": "Auf dieser Seite bleiben",
+    "discard_leave": "Verwerfen und verlassen",
+    "copy": "Kopieren",
+    "copied": "Kopiert!",
+    "copy_error": "Kopieren nicht möglich. Bitte versuche es erneut.",
+    "saving": "Wird gespeichert…",
+    "template_variables": {
+      "title": "Verfügbare Variablen",
+      "syntax": "Syntax",
+      "format": "Format",
+      "example": "Beispiel",
+      "template_example": "Vorlagenbeispiel",
+      "copy": "{1} kopieren",
+      "text": "Text",
+      "number": "Zahl",
+      "duration": "Dauer (z. B. 1h 2m 3s)",
+      "raw": "Rohwert",
+      "formatting": "Unterstützte Formatierung",
+      "bold": "Fett",
+      "inline_code": "Inline-Code",
+      "underline": "Unterstrichen",
+      "strikethrough": "Durchgestrichen"
+    }
+  },
+  "settings": {
+    "access": "Zugang und Verifizierung",
+    "access_description": "Lege fest, wie Spieler ihre Konten verknüpfen und beim Beitritt verifiziert werden.",
+    "administration": "Verwaltung",
+    "administration_description": "Verwalte Administratorzugriff und Whitelist-Modus.",
+    "advanced": "Erweiterte Einstellungen",
+    "advanced_description": "Client-Kompatibilität, Fehlerbehebung und Protokollformat.",
+    "all": "Alle Einstellungen",
+    "bot_connected": "Der Bot ist bereits auf diesem Discord-Server.",
+    "bot_connection": "Verbindung und Zugangsdaten",
+    "bot_identity": "Identität und Präsenz",
+    "bot_invite_hint": "Lade den eigenen Bot ein, bevor du seine Identität bearbeitest.",
+    "bot_membership": "Discord-Server",
+    "bot_token_hint": "Verwende die Einrichtung, um das Token des eigenen Bots festzulegen oder zu ersetzen.",
+    "categories": "Einstellungskategorien",
+    "channel_confirmation": "Wähle einen Kanal und bestätige deine Auswahl. Wenn du ihn entfernst, werden dort keine weiteren Nachrichten gesendet.",
+    "chat_default_help": "Lege fest, ob Spielnachrichten standardmäßig weitergeleitet oder blockiert werden. Ausnahmen legst du in den Regeln unten fest.",
+    "chat_destination": "Discord-Ziel",
+    "chat_destination_help": "Nachrichten werden über diesen Kanal weitergeleitet. Wähle einen Kanal, um die Weiterleitung zu verbinden.",
+    "chat_direction_help": "Wählen Sie aus, welche Seite Nachrichten über die Weiterleitung senden kann.",
+    "chat_ping_help": "Verhindere, dass weitergeleitete Nachrichten Discord-Mitglieder und Rollen erwähnen.",
+    "chat_rules": "Filterregeln",
+    "general": "Allgemein",
+    "general_description": "Sprache und Supportinformationen, die Spielern angezeigt werden.",
+    "kick_delay_dependency": "Das Entfernen wegen fehlender Kontoverknüpfung setzt eine verpflichtende Verknüpfung voraus. Prüfungen des Client-Zweigs verwenden ebenfalls diese Frist, bei 0 sind es 600 Sekunden.",
+    "log_content": "Protokollinhalt",
+    "log_file_help": "Füge die Protokollinformationen in Discord als Dateianhang hinzu.",
+    "log_ip_help": "Blende die IP-Adressen der Spieler in den auf Discord veröffentlichten Protokollen aus.",
+    "message_content": "Nachrichteninhalt",
+    "moderation": "Moderation",
+    "moderation_description": "Synchronisiere Sanktionen zwischen Discord und dem Spielserver.",
+    "nickname_format_help": "Bearbeiten Sie die Spitznamenvorlage und prüfen Sie die Live-Vorschau.",
+    "no_results": "In dieser Kategorie entsprechen keine Einstellungen deiner Suche.",
+    "pseudo_rules_help": "Präfixe und Rollennamen werden nur verwendet, wenn das Format {rolePrefix} oder {roleName} enthält.",
+    "reset_filters": "Filter zurücksetzen",
+    "results": "angezeigte Einstellungen",
+    "rule_setup_help": "Erstelle eine vollständige Regel mit Discord-Rolle, Synchronisierungsoptionen und Aktivierungsstatus.",
+    "saved_preview": "Gespeicherte Vorschau",
+    "search": "Einstellungen suchen",
+    "search_placeholder": "Nach Name oder Beschreibung suchen…",
+    "server_connection": "Verbindungsdetails",
+    "server_delete_hint": "Entferne diesen Server aus der Community und ihrem Dashboard.",
+    "server_identity": "Identität und Sichtbarkeit",
+    "server_public_hint": "Lege fest, ob dieser Server in der öffentlichen Serverrangliste erscheint.",
+    "server_removal": "Server entfernen",
+    "server_reset_hint": "Erzeuge ein neues Token und aktualisiere es anschließend in deiner Garry’s-Mod-Konfiguration.",
+    "server_sensitive": "Sensible Aktionen",
+    "status_chart_help": "Füge der Statusnachricht ein Diagramm zur Spieleraktivität hinzu.",
+    "status_content_help": "Lege den Nachrichteninhalt fest und prüfe die Live-Vorschau. Gültige Änderungen werden automatisch gespeichert.",
+    "status_players_help": "Zeige verbundene Spieler an und passe die Informationen für jeden Spieler an.",
+    "sync_behavior": "Synchronisierungsverhalten",
+    "sync_direction_help": "Diese Richtung gilt für alle nachstehenden Regeln.",
+    "sync_disabled": "Die Synchronisierung ist deaktiviert. Format und Regeln bleiben für die nächste Aktivierung erhalten.",
+    "sync_premium_help": "Die Synchronisierung von Discord zum Spiel und in beide Richtungen erfordert Premium.",
+    "verification_dependency": "Diese Prüfung greift, wenn die Kontoverknüpfung verpflichtend ist.",
+    "verification_existing_members": "Bestehende Mitglieder",
+    "verification_message": "Einstieg in die Verifizierung",
+    "verification_message_hint": "Veröffentliche in einem Discord-Kanal die Nachricht, über die Mitglieder ihre Konten verknüpfen.",
+    "verification_preferences": "Mitgliedererlebnis",
+    "explicit_save": "Änderungen werden erst angewendet, wenn du diesen Abschnitt speicherst.",
+    "channel_draft_help": "Wähle ein Ziel und speichere, um es anzuwenden.",
+    "server_port_invalid": "Gib einen Port zwischen 1 und 65535 ein.",
+    "image_url_invalid": "Gib eine HTTP- oder HTTPS-Bild-URL ein.",
+    "server_reset_confirm": "Das aktuelle Token funktioniert danach nicht mehr. Aktualisiere es nach dem Zurücksetzen in deiner Garry’s-Mod-Konfiguration.",
+    "server_delete_confirm": "Diesen Server und seine Dashboard-Daten entfernen. Dies kann nicht rückgängig gemacht werden.",
+    "server_edit_help": "Bearbeiten Sie die Serveridentität und die Verbindungsdaten.",
+    "general_administration": "Allgemein und Administration",
+    "general_administration_description": "Sprache, Supportinformationen und Administratorzugriff.",
+    "chat_relay": "Chat-Weiterleitung"
+  },
+  "editing": {
+    "remove_channel": "Dieses Ziel entfernen? Künftige Nachrichten werden nicht mehr an diesen Kanal gesendet.",
+    "section_help": "Bearbeite diese Einstellungen und speichere den Abschnitt, um sie anzuwenden.",
+    "remove_status_help": "Die veröffentlichte Discord-Statusnachricht entfernen. Die gespeicherte Konfiguration bleibt erhalten.",
+    "publish_saved_first": "Speichere oder verwirf deine Änderungen, bevor du eine Nachricht veröffentlichst.",
+    "status_scope": "Änderungen an der Nachricht und ihren Schaltflächen werden gemeinsam gespeichert.",
+    "conflict": "Die gespeicherten Werte wurden geändert. Lade sie vor dem erneuten Speichern neu.",
+    "sync_pending": "Die Konfiguration ist gespeichert. Die Discord-Aktualisierung wurde noch nicht bestätigt.",
+    "reload_saved": "Änderungen verwerfen und gespeicherte Werte neu laden",
+    "save_status": "Statuskonfiguration speichern",
+    "invalid_status": "Prüfe die Namen und URLs der Schaltflächen vor dem Speichern.",
+    "apply_draft": "Auf den Entwurf anwenden",
+    "delete_trigger": "Auslöser löschen?",
+    "delete_trigger_help": "Die ausgewählte Ereignisaktion wird nicht mehr ausgeführt. Dies kann nicht rückgängig gemacht werden."
+  },
+  "access": {
+    "unavailable": "Die Zugriffsrechte konnten nicht geprüft werden. Deine gespeicherte Konfiguration bleibt erhalten.",
+    "quota": "{1} / {2} verwendet",
+    "upgrade_required": "Diese Funktion erfordert Premium.",
+    "quota_reached": "Das Limit für diese Funktion ist erreicht.",
+    "historical_bot": "Erfordert einen GmodStore-Kauf",
+    "suspended": "Diese gespeicherte Funktion ist ausgesetzt. Du kannst ihre Konfiguration weiterhin deaktivieren oder entfernen.",
+    "count_buttons": "{1} Schaltflächen",
+    "count_links": "{1} Links",
+    "history_count": "Die letzten {1} Einträge",
+    "permission_denied": "Du hast keine Berechtigung, diese Community zu verwalten.",
+    "status_chart": "Aktivitätsdiagramm im Status",
+    "auto_roles_limit": "Automatische Rollen - Limit",
+    "nickname_rules_limit": "Spitznamenregeln - Limit",
+    "chat_filters": "Chatfilter",
+    "log_triggers": "Aktionen bei Log-Ereignissen",
+    "reverse_sync": "Synchronisierung von Discord zum Spiel",
+    "errors_history": "Fehlerverlauf",
+    "verification_preferences": "Verifizierungseinstellungen"
+  },
+  "server_setup": {
+    "title": "Gmod Integration-Addon verbinden",
+    "description": "Führe diese Befehle nach der Installation des Addons einzeln in der Konsole deines Garry’s Mod-Servers aus. Du findest sie im Verwaltungspanel deines Hosters.",
+    "credentials": "Server-Zugangsdaten",
+    "copy_id": "Server-ID kopieren",
+    "copy_token": "Server-Token kopieren",
+    "commands": "Konsolenbefehle",
+    "set_id": "1. Server-ID festlegen",
+    "copy_id_command": "Befehl zum Festlegen der Server-ID kopieren",
+    "set_token": "2. Server-Token festlegen",
+    "token_hint": "Beim Kopieren dieses Befehls wird dein Token übernommen, auch wenn es ausgeblendet ist.",
+    "copy_token_command": "Befehl zum Festlegen des Server-Tokens kopieren",
+    "test": "3. Verbindung testen",
+    "copy_test_command": "Befehl zum Verbindungstest kopieren",
+    "saved_hint": "Das Addon speichert diese Einstellungen sofort und testet die Verbindung automatisch, sobald beide Zugangsdaten festgelegt sind.",
+    "diagnostics": "Diagnose",
+    "help": "Verbindungsstatus und verfügbare Befehle prüfen",
+    "copy_help_command": "Diagnosebefehl kopieren",
+    "version": "Installierte Addon-Version prüfen",
+    "copy_version_command": "Befehl zur Versionsprüfung kopieren"
+  },
+  "auth": {
+    "unavailable": "Die Verbindung ist vorübergehend nicht verfügbar. Ihre Sitzung und ungespeicherten Änderungen bleiben erhalten.",
+    "reconnect_discord": "Verbinden Sie Discord in einem neuen Tab erneut. Ihre ungespeicherten Änderungen bleiben hier erhalten.",
+    "logout_unconfirmed": "Sie sind auf diesem Gerät abgemeldet. Der Widerruf auf dem Server konnte nicht bestätigt werden. Versuchen Sie es erneut, sobald die Verbindung wiederhergestellt ist.",
+    "stop_impersonation": "Zu Ihrem Konto zurückkehren",
+    "impersonation_erasure": "Kehren Sie zu Ihrem eigenen Konto zurück, bevor Sie die Löschung beantragen.",
+    "oauth_denied": "Die Discord-Anmeldung wurde nicht abgeschlossen. Sie können es später erneut versuchen."
   }
 }

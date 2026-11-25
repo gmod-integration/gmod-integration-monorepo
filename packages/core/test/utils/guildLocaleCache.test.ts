@@ -41,12 +41,7 @@ describe('guildLocaleCache', () => {
   describe('setCachedGuildPreferredLocale', () => {
     it('normalizes and caches the locale with the default TTL', async () => {
       await setCachedGuildPreferredLocale('g1', 'fr-FR')
-      expect(redisMock.set).toHaveBeenCalledWith(
-        'discord:guild:g1:preferredLocale',
-        'fr',
-        'EX',
-        60 * 60 * 24 * 30,
-      )
+      expect(redisMock.set).toHaveBeenCalledWith('discord:guild:g1:preferredLocale', 'fr', 'EX', 60 * 60 * 24 * 30)
     })
 
     it('accepts a custom TTL', async () => {

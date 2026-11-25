@@ -1,9 +1,9 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-let configServerMock: { dev: boolean }
+const configDiscordMock = { relayUrl: 'https://1-dsc-relay.gmod-integration.com' }
 vi.mock('@gmod/config', () => ({
-  get ConfigServer() {
-    return configServerMock
+  get ConfigDiscord() {
+    return configDiscordMock
   },
 }))
 
@@ -15,9 +15,8 @@ vi.mock('@gmod/infra-prisma', () => ({
   default: { gm_users_notifications: { create: createNotificationMock } },
 }))
 
-configServerMock = { dev: false }
-
-vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => [{ name: 'v1.2.3' }] }))
+const initialTagFetch = vi.fn().mockResolvedValue({ json: async () => [{ name: 'v1.2.3' }] })
+vi.stubGlobal('fetch', initialTagFetch)
 vi.useFakeTimers()
 
 const {
@@ -26,7 +25,6 @@ const {
   getCurrencyByLang,
   badArgument,
   ipGetIP,
-  generateToken,
   addNotification,
   todoControllers,
   versionComparator,
@@ -43,16 +41,13 @@ describe('tools', () => {
   })
 
   describe('getRandomDiscordRelay', () => {
-    it('returns the prod relay when not in dev mode', () => {
-      configServerMock.dev = false
-      expect(getRandomDiscordRelay()).toBe('https://1-dsc-relay.gmod-integration.com')
-    })
-
-    it('returns the dev relay when in dev mode', () => {
-      configServerMock.dev = true
-      expect(getRandomDiscordRelay()).toBe('https://dsc-relay-dev.gmod-integration.com')
-      configServerMock.dev = false
-    })
+    it.each(['https://1-dsc-relay.gmod-integration.com', 'http://127.0.0.1:3002', 'https://relay.example.com'])(
+      'uses the configured relay rather than an unrelated fixed endpoint: %s',
+      (relayUrl) => {
+        configDiscordMock.relayUrl = relayUrl
+        expect(getRandomDiscordRelay()).toBe(relayUrl)
+      },
+    )
   })
 
   describe('getEmojiVersion', () => {
@@ -95,48 +90,17 @@ describe('tools', () => {
     it('returns the address unchanged when there is no colon', () => {
       expect(ipGetIP('127.0.0.1')).toBe('127.0.0.1')
     })
-  })
 
-  describe('generateToken', () => {
-    it('throws for a non-integer length', () => {
-      expect(() => generateToken(1.5)).toThrow('Token length must be a positive integer')
+    it('preserves IPv6 and removes only an explicit bracketed port', () => {
+      expect(ipGetIP('2001:4860:4860::8888')).toBe('2001:4860:4860::8888')
+      expect(ipGetIP('[2001:4860:4860::8888]:27015')).toBe('2001:4860:4860::8888')
+      expect(ipGetIP('[::1]')).toBe('::1')
+      expect(ipGetIP('::ffff:8.8.8.8')).toBe('::ffff:8.8.8.8')
     })
 
-    it('throws for a non-positive length', () => {
-      expect(() => generateToken(0)).toThrow('Token length must be a positive integer')
-    })
-
-    it('generates a token of the requested length using only the allowed charset', () => {
-      const token = generateToken(32)
-      expect(token).toHaveLength(32)
-      expect(token).toMatch(/^[A-Za-z0-9]+$/)
-    })
-
-    it('re-rolls biased bytes (>= 248) via rejection sampling instead of using them', async () => {
-      // 62 does not divide 256 evenly (256 % 62 = 8), so bytes in [248, 255] would bias the
-      // charset selection - the source skips them. Force one such byte to prove the skip path
-      // actually runs, using a mocked node:crypto that yields a biased byte before a valid one.
-      vi.doMock('node:crypto', async (importOriginal) => {
-        const actual = await importOriginal<typeof import('node:crypto')>()
-        let call = 0
-        return {
-          ...actual,
-          randomBytes: (size: number) => {
-            call += 1
-            if (call === 1) {
-              return Buffer.from(new Array(size).fill(255))
-            }
-            return actual.randomBytes(size)
-          },
-        }
-      })
-      vi.resetModules()
-
-      const { generateToken: generateTokenWithMockedCrypto } = await import('../../src/utils/tools.js')
-      const token = generateTokenWithMockedCrypto(4)
-
-      expect(token).toHaveLength(4)
-      vi.doUnmock('node:crypto')
+    it('keeps invalid addresses intact so they remain unknown to country lookup', () => {
+      for (const address of ['Unknown', '[invalid]:27015', '999.0.0.1:27015', 'invalid:27015'])
+        expect(ipGetIP(address)).toBe(address)
     })
   })
 
@@ -173,16 +137,36 @@ describe('tools', () => {
       expect(versionComparator('1.0.0', 'v1.0.1')).toBe(-1)
     })
 
-    it('returns 1 when version1 is greater at some character', () => {
+    it('returns 1 when version1 is greater', () => {
       expect(versionComparator('2.0.0', '1.0.0')).toBe(1)
     })
 
-    it('returns -1 when version1 is lesser at some character', () => {
+    it('returns -1 when version1 is lesser', () => {
       expect(versionComparator('1.0.0', '2.0.0')).toBe(-1)
     })
+
+    it.each([
+      ['5.2.9', 'v5.2.10', -1],
+      ['v5.2.10', '5.2.9', 1],
+      ['1.20.0', '1.3.0', 1],
+      ['9.99.99', '10.0.0', -1],
+      ['v10.12.30', '10.12.30', 0],
+    ])('compares numeric release components: %s vs %s', (left, right, expected) => {
+      expect(versionComparator(left, right)).toBe(expected)
+    })
+
+    it.each(['Unknown', '', '5.2', '5.2.10-preview', '999999999999999999999.0.0'])(
+      'does not order an unavailable or unsupported version: %s',
+      (value) => expect(versionComparator(value, '5.2.10')).toBe(0),
+    )
   })
 
   describe('lastGmodIntegrationTag refresh interval', () => {
+    it('looks up tags in the actual addon repository', () => {
+      expect(initialTagFetch).toHaveBeenCalledWith(
+        'https://api.github.com/repos/gmod-integration/gmod-integration/tags',
+      )
+    })
     it('refreshes the tag from the GitHub API every 10 minutes', async () => {
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ json: async () => [{ name: 'v9.9.9' }] }))
       await vi.advanceTimersByTimeAsync(1000 * 60 * 10)

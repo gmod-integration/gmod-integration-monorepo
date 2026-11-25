@@ -1,4 +1,44 @@
 import { z } from 'zod'
+import { CustomBotAvatarSchema } from './server/CustomBotProfileSchema.js'
+import { StatusMessagePreviewInputSchema, StatusMessagePreviewSchema } from './server/StatusMessagePreviewSchema.js'
+
+export const DiscordPublicInviteUrlSchema = z.string().regex(/^https:\/\/discord\.gg\/[A-Za-z0-9_-]{1,100}$/)
+
+export const DiscordRewardRoleInputSchema = z
+  .object({
+    serverID: z.string().min(1).max(255),
+    grantID: z.string().uuid(),
+    actionID: z.string().uuid(),
+    steamID64: z.string().regex(/^\d{17}$/),
+    discordID: z.string().regex(/^\d{15,22}$/),
+    roleID: z.string().regex(/^\d{15,22}$/),
+  })
+  .strict()
+export type DiscordRewardRoleInput = z.infer<typeof DiscordRewardRoleInputSchema>
+export const DiscordRewardRoleJobSchema = DiscordRewardRoleInputSchema.extend({
+  correlationId: z.string().uuid(),
+  timestamp: z.coerce.date(),
+}).strict()
+export const DiscordRewardRoleReplySchema = z
+  .object({
+    correlationId: z.string().uuid(),
+    status: z.enum(['delivered', 'failed', 'uncertain']),
+    reason: z.string().max(100).optional(),
+  })
+  .strict()
+
+export const DiscordGuildPublicInviteJobSchema = z.object({
+  guildID: z.string().min(1, 'guildID required'),
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+export type DiscordGuildPublicInviteJob = z.infer<typeof DiscordGuildPublicInviteJobSchema>
+
+export const DiscordGuildPublicInviteReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  inviteUrl: DiscordPublicInviteUrlSchema.nullable(),
+})
+export type DiscordGuildPublicInviteReply = z.infer<typeof DiscordGuildPublicInviteReplySchema>
 
 /**
  * Job: Synchroniser le pseudo Discord d'un joueur Gmod
@@ -208,6 +248,28 @@ export const DiscordGuildSnapshotReplySchema = z.object({
 
 export type DiscordGuildSnapshotReply = z.infer<typeof DiscordGuildSnapshotReplySchema>
 
+export const DiscordGuildMemberRoleJobSchema = z
+  .object({
+    guildID: z.string().regex(/^\d{17,20}$/),
+    discordID: z.string().regex(/^\d{17,20}$/),
+    roleID: z.string().regex(/^\d{17,20}$/),
+    correlationId: z.string().min(1),
+    timestamp: z.coerce.date().optional(),
+  })
+  .strict()
+export type DiscordGuildMemberRoleJob = z.infer<typeof DiscordGuildMemberRoleJobSchema>
+
+export const DiscordGuildMemberRoleReplySchema = z
+  .object({
+    correlationId: z.string().min(1),
+    available: z.boolean(),
+    hasRole: z.boolean(),
+    roleExists: z.boolean(),
+  })
+  .strict()
+  .refine((reply) => (reply.available ? !reply.hasRole || reply.roleExists : !reply.hasRole && !reply.roleExists))
+export type DiscordGuildMemberRoleResult = Omit<z.infer<typeof DiscordGuildMemberRoleReplySchema>, 'correlationId'>
+
 export const DiscordGuildVerifyUserJobSchema = z.object({
   guildID: z.string().min(1, 'guildID required'),
   userID: z.string().min(1, 'userID required'),
@@ -319,8 +381,8 @@ export type DiscordGuildReloadBotInstanceReply = z.infer<typeof DiscordGuildRelo
 
 export const DiscordGuildUpdateBotProfileJobSchema = z.object({
   guildID: z.string().min(1, 'guildID required'),
-  username: z.string().optional(),
-  avatar: z.string().optional(),
+  username: z.string().trim().min(2).max(32).optional(),
+  avatar: CustomBotAvatarSchema.optional(),
   correlationId: z.string().min(1, 'correlationId required'),
   timestamp: z.coerce.date().optional(),
 })
@@ -362,6 +424,7 @@ export type DiscordGuildAdminsJob = z.infer<typeof DiscordGuildAdminsJobSchema>
 
 export const DiscordGuildAdminsReplySchema = z.object({
   correlationId: z.string().min(1, 'correlationId required'),
+  available: z.boolean().default(true),
   admins: z.array(
     z.object({
       id: z.string(),
@@ -401,6 +464,7 @@ export const DiscordGuildSendLogMessageJobSchema = z.object({
   description: z.string().nullable().optional(),
   color: z.string().min(1, 'color required'),
   footer: z.string().min(1, 'footer required'),
+  requiredCapability: z.literal('logs.triggers').optional(),
   correlationId: z.string().min(1, 'correlationId required'),
   timestamp: z.coerce.date().optional(),
 })
@@ -415,6 +479,65 @@ export const DiscordGuildSendLogMessageReplySchema = z.object({
 
 export type DiscordGuildSendLogMessageReply = z.infer<typeof DiscordGuildSendLogMessageReplySchema>
 
+export const DiscordServerErrorsChannelValidationReasonSchema = z.enum([
+  'channel_not_found',
+  'unsupported_channel',
+  'missing_permissions',
+  'provider_unavailable',
+  'server_not_found',
+])
+export const DiscordServerErrorsChannelValidateJobSchema = z
+  .object({
+    serverID: z.string().min(1).max(255),
+    channelID: z.string().regex(/^\d{17,20}$/),
+    correlationId: z.string().min(1),
+    timestamp: z.coerce.date().optional(),
+  })
+  .strict()
+export type DiscordServerErrorsChannelValidateJob = z.infer<typeof DiscordServerErrorsChannelValidateJobSchema>
+export const DiscordServerErrorsChannelValidateReplySchema = z
+  .object({
+    correlationId: z.string().min(1),
+    valid: z.boolean(),
+    reason: DiscordServerErrorsChannelValidationReasonSchema.optional(),
+  })
+  .strict()
+export type DiscordServerErrorsChannelValidation = Omit<
+  z.infer<typeof DiscordServerErrorsChannelValidateReplySchema>,
+  'correlationId'
+>
+
+export const DiscordServerLuaErrorReportSchema = z
+  .object({
+    error: z.string().max(2048),
+    stack: z.string().max(8192),
+    name: z.string().max(128).optional(),
+    realm: z.enum(['client', 'server']),
+    steamID64: z.union([z.literal(''), z.string().regex(/^\d{17}$/)]).optional(),
+    workshopID: z.union([z.literal(''), z.string().regex(/^\d{1,20}$/)]).optional(),
+    uptime: z.number().finite().nonnegative(),
+    count: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  })
+  .strict()
+export const DiscordServerLuaErrorJobSchema = z
+  .object({
+    serverID: z.string().min(1).max(255),
+    errorID: z.string().regex(/^[a-f\d]{24}$/),
+    report: DiscordServerLuaErrorReportSchema,
+    timestamp: z.coerce.date().optional(),
+  })
+  .strict()
+export type DiscordServerLuaErrorJob = z.infer<typeof DiscordServerLuaErrorJobSchema>
+
+/** Only persisted report identities cross the queue; content and destinations are read at delivery. */
+export const DiscordServerBugReportJobSchema = z
+  .object({
+    serverID: z.string().min(1).max(255),
+    reportID: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  })
+  .strict()
+export type DiscordServerBugReportJob = z.infer<typeof DiscordServerBugReportJobSchema>
+
 export const DiscordServerStatusRecordSchema = z.object({
   server: z.string().min(1, 'server required'),
   channel: z.string().min(1, 'channel required'),
@@ -422,6 +545,23 @@ export const DiscordServerStatusRecordSchema = z.object({
 })
 
 export type DiscordServerStatusRecord = z.infer<typeof DiscordServerStatusRecordSchema>
+
+export const DiscordServerStatusPreviewJobSchema = z.object({
+  serverID: z.string().min(1, 'serverID required'),
+  draft: StatusMessagePreviewInputSchema,
+  correlationId: z.string().min(1, 'correlationId required'),
+  timestamp: z.coerce.date().optional(),
+})
+
+export type DiscordServerStatusPreviewJob = z.infer<typeof DiscordServerStatusPreviewJobSchema>
+
+export const DiscordServerStatusPreviewReplySchema = z.object({
+  correlationId: z.string().min(1, 'correlationId required'),
+  preview: StatusMessagePreviewSchema.nullable(),
+  error: z.string().optional(),
+})
+
+export type DiscordServerStatusPreviewReply = z.infer<typeof DiscordServerStatusPreviewReplySchema>
 
 export const DiscordServerStatusCreateJobSchema = z.object({
   serverID: z.string().min(1, 'serverID required'),

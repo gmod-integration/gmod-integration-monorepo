@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../testUtils.js'
 import ServerInformations from '../../../../../src/pages/dashboard/guilds/servers/ServerInformations.js'
 import { fetchAPI } from '../../../../../src/utils/api.js'
-import { setWebSocketServerStatus, sendWebSocketMessage } from '../../../../../src/utils/websocket.js'
-import { okJson, errJson, stubDialogGlobal } from './testHelpers.js'
+import type * as WebSocketUtilities from '../../../../../src/utils/websocket.js'
+import { setWebSocketServerStatus, requestServerStatus, stopWebSocket } from '../../../../../src/utils/websocket.js'
+import { okJson, errJson } from './testHelpers.js'
+import { DraftEditingProvider } from '../../../../../src/components/DraftEditingProvider.js'
 
 vi.mock('../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn(),
@@ -13,15 +15,16 @@ vi.mock('../../../../../src/utils/api.js', () => ({
 }))
 
 vi.mock('../../../../../src/utils/websocket.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../../../src/utils/websocket.js')>()
+  const actual = await importOriginal<typeof WebSocketUtilities>()
   return {
     ...actual,
-    sendWebSocketMessage: vi.fn(),
+    requestServerStatus: vi.fn(),
   }
 })
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.useRealTimers()
 })
 
@@ -42,10 +45,17 @@ function setServerLocalStorage(overrides: Partial<typeof baseServer> = {}) {
 
 function renderPage() {
   const history = historyAt('/dashboard/guilds/g1/config/servers/s1')
-  const result = renderWithProviders(() => <ServerInformations />, {
-    path: '/dashboard/guilds/:guildID/config/servers/:serverID',
-    history,
-  })
+  const result = renderWithProviders(
+    () => (
+      <DraftEditingProvider>
+        <ServerInformations />
+      </DraftEditingProvider>
+    ),
+    {
+      path: '/dashboard/guilds/:guildID/config/servers/:serverID',
+      history,
+    },
+  )
   return { ...result, history }
 }
 
@@ -54,7 +64,7 @@ const defaultWSStatus = {
   lastRequest: new Date(0),
   version: '',
   versionComparator: 1,
-  serverID: '',
+  serverID: 's1',
   action: 'server_status',
 }
 
@@ -63,22 +73,27 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     window.localStorage.clear()
     setServerLocalStorage()
     setWebSocketServerStatus({ ...defaultWSStatus })
+    vi.mocked(requestServerStatus).mockClear()
     ;(fetchAPI as Mock).mockReset()
-    ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
+    ;(fetchAPI as Mock).mockImplementation((_endpoint, method, body) =>
+      Promise.resolve(okJson(method === 'PUT' ? { ...baseServer, ...body } : {})),
+    )
   })
 
   it('renders server information from localStorage', () => {
     renderPage()
-    expect(screen.getByText('My Server')).toBeInTheDocument()
-    expect(screen.getByText('A cool server')).toBeInTheDocument()
-    expect(screen.getByText('1.2.3.4:27015')).toBeInTheDocument()
+    expect(screen.getByLabelText('Name')).toHaveValue('My Server')
+    expect(screen.getByLabelText('Description')).toHaveValue('A cool server')
+    expect(screen.getByLabelText('Server address')).toHaveValue('1.2.3.4')
+    expect(screen.getByLabelText('Port')).toHaveValue('27015')
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     expect(screen.getByText('s1')).toBeInTheDocument()
   })
 
   it('shows the default server logo when image is empty and the custom one when set', () => {
     setServerLocalStorage({ image: '' })
     const { unmount } = renderPage()
-    const img = screen.getByAltText('Server Logo') as HTMLImageElement
+    const img = screen.getByAltText('Logo') as HTMLImageElement
     expect(img.getAttribute('src')).toBeTruthy()
     const fallbackSrc = img.getAttribute('src')
     unmount()
@@ -86,7 +101,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
 
     setServerLocalStorage({ image: 'https://example.com/logo.png' })
     renderPage()
-    const img2 = screen.getByAltText('Server Logo') as HTMLImageElement
+    const img2 = screen.getByAltText('Logo') as HTMLImageElement
     expect(img2.getAttribute('src')).toBe('https://example.com/logo.png')
     expect(img2.getAttribute('src')).not.toBe(fallbackSrc)
   })
@@ -106,27 +121,151 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     setServerLocalStorage({ isPublic: true })
     const { unmount } = renderPage()
     // "Public:" is the real en.json translation (differs from the JSX fallback "Server Public").
-    expect(screen.getByText('Public:').nextSibling).toHaveTextContent('Yes')
+    expect(screen.getByRole('checkbox', { name: 'Show in server ranking' })).toBeChecked()
     unmount()
     cleanup()
 
     setServerLocalStorage({ isPublic: false })
     renderPage()
-    expect(screen.getByText('Public:').nextSibling).toHaveTextContent('No')
+    expect(screen.getByRole('checkbox', { name: 'Show in server ranking' })).not.toBeChecked()
+  })
+
+  describe('addon setup commands', () => {
+    it('shows the Lua console commands with the selected server ID while masking the token', () => {
+      const { container } = renderPage()
+      expect(screen.getByText('gmod-integration config set id "s1"')).toBeInTheDocument()
+      expect(screen.getByText('gmod-integration config try')).toBeInTheDocument()
+      expect(container.textContent).toContain('gmod-integration help')
+      expect(container.textContent).toContain('gmod-integration version')
+      expect(container.innerHTML).not.toContain('secret-token')
+      expect(screen.getByRole('button', { name: 'Copy the server token command' })).toBeEnabled()
+      const setup = within(screen.getByRole('region', { name: 'Connect the Gmod Integration addon' }))
+      expect(setup.getByRole('note')).toHaveTextContent('GWSockets is required')
+      expect(setup.getByRole('note')).toHaveTextContent('then restart the server')
+      expect(setup.getByRole('link', { name: 'GWSockets' })).toHaveAttribute(
+        'href',
+        'https://docs.gmod-integration.com/getting-started/installation#dll',
+      )
+    })
+
+    it('copies complete commands with the current credentials without revealing the token', async () => {
+      const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+      const { container } = renderPage()
+      await fireEvent.click(screen.getByRole('button', { name: 'Copy the server ID command' }))
+      expect(writeText).toHaveBeenLastCalledWith('gmod-integration config set id "s1"')
+      await fireEvent.click(screen.getByRole('button', { name: 'Copy the server token command' }))
+      expect(writeText).toHaveBeenLastCalledWith('gmod-integration config set token "secret-token"')
+      await fireEvent.click(screen.getByRole('button', { name: 'Copy the connection test command' }))
+      expect(writeText).toHaveBeenLastCalledWith('gmod-integration config try')
+      expect(container.innerHTML).not.toContain('secret-token')
+      expect(fetchAPI).not.toHaveBeenCalled()
+    })
+
+    it('uses a newly reset token for subsequent copies and hides a previously revealed command', async () => {
+      const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+      ;(fetchAPI as Mock).mockResolvedValue(okJson({ ...baseServer, token: 'replacement-token' }))
+      renderPage()
+      await fireEvent.click(screen.getByRole('button', { name: 'Show Token' }))
+      expect(screen.getByText('gmod-integration config set token "secret-token"')).toBeInTheDocument()
+      await fireEvent.click(screen.getByRole('button', { name: 'Reset Server Token' }))
+      await fireEvent.click(
+        within(document.getElementById('reset-server-token')!).getByRole('button', { name: 'Reset Server Token' }),
+      )
+      await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('server')!).token).toBe('replacement-token'))
+      expect(screen.getByRole('button', { name: 'Show Token' })).toBeInTheDocument()
+      expect(screen.queryByText(/replacement-token/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/secret-token/)).not.toBeInTheDocument()
+      await fireEvent.click(screen.getByRole('button', { name: 'Copy the server token command' }))
+      expect(writeText).toHaveBeenLastCalledWith('gmod-integration config set token "replacement-token"')
+    })
+
+    it('does not allow an incomplete token command to be copied', async () => {
+      setServerLocalStorage({ token: '' })
+      const writeText = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue(undefined)
+      renderPage()
+      const copy = screen.getByRole('button', { name: 'Copy the server token command' })
+      expect(copy).toBeDisabled()
+      await fireEvent.click(copy)
+      expect(writeText).not.toHaveBeenCalled()
+    })
   })
 
   describe('connection status panel', () => {
+    it('keeps another server status unknown instead of reusing its successful checks', () => {
+      setWebSocketServerStatus({
+        ...defaultWSStatus,
+        serverID: 'other-server',
+        isWebSocketConnected: true,
+        lastRequest: new Date(),
+        versionComparator: 0,
+      })
+      renderPage()
+      expect(screen.getAllByText('Unknown')).toHaveLength(3)
+      expect(screen.queryByText('Connected')).not.toBeInTheDocument()
+      expect(screen.queryByText('Received')).not.toBeInTheDocument()
+      expect(screen.queryByText('Compatible')).not.toBeInTheDocument()
+      expect(screen.getByText(/The addon connection could not be verified/)).toBeInTheDocument()
+      expect(screen.getByRole('note')).toHaveTextContent('GWSockets is required')
+      expect(screen.queryByText(/GWSockets is missing|GWSockets is not installed/)).not.toBeInTheDocument()
+      expect(screen.getByLabelText('Name')).toBeEnabled()
+    })
+
+    it('clears a verified state when the dashboard transport stops', async () => {
+      setWebSocketServerStatus({
+        ...defaultWSStatus,
+        isWebSocketConnected: true,
+        lastRequest: new Date(),
+        versionComparator: 0,
+      })
+      renderPage()
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+      stopWebSocket()
+      await vi.waitFor(() => expect(screen.getAllByText('Unknown')).toHaveLength(3))
+      expect(screen.queryByText('Connected')).not.toBeInTheDocument()
+      expect(screen.queryByText('Disconnected')).not.toBeInTheDocument()
+      expect(screen.getByText(/Recent addon activity could not be verified/)).toBeInTheDocument()
+    })
+
+    it('does not retain a successful status when navigating to another server', async () => {
+      setWebSocketServerStatus({
+        ...defaultWSStatus,
+        isWebSocketConnected: true,
+        lastRequest: new Date(),
+        versionComparator: 0,
+      })
+      const { history } = renderPage()
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+      history.set({ value: '/dashboard/guilds/g1/config/servers/another-server' })
+      await vi.waitFor(() => expect(screen.getAllByText('Unknown')).toHaveLength(3))
+      expect(screen.queryByText('Connected')).not.toBeInTheDocument()
+    })
+
+    it('expires recent activity even when no new status frame arrives', () => {
+      vi.useFakeTimers()
+      setWebSocketServerStatus({
+        ...defaultWSStatus,
+        isWebSocketConnected: true,
+        lastRequest: new Date(),
+        versionComparator: 0,
+      })
+      renderPage()
+      expect(screen.getByText('Received')).toBeInTheDocument()
+      vi.advanceTimersByTime(62_000)
+      expect(screen.getByText('Not received')).toBeInTheDocument()
+      expect(screen.queryByText('Compatible')).not.toBeInTheDocument()
+    })
+
     it('shows all-invalid fallback content by default (never connected)', () => {
       renderPage()
-      expect(
-        screen.getByText(/We haven't received any request from your server in the last minute/),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByText(/Your server is not connected to the websocket, advanced features are not available/),
-      ).toBeInTheDocument()
+      expect(screen.getByText(/No request has been received from the addon in the last minute/)).toBeInTheDocument()
+      expect(screen.getByText(/The live connection is unavailable/)).toBeInTheDocument()
       // isValidHTTPRequest is false, so the version block also shows the HTTP-fallback text, not
       // the outdated/success text.
-      expect(screen.getByText(/We can't check the version of your server/)).toBeInTheDocument()
+      expect(screen.getByText(/The addon version cannot be checked without recent server activity/)).toBeInTheDocument()
+      expect(screen.getByText('Not received')).toBeInTheDocument()
+      expect(screen.getByText('Disconnected')).toBeInTheDocument()
+      expect(screen.getByText('Unknown')).toBeInTheDocument()
+      expect(screen.queryByText('Outdated')).not.toBeInTheDocument()
     })
 
     it('shows success content when websocket connected, request fresh, and version up to date', () => {
@@ -137,17 +276,16 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
         versionComparator: 0,
       })
       renderPage()
-      expect(
-        screen.getByText('Congratulations your server is correctly setup you can now configure it.'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('A request was received from the addon within the last minute.')).toBeInTheDocument()
       expect(
         screen.getByText(
-          'Congratulations you successfully connected to your server in websocket, advanced features are now available.',
+          'The addon is connected through GWSockets. Its game integrations can communicate with Gmod Integration.',
         ),
       ).toBeInTheDocument()
-      expect(
-        screen.getByText('Great your server is up to date and will work perfectly with the latest features.'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('The reported addon version is compatible with the current service.')).toBeInTheDocument()
+      expect(screen.getByText('Received')).toBeInTheDocument()
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+      expect(screen.getByText('Compatible')).toBeInTheDocument()
     })
 
     it('treats versionComparator -1 as a valid (up to date) version', () => {
@@ -157,9 +295,7 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
         versionComparator: -1,
       })
       renderPage()
-      expect(
-        screen.getByText('Great your server is up to date and will work perfectly with the latest features.'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('The reported addon version is compatible with the current service.')).toBeInTheDocument()
     })
 
     it('shows the outdated-version message when the request is fresh but the version is outdated', () => {
@@ -169,14 +305,15 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
         versionComparator: 1,
       })
       renderPage()
-      expect(screen.getByText(/Your server is outdated, new features will not work correctly/)).toBeInTheDocument()
+      expect(screen.getByText(/The reported addon version is outdated/)).toBeInTheDocument()
+      expect(screen.getByText('Outdated')).toBeInTheDocument()
+      expect(screen.queryByText('Unknown')).not.toBeInTheDocument()
     })
 
     it('reactively updates when webSocketServerStatus changes after mount', async () => {
       renderPage()
-      expect(
-        screen.getByText(/Your server is not connected to the websocket, advanced features are not available/),
-      ).toBeInTheDocument()
+      expect(screen.getByText(/The live connection is unavailable/)).toBeInTheDocument()
+      expect(screen.getByText('Disconnected')).toBeInTheDocument()
 
       setWebSocketServerStatus({
         ...defaultWSStatus,
@@ -186,10 +323,12 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
       await vi.waitFor(() =>
         expect(
           screen.getByText(
-            'Congratulations you successfully connected to your server in websocket, advanced features are now available.',
+            'The addon is connected through GWSockets. Its game integrations can communicate with Gmod Integration.',
           ),
         ).toBeInTheDocument(),
       )
+      expect(screen.getByText('Connected')).toBeInTheDocument()
+      expect(screen.queryByText('Disconnected')).not.toBeInTheDocument()
     })
   })
 
@@ -202,129 +341,165 @@ describe('pages/dashboard/guilds/servers/ServerInformations.tsx', () => {
     it('sends a server_status websocket message every 2s while mounted', () => {
       vi.useFakeTimers()
       renderPage()
-      expect(sendWebSocketMessage).not.toHaveBeenCalled()
+      expect(requestServerStatus).not.toHaveBeenCalled()
 
       vi.advanceTimersByTime(2000)
-      expect(sendWebSocketMessage).toHaveBeenCalledTimes(1)
-      expect(sendWebSocketMessage).toHaveBeenLastCalledWith('server_status', { serverID: 's1' })
+      expect(requestServerStatus).toHaveBeenCalledTimes(1)
+      expect(requestServerStatus).toHaveBeenLastCalledWith('s1')
 
       vi.advanceTimersByTime(2000)
-      expect(sendWebSocketMessage).toHaveBeenCalledTimes(2)
+      expect(requestServerStatus).toHaveBeenCalledTimes(2)
     })
   })
 
-  describe('editing the server', () => {
-    it('saves the edited fields and updates localStorage on success', async () => {
-      const updated = { ...baseServer, name: 'New Name' }
-      ;(fetchAPI as Mock).mockResolvedValue(okJson(updated))
-
-      const { container } = renderPage()
-      stubDialogGlobal(container, 'edit_server')
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
-
-      const [nameInput] = screen.getAllByRole('textbox') as HTMLInputElement[]
-      await fireEvent.input(nameInput, { target: { value: 'New Name' } })
-
-      const saveBtn = screen.getByRole('button', { name: 'Save Changes' })
-      await fireEvent.click(saveBtn)
-
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(
-          '/users/:discordID/guilds/:guildID/servers/s1',
-          'PUT',
-          expect.objectContaining({ name: 'New Name' }),
-        ),
-      )
-      await vi.waitFor(() => expect(JSON.parse(window.localStorage.getItem('server') as string).name).toBe('New Name'))
-      expect(screen.getByText('New Name')).toBeInTheDocument()
+  describe('editing the server inline', () => {
+    it('automatically batches inline changes without Save or Cancel controls', async () => {
+      renderPage()
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Updated name' } })
+      await fireEvent.input(screen.getByLabelText('Description'), { target: { value: 'Updated description' } })
+      await fireEvent.click(screen.getByRole('checkbox', { name: 'Show in server ranking' }))
+      expect(fetchAPI).not.toHaveBeenCalled()
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('My Server')
+      expect(screen.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+      await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('server')!).name).toBe('Updated name'))
+      expect(screen.getByLabelText('Description')).toHaveValue('Updated description')
+      expect(screen.getByRole('checkbox', { name: 'Show in server ranking' })).not.toBeChecked()
+      expect(fetchAPI).toHaveBeenCalledTimes(1)
+      expect(document.getElementById('edit_server')).not.toBeInTheDocument()
     })
-
-    it('does not update localStorage when the save request fails', async () => {
-      ;(fetchAPI as Mock).mockResolvedValue(errJson())
-      const { container } = renderPage()
-      stubDialogGlobal(container, 'edit_server')
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
-      const saveBtn = screen.getByRole('button', { name: 'Save Changes' })
-      await fireEvent.click(saveBtn)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalled())
-      expect(JSON.parse(window.localStorage.getItem('server') as string).name).toBe('My Server')
+    it('waits for a valid name, port and image URL before autosaving', async () => {
+      vi.useFakeTimers()
+      renderPage()
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: ' ' } })
+      await vi.advanceTimersByTimeAsync(450)
+      expect(fetchAPI).not.toHaveBeenCalled()
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'New name' } })
+      await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '70000' } })
+      await vi.advanceTimersByTimeAsync(450)
+      expect(fetchAPI).not.toHaveBeenCalled()
+      await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '27015' } })
+      await fireEvent.input(screen.getByLabelText('Image URL'), { target: { value: 'invalid' } })
+      await vi.advanceTimersByTimeAsync(450)
+      expect(fetchAPI).not.toHaveBeenCalled()
+      await fireEvent.input(screen.getByLabelText('Image URL'), { target: { value: 'https://example.com/server.png' } })
+      await vi.advanceTimersByTimeAsync(450)
+      expect(fetchAPI).toHaveBeenCalledTimes(1)
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('New name')
     })
-
-    it('mutates description, image, ip, port and isPublic before saving', async () => {
-      const updated = { ...baseServer }
-      ;(fetchAPI as Mock).mockResolvedValue(okJson(updated))
-      const { container } = renderPage()
-      stubDialogGlobal(container, 'edit_server')
-      await fireEvent.click(screen.getByRole('button', { name: 'Edit Server' }))
-      const [, descInput, imageInput, ipInput, portInput] = screen.getAllByRole('textbox') as HTMLInputElement[]
-      await fireEvent.input(descInput, { target: { value: 'New Desc' } })
-      await fireEvent.input(imageInput, { target: { value: 'http://img' } })
-      await fireEvent.input(ipInput, { target: { value: '5.6.7.8' } })
-      await fireEvent.input(portInput, { target: { value: '27016' } })
-      const publicSelect = screen.getByRole('combobox') as HTMLSelectElement
-      await fireEvent.change(publicSelect, { target: { value: 'false' } })
-
-      await fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(
-          '/users/:discordID/guilds/:guildID/servers/s1',
-          'PUT',
-          expect.objectContaining({
-            description: 'New Desc',
-            image: 'http://img',
-            ip: '5.6.7.8',
-            port: '27016',
-            isPublic: false,
-          }),
-        ),
+    it('preserves edits made during a pending autosave and retries a failed request', async () => {
+      let finish!: (value: ReturnType<typeof errJson>) => void
+      ;(fetchAPI as Mock).mockReturnValueOnce(
+        new Promise((resolve) => {
+          finish = resolve
+        }),
       )
+      renderPage()
+      const name = screen.getByLabelText('Name')
+      await fireEvent.input(name, { target: { value: 'Draft name' } })
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledTimes(1))
+      expect(name).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'Reset Server Token' })).toBeDisabled()
+      await fireEvent.input(name, { target: { value: 'Latest name' } })
+      expect(fetchAPI).toHaveBeenCalledTimes(1)
+      finish(errJson())
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Unable to save'))
+      expect(name).toHaveValue('Latest name')
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('My Server')
+      await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('server')!).name).toBe('Latest name'))
+      expect(fetchAPI).toHaveBeenCalledTimes(2)
+    })
+    it('saves every editable field together, updates storage and accepts the server response', async () => {
+      const updated = {
+        ...baseServer,
+        name: 'New Name',
+        description: 'New Desc',
+        image: 'https://example.com/logo.png',
+        ip: '5.6.7.8',
+        port: '27016',
+        isPublic: false,
+      }
+      ;(fetchAPI as Mock).mockResolvedValue(okJson(updated))
+      renderPage()
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'New Name' } })
+      await fireEvent.input(screen.getByLabelText('Description'), { target: { value: 'New Desc' } })
+      await fireEvent.input(screen.getByLabelText('Image URL'), { target: { value: 'https://example.com/logo.png' } })
+      await fireEvent.input(screen.getByLabelText('Server address'), { target: { value: '5.6.7.8' } })
+      await fireEvent.input(screen.getByLabelText('Port'), { target: { value: '27016' } })
+      await fireEvent.click(screen.getByRole('checkbox', { name: 'Show in server ranking' }))
+      await vi.waitFor(() =>
+        expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'PUT', {
+          name: 'New Name',
+          description: 'New Desc',
+          image: 'https://example.com/logo.png',
+          ip: '5.6.7.8',
+          port: '27016',
+          isPublic: false,
+        }),
+      )
+      await vi.waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument())
+      expect(JSON.parse(localStorage.getItem('server')!)).toEqual(updated)
+      expect(screen.getByLabelText('Name')).toHaveValue('New Name')
+      expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
     })
   })
-
-  describe('deleting the server', () => {
-    it('navigates away on successful deletion', async () => {
-      ;(fetchAPI as Mock).mockResolvedValue(okJson({}))
-      const history = renderPage().history
+  describe('confirmed server commands', () => {
+    it('names the server before deletion and Cancel sends no request', async () => {
+      renderPage()
       await fireEvent.click(screen.getByRole('button', { name: 'Delete Server' }))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'DELETE'),
-      )
-      // DashboardMiddleware (mounted globally in the real app, not under test here) is what
-      // resolves the :guildID placeholder in this literal navigate target.
-      await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/:guildID/config/servers'))
+      const confirm = within(document.getElementById('delete-server')!)
+      expect(confirm.getByText(/My Server — Remove this server/)).toBeInTheDocument()
+      expect(fetchAPI).not.toHaveBeenCalled()
+      await fireEvent.click(confirm.getByRole('button', { name: 'Cancel' }))
+      expect(localStorage.getItem('server')).not.toBeNull()
     })
-
-    it('does not navigate when the deletion request fails', async () => {
-      ;(fetchAPI as Mock).mockResolvedValue(errJson())
+    it('only navigates away after confirmed deletion succeeds', async () => {
       const history = renderPage().history
       await fireEvent.click(screen.getByRole('button', { name: 'Delete Server' }))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'DELETE'),
-      )
+      const confirm = within(document.getElementById('delete-server')!)
+      ;(fetchAPI as Mock).mockResolvedValueOnce(errJson())
+      await fireEvent.click(confirm.getByRole('button', { name: 'Delete Server' }))
+      await vi.waitFor(() => expect(confirm.getByRole('alert')).toBeInTheDocument())
       expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1')
+      expect(localStorage.getItem('server')).not.toBeNull()
+      ;(fetchAPI as Mock).mockResolvedValueOnce(okJson({}))
+      await fireEvent.click(confirm.getByRole('button', { name: 'Delete Server' }))
+      await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/g1/config/servers'))
+      expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1', 'DELETE')
+      expect(localStorage.getItem('server')).toBeNull()
     })
-  })
-
-  describe('resetting the server token', () => {
-    it('updates the server and localStorage on success', async () => {
-      const updated = { ...baseServer, token: 'new-token' }
-      ;(fetchAPI as Mock).mockResolvedValue(okJson(updated))
-      renderPage()
-      await fireEvent.click(screen.getByRole('button', { name: 'Reset Server Token' }))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1/token', 'POST'),
+    it('waits for information autosave before allowing a confirmed token reset', async () => {
+      ;(fetchAPI as Mock).mockImplementation((_endpoint, method, body) =>
+        Promise.resolve(okJson(method === 'PUT' ? { ...baseServer, ...body } : { token: 'new-token' })),
       )
-      await vi.waitFor(() => expect(JSON.parse(window.localStorage.getItem('server') as string).token).toBe('new-token'))
+      renderPage()
+      await fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Updated name' } })
+      const reset = screen.getByRole('button', { name: 'Reset Server Token' })
+      expect(reset).toBeDisabled()
+      await vi.waitFor(() => expect(reset).toBeEnabled())
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('Updated name')
+      await fireEvent.click(reset)
+      const confirm = within(document.getElementById('reset-server-token')!)
+      expect(confirm.getByText(/Updated name — The current token will stop working/)).toBeInTheDocument()
+      expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'POST')).toBe(false)
+      await fireEvent.click(confirm.getByRole('button', { name: 'Reset Server Token' }))
+      await vi.waitFor(() => expect(JSON.parse(localStorage.getItem('server')!).token).toBe('new-token'))
+      expect(screen.getByLabelText('Name')).toHaveValue('Updated name')
+      expect(JSON.parse(localStorage.getItem('server')!).name).toBe('Updated name')
+      await fireEvent.click(screen.getByRole('button', { name: 'Show Token' }))
+      expect(screen.getByText('new-token')).toBeInTheDocument()
+      expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1/token', 'POST')
     })
-
-    it('does not update localStorage when the reset request fails', async () => {
+    it('keeps a failed token reset open and preserves the current token', async () => {
       ;(fetchAPI as Mock).mockResolvedValue(errJson())
       renderPage()
       await fireEvent.click(screen.getByRole('button', { name: 'Reset Server Token' }))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith('/users/:discordID/guilds/:guildID/servers/s1/token', 'POST'),
-      )
-      expect(JSON.parse(window.localStorage.getItem('server') as string).token).toBe('secret-token')
+      const dialog = document.getElementById('reset-server-token')!
+      await fireEvent.click(within(dialog).getByRole('button', { name: 'Reset Server Token' }))
+      await vi.waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument())
+      expect(dialog).toHaveAttribute('open')
+      expect(JSON.parse(localStorage.getItem('server')!).token).toBe('secret-token')
     })
   })
 })

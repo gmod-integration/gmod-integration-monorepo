@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render } from '@solidjs/testing-library'
 import * as d3 from 'd3'
 import PieChart from '../../../../src/pages/dashboard/admins/pieChart.js'
+import { createSignal } from 'solid-js'
 
 afterEach(() => cleanup())
 
@@ -39,6 +40,16 @@ describe('pages/dashboard/admins/pieChart.tsx', () => {
   it('renders no paths (and does not crash) for an empty data array', () => {
     const { container } = render(() => <PieChart data={[]} />)
     expect(container.querySelector('svg')!.querySelectorAll('path')).toHaveLength(0)
+  })
+
+  it('updates the slices and labels when refreshed data arrives', () => {
+    const [data, setData] = createSignal(bigSmallData())
+    const { container } = render(() => <PieChart data={data()} />)
+
+    setData([{ label: 'Updated', value: 100 }])
+
+    expect(container.querySelectorAll('path')).toHaveLength(1)
+    expect(container.querySelector('text')).toHaveTextContent('Updated: 100')
   })
 
   it('shows the inline label for a slice above the 5% threshold, hides it below', () => {

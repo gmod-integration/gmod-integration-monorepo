@@ -77,7 +77,31 @@
     "loading_message": "Afhankelijk van uw gegevensgrootte kan dit even duren.",
     "request_my_data": "Vraag mijn gegevens aan",
     "delete_my_data": "Mijn gegevens verwijderen",
-    "error_create_data_request": "Aanmaken van de gegevensaanvraag mislukt"
+    "error_create_data_request": "Aanmaken van de gegevensaanvraag mislukt",
+    "description": "Beheer je gekoppelde accounts, sessies en persoonlijke gegevens.",
+    "erasure": {
+      "submit_error": "De aanvraag kon niet worden bevestigd. Probeer het opnieuw; dezelfde aanvraag wordt hergebruikt.",
+      "title": "Accountverwijdering aanvragen",
+      "scope": "Hiermee worden je persoonlijke profielen, statistieken, sessies, bestanden en gegevensexports verwijderd.",
+      "retained": "Een minimale registratie van de aanvraag, globale bans en reputatie blijven bewaard. Community’s en gezamenlijke aankopen blijven bestaan.",
+      "new_account": "Als je na het verwijderen opnieuw inlogt, wordt een nieuw account aangemaakt.",
+      "confirmation": "Typ DELETE om te bevestigen",
+      "signout": "Je wordt uitgelogd zodra de aanvraag is geaccepteerd. Deze browser bewaart een ontvangstbewijs waarmee je de voortgang kunt volgen.",
+      "submit": "Verwijderingsaanvraag bevestigen",
+      "completed": "De aangevraagde verwijdering is voltooid.",
+      "running": "Je persoonlijke gegevens worden verwijderd. Je kunt de voortgang hier na het uitloggen blijven volgen.",
+      "retry": "Je aanvraag blijft bewaard. De verwerking wordt automatisch hervat; je hoeft geen nieuwe aanvraag in te dienen.",
+      "pending": "Je aanvraag is geaccepteerd en wacht op verwerking. De verwijdering is nog niet voltooid.",
+      "checking": "Je verwijderingsaanvraag wordt gecontroleerd…",
+      "progress": "Voortgang van de verwijdering",
+      "completed_date": "Voltooid op",
+      "status_error": "De aanvraagstatus kon niet worden gecontroleerd. Probeer het opnieuw; je ontvangstbewijs blijft bewaard en er wordt geen nieuwe aanvraag gemaakt.",
+      "paused": "Automatische controles zijn gepauzeerd. Je aanvraag blijft actief; controleer opnieuw om de voortgang weer te volgen.",
+      "check_again": "Status opnieuw controleren",
+      "sign_in_again": "Inloggen om een nieuw account te maken",
+      "return_account": "Terug naar account",
+      "external_copies": "Kopieën die al op Discord zijn gedeeld of in back-ups staan, moeten apart worden behandeld. Neem hiervoor contact op met support."
+    }
   },
   "premium": {
     "sync_chat": "Chatten synchroniseren",
@@ -115,7 +139,7 @@
     "guild_verification": "Guild-verificatie",
     "guild_verification_role_limit": "Guild-verificatie - Rollimiet",
     "force_ply_link": "Spelerkoppeling forceren",
-    "maintenance_white_list": "Onderhoud",
+    "maintenance_white_list": "Whitelistmodus",
     "rcon": "Uitvoeren van RCON",
     "reward": "Beloning",
     "free": "Vrij",
@@ -175,8 +199,9 @@
   },
   "tools": {
     "needRolesPerms": "De bot heeft geen rechten om rollen aan gebruikers toe te wijzen of te verwijderen. Zet de bot-rol hoger in de rollijst, de rol is aangetast: {1}",
-    "needWS_1": "Deze functie vereist een",
-    "needWS_2": "verbinding om goed te werken.",
+    "needWS_required": "GWSockets is verplicht",
+    "needWS_1": "Installeer de",
+    "needWS_2": "module in garrysmod/lua/bin op je dedicated Garry’s Mod-server. Kies de versie voor het besturingssysteem en de architectuur van de server en herstart de server. WebSocket is verplicht voor de volledige addon; zonder WebSocket-verbinding is de addon niet bruikbaar.",
     "needAddon": "Om deze functie te gebruiken moet u de addon(s installeren):",
     "needAddon2": "om goed te werken.",
     "upgrade_now": "Nu upgraden",
@@ -205,7 +230,9 @@
     "type": "Type",
     "message": "Bericht",
     "actions": "Acties",
-    "mark_as_read": "Markeren als gelezen"
+    "mark_as_read": "Markeren als gelezen",
+    "mark_as_read_error": "De melding kan niet als gelezen worden gemarkeerd",
+    "mark_all_read_error": "Niet alle meldingen kunnen als gelezen worden gemarkeerd"
   },
   "home": {
     "hero": {
@@ -249,6 +276,111 @@
         "title": "Spelersdatabase",
         "description": "Bekijk alle spelers die zich bij uw server hebben aangesloten, u kunt hun naam, stoom-id, discord-id, join-datum, laatste join-datum, totale tijd die op uw server, totale waarschuwingen, totale verbod ect... U kunt ook zoeken naar een speler op naam, stoom-id of discord-id."
       }
+    },
+    "catalog": {
+      "eyebrow": "Meer dan een chatbrug",
+      "title": "Eén community. Alle verbindingen.",
+      "description": "Van de eerste verbinding van een speler tot de volgende bugmelding: laat je game en Discord samenwerken.",
+      "documentation": "Lees de handleidingen",
+      "explore": "Ontdek de functies",
+      "all": "Alle functies",
+      "availability": "Sommige functies vereisen Premium, een GmodStore-aankoop of een compatibele addon. Limieten hangen af van je abonnement.",
+      "compare_plans": "Vergelijk abonnementen",
+      "groups": {
+        "status": {
+          "title": "Serverstatus",
+          "intro": "Laat je community rechtstreeks in Discord zien wat er in de game gebeurt.",
+          "one": "Verbinding, spelersaantal, map en spelmodus",
+          "two": "Eigen statusberichten en interactieve knoppen",
+          "three": "Bekijk statusberichten voordat je ze publiceert",
+          "four": "Grafieken van spelersactiviteit"
+        },
+        "chat": {
+          "title": "Chat & screenshots",
+          "intro": "Deel gesprekken en bijzondere momenten tussen beide werelden.",
+          "one": "Gamechat in het gekozen Discord-kanaal",
+          "two": "Berichten van Discord naar de game en berichtfilters",
+          "three": "Screenshots van spelers met titel en opnamedetails",
+          "four": "Screenshotgalerij en delen op Discord"
+        },
+        "accounts": {
+          "title": "Gekoppelde accounts",
+          "intro": "Herken je spelers en verwelkom nieuwe communityleden.",
+          "one": "Gekoppelde Steam- en Discord-profielen",
+          "two": "Verificatieberichten en rolregels",
+          "three": "Automatische rollen bij toetreden tot Discord",
+          "four": "Optionele verificatieherinneringen en ledenvoorkeuren"
+        },
+        "sync": {
+          "title": "Rollen & bijnamen",
+          "intro": "Verbind game-identiteiten en Discord-rollen volgens jouw regels.",
+          "one": "Spelersgroepen gekoppeld aan Discord-rollen",
+          "two": "Discord-rollen voor beroepen of teams in de game",
+          "three": "Bijnaamregels, voorvoegsels, achtervoegsels en formaten",
+          "four": "Optionele rol- en naamsynchronisatie van Discord naar de game"
+        },
+        "players": {
+          "title": "Spelers & activiteit",
+          "intro": "Vind de spelers achter elke sessie en volg hun voortgang.",
+          "one": "Spelershistorie, speeltijd en verbindingen",
+          "two": "Spelersstatistieken, kills en sterfgevallen",
+          "three": "Grafieken van activiteit en tijd per beroep",
+          "four": "Ranglijsten en ondersteunde eigen statistieken"
+        },
+        "moderation": {
+          "title": "Moderatie & toegang",
+          "intro": "Bepaal wie kan spelen en houd moderatiegegevens binnen handbereik.",
+          "one": "Banregistraties tussen platforms en toegangscontroles",
+          "two": "AWarn3-waarschuwingen met beheerder en reden",
+          "three": "Whitelistmodus met handmatige toegang of Discord-rol",
+          "four": "Verplichte accountkoppeling, clientversie en Family Sharing-controles"
+        },
+        "diagnostics": {
+          "title": "Logs & diagnose",
+          "intro": "Bewaar de context wanneer er iets op je server gebeurt.",
+          "one": "Logs van gamegebeurtenissen en Discord-bestemmingen",
+          "two": "Gebeurtenisacties met eigen voorwaarden",
+          "three": "Lua-fouten met tijdstempels en stacktraces",
+          "four": "Bugmeldingen vanuit de game met stappen en screenshots"
+        },
+        "community": {
+          "title": "Communitytools",
+          "intro": "Beheer je server en geef je community een eigen identiteit.",
+          "one": "Communitylinks en openbare serverranglijst",
+          "two": "Serverstemmen en meldingen in Discord",
+          "three": "RCON-consoleopdrachten op basis van rechten",
+          "four": "Aangepast botprofiel en activiteit"
+        }
+      }
+    },
+    "presentation": {
+      "style_label": "Weergave",
+      "hero_label": "Hoofdsectie",
+      "stats_label": "Statistieken",
+      "panorama": "Panorama",
+      "console": "Console",
+      "editorial": "Redactioneel",
+      "ribbon": "Strook",
+      "spotlight": "Grote getallen",
+      "ledger": "Register",
+      "headline_first": "Jouw server.",
+      "headline_second": "Jouw community.",
+      "headline_accent": "Verbonden.",
+      "discover": "Ontdek de functies",
+      "preview_label": "Een kijkje in jouw Discord",
+      "preview_caption": "Voorbeeld van de integratie in je community.",
+      "community_kicker": "Binnen de community",
+      "community_title": "Verbonden, in cijfers.",
+      "community_note": "Totalen geregistreerd bij Gmod Integration.",
+      "metric_guild": "Discord-community’s",
+      "metric_guild_detail": "Geregistreerde community’s",
+      "metric_server": "Gameservers",
+      "metric_server_detail": "Geregistreerde servers",
+      "metric_verified": "Gekoppelde accounts",
+      "metric_verified_detail": "Steam gekoppeld aan Discord",
+      "closing_kicker": "Van jouw server naar jouw Discord",
+      "closing_title": "Breng je community samen.",
+      "closing_description": "Volg de installatiehandleiding, verbind je server en kies de functies die bij je community passen."
     }
   },
   "dashboard": {
@@ -259,7 +391,18 @@
       },
       "bugsReport": {
         "title": "Rapport over bugs",
-        "description": "Lijst van alle bugs die op uw server zijn gemeld"
+        "description": "Lijst van alle bugs die op uw server zijn gemeld",
+        "channel": {
+          "title": "Bugmeldingen op Discord",
+          "description": "Stuur nieuwe bugmeldingen van spelers naar een Discord-tekstkanaal. Opgeslagen meldingen en screenshots blijven hieronder beschikbaar.",
+          "destination": "Discord-doelkanaal",
+          "destination_help": "Kies een kanaal en bevestig de selectie om daar nieuwe bugmeldingen te ontvangen.",
+          "select": "Kanaal kiezen",
+          "remove": "Bestemming verwijderen",
+          "empty": "Geen doelkanaal",
+          "load_error": "De bestemming voor bugmeldingen kon niet worden geladen.",
+          "remove_help": "Geen bugmeldingen meer naar deze bestemming sturen? Het Discord-kanaal en opgeslagen meldingen blijven behouden."
+        }
       },
       "chat": {
         "chats": "Gesprekken",
@@ -505,8 +648,29 @@
         "active": "Actief",
         "actions": "Acties",
         "remove_status": "Status verwijderen",
-        "description": "Hier kunt u uw server status bericht en knoppen beheren.",
+        "description": "Bereid het serverstatusbericht, de spelersinformatie en de linkknoppen voor. Instellingen worden automatisch opgeslagen; publiceer het bericht in een Discord-kanaal zodra het klaar is.",
         "status_buttons_description": "Hulpprogrammaknoppen toevoegen aan uw statusbericht van de server.",
+        "preview": {
+          "title": "Live Discord-voorbeeld",
+          "simulation": "Simulatie",
+          "simulation_note": "Fictieve spelers helpen je de indeling te testen. Bij het verzenden worden de echte servergegevens gebruikt.",
+          "caption": "Instellingen en bevestigde knopwijzigingen worden automatisch opgeslagen en werken een bestaand bericht bij. Publiceer om een nieuw bericht te verzenden.",
+          "loading": "Voorbeeld bijwerken…",
+          "unavailable": "Voorbeeld niet beschikbaar.",
+          "error": "Het voorbeeld kan niet worden geladen.",
+          "buttons_note": "De knoppen in het voorbeeld zijn niet interactief.",
+          "chart_alt": "Grafiek van de spelersactiviteit op de server",
+          "app": "APP",
+          "confirm_send": "Kies een kanaal, controleer het voorbeeld en verzend het bericht.",
+          "cancel": "Annuleren",
+          "send": "Naar Discord verzenden",
+          "save_error": "De statusinstellingen kunnen niet worden opgeslagen.",
+          "send_error": "Het statusbericht kan niet worden verzonden.",
+          "remove_error": "Het statusbericht kan niet worden verwijderd.",
+          "settings_error": "De statusinstellingen kunnen niet worden geladen.",
+          "unsaved": "Alleen een voorbeeld — sla op om deze wijzigingen op Discord toe te passen.",
+          "refresh": "Voorbeeld vernieuwen"
+        },
         "status_message_description": "Configureer het statusbericht dat op uw Discord-server wordt weergegeven.",
         "buttons_panel_title": "Statusknoppen",
         "message_panel_title": "Statusbericht",
@@ -546,7 +710,8 @@
         "delete_confirmation": "Weet u zeker dat u deze knop wilt verwijderen?",
         "premium_limit": "Beperkt tot 2 knoppen voor gratis gebruikers",
         "required_field": "Dit veld is vereist",
-        "invalid_url": "Ongeldig URL-formaat"
+        "invalid_url": "Ongeldig URL-formaat",
+        "timeLastTeamChange": "Tijd sinds de laatste teamwissel"
       },
       "importance": "Belang",
       "description": "Omschrijving",
@@ -564,6 +729,17 @@
         },
         "actions": {
           "actions": "Acties"
+        },
+        "channel": {
+          "title": "Lua-fouten op Discord",
+          "description": "Stuur toekomstige Lua-foutrapporten van de spelserver en spelers naar een Discord-tekstkanaal. Opgeslagen fouten blijven hieronder beschikbaar.",
+          "destination": "Discord-doelkanaal",
+          "destination_help": "Kies een kanaal en bevestig je keuze om daar nieuwe foutrapporten te ontvangen.",
+          "select": "Kanaal kiezen",
+          "remove": "Bestemming verwijderen",
+          "empty": "Geen doelkanaal",
+          "load_error": "De bestemming voor Lua-fouten kon niet worden geladen.",
+          "remove_help": "Geen Lua-fouten meer naar deze bestemming sturen? Het Discord-kanaal en de opgeslagen foutgeschiedenis blijven behouden."
         }
       },
       "logs_trigger": {
@@ -646,23 +822,25 @@
         "information": "Informatie",
         "player_metadata": "Spelermetadata",
         "end_of_list": "Einde lijst",
-        "capture_metadata": "Metadata vastleggen"
+        "capture_metadata": "Metadata vastleggen",
+        "copy_url": "Screenshot-URL kopiëren"
       },
       "edit_player": {
         "title": "Speler bewerken",
-        "bypass_maintenance": "Onderhoud door Pass",
+        "bypass_maintenance": "Handmatige whitelisttoegang",
         "yes": "Ja.",
         "no": "Nee",
-        "save": "Opslaan"
+        "save": "Opslaan",
+        "bypass_help": "Geef deze speler toegang in de whitelistmodus, onafhankelijk van de serverrol. Het verwijderen van deze handmatige vermelding behoudt toegang via de rol of een andere machtiging. Sla op om toe te passen."
       },
       "players_database": {
         "title": "Spelersdatabase",
-        "description": "Lijst van alle spelers op de server",
+        "description": "Bekijk geregistreerde spelers, speeltijd en verbindingen. Bewerk een speler voor handmatige whitelisttoegang; toegang via een rol wordt apart beheerd.",
         "name": "Naam",
         "rank": "Rang",
         "total_time": "Totale tijd",
         "total_connect": "Totaal Verbinding",
-        "bypass_maintenance": "Omleidingsonderhoud",
+        "bypass_maintenance": "Handmatige whitelist",
         "actions": "Acties",
         "steam": "Stoom",
         "edit": "Bewerken"
@@ -709,9 +887,9 @@
         "http_request_fallback_part3": "voor meer informatie.",
         "http_request_success": "Gefeliciteerd met de juiste instelling van uw server kunt u deze nu instellen.",
         "websocket_title": "WebSocket",
-        "websocket_fallback_part1": "Uw server is niet verbonden met de websocket, geavanceerde functies zijn niet beschikbaar, om ze te gebruiken moet u de",
-        "websocket_fallback_part2": "op uw server.",
-        "websocket_success": "Gefeliciteerd met uw succesvolle verbinding met uw server in websocket, geavanceerde functies zijn nu beschikbaar.",
+        "websocket_fallback_part1": "De liveverbinding is niet beschikbaar. Daardoor werken de spelintegraties van de addon niet. Controleer de serverconsole en zorg dat de verplichte",
+        "websocket_fallback_part2": "is geïnstalleerd voor het besturingssysteem en de architectuur van je server. Herstart daarna de spelserver en test de verbinding opnieuw.",
+        "websocket_success": "De addon is verbonden via GWSockets. De spelintegraties kunnen communiceren met Gmod Integration.",
         "version_title": "Versie",
         "version_fallback_http_part1": "We kunnen de versie van uw server niet controleren, zorg ervoor dat de",
         "version_fallback_http_part2": "correct en hebben volledig geconfigureerd uw server id & token, lees de",
@@ -796,10 +974,10 @@
       },
       "config": {
         "title": "Configuration",
-        "description": "Manage the in game configuration of this server.",
+        "description": "Beheer de spelconfiguratie van deze server.",
         "error_occurred": "Er is een fout opgetreden bij het ophalen van de serverconfiguratie.",
         "default": "Standaard",
-        "add_admin_rank": "Add rank",
+        "add_admin_rank": "Rang toevoegen",
         "settings": {
           "ig_syncBan": {
             "title": "Bans synchroniseren",
@@ -850,8 +1028,8 @@
             "description": "Ondersteuningskoppeling weergegeven wanneer een speler niet aan de vereisten voldoet."
           },
           "ig_maintenance": {
-            "title": "Onderhoudsmodus",
-            "description": "Sta alleen spelers met onderhoudsby pass toe om deel te nemen (speler > bewerken > bypass)"
+            "title": "Whitelistmodus",
+            "description": "Beperk toegang tot toegestane spelers. Een handmatige vermelding onder Spelers of de whitelistrol van de server geeft elk onafhankelijk toegang. Ingestelde spelbeheerdersgroepen zijn ook toegestaan."
           },
           "ig_language": {
             "title": "Add-on taal",
@@ -863,9 +1041,19 @@
           },
           "ig_adminRank": {
             "title": "Admin-rangen",
-            "description": "Rangen die gemachtigd zijn om de configuratie te bewerken of de onderhoudsmodus over te slaan."
+            "description": "Voer exacte spelgebruikersgroepen in, zoals superadmin. Leden kunnen de addonconfiguratie bewerken en deelnemen in de whitelistmodus. Dit zijn geen Discord-rollen."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Whitelistrol van de server",
+            "description": "Spelers met gekoppelde Steam- en Discord-accounts krijgen via deze rol toegang in de whitelistmodus. Handmatige toegang onder Spelers blijft onafhankelijk. Verliest een speler de rol terwijl de whitelistmodus actief is, dan wordt die verwijderd tenzij een andere machtiging toegang blijft geven."
           }
-        }
+        },
+        "remove_admin_rank": "Rang verwijderen",
+        "whitelist_no_role": "Geen Discord-rol",
+        "whitelist_role_missing": "Niet-beschikbare rol ({1})",
+        "whitelist_roles_loading": "Discord-rollen laden…",
+        "whitelist_roles_error": "Discord-rollen kunnen niet worden geladen. Probeer opnieuw of verwijder de huidige rol.",
+        "whitelist_role_invalid": "Kies een beschikbare Discord-rol of geen rol."
       },
       "team_roles": {
         "error_occurred": "Er is een fout opgetreden bij het ophalen van de rollensynchronisatie.",
@@ -910,8 +1098,12 @@
         "modal_title": "Automatisch bewerken",
         "modal_description": "Bewerk de instellingen voor deze autorol.",
         "close_button": "Sluiten",
-        "failed_to_load": "Kon de links niet laden",
-        "add_role": "Rol toevoegen"
+        "failed_to_load": "Rollen kunnen niet worden geladen.",
+        "add_role": "Rol toevoegen",
+        "delete_confirmation": "Nieuwe leden krijgen deze rol niet meer automatisch. Bestaande leden behouden hun rol.",
+        "delete": "Verwijderen",
+        "premium": "Beperkt tot 3 automatische rollen voor gratis gebruikers.",
+        "active_help": "Alle rollen in deze lijst worden automatisch aan nieuwe leden toegewezen."
       },
       "verification": {
         "check_button": "Alle rollen controleren",
@@ -946,7 +1138,13 @@
         "edit_tooltip": "Bewerken",
         "delete_tooltip": "Verwijderen",
         "failed_to_load_links": "Kon de links niet laden",
-        "add_role_button": "Rol toevoegen"
+        "add_role_button": "Rol toevoegen",
+        "publish_confirmation": "Verificatie publiceren in #{1}?",
+        "publish_consequence": "Leden kunnen dit bericht gebruiken om hun accounts te koppelen.",
+        "delete_message_confirmation": "Verificatie verwijderen uit #{1}?",
+        "delete_message_consequence": "Leden kunnen de verificatie niet meer via dit bericht starten.",
+        "delete_role_consequence": "Verificatie zal deze rol niet meer toewijzen of verwijderen. Bestaande leden behouden hun huidige rollen.",
+        "check_confirmation": "Rollen van leden van {1} controleren?"
       },
       "information": {
         "title": "Informatie",
@@ -1003,7 +1201,8 @@
         "edit_link": "Verwijzing bewerken",
         "save": "Opslaan",
         "yes": "Ja.",
-        "no": "Nee"
+        "no": "Nee",
+        "delete_confirmation": "Deze snelkoppeling is niet meer beschikbaar voor leden."
       }
     },
     "menu": {
@@ -1040,6 +1239,211 @@
         "tickets": "Tickets",
         "teams": "Teams"
       }
+    },
+    "ui": {
+      "overview": "Overzicht",
+      "configuration": "Configuratie",
+      "activity": "Activiteit",
+      "workspace": "Beheeromgeving",
+      "workspace_description": "Beheer je community en verbonden servers.",
+      "server_description": "Configureer je server en volg de activiteit.",
+      "admin_description": "Beheer het platform en de communities.",
+      "navigation": "Navigatie",
+      "community": "Community",
+      "breadcrumb": "Broodkruimelpad"
     }
+  },
+  "ui": {
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "close": "Sluiten",
+    "empty": "Er zijn nog geen items.",
+    "save_error": "Opslaan mislukt. Probeer het opnieuw.",
+    "saved": "Opgeslagen",
+    "unsaved": "Niet-opgeslagen wijzigingen",
+    "load_error": "Deze inhoud kan niet worden geladen.",
+    "loading": "Laden…",
+    "retry": "Opnieuw proberen",
+    "no_category": "Geen categorie",
+    "remove": "Verwijderen",
+    "autosave": "Wijzigingen worden automatisch opgeslagen.",
+    "redirecting": "Doorsturen…",
+    "logging_out": "Uitloggen",
+    "not_found_description": "De pagina die je zoekt bestaat niet.",
+    "back_home": "Terug naar de startpagina",
+    "contents": "Inhoud",
+    "enabled": "Ingeschakeld",
+    "disabled": "Uitgeschakeld",
+    "delete_target": "{1} verwijderen?",
+    "invalid_value": "Voer een geldige waarde in.",
+    "publish": "Publiceren",
+    "delete": "Verwijderen",
+    "create": "Aanmaken",
+    "sync_pending": "Opgeslagen. Synchronisatie is in behandeling.",
+    "required": "Dit veld is verplicht.",
+    "confirm_delete": "Dit item verwijderen?",
+    "invalid_url": "Voer een geldige HTTP- of HTTPS-URL in.",
+    "action_error": "De actie is mislukt. Probeer het opnieuw.",
+    "confirm": "Bevestigen",
+    "leave_title": "Verlaten zonder op te slaan?",
+    "wait_saving": "Wacht tot het opslaan is voltooid voordat je vertrekt.",
+    "leave_description": "Je niet-opgeslagen wijzigingen worden verworpen.",
+    "stay": "Op deze pagina blijven",
+    "discard_leave": "Verwerpen en verlaten",
+    "copy": "Kopiëren",
+    "copied": "Gekopieerd!",
+    "copy_error": "Kopiëren is niet gelukt. Probeer het opnieuw.",
+    "saving": "Opslaan…",
+    "template_variables": {
+      "title": "Beschikbare variabelen",
+      "syntax": "Syntaxis",
+      "format": "Formaat",
+      "example": "Voorbeeld",
+      "template_example": "Sjabloonvoorbeeld",
+      "copy": "{1} kopiëren",
+      "text": "Tekst",
+      "number": "Getal",
+      "duration": "Duur (bijv. 1h 2m 3s)",
+      "raw": "Ruwe waarde",
+      "formatting": "Ondersteunde opmaak",
+      "bold": "Vet",
+      "inline_code": "Inlinecode",
+      "underline": "Onderstreept",
+      "strikethrough": "Doorgestreept"
+    }
+  },
+  "settings": {
+    "access": "Toegang en verificatie",
+    "access_description": "Kies hoe spelers hun accounts koppelen en bij het verbinden worden geverifieerd.",
+    "administration": "Beheer",
+    "administration_description": "Beheer beheerderstoegang en de whitelistmodus.",
+    "advanced": "Geavanceerde instellingen",
+    "advanced_description": "Clientcompatibiliteit, probleemoplossing en logformaat.",
+    "all": "Alle instellingen",
+    "bot_connected": "De bot is al aanwezig op deze Discord-server.",
+    "bot_connection": "Verbinding en inloggegevens",
+    "bot_identity": "Identiteit en aanwezigheid",
+    "bot_invite_hint": "Nodig de aangepaste bot uit voordat je zijn identiteit bewerkt.",
+    "bot_membership": "Discord-server",
+    "bot_token_hint": "Gebruik de configuratie om het token van de aangepaste bot in te stellen of te vervangen.",
+    "categories": "Instellingscategorieën",
+    "channel_confirmation": "Kies een kanaal en bevestig je keuze. Als je het verwijdert, worden daar geen nieuwe berichten meer geplaatst.",
+    "chat_default_help": "Kies of spelberichten standaard worden doorgestuurd of geblokkeerd. Stel uitzonderingen in met de onderstaande regels.",
+    "chat_destination": "Discord-bestemming",
+    "chat_destination_help": "Berichten worden via dit kanaal doorgestuurd. Selecteer een kanaal om de koppeling te verbinden.",
+    "chat_direction_help": "Kies welke kant berichten via de chatbrug kan verzenden.",
+    "chat_ping_help": "Voorkom dat doorgestuurde berichten Discord-leden en rollen vermelden.",
+    "chat_rules": "Filterregels",
+    "general": "Algemeen",
+    "general_description": "Taal en ondersteuningsinformatie die spelers te zien krijgen.",
+    "kick_delay_dependency": "Verwijderen wegens een niet-gekoppeld account vereist verplichte accountkoppeling. Controles van de clienttak gebruiken ook deze termijn, of 600 seconden als de waarde 0 is.",
+    "log_content": "Loginhoud",
+    "log_file_help": "Voeg de loginformatie als bestandsbijlage toe in Discord.",
+    "log_ip_help": "Verberg IP-adressen van spelers in de logs die op Discord worden gepubliceerd.",
+    "message_content": "Berichtinhoud",
+    "moderation": "Moderatie",
+    "moderation_description": "Synchroniseer sancties tussen Discord en de spelserver.",
+    "nickname_format_help": "Bewerk het sjabloon voor bijnamen en bekijk het livevoorbeeld.",
+    "no_results": "Geen instellingen komen overeen met je zoekopdracht in deze categorie.",
+    "pseudo_rules_help": "Voorvoegsels en rolnamen worden alleen gebruikt als het formaat {rolePrefix} of {roleName} bevat.",
+    "reset_filters": "Filters wissen",
+    "results": "getoonde instellingen",
+    "rule_setup_help": "Maak een volledige regel met een Discord-rol, synchronisatieopties en activeringsstatus.",
+    "saved_preview": "Opgeslagen voorbeeld",
+    "search": "Instellingen zoeken",
+    "search_placeholder": "Zoeken op naam of beschrijving…",
+    "server_connection": "Verbindingsgegevens",
+    "server_delete_hint": "Verwijder deze server uit de community en het dashboard.",
+    "server_identity": "Identiteit en zichtbaarheid",
+    "server_public_hint": "Kies of deze server in de openbare serverranglijst wordt weergegeven.",
+    "server_removal": "Server verwijderen",
+    "server_reset_hint": "Genereer een nieuw token en werk het vervolgens bij in je Garry’s Mod-configuratie.",
+    "server_sensitive": "Gevoelige acties",
+    "status_chart_help": "Voeg een grafiek van de speleractiviteit toe aan het statusbericht.",
+    "status_content_help": "Kies de inhoud van het bericht en bekijk het livevoorbeeld. Geldige wijzigingen worden automatisch opgeslagen.",
+    "status_players_help": "Toon verbonden spelers en pas de informatie voor elke speler aan.",
+    "sync_behavior": "Synchronisatiegedrag",
+    "sync_direction_help": "Deze richting geldt voor alle onderstaande regels.",
+    "sync_disabled": "Synchronisatie is uitgeschakeld. Je formaat en regels blijven bewaard totdat je synchronisatie weer inschakelt.",
+    "sync_premium_help": "Synchronisatie van Discord naar het spel en in beide richtingen vereist Premium.",
+    "verification_dependency": "Deze controle geldt wanneer accountkoppeling verplicht is.",
+    "verification_existing_members": "Bestaande leden",
+    "verification_message": "Startpunt voor verificatie",
+    "verification_message_hint": "Plaats in een Discord-kanaal het bericht waarmee leden hun accounts kunnen koppelen.",
+    "verification_preferences": "Ervaring voor leden",
+    "explicit_save": "Wijzigingen worden toegepast wanneer je deze sectie opslaat.",
+    "channel_draft_help": "Kies een bestemming en sla op om deze toe te passen.",
+    "server_port_invalid": "Voer een poort tussen 1 en 65535 in.",
+    "image_url_invalid": "Voer een HTTP- of HTTPS-afbeeldings-URL in.",
+    "server_reset_confirm": "Het huidige token werkt daarna niet meer. Werk het na de reset bij in je Garry’s Mod-configuratie.",
+    "server_delete_confirm": "Deze server en de dashboardgegevens verwijderen. Dit kan niet ongedaan worden gemaakt.",
+    "server_edit_help": "Bewerk de serveridentiteit en verbindingsgegevens.",
+    "general_administration": "Algemeen en beheer",
+    "general_administration_description": "Taal, ondersteuningsinformatie en beheerderstoegang.",
+    "chat_relay": "Chatkoppeling"
+  },
+  "editing": {
+    "remove_channel": "Deze bestemming verwijderen? Toekomstige berichten worden niet meer naar dit kanaal verzonden.",
+    "section_help": "Bewerk deze instellingen en sla de sectie op om ze toe te passen.",
+    "remove_status_help": "Het gepubliceerde Discord-statusbericht verwijderen. De opgeslagen configuratie blijft behouden.",
+    "publish_saved_first": "Sla je wijzigingen op of annuleer ze voordat je een bericht publiceert.",
+    "status_scope": "Wijzigingen aan het bericht en de knoppen worden samen opgeslagen.",
+    "conflict": "De opgeslagen waarden zijn gewijzigd. Laad ze opnieuw voordat je weer opslaat.",
+    "sync_pending": "De configuratie is opgeslagen. De Discord-update is nog niet bevestigd.",
+    "reload_saved": "Wijzigingen verwerpen en opgeslagen waarden opnieuw laden",
+    "save_status": "Statusconfiguratie opslaan",
+    "invalid_status": "Controleer de knopnamen en URL’s voordat je opslaat.",
+    "apply_draft": "Toepassen op concept",
+    "delete_trigger": "Trigger verwijderen?",
+    "delete_trigger_help": "De geselecteerde gebeurtenisactie wordt niet meer uitgevoerd. Dit kan niet ongedaan worden gemaakt."
+  },
+  "access": {
+    "unavailable": "De toegangsrechten konden niet worden gecontroleerd. Je opgeslagen configuratie blijft behouden.",
+    "quota": "{1} / {2} gebruikt",
+    "upgrade_required": "Voor deze functie is Premium vereist.",
+    "quota_reached": "Je hebt de limiet voor deze functie bereikt.",
+    "historical_bot": "Vereist een GmodStore-aankoop",
+    "suspended": "Deze opgeslagen functie is opgeschort. Je kunt de configuratie nog steeds uitschakelen of verwijderen.",
+    "count_buttons": "{1} knoppen",
+    "count_links": "{1} links",
+    "history_count": "De laatste {1} vermeldingen",
+    "permission_denied": "Je hebt geen toestemming om deze community te beheren.",
+    "status_chart": "Activiteitsgrafiek in status",
+    "auto_roles_limit": "Automatische rollen - Limiet",
+    "nickname_rules_limit": "Bijnaamregels - Limiet",
+    "chat_filters": "Chatfilters",
+    "log_triggers": "Acties op loggebeurtenissen",
+    "reverse_sync": "Synchronisatie van Discord naar het spel",
+    "errors_history": "Foutgeschiedenis",
+    "verification_preferences": "Verificatievoorkeuren"
+  },
+  "server_setup": {
+    "title": "De Gmod Integration-addon verbinden",
+    "description": "Voer na de installatie van de addon deze opdrachten één voor één uit in de console van je Garry’s Mod-server. Deze vind je in het beheerpaneel van je hostingprovider.",
+    "credentials": "Servergegevens",
+    "copy_id": "Server-ID kopiëren",
+    "copy_token": "Servertoken kopiëren",
+    "commands": "Consoleopdrachten",
+    "set_id": "1. De server-ID instellen",
+    "copy_id_command": "Opdracht voor het instellen van de server-ID kopiëren",
+    "set_token": "2. Het servertoken instellen",
+    "token_hint": "Bij het kopiëren van deze opdracht wordt je token meegenomen, ook als het verborgen is.",
+    "copy_token_command": "Opdracht voor het instellen van het servertoken kopiëren",
+    "test": "3. De verbinding testen",
+    "copy_test_command": "Opdracht voor het testen van de verbinding kopiëren",
+    "saved_hint": "De addon slaat deze instellingen direct op en test de verbinding automatisch zodra beide servergegevens zijn ingesteld.",
+    "diagnostics": "Diagnose",
+    "help": "De verbindingsstatus en beschikbare opdrachten bekijken",
+    "copy_help_command": "Diagnoseopdracht kopiëren",
+    "version": "De geïnstalleerde addonversie controleren",
+    "copy_version_command": "Opdracht voor versiecontrole kopiëren"
+  },
+  "auth": {
+    "unavailable": "De verbinding is tijdelijk niet beschikbaar. Je sessie en niet-opgeslagen wijzigingen blijven behouden.",
+    "reconnect_discord": "Verbind Discord opnieuw in een nieuw tabblad. Je niet-opgeslagen wijzigingen blijven hier behouden.",
+    "logout_unconfirmed": "Je bent afgemeld op dit apparaat. De intrekking op de server kon niet worden bevestigd. Probeer het opnieuw zodra de verbinding terug is.",
+    "stop_impersonation": "Terug naar je account",
+    "impersonation_erasure": "Ga terug naar je eigen account voordat je om verwijdering vraagt.",
+    "oauth_denied": "Het aanmelden bij Discord is niet voltooid. Je kunt het opnieuw proberen wanneer je wilt."
   }
 }

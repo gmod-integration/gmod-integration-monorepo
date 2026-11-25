@@ -1,7 +1,7 @@
-import { Component } from 'solid-js'
-import { hexToHSL } from '../../utils/hexToHSL'
-import { TypeDiscordRole } from '../../utils/types/DiscordTypes'
-import { guildRoles } from '../../pages/dashboard/guilds/GuildInformations'
+import { Show, type Component } from 'solid-js'
+import { hexToHSL } from '../../utils/hexToHSL.js'
+import type { TypeDiscordRole } from '../../utils/types/DiscordTypes.js'
+import { guildRoles } from '../../pages/dashboard/guilds/GuildInformations.js'
 
 interface DiscordRoleProps {
   role?: TypeDiscordRole
@@ -9,35 +9,28 @@ interface DiscordRoleProps {
 }
 
 const DiscordRole: Component<DiscordRoleProps> = (props) => {
-  let role
-
-  if (!props.role && !props.roleID) {
-    return null
+  const resolvedRole = () => {
+    if (props.role) return props.role
+    if (!props.roleID || guildRoles.loading || guildRoles.error) return
+    return guildRoles().find((role) => role.id === props.roleID)
   }
-
-  if (!props.role) {
-    role = guildRoles().find((r: TypeDiscordRole) => r.id === props.roleID)
-    if (!role) return null
-  } else {
-    role = props.role
-  }
-
-  if (role.color === 0) {
-    role.colorHex = '#7d95ff'
-  }
-
-  const hsl = hexToHSL(role.colorHex)
 
   return (
-    <>
-      <p
-        class="w-min h-min text-nowrap rounded-md px-1"
-        style={{
-          color: role.colorHex,
-          'background-color': `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%, 0.1)`,
-        }}
-      >{`@${role.name}`}</p>
-    </>
+    <Show when={resolvedRole()}>
+      {(role) => {
+        const color = () => (role().color === 0 ? '#7d95ff' : role().colorHex)
+        const hsl = () => hexToHSL(color())
+        return (
+          <p
+            class="w-min h-min text-nowrap rounded-md px-1"
+            style={{
+              color: color(),
+              'background-color': `hsl(${hsl().h}, ${hsl().s}%, ${hsl().l}%, 0.1)`,
+            }}
+          >{`@${role().name}`}</p>
+        )
+      }}
+    </Show>
   )
 }
 

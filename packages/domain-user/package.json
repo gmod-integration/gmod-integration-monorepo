@@ -9,7 +9,10 @@
     "./*.js": "./src/*.ts"
   },
   "dependencies": {
+    "@gmod/config": "workspace:*",
     "@gmod/infra-prisma": "workspace:*",
-    "@gmod/infra-redis": "workspace:*"
+    "@gmod/infra-redis": "workspace:*",
+    "@gmod/domain-auth": "workspace:*",
+    "@gmod/schema": "workspace:*"
   }
 }

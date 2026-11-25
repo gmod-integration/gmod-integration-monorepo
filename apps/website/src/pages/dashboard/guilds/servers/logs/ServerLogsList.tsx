@@ -1,38 +1,39 @@
-import { Component, createEffect, createResource, createSignal, For, onMount, Show } from "solid-js";
-import { fetchAPI } from "../../../../../utils/api";
-import { useI18n } from "../../../../../i18n";
-import AdminPanel from "../../../../../components/AdminPanel";
-import { setWebSocketLogsMessages, webSocketLogsMessages } from "../../../../../utils/websocket";
-import { AddLogComponent } from "./ListLog";
+import { FeatureGate } from '../../../../../components/FeatureGate.js'
+import { Component, createEffect, createResource, createSignal, For, onMount, Show } from 'solid-js'
+import { fetchAPI } from '../../../../../utils/api'
+import { useI18n } from '../../../../../i18n'
+import AdminPanel from '../../../../../components/AdminPanel'
+import { setWebSocketLogsMessages, webSocketLogsMessages } from '../../../../../utils/websocket'
+import { AddLogComponent } from './ListLog'
 
-import { ClientQuery, QuerySort, ServerQuery } from "../../../../../utils/types/QueryTypes";
-import Pagination from "../../../../../components/Pagination";
-import { premium } from "../../../../../utils/premium";
+import { ClientQuery, QuerySort, ServerQuery } from '../../../../../utils/types/QueryTypes'
+import Pagination from '../../../../../components/Pagination'
+import { TableState } from '../../../../../components/ui/index.js'
 
 interface Log {
-  id: number;
-  serverID: string;
-  type: string;
+  id: number
+  serverID: string
+  type: string
   // The API returns this already parsed (a JSON object), not a string - see AddLogComponent's
   // usage (props.data.ply, etc.) which reads it directly without JSON.parse.
-  data: Record<string, any>;
-  createdAt: string;
+  data: Record<string, any>
+  createdAt: string
 }
 
 interface LogsData {
-  logs: Log[];
-  query: ServerQuery;
+  logs: Log[]
+  query: ServerQuery
 }
 
 export const ServerLogsList: Component = () => {
-  const { t } = useI18n();
+  const { t } = useI18n()
 
   const [query, setQuery] = createSignal<ClientQuery>({
     limit: 25,
     offset: 0,
-    sort: "createdAt",
+    sort: 'createdAt',
     orderBy: QuerySort.DESC,
-  });
+  })
 
   async function fetchLogs(q: ClientQuery) {
     const res = await fetchAPI(
@@ -41,25 +42,19 @@ export const ServerLogsList: Component = () => {
         `&limit=${q.limit}` +
         `&sort=${q.sort}` +
         `&orderBy=${q.orderBy}`,
-      "GET",
-    );
+      'GET',
+    )
 
     if (!res.ok) {
-      throw new Error("Failed to fetch logs");
+      throw new Error('Failed to fetch logs')
     }
 
-    let data = (await res.json()) as LogsData;
-    if (!premium()) {
-      if (data.query.total > 500) {
-        data.query.total = 500;
-        data.logs = data.logs.slice(0, 500);
-      }
-    }
+    const data = (await res.json()) as LogsData
 
-    return data;
+    return data
   }
 
-  const [logs] = createResource(query, fetchLogs, {
+  const [logs, { refetch }] = createResource(query, fetchLogs, {
     // Provide initialValue so warnsData() is never undefined
     initialValue: {
       logs: [],
@@ -68,51 +63,71 @@ export const ServerLogsList: Component = () => {
         total: 0,
       },
     },
-  });
+  })
 
   // reset wslogsmessage on page display setWebSocketLogsMessages([]);
   onMount(() => {
-    setWebSocketLogsMessages([]);
-  });
+    setWebSocketLogsMessages([])
+  })
 
   // on change of query reset wslogsmessage
   createEffect(() => {
-    query();
-    setWebSocketLogsMessages([]);
-  });
+    query()
+    setWebSocketLogsMessages([])
+  })
 
   return (
     <AdminPanel
-      title={t("dashboard.server.logs.title.logs", "Logs")}
-      description={t("dashboard.server.logs.description.logs", "Watch the logs of your server.")}
+      title={t('dashboard.server.logs.title.logs', 'Logs')}
+      description={t(
+        'dashboard.server.logs.description.logs',
+        'Browse recorded server events. New events appear on the first page while connected. Open an event for details or download its data.',
+      )}
       type="none"
-      premium={t("dashboard.server.logs.premium", "Limited to 500 last logs for free users.")}
+      footer={
+        !logs.loading && !logs.error ? (
+          <Pagination query={query()} total={logs().query.total} onChange={setQuery} standalone />
+        ) : undefined
+      }
     >
+      <FeatureGate
+        capability="logs.history"
+        used={!logs.loading && !logs.error ? logs().query.total : undefined}
+        loading={logs.loading}
+        error={logs.error}
+      />
       <table class="table">
         <thead>
           <tr class="text-l">
-            <th class="w-1/5">{t("dashboard.server.logs.table_headers.date", "Date")}</th>
-            <th class="w-1/5">{t("dashboard.server.logs.table_headers.category", "Category")}</th>
-            <th>{t("dashboard.server.logs.table_headers.log", "Log")}</th>
-            <th class="w-1/6 text-center">{t("dashboard.server.logs.table_headers.actions", "Actions")}</th>
+            <th class="w-1/5">{t('dashboard.server.logs.table_headers.date', 'Date')}</th>
+            <th class="w-1/5">{t('dashboard.server.logs.table_headers.category', 'Category')}</th>
+            <th>{t('dashboard.server.logs.table_headers.log', 'Log')}</th>
+            <th class="w-1/6 text-center">{t('dashboard.server.logs.table_headers.actions', 'Actions')}</th>
           </tr>
         </thead>
         <tbody class="max-w-40">
-          <Show when={!logs.loading} fallback={<span class="loading loading-lg"></span>}>
+          <TableState
+            colSpan={4}
+            loading={logs.loading}
+            error={logs.error}
+            errorLabel={t('dashboard.server.logs.load_error', 'Unable to load event history. Try again.')}
+            emptyLabel={t('dashboard.server.logs.empty', 'No events have been received for this server.')}
+            empty={!logs.loading && !logs.error && logs().logs.length === 0 && webSocketLogsMessages().length === 0}
+            onRetry={() => refetch()}
+          >
             <Show when={query().offset === 0}>
               <For each={webSocketLogsMessages()}>
                 {(parsedMsg) => {
-                  return <AddLogComponent data={parsedMsg.data} category={parsedMsg.type} createAt={new Date()} />;
+                  return <AddLogComponent data={parsedMsg.data} category={parsedMsg.type} createAt={new Date()} />
                 }}
               </For>
             </Show>
             <For each={logs().logs}>
               {(log) => <AddLogComponent data={log.data} category={log.type} createAt={new Date(log.createdAt)} />}
             </For>
-            <Pagination query={query()} total={logs().query.total} onChange={setQuery} colSpan={4} />
-          </Show>
+          </TableState>
         </tbody>
       </table>
     </AdminPanel>
-  );
-};
+  )
+}

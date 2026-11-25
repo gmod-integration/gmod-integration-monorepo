@@ -4,6 +4,7 @@ export async function isGlobalBanIP(IP: string) {
   return prisma.banUsers.findFirst({
     where: {
       ip: IP,
+      OR: [{ permanent: true }, { unbanDate: { gt: new Date() } }],
     },
   })
 }
@@ -12,6 +13,7 @@ export function isGlobalBanSteamID64(steamID64: string) {
   return prisma.banUsers.findFirst({
     where: {
       steamID64,
+      OR: [{ permanent: true }, { unbanDate: { gt: new Date() } }],
     },
   })
 }
@@ -20,6 +22,7 @@ export function isGlobalBanDiscordID(discordID: string) {
   return prisma.banUsers.findFirst({
     where: {
       discordID,
+      OR: [{ permanent: true }, { unbanDate: { gt: new Date() } }],
     },
   })
 }

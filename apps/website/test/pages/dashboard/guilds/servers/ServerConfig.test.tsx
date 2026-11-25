@@ -3,446 +3,558 @@ import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../testUtils.js'
 import ServerConfig from '../../../../../src/pages/dashboard/guilds/servers/ServerConfig.js'
 import { fetchAPI } from '../../../../../src/utils/api.js'
+import { saveDashboardSettings } from '../../../../../src/utils/dashboardSettings.js'
+import { DraftRegistryContext, type DraftEntry } from '../../../../../src/hooks/draftRegistry.js'
 import { okJson, errJson } from './testHelpers.js'
 
 vi.mock('../../../../../src/utils/api.js', () => ({
   fetchAPI: vi.fn(),
   getAPIUrl: vi.fn(),
-  getUrlWithActualParams: vi.fn((s: string) => s),
+  getUrlWithActualParams: vi.fn((path: string) => path),
 }))
+vi.mock('../../../../../src/utils/dashboardSettings.js', () => ({ saveDashboardSettings: vi.fn() }))
 
 const CONFIG_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/config'
-const settingUrl = (setting: string) => `/users/:discordID/guilds/:guildID/servers/:serverID/settings/${setting}`
-
-// Fresh object every call - the resource fetcher mutates `settings.ig_adminRank` directly in
-// place while normalizing it (see ServerConfig.tsx:213-223), so a shared module-level fixture
-// would leak mutations across tests (okJson returns its payload by reference).
-function defaultSettings() {
-  return {
-    ig_syncBan: true,
-    ig_supportLink: 'http://support.example.com',
-    ig_verifyOnReadyKickTime: 120,
-    ig_clientBranch: 'dev',
-    ig_adminRank: { superadmin: true, mod: true },
-  }
+const ROLES_URL = '/users/:discordID/guilds/:guildID/roles'
+const WHITELIST_ROLE = '1051881514020917408'
+const OTHER_ROLE = '1051881514020917409'
+const discordRoles = [
+  { id: WHITELIST_ROLE, name: 'Server whitelist' },
+  { id: OTHER_ROLE, name: 'Verified players' },
+]
+const settings = () => ({
+  ig_syncBan: true,
+  ig_supportLink: 'https://support.example.com',
+  ig_verifyOnReadyKickTime: 120,
+  ig_clientBranch: 'dev',
+  ig_adminRank: { superadmin: true, mod: true },
+})
+function mockFetch(values: unknown = settings(), roles: unknown = []) {
+  ;(fetchAPI as Mock).mockImplementation((path: string) =>
+    Promise.resolve(path === CONFIG_URL ? okJson({ settings: values }) : okJson(roles)),
+  )
 }
-
-function setupFetchAPI(settings: unknown = defaultSettings()) {
-  ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-    if (endpoint === CONFIG_URL && method === 'GET') return Promise.resolve(okJson({ settings }))
-    return Promise.resolve(okJson({}))
-  })
-}
-
 function renderPage() {
   return renderWithProviders(() => <ServerConfig />, {
     path: '/dashboard/guilds/:guildID/config/servers/:serverID/config',
     history: historyAt('/dashboard/guilds/g1/config/servers/s1/config'),
   })
 }
-
-function findRow(container: HTMLElement, label: string) {
-  const row = Array.from(container.querySelectorAll('.flex.flex-col.gap-2.p-4')).find(
-    (el) => el.querySelector('span.font-medium')?.textContent === label,
+function row(container: HTMLElement, label: string) {
+  const value = Array.from(container.querySelectorAll<HTMLElement>('.settings-row')).find(
+    (entry) => entry.querySelector('.settings-row-title')?.textContent === label,
   )
-  if (!row) throw new Error(`no config row for label "${label}"`)
-  return row as HTMLElement
+  if (!value) throw new Error(`Missing setting ${label}`)
+  return value
 }
-
-async function waitForLoaded(container: HTMLElement) {
-  await vi.waitFor(() => {
-    const row = findRow(container, 'Sync Bans')
-    expect(row.querySelector('input[type=checkbox]')).not.toBeDisabled()
-  })
+function section(container: HTMLElement, name: string) {
+  return container.querySelector<HTMLElement>(`#config-${name}`)!
 }
+async function ready(container: HTMLElement) {
+  await vi.waitFor(() =>
+    expect(row(container, 'Block Discord-banned players').querySelector('input')).not.toBeDisabled(),
+  )
+}
+const autosave = () => vi.advanceTimersByTimeAsync(450)
 
+beforeEach(() => {
+  localStorage.clear()
+  vi.mocked(fetchAPI).mockReset()
+  vi.mocked(saveDashboardSettings)
+    .mockReset()
+    .mockImplementation(async (_scope, values) => ({ settings: values, sync: 'applied' }))
+  mockFetch()
+})
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   vi.useRealTimers()
 })
 
-describe('pages/dashboard/guilds/servers/ServerConfig.tsx', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
-    ;(fetchAPI as Mock).mockReset()
-    setupFetchAPI()
-  })
-
-  it('renders the panel title, description and the websocket notice', async () => {
-    renderPage()
-    expect(screen.getByText('Configuration')).toBeInTheDocument()
-    expect(screen.getByText('Manage the in game configuration of this server.')).toBeInTheDocument()
-    expect(screen.getByText('GWSocket')).toBeInTheDocument()
-  })
-
-  it('disables every control type while the config is loading', () => {
-    ;(fetchAPI as Mock).mockImplementation(() => new Promise(() => {}))
+describe('server configuration autosave', () => {
+  it('shows four settings cards directly without search filters or per-card save and cancel buttons', async () => {
     const { container } = renderPage()
-    expect(findRow(container, 'Sync Bans').querySelector('input[type=checkbox]')).toBeDisabled()
-    expect(findRow(container, 'Client Branch').querySelector('select')).toBeDisabled()
-    expect(findRow(container, 'Support Link').querySelector('input[type=text]')).toBeDisabled()
-    expect(findRow(container, 'Admin Ranks').querySelector('button')).toBeDisabled()
+    await ready(container)
+    expect(screen.queryByText('In-game addon settings')).not.toBeInTheDocument()
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /All settings/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reset filters' })).not.toBeInTheDocument()
+    expect(screen.getByText('GWSockets')).toBeInTheDocument()
+    expect(screen.queryByText('Changes are saved automatically.')).not.toBeInTheDocument()
+    const general = screen.getByRole('region', { name: 'General and administration' })
+    const access = screen.getByRole('region', { name: 'Access and verification' })
+    expect(general).toContainElement(row(container, 'Addon Language'))
+    expect(general).toContainElement(row(container, 'Game administrator groups'))
+    expect(general.parentElement).toBe(access.parentElement)
+    expect(container.querySelectorAll('.settings-card-grid > .dashboard-panel')).toHaveLength(4)
+    expect(container.querySelectorAll('.settings-row')).toHaveLength(17)
+    expect(row(container, 'Log Timestamp Format').querySelector('input')).toHaveValue('%H:%M:%S')
+    expect(screen.queryByRole('button', { name: 'Save', hidden: true })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cancel', hidden: true })).not.toBeInTheDocument()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  describe('initial rendering of fetched values', () => {
-    it('reflects a fetched boolean that differs from its default', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const checkbox = findRow(container, 'Sync Bans').querySelector('input[type=checkbox]') as HTMLInputElement
-      expect(checkbox.checked).toBe(true) // fetched value true, also happens to equal the default
-    })
-
-    it('falls back to defaultValue for booleans absent from the fetched settings', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      // ig_syncTimeout is not present in defaultSettings(); its own defaultValue is false
-      const checkbox = findRow(container, 'Sync Timeouts').querySelector('input[type=checkbox]') as HTMLInputElement
-      expect(checkbox.checked).toBe(false)
-    })
-
-    it('renders text inputs with the fetched value', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const input = findRow(container, 'Support Link').querySelector('input[type=text]') as HTMLInputElement
-      expect(input.value).toBe('http://support.example.com')
-      const kickTimeInput = findRow(container, 'Verify Kick Delay (sec)').querySelector(
-        'input[type=text]',
-      ) as HTMLInputElement
-      expect(kickTimeInput.value).toBe('120')
-    })
-
-    it('falls back to defaultValue for text settings absent from the fetched settings', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const input = findRow(container, 'Log Timestamp Format').querySelector('input[type=text]') as HTMLInputElement
-      expect(input.value).toBe('%H:%M:%S')
-    })
-
-    it('marks the fetched value as the selected option in a select control', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const select = findRow(container, 'Client Branch').querySelector('select') as HTMLSelectElement
-      expect(within(select).getByText('dev')).toHaveProperty('selected', true)
-    })
-
-    it('falls back to defaultValue as the selected option for a select absent from the fetched settings', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const select = findRow(container, 'Addon Language').querySelector('select') as HTMLSelectElement
-      expect(within(select).getByText('en')).toHaveProperty('selected', true)
-    })
-
-    it('renders the admin rank list sorted alphabetically', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const row = findRow(container, 'Admin Ranks')
-      const inputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      expect(inputs.map((i) => i.value)).toEqual(['mod', 'superadmin'])
-    })
-
-    it('shows the Default value line for a boolean, a select, and the admin rank object', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      expect(findRow(container, 'Sync Bans').textContent).toContain('Default: true')
-      expect(findRow(container, 'Client Branch').textContent).toContain('Default: any')
-      expect(findRow(container, 'Admin Ranks').textContent).toContain('Default: {"superadmin":true}')
-    })
+  it('keeps all controls unavailable during loading and after a failed initial read', async () => {
+    vi.mocked(fetchAPI).mockImplementation(() => new Promise(() => {}))
+    const first = renderPage()
+    expect(row(first.container, 'Block Discord-banned players').querySelector('input')).toBeDisabled()
+    expect(row(first.container, 'Support Link').querySelector('input')).toBeDisabled()
+    expect(row(first.container, 'Required Garry’s Mod client branch').querySelector('select')).toBeDisabled()
+    expect(
+      within(row(first.container, 'Game administrator groups')).getByRole('button', { name: 'Add rank' }),
+    ).toBeDisabled()
+    first.unmount()
+    vi.mocked(fetchAPI).mockImplementation(async (path) =>
+      path === CONFIG_URL ? (errJson() as Response) : (okJson([]) as Response),
+    )
+    const second = renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(row(second.container, 'Block Discord-banned players').querySelector('input')).toBeDisabled()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  describe('ig_adminRank normalization on fetch', () => {
-    it('falls back to the default admin rank when the fetched value is the string "[object Object]"', async () => {
-      setupFetchAPI({ ig_adminRank: '[object Object]' })
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const row = findRow(container, 'Admin Ranks')
-      const inputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      expect(inputs.map((i) => i.value)).toEqual(['superadmin'])
-    })
-
-    it('parses a JSON-stringified admin rank object', async () => {
-      setupFetchAPI({ ig_adminRank: JSON.stringify({ zeta: true, alpha: true }) })
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const row = findRow(container, 'Admin Ranks')
-      const inputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      expect(inputs.map((i) => i.value)).toEqual(['alpha', 'zeta'])
-    })
-
-    it('falls back to the default admin rank when the string cannot be parsed as JSON', async () => {
-      setupFetchAPI({ ig_adminRank: 'not valid json {' })
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const row = findRow(container, 'Admin Ranks')
-      const inputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      expect(inputs.map((i) => i.value)).toEqual(['superadmin'])
-    })
-
-    it('falls back to the default admin rank when settings has no ig_adminRank at all', async () => {
-      setupFetchAPI({ ig_syncBan: false })
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const row = findRow(container, 'Admin Ranks')
-      const inputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      expect(inputs.map((i) => i.value)).toEqual(['superadmin'])
-    })
-
-    it('falls back to an empty config and default admin rank when the response has no settings key at all', async () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === CONFIG_URL && method === 'GET') return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson({}))
-      })
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const row = findRow(container, 'Admin Ranks')
-      const inputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      expect(inputs.map((i) => i.value)).toEqual(['superadmin'])
-    })
+  it('recovers a failed configuration read with retry', async () => {
+    vi.mocked(fetchAPI).mockResolvedValueOnce(errJson() as Response)
+    const { container } = renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    mockFetch()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await ready(container)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  describe('when the initial GET fails', () => {
-    it('does not crash and leaves controls enabled with default values once the resource settles', async () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === CONFIG_URL && method === 'GET') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      const { container } = renderPage()
-      await vi.waitFor(() => {
-        const checkbox = findRow(container, 'Sync Bans').querySelector('input[type=checkbox]') as HTMLInputElement
-        expect(checkbox).not.toBeDisabled()
-      })
-      const checkbox = findRow(container, 'Sync Bans').querySelector('input[type=checkbox]') as HTMLInputElement
-      expect(checkbox.checked).toBe(true) // defaultValue, since config store was never populated
-      const row = findRow(container, 'Admin Ranks')
-      const inputs = within(row).queryAllByRole('textbox') as HTMLInputElement[]
-      expect(inputs).toHaveLength(0) // adminRankList signal also stayed at its initial []
-    })
+  it('renders the setting labels in French without changing their saved values', async () => {
+    localStorage.setItem('locale', 'fr')
+    const { container } = renderPage()
+    await vi.waitFor(() => expect(container.querySelector('#ig_forcePlayerLink')).not.toBeDisabled())
+    expect(container.querySelectorAll('.settings-row')).toHaveLength(17)
+    expect(row(container, 'Vérifier la liaison avant l’entrée en jeu')).toBeInTheDocument()
+    expect(row(container, 'Mode whitelist')).toBeInTheDocument()
+    expect(row(container, 'Rôle de whitelist du serveur')).toBeInTheDocument()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  describe('editing the admin rank list', () => {
-    it('adds a new empty rank row when clicking "Add rank"', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const row = findRow(container, 'Admin Ranks')
-      const addButton = within(row).getByText('Add rank')
-      await fireEvent.click(addButton)
-      const inputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      expect(inputs.map((i) => i.value)).toEqual(['mod', 'superadmin', ''])
+  it('automatically saves toggles, select choices and batched text changes', async () => {
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    await fireEvent.click(within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox'))
+    await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
+      target: { value: 'https://new.example' },
     })
+    await fireEvent.change(within(row(container, 'Addon Language')).getByRole('combobox'), { target: { value: 'fr' } })
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', {
+      ig_supportLink: 'https://new.example',
+      ig_language: 'fr',
+    })
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_syncTimeout: true })
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
+  })
 
-    it('sends the JSON-stringified admin rank object 500ms after editing an existing rank', async () => {
+  it('preserves a failed value and retries only when requested without looping', async () => {
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    vi.mocked(saveDashboardSettings).mockRejectedValueOnce(new Error('Offline'))
+    const input = within(row(container, 'Support Link')).getByRole('textbox')
+    await fireEvent.input(input, { target: { value: 'https://draft.example' } })
+    await autosave()
+    expect(within(section(container, 'general')).getByRole('alert')).toBeInTheDocument()
+    expect(input).toHaveValue('https://draft.example')
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    await fireEvent.click(within(section(container, 'general')).getByRole('button', { name: 'Try again' }))
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
+    expect(within(section(container, 'general')).queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('queues changes typed during an in-flight request without disabling the input or losing edits', async () => {
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    let finish!: (value: Awaited<ReturnType<typeof saveDashboardSettings>>) => void
+    vi.mocked(saveDashboardSettings).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    const input = within(row(container, 'Support Link')).getByRole('textbox')
+    await fireEvent.input(input, { target: { value: 'https://first.example' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    expect(input).not.toBeDisabled()
+    await fireEvent.input(input, { target: { value: 'https://second.example' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    finish({ settings: { ig_supportLink: 'https://first.example' }, sync: 'applied' })
+    await autosave()
+    expect(input).toHaveValue('https://second.example')
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { ig_supportLink: 'https://second.example' })
+  })
+
+  it('distinguishes accepted storage pending addon synchronization from a failed save', async () => {
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    vi.mocked(saveDashboardSettings).mockResolvedValueOnce({ settings: { ig_syncTimeout: true }, sync: 'pending' })
+    await fireEvent.click(within(row(container, 'Timeout synchronization (unavailable)')).getByRole('checkbox'))
+    await autosave()
+    expect(within(section(container, 'moderation')).getByText('Saved. Synchronization is pending.')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it.each(['invalid-url', 'javascript:alert(1)'])(
+    'keeps an invalid support URL local until corrected: %s',
+    async (value) => {
       const { container } = renderPage()
-      await waitForLoaded(container)
+      await ready(container)
       vi.useFakeTimers()
-      const row = findRow(container, 'Admin Ranks')
-      const inputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      const modInput = inputs[0] // sorted list: ['mod', 'superadmin']
-      expect(modInput.value).toBe('mod')
+      const input = within(row(container, 'Support Link')).getByRole('textbox')
+      await fireEvent.input(input, { target: { value } })
+      await autosave()
+      expect(input).toHaveAttribute('aria-invalid', 'true')
+      expect(within(row(container, 'Support Link')).getByRole('alert')).toBeInTheDocument()
+      expect(saveDashboardSettings).not.toHaveBeenCalled()
+      await fireEvent.input(input, { target: { value: '' } })
+      await autosave()
+      expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_supportLink: '' })
+    },
+  )
 
-      fireEvent.input(modInput, { target: { value: 'moderator' } })
-      await vi.advanceTimersByTimeAsync(500)
-
-      expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_adminRank'), 'PUT', {
-        value: JSON.stringify({ moderator: true, superadmin: true }),
-      })
-    })
-
-    it('resets the debounce timer when editing again within the 500ms window', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const callsBefore = (fetchAPI as Mock).mock.calls.length
-      vi.useFakeTimers()
-      const row = findRow(container, 'Admin Ranks')
-      const inputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      const modInput = inputs[0]
-
-      fireEvent.input(modInput, { target: { value: 'mo' } })
-      await vi.advanceTimersByTimeAsync(250)
-      fireEvent.input(modInput, { target: { value: 'mod2' } })
-      await vi.advanceTimersByTimeAsync(250)
-      // first timer would have fired by 500ms from the first keystroke, but it was cleared
-      expect(fetchAPI).not.toHaveBeenCalledWith(settingUrl('ig_adminRank'), 'PUT', expect.anything())
-
-      await vi.advanceTimersByTimeAsync(250)
-      const callsAfter = (fetchAPI as Mock).mock.calls.length
-      expect(callsAfter - callsBefore).toBe(1)
-      expect(fetchAPI).toHaveBeenLastCalledWith(settingUrl('ig_adminRank'), 'PUT', {
-        value: JSON.stringify({ mod2: true, superadmin: true }),
-      })
-    })
-
-    it('removes a rank row and sends the remaining ranks after the debounce', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      vi.useFakeTimers()
-      const row = findRow(container, 'Admin Ranks')
-      const removeButtons = within(row).getAllByRole('button')
-      // ranks sorted ['mod', 'superadmin']; remove the first one ('mod')
-      await fireEvent.click(removeButtons[0])
-
-      const remainingInputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      expect(remainingInputs.map((i) => i.value)).toEqual(['superadmin'])
-
-      await vi.advanceTimersByTimeAsync(500)
-      expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_adminRank'), 'PUT', {
-        value: JSON.stringify({ superadmin: true }),
-      })
-    })
-
-    it('excludes blank rank rows from the payload sent to the server', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const row = findRow(container, 'Admin Ranks')
-      const addButton = within(row).getByText('Add rank')
-      await fireEvent.click(addButton) // adds a blank row: ['mod', 'superadmin', '']
-
-      vi.useFakeTimers()
-      const inputs = within(row).getAllByRole('textbox') as HTMLInputElement[]
-      fireEvent.input(inputs[2], { target: { value: '   ' } }) // whitespace-only, trims to empty
-      await vi.advanceTimersByTimeAsync(500)
-
-      expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_adminRank'), 'PUT', {
-        value: JSON.stringify({ mod: true, superadmin: true }),
-      })
-    })
+  it.each(['', '-1', '1.5'])('does not save an invalid kick delay: %s', async (value) => {
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    const input = within(row(container, 'Account-linking time limit (seconds)')).getByRole('spinbutton')
+    await fireEvent.input(input, { target: { value } })
+    await autosave()
+    expect(input).toHaveAttribute('aria-invalid', 'true')
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 
-  describe('updating a boolean setting', () => {
-    it('sends the new value as a PUT and updates the store on success', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const checkbox = findRow(container, 'Sync Timeouts').querySelector('input[type=checkbox]') as HTMLInputElement
-      expect(checkbox.checked).toBe(false)
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === settingUrl('ig_syncTimeout') && method === 'PUT') return Promise.resolve(okJson({ value: true }))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(checkbox)
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', { value: true }),
-      )
-      expect(checkbox.checked).toBe(true)
-    })
-
-    it('does not throw when the PUT fails (missing .catch would surface as an unhandled rejection)', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const checkbox = findRow(container, 'Sync Timeouts').querySelector('input[type=checkbox]') as HTMLInputElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === settingUrl('ig_syncTimeout') && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', expect.anything()))
-    })
-
-    it('parses a JSON-object-shaped string value back into an object once received', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const checkbox = findRow(container, 'Sync Timeouts').querySelector('input[type=checkbox]') as HTMLInputElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === settingUrl('ig_syncTimeout') && method === 'PUT')
-          return Promise.resolve(okJson({ value: '{"weird":"json"}' }))
-        return Promise.resolve(okJson({}))
-      })
-      // exercising this branch only for statement/branch coverage of the JSON.parse success path -
-      // the parsed object isn't otherwise observable from this control.
-      await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', expect.anything()))
-    })
-
-    it('keeps the value as a string when it looks like JSON but fails to parse', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const checkbox = findRow(container, 'Sync Timeouts').querySelector('input[type=checkbox]') as HTMLInputElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === settingUrl('ig_syncTimeout') && method === 'PUT')
-          return Promise.resolve(okJson({ value: '{not valid' }))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_syncTimeout'), 'PUT', expect.anything()))
-    })
+  it('saves numeric delays as numbers without writing unchanged values', async () => {
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    const input = within(row(container, 'Account-linking time limit (seconds)')).getByRole('spinbutton')
+    await fireEvent.input(input, { target: { value: '120' } })
+    await autosave()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    await fireEvent.input(input, { target: { value: '0' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_verifyOnReadyKickTime: 0 })
   })
 
-  describe('updating a select setting', () => {
-    it('sends the selected value immediately (no debounce)', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const select = findRow(container, 'Client Branch').querySelector('select') as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'prerelease' } })
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_clientBranch'), 'PUT', { value: 'prerelease' }),
-      )
+  it('holds invalid rank rows locally, then automatically saves the normalized complete rank map', async () => {
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    const ranks = row(container, 'Game administrator groups')
+    expect(
+      within(ranks)
+        .getAllByRole('textbox')
+        .map((input) => (input as HTMLInputElement).value),
+    ).toEqual(['mod', 'superadmin'])
+    await fireEvent.click(within(ranks).getByRole('button', { name: 'Add rank' }))
+    await autosave()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    const inputs = within(ranks).getAllByRole('textbox')
+    await fireEvent.input(inputs[2], { target: { value: 'mod' } })
+    await autosave()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    await fireEvent.input(inputs[2], { target: { value: ' admin ' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', {
+      ig_adminRank: { mod: true, superadmin: true, admin: true },
     })
+    expect(
+      within(ranks)
+        .getAllByRole('textbox')
+        .map((input) => (input as HTMLInputElement).value),
+    ).toEqual(['admin', 'mod', 'superadmin'])
+  })
 
-    it('coerces the literal strings "true"/"false" to booleans before sending', async () => {
-      // ig_maintenance is a boolean setting but let's use ig_language (a plain string select) to
-      // confirm non-boolean-looking values are sent as-is, and separately confirm the true/false
-      // coercion branch using a select whose options happen to include those literal strings.
+  it('automatically persists a removed administrator rank', async () => {
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    const ranks = row(container, 'Game administrator groups')
+    await fireEvent.click(within(ranks).getAllByRole('button', { name: 'Remove' })[0])
+    await autosave()
+    expect(within(ranks).getAllByRole('textbox')).toHaveLength(1)
+    expect(saveDashboardSettings).toHaveBeenCalledWith('server', { ig_adminRank: { superadmin: true } })
+  })
+
+  it.each(['{"owner":true}', '[object Object]', '{broken', null])(
+    'normalizes legacy rank values without writing or mutating the fixture: %s',
+    async (ranks) => {
+      const fixture = { ...settings(), ig_adminRank: ranks }
+      mockFetch(fixture)
       const { container } = renderPage()
-      await waitForLoaded(container)
-      const select = findRow(container, 'Addon Language').querySelector('select') as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'fr' } })
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_language'), 'PUT', { value: 'fr' }),
-      )
+      await ready(container)
+      expect(
+        within(row(container, 'Game administrator groups'))
+          .getAllByRole('textbox')
+          .map((input) => (input as HTMLInputElement).value),
+      ).toEqual(ranks === '{"owner":true}' ? ['owner'] : ['superadmin'])
+      expect(fixture.ig_adminRank).toBe(ranks)
+      expect(saveDashboardSettings).not.toHaveBeenCalled()
+    },
+  )
+
+  it('cancels a queued write when unmounted', async () => {
+    const { container, unmount } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
+      target: { value: 'https://draft.example' },
+    })
+    unmount()
+    await autosave()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+  })
+
+  it('keeps pending edits registered until saved and unregisters forms on unmount', async () => {
+    const entries: DraftEntry[] = []
+    const unregister = vi.fn()
+    const { container, unmount } = renderWithProviders(
+      () => (
+        <DraftRegistryContext.Provider
+          value={{
+            register: (entry) => {
+              entries.push(entry)
+              return unregister
+            },
+          }}
+        >
+          <ServerConfig />
+        </DraftRegistryContext.Provider>
+      ),
+      {
+        path: '/dashboard/guilds/:guildID/config/servers/:serverID/config',
+        history: historyAt('/dashboard/guilds/g1/config/servers/s1/config'),
+      },
+    )
+    await ready(container)
+    vi.useFakeTimers()
+    expect(entries.every((entry) => !entry.dirty())).toBe(true)
+    await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
+      target: { value: 'https://unsaved.example' },
+    })
+    expect(entries.filter((entry) => entry.dirty())).toHaveLength(1)
+    await autosave()
+    expect(entries.every((entry) => !entry.dirty())).toBe(true)
+    unmount()
+    expect(unregister).toHaveBeenCalledTimes(entries.length)
+  })
+})
+
+describe('server whitelist role', () => {
+  it('defaults to no role, explains independent grants and batches the role with whitelist mode', async () => {
+    mockFetch(settings(), discordRoles)
+    const { container } = renderPage()
+    await ready(container)
+    const roleRow = row(container, 'Server whitelist')
+    const select = within(roleRow).getByRole('combobox')
+    await vi.waitFor(() =>
+      expect(within(select).getByRole('option', { name: '@Server whitelist' })).toBeInTheDocument(),
+    )
+    expect(select).toHaveValue('')
+    expect(within(select).getByRole('option', { name: 'No Discord role' })).toBeInTheDocument()
+    expect(roleRow.previousElementSibling).toBe(row(container, 'Whitelist mode'))
+    expect(roleRow).toHaveTextContent('linked Steam and Discord accounts')
+    expect(roleRow).toHaveTextContent('Manual access granted in Players works independently.')
+    expect(roleRow).toHaveTextContent('while whitelist mode is on')
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    vi.useFakeTimers()
+    await fireEvent.change(select, { target: { value: WHITELIST_ROLE } })
+    await fireEvent.click(within(row(container, 'Whitelist mode')).getByRole('checkbox'))
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', {
+      ig_maintenance: true,
+      maintenance_whitelist_role: WHITELIST_ROLE,
     })
   })
 
-  describe('updating a text setting (debounced)', () => {
-    it('updates the store optimistically and sends the PUT 500ms after the last keystroke', async () => {
+  it('hydrates the saved role without writing it and permits removing it', async () => {
+    mockFetch({ ...settings(), maintenance_whitelist_role: WHITELIST_ROLE }, discordRoles)
+    const { container } = renderPage()
+    await ready(container)
+    const select = within(row(container, 'Server whitelist')).getByRole('combobox')
+    await vi.waitFor(() =>
+      expect(within(select).getByRole('option', { name: '@Server whitelist' })).toBeInTheDocument(),
+    )
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    vi.useFakeTimers()
+    await fireEvent.change(select, { target: { value: '' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', { maintenance_whitelist_role: '' })
+  })
+
+  it('keeps unrelated settings usable while roles load and populates the selector without writing', async () => {
+    let finish!: (value: Response) => void
+    vi.mocked(fetchAPI).mockImplementation(async (path) =>
+      path === ROLES_URL
+        ? new Promise<Response>((resolve) => {
+            finish = resolve
+          })
+        : (okJson({ settings: settings() }) as Response),
+    )
+    const { container } = renderPage()
+    await ready(container)
+    const roleRow = row(container, 'Server whitelist')
+    const select = within(roleRow).getByRole('combobox')
+    expect(select).toBeDisabled()
+    expect(roleRow).toHaveTextContent('Loading Discord roles…')
+    expect(within(row(container, 'Whitelist mode')).getByRole('checkbox')).not.toBeDisabled()
+    finish(okJson(discordRoles) as Response)
+    await vi.waitFor(() => expect(select).not.toBeDisabled())
+    expect(select).toHaveValue('')
+    expect(within(select).getByRole('option', { name: '@Verified players' })).toHaveValue(OTHER_ROLE)
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+  })
+
+  it.each([null, [{ id: 'invalid', name: 'Invalid' }], [{ id: WHITELIST_ROLE, name: 2 }]])(
+    'rejects malformed roles and retries without discarding the group draft: %j',
+    async (payload) => {
+      mockFetch(settings(), payload)
       const { container } = renderPage()
-      await waitForLoaded(container)
+      await ready(container)
+      const roleRow = row(container, 'Server whitelist')
+      await vi.waitFor(() => expect(within(roleRow).getByRole('alert')).toBeInTheDocument())
+      const select = within(roleRow).getByRole('combobox')
+      expect(select).toBeDisabled()
       vi.useFakeTimers()
-      const input = findRow(container, 'Support Link').querySelector('input[type=text]') as HTMLInputElement
-
-      fireEvent.input(input, { target: { value: 'http://new.example.com' } })
-      expect(input.value).toBe('http://new.example.com') // optimistic update, no debounce needed to see it
-
-      await vi.advanceTimersByTimeAsync(500)
-      expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_supportLink'), 'PUT', {
-        value: 'http://new.example.com',
+      const support = within(row(container, 'Support Link')).getByRole('textbox')
+      await fireEvent.input(support, { target: { value: 'https://draft.example' } })
+      mockFetch(settings(), discordRoles)
+      await fireEvent.click(within(roleRow).getByRole('button', { name: 'Try again' }))
+      await vi.waitFor(() => expect(select).not.toBeDisabled())
+      expect(support).toHaveValue('https://draft.example')
+      expect(select).toHaveValue('')
+      expect(saveDashboardSettings).not.toHaveBeenCalled()
+      await autosave()
+      expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', {
+        ig_supportLink: 'https://draft.example',
       })
+    },
+  )
+
+  it('preserves a deleted role until explicitly cleared without blocking other general settings', async () => {
+    mockFetch({ ...settings(), maintenance_whitelist_role: WHITELIST_ROLE }, [discordRoles[1]])
+    const { container } = renderPage()
+    await ready(container)
+    const select = within(row(container, 'Server whitelist')).getByRole('combobox')
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    expect(within(select).getByRole('option', { name: `Unavailable role (${WHITELIST_ROLE})` })).toBeDisabled()
+    expect(select).not.toBeDisabled()
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    vi.useFakeTimers()
+    await fireEvent.input(within(row(container, 'Support Link')).getByRole('textbox'), {
+      target: { value: 'https://other.example' },
     })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { ig_supportLink: 'https://other.example' })
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    await fireEvent.change(select, { target: { value: '' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { maintenance_whitelist_role: '' })
+  })
 
-    it('only sends the last value when typing multiple times within the debounce window', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      const callsBefore = (fetchAPI as Mock).mock.calls.length
-      vi.useFakeTimers()
-      const input = findRow(container, 'Support Link').querySelector('input[type=text]') as HTMLInputElement
-
-      fireEvent.input(input, { target: { value: 'a' } })
-      fireEvent.input(input, { target: { value: 'ab' } })
-      fireEvent.input(input, { target: { value: 'abc' } })
-
-      await vi.advanceTimersByTimeAsync(500)
-      const callsAfter = (fetchAPI as Mock).mock.calls.length
-      expect(callsAfter - callsBefore).toBe(1)
-      expect(fetchAPI).toHaveBeenLastCalledWith(settingUrl('ig_supportLink'), 'PUT', { value: 'abc' })
+  it('holds an invalid saved role locally until it is cleared', async () => {
+    mockFetch({ ...settings(), maintenance_whitelist_role: '1234567890123456' }, discordRoles)
+    const { container } = renderPage()
+    await ready(container)
+    const roleRow = row(container, 'Server whitelist')
+    const select = within(roleRow).getByRole('combobox')
+    vi.useFakeTimers()
+    await fireEvent.click(within(row(container, 'Whitelist mode')).getByRole('checkbox'))
+    await autosave()
+    expect(select).toHaveAttribute('aria-invalid', 'true')
+    expect(within(roleRow).getByRole('alert')).toHaveTextContent('Choose an available Discord role or no role.')
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    await fireEvent.change(select, { target: { value: '' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', {
+      ig_maintenance: true,
+      maintenance_whitelist_role: '',
     })
+  })
 
-    it('debounces each setting independently', async () => {
-      const { container } = renderPage()
-      await waitForLoaded(container)
-      vi.useFakeTimers()
-      const supportInput = findRow(container, 'Support Link').querySelector('input[type=text]') as HTMLInputElement
-      const timestampInput = findRow(container, 'Log Timestamp Format').querySelector(
-        'input[type=text]',
-      ) as HTMLInputElement
+  it.each(['loading', 'failed'])('permits clearing a saved role when the Discord lookup is %s', async (state) => {
+    vi.mocked(fetchAPI).mockImplementation(async (path) =>
+      path === ROLES_URL
+        ? state === 'loading'
+          ? new Promise<Response>(() => {})
+          : (errJson() as Response)
+        : (okJson({ settings: { ...settings(), maintenance_whitelist_role: WHITELIST_ROLE } }) as Response),
+    )
+    const { container } = renderPage()
+    await ready(container)
+    const roleRow = row(container, 'Server whitelist')
+    const select = within(roleRow).getByRole('combobox')
+    if (state === 'failed') await vi.waitFor(() => expect(within(roleRow).getByRole('alert')).toBeInTheDocument())
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    expect(select).not.toBeDisabled()
+    vi.useFakeTimers()
+    await fireEvent.change(select, { target: { value: '' } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledExactlyOnceWith('server', { maintenance_whitelist_role: '' })
+    expect(select).toHaveValue('')
+    expect(select).toBeDisabled()
+  })
 
-      fireEvent.input(supportInput, { target: { value: 'http://one.example.com' } })
-      await vi.advanceTimersByTimeAsync(250)
-      fireEvent.input(timestampInput, { target: { value: '%Y' } })
-      await vi.advanceTimersByTimeAsync(250)
-      // supportInput's own 500ms elapsed by now and should have fired independently of timestampInput's timer
-      expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_supportLink'), 'PUT', {
-        value: 'http://one.example.com',
-      })
-      expect(fetchAPI).not.toHaveBeenCalledWith(settingUrl('ig_logTimestamp'), 'PUT', expect.anything())
+  it('preserves the selected role after a failed autosave until an explicit retry', async () => {
+    mockFetch(settings(), discordRoles)
+    const { container } = renderPage()
+    await ready(container)
+    const select = within(row(container, 'Server whitelist')).getByRole('combobox')
+    vi.useFakeTimers()
+    vi.mocked(saveDashboardSettings).mockRejectedValueOnce(new Error('Offline'))
+    await fireEvent.change(select, { target: { value: WHITELIST_ROLE } })
+    await autosave()
+    expect(within(section(container, 'general')).getByRole('alert')).toBeInTheDocument()
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    await vi.advanceTimersByTimeAsync(2000)
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    await fireEvent.click(within(section(container, 'general')).getByRole('button', { name: 'Try again' }))
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { maintenance_whitelist_role: WHITELIST_ROLE })
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
+    expect(select).toHaveValue(WHITELIST_ROLE)
+    expect(within(section(container, 'general')).queryByRole('alert')).not.toBeInTheDocument()
+  })
 
-      await vi.advanceTimersByTimeAsync(250)
-      expect(fetchAPI).toHaveBeenCalledWith(settingUrl('ig_logTimestamp'), 'PUT', { value: '%Y' })
-    })
+  it('keeps a role selected during an in-flight autosave and submits it after the first acknowledgement', async () => {
+    mockFetch(settings(), discordRoles)
+    const { container } = renderPage()
+    await ready(container)
+    vi.useFakeTimers()
+    let finish!: (value: Awaited<ReturnType<typeof saveDashboardSettings>>) => void
+    vi.mocked(saveDashboardSettings).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    const select = within(row(container, 'Server whitelist')).getByRole('combobox')
+    await fireEvent.change(select, { target: { value: WHITELIST_ROLE } })
+    await autosave()
+    expect(select).not.toBeDisabled()
+    await fireEvent.change(select, { target: { value: OTHER_ROLE } })
+    await autosave()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+    finish({ settings: { maintenance_whitelist_role: WHITELIST_ROLE }, sync: 'applied' })
+    await autosave()
+    expect(select).toHaveValue(OTHER_ROLE)
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(2)
+    expect(saveDashboardSettings).toHaveBeenLastCalledWith('server', { maintenance_whitelist_role: OTHER_ROLE })
   })
 })

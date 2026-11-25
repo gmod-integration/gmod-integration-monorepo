@@ -1,17 +1,30 @@
-import { BaseClass } from '@gmod/core/classes/v3/BaseClass.js'
-import { generateToken } from '@gmod/core/utils/tools.js'
-import { ConfigDiscord } from '@gmod/config'
+import { BaseClass } from '@gmod/shared/BaseClass.js'
+import { generateToken } from '@gmod/shared/generateToken.js'
 import redis from '@gmod/infra-redis'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { ChannelType, type Webhook } from 'discord.js'
 import prisma from '@gmod/infra-prisma'
+import { getErasedSteamIDs, isErasureBlocked } from '@gmod/infra-prisma/privacy.js'
 import { gm_server_logs_triggers_action, gm_server_logs_triggers_operator } from '@gmod/infra-prisma/enums.js'
-import type { gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js'
+import type { Prisma, gm_server_logs_triggers, gm_server_sync_chat_filter } from '@gmod/infra-prisma/client.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
 import { ServerStatusChannel } from './ServerStatusChannel.js'
 import { buildDiscordStatusMessage, resolveDiscordGuildClient } from './discordBridge.js'
+import { getServerPlayerAccess } from './playerAccess.js'
+import {
+  resolveGuildAccess,
+  assertQuota,
+  assertServerSettingChange,
+  effectiveServerSetting,
+  limitResources,
+  serverSettingCapability,
+} from '@gmod/domain-access/index.js'
 
 const serverSettings: Record<string, any> = {
+  maintenance_whitelist_role: {
+    defaultValue: '',
+    acceptedValues: null,
+  },
   sync_role_direction: {
     defaultValue: 'gmod-to-discord',
     acceptedValues: ['both', 'gmod-to-discord', 'discord-to-gmod'],
@@ -61,7 +74,6 @@ const serverSettings: Record<string, any> = {
   show_status_chart: {
     defaultValue: false,
     acceptedValues: [true, false],
-    premium: true,
     onChange: async (server: Server) => {
       await server.editStatusChannelAndMessage(await server.getStatusData())
     },
@@ -160,55 +172,6 @@ const serverSettings: Record<string, any> = {
   },
 }
 
-async function isGuildPremiumForServer(guildID: string): Promise<boolean> {
-  const hasPremium =
-    (await prisma.gm_guild_premium.findFirst({
-      where: {
-        guildID,
-      },
-    })) ||
-    (await prisma.gm_gmodstore_purchases.findFirst({
-      where: {
-        guild: guildID,
-        revoke: false,
-      },
-    }))
-
-  if (hasPremium) {
-    return true
-  }
-
-  const redisKey = `guild:${guildID}:premium`
-  const cachedPremiumStatus = await redis.get(redisKey)
-  if (cachedPremiumStatus !== null) {
-    return JSON.parse(cachedPremiumStatus)
-  }
-
-  if (!ConfigDiscord.clientID || !ConfigDiscord.botToken) {
-    return false
-  }
-
-  try {
-    const response = await fetch(`https://discord.com/api/v10/applications/${ConfigDiscord.clientID}/entitlements`, {
-      headers: {
-        Authorization: `Bot ${ConfigDiscord.botToken}`,
-      },
-    })
-
-    if (!response.ok) {
-      return false
-    }
-
-    const entitlementGuilds = (await response.json()) as Array<{ guild_id?: string }>
-    const isPremium = entitlementGuilds.some((entitlement) => entitlement.guild_id === guildID)
-    await redis.set(redisKey, JSON.stringify(isPremium), 'EX', 60)
-    return isPremium
-  } catch (error) {
-    console.error('Error getting entitlements:', error)
-    return false
-  }
-}
-
 export class Server extends BaseClass {
   public token: string
   public id: string
@@ -238,7 +201,7 @@ export class Server extends BaseClass {
   }
 
   async isPremium() {
-    return await isGuildPremiumForServer(this.guild)
+    return (await resolveGuildAccess(this.guild)).premium
   }
 
   async saveIGSettings(settings: Record<string, any>) {
@@ -344,16 +307,19 @@ export class Server extends BaseClass {
     return serverSettings[setting].defaultValue
   }
 
+  async getEffectiveSetting(setting: string) {
+    const stored = await this.getSetting(setting)
+    return serverSettingCapability(setting)
+      ? effectiveServerSetting(await resolveGuildAccess(this.guild), setting, stored)
+      : stored
+  }
+
   async setSetting(setting: string, value: any, source: string = 'unknow') {
     if (!serverSettings[setting]) {
       throw new Error('Setting not found')
     }
 
     const previousValue = await this.getSetting(setting)
-
-    if (serverSettings[setting].premium && !(await this.isPremium())) {
-      throw new Error('Premium setting')
-    }
 
     if (
       !serverSettings.freeValues &&
@@ -362,6 +328,9 @@ export class Server extends BaseClass {
     ) {
       throw new Error('Invalid value')
     }
+
+    if (serverSettingCapability(setting))
+      assertServerSettingChange(await resolveGuildAccess(this.guild), setting, value, previousValue)
 
     const result = await prisma.gm_server_settings.findFirst({
       where: {
@@ -521,6 +490,14 @@ export class Server extends BaseClass {
     })
   }
 
+  async getEffectiveStatusButtons() {
+    const [access, buttons] = await Promise.all([
+      resolveGuildAccess(this.guild),
+      prisma.gm_status_button.findMany({ where: { server: this.id }, orderBy: { id: 'asc' } }),
+    ])
+    return limitResources(access, 'status.buttons', buttons).filter((button) => button.enable)
+  }
+
   async getBotInstance() {
     return await resolveDiscordGuildClient(this.guild)
   }
@@ -587,11 +564,11 @@ export class Server extends BaseClass {
     })
   }
 
-  async editStatusChannelAndMessage(msgData: any) {
+  async editStatusChannelAndMessage(msgData: any): Promise<boolean> {
     const serverStatusInfo = await this.getStatusChannelAndMessage()
     if (!serverStatusInfo) {
       gmLog('status', `Status channel not found for server ${this.getID()}`, true)
-      return
+      return false
     }
 
     try {
@@ -604,13 +581,13 @@ export class Server extends BaseClass {
           // Guild no longer exists or bot has been kicked
           gmLog('status', `Guild ${this.getGuildID()} unknown – cleaning up status record.`, true)
           await prisma.gm_status.delete({ where: { server: this.getID() } })
-          return
+          return false
         }
         throw err
       }
       if (!guild) {
         gmLog('status', `Guild fetch returned null for server ${this.getID()}`, true)
-        return
+        return false
       }
 
       let channel
@@ -621,20 +598,20 @@ export class Server extends BaseClass {
           // channel deleted or otherwise not found
           gmLog('status', `Channel ${serverStatusInfo.channel} no longer exists – removing record.`, true)
           await prisma.gm_status.delete({ where: { server: this.getID() } })
-          return
+          return false
         }
         throw err
       }
 
       if (!channel) {
         gmLog('status', `Channel not found for server ${this.getID()}`, true)
-        return
+        return false
       }
 
       let message
       if (!channel.isTextBased()) {
         gmLog('status', `Channel is not text based for server ${this.getID()}`, true)
-        return
+        return false
       }
 
       // is message exists?
@@ -645,46 +622,43 @@ export class Server extends BaseClass {
           // Message deleted or otherwise not found
           gmLog('status', `Message ${serverStatusInfo.message} no longer exists – removing record.`, true)
           await prisma.gm_status.delete({ where: { server: this.getID() } })
-          return
+          return false
         }
         if (err.code === 50001) {
           // Missing Access - bot no longer has permission to access the channel/message
           gmLog('status', `Missing access to message ${serverStatusInfo.message} – removing record.`, true)
           await prisma.gm_status.delete({ where: { server: this.getID() } })
-          return
+          return false
         }
         throw err
       }
 
       if (!message) {
         gmLog('status', `Message not found for server ${this.getID()}`, true)
-        return
+        return false
       }
 
       // is same author?
       if (message.author.id !== dscClient.user?.id) {
         gmLog('status', `Message author is not the bot for server ${this.getID()}`, true)
-        return
+        return false
       }
 
       const lang = guild.preferredLocale
       const newMsgContent = await buildDiscordStatusMessage(this, msgData, lang)
       await message.edit(newMsgContent)
+      return true
     } catch (error: any) {
       if (
         error?.message === 'Discord guild client resolver is not configured' ||
         error?.message === 'Discord status message builder is not configured'
       ) {
-        return
+        return false
       }
 
       gmLog('status', `Error updating status message for server ${this.getID()}: ${error.message}`, true)
       console.error(error)
-      // await prisma.gm_status.delete({
-      //   where: {
-      //     server: this.getID(),
-      //   },
-      // });
+      return false
     }
   }
 
@@ -699,13 +673,20 @@ export class Server extends BaseClass {
     uptime: number,
     playersList: any,
   ) {
+    const incomingPlayers: any[] = Array.isArray(playersList) ? playersList : []
+    const incomingIDs = incomingPlayers
+      .map((player) => player?.steamID64)
+      .filter((id): id is string => typeof id === 'string' && !!id)
+    const erasedPlayers = await getErasedSteamIDs(incomingIDs)
+    const visiblePlayers = incomingPlayers.filter((player) => !erasedPlayers.has(player?.steamID64))
     const serverStatus = await prisma.gm_server_status.findFirst({
       where: {
         id: this.getID(),
       },
     })
+    let saved: { updatedAt: Date }
     if (serverStatus) {
-      await prisma.gm_server_status.update({
+      saved = await prisma.gm_server_status.update({
         where: {
           id: this.getID(),
         },
@@ -717,11 +698,11 @@ export class Server extends BaseClass {
           gameMode,
           players,
           maxPlayers,
-          playersList: JSON.stringify(playersList),
+          playersList: JSON.stringify(visiblePlayers),
         },
       })
     } else {
-      await prisma.gm_server_status.create({
+      saved = await prisma.gm_server_status.create({
         data: {
           id: this.getID(),
           ip,
@@ -731,8 +712,19 @@ export class Server extends BaseClass {
           gameMode,
           players,
           maxPlayers,
-          playersList: JSON.stringify(playersList),
+          playersList: JSON.stringify(visiblePlayers),
         },
+      })
+    }
+
+    const newlyErased = await getErasedSteamIDs(
+      visiblePlayers.map((player) => player?.steamID64).filter((id): id is string => typeof id === 'string' && !!id),
+    )
+    const currentPlayers = visiblePlayers.filter((player) => !newlyErased.has(player?.steamID64))
+    if (currentPlayers.length !== visiblePlayers.length) {
+      await prisma.gm_server_status.updateMany({
+        where: { id: this.getID(), updatedAt: saved.updatedAt },
+        data: { playersList: JSON.stringify(currentPlayers) },
       })
     }
 
@@ -787,7 +779,41 @@ export class Server extends BaseClass {
     })
   }
 
+  async getEffectiveSyncRoles() {
+    const [access, rows] = await Promise.all([
+      resolveGuildAccess(this.guild),
+      prisma.gm_server_sync_roles.findMany({
+        where: { serverID: this.id },
+        orderBy: [{ createdAt: 'asc' }, { roleID: 'asc' }],
+      }),
+    ])
+    return limitResources(access, 'sync.roles.rules', rows)
+  }
+
+  async getEffectiveSyncTeamRoles() {
+    const [access, rows] = await Promise.all([
+      resolveGuildAccess(this.guild),
+      prisma.gm_server_sync_team_roles.findMany({
+        where: { serverID: this.id },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+    ])
+    return limitResources(access, 'sync.teams', rows)
+  }
+
+  async getEffectivePseudoRules() {
+    const [access, rows] = await Promise.all([
+      resolveGuildAccess(this.guild),
+      prisma.gm_server_pseudo.findMany({
+        where: { serverID: this.id },
+        orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      }),
+    ])
+    return limitResources(access, 'sync.nicknames.rules', rows)
+  }
+
   async saveUserConnectionInfo(steamID64: string, name: string) {
+    if (await isErasureBlocked(undefined, steamID64)) return
     try {
       const player = await prisma.gm_server_stat.findFirst({
         where: {
@@ -796,8 +822,9 @@ export class Server extends BaseClass {
         },
       })
 
+      let saved: { updatedAt: Date }
       if (player) {
-        await prisma.gm_server_stat.update({
+        saved = await prisma.gm_server_stat.update({
           where: {
             server_id_steam_id: {
               steam_id: steamID64,
@@ -810,7 +837,7 @@ export class Server extends BaseClass {
           },
         })
       } else {
-        await prisma.gm_server_stat.create({
+        saved = await prisma.gm_server_stat.create({
           data: {
             steam_id: steamID64,
             server_id: this.id,
@@ -819,6 +846,11 @@ export class Server extends BaseClass {
             first_join: new Date(),
             custom_values: '{}',
           },
+        })
+      }
+      if (await isErasureBlocked(undefined, steamID64)) {
+        await prisma.gm_server_stat.deleteMany({
+          where: { server_id: this.id, steam_id: steamID64, updatedAt: saved.updatedAt },
         })
       }
     } catch (error) {
@@ -903,10 +935,12 @@ export class Server extends BaseClass {
   }
 
   async createStatusButton() {
-    return prisma.gm_status_button.create({
-      data: {
-        server: this.id,
-      },
+    const access = await resolveGuildAccess(this.guild)
+    return prisma.$transaction(async (tx) => {
+      await tx.gm_server.update({ where: { id: this.id }, data: { updatedAt: new Date() } })
+      const used = await tx.gm_status_button.count({ where: { server: this.id } })
+      assertQuota(access, 'status.buttons', used)
+      return tx.gm_status_button.create({ data: { server: this.id } })
     })
   }
 
@@ -1124,6 +1158,10 @@ export class Server extends BaseClass {
         steam_id: steamID64,
       },
     })
+  }
+
+  async getPlayerAccess(steamID64: string) {
+    return getServerPlayerAccess(this, steamID64)
   }
 
   async createScreenshotChannel(channelID: string) {
@@ -1388,9 +1426,9 @@ export async function getServersFromDiscordGuildID(guildID: string) {
   return servers.map((server) => new Server(server))
 }
 
-export async function createServer(guildID: string) {
+export async function createServer(guildID: string, store: Pick<Prisma.TransactionClient, 'gm_server'> = prisma) {
   const serverID = await generateServerUniqueID()
-  const server = await prisma.gm_server.create({
+  const server = await store.gm_server.create({
     data: {
       id: serverID,
       token: generateToken(16),
@@ -1400,33 +1438,63 @@ export async function createServer(guildID: string) {
   return new Server(server)
 }
 
+let statusRoutineRunning = false
+
 export async function statusRoutine() {
-  const serversStatusChannel = await prisma.gm_status.findMany()
+  if (statusRoutineRunning) return
+  statusRoutineRunning = true
+  try {
+    const serversStatusChannel = await prisma.gm_status.findMany()
+    for (const statusChannel of serversStatusChannel) {
+      try {
+        const server = await getServerFromID(statusChannel.server)
+        if (!server) {
+          await prisma.gm_status.delete({ where: { server: statusChannel.server } })
+          continue
+        }
 
-  for (const statusChannel of serversStatusChannel) {
-    const server = await getServerFromID(statusChannel.server)
-    if (!server) {
-      await prisma.gm_status.delete({
-        where: {
-          server: statusChannel.server,
-        },
-      })
-      continue
+        const statusInfo = await prisma.gm_server_status.findFirst({
+          where: {
+            id: server.getID(),
+            updatedAt: { lte: new Date(Date.now() - 6 * 60 * 1000) },
+          },
+        })
+        if (!statusInfo) continue
+
+        const cacheKey = `server:${server.getID()}:status:offline`
+        const revision = JSON.stringify([
+          statusInfo.updatedAt.toISOString(),
+          statusChannel.channel,
+          statusChannel.message,
+        ])
+        try {
+          if ((await redis.get(cacheKey)) === revision) continue
+        } catch (error) {
+          console.error(`Error reading offline status acknowledgement for server ${server.getID()}:`, error)
+        }
+
+        // A heartbeat may have arrived while the sweep was reading its candidate.
+        if (await server.getStatusData()) continue
+        if (await server.editStatusChannelAndMessage(null)) {
+          // Discord I/O may have overlapped a reconnect and its online message refresh.
+          const liveStatus = await server.getStatusData()
+          if (liveStatus) {
+            await server.editStatusChannelAndMessage(liveStatus)
+            continue
+          }
+          // Bound abandoned cache entries; unchanged offline messages need at most a weekly refresh.
+          try {
+            await redis.set(cacheKey, revision, 'EX', 7 * 24 * 60 * 60)
+          } catch (error) {
+            console.error(`Error recording offline status acknowledgement for server ${server.getID()}:`, error)
+          }
+        }
+      } catch (error) {
+        gmLog('status', `Error refreshing offline status for server ${statusChannel.server}`, true)
+        console.error(error)
+      }
     }
-
-    const statusInfo = await prisma.gm_server_status.findFirst({
-      where: {
-        id: server.getID(),
-        updatedAt: {
-          gte: new Date(new Date().getTime() - 10 * 60 * 1000), // 10 minutes ago
-          lte: new Date(new Date().getTime() - 6 * 60 * 1000), // 6 minutes ago
-        },
-      },
-    })
-
-    // Only update if status is between 6-10 minutes old
-    if (!statusInfo) continue
-
-    await server.editStatusChannelAndMessage(await server.getStatusData())
+  } finally {
+    statusRoutineRunning = false
   }
 }

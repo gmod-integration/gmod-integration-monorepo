@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../../../testUtils.js'
 import GuildBans from '../../../../src/pages/dashboard/guilds/GuildBans.js'
 import { fetchAPI } from '../../../../src/utils/api.js'
@@ -73,14 +73,54 @@ describe('pages/dashboard/guilds/GuildBans.tsx', () => {
     expect(screen.getByText('Rando#0002')).toBeInTheDocument()
   })
 
+  it('paginates each platform independently and keeps controls outside the tables', async () => {
+    const gmodBans = Array.from({ length: 55 }, (_, index) => ({
+      ...defaultBansRaw().gmodBans[0],
+      id: index + 1,
+      userSteamID64: `steam-${index + 1}`,
+      reason: `game-reason-${index + 1}`,
+    }))
+    const discordBans = Array.from({ length: 55 }, (_, index) => ({
+      ...defaultBansRaw().discordBans[0],
+      id: `discord-${index + 1}`,
+      tag: `Discord user ${index + 1}`,
+    }))
+    setupFetchAPI({ gmodBans, discordBans })
+    renderWithProviders(() => <GuildBans />)
+    await vi.waitFor(() => expect(screen.getByText('steam-1')).toBeInTheDocument())
+    const game = within(screen.getByRole('region', { name: 'GMod Bans' }))
+    const discord = within(screen.getByRole('region', { name: 'Discord Bans' }))
+    expect(game.getAllByRole('row')).toHaveLength(26)
+    expect(game.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
+    expect(discord.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
+    await fireEvent.click(game.getByRole('button', { name: 'Next page' }))
+    expect(game.queryByText('steam-1')).not.toBeInTheDocument()
+    expect(game.getByText('steam-26')).toBeInTheDocument()
+    expect(game.getByRole('button', { name: 'Page 2 of 3' })).toBeInTheDocument()
+    expect(discord.getByText('Discord user 1')).toBeInTheDocument()
+    expect(discord.getByRole('button', { name: 'Page 1 of 3' })).toBeInTheDocument()
+    await fireEvent.click(discord.getByRole('button', { name: 'Next page' }))
+    expect(discord.getByText('Discord user 26')).toBeInTheDocument()
+    expect(game.getByText('steam-26')).toBeInTheDocument()
+    await fireEvent.change(game.getByRole('combobox', { name: 'Rows per page' }), { target: { value: '50' } })
+    expect(game.getByText('steam-1')).toBeInTheDocument()
+    expect(game.getAllByRole('row')).toHaveLength(51)
+    await fireEvent.click(game.getByRole('button', { name: 'Next page' }))
+    expect(game.getAllByRole('row')).toHaveLength(6)
+    expect(game.getByRole('button', { name: 'Next page' })).toBeDisabled()
+    expect(fetchAPI).toHaveBeenCalledTimes(1)
+  })
+
   it('flags a GMod ban whose linked account is also banned on Discord', async () => {
     const { container } = renderWithProviders(() => <GuildBans />)
     await waitForLoaded()
 
-    const rows = container.querySelectorAll('tbody tr')
+    const rows = container.querySelectorAll<HTMLElement>('tbody tr')
     // First GMod row (765) is cross-flagged, second (766) is not.
-    expect(rows[0].querySelector('.fa-discord')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-discord')).not.toBeInTheDocument()
+    expect(rows[0].querySelector('svg[data-icon="message-circle"]')).toBeInTheDocument()
+    expect(within(rows[0]).getByText('Also banned on Discord')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="message-circle"]')).not.toBeInTheDocument()
+    expect(within(rows[1]).getByText('No linked account')).toBeInTheDocument()
   })
 
   it('flags a Discord ban whose linked account is also banned on GMod', async () => {
@@ -89,9 +129,41 @@ describe('pages/dashboard/guilds/GuildBans.tsx', () => {
     await vi.waitFor(() => expect(screen.getByText('Cheater#0001')).toBeInTheDocument())
 
     const discordTable = container.querySelectorAll('table')[1]
-    const rows = discordTable.querySelectorAll('tbody tr')
-    expect(rows[0].querySelector('.fa-gamepad')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-gamepad')).not.toBeInTheDocument()
+    const rows = discordTable.querySelectorAll<HTMLElement>('tbody tr')
+    expect(rows[0].querySelector('svg[data-icon="gamepad-2"]')).toBeInTheDocument()
+    expect(within(rows[0]).getByText('Also banned on GMod')).toBeInTheDocument()
+    expect(rows[1].querySelector('svg[data-icon="gamepad-2"]')).not.toBeInTheDocument()
+    expect(within(rows[1]).getByText('No linked account')).toBeInTheDocument()
+  })
+
+  it('distinguishes a linked account without a matching record from an account without a link', async () => {
+    const data = defaultBansRaw()
+    data.gmodBans.push({
+      ...data.gmodBans[0],
+      id: 3,
+      userSteamID64: '767',
+      linkedDiscordID: 'd3',
+      discordAlsoBanned: false,
+    })
+    data.discordBans.push({
+      ...data.discordBans[0],
+      id: 'd3',
+      tag: 'Linked#0003',
+      reason: 'Linked account without a matching record',
+      linkedSteamID64: '767',
+      gmodAlsoBanned: false,
+    })
+    setupFetchAPI(data)
+    renderWithProviders(() => <GuildBans />)
+    await waitForLoaded()
+    for (const identity of ['767', 'Linked#0003']) {
+      const row = screen.getByText(identity).closest<HTMLElement>('tr')!
+      const label = within(row).getByText('No match in these records')
+      expect(label.closest('[data-tone]')).toHaveAttribute('data-tone', 'neutral')
+      expect(within(row).queryByText('No linked account')).not.toBeInTheDocument()
+    }
+    expect(screen.getAllByText('No linked account')).toHaveLength(2)
+    expect(screen.queryByText(/not banned/i)).not.toBeInTheDocument()
   })
 
   it('shows loading spinners while bans is loading', () => {
@@ -100,17 +172,21 @@ describe('pages/dashboard/guilds/GuildBans.tsx', () => {
     expect(container.querySelectorAll('.loading-spinner').length).toBeGreaterThan(0)
   })
 
-  it('shows empty-state messages when the request is not ok (fetchBans swallows it to an empty result)', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(errJson())
+  it('distinguishes a failed request from empty bans and retries both tables together', async () => {
+    ;(fetchAPI as Mock).mockResolvedValueOnce(errJson())
     renderWithProviders(() => <GuildBans />)
-    await vi.waitFor(() => expect(screen.getByText('No GMod bans found.')).toBeInTheDocument())
-    expect(screen.getByText('No Discord bans found.')).toBeInTheDocument()
+    await vi.waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2))
+    expect(screen.queryByText('No GMod bans found.')).not.toBeInTheDocument()
+    expect(screen.queryByText('No Discord bans found.')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Try again' })[0])
+    await waitForLoaded()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('shows a failure message when the resource itself rejects', async () => {
     ;(fetchAPI as Mock).mockRejectedValue(new Error('network down'))
     renderWithProviders(() => <GuildBans />)
-    await vi.waitFor(() => expect(screen.getAllByText('Failed to load bans').length).toBeGreaterThan(0))
+    await vi.waitFor(() => expect(screen.getAllByText('Unable to load bans. Try again.').length).toBeGreaterThan(0))
   })
 
   it('shows empty-state messages when there are no bans', async () => {

@@ -8,23 +8,16 @@ export function getSteamApi() {
   return steam
 }
 
-export function getSteamUserSummary(steamID64: string) {
-  return new Promise(async (resolve, reject) => {
-    const summary = await steam.getUserSummary(steamID64)
-    resolve(summary)
-  })
+export async function getSteamUserSummary(steamID64: string) {
+  return steam.getUserSummary(steamID64)
 }
 
-export function getSteamUserAvatars(steamID64: string) {
-  return new Promise(async (resolve, reject) => {
-    const summary = await steam.getUserSummary(steamID64)
-    resolve(summary.avatar)
-  })
+export async function getSteamUserAvatars(steamID64: string) {
+  const summary = await steam.getUserSummary(steamID64)
+  return summary.avatar
 }
 
-export function getSteamUserAvatarLarge(steamID64: string) {
-  return new Promise(async (resolve, reject) => {
-    const summary = await steam.getUserSummary(steamID64)
-    resolve(await ensureAvatarStored('steam', steamID64, summary.avatar.large))
-  })
+export async function getSteamUserAvatarLarge(steamID64: string) {
+  const summary = await steam.getUserSummary(steamID64)
+  return ensureAvatarStored('steam', steamID64, summary.avatar.large)
 }

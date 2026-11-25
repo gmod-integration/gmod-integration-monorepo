@@ -1,4 +1,23 @@
-import { WEBSITE_CONFIG } from '../config'
+import { WEBSITE_CONFIG } from '../config.js'
+import type { DiscordUserState } from './event.js'
+
+type StoredGuild = {
+  id: string
+  name: string
+  icon: string
+  isPremium: boolean
+}
+
+type StoredServer = {
+  id: string
+  name: string
+  description: string
+  image: string
+  ip: string
+  port: number | string
+  token: string
+  isPublic: boolean
+}
 
 export const DEV = WEBSITE_CONFIG.dev
 export function isDevEnvironment() {
@@ -7,7 +26,7 @@ export function isDevEnvironment() {
 export const DEV_SHOW_MISSING_TRANSLATIONS = WEBSITE_CONFIG.devShowMissingTranslations
 
 export function isProduction() {
-  return window.location.href.includes('//gmod-integration.com')
+  return window.location.hostname === 'gmod-integration.com'
 }
 
 export const INVITE_URL = `https://discord.com/oauth2/authorize?client_id=${WEBSITE_CONFIG.discordClientId}&permissions=8&scope=bot`
@@ -17,14 +36,24 @@ export function linkifyEmails(text: string) {
   return text.replace(emailPattern, '<a class="text-info hover:text-info-content" href="mailto:$1">$1</a>')
 }
 
-export function getGuild() {
-  return JSON.parse(localStorage.getItem('guilds') || '{}')
+export function readStoredObject(key: string): Record<string, unknown> {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(key) || '{}')
+    if (value && typeof value === 'object' && !Array.isArray(value)) return { ...value }
+  } catch {
+    // A damaged cache must not prevent users from opening the dashboard or signing in again.
+  }
+  return {}
 }
 
-export function getServer() {
-  return JSON.parse(localStorage.getItem('server') || '{}')
+export function getGuild(): Partial<StoredGuild> {
+  return readStoredObject('guilds')
 }
 
-export function getDiscordUser() {
-  return JSON.parse(localStorage.getItem('discordUser') || '{}')
+export function getServer(): Partial<StoredServer> {
+  return readStoredObject('server')
+}
+
+export function getDiscordUser(): Partial<DiscordUserState> {
+  return readStoredObject('discordUser')
 }

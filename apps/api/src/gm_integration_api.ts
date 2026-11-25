@@ -1,10 +1,10 @@
 // import '@gmod/core/utils/instrument.js';
 import { fileURLToPath } from 'node:url'
-import { ConfigServer } from '@gmod/config'
+import { ConfigPrivacy, ConfigServer } from '@gmod/config'
 import '@gmod/core/utils/update-log.js'
 import express, { type NextFunction, type Request, type Response } from 'express'
-import { gmLog } from '@gmod/core/utils/logger.js'
-import rawBodyMiddleware from '@/middleware/rawBodyMiddleware.js'
+import { gmLog } from '@gmod/shared/logger.js'
+import { requestBudget } from '@/middleware/requestBudget.js'
 import loggerMiddleware from '@/middleware/v3/loggers.js'
 import cors from 'cors'
 import helmet from 'helmet'
@@ -16,10 +16,15 @@ import { gracefulShutdownRedis } from '@gmod/infra-redis'
 import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
 import { gracefulShutdownMongo } from '@gmod/core/database/gm_server_logs.js'
 import '@gmod/infra-bullmq'
+import { startAccountErasureWorker } from '@gmod/domain-compliance/accountErasure.js'
+import { startDiscordTokenRefreshWorker } from '@gmod/domain-auth/discordOAuth.js'
+
+let stopAccountErasureWorker: (() => void) | undefined
+let stopDiscordTokenRefreshWorker: (() => void) | undefined
 
 // Express
 export const app = express()
-app.set('trust proxy', true)
+app.set('trust proxy', ConfigServer.trustedProxies?.length ? ConfigServer.trustedProxies : false)
 
 const allowedCorsOrigins = new Set<string>()
 for (const candidate of [ConfigServer.websiteUrl, ConfigServer.domain]) {
@@ -36,7 +41,12 @@ app.use(useragent.express())
 let inShutdown = false
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (inShutdown) {
-    res.status(503).json({ error: 'Server is in the process of restarting' })
+    if (req.path.toLowerCase() === '/v6' || req.path.toLowerCase().startsWith('/v6/')) {
+      res.setHeader('Cache-Control', 'no-store')
+      res
+        .status(503)
+        .json({ error: { code: 'service_unavailable', message: 'Server is in the process of restarting' } })
+    } else res.status(503).json({ error: 'Server is in the process of restarting' })
   } else {
     next()
   }
@@ -55,18 +65,28 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // signature, so `callback(null, true)` now genuinely reflects the request's own Origin header.
 app.use(
   cors({
+    credentials: true,
     origin: (origin: string | undefined, callback: any) => {
-      const normalizedOrigin = typeof origin === 'string' ? origin.toLowerCase() : ''
-      const isConfiguredOrigin = typeof origin === 'string' && allowedCorsOrigins.has(origin)
-      const isOfficialDomain = normalizedOrigin.includes('gmod-integration.com')
-      const isLocalOrigin = normalizedOrigin.includes('localhost') || normalizedOrigin.includes('127.0.0.1')
+      if (!origin) {
+        callback(null, true)
+        return
+      }
 
-      if (
-        !origin ||
-        isOfficialDomain ||
-        isConfiguredOrigin ||
-        (ConfigServer.dev && isLocalOrigin)
-      ) {
+      let parsedOrigin: URL
+      try {
+        parsedOrigin = new URL(origin)
+      } catch {
+        callback(new Error('Not allowed by CORS'))
+        return
+      }
+
+      // Match the serialized origin and hostname; substring checks also admit lookalike domains.
+      const isWebOrigin = ['http:', 'https:'].includes(parsedOrigin.protocol) && parsedOrigin.origin === origin
+      const isConfiguredOrigin = allowedCorsOrigins.has(origin)
+      const hostname = parsedOrigin.hostname
+      const isLocalOrigin = ['localhost', '127.0.0.1', '[::1]'].includes(hostname)
+
+      if (isWebOrigin && (isConfiguredOrigin || (ConfigServer.dev && isLocalOrigin))) {
         callback(null, true)
       } else {
         callback(new Error('Not allowed by CORS'))
@@ -126,12 +146,15 @@ app.use(
   }),
 )
 
-// Raw Body
-app.use(rawBodyMiddleware)
-
 // Body Parser
+app.use('/v6', express.json({ limit: '256kb', type: 'application/json' }))
 app.use(express.json({ limit: ConfigServer.bodyLimit, type: 'application/json' }))
-app.use(express.urlencoded({ limit: ConfigServer.bodyLimit, extended: true }))
+// Runtime body-parser supports depth; the shared legacy type declarations omit this option.
+const v6FormOptions = { limit: '256kb', extended: true, parameterLimit: 100, depth: 4 }
+const legacyFormOptions = { limit: ConfigServer.bodyLimit, extended: true, parameterLimit: 200, depth: 8 }
+app.use('/v6', express.urlencoded(v6FormOptions))
+app.use(express.urlencoded(legacyFormOptions))
+app.use(requestBudget)
 
 // Logger
 app.use(loggerMiddleware)
@@ -140,7 +163,7 @@ app.use(loggerMiddleware)
 app.use(mainRoutes)
 
 // 404
-app.all(/.*/, (req: Request, res: Response, next: NextFunction) => {
+app.all(/.*/, (req: Request, res: Response, _next: NextFunction) => {
   res.status(404).json({ error: '404 Not Found' })
 })
 
@@ -153,6 +176,8 @@ app.use(errorMiddleware)
 export async function gracefulShutdown() {
   gmLog('shutdown', 'Gracefully shutting down...')
   inShutdown = true
+  stopAccountErasureWorker?.()
+  await stopDiscordTokenRefreshWorker?.()
   // await Sentry.flush(2000);
   await gracefulShutdownRedis()
   await gracefulShutdownPrisma()
@@ -162,6 +187,8 @@ export async function gracefulShutdown() {
 
 export async function main() {
   await connectPrisma()
+  if (ConfigPrivacy.hashSecret) stopAccountErasureWorker = startAccountErasureWorker()
+  stopDiscordTokenRefreshWorker = startDiscordTokenRefreshWorker()
 
   // Listen
   app.listen(ConfigServer.ports.api, () => {

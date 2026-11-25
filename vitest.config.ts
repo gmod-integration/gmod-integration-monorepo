@@ -32,6 +32,7 @@ export default defineConfig({
       // One glob entry gets added per package/app as its test-implementation phase lands
       // (the ratchet from the Phase-0 plan) — see docs/reports/ for the phase list.
       thresholds: {
+        'packages/shared/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
         'packages/schema/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
         'packages/config/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },
         'packages/infra-redis/src/**': { statements: 100, branches: 100, functions: 100, lines: 100 },

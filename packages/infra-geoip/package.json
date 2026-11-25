@@ -1,0 +1,14 @@
+{
+  "name": "@gmod/infra-geoip",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./index.js": "./src/index.ts"
+  },
+  "dependencies": {
+    "geolite2-country": "1.0.105",
+    "mmdb-lib": "^3.0.5"
+  }
+}

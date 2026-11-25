@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
 import { ErrorBoundary } from 'solid-js/web'
 import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
 import { okJson } from '../testHelpers.js'
@@ -10,10 +10,13 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
   getUrlWithActualParams: vi.fn((s: string) => s),
 }))
 
+vi.mock('../../../../../../src/pages/dashboard/guilds/servers/errors/ServerErrorsParameters.js', () => ({
+  ServerErrorsParameters: () => <div data-testid="lua-errors-destination" />,
+}))
+
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
-const { default: ServerErrors } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/errors/ServerErrors.js'
-)
+const { default: ServerErrors } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/errors/ServerErrors.js')
 
 const ERRORS_URL_PREFIX = '/users/:discordID/guilds/:guildID/servers/:serverID/errors?'
 
@@ -61,31 +64,32 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([])))
     renderPage()
     expect(screen.getByText('Errors')).toBeInTheDocument()
-    expect(screen.getByText('Watch the errors of your server.')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Review Lua errors received from the game server and players. Open the details or download a report to investigate the cause.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('fetches with the correct query string on mount', async () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([])))
     renderPage()
     await vi.waitFor(() =>
-      expect(fetchAPI).toHaveBeenCalledWith(
-        `${ERRORS_URL_PREFIX}offset=0&limit=25&sort=createdAt&orderBy=DESC`,
-        'GET',
-      ),
+      expect(fetchAPI).toHaveBeenCalledWith(`${ERRORS_URL_PREFIX}offset=0&limit=25&sort=createdAt&orderBy=DESC`, 'GET'),
     )
   })
 
   it('shows a loading indicator before the first fetch resolves', () => {
     ;(fetchAPI as Mock).mockReturnValue(new Promise(() => {}))
     renderPage()
-    expect(screen.getByText('Loading errors...')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…')
   })
 
   it('renders a fetched error row', async () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([errorEntry()])))
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('my_addon')).toBeInTheDocument())
-    expect(screen.getByText('server')).toBeInTheDocument()
+    expect(screen.getByText('Game server')).toBeInTheDocument()
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByText('attempt to call a nil value')).toBeInTheDocument()
   })
@@ -93,16 +97,16 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
   it('colors the realm text for the client realm', async () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([errorEntry({ realm: 'client' })])))
     renderPage()
-    await vi.waitFor(() => expect(screen.getByText('client')).toHaveClass('text-sky-500'))
+    await vi.waitFor(() => expect(screen.getByText('Player client')).toHaveClass('text-sky-500'))
   })
 
   it('colors the realm text for the server realm', async () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([errorEntry({ realm: 'server' })])))
     renderPage()
-    await vi.waitFor(() => expect(screen.getByText('server')).toHaveClass('text-yellow-500'))
+    await vi.waitFor(() => expect(screen.getByText('Game server')).toHaveClass('text-yellow-500'))
   })
 
-  it('throws to the app-level ErrorBoundary when the fetch response is not ok', async () => {
+  it('keeps a failed fetch inside the table and recovers through the shared retry action', async () => {
     ;(fetchAPI as Mock).mockResolvedValue({ ok: false, json: async () => ({}) })
     renderWithProviders(
       () => (
@@ -115,18 +119,23 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
         history: historyAt('/dashboard/guilds/g1/config/servers/s1/errors'),
       },
     )
-    await vi.waitFor(() => expect(screen.getByTestId('boundary-error')).toHaveTextContent('Failed to fetch errors'))
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.queryByTestId('boundary-error')).not.toBeInTheDocument()
+    ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([errorEntry()])))
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(screen.getByText('my_addon')).toBeInTheDocument())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  describe('non-premium truncation', () => {
-    it('truncates the errors list and total to 50 for non-premium users when the server reports more', async () => {
+  describe('API-owned history window', () => {
+    it('does not rewrite the pagination acknowledged by the service', async () => {
       window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
       const errors = Array.from({ length: 60 }, (_, i) => errorEntry({ name: `addon${i}` }))
       ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage(errors, 80)))
       renderPage()
       await vi.waitFor(() => expect(screen.getByText('addon0')).toBeInTheDocument())
-      // total pages = ceil(50/25) = 2
-      expect(screen.getByText('1 / 2')).toBeInTheDocument()
+      // The service owns the allowed window; no separate client quota is applied.
+      expect(screen.getByText('1 / 4')).toBeInTheDocument()
     })
 
     it('does not truncate for premium users even when the server reports more than 50', async () => {
@@ -156,12 +165,12 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
       await vi.waitFor(() => expect(screen.getByText('my_addon')).toBeInTheDocument())
       expect(container.querySelector('.hljs')).not.toBeInTheDocument()
 
-      const expandTrigger = container.querySelector('.fa-chevron-down')!.closest('.tooltip') as HTMLElement
+      const expandTrigger = container.querySelector('svg[data-icon="chevron-down"]')!.closest('.tooltip') as HTMLElement
       await fireEvent.click(expandTrigger)
       expect(container.querySelector('.hljs')).toBeInTheDocument()
-      expect(container.querySelector('.fa-chevron-up')).toBeInTheDocument()
+      expect(container.querySelector('svg[data-icon="chevron-up"]')).toBeInTheDocument()
 
-      await fireEvent.click(container.querySelector('.fa-chevron-up')!.closest('.tooltip') as HTMLElement)
+      await fireEvent.click(container.querySelector('svg[data-icon="chevron-up"]')!.closest('.tooltip') as HTMLElement)
       expect(container.querySelector('.hljs')).not.toBeInTheDocument()
     })
 
@@ -176,12 +185,12 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
       // JsonViewer renders that same wrapper internally too, so each expanded row actually
       // contributes 2 nested `.hljs` elements, not 1 - pre-existing redundant (but harmless)
       // markup, not something breaking behavior, so asserting on the real count of 2 here.
-      const triggers = container.querySelectorAll('.fa-chevron-down')
+      const triggers = container.querySelectorAll('svg[data-icon="chevron-down"]')
       await fireEvent.click(triggers[0].closest('.tooltip') as HTMLElement)
       expect(container.querySelectorAll('.hljs')).toHaveLength(2)
       expect(screen.getByText('first').closest('tr')?.nextElementSibling?.textContent).toContain('"first"')
 
-      const secondTrigger = container.querySelectorAll('.fa-chevron-down')[0]
+      const secondTrigger = container.querySelectorAll('svg[data-icon="chevron-down"]')[0]
       await fireEvent.click(secondTrigger.closest('.tooltip') as HTMLElement)
       expect(container.querySelectorAll('.hljs')).toHaveLength(2)
       expect(screen.getByText('second').closest('tr')?.nextElementSibling?.textContent).toContain('"second"')
@@ -216,7 +225,7 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
       ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage([errorEntry({ stack: '' })])))
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('my_addon')).toBeInTheDocument())
-      const expandTrigger = container.querySelector('.fa-chevron-down')!.closest('.tooltip') as HTMLElement
+      const expandTrigger = container.querySelector('svg[data-icon="chevron-down"]')!.closest('.tooltip') as HTMLElement
       await fireEvent.click(expandTrigger)
       expect(container.querySelector('.hljs')).toBeInTheDocument()
     })
@@ -238,7 +247,7 @@ describe('pages/dashboard/guilds/servers/errors/ServerErrors.tsx', () => {
       ;(fetchAPI as Mock).mockResolvedValue(okJson(errorsPage(errors, 60)))
       const { container } = renderPage()
       await vi.waitFor(() => expect(screen.getByText('addon0')).toBeInTheDocument())
-      const nextBtn = container.querySelector('.fa-chevron-right')!.closest('button')!
+      const nextBtn = container.querySelector('svg[data-icon="chevron-right"]')!.closest('button')!
       await fireEvent.click(nextBtn)
       await vi.waitFor(() =>
         expect(fetchAPI).toHaveBeenCalledWith(

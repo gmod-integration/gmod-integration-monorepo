@@ -98,8 +98,9 @@ describe('packages/config src/website.ts module (ConfigWebsite on import)', () =
   })
 
   it('falls back to the local WS URL when WEBSITE_WS_URL is unset and DEV is true', async () => {
-    const { ConfigWebsite } = await runWithIsolatedEnv(`${MINIMAL_VALID_ENV}DEV=true\n`, () =>
-      import('../src/website.js'),
+    const { ConfigWebsite } = await runWithIsolatedEnv(
+      `${MINIMAL_VALID_ENV}DEV=true\n`,
+      () => import('../src/website.js'),
     )
 
     expect(ConfigWebsite.wsUrl).toBe('ws://localhost:53139')
@@ -116,8 +117,9 @@ describe('packages/config src/website.ts module (ConfigWebsite on import)', () =
   })
 
   it('keeps a non-www WEBSITE_URL host unchanged for the ws fallback', async () => {
-    const { ConfigWebsite } = await runWithIsolatedEnv(`DEV=false\n${MINIMAL_VALID_ENV}`, () =>
-      import('../src/website.js'),
+    const { ConfigWebsite } = await runWithIsolatedEnv(
+      `DEV=false\n${MINIMAL_VALID_ENV}`,
+      () => import('../src/website.js'),
     )
 
     expect(ConfigWebsite.wsUrl).toBe('wss://ws.gmod-integration.com')
@@ -132,16 +134,18 @@ describe('packages/config src/website.ts module (ConfigWebsite on import)', () =
   })
 
   it('falls back to the dev client id when DISCORD_CLIENT_ID is unset and DEV is true', async () => {
-    const { ConfigWebsite } = await runWithIsolatedEnv(`${MINIMAL_VALID_ENV}DEV=true\n`, () =>
-      import('../src/website.js'),
+    const { ConfigWebsite } = await runWithIsolatedEnv(
+      `${MINIMAL_VALID_ENV}DEV=true\n`,
+      () => import('../src/website.js'),
     )
 
     expect(ConfigWebsite.discordClientId).toBe('1136093457782415420')
   })
 
   it('falls back to the prod client id when DISCORD_CLIENT_ID is unset and DEV is false', async () => {
-    const { ConfigWebsite } = await runWithIsolatedEnv(`${MINIMAL_VALID_ENV}DEV=false\n`, () =>
-      import('../src/website.js'),
+    const { ConfigWebsite } = await runWithIsolatedEnv(
+      `${MINIMAL_VALID_ENV}DEV=false\n`,
+      () => import('../src/website.js'),
     )
 
     expect(ConfigWebsite.discordClientId).toBe('1110121451501129758')

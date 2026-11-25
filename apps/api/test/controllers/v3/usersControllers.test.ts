@@ -1,6 +1,36 @@
+import type * as AccessDomain from '@gmod/domain-access/index.js'
+import type * as SessionDomain from '@gmod/domain-auth/authSessions.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const authMocks = vi.hoisted(() => ({ resolve: vi.fn(), revoke: vi.fn(), begin: vi.fn(), consume: vi.fn() }))
+vi.mock('@gmod/domain-auth/authSessions.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof SessionDomain>()),
+  resolveApplicationSession: authMocks.resolve,
+  revokeApplicationSession: authMocks.revoke,
+}))
+vi.mock('@gmod/domain-auth/oauthState.js', () => ({
+  beginOAuthFlow: authMocks.begin,
+  consumeOAuthFlow: authMocks.consume,
+}))
+
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof AccessDomain>()),
+  resolveGuildAccess: accessMock,
+}))
+const accessSnapshot = (premium = true) => ({
+  guildID: 'g1',
+  premium,
+  customBot: premium,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'test',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
+
 const getUserFromDiscordIDMock = vi.fn()
+const dashboardAccessMock = vi.fn()
+vi.mock('@gmod/domain-user/dashboardAccess.js', () => ({ canAccessDashboardGuild: dashboardAccessMock }))
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromDiscordID: getUserFromDiscordIDMock }))
 
 const getServersFromDiscordGuildIDMock = vi.fn()
@@ -19,6 +49,8 @@ vi.mock('@gmod/domain-server/Server.js', () => ({
 }))
 
 vi.mock('@gmod/config', () => ({
+  ConfigAuth: { oauthStateTtlSeconds: 600, credentialEncryptionKey: 'test-key' },
+  ConfigServer: { domain: 'https://api.example', websiteUrl: 'https://gmod-integration.com' },
   ConfigDiscord: {
     oauthPanel: 'https://discord.com/oauth?redirect_uri=https%3A%2F%2Fconfigured.example%2Fcallback',
     oauthPanelRedirect: 'https://gmod-integration.com/account',
@@ -50,13 +82,13 @@ vi.mock('@gmod/core/utils/tools.js', () => ({ badArgument: badArgumentMock, todo
 const getUserDataGRPDMock = vi.fn()
 vi.mock('@gmod/domain-compliance/gdrp.js', () => ({ getUserDataGRPD: getUserDataGRPDMock }))
 
-const redisMock = { del: vi.fn() }
+const redisMock = { del: vi.fn(), set: vi.fn() }
 vi.mock('@gmod/infra-redis', () => ({ default: redisMock }))
 
 const prismaMock: any = {
-  gm_server_links: { update: vi.fn() },
+  gm_server_links: { count: vi.fn(), update: vi.fn(), create: vi.fn() },
   gm_server: { update: vi.fn(), findMany: vi.fn() },
-  gm_guild_verify_role: { update: vi.fn(), delete: vi.fn() },
+  gm_guild_verify_role: { count: vi.fn(), findFirst: vi.fn(), update: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_status_button: { update: vi.fn() },
   gm_server_sync_chat_filter: { findMany: vi.fn(), create: vi.fn() },
   gm_guild_verification_check: { create: vi.fn(), update: vi.fn() },
@@ -64,21 +96,29 @@ const prismaMock: any = {
   gm_server_vote: { count: vi.fn() },
   gm_status: { findFirst: vi.fn() },
   gm_server_status: { findMany: vi.fn() },
-  gm_guild: { findMany: vi.fn() },
-  gm_server_sync_roles: { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  gm_server_sync_team_roles: {
+  gm_guild: { update: vi.fn(), findMany: vi.fn() },
+  gm_server_sync_roles: {
+    count: vi.fn(),
     findMany: vi.fn(),
     create: vi.fn(),
     findFirst: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
   },
-  gm_server_pseudo: { findMany: vi.fn(), create: vi.fn() },
-  gm_users_notifications: { findMany: vi.fn() },
+  gm_server_sync_team_roles: {
+    count: vi.fn(),
+    findMany: vi.fn(),
+    create: vi.fn(),
+    findFirst: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+  gm_server_pseudo: { count: vi.fn(), findMany: vi.fn(), create: vi.fn() },
   gm_users_data_request: { findMany: vi.fn(), findFirst: vi.fn() },
   gm_server_report_bugs: { findMany: vi.fn() },
 }
-vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
+const dashboardTransactionMock = vi.fn()
+vi.mock('@gmod/infra-prisma', () => ({ default: { ...prismaMock, $transaction: dashboardTransactionMock } }))
 
 const modelMocks = {
   processCreateNewServer: vi.fn(),
@@ -93,6 +133,7 @@ const modelMocks = {
   processGetAutoRoles: vi.fn(),
   processGetGuildBans: vi.fn(),
   processGetProfile: vi.fn(),
+  processGetSteamProfile: vi.fn(),
   processGetScreenshotsList: vi.fn(),
   processGetServerLogs: vi.fn(),
   processGetServerPlayers: vi.fn(),
@@ -100,7 +141,6 @@ const modelMocks = {
   processGetUserGmodStorePurchases: vi.fn(),
   processGetUserSessions: vi.fn(),
   processLogOut: vi.fn(),
-  processPatchUserNotifications: vi.fn(),
   processPostAutoRoles: vi.fn(),
   processPostGmodPurchase: vi.fn(),
   processPostServerLogsTrigger: vi.fn(),
@@ -112,10 +152,33 @@ const modelMocks = {
 }
 vi.mock('@gmod/core/models/v3/usersControllerModels.js', () => modelMocks)
 
+const processGetPublicServerRankingMock = vi.fn()
+vi.mock('@gmod/core/models/v3/publicServerRankingModels.js', () => ({
+  processGetPublicServerRanking: processGetPublicServerRankingMock,
+}))
+
+const processPreviewServerStatusMock = vi.fn()
+vi.mock('@gmod/core/models/v3/statusMessagePreviewModels.js', () => ({
+  processPreviewServerStatus: processPreviewServerStatusMock,
+}))
+
+const processDeleteGuildBotInstanceMock = vi.fn()
+vi.mock('@gmod/core/models/v3/customBotRemovalModels.js', () => ({
+  processDeleteGuildBotInstance: processDeleteGuildBotInstanceMock,
+}))
+
+const getGuildSettingMock = vi.fn()
+const getEffectiveGuildSettingMock = vi.fn()
 class FakeGuild {
   id: string
   constructor(obj: { id: string }) {
     this.id = obj.id
+  }
+  async getSetting(setting: string) {
+    return getGuildSettingMock(this.id, setting)
+  }
+  async getEffectiveSetting(setting: string) {
+    return getEffectiveGuildSettingMock(this.id, setting)
   }
 }
 vi.mock('@gmod/domain-guild/Guild.js', () => ({ Guild: FakeGuild }))
@@ -140,6 +203,8 @@ const bullmqMocks = {
 vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => bullmqMocks)
 
 const c = await import('../../../src/controllers/v3/usersControllers.js')
+const { AuthSessionError } = await import('@gmod/domain-auth/authSessions.js')
+const { AccessDeniedError } = await import('@gmod/domain-access/index.js')
 
 function makeRes() {
   const res: any = {}
@@ -147,10 +212,26 @@ function makeRes() {
   res.json = vi.fn().mockReturnValue(res)
   res.send = vi.fn().mockReturnValue(res)
   res.redirect = vi.fn().mockReturnValue(res)
+  res.setHeader = vi.fn().mockReturnValue(res)
+  res.append = vi.fn().mockReturnValue(res)
   return res
 }
 
 function resetAllMocks() {
+  dashboardAccessMock.mockReset().mockResolvedValue(true)
+  authMocks.resolve.mockReset().mockResolvedValue({
+    id: 'current-session',
+    discordID: 'd1',
+    expiresAt: new Date(Date.now() + 86_400_000),
+    absoluteExpiresAt: new Date(Date.now() + 2_592_000_000),
+  })
+  authMocks.revoke.mockReset().mockResolvedValue(true)
+  authMocks.begin
+    .mockReset()
+    .mockResolvedValue({ state: 'opaque-state', browserBinding: 'browser-binding', codeChallenge: 'challenge' })
+  authMocks.consume.mockReset().mockResolvedValue({ verifier: 'pkce-verifier', redirect: '/dashboard/guilds' })
+  redisMock.set.mockReset().mockResolvedValue('OK')
+  dashboardTransactionMock.mockReset().mockImplementation(async (operation) => operation(prismaMock))
   getUserFromDiscordIDMock.mockReset()
   getServersFromDiscordGuildIDMock.mockReset()
   addUserToGuildMock.mockReset()
@@ -163,6 +244,11 @@ function resetAllMocks() {
   badArgumentMock.mockReset().mockReturnValue(false)
   todoControllersMock.mockReset()
   getUserDataGRPDMock.mockReset()
+  processGetPublicServerRankingMock.mockReset()
+  processPreviewServerStatusMock.mockReset()
+  processDeleteGuildBotInstanceMock.mockReset()
+  getGuildSettingMock.mockReset()
+  getEffectiveGuildSettingMock.mockReset()
   redisMock.del.mockReset()
   for (const table of Object.values(prismaMock)) {
     for (const fn of Object.values(table as Record<string, any>)) {
@@ -175,7 +261,17 @@ function resetAllMocks() {
 
 describe('usersControllers', () => {
   beforeEach(() => {
+    accessMock.mockReset().mockResolvedValue(accessSnapshot())
     resetAllMocks()
+    prismaMock.gm_guild.update.mockResolvedValue({})
+    for (const key of [
+      'gm_server_sync_roles',
+      'gm_server_sync_team_roles',
+      'gm_server_pseudo',
+      'gm_server_links',
+      'gm_guild_verify_role',
+    ])
+      prismaMock[key].count.mockResolvedValue(0)
   })
 
   it('getProfile delegates to processGetProfile', async () => {
@@ -189,7 +285,36 @@ describe('usersControllers', () => {
   it('getUserSessions delegates to processGetUserSessions', async () => {
     modelMocks.processGetUserSessions.mockResolvedValueOnce({ status: 200, body: [] })
     await c.getUserSessions({ params: { discordID: 'd1' } } as any, makeRes())
-    expect(modelMocks.processGetUserSessions).toHaveBeenCalledWith('d1')
+    expect(modelMocks.processGetUserSessions).toHaveBeenCalledWith('d1', undefined)
+  })
+
+  it('getSteamProfile uses the authenticated identity and keeps the response private', async () => {
+    const body = { steamID64: '76561198219049673', steamProfile: { name: 'Linventif', avatarURL: null } }
+    modelMocks.processGetSteamProfile.mockResolvedValueOnce({ status: 200, body })
+    const res = makeRes()
+    await c.getSteamProfile(
+      { panelUser: { discordID: 'd1' }, params: { discordID: 'other' }, query: { steamID64: 'arbitrary' } } as any,
+      res,
+    )
+    expect(modelMocks.processGetSteamProfile).toHaveBeenCalledExactlyOnceWith('d1')
+    expect(res.status).toHaveBeenCalledWith(200)
+    expect(res.send).toHaveBeenCalledWith(body)
+    expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
+  })
+
+  it('getSteamProfile forwards the missing account status', async () => {
+    modelMocks.processGetSteamProfile.mockResolvedValueOnce({ status: 404, body: { error: 'User not found' } })
+    const res = makeRes()
+    await c.getSteamProfile({ panelUser: { discordID: 'd1' } } as any, res)
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(res.send).toHaveBeenCalledWith({ error: 'User not found' })
+  })
+
+  it('normalizes array route IDs instead of comma-joining identifiers passed to a model', async () => {
+    modelMocks.processGetUserSessions.mockResolvedValueOnce({ status: 200, body: [] })
+    await c.getUserSessions({ params: { discordID: ['d1', 'd2'] } } as any, makeRes())
+
+    expect(modelMocks.processGetUserSessions).toHaveBeenCalledWith('d1', undefined)
   })
 
   it('deleteUserSession delegates to processDeleteUserSession', async () => {
@@ -198,11 +323,59 @@ describe('usersControllers', () => {
     expect(modelMocks.processDeleteUserSession).toHaveBeenCalledWith('d1', 's1')
   })
 
-  it('logOut delegates to processLogOut using the panel user/token', async () => {
-    modelMocks.processLogOut.mockResolvedValueOnce({ status: 200, body: {} })
-    const req = { panelUser: { discordID: 'd1', panelToken: { token: 'tok1' } } } as any
-    await c.logOut(req, makeRes())
-    expect(modelMocks.processLogOut).toHaveBeenCalledWith('d1', 'tok1')
+  it('revokes the exact authenticated session and clears its cookie', async () => {
+    const res = makeRes()
+    await c.logOut(
+      {
+        panelUser: { discordID: 'd1', panelToken: { token: 'newer-device-token' } },
+        authSession: { id: 'actual-device', discordID: 'd1' },
+      } as any,
+      res,
+    )
+    expect(authMocks.revoke).toHaveBeenCalledWith('actual-device', 'd1')
+    expect(modelMocks.processLogOut).not.toHaveBeenCalled()
+    expect(res.json).toHaveBeenCalledWith({ revoked: true })
+    expect(res.append).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('__Host-gmi_session=;'))
+  })
+
+  it('uses the actual legacy Bearer rather than the latest panel token on another device', async () => {
+    modelMocks.processLogOut.mockResolvedValueOnce({ status: 200, body: { revoked: true } })
+    await c.logOut(
+      {
+        headers: { authorization: 'Bearer this-device' },
+        panelUser: { discordID: 'd1', panelToken: { token: 'another-device' } },
+      } as any,
+      makeRes(),
+    )
+    expect(modelMocks.processLogOut).toHaveBeenCalledWith('d1', 'this-device')
+  })
+
+  it('refuses logout without an authenticated credential rather than revoking another device', async () => {
+    await expect(c.logOut({ headers: {}, panelUser: { discordID: 'd1' } } as any, makeRes())).rejects.toMatchObject({
+      status: 401,
+      code: 'unauthorized',
+    })
+    expect(authMocks.revoke).not.toHaveBeenCalled()
+    expect(modelMocks.processLogOut).not.toHaveBeenCalled()
+  })
+
+  it('passes the exact current session to the session listing model', async () => {
+    modelMocks.processGetUserSessions.mockResolvedValueOnce({ status: 200, body: [] })
+    await c.getUserSessions({ params: { discordID: 'd1' }, authSession: { id: 'device-a' } } as any, makeRes())
+    expect(modelMocks.processGetUserSessions).toHaveBeenCalledWith('d1', 'device-a')
+  })
+
+  it('prevents a delegated session from managing the target account sessions', async () => {
+    const req = { params: { discordID: 'd1', sessionID: 's1' }, authSession: { actorDiscordID: 'operator' } } as any
+    await expect(c.getUserSessions(req, makeRes())).rejects.toMatchObject({
+      status: 403,
+      code: 'impersonation_forbidden',
+    })
+    await expect(c.deleteUserSession(req, makeRes())).rejects.toMatchObject({
+      status: 403,
+      code: 'impersonation_forbidden',
+    })
+    expect(modelMocks.processDeleteUserSession).not.toHaveBeenCalled()
   })
 
   describe('findCurrentUser', () => {
@@ -225,198 +398,273 @@ describe('usersControllers', () => {
     function makeReq(overrides: Record<string, any> = {}) {
       return {
         query: {},
-        protocol: 'https',
-        headers: { host: 'api.example' },
-        originalUrl: '/oauth/callback',
+        headers: { cookie: 'gmi_oauth=old-binding', host: 'api.example' },
         connection: {},
         ...overrides,
       } as any
     }
-
-    it('redirects to the Discord OAuth panel when no code is given', async () => {
-      const res = makeRes()
-      await c.oauthLogin(makeReq({ query: {} }), res)
-      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('discord.com/oauth'))
+    const callback = (query: Record<string, unknown> = {}) =>
+      makeReq({ query: { code: 'code1', state: 'state1', ...query } })
+    beforeEach(() => {
+      getUserTokenFromCodeMock.mockResolvedValue({
+        token_type: 'Bearer',
+        access_token: 'at1',
+        refresh_token: 'rt1',
+        expires_in: 3600,
+        scope: 'identify guilds guilds.join',
+      })
+      getUserFromTokenMock.mockResolvedValue({ id: 'd1', username: 'Bob' })
+      saveUserPanelMock.mockResolvedValue('panel-token')
+      saveUserMock.mockResolvedValue(true)
+      addUserToGuildMock.mockResolvedValue(true)
     })
 
-    it('includes a redirect state param when redirect is given but code is not', async () => {
+    it('starts a browser-bound state and PKCE authorization request', async () => {
       const res = makeRes()
       await c.oauthLogin(makeReq({ query: { redirect: '/dashboard' } }), res)
-      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('&state=redirect:/dashboard'))
+      const authorization = new URL(res.redirect.mock.calls[0][0])
+      expect(authMocks.begin).toHaveBeenCalledWith('/dashboard', undefined)
+      expect(authorization.searchParams.get('state')).toBe('opaque-state')
+      expect(authorization.searchParams.get('code_challenge')).toBe('challenge')
+      expect(authorization.searchParams.get('code_challenge_method')).toBe('S256')
+      expect(authorization.searchParams.get('response_type')).toBe('code')
+      expect(res.append).toHaveBeenCalledWith(
+        'Set-Cookie',
+        expect.stringContaining('__Host-gmi_oauth=browser-binding;'),
+      )
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
+      expect(res.setHeader).toHaveBeenCalledWith('Referrer-Policy', 'no-referrer')
+      expect(getUserTokenFromCodeMock).not.toHaveBeenCalled()
     })
 
-    it('defaults codeString to "" for a non-string (e.g. array-valued) code param', async () => {
-      getUserTokenFromCodeMock.mockResolvedValueOnce(null)
+    it('reuses the binding cookie while keeping separate states for separate sign-in attempts', async () => {
+      await c.oauthLogin(
+        makeReq({ headers: { cookie: '__Host-gmi_oauth=existing-binding' }, query: { redirect: '/dashboard' } }),
+        makeRes(),
+      )
+      expect(authMocks.begin).toHaveBeenCalledWith('/dashboard', 'existing-binding')
+    })
+
+    it('rejects invalid state before exchanging any authorization code', async () => {
+      authMocks.consume.mockRejectedValueOnce(new AuthSessionError(400, 'oauth_state_invalid', 'Invalid attempt'))
+      await expect(c.oauthLogin(callback(), makeRes())).rejects.toMatchObject({ code: 'oauth_state_invalid' })
+      expect(getUserTokenFromCodeMock).not.toHaveBeenCalled()
+    })
+
+    it('rejects a non-string code and a mismatched issuer', async () => {
+      await expect(c.oauthLogin(callback({ code: ['abc'] }), makeRes())).rejects.toMatchObject({
+        code: 'oauth_code_invalid',
+      })
+      await expect(c.oauthLogin(callback({ iss: 'https://not-discord.example' }), makeRes())).rejects.toMatchObject({
+        code: 'oauth_issuer_invalid',
+      })
+      expect(getUserTokenFromCodeMock).not.toHaveBeenCalled()
+    })
+
+    it('uses the configured redirect URI and PKCE verifier for the code exchange', async () => {
+      await c.oauthLogin(callback(), makeRes())
+      expect(getUserTokenFromCodeMock).toHaveBeenCalledWith(
+        'code1',
+        'https://configured.example/callback',
+        'pkce-verifier',
+      )
+    })
+
+    it('does not fall back to a request-controlled host when redirect_uri is missing', async () => {
+      const { ConfigDiscord } = await import('@gmod/config')
+      const previous = ConfigDiscord.oauthPanel
+      ConfigDiscord.oauthPanel = 'https://discord.com/oauth'
+      try {
+        await expect(c.oauthLogin(callback(), makeRes())).rejects.toMatchObject({
+          status: 503,
+          code: 'oauth_configuration_invalid',
+        })
+        expect(getUserTokenFromCodeMock).not.toHaveBeenCalled()
+      } finally {
+        ConfigDiscord.oauthPanel = previous
+      }
+    })
+
+    it('keeps denied authorization separate from invalid session credentials', async () => {
       const res = makeRes()
-      await c.oauthLogin(makeReq({ query: { code: ['abc'] } }), res)
-      expect(getUserTokenFromCodeMock).toHaveBeenCalledWith('', expect.any(String))
+      await c.oauthLogin(callback({ code: undefined, error: 'access_denied' }), res)
+      const destination = new URL(res.redirect.mock.calls[0][0])
+      expect(destination.searchParams.get('error')).toBe('oauth_denied')
+      expect(getUserTokenFromCodeMock).not.toHaveBeenCalled()
+      expect(saveUserPanelMock).not.toHaveBeenCalled()
     })
 
-    it('responds 401 when the token exchange fails', async () => {
+    it('reports rejected codes and unavailable Discord profile lookups distinctly', async () => {
       getUserTokenFromCodeMock.mockResolvedValueOnce(null)
-      const res = makeRes()
-      await c.oauthLogin(makeReq({ query: { code: 'code1' } }), res)
-      expect(res.status).toHaveBeenCalledWith(401)
-    })
-
-    it('responds 401 when the discord user cannot be resolved', async () => {
-      getUserTokenFromCodeMock.mockResolvedValueOnce({
-        token_type: 'Bearer',
-        access_token: 'at1',
-        expires_in: 3600,
+      await expect(c.oauthLogin(callback(), makeRes())).rejects.toMatchObject({
+        status: 401,
+        code: 'oauth_code_invalid',
       })
       getUserFromTokenMock.mockResolvedValueOnce(null)
-      const res = makeRes()
-      await c.oauthLogin(makeReq({ query: { code: 'code1' } }), res)
-      expect(res.status).toHaveBeenCalledWith(401)
+      await expect(c.oauthLogin(callback(), makeRes())).rejects.toMatchObject({
+        status: 503,
+        code: 'provider_unavailable',
+      })
     })
 
-    it('responds 404 when a guildID state is given but the guild snapshot is not found', async () => {
-      getUserTokenFromCodeMock.mockResolvedValueOnce({
-        token_type: 'Bearer',
-        access_token: 'at1',
-        expires_in: 3600,
+    it('returns a secure cookie with no durable token in the destination URL', async () => {
+      const res = makeRes()
+      authMocks.consume.mockResolvedValueOnce({ verifier: 'pkce-verifier', redirect: '/dashboard/guilds/g1' })
+      await c.oauthLogin(callback(), res)
+      const destination = new URL(res.redirect.mock.calls[0][0])
+      expect(destination.searchParams.get('redirect')).toBe('/dashboard/guilds/g1')
+      expect(destination.searchParams.has('accessToken')).toBe(false)
+      expect(destination.toString()).not.toContain('panel-token')
+      expect(res.append).toHaveBeenCalledWith(
+        'Set-Cookie',
+        expect.stringContaining('__Host-gmi_session=panel-token; Path=/; HttpOnly; SameSite=Lax; Secure;'),
+      )
+      expect(authMocks.resolve).toHaveBeenCalledWith('panel-token', { touch: false })
+      expect(authMocks.resolve).toHaveBeenCalledTimes(2)
+      const session = await authMocks.resolve.mock.results[0].value
+      expect(res.append).toHaveBeenCalledWith(
+        'Set-Cookie',
+        expect.stringContaining(`Expires=${session.absoluteExpiresAt.toUTCString()}`),
+      )
+      expect(saveUserPanelMock).toHaveBeenCalledWith(
+        'd1',
+        expect.anything(),
+        expect.objectContaining({ os: 'Unknown', browser: 'Unknown', country: 'XX' }),
+      )
+      expect(redisMock.set).toHaveBeenCalledWith('gmi:auth:profile:d1', expect.any(String), 'EX', 3600)
+    })
+
+    it('clears a previous impersonation actor cookie before issuing the new login session', async () => {
+      const res = makeRes()
+      await c.oauthLogin(
+        makeReq({
+          query: { code: 'code1', state: 'state1' },
+          headers: { cookie: '__Host-gmi_actor_session=old-actor; __Host-gmi_session=old-delegate' },
+        }),
+        res,
+      )
+      expect(res.append).toHaveBeenNthCalledWith(
+        1,
+        'Set-Cookie',
+        expect.stringContaining(
+          '__Host-gmi_actor_session=; Path=/; HttpOnly; SameSite=Lax; Secure; Expires=Thu, 01 Jan 1970',
+        ),
+      )
+      expect(res.append).toHaveBeenNthCalledWith(
+        2,
+        'Set-Cookie',
+        expect.stringContaining('__Host-gmi_session=panel-token;'),
+      )
+    })
+
+    it.each([false, true])(
+      'refuses cookie issuance when erasure revokes the session during cache writing (cleanup fails: %s)',
+      async (cleanupFails) => {
+        redisMock.set.mockImplementationOnce(async () => {
+          authMocks.resolve.mockResolvedValue(null)
+          return 'OK'
+        })
+        if (cleanupFails) redisMock.del.mockRejectedValueOnce(new Error('Cache unavailable'))
+        else redisMock.del.mockResolvedValueOnce(1)
+        const res = makeRes()
+        await expect(c.oauthLogin(callback(), res)).rejects.toMatchObject({ status: 401, code: 'unauthorized' })
+        expect(authMocks.resolve).toHaveBeenCalledTimes(2)
+        expect(redisMock.del).toHaveBeenCalledWith('gmi:auth:profile:d1')
+        expect(res.append).not.toHaveBeenCalled()
+        expect(res.redirect).not.toHaveBeenCalled()
+      },
+    )
+
+    it('caches validated Discord display decoration after login', async () => {
+      getUserFromTokenMock.mockResolvedValueOnce({
+        id: 'd1',
+        username: 'Alice',
+        global_name: 'Alice Display',
+        avatar: 'avatar_hash',
+        discriminator: '0',
       })
-      getUserFromTokenMock.mockResolvedValueOnce({ id: 'd1', username: 'Bob' })
+      await c.oauthLogin(callback(), makeRes())
+      expect(redisMock.set).toHaveBeenCalledWith(
+        'gmi:auth:profile:d1',
+        JSON.stringify({
+          globalName: 'Alice Display',
+          displayName: 'Alice Display',
+          avatarURL: 'https://cdn.discordapp.com/avatars/d1/avatar_hash.webp',
+          discriminator: '0',
+        }),
+        'EX',
+        3600,
+      )
+    })
+
+    it('continues login if the linked community snapshot is temporarily absent', async () => {
+      authMocks.consume.mockResolvedValueOnce({ verifier: 'pkce-verifier', redirect: '/dashboard', guildID: '123456' })
       bullmqMocks.enqueueDiscordGuildSnapshot.mockResolvedValueOnce(null)
       const res = makeRes()
-
-      await c.oauthLogin(makeReq({ query: { code: 'code1', state: 'guildID=123456' } }), res)
-
-      expect(res.status).toHaveBeenCalledWith(404)
+      await c.oauthLogin(callback(), res)
+      expect(getEffectiveGuildSettingMock).not.toHaveBeenCalled()
+      expect(res.redirect).toHaveBeenCalled()
     })
 
-    it('skips joining the support guild when the linked guild disables it', async () => {
-      getUserTokenFromCodeMock.mockResolvedValueOnce({
-        token_type: 'Bearer',
-        access_token: 'at1',
-        expires_in: 3600,
-      })
-      getUserFromTokenMock.mockResolvedValueOnce({ id: 'd1', username: 'Bob' })
+    it('does not fail a valid sign-in when caching display profile data fails', async () => {
+      redisMock.set.mockRejectedValueOnce(new Error('Cache unavailable'))
+      const res = makeRes()
+      await c.oauthLogin(callback(), res)
+      expect(res.redirect).toHaveBeenCalled()
+      expect(res.append).toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('__Host-gmi_session='))
+    })
+
+    it('uses the effective paid preference when a linked community opts out of the support guild', async () => {
+      authMocks.consume.mockResolvedValueOnce({ verifier: 'pkce-verifier', redirect: '/dashboard', guildID: '123456' })
       bullmqMocks.enqueueDiscordGuildSnapshot.mockResolvedValueOnce({ id: 'g1' })
-      const getSettingMock = vi.fn().mockResolvedValueOnce(true)
-      const OriginalGuild = (await import('@gmod/domain-guild/Guild.js')).Guild
-      // @ts-expect-error augmenting the fake for this one test
-      OriginalGuild.prototype.getSetting = getSettingMock
-      saveUserPanelMock.mockResolvedValueOnce('panel-token')
-      saveUserMock.mockResolvedValueOnce(true)
-
-      await c.oauthLogin(makeReq({ query: { code: 'code1', state: 'guildID=123456' } }), makeRes())
-
+      getEffectiveGuildSettingMock.mockResolvedValueOnce(true)
+      await c.oauthLogin(callback(), makeRes())
+      expect(getEffectiveGuildSettingMock).toHaveBeenCalledWith('g1', 'verification_dont_join_support')
+      expect(getGuildSettingMock).not.toHaveBeenCalled()
       expect(addUserToGuildMock).not.toHaveBeenCalled()
     })
 
-    it('joins the main guild, saves the user, and redirects on success', async () => {
+    it('only attempts the support guild join when guilds.join was actually granted', async () => {
+      await c.oauthLogin(callback(), makeRes())
+      expect(addUserToGuildMock).toHaveBeenCalledWith('main-guild-1', 'd1', 'at1')
+      addUserToGuildMock.mockClear()
       getUserTokenFromCodeMock.mockResolvedValueOnce({
         token_type: 'Bearer',
         access_token: 'at1',
+        refresh_token: 'rt1',
         expires_in: 3600,
+        scope: 'identify guilds',
       })
-      getUserFromTokenMock.mockResolvedValueOnce({ id: 'd1', username: 'Bob' })
-      addUserToGuildMock.mockResolvedValueOnce(true)
-      saveUserPanelMock.mockResolvedValueOnce('panel-token')
-      saveUserMock.mockResolvedValueOnce(true)
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      const res = makeRes()
+      await c.oauthLogin(callback(), makeRes())
+      expect(addUserToGuildMock).not.toHaveBeenCalled()
+    })
 
+    it('does not block sign-in on a failed optional support guild join', async () => {
+      addUserToGuildMock.mockRejectedValueOnce(new Error('Optional join unavailable'))
+      await c.oauthLogin(callback(), makeRes())
+      expect(saveUserPanelMock).toHaveBeenCalled()
+    })
+
+    it('uses trusted request metadata and hides a revoked session if it disappears before cookie issuance', async () => {
+      const res = makeRes()
       await c.oauthLogin(
         makeReq({
-          query: { code: 'code1', state: 'redirect:/dashboard' },
-          headers: { host: 'api.example', 'x-forwarded-for': '1.2.3.4', 'cf-ipcountry': 'FR' },
+          query: { code: 'code1', state: 'state1' },
+          ip: '1.2.3.4',
+          headers: { 'cf-ipcountry': 'FR' },
           useragent: { os: 'Linux', browser: 'Firefox' },
         }),
         res,
       )
-
-      await vi.waitFor(() => expect(addUserToGuildMock).toHaveBeenCalled())
-      expect(logSpy).toHaveBeenCalledWith('User added to guild')
       expect(saveUserPanelMock).toHaveBeenCalledWith(
         'd1',
         expect.anything(),
         expect.objectContaining({ os: 'Linux', browser: 'Firefox', ip: '1.2.3.4', country: 'FR' }),
       )
-      expect(res.redirect).toHaveBeenCalledWith(expect.stringContaining('&redirect=/dashboard'))
-    })
-
-    it('logs and swallows a failure joining the guild', async () => {
-      getUserTokenFromCodeMock.mockResolvedValueOnce({
-        token_type: 'Bearer',
-        access_token: 'at1',
-        expires_in: 3600,
-      })
-      getUserFromTokenMock.mockResolvedValueOnce({ id: 'd1', username: 'Bob' })
-      addUserToGuildMock.mockRejectedValueOnce(new Error('discord down'))
-      saveUserPanelMock.mockResolvedValueOnce('panel-token')
-      saveUserMock.mockResolvedValueOnce(true)
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      await c.oauthLogin(makeReq({ query: { code: 'code1' } }), makeRes())
-
-      await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-    })
-
-    it('defaults os/browser/country when unavailable, uses connection.remoteAddress as a fallback IP', async () => {
-      getUserTokenFromCodeMock.mockResolvedValueOnce({
-        token_type: 'Bearer',
-        access_token: 'at1',
-        expires_in: 3600,
-      })
-      getUserFromTokenMock.mockResolvedValueOnce({ id: 'd1', username: 'Bob' })
-      addUserToGuildMock.mockResolvedValueOnce(true)
-      saveUserPanelMock.mockResolvedValueOnce('panel-token')
-      saveUserMock.mockResolvedValueOnce(true)
-
-      await c.oauthLogin(makeReq({ query: { code: 'code1' }, connection: { remoteAddress: '9.9.9.9' } }), makeRes())
-
-      expect(saveUserPanelMock).toHaveBeenCalledWith(
-        'd1',
-        expect.anything(),
-        expect.objectContaining({ os: 'Unknown', browser: 'Unknown', ip: '9.9.9.9', country: 'XX' }),
-      )
-    })
-
-    it('falls back to the runtime-derived redirect URI when oauthPanel has no redirect_uri param', async () => {
-      const { ConfigDiscord } = await import('@gmod/config')
-      const original = (ConfigDiscord as any).oauthPanel
-      ;(ConfigDiscord as any).oauthPanel = 'https://discord.com/oauth'
-      getUserTokenFromCodeMock.mockResolvedValueOnce({
-        token_type: 'Bearer',
-        access_token: 'at1',
-        expires_in: 3600,
-      })
-      getUserFromTokenMock.mockResolvedValueOnce({ id: 'd1', username: 'Bob' })
-      addUserToGuildMock.mockResolvedValueOnce(true)
-      saveUserPanelMock.mockResolvedValueOnce('panel-token')
-      saveUserMock.mockResolvedValueOnce(true)
-
-      try {
-        await c.oauthLogin(makeReq({ query: { code: 'code1' } }), makeRes())
-        expect(getUserTokenFromCodeMock).toHaveBeenCalledWith('code1', 'https://api.example/oauth/callback')
-      } finally {
-        ;(ConfigDiscord as any).oauthPanel = original
-      }
-    })
-
-    it('falls back to the runtime-derived redirect URI when oauthPanel is a malformed URL', async () => {
-      const { ConfigDiscord } = await import('@gmod/config')
-      const original = (ConfigDiscord as any).oauthPanel
-      ;(ConfigDiscord as any).oauthPanel = 'not a valid url'
-      getUserTokenFromCodeMock.mockResolvedValueOnce({
-        token_type: 'Bearer',
-        access_token: 'at1',
-        expires_in: 3600,
-      })
-      getUserFromTokenMock.mockResolvedValueOnce({ id: 'd1', username: 'Bob' })
-      addUserToGuildMock.mockResolvedValueOnce(true)
-      saveUserPanelMock.mockResolvedValueOnce('panel-token')
-      saveUserMock.mockResolvedValueOnce(true)
-
-      try {
-        await c.oauthLogin(makeReq({ query: { code: 'code1' } }), makeRes())
-        expect(getUserTokenFromCodeMock).toHaveBeenCalledWith('code1', 'https://api.example/oauth/callback')
-      } finally {
-        ;(ConfigDiscord as any).oauthPanel = original
-      }
+      authMocks.resolve.mockResolvedValueOnce(null)
+      const failed = makeRes()
+      await expect(c.oauthLogin(callback(), failed)).rejects.toMatchObject({ status: 401 })
+      expect(failed.append).not.toHaveBeenCalledWith('Set-Cookie', expect.stringContaining('__Host-gmi_session='))
     })
   })
 
@@ -466,11 +714,18 @@ describe('usersControllers', () => {
     ])
   })
 
-  it('findGuildServers delegates to getServersFromDiscordGuildID', async () => {
-    getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ id: 's1' }])
+  it('filters the server list before exposing stored credentials', async () => {
+    const allowed = { id: 's1', token: 'allowed-server-token' }
+    const forbidden = { id: 's2', token: 'forbidden-server-token' }
+    getServersFromDiscordGuildIDMock.mockResolvedValueOnce([allowed, forbidden])
+    dashboardAccessMock.mockImplementation((_panel, _guild, options) => options.serverID === 's1')
     const res = makeRes()
-    await c.findGuildServers({ dscGuild: { id: 'g1' } } as any, res)
+    const panelUser = { discordID: 'viewer' }
+    await c.findGuildServers({ dscGuild: { id: 'g1' }, panelUser } as any, res)
     expect(getServersFromDiscordGuildIDMock).toHaveBeenCalledWith('g1')
+    expect(res.send).toHaveBeenCalledWith([allowed])
+    expect(JSON.stringify(res.send.mock.calls)).not.toContain(forbidden.token)
+    expect(dashboardAccessMock).toHaveBeenCalledWith(panelUser, 'g1', { serverID: 's2' })
   })
 
   it('findGuildServer sends req.server', async () => {
@@ -515,9 +770,9 @@ describe('usersControllers', () => {
         isPremium: vi.fn().mockResolvedValueOnce(false),
         getLinks: vi.fn().mockResolvedValueOnce([{ id: 1 }, { id: 2 }]),
       }
-      const res = makeRes()
-      await c.postGuildLinks({ guild } as any, res)
-      expect(res.status).toHaveBeenCalledWith(403)
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      prismaMock.gm_server_links.count.mockResolvedValueOnce(2)
+      await expect(c.postGuildLinks({ guild } as any, makeRes())).rejects.toMatchObject({ code: 'quota_reached' })
     })
 
     it('creates a new link when under the limit', async () => {
@@ -526,6 +781,7 @@ describe('usersControllers', () => {
         getLinks: vi.fn().mockResolvedValueOnce([{ id: 1 }]),
         createNewLink: vi.fn().mockResolvedValueOnce({ id: 2 }),
       }
+      prismaMock.gm_server_links.create.mockResolvedValueOnce({ id: 2 })
       const res = makeRes()
       await c.postGuildLinks({ guild } as any, res)
       expect(res.send).toHaveBeenCalledWith({ id: 2 })
@@ -537,6 +793,7 @@ describe('usersControllers', () => {
         getLinks: vi.fn().mockResolvedValueOnce([{ id: 1 }, { id: 2 }]),
         createNewLink: vi.fn().mockResolvedValueOnce({ id: 3 }),
       }
+      prismaMock.gm_server_links.create.mockResolvedValueOnce({ id: 3 })
       const res = makeRes()
       await c.postGuildLinks({ guild } as any, res)
       expect(res.send).toHaveBeenCalledWith({ id: 3 })
@@ -544,6 +801,32 @@ describe('usersControllers', () => {
   })
 
   describe('putGuildLinks', () => {
+    it.each([{ alias: 'Renamed' }, { active: true }])(
+      'does not activate or retain an unsafe legacy link through a partial update: %j',
+      async (body) => {
+        const guild = {
+          id: 'g1',
+          getLink: vi.fn().mockResolvedValueOnce({ id: 1, url: 'javascript:alert(1)', alias: 'Old', active: true }),
+        }
+        const res = makeRes()
+        await c.putGuildLinks({ params: { linkID: '1' }, guild, body } as any, res)
+        expect(res.status).toHaveBeenCalledWith(400)
+        expect(res.send).toHaveBeenCalledWith({ error: 'invalid_link' })
+        expect(prismaMock.gm_server_links.update).not.toHaveBeenCalled()
+      },
+    )
+    it.each(['javascript:alert(1)', 'data:text/html,invalid', 'file:///tmp/example'])(
+      'refuses an unsupported URL before reading or writing a link: %s',
+      async (url) => {
+        const guild = { id: 'g1', getLink: vi.fn() }
+        const res = makeRes()
+        await c.putGuildLinks({ params: { linkID: '1' }, guild, body: { url } } as any, res)
+        expect(res.status).toHaveBeenCalledWith(400)
+        expect(guild.getLink).not.toHaveBeenCalled()
+        expect(prismaMock.gm_server_links.update).not.toHaveBeenCalled()
+      },
+    )
+
     it('returns 404 when the link is not found', async () => {
       const guild = { getLink: vi.fn().mockResolvedValueOnce(null), id: 'g1' }
       const res = makeRes()
@@ -560,13 +843,17 @@ describe('usersControllers', () => {
       const res = makeRes()
 
       await c.putGuildLinks(
-        { params: { linkID: '1' }, guild, body: { url: 'new', alias: undefined, active: undefined } } as any,
+        {
+          params: { linkID: '1' },
+          guild,
+          body: { url: 'https://example.test/new', alias: undefined, active: undefined },
+        } as any,
         res,
       )
 
       expect(prismaMock.gm_server_links.update).toHaveBeenCalledWith({
         where: { id: 1, guild: 'g1' },
-        data: { url: 'new', alias: 'a', active: true },
+        data: { url: 'https://example.test/new', alias: 'a', active: true },
       })
     })
 
@@ -685,10 +972,12 @@ describe('usersControllers', () => {
 
   it('getGuildBans delegates to processGetGuildBans', async () => {
     const guild = { id: 'g1' }
+    getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ id: 's1' }, { id: 's2' }])
+    dashboardAccessMock.mockImplementation((_panel, _guild, options) => options.serverID === 's1')
     modelMocks.processGetGuildBans.mockResolvedValueOnce({ status: 200, body: { gmodBans: [], discordBans: [] } })
     const res = makeRes()
     await c.getGuildBans({ guild } as any, res)
-    expect(modelMocks.processGetGuildBans).toHaveBeenCalledWith(guild)
+    expect(modelMocks.processGetGuildBans).toHaveBeenCalledWith(guild, ['s1'])
     expect(res.status).toHaveBeenCalledWith(200)
     expect(res.json).toHaveBeenCalledWith({ gmodBans: [], discordBans: [] })
   })
@@ -794,9 +1083,9 @@ describe('usersControllers', () => {
           getVerificationRoles: vi.fn().mockResolvedValueOnce([{ roleID: 'a' }, { roleID: 'b' }]),
         },
       })
-      const res = makeRes()
-      await c.createGuildVerificationsRoles(req, res)
-      expect(res.status).toHaveBeenCalledWith(403)
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      prismaMock.gm_guild_verify_role.count.mockResolvedValueOnce(2)
+      await expect(c.createGuildVerificationsRoles(req, makeRes())).rejects.toMatchObject({ code: 'quota_reached' })
     })
 
     it('returns 409 when the role already exists', async () => {
@@ -806,6 +1095,7 @@ describe('usersControllers', () => {
           getVerificationRoles: vi.fn().mockResolvedValueOnce([{ roleID: 'r1' }]),
         },
       })
+      prismaMock.gm_guild_verify_role.findFirst.mockResolvedValueOnce({ id: 1 })
       const res = makeRes()
       await c.createGuildVerificationsRoles(req, res)
       expect(res.status).toHaveBeenCalledWith(409)
@@ -820,9 +1110,12 @@ describe('usersControllers', () => {
 
     it('creates the verification role on success', async () => {
       const req = makeReq()
+      prismaMock.gm_guild_verify_role.create.mockResolvedValueOnce({ id: 1 })
       const res = makeRes()
       await c.createGuildVerificationsRoles(req, res)
-      expect(req.guild.createVerificationRole).toHaveBeenCalledWith('r1')
+      expect(prismaMock.gm_guild_verify_role.create).toHaveBeenCalledWith({
+        data: { guildID: req.guild.id, roleID: 'r1', isGiveRole: true, enabled: false },
+      })
       expect(res.send).toHaveBeenCalledWith({ id: 1 })
     })
   })
@@ -857,6 +1150,36 @@ describe('usersControllers', () => {
     })
 
     describe('putServerStatusButtons', () => {
+      it('rejects enabling a legacy button whose saved URL is unsafe without publishing it', async () => {
+        const server = {
+          id: 's1',
+          findStatusButton: vi.fn().mockResolvedValueOnce({
+            id: 1,
+            name: 'Old',
+            emoji: '',
+            url: 'javascript:alert(1)',
+            enable: false,
+          }),
+        }
+        const res = makeRes()
+        await c.putServerStatusButtons({ params: { buttonID: '1' }, server, body: { enable: true } } as any, res)
+        expect(res.status).toHaveBeenCalledWith(400)
+        expect(res.send).toHaveBeenCalledWith({ error: 'invalid_status_button' })
+        expect(prismaMock.gm_status_button.update).not.toHaveBeenCalled()
+        expect(bullmqMocks.enqueueDiscordServerStatusRefresh).not.toHaveBeenCalled()
+      })
+      it.each(['javascript:alert(1)', 'data:text/html,invalid', 'file:///tmp/example'])(
+        'refuses unsupported button URLs without triggering status publication: %s',
+        async (url) => {
+          const server = { id: 's1', findStatusButton: vi.fn() }
+          const res = makeRes()
+          await c.putServerStatusButtons({ params: { buttonID: '1' }, server, body: { url } } as any, res)
+          expect(res.status).toHaveBeenCalledWith(400)
+          expect(server.findStatusButton).not.toHaveBeenCalled()
+          expect(bullmqMocks.enqueueDiscordServerStatusRefresh).not.toHaveBeenCalled()
+        },
+      )
+
       it('returns 404 when the button is not found', async () => {
         const server = { id: 's1', findStatusButton: vi.fn().mockResolvedValueOnce(null) }
         const res = makeRes()
@@ -867,7 +1190,9 @@ describe('usersControllers', () => {
       it('updates the button and refreshes status when enabled', async () => {
         const server = {
           id: 's1',
-          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: false }),
+          findStatusButton: vi
+            .fn()
+            .mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'https://example.test', enable: false }),
         }
         prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: true })
         const res = makeRes()
@@ -881,32 +1206,52 @@ describe('usersControllers', () => {
       it('overwrites name/emoji/url when given, keeping the existing enable value', async () => {
         const server = {
           id: 's1',
-          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'old', emoji: 'oe', url: 'ou', enable: true }),
+          findStatusButton: vi
+            .fn()
+            .mockResolvedValueOnce({ id: 1, name: 'old', emoji: 'oe', url: 'https://example.test/old', enable: true }),
         }
         prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: true })
         const res = makeRes()
 
         await c.putServerStatusButtons(
-          { params: { buttonID: '1' }, server, body: { name: 'new', emoji: 'ne', url: 'nu' } } as any,
+          {
+            params: { buttonID: '1' },
+            server,
+            body: { name: 'new', emoji: 'ne', url: 'https://example.test/new' },
+          } as any,
           res,
         )
 
         expect(prismaMock.gm_status_button.update).toHaveBeenCalledWith({
           where: { id: 1, server: 's1' },
-          data: { name: 'new', emoji: 'ne', url: 'nu', enable: true },
+          data: { name: 'new', emoji: 'ne', url: 'https://example.test/new', enable: true },
         })
       })
 
-      it('does not refresh status when the updated button is disabled', async () => {
+      it('refreshes the message when a previously enabled button is disabled', async () => {
         const server = {
           id: 's1',
-          findStatusButton: vi.fn().mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'u', enable: true }),
+          findStatusButton: vi
+            .fn()
+            .mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'https://example.test', enable: true }),
         }
         prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: false })
         const res = makeRes()
 
         await c.putServerStatusButtons({ params: { buttonID: '1' }, server, body: { enable: false } } as any, res)
 
+        expect(bullmqMocks.enqueueDiscordServerStatusRefresh).toHaveBeenCalledWith('s1')
+      })
+
+      it('does not refresh while editing a button that remains inactive', async () => {
+        const server = {
+          id: 's1',
+          findStatusButton: vi
+            .fn()
+            .mockResolvedValueOnce({ id: 1, name: 'n', emoji: 'e', url: 'https://example.test', enable: false }),
+        }
+        prismaMock.gm_status_button.update.mockResolvedValueOnce({ id: 1, enable: false })
+        await c.putServerStatusButtons({ params: { buttonID: '1' }, server, body: { name: 'Draft' } } as any, makeRes())
         expect(bullmqMocks.enqueueDiscordServerStatusRefresh).not.toHaveBeenCalled()
       })
     })
@@ -1211,6 +1556,46 @@ describe('usersControllers', () => {
     })
   })
 
+  describe('getPublicServerRanking', () => {
+    it('passes the ranking query and sends the model response without changing the legacy route', async () => {
+      const query = { limit: '10', offset: '20', gameMode: 'darkrp', status: 'offline', search: 'community' }
+      const body = { servers: [], pagination: { total: 24, offset: 20, limit: 10 }, filters: { gameModes: ['darkrp'] } }
+      processGetPublicServerRankingMock.mockResolvedValueOnce({ status: 200, body })
+      const res = makeRes()
+
+      await c.getPublicServerRanking({ query } as any, res)
+
+      expect(processGetPublicServerRankingMock).toHaveBeenCalledWith(query)
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(res.send).toHaveBeenCalledWith(body)
+    })
+
+    it('preserves a query validation error returned by the model', async () => {
+      const body = { error: 'Invalid server ranking query' }
+      processGetPublicServerRankingMock.mockResolvedValueOnce({ status: 400, body })
+      const res = makeRes()
+
+      await c.getPublicServerRanking({ query: { limit: '-1' } } as any, res)
+
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(res.send).toHaveBeenCalledWith(body)
+    })
+  })
+
+  describe('previewServerStatus', () => {
+    it('uses the authorized server and preserves preview validation results', async () => {
+      const server = { id: 'authorized-server' }
+      const body = { settings: { show_status_chart: true } }
+      const response = { error: 'Status charts require Premium.' }
+      processPreviewServerStatusMock.mockResolvedValueOnce({ status: 403, body: response })
+      const res = makeRes()
+      await c.previewServerStatus({ server, body } as any, res)
+      expect(processPreviewServerStatusMock).toHaveBeenCalledWith(server, body)
+      expect(res.status).toHaveBeenCalledWith(403)
+      expect(res.send).toHaveBeenCalledWith(response)
+    })
+  })
+
   describe('vote channels', () => {
     it('getVoteChannels falls back to {}', async () => {
       const server = { getVoteChannel: vi.fn().mockResolvedValueOnce(null) }
@@ -1295,6 +1680,18 @@ describe('usersControllers', () => {
   })
 
   describe('putGuildSetting', () => {
+    it('preserves entitlement denials for the structured error middleware', async () => {
+      const error = new AccessDeniedError('verification.preferences', 'upgrade_required')
+      const guild = { setSetting: vi.fn().mockRejectedValueOnce(error) }
+      const res = makeRes()
+      await expect(
+        c.putGuildSetting(
+          { guild, params: { setting: 'verification_dont_join_support' }, body: { value: true } } as any,
+          res,
+        ),
+      ).rejects.toBe(error)
+      expect(res.status).not.toHaveBeenCalled()
+    })
     it('returns 400 when value is missing', async () => {
       badArgumentMock.mockReturnValueOnce(true)
       const res = makeRes()
@@ -1341,6 +1738,15 @@ describe('usersControllers', () => {
   })
 
   describe('putServerSetting', () => {
+    it('preserves entitlement denials for the structured error middleware', async () => {
+      const error = new AccessDeniedError('status.chart', 'upgrade_required')
+      const server = { setSetting: vi.fn().mockRejectedValueOnce(error) }
+      const res = makeRes()
+      await expect(
+        c.putServerSetting({ server, params: { setting: 'show_status_chart' }, body: { value: true } } as any, res),
+      ).rejects.toBe(error)
+      expect(res.status).not.toHaveBeenCalled()
+    })
     it('returns 400 when value is missing', async () => {
       badArgumentMock.mockReturnValueOnce(true)
       const res = makeRes()
@@ -1411,7 +1817,10 @@ describe('usersControllers', () => {
     it('postServerRoles creates and sends the role', async () => {
       prismaMock.gm_server_sync_roles.create.mockResolvedValueOnce({ id: 1 })
       const res = makeRes()
-      await c.postServerRoles({ params: { serverID: 's1', roleID: 'r1' } } as any, res)
+      await c.postServerRoles(
+        { server: { id: 's1', guild: 'g1' }, params: { serverID: 's1', roleID: 'r1' } } as any,
+        res,
+      )
       expect(res.send).toHaveBeenCalledWith({ id: 1 })
     })
 
@@ -1453,7 +1862,10 @@ describe('usersControllers', () => {
     it('deleteServerRoles returns 404 when not found', async () => {
       prismaMock.gm_server_sync_roles.findFirst.mockResolvedValueOnce(null)
       const res = makeRes()
-      await c.deleteServerRoles({ params: { serverID: 's1', roleID: 'r1' } } as any, res)
+      await c.deleteServerRoles(
+        { server: { id: 's1', guild: 'g1' }, params: { serverID: 's1', roleID: 'r1' } } as any,
+        res,
+      )
       expect(res.status).toHaveBeenCalledWith(404)
     })
 
@@ -1461,7 +1873,10 @@ describe('usersControllers', () => {
       const role = { id: 1 }
       prismaMock.gm_server_sync_roles.findFirst.mockResolvedValueOnce(role)
       const res = makeRes()
-      await c.deleteServerRoles({ params: { serverID: 's1', roleID: 'r1' } } as any, res)
+      await c.deleteServerRoles(
+        { server: { id: 's1', guild: 'g1' }, params: { serverID: 's1', roleID: 'r1' } } as any,
+        res,
+      )
       expect(prismaMock.gm_server_sync_roles.delete).toHaveBeenCalledWith({
         where: { serverID_roleID: { serverID: 's1', roleID: 'r1' } },
       })
@@ -1480,7 +1895,10 @@ describe('usersControllers', () => {
     it('postServerTeams creates and sends the role', async () => {
       prismaMock.gm_server_sync_team_roles.create.mockResolvedValueOnce({ id: 1 })
       const res = makeRes()
-      await c.postServerTeams({ params: { serverID: 's1', roleID: 'r1' } } as any, res)
+      await c.postServerTeams(
+        { server: { id: 's1', guild: 'g1' }, params: { serverID: 's1', roleID: 'r1' } } as any,
+        res,
+      )
       expect(res.send).toHaveBeenCalledWith({ id: 1 })
     })
 
@@ -1496,7 +1914,11 @@ describe('usersControllers', () => {
       prismaMock.gm_server_sync_team_roles.update.mockResolvedValueOnce({ id: 1 })
       const res = makeRes()
       await c.putServerTeams(
-        { params: { serverID: 's1', id: '1' }, body: { teamName: 'Blue', enable: undefined } } as any,
+        {
+          server: { id: 's1', guild: 'g1' },
+          params: { serverID: 's1', id: '1' },
+          body: { teamName: 'Blue', enable: undefined },
+        } as any,
         res,
       )
       expect(prismaMock.gm_server_sync_team_roles.update).toHaveBeenCalledWith({
@@ -1517,6 +1939,37 @@ describe('usersControllers', () => {
         where: { serverID: 's1', id: 1 },
         data: { teamName: 'Red', enable: false },
       })
+    })
+
+    it('permits disabling an unchanged premium team after the subscription ends', async () => {
+      accessMock.mockResolvedValueOnce(accessSnapshot(false))
+      prismaMock.gm_server_sync_team_roles.findFirst.mockResolvedValueOnce({ teamName: 'Red', enable: true })
+      prismaMock.gm_server_sync_team_roles.update.mockResolvedValueOnce({ id: 1, teamName: 'Red', enable: false })
+      await c.putServerTeams(
+        { params: { serverID: 's1', id: '1' }, body: { teamName: 'Red', enable: false } } as any,
+        makeRes(),
+      )
+      expect(accessMock).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_sync_team_roles.update).toHaveBeenCalledWith({
+        where: { serverID: 's1', id: 1 },
+        data: { teamName: 'Red', enable: false },
+      })
+    })
+
+    it('still requires premium when disabling also changes a team mapping', async () => {
+      accessMock.mockResolvedValueOnce(accessSnapshot(false))
+      prismaMock.gm_server_sync_team_roles.findFirst.mockResolvedValueOnce({ teamName: 'Red', enable: true })
+      await expect(
+        c.putServerTeams(
+          {
+            server: { guild: 'g1' },
+            params: { serverID: 's1', id: '1' },
+            body: { teamName: 'Blue', enable: false },
+          } as any,
+          makeRes(),
+        ),
+      ).rejects.toMatchObject({ code: 'upgrade_required' })
+      expect(prismaMock.gm_server_sync_team_roles.update).not.toHaveBeenCalled()
     })
 
     it('deleteServerTeams returns 404 when not found', async () => {
@@ -1555,6 +2008,16 @@ describe('usersControllers', () => {
   })
 
   describe('patchGuildBotInstance', () => {
+    it('preserves the entitlement refusal so the HTTP boundary can return its actual access status', async () => {
+      const error = new AccessDeniedError('bot.custom', 'upgrade_required')
+      const guild = { updateBotInstanceToken: vi.fn().mockRejectedValueOnce(error), getBotClientInfo: vi.fn() }
+      const res = makeRes()
+      await expect(
+        c.patchGuildBotInstance({ guild, panelUser: { user: {} }, body: { token: 'newtok' } } as any, res),
+      ).rejects.toBe(error)
+      expect(guild.getBotClientInfo).not.toHaveBeenCalled()
+      expect(res.send).not.toHaveBeenCalled()
+    })
     it('returns 400 on missing token', async () => {
       badArgumentMock.mockReturnValueOnce(true)
       const res = makeRes()
@@ -1578,7 +2041,7 @@ describe('usersControllers', () => {
       const res = makeRes()
       await c.patchGuildBotInstance({ guild, panelUser: { user: {} }, body: { token: 'newtok' } } as any, res)
       expect(res.status).toHaveBeenCalledWith(400)
-      expect(res.send).toHaveBeenCalledWith({ error: 'bad token' })
+      expect(res.send).toHaveBeenCalledWith({ error: 'Unable to configure the custom bot.' })
     })
   })
 
@@ -1595,12 +2058,15 @@ describe('usersControllers', () => {
   })
 
   describe('deleteUserGmodPurchase', () => {
-    it('returns 403 when a real guild exists and the user is not admin of it', async () => {
-      bullmqMocks.enqueueDiscordGuildSnapshot.mockResolvedValueOnce({ id: 'g1' })
+    it('allows personal purchase recovery without Discord administration or a bot snapshot', async () => {
+      modelMocks.processDeleteUserGmodPurchase.mockResolvedValueOnce({ status: 200, body: {} })
       const panelUser = { isAdminOfGuild: vi.fn().mockResolvedValueOnce(false) }
       const res = makeRes()
       await c.deleteUserGmodPurchase({ params: { guildID: 'g1', discordID: 'd1' }, panelUser } as any, res)
-      expect(res.status).toHaveBeenCalledWith(403)
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(panelUser.isAdminOfGuild).not.toHaveBeenCalled()
+      expect(bullmqMocks.enqueueDiscordGuildSnapshot).not.toHaveBeenCalled()
+      expect(modelMocks.processDeleteUserGmodPurchase).toHaveBeenCalledWith('d1', 'g1')
     })
 
     it('proceeds when the guild snapshot is falsy (guild no longer exists)', async () => {
@@ -1628,6 +2094,19 @@ describe('usersControllers', () => {
   })
 
   describe('putGuildBotInstance', () => {
+    it.each([
+      { avatar: 'https://example.test/avatar.png' },
+      { avatar: '/tmp/file.png' },
+      { username: 'Example', token: 'secret' },
+      { username: 'x' },
+    ])('refuses an invalid profile command before changing the bot: %j', async (body) => {
+      const guild = { updateBotInstanceInfo: vi.fn() }
+      const res = makeRes()
+      await c.putGuildBotInstance({ guild, body } as any, res)
+      expect(res.status).toHaveBeenCalledWith(400)
+      expect(guild.updateBotInstanceInfo).not.toHaveBeenCalled()
+    })
+
     it('returns 400 on missing fields', async () => {
       badArgumentMock.mockReturnValueOnce(true)
       const res = makeRes()
@@ -1645,27 +2124,33 @@ describe('usersControllers', () => {
         {
           guild,
           panelUser: { user: {} },
-          body: { username: 'n', avatar: 'a', token: 't', status: 'rotate' },
+          body: { username: 'New bot', status: 'rotate' },
         } as any,
         res,
       )
       expect(guild.updateBotInstanceInfo).toHaveBeenCalledWith({
-        username: 'n',
-        avatar: 'a',
-        token: 't',
+        username: 'New bot',
         status: 'rotate',
       })
       expect(res.send).toHaveBeenCalledWith({ id: 'bot1' })
     })
   })
 
-  it('deleteGuildBotInstance delegates to todoControllers', async () => {
-    todoControllersMock.mockResolvedValueOnce(undefined)
-    const req = {} as any
-    const res = makeRes()
-    await c.deleteGuildBotInstance(req, res)
-    expect(todoControllersMock).toHaveBeenCalledWith(req, res)
-  })
+  it.each([200, 409, 503])(
+    'deleteGuildBotInstance forwards the removal result (%s) using its authorized guild',
+    async (status) => {
+      const body = status === 200 ? { removed: true, tokenConfigured: false } : { error: 'main_bot_required' }
+      processDeleteGuildBotInstanceMock.mockResolvedValueOnce({ status, body })
+      const guild = { id: 'authorized-guild' }
+      const req = { guild, params: { guildID: 'untrusted-guild' }, body: { guildID: 'other-guild' } } as any
+      const res = makeRes()
+      await c.deleteGuildBotInstance(req, res)
+      expect(processDeleteGuildBotInstanceMock).toHaveBeenCalledExactlyOnceWith(guild)
+      expect(res.status).toHaveBeenCalledWith(status)
+      expect(res.send).toHaveBeenCalledWith(body)
+      expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store')
+    },
+  )
 
   it('getUserGmodStorePurchases delegates to processGetUserGmodStorePurchases', async () => {
     modelMocks.processGetUserGmodStorePurchases.mockResolvedValueOnce({ status: 200, body: {} })
@@ -1683,7 +2168,7 @@ describe('usersControllers', () => {
   it('postServerPseudo creates and sends the pseudo', async () => {
     prismaMock.gm_server_pseudo.create.mockResolvedValueOnce({ id: 1 })
     const res = makeRes()
-    await c.postServerPseudo({ params: { serverID: 's1' } } as any, res)
+    await c.postServerPseudo({ server: { id: 's1', guild: 'g1' }, params: { serverID: 's1' } } as any, res)
     expect(res.send).toHaveBeenCalledWith({ id: 1 })
   })
 
@@ -1697,19 +2182,6 @@ describe('usersControllers', () => {
     modelMocks.processDeleteServerPseudo.mockResolvedValueOnce({ status: 200, body: {} })
     await c.deleteServerPseudo({ params: { serverID: 's1', roleID: 'r1' } } as any, makeRes())
     expect(modelMocks.processDeleteServerPseudo).toHaveBeenCalledWith('s1', 'r1')
-  })
-
-  it('getUserNotifications sends the notifications', async () => {
-    prismaMock.gm_users_notifications.findMany.mockResolvedValueOnce([{ id: 1 }])
-    const res = makeRes()
-    await c.getUserNotifications({ params: { discordID: 'd1' } } as any, res)
-    expect(res.json).toHaveBeenCalledWith([{ id: 1 }])
-  })
-
-  it('patchUserNotifications delegates to processPatchUserNotifications', async () => {
-    modelMocks.processPatchUserNotifications.mockResolvedValueOnce({ status: 200, body: {} })
-    await c.patchUserNotifications({ params: { discordID: 'd1', notificationID: '1' } } as any, makeRes())
-    expect(modelMocks.processPatchUserNotifications).toHaveBeenCalledWith('d1', '1')
   })
 
   it('getUserDataRequest sends the requests', async () => {
@@ -1767,8 +2239,11 @@ describe('usersControllers', () => {
 
   it('getServerLogs delegates to processGetServerLogs', async () => {
     modelMocks.processGetServerLogs.mockResolvedValueOnce({ status: 200, body: {} })
-    await c.getServerLogs({ params: { serverID: 's1' }, query: {} } as any, makeRes())
-    expect(modelMocks.processGetServerLogs).toHaveBeenCalledWith('s1', {})
+    await c.getServerLogs(
+      { server: { id: 's1', guild: 'g1' }, params: { serverID: 's1' }, query: {} } as any,
+      makeRes(),
+    )
+    expect(modelMocks.processGetServerLogs).toHaveBeenCalledWith('s1', {}, 'g1')
   })
 
   it('getServerWarns delegates to processGetServerWarns', async () => {
@@ -1784,11 +2259,11 @@ describe('usersControllers', () => {
   })
 
   describe('server logs triggers', () => {
-    it('getServerLogsTrigger returns 403 for a non-premium server', async () => {
-      const server = { isPremium: vi.fn().mockResolvedValueOnce(false) }
+    it('getServerLogsTrigger keeps saved configuration readable after expiration', async () => {
+      const server = { getLogsTrigger: vi.fn().mockResolvedValueOnce([{ id: 1 }]) }
       const res = makeRes()
       await c.getServerLogsTrigger({ server } as any, res)
-      expect(res.status).toHaveBeenCalledWith(403)
+      expect(res.send).toHaveBeenCalledWith([{ id: 1 }])
     })
 
     it('getServerLogsTrigger sends the triggers for a premium server', async () => {
@@ -1819,4 +2294,222 @@ describe('usersControllers', () => {
       expect(modelMocks.processDeleteServerLogsTrigger).toHaveBeenCalledWith({}, '1')
     })
   })
+  describe('complete dashboard creation bodies', () => {
+    const serverCases = [
+      {
+        kind: 'role',
+        controller: c.postServerRoles,
+        table: 'gm_server_sync_roles',
+        input: { userGroup: 'admins', enable: true },
+        expected: { roleID: 'r1', userGroup: 'admins', enable: true },
+      },
+      {
+        kind: 'team',
+        controller: c.postServerTeams,
+        table: 'gm_server_sync_team_roles',
+        input: { teamName: 'Police', enable: false },
+        expected: { roleID: 'r1', teamName: 'Police', enable: false },
+      },
+      {
+        kind: 'pseudo',
+        controller: c.postServerPseudo,
+        table: 'gm_server_pseudo',
+        input: { role: 'admins', name: '', prefix: '[A]', enabled: true },
+        expected: { role: 'admins', name: '', prefix: '[A]', enabled: true },
+      },
+      {
+        kind: 'filter',
+        controller: c.postGmodToDiscordFilter,
+        table: 'gm_server_sync_chat_filter',
+        input: { element: 'message', operator: 'startWith', trigger: ' secret ', action: 'block', active: true },
+        expected: { element: 'message', operator: 'startWith', trigger: ' secret ', action: 'block', active: true },
+      },
+    ]
+    it.each(serverCases)(
+      'creates one complete $kind owned by the authorized server',
+      async ({ controller, table, input, expected }) => {
+        const owned = { id: 'owned-server', isPremium: vi.fn().mockResolvedValue(true) }
+        prismaMock[table].create.mockImplementationOnce(async ({ data }: { data: Record<string, unknown> }) => ({
+          id: 1,
+          ...data,
+        }))
+        const res = makeRes()
+        await controller({ server: owned, params: { serverID: 'owned-server', roleID: 'r1' }, body: input } as any, res)
+        expect(prismaMock[table].create).toHaveBeenCalledExactlyOnceWith({
+          data: { serverID: 'owned-server', ...expected },
+        })
+        expect(res.status).toHaveBeenCalledWith(200)
+        expect(res.send).toHaveBeenCalledWith({ id: 1, serverID: 'owned-server', ...expected })
+      },
+    )
+    it.each(serverCases)(
+      'rejects an incomplete $kind without falling back to a placeholder',
+      async ({ controller, table }) => {
+        const res = makeRes()
+        await controller(
+          {
+            server: { id: 's1', isPremium: vi.fn().mockResolvedValue(true) },
+            params: { serverID: 's1', roleID: 'r1' },
+            body: { active: true },
+          } as any,
+          res,
+        )
+        expect(res.status).toHaveBeenCalledWith(400)
+        expect(prismaMock[table].create).not.toHaveBeenCalled()
+        expect(dashboardTransactionMock).not.toHaveBeenCalled()
+      },
+    )
+    it.each(serverCases)('retains the historical empty-body $kind creation contract', async ({ controller, table }) => {
+      prismaMock[table].create.mockResolvedValueOnce({ id: 1 })
+      const res = makeRes()
+      await controller({ server: { id: 's1' }, params: { serverID: 's1', roleID: 'r1' }, body: {} } as any, res)
+      expect(prismaMock[table].create).toHaveBeenCalledOnce()
+      expect(res.send).toHaveBeenCalledWith({ id: 1 })
+    })
+    it.each(
+      serverCases.flatMap((row) => [
+        { ...row, legacy: true },
+        { ...row, legacy: false },
+      ]),
+    )('applies the same access policy to $kind legacy=$legacy', async ({ controller, table, input, kind, legacy }) => {
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      if (kind === 'role') prismaMock[table].count.mockResolvedValueOnce(4)
+      if (kind === 'pseudo') prismaMock[table].count.mockResolvedValueOnce(3)
+      const req = {
+        server: { id: 's1', guild: 'g1' },
+        params: { serverID: 's1', roleID: 'r1' },
+        body: legacy ? {} : input,
+      } as any
+      await expect(controller(req, makeRes())).rejects.toMatchObject({
+        code: kind === 'role' || kind === 'pseudo' ? 'quota_reached' : 'upgrade_required',
+      })
+      expect(prismaMock[table].create).not.toHaveBeenCalled()
+    })
+    it('creates a full link in the authorized guild without calling placeholder creation', async () => {
+      const guild = {
+        id: 'g1',
+        isPremium: vi.fn().mockResolvedValue(true),
+        getLinks: vi.fn().mockResolvedValue([]),
+        createNewLink: vi.fn(),
+      }
+      const input = { alias: 'Forum', url: 'https://example.test/forum', active: true }
+      prismaMock.gm_server_links.create.mockResolvedValueOnce({ id: 1, guild: 'g1', ...input })
+      const res = makeRes()
+      await c.postGuildLinks({ guild, body: input } as any, res)
+      expect(prismaMock.gm_server_links.create).toHaveBeenCalledExactlyOnceWith({ data: { guild: 'g1', ...input } })
+      expect(guild.createNewLink).not.toHaveBeenCalled()
+      expect(res.send).toHaveBeenCalledWith({ id: 1, guild: 'g1', ...input })
+    })
+    it('creates a full verification rule after the existing guild and role checks', async () => {
+      const guild = {
+        id: 'g1',
+        isPremium: vi.fn().mockResolvedValue(true),
+        getVerificationRoles: vi.fn().mockResolvedValue([]),
+        createVerificationRole: vi.fn(),
+      }
+      const input = { isGiveRole: false, enabled: true }
+      prismaMock.gm_guild_verify_role.create.mockResolvedValueOnce({ id: 1, guildID: 'g1', roleID: 'r1', ...input })
+      const res = makeRes()
+      await c.createGuildVerificationsRoles(
+        { guild, params: { roleID: 'r1' }, dscGuild: { roles: [{ id: 'r1' }] }, body: input } as any,
+        res,
+      )
+      expect(prismaMock.gm_guild_verify_role.create).toHaveBeenCalledExactlyOnceWith({
+        data: { guildID: 'g1', roleID: 'r1', ...input },
+      })
+      expect(guild.createVerificationRole).not.toHaveBeenCalled()
+      expect(res.send).toHaveBeenCalledWith({ id: 1, guildID: 'g1', roleID: 'r1', ...input })
+    })
+  })
+})
+
+describe('public webhook destination response boundaries', () => {
+  beforeEach(() => {
+    badArgumentMock.mockReset().mockReturnValue(false)
+    for (const name of [
+      'enqueueDiscordServerScreenshotChannelCreate',
+      'enqueueDiscordServerScreenshotChannelDelete',
+      'enqueueDiscordServerSyncChatCreate',
+      'enqueueDiscordServerSyncChatDelete',
+      'enqueueDiscordServerVoteChannelCreate',
+      'enqueueDiscordServerVoteChannelDelete',
+      'enqueueDiscordServerLogsChannelCreate',
+      'enqueueDiscordServerLogsChannelDelete',
+    ] as const)
+      bullmqMocks[name].mockReset()
+  })
+
+  const families = [
+    {
+      name: 'screenshots',
+      get: c.findServerScreenshots,
+      post: c.postServerScreenshots,
+      remove: c.deleteServerScreenshots,
+      getter: 'getScreenshotsChannel',
+      create: 'enqueueDiscordServerScreenshotChannelCreate',
+      destroy: 'enqueueDiscordServerScreenshotChannelDelete',
+      expected: { channelID: 'channel-1', adminCmd: false },
+    },
+    {
+      name: 'chat',
+      get: c.findServerSyncChat,
+      post: c.postServerSyncChat,
+      remove: c.deleteServerSyncChat,
+      getter: 'getSyncChat',
+      create: 'enqueueDiscordServerSyncChatCreate',
+      destroy: 'enqueueDiscordServerSyncChatDelete',
+      expected: { channel: 'channel-1' },
+    },
+    {
+      name: 'vote',
+      get: c.getVoteChannels,
+      post: c.postVoteChannels,
+      remove: c.deleteVoteChannels,
+      getter: 'getVoteChannel',
+      create: 'enqueueDiscordServerVoteChannelCreate',
+      destroy: 'enqueueDiscordServerVoteChannelDelete',
+      expected: { channelID: 'channel-1', adminCmd: false },
+    },
+    {
+      name: 'logs',
+      get: c.getLogsChannel,
+      post: c.postLogsChannel,
+      remove: c.deleteLogsChannel,
+      getter: 'getLogsChannel',
+      create: 'enqueueDiscordServerLogsChannelCreate',
+      destroy: 'enqueueDiscordServerLogsChannelDelete',
+      expected: { channelID: 'channel-1', adminCmd: false },
+    },
+  ] as const
+  it.each(families)(
+    'keeps credentials and internal metadata out of $name read/create/delete responses',
+    async (family) => {
+      const internal = {
+        serverID: 's1',
+        server: 's1',
+        guild: 'g1',
+        channelID: 'channel-1',
+        channel: 'channel-1',
+        adminCmd: false,
+        id: 'private-webhook-id',
+        webhookID: 'private-webhook-id',
+        webhook: 'private-webhook-id',
+        token: 'private-webhook-token',
+        webhookToken: 'private-webhook-token',
+        nested: { token: 'private-nested-token' },
+      }
+      const server = { id: 's1', [family.getter]: vi.fn().mockResolvedValue(internal) }
+      bullmqMocks[family.create].mockResolvedValueOnce(internal)
+      bullmqMocks[family.destroy].mockResolvedValueOnce(internal)
+      for (const handle of [family.get, family.post, family.remove]) {
+        const res = makeRes()
+        await handle({ server, body: { channelID: 'channel-1' } } as any, res)
+        expect(res.send).toHaveBeenCalledWith(family.expected)
+        expect(JSON.stringify(res.send.mock.calls)).not.toMatch(/private-webhook|private-nested|"token"|"webhookToken"/)
+      }
+      expect(bullmqMocks[family.create]).toHaveBeenCalledExactlyOnceWith('s1', 'channel-1')
+      expect(bullmqMocks[family.destroy]).toHaveBeenCalledExactlyOnceWith('s1')
+      expect(internal.webhookToken).toBe('private-webhook-token')
+    },
+  )
 })

@@ -1,4 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('../../../src/models/v6/rewardsEvents.js', () => ({ notifyVerifiedRewards: vi.fn() }))
+
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+const retainedTrustMock = vi.fn().mockResolvedValue(null)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  getRetainedTrust: retainedTrustMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
 
 vi.mock('@gmod/config', () => ({
   ConfigServer: { domain: 'https://gmod-integration.com', websiteUrl: 'https://gmod-integration.com' },
@@ -8,7 +20,7 @@ const axiosPostMock = vi.fn()
 vi.mock('axios', () => ({ default: { post: axiosPostMock } }))
 
 const gmLogMock = vi.fn()
-vi.mock('../../../src/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const removeDiscordSyncMock = vi.fn()
 const removeServerSyncMock = vi.fn()
@@ -32,11 +44,12 @@ const prismaMock: any = {
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
-const { processSteamVerification, processSteamVerificationReturn } = await import(
-  '../../../src/models/v3/steamControllerModels.js'
-)
+const { processSteamVerification, processSteamVerificationReturn } =
+  await import('../../../src/models/v3/steamControllerModels.js')
 
 function resetAllMocks() {
+  isErasureBlockedMock.mockReset().mockResolvedValue(false)
+  retainedTrustMock.mockReset().mockResolvedValue(null)
   axiosPostMock.mockReset()
   gmLogMock.mockClear()
   removeDiscordSyncMock.mockReset()
@@ -69,7 +82,11 @@ describe('steamControllerModels', () => {
     it('returns a redirect to the Steam OpenID login URL', () => {
       const result = processSteamVerification({ verificationCode: 'code1' })
       expect(result).toEqual(
-        expect.objectContaining({ kind: 'redirect', status: 302, url: expect.stringContaining('steamcommunity.com/openid/login') }),
+        expect.objectContaining({
+          kind: 'redirect',
+          status: 302,
+          url: expect.stringContaining('steamcommunity.com/openid/login'),
+        }),
       )
       expect((result as any).url).toContain('code1')
     })
@@ -88,6 +105,43 @@ describe('steamControllerModels', () => {
   })
 
   describe('processSteamVerificationReturn', () => {
+    it('refuses linking an erased Discord or Steam identity after validating the OpenID assertion', async () => {
+      prismaMock.gm_user.findFirst.mockResolvedValueOnce({ id: 'u1' })
+      axiosPostMock.mockResolvedValueOnce({ data: 'is_valid:true' })
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      expect(
+        await processSteamVerificationReturn({
+          verificationCode: 'code1',
+          'openid.claimed_id': 'https://steamcommunity.com/openid/id/765',
+        }),
+      ).toEqual({
+        kind: 'json',
+        status: 409,
+        body: { error: 'personal_data_erasure_blocked' },
+      })
+      expect(isErasureBlockedMock).toHaveBeenCalledWith('u1', '765')
+      expect(prismaMock.gm_user.findMany).not.toHaveBeenCalled()
+      expect(prismaMock.gm_user.update).not.toHaveBeenCalled()
+      expect(enqueueDiscordGuildVerifyUserMock).not.toHaveBeenCalled()
+    })
+    it('restores retained zero reputation when the Steam identity is linked to a new account', async () => {
+      prismaMock.gm_user.findFirst.mockResolvedValueOnce({ id: 'new-account' })
+      axiosPostMock.mockResolvedValueOnce({ data: 'is_valid:true' })
+      prismaMock.gm_user.findMany.mockResolvedValueOnce([])
+      prismaMock.gm_user.update.mockResolvedValueOnce({})
+      getPanelUserFromDiscordIDMock.mockResolvedValueOnce(null)
+      retainedTrustMock.mockResolvedValueOnce(0)
+      await processSteamVerificationReturn({
+        verificationCode: 'code1',
+        'openid.claimed_id': 'https://steamcommunity.com/openid/id/765',
+      })
+      expect(prismaMock.gm_user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'new-account' },
+          data: expect.objectContaining({ steam: '765', trust: 0 }),
+        }),
+      )
+    })
     it('returns 400 when the verification code is missing', async () => {
       const result = await processSteamVerificationReturn({})
       expect(result).toEqual({ kind: 'text', status: 400, text: 'Verification code is missing' })

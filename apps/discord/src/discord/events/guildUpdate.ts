@@ -1,12 +1,14 @@
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { updateGuildStat } from '@gmod/domain-guild/discordModels.js'
 import { type Guild } from 'discord.js'
 import { setCachedGuildPreferredLocale } from '@gmod/core/utils/guildLocaleCache.js'
 import { deleteStoredAvatar, replaceStoredAvatar } from '@gmod/infra-minio'
+import { invalidateDiscordGuildPermissions } from '@gmod/domain-user/guildPermissions.js'
 
 export default {
   name: 'guildUpdate',
   async execute(oldGuild: Guild, newGuild: Guild) {
+    if (oldGuild.ownerId !== newGuild.ownerId) await invalidateDiscordGuildPermissions({ guildID: newGuild.id })
     const iconChanged = oldGuild.icon !== newGuild.icon
     const nameChanged = oldGuild.name !== newGuild.name
     const localeChanged = oldGuild.preferredLocale !== newGuild.preferredLocale
@@ -15,7 +17,9 @@ export default {
     if (iconChanged) {
       gmLog('event', `Guild icon changed for ${newGuild.id}`)
       if (newGuild.icon) {
-        await replaceStoredAvatar('guild', newGuild.id, newGuild.iconURL({ extension: 'png', size: 256 })).catch(() => null)
+        await replaceStoredAvatar('guild', newGuild.id, newGuild.iconURL({ extension: 'png', size: 256 })).catch(
+          () => null,
+        )
       } else {
         await deleteStoredAvatar('guild', newGuild.id)
       }

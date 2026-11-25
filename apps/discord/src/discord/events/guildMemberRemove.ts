@@ -1,9 +1,15 @@
 import { type GuildMember } from 'discord.js'
 import prisma from '@gmod/infra-prisma'
+import { invalidateDiscordGuildPermissions } from '@gmod/domain-user/guildPermissions.js'
+import { refreshGuildMemberPlayerAccess } from '@gmod/domain-guild/playerAccessNotifications.js'
 
 export default {
   name: 'guildMemberRemove',
   async execute(remove_info: GuildMember) {
+    await invalidateDiscordGuildPermissions({ discordID: remove_info.id, guildID: remove_info.guild.id }).catch(
+      () => {},
+    )
+    await refreshGuildMemberPlayerAccess(remove_info.guild.id, remove_info.id).catch(() => {})
     const dbGuild = await prisma.gm_guild.findFirst({
       where: {
         guild: remove_info.guild.id,

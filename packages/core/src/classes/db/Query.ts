@@ -7,13 +7,7 @@ export class Query {
   public readonly orderBy?: 'ASC' | 'DESC'
   public readonly filterField?: string
   public readonly filterComparator?:
-    | 'equal'
-    | 'not_equal'
-    | 'greater_than'
-    | 'less_than'
-    | 'contains'
-    | 'starts_with'
-    | 'ends_with'
+    'equal' | 'not_equal' | 'greater_than' | 'less_than' | 'contains' | 'starts_with' | 'ends_with'
   public readonly filterValue?: unknown
 
   private constructor(data: QueryInput) {

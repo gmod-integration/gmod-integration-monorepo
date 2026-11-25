@@ -58,18 +58,10 @@ describe('pages/dashboard/guilds/servers/logs/ListLog.tsx', () => {
         { ply: { name: 'Bob' }, attacker: { name: 'Killer' }, damage: '10' },
         ['Bob', 'has been hurt by', 'Killer', 'for', '10', 'damage'],
       ],
-      [
-        'player_initial_spawn',
-        { ply: { name: 'Bob' } },
-        ['Bob', 'has spawned for the first time'],
-      ],
+      ['player_initial_spawn', { ply: { name: 'Bob' } }, ['Bob', 'has spawned for the first time']],
       ['dark_rp_drop_money', { ply: { name: 'Bob' }, amount: '100' }, ['Bob', 'has dropped', '100']],
       ['dark_rp_picked_up_money', { ply: { name: 'Bob' }, amount: '100' }, ['Bob', 'has picked up', '100']],
-      [
-        'dark_rp_picked_up_cheque',
-        { ply: { name: 'Bob' }, amount: '100' },
-        ['Bob', 'has picked up cheque', '100'],
-      ],
+      ['dark_rp_picked_up_cheque', { ply: { name: 'Bob' }, amount: '100' }, ['Bob', 'has picked up cheque', '100']],
       ['ch_atm_send_money', { ply: { name: 'Bob' }, amount: '100' }, ['Bob', 'has sent', '100']],
       ['ch_atm_receive_money', { ply: { name: 'Bob' }, amount: '100' }, ['Bob', 'has received', '100']],
       ['ch_atm_take_money', { ply: { name: 'Bob' }, amount: '100' }, ['Bob', 'has taken', '100']],
@@ -79,13 +71,16 @@ describe('pages/dashboard/guilds/servers/logs/ListLog.tsx', () => {
       ['player_ban', { ply: { name: 'Bob' }, reason: 'cheating' }, ['Bob', 'has been banned', 'cheating']],
       ['player_unban', { ply: { name: 'Bob' }, reason: 'appeal' }, ['Bob', 'has been unbanned', 'appeal']],
       ['player_kick', { ply: { name: 'Bob' }, reason: 'afk' }, ['Bob', 'has been kicked', 'afk']],
-    ] as [string, unknown, string[]][])('renders %s with the expected translated content', (category, data, expected) => {
-      const { container } = renderLog(category, data)
-      const cell = messageCell(container)
-      for (const text of expected) {
-        expect(cell.textContent).toContain(text)
-      }
-    })
+    ] as [string, unknown, string[]][])(
+      'renders %s with the expected translated content',
+      (category, data, expected) => {
+        const { container } = renderLog(category, data)
+        const cell = messageCell(container)
+        for (const text of expected) {
+          expect(cell.textContent).toContain(text)
+        }
+      },
+    )
 
     it('renders nothing for server_start (handled but intentionally empty)', () => {
       const { container } = renderLog('server_start', {})
@@ -133,21 +128,21 @@ describe('pages/dashboard/guilds/servers/logs/ListLog.tsx', () => {
   describe('show more / download actions', () => {
     it('toggles the JSON detail row open and closed, flipping the chevron icon', async () => {
       const { container } = renderLog('player_ready', { ply: { name: 'Bob' } })
-      const toggle = container.querySelector('.tooltip-info[data-tip="Show More"]') as HTMLElement
+      const toggle = container.querySelector('button[aria-label="View event details"]') as HTMLElement
       expect(toggle).toBeTruthy()
-      expect(container.querySelector('.fa-chevron-down')).toBeInTheDocument()
-      expect(container.querySelector('.fa-chevron-up')).not.toBeInTheDocument()
+      expect(container.querySelector('svg[data-icon="chevron-down"]')).toBeInTheDocument()
+      expect(container.querySelector('svg[data-icon="chevron-up"]')).not.toBeInTheDocument()
       expect(container.querySelectorAll('tr')).toHaveLength(1)
 
       await fireEvent.click(toggle)
-      expect(container.querySelector('.fa-chevron-up')).toBeInTheDocument()
-      expect(container.querySelector('.fa-chevron-down')).not.toBeInTheDocument()
+      expect(container.querySelector('svg[data-icon="chevron-up"]')).toBeInTheDocument()
+      expect(container.querySelector('svg[data-icon="chevron-down"]')).not.toBeInTheDocument()
       expect(container.querySelectorAll('tr')).toHaveLength(2)
 
       // Close it again so the module-level `selectLog` signal (shared across every
       // AddLogComponent instance in this file) doesn't leak an "open" state into later tests.
       await fireEvent.click(toggle)
-      expect(container.querySelector('.fa-chevron-down')).toBeInTheDocument()
+      expect(container.querySelector('svg[data-icon="chevron-down"]')).toBeInTheDocument()
       expect(container.querySelectorAll('tr')).toHaveLength(1)
     })
 

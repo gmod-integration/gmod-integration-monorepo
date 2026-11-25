@@ -12,16 +12,26 @@ of everything else.
 
 ## Read first
 
-| Doc                                              | Answers                                                                                                                                            |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [architecture.md](./architecture.md)             | What are the moving pieces, why this split, how does a request flow end to end?                                                                    |
-| [architectures/](./architectures/README.md)      | Same thing, as diagrams — `.mmd` sources + rendered Mermaid (system overview, BullMQ bridge, WS delivery, dependency layers, deployment topology). |
-| [best-practices.md](./best-practices.md)         | Where do I put new code, how do I keep it consistent with the rest?                                                                                |
-| [migration-playbook.md](./migration-playbook.md) | How do I move code from an `app` into a shared `package` safely?                                                                                   |
-| [deployment/swarm.md](./deployment/swarm.md)     | How do I deploy/operate the production Docker Swarm stack?                                                                                         |
+| Doc                                              | Answers                                                                                                                                                                           |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [architecture.md](./architecture.md)             | What are the moving pieces, why this split, how does a request flow end to end?                                                                                                   |
+| [architectures/](./architectures/README.md)      | Illustrated guide in French — editable `.mmd` sources and inline Mermaid: system, addon, dashboard sessions, application flows, BullMQ, WS delivery, dependencies and deployment. |
+| [best-practices.md](./best-practices.md)         | Where do I put new code, how do I keep it consistent with the rest?                                                                                                               |
+| [migration-playbook.md](./migration-playbook.md) | How do I move code from an `app` into a shared `package` safely?                                                                                                                  |
+| [deployment/swarm.md](./deployment/swarm.md)     | How do I deploy/operate the production Docker Swarm stack?                                                                                                                        |
+| [deployment/proxmox.md](./deployment/proxmox.md) | How do I test locally, prepare a Proxmox LXC and explicitly bootstrap a fresh backend with Docker Compose?                                                                        |
 
 Audit and investigation reports are private local files in `docs/reports/`, excluded by `.gitignore`.
 Do not commit their contents or link to them from public documentation, commits, pull requests or issues.
+
+## Planning
+
+- [GMI v6 specification](./v6-specification.md) — proposed product scope, API and WebSocket contracts,
+  promised features, remote administration, script fixes, modular purchases, Premium and migration.
+  This proposal does not describe currently available v6 functionality.
+
+The implemented [Rewards feature](./features/rewards.md) documents rule configuration, delivery,
+deduplication, offline expiry, Discord integration and the required game-server acceptance checks.
 
 ## Repo map
 
@@ -30,14 +40,17 @@ responsibilities, gotchas, what depends on it and what it depends on).
 
 ### `apps/*` — runtime entrypoints
 
-| App             | Role                                                                                                                                                 | Detail                                                |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `api`           | Express HTTP API. Entry point for the GMod addon, the website/dashboard, and outside webhooks (GmodStore).                                           | [docs/apps/api.md](./apps/api.md)                     |
-| `discord`       | The Discord bot(s) (one main bot + per-guild custom bots) and the BullMQ workers that execute Discord actions requested by other apps.               | [docs/apps/discord.md](./apps/discord.md)             |
-| `websocket`     | Real-time WebSocket gateway. Keeps a live connection to each GMod server and to connected dashboard clients.                                         | [docs/apps/websocket.md](./apps/websocket.md)         |
-| `webhook-relay` | Standalone HTTP service that posts chat sync, screenshot and log messages to Discord webhooks for the API. Own image, own env, no `@gmod/*` imports. | [docs/apps/webhook-relay.md](./apps/webhook-relay.md) |
-| `website`       | React/Vite frontend: public site + user/guild dashboard, talks to `api` and `websocket`.                                                             | [docs/apps/website.md](./apps/website.md)             |
-| `docs`          | The Docusaurus site that publishes the **product** documentation (this `./docs` folder is not part of it).                                           | [docs/apps/docs.md](./apps/docs.md)                   |
+| App             | Role                                                                                                                                                     | Detail                                                |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `api`           | Express HTTP API for the website/dashboard, outside webhooks (GmodStore), and legacy addon HTTP compatibility. Current addons use the WebSocket gateway. | [docs/apps/api.md](./apps/api.md)                     |
+| `discord`       | The Discord bot(s) (one main bot + per-guild custom bots) and the BullMQ workers that execute Discord actions requested by other apps.                   | [docs/apps/discord.md](./apps/discord.md)             |
+| `websocket`     | Real-time WebSocket gateway. Keeps a live connection to each GMod server and to connected dashboard clients.                                             | [docs/apps/websocket.md](./apps/websocket.md)         |
+| `webhook-relay` | Standalone HTTP service that posts chat sync, screenshot and log messages to Discord webhooks for the API. Own image, own env, no `@gmod/*` imports.     | [docs/apps/webhook-relay.md](./apps/webhook-relay.md) |
+| `website`       | SolidJS/Vite frontend: public site + user/guild dashboard, talks to `api` and `websocket`.                                                               | [docs/apps/website.md](./apps/website.md)             |
+| `docs`          | The Docusaurus site that publishes the **product** documentation (this `./docs` folder is not part of it).                                               | [docs/apps/docs.md](./apps/docs.md)                   |
+
+The [website UI catalogue](./apps/website-ui.md) lists reusable components and interaction rules.
+The [admin dashboard contract](./apps/admin-dashboard.md) describes platform administration and its API.
 
 ### `packages/*` — shared code
 
@@ -47,7 +60,10 @@ Nothing in `apps/*` should contain business logic that another app also needs �
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `config`            | Loads and validates all environment variables (Zod). Single source of truth for config.                                      | [docs/packages/config.md](./packages/config.md)                       |
 | `schema`            | Zod schemas shared across apps: BullMQ job/reply payloads, GMod entities, DB-facing shapes.                                  | [docs/packages/schema.md](./packages/schema.md)                       |
+| `shared`            | Runtime primitives with direct imports: object validation, secure tokens and operational logging.                            | [docs/packages/shared.md](./packages/shared.md)                       |
 | `core`              | Cross-cutting application logic: v3 API models, DB helpers, formatting/localization/logging utilities, shared Express types. | [docs/packages/core.md](./packages/core.md)                           |
+| `domain-access`     | Commercial capabilities, entitlement resolution, quotas and effective settings.                                              | [docs/packages/domain-access.md](./packages/domain-access.md)         |
+| `domain-auth`       | Application sessions, OAuth state/PKCE, encrypted Discord grants, refresh coordination and WebSocket tickets.                | [docs/packages/domain-auth.md](./packages/domain-auth.md)             |
 | `domain-server`     | Everything about a registered GMod server: settings, status channel, Discord bridge.                                         | [docs/packages/domain-server.md](./packages/domain-server.md)         |
 | `domain-guild`      | Everything about a Discord guild: settings, verification, custom bot, links to servers.                                      | [docs/packages/domain-guild.md](./packages/domain-guild.md)           |
 | `domain-user`       | Player/panel user identity: Steam ID, Discord ID, rank, dashboard auth.                                                      | [docs/packages/domain-user.md](./packages/domain-user.md)             |
@@ -61,6 +77,7 @@ Nothing in `apps/*` should contain business logic that another app also needs �
 | `infra-websocket`   | BullMQ queues used to push messages to the `websocket` app from other apps.                                                  | [docs/packages/infra-websocket.md](./packages/infra-websocket.md)     |
 | `infra-minio`       | S3-compatible object storage (avatars, screenshots, GDPR export archives).                                                   | [docs/packages/infra-minio.md](./packages/infra-minio.md)             |
 | `infra-steam`       | Steam Web API client (user summaries, avatars).                                                                              | [docs/packages/infra-steam.md](./packages/infra-steam.md)             |
+| `infra-geoip`       | Offline country estimates for game-player connection addresses.                                                              | [docs/packages/infra-geoip.md](./packages/infra-geoip.md)             |
 | `locales`           | Raw translation JSON files consumed by `core`'s localization utilities and the website.                                      | [docs/packages/locales.md](./packages/locales.md)                     |
 
 ### `submodules/*` — the actual Garry's Mod addon

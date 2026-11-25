@@ -1,4 +1,29 @@
+import type * as AccessDomain from '@gmod/domain-access/index.js'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const listSessionsMock = vi.fn()
+const resolveSessionMock = vi.fn()
+const revokeSessionMock = vi.fn()
+vi.mock('@gmod/domain-auth/authSessions.js', () => ({
+  listApplicationSessions: listSessionsMock,
+  resolveApplicationSession: resolveSessionMock,
+  revokeApplicationSession: revokeSessionMock,
+}))
+
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof AccessDomain>()),
+  resolveGuildAccess: accessMock,
+}))
+const accessSnapshot = (premium = true) => ({
+  guildID: 'g1',
+  premium,
+  customBot: premium,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'test',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
 
 const getUserFromDiscordIDMock = vi.fn()
 const getUserFromSteamID64Mock = vi.fn()
@@ -7,14 +32,24 @@ vi.mock('@gmod/domain-user/User.js', () => ({
   getUserFromSteamID64: getUserFromSteamID64Mock,
 }))
 
+const getSteamUserSummaryMock = vi.fn()
+const ensureAvatarStoredMock = vi.fn()
+vi.mock('@gmod/infra-steam', () => ({ getSteamUserSummary: getSteamUserSummaryMock }))
+vi.mock('@gmod/infra-minio', () => ({ ensureAvatarStored: ensureAvatarStoredMock }))
+
 const generateTokenMock = vi.fn(() => 'generated-token')
 const badArgumentMock = vi.fn()
-vi.mock('../../../src/utils/tools.js', () => ({ generateToken: generateTokenMock, badArgument: badArgumentMock }))
+vi.mock('@gmod/shared/generateToken.js', () => ({ generateToken: generateTokenMock }))
+vi.mock('../../../src/utils/tools.js', () => ({ badArgument: badArgumentMock }))
 
 const createServerMock = vi.fn()
+const getServerFromIDMock = vi.fn()
 const getServersFromDiscordGuildIDMock = vi.fn()
+const refreshServerPlayerAccessMock = vi.fn()
+vi.mock('@gmod/domain-server/playerAccess.js', () => ({ refreshServerPlayerAccess: refreshServerPlayerAccessMock }))
 vi.mock('@gmod/domain-server/Server.js', () => ({
   createServer: createServerMock,
+  getServerFromID: getServerFromIDMock,
   getServersFromDiscordGuildID: getServersFromDiscordGuildIDMock,
 }))
 
@@ -40,21 +75,22 @@ const prismaMock: any = {
   gm_server_sync_chat_filter: { findFirst: vi.fn(), update: vi.fn(), delete: vi.fn() },
   gm_server_stat: { findMany: vi.fn(), count: vi.fn(), update: vi.fn() },
   gm_user: { findFirst: vi.fn(), update: vi.fn(), count: vi.fn() },
-  gm_guild_auto_roles: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
-  gm_guild: { count: vi.fn(), groupBy: vi.fn(), aggregate: vi.fn() },
+  gm_guild_auto_roles: { count: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
+  gm_guild: { update: vi.fn(), count: vi.fn(), groupBy: vi.fn(), aggregate: vi.fn() },
   gm_server: { count: vi.fn() },
   users: { count: vi.fn() },
   gm_gmodstore_purchases: { findFirst: vi.fn(), update: vi.fn() },
   gm_server_pseudo: { findFirst: vi.fn(), update: vi.fn(), delete: vi.fn() },
-  gm_users_notifications: { findFirst: vi.fn(), update: vi.fn() },
   gm_server_warn: { count: vi.fn(), findMany: vi.fn() },
   gm_server_screenshots: { findMany: vi.fn(), count: vi.fn() },
   gm_server_ban: { findMany: vi.fn() },
 }
-vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
+const transactionMock = vi.fn()
+vi.mock('@gmod/infra-prisma', () => ({ default: { ...prismaMock, $transaction: transactionMock } }))
 
 const {
   processGetProfile,
+  processGetSteamProfile,
   processGetUserSessions,
   processDeleteUserSession,
   processLogOut,
@@ -74,7 +110,6 @@ const {
   processGetUserGmodStorePurchases,
   processPutServerPseudo,
   processDeleteServerPseudo,
-  processPatchUserNotifications,
   processGetServerLogs,
   processGetServerWarns,
   processGetGuildBans,
@@ -85,12 +120,18 @@ const {
 } = await import('../../../src/models/v3/usersControllerModels.js')
 
 function resetAllMocks() {
+  listSessionsMock.mockReset()
+  resolveSessionMock.mockReset()
+  revokeSessionMock.mockReset()
   getUserFromDiscordIDMock.mockReset()
   getUserFromSteamID64Mock.mockReset()
+  getSteamUserSummaryMock.mockReset()
+  ensureAvatarStoredMock.mockReset().mockResolvedValue(null)
   generateTokenMock.mockClear()
   badArgumentMock.mockReset().mockReturnValue(false)
   createServerMock.mockReset()
   getServersFromDiscordGuildIDMock.mockReset()
+  refreshServerPlayerAccessMock.mockReset().mockResolvedValue(true)
   enqueueDiscordGuildReloadBotInstanceMock.mockReset()
   enqueueMainClientHasGuildMock.mockReset()
   redisMock.get.mockReset()
@@ -107,7 +148,13 @@ function resetAllMocks() {
 
 describe('usersControllerModels', () => {
   beforeEach(() => {
+    accessMock.mockReset().mockResolvedValue(accessSnapshot())
     resetAllMocks()
+    getServerFromIDMock.mockReset().mockResolvedValue({ id: 's1', guild: 'g1' })
+    transactionMock.mockReset().mockImplementation((operation) => operation(prismaMock))
+    prismaMock.gm_guild.update.mockResolvedValue({})
+    prismaMock.gm_server.count.mockResolvedValue(0)
+    prismaMock.gm_guild_auto_roles.count.mockResolvedValue(0)
   })
 
   describe('processGetProfile', () => {
@@ -126,6 +173,7 @@ describe('usersControllerModels', () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce({ id: 'u1' })
       const result = await processGetProfile(undefined, 'd1')
       expect(result).toEqual({ status: 200, body: { id: 'u1' } })
+      expect(getSteamUserSummaryMock).not.toHaveBeenCalled()
     })
 
     it('returns 404 when steamID64 is given but no user is found', async () => {
@@ -141,45 +189,165 @@ describe('usersControllerModels', () => {
     })
   })
 
+  describe('processGetSteamProfile', () => {
+    const steamID64 = '76561198219049673'
+
+    it('returns 404 for a missing or erased account without contacting Steam', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce(null)
+      expect(await processGetSteamProfile('d1')).toEqual({ status: 404, body: { error: 'User not found' } })
+      expect(getUserFromDiscordIDMock).toHaveBeenCalledWith('d1')
+      expect(getSteamUserSummaryMock).not.toHaveBeenCalled()
+    })
+
+    it('returns an unlinked identity without contacting Steam', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64: null })
+      expect(await processGetSteamProfile('d1')).toEqual({
+        status: 200,
+        body: { steamID64: null, steamProfile: null },
+      })
+      expect(getSteamUserSummaryMock).not.toHaveBeenCalled()
+    })
+
+    it('decorates only the linked Steam identity and returns allowlisted profile fields', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64, trustLevel: 50 })
+      getSteamUserSummaryMock.mockResolvedValueOnce({
+        nickname: 'Linventif',
+        realName: 'Private name',
+        avatar: { large: 'https://avatars.steamstatic.com/profile.jpg' },
+      })
+      ensureAvatarStoredMock.mockResolvedValueOnce('https://images.example.com/steam/avatar')
+
+      expect(await processGetSteamProfile('d1')).toEqual({
+        status: 200,
+        body: {
+          steamID64,
+          steamProfile: { name: 'Linventif', avatarURL: 'https://images.example.com/steam/avatar' },
+        },
+      })
+      expect(getSteamUserSummaryMock).toHaveBeenCalledExactlyOnceWith(steamID64)
+      expect(ensureAvatarStoredMock).toHaveBeenCalledWith(
+        'steam',
+        steamID64,
+        'https://avatars.steamstatic.com/profile.jpg',
+      )
+    })
+
+    it('keeps the linked identity when Steam is unavailable', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+      getSteamUserSummaryMock.mockRejectedValueOnce(new Error('Steam unavailable'))
+      expect(await processGetSteamProfile('d1')).toEqual({ status: 200, body: { steamID64, steamProfile: null } })
+      expect(ensureAvatarStoredMock).not.toHaveBeenCalled()
+    })
+
+    it('keeps the available display name when avatar storage fails', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+      getSteamUserSummaryMock.mockResolvedValueOnce({ nickname: 'Linventif', avatar: { large: 'avatar' } })
+      ensureAvatarStoredMock.mockRejectedValueOnce(new Error('Storage unavailable'))
+      expect(await processGetSteamProfile('d1')).toEqual({
+        status: 200,
+        body: { steamID64, steamProfile: { name: 'Linventif', avatarURL: null } },
+      })
+    })
+
+    it('accepts a profile without an avatar', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+      getSteamUserSummaryMock.mockResolvedValueOnce({ nickname: 'Linventif' })
+      expect(await processGetSteamProfile('d1')).toEqual({
+        status: 200,
+        body: { steamID64, steamProfile: { name: 'Linventif', avatarURL: null } },
+      })
+    })
+
+    it.each([undefined, '', '   '])('ignores a Steam summary without a usable display name (%s)', async (nickname) => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+      getSteamUserSummaryMock.mockResolvedValueOnce({ nickname, avatar: { large: 'avatar' } })
+      expect(await processGetSteamProfile('d1')).toEqual({ status: 200, body: { steamID64, steamProfile: null } })
+      expect(ensureAvatarStoredMock).not.toHaveBeenCalled()
+    })
+
+    it('bounds a stalled Steam lookup and does not start avatar work after the response', async () => {
+      vi.useFakeTimers()
+      try {
+        getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+        let resolveSummary!: (summary: unknown) => void
+        getSteamUserSummaryMock.mockReturnValueOnce(new Promise((resolve) => (resolveSummary = resolve)))
+        const response = processGetSteamProfile('d1')
+
+        await vi.advanceTimersByTimeAsync(3_000)
+        expect(await response).toEqual({ status: 200, body: { steamID64, steamProfile: null } })
+        resolveSummary({ nickname: 'Late profile', avatar: { large: 'avatar' } })
+        await vi.advanceTimersByTimeAsync(0)
+        expect(ensureAvatarStoredMock).not.toHaveBeenCalled()
+        expect(vi.getTimerCount()).toBe(0)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('uses the same deadline for avatar storage and retains the name on timeout', async () => {
+      vi.useFakeTimers()
+      try {
+        getUserFromDiscordIDMock.mockResolvedValueOnce({ steamID64 })
+        let resolveSummary!: (summary: unknown) => void
+        getSteamUserSummaryMock.mockReturnValueOnce(new Promise((resolve) => (resolveSummary = resolve)))
+        ensureAvatarStoredMock.mockReturnValueOnce(new Promise(() => {}))
+        const response = processGetSteamProfile('d1')
+
+        await vi.advanceTimersByTimeAsync(2_000)
+        resolveSummary({ nickname: 'Linventif', avatar: { large: 'avatar' } })
+        await vi.advanceTimersByTimeAsync(1_000)
+        expect(await response).toEqual({
+          status: 200,
+          body: { steamID64, steamProfile: { name: 'Linventif', avatarURL: null } },
+        })
+        expect(vi.getTimerCount()).toBe(0)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
+
   describe('processGetUserSessions', () => {
-    it('returns the list of non-revoked sessions', async () => {
-      prismaMock.gm_panelToken.findMany.mockResolvedValueOnce([{ id: 's1' }])
-      const result = await processGetUserSessions('d1')
-      expect(result).toEqual({ status: 200, body: [{ id: 's1' }] })
+    it('returns only safe session DTOs and identifies the exact current device', async () => {
+      listSessionsMock.mockResolvedValueOnce([{ id: 'session-A', isCurrent: true }])
+      const result = await processGetUserSessions('d1', 'session-A')
+      expect(listSessionsMock).toHaveBeenCalledWith('d1', 'session-A')
+      expect(result).toEqual({ status: 200, body: [{ id: 'session-A', isCurrent: true }] })
+      expect(JSON.stringify(result.body)).not.toContain('accessToken')
     })
   })
 
   describe('processDeleteUserSession', () => {
-    it('returns 404 when the session is not found', async () => {
-      prismaMock.gm_panelToken.findFirst.mockResolvedValueOnce(null)
-      const result = await processDeleteUserSession('d1', 's1')
-      expect(result.status).toBe(404)
+    it('does not revoke a missing session or a session owned by another account', async () => {
+      revokeSessionMock.mockResolvedValueOnce(false)
+      expect((await processDeleteUserSession('d1', 'session-other')).status).toBe(404)
+      expect(revokeSessionMock).toHaveBeenCalledWith('session-other', 'd1')
     })
-
-    it('revokes and returns the session', async () => {
-      prismaMock.gm_panelToken.findFirst.mockResolvedValueOnce({ id: 's1' })
-      const result = await processDeleteUserSession('d1', 's1')
-      expect(prismaMock.gm_panelToken.update).toHaveBeenCalledWith({
-        where: { id: 's1' },
-        data: { revoke: true },
-      })
-      expect(result).toEqual({ status: 200, body: { id: 's1' } })
+    it('uses shared durable revocation and returns no original credential', async () => {
+      revokeSessionMock.mockResolvedValueOnce(true)
+      expect(await processDeleteUserSession('d1', 'session-A')).toEqual({ status: 200, body: { revoked: true } })
+      expect(revokeSessionMock).toHaveBeenCalledWith('session-A', 'd1')
+      expect(prismaMock.gm_panelToken.update).not.toHaveBeenCalled()
     })
   })
 
   describe('processLogOut', () => {
-    it('revokes the session token when found', async () => {
-      prismaMock.gm_panelToken.findFirst.mockResolvedValueOnce({ id: 's1' })
-      const result = await processLogOut('d1', 'tok1')
-      expect(prismaMock.gm_panelToken.update).toHaveBeenCalledWith({ where: { id: 's1' }, data: { revoke: true } })
-      expect(result).toEqual({ status: 200, body: { id: 's1' } })
+    it('revokes session A presented by the caller rather than a more recent B', async () => {
+      resolveSessionMock.mockResolvedValueOnce({ id: 'session-A', discordID: 'd1' })
+      expect(await processLogOut('d1', 'token-A')).toEqual({ status: 200, body: { revoked: true } })
+      expect(resolveSessionMock).toHaveBeenCalledWith('token-A')
+      expect(revokeSessionMock).toHaveBeenCalledWith('session-A', 'd1')
+      expect(prismaMock.gm_panelToken.findFirst).not.toHaveBeenCalled()
     })
-
-    it('returns an empty body when no session token is found', async () => {
-      prismaMock.gm_panelToken.findFirst.mockResolvedValueOnce(null)
-      const result = await processLogOut('d1', 'tok1')
-      expect(prismaMock.gm_panelToken.update).not.toHaveBeenCalled()
-      expect(result).toEqual({ status: 200, body: {} })
+    it('is idempotent when the credential is already expired or revoked', async () => {
+      resolveSessionMock.mockResolvedValueOnce(null)
+      expect(await processLogOut('d1', 'old-token')).toEqual({ status: 200, body: { revoked: true } })
+      expect(revokeSessionMock).not.toHaveBeenCalled()
+    })
+    it('cannot revoke another account session by passing a different discord ID', async () => {
+      resolveSessionMock.mockResolvedValueOnce({ id: 'session-B', discordID: 'other' })
+      expect(await processLogOut('d1', 'token-B')).toEqual({ status: 200, body: { revoked: true } })
+      expect(revokeSessionMock).not.toHaveBeenCalled()
     })
   })
 
@@ -190,8 +358,12 @@ describe('usersControllerModels', () => {
         isPremium: vi.fn().mockResolvedValueOnce(false),
         getServers: vi.fn().mockResolvedValueOnce([{ id: 's1' }]),
       }
-      const result = await processCreateNewServer(guild)
-      expect(result.status).toBe(403)
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      prismaMock.gm_server.count.mockResolvedValueOnce(1)
+      await expect(processCreateNewServer(guild)).rejects.toMatchObject({
+        code: 'quota_reached',
+        capability: 'guild.servers',
+      })
     })
 
     it('creates a server for a premium guild even if it already has one', async () => {
@@ -224,6 +396,40 @@ describe('usersControllerModels', () => {
       badArgumentMock.mockReturnValueOnce(true)
       const result = await processPutGmodToDiscordFilter({ id: 's1' }, '1', payload)
       expect(result.status).toBe(400)
+    })
+
+    it('allows a partial disable after expiration but rejects edits and activation', async () => {
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      const existing = { id: 1, element: 'message', operator: 'contain', trigger: 'old', action: 'relay', active: true }
+      prismaMock.gm_server_sync_chat_filter.findFirst.mockResolvedValue(existing)
+      prismaMock.gm_server_sync_chat_filter.update.mockResolvedValue({ ...existing, active: false })
+      badArgumentMock.mockReturnValueOnce('0, 1, 2, 3')
+      expect(
+        (
+          await processPutGmodToDiscordFilter({ id: 's1', guild: 'g1' }, '1', {
+            element: undefined,
+            operator: undefined,
+            trigger: undefined,
+            action: undefined,
+            active: false,
+          })
+        ).status,
+      ).toBe(200)
+      expect(prismaMock.gm_server_sync_chat_filter.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { element: 'message', operator: 'contain', trigger: 'old', action: 'relay', active: false },
+      })
+      await expect(processPutGmodToDiscordFilter({ id: 's1', guild: 'g1' }, '1', payload)).rejects.toMatchObject({
+        code: 'upgrade_required',
+      })
+      await expect(
+        processPutGmodToDiscordFilter({ id: 's1', guild: 'g1' }, '1', {
+          ...payload,
+          active: false,
+          trigger: 'changed',
+        }),
+      ).rejects.toMatchObject({ code: 'upgrade_required' })
+      expect(prismaMock.gm_server_sync_chat_filter.update).toHaveBeenCalledOnce()
     })
 
     it('returns 404 when the filter is not found', async () => {
@@ -428,6 +634,25 @@ describe('usersControllerModels', () => {
       expect(result).toEqual({ status: 200, body: { bypassMaintenance: true } })
     })
 
+    it.each([true, false])('persists manual access %s before requesting a fresh game decision', async (enabled) => {
+      const steamID = '76561198012345678'
+      const server = {
+        id: 's1',
+        getPlayerStats: vi.fn().mockResolvedValueOnce({ steam_id: steamID, bypassMaintenance: !enabled }),
+      }
+      prismaMock.gm_server_stat.update.mockImplementationOnce(async () => {
+        expect(refreshServerPlayerAccessMock).not.toHaveBeenCalled()
+        return { bypassMaintenance: enabled }
+      })
+      // A notification failure does not roll back the durable manual decision.
+      if (!enabled) refreshServerPlayerAccessMock.mockRejectedValueOnce(new Error('Queue unavailable'))
+      expect(await processPutPlayerBypassMaintenance(server, steamID, enabled)).toEqual({
+        status: 200,
+        body: { bypassMaintenance: enabled },
+      })
+      expect(refreshServerPlayerAccessMock).toHaveBeenCalledExactlyOnceWith('s1', steamID)
+    })
+
     it('keeps the existing value when bypassMaintenance is explicitly undefined-but-passed badArgument check', async () => {
       const server = {
         id: 's1',
@@ -539,6 +764,49 @@ describe('usersControllerModels', () => {
   })
 
   describe('processPostGmodPurchase', () => {
+    it('refuses to link a revoked purchase without changing its community or rights', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ steamID64: '765', guild: 'g2', revoke: true })
+      expect(await processPostGmodPurchase('g1', 'd1', {}, {})).toEqual({
+        status: 403,
+        body: { error: 'Purchase revoked' },
+      })
+      expect(prismaMock.gm_gmodstore_purchases.update).not.toHaveBeenCalled()
+      expect(redisMock.del).not.toHaveBeenCalled()
+      expect(enqueueDiscordGuildReloadBotInstanceMock).not.toHaveBeenCalled()
+    })
+
+    it('transfers a purchase and invalidates both communities despite transient cache and old-bot reload failures', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ steamID64: '765', guild: 'g2' })
+      prismaMock.gm_gmodstore_purchases.update.mockResolvedValueOnce({ steamID64: '765', guild: 'g1' })
+      redisMock.del.mockRejectedValue(new Error('Redis temporarily unavailable'))
+      enqueueDiscordGuildReloadBotInstanceMock.mockRejectedValueOnce(new Error('Discord worker unavailable'))
+      const guild = { getBotClientInfo: vi.fn().mockResolvedValueOnce({ id: 'new-bot' }) }
+      const operator = { id: 'operator' }
+      expect(await processPostGmodPurchase('g1', 'd1', guild, { user: operator })).toEqual({
+        status: 200,
+        body: { id: 'new-bot' },
+      })
+      expect(prismaMock.gm_gmodstore_purchases.update).toHaveBeenCalledWith({
+        where: { steamID64: '765' },
+        data: { guild: 'g1' },
+      })
+      expect(redisMock.del).toHaveBeenCalledTimes(2)
+      expect(redisMock.del).toHaveBeenCalledWith(expect.any(String), 'guild:g2:premium')
+      expect(redisMock.del).toHaveBeenCalledWith(expect.any(String), 'guild:g1:premium')
+      expect(enqueueDiscordGuildReloadBotInstanceMock).toHaveBeenCalledExactlyOnceWith('g2')
+      expect(guild.getBotClientInfo).toHaveBeenCalledWith(operator)
+    })
+
+    it('invalidates one community without reloading an old bot when reapplying the same purchase', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ steamID64: '765', guild: 'g1' })
+      const guild = { getBotClientInfo: vi.fn().mockResolvedValueOnce({ id: 'same-bot' }) }
+      expect(await processPostGmodPurchase('g1', 'd1', guild, { user: {} })).toMatchObject({ status: 200 })
+      expect(redisMock.del).toHaveBeenCalledExactlyOnceWith(expect.any(String), 'guild:g1:premium')
+      expect(enqueueDiscordGuildReloadBotInstanceMock).not.toHaveBeenCalled()
+    })
     it('returns 404 when the user is not linked to steam', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce(null)
       const result = await processPostGmodPurchase('g1', 'd1', {}, {})
@@ -581,6 +849,28 @@ describe('usersControllerModels', () => {
   })
 
   describe('processDeleteGmodPurchase', () => {
+    it('removes the purchase credentials and reloads the bot even if cached rights cannot be invalidated', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ steamID64: '765', guild: 'g1' })
+      const cleared = { steamID64: '765', guild: '', token: '' }
+      prismaMock.gm_gmodstore_purchases.update.mockResolvedValueOnce(cleared)
+      redisMock.del.mockRejectedValueOnce(new Error('Redis temporarily unavailable'))
+      const guild = {
+        mainBotOnGuild: vi.fn().mockResolvedValueOnce(true),
+        reloadBotInstance: vi.fn().mockResolvedValueOnce(undefined),
+      }
+      expect(await processDeleteGmodPurchase('d1', guild)).toEqual({
+        status: 200,
+        body: { steamID64: cleared.steamID64, guild: cleared.guild },
+      })
+      expect(prismaMock.gm_gmodstore_purchases.update).toHaveBeenCalledWith({
+        where: { steamID64: '765' },
+        data: { guild: '', token: '' },
+        select: { steamID64: true, guild: true, revoke: true, createdAt: true, updatedAt: true },
+      })
+      expect(redisMock.del).toHaveBeenCalledWith(expect.any(String), 'guild:g1:premium')
+      expect(guild.reloadBotInstance).toHaveBeenCalledOnce()
+    })
     it('returns 400 when the main bot is not on the guild', async () => {
       const guild = { mainBotOnGuild: vi.fn().mockResolvedValueOnce(false) }
       const result = await processDeleteGmodPurchase('d1', guild)
@@ -650,16 +940,37 @@ describe('usersControllerModels', () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
       prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ guild: 'g1', steamID64: '765' })
       prismaMock.gm_gmodstore_purchases.update.mockResolvedValueOnce({ guild: '', steamID64: '765' })
+      redisMock.del.mockRejectedValueOnce(new Error('Redis temporarily unavailable'))
       enqueueDiscordGuildReloadBotInstanceMock.mockRejectedValueOnce(new Error('discord down'))
 
       const result = await processDeleteUserGmodPurchase('d1', 'g1')
 
       expect(enqueueDiscordGuildReloadBotInstanceMock).toHaveBeenCalledWith('g1')
+      expect(redisMock.del).toHaveBeenCalledWith(expect.any(String), 'guild:g1:premium')
       expect(result).toEqual({ status: 200, body: { guild: '', steamID64: '765' } })
     })
   })
 
   describe('processGetUserGmodStorePurchases', () => {
+    it('projects only purchase state and never returns stored bot credentials or unrelated fields', async () => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({
+        steamID64: '765',
+        guild: 'g1',
+        revoke: false,
+        token: 'private-bot-token-marker',
+        userID: 'private-store-buyer',
+      })
+      enqueueMainClientHasGuildMock.mockResolvedValueOnce(true)
+      const result = await processGetUserGmodStorePurchases('d1')
+      expect(result).toEqual({ status: 200, body: { steamID64: '765', guild: 'g1', revoke: false, hasMainBot: true } })
+      expect(JSON.stringify(result)).not.toMatch(/private-bot-token-marker|private-store-buyer|"token"/)
+      expect(prismaMock.gm_gmodstore_purchases.findFirst).toHaveBeenCalledWith({
+        where: { steamID64: '765' },
+        select: { steamID64: true, guild: true, revoke: true, createdAt: true, updatedAt: true },
+      })
+    })
+
     it('returns 404 when the user is not linked to steam', async () => {
       getUserFromDiscordIDMock.mockResolvedValueOnce(null)
       const result = await processGetUserGmodStorePurchases('d1')
@@ -759,22 +1070,17 @@ describe('usersControllerModels', () => {
     })
   })
 
-  describe('processPatchUserNotifications', () => {
-    it('returns 404 when the notification is not found', async () => {
-      prismaMock.gm_users_notifications.findFirst.mockResolvedValueOnce(null)
-      const result = await processPatchUserNotifications('d1', '1')
-      expect(result.status).toBe(404)
-    })
-
-    it('marks the notification as read', async () => {
-      prismaMock.gm_users_notifications.findFirst.mockResolvedValueOnce({ id: 1 })
-      prismaMock.gm_users_notifications.update.mockResolvedValueOnce({ id: 1, read: true })
-      const result = await processPatchUserNotifications('d1', '1')
-      expect(result).toEqual({ status: 200, body: { id: 1, read: true } })
-    })
-  })
-
   describe('processGetServerLogs', () => {
+    it('refuses to read history for a server that no longer resolves to a community', async () => {
+      getServerFromIDMock.mockResolvedValueOnce(null)
+      expect(await processGetServerLogs('missing-server', {})).toEqual({
+        status: 404,
+        body: { error: 'Server not found' },
+      })
+      expect(accessMock).not.toHaveBeenCalled()
+      expect(getTotalLogsByServerMock).not.toHaveBeenCalled()
+      expect(getLogsByServerMock).not.toHaveBeenCalled()
+    })
     it('rejects an invalid sort column', async () => {
       const result = await processGetServerLogs('s1', { sort: 'not_allowed' })
       expect(result.status).toBe(400)
@@ -791,11 +1097,23 @@ describe('usersControllerModels', () => {
         limit: 50,
         orderBy: 'desc',
         sort: 'createdAt',
+        readLimit: null,
       })
       expect(result).toEqual({
         status: 200,
         body: { logs: [{ id: 1 }], query: { offset: 0, limit: 50, sort: 'createdAt', orderBy: 'DESC', total: 3 } },
       })
+    })
+
+    it('bounds the total and passes a latest-window restriction for Free', async () => {
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      getTotalLogsByServerMock.mockResolvedValueOnce(5000)
+      getLogsByServerMock.mockResolvedValueOnce([])
+      expect(await processGetServerLogs('s1', { offset: 600, orderBy: 'asc' }, 'g1')).toMatchObject({
+        body: { query: { total: 500 } },
+      })
+      expect(getLogsByServerMock).toHaveBeenCalledWith('s1', expect.objectContaining({ offset: 600, readLimit: 500 }))
+      expect(accessMock).toHaveBeenCalledWith('g1')
     })
 
     it('clamps negative/NaN offset and out-of-range limit', async () => {
@@ -899,6 +1217,31 @@ describe('usersControllerModels', () => {
         orderBy: { createdAt: 'desc' },
         take: 1000,
       })
+    })
+
+    it('limits GMod bans and cross-platform flags to the authorized community servers', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ getID: () => 's1' }, { getID: () => 's2' }])
+      prismaMock.gm_server_ban.findMany.mockResolvedValueOnce([])
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+
+      const result = await processGetGuildBans(
+        makeGuild({ getDiscordBans: vi.fn().mockResolvedValue([{ id: 'd1' }]) }),
+        ['s1', 'outside-community'],
+      )
+
+      expect(prismaMock.gm_server_ban.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { serverID: { in: ['s1'] } } }),
+      )
+      expect(result.body.discordBans).toEqual([{ id: 'd1', linkedSteamID64: '765', gmodAlsoBanned: false }])
+    })
+
+    it('does not query any GMod bans when the caller has lost all server scopes', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ getID: () => 's1' }])
+
+      const result = await processGetGuildBans(makeGuild(), [])
+
+      expect(prismaMock.gm_server_ban.findMany).not.toHaveBeenCalled()
+      expect(result.body.gmodBans).toEqual([])
     })
 
     it('flags a GMod ban as also-banned-on-Discord when the linked account is in the Discord ban list', async () => {
@@ -1026,8 +1369,8 @@ describe('usersControllerModels', () => {
 
     it('post: forbids on a non-premium server', async () => {
       const server = { isPremium: vi.fn().mockResolvedValueOnce(false) }
-      const result = await processPostServerLogsTrigger(server, payload)
-      expect(result.status).toBe(403)
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      await expect(processPostServerLogsTrigger(server, payload)).rejects.toMatchObject({ code: 'upgrade_required' })
     })
 
     it('post: returns 400 when required fields are missing', async () => {
@@ -1057,8 +1400,10 @@ describe('usersControllerModels', () => {
 
     it('put: forbids on a non-premium server', async () => {
       const server = { isPremium: vi.fn().mockResolvedValueOnce(false) }
-      const result = await processPutServerLogsTrigger(server, '1', payload)
-      expect(result.status).toBe(403)
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      await expect(processPutServerLogsTrigger(server, '1', payload)).rejects.toMatchObject({
+        code: 'upgrade_required',
+      })
     })
 
     it('put: returns 400 when required fields are missing', async () => {
@@ -1087,10 +1432,11 @@ describe('usersControllerModels', () => {
       expect(result).toEqual({ status: 200, body: { id: 1 } })
     })
 
-    it('delete: forbids on a non-premium server', async () => {
-      const server = { isPremium: vi.fn().mockResolvedValueOnce(false) }
-      const result = await processDeleteServerLogsTrigger(server, '1')
-      expect(result.status).toBe(403)
+    it('delete: permits stopping a saved trigger after expiration', async () => {
+      accessMock.mockResolvedValue(accessSnapshot(false))
+      const server = { deleteLogsTrigger: vi.fn().mockResolvedValueOnce({ id: 1 }) }
+      expect(await processDeleteServerLogsTrigger(server, '1')).toEqual({ status: 200, body: { id: 1 } })
+      expect(server.deleteLogsTrigger).toHaveBeenCalledWith(1)
     })
 
     it('delete: deletes the trigger', async () => {

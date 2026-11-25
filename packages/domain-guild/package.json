@@ -17,7 +17,11 @@
     "@gmod/infra-redis": "workspace:*",
     "@gmod/infra-websocket": "workspace:*",
     "axios": "^1.13.6",
-    "discord.js": "^14.25.1",
-    "uuid": "^9.0.1"
+    "discord.js": "^14.28.1",
+    "@gmod/shared": "workspace:*",
+    "@gmod/infra-minio": "workspace:*",
+    "@gmod/domain-access": "workspace:*",
+    "@gmod/domain-auth": "workspace:*",
+    "@gmod/schema": "workspace:*"
   }
 }

@@ -1,32 +1,32 @@
-import { Component, createSignal, For, ParentProps } from 'solid-js'
+import { Icon } from '../ui/index.js'
+import { createSignal, For, type Component } from 'solid-js'
+import { useI18n } from '../../i18n.js'
 
-const [errorsList, setErrorsList] = createSignal<string[]>([])
+type Notice = { id: number; message: string }
+const [errorsList, setErrorsList] = createSignal<Notice[]>([])
+let nextNoticeID = 0
+const dismissError = (id: number) => setErrorsList((errors) => errors.filter((error) => error.id !== id))
+
 export const Errors = (error: string, displayTime: number = 5000) => {
-  setErrorsList((errors: string[]) => [...errors, error])
-  setTimeout(() => {
-    setErrorsList((errors: string[]) => errors.filter((e: string) => e !== error))
-  }, displayTime)
+  const id = ++nextNoticeID
+  setErrorsList((errors) => [...errors, { id, message: error }])
+  setTimeout(() => dismissError(id), displayTime)
 }
 
-interface ErrorProps extends ParentProps {
+interface ErrorProps {
   message: string
 }
 
 export const AddErrorComponent: Component<ErrorProps> = (props) => {
+  const { t } = useI18n()
   return (
-    <>
-      <div class="text-error flex h-12 items-center rounded-lg border-error border p-4 gap-4">
-        <i class="fa-regular fa-circle-xmark"></i>
-        <span>Error : {props.message}</span>
-      </div>
-    </>
+    <div role="alert" class="text-error flex min-h-12 items-center rounded-lg border-error border p-4 gap-4">
+      <Icon name="circle-x" aria-hidden="true" />
+      <span>{t('ui.error_message', 'Error: {1}', props.message)}</span>
+    </div>
   )
 }
 
-export const ShowErrorList: Component = (props: ParentProps) => {
-  return (
-    <>
-      <For each={errorsList()}>{(error) => <AddErrorComponent message={error} />}</For>
-    </>
-  )
+export const ShowErrorList: Component = () => {
+  return <For each={errorsList()}>{(error) => <AddErrorComponent message={error.message} />}</For>
 }

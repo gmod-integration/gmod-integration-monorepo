@@ -50,8 +50,99 @@ status/logs/vote channels, ...) enqueues a job instead of calling Discord direct
 See [architecture.md — Discord boundary](../architecture.md#discord-boundary) and
 [migration-playbook.md](../migration-playbook.md#example-discord-action-from-api) for adding a new job type.
 
+## Status preview rendering
+
+`serverStatusPreview` creates a temporary server view with in-memory settings/button overrides and
+calls the same `getStatusMessage` renderer used for publication. It uses the guild's preferred locale,
+player formatting/truncation and button layout. The reply serializes embeds and buttons and converts
+any chart buffer to a PNG data URL.
+
+Preview rendering uses `getStatusMessage(..., { persistChart: false })`, which calls
+`getServerChart(server, { persist: false })`. This mode renders the chart without reading/writing its
+Redis cache, accessing MinIO or uploading files. The default publication path retains its cache.
+The preview handler does not save settings or call Discord message send/edit/delete methods.
+
+## Authorization
+
+Platform developer commands use the root `developers.json` allowlist through the shared user model,
+not the stored database rank. Prefix maintenance commands are limited to `ConfigDiscord.guildID` and
+log their actor/action/target without recording the raw command payload.
+
+`/chart`, server-scoped `/statistic`, `/leaderboard` and `/vote` resolve each supplied server against
+the interaction's Discord community. A public directory flag does not grant cross-community command
+access. The core `getDiscordCommunityServer` helper uses the current server record, and leaderboard
+category suggestions, rendering and every saved pagination action reapply that community boundary.
+Unavailable or unauthorized targets receive the same private response. Autocomplete offers at most
+25 choices and is a convenience rather than an authorization step. The explicit `/statistic global`
+option continues to show platform profile aggregates; it is separate from any game-server identifier.
+
+Vote registration uses one Prisma transaction and a prepared `SELECT … FOR UPDATE` on the matching
+server/community row. The cooldown check and vote creation happen while that row is locked, so Discord bot
+processes cannot create simultaneous votes for the same cooldown window. A changed or removed community
+association aborts registration. The three-hour cooldown is unchanged. A failed Discord notification
+does not undo or misreport the saved vote, and vote notifications disable parsed mentions.
+
+Discord-to-game chat resolves fresh sync mappings for the exact source community/channel, then sends
+only to servers listed in those mappings and still belonging to that community. It also checks each
+server's effective direction. Independent servers with different channels stay separate; several
+servers intentionally mapped to one source channel can receive the same message.
+
+`/warn` and every warning pagination action require the game server to belong to the interaction's
+Discord community. A linked account may view its own warning history; viewing someone else's requires
+the Discord owner or Administrator permission. New replies are private. Interacting with a historical
+public message creates a private copy instead of updating its contents publicly.
+
+`/rcon` requires a linked Steam account, a server in the interaction's community and the console
+capability. Its Discord command remains restricted by default. The current game authority is checked
+in the addon: the linked player must be online and pass the configured `gmIntIsAdmin()` rule. Stored
+player statistics do not authorize execution. The new `wsAuthorizedRcon` command is expired and
+deduplicated by request ID; only an authenticated matching addon acknowledgement confirms that the
+console accepted it. A timeout leaves execution uncertain and is never retried automatically. Older
+addons do not recognize this new command and cannot execute it through the old unchecked handler.
+
+Member role/removal events and role permission, deletion, ownership and guild removal events invalidate
+the shared Discord permission revisions. Gateways clear matching snapshots and verify durable revisions
+before using cached permissions. `guildAdmins` replies distinguish an unavailable Discord lookup from
+a verified empty list, so the dashboard can offer retry feedback.
+
 ## Run it
 
 ```bash
 bun run discord:dev     # tsx watch apps/discord/src/main.ts --env DEV=true
 ```
+
+## Custom bot profile updates
+
+`guildUpdateBotProfile` rechecks the community's custom-bot capability and refuses the shared main
+client. Its avatar field accepts only uploaded JPEG/PNG data URLs through the shared
+`CustomBotAvatarSchema`; remote URLs and local paths are not supported. `prepareCustomBotAvatar`
+limits decoded input to 2 MiB and 16,777,216 pixels, refuses dimensions over 4096×4096 and multi-page
+images, verifies the raster signature, strips metadata and re-encodes at most 512×512 PNG bytes.
+The worker passes a `Buffer` to `ClientUser.edit`, so the SDK never resolves user-supplied image
+resources. Username and avatar changes share one Discord profile edit after image validation. Worker
+failures return a generic profile error rather than details from Discord or the image processor.
+Deploy the API, website and Discord workers together for this upload contract; old jobs carrying URL
+or path avatars are rejected and are not converted into downloads.
+
+## Custom bot removal
+
+An acknowledged `guildReloadBotInstance` kills the guild's current custom client before rereading its
+saved credential. An empty credential keeps the main-client fallback without creating a replacement.
+Reloads for the same guild run sequentially, including startup discovery and a failed preceding reload;
+independent guilds remain independent. Startup rereads credentials inside that same lock. This prevents
+an already running reload or a stale startup snapshot from reconnecting a removed token.
+
+The Discord application requires a single runtime owner (`replicas: 1`) with `stop-first` updates and
+rollbacks. Its clients and reload serialization live in process memory. BullMQ delivers each reload to
+one worker; the reply is not a broadcast acknowledgement across multiple gateway owners. Multiple
+Discord replicas or overlapping deployments therefore cannot provide the removal confirmation
+contract. API and WebSocket replicas do not share this singleton restriction.
+
+## Bot departure and community retention
+
+A guild-departure event only permits cleanup when it comes from the currently effective client
+instance. When that client is a custom bot, its departed credential cannot establish whether the main
+bot is still present. The handler stops the custom client and performs a fresh guild lookup using the
+main client. A successful lookup or an ambiguous failure preserves the community, purchase and profile
+metadata. Cleanup is permitted for an authoritative main-client departure or a confirmed unknown-guild
+response from that independent lookup. Events from replaced instances leave shared data intact.

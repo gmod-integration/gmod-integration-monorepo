@@ -2,8 +2,9 @@ import { processDiscordMessageToGmod } from '@gmod/core/models/v3/guildsControll
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { addAutoRoleToUser, givePremiumRoleOfMainGuild, verifyUser } from '@gmod/domain-guild/discordModels.js'
 import { type Message } from 'discord.js'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
+import { ConfigDiscord } from '@gmod/config'
 
 export default {
   name: 'messageCreate',
@@ -14,10 +15,11 @@ export default {
     if (!user) return
     if (!user.isDeveloper()) return
     if (!message.content.startsWith('§')) return
+    if (message.author.bot || !ConfigDiscord.guildID || message.guild?.id !== ConfigDiscord.guildID) return
 
     const action = message.content.slice(1).split(' ')[0]
     const args = message.content.slice(1).split(' ').slice(1)
-    gmLog('info', `Dev command executed by ${user.discordID} '${message.content}'`)
+    gmLog('info', `Dev command ${action} requested by ${user.discordID} in ${message.guild.id}, message ${message.id}`)
 
     try {
       switch (action) {

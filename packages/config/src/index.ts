@@ -94,6 +94,9 @@ export const ConfigInstance = {
 export const ConfigServer = {
   dev: config.DEV === 'true',
   bodyLimit: '10mb',
+  trustedProxies: config.API_TRUSTED_PROXIES.split(',')
+    .map((value) => value.trim())
+    .filter(Boolean),
   sentryDSN: config.SENTRY_DSN,
   domain: config.DOMAIN_URL,
   screenshotChannel: config.SCREENSHOTS_CHANNEL_ID,
@@ -117,6 +120,9 @@ export const ConfigDiscord = {
   oauthPanelRedirect: config.OAUTH_REDIRECT_URL,
   invite: config.DISCORD_BOT_INVITE_URL,
   barerTokenRelay: config.BARER_DISCORD_RELAY,
+  relayUrl:
+    config.DISCORD_RELAY_URL ||
+    (config.DEV === 'true' ? 'http://127.0.0.1:3002' : 'https://1-dsc-relay.gmod-integration.com'),
   premiumRoleID: config.DISCORD_GUILD_PREMIUM_ROLE_ID,
   gmodStorePremiumRoleID: config.DISCORD_GUILD_GMODSTORE_PREMIUM_ROLE_ID,
   discordPremiumRoleID: config.DISCORD_GUILD_DISCORD_PREMIUM_ROLE_ID,
@@ -127,6 +133,18 @@ export const ConfigDiscord = {
 
 export const ConfigSteam = {
   apiKey: config.STEAM_API_KEY,
+}
+
+export const ConfigPrivacy = {
+  hashSecret: config.PRIVACY_HASH_SECRET,
+}
+
+export const ConfigAuth = {
+  credentialEncryptionKey: config.AUTH_TOKEN_ENCRYPTION_KEY,
+  sessionAbsoluteTtlSeconds: config.AUTH_SESSION_ABSOLUTE_TTL_SECONDS,
+  sessionIdleTtlSeconds: Math.min(config.AUTH_SESSION_IDLE_TTL_SECONDS, config.AUTH_SESSION_ABSOLUTE_TTL_SECONDS),
+  oauthStateTtlSeconds: 600,
+  wsTicketTtlSeconds: 30,
 }
 
 export const ConfigGmodStore = {

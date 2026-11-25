@@ -152,8 +152,8 @@
   "help_content_default": "Ausstehend",
   "leaderboard": "Bestenliste von {1}",
   "leaderboard_desc": "Suche nach {1}, Seite {2}/{3}",
-  "rcon_command_error": "Ein Fehler ist aufgetreten beim Senden des Befehls!",
-  "rcon_command_success": "Befehl erfolgreich gesendet!",
+  "rcon_command_error": "Die Ausführung konnte nicht bestätigt werden. Dein verknüpfter Spieler muss auf dem Spielserver mit einem zugelassenen Adminrang verbunden und das Addon aktuell sein. Prüfe den Spielserver, bevor du es erneut versuchst.",
+  "rcon_command_success": "Der Spielserver hat den Konsolenbefehl angenommen.",
   "your_guild_is_premium": "Herzlichen Glückwunsch, Ihr Server ist Premium!",
   "re_verify_yourself": "Um diese Aktion auszuführen, müssen Sie sich erneut verifizieren!",
   "vote_webhook": "{1} hat gerade für den Server {2} abgestimmt!",
@@ -221,5 +221,6 @@
   "ch_atm_receive_money": "Geld von Geldautomat erhalten",
   "ch_atm_deposit_money": "Geld auf Geldautomat einzahlen",
   "ch_atm_withdraw_money": "Geld von Geldautomat abheben",
-  "ammount": "Betrag"
+  "ammount": "Betrag",
+  "access_verification_unavailable": "Die Zugriffsrechte können derzeit nicht überprüft werden. Bitte versuche es in Kürze erneut."
 }

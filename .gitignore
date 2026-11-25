@@ -1,6 +1,8 @@
 *.log
 node_modules
 coverage
+__pycache__/
+*.py[cod]
 .idea
 qodana.yaml
 .env
@@ -17,3 +19,13 @@ backup
 
 # Private local audit and investigation reports.
 /docs/reports/
+
+# Local Terraform configuration, state and downloaded providers.
+.env.v6-tunnel
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+.terraform.tfstate.lock.info

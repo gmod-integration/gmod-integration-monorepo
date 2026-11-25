@@ -1,0 +1,15 @@
+{
+  "name": "@gmod/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./BaseClass.js": "./src/BaseClass.ts",
+    "./generateToken.js": "./src/generateToken.ts",
+    "./logger.js": "./src/logger.ts",
+    "./jsonBudget.js": "./src/jsonBudget.ts"
+  },
+  "dependencies": {
+    "@gmod/config": "workspace:*"
+  }
+}

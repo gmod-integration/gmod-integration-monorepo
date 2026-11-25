@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
 import { okJson, errJson, stubDialogGlobal, clearDialogGlobals } from '../testHelpers.js'
 
@@ -11,9 +11,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { default: ServerStatusChannel } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/status/ServerStatusChannel.js'
-)
+const { default: ServerStatusChannel } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/status/ServerStatusChannel.js')
 
 const STATUS_CHANNEL_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/status/channel'
 
@@ -63,7 +62,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
     ;(fetchAPI as Mock).mockResolvedValue(okJson(channelPayload({ channelID: '' })))
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('No status Channel')).toBeInTheDocument())
-    expect(document.querySelector('.fa-plus')).toBeInTheDocument()
+    expect(document.querySelector('button:has([data-icon="plus"])')).toBeInTheDocument()
   })
 
   it('falls back to the empty status channel when the fetch response is not ok', async () => {
@@ -82,7 +81,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
     ;(fetchAPI as Mock).mockResolvedValue(okJson(channelPayload()))
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
-    expect(document.querySelector('.fa-xmark')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove Status' })).toBeInTheDocument()
     expect(screen.queryByText('No status Channel')).not.toBeInTheDocument()
   })
 
@@ -97,16 +96,17 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
   it('opens the channel selector modal and refetches guild channels when clicking the add button', async () => {
     const CHANNELS_URL = '/users/:discordID/guilds/:guildID/channels'
     ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-      if (endpoint === CHANNELS_URL) return Promise.resolve(okJson([{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }]))
+      if (endpoint === CHANNELS_URL)
+        return Promise.resolve(okJson([{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }]))
       return Promise.resolve(okJson(channelPayload({ channelID: '' })))
     })
     const { container } = renderPage()
     // "No status Channel" is shown both while loading and once loaded-with-no-channel, so wait on
     // the add button becoming enabled (statusChannel.loading -> false) instead - otherwise the
     // click below can land while the button is still disabled from the initial loading state.
-    await vi.waitFor(() => expect(container.querySelector('.fa-plus')).not.toBeDisabled())
+    await vi.waitFor(() => expect(container.querySelector('button:has([data-icon="plus"])')).not.toBeDisabled())
     stubDialogGlobal(container, 'select_channel_modal_channel')
-    await fireEvent.click(container.querySelector('.fa-plus') as HTMLElement)
+    await fireEvent.click(container.querySelector('button:has([data-icon="plus"])') as HTMLElement)
     expect(container.querySelector('#select_channel_modal_channel')?.hasAttribute('open')).toBe(true)
   })
 
@@ -120,25 +120,29 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
     ;(fetchAPI as Mock).mockResolvedValue(okJson(channelPayload()))
     const { container } = renderPage()
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
-    expect(container.querySelector('.fa-edit')).not.toBeDisabled()
+    expect(container.querySelector('[data-icon="pencil"]')).not.toBeDisabled()
   })
 
   it('sends a POST with the channel and current format, and mutates the resource on success', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint === STATUS_CHANNEL_URL && method === 'GET') return Promise.resolve(okJson(channelPayload({ channelID: '' })))
-      if (endpoint === STATUS_CHANNEL_URL && method === 'POST') return Promise.resolve(okJson(channelPayload({ channelID: 'c1' })))
+      if (endpoint === STATUS_CHANNEL_URL && method === 'GET')
+        return Promise.resolve(okJson(channelPayload({ channelID: '' })))
+      if (endpoint === STATUS_CHANNEL_URL && method === 'POST')
+        return Promise.resolve(okJson(channelPayload({ channelID: 'c1' })))
       return Promise.resolve(okJson({}))
     })
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('No status Channel')).toBeInTheDocument())
     const select = document.querySelector('select.select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
+    await fireEvent.click(within(select.closest('dialog')!).getByText('Save'))
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
   })
 
   it('does not mutate the resource when sending the status channel fails', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint === STATUS_CHANNEL_URL && method === 'GET') return Promise.resolve(okJson(channelPayload({ channelID: '' })))
+      if (endpoint === STATUS_CHANNEL_URL && method === 'GET')
+        return Promise.resolve(okJson(channelPayload({ channelID: '' })))
       if (endpoint === STATUS_CHANNEL_URL && method === 'POST') return Promise.resolve(errJson())
       return Promise.resolve(okJson({}))
     })
@@ -146,7 +150,10 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
     await vi.waitFor(() => expect(screen.getByText('No status Channel')).toBeInTheDocument())
     const select = document.querySelector('select.select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
-    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(STATUS_CHANNEL_URL, 'POST', { channelID: 'c1', format: '' }))
+    await fireEvent.click(within(select.closest('dialog')!).getByText('Save'))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(STATUS_CHANNEL_URL, 'POST', { channelID: 'c1', format: '' }),
+    )
     expect(screen.getByText('No status Channel')).toBeInTheDocument()
   })
 
@@ -156,9 +163,9 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
       if (endpoint === STATUS_CHANNEL_URL && method === 'DELETE') return Promise.resolve(okJson({}))
       return Promise.resolve(okJson({}))
     })
-    const { container } = renderPage()
+    renderPage()
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
-    await fireEvent.click(container.querySelector('.fa-xmark') as HTMLElement)
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove Status' }) as HTMLElement)
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(STATUS_CHANNEL_URL, 'DELETE'))
     await vi.waitFor(() => expect(screen.getByText('No status Channel')).toBeInTheDocument())
   })
@@ -169,16 +176,17 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
       if (endpoint === STATUS_CHANNEL_URL && method === 'DELETE') return Promise.resolve(errJson())
       return Promise.resolve(okJson({}))
     })
-    const { container } = renderPage()
+    renderPage()
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
-    await fireEvent.click(container.querySelector('.fa-xmark') as HTMLElement)
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove Status' }) as HTMLElement)
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(STATUS_CHANNEL_URL, 'DELETE'))
     expect(screen.getByText('#general')).toBeInTheDocument()
   })
 
   it('falls back to the empty status channel when the POST response fails schema validation', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-      if (endpoint === STATUS_CHANNEL_URL && method === 'GET') return Promise.resolve(okJson(channelPayload({ channelID: '' })))
+      if (endpoint === STATUS_CHANNEL_URL && method === 'GET')
+        return Promise.resolve(okJson(channelPayload({ channelID: '' })))
       if (endpoint === STATUS_CHANNEL_URL && method === 'POST') return Promise.resolve(okJson({ not: 'valid' }))
       return Promise.resolve(okJson({}))
     })
@@ -186,6 +194,7 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusChannel.tsx', () => 
     await vi.waitFor(() => expect(screen.getByText('No status Channel')).toBeInTheDocument())
     const select = document.querySelector('select.select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
+    await fireEvent.click(within(select.closest('dialog')!).getByText('Save'))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(STATUS_CHANNEL_URL, 'POST', expect.anything()))
     expect(screen.getByText('No status Channel')).toBeInTheDocument()
   })

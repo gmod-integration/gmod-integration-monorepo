@@ -1,47 +1,59 @@
 /* @refresh reload */
 import { render } from 'solid-js/web'
+import { lazy } from 'solid-js'
 
 import './index.css'
-import { Route, Router } from '@solidjs/router'
-import NotFound from './pages/NotFound'
-import Premium from './pages/Premium'
-import Terms from './pages/legal/Terms'
-import Login from './pages/Login'
-import Logout from './pages/Logout'
-import Privacy from './pages/legal/Privacy'
-import Home from './pages/Home'
-import GuildsSelector from './pages/dashboard/guilds/GuildsSelector'
-import GuildInformations from './pages/dashboard/guilds/GuildInformations'
-import ServerList from './pages/dashboard/guilds/servers/ServersSelector'
-import GuildLinks from './pages/dashboard/guilds/GuildLinks'
-import GuildBans from './pages/dashboard/guilds/GuildBans'
-import GuildVerification from './pages/dashboard/guilds/GuildVerifications'
-import ServerInformations from './pages/dashboard/guilds/servers/ServerInformations'
-import ServerStatus from './pages/dashboard/guilds/servers/status/ServerStatus'
-import ServerPlayer from './pages/dashboard/guilds/servers/ServerPlayers'
-import ServerRoles from './pages/dashboard/guilds/servers/ServerRoles'
-import ServerChats from './pages/dashboard/guilds/servers/ServerChats'
-import ServerPseudo from './pages/dashboard/guilds/servers/ServerPseudo'
-import ServerScreenshots from './pages/dashboard/guilds/servers/screenshots/ServerScreenshots'
-import Account from './pages/Account'
-import GuildAutoRole from './pages/dashboard/guilds/GuildAutoRoles'
-import Servers from './pages/Servers'
-import ServerVote from './pages/dashboard/guilds/servers/ServerVote'
-import ServerLogs from './pages/dashboard/guilds/servers/logs/ServerLogs'
-import ServerErrors from './pages/dashboard/guilds/servers/errors/ServerErrors'
-import GuildList from './pages/dashboard/admins/GuildList'
-import GuildBot from './pages/dashboard/guilds/GuildBot'
-import Notifications from './pages/Notifications'
-import ServerBugs from './pages/dashboard/guilds/servers/ServerBugs'
-import AdminInformations from './pages/dashboard/admins/AdminInformations'
-import ServerTeam from './pages/dashboard/guilds/servers/ServerTeam'
+import { Navigate, Route, Router } from '@solidjs/router'
+import NotFound from './pages/NotFound.js'
+import Login from './pages/Login.js'
+import Logout from './pages/Logout.js'
+import Home from './pages/Home.js'
 import 'highlight.js/styles/tokyo-night-dark.css'
-import Impersonate from './pages/dashboard/admins/Impersonate'
-import ServerWarns from './pages/dashboard/guilds/servers/ServerWarns'
-import { AppAdminDashboard } from './app/AppAdminDashboard'
-import { AppDashboard } from './app/AppDashboard'
-import { App } from './app/App'
-import ServerConfig from './pages/dashboard/guilds/servers/ServerConfig'
+import { AppAdminDashboard } from './app/AppAdminDashboard.js'
+import { AppDashboard } from './app/AppDashboard.js'
+import { App } from './app/App.js'
+
+const Premium = lazy(() => import('./pages/Premium.js'))
+const Terms = lazy(() => import('./pages/legal/Terms.js'))
+const Privacy = lazy(() => import('./pages/legal/Privacy.js'))
+const Account = lazy(() => import('./pages/Account.js'))
+const PlayerProfile = lazy(() => import('./pages/PlayerProfile.js'))
+const Servers = lazy(() => import('./pages/Servers.js'))
+const Notifications = lazy(() => import('./pages/Notifications.js'))
+const GuildsSelector = lazy(() => import('./pages/dashboard/guilds/GuildsSelector.js'))
+const GuildInformations = lazy(() => import('./pages/dashboard/guilds/GuildInformations.js'))
+const GuildLinks = lazy(() => import('./pages/dashboard/guilds/GuildLinks.js'))
+const GuildBans = lazy(() => import('./pages/dashboard/guilds/GuildBans.js'))
+const GuildVerification = lazy(() => import('./pages/dashboard/guilds/GuildVerifications.js'))
+const GuildAutoRole = lazy(() => import('./pages/dashboard/guilds/GuildAutoRoles.js'))
+const GuildBot = lazy(() => import('./pages/dashboard/guilds/GuildBot.js'))
+const ServerList = lazy(() => import('./pages/dashboard/guilds/servers/ServersSelector.js'))
+const ServerInformations = lazy(() => import('./pages/dashboard/guilds/servers/ServerInformations.js'))
+const ServerConfig = lazy(() => import('./pages/dashboard/guilds/servers/ServerConfig.js'))
+const ServerStatus = lazy(() => import('./pages/dashboard/guilds/servers/status/ServerStatus.js'))
+const ServerMap = lazy(() => import('./pages/dashboard/guilds/servers/ServerMap.js'))
+const ServerStatistics = lazy(() => import('./pages/dashboard/guilds/servers/statistics/ServerStatistics.js'))
+const ServerPlayer = lazy(() => import('./pages/dashboard/guilds/servers/ServerPlayers.js'))
+const ServerRoles = lazy(() => import('./pages/dashboard/guilds/servers/ServerRoles.js'))
+const ServerChats = lazy(() => import('./pages/dashboard/guilds/servers/ServerChats.js'))
+const ServerPseudo = lazy(() => import('./pages/dashboard/guilds/servers/ServerPseudo.js'))
+const ServerScreenshots = lazy(() => import('./pages/dashboard/guilds/servers/screenshots/ServerScreenshots.js'))
+const ServerRewards = lazy(() => import('./pages/dashboard/guilds/servers/ServerRewards.js'))
+const ServerVote = lazy(() => import('./pages/dashboard/guilds/servers/ServerVote.js'))
+const ServerLogs = lazy(() => import('./pages/dashboard/guilds/servers/logs/ServerLogs.js'))
+const ServerConsole = lazy(() => import('./pages/dashboard/guilds/servers/ServerConsole.js'))
+const ServerErrors = lazy(() => import('./pages/dashboard/guilds/servers/errors/ServerErrors.js'))
+const ServerBugs = lazy(() => import('./pages/dashboard/guilds/servers/ServerBugs.js'))
+const ServerTeam = lazy(() => import('./pages/dashboard/guilds/servers/ServerTeam.js'))
+const ServerWarns = lazy(() => import('./pages/dashboard/guilds/servers/ServerWarns.js'))
+const GuildList = lazy(() => import('./pages/dashboard/admins/GuildList.js'))
+const AdminInformations = lazy(() => import('./pages/dashboard/admins/AdminInformations.js'))
+const Impersonate = lazy(() => import('./pages/dashboard/admins/Impersonate.js'))
+const AdminServerList = lazy(() => import('./pages/dashboard/admins/ServerList.js'))
+const AdminUserList = lazy(() => import('./pages/dashboard/admins/UserList.js'))
+const AdminPremiumList = lazy(() => import('./pages/dashboard/admins/PremiumList.js'))
+const AdminMonitoring = lazy(() => import('./pages/dashboard/admins/AdminMonitoring.js'))
+const ServerPreviews = lazy(() => import('./pages/dashboard/admins/ServerPreviews.js'))
 
 const root = document.getElementById('root')
 
@@ -57,6 +69,10 @@ render(
       <Route path="/" component={Home} />
       <Route path="/premium" component={Premium} />
       <Route path="/account" component={Account} />
+      <Route path="/profile" component={PlayerProfile} />
+      <Route path="/players/discord/:discordID" component={PlayerProfile} />
+      <Route path="/players/steam/:steamID64" component={PlayerProfile} />
+      <Route path="/players/:steamID64" component={PlayerProfile} />
       <Route path="/legal/privacy" component={Privacy} />
       <Route path="/legal/terms" component={Terms} />
       <Route path="/login" component={Login} />
@@ -64,8 +80,14 @@ render(
       <Route path="/servers" component={Servers} />
       <Route path="/notifications" component={Notifications} />
       <Route path="/dashboard/admins" component={AppAdminDashboard}>
+        <Route path="/" component={() => <Navigate href="/dashboard/admins/informations" />} />
         <Route path="/informations" component={AdminInformations} />
         <Route path="/guilds" component={GuildList} />
+        <Route path="/servers" component={AdminServerList} />
+        <Route path="/users" component={AdminUserList} />
+        <Route path="/premium" component={AdminPremiumList} />
+        <Route path="/monitoring" component={AdminMonitoring} />
+        <Route path="/previews" component={ServerPreviews} />
         <Route path="/impersonate" component={Impersonate} />
         <Route path="/stop-impersonate" component={Impersonate} />
         <Route path="*" component={NotFound} />
@@ -82,12 +104,16 @@ render(
         <Route path="/config/servers/:serverID" component={ServerInformations} />
         <Route path="/config/servers/:serverID/config" component={ServerConfig} />
         <Route path="/config/servers/:serverID/status" component={ServerStatus} />
+        <Route path="/config/servers/:serverID/map" component={ServerMap} />
+        <Route path="/config/servers/:serverID/statistics" component={ServerStatistics} />
         <Route path="/config/servers/:serverID/players" component={ServerPlayer} />
         <Route path="/config/servers/:serverID/votes" component={ServerVote} />
+        <Route path="/config/servers/:serverID/rewards" component={ServerRewards} />
         <Route path="/config/servers/:serverID/roles" component={ServerRoles} />
         <Route path="/config/servers/:serverID/teams" component={ServerTeam} />
         <Route path="/config/servers/:serverID/chats" component={ServerChats} />
         <Route path="/config/servers/:serverID/logs" component={ServerLogs} />
+        <Route path="/config/servers/:serverID/console" component={ServerConsole} />
         <Route path="/config/servers/:serverID/errors" component={ServerErrors} />
         <Route path="/config/servers/:serverID/warns" component={ServerWarns} />
         <Route path="/config/servers/:serverID/pseudo" component={ServerPseudo} />

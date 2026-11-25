@@ -99,6 +99,8 @@ export const ModelName = {
   gm_user_steam: 'gm_user_steam',
   gm_users_data_request: 'gm_users_data_request',
   gm_users_notifications: 'gm_users_notifications',
+  gm_user_erasure: 'gm_user_erasure',
+  gm_user_security: 'gm_user_security',
   users: 'users'
 } as const
 
@@ -141,6 +143,7 @@ export const Gm_discordTokenScalarFieldEnum = {
   discordID: 'discordID',
   accessToken: 'accessToken',
   refreshToken: 'refreshToken',
+  version: 'version',
   creationDate: 'creationDate',
   expirationDate: 'expirationDate',
   createdAt: 'createdAt',
@@ -168,6 +171,7 @@ export const Gm_guildScalarFieldEnum = {
   name: 'name',
   member: 'member',
   language: 'language',
+  isPartner: 'isPartner',
   addDate: 'addDate',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -199,6 +203,7 @@ export const Gm_guild_premiumScalarFieldEnum = {
   guildID: 'guildID',
   transaction: 'transaction',
   buyer: 'buyer',
+  revoked: 'revoked',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -252,6 +257,10 @@ export const Gm_panelTokenScalarFieldEnum = {
   revoke: 'revoke',
   creationDate: 'creationDate',
   expirationDate: 'expirationDate',
+  absoluteExpiresAt: 'absoluteExpiresAt',
+  lastSeenAt: 'lastSeenAt',
+  actorDiscordID: 'actorDiscordID',
+  actorSessionID: 'actorSessionID',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -783,6 +792,37 @@ export const Gm_users_notificationsScalarFieldEnum = {
 export type Gm_users_notificationsScalarFieldEnum = (typeof Gm_users_notificationsScalarFieldEnum)[keyof typeof Gm_users_notificationsScalarFieldEnum]
 
 
+export const Gm_user_erasureScalarFieldEnum = {
+  id: 'id',
+  discordSubject: 'discordSubject',
+  steamSubject: 'steamSubject',
+  receiptHash: 'receiptHash',
+  status: 'status',
+  requestedAt: 'requestedAt',
+  completedAt: 'completedAt',
+  reactivatedAt: 'reactivatedAt',
+  payload: 'payload',
+  progress: 'progress',
+  attempts: 'attempts',
+  lastError: 'lastError',
+  leaseUntil: 'leaseUntil',
+  leaseToken: 'leaseToken',
+  nextAttemptAt: 'nextAttemptAt'
+} as const
+
+export type Gm_user_erasureScalarFieldEnum = (typeof Gm_user_erasureScalarFieldEnum)[keyof typeof Gm_user_erasureScalarFieldEnum]
+
+
+export const Gm_user_securityScalarFieldEnum = {
+  subject: 'subject',
+  trust: 'trust',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type Gm_user_securityScalarFieldEnum = (typeof Gm_user_securityScalarFieldEnum)[keyof typeof Gm_user_securityScalarFieldEnum]
+
+
 export const UsersScalarFieldEnum = {
   steamID64: 'steamID64',
   steamID: 'steamID',
@@ -803,6 +843,14 @@ export const SortOrder = {
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const banUsersOrderByRelevanceFieldEnum = {
@@ -911,7 +959,9 @@ export const gm_panelTokenOrderByRelevanceFieldEnum = {
   os: 'os',
   ip: 'ip',
   country: 'country',
-  browser: 'browser'
+  browser: 'browser',
+  actorDiscordID: 'actorDiscordID',
+  actorSessionID: 'actorSessionID'
 } as const
 
 export type gm_panelTokenOrderByRelevanceFieldEnum = (typeof gm_panelTokenOrderByRelevanceFieldEnum)[keyof typeof gm_panelTokenOrderByRelevanceFieldEnum]
@@ -1286,6 +1336,43 @@ export const gm_users_notificationsOrderByRelevanceFieldEnum = {
 } as const
 
 export type gm_users_notificationsOrderByRelevanceFieldEnum = (typeof gm_users_notificationsOrderByRelevanceFieldEnum)[keyof typeof gm_users_notificationsOrderByRelevanceFieldEnum]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+export const QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+} as const
+
+export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
+export const gm_user_erasureOrderByRelevanceFieldEnum = {
+  id: 'id',
+  discordSubject: 'discordSubject',
+  steamSubject: 'steamSubject',
+  receiptHash: 'receiptHash',
+  status: 'status',
+  lastError: 'lastError',
+  leaseToken: 'leaseToken'
+} as const
+
+export type gm_user_erasureOrderByRelevanceFieldEnum = (typeof gm_user_erasureOrderByRelevanceFieldEnum)[keyof typeof gm_user_erasureOrderByRelevanceFieldEnum]
+
+
+export const gm_user_securityOrderByRelevanceFieldEnum = {
+  subject: 'subject'
+} as const
+
+export type gm_user_securityOrderByRelevanceFieldEnum = (typeof gm_user_securityOrderByRelevanceFieldEnum)[keyof typeof gm_user_securityOrderByRelevanceFieldEnum]
 
 
 export const usersOrderByRelevanceFieldEnum = {

@@ -32,7 +32,7 @@ const {
 
 function resetAllMocks() {
   getTranslateMock.mockClear()
-  getServerFromIDMock.mockReset()
+  getServerFromIDMock.mockReset().mockResolvedValue({ getGuildID: () => 'g1', getName: () => 'S', getID: () => 's1' })
   for (const table of Object.values(prismaMock)) {
     for (const fn of Object.values(table as Record<string, any>)) {
       ;(fn as ReturnType<typeof vi.fn>).mockReset()
@@ -46,16 +46,22 @@ describe('leaderboardModels', () => {
   })
 
   describe('getServerLeaderboardCategories', () => {
+    it('does not inspect enabled custom values of a server belonging to another community', async () => {
+      getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'other' })
+      expect(await getServerLeaderboardCategories('s1', 'g1')).toEqual([])
+      expect(prismaMock.gm_server_customValues.findMany).not.toHaveBeenCalled()
+    })
+
     it('appends enabled custom-value categories to the defaults', async () => {
       prismaMock.gm_server_customValues.findMany.mockResolvedValueOnce([{ valueName: 'money' }])
-      const result = await getServerLeaderboardCategories('s1')
+      const result = await getServerLeaderboardCategories('s1', 'g1')
       expect(result).toContain('total_time')
       expect(result).toContain('money')
     })
 
     it('returns just the defaults when there are no custom categories', async () => {
       prismaMock.gm_server_customValues.findMany.mockResolvedValueOnce([])
-      const result = await getServerLeaderboardCategories('s1')
+      const result = await getServerLeaderboardCategories('s1', 'g1')
       expect(result).toEqual(['total_time', 'total_kill', 'total_death', 'total_connect', 'last_connect', 'first_join'])
     })
   })
@@ -96,9 +102,7 @@ describe('leaderboardModels', () => {
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(0)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
       await getServerLeaderboard('s1', 'total_kill', 0, 0)
-      expect(prismaMock.gm_server_stat.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ take: 10, skip: 0 }),
-      )
+      expect(prismaMock.gm_server_stat.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 10, skip: 0 }))
     })
   })
 
@@ -159,13 +163,24 @@ describe('leaderboardModels', () => {
   })
 
   describe('getLeaderboardMessageEmbed', () => {
-    it('throws when the server is not found', async () => {
+    it('does not read leaderboard rows for a foreign server, even if it is public', async () => {
+      getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'other', isPublic: true })
+      expect(await getLeaderboardMessageEmbed('s1', 'total_kill', 'en', 'g1')).toBeNull()
+      expect(prismaMock.gm_server_stat.count).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_stat.findMany).not.toHaveBeenCalled()
+    })
+
+    it('returns no preview when the server is not found', async () => {
       getServerFromIDMock.mockResolvedValueOnce(null)
-      await expect(getLeaderboardMessageEmbed('s1', 'total_kill', 'en')).rejects.toThrow('Server not found')
+      expect(await getLeaderboardMessageEmbed('s1', 'total_kill', 'en', 'g1')).toBeNull()
     })
 
     it('builds the embed with top-3 medal ranks when offset is 0', async () => {
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'My Server', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({
+        getName: () => 'My Server',
+        getID: () => 's1',
+        getGuildID: () => 'g1',
+      })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(5)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([
         { name: 'P1', total_kill: 10 },
@@ -174,47 +189,55 @@ describe('leaderboardModels', () => {
         { name: 'P4', total_kill: 4 },
       ])
 
-      const result = await getLeaderboardMessageEmbed('s1', 'total_kill', 'en', 15, 0)
+      const result = await getLeaderboardMessageEmbed('s1', 'total_kill', 'en', 'g1', 15, 0)
 
       expect(result).toBeDefined()
       const embedJson = result!.embed.toJSON()
       expect(embedJson.fields).toHaveLength(4)
       expect(embedJson.fields![0].name).toContain('🥇')
       expect(embedJson.fields![3].name).not.toContain('🥇')
-      expect(result!.options).toEqual(
-        expect.objectContaining({ serverID: 's1', category: 'total_kill', total: 5 }),
-      )
+      expect(result!.options).toEqual(expect.objectContaining({ serverID: 's1', category: 'total_kill', total: 5 }))
     })
 
     it('does not award medal ranks when offset is not 0', async () => {
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'My Server', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({
+        getName: () => 'My Server',
+        getID: () => 's1',
+        getGuildID: () => 'g1',
+      })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(5)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([{ name: 'P1', total_kill: 10 }])
 
-      const result = await getLeaderboardMessageEmbed('s1', 'total_kill', 'en', 15, 5)
+      const result = await getLeaderboardMessageEmbed('s1', 'total_kill', 'en', 'g1', 15, 5)
 
       const embedJson = result!.embed.toJSON()
       expect(embedJson.fields![0].name).not.toContain('🥇')
     })
 
     it('falls back to custom_values when the category is not a direct field', async () => {
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'My Server', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({
+        getName: () => 'My Server',
+        getID: () => 's1',
+        getGuildID: () => 'g1',
+      })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(1)
-      prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([
-        { name: 'P1', custom_values: { money: 500 } },
-      ])
+      prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([{ name: 'P1', custom_values: { money: 500 } }])
 
-      const result = await getLeaderboardMessageEmbed('s1', 'money', 'en')
+      const result = await getLeaderboardMessageEmbed('s1', 'money', 'en', 'g1')
 
       expect(result!.embed.toJSON().fields).toHaveLength(1)
     })
 
     it('falls back to the "total_time" literal when neither the direct field nor custom_values has the category', async () => {
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'My Server', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({
+        getName: () => 'My Server',
+        getID: () => 's1',
+        getGuildID: () => 'g1',
+      })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(1)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([{ name: 'P1' }])
 
-      const result = await getLeaderboardMessageEmbed('s1', 'unknown_category', 'en')
+      const result = await getLeaderboardMessageEmbed('s1', 'unknown_category', 'en', 'g1')
 
       // stat['unknown_category'] and stat.custom_values are both absent, so the value passed to
       // getCatFormat falls all the way to the literal string 'total_time' - and since the
@@ -224,15 +247,18 @@ describe('leaderboardModels', () => {
     })
 
     it('skips a row whose formatted value is only whitespace after trimming', async () => {
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'My Server', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({
+        getName: () => 'My Server',
+        getID: () => 's1',
+        getGuildID: () => 'g1',
+      })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(1)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([{ name: 'P1', unknown_category: ' ' }])
 
-      const result = await getLeaderboardMessageEmbed('s1', 'unknown_category', 'en')
+      const result = await getLeaderboardMessageEmbed('s1', 'unknown_category', 'en', 'g1')
 
       expect(result!.embed.toJSON().fields ?? []).toHaveLength(0)
     })
-
   })
 
   describe('handleLeaderboardInteraction', () => {
@@ -240,7 +266,7 @@ describe('leaderboardModels', () => {
       return {
         isButton: () => true,
         user: { bot: false },
-        guild: { preferredLocale: 'en' },
+        guild: { id: 'g1', preferredLocale: 'en' },
         customId: 'leaderboard_next',
         message: { id: 'm1' },
         reply: vi.fn().mockResolvedValue(undefined),
@@ -281,6 +307,30 @@ describe('leaderboardModels', () => {
       expect(interaction.reply).toHaveBeenCalledWith({ content: 'error' })
     })
 
+    it.each([
+      'leaderboard_first',
+      'leaderboard_previous',
+      'leaderboard_next',
+      'leaderboard_last',
+      'leaderboard_refresh',
+    ])('rechecks community ownership before a saved %s action', async (customId) => {
+      prismaMock.gm_server_leaderboard_options.findFirst.mockResolvedValueOnce({
+        serverID: 'foreign',
+        category: 'total_time',
+        offsetValue: 0,
+        limitValue: 15,
+        messageID: 'm1',
+      })
+      getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'other' })
+      const fetch = vi.fn()
+      const interaction = makeInteraction({ customId, channel: { messages: { fetch } } })
+      await handleLeaderboardInteraction(interaction)
+      expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', flags: expect.anything() })
+      expect(prismaMock.gm_server_stat.findMany).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_leaderboard_options.update).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
     it('moves the offset back and clamps to 0 for leaderboard_previous', async () => {
       prismaMock.gm_server_leaderboard_options.findFirst.mockResolvedValueOnce({
         offsetValue: 5,
@@ -290,7 +340,7 @@ describe('leaderboardModels', () => {
         serverID: 's1',
         category: 'total_kill',
       })
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1', getGuildID: () => 'g1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(20)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
 
@@ -309,7 +359,7 @@ describe('leaderboardModels', () => {
         serverID: 's1',
         category: 'total_kill',
       })
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1', getGuildID: () => 'g1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(20)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
 
@@ -328,7 +378,7 @@ describe('leaderboardModels', () => {
         serverID: 's1',
         category: 'total_kill',
       })
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1', getGuildID: () => 'g1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(20)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
 
@@ -347,7 +397,7 @@ describe('leaderboardModels', () => {
         serverID: 's1',
         category: 'total_kill',
       })
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1', getGuildID: () => 'g1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(20)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
 
@@ -366,7 +416,7 @@ describe('leaderboardModels', () => {
         serverID: 's1',
         category: 'total_kill',
       })
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1', getGuildID: () => 'g1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(25)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
 
@@ -385,7 +435,7 @@ describe('leaderboardModels', () => {
         serverID: 's1',
         category: 'total_kill',
       })
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1', getGuildID: () => 'g1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(25)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
 
@@ -404,7 +454,7 @@ describe('leaderboardModels', () => {
         serverID: 's1',
         category: 'total_kill',
       })
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1', getGuildID: () => 'g1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(5)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
 
@@ -423,7 +473,7 @@ describe('leaderboardModels', () => {
         serverID: 's1',
         category: 'total_kill',
       })
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1', getGuildID: () => 'g1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(0)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
 
@@ -442,7 +492,7 @@ describe('leaderboardModels', () => {
         serverID: 's1',
         category: 'total_kill',
       })
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1', getGuildID: () => 'g1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(20)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
 
@@ -462,7 +512,7 @@ describe('leaderboardModels', () => {
         category: 'total_kill',
       })
       prismaMock.gm_server_leaderboard_options.findFirst.mockResolvedValueOnce({ id: 1 })
-      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1' })
+      getServerFromIDMock.mockResolvedValueOnce({ getName: () => 'S', getID: () => 's1', getGuildID: () => 'g1' })
       prismaMock.gm_server_stat.count.mockResolvedValueOnce(20)
       prismaMock.gm_server_stat.findMany.mockResolvedValueOnce([])
       prismaMock.gm_server_leaderboard_options.update.mockResolvedValueOnce({})

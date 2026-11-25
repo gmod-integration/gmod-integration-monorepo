@@ -1,8 +1,12 @@
 import { Worker, type Job } from 'bullmq'
 import { connection } from '@gmod/infra-bullmq'
+import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { ensureAvatarStored, s3 } from '@gmod/infra-minio'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import {
+  DiscordRewardRoleJobSchema,
+  DiscordGuildPublicInviteJobSchema,
+  type DiscordGuildPublicInviteJob,
   type UpdateGuildUserPseudoJob,
   type UpdatePlayerUserGroupJob,
   type UpdateDiscordTeamRoleJob,
@@ -12,6 +16,7 @@ import {
   MainClientSyncPremiumRolesJobSchema,
   MainClientSetPresenceJobSchema,
   DiscordGuildSnapshotJobSchema,
+  DiscordGuildMemberRoleJobSchema,
   DiscordGuildVerifyUserJobSchema,
   DiscordGuildRunVerificationCheckJobSchema,
   DiscordCreateVerificationMessageJobSchema,
@@ -23,7 +28,11 @@ import {
   DiscordGuildAdminsJobSchema,
   DiscordGuildBansJobSchema,
   DiscordGuildSendLogMessageJobSchema,
+  DiscordServerErrorsChannelValidateJobSchema,
+  DiscordServerLuaErrorJobSchema,
+  DiscordServerBugReportJobSchema,
   DiscordServerStatusCreateJobSchema,
+  DiscordServerStatusPreviewJobSchema,
   DiscordServerStatusDeleteJobSchema,
   DiscordServerStatusRefreshJobSchema,
   DiscordServerLogsChannelCreateJobSchema,
@@ -41,6 +50,7 @@ import {
   type MainClientSyncPremiumRolesJob,
   type MainClientSetPresenceJob,
   type DiscordGuildSnapshotJob,
+  type DiscordGuildMemberRoleJob,
   type DiscordGuildVerifyUserJob,
   type DiscordGuildRunVerificationCheckJob,
   type DiscordCreateVerificationMessageJob,
@@ -52,7 +62,11 @@ import {
   type DiscordGuildAdminsJob,
   type DiscordGuildBansJob,
   type DiscordGuildSendLogMessageJob,
+  type DiscordServerErrorsChannelValidateJob,
+  type DiscordServerLuaErrorJob,
+  type DiscordServerBugReportJob,
   type DiscordServerStatusCreateJob,
+  type DiscordServerStatusPreviewJob,
   type DiscordServerStatusDeleteJob,
   type DiscordServerStatusRefreshJob,
   type DiscordServerLogsChannelCreateJob,
@@ -65,7 +79,7 @@ import {
   type DiscordServerSyncChatDeleteJob,
   type DiscordGuildRemoveSyncRolesJob,
 } from '@gmod/infra-bullmq/schemas.js'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import prisma from '@gmod/infra-prisma'
 import { getUserFromSteamID64 } from '@gmod/domain-user/User.js'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
@@ -76,6 +90,13 @@ import { addAutoRoleToUser, verifyUser } from '@gmod/domain-guild/discordModels.
 import { getVerificationGuildMessage } from '../utils/messages.js'
 import { ConfigDiscord } from '@gmod/config'
 import { getDiscordEntitlements } from '@gmod/domain-guild/Guild.js'
+import { getPublicGuildInvite } from '../utils/publicInvite.js'
+import { renderStatusPreview } from '../utils/statusPreview.js'
+import { prepareCustomBotAvatar } from '../utils/customBotAvatar.js'
+import { getGuildMemberRole } from '../utils/memberRole.js'
+import { sendLuaError, validateLuaErrorsChannel } from '../utils/luaErrors.js'
+import { sendBugReport } from '../utils/bugReports.js'
+import { deliverRewardRole } from '../utils/rewardRole.js'
 
 async function writeReply(correlationId: string, payload: unknown) {
   await redis.set(`bullmq:reply:${correlationId}`, JSON.stringify(payload), 'EX', 30)
@@ -100,27 +121,23 @@ export const discordUpdatePseudoWorker = new Worker<UpdateGuildUserPseudoJob>(
       }
 
       // Check sync direction
-      const pseudoDirection = await server.getSetting('sync_pseudo_direction')
+      const pseudoDirection = await server.getEffectiveSetting('sync_pseudo_direction')
       if (pseudoDirection !== 'both' && pseudoDirection !== 'gmod-to-discord') {
         gmLog('bullmq-worker', `[updatePseudo] Sync disabled for server ${serverID}`)
         return
       }
 
       // Get pseudo format
-      const pseudoFormat = await server.getSetting('pseudoFormat')
+      const pseudoFormat = await server.getEffectiveSetting('pseudoFormat')
       if (!pseudoFormat) {
         gmLog('bullmq-worker', `[updatePseudo] No pseudo format configured for server ${serverID}`)
         return
       }
 
       // Get role format
-      const rolesFormat = await prisma.gm_server_pseudo.findFirst({
-        where: {
-          serverID,
-          role: userGroup,
-          enabled: true,
-        },
-      })
+      const rolesFormat = (await server.getEffectivePseudoRules()).find(
+        (rule) => rule.role === userGroup && rule.enabled,
+      )
 
       // Build pseudo
       const newPseudo = pseudoFormat
@@ -236,8 +253,10 @@ export const discordUpdateGroupWorker = new Worker<UpdatePlayerUserGroupJob>(
         gmLog('bullmq-worker', `[updateGroup] Updated DB for ${steamID64} to group ${userGroup}`)
       }
 
-      // Sync roles to Discord (if applicable)
-      const syncRoles = await server.getSyncRoles()
+      // The direction and effective quota are rechecked when the queued job runs.
+      const direction = await server.getEffectiveSetting('sync_role_direction')
+      if (direction !== 'both' && direction !== 'gmod-to-discord') return
+      const syncRoles = await server.getEffectiveSyncRoles()
       if (syncRoles && syncRoles.length > 0) {
         const user = await getUserFromSteamID64(steamID64)
         if (user && user.getDiscordID()) {
@@ -334,7 +353,7 @@ export const discordUpdateTeamRoleWorker = new Worker<UpdateDiscordTeamRoleJob>(
       }
 
       // Get sync team roles
-      const syncRoles = await server.getSyncTeamRoles()
+      const syncRoles = await server.getEffectiveSyncTeamRoles()
       if (!syncRoles || syncRoles.length === 0) {
         gmLog('bullmq-worker', `[updateTeamRole] No team roles configured for server ${serverID}`)
         return
@@ -493,7 +512,7 @@ export const discordMainClientOpsWorker = new Worker<
           return
         }
 
-        const gmodStoreBuyers = await prisma.gm_gmodstore_purchases.findMany()
+        const gmodStoreBuyers = await prisma.gm_gmodstore_purchases.findMany({ where: { revoke: false } })
         const dscEntitlements = await getDiscordEntitlements()
 
         const subscriptionBuyers: string[] = []
@@ -608,6 +627,11 @@ export const discordMainClientOpsWorker = new Worker<
 )
 
 export const discordGuildOpsWorker = new Worker<
+  | DiscordServerBugReportJob
+  | DiscordServerErrorsChannelValidateJob
+  | DiscordServerLuaErrorJob
+  | DiscordGuildMemberRoleJob
+  | DiscordGuildPublicInviteJob
   | DiscordGuildSnapshotJob
   | DiscordGuildVerifyUserJob
   | DiscordGuildRunVerificationCheckJob
@@ -636,6 +660,11 @@ export const discordGuildOpsWorker = new Worker<
   'discord-guildOps',
   async (
     job: Job<
+      | DiscordServerBugReportJob
+      | DiscordServerErrorsChannelValidateJob
+      | DiscordServerLuaErrorJob
+      | DiscordGuildMemberRoleJob
+      | DiscordGuildPublicInviteJob
       | DiscordGuildSnapshotJob
       | DiscordGuildVerifyUserJob
       | DiscordGuildRunVerificationCheckJob
@@ -648,6 +677,7 @@ export const discordGuildOpsWorker = new Worker<
       | DiscordGuildAdminsJob
       | DiscordGuildSendLogMessageJob
       | DiscordServerStatusCreateJob
+      | DiscordServerStatusPreviewJob
       | DiscordServerStatusDeleteJob
       | DiscordServerStatusRefreshJob
       | DiscordServerLogsChannelCreateJob
@@ -661,6 +691,52 @@ export const discordGuildOpsWorker = new Worker<
       | DiscordGuildRemoveSyncRolesJob
     >,
   ) => {
+    if (job.name === 'serverErrorsChannelValidate') {
+      const payload = DiscordServerErrorsChannelValidateJobSchema.parse(job.data)
+      const result = await validateLuaErrorsChannel(payload.serverID, payload.channelID)
+      await writeReply(payload.correlationId, { correlationId: payload.correlationId, ...result })
+      return
+    }
+    if (job.name === 'serverLuaError') {
+      await sendLuaError(DiscordServerLuaErrorJobSchema.parse(job.data))
+      return
+    }
+    if (job.name === 'serverBugReport') {
+      await sendBugReport(DiscordServerBugReportJobSchema.parse(job.data))
+      return
+    }
+    if (job.name === 'guildMemberRole') {
+      const payload = DiscordGuildMemberRoleJobSchema.parse(job.data)
+      const result = await getGuildMemberRole(payload.guildID, payload.discordID, payload.roleID)
+      await writeReply(payload.correlationId, { correlationId: payload.correlationId, ...result })
+      return
+    }
+
+    if (job.name === 'rewardRole') {
+      const payload = DiscordRewardRoleJobSchema.parse(job.data)
+      const { correlationId, timestamp, ...input } = payload
+      const result =
+        Date.now() - timestamp.getTime() > 60_000
+          ? { status: 'uncertain' as const, reason: 'queue_expired' }
+          : await deliverRewardRole(input)
+      await writeReply(correlationId, { correlationId, ...result })
+      return
+    }
+
+    if (job.name === 'guildPublicInvite') {
+      const payload = DiscordGuildPublicInviteJobSchema.parse(job.data)
+      let inviteUrl: string | null = null
+      try {
+        const client = await getGuildClient(payload.guildID, false)
+        const guild = await client.guilds.fetch(payload.guildID)
+        if (guild) inviteUrl = await getPublicGuildInvite(guild)
+      } catch {
+        // A missing guild or invite permission must not prevent browsing public servers.
+      }
+      await writeReply(payload.correlationId, { correlationId: payload.correlationId, inviteUrl })
+      return
+    }
+
     if (job.name === 'guildSnapshot') {
       const payload = DiscordGuildSnapshotJobSchema.parse(job.data)
       const client = await getGuildClient(payload.guildID, false)
@@ -670,16 +746,19 @@ export const discordGuildOpsWorker = new Worker<
         return
       }
 
-      await guild.channels.fetch().catch(() => null)
-      await guild.roles.fetch().catch(() => null)
-      await guild.emojis.fetch().catch(() => null)
+      const [icon] = await Promise.all([
+        ensureAvatarStored('guild', guild.id, guild.iconURL({ extension: 'png', size: 256 })),
+        guild.channels.fetch().catch(() => null),
+        guild.roles.fetch().catch(() => null),
+        guild.emojis.fetch().catch(() => null),
+      ])
 
       await writeReply(payload.correlationId, {
         correlationId: payload.correlationId,
         guild: {
           id: guild.id,
           name: guild.name,
-          icon: await ensureAvatarStored('guild', guild.id, guild.iconURL({ extension: 'png', size: 256 })),
+          icon,
           ownerID: guild.ownerId,
           preferredLocale: guild.preferredLocale,
           channels: guild.channels.cache.map((channel) => ({
@@ -875,6 +954,8 @@ export const discordGuildOpsWorker = new Worker<
     if (job.name === 'guildUpdateBotProfile') {
       const payload = DiscordGuildUpdateBotProfileJobSchema.parse(job.data)
       try {
+        if (!hasCapability(await resolveGuildAccess(payload.guildID), 'bot.custom'))
+          throw new Error('Custom bot access is unavailable.')
         const botInstance = await getGuildClient(payload.guildID, false)
         if (!botInstance.user) {
           await writeReply(payload.correlationId, {
@@ -894,12 +975,14 @@ export const discordGuildOpsWorker = new Worker<
           return
         }
 
-        if (payload.username && payload.username !== botInstance.user.username) {
-          await botInstance.user.setUsername(payload.username)
-        }
-
-        if (payload.avatar && payload.avatar !== botInstance.user.avatarURL()) {
-          await botInstance.user.setAvatar(payload.avatar)
+        const avatar = payload.avatar === undefined ? undefined : await prepareCustomBotAvatar(payload.avatar)
+        const username =
+          payload.username && payload.username !== botInstance.user.username ? payload.username : undefined
+        if (username !== undefined || avatar !== undefined) {
+          await botInstance.user.edit({
+            ...(username !== undefined ? { username } : {}),
+            ...(avatar !== undefined ? { avatar } : {}),
+          })
         }
 
         await writeReply(payload.correlationId, { correlationId: payload.correlationId, updated: true })
@@ -907,7 +990,7 @@ export const discordGuildOpsWorker = new Worker<
         await writeReply(payload.correlationId, {
           correlationId: payload.correlationId,
           updated: false,
-          error: (error as Error).message,
+          error: 'Unable to update custom bot profile.',
         })
       }
       return
@@ -956,13 +1039,13 @@ export const discordGuildOpsWorker = new Worker<
       const client = await getGuildClient(payload.guildID, false)
       const guild = await client.guilds.fetch(payload.guildID).catch(() => null)
       if (!guild) {
-        await writeReply(payload.correlationId, { correlationId: payload.correlationId, admins: [] })
+        await writeReply(payload.correlationId, { correlationId: payload.correlationId, available: false, admins: [] })
         return
       }
 
       const members = await guild.members.fetch().catch(() => null)
       if (!members) {
-        await writeReply(payload.correlationId, { correlationId: payload.correlationId, admins: [] })
+        await writeReply(payload.correlationId, { correlationId: payload.correlationId, available: false, admins: [] })
         return
       }
 
@@ -1003,6 +1086,20 @@ export const discordGuildOpsWorker = new Worker<
     if (job.name === 'guildSendLogMessage') {
       const payload = DiscordGuildSendLogMessageJobSchema.parse(job.data)
       try {
+        const mayDeliver = async () => {
+          if (!payload.requiredCapability) return true
+          const access = await resolveGuildAccess(payload.guildID)
+          if (!hasCapability(access, payload.requiredCapability)) {
+            await writeReply(payload.correlationId, {
+              correlationId: payload.correlationId,
+              sent: false,
+              error: access.state === 'unknown' ? 'entitlement_unknown' : 'upgrade_required',
+            })
+            return false
+          }
+          return true
+        }
+        if (!(await mayDeliver())) return
         const client = await getGuildClient(payload.guildID, false)
         const guild = await client.guilds.fetch(payload.guildID).catch(() => null)
         if (!guild) {
@@ -1031,12 +1128,34 @@ export const discordGuildOpsWorker = new Worker<
           .setFooter({ text: payload.footer })
           .setTimestamp()
 
+        // Readiness and channel lookup may wait across an entitlement's expiry.
+        if (!(await mayDeliver())) return
         await channel.send({ embeds: [embed] })
         await writeReply(payload.correlationId, { correlationId: payload.correlationId, sent: true })
       } catch (error) {
         await writeReply(payload.correlationId, {
           correlationId: payload.correlationId,
           sent: false,
+          error: (error as Error).message,
+        })
+      }
+      return
+    }
+
+    if (job.name === 'serverStatusPreview') {
+      const payload = DiscordServerStatusPreviewJobSchema.parse(job.data)
+      try {
+        const server = await getServerFromID(payload.serverID)
+        if (!server) throw new Error('Server not found')
+        const client = await getGuildClient(server.getGuildID(), false)
+        const guild = await client.guilds.fetch(server.getGuildID())
+        if (!guild) throw new Error('Guild not found')
+        const preview = await renderStatusPreview(server, payload.draft, guild)
+        await writeReply(payload.correlationId, { correlationId: payload.correlationId, preview })
+      } catch (error) {
+        await writeReply(payload.correlationId, {
+          correlationId: payload.correlationId,
+          preview: null,
           error: (error as Error).message,
         })
       }
@@ -1395,7 +1514,8 @@ async function processServerStatusRefresh(job: Job) {
       return
     }
 
-    await server.editStatusChannelAndMessage(await server.getStatusData())
+    const refreshed = await server.editStatusChannelAndMessage(await server.getStatusData())
+    if (refreshed !== true) throw new Error('Status message could not be refreshed')
     await writeReply(payload.correlationId, {
       correlationId: payload.correlationId,
       refreshed: true,

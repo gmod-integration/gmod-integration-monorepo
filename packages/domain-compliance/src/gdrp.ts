@@ -1,21 +1,25 @@
 import fs from 'fs'
 import { ConfigServer } from '@gmod/config'
 import archiver from 'archiver'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { type User } from '@gmod/domain-user/User.js'
 import { addNotification } from '@gmod/core/utils/tools.js'
 import { getLogsBySteamIDList, getLogsCountBySteamIDList } from '@gmod/core/database/gm_server_logs.js'
 import path from 'path'
 import * as os from 'node:os'
 import { createBucketIfNotExists, s3 } from '@gmod/infra-minio'
-import { GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import prisma from '@gmod/infra-prisma'
 import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+import { mongoClient } from '@gmod/infra-mongo'
 import { getErrorsBySteamID, getErrorsCountBySteamID } from '@gmod/domain-gmod/GmodErrors.js'
+import { assertPersonalDataAllowed, isErasureBlocked, PersonalDataErasureError } from '@gmod/domain-user/privacy.js'
 
 export async function getUserDataGRPD(user: User) {
   const discordID = user.getDiscordID()
   const steamID64 = user.getSteamID64()
+  await assertPersonalDataAllowed(discordID, steamID64)
 
   const request = await prisma.gm_users_data_request.create({
     data: {
@@ -29,6 +33,44 @@ export async function getUserDataGRPD(user: User) {
   const baseTempPath = path.join(os.tmpdir(), 'gmod-integration', 'gdpr')
   const tempPath = path.join(baseTempPath, request.id)
   fs.mkdirSync(tempPath, { recursive: true })
+
+  const rewardCursor = mongoClient
+    .db('gmod_integration')
+    .collection('gm_reward_grants')
+    .find(
+      {
+        $or: [{ discordID }, ...(steamID64 ? [{ steamID64 }] : [])],
+      },
+      {
+        projection: {
+          _id: 0,
+          deliveryToken: 0,
+          dedupeKey: 0,
+          onceSteamKey: 0,
+          onceDiscordKey: 0,
+          requestID: 0,
+          requestRevision: 0,
+          sweptAt: 0,
+          version: 0,
+          'actions.code': 0,
+        },
+      },
+    )
+    .batchSize(250)
+  async function* rewardRecords() {
+    let first = true
+    yield '['
+    try {
+      for await (const reward of rewardCursor) {
+        yield `${first ? '' : ','}${JSON.stringify(reward)}`
+        first = false
+      }
+      yield ']'
+    } finally {
+      await rewardCursor.close()
+    }
+  }
+  await pipeline(Readable.from(rewardRecords()), fs.createWriteStream(path.join(tempPath, 'rewards.json')))
 
   if (discordID) {
     const userData: any = {
@@ -183,6 +225,13 @@ export async function getUserDataGRPD(user: User) {
   }
 
   const zipFilePath = path.join(baseTempPath, `${request.id}.zip`)
+  const guardExport = async () => {
+    if (!(await isErasureBlocked(discordID, steamID64))) return
+    await s3.send(new DeleteObjectCommand({ Bucket: 'gmi-gdpr-exports', Key: `${request.id}.zip` }))
+    fs.rmSync(tempPath, { recursive: true, force: true })
+    fs.rmSync(zipFilePath, { force: true })
+    throw new PersonalDataErasureError()
+  }
   const output = fs.createWriteStream(zipFilePath)
   const archive = archiver('zip', { zlib: { level: 9 } })
 
@@ -222,6 +271,8 @@ export async function getUserDataGRPD(user: User) {
   await archive.finalize()
   await outputClosed
 
+  await guardExport()
+
   await createBucketIfNotExists('gmi-gdpr-exports')
   const zipStream = fs.createReadStream(zipFilePath)
 
@@ -237,6 +288,8 @@ export async function getUserDataGRPD(user: User) {
   } catch (err) {
     console.error('Error uploading zip to MinIO:', err)
   }
+
+  await guardExport()
 
   fs.rmSync(tempPath, { recursive: true, force: true })
   fs.rmSync(zipFilePath, { force: true })

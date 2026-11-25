@@ -1,3 +1,4 @@
+import { getSingleParam } from '@/utils/requestParams.js'
 import {
   processPlayerChangeGroup,
   processPlayerChangeName,
@@ -11,9 +12,15 @@ import { type Request, type Response } from 'express'
 import { logServer } from '@gmod/core/utils/logger.js'
 
 export async function getPlayer(req: Request, res: Response) {
-  const steamID64 = Array.isArray(req.params.steamID64) ? req.params.steamID64[0] : req.params.steamID64
+  const steamID64 = getSingleParam(req.params.steamID64)
   const server = req.server!
   return res.send((await server.getPlayerStats(steamID64)) || {})
+}
+
+export async function getPlayerAccess(req: Request, res: Response) {
+  const steamID64 = getSingleParam(req.params.steamID64)
+  res.setHeader('Cache-Control', 'no-store')
+  return res.send(await req.server!.getPlayerAccess(steamID64))
 }
 
 export async function playerSpawn(req: Request, res: Response) {
@@ -32,7 +39,7 @@ export async function playerReady(req: Request, res: Response) {
 
 export async function playerSay(req: Request, res: Response) {
   const server = req.server!
-  const { steamID64 } = req.params
+  const steamID64 = getSingleParam(req.params.steamID64)
   await logServer(server, 'player_say', req.body)
   const result = await processPlayerSay(server, steamID64, req.body)
   return res.status(result.status).json(result.body)
@@ -47,7 +54,7 @@ export async function playerChangeName(req: Request, res: Response) {
 
 export async function playerChangeGroup(req: Request, res: Response) {
   const server = req.server!
-  const { steamID64 } = req.params
+  const steamID64 = getSingleParam(req.params.steamID64)
   await logServer(server, 'player_change_group', { steamID64, ...req.body })
   const result = await processPlayerChangeGroup(server, steamID64, req.body)
   return res.status(result.status).json(result.body)
@@ -55,7 +62,7 @@ export async function playerChangeGroup(req: Request, res: Response) {
 
 export async function playerChangeTeam(req: Request, res: Response) {
   const server = req.server!
-  const { steamID64 } = req.params
+  const steamID64 = getSingleParam(req.params.steamID64)
   await logServer(server, 'player_change_team', { steamID64, ...req.body })
   const result = await processPlayerChangeTeam(server, steamID64, req.body)
   return res.status(result.status).json(result.body)
@@ -63,7 +70,7 @@ export async function playerChangeTeam(req: Request, res: Response) {
 
 export async function playerConnect(req: Request, res: Response) {
   const server = req.server!
-  const { steamID64 } = req.params
+  const steamID64 = getSingleParam(req.params.steamID64)
   await logServer(server, 'player_connect', { steamID64, ...req.body })
   const result = await processPlayerConnect(server, steamID64, req.body)
   return res.status(result.status).json(result.body)
@@ -102,14 +109,14 @@ export async function playerInitialSpawn(req: Request, res: Response) {
 
 export async function playerSpawnObject(req: Request, res: Response) {
   const server = req.server!
-  const { object } = req.params
+  const object = getSingleParam(req.params.object)
   await logServer(server, 'player_spawn_object', { object, ...req.body })
   return res.status(200).json({ success: true })
 }
 
 export async function playerWarn(req: Request, res: Response) {
   const server = req.server!
-  const { steamID64 } = req.params
+  const steamID64 = getSingleParam(req.params.steamID64)
   await logServer(server, 'player_warned', req.body)
   const result = await processPlayerWarn(server, steamID64, req.body)
   return res.status(result.status).json(result.body)

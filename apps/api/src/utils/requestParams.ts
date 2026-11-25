@@ -1,3 +1,3 @@
-export function getSingleParam(value: string | string[]): string {
-  return Array.isArray(value) ? (value[0] ?? '') : value
+export function getSingleParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? (value[0] ?? '') : (value ?? '')
 }

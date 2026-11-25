@@ -3,6 +3,7 @@ import {
   type AutocompleteInteraction,
   type ChatInputCommandInteraction,
   InteractionContextType,
+  type MessageActionRowComponentBuilder,
   SlashCommandBuilder,
 } from 'discord.js'
 import { getServerList } from '@gmod/domain-server/serversModels.js'
@@ -10,24 +11,27 @@ import { getServerFromID } from '@gmod/domain-server/Server.js'
 import { getTranslate } from '@gmod/core/utils/localizations.js'
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { ButtonVerificationWebsite } from '../../utils/buttons.js'
-import { getWarnMessageEmbed, saveWarnListOptions } from '@gmod/domain-moderation/warnModels.js'
+import { canViewWarningHistory, getWarnMessageEmbed, saveWarnListOptions } from '@gmod/domain-moderation/warnModels.js'
 
 export default {
   data: new SlashCommandBuilder()
     .setName('warn')
-    .setDescription('Show the warn of the user on the server')
+    .setDescription('View your warnings. Administrators can also inspect another player.')
     .addStringOption((option) =>
       option
         .setName('server')
-        .setDescription('The server you want to execute the command on')
+        .setDescription('The game server in this Discord community')
         .setRequired(true)
         .setAutocomplete(true),
     )
     .addUserOption((option) =>
-      option.setName('member').setDescription('The member you want to show the warn').setRequired(false),
+      option.setName('member').setDescription('The Discord member whose warnings you want to view').setRequired(false),
     )
     .addStringOption((option) =>
-      option.setName('steam').setDescription('The steamID64 of the user you want to show the warn').setRequired(false),
+      option
+        .setName('steam')
+        .setDescription('The SteamID64 of the player whose warnings you want to view')
+        .setRequired(false),
     )
     .setContexts([InteractionContextType.Guild]),
   category: 'admin',
@@ -39,8 +43,8 @@ export default {
     const member = interaction.options.getUser('member') || interaction.user
     let steamID64 = interaction.options.getString('steam')
 
-    const server = await getServerFromID(serverID!)
-    if (!server) {
+    const server = serverID ? await getServerFromID(serverID) : null
+    if (!server || server.getGuildID() !== interaction.guild.id) {
       return interaction.reply({
         content: await getTranslate('server_not_found', lang),
         ephemeral: true,
@@ -50,27 +54,33 @@ export default {
     if (!steamID64) {
       const dbUser = await getUserFromDiscordID(member.id)
       if (!dbUser || !dbUser.getSteamID64()) {
-        const row = new ActionRowBuilder().addComponents(await ButtonVerificationWebsite(lang))
-        return {
+        const row = new ActionRowBuilder<MessageActionRowComponentBuilder>().addComponents(
+          await ButtonVerificationWebsite(lang),
+        )
+        return interaction.reply({
           content: (await getTranslate('user_not_verified', lang, [`<@${member.id}>`, '/verify'])) + '\n_ _',
           ephemeral: true,
           components: [row],
-        }
+        })
       } else {
         steamID64 = dbUser.getSteamID64()
       }
     }
 
+    if (!(await canViewWarningHistory(interaction, steamID64!)))
+      return interaction.reply({
+        content: await getTranslate('missing_permission', lang, ['Administrator']),
+        ephemeral: true,
+      })
+
     const { embed, component, options } = await getWarnMessageEmbed(server, steamID64!, lang)
-    interaction
-      .reply({
-        embeds: [embed],
-        components: [component],
-        fetchReply: true,
-      })
-      .then(async (msgReply) => {
-        await saveWarnListOptions(msgReply.id, server.getID(), steamID64!, options)
-      })
+    const reply = await interaction.reply({
+      embeds: [embed],
+      components: [component],
+      fetchReply: true,
+      ephemeral: true,
+    })
+    await saveWarnListOptions(reply.id, server.getID(), steamID64!, options)
   },
   async autocomplete(interaction: AutocompleteInteraction) {
     const focusedOption = interaction.options.getFocused(true)

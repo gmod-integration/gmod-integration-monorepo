@@ -5,7 +5,7 @@ relational schema — primarily server logs and in-game error reports.
 
 ## Exports (`src/index.ts`)
 
-- `mongoClient` — a `MongoClient` built from `MONGO_URI` (or `MONGO_HOST`/`MONGO_PORT`).
+- `mongoClient` — a `MongoClient` built from `MONGO_URI` (or `MONGO_HOST`/`MONGO_PORT`), resolved by `getMongoConfig()` from `@gmod/config/infrastructure.js`.
 - `connectToMongoDB()` — connects, or `process.exit(1)` on failure (called once at app bootstrap).
 
 No schema/ODM layer here — collections are accessed directly (see

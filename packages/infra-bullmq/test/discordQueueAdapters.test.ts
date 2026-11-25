@@ -41,6 +41,16 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
     vi.useRealTimers()
   })
 
+  it('distinguishes unavailable Discord administrators from an empty verified list', async () => {
+    mockReply({ correlationId: 'unavailable', available: false, admins: [] })
+    await expect(adapters.enqueueDiscordGuildAdmins('g1')).rejects.toMatchObject({
+      status: 503,
+      code: 'provider_unavailable',
+    })
+    mockReply({ correlationId: 'available', available: true, admins: [] })
+    await expect(adapters.enqueueDiscordGuildAdmins('g1')).resolves.toEqual([])
+  })
+
   describe('fire-and-forget job enqueuers', () => {
     it('enqueueUpdateGuildUserPseudo adds a job to the pseudo queue', async () => {
       await adapters.enqueueUpdateGuildUserPseudo({
@@ -352,6 +362,24 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
     }
   })
 
+  it('preserves a trigger capability requirement in the queued payload and acknowledges a skipped delivery', async () => {
+    mockReply({ correlationId: 'reply', sent: false, error: 'upgrade_required' })
+    const sent = await adapters.enqueueDiscordGuildSendLogMessage({
+      guildID: 'g1',
+      channelID: 'ch1',
+      title: 'Trigger',
+      color: '#fff',
+      footer: 'Server',
+      requiredCapability: 'logs.triggers',
+    })
+    expect(sent).toBe(false)
+    expect(queueInstances.get('discord-guildOps')!.add).toHaveBeenCalledWith(
+      'guildSendLogMessage',
+      expect.objectContaining({ guildID: 'g1', requiredCapability: 'logs.triggers' }),
+      expect.anything(),
+    )
+  })
+
   describe('adapters that throw when the reply carries an error', () => {
     // Each of these reply schemas requires its data field to be *present* (nullable, not
     // optional) even on an error reply, so the error-case payload must still include it as
@@ -436,6 +464,15 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
       })
     }
   })
+
+  it.each(['http://127.0.0.1/avatar', '/tmp/avatar.png', 'file:///tmp/avatar.png', 'data:image/svg+xml;base64,AAAA'])(
+    'does not enqueue a bot avatar that refers to an external or active resource: %s',
+    async (avatar) => {
+      await expect(adapters.enqueueDiscordGuildUpdateBotProfile({ guildID: 'g1', avatar })).rejects.toThrow()
+      expect(queueInstances.get('discord-guildOps')!.add).not.toHaveBeenCalled()
+      expect(redisGetMock).not.toHaveBeenCalled()
+    },
+  )
 
   it('enqueueDiscordGuildUpdateBotProfile returns {updated, error} without throwing on error', async () => {
     mockReply({ correlationId: 'x', updated: false, error: 'bot profile locked' })

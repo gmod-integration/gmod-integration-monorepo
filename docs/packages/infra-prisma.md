@@ -6,7 +6,7 @@ The Prisma client for MariaDB — the relational source of truth (servers, guild
 ## Exports
 
 - `.` / `index.js` → `src/index.ts`: builds a `PrismaClient` over `PrismaMariaDb` (the MariaDB driver adapter),
-  with a connection limit read from `MARIA_CONNECTION_LIMIT` (capped at 10 in dev, defaults to 50 in prod).
+  using `getMariaDbConfig()` from `@gmod/config/infrastructure.js`. `MARIA_PORT` is forwarded to the driver (default `3306`); `MARIA_CONNECTION_LIMIT` is capped at 10 in dev and defaults to 50 in prod.
   Exports the client as default, plus `connectPrisma()` (idempotent, memoized connect promise — safe to call
   from every app's bootstrap) and `gracefulShutdownPrisma()`.
 - `./client.js` → `src/client.ts`: re-exports the generated Prisma types/client
@@ -18,6 +18,16 @@ The Prisma client for MariaDB — the relational source of truth (servers, guild
 
 `packages/infra-prisma/generated/prisma` is generated output (`bun run prisma:generate`) — never edit by hand.
 Schema source: `packages/infra-prisma/schema.prisma`. Migrations: `packages/infra-prisma/migrations`.
+
+The `20261123120000_dashboard_lookup_indexes` migration adds nonunique indexes for session lookup by
+`accessToken`/`revoke`/`expirationDate` and purchase lookup by `guild`/`revoke`. These cover the filters
+used by authenticated dashboard requests and access resolution without requiring token uniqueness for
+historical records. Apply this migration through the normal deployment migration workflow.
+
+The `20261123160000_guild_partner_badge` migration adds `gm_guild.isPartner`, defaulting to false.
+Only platform administration changes this designation; public ranking responses project it as
+`partner`. Apply the migration before deploying the API that reads or updates the new field, and
+regenerate the Prisma client during the build.
 
 ## Used by
 

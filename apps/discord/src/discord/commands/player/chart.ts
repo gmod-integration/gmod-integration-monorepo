@@ -6,11 +6,12 @@ import {
   MessageFlags,
   SlashCommandBuilder,
 } from 'discord.js'
-import { getServerFromID, getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
+import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { playerConnectionChart, playerTeamTimeChat } from '../../utils/index.js'
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
 import { getTranslate } from '@gmod/core/utils/localizations.js'
 import { ConfigDiscord } from '@gmod/config'
+import { getDiscordCommunityServer } from '@gmod/core/models/v3/discordServerScope.js'
 
 export default {
   data: new SlashCommandBuilder()
@@ -39,10 +40,12 @@ export default {
     const lang = interaction.guild.preferredLocale
 
     const serverID = interaction.options.getString('server')
-    if (!serverID) return interaction.reply(await getTranslate('server_not_found', lang))
+    if (!serverID)
+      return interaction.reply({ content: await getTranslate('server_not_found', lang), flags: MessageFlags.Ephemeral })
 
-    const server = await getServerFromID(serverID)
-    if (!server) return interaction.reply(await getTranslate('server_not_found', lang))
+    const server = await getDiscordCommunityServer(serverID, interaction.guild.id)
+    if (!server)
+      return interaction.reply({ content: await getTranslate('server_not_found', lang), flags: MessageFlags.Ephemeral })
 
     let steamID64 = interaction.options.getString('steam') || null
     const user = interaction.options.getUser('user') || interaction.user
@@ -114,7 +117,7 @@ export default {
         const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value))
 
         // Respond with the filtered choices
-        interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })))
+        interaction.respond(filtered.slice(0, 25).map((choice) => ({ name: choice, value: choices[choice] })))
       })
     } else if (focusedName === 'stat') {
       /*
@@ -133,7 +136,7 @@ export default {
 
       // Filter the choices based on the focused option
       const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value))
-      await interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })))
+      await interaction.respond(filtered.slice(0, 25).map((choice) => ({ name: choice, value: choices[choice] })))
     } else if (focusedName === 'duration') {
       // Add all durations to the choices 7 = 7 days, 30 = 30 days, 90 = 90 days, max = max days
       const durations = ['7', '30', '90']
@@ -151,7 +154,7 @@ export default {
 
       // Filter the choices based on the focused option
       const filtered = Object.keys(choices).filter((choice) => choice.startsWith(focusedOption.value))
-      await interaction.respond(filtered.map((choice) => ({ name: choice, value: choices[choice] })))
+      await interaction.respond(filtered.slice(0, 25).map((choice) => ({ name: choice, value: choices[choice] })))
     }
   },
 }

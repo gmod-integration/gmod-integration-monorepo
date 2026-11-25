@@ -1,70 +1,50 @@
-graph TD
-  subgraph Apps["apps/*"]
-    API[api]
-    DISCORD[discord]
-    WS[websocket]
-    WEBSITE[website]
-  end
+flowchart TB
+    subgraph Apps["Points d'entrée — apps/*"]
+        Backend["api · discord · websocket<br/>routes, connexions et workers"]
+        Website["website<br/>SolidJS / Vite"]
+        Relay["webhook-relay<br/>autonome, env propre<br/>aucun import @gmod/*"]
+        Docs["docs<br/>Docusaurus, documentation produit"]
+    end
 
-  subgraph CoreLayer["packages/core"]
-    CORE[core]
-  end
+    subgraph Business["Logique partagée — packages/*"]
+        Special["domain-compliance · domain-moderation"]
+        Core["core<br/>orchestration et modèles applicatifs"]
+        Domains["domain-server · domain-guild · domain-user<br/>domain-gmod · domain-access · domain-auth"]
+    end
 
-  subgraph DomainLayer["packages/domain-*"]
-    DS[domain-server]
-    DG[domain-guild]
-    DU[domain-user]
-    DM[domain-moderation]
-    DC[domain-compliance]
-    DGM[domain-gmod]
-  end
+    subgraph Infrastructure["Adaptateurs techniques"]
+        Infra["infra-prisma · infra-mongo · infra-redis<br/>infra-bullmq · infra-websocket<br/>infra-minio · infra-steam · infra-geoip"]
+    end
 
-  subgraph InfraLayer["packages/infra-*"]
-    IP[infra-prisma]
-    IM[infra-mongo]
-    IR[infra-redis]
-    IB[infra-bullmq]
-    IW[infra-websocket]
-    IMN[infra-minio]
-    IS[infra-steam]
-  end
+    subgraph Foundations["Fondations"]
+        Shared["shared<br/>validation, jetons, logs"]
+        Schema["schema<br/>contrats Zod, sans dépendance métier"]
+        Config["config<br/>env et validation<br/>getters infrastructure isolés"]
+    end
 
-  subgraph BaseLayer["packages/schema + config"]
-    SCHEMA[schema]
-    CONFIG[config]
-  end
+    Backend --> Core
+    Backend --> Domains
+    Backend --> Special
+    Backend --> Infra
+    Special --> Domains
+    Special --> Infra
+    Special -. "imports ciblés existants : export / localisation" .-> Core
+    Core --> Domains
+    Core --> Infra
+    Core --> Shared
+    Core --> Schema
+    Core --> Config
+    Domains --> Infra
+    Domains --> Shared
+    Domains --> Schema
+    Domains --> Config
+    Infra --> Schema
+    Infra --> Config
+    Shared --> Config
+    Website --> Schema
+    Website -->|"config/website, compatible navigateur"| Config
 
-  API --> CORE
-  API --> DS
-  API --> DG
-  DISCORD --> CORE
-  DISCORD --> DG
-  WS --> DS
-  WS --> DU
-
-  CORE --> DS
-  CORE --> DG
-  CORE --> DU
-  CORE --> IB
-  CORE --> IP
-
-  DS --> IP
-  DS --> IR
-  DS --> IW
-  DS --> SCHEMA
-  DS --> CONFIG
-
-  DG --> DS
-  DG --> DU
-  DG --> IB
-  DG --> CONFIG
-
-  DM --> DS
-  DC --> DGM
-  DC --> DU
-  DGM --> IM
-  DGM --> SCHEMA
-
-  IB --> SCHEMA
-  IW --> IB
-  IS --> IMN
+    classDef standalone fill:#fef3c7,stroke:#b45309,color:#422006
+    classDef base fill:#e0f2fe,stroke:#0369a1,color:#0c4a6e
+    class Relay,Docs standalone
+    class Shared,Schema,Config base

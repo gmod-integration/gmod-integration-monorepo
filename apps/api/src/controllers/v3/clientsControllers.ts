@@ -13,6 +13,9 @@ export async function uploadScreenshot(req: Request, res: Response) {
 export async function reportBugs(req: Request, res: Response) {
   const server = req.server!
   const result = await reportBugPayload(server, req.body)
+  if ('skip' in result) {
+    return res.status(403).json({ error: 'personal_data_collection_disabled' })
+  }
   if ('error' in result) {
     return res.status(400).json(result)
   }

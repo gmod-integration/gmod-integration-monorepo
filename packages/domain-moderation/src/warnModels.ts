@@ -1,8 +1,27 @@
-import { ActionRowBuilder, ButtonBuilder, type ButtonInteraction, ButtonStyle, EmbedBuilder } from 'discord.js'
+import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  type ButtonInteraction,
+  ButtonStyle,
+  EmbedBuilder,
+  MessageFlags,
+} from 'discord.js'
 import { getTranslate } from '@gmod/core/utils/localizations.js'
 import { getServerFromID, type Server } from '@gmod/domain-server/Server.js'
 import prisma from '@gmod/infra-prisma'
 import { ConfigDiscord } from '@gmod/config'
+import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
+
+type WarningViewer = Pick<ButtonInteraction, 'guild' | 'user' | 'memberPermissions'>
+
+/** Interaction permissions come from Discord; game ranks and platform roles do not grant moderation access. */
+export async function canViewWarningHistory(interaction: WarningViewer, steamID64: string) {
+  if (!interaction.guild) return false
+  if (interaction.guild.ownerId === interaction.user.id || interaction.memberPermissions?.has('Administrator'))
+    return true
+  const viewer = await getUserFromDiscordID(interaction.user.id)
+  return !!viewer?.getSteamID64() && viewer.getSteamID64() === steamID64
+}
 
 export async function getServerUserWarn(
   serverID: string,
@@ -189,7 +208,7 @@ export async function handleWarnInteraction(interaction: ButtonInteraction) {
   if (interaction.user.bot) return
   if (!interaction.guild) return
   if (!interaction.channel) return
-  if (!interaction.customId || !interaction.customId.startsWith('warn_')) return
+  if (!['warn_previous', 'warn_next', 'warn_refresh'].includes(interaction.customId)) return
 
   const lang = interaction.guild.preferredLocale
   const msgID = interaction.message.id
@@ -204,7 +223,7 @@ export async function handleWarnInteraction(interaction: ButtonInteraction) {
   }
 
   const server = await getServerFromID(optionsOld.serverID)
-  if (!server) {
+  if (!server || server.getGuildID() !== interaction.guild.id) {
     return interaction.reply({
       content: await getTranslate('server_not_found', lang),
       ephemeral: true,
@@ -216,26 +235,34 @@ export async function handleWarnInteraction(interaction: ButtonInteraction) {
   const order = optionsOld.order
   const steamID64 = optionsOld.steamID64
 
+  if (!(await canViewWarningHistory(interaction, steamID64)))
+    return interaction.reply({
+      content: await getTranslate('missing_permission', lang, ['Administrator']),
+      ephemeral: true,
+    })
+
   if (interaction.customId === 'warn_previous') {
     offset = offset - limit
     if (offset < 0) offset = 0
   } else if (interaction.customId === 'warn_next') {
     offset = offset + limit
-  } else if (interaction.customId === 'warn_refresh') {
+  } else {
+    // The action whitelist above leaves only refresh after previous and next are handled.
     offset = 0
   }
 
   const { embed, component, options } = await getWarnMessageEmbed(server, steamID64, lang, limit, offset, order)
-  interaction.channel.messages
-    .fetch(msgID)
-    .then((message) => {
-      message.edit({
-        embeds: [embed],
-        components: [component],
-      })
+  // Legacy public messages must never publish another page of private moderation history.
+  if (!interaction.message.flags.has(MessageFlags.Ephemeral)) {
+    const reply = await interaction.reply({
+      embeds: [embed],
+      components: [component],
+      ephemeral: true,
+      fetchReply: true,
     })
-    .then(async () => {
-      await saveWarnListOptions(msgID, server.getID(), steamID64, options)
-      interaction.deferUpdate()
-    })
+    await saveWarnListOptions(reply.id, server.getID(), steamID64, options)
+    return
+  }
+  await interaction.update({ embeds: [embed], components: [component] })
+  await saveWarnListOptions(msgID, server.getID(), steamID64, options)
 }

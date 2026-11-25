@@ -5,9 +5,12 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./index.js": "./src/index.ts"
+    "./index.js": "./src/index.ts",
+    "./addonTelemetry.js": "./src/addonTelemetry.ts",
+    "./consoleViewers.js": "./src/consoleViewers.ts"
   },
   "dependencies": {
-    "ioredis": "^5.10.0"
+    "ioredis": "^5.10.0",
+    "@gmod/config": "workspace:*"
   }
 }

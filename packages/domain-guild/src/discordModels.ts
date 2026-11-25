@@ -1,14 +1,28 @@
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
+import { findDashboardGuilds } from '@gmod/domain-user/dashboardAccess.js'
+import {
+  assertPersonalDataAllowed,
+  getRetainedTrust,
+  isErasureBlocked,
+  PersonalDataErasureError,
+  prepareExplicitOAuthLogin,
+} from '@gmod/domain-user/privacy.js'
 import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import { isGuildPremium } from './Guild.js'
+import { limitResources, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { ConfigDiscord } from '@gmod/config'
-import { generateToken } from '@gmod/core/utils/tools.js'
+import {
+  DiscordOAuthError,
+  exchangeDiscordCode,
+  exchangeDiscordRefreshToken,
+  refreshDiscordCredentials,
+  saveDiscordCredentials,
+} from '@gmod/domain-auth/discordOAuth.js'
+import { createApplicationSession } from '@gmod/domain-auth/authSessions.js'
 import redis from '@gmod/infra-redis'
 import prisma from '@gmod/infra-prisma'
 import { type Guild, type GuildMember } from 'discord.js'
 import type { PanelUser } from '@gmod/domain-user/PanelUser.js'
-import { v4 as uuidv4 } from 'uuid'
-import { gmLog } from '@gmod/core/utils/logger.js'
 import { type WSSendToServerData, wsSendToServerQueue } from '@gmod/infra-websocket/queues.js'
 import { ensureAvatarStored } from '@gmod/infra-minio'
 import {
@@ -39,12 +53,13 @@ export async function updateRolesToGmod(member: GuildMember, oldMember: GuildMem
   }
 
   for (const server of servers) {
-    const syncDirection = await server.getSetting('sync_role_direction')
+    const syncDirection = await server.getEffectiveSetting('sync_role_direction')
     if (syncDirection !== 'both' && syncDirection !== 'discord-to-gmod') {
       continue
     }
 
-    const syncRoles = await server.getSyncRoles()
+    // Disabled mappings must neither grant a fallback role nor hide an enabled fallback.
+    const syncRoles = (await server.getEffectiveSyncRoles())?.filter((rule) => rule.enable === true)
     if (!syncRoles || syncRoles.length === 0) {
       continue
     }
@@ -168,9 +183,11 @@ export async function addAutoRoleToUser(guild: Guild, member: GuildMember) {
     where: {
       guildID: guild.id,
     },
+    orderBy: [{ createdAt: 'asc' }, { roleID: 'asc' }],
   })
 
-  for (const roleData of roles) {
+  const effectiveRoles = limitResources(await resolveGuildAccess(guild.id), 'guild.auto_roles', roles)
+  for (const roleData of effectiveRoles) {
     const roleDiscord = guild.roles.cache.get(roleData.roleID)
     if (!roleDiscord) {
       await prisma.gm_guild_auto_roles.delete({
@@ -195,9 +212,11 @@ export async function addVerifyRoleToUser(guild: Guild, member: GuildMember) {
     where: {
       guildID: guild.id,
     },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
   })
 
-  for (const roleData of role) {
+  const effectiveRoles = limitResources(await resolveGuildAccess(guild.id), 'verification.roles', role)
+  for (const roleData of effectiveRoles) {
     const roleDiscord = guild.roles.cache.get(roleData.roleID)
     if (!roleDiscord) {
       await prisma.gm_guild_verify_role.delete({
@@ -232,10 +251,11 @@ export async function verifyUser(guild: Guild, member: GuildMember) {
 
 export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
   const guilds = []
-  const permGuilds = await panelUser.findGuildsWithPerms()
+  const permGuilds = await findDashboardGuilds(panelUser)
   const permGuildsID = permGuilds.map((guild) => guild.id)
 
   const rows = await prisma.gm_guild.findMany({
+    select: { guild: true },
     where: {
       guild: {
         in: permGuildsID,
@@ -253,7 +273,11 @@ export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
 
     // guildID was derived from permGuilds itself (permGuildsID is permGuilds.map(g => g.id)),
     // so it is always present in permGuildsID - no filtering is needed here.
-    const icon = await ensureAvatarStored('guild', guildID, getDiscordGuildIconCdnUrl(guildID, guildData.icon))
+    const icon = await ensureAvatarStored(
+      'guild',
+      guildID,
+      getDiscordGuildIconCdnUrl(guildID, typeof guildData.icon === 'string' ? guildData.icon : null),
+    )
 
     guilds.push({
       id: guildID,
@@ -268,145 +292,86 @@ export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
   return guilds
 }
 
-export async function getUserTokenFromCode(code: string, redirectURI: string) {
-  const discordRequest = await fetch('https://discord.com/api/oauth2/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      client_id: ConfigDiscord.clientID!,
-      client_secret: ConfigDiscord.clientSecret!,
-      grant_type: 'authorization_code',
-      code,
-      redirect_uri: redirectURI,
-      // scope: 'identify guilds.join email guilds',
-      scope: 'identify guilds',
-    }).toString(),
-  })
-
-  if (!discordRequest.ok) {
-    const errorBody = await discordRequest.text().catch(() => '')
-    console.error(
-      `[discord oauth] token exchange failed: status=${discordRequest.status} body=${errorBody.slice(0, 500)}`,
-    )
-    return null
+export async function getUserTokenFromCode(code: string, redirectURI: string, codeVerifier?: string) {
+  try {
+    return await exchangeDiscordCode(code, redirectURI, codeVerifier)
+  } catch (error) {
+    if (error instanceof DiscordOAuthError && error.code === 'grant_rejected') return null
+    throw error
   }
-
-  return await discordRequest.json()
 }
 
 export async function getUserTokenFromRefreshToken(refreshToken: string) {
-  const discordRequest = await fetch('https://discord.com/api/oauth2/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      client_id: ConfigDiscord.clientID!,
-      client_secret: ConfigDiscord.clientSecret!,
-    }).toString(),
-  })
-
-  if (!discordRequest.ok) {
-    return null
-  }
-
-  return await discordRequest.json()
+  return exchangeDiscordRefreshToken(refreshToken)
 }
 
 export async function refreshUserToken(discordID: string) {
-  const discordToken = await prisma.gm_discordToken.findFirst({
-    where: {
-      discordID,
-    },
-  })
-
-  if (!discordToken) {
-    return null
-  }
-
-  const token = await getUserTokenFromRefreshToken(discordToken.refreshToken)
-  if (!token) {
-    // delete discord token
-    await prisma.gm_discordToken.delete({
-      where: {
-        discordID,
-      },
-    })
-    return null
-  }
-
-  await prisma.gm_discordToken.update({
-    where: {
-      discordID,
-    },
-    data: {
-      accessToken: token.access_token,
-      refreshToken: token.refresh_token,
-      creationDate: new Date(),
-      expirationDate: new Date(Date.now() + token.expires_in * 1000),
-    },
-  })
-
-  return token
+  return refreshDiscordCredentials(discordID)
 }
 
-// every 30 seconds check if we need to refresh discord tokens
-setInterval(async () => {
-  // get a list of all discord tokens where expiration date is less than 1 day from now
-  const discordTokens = await prisma.gm_discordToken.findMany({
-    where: {
-      expirationDate: {
-        lte: new Date(Date.now() + 60 * 60 * 24 * 1000),
+interface DiscordUserProfile {
+  id: string
+  username: string
+  global_name?: string | null
+  avatar?: string | null
+  discriminator?: string
+}
+
+export async function getUserFromToken(token: string): Promise<DiscordUserProfile | null> {
+  let discordRequest: Response
+  try {
+    discordRequest = await fetch('https://discord.com/api/users/@me', {
+      signal: AbortSignal.timeout(10_000),
+      headers: {
+        authorization: token,
       },
-    },
-    take: 5,
-  })
-
-  // refresh all tokens
-  for (const discordToken of discordTokens) {
-    await refreshUserToken(discordToken.discordID)
-    gmLog('discord', `Refreshed token for ${discordToken.discordID}`)
+    })
+  } catch {
+    throw new DiscordOAuthError('provider_unavailable')
   }
-}, 1000 * 30)
-
-export async function getUserFromToken(token: string) {
-  const discordRequest = await fetch('https://discord.com/api/users/@me', {
-    headers: {
-      authorization: token,
-    },
-  })
 
   if (!discordRequest.ok) {
-    const errorBody = await discordRequest.text().catch(() => '')
-    console.error(
-      `[discord oauth] users/@me failed: status=${discordRequest.status} body=${errorBody.slice(0, 500)}`,
-    )
+    console.error(`[discord oauth] users/@me failed: status=${discordRequest.status}`)
     return null
   }
 
-  return await discordRequest.json()
+  let profile: unknown
+  try {
+    profile = await discordRequest.json()
+  } catch {
+    throw new DiscordOAuthError('provider_unavailable')
+  }
+  if (!profile || typeof profile !== 'object' || Array.isArray(profile)) return null
+  const user = profile as Record<string, unknown>
+  if (typeof user.id !== 'string' || !/^\d{1,30}$/.test(user.id)) return null
+  if (typeof user.username !== 'string' || !user.username.trim() || user.username.length > 80) return null
+  const result: DiscordUserProfile = { id: user.id, username: user.username }
+  if (typeof user.global_name === 'string' || user.global_name === null) result.global_name = user.global_name
+  if (typeof user.avatar === 'string' && /^[a-zA-Z0-9_]+$/.test(user.avatar)) result.avatar = user.avatar
+  if (user.avatar === null) result.avatar = null
+  if (typeof user.discriminator === 'string') result.discriminator = user.discriminator
+  return result
 }
 
 export async function saveUser(id: string, username: string) {
+  await assertPersonalDataAllowed(id)
   const user = await prisma.gm_user.findFirst({
     where: {
       id,
     },
   })
 
+  let saved: { updatedAt: Date }
   if (!user) {
-    await prisma.gm_user.create({
+    saved = await prisma.gm_user.create({
       data: {
         id,
         username,
+        trust: (await getRetainedTrust(id)) ?? 50,
       },
     })
   } else {
-    await prisma.gm_user.update({
+    saved = await prisma.gm_user.update({
       where: {
         id,
       },
@@ -416,57 +381,26 @@ export async function saveUser(id: string, username: string) {
     })
   }
 
+  if (await isErasureBlocked(id)) {
+    await prisma.gm_user.deleteMany({ where: { id, updatedAt: saved.updatedAt } })
+    throw new PersonalDataErasureError()
+  }
   return true
 }
 
 export async function saveUserPanel(discordID: string, discordUserToken: any, sessionData: any) {
-  const discordToken = await prisma.gm_discordToken.findFirst({
-    where: {
-      discordID,
-    },
-  })
-
-  if (!discordToken) {
-    await prisma.gm_discordToken.create({
-      data: {
-        discordID,
-        accessToken: discordUserToken.access_token,
-        refreshToken: discordUserToken.refresh_token,
-        creationDate: discordUserToken.creationDate,
-        expirationDate: discordUserToken.expirationDate,
-      },
+  await prepareExplicitOAuthLogin(discordID)
+  await assertPersonalDataAllowed(discordID)
+  const savedDiscordToken = await saveDiscordCredentials(discordID, discordUserToken)
+  const { token, session } = await createApplicationSession(discordID, sessionData)
+  if (await isErasureBlocked(discordID)) {
+    await prisma.gm_panelToken.deleteMany({ where: { id: session.id } })
+    await prisma.gm_discordToken.deleteMany({
+      where: { discordID, version: savedDiscordToken.version, refreshToken: savedDiscordToken.refreshToken },
     })
-  } else {
-    await prisma.gm_discordToken.update({
-      where: {
-        discordID,
-      },
-      data: {
-        accessToken: discordUserToken.access_token,
-        refreshToken: discordUserToken.refresh_token,
-        creationDate: discordUserToken.creationDate,
-        expirationDate: discordUserToken.expirationDate,
-      },
-    })
+    throw new PersonalDataErasureError()
   }
-
-  const panelAccessToken = generateToken(32)
-
-  await prisma.gm_panelToken.create({
-    data: {
-      id: uuidv4(),
-      discordID,
-      accessToken: panelAccessToken,
-      creationDate: discordUserToken.creationDate,
-      expirationDate: discordUserToken.expirationDate,
-      os: sessionData.os,
-      ip: sessionData.ip,
-      browser: sessionData.browser,
-      country: sessionData.country,
-    },
-  })
-
-  return panelAccessToken
+  return token
 }
 
 export async function addUserToGuild(guildID: string, userID: string, userToken: string) {
@@ -496,8 +430,8 @@ export async function updatePseudoToGmod(member: GuildMember, oldMember: GuildMe
   if (!user || !user.getSteamID64()) return
 
   for (const server of servers) {
-    const pseudoDirection = await server.getSetting('sync_pseudo_direction')
-    if (pseudoDirection !== 'both' && pseudoDirection !== 'discord-to-gmod') return
+    const pseudoDirection = await server.getEffectiveSetting('sync_pseudo_direction')
+    if (pseudoDirection !== 'both' && pseudoDirection !== 'discord-to-gmod') continue
 
     const redisKey = `sync-pseudo:gmod:server:${server.id}:user:${user.getSteamID64()}`
     const redisData = await redis.get(redisKey)

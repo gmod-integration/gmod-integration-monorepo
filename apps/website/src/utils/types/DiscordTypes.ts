@@ -13,4 +13,5 @@ export type TypeDiscordRole = {
   name: string
   color: number
   colorHex: string
+  position?: number
 }

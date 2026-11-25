@@ -21,6 +21,6 @@ describe('pages/dashboard/guilds/servers/status/ServerStatusCustom.tsx', () => {
     window.localStorage.clear()
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
     renderWithProviders(() => <ServerStatusCustom />)
-    expect(screen.getByText('This feature is only available to premium users.')).toBeInTheDocument()
+    expect(screen.getByText('This feature requires Premium for this Discord community.')).toBeInTheDocument()
   })
 })

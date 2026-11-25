@@ -1,4 +1,4 @@
-import { BaseClass } from './BaseClass.js'
+import { BaseClass } from '@gmod/shared/BaseClass.js'
 
 export interface CustomValuesInterface {
   [key: string]: string

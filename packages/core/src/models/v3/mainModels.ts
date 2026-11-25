@@ -6,7 +6,8 @@ import { lastGmodIntegrationTag } from '../../utils/tools.js'
 import { enqueueMainClientSetPresence } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 
 export async function getStats() {
-  const redisKey = 'stats'
+  // Older cached totals may include accounts whose Steam link is an empty string.
+  const redisKey = 'stats:v2'
   const redisStat = await redis.get(redisKey)
   if (redisStat !== null) {
     return JSON.parse(redisStat)
@@ -25,9 +26,7 @@ export async function getStats() {
   const serverCount = await prisma.gm_server.count()
   const verifiedUserCount = await prisma.gm_user.count({
     where: {
-      steam: {
-        not: null,
-      },
+      AND: [{ steam: { not: null } }, { steam: { not: '' } }],
     },
   })
 
@@ -75,8 +74,15 @@ export async function routineUpdateStatus() {
 }
 
 export async function routineServerStatusRefresh() {
-  setInterval(statusRoutine, 30000)
-  await statusRoutine()
+  async function refresh() {
+    try {
+      await statusRoutine()
+    } catch (error) {
+      console.error('Error refreshing server statuses:', error)
+    }
+  }
+  setInterval(refresh, 30000)
+  await refresh()
 }
 
 function routPremiumRoleOfMainGuild() {

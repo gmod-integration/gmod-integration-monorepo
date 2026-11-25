@@ -165,8 +165,8 @@
   "join_ticket_admin": "Personel Olarak Talebe Katıl",
   "admin_ticket_waiting": "Bir personelin talebe katılması bekleniyor...",
   "ticket_not_found": "Talep bulunamadı!",
-  "rcon_command_error": "Komut gönderilirken bir hata oluştu!",
-  "rcon_command_success": "Komut başarıyla gönderildi!",
+  "rcon_command_error": "Komutun çalıştırıldığı doğrulanamadı. Bağlı oyuncunuz oyun sunucusunda izin verilen bir yönetici rütbesiyle çevrimiçi olmalı ve eklenti güncel olmalıdır. Tekrar denemeden önce oyun sunucusunu kontrol edin.",
+  "rcon_command_success": "Oyun sunucusu konsol komutunu kabul etti.",
   "your_guild_is_premium": "Tebrikler, topluluğunuz premium!",
   "re_verify_yourself": "Bu işlemi gerçekleştirmek için tekrar kendinizi doğrulamanız gerekiyor!",
   "vote_webhook": "{1}, {2} sunucusu için oy kullandı!",
@@ -235,5 +235,6 @@
   "ch_atm_deposit_money": "ATM para yatırdı",
   "ch_atm_withdraw_money": "ATM para çekti",
   "ammount": "Para Miktarı",
-  "discord.screenshot.no_title": "Başlık yok"
+  "discord.screenshot.no_title": "Başlık yok",
+  "access_verification_unavailable": "Erişim hakları şu anda doğrulanamıyor. Lütfen kısa bir süre sonra tekrar deneyin."
 }

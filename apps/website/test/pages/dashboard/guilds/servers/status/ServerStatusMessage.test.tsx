@@ -1,321 +1,186 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
-import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
-import { okJson, errJson, stubDialogGlobal, clearDialogGlobals } from '../testHelpers.js'
+import {
+  commands,
+  configuration,
+  installNetwork,
+  PREVIEW,
+  puts,
+  renderStatus,
+  STATUS,
+  viewport,
+} from './statusTestHelpers.js'
+import { okJson, errJson } from '../testHelpers.js'
 
 vi.mock('../../../../../../src/utils/api.js', () => ({
-  fetchAPI: vi.fn(() => Promise.resolve({ ok: true, json: async () => ({}) })),
-  getAPIUrl: vi.fn(),
-  getUrlWithActualParams: vi.fn((s: string) => s),
+  fetchAPI: vi.fn(),
+  getAPIUrl: () => '',
+  getUrlWithActualParams: (path: string) => path,
 }))
-
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
-const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { default: ServerStatusMessage } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/status/ServerStatusMessage.js'
-)
-
-const STATUS_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/status'
-const SHOW_PLAYER_LIST_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/show_player_list_status'
-const STATUS_FORMAT_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/status_player_list_format'
-const SHOW_STATUS_CHART_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/show_status_chart'
-
-function renderPage() {
-  return renderWithProviders(() => <ServerStatusMessage />, {
-    path: '/dashboard/guilds/:guildID/config/servers/:serverID/status',
-    history: historyAt('/dashboard/guilds/g1/config/servers/s1/status'),
-  })
+const api = fetchAPI as Mock
+const ready = () => vi.waitFor(() => expect(screen.getByRole('checkbox', { name: /Show Player List/ })).toBeEnabled())
+const sendModal = () => document.getElementById('select_channel_modal')!
+async function openSend() {
+  await fireEvent.click(screen.getByRole('button', { name: 'Publish status message' }))
+  const modal = sendModal()
+  await vi.waitFor(() => expect(modal.querySelector('select')).not.toBeNull())
+  await fireEvent.change(modal.querySelector('select')!, { target: { value: 'c1' } })
+  return modal
 }
-
-function defaultFetch(overrides: Record<string, unknown> = {}) {
-  const map: Record<string, unknown> = {
-    [STATUS_URL]: {},
-    [SHOW_PLAYER_LIST_URL]: { value: false },
-    [STATUS_FORMAT_URL]: { value: '' },
-    [SHOW_STATUS_CHART_URL]: { value: false },
-    '/users/:discordID/guilds/:guildID/channels': [{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }],
-    ...overrides,
-  }
-  ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-    if (method === 'GET' && Object.prototype.hasOwnProperty.call(map, endpoint)) {
-      return Promise.resolve(okJson(map[endpoint]))
-    }
-    return Promise.resolve(okJson({}))
-  })
-}
-
+beforeEach(() => {
+  localStorage.clear()
+  localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+  api.mockReset()
+  viewport(true)
+})
 afterEach(() => {
   cleanup()
-  clearDialogGlobals('select_channel_modal', 'edit_format')
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 
-describe('pages/dashboard/guilds/servers/status/ServerStatusMessage.tsx', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
-    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-    guildChannelsMutate([{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }])
-    ;(fetchAPI as Mock).mockReset()
-    defaultFetch()
+describe('status publication is a separate command', () => {
+  it('requires explicit Send after choosing a channel and never writes configuration implicitly', async () => {
+    const network = installNetwork(api)
+    renderStatus()
+    await ready()
+    const modal = await openSend()
+    const send = within(modal).getByRole('button', { name: 'Send to Discord' })
+    expect(commands(api)).toHaveLength(0)
+    await vi.waitFor(() => expect(send).toBeEnabled())
+    await fireEvent.click(send)
+    await vi.waitFor(() => expect(api).toHaveBeenCalledWith(STATUS, 'POST', { channelID: 'c1' }))
+    expect(puts(network)).toHaveLength(0)
   })
-
-  it('renders the panel title and description', async () => {
-    renderPage()
-    expect(screen.getByText('Server Status')).toBeInTheDocument()
-    expect(screen.getByText('Here you can manage your server status message and buttons.')).toBeInTheDocument()
+  it('blocks publication while message or buttons have unsaved changes', async () => {
+    const network = installNetwork(api)
+    renderStatus()
+    await ready()
+    await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
+    expect(screen.getByRole('button', { name: 'Publish status message' })).toBeDisabled()
+    expect(screen.getByText('Wait for your changes to finish saving before publishing a message.')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Publish status message' }))
+    expect(commands(api)).toHaveLength(0)
+    expect(puts(network)).toHaveLength(0)
   })
-
-  it('falls back to an empty object for status/showPlayerList/format/chart when their GET fails', async () => {
-    ;(fetchAPI as Mock).mockResolvedValue(errJson())
-    const { container } = renderPage()
-    await vi.waitFor(() => {
-      const checkboxes = container.querySelectorAll('input[type=checkbox]')
-      expect(checkboxes[0]).not.toBeDisabled()
-      expect(checkboxes[1]).not.toBeDisabled()
-    })
-    expect(screen.getByText('No status message')).toBeInTheDocument()
-    const checkboxes = container.querySelectorAll('input[type=checkbox]')
-    // showPlayerList()/show_status_chart() resolve to `{}` on a failed GET, so `.value` on them is
-    // `undefined` (not `false`) - happy-dom stores that raw value on `.checked` instead of
-    // coercing it like a real browser would, hence the falsy check rather than `toBe(false)`.
-    expect((checkboxes[0] as HTMLInputElement).checked).toBeFalsy()
-    expect((checkboxes[1] as HTMLInputElement).checked).toBeFalsy()
+  it('waits for a successful preview and prevents sending when preview fails', async () => {
+    installNetwork(api, { failPreview: true })
+    renderStatus()
+    await ready()
+    const modal = await openSend()
+    await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+    expect(within(modal).getByRole('button', { name: 'Send to Discord' })).toBeDisabled()
+    expect(commands(api)).toHaveLength(0)
   })
-
-  describe('status message', () => {
-    it('shows "No status message" and a disabled add button while loading', () => {
-      defaultFetch({ [STATUS_FORMAT_URL]: new Promise(() => {}) })
-      const { container } = renderPage()
-      expect(screen.getByText('No status message')).toBeInTheDocument()
-      expect(container.querySelector('.fa-plus')).toBeDisabled()
-    })
-
-    it('renders the discord message once a status channel/message is configured', async () => {
-      defaultFetch({ [STATUS_URL]: { channel: 'c1', message: 'm1' } })
-      renderPage()
-      await vi.waitFor(() => expect(screen.getByText('#general >', { exact: false })).toBeInTheDocument())
-      expect(screen.queryByText('No status message')).not.toBeInTheDocument()
-    })
-
-    it('opens the channel selector modal and refetches guild channels on the add button click', async () => {
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(container.querySelector('.fa-plus')).not.toBeDisabled())
-      stubDialogGlobal(container, 'select_channel_modal')
-      await fireEvent.click(container.querySelector('.fa-plus') as HTMLElement)
-      expect(container.querySelector('#select_channel_modal')?.hasAttribute('open')).toBe(true)
-    })
-
-    it('sends the selected channel and mutates the status on success', async () => {
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(container.querySelector('.fa-plus')).not.toBeDisabled())
-      const select = container.querySelector('#select_channel_modal select.select') as HTMLSelectElement
-      defaultFetch({ [STATUS_URL]: { channel: 'c1', message: 'm2' } })
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === STATUS_URL && method === 'POST') return Promise.resolve(okJson({ channel: 'c1', message: 'm2' }))
-        if (endpoint === STATUS_URL && method === 'GET') return Promise.resolve(okJson({}))
-        const map: Record<string, unknown> = {
-          [SHOW_PLAYER_LIST_URL]: { value: false },
-          [STATUS_FORMAT_URL]: { value: '' },
-          [SHOW_STATUS_CHART_URL]: { value: false },
-          '/users/:discordID/guilds/:guildID/channels': [{ id: 'c1', name: 'general', type: 0, position: 0, parentID: null }],
-        }
-        if (method === 'GET' && Object.prototype.hasOwnProperty.call(map, endpoint)) return Promise.resolve(okJson(map[endpoint]))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.change(select, { target: { value: 'c1' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(STATUS_URL, 'POST', { channelID: 'c1' }))
-      await vi.waitFor(() => expect(screen.getByText('#general >', { exact: false })).toBeInTheDocument())
-    })
-
-    it('does not mutate the status when sending fails', async () => {
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(container.querySelector('.fa-plus')).not.toBeDisabled())
-      const select = container.querySelector('#select_channel_modal select.select') as HTMLSelectElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === STATUS_URL && method === 'POST') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.change(select, { target: { value: 'c1' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(STATUS_URL, 'POST', { channelID: 'c1' }))
-      expect(screen.getByText('No status message')).toBeInTheDocument()
-    })
-
-    it('removes the status and reverts to "No status message" on success', async () => {
-      defaultFetch({ [STATUS_URL]: { channel: 'c1', message: 'm1' } })
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(screen.getByText('#general >', { exact: false })).toBeInTheDocument())
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === STATUS_URL && method === 'DELETE') return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(container.querySelector('.fa-xmark') as HTMLElement)
-      await vi.waitFor(() => expect(screen.getByText('No status message')).toBeInTheDocument())
-    })
-
-    it('does not mutate the status when removal fails', async () => {
-      defaultFetch({ [STATUS_URL]: { channel: 'c1', message: 'm1' } })
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(screen.getByText('#general >', { exact: false })).toBeInTheDocument())
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === STATUS_URL && method === 'DELETE') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(container.querySelector('.fa-xmark') as HTMLElement)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(STATUS_URL, 'DELETE'))
-      expect(screen.getByText('#general >', { exact: false })).toBeInTheDocument()
-    })
+  it('keeps a failed send open for retry and blocks Cancel and native Escape while busy', async () => {
+    installNetwork(api)
+    renderStatus()
+    await ready()
+    const modal = await openSend()
+    const send = within(modal).getByRole('button', { name: 'Send to Discord' })
+    await vi.waitFor(() => expect(send).toBeEnabled())
+    const original = api.getMockImplementation()!
+    let resolve!: (value: any) => void
+    api.mockImplementation((path, method, body) =>
+      path === STATUS && method === 'POST'
+        ? new Promise((done) => {
+            resolve = done
+          })
+        : original(path, method, body),
+    )
+    await fireEvent.click(send)
+    await fireEvent.click(send)
+    expect(commands(api)).toHaveLength(1)
+    expect(within(modal).getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    const cancel = new Event('cancel', { cancelable: true })
+    modal.dispatchEvent(cancel)
+    expect(cancel.defaultPrevented).toBe(true)
+    resolve(errJson())
+    await vi.waitFor(() =>
+      expect(within(modal).getByRole('alert')).toHaveTextContent('Unable to send the status message.'),
+    )
+    expect(modal).toHaveAttribute('open')
+    api.mockImplementation((path, method, body) =>
+      path === STATUS && method === 'POST'
+        ? Promise.resolve(okJson({ channel: 'c1', message: 'm1' }))
+        : original(path, method, body),
+    )
+    await fireEvent.click(send)
+    await vi.waitFor(() => expect(modal).not.toHaveAttribute('open'))
   })
-
-  describe('show player list toggle', () => {
-    it('reflects the fetched value and is disabled while loading', () => {
-      defaultFetch({ [SHOW_PLAYER_LIST_URL]: new Promise(() => {}) })
-      const { container } = renderPage()
-      const checkbox = container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement
-      expect(checkbox).toBeDisabled()
-      expect(checkbox.checked).toBe(false)
-    })
-
-    it('sends the new value on toggle and mutates the store', async () => {
-      const { container } = renderPage()
-      await vi.waitFor(() =>
-        expect((container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement).disabled).toBe(false),
-      )
-      const checkbox = container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === SHOW_PLAYER_LIST_URL && method === 'PUT') return Promise.resolve(okJson({ value: true }))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SHOW_PLAYER_LIST_URL, 'PUT', { value: true }))
-      await vi.waitFor(() => expect(checkbox.checked).toBe(true))
-    })
-
-    it('logs the error and does not throw when the PUT fails', async () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const { container } = renderPage()
-      await vi.waitFor(() =>
-        expect((container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement).disabled).toBe(false),
-      )
-      const checkbox = container.querySelectorAll('input[type=checkbox]')[0] as HTMLInputElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === SHOW_PLAYER_LIST_URL && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(checkbox)
-      await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-      errorSpy.mockRestore()
-    })
+  it('requires a confirmation to remove the published message and preserves it on failure', async () => {
+    installNetwork(api, { status: { channel: 'c1', message: 'm1' } })
+    renderStatus()
+    await ready()
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove published message' }))
+    const modal = screen.getByRole('dialog', { name: 'Remove published message' })
+    expect(commands(api)).toHaveLength(0)
+    const original = api.getMockImplementation()!
+    api.mockImplementation((path, method, body) =>
+      path === STATUS && method === 'DELETE' ? Promise.resolve(errJson()) : original(path, method, body),
+    )
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Remove published message' }))
+    await vi.waitFor(() => expect(within(modal).getByRole('alert')).toBeInTheDocument())
+    expect(modal).toHaveAttribute('open')
+    api.mockImplementation((path, method, body) =>
+      path === STATUS && method === 'DELETE' ? Promise.resolve(okJson({})) : original(path, method, body),
+    )
+    await fireEvent.click(within(modal).getByRole('button', { name: 'Remove published message' }))
+    await vi.waitFor(() => expect(screen.getByText('No status message published')).toBeInTheDocument())
   })
-
-  describe('player list format preview and edit modal', () => {
-    it('computes the preview by substituting every placeholder', async () => {
-      defaultFetch({
-        [STATUS_FORMAT_URL]: {
-          value:
-            '{name}-{steamID64}-{team}-{userGroup}-{connectTime}-{kills}-{deaths}-{position}-{angle}-{fps}-{ping}-{adjustedTime}-{branch}-{custom}',
-        },
-      })
-      const { container } = renderPage()
-      await vi.waitFor(() => {
-        const previewInputs = container.querySelectorAll('input[readonly]')
-        expect((previewInputs[0] as HTMLInputElement).value).toContain('John Doe')
-      })
-      const preview = container.querySelectorAll('input[readonly]')[0] as HTMLInputElement
-      expect(preview.value).toBe(
-        'John Doe-76500000000000000-Citizen-user-00:00:00-0-0-0 0 0-0 0 0-0-0-0-main-:icon:',
-      )
-    })
-
-    it('disables the format input and edit button while loading', () => {
-      defaultFetch({ [STATUS_FORMAT_URL]: new Promise(() => {}) })
-      const { container } = renderPage()
-      expect(container.querySelector('input[readonly]')).toBeDisabled()
-      expect(container.querySelector('.fa-edit')).toBeDisabled()
-    })
-
-    it('opens the edit modal, updates the format and preview live, and saves on click', async () => {
-      defaultFetch({ [STATUS_FORMAT_URL]: { value: '{name}' } })
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(container.querySelector('.fa-edit')).not.toBeDisabled())
-      stubDialogGlobal(container, 'edit_format')
-      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
-
-      const modal = container.querySelector('#edit_format') as HTMLElement
-      expect(modal.hasAttribute('open')).toBe(true)
-      const formatInput = within(modal).getByDisplayValue('{name}') as HTMLInputElement
-      await fireEvent.input(formatInput, { target: { value: '{team}' } })
-      await vi.waitFor(() => expect(within(modal).getByDisplayValue('Citizen')).toBeInTheDocument())
-
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === STATUS_FORMAT_URL && method === 'PUT') return Promise.resolve(okJson({ value: '{team}' }))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(within(modal).getByText('Save'))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(STATUS_FORMAT_URL, 'PUT', { value: '{team}' }),
-      )
-    })
-
-    it('logs the error and does not throw when saving the format fails', async () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      defaultFetch({ [STATUS_FORMAT_URL]: { value: '{name}' } })
-      const { container } = renderPage()
-      await vi.waitFor(() => expect(container.querySelector('.fa-edit')).not.toBeDisabled())
-      stubDialogGlobal(container, 'edit_format')
-      await fireEvent.click(container.querySelector('.fa-edit') as HTMLElement)
-      const modal = container.querySelector('#edit_format') as HTMLElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === STATUS_FORMAT_URL && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(within(modal).getByText('Save'))
-      await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-      errorSpy.mockRestore()
-    })
+  it('allows configuration editing when the published-message lookup fails', async () => {
+    installNetwork(api)
+    const original = api.getMockImplementation()!
+    api.mockImplementation((path, method, body) =>
+      path === STATUS && method === 'GET' ? Promise.resolve(errJson()) : original(path, method, body),
+    )
+    renderStatus()
+    await ready()
+    expect(screen.getByRole('button', { name: 'Publish status message' })).toBeDisabled()
+    await fireEvent.click(screen.getByRole('checkbox', { name: /Show Player List/ }))
+    await vi.waitFor(() => expect(screen.getByRole('checkbox', { name: /Show Player List/ })).toBeChecked())
   })
-
-  describe('show player chart toggle', () => {
-    it('is disabled while not premium, regardless of loading state', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
-      const { container } = renderPage()
-      await vi.waitFor(() => {
-        const checkboxes = container.querySelectorAll('input[type=checkbox]')
-        expect(checkboxes[1]).toBeDisabled()
-      })
+  it('updates the preview for inline format edits without a format-specific Save', async () => {
+    installNetwork(api, {
+      configuration: configuration({
+        settings: { show_player_list_status: true, status_player_list_format: '{name}', show_status_chart: false },
+      }),
     })
-
-    it('reflects the fetched value and sends updates when premium', async () => {
-      defaultFetch({ [SHOW_STATUS_CHART_URL]: { value: false } })
-      const { container } = renderPage()
-      await vi.waitFor(() => {
-        const chartCheckbox = container.querySelectorAll('input[type=checkbox]')[1] as HTMLInputElement
-        expect(chartCheckbox.disabled).toBe(false)
-      })
-      const chartCheckbox = container.querySelectorAll('input[type=checkbox]')[1] as HTMLInputElement
-      expect(chartCheckbox.checked).toBe(false)
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === SHOW_STATUS_CHART_URL && method === 'PUT') return Promise.resolve(okJson({ value: true }))
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(chartCheckbox)
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SHOW_STATUS_CHART_URL, 'PUT', { value: true }))
-      await vi.waitFor(() => expect(chartCheckbox.checked).toBe(true))
+    renderStatus()
+    await ready()
+    await fireEvent.input(screen.getByLabelText('Player List Format'), { target: { value: '**{name}** - {team}' } })
+    await vi.waitFor(() =>
+      expect(api.mock.calls.filter(([path]) => path === PREVIEW).at(-1)?.[2].settings.status_player_list_format).toBe(
+        '**{name}** - {team}',
+      ),
+    )
+    expect(document.getElementById('edit_format')).not.toBeInTheDocument()
+    expect(commands(api)).toHaveLength(0)
+  })
+  it('keeps a player-list draft intact while copying its variables and consulting formatting guidance', async () => {
+    const network = installNetwork(api, {
+      configuration: configuration({
+        settings: { show_player_list_status: true, status_player_list_format: '{name}', show_status_chart: false },
+      }),
     })
-
-    it('logs the error and does not throw when the PUT fails', async () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const { container } = renderPage()
-      await vi.waitFor(() => {
-        const chartCheckbox = container.querySelectorAll('input[type=checkbox]')[1] as HTMLInputElement
-        expect(chartCheckbox.disabled).toBe(false)
-      })
-      const chartCheckbox = container.querySelectorAll('input[type=checkbox]')[1] as HTMLInputElement
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === SHOW_STATUS_CHART_URL && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson({}))
-      })
-      await fireEvent.click(chartCheckbox)
-      await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
-      errorSpy.mockRestore()
-    })
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    renderStatus()
+    await ready()
+    const format = screen.getByLabelText('Player List Format')
+    await fireEvent.input(format, { target: { value: '**{name}** - {team}' } })
+    const reference = screen.getByText('Available variables').closest('details')!
+    await fireEvent.click(reference.querySelector('summary')!)
+    expect(within(reference).getByText('Supported formatting')).toBeInTheDocument()
+    expect(within(reference).getAllByText(/1h\s?2m\s?3s/).length).toBeGreaterThan(0)
+    await fireEvent.click(within(reference).getByRole('button', { name: 'Copy {timeLastTeamChange}' }))
+    await vi.waitFor(() => expect(writeText).toHaveBeenCalledWith('{timeLastTeamChange}'))
+    expect(format).toHaveValue('**{name}** - {team}')
+    await vi.waitFor(() => expect(puts(network)).toHaveLength(1))
+    expect(JSON.parse(String(puts(network)[0][1].body)).configuration.settings.status_player_list_format).toBe(
+      '**{name}** - {team}',
+    )
+    expect(commands(api)).toHaveLength(0)
   })
 })

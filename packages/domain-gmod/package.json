@@ -9,6 +9,7 @@
     "./*.js": "./src/*.ts"
   },
   "dependencies": {
+    "@gmod/domain-user": "workspace:*",
     "@gmod/infra-mongo": "workspace:*",
     "@gmod/schema": "workspace:*"
   }

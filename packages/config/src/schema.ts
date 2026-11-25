@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isIP } from 'node:net'
 
 const MIN_SECRET_LENGTH = 17
 const forbiddenSecretValues = new Set(['secret', 'root'])
@@ -8,10 +9,7 @@ function unquoteString(value: unknown) {
     return value
   }
   const trimmed = value.trim()
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
+  if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
     return trimmed.slice(1, -1)
   }
   return trimmed
@@ -27,6 +25,26 @@ function strongSecretSchema(key: string) {
 
 export const ConfigSchema = z.object({
   DEV: z.enum(['true', 'false']).default('false'),
+  API_TRUSTED_PROXIES: z
+    .string()
+    .default('')
+    .refine(
+      (value) =>
+        value.split(',').every((part) => {
+          const entry = part.trim()
+          if (!entry || ['loopback', 'linklocal', 'uniquelocal'].includes(entry)) return true
+          const parts = entry.split('/')
+          if (parts.length > 2) return false
+          const [address, prefix] = parts
+          const family = isIP(address)
+          return (
+            !!family &&
+            (prefix === undefined ||
+              (/^\d+$/.test(prefix) && Number(prefix) > 0 && Number(prefix) <= (family === 4 ? 32 : 128)))
+          )
+        }),
+      'Use a comma-separated list of trusted proxy IPs or non-global CIDRs.',
+    ),
   SENTRY_DSN: z.string().url().optional(),
   SENTRY_AUTH_TOKEN: z.string().min(1).optional(),
 
@@ -46,6 +64,10 @@ export const ConfigSchema = z.object({
 
   DISCORD_CLIENT_ID: z.string().min(1),
   DISCORD_CLIENT_SECRET: z.string().min(1),
+  AUTH_TOKEN_ENCRYPTION_KEY: z.string().trim().min(32).optional(),
+  AUTH_SESSION_ABSOLUTE_TTL_SECONDS: z.coerce.number().int().min(300).max(31536000).default(2592000),
+  AUTH_SESSION_IDLE_TTL_SECONDS: z.coerce.number().int().min(60).max(31536000).default(604800),
+  PRIVACY_HASH_SECRET: strongSecretSchema('PRIVACY_HASH_SECRET').optional(),
   DISCORD_GUILD_ID: z.string().min(1),
   DISCORD_BOT_TOKEN: z.string().min(1),
   DISCORD_BOT_INVITE_URL: z.string().url(),
@@ -53,6 +75,21 @@ export const ConfigSchema = z.object({
   OAUTH_PANEL_URL: z.string().url(),
   OAUTH_REDIRECT_URL: z.string().url(),
   BARER_DISCORD_RELAY: z.string().min(1),
+  DISCORD_RELAY_URL: z.preprocess(
+    (value) => (typeof value === 'string' ? value.trim() || undefined : value),
+    z
+      .string()
+      .url()
+      .refine((value) => {
+        try {
+          const url = new URL(value)
+          return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password
+        } catch {
+          return false
+        }
+      }, 'Use an HTTP or HTTPS relay URL without credentials.')
+      .optional(),
+  ),
 
   DISCORD_GUILD_PREMIUM_ROLE_ID: z.string().min(1),
   DISCORD_GUILD_GMODSTORE_PREMIUM_ROLE_ID: z.string().min(1),

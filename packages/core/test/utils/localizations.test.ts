@@ -8,7 +8,7 @@ const redisMock = { get: vi.fn(), set: vi.fn(), del: vi.fn() }
 vi.mock('@gmod/infra-redis', () => ({ default: redisMock }))
 
 const gmLogMock = vi.fn()
-vi.mock('../../src/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const { getTranslate } = await import('../../src/utils/localizations.js')
 
@@ -56,9 +56,9 @@ describe('getTranslate (core)', () => {
   it('falls back to getDefaultTrad when the key is missing from the requested language', async () => {
     redisMock.get.mockResolvedValueOnce(null)
     existsSyncMock.mockReturnValueOnce(true)
-    readFileSyncMock.mockReturnValueOnce(JSON.stringify({ other: 'x' })).mockReturnValueOnce(
-      JSON.stringify({ hello: 'Hello (default)' }),
-    )
+    readFileSyncMock
+      .mockReturnValueOnce(JSON.stringify({ other: 'x' }))
+      .mockReturnValueOnce(JSON.stringify({ hello: 'Hello (default)' }))
 
     await expect(getTranslate('hello', 'fr')).resolves.toBe('Hello (default)')
   })
@@ -100,11 +100,9 @@ describe('getTranslate (core)', () => {
     it('falls back to "key - options" when the default-language read itself throws', async () => {
       redisMock.get.mockResolvedValueOnce(null)
       existsSyncMock.mockReturnValueOnce(true)
-      readFileSyncMock
-        .mockReturnValueOnce(JSON.stringify({}))
-        .mockImplementationOnce(() => {
-          throw new Error('default read error')
-        })
+      readFileSyncMock.mockReturnValueOnce(JSON.stringify({})).mockImplementationOnce(() => {
+        throw new Error('default read error')
+      })
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await expect(getTranslate('missing', 'fr', ['a'])).resolves.toBe('missing - a')
@@ -114,11 +112,9 @@ describe('getTranslate (core)', () => {
     it('falls back to the bare key when the default-language read throws and no options are given', async () => {
       redisMock.get.mockResolvedValueOnce(null)
       existsSyncMock.mockReturnValueOnce(true)
-      readFileSyncMock
-        .mockReturnValueOnce(JSON.stringify({}))
-        .mockImplementationOnce(() => {
-          throw new Error('default read error')
-        })
+      readFileSyncMock.mockReturnValueOnce(JSON.stringify({})).mockImplementationOnce(() => {
+        throw new Error('default read error')
+      })
       vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await expect(getTranslate('missing', 'fr')).resolves.toBe('missing')

@@ -1,90 +1,145 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../testUtils.js'
 import { AdminMenu } from '../../../../src/components/layout/menu/AdminMenu.js'
+import { useI18n } from '../../../../src/i18n.js'
 
-afterEach(() => cleanup())
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
+beforeEach(() => window.localStorage.clear())
 
-function renderAt(path: string) {
-  const history = historyAt(path)
-  return renderWithProviders(() => <AdminMenu />, { path: '*', history })
+function renderAt(path = '/dashboard/admins/informations') {
+  return renderWithProviders(() => <AdminMenu />, { path: '*', history: historyAt(path) })
 }
 
-describe('components/layout/menu/AdminMenu.tsx', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
+describe('Admin navigation', () => {
+  it('opens the mobile navigation and closes it after selecting a destination without changing collapse preference', async () => {
+    localStorage.setItem('admin-navigation-collapsed', 'true')
+    const history = historyAt('/dashboard/admins/informations')
+    renderWithProviders(() => <AdminMenu />, { path: '*', history })
+    const toggle = screen.getByRole('button', { name: 'Toggle navigation' })
+    const sidebar = screen.getByRole('complementary')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true')
+    await fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(sidebar).toHaveAttribute('data-mobile-open', 'true')
+    expect(screen.getByText('Discord communities')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('link', { name: 'Discord communities' }))
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/admins/guilds'))
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(sidebar).toHaveAttribute('data-mobile-open', 'false')
+    expect(sidebar).toHaveAttribute('data-collapsed', 'true')
+    expect(localStorage.getItem('admin-navigation-collapsed')).toBe('true')
   })
 
-  it('renders the Admin header and every link with none marked current on a non-matching sub-path', () => {
-    renderAt('/dashboard/admins/informations')
-
-    expect(screen.getByText('Admin')).toBeInTheDocument()
-    expect(screen.getByText('Informations')).toBeInTheDocument()
-    expect(screen.getByText('Guilds')).toBeInTheDocument()
-    expect(screen.getByText('Users')).toBeInTheDocument()
-    expect(screen.getByText('Errors')).toBeInTheDocument()
-    expect(screen.getByText('Logs')).toBeInTheDocument()
-    expect(screen.getByText('Impersonate')).toBeInTheDocument()
-
-    const informationsLink = screen.getByText('Informations').closest('a')
-    expect(informationsLink).toHaveAttribute('href', '/dashboard/admins/informations')
-    expect(informationsLink).toHaveClass('bg-base-200')
-
-    const guildsLink = screen.getByText('Guilds').closest('a')
-    expect(guildsLink).not.toHaveClass('bg-base-200')
+  it('exposes only implemented destinations and identifies the current page', () => {
+    renderAt()
+    const navigation = screen.getByRole('navigation', { name: 'Admin' })
+    expect(within(navigation).getAllByRole('link')).toHaveLength(8)
+    expect(within(navigation).getByRole('link', { name: 'Overview' })).toHaveAttribute(
+      'href',
+      '/dashboard/admins/informations',
+    )
+    expect(within(navigation).getByRole('link', { name: 'Overview' })).toHaveAttribute('aria-current', 'page')
+    expect(within(navigation).getByRole('link', { name: 'Discord communities' })).toHaveAttribute(
+      'href',
+      '/dashboard/admins/guilds',
+    )
+    expect(within(navigation).getByRole('link', { name: 'Support access' })).toHaveAttribute(
+      'href',
+      '/dashboard/admins/impersonate',
+    )
+    for (const name of ['Users', 'Errors', 'Logs']) {
+      expect(within(navigation).queryByRole('link', { name })).not.toBeInTheDocument()
+    }
   })
 
-  it('marks a different link as current when the pathname matches it', () => {
-    renderAt('/dashboard/admins/users')
-
-    const usersLink = screen.getByText('Users').closest('a')
-    expect(usersLink).toHaveClass('bg-base-200')
-    const informationsLink = screen.getByText('Informations').closest('a')
-    expect(informationsLink).not.toHaveClass('bg-base-200')
+  it('marks the matching destination after navigation', async () => {
+    const history = historyAt('/dashboard/admins/informations')
+    renderWithProviders(() => <AdminMenu />, { path: '*', history })
+    fireEvent.click(screen.getByRole('link', { name: 'Discord communities' }))
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/admins/guilds'))
+    expect(screen.getByRole('link', { name: 'Discord communities' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current', 'page')
   })
 
-  it('renders no links when the path matches the /servers/ condition exclusion', () => {
-    renderAt('/dashboard/admins/servers/somewhere')
-
-    expect(screen.getByText('Admin')).toBeInTheDocument()
-    expect(screen.queryByText('Informations')).not.toBeInTheDocument()
-    expect(screen.queryByText('Guilds')).not.toBeInTheDocument()
+  it('keeps navigation available on an unmatched route without marking a destination current', () => {
+    renderAt('/dashboard/admins/unknown')
+    for (const link of screen.getAllByRole('link')) expect(link).not.toHaveAttribute('aria-current', 'page')
   })
 
-  it('toggles collapse: hides labels and shows the double-right icon, then double-left again on re-expand', () => {
-    const { container } = renderAt('/dashboard/admins/informations')
+  it('collapses with a focusable button while retaining accessible destination names', () => {
+    renderAt()
+    const collapse = screen.getByRole('button', { name: 'Collapse' })
+    collapse.focus()
+    expect(collapse).toHaveFocus()
+    expect(collapse).toHaveAttribute('type', 'button')
+    expect(collapse).toHaveAttribute('aria-expanded', 'true')
+    fireEvent.click(collapse, { detail: 0 })
+    const expand = screen.getByRole('button', { name: 'Expand' })
+    expect(expand).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('title', 'Overview')
+    expect(screen.queryByText('Overview')).not.toBeInTheDocument()
+    expect(window.localStorage.getItem('admin-navigation-collapsed')).toBe('true')
 
-    expect(screen.getByText('Collapse')).toBeInTheDocument()
-    const collapseRow = screen.getByText('Collapse').closest('div.flex.flex-col.mt-auto')!
-
-    fireEvent.click(collapseRow)
-
-    // Admin label and Collapse label are both gated on `!onlyShowEmoji() || hoverExpand()`.
-    expect(screen.queryByText('Admin')).not.toBeInTheDocument()
-    expect(screen.queryByText('Collapse')).not.toBeInTheDocument()
-    expect(container.querySelector('.fa-angle-double-right')).toBeInTheDocument()
-
-    fireEvent.click(collapseRow)
-    expect(screen.getByText('Admin')).toBeInTheDocument()
-    expect(screen.getByText('Collapse')).toBeInTheDocument()
-    expect(container.querySelector('.fa-angle-double-left')).toBeInTheDocument()
+    fireEvent.mouseEnter(screen.getByRole('complementary'))
+    expect(expand).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Overview')).toBeInTheDocument()
+    fireEvent.mouseLeave(screen.getByRole('complementary'))
+    expect(expand).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Overview')).not.toBeInTheDocument()
+    fireEvent.click(expand)
+    expect(screen.getByRole('button', { name: 'Collapse' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Overview')).toBeInTheDocument()
   })
 
-  it('shows an "Expand" label and re-reveals content on hover while collapsed, hiding again on mouse leave', () => {
-    const { container } = renderAt('/dashboard/admins/informations')
-    const collapseRow = screen.getByText('Collapse').closest('div.flex.flex-col.mt-auto')!
-    fireEvent.click(collapseRow) // collapse first
+  it('restores the collapsed preference when mounted again', () => {
+    const first = renderAt()
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse' }))
+    first.unmount()
+    renderAt()
+    expect(screen.getByRole('button', { name: 'Expand' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('link', { name: 'Discord communities' })).toBeInTheDocument()
+  })
 
-    const outer = container.querySelector('div.flex.flex-col.p-4.gap-2')!
-    expect(outer).not.toHaveClass('min-w-[240px]')
+  it('remains usable when persistence is unavailable', () => {
+    renderAt()
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage unavailable')
+    })
+    expect(() => fireEvent.click(screen.getByRole('button', { name: 'Collapse' }))).not.toThrow()
+    expect(screen.getByRole('button', { name: 'Expand' })).toHaveAttribute('aria-expanded', 'false')
+  })
 
-    fireEvent.mouseEnter(outer)
-    expect(screen.getByText('Admin')).toBeInTheDocument()
-    expect(screen.getByText('Expand')).toBeInTheDocument()
-    expect(outer).toHaveClass('min-w-[240px]')
+  it('starts expanded when reading the stored preference is unavailable', () => {
+    const getItem = Storage.prototype.getItem
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key) {
+      if (key === 'admin-navigation-collapsed') throw new Error('storage unavailable')
+      return getItem.call(this, key)
+    })
+    expect(() => renderAt()).not.toThrow()
+    expect(screen.getByRole('button', { name: 'Collapse' })).toHaveAttribute('aria-expanded', 'true')
+  })
 
-    fireEvent.mouseLeave(outer)
-    expect(screen.queryByText('Admin')).not.toBeInTheDocument()
-    expect(screen.queryByText('Expand')).not.toBeInTheDocument()
+  it('updates labels when the current language changes', () => {
+    const Page = () => {
+      const { updateLocale } = useI18n()
+      return (
+        <>
+          <button onClick={() => updateLocale('fr')}>Français</button>
+          <AdminMenu />
+        </>
+      )
+    }
+    renderWithProviders(Page)
+    fireEvent.click(screen.getByRole('button', { name: 'Français' }))
+    expect(screen.getByRole('link', { name: 'Communautés Discord' })).toHaveAttribute(
+      'href',
+      '/dashboard/admins/guilds',
+    )
+    expect(screen.queryByRole('link', { name: 'Discord communities' })).not.toBeInTheDocument()
   })
 })

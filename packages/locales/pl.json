@@ -165,8 +165,8 @@
   "join_ticket_admin": "Dołącz do Ticketu jako Obsługa",
   "admin_ticket_waiting": "Oczekiwanie na dołączenie obsługi...",
   "ticket_not_found": "Ticket nie znaleziony!",
-  "rcon_command_error": "Wystąpił błąd podczas wysyłania komendy!",
-  "rcon_command_success": "Komenda pomyślnie wysłana!",
+  "rcon_command_error": "Nie udało się potwierdzić wykonania. Powiązany gracz musi być połączony z serwerem gry i mieć dozwoloną rangę administratora, a dodatek musi być aktualny. Sprawdź serwer gry przed ponowną próbą.",
+  "rcon_command_success": "Serwer gry przyjął polecenie konsoli.",
   "your_guild_is_premium": "Gratulacje, twoja guildia jest premium!",
   "re_verify_yourself": "Aby wykonać tę akcję, musisz ponownie się zweryfikować!",
   "vote_webhook": "{1} właśnie zagłosował na serwer {2}!",
@@ -235,5 +235,6 @@
   "ch_atm_deposit_money": "ATM wpłacił pieniądze",
   "ch_atm_withdraw_money": "ATM wypłacił pieniądze",
   "ammount": "Kwota",
-  "discord.screenshot.no_title": "Brak tytułu"
+  "discord.screenshot.no_title": "Brak tytułu",
+  "access_verification_unavailable": "Nie można teraz zweryfikować uprawnień dostępu. Spróbuj ponownie za chwilę."
 }

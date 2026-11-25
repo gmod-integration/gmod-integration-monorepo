@@ -1,8 +1,32 @@
+import type * as DomainAccess from '@gmod/domain-access/index.js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const accessMocks = vi.hoisted(() => ({ resolve: vi.fn(), entitlements: vi.fn() }))
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof DomainAccess>()),
+  resolveGuildAccess: accessMocks.resolve,
+  getDiscordEntitlements: accessMocks.entitlements,
+}))
+const access = (premium = true) => ({
+  guildID: 'g1',
+  premium,
+  customBot: false,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'rev',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
+
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+const getErasedSteamIDsMock = vi.fn().mockResolvedValue(new Set())
+vi.mock('@gmod/infra-prisma/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  getErasedSteamIDs: getErasedSteamIDsMock,
+}))
 import { ChannelType } from 'discord.js'
 
-vi.mock('@gmod/core/utils/tools.js', () => ({ generateToken: vi.fn(() => 'generated-token') }))
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: vi.fn() }))
+vi.mock('@gmod/shared/generateToken.js', () => ({ generateToken: vi.fn(() => 'generated-token') }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: vi.fn() }))
 vi.mock('@gmod/config', () => ({
   ConfigDiscord: { clientID: 'client1', botToken: 'bot-token' },
 }))
@@ -34,17 +58,19 @@ const prismaMock: any = {
   gm_gmodstore_purchases: { findFirst: vi.fn() },
   gm_server_sync_chat_filter: { findMany: vi.fn() },
   gm_status: { findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), delete: vi.fn() },
-  gm_server_status: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
+  gm_server_status: { updateMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
   gm_server_status_history: { create: vi.fn() },
   gm_server: { findFirst: vi.fn(), findMany: vi.fn(), update: vi.fn(), delete: vi.fn(), create: vi.fn() },
-  gm_status_button: { findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
-  gm_server_stat: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), findMany: vi.fn() },
+  gm_status_button: { count: vi.fn(), findMany: vi.fn(), findFirst: vi.fn(), create: vi.fn(), delete: vi.fn() },
+  gm_server_stat: { deleteMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), findMany: vi.fn() },
   gm_server_screenshot_channels: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_server_logs_channel: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_server_vote_channels: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_sync_chat: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
   gm_server_sync_roles: { findMany: vi.fn() },
   gm_server_sync_team_roles: { findMany: vi.fn() },
+  gm_server_pseudo: { findMany: vi.fn() },
+  $transaction: vi.fn(),
   gm_server_logs_triggers: { findMany: vi.fn(), findFirst: vi.fn(), delete: vi.fn(), create: vi.fn(), update: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
@@ -53,6 +79,10 @@ const { Server, getServerFromID, getServersFromDiscordGuildID, createServer, gen
   await import('../src/Server.js')
 
 function resetAllMocks() {
+  accessMocks.resolve.mockReset().mockResolvedValue(access())
+  accessMocks.entitlements.mockReset()
+  isErasureBlockedMock.mockReset().mockResolvedValue(false)
+  getErasedSteamIDsMock.mockReset().mockResolvedValue(new Set())
   redisMock.get.mockReset()
   redisMock.set.mockReset()
   redisMock.del.mockReset()
@@ -64,10 +94,16 @@ function resetAllMocks() {
   resolveDiscordGuildClientMock.mockReset()
   buildDiscordStatusMessageMock.mockReset()
   for (const table of Object.values(prismaMock)) {
+    if (vi.isMockFunction(table)) {
+      table.mockReset()
+      continue
+    }
     for (const fn of Object.values(table as Record<string, any>)) {
       ;(fn as ReturnType<typeof vi.fn>).mockReset()
     }
   }
+  prismaMock.$transaction.mockImplementation((operation: (tx: unknown) => unknown) => operation(prismaMock))
+  prismaMock.gm_status_button.count.mockResolvedValue(0)
   vi.stubGlobal('fetch', vi.fn())
 }
 
@@ -112,86 +148,76 @@ describe('Server', () => {
     })
   })
 
-  describe('isPremium / isGuildPremiumForServer', () => {
-    it('is true when a gm_guild_premium record exists', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce({ guildID: 'g1' })
+  describe('isPremium delegates to the authoritative resolver', () => {
+    it('uses the same community identity for both positive and negative access', async () => {
+      accessMocks.resolve.mockResolvedValueOnce(access(true)).mockResolvedValueOnce(access(false))
       await expect(makeServer().isPremium()).resolves.toBe(true)
+      await expect(makeServer().isPremium()).resolves.toBe(false)
+      expect(accessMocks.resolve).toHaveBeenCalledWith('g1')
     })
+  })
 
-    it('is true when an active gmodstore purchase exists', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ guild: 'g1' })
-      await expect(makeServer().isPremium()).resolves.toBe(true)
+  describe('effective access leaves the saved configuration available to its editor', () => {
+    it('uses safe values after expiry and keeps raw stored values intact', async () => {
+      accessMocks.resolve.mockResolvedValue(access(false))
+      redisMock.get.mockResolvedValue(null)
+      prismaMock.gm_server_settings.findFirst.mockResolvedValue({ value: 'both' })
+      const server = makeServer()
+      expect(await server.getEffectiveSetting('sync_role_direction')).toBe('gmod-to-discord')
+      expect(await server.getSetting('sync_role_direction')).toBe('both')
+      expect(prismaMock.gm_server_settings.update).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_settings.create).not.toHaveBeenCalled()
     })
-
-    it('returns the cached value from redis when present', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce('true')
-      await expect(makeServer().isPremium()).resolves.toBe(true)
+    it('caps runtime mappings in saved order without hiding excess rules from raw reads', async () => {
+      accessMocks.resolve.mockResolvedValue(access(false))
+      const rows = Array.from({ length: 6 }, (_, index) => ({ roleID: `role-${index}`, id: index + 1 }))
+      prismaMock.gm_server_sync_roles.findMany.mockResolvedValue(rows)
+      prismaMock.gm_server_sync_team_roles.findMany.mockResolvedValue(rows)
+      prismaMock.gm_server_pseudo.findMany.mockResolvedValue(rows)
+      const server = makeServer()
+      expect(await server.getEffectiveSyncRoles()).toEqual(rows.slice(0, 4))
+      expect(await server.getEffectiveSyncTeamRoles()).toEqual([])
+      expect(await server.getEffectivePseudoRules()).toEqual(rows.slice(0, 3))
+      expect(await server.getSyncRoles()).toEqual(rows)
+      expect(prismaMock.gm_server_sync_roles.findMany).toHaveBeenCalledWith({
+        where: { serverID: 's1' },
+        orderBy: [{ createdAt: 'asc' }, { roleID: 'asc' }],
+      })
     })
-
-    it('is false when Discord client credentials are not configured', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce(null)
-      const { ConfigDiscord } = await import('@gmod/config')
-      const original = ConfigDiscord.clientID
-      ;(ConfigDiscord as any).clientID = ''
-      try {
-        await expect(makeServer().isPremium()).resolves.toBe(false)
-      } finally {
-        ;(ConfigDiscord as any).clientID = original
-      }
+    it('counts disabled status entries toward quota before selecting enabled buttons', async () => {
+      accessMocks.resolve.mockResolvedValue(access(false))
+      prismaMock.gm_status_button.findMany.mockResolvedValue([
+        { id: 1, enable: false },
+        { id: 2, enable: true },
+        { id: 3, enable: true },
+        { id: 4, enable: true },
+      ])
+      expect(await makeServer().getEffectiveStatusButtons()).toEqual([
+        { id: 2, enable: true },
+        { id: 3, enable: true },
+      ])
     })
-
-    it('fetches Discord entitlements and caches a positive result', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce(null)
-      vi.stubGlobal(
-        'fetch',
-        vi.fn().mockResolvedValue({ ok: true, json: async () => [{ guild_id: 'g1' }] }),
+    it('applies the same quota to historical status creation and permits cleanup after expiry', async () => {
+      accessMocks.resolve.mockResolvedValue(access(false))
+      prismaMock.gm_status_button.count.mockResolvedValue(3)
+      await expect(makeServer().createStatusButton()).rejects.toMatchObject({ code: 'quota_reached', limit: 3 })
+      expect(prismaMock.gm_status_button.create).not.toHaveBeenCalled()
+      redisMock.get.mockResolvedValue(null)
+      prismaMock.gm_server_settings.findFirst.mockResolvedValue({ value: 'true' })
+      await expect(makeServer().setSetting('show_status_chart', false, 'dashboard')).resolves.toBeDefined()
+      expect(prismaMock.gm_server_settings.update).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { value: 'false' } }),
       )
-
-      await expect(makeServer().isPremium()).resolves.toBe(true)
-      expect(redisMock.set).toHaveBeenCalledWith('guild:g1:premium', 'true', 'EX', 60)
-    })
-
-    it('is false when the entitlements response does not include the guild', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce(null)
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => [] }))
-
-      await expect(makeServer().isPremium()).resolves.toBe(false)
-    })
-
-    it('is false when the Discord API responds with a non-ok status', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce(null)
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
-
-      await expect(makeServer().isPremium()).resolves.toBe(false)
-    })
-
-    it('is false and logs when the fetch throws', async () => {
-      prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
-      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
-      redisMock.get.mockResolvedValueOnce(null)
-      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-      await expect(makeServer().isPremium()).resolves.toBe(false)
-      expect(errorSpy).toHaveBeenCalledWith('Error getting entitlements:', expect.any(Error))
     })
   })
 
   describe('saveIGSettings', () => {
     it('sets each setting with the ig_ prefix, swallowing individual failures', async () => {
       const server = makeServer()
-      const spy = vi.spyOn(server, 'setSetting').mockResolvedValueOnce({} as any).mockRejectedValueOnce(new Error('x'))
+      const spy = vi
+        .spyOn(server, 'setSetting')
+        .mockResolvedValueOnce({} as any)
+        .mockRejectedValueOnce(new Error('x'))
 
       await server.saveIGSettings({ debug: true, maintenance: false })
 
@@ -271,6 +297,11 @@ describe('Server', () => {
   })
 
   describe('getSetting', () => {
+    it('keeps an unrestricted effective setting available without consulting premium access', async () => {
+      prismaMock.gm_server_settings.findFirst.mockResolvedValueOnce({ value: 'fr' })
+      await expect(makeServer().getEffectiveSetting('ig_language')).resolves.toBe('fr')
+      expect(accessMocks.resolve).not.toHaveBeenCalled()
+    })
     it('throws for an unknown setting', async () => {
       await expect(makeServer().getSetting('not_a_real_setting')).rejects.toThrow('Setting not found')
     })
@@ -312,7 +343,10 @@ describe('Server', () => {
       prismaMock.gm_guild_premium.findFirst.mockResolvedValueOnce(null)
       prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(null)
 
-      await expect(makeServer().setSetting('show_status_chart', true)).rejects.toThrow('Premium setting')
+      accessMocks.resolve.mockResolvedValue(access(false))
+      await expect(makeServer().setSetting('show_status_chart', true)).rejects.toMatchObject({
+        code: 'upgrade_required',
+      })
     })
 
     it('throws for a value outside acceptedValues', async () => {
@@ -410,7 +444,10 @@ describe('Server', () => {
 
       expect(wsAddMock).toHaveBeenCalledWith(
         'wsSendToServer',
-        expect.objectContaining({ id: 's1', data: expect.objectContaining({ method: 'wsEditSetting', setting: 'ig_debug' }) }),
+        expect.objectContaining({
+          id: 's1',
+          data: expect.objectContaining({ method: 'wsEditSetting', setting: 'ig_debug' }),
+        }),
       )
     })
 
@@ -461,9 +498,7 @@ describe('Server', () => {
 
     it('getPublicInformations returns the public-safe fields', async () => {
       const info = await makeServer().getPublicInformations()
-      expect(info).toEqual(
-        expect.objectContaining({ id: 's1', name: 'My Server', guild: 'g1', verified: true }),
-      )
+      expect(info).toEqual(expect.objectContaining({ id: 's1', name: 'My Server', guild: 'g1', verified: true }))
     })
 
     it('getDBPlayers/getPlayerStats query gm_server_stat', async () => {
@@ -471,6 +506,16 @@ describe('Server', () => {
       prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce({ id: 2 })
       await expect(makeServer().getDBPlayers()).resolves.toEqual([{ id: 1 }])
       await expect(makeServer().getPlayerStats('765')).resolves.toEqual({ id: 2 })
+    })
+
+    it('getPlayerAccess preserves a manual whitelist grant without changing stored player statistics', async () => {
+      const stats = { steam_id: '76561198012345678', bypassMaintenance: true, ban: false }
+      prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce(stats)
+      await expect(makeServer().getPlayerAccess(stats.steam_id)).resolves.toEqual({ ...stats, discordAdmin: false })
+      expect(prismaMock.gm_server_stat.findFirst).toHaveBeenCalledWith({
+        where: { server_id: 's1', steam_id: stats.steam_id },
+      })
+      expect(prismaMock.gm_server_stat.update).not.toHaveBeenCalled()
     })
   })
 
@@ -548,7 +593,9 @@ describe('Server', () => {
       prismaMock.gm_status.findFirst.mockResolvedValueOnce({ channel: 'ch1', message: 'm1' })
       resolveDiscordGuildClientMock.mockResolvedValueOnce({
         guilds: {
-          fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
+          fetch: vi
+            .fn()
+            .mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
         },
       })
 
@@ -599,13 +646,19 @@ describe('Server', () => {
 
   describe('createStatus', () => {
     it('throws when channelID is falsy', async () => {
-      resolveDiscordGuildClientMock.mockResolvedValueOnce({ guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn() } } }) } })
+      resolveDiscordGuildClientMock.mockResolvedValueOnce({
+        guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn() } } }) },
+      })
       await expect(makeServer().createStatus('')).rejects.toThrow('Channel ID is required')
     })
 
     it('throws when the channel is not found', async () => {
       resolveDiscordGuildClientMock.mockResolvedValueOnce({
-        guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }) },
+        guilds: {
+          fetch: vi
+            .fn()
+            .mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
+        },
       })
       await expect(makeServer().createStatus('ch1')).rejects.toThrow('Channel not found')
     })
@@ -650,7 +703,7 @@ describe('Server', () => {
   describe('editStatusChannelAndMessage', () => {
     it('returns early and logs when there is no status record', async () => {
       prismaMock.gm_status.findFirst.mockResolvedValueOnce(null)
-      await makeServer().editStatusChannelAndMessage({})
+      await expect(makeServer().editStatusChannelAndMessage({})).resolves.toBe(false)
       expect(resolveDiscordGuildClientMock).not.toHaveBeenCalled()
     })
 
@@ -831,16 +884,33 @@ describe('Server', () => {
       })
       buildDiscordStatusMessageMock.mockResolvedValueOnce({ content: 'updated' })
 
-      await makeServer().editStatusChannelAndMessage({ players: 5 })
+      await expect(makeServer().editStatusChannelAndMessage({ players: 5 })).resolves.toBe(true)
 
       expect(editMock).toHaveBeenCalledWith({ content: 'updated' })
     })
 
+    it('reports failure when Discord rejects the edit', async () => {
+      const editMock = vi.fn().mockRejectedValueOnce(new Error('Discord unavailable'))
+      prismaMock.gm_status.findFirst.mockResolvedValueOnce({ channel: 'ch1', message: 'm1' })
+      resolveDiscordGuildClientMock.mockResolvedValueOnce({
+        user: { id: 'bot1' },
+        guilds: { fetch: vi.fn().mockResolvedValue({ preferredLocale: 'en' }) },
+        channels: {
+          fetch: vi.fn().mockResolvedValue({
+            isTextBased: () => true,
+            messages: { fetch: vi.fn().mockResolvedValue({ author: { id: 'bot1' }, edit: editMock }) },
+          }),
+        },
+      })
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await expect(makeServer().editStatusChannelAndMessage(null)).resolves.toBe(false)
+      expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({ message: 'Discord unavailable' }))
+    })
+
     it('silently returns when the discord bridge is not configured', async () => {
       prismaMock.gm_status.findFirst.mockResolvedValueOnce({ channel: 'ch1', message: 'm1' })
-      resolveDiscordGuildClientMock.mockRejectedValueOnce(
-        new Error('Discord guild client resolver is not configured'),
-      )
+      resolveDiscordGuildClientMock.mockRejectedValueOnce(new Error('Discord guild client resolver is not configured'))
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await makeServer().editStatusChannelAndMessage({})
@@ -860,9 +930,7 @@ describe('Server', () => {
           }),
         },
       })
-      buildDiscordStatusMessageMock.mockRejectedValueOnce(
-        new Error('Discord status message builder is not configured'),
-      )
+      buildDiscordStatusMessageMock.mockRejectedValueOnce(new Error('Discord status message builder is not configured'))
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await makeServer().editStatusChannelAndMessage({})
@@ -872,6 +940,37 @@ describe('Server', () => {
 
   describe('saveStatus', () => {
     const args = ['1.2.3.4', 27015, 'host', 'map1', 'sandbox', 5, 10, 100, [{ name: 'p1' }]] as const
+
+    it.each([null, undefined, { steamID64: '765-private' }])(
+      'stores an empty player list for a malformed addon list while preserving aggregate counts',
+      async (playersList) => {
+        await makeServer().saveStatus('1.2.3.4', 27015, 'host', 'map1', 'sandbox', 5, 10, 100, playersList)
+        expect(prismaMock.gm_server_status.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            data: expect.objectContaining({ players: 5, maxPlayers: 10, playersList: '[]' }),
+          }),
+        )
+        expect(getErasedSteamIDsMock).toHaveBeenCalledWith([])
+        expect(prismaMock.gm_server_status_history.create).toHaveBeenCalledWith({
+          data: { serverID: 's1', players: 5 },
+        })
+      },
+    )
+
+    it('removes a newly erased player from the saved list without changing other players or counts', async () => {
+      const updatedAt = new Date('2026-11-21T10:00:00Z')
+      getErasedSteamIDsMock.mockResolvedValueOnce(new Set()).mockResolvedValueOnce(new Set(['765-erased']))
+      prismaMock.gm_server_status.create.mockResolvedValueOnce({ updatedAt })
+      await makeServer().saveStatus('1.2.3.4', 27015, 'host', 'map1', 'sandbox', 2, 10, 100, [
+        { steamID64: '765-erased', name: 'Private' },
+        { steamID64: '765-other', name: 'Other' },
+      ])
+      expect(prismaMock.gm_server_status.updateMany).toHaveBeenCalledWith({
+        where: { id: 's1', updatedAt },
+        data: { playersList: JSON.stringify([{ steamID64: '765-other', name: 'Other' }]) },
+      })
+      expect(prismaMock.gm_server_status_history.create).toHaveBeenCalledWith({ data: { serverID: 's1', players: 2 } })
+    })
 
     it('updates the existing status row and always records history', async () => {
       prismaMock.gm_server_status.findFirst.mockResolvedValueOnce({ id: 's1' })
@@ -955,6 +1054,22 @@ describe('Server', () => {
   })
 
   describe('saveUserConnectionInfo', () => {
+    it('does not read or recreate connection data for a player whose erasure is already blocked', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(true)
+      await makeServer().saveUserConnectionInfo('765-private', 'Private name')
+      expect(prismaMock.gm_server_stat.findFirst).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_stat.create).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_stat.update).not.toHaveBeenCalled()
+    })
+    it('does not retain a connection row when erasure starts during the write', async () => {
+      const updatedAt = new Date('2026-11-21T10:00:00Z')
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      prismaMock.gm_server_stat.create.mockResolvedValueOnce({ updatedAt })
+      await makeServer().saveUserConnectionInfo('765', 'Private')
+      expect(prismaMock.gm_server_stat.deleteMany).toHaveBeenCalledWith({
+        where: { server_id: 's1', steam_id: '765', updatedAt },
+      })
+    })
     it('increments total_connect on an existing player', async () => {
       prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce({ total_connect: 4 })
 
@@ -1137,7 +1252,9 @@ describe('Server', () => {
 
     it('createScreenshotChannel throws when the channel is missing or not a text channel', async () => {
       resolveDiscordGuildClientMock.mockResolvedValue({
-        guilds: { fetch: vi.fn().mockResolvedValue({ channels: { cache: { get: vi.fn().mockReturnValue(undefined) } } }) },
+        guilds: {
+          fetch: vi.fn().mockResolvedValue({ channels: { cache: { get: vi.fn().mockReturnValue(undefined) } } }),
+        },
       })
       await expect(makeServer().createScreenshotChannel('ch1')).rejects.toThrow('Channel not found')
     })
@@ -1261,7 +1378,11 @@ describe('Server', () => {
     it('createLogsChannel destroys any existing channel, throws when the target channel is invalid', async () => {
       prismaMock.gm_server_logs_channel.findFirst.mockResolvedValueOnce(null)
       resolveDiscordGuildClientMock.mockResolvedValueOnce({
-        guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }) },
+        guilds: {
+          fetch: vi
+            .fn()
+            .mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
+        },
       })
       await expect(makeServer().createLogsChannel('ch1')).rejects.toThrow('Channel not found')
     })
@@ -1368,7 +1489,11 @@ describe('Server', () => {
     it('createVoteChannel throws when the channel is missing or not a text channel', async () => {
       prismaMock.gm_server_vote_channels.findFirst.mockResolvedValueOnce(null)
       resolveDiscordGuildClientMock.mockResolvedValueOnce({
-        guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }) },
+        guilds: {
+          fetch: vi
+            .fn()
+            .mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
+        },
       })
       await expect(makeServer().createVoteChannel('ch1')).rejects.toThrow('Channel not found')
     })
@@ -1475,7 +1600,11 @@ describe('Server', () => {
     it('createSyncChat throws when the channel is missing or not a text channel', async () => {
       prismaMock.gm_sync_chat.findFirst.mockResolvedValueOnce(null)
       resolveDiscordGuildClientMock.mockResolvedValueOnce({
-        guilds: { fetch: vi.fn().mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }) },
+        guilds: {
+          fetch: vi
+            .fn()
+            .mockResolvedValueOnce({ channels: { cache: { get: vi.fn().mockReturnValueOnce(undefined) } } }),
+        },
       })
       await expect(makeServer().createSyncChat('ch1')).rejects.toThrow('Channel not found')
     })
@@ -1696,6 +1825,52 @@ describe('Server', () => {
     })
 
     describe('statusRoutine', () => {
+      beforeEach(() => {
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2026-11-23T12:00:00Z'))
+      })
+
+      afterEach(() => {
+        vi.useRealTimers()
+      })
+
+      function publishedServer(ageMinutes = 15) {
+        const target = { server: 's1', channel: 'ch1', message: 'm1' }
+        const heartbeat = { id: 's1', updatedAt: new Date(Date.now() - ageMinutes * 60 * 1000) }
+        const cache = new Map<string, string>()
+        const edit = vi.fn().mockResolvedValue(undefined)
+        prismaMock.gm_status.findMany.mockResolvedValue([target])
+        prismaMock.gm_status.findFirst.mockResolvedValue(target)
+        prismaMock.gm_server.findFirst.mockResolvedValue({ id: 's1', guild: 'g1', token: 'tok1' })
+        prismaMock.gm_server_status.findFirst.mockImplementation(async ({ where }: any) => {
+          const { gte, lte, gt } = where.updatedAt
+          return (gte === undefined || heartbeat.updatedAt >= gte) &&
+            (lte === undefined || heartbeat.updatedAt <= lte) &&
+            (gt === undefined || heartbeat.updatedAt > gt)
+            ? heartbeat
+            : null
+        })
+        redisMock.get.mockImplementation(async (key: string) => cache.get(key) ?? null)
+        redisMock.set.mockImplementation(async (key: string, value: string) => {
+          cache.set(key, value)
+          return 'OK'
+        })
+        resolveDiscordGuildClientMock.mockResolvedValue({
+          user: { id: 'bot1' },
+          guilds: { fetch: vi.fn().mockResolvedValue({ preferredLocale: 'en' }) },
+          channels: {
+            fetch: vi.fn().mockResolvedValue({
+              isTextBased: () => true,
+              messages: { fetch: vi.fn().mockResolvedValue({ author: { id: 'bot1' }, edit }) },
+            }),
+          },
+        })
+        buildDiscordStatusMessageMock.mockImplementation(async (_server, data) => ({
+          content: data ? 'online' : 'offline',
+        }))
+        return { target, heartbeat, cache, edit }
+      }
+
       it('deletes the status row when the server no longer exists', async () => {
         prismaMock.gm_status.findMany.mockResolvedValueOnce([{ server: 's-missing' }])
         prismaMock.gm_server.findFirst.mockResolvedValueOnce(null)
@@ -1705,27 +1880,158 @@ describe('Server', () => {
         expect(prismaMock.gm_status.delete).toHaveBeenCalledWith({ where: { server: 's-missing' } })
       })
 
-      it('skips servers whose status is not in the 6-10 minute stale window', async () => {
-        prismaMock.gm_status.findMany.mockResolvedValueOnce([{ server: 's1' }])
-        prismaMock.gm_server.findFirst.mockResolvedValueOnce({ id: 's1', token: 'tok1' })
-        prismaMock.gm_server_status.findFirst.mockResolvedValueOnce(null)
+      it('leaves fresh heartbeats online', async () => {
+        const { edit } = publishedServer(5)
 
         await statusRoutine()
 
-        expect(prismaMock.gm_status.delete).not.toHaveBeenCalled()
+        expect(edit).not.toHaveBeenCalled()
+        expect(redisMock.set).not.toHaveBeenCalled()
       })
 
-      it('refreshes the status message for servers in the stale window', async () => {
-        prismaMock.gm_status.findMany.mockResolvedValueOnce([{ server: 's1' }])
-        prismaMock.gm_server.findFirst.mockResolvedValueOnce({ id: 's1', token: 'tok1' })
-        prismaMock.gm_server_status.findFirst
-          .mockResolvedValueOnce({ id: 's1' }) // stale-window check inside statusRoutine
-          .mockResolvedValueOnce({ id: 's1' }) // getStatusData() inside editStatusChannelAndMessage
-        prismaMock.gm_status.findFirst.mockResolvedValueOnce(null) // editStatusChannelAndMessage's own lookup
+      it.each([7, 15, 24 * 60])('recovers an offline message with a heartbeat %i minutes old', async (age) => {
+        const { edit, heartbeat, target } = publishedServer(age)
 
         await statusRoutine()
 
-        expect(resolveDiscordGuildClientMock).not.toHaveBeenCalled()
+        expect(buildDiscordStatusMessageMock).toHaveBeenCalledWith(expect.any(Server), null, 'en')
+        expect(edit).toHaveBeenCalledExactlyOnceWith({ content: 'offline' })
+        expect(redisMock.set).toHaveBeenCalledWith(
+          'server:s1:status:offline',
+          JSON.stringify([heartbeat.updatedAt.toISOString(), target.channel, target.message]),
+          'EX',
+          7 * 24 * 60 * 60,
+        )
+      })
+
+      it('keeps an acknowledged offline message unchanged on subsequent sweeps', async () => {
+        const { edit } = publishedServer()
+
+        await statusRoutine()
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(1)
+      })
+
+      it.each(['heartbeat', 'channel', 'message'] as const)('refreshes again after the %s changes', async (changed) => {
+        const { edit, heartbeat, target } = publishedServer(60)
+        await statusRoutine()
+        if (changed === 'heartbeat') heartbeat.updatedAt = new Date(Date.now() - 15 * 60 * 1000)
+        else target[changed] = 'replacement'
+
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(2)
+      })
+
+      it('does not overwrite a heartbeat that becomes live during the sweep', async () => {
+        const { heartbeat, edit } = publishedServer()
+        redisMock.get.mockImplementationOnce(async () => {
+          heartbeat.updatedAt = new Date()
+          return null
+        })
+
+        await statusRoutine()
+
+        expect(edit).not.toHaveBeenCalled()
+        expect(redisMock.set).not.toHaveBeenCalled()
+      })
+
+      it('restores live data when a heartbeat arrives during the Discord edit', async () => {
+        const { heartbeat, edit, cache } = publishedServer()
+        edit.mockImplementationOnce(async () => {
+          heartbeat.updatedAt = new Date()
+        })
+
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(2)
+        expect(buildDiscordStatusMessageMock).toHaveBeenNthCalledWith(1, expect.any(Server), null, 'en')
+        expect(buildDiscordStatusMessageMock).toHaveBeenLastCalledWith(expect.any(Server), heartbeat, 'en')
+        expect(edit).toHaveBeenLastCalledWith({ content: 'online' })
+        expect(cache.size).toBe(0)
+      })
+
+      it('still updates Discord when its acknowledgement cache cannot be read', async () => {
+        const { edit } = publishedServer()
+        redisMock.get.mockRejectedValueOnce(new Error('Redis unavailable'))
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(1)
+        expect(errorSpy).toHaveBeenCalledWith(
+          'Error reading offline status acknowledgement for server s1:',
+          expect.objectContaining({ message: 'Redis unavailable' }),
+        )
+      })
+
+      it('logs a failed acknowledgement write and retries the unacknowledged message', async () => {
+        const { edit, cache } = publishedServer()
+        redisMock.set.mockRejectedValueOnce(new Error('Redis unavailable'))
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await statusRoutine()
+        expect(cache.size).toBe(0)
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(2)
+        expect(cache.size).toBe(1)
+        expect(errorSpy).toHaveBeenCalledWith(
+          'Error recording offline status acknowledgement for server s1:',
+          expect.objectContaining({ message: 'Redis unavailable' }),
+        )
+      })
+
+      it('retries a failed Discord edit without acknowledging it', async () => {
+        const { edit, cache } = publishedServer()
+        edit.mockRejectedValueOnce(new Error('Discord unavailable'))
+        vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await statusRoutine()
+        expect(cache.size).toBe(0)
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(2)
+        expect(cache.size).toBe(1)
+      })
+
+      it('continues with later servers after one server fails', async () => {
+        const { target, edit } = publishedServer()
+        prismaMock.gm_status.findMany.mockResolvedValue([{ ...target, server: 'broken' }, target])
+        prismaMock.gm_server.findFirst.mockRejectedValueOnce(new Error('server read failed'))
+        const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+        await statusRoutine()
+
+        expect(errorSpy).toHaveBeenCalledWith(expect.objectContaining({ message: 'server read failed' }))
+        expect(edit).toHaveBeenCalledTimes(1)
+      })
+
+      it('skips an overlapping sweep and releases the guard after completion', async () => {
+        const { edit } = publishedServer()
+        let finishEdit!: () => void
+        edit.mockImplementationOnce(() => new Promise<void>((resolve) => (finishEdit = resolve)))
+        const pending = statusRoutine()
+        await vi.waitFor(() => expect(edit).toHaveBeenCalledTimes(1))
+
+        await statusRoutine()
+        expect(prismaMock.gm_status.findMany).toHaveBeenCalledTimes(1)
+        finishEdit()
+        await pending
+        await statusRoutine()
+
+        expect(prismaMock.gm_status.findMany).toHaveBeenCalledTimes(2)
+      })
+
+      it('releases the guard after a sweep-wide database failure', async () => {
+        const { edit } = publishedServer()
+        prismaMock.gm_status.findMany.mockRejectedValueOnce(new Error('database unavailable'))
+
+        await expect(statusRoutine()).rejects.toThrow('database unavailable')
+        await statusRoutine()
+
+        expect(edit).toHaveBeenCalledTimes(1)
       })
     })
   })

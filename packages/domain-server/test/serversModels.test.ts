@@ -31,7 +31,10 @@ describe('getServerList', () => {
   })
 
   it('skips servers without a name', async () => {
-    findManyMock.mockResolvedValueOnce([{ id: 's1', name: '' }, { id: 's2', name: 'Beta' }])
+    findManyMock.mockResolvedValueOnce([
+      { id: 's1', name: '' },
+      { id: 's2', name: 'Beta' },
+    ])
 
     const result = await getServerList({ guildId: 'g1' } as any, { value: '' } as any, {})
 

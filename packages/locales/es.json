@@ -151,8 +151,8 @@
   "help_content_default": "Pendiente",
   "leaderboard": "Clasificación de {1}",
   "leaderboard_desc": "Buscar por {1}, página {2}/{3}",
-  "rcon_command_error": "¡Se produjo un error al enviar el comando!",
-  "rcon_command_success": "¡Comando enviado con éxito!",
+  "rcon_command_error": "No se pudo confirmar la ejecución. Tu jugador vinculado debe estar conectado al servidor de juego con un rango de administrador permitido y el addon debe estar actualizado. Comprueba el servidor de juego antes de volver a intentarlo.",
+  "rcon_command_success": "El servidor de juego aceptó el comando de consola.",
   "your_guild_is_premium": "¡Tu servidor es premium!",
   "re_verify_yourself": "Para realizar esta acción, ¡debes volver a verificarte!",
   "vote_webhook": "{1} acaba de votar por el servidor {2}!",
@@ -221,5 +221,6 @@
   "ch_atm_deposit_money": "Cajero depositar dinero",
   "ch_atm_withdraw_money": "Cajero retirar dinero",
   "ammount": "Monto",
-  "discord.screenshot.no_title": "Sin título"
+  "discord.screenshot.no_title": "Sin título",
+  "access_verification_unavailable": "No se pueden verificar los permisos de acceso en este momento. Vuelve a intentarlo dentro de unos instantes."
 }

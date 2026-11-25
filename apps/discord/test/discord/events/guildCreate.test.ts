@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const updateGuildStatMock = vi.fn()
 vi.mock('@gmod/domain-guild/discordModels.js', () => ({ updateGuildStat: updateGuildStatMock }))

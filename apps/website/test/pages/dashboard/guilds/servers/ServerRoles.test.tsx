@@ -1,357 +1,279 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../testUtils.js'
-import { okJson, errJson, stubDialogGlobal, clearDialogGlobals } from './testHelpers.js'
+import { okJson, errJson } from './testHelpers.js'
 
 vi.mock('../../../../../src/utils/api.js', () => ({
-  // GuildInformations.tsx's module-level guildRoles/guildChannels resources, and
-  // MissingRolePermission's subordination resource, all fire their fetches at import time (before
-  // any beforeEach runs) - the mock factory needs a working default from the start, matching
-  // GuildAutoRoles.test.tsx.
-  fetchAPI: vi.fn((endpoint: string) => {
-    if (endpoint.includes('/bot/roles/subordination')) return Promise.resolve({ ok: true, json: async () => ({}) })
-    return Promise.resolve({ ok: true, json: async () => [] })
-  }),
+  fetchAPI: vi.fn((endpoint: string) =>
+    Promise.resolve({ ok: true, json: async () => (endpoint.includes('/bot/roles/subordination') ? {} : []) }),
+  ),
   getAPIUrl: vi.fn(),
-  getUrlWithActualParams: vi.fn((s: string) => s),
+  getUrlWithActualParams: vi.fn((value: string) => value),
 }))
-
-const { guildRolesMutate, guildChannelsMutate } = await import(
-  '../../../../../src/pages/dashboard/guilds/GuildInformations.js'
-)
+vi.mock('../../../../../src/utils/dashboardSettings.js', () => ({ saveDashboardSettings: vi.fn() }))
 const { fetchAPI } = await import('../../../../../src/utils/api.js')
-const ServerRoles = (await import('../../../../../src/pages/dashboard/guilds/servers/ServerRoles.js')).default
-
-const PSEUDO_DIRECTION_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_role_direction'
-const ROLES_SYNC_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/roles'
-const SUBORDINATION_URL_PART = '/bot/roles/subordination'
-
-function defaultGuildRoles() {
-  return [
-    { id: 'r1', name: 'Admin', color: 111, colorHex: '#111111' },
-    { id: 'r2', name: 'Moderator', color: 222, colorHex: '#222222' },
-    { id: 'r3', name: 'VIP', color: 333, colorHex: '#333333' },
-  ]
-}
-
-// Fresh objects every call - editRole()/the modal mutate fields of the exact object passed to
-// setSelectRole in place (see ServerRoles.tsx's onInput/onChange handlers), so a shared
-// module-level fixture would leak mutations across tests (okJson returns its payload by reference).
-function defaultRolesSync() {
-  return [
-    { serverID: 's1', roleID: 'r1', userGroup: 'admins', enable: true },
-    { serverID: 's1', roleID: 'r2', userGroup: 'mods', enable: false },
-  ]
-}
-
-// All roles editable by default so MissingRolePermission's warning banner stays empty and doesn't
-// add extra "@RoleName" text to the DOM.
-function subordinationFor(roles: { id: string }[]) {
-  return Object.fromEntries(roles.map((r) => [r.id, { name: r.name, editable: true }]))
-}
-
-function setupFetchAPI({
-  direction = { value: 'gmod-to-discord' },
-  rolesSync = defaultRolesSync(),
-  guildRolesList = defaultGuildRoles(),
-}: { direction?: unknown; rolesSync?: unknown; guildRolesList?: { id: string; name: string }[] } = {}) {
-  ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-    if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson(subordinationFor(guildRolesList)))
-    if (endpoint === PSEUDO_DIRECTION_URL && method === 'GET') return Promise.resolve(okJson(direction))
-    if (endpoint === ROLES_SYNC_URL && method === 'GET') return Promise.resolve(okJson(rolesSync))
-    return Promise.resolve(okJson([]))
+const { saveDashboardSettings } = await import('../../../../../src/utils/dashboardSettings.js')
+const { guildRolesMutate, guildChannelsMutate } =
+  await import('../../../../../src/pages/dashboard/guilds/GuildInformations.js')
+const Page = (await import('../../../../../src/pages/dashboard/guilds/servers/ServerRoles.js')).default
+const URL = '/users/:discordID/guilds/:guildID/servers/:serverID/roles'
+const guildRoles = [
+  { id: 'r1', name: 'Admin', color: 111, colorHex: '#111111' },
+  { id: 'r2', name: 'Moderator', color: 222, colorHex: '#222222' },
+  { id: 'r3', name: 'VIP', color: 333, colorHex: '#333333' },
+]
+const rows = () => [
+  { serverID: 's1', roleID: 'r1', userGroup: 'admins', enable: true },
+  { serverID: 's1', roleID: 'r2', userGroup: 'mods', enable: false },
+]
+let write: (endpoint: string, method: string, body: unknown) => unknown
+let loadFailure = false
+function setup() {
+  ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string, body: unknown) => {
+    if (method !== 'GET') return Promise.resolve(write(endpoint, method, body))
+    if (endpoint.includes('/bot/roles/subordination'))
+      return Promise.resolve(
+        okJson(Object.fromEntries(guildRoles.map((role) => [role.id, { name: role.name, editable: true }]))),
+      )
+    if (endpoint === URL) return Promise.resolve(loadFailure ? errJson() : okJson(rows()))
+    return Promise.resolve(okJson({ value: 'gmod-to-discord' }))
   })
 }
-
 function renderPage() {
-  return renderWithProviders(() => <ServerRoles />, {
+  return renderWithProviders(() => <Page />, {
     path: '/dashboard/guilds/:guildID/config/servers/:serverID/roles',
     history: historyAt('/dashboard/guilds/g1/config/servers/s1/roles'),
   })
 }
-
-async function waitForLoaded() {
+async function loaded() {
   await vi.waitFor(() => expect(screen.getByText('@Admin')).toBeInTheDocument())
 }
-
-function directionSelect() {
-  return screen.getAllByRole('combobox').find((el) => el.className.includes('w-full max-w-xs')) as HTMLSelectElement
+const modal = () => within(document.getElementById('edit_role_modal')!)
+const input = (id: string) => document.getElementById(id) as HTMLInputElement
+const writes = () => (fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')
+async function createDraft() {
+  await fireEvent.click(screen.getByRole('button', { name: 'Add role mapping' }))
+  await fireEvent.change(input('roles-role'), { target: { value: 'r3' } })
+  await fireEvent.input(input('roles-mapping'), { target: { value: 'vip' } })
+  await fireEvent.click(input('roles-enabled'))
 }
-
-afterEach(() => {
-  cleanup()
-  clearDialogGlobals('select_role_modal', 'edit_role_modal')
-})
-
-describe('pages/dashboard/guilds/servers/ServerRoles.tsx', () => {
+afterEach(cleanup)
+describe('ServerRoles unified editing', () => {
   beforeEach(() => {
     window.localStorage.clear()
-    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
-    ;(fetchAPI as Mock).mockReset()
-    setupFetchAPI()
-    guildRolesMutate(defaultGuildRoles())
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    vi.clearAllMocks()
+    write = () => okJson({})
+    loadFailure = false
+    setup()
+    ;(saveDashboardSettings as Mock).mockImplementation(async (_scope, settings) => ({ settings, sync: 'applied' }))
+    guildRolesMutate(guildRoles)
     guildChannelsMutate([])
   })
-
-  it('renders the panel titles, description and the websocket notice', async () => {
+  it('discards an unfinished rule on native Escape without writing it', async () => {
     renderPage()
-    await waitForLoaded()
-    expect(screen.getByText('Server Roles')).toBeInTheDocument()
-    expect(
-      screen.getByText('Manage role synchronization between your Discord server and game server.'),
-    ).toBeInTheDocument()
-    expect(screen.getByText('GWSocket')).toBeInTheDocument()
+    await loaded()
+    await createDraft()
+    const dialog = document.getElementById('edit_role_modal')!
+    const cancellation = new Event('cancel', { cancelable: true })
+    await fireEvent(dialog, cancellation)
+    expect(cancellation.defaultPrevented).toBe(false)
+    expect(input('roles-mapping')).toHaveValue('')
+    expect(writes()).toHaveLength(0)
   })
 
-  it('renders the loaded role sync table using DiscordRole and TextValue', async () => {
+  it('renders loaded mappings, statuses and the role names', async () => {
     renderPage()
-    await waitForLoaded()
+    await loaded()
     expect(screen.getByText('@Moderator')).toBeInTheDocument()
     expect(screen.getByText('admins')).toBeInTheDocument()
-    expect(screen.getByText('mods')).toBeInTheDocument()
-    const rows = screen.getAllByRole('row').slice(1) // skip header row
-    expect(rows[0].querySelector('.fa-check')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-times')).toBeInTheDocument()
+    const table = screen.getByRole('table')
+    expect(table.querySelectorAll('tbody tr')).toHaveLength(2)
+    expect(within(table).getByText('Enabled')).toBeInTheDocument()
+    expect(within(table).getByText('Disabled')).toBeInTheDocument()
   })
-
-  it('shows a loading spinner for the role sync table while rolesSync is loading', () => {
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-      if (endpoint === ROLES_SYNC_URL) return new Promise(() => {})
-      if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
-      return Promise.resolve(okJson([]))
-    })
-    const { container } = renderPage()
-    expect(container.querySelector('.loading-spinner')).toBeInTheDocument()
+  it('creates one complete mapping only after explicit confirmation', async () => {
+    renderPage()
+    await loaded()
+    await createDraft()
+    expect(writes()).toHaveLength(0)
+    expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
+    write = () => okJson({ serverID: 's1', roleID: 'r3', userGroup: 'vip', enable: true })
+    await fireEvent.click(modal().getByRole('button', { name: 'Create' }))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(URL + '/r3', 'POST', { userGroup: 'vip', enable: true }),
+    )
+    await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
+    expect(writes()).toHaveLength(1)
+    await vi.waitFor(() => expect(document.getElementById('edit_role_modal')).not.toHaveAttribute('open'))
   })
-
-  describe('roles synchronization direction selector', () => {
-    it('marks the option matching the fetched direction as selected', async () => {
-      renderPage()
-      await waitForLoaded()
-      const select = screen.getByDisplayValue('Server to Discord') as HTMLSelectElement
-      expect(select.value).toBe('gmod-to-discord')
-    })
-
-    it('disables the select while pseudoDirection is loading', () => {
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-        if (endpoint === PSEUDO_DIRECTION_URL) return new Promise(() => {})
-        if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
-        return Promise.resolve(okJson([]))
-      })
-      renderPage()
-      expect(directionSelect()).toBeDisabled()
-    })
-
-    it('sends the new direction on change and mutates the resource on success', async () => {
-      // 'both' is disabled unless premium (see `disabled={!premium()}` on that <option> in
-      // ServerRoles.tsx) - a disabled option can't become the select's displayed value in a real
-      // browser, so this needs a premium guild (see the equivalent note in ServerPseudo.test.tsx).
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      renderPage()
-      await waitForLoaded()
-      const updated = { value: 'both' }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(okJson(updated))
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.change(directionSelect(), { target: { value: 'both' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_DIRECTION_URL, 'PUT', { value: 'both' }))
-      await vi.waitFor(() => expect(screen.getByDisplayValue('Both Directions')).toBeInTheDocument())
-    })
-
-    it('does not mutate the direction when the update request fails', async () => {
-      renderPage()
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === PSEUDO_DIRECTION_URL && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      const callsBefore = (fetchAPI as Mock).mock.calls.length
-      await fireEvent.change(directionSelect(), { target: { value: 'both' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(PSEUDO_DIRECTION_URL, 'PUT', { value: 'both' }))
-      expect((fetchAPI as Mock).mock.calls.length).toBe(callsBefore + 1)
-    })
+  it('requires a role and mapping before Create and discards a cancelled creation', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Add role mapping' }))
+    expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
+    await fireEvent.change(input('roles-role'), { target: { value: 'r3' } })
+    expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
+    await fireEvent.input(input('roles-mapping'), { target: { value: 'draft' } })
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    expect(writes()).toHaveLength(0)
+    await fireEvent.click(screen.getByRole('button', { name: 'Add role mapping' }))
+    expect(input('roles-mapping')).toHaveValue('')
+    expect(input('roles-role')).toHaveValue('')
   })
-
-  describe('add role sync (select role modal)', () => {
-    it('lists only guild roles not already synced, and adds the chosen one on change', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'select_role_modal')
-      await fireEvent.click(screen.getByText('Add Role Sync'))
-
-      const modal = container.querySelector('#select_role_modal') as HTMLElement
-      const optionTexts = within(modal)
-        .getAllByRole('option', { hidden: true })
-        .map((o) => o.textContent)
-      expect(optionTexts).toContain('VIP')
-      expect(optionTexts).not.toContain('Admin')
-      expect(optionTexts).not.toContain('Moderator')
-
-      const newRole = { serverID: 's1', roleID: 'r3', userGroup: '', enable: true }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${ROLES_SYNC_URL}/r3` && method === 'POST') return Promise.resolve(okJson(newRole))
-        return Promise.resolve(okJson([]))
-      })
-      const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'r3' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r3`, 'POST'))
-      await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
-    })
-
-    it('does not add a role when the create request fails', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'select_role_modal')
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${ROLES_SYNC_URL}/r3` && method === 'POST') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      const modal = container.querySelector('#select_role_modal') as HTMLElement
-      const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'r3' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r3`, 'POST'))
-      expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
-    })
+  it('edits a copy and Cancel leaves the saved row unchanged', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit role mapping' })[0])
+    expect(input('roles-role')).toBeDisabled()
+    expect(input('roles-mapping')).toHaveValue('admins')
+    await fireEvent.input(input('roles-mapping'), { target: { value: 'draft' } })
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText('admins')).toBeInTheDocument()
+    expect(writes()).toHaveLength(0)
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit role mapping' })[0])
+    expect(input('roles-mapping')).toHaveValue('admins')
   })
-
-  describe('edit role sync modal', () => {
-    it('opens with the selected role and saves the edited user group', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
-      await fireEvent.click(editIcons[0])
-
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      const userGroupInput = within(modal).getByRole('textbox') as HTMLInputElement
-      expect(userGroupInput.value).toBe('admins')
-
-      const updated = { serverID: 's1', roleID: 'r1', userGroup: 'superadmins', enable: true }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${ROLES_SYNC_URL}/r1` && method === 'PUT') return Promise.resolve(okJson(updated))
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.input(userGroupInput, { target: { value: 'superadmins' } })
-      await fireEvent.click(within(modal).getByText('Save Changes'))
-
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r1`, 'PUT', {
-          serverID: 's1',
-          roleID: 'r1',
-          userGroup: 'superadmins',
-          enable: true,
-        }),
-      )
-      await vi.waitFor(() => expect(screen.getByText('superadmins')).toBeInTheDocument())
-    })
-
-    it('toggles the enable field in the modal', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
-      await fireEvent.click(editIcons[0]) // Admin row, enable: true
-
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      const selects = within(modal).getAllByRole('combobox') as HTMLSelectElement[]
-      const enableSelect = selects.find((s) => !s.disabled) as HTMLSelectElement
-      expect(enableSelect.value).toBe('true')
-      await fireEvent.change(enableSelect, { target: { value: 'false' } })
-
-      const updated = { serverID: 's1', roleID: 'r1', userGroup: 'admins', enable: false }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${ROLES_SYNC_URL}/r1` && method === 'PUT') return Promise.resolve(okJson(updated))
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(within(modal).getByText('Save Changes'))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r1`, 'PUT', {
-          serverID: 's1',
-          roleID: 'r1',
-          userGroup: 'admins',
-          enable: false,
-        }),
-      )
-    })
-
-    it('does not update the list when editing fails', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
-      await fireEvent.click(editIcons[0])
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${ROLES_SYNC_URL}/r1` && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      await fireEvent.click(within(modal).getByText('Save Changes'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r1`, 'PUT', expect.anything()))
-      expect(screen.getByText('admins')).toBeInTheDocument()
-    })
+  it('keeps a failed edit open with its values and retries successfully', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit role mapping' })[0])
+    await fireEvent.input(input('roles-mapping'), { target: { value: 'superadmins' } })
+    write = () => errJson()
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(modal().getByRole('alert')).toBeInTheDocument())
+    expect(document.getElementById('edit_role_modal')).toHaveAttribute('open')
+    expect(screen.getByText('admins')).toBeInTheDocument()
+    expect(input('roles-mapping')).toHaveValue('superadmins')
+    write = () => okJson({ ...rows()[0], userGroup: 'superadmins' })
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(screen.getByText('superadmins')).toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenLastCalledWith(URL + '/r1', 'PUT', { userGroup: 'superadmins', enable: true })
   })
-
-  describe('delete role sync', () => {
-    it('deletes a role sync and removes it from the list on success', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${ROLES_SYNC_URL}/r2` && method === 'DELETE') return Promise.resolve(okJson({ roleID: 'r2' }))
-        return Promise.resolve(okJson([]))
+  it('locks the whole form and prevents duplicate requests while saving', async () => {
+    renderPage()
+    await loaded()
+    await createDraft()
+    let resolve!: (response: unknown) => void
+    write = () =>
+      new Promise((result) => {
+        resolve = result
       })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
-      await fireEvent.click(deleteIcons[1])
-      await vi.waitFor(() => expect(screen.queryByText('@Moderator')).not.toBeInTheDocument())
-      expect(screen.getByText('@Admin')).toBeInTheDocument()
-    })
-
-    it('does not remove the row when deleting fails', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${ROLES_SYNC_URL}/r2` && method === 'DELETE') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
-      await fireEvent.click(deleteIcons[1])
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${ROLES_SYNC_URL}/r2`, 'DELETE'))
-      expect(screen.getByText('@Moderator')).toBeInTheDocument()
-    })
+    const button = modal().getByRole('button', { name: 'Create' })
+    await fireEvent.click(button)
+    expect(button).toBeDisabled()
+    expect(modal().getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    expect(input('roles-mapping')).toBeDisabled()
+    await fireEvent.click(button)
+    expect(writes()).toHaveLength(1)
+    resolve(okJson({ serverID: 's1', roleID: 'r3', userGroup: 'vip', enable: true }))
+    await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
   })
-
-  describe('premium gating for Add Role Sync', () => {
-    it('shows Add Role Sync directly when premium, even at the free limit', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      setupFetchAPI({
-        rolesSync: [
-          { serverID: 's1', roleID: 'r1', userGroup: 'a', enable: true },
-          { serverID: 's1', roleID: 'r2', userGroup: 'b', enable: true },
-        ],
-      })
-      renderPage()
-      await waitForLoaded()
-      expect(screen.getByText('Add Role Sync')).toBeInTheDocument()
+  it('names the deletion target, cancels without a request and removes only after confirmation', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete role mapping' })[1])
+    const confirmation = within(document.getElementById('delete-role-sync')!)
+    expect(
+      confirmation.getByText(
+        'Moderator — mods — Delete this mapping and stop synchronizing it. This does not delete the Discord role or the game user group.',
+      ),
+    ).toBeInTheDocument()
+    expect(writes()).toHaveLength(0)
+    await fireEvent.click(confirmation.getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText('@Moderator')).toBeInTheDocument()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete role mapping' })[1])
+    await fireEvent.click(confirmation.getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(screen.queryByText('@Moderator')).not.toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(URL + '/r2', 'DELETE')
+    expect(screen.getByText('@Admin')).toBeInTheDocument()
+  })
+  it('keeps the targeted row and confirmation visible after a deletion error', async () => {
+    renderPage()
+    await loaded()
+    write = () => errJson()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete role mapping' })[1])
+    const dialog = document.getElementById('delete-role-sync')!
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument())
+    expect(dialog).toHaveAttribute('open')
+    expect(screen.getByText('@Moderator')).toBeInTheDocument()
+  })
+  it('shows a recoverable list error and prevents adding when the saved data is unknown', async () => {
+    loadFailure = true
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Add role mapping' })).toBeDisabled()
+    loadFailure = false
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await loaded()
+    expect(screen.getByRole('button', { name: 'Add role mapping' })).not.toBeDisabled()
+  })
+  it('autosaves direction changes without Save or Cancel controls and accepts the response', async () => {
+    renderPage()
+    await loaded()
+    const select = input('server-roles-direction')
+    const group = within(select.closest('.dashboard-panel')!)
+    expect(group.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument()
+    expect(group.queryByRole('button', { name: 'Cancel' })).not.toBeInTheDocument()
+    await fireEvent.change(select, { target: { value: 'both' } })
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
+    await vi.waitFor(() =>
+      expect(saveDashboardSettings).toHaveBeenCalledWith('server', { sync_role_direction: 'both' }),
+    )
+    expect(select).toHaveValue('both')
+    expect(group.getByRole('status')).toBeInTheDocument()
+    expect(saveDashboardSettings).toHaveBeenCalledTimes(1)
+  })
+  it('retains a failed direction draft for retry and reports a pending synchronization honestly', async () => {
+    renderPage()
+    await loaded()
+    const select = input('server-roles-direction')
+    const group = within(select.closest('.dashboard-panel')!)
+    await fireEvent.change(select, { target: { value: 'both' } })
+    ;(saveDashboardSettings as Mock).mockRejectedValueOnce(new Error('offline'))
+    await vi.waitFor(() => expect(group.getByRole('alert')).toBeInTheDocument())
+    expect(select).toHaveValue('both')
+    ;(saveDashboardSettings as Mock).mockResolvedValueOnce({
+      settings: { sync_role_direction: 'both' },
+      sync: 'pending',
     })
-
-    it('shows the premium upsell instead of Add Role Sync when free and at the 3-role limit', async () => {
-      setupFetchAPI({
-        rolesSync: [
-          { serverID: 's1', roleID: 'r1', userGroup: 'a', enable: true },
-          { serverID: 's1', roleID: 'r2', userGroup: 'b', enable: true },
-          { serverID: 's1', roleID: 'r3', userGroup: 'c', enable: true },
-        ],
-      })
-      renderPage()
-      await waitForLoaded()
-      expect(screen.queryByText('Add Role Sync')).not.toBeInTheDocument()
-      expect(screen.getByText('Limited to 3 synchronized roles for free users')).toBeInTheDocument()
-    })
-
-    it('shows Add Role Sync when free and under the 3-role limit', async () => {
-      renderPage()
-      await waitForLoaded()
-      expect(screen.getByText('Add Role Sync')).toBeInTheDocument()
-    })
+    await fireEvent.click(group.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(group.getByText('Saved. Synchronization is pending.')).toBeInTheDocument())
+  })
+  it('only offers unsynchronized roles when creating and gates paid directions for free guilds', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Add role mapping' }))
+    const select = input('roles-role')
+    expect(within(select).queryByRole('option', { name: 'Admin' })).not.toBeInTheDocument()
+    expect(within(select).getByRole('option', { name: 'VIP' })).toBeInTheDocument()
+    expect(
+      within(input('server-roles-direction')).getByRole('option', { name: 'Both directions', hidden: true }),
+    ).toBeDisabled()
+  })
+  it('paginates mappings while preserving the synchronization draft and all assigned role choices', async () => {
+    const manyRows = Array.from({ length: 26 }, (_, index) => ({
+      serverID: 's1',
+      roleID: `r${index + 1}`,
+      userGroup: `group-${index + 1}`,
+      enable: true,
+    }))
+    const original = (fetchAPI as Mock).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((endpoint, method, body) =>
+      endpoint === URL && method === 'GET' ? Promise.resolve(okJson(manyRows)) : original(endpoint, method, body),
+    )
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByText('group-1')).toBeInTheDocument())
+    await fireEvent.change(input('server-roles-direction'), { target: { value: 'both' } })
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('group-26')).toBeInTheDocument()
+    expect(screen.queryByText('group-1')).not.toBeInTheDocument()
+    expect(input('server-roles-direction')).toHaveValue('both')
+    await fireEvent.click(screen.getByRole('button', { name: 'Add role mapping' }))
+    expect(modal().queryByRole('option', { name: 'Admin' })).not.toBeInTheDocument()
+    expect(writes()).toHaveLength(0)
+    expect(saveDashboardSettings).not.toHaveBeenCalled()
   })
 })

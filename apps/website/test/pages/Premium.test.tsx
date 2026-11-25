@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, within } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { renderWithProviders } from '../testUtils.js'
 import Premium from '../../src/pages/Premium.js'
+import { useI18n } from '../../src/i18n.js'
 
 afterEach(() => {
   cleanup()
+  window.localStorage.clear()
   vi.useRealTimers()
 })
 
@@ -13,8 +15,55 @@ describe('pages/Premium.tsx', () => {
     renderWithProviders(() => <Premium />)
     expect(screen.getByText('Premium', { selector: 'h1' })).toBeInTheDocument()
     expect(
-      screen.getByText('Upgrade your community to the next level with customisation and more features'),
+      screen.getByText(
+        'Compare the free and Premium features available for your Discord community and its game servers.',
+      ),
     ).toBeInTheDocument()
+  })
+
+  it('updates offers, comparison rows and FAQ answers when the selected language changes', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'))
+    const PageWithLanguageSwitch = () => {
+      const { updateLocale } = useI18n()
+      return (
+        <>
+          <button onClick={() => updateLocale('fr')}>Français</button>
+          <Premium />
+        </>
+      )
+    }
+    const { container } = renderWithProviders(PageWithLanguageSwitch)
+    expect(screen.getByRole('heading', { name: 'Monthly subscription' })).toBeInTheDocument()
+    expect(screen.getByText('Game logs in the dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Whitelist mode').closest('tr')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'What does Premium add?' })).toBeInTheDocument()
+
+    await fireEvent.click(screen.getByRole('button', { name: 'Français' }))
+
+    const monthly = screen.getByRole('heading', { name: 'Abonnement mensuel' }).closest('a')!
+    expect(within(monthly).getByText('$25.99')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Monthly subscription' })).not.toBeInTheDocument()
+    expect(screen.getByText('Journaux de jeu dans le tableau de bord').closest('tr')).toBeInTheDocument()
+    expect(screen.getByText('Mode whitelist').closest('tr')).toBeInTheDocument()
+    expect(screen.queryByText('Game logs in the dashboard')).not.toBeInTheDocument()
+    const question = screen.getByRole('radio', { name: 'Qu’apporte Premium ?' })
+    expect(question.closest('.collapse')).toHaveTextContent(
+      'Premium augmente les limites et ajoute les options de personnalisation indiquées dans le comparatif.',
+    )
+    expect(screen.queryByRole('radio', { name: 'What does Premium add?' })).not.toBeInTheDocument()
+    expect(container.querySelector('.premium-comparison')).toHaveTextContent(
+      'Les fonctionnalités signalées en développement ne sont pas encore disponibles.',
+    )
+    const comparison = container.querySelector<HTMLElement>('.premium-comparison')!
+    expect(within(comparison).getAllByRole('img', { name: 'Inclus' }).length).toBeGreaterThan(0)
+    expect(within(comparison).getAllByRole('img', { name: 'Non inclus' }).length).toBeGreaterThan(0)
+    expect(within(comparison).getAllByRole('img', { name: 'Infini' }).length).toBeGreaterThan(0)
+    expect(within(comparison).queryAllByRole('img', { name: 'Included' })).toHaveLength(0)
+    const purchase = screen.getByRole('heading', { name: 'Achat unique' }).closest('a')!
+    const expectedDate = new Date('2024-09-22T23:59:59').toLocaleDateString('fr')
+    expect(within(purchase).getByText(`Réduction de 15 % jusqu’au ${expectedDate}`)).toBeInTheDocument()
+    expect(within(purchase).getByText('$220.99')).toBeInTheDocument()
   })
 
   describe('offer cards', () => {
@@ -24,26 +73,26 @@ describe('pages/Premium.tsx', () => {
       expect(card).toHaveAttribute('href', '/dashboard/guilds')
       expect(within(card).getByText('$0')).toBeInTheDocument()
       expect(within(card).queryByText(/% off until/)).not.toBeInTheDocument()
-      expect(within(card).getByText('Setup Server')).toBeInTheDocument()
+      expect(within(card).getByText('Connect a game server')).toBeInTheDocument()
       expect(within(card).getByText('All Free Features')).toBeInTheDocument()
     })
 
     it('renders the subscribe offer at its listed price, linking to the Discord app directory', () => {
       renderWithProviders(() => <Premium />)
-      const card = screen.getByText('Subscribe', { selector: 'h2' }).closest('a')!
+      const card = screen.getByText('Monthly subscription', { selector: 'h2' }).closest('a')!
       expect(card).toHaveAttribute('href', 'https://discord.com/application-directory/1110121451501129758/premium')
-      expect(within(card).getByText('$7.99')).toBeInTheDocument()
+      expect(within(card).getByText('$25.99')).toBeInTheDocument()
       expect(within(card).getByText('Subscribe on Discord')).toBeInTheDocument()
     })
 
     it('renders the one-time offer at full price with no discount once the reduction window has passed', () => {
       // The hardcoded reduction end date (2024-09-22) is in the past relative to any realistic
-      // test run, so offers.buy.reduction is deleted by the component's own module-scope cleanup
-      // loop under real system time - this is the normal, everyday code path.
+      // test run, so offers.buy.reduction is omitted by the offer computation
+      // under real system time - this is the normal, everyday code path.
       renderWithProviders(() => <Premium />)
-      const card = screen.getByText('One Time', { selector: 'h2' }).closest('a')!
+      const card = screen.getByText('One-time purchase', { selector: 'h2' }).closest('a')!
       expect(card).toHaveAttribute('href', 'https://www.gmodstore.com/market/view/gmod-integration')
-      expect(within(card).getByText('$69.99')).toBeInTheDocument()
+      expect(within(card).getByText('$259.99')).toBeInTheDocument()
       expect(within(card).queryByText(/% off until/)).not.toBeInTheDocument()
       expect(within(card).getByText('Buy on Gmod Store')).toBeInTheDocument()
       expect(within(card).getByText('Custom Bot')).toBeInTheDocument()
@@ -54,13 +103,13 @@ describe('pages/Premium.tsx', () => {
       vi.setSystemTime(new Date('2024-01-01T00:00:00.000Z'))
 
       renderWithProviders(() => <Premium />)
-      const card = screen.getByText('One Time', { selector: 'h2' }).closest('a')!
+      const card = screen.getByText('One-time purchase', { selector: 'h2' }).closest('a')!
 
-      // 69.99 - 69.99 * 15 / 100 = 59.4915 -> toFixed(2)
-      expect(within(card).getByText('$59.49')).toBeInTheDocument()
+      // 259.99 - 259.99 * 15 / 100 = 220.9915 -> toFixed(2)
+      expect(within(card).getByText('$220.99')).toBeInTheDocument()
       // The struck-through original price is rendered alongside the discounted one.
-      expect(within(card).getByText('$69.99')).toBeInTheDocument()
-      const expectedDate = new Date('2024-09-22T23:59:59').toLocaleDateString()
+      expect(within(card).getByText('$259.99')).toBeInTheDocument()
+      const expectedDate = new Date('2024-09-22T23:59:59').toLocaleDateString('en')
       expect(within(card).getByText(`15% off until ${expectedDate}`)).toBeInTheDocument()
     })
   })
@@ -74,42 +123,45 @@ describe('pages/Premium.tsx', () => {
       }
     })
 
-    it('renders a check icon for a true value and a times icon for a false value', () => {
-      const { container } = renderWithProviders(() => <Premium />)
+    it('uses plain inclusion icons with translated accessible names and no badges or visible status text', () => {
+      renderWithProviders(() => <Premium />)
       const row = screen.getByText('Sync Chat - Customisation').closest('tr')!
       // free_value: false, premium_value: true
-      expect(row.querySelector('.fa-times.text-error')).toBeInTheDocument()
-      expect(row.querySelector('.fa-check.text-success')).toBeInTheDocument()
-      expect(container.querySelectorAll('.fa-check.text-success').length).toBeGreaterThan(1)
+      expect(within(row).getByRole('img', { name: 'Not included' })).toHaveAttribute('data-icon', 'x')
+      expect(within(row).getByRole('img', { name: 'Included' })).toHaveAttribute('data-icon', 'check')
+      expect(within(row).queryByText('Not included')).not.toBeInTheDocument()
+      expect(within(row).queryByText('Included')).not.toBeInTheDocument()
+      expect(row.querySelector('.ui-status-badge, .badge')).not.toBeInTheDocument()
     })
 
     it('renders an infinity icon when the value equals the translated "infinite" string', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('Servers').closest('tr')!
-      expect(within(row).getByText('1 server')).toBeInTheDocument() // free_value: raw text
-      expect(row.querySelector('.fa-infinity.text-primary')).toBeInTheDocument() // premium_value: infinite
+      expect(within(row).getByText('1')).toBeInTheDocument()
+      expect(within(row).getByRole('img', { name: 'Infinite' })).toHaveAttribute('data-icon', 'infinity')
+      expect(within(row).queryByText('Infinite')).not.toBeInTheDocument()
     })
 
-    it('renders raw string values as-is for both free and premium columns', () => {
+    it('uses the shared button limits for both plans', () => {
       renderWithProviders(() => <Premium />)
       const row = screen.getByText('Server Status - Buttons Limit').closest('tr')!
-      expect(within(row).getByText('2 buttons')).toBeInTheDocument()
-      expect(within(row).getByText('25 buttons')).toBeInTheDocument()
+      expect(within(row).getByText('3')).toBeInTheDocument()
+      expect(within(row).getByText('25')).toBeInTheDocument()
     })
 
-    it('renders an interpolated translation value (e.g. "{1} hours" -> "24 hours")', () => {
+    it('uses the shared history window instead of a conflicting duration', () => {
       renderWithProviders(() => <Premium />)
-      const row = screen.getByText('WebPanel Logs').closest('tr')!
-      expect(within(row).getByText('24 hours')).toBeInTheDocument()
-      expect(row.querySelector('.fa-infinity.text-primary')).toBeInTheDocument()
+      const row = screen.getByText('Game logs in the dashboard').closest('tr')!
+      expect(within(row).getByText('500')).toBeInTheDocument()
+      expect(within(row).getByRole('img', { name: 'Infinite' })).toHaveAttribute('data-icon', 'infinity')
     })
 
     it('wraps an in-development feature name in a warning tooltip instead of rendering it plainly', () => {
       renderWithProviders(() => <Premium />)
-      const name = screen.getByText('Team Vocal')
+      const name = screen.getByText('Team voice channels')
       const tooltip = name.closest('[data-tip]')!
       expect(tooltip).toHaveClass('tooltip-warning')
-      expect(tooltip.querySelector('.fa-triangle-exclamation')).toBeInTheDocument()
+      expect(tooltip.querySelector('svg[data-icon="triangle-alert"]')).toBeInTheDocument()
     })
 
     it('renders a non-in-development feature name without a tooltip wrapper', () => {
@@ -128,12 +180,8 @@ describe('pages/Premium.tsx', () => {
       items.forEach((item) => {
         expect(item.querySelector('input[type="radio"]')).toHaveAttribute('name', 'my-accordion-4')
       })
-      expect(
-        screen.getByText('What are the differences between the free and the premium version ?'),
-      ).toBeInTheDocument()
-      expect(
-        screen.getByText('Why so many features are in development ?'),
-      ).toBeInTheDocument()
+      expect(screen.getByText('What does Premium add?')).toBeInTheDocument()
+      expect(screen.getByText('What does In development mean?')).toBeInTheDocument()
     })
   })
 })

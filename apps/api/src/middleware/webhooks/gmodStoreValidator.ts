@@ -1,4 +1,4 @@
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { type NextFunction, type Request, type Response } from 'express'
 import { verifyWebhookSignature } from '@gmod/core/models/webhooks/gmodStoreModels.js'
 

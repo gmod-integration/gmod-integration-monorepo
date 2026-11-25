@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../../testUtils.js'
 import { okJson, errJson } from '../testHelpers.js'
 
@@ -11,9 +11,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
 const { guildChannelsMutate } = await import('../../../../../../src/pages/dashboard/guilds/GuildInformations.js')
-const { ServerScreenshotsParameters } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters.js'
-)
+const { ServerScreenshotsParameters } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters.js')
 
 const SCREENSHOT_CHANNEL_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/screenshots/channel'
 
@@ -46,6 +45,16 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
     setupFetchAPI()
   })
 
+  it('recovers a failed destination lookup without presenting the failure as an empty channel', async () => {
+    ;(fetchAPI as Mock).mockResolvedValueOnce(errJson())
+    renderPage()
+    await screen.findByRole('alert')
+    expect(screen.queryByText('No channel selected')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
+    expect(screen.getByText('No channel selected')).toBeInTheDocument()
+  })
+
   it('shows "No channel selected" when no channel is configured', async () => {
     renderPage()
     await waitForLoaded()
@@ -57,13 +66,13 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
     renderPage()
     await waitForLoaded()
     expect(screen.getByText('#general')).toBeInTheDocument()
-    expect(screen.getByText('Delete Channel')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Remove destination' })).toBeInTheDocument()
   })
 
   it('does not show Delete Channel when no channel is configured', async () => {
     renderPage()
     await waitForLoaded()
-    expect(screen.queryByText('Delete Channel')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remove destination' })).not.toBeInTheDocument()
   })
 
   it('opens the channel selector modal on Select Channel', async () => {
@@ -86,9 +95,9 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
     })
     const select = document.querySelector('#select_channel_modal select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
-    await vi.waitFor(() =>
-      expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'POST', { channelID: 'c1' }),
-    )
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'POST')).toBe(false)
+    await fireEvent.click(within(select.closest('dialog')!).getByRole('button', { name: 'Save', hidden: true }))
+    await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'POST', { channelID: 'c1' }))
     await vi.waitFor(() => expect(screen.getByText('#general')).toBeInTheDocument())
   })
 
@@ -101,6 +110,8 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
     })
     const select = document.querySelector('#select_channel_modal select') as HTMLSelectElement
     await fireEvent.change(select, { target: { value: 'c1' } })
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'POST')).toBe(false)
+    await fireEvent.click(within(select.closest('dialog')!).getByRole('button', { name: 'Save', hidden: true }))
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'POST', { channelID: 'c1' }))
     expect(screen.queryByText('#general')).not.toBeInTheDocument()
   })
@@ -114,7 +125,11 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
       if (endpoint === SCREENSHOT_CHANNEL_URL && method === 'DELETE') return Promise.resolve(okJson({}))
       return Promise.resolve(okJson([]))
     })
-    await fireEvent.click(screen.getByText('Delete Channel'))
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove destination' }))
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'DELETE')).toBe(false)
+    await fireEvent.click(
+      within(document.querySelector('#remove-channel')!).getByRole('button', { name: 'Remove destination' }),
+    )
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'DELETE'))
     await vi.waitFor(() => expect(screen.queryByText('#general')).not.toBeInTheDocument())
   })
@@ -128,7 +143,11 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotsParameters
       if (endpoint === SCREENSHOT_CHANNEL_URL && method === 'DELETE') return Promise.resolve(errJson())
       return Promise.resolve(okJson([]))
     })
-    await fireEvent.click(screen.getByText('Delete Channel'))
+    await fireEvent.click(screen.getByRole('button', { name: 'Remove destination' }))
+    expect((fetchAPI as Mock).mock.calls.some(([, method]) => method === 'DELETE')).toBe(false)
+    await fireEvent.click(
+      within(document.querySelector('#remove-channel')!).getByRole('button', { name: 'Remove destination' }),
+    )
     await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(SCREENSHOT_CHANNEL_URL, 'DELETE'))
     expect(screen.getByText('#general')).toBeInTheDocument()
   })

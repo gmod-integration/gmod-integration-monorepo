@@ -68,10 +68,24 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
     setupFetchAPI()
   })
 
+  it('shows an unavailable warning history separately from empty data and retries the read', async () => {
+    ;(fetchAPI as Mock).mockResolvedValueOnce({ ok: false, json: async () => ({}) })
+    renderPage()
+    await screen.findByText('Unable to load warning history. Try again.')
+    expect(screen.queryByText(/No warnings have been received/)).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitForLoaded()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
   it('renders the panel title, description and the AWarn3 addon notice', () => {
     renderPage()
-    expect(screen.getByText('Warns')).toBeInTheDocument()
-    expect(screen.getByText('List of all warns on your server')).toBeInTheDocument()
+    expect(screen.getByText('Warnings')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'View warnings received from AWarn3, with the player, administrator and reason. Warnings are managed in game.',
+      ),
+    ).toBeInTheDocument()
     const addonLink = screen.getByText('AWarn3')
     expect(addonLink).toHaveAttribute('href', 'https://www.gmodstore.com/market/view/awarn3-warning-system')
   })
@@ -88,17 +102,18 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
     await waitForLoaded()
     expect(screen.getByText('Prop abuse')).toBeInTheDocument()
     const rows = container.querySelectorAll('tbody tr')
-    // 2 warn rows + 1 pagination row
-    expect(rows.length).toBe(3)
+    // Pagination stays outside the horizontally scrolling table.
+    expect(rows.length).toBe(2)
+    expect(screen.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
     const firstRow = rows[0]
     const cells = firstRow.querySelectorAll('td')
-    expect(cells[0]).toHaveTextContent(new Date('2024-01-01T10:00:00.000Z').toLocaleString())
+    expect(cells[0].querySelector('time')).toHaveAttribute('datetime', '2024-01-01T10:00:00.000Z')
     expect(cells[1]).toHaveTextContent('76500000000000009')
     expect(cells[2]).toHaveTextContent('76500000000000001')
     expect(cells[3]).toHaveTextContent('Spamming chat')
   })
 
-  it('renders an empty warns table (pagination row only) when there are no warns', async () => {
+  it('shows the shared empty state when there are no warns', async () => {
     setupFetchAPI(0)
     ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
       if (typeof endpoint === 'string' && endpoint.startsWith(WARNS_URL_PREFIX)) {
@@ -109,17 +124,48 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
       return Promise.resolve(okJson({}))
     })
     const { container } = renderPage()
-    await vi.waitFor(() => expect(container.querySelectorAll('tbody tr').length).toBe(1))
+    await vi.waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent(
+        'No warnings have been received for this server. AWarn3 must be installed to send warnings.',
+      ),
+    )
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(1)
+    expect(screen.getByRole('navigation', { name: 'Pagination' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
   })
 
   describe('pagination', () => {
-    it('requests the query string built from offset/limit/sort/orderBy', async () => {
+    it('keeps navigation available when the next page becomes empty', async () => {
+      ;(fetchAPI as Mock)
+        .mockResolvedValueOnce(okJson(defaultWarnsResponse(30)))
+        .mockResolvedValueOnce(
+          okJson({ warns: [], query: { limit: 25, offset: 25, sort: 'createdAt', orderBy: 'DESC', total: 0 } }),
+        )
+        .mockResolvedValueOnce(okJson(defaultWarnsResponse(2)))
       renderPage()
       await waitForLoaded()
-      expect(fetchAPI).toHaveBeenCalledWith(
+      await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+      await vi.waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'No warnings have been received for this server. AWarn3 must be installed to send warnings.',
+        ),
+      )
+      expect(screen.getByRole('combobox', { name: 'Rows per page' })).toBeInTheDocument()
+      const previous = screen.getByRole('button', { name: 'Previous page' })
+      expect(previous).not.toBeDisabled()
+      await fireEvent.click(previous)
+      await vi.waitFor(() => expect(screen.getByText('Spamming chat')).toBeInTheDocument())
+      expect(fetchAPI).toHaveBeenLastCalledWith(
         `${WARNS_URL_PREFIX}?offset=0&limit=25&sort=createdAt&orderBy=DESC`,
         'GET',
       )
+    })
+
+    it('requests the query string built from offset/limit/sort/orderBy', async () => {
+      renderPage()
+      await waitForLoaded()
+      expect(fetchAPI).toHaveBeenCalledWith(`${WARNS_URL_PREFIX}?offset=0&limit=25&sort=createdAt&orderBy=DESC`, 'GET')
     })
 
     it('requests the next offset and reflects it in the page indicator', async () => {
@@ -128,12 +174,10 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
       await waitForLoaded()
       expect(screen.getByText('1 / 3')).toBeInTheDocument()
 
-      const nextBtn = container.querySelector('.fa-chevron-right')?.closest('button') as HTMLButtonElement
+      const nextBtn = container.querySelector('svg[data-icon="chevron-right"]')?.closest('button') as HTMLButtonElement
       await fireEvent.click(nextBtn)
 
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=25'), 'GET'),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=25'), 'GET'))
       await vi.waitFor(() => expect(screen.getByText('2 / 3')).toBeInTheDocument())
     })
 
@@ -141,15 +185,13 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
       setupFetchAPI(200)
       const { container } = renderPage()
       await waitForLoaded()
-      const nextBtn = container.querySelector('.fa-chevron-right')?.closest('button') as HTMLButtonElement
+      const nextBtn = container.querySelector('svg[data-icon="chevron-right"]')?.closest('button') as HTMLButtonElement
       await fireEvent.click(nextBtn)
       await vi.waitFor(() => expect(screen.getByText('2 / 8')).toBeInTheDocument())
 
       const limitSelect = container.querySelector('select') as HTMLSelectElement
       await fireEvent.change(limitSelect, { target: { value: '50' } })
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('limit=50'), 'GET'),
-      )
+      await vi.waitFor(() => expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('limit=50'), 'GET'))
       expect(fetchAPI).toHaveBeenLastCalledWith(expect.stringContaining('offset=0'), 'GET')
     })
   })

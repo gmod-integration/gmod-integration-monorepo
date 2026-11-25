@@ -1,18 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
+import type * as SolidWeb from 'solid-js/web'
 import { historyAt, renderWithProviders } from '../../../testUtils.js'
 import { DashboardMenu } from '../../../../src/components/layout/menu/DashboardMenu.js'
+import { useI18n } from '../../../../src/i18n.js'
 
-// `isDev` (from 'solid-js/web') gates the TODO-badge visibility and the SOON-badge
-// click-blocking/cursor-not-allowed behavior in DashboardMenu.tsx. It resolves to `true` in this
-// Vitest environment (dev build condition) by default, so the `!isDev` branches are otherwise
-// unreachable. Mocking the module with a controllable getter (instead of vi.resetModules() +
-// dynamic re-import) lets tests flip it per-case without invalidating the module registry - doing
-// the latter risks re-instantiating solid-js mid-file, which is the "multiple instances of Solid"
-// class of bug this test suite's harness was hard-won fixed against.
 const isDevBox = vi.hoisted(() => ({ value: true }))
 vi.mock('solid-js/web', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('solid-js/web')>()
+  const actual = await importOriginal<typeof SolidWeb>()
   return {
     ...actual,
     get isDev() {
@@ -23,156 +18,208 @@ vi.mock('solid-js/web', async (importOriginal) => {
 
 afterEach(() => {
   cleanup()
+  vi.restoreAllMocks()
   isDevBox.value = true
 })
+beforeEach(() => {
+  window.localStorage.clear()
+  window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
+  window.localStorage.setItem('server', JSON.stringify({ id: 's1' }))
+})
 
-function renderAt(path: string) {
-  const history = historyAt(path)
-  return renderWithProviders(() => <DashboardMenu />, { path: '*', history })
+function renderAt(path = '/dashboard/guilds/g1/config') {
+  return renderWithProviders(() => <DashboardMenu />, { path: '*', history: historyAt(path) })
 }
 
-describe('components/layout/menu/DashboardMenu.tsx', () => {
-  beforeEach(() => {
-    window.localStorage.clear()
-  })
-
-  it('renders the guilds section with the Back link pointing at /dashboard/guilds and every guild link', () => {
-    renderAt('/dashboard/guilds/g1/config')
-
-    const back = screen.getByText('Back').closest('a')
-    expect(back).toHaveAttribute('href', '/dashboard/guilds')
-
+describe('Dashboard navigation', () => {
+  it('provides named guild destinations and a back link to community selection', () => {
+    renderAt()
+    const navigation = screen.getByRole('navigation', { name: 'Discord communities' })
+    expect(within(navigation).getByRole('link', { name: 'Back' })).toHaveAttribute('href', '/dashboard/guilds')
     for (const label of [
-      'Informations',
+      'Community settings',
       'Custom Bot',
       'Links',
-      'Verification',
-      'Bans',
-      'Auto-Role',
+      'Account verification',
+      'Ban lists',
+      'Automatic roles',
       'Suggestions',
       'Tickets',
-      'Servers',
+      'Game servers',
     ]) {
-      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(within(navigation).getByRole('link', { name: label })).toBeInTheDocument()
     }
+    expect(screen.getByRole('link', { name: 'Community settings' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Suggestions' })).not.toHaveAttribute('aria-current', 'page')
   })
 
-  it('marks the current guild link and shows its TODO badge', () => {
-    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
-    renderAt('/dashboard/guilds/g1/config')
-
-    const informationsLink = screen.getByText('Informations').closest('a')
-    expect(informationsLink).toHaveClass('bg-base-200')
-
-    const suggestionsLink = screen.getByText('Suggestions').closest('a')
-    expect(suggestionsLink).not.toHaveClass('bg-base-200')
-    // Suggestions carries a TODO badge -> badge text rendered, and the base-content styling applied.
-    expect(suggestionsLink!.querySelector('.badge')).toHaveTextContent('Todo')
-    expect(suggestionsLink).toHaveClass('text-base-content')
-  })
-
-  it('renders the servers section (Back to the guild servers list) when the path includes /servers/', () => {
-    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
-    renderAt('/dashboard/guilds/g1/config/servers/s1')
-
-    const back = screen.getByText('Back').closest('a')
-    expect(back).toHaveAttribute('href', '/dashboard/guilds/g1/config/servers')
-
+  it('provides server destinations with resolved community and server identifiers', () => {
+    renderAt('/dashboard/guilds/g1/config/servers/s1/roles')
+    const navigation = screen.getByRole('navigation', { name: 'Servers' })
+    expect(within(navigation).getByRole('link', { name: 'Back' })).toHaveAttribute(
+      'href',
+      '/dashboard/guilds/g1/config/servers',
+    )
     for (const label of [
-      'Informations',
+      'Server and connection',
       'Configuration',
       'Status',
-      'Roles',
-      'Teams',
-      'Chats',
-      'Pseudo',
+      'Map',
+      'Statistics',
+      'Role synchronization',
+      'Team roles',
+      'Chat relay',
+      'Nickname synchronization',
       'Rewards',
       'Players',
       'Warns',
       'Logs',
-      'Errors',
+      'Console',
+      'Lua errors',
       'Forwards',
-      'Bugs Report',
+      'Player bug reports',
       'Screenshots',
       'Vote',
       'Streams',
       'Tickets',
     ]) {
-      expect(screen.getByText(label)).toBeInTheDocument()
+      expect(within(navigation).getByRole('link', { name: label })).toBeInTheDocument()
     }
-
-    const configLink = screen.getByText('Configuration').closest('a')
-    expect(configLink!.querySelector('.badge')).toHaveTextContent('New')
-    const statusLink = screen.getByText('Status').closest('a')
-    expect(statusLink!.querySelector('.badge')).toHaveTextContent('Updated')
+    expect(screen.getByRole('link', { name: 'Role synchronization' })).toHaveAttribute(
+      'href',
+      '/dashboard/guilds/g1/config/servers/s1/roles',
+    )
+    expect(screen.getByRole('link', { name: 'Role synchronization' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Team roles' })).not.toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Statistics' })).toHaveAttribute(
+      'href',
+      '/dashboard/guilds/g1/config/servers/s1/statistics',
+    )
+    expect(screen.getByRole('link', { name: 'Map' })).toHaveAttribute(
+      'href',
+      '/dashboard/guilds/g1/config/servers/s1/map',
+    )
+    expect(screen.getByRole('link', { name: 'Console' })).toHaveAttribute(
+      'href',
+      '/dashboard/guilds/g1/config/servers/s1/console',
+    )
+    expect(
+      within(screen.getByRole('link', { name: 'Map' }).closest('.dashboard-nav-group') as HTMLElement).getByText(
+        'Activity',
+      ),
+    ).toBeInTheDocument()
   })
 
-  it('marks the current server link', () => {
-    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
-    window.localStorage.setItem('server', JSON.stringify({ id: 's1' }))
-    renderAt('/dashboard/guilds/g1/config/servers/s1/roles')
-
-    const rolesLink = screen.getByText('Roles').closest('a')
-    expect(rolesLink).toHaveClass('bg-base-200')
-    const teamsLink = screen.getByText('Teams').closest('a')
-    expect(teamsLink).not.toHaveClass('bg-base-200')
+  it('updates the navigation category when moving from a community to a server', async () => {
+    const history = historyAt('/dashboard/guilds/g1/config')
+    renderWithProviders(() => <DashboardMenu />, { path: '*', history })
+    history.set({ value: '/dashboard/guilds/g1/config/servers/s1/roles', replace: true })
+    await vi.waitFor(() => expect(screen.getByRole('navigation', { name: 'Servers' })).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: 'Role synchronization' })).toHaveAttribute('aria-current', 'page')
   })
 
-  it('does not block navigation on a SOON-badged link while isDev is true (test env default)', async () => {
-    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
-    window.localStorage.setItem('server', JSON.stringify({ id: 's1' }))
+  it('lets developers follow preview destinations', async () => {
     const history = historyAt('/dashboard/guilds/g1/config/servers/s1')
     renderWithProviders(() => <DashboardMenu />, { path: '*', history })
-    const rewardsLink = screen.getByText('Rewards').closest('a') as HTMLAnchorElement
-    fireEvent.click(rewardsLink)
-    // isDev is true, so the SOON/!isDev guard in the onClick handler never fires our own
-    // preventDefault(), and the <A> component's own SPA navigation proceeds - observable as a
-    // history change to the Rewards URL. See the isDev=false test below for the opposite behavior.
+    const rewards = screen.getByRole('link', { name: 'Rewards' })
+    expect(rewards).not.toHaveAttribute('aria-disabled', 'true')
+    fireEvent.click(rewards)
     await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1/rewards'))
   })
 
-  it('toggles collapse: hides the Back label and link labels, shows the double-right icon', () => {
-    const { container } = renderAt('/dashboard/guilds/g1/config')
-
-    expect(screen.getByText('Collapse')).toBeInTheDocument()
-    const collapseRow = screen.getByText('Collapse').closest('div.flex.flex-col.mt-auto')!
-    fireEvent.click(collapseRow)
-
+  it('persists collapse, keeps the back link accessible, and supports button activation', () => {
+    renderAt()
+    const collapse = screen.getByRole('button', { name: 'Collapse' })
+    collapse.focus()
+    expect(collapse).toHaveFocus()
+    fireEvent.click(collapse, { detail: 0 })
+    expect(screen.getByRole('button', { name: 'Expand' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('link', { name: 'Back' })).toHaveAttribute('href', '/dashboard/guilds')
+    expect(screen.getByRole('link', { name: 'Community settings' })).toHaveAttribute('aria-label', 'Community settings')
     expect(screen.queryByText('Back')).not.toBeInTheDocument()
-    expect(screen.queryByText('Collapse')).not.toBeInTheDocument()
-    expect(container.querySelector('.fa-angle-double-right')).toBeInTheDocument()
+    expect(window.localStorage.getItem('dashboard-navigation-collapsed')).toBe('true')
+    fireEvent.click(screen.getByRole('button', { name: 'Expand' }))
+    expect(screen.getByRole('button', { name: 'Collapse' })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('restores the saved collapse preference independently of the admin rail', () => {
+    window.localStorage.setItem('dashboard-navigation-collapsed', 'true')
+    window.localStorage.setItem('admin-navigation-collapsed', 'false')
+    renderAt()
+    expect(screen.getByRole('button', { name: 'Expand' })).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('opens readable mobile navigation even with a collapsed desktop preference and closes after choosing a page', async () => {
+    window.localStorage.setItem('dashboard-navigation-collapsed', 'true')
+    const history = historyAt('/dashboard/guilds/g1/config/servers/s1/status')
+    renderWithProviders(() => <DashboardMenu />, { path: '*', history })
+    const toggle = screen.getByRole('button', { name: 'Toggle navigation' })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Role synchronization')).not.toBeInTheDocument()
+    fireEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Role synchronization')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('link', { name: 'Role synchronization' }))
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1/roles'))
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(window.localStorage.getItem('dashboard-navigation-collapsed')).toBe('true')
+  })
+
+  it('keeps the menu usable when its stored preference cannot be read', () => {
+    const getItem = Storage.prototype.getItem
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (this: Storage, key) {
+      if (key === 'dashboard-navigation-collapsed') throw new Error('storage unavailable')
+      return getItem.call(this, key)
+    })
+    expect(() => renderAt()).not.toThrow()
+    expect(screen.getByRole('button', { name: 'Collapse' })).toHaveAttribute('aria-expanded', 'true')
+  })
+
+  it('changes collapse state even when saving the preference fails', () => {
+    renderAt()
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('storage unavailable')
+    })
+    expect(() => fireEvent.click(screen.getByRole('button', { name: 'Collapse' }))).not.toThrow()
+    expect(screen.getByRole('button', { name: 'Expand' })).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  it('updates section and item labels when the language changes', () => {
+    const Page = () => {
+      const { updateLocale } = useI18n()
+      return (
+        <>
+          <button onClick={() => updateLocale('fr')}>Français</button>
+          <DashboardMenu />
+        </>
+      )
+    }
+    renderWithProviders(Page, { path: '*', history: historyAt('/dashboard/guilds/g1/config') })
+    fireEvent.click(screen.getByRole('button', { name: 'Français' }))
+    expect(screen.getByRole('navigation', { name: 'Communautés Discord' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Liens' })).toHaveAttribute('href', '/dashboard/guilds/g1/config/links')
   })
 })
 
-describe('components/layout/menu/DashboardMenu.tsx with isDev=false', () => {
+describe('Production dashboard navigation', () => {
   beforeEach(() => {
-    window.localStorage.clear()
     isDevBox.value = false
   })
 
-  it('hides TODO-badged links entirely', () => {
-    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
-    renderAt('/dashboard/guilds/g1/config')
-
-    // Suggestions/Tickets (guild section) carry TODO badges -> hidden entirely when !isDev.
-    expect(screen.queryByText('Suggestions')).not.toBeInTheDocument()
-    expect(screen.queryByText('Tickets')).not.toBeInTheDocument()
-    expect(screen.getByText('Informations')).toBeInTheDocument()
+  it('omits unfinished destinations', () => {
+    renderAt()
+    expect(screen.queryByRole('link', { name: 'Suggestions' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Tickets' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Community settings' })).toBeInTheDocument()
   })
 
-  it('applies the not-allowed cursor and blocks navigation on a SOON-badged link', async () => {
-    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
-    window.localStorage.setItem('server', JSON.stringify({ id: 's1' }))
+  it('opens the available rewards destination in production', async () => {
     const history = historyAt('/dashboard/guilds/g1/config/servers/s1')
     renderWithProviders(() => <DashboardMenu />, { path: '*', history })
-
-    // Rewards (servers section) carries a SOON badge.
-    const rewardsLink = screen.getByText('Rewards').closest('a') as HTMLAnchorElement
-    expect(rewardsLink).toHaveClass('hover:cursor-not-allowed')
-    fireEvent.click(rewardsLink)
-    // Our onClick's own preventDefault() fires before the <A> component's SPA navigation runs, so
-    // the history never changes to the Rewards URL - unlike the isDev=true test above. There's no
-    // event to await here (navigation is synchronously blocked), so assert immediately.
-    expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1')
+    const rewards = screen.getByRole('link', { name: 'Rewards' })
+    expect(rewards).not.toHaveAttribute('aria-disabled', 'true')
+    expect(within(rewards).queryByText('Soon')).not.toBeInTheDocument()
+    fireEvent.click(rewards)
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1/rewards'))
   })
 })

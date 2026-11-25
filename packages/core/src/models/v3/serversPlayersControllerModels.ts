@@ -8,6 +8,8 @@ import {
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import prisma from '@gmod/infra-prisma'
 import { type Server } from '@gmod/domain-server/Server.js'
+import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
+import { notifyPlayerRewards } from '../v6/rewardsEvents.js'
 
 type EndpointResult = {
   status: number
@@ -31,6 +33,8 @@ function bad(body: unknown): EndpointResult {
 function getInvalidPlayerResult(player: PlayerGmod): EndpointResult {
   return bad({ error: 'player_bad_format', arguments: player.isValidGetInformations() })
 }
+
+const chatRelayFailureLogs = new Map<string, number>()
 
 export async function processPlayerSay(server: Server, steamID64Param: unknown, body: any): Promise<EndpointResult> {
   const steamID64 = getStringValue(steamID64Param)
@@ -57,10 +61,24 @@ export async function processPlayerSay(server: Server, steamID64Param: unknown, 
 
   const result = await sendPlayerSay(server, player, text, teamOnly)
   if (result && 'failed' in result && result.failed) {
-    // A genuine relay failure (e.g. the configured Discord webhook was deleted/invalid) is
-    // silently swallowed by the GMod addon's fire-and-forget http.post, so log it server-side -
-    // otherwise nobody finds out the sync is broken until an admin notices chat isn't relaying.
-    console.error(`[chat sync] gmod->discord relay failed for server ${server.getID()}: ${result.message}`)
+    const unavailable = result.status === 503
+    const status = unavailable ? 503 : 502
+    const serverID = server.getID()
+    const now = Date.now()
+    const lastLog = chatRelayFailureLogs.get(serverID)
+    if (lastLog === undefined || now - lastLog >= 60_000) {
+      const relayStatus = result.relayStatus
+      const detail =
+        typeof relayStatus === 'number' && Number.isInteger(relayStatus) && relayStatus >= 100 && relayStatus <= 599
+          ? `HTTP ${relayStatus}`
+          : unavailable
+            ? 'relay unavailable'
+            : 'relay rejected the message'
+      console.error(`[chat sync] gmod->discord relay failed for server ${serverID}: ${detail}`)
+      chatRelayFailureLogs.set(serverID, now)
+      if (chatRelayFailureLogs.size > 1024) chatRelayFailureLogs.delete(chatRelayFailureLogs.keys().next().value!)
+    }
+    return { status, body: { error: unavailable ? 'chat_relay_unavailable' : 'chat_relay_failed' } }
   }
   return ok()
 }
@@ -81,6 +99,7 @@ export async function processPlayerChangeName(server: Server, body: any): Promis
   if (!ply.isValid()) {
     return getInvalidPlayerResult(ply)
   }
+  if (await isErasureBlocked(undefined, ply.steamID64)) return ok()
 
   await enqueueUpdateGuildUserPseudo({
     serverID: server.getID(),
@@ -108,6 +127,7 @@ export async function processPlayerChangeGroup(
       },
     })
   }
+  if (await isErasureBlocked(undefined, steamID64)) return ok()
 
   await enqueueUpdatePlayerUserGroup({
     serverID: server.getID(),
@@ -135,6 +155,7 @@ export async function processPlayerChangeTeam(
   }
 
   const ply = new PlayerGmod(player, false)
+  if (await isErasureBlocked(undefined, steamID64 || ply.steamID64)) return ok()
   if (ply.isValid()) {
     await ply.saveTeamTime(server.getID())
   }
@@ -168,9 +189,11 @@ export async function processPlayerConnect(
   }
 
   const ip = ipGetIP(address)
+  if (await isErasureBlocked(undefined, steamID64)) return ok()
   await saveConnectionGlobalInfo(steamID64, networkid, ip, name)
   await saveConnectionSteamInfo(steamID64, name, ip)
   await server.saveUserConnectionInfo(steamID64, name)
+  void notifyPlayerRewards(server.getID(), steamID64)
   return ok()
 }
 
@@ -189,10 +212,13 @@ export async function processPlayerDisconnect(server: Server, body: any): Promis
   if (!ply.isValid()) {
     return getInvalidPlayerResult(ply)
   }
+  if (await isErasureBlocked(undefined, ply.steamID64)) return ok()
 
   await ply.saveServerStat(server.getID())
   await ply.saveServerStatSession(server.getID())
   await ply.saveTeamTime(server.getID())
+  if (await isErasureBlocked(undefined, ply.steamID64)) return ok()
+  void notifyPlayerRewards(server.getID(), ply.steamID64)
   await enqueueUpdatePlayerUserGroup({
     serverID: server.getID(),
     steamID64: ply.steamID64,
@@ -234,6 +260,9 @@ export async function processPlayerWarn(server: Server, steamID64Param: unknown,
 
   const plyAdmin = new PlayerGmod(admin)
   const plyUser = new PlayerGmod(player)
+  if (await isErasureBlocked(undefined, plyUser.steamID64 || steamID64)) return ok()
+  const author = plyAdmin.steamID64 || adminSteamID64
+  const visibleAuthor = (await isErasureBlocked(undefined, author)) ? '' : author
 
   // `new PlayerGmod(...)` above either succeeds (returning a truthy instance) or throws, so
   // plyUser/plyAdmin are always truthy here - no existence check is needed on them.
@@ -241,10 +270,21 @@ export async function processPlayerWarn(server: Server, steamID64Param: unknown,
     data: {
       serverID: server.getID(),
       userSteamID64: plyUser.steamID64 || steamID64,
-      adminSteamID64: plyAdmin.steamID64 || adminSteamID64,
+      adminSteamID64: visibleAuthor,
       reason,
       createdAt: validDate,
     },
   })
+  if (await isErasureBlocked(undefined, plyUser.steamID64 || steamID64)) {
+    await prisma.gm_server_warn.deleteMany({ where: { id: warn.id } })
+    return ok()
+  }
+  if (visibleAuthor && (await isErasureBlocked(undefined, author))) {
+    await prisma.gm_server_warn.updateMany({
+      where: { id: warn.id, adminSteamID64: visibleAuthor },
+      data: { adminSteamID64: '' },
+    })
+    return ok({ ...warn, adminSteamID64: '' })
+  }
   return ok(warn)
 }

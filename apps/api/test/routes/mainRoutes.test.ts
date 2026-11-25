@@ -1,10 +1,11 @@
 import express from 'express'
 import request from 'supertest'
 import { Readable } from 'node:stream'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/routes/webhooks/_webhooksRoutes.js', () => ({ default: express.Router() }))
 vi.mock('@/routes/v3/_v3Routes.js', () => ({ default: express.Router() }))
+vi.mock('@/routes/v6/_v6Routes.js', () => ({ default: express.Router() }))
 vi.mock('@/routes/steamRoutes.js', () => ({ default: express.Router() }))
 
 const prismaMock: any = { gm_users_data_request: { findFirst: vi.fn() } }
@@ -26,8 +27,21 @@ describe('mainRoutes', () => {
     prismaMock.gm_users_data_request.findFirst.mockReset()
     s3SendMock.mockReset()
   })
+  afterEach(() => vi.restoreAllMocks())
 
   describe('GET /avatars/:provider/:id', () => {
+    it('does not serve erased Discord or Steam avatars from object storage', async () => {
+      const privacy = await import('@gmod/domain-user/privacy.js')
+      const guard = vi.spyOn(privacy, 'isErasureBlocked').mockResolvedValueOnce(true).mockResolvedValueOnce(true)
+      for (const provider of ['discord', 'steam']) {
+        const response = await request(makeApp()).get(`/avatars/${provider}/123`)
+        expect(response.status).toBe(404)
+        expect(response.headers['cache-control']).toBe('no-store')
+      }
+      expect(guard).toHaveBeenCalledWith('123', null)
+      expect(guard).toHaveBeenCalledWith(null, '123')
+      expect(s3SendMock).not.toHaveBeenCalled()
+    })
     it('returns 400 for an unrecognized provider', async () => {
       const response = await request(makeApp()).get('/avatars/unknown/123')
       expect(response.status).toBe(400)
@@ -63,11 +77,41 @@ describe('mainRoutes', () => {
   })
 
   describe('GET /screenshots/:filename', () => {
+    it('uses the PNG content type for a legacy PNG object with no stored MIME metadata', async () => {
+      s3SendMock.mockResolvedValueOnce({ Body: Readable.from(['png-bytes']) })
+      const response = await request(makeApp()).get('/screenshots/file.PNG')
+      expect(response.status).toBe(200)
+      expect(response.headers['content-type']).toContain('image/png')
+      expect(response.body.toString()).toBe('png-bytes')
+    })
+    it('does not infer a raster MIME type for an unknown extension or disclose a non-stream body', async () => {
+      s3SendMock.mockResolvedValueOnce({ Body: 'private stored content' })
+      const response = await request(makeApp()).get('/screenshots/file.html')
+      expect(response.status).toBe(404)
+      expect(response.headers['cache-control']).toBe('no-store')
+      expect(response.text).toBe('Screenshot not found')
+      expect(response.text).not.toContain('private stored content')
+    })
+    it.each(['image/svg+xml', 'text/html', 'application/octet-stream'])(
+      'refuses a non-raster stored content type: %s',
+      async (contentType) => {
+        const body = Readable.from(['unsupported content'])
+        s3SendMock.mockResolvedValueOnce({ ContentType: contentType, Body: body })
+        const response = await request(makeApp()).get('/screenshots/file1.jpeg')
+        expect(response.status).toBe(404)
+        expect(response.headers['cache-control']).toBe('no-store')
+        expect(response.text).not.toContain('unsupported content')
+        expect(body.destroyed).toBe(true)
+      },
+    )
+
     it('streams the screenshot body on success', async () => {
       s3SendMock.mockResolvedValueOnce({ ContentType: 'image/jpeg', Body: Readable.from(['screenshot-bytes']) })
       const response = await request(makeApp()).get('/screenshots/file1.jpeg')
       expect(response.status).toBe(200)
       expect(response.body.toString()).toBe('screenshot-bytes')
+      expect(response.headers['content-security-policy']).toBe("default-src 'none'; sandbox")
+      expect(response.headers['x-content-type-options']).toBe('nosniff')
     })
 
     it('defaults the content type when none is returned', async () => {
@@ -132,8 +176,9 @@ describe('mainRoutes', () => {
     })
   })
 
-  it('mounts the webhooks/v3/steam sub-routers', () => {
+  it('mounts the webhooks/v3/v6/steam sub-routers', () => {
     const mountedRouters = router.stack.filter((layer: any) => layer.name === 'router')
-    expect(mountedRouters.length).toBe(3)
+    expect(mountedRouters.length).toBe(4)
   })
 })
+vi.mock('@gmod/domain-user/privacy.js', () => ({ isErasureBlocked: vi.fn().mockResolvedValue(false) }))

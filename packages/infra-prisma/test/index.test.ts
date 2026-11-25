@@ -95,6 +95,14 @@ describe('packages/infra-prisma src/index.ts', () => {
     )
   })
 
+  it('passes the configured MariaDB port to the driver', async () => {
+    process.env.MARIA_PORT = '3307'
+    vi.resetModules()
+    await import('../src/index.js')
+
+    expect(PrismaMariaDbMock).toHaveBeenCalledWith(expect.objectContaining({ port: 3307 }))
+  })
+
   it('connectPrisma() connects once and logs the connection limit', async () => {
     vi.resetModules()
     const mod = await import('../src/index.js')
@@ -128,9 +136,7 @@ describe('packages/infra-prisma src/index.ts', () => {
   })
 
   it('connectPrisma() rethrows and resets state on failure, allowing a retry', async () => {
-    connectMock
-      .mockRejectedValueOnce(new Error('connection refused'))
-      .mockResolvedValueOnce(undefined)
+    connectMock.mockRejectedValueOnce(new Error('connection refused')).mockResolvedValueOnce(undefined)
 
     vi.resetModules()
     const mod = await import('../src/index.js')

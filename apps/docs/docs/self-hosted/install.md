@@ -61,7 +61,8 @@ Create a full production backup:
 bash ./scripts/swarm-backup.sh --all
 ```
 
-For detailed Swarm operations (rollback, logs, troubleshooting), see [Swarm Start Guide](/technical/swarm_start.md).
+For detailed Swarm operations (rollback, logs, troubleshooting), see the
+[Swarm operations guide](https://github.com/gmod-integration/gmod-integration-monorepo/blob/main/docs/deployment/swarm.md).
 
 ## Swarm Automation (optional)
 

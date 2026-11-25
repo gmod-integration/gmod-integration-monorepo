@@ -28,10 +28,7 @@ describe('reportError', () => {
     reportGmodErrorPayloadSafeMock.mockResolvedValueOnce({ status: 200, body: {} })
     const res = makeRes()
 
-    await reportError(
-      { params: { serverID: ['s1'], steamID64: ['765'] }, body: {} } as any,
-      res,
-    )
+    await reportError({ params: { serverID: ['s1'], steamID64: ['765'] }, body: {} } as any, res)
 
     expect(reportGmodErrorPayloadSafeMock).toHaveBeenCalledWith({}, { serverID: 's1', steamID64: '765' })
   })

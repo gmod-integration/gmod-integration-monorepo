@@ -1,5 +1,16 @@
-import axios from 'axios'
 import { ConfigDiscord } from '@gmod/config'
+import {
+  CustomBotInfoSchema,
+  CustomBotProfileCommandSchema,
+  CustomBotTokenCommandSchema,
+} from '@gmod/schema/server/CustomBotProfileSchema.js'
+import {
+  resolveGuildAccess,
+  assertCapability,
+  getDiscordEntitlements as fetchDiscordEntitlements,
+  assertGuildSettingChange,
+  effectiveGuildSetting,
+} from '@gmod/domain-access/index.js'
 import redis from '@gmod/infra-redis'
 import { getServersFromDiscordGuildID } from '@gmod/domain-server/Server.js'
 import {
@@ -28,17 +39,14 @@ const guildSettings: Record<string, any> = {
   verification_dont_mp: {
     defaultValue: false,
     acceptedValues: [true, false],
-    premium: true,
   },
   bot_status: {
     defaultValue: 'disabled',
     acceptedValues: ['disabled', 'guildMemberCount', 'playerCount', 'rotate'],
-    premium: true,
   },
   verification_dont_join_support: {
     defaultValue: false,
     acceptedValues: [true, false],
-    premium: true,
   },
 }
 
@@ -149,6 +157,10 @@ export class Guild {
     return guildSettings[setting].defaultValue
   }
 
+  async getEffectiveSetting(setting: string) {
+    return effectiveGuildSetting(await resolveGuildAccess(this.id), setting, await this.getSetting(setting))
+  }
+
   async getOrCreateChannelWebhook(channelID: string) {
     if (!this.dscGuild) {
       throw new Error('Guild runtime unavailable')
@@ -201,10 +213,6 @@ export class Guild {
       throw new Error('Setting not found')
     }
 
-    if (guildSettings[setting].premium && !(await this.isPremium())) {
-      throw new Error('Premium setting')
-    }
-
     if (
       !guildSettings.freeValues &&
       guildSettings[setting].acceptedValues &&
@@ -212,6 +220,8 @@ export class Guild {
     ) {
       throw new Error('Invalid value')
     }
+
+    assertGuildSettingChange(await resolveGuildAccess(this.id), setting, value, await this.getSetting(setting))
 
     const result = await prisma.gm_guild_settings.findFirst({
       where: {
@@ -306,24 +316,26 @@ export class Guild {
       status = 'disabled'
     }
 
-    return {
+    return CustomBotInfoSchema.parse({
       id: botInfo.id,
       username: botInfo.username,
       avatar: botInfo.avatar,
       custom: isCustom,
-      token: activeGuild ? activeGuild.token : null,
+      tokenConfigured: !!activeGuild?.token,
       active: !!activeGuild,
       purchased: !!purchased,
       onGuild: botInfo.onGuild,
       status,
-    }
+    })
   }
 
   async reloadBotInstance() {
-    await enqueueDiscordGuildReloadBotInstance(this.id)
+    return await enqueueDiscordGuildReloadBotInstance(this.id)
   }
 
   async updateBotInstanceToken(newToken: string) {
+    const parsed = CustomBotTokenCommandSchema.parse({ token: newToken })
+    assertCapability(await resolveGuildAccess(this.id), 'bot.custom')
     const botInstanceData = await prisma.gm_gmodstore_purchases.findFirst({
       where: {
         guild: this.id,
@@ -337,20 +349,23 @@ export class Guild {
         steamID64: botInstanceData.steamID64,
       },
       data: {
-        token: newToken,
+        token: parsed.token,
       },
     })
     await this.reloadBotInstance()
   }
 
-  async updateBotInstanceInfo(data: { username: string; avatar: string; token: string; status: string }) {
-    const { username, avatar, status } = data
-    const updateResult = await enqueueDiscordGuildUpdateBotProfile({ guildID: this.id, username, avatar })
-    if (!updateResult.updated) throw new Error(updateResult.error || 'Unable to update bot profile')
-
-    if (status) {
-      await this.setSetting('bot_status', status)
+  async updateBotInstanceInfo(input: unknown) {
+    const { username, avatar, status } = CustomBotProfileCommandSchema.parse(input)
+    const access = await resolveGuildAccess(this.id)
+    assertCapability(access, 'bot.custom')
+    if (status !== undefined)
+      assertGuildSettingChange(access, 'bot_status', status, await this.getSetting('bot_status'))
+    if (username !== undefined || avatar !== undefined) {
+      const updateResult = await enqueueDiscordGuildUpdateBotProfile({ guildID: this.id, username, avatar })
+      if (!updateResult.updated) throw new Error(updateResult.error || 'Unable to update bot profile')
     }
+    if (status !== undefined) await this.setSetting('bot_status', status)
   }
 
   async getAdmins() {
@@ -425,60 +440,11 @@ export class Guild {
 }
 
 export async function getDiscordEntitlements() {
-  const redisKey = `discord:entitlements`
-
-  try {
-    let entitlementGuilds: any = await redis.get(redisKey)
-    if (entitlementGuilds === null) {
-      const response = await axios.get(
-        `https://discord.com/api/v10/applications/${ConfigDiscord.clientID}/entitlements`,
-        {
-          headers: {
-            Authorization: `Bot ${ConfigDiscord.botToken}`,
-          },
-        },
-      )
-      entitlementGuilds = response.data
-      await redis.set(redisKey, JSON.stringify(entitlementGuilds), 'EX', 60)
-    } else {
-      entitlementGuilds = JSON.parse(entitlementGuilds)
-    }
-
-    return entitlementGuilds
-  } catch (error) {
-    console.error('Error getting entitlements:', error)
-    return []
-  }
+  return fetchDiscordEntitlements()
 }
 
 export async function isGuildPremium(guildID: string): Promise<boolean> {
-  if (
-    (await prisma.gm_guild_premium.findFirst({
-      where: {
-        guildID,
-      },
-    })) ||
-    (await prisma.gm_gmodstore_purchases.findFirst({
-      where: {
-        guild: guildID,
-        revoke: false,
-      },
-    }))
-  ) {
-    return true
-  }
-
-  const redisKey = `guild:${guildID}:premium`
-  const cachedPremiumStatus = await redis.get(redisKey)
-  if (cachedPremiumStatus !== null) {
-    return JSON.parse(cachedPremiumStatus)
-  }
-
-  const entitlementGuilds = await getDiscordEntitlements()
-  const isPremium: boolean = entitlementGuilds.some((entitlement: any) => entitlement.guild_id === guildID)
-  await redis.set(redisKey, JSON.stringify(isPremium), 'EX', 60)
-
-  return isPremium
+  return (await resolveGuildAccess(guildID)).premium
 }
 
 export async function replyNeedPremium(interaction: ChatInputCommandInteraction | ButtonInteraction) {

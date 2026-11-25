@@ -1,8 +1,25 @@
 import { EventEmitter } from 'node:events'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async () => {
+  const policy = await import('@gmod/schema/server/AccessPolicySchema.js')
+  return { ...policy, resolveGuildAccess: accessMock }
+})
+beforeEach(() =>
+  accessMock.mockImplementation(async (guildID: string) => ({
+    guildID,
+    premium: true,
+    customBot: true,
+    state: 'ready',
+    sources: ['gmodstore'],
+    revision: 'test',
+    validUntil: '2030-01-01T00:00:00.000Z',
+  })),
+)
+
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 let configServerMock = { dev: true }
 let configDiscordMock: any = { botToken: 'main-bot-token' }
@@ -149,6 +166,17 @@ function resetAllMocks() {
   restDeleteMock.mockReset()
 }
 
+/** Supply both startup discovery and the fresh per-guild credential reads. */
+function mockStartupPurchases(purchases: { guild: string; token: string }[]) {
+  prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce(purchases)
+  const guilds = new Set<string>()
+  for (const purchase of purchases) {
+    if (!purchase.guild || !purchase.token || guilds.has(purchase.guild)) continue
+    guilds.add(purchase.guild)
+    prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce(purchase)
+  }
+}
+
 describe('discord/index', () => {
   beforeEach(() => {
     resetAllMocks()
@@ -159,8 +187,19 @@ describe('discord/index', () => {
   })
 
   describe('loadDiscordSlave / addNewClient (via a valid token+intents path)', () => {
+    it('starts one client when multiple purchase records point to the same guild', async () => {
+      mockStartupPurchases([
+        { guild: 'duplicate-discovery', token: 'first-fixture' },
+        { guild: 'duplicate-discovery', token: 'second-fixture' },
+      ])
+      await loadDiscordSlave()
+      expect(prismaMock.gm_gmodstore_purchases.findFirst).toHaveBeenCalledExactlyOnceWith({
+        where: { guild: 'duplicate-discovery', revoke: false },
+      })
+      expect(forkMock).toHaveBeenCalledOnce()
+    })
     it('starts a bot instance for each non-revoked purchase with a guild+token, skipping incomplete rows', async () => {
-      prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([
+      mockStartupPurchases([
         { guild: '', token: 'tok' }, // missing guild -> skipped
         { guild: 'g1', token: '' }, // missing token -> skipped
         { guild: 'g2', token: 'tok2' }, // valid
@@ -175,7 +214,7 @@ describe('discord/index', () => {
     })
 
     it('logs and continues when starting a bot instance throws (invalid token)', async () => {
-      prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([{ guild: 'g1', token: 'bad-token' }])
+      mockStartupPurchases([{ guild: 'g1', token: 'bad-token' }])
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       nextForkExitCode = 1 // invalid token/intents
 
@@ -187,7 +226,7 @@ describe('discord/index', () => {
 
   describe('getMainClient / getGuildClient / killGuildClient (populated via loadDiscordSlave)', () => {
     async function bootOneClient(guildID: string) {
-      prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([{ guild: guildID, token: 'tok' }])
+      mockStartupPurchases([{ guild: guildID, token: 'tok' }])
       nextForkExitCode = 0
       await loadDiscordSlave()
       // let the queued clientReady microtask settle
@@ -225,6 +264,24 @@ describe('discord/index', () => {
       expect(client).toBeDefined()
     })
 
+    it('retires an already connected custom bot after its historical entitlement is revoked', async () => {
+      await bootOneClient('main')
+      await bootOneClient('revoked-guild')
+      const custom = await getGuildClient('revoked-guild', false)
+      accessMock.mockResolvedValueOnce({
+        guildID: 'revoked-guild',
+        premium: true,
+        customBot: false,
+        state: 'ready',
+        sources: ['discord'],
+        revision: 'revoked',
+        validUntil: '2030-01-01T00:00:00.000Z',
+      })
+      const fallback = await getGuildClient('revoked-guild', false)
+      expect(custom.destroy).toHaveBeenCalledOnce()
+      expect(fallback).not.toBe(custom)
+    })
+
     it('killGuildClient does nothing for an empty guildID', async () => {
       await expect(killGuildClient('')).resolves.toBeUndefined()
     })
@@ -257,7 +314,9 @@ describe('discord/index', () => {
       await bootOneClient('g-notready')
       const client = await getGuildClient('g-notready', false)
       client.readyAt = null
+      const baselineListeners = client.listenerCount('clientReady')
       const pending = getGuildClient('g-notready', false)
+      await vi.waitFor(() => expect(client.listenerCount('clientReady')).toBeGreaterThan(baselineListeners))
       client.emit('clientReady')
       await expect(pending).resolves.toBe(client)
     })
@@ -304,7 +363,9 @@ describe('discord/index', () => {
       await bootOneClient('g-notready2')
       const client = await getGuildClient('g-notready2', false)
       client.readyAt = null
+      const baselineListeners = client.listenerCount('clientReady')
       const pending = getGuildClient('g-notready2', true)
+      await vi.waitFor(() => expect(client.listenerCount('clientReady')).toBeGreaterThan(baselineListeners))
       client.emit('clientReady')
       const resolved = await pending
       // g-notready2's fake client never has itself in its own guilds.cache, so this exercises
@@ -316,9 +377,13 @@ describe('discord/index', () => {
   describe('updateGuildUserPseudo', () => {
     function makeServer(overrides: Record<string, any> = {}) {
       return {
+        getEffectivePseudoRules: vi.fn(async () => {
+          const row = await prismaMock.gm_server_pseudo.findFirst()
+          return row ? [{ role: 'user', enabled: true, ...row }] : []
+        }),
         getID: () => 's1',
         getGuildID: () => 'g1',
-        getSetting: vi.fn().mockImplementation(async (key: string) => {
+        getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
           if (key === 'sync_pseudo_direction') return 'both'
           if (key === 'pseudoFormat') return '{plyName}'
           return undefined
@@ -332,7 +397,7 @@ describe('discord/index', () => {
 
     it('returns early when sync direction excludes gmod-to-discord', async () => {
       const server = makeServer({
-        getSetting: vi.fn().mockResolvedValueOnce('discordToGmod'),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('discordToGmod'),
       })
       await updateGuildUserPseudo(server, makePlayer())
       expect(getUserFromSteamID64Mock).not.toHaveBeenCalled()
@@ -340,7 +405,7 @@ describe('discord/index', () => {
 
     it('returns early when pseudoFormat is empty', async () => {
       const server = makeServer({
-        getSetting: vi.fn().mockResolvedValueOnce('both').mockResolvedValueOnce(''),
+        getEffectiveSetting: vi.fn().mockResolvedValueOnce('both').mockResolvedValueOnce(''),
       })
       await updateGuildUserPseudo(server, makePlayer())
       expect(getUserFromSteamID64Mock).not.toHaveBeenCalled()
@@ -473,13 +538,13 @@ describe('discord/index', () => {
 
     it('swallows and logs any unexpected error', async () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      const server = makeServer({ getSetting: vi.fn().mockRejectedValueOnce(new Error('boom')) })
+      const server = makeServer({ getEffectiveSetting: vi.fn().mockRejectedValueOnce(new Error('boom')) })
       await updateGuildUserPseudo(server, makePlayer())
       expect(errorSpy).toHaveBeenCalled()
     })
 
     async function bootOneClientForPseudo(guildID: string) {
-      prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([{ guild: guildID, token: 'tok' }])
+      mockStartupPurchases([{ guild: guildID, token: 'tok' }])
       nextForkExitCode = 0
       await loadDiscordSlave()
       await new Promise((resolve) => setTimeout(resolve, 0))
@@ -498,6 +563,109 @@ describe('discord/index', () => {
       expect(forkMock).not.toHaveBeenCalled()
     })
 
+    it('destroys a connected custom client after its saved token is removed and restores the main fallback', async () => {
+      mockStartupPurchases([
+        { guild: 'main', token: 'main-fixture' },
+        { guild: 'removed-custom', token: 'custom-fixture' },
+        { guild: 'other-custom', token: 'other-fixture' },
+      ])
+      await loadDiscordSlave()
+      const custom = await getGuildClient('removed-custom', false)
+      const other = await getGuildClient('other-custom', false)
+      const main = await getMainClient()
+      forkMock.mockClear()
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ guild: 'removed-custom', token: '' })
+
+      await loadGuildBotInstance('removed-custom')
+
+      expect(custom.destroy).toHaveBeenCalledTimes(1)
+      expect(other.destroy).not.toHaveBeenCalled()
+      expect(main.destroy).not.toHaveBeenCalled()
+      await expect(getGuildClient('removed-custom', false)).resolves.toBe(main)
+      expect(forkMock).not.toHaveBeenCalled()
+    })
+
+    it('serializes overlapping reloads so a previously read credential cannot reconnect after removal', async () => {
+      mockStartupPurchases([{ guild: 'main', token: 'main-fixture' }])
+      await loadDiscordSlave()
+      prismaMock.gm_gmodstore_purchases.findFirst.mockClear()
+      let releaseLookup!: (purchase: unknown) => void
+      prismaMock.gm_gmodstore_purchases.findFirst
+        .mockReturnValueOnce(new Promise((resolve) => (releaseLookup = resolve)))
+        .mockResolvedValueOnce({ guild: 'racing-custom', token: '' })
+      const previousReload = loadGuildBotInstance('racing-custom')
+      await vi.waitFor(() => expect(prismaMock.gm_gmodstore_purchases.findFirst).toHaveBeenCalledTimes(1))
+      const removal = loadGuildBotInstance('racing-custom')
+      await Promise.resolve()
+      expect(prismaMock.gm_gmodstore_purchases.findFirst).toHaveBeenCalledTimes(1)
+
+      releaseLookup({ guild: 'racing-custom', token: 'old-credential-fixture' })
+      await Promise.all([previousReload, removal])
+      await expect(getGuildClient('racing-custom', false)).resolves.toBe(await getMainClient())
+    })
+
+    it('allows a removal retry after the preceding reload fails', async () => {
+      prismaMock.gm_gmodstore_purchases.findFirst
+        .mockRejectedValueOnce(new Error('Previous lookup failed'))
+        .mockResolvedValueOnce({ guild: 'retry-custom', token: '' })
+      const previousReload = loadGuildBotInstance('retry-custom')
+      const removal = loadGuildBotInstance('retry-custom')
+      await expect(previousReload).rejects.toThrow('Previous lookup failed')
+      await expect(removal).resolves.toBeUndefined()
+      expect(prismaMock.gm_gmodstore_purchases.findFirst).toHaveBeenCalledTimes(2)
+    })
+
+    it('does not reconnect a removed credential from a stale startup discovery response', async () => {
+      mockStartupPurchases([{ guild: 'main', token: 'main-fixture' }])
+      await loadDiscordSlave()
+      const main = await getMainClient()
+      forkMock.mockClear()
+      let releaseDiscovery!: (purchases: { guild: string; token: string }[]) => void
+      prismaMock.gm_gmodstore_purchases.findMany.mockReturnValueOnce(
+        new Promise((resolve) => (releaseDiscovery = resolve)),
+      )
+      prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValue({ guild: 'startup-removed', token: '' })
+
+      const startup = loadDiscordSlave()
+      // Removal has cleared storage and received its reload acknowledgement while discovery is delayed.
+      await loadGuildBotInstance('startup-removed')
+      releaseDiscovery([{ guild: 'startup-removed', token: 'stale-startup-fixture' }])
+      await startup
+
+      expect(forkMock).not.toHaveBeenCalled()
+      await expect(getGuildClient('startup-removed', false)).resolves.toBe(main)
+      expect(main.destroy).not.toHaveBeenCalled()
+    })
+
+    it('serializes startup creation with removal before acknowledging the removed client', async () => {
+      mockStartupPurchases([{ guild: 'main', token: 'main-fixture' }])
+      await loadDiscordSlave()
+      const main = await getMainClient()
+      prismaMock.gm_gmodstore_purchases.findFirst.mockClear()
+      prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([
+        { guild: 'startup-racing', token: 'old-startup-fixture' },
+      ])
+      let releaseLookup!: (purchase: { guild: string; token: string }) => void
+      prismaMock.gm_gmodstore_purchases.findFirst
+        .mockReturnValueOnce(new Promise((resolve) => (releaseLookup = resolve)))
+        .mockResolvedValueOnce({ guild: 'startup-racing', token: '' })
+
+      const startup = loadDiscordSlave()
+      await vi.waitFor(() => expect(prismaMock.gm_gmodstore_purchases.findFirst).toHaveBeenCalledTimes(1))
+      let acknowledged = false
+      const removal = loadGuildBotInstance('startup-racing').then(() => (acknowledged = true))
+      await Promise.resolve()
+      expect(acknowledged).toBe(false)
+      expect(prismaMock.gm_gmodstore_purchases.findFirst).toHaveBeenCalledTimes(1)
+
+      releaseLookup({ guild: 'startup-racing', token: 'old-startup-fixture' })
+      await Promise.all([startup, removal])
+
+      expect(acknowledged).toBe(true)
+      await expect(getGuildClient('startup-racing', false)).resolves.toBe(main)
+      expect(main.destroy).not.toHaveBeenCalled()
+    })
+
     it('creates a new client for the guild when a purchase instance exists', async () => {
       prismaMock.gm_gmodstore_purchases.findFirst.mockResolvedValueOnce({ guild: 'g1', token: 'tok' })
       nextForkExitCode = 0
@@ -509,7 +677,7 @@ describe('discord/index', () => {
 
   describe('gracefulShutdownDiscord', () => {
     it('destroys every tracked client', async () => {
-      prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([{ guild: 'gx', token: 'tok' }])
+      mockStartupPurchases([{ guild: 'gx', token: 'tok' }])
       nextForkExitCode = 0
       await loadDiscordSlave()
       await new Promise((resolve) => setTimeout(resolve, 0))
@@ -521,7 +689,7 @@ describe('discord/index', () => {
   describe('clientReady REST push (ConfigServer.dev = false)', () => {
     async function bootWithRestPush(guildID: string) {
       configServerMock.dev = false
-      prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([{ guild: guildID, token: 'tok' }])
+      mockStartupPurchases([{ guild: guildID, token: 'tok' }])
       nextForkExitCode = 0
       await loadDiscordSlave()
       await new Promise((resolve) => setTimeout(resolve, 0))
@@ -583,7 +751,7 @@ describe('discord/index', () => {
     })
 
     async function bootOneClient(guildID: string) {
-      prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([{ guild: guildID, token: 'tok' }])
+      mockStartupPurchases([{ guild: guildID, token: 'tok' }])
       nextForkExitCode = 0
       await loadDiscordSlave()
       await new Promise((resolve) => setTimeout(resolve, 0))
@@ -592,7 +760,7 @@ describe('discord/index', () => {
 
   describe('InteractionCreate routing', () => {
     async function bootOneClient(guildID: string) {
-      prismaMock.gm_gmodstore_purchases.findMany.mockResolvedValueOnce([{ guild: guildID, token: 'tok' }])
+      mockStartupPurchases([{ guild: guildID, token: 'tok' }])
       nextForkExitCode = 0
       await loadDiscordSlave()
       await new Promise((resolve) => setTimeout(resolve, 0))

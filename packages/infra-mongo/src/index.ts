@@ -1,9 +1,7 @@
 import { MongoClient } from 'mongodb'
+import { getMongoConfig } from '@gmod/config/infrastructure.js'
 
-const mongoHost = process.env.MONGO_HOST || '127.0.0.1'
-const mongoPort = process.env.MONGO_PORT || '27017'
-const uri = process.env.MONGO_URI || `mongodb://${mongoHost}:${mongoPort}`
-const mongoClient = new MongoClient(uri)
+const mongoClient = new MongoClient(getMongoConfig().uri)
 
 async function connectToMongoDB() {
   try {

@@ -1,4 +1,4 @@
-import { ConfigDiscord, ConfigServer } from '@gmod/config'
+import { ConfigDiscord } from '@gmod/config'
 import { PlayerGmod } from '../classes/v3/PlayerGmod.js'
 import { getRandomDiscordRelay, ipGetIP } from './tools.js'
 import { getTranslate } from './localizations.js'
@@ -10,6 +10,9 @@ import type { gm_server_logs_triggers } from '@gmod/infra-prisma/client.js'
 import { type wsSendToAllClientsOfServerData, wsSendToAllClientsOfServerQueue } from '@gmod/infra-websocket/queues.js'
 import { resolveGuildPreferredLocale } from './guildLocaleCache.js'
 import { enqueueDiscordGuildSendLogMessage } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
+import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
+import { PlayerSteamID64Schema } from '@gmod/schema/user/PlayerProfileSchema.js'
 
 export enum LogLevel {
   MINIMAL = 'minimal',
@@ -17,11 +20,6 @@ export enum LogLevel {
   VERBOSE = 'verbose',
   ALL = 'all',
   CUSTOM = 'custom',
-}
-
-export function gmLog(type: string, message: string, debug: boolean = false) {
-  if (debug && !ConfigServer.dev) return
-  console.log(`[${new Date().toISOString().replace(/T/, ' ').replace(/\..+/, '')}] [${type.toUpperCase()}] ${message}`)
 }
 
 const logEmbedColors: Record<string, ColorResolvable> = {
@@ -219,6 +217,7 @@ data: {
  */
 
 async function handleLogsTrigger(server: Server, type: string, data?: any) {
+  if (!hasCapability(await resolveGuildAccess(server.getGuildID()), 'logs.triggers')) return
   const availableTriggers = await server.getLogsTriggerFromRedis()
   if (!availableTriggers || availableTriggers.length === 0 || !availableTriggers.includes(type)) return
   const redisKey = `server:${server.id}:logsTrigger:${type}`
@@ -294,6 +293,7 @@ async function handleLogsTrigger(server: Server, type: string, data?: any) {
           guildID: server.getGuildID(),
           channelID: trigger.channelID,
           title: `Trigger: ${type}`,
+          requiredCapability: 'logs.triggers',
           description: message,
           // Every type key in log_trigger_compare (the only types that reach this point, see the
           // `if (!typeInfo) continue` above) already has an entry in logEmbedColors, so the
@@ -315,15 +315,20 @@ export async function logServer(server: Server, type: string, data?: any) {
     //
   }
 
-  handleLogsTrigger(server, type, data).catch(() => {})
-
-  const playerInvolvedSteamID64: any = []
+  const connectingPlayer = type === 'player_connect' ? PlayerSteamID64Schema.safeParse(data.steamID64) : null
+  const connectingSteamID64 = connectingPlayer?.success ? connectingPlayer.data : undefined
+  // Keep the explicit joining identity even when a newer Steam ID is outside the legacy scan prefix.
+  const playerInvolvedSteamID64: string[] = connectingSteamID64 ? [connectingSteamID64] : []
   const dataString = JSON.stringify(data)
   const regex = /7656119\d{10}/g
   let match
   while ((match = regex.exec(dataString))) {
     if (!playerInvolvedSteamID64.includes(match[0])) playerInvolvedSteamID64.push(match[0])
   }
+  for (const steamID64 of playerInvolvedSteamID64) {
+    if (await isErasureBlocked(undefined, steamID64)) return
+  }
+  handleLogsTrigger(server, type, data).catch(() => {})
 
   let dataToSave: any = {}
   if (data.player) dataToSave.ply = data.player
@@ -333,6 +338,7 @@ export async function logServer(server: Server, type: string, data?: any) {
 
   const dscList = []
   if (type === 'player_connect') {
+    dataToSave.steamID64 = connectingSteamID64 ?? null
     const name = data.name || 'Unknown'
     dataToSave.name = name
     const address = ipGetIP(data.address || 'Unknown')
@@ -435,12 +441,10 @@ export async function logServer(server: Server, type: string, data?: any) {
     // of falling back gracefully like this try/catch is meant to.
     try {
       const attacker = new PlayerGmod(data.attacker)
-      dataToSave.attacker = attacker
       dataToSave.plyAttacker = attacker
       dscList.push((await getTranslate('steamID64', lang)) + ': `' + attacker.steamID64 + '`')
       dscList.push((await getTranslate('name', lang)) + ': `' + attacker.name + '`')
     } catch (error) {
-      dataToSave.attacker = data.attacker
       dataToSave.plyAttacker = data.attacker
       dscList.push((await getTranslate('entity', lang)) + ': `' + data.attacker.class + '`')
     }
@@ -496,7 +500,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     entity,
      */
     dataToSave.amount = amount
-    dataToSave.player = data.player
     dataToSave.entity = data.entity
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
@@ -510,7 +513,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     const amount = data.amount || 0
     dataToSave.amount = amount
     dataToSave.entity = data.entity
-    dataToSave.player = data.player
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
@@ -540,7 +542,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     const amount = data.amount || 0
     dataToSave.amount = amount
     dataToSave.receiver = data.receiver
-    dataToSave.player = data.player
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
     dscList.push('\n')
     dscList.push((await getTranslate('sender', lang)) + ':')
@@ -559,7 +560,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     const amount = data.amount || 0
     dataToSave.amount = amount
     dataToSave.reason = data.reason
-    dataToSave.player = data.player
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
@@ -573,7 +573,6 @@ export async function logServer(server: Server, type: string, data?: any) {
     const amount = data.amount || 0
     dataToSave.amount = amount
     dataToSave.reason = data.reason
-    dataToSave.player = data.player
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
@@ -585,7 +584,6 @@ export async function logServer(server: Server, type: string, data?: any) {
      */
     const amount = data.amount || 0
     dataToSave.amount = amount
-    dataToSave.player = data.player
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
@@ -596,7 +594,6 @@ export async function logServer(server: Server, type: string, data?: any) {
      */
     const amount = data.amount || 0
     dataToSave.amount = amount
-    dataToSave.player = data.player
     dscList.push((await getTranslate('steamID64', lang)) + ': `' + data.player.steamID64 + '`')
     dscList.push((await getTranslate('name', lang)) + ': `' + data.player.name + '`')
     dscList.push((await getTranslate('amount', lang)) + ': `' + amount + '`')
@@ -617,7 +614,7 @@ export async function logServer(server: Server, type: string, data?: any) {
     if (data.ip) dscList.push((await getTranslate('ip', lang)) + ': `' + data.ip + '`')
   }
 
-  await addLog({
+  const persisted = await addLog({
     serverID: server.getID(),
     type,
     data: dataToSave,
@@ -625,6 +622,7 @@ export async function logServer(server: Server, type: string, data?: any) {
     createdAt: new Date(),
     updatedAt: new Date(),
   })
+  if (persisted === false) return
 
   await wsSendToAllClientsOfServerQueue.add('wsSendToAllClientsOfServer', {
     id: server.getID(),

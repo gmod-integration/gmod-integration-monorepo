@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="Serveur fictif StarWars RP">
+  <rect width="256" height="256" rx="24" fill="#6c5b47" />
+  <path d="M0 196 256 48v208H0Z" fill="#000" opacity=".13" />
+  <rect x="24" y="24" width="74" height="26" rx="6" fill="#fff" opacity=".12" />
+  <text x="61" y="42" text-anchor="middle" fill="#fff" font-family="sans-serif" font-size="13">[DEMO]</text>
+  <text x="128" y="148" text-anchor="middle" fill="#fff" font-family="sans-serif" font-weight="700" font-size="76">SW</text>
+  <text x="128" y="208" text-anchor="middle" fill="#fff" font-family="sans-serif" font-size="20">StarWars RP</text>
+</svg>

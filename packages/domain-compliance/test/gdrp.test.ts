@@ -5,6 +5,15 @@ import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const privacyMocks = { allowed: vi.fn(), blocked: vi.fn() }
+const rewardsFind = vi.fn()
+vi.mock('@gmod/infra-mongo', () => ({ mongoClient: { db: () => ({ collection: () => ({ find: rewardsFind }) }) } }))
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  assertPersonalDataAllowed: privacyMocks.allowed,
+  isErasureBlocked: privacyMocks.blocked,
+  PersonalDataErasureError: class extends Error {},
+}))
+
 // The source creates the export zip (fs.createWriteStream + archiver), then immediately reads
 // it back (fs.createReadStream) to upload it via the (mocked) S3 client. Even after waiting for
 // the write stream's 'close' event, under coverage-instrumented (slower) execution the
@@ -30,7 +39,7 @@ vi.mock('@gmod/config', () => ({
 }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const addNotificationMock = vi.fn().mockResolvedValue(undefined)
 vi.mock('@gmod/core/utils/tools.js', () => ({ addNotification: addNotificationMock }))
@@ -78,6 +87,15 @@ function fakeUser(discordID: string | null, steamID64: string | null) {
 }
 
 function resetAllMocks() {
+  rewardsFind.mockReset().mockImplementation(() => ({
+    batchSize() {
+      return this
+    },
+    close: vi.fn(),
+    async *[Symbol.asyncIterator]() {},
+  }))
+  privacyMocks.allowed.mockReset().mockResolvedValue(undefined)
+  privacyMocks.blocked.mockReset().mockResolvedValue(false)
   gmLogMock.mockReset()
   addNotificationMock.mockReset().mockResolvedValue(undefined)
   getLogsBySteamIDListMock.mockReset()
@@ -153,6 +171,10 @@ describe('getUserDataGRPD', () => {
     )
     expect(addNotificationMock).toHaveBeenCalledWith('d1', 'gdpr', expect.stringContaining('GDPR request is ready'))
     expect(createBucketIfNotExistsMock).toHaveBeenCalledWith('gmi-gdpr-exports')
+    expect(rewardsFind).toHaveBeenCalledWith(
+      { $or: [{ discordID: 'd1' }, { steamID64: '76561198219049673' }] },
+      expect.objectContaining({ projection: expect.objectContaining({ 'actions.code': 0, deliveryToken: 0 }) }),
+    )
 
     // scratch dirs are cleaned up afterward
     expect(existsSync(join(tmpdir(), 'gmod-integration', 'gdpr', request.id))).toBe(false)
@@ -230,6 +252,26 @@ describe('getUserDataGRPD', () => {
     await getUserDataGRPD(fakeUser('d1', '76561198219049673'))
 
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('no stream returned for screenshot'))
+  })
+
+  it('refuses a new export when an erasure request blocks collection', async () => {
+    privacyMocks.allowed.mockRejectedValueOnce(new Error('Erasure in progress'))
+    await expect(getUserDataGRPD(fakeUser('d1', null))).rejects.toThrow('Erasure in progress')
+    expect(prismaMock.gm_users_data_request.create).not.toHaveBeenCalled()
+    expect(s3SendMock).not.toHaveBeenCalled()
+  })
+
+  it('removes an export uploaded while erasure started and never announces it ready', async () => {
+    privacyMocks.blocked.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    await expect(getUserDataGRPD(fakeUser('d1', null))).rejects.toBeInstanceOf(Error)
+    const commands = s3SendMock.mock.calls.map(([command]) => command)
+    expect(
+      commands.some(
+        (command) => command.constructor.name === 'DeleteObjectCommand' && command.input.Bucket === 'gmi-gdpr-exports',
+      ),
+    ).toBe(true)
+    expect(prismaMock.gm_users_data_request.update).not.toHaveBeenCalled()
+    expect(addNotificationMock).not.toHaveBeenCalled()
   })
 
   it('catches and logs a failure uploading the export zip to MinIO', async () => {

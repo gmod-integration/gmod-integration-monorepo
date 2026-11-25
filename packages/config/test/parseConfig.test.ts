@@ -75,6 +75,35 @@ describe('packages/config src/index.ts module (parseConfig on import)', () => {
     expect(second).toBe(first)
   })
 
+  it.each([
+    ['true', 'http://127.0.0.1:3002'],
+    ['false', 'https://1-dsc-relay.gmod-integration.com'],
+  ])('uses the expected default Discord relay for DEV=%s', async (dev, expected) => {
+    process.env.DEV = dev
+    process.env.DISCORD_RELAY_URL = ''
+    vi.resetModules()
+    const mod = await import('../src/index.js')
+    expect(mod.ConfigDiscord.relayUrl).toBe(expected)
+  })
+
+  it('honors an explicit Discord relay destination in either runtime mode', async () => {
+    process.env.DISCORD_RELAY_URL = 'https://relay.example.com'
+    for (const dev of ['true', 'false']) {
+      process.env.DEV = dev
+      vi.resetModules()
+      const mod = await import('../src/index.js')
+      expect(mod.ConfigDiscord.relayUrl).toBe('https://relay.example.com')
+    }
+  })
+
+  it('exposes the dedicated stable privacy secret separately from OAuth credentials', async () => {
+    process.env.PRIVACY_HASH_SECRET = 'a-separate-stable-privacy-secret'
+    vi.resetModules()
+    const mod = await import('../src/index.js')
+    expect(mod.ConfigPrivacy.hashSecret).toBe('a-separate-stable-privacy-secret')
+    expect(mod.ConfigPrivacy.hashSecret).not.toBe(mod.ConfigDiscord.clientSecret)
+  })
+
   it('sets ConfigInstance.isSelfHosted = false when DEV is true, regardless of domain', async () => {
     process.env.DEV = 'true'
     process.env.DOMAIN_URL = 'https://api.my-self-hosted-domain.example'

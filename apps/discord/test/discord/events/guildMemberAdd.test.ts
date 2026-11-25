@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+const refreshAccess = vi.fn().mockResolvedValue(undefined)
+vi.mock('@gmod/domain-guild/playerAccessNotifications.js', () => ({ refreshGuildMemberPlayerAccess: refreshAccess }))
 
 let configDiscordMock: any = { clientID: 'bot-id' }
 vi.mock('@gmod/config', () => ({
@@ -17,11 +19,18 @@ vi.mock('@gmod/domain-guild/discordModels.js', () => ({
 }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const getNotVerifiedMessageMock = vi.fn()
 vi.mock('../../../src/discord/utils/messages.js', () => ({
   getNotVerifiedMessage: getNotVerifiedMessageMock,
+}))
+
+const effectiveSettingMock = vi.fn()
+vi.mock('@gmod/domain-guild/Guild.js', () => ({
+  Guild: class {
+    getEffectiveSetting = effectiveSettingMock
+  },
 }))
 
 const prismaMock = {
@@ -32,7 +41,10 @@ vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 function makeAddInfo(overrides: any = {}) {
   const guildID = overrides.guildID ?? 'guild1'
   const userID = overrides.userID ?? 'user1'
-  const guild = overrides.guild ?? { id: guildID, members: { cache: new Map([[userID, { id: userID, send: vi.fn() }]]) } }
+  const guild = overrides.guild ?? {
+    id: guildID,
+    members: { cache: new Map([[userID, { id: userID, send: vi.fn() }]]) },
+  }
   return {
     user: { id: userID },
     guild: { id: guildID, name: 'Test Guild' },
@@ -50,6 +62,8 @@ describe('guildMemberAdd event', () => {
     verifyUserMock.mockResolvedValue(true)
     getNotVerifiedMessageMock.mockResolvedValue({ content: 'please verify' })
     prismaMock.gm_guild_settings.findFirst.mockResolvedValue(null)
+    effectiveSettingMock.mockResolvedValue(false)
+    refreshAccess.mockReset().mockResolvedValue(undefined)
   })
 
   it('returns immediately when the bot itself joins', async () => {
@@ -59,6 +73,7 @@ describe('guildMemberAdd event', () => {
     await mod.default.execute(addInfo as any)
 
     expect(updateGuildStatMock).not.toHaveBeenCalled()
+    expect(refreshAccess).not.toHaveBeenCalled()
   })
 
   it('logs an error when the guild cannot be found in the client cache', async () => {
@@ -93,19 +108,27 @@ describe('guildMemberAdd event', () => {
     expect(updateGuildStatMock).toHaveBeenCalled()
     expect(addAutoRoleToUserMock).toHaveBeenCalled()
     expect(getNotVerifiedMessageMock).not.toHaveBeenCalled()
+    expect(refreshAccess).toHaveBeenCalledWith('guild1', 'user1')
+  })
+
+  it('does not let an access notification failure interrupt the existing join flow', async () => {
+    refreshAccess.mockRejectedValueOnce(new Error('notification failed'))
+    const mod = await import('../../../src/discord/events/guildMemberAdd.js')
+    await expect(mod.default.execute(makeAddInfo() as any)).resolves.toBeUndefined()
+    expect(addAutoRoleToUserMock).toHaveBeenCalled()
+    expect(verifyUserMock).toHaveBeenCalled()
   })
 
   it('returns without messaging when verification_dont_mp setting is set', async () => {
     verifyUserMock.mockResolvedValue(false)
+    effectiveSettingMock.mockResolvedValue(true)
     prismaMock.gm_guild_settings.findFirst.mockResolvedValue({ setting: 'verification_dont_mp' })
     const mod = await import('../../../src/discord/events/guildMemberAdd.js')
     const addInfo = makeAddInfo()
 
     await mod.default.execute(addInfo as any)
 
-    expect(prismaMock.gm_guild_settings.findFirst).toHaveBeenCalledWith({
-      where: { guildID: 'guild1', setting: 'verification_dont_mp' },
-    })
+    expect(effectiveSettingMock).toHaveBeenCalledWith('verification_dont_mp')
     expect(getNotVerifiedMessageMock).not.toHaveBeenCalled()
   })
 

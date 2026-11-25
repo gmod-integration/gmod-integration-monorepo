@@ -1,16 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 const insertOneMock = vi.fn()
 const countDocumentsMock = vi.fn()
 const toArrayMock = vi.fn()
 const skipMock = vi.fn(() => ({ toArray: toArrayMock }))
 const limitMock = vi.fn(() => ({ skip: skipMock }))
+const aggregateMock = vi.fn()
 const findMock = vi.fn(() => ({ limit: limitMock }))
 
+const deleteOneMock = vi.fn()
 const collectionMock = {
+  deleteOne: deleteOneMock,
   insertOne: insertOneMock,
   countDocuments: countDocumentsMock,
   find: findMock,
+  aggregate: aggregateMock,
 }
 
 vi.mock('@gmod/infra-mongo', () => ({
@@ -35,9 +48,12 @@ const validErrorInput = {
 
 describe('GmodErrors', () => {
   beforeEach(() => {
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
+    deleteOneMock.mockReset()
     insertOneMock.mockReset().mockResolvedValue({ insertedId: 'id1' })
     countDocumentsMock.mockReset().mockResolvedValue(0)
     toArrayMock.mockReset().mockResolvedValue([])
+    aggregateMock.mockReset().mockReturnValue({ toArray: toArrayMock })
   })
 
   it('parses valid data, defaulting optional fields to empty strings', () => {
@@ -73,6 +89,18 @@ describe('GmodErrors', () => {
     )
   })
 
+  it('does not store client diagnostics for a suppressed player', async () => {
+    isErasureBlockedMock.mockResolvedValue(true)
+    await GmodErrors.from({ ...validErrorInput, steamID64: '765' }).save()
+    expect(insertOneMock).not.toHaveBeenCalled()
+  })
+
+  it('deletes only the diagnostic inserted during an erasure race', async () => {
+    isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+    await GmodErrors.from({ ...validErrorInput, steamID64: '765' }).save()
+    expect(deleteOneMock).toHaveBeenCalledWith({ _id: 'id1' })
+  })
+
   it('getErrorsCountByServer() counts by serverID', async () => {
     countDocumentsMock.mockResolvedValueOnce(5)
     await expect(getErrorsCountByServer('s1')).resolves.toBe(5)
@@ -106,4 +134,47 @@ describe('GmodErrors', () => {
     expect(findMock).toHaveBeenCalledWith({ serverID: 's1' })
     expect(result).toEqual({ errors: [{ error: 'e2' }], query: { offset: 5, limit: 10, total: 3 } })
   })
+})
+
+describe('error history commercial window', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    countDocumentsMock.mockResolvedValue(1000)
+    aggregateMock.mockReturnValue({ toArray: vi.fn().mockResolvedValue([{ id: 'latest' }]) })
+  })
+  it('selects the latest 50 before sorting and paging', async () => {
+    const result = await getErrorsByServer({ offset: 40, limit: 25, sort: 'count', orderBy: 'ASC' }, 's1', 50)
+    expect(result).toMatchObject({ errors: [{ id: 'latest' }], query: { total: 50 } })
+    expect(aggregateMock).toHaveBeenCalledWith([
+      { $match: { serverID: 's1' } },
+      { $sort: { createdAt: -1, _id: -1 } },
+      { $limit: 50 },
+      { $sort: { count: 1, _id: -1 } },
+      { $skip: 40 },
+      { $limit: 10 },
+    ])
+  })
+  it('returns no rows outside the accessible window', async () => {
+    expect(await getErrorsByServer({ offset: 50, limit: 25 }, 's1', 50)).toMatchObject({
+      errors: [],
+      query: { total: 50 },
+    })
+    expect(aggregateMock).not.toHaveBeenCalled()
+  })
+  it.each([undefined, '$where'])(
+    'falls back from unsupported sort %s while preserving the commercial history window',
+    async (sort) => {
+      const result = await getErrorsByServer({ offset: 5, limit: 10, sort, orderBy: 'DESC' }, 's1', 50)
+      expect(result).toMatchObject({ query: { total: 50 } })
+      expect(aggregateMock).toHaveBeenCalledWith([
+        { $match: { serverID: 's1' } },
+        { $sort: { createdAt: -1, _id: -1 } },
+        { $limit: 50 },
+        { $sort: { createdAt: -1, _id: -1 } },
+        { $skip: 5 },
+        { $limit: 10 },
+      ])
+      expect(findMock).not.toHaveBeenCalled()
+    },
+  )
 })

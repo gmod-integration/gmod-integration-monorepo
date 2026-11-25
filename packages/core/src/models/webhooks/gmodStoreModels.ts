@@ -1,10 +1,14 @@
 import crypto from 'crypto'
 import { ConfigGmodStore } from '@gmod/config'
-import { gmLog } from '../../utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import { getUserFromSteamID64 } from '@gmod/domain-user/User.js'
 import prisma from '@gmod/infra-prisma'
 import { addNotification } from '../../utils/tools.js'
 import JSONbig from 'json-bigint'
+import { privacySubject } from '@gmod/domain-user/privacy.js'
+import { erasedPurchaseKey } from '@gmod/domain-user/purchasePrivacy.js'
+import { invalidateGuildAccess } from '@gmod/domain-access/index.js'
+import { enqueueDiscordGuildReloadBotInstance } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 
 export async function verifyWebhookSignature(headers: any, payload: any) {
   const webhookSignature = headers['webhook-signature']
@@ -62,46 +66,87 @@ export async function getUser(userID: string) {
 }
 
 export async function saveGmodStorePurchase(steamID64: string, userID: string, revoke: boolean) {
-  const gmGmodStorePurchases = await prisma.gm_gmodstore_purchases.findUnique({
-    where: {
-      steamID64,
-    },
-  })
+  const retainedKey = erasedPurchaseKey(steamID64)
+  const persist = () =>
+    prisma.$transaction(
+      async (tx) => {
+        // Serializable reads also fence an erasure request being inserted concurrently. An incoming
+        // provider event must not recreate the personal key after that request has been accepted.
+        const personal = await tx.gm_gmodstore_purchases.findUnique({ where: { steamID64 } })
+        const retained = await tx.gm_gmodstore_purchases.findUnique({ where: { steamID64: retainedKey } })
+        const erased = await tx.gm_user_erasure.findFirst({
+          // Deliberately includes reactivated accounts: an old collective entitlement never becomes
+          // a newly recreated account's personal purchase through a provider refresh.
+          where: { steamSubject: privacySubject('steam', steamID64) },
+          select: { id: true },
+        })
+        if (retained || erased) {
+          if (retained?.guild && personal?.guild && retained.guild !== personal.guild)
+            throw new Error('Conflicting collective purchase assignments require review')
+          const guild = retained?.guild || personal?.guild || ''
+          await tx.gm_gmodstore_purchases.upsert({
+            where: { steamID64: retainedKey },
+            create: { steamID64: retainedKey, guild, revoke, userID: '', token: '' },
+            update: { guild, revoke, userID: '', token: '' },
+          })
+          // A historical duplicate personal row must not outlive a webhook or permit reattachment.
+          await tx.gm_gmodstore_purchases.deleteMany({ where: { steamID64 } })
+          return { retained: true, guild }
+        }
+        if (personal) {
+          await tx.gm_gmodstore_purchases.update({ where: { steamID64 }, data: { revoke, userID } })
+        } else {
+          await tx.gm_gmodstore_purchases.create({ data: { steamID64, revoke, userID } })
+        }
+        return { retained: false, guild: personal?.guild || '' }
+      },
+      { isolationLevel: 'Serializable' },
+    )
 
-  gmLog('gmodStore', `Saving purchase for ${steamID64} with revoke: ${revoke}`)
-
-  const user = await getUserFromSteamID64(steamID64)
-  if (user) {
-    const discordID = user.getDiscordID()
-    if (discordID) {
-      await addNotification(
-        discordID,
-        'premium',
-        revoke
-          ? 'Your GmodStore lifetime purchase has been revoked.'
-          : 'You have received a GmodStore lifetime purchase.',
-      )
+  let saved: Awaited<ReturnType<typeof persist>> | undefined
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      saved = await persist()
+      break
+    } catch (error) {
+      if (attempt === 2 || !error || typeof error !== 'object' || !('code' in error) || error.code !== 'P2034')
+        throw error
     }
   }
-
-  if (gmGmodStorePurchases) {
-    await prisma.gm_gmodstore_purchases.update({
-      where: {
-        steamID64,
-      },
-      data: {
-        revoke,
-        userID,
-      },
-    })
-  } else {
-    await prisma.gm_gmodstore_purchases.create({
-      data: {
-        steamID64,
-        revoke,
-        userID,
-      },
-    })
+  if (!saved) throw new Error('Purchase event was not persisted')
+  if (saved.guild) {
+    // The purchase is already committed. Delivery failure must not reject its acknowledgement;
+    // active clients also reconcile their access periodically.
+    let waitingForSync = false
+    try {
+      await invalidateGuildAccess(saved.guild)
+    } catch {
+      waitingForSync = true
+    }
+    if (revoke) {
+      try {
+        await enqueueDiscordGuildReloadBotInstance(saved.guild)
+      } catch {
+        waitingForSync = true
+      }
+    }
+    if (waitingForSync) gmLog('gmodStore', 'Collective access update is waiting for synchronization')
+  }
+  if (saved.retained) {
+    gmLog('gmodStore', `Updated retained collective entitlement; revoked: ${revoke}`)
+    return
+  }
+  gmLog('gmodStore', `Saved purchase event; revoked: ${revoke}`)
+  const user = await getUserFromSteamID64(steamID64)
+  const discordID = user?.getDiscordID()
+  if (discordID) {
+    await addNotification(
+      discordID,
+      'premium',
+      revoke
+        ? 'Your GmodStore lifetime purchase has been revoked.'
+        : 'You have received a GmodStore lifetime purchase.',
+    )
   }
 }
 

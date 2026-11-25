@@ -63,6 +63,30 @@ describe('i18n.tsx', () => {
     expect(screen.getByTestId('locale')).toHaveTextContent('fr')
   })
 
+  it('recovers from an unsupported saved locale without breaking translation lookup', () => {
+    window.localStorage.setItem('locale', 'outdated-locale')
+    render(() => (
+      <I18nProvider>
+        <Probe />
+      </I18nProvider>
+    ))
+    expect(screen.getByTestId('locale')).toHaveTextContent('en')
+    expect(screen.getByTestId('translated')).toHaveTextContent('Premium')
+  })
+
+  it('inserts interpolation values literally even when they contain replacement patterns', () => {
+    const LiteralValue = () => {
+      const { t } = useI18n()
+      return <span>{t('premium.guild_roles', 'default {1}', '$&')}</span>
+    }
+    render(() => (
+      <I18nProvider>
+        <LiteralValue />
+      </I18nProvider>
+    ))
+    expect(screen.getByText('$& roles')).toBeInTheDocument()
+  })
+
   it('falls back to the provided default text when a key is missing, warning once', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     render(() => (

@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
-import { cleanup, fireEvent, screen } from '@solidjs/testing-library'
+import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
+import { MemoryRouter, Route } from '@solidjs/router'
+import { I18nProvider } from '../../../../src/i18n.js'
 import { historyAt, renderWithProviders } from '../../../testUtils.js'
 import { okJson, errJson } from './servers/testHelpers.js'
 
@@ -26,16 +28,19 @@ const BOT_URL = '/users/:discordID/guilds/:guildID/bot'
 const GUILD_GMOD_STORE_URL = '/users/:discordID/guilds/:guildID/gmod-store'
 const GMOD_STORE_URL = '/users/:discordID/gmod-store'
 
-afterEach(() => {
+afterEach(async () => {
   cleanup()
   vi.useRealTimers()
+  setupFetchAPI()
+  await guildChannelsRefetch()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 function defaultAdmins() {
   return [
-    { id: 1, name: 'Admin One', avatar: 'a1' },
-    { id: 2, name: 'Admin Two', avatar: 'a2' },
+    { id: '123456789012345678', name: 'Admin One', avatar: null },
+    { id: '987654321098765432', name: 'Admin Two', avatar: null },
   ]
 }
 
@@ -64,24 +69,57 @@ function renderPage(path = '/dashboard/guilds/g1/config') {
 }
 
 async function waitForAdminsLoaded() {
-  await vi.waitFor(() => expect(screen.queryByText('Loading...')).not.toBeInTheDocument())
+  await vi.waitFor(() => expect(screen.queryByText('Loading…')).not.toBeInTheDocument())
 }
 
 describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     window.localStorage.clear()
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', name: 'My Guild', isPremium: false }))
     ;(fetchAPI as Mock).mockReset()
     ;(Errors as Mock).mockReset()
     setupFetchAPI()
+    await guildChannelsRefetch()
   })
 
-  it('renders guild name, id and the joined admin list once loaded', async () => {
+  it('renders guild name, id and individual admin mentions once loaded', async () => {
     renderPage()
     await waitForAdminsLoaded()
     expect(screen.getByText('My Guild')).toBeInTheDocument()
     expect(screen.getByText('g1')).toBeInTheDocument()
-    expect(screen.getByText('Admin One, Admin Two')).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Admins' })).toBeInTheDocument()
+    expect(screen.getAllByRole('listitem')).toHaveLength(2)
+    expect(screen.getByText('@Admin One')).toHaveAttribute('title', '123456789012345678')
+    expect(screen.getByText('@Admin Two')).toHaveAttribute('title', '987654321098765432')
+  })
+
+  it('copies the full Discord server ID without losing snowflake precision', async () => {
+    const guildID = '1051881514020917408'
+    window.localStorage.setItem('guilds', JSON.stringify({ id: guildID, name: 'My Guild', isPremium: false }))
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    renderPage(`/dashboard/guilds/${guildID}/config`)
+    await waitForAdminsLoaded()
+    expect(screen.getByText(guildID)).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Copy Discord server ID' }))
+    expect(writeText).toHaveBeenCalledWith(guildID)
+    await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Copied!'))
+  })
+
+  it('keeps an administrator identifiable when its display name is unavailable', async () => {
+    const userID = '987654321098765432'
+    setupFetchAPI({ admins: [{ id: userID, name: ' ', avatar: null }] })
+    renderPage()
+    await waitForAdminsLoaded()
+    expect(screen.getByText(`@${userID}`)).toBeInTheDocument()
+  })
+
+  it('preserves an explicit empty state when no administrators are returned', async () => {
+    setupFetchAPI({ admins: [] })
+    renderPage()
+    await waitForAdminsLoaded()
+    expect(screen.getByText('No dashboard administrators were returned for this community.')).toBeInTheDocument()
+    expect(screen.queryByRole('list', { name: 'Admins' })).not.toBeInTheDocument()
   })
 
   it('shows "Loading..." for admins while the admins request is pending', () => {
@@ -90,23 +128,40 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       return Promise.resolve(okJson([]))
     })
     renderPage()
-    expect(screen.getByText('Loading...')).toBeInTheDocument()
+    expect(screen.getByText('Loading…')).toBeInTheDocument()
   })
 
-  it('shows a check icon when the guild is premium, a times icon otherwise', async () => {
-    const { container, unmount } = renderPage()
+  it('shows a readable enabled or disabled Premium state', async () => {
+    const { unmount } = renderPage()
     await waitForAdminsLoaded()
-    expect(container.querySelector('.fa-times')).toBeInTheDocument()
-    expect(container.querySelector('.fa-check.text-success')).not.toBeInTheDocument()
+    expect(screen.getByText('Disabled')).toBeInTheDocument()
+    expect(screen.queryByText('Enabled')).not.toBeInTheDocument()
     unmount()
 
     window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', name: 'My Guild', isPremium: true }))
-    const { container: container2 } = renderPage()
+    renderPage()
     await waitForAdminsLoaded()
-    expect(container2.querySelector('.fa-check.text-success')).toBeInTheDocument()
+    expect(screen.getByText('Enabled')).toBeInTheDocument()
+    expect(screen.queryByText('Disabled')).not.toBeInTheDocument()
   })
 
-  it('shows an empty (not crashed) admin list when the admins GET responds with a non-ok status', async () => {
+  it('shows unverifiable Premium status without claiming the guild has lost access', async () => {
+    render(() => (
+      <MemoryRouter
+        history={historyAt('/dashboard/guilds/g1/config')}
+        root={(props) => <I18nProvider>{props.children}</I18nProvider>}
+      >
+        <Route path="/dashboard/guilds/:guildID/config" component={GuildInformations} />
+      </MemoryRouter>
+    ))
+    await waitForAdminsLoaded()
+    expect(screen.getByText('Unknown')).toBeInTheDocument()
+    expect(screen.queryByText('Disabled')).not.toBeInTheDocument()
+    expect(screen.getByText('Access could not be verified. Your saved configuration is preserved.')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: /upgrade/i })).not.toBeInTheDocument()
+  })
+
+  it('explains a failed admin request and recovers without pretending the list is empty', async () => {
     ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
       if (endpoint === ADMINS_URL && method === 'GET') return Promise.resolve(errJson())
       if (endpoint === BOT_URL && method === 'GET') return Promise.resolve(okJson({ active: false }))
@@ -114,12 +169,18 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       return Promise.resolve(okJson([]))
     })
     renderPage()
+    await vi.waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the dashboard administrators. Try again.'),
+    )
+    expect(screen.queryByText('No dashboard administrators were returned for this community.')).not.toBeInTheDocument()
+    setupFetchAPI()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await waitForAdminsLoaded()
-    expect(screen.getByText('Admins:').parentElement!.textContent).toBe('Admins:')
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
-  it('resolves the shared guildChannels resource to [] (not a crash) on a non-ok channels response', async () => {
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
+  it('keeps a failed channels request distinct from an empty result and recovers on refetch', async () => {
+    ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
       if (endpoint === CHANNELS_URL) return Promise.resolve(errJson())
       if (endpoint === ADMINS_URL) return Promise.resolve(okJson(defaultAdmins()))
       if (endpoint === BOT_URL) return Promise.resolve(okJson({ active: false }))
@@ -129,7 +190,12 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
     renderPage()
     await waitForAdminsLoaded()
     await guildChannelsRefetch()
-    await vi.waitFor(() => expect(guildChannels()).toEqual([]))
+    expect(guildChannels.error).toBeInstanceOf(Error)
+    expect(() => guildChannels()).toThrow('Guild channels request failed')
+    setupFetchAPI()
+    await guildChannelsRefetch()
+    expect(guildChannels.error).toBeUndefined()
+    expect(guildChannels()).toEqual([])
   })
 
   it('shows neither gmod-store panel when the guild has no gmod-store purchase', async () => {
@@ -188,14 +254,14 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       })
       await fireEvent.click(btn)
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(GUILD_GMOD_STORE_URL, 'POST'))
-      expect(Errors).toHaveBeenCalledWith('An error occurred while activating the bot.')
+      expect(Errors).toHaveBeenCalledWith('Unable to activate GmodStore Premium. Try again.')
       expect(history.get()).toBe('/dashboard/guilds/g1/config')
     })
 
     it('does not crash and hides the activate panel when the bot resource errors', async () => {
       // Bug fix regression test: `!bot().active` used to be read unguarded, so once the bot
       // resource settled into an error state, evaluating `bot()` re-threw and crashed the render.
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
+      ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
         if (endpoint === ADMINS_URL) return Promise.resolve(okJson(defaultAdmins()))
         if (endpoint === BOT_URL) return Promise.resolve(errJson())
         if (endpoint === GMOD_STORE_URL) return Promise.resolve(okJson({ steamID64: 's1' }))
@@ -209,6 +275,20 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
   })
 
   describe('deactivate gmod store premium', () => {
+    it('stops polling an open invite popup when leaving the information page', async () => {
+      vi.useFakeTimers()
+      setupFetchAPI({ bot: { active: true }, gmodStorePurchase: { steamID64: 's1', guild: 'g1', hasMainBot: false } })
+      const { unmount } = renderPage()
+      await waitForAdminsLoaded()
+      vi.spyOn(window, 'open').mockReturnValue({ closed: false } as Window)
+      await fireEvent.click(await screen.findByText('Invite Main Bot'))
+      const clear = vi.spyOn(globalThis, 'clearInterval')
+      const callsBefore = (fetchAPI as Mock).mock.calls.length
+      unmount()
+      expect(clear).toHaveBeenCalled()
+      await vi.advanceTimersByTimeAsync(1000)
+      expect((fetchAPI as Mock).mock.calls).toHaveLength(callsBefore)
+    })
     it('shows the reinvite warning and Invite Main Bot when hasMainBot is false, disabling Deactivate', async () => {
       setupFetchAPI({
         bot: { active: true },
@@ -216,9 +296,9 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       })
       renderPage()
       await waitForAdminsLoaded()
-      expect(await screen.findByText(/Before removing the Gmod Store Premium/)).not.toHaveClass('hidden')
+      expect(await screen.findByText(/Invite the main Gmod Integration bot/)).not.toHaveClass('hidden')
       expect(screen.getByText('Invite Main Bot')).toBeInTheDocument()
-      expect(screen.getByText('Deactivate Gmod Store Premium')).toHaveClass('btn-disabled')
+      expect(screen.getByText('Deactivate Gmod Store Premium')).toBeDisabled()
     })
 
     it('hides the reinvite warning and Invite Main Bot when hasMainBot is true, enabling Deactivate', async () => {
@@ -228,9 +308,9 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       })
       renderPage()
       await waitForAdminsLoaded()
-      expect(await screen.findByText(/Before removing the Gmod Store Premium/)).toHaveClass('hidden')
+      expect(await screen.findByText(/Invite the main Gmod Integration bot/)).toHaveClass('hidden')
       expect(screen.queryByText('Invite Main Bot')).not.toBeInTheDocument()
-      expect(screen.getByText('Deactivate Gmod Store Premium')).not.toHaveClass('btn-disabled')
+      expect(screen.getByText('Deactivate Gmod Store Premium')).not.toBeDisabled()
     })
 
     it('deactivates on click, navigating to /dashboard/guilds', async () => {
@@ -266,7 +346,7 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       })
       await fireEvent.click(btn)
       await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(GUILD_GMOD_STORE_URL, 'DELETE'))
-      expect(Errors).toHaveBeenCalledWith('An error occurred while deactivating the bot.')
+      expect(Errors).toHaveBeenCalledWith('Unable to deactivate GmodStore Premium. Try again.')
       expect(history.get()).toBe('/dashboard/guilds/g1/config')
     })
 
@@ -290,14 +370,19 @@ describe('pages/dashboard/guilds/GuildInformations.tsx', () => {
       await waitForAdminsLoaded()
       const inviteBtn = await screen.findByText('Invite Main Bot')
 
-      const fakeWindow = { closed: false } as Window
+      let popupClosed = false
+      const fakeWindow = {
+        get closed() {
+          return popupClosed
+        },
+      } as Window
       const openSpy = vi.spyOn(window, 'open').mockReturnValue(fakeWindow)
       const callsBefore = (fetchAPI as Mock).mock.calls.length
 
       await fireEvent.click(inviteBtn)
       expect(openSpy).toHaveBeenCalledWith('/invite&guild_id=g1', '_blank', 'width=600,height=900')
 
-      fakeWindow.closed = true
+      popupClosed = true
       await vi.advanceTimersByTimeAsync(500)
 
       expect((fetchAPI as Mock).mock.calls.length).toBeGreaterThan(callsBefore)

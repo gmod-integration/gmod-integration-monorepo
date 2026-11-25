@@ -17,7 +17,7 @@ vi.mock('bullmq', () => ({ Worker: FakeWorker }))
 vi.mock('@gmod/infra-bullmq', () => ({ connection: {} }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const prismaMock: any = {
   gm_server_pseudo: { findFirst: vi.fn() },
@@ -56,7 +56,13 @@ vi.mock('../../../src/discord/utils/messages.js', () => ({
 }))
 
 vi.mock('@gmod/config', () => ({
-  ConfigDiscord: { guildID: 'main-guild', premiumRoleID: 'p1', gmodStorePremiumRoleID: 'g1', discordPremiumRoleID: 'd1', clientID: 'main-client' },
+  ConfigDiscord: {
+    guildID: 'main-guild',
+    premiumRoleID: 'p1',
+    gmodStorePremiumRoleID: 'g1',
+    discordPremiumRoleID: 'd1',
+    clientID: 'main-client',
+  },
 }))
 
 const getDiscordEntitlementsMock = vi.fn()
@@ -67,11 +73,8 @@ const s3SendMock = vi.fn()
 vi.mock('@gmod/infra-minio', () => ({ ensureAvatarStored: ensureAvatarStoredMock, s3: { send: s3SendMock } }))
 vi.mock('@aws-sdk/client-s3', () => ({ GetObjectCommand: vi.fn().mockImplementation((input) => ({ input })) }))
 
-const {
-  discordUpdatePseudoWorker,
-  discordUpdateGroupWorker,
-  discordUpdateTeamRoleWorker,
-} = await import('../../../src/discord/workers/discordQueueWorkers.js')
+const { discordUpdatePseudoWorker, discordUpdateGroupWorker, discordUpdateTeamRoleWorker } =
+  await import('../../../src/discord/workers/discordQueueWorkers.js')
 
 function pseudoProcessor() {
   return (discordUpdatePseudoWorker as unknown as FakeWorker).processor
@@ -117,7 +120,11 @@ describe('discordQueueWorkers - discordUpdatePseudoWorker', () => {
 
   function makeServer(overrides: Record<string, any> = {}) {
     return {
-      getSetting: vi.fn().mockImplementation(async (key: string) => {
+      getEffectivePseudoRules: vi.fn(async () => {
+        const row = await prismaMock.gm_server_pseudo.findFirst()
+        return row ? [{ role: 'user', enabled: true, ...row }] : []
+      }),
+      getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
         if (key === 'sync_pseudo_direction') return 'both'
         if (key === 'pseudoFormat') return '{plyName}-{plySteamID64}-{rolePrefix}-{roleName}'
         return undefined
@@ -136,7 +143,7 @@ describe('discordQueueWorkers - discordUpdatePseudoWorker', () => {
 
   it('returns early when sync direction is neither both nor gmod-to-discord', async () => {
     getServerFromIDMock.mockResolvedValueOnce(
-      makeServer({ getSetting: vi.fn().mockResolvedValueOnce('discord-to-gmod') }),
+      makeServer({ getEffectiveSetting: vi.fn().mockResolvedValueOnce('discord-to-gmod') }),
     )
     await pseudoProcessor()(makeJob('updatePseudo', baseData()))
     expect(getUserFromSteamID64Mock).not.toHaveBeenCalled()
@@ -145,7 +152,7 @@ describe('discordQueueWorkers - discordUpdatePseudoWorker', () => {
   it('returns early when pseudoFormat is not configured', async () => {
     getServerFromIDMock.mockResolvedValueOnce(
       makeServer({
-        getSetting: vi.fn().mockImplementation(async (key: string) => {
+        getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
           if (key === 'sync_pseudo_direction') return 'gmod-to-discord'
           if (key === 'pseudoFormat') return ''
           return undefined
@@ -182,7 +189,9 @@ describe('discordQueueWorkers - discordUpdatePseudoWorker', () => {
   })
 
   it('returns early when the bot instance has no user', async () => {
-    const server = makeServer({ getBotInstance: vi.fn().mockResolvedValueOnce({ user: null, guilds: { cache: new FakeCollection() } }) })
+    const server = makeServer({
+      getBotInstance: vi.fn().mockResolvedValueOnce({ user: null, guilds: { cache: new FakeCollection() } }),
+    })
     getServerFromIDMock.mockResolvedValueOnce(server)
     prismaMock.gm_server_pseudo.findFirst.mockResolvedValueOnce(null)
     getUserFromSteamID64Mock.mockResolvedValueOnce({ getDiscordID: () => 'd1' })
@@ -318,7 +327,8 @@ describe('discordQueueWorkers - discordUpdateGroupWorker', () => {
 
   function makeServer(overrides: Record<string, any> = {}) {
     return {
-      getSyncRoles: vi.fn().mockResolvedValue([]),
+      getEffectiveSetting: vi.fn().mockResolvedValue('gmod-to-discord'),
+      getEffectiveSyncRoles: vi.fn().mockResolvedValue([]),
       getBotInstance: vi.fn(),
       getGuildID: vi.fn().mockReturnValue('guild-1'),
       ...overrides,
@@ -346,7 +356,7 @@ describe('discordQueueWorkers - discordUpdateGroupWorker', () => {
   })
 
   it('skips role sync entirely when there are no sync roles configured', async () => {
-    getServerFromIDMock.mockResolvedValueOnce(makeServer({ getSyncRoles: vi.fn().mockResolvedValue([]) }))
+    getServerFromIDMock.mockResolvedValueOnce(makeServer({ getEffectiveSyncRoles: vi.fn().mockResolvedValue([]) }))
     prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce(null)
     await groupProcessor()(makeJob('updateGroup', baseData()))
     expect(getUserFromSteamID64Mock).not.toHaveBeenCalled()
@@ -354,7 +364,9 @@ describe('discordQueueWorkers - discordUpdateGroupWorker', () => {
 
   it('skips role sync when the user has no linked discord account', async () => {
     getServerFromIDMock.mockResolvedValueOnce(
-      makeServer({ getSyncRoles: vi.fn().mockResolvedValue([{ roleID: 'r1', userGroup: 'admin', enable: true }]) }),
+      makeServer({
+        getEffectiveSyncRoles: vi.fn().mockResolvedValue([{ roleID: 'r1', userGroup: 'admin', enable: true }]),
+      }),
     )
     prismaMock.gm_server_stat.findFirst.mockResolvedValueOnce(null)
     getUserFromSteamID64Mock.mockResolvedValueOnce(null)
@@ -363,7 +375,7 @@ describe('discordQueueWorkers - discordUpdateGroupWorker', () => {
 
   it('skips role sync when the bot instance is missing', async () => {
     const server = makeServer({
-      getSyncRoles: vi.fn().mockResolvedValue([{ roleID: 'r1', userGroup: 'admin', enable: true }]),
+      getEffectiveSyncRoles: vi.fn().mockResolvedValue([{ roleID: 'r1', userGroup: 'admin', enable: true }]),
       getBotInstance: vi.fn().mockResolvedValueOnce(null),
     })
     getServerFromIDMock.mockResolvedValueOnce(server)
@@ -374,7 +386,7 @@ describe('discordQueueWorkers - discordUpdateGroupWorker', () => {
 
   it('skips role sync when the guild is not present on the bot client', async () => {
     const server = makeServer({
-      getSyncRoles: vi.fn().mockResolvedValue([{ roleID: 'r1', userGroup: 'admin', enable: true }]),
+      getEffectiveSyncRoles: vi.fn().mockResolvedValue([{ roleID: 'r1', userGroup: 'admin', enable: true }]),
       getBotInstance: vi.fn().mockResolvedValueOnce({ user: { id: 'bot1' }, guilds: { cache: new FakeCollection() } }),
     })
     getServerFromIDMock.mockResolvedValueOnce(server)
@@ -386,7 +398,7 @@ describe('discordQueueWorkers - discordUpdateGroupWorker', () => {
   it('skips role sync when the member cannot be fetched', async () => {
     const guild = { members: { fetch: vi.fn().mockRejectedValueOnce(new Error('nope')) } }
     const server = makeServer({
-      getSyncRoles: vi.fn().mockResolvedValue([{ roleID: 'r1', userGroup: 'admin', enable: true }]),
+      getEffectiveSyncRoles: vi.fn().mockResolvedValue([{ roleID: 'r1', userGroup: 'admin', enable: true }]),
       getBotInstance: vi.fn().mockResolvedValueOnce({
         user: { id: 'bot1' },
         guilds: { cache: new FakeCollection([['guild-1', guild]]) },
@@ -403,7 +415,7 @@ describe('discordQueueWorkers - discordUpdateGroupWorker', () => {
     const fetch = vi.fn().mockResolvedValueOnce(targetMember).mockRejectedValueOnce(new Error('nope'))
     const guild = { members: { fetch } }
     const server = makeServer({
-      getSyncRoles: vi.fn().mockResolvedValue([{ roleID: 'r1', userGroup: 'admin', enable: true }]),
+      getEffectiveSyncRoles: vi.fn().mockResolvedValue([{ roleID: 'r1', userGroup: 'admin', enable: true }]),
       getBotInstance: vi.fn().mockResolvedValueOnce({
         user: { id: 'bot1' },
         guilds: { cache: new FakeCollection([['guild-1', guild]]) },
@@ -431,7 +443,7 @@ describe('discordQueueWorkers - discordUpdateGroupWorker', () => {
       { roleID: 'new-role', userGroup: 'admin', enable: true },
     ]
     const server = makeServer({
-      getSyncRoles: vi.fn().mockResolvedValue(syncRoles),
+      getEffectiveSyncRoles: vi.fn().mockResolvedValue(syncRoles),
       getBotInstance: vi.fn().mockResolvedValueOnce({
         user: { id: 'bot1' },
         guilds: { cache: new FakeCollection([['guild-1', guild]]) },
@@ -457,7 +469,7 @@ describe('discordQueueWorkers - discordUpdateGroupWorker', () => {
     const guild = { members: { fetch }, roles: { cache: guildRolesCache } }
     const syncRoles = [{ roleID: 'new-role', userGroup: 'admin', enable: true }]
     const server = makeServer({
-      getSyncRoles: vi.fn().mockResolvedValue(syncRoles),
+      getEffectiveSyncRoles: vi.fn().mockResolvedValue(syncRoles),
       getBotInstance: vi.fn().mockResolvedValueOnce({
         user: { id: 'bot1' },
         guilds: { cache: new FakeCollection([['guild-1', guild]]) },
@@ -491,7 +503,7 @@ describe('discordQueueWorkers - discordUpdateTeamRoleWorker', () => {
     return {
       getBotInstance: vi.fn(),
       getDiscordGuild: vi.fn(),
-      getSyncTeamRoles: vi.fn().mockResolvedValue([]),
+      getEffectiveSyncTeamRoles: vi.fn().mockResolvedValue([]),
       getGuildID: vi.fn().mockReturnValue('guild-1'),
       ...overrides,
     }
@@ -543,7 +555,7 @@ describe('discordQueueWorkers - discordUpdateTeamRoleWorker', () => {
     const server = makeServer({
       getBotInstance: vi.fn().mockResolvedValueOnce({ user: { id: 'bot1' } }),
       getDiscordGuild: vi.fn().mockResolvedValueOnce(guild),
-      getSyncTeamRoles: vi.fn().mockResolvedValueOnce([]),
+      getEffectiveSyncTeamRoles: vi.fn().mockResolvedValueOnce([]),
     })
     getServerFromIDMock.mockResolvedValueOnce(server)
     getUserFromSteamID64Mock.mockResolvedValueOnce({ getDiscordID: () => 'd1' })
@@ -558,7 +570,7 @@ describe('discordQueueWorkers - discordUpdateTeamRoleWorker', () => {
     const server = makeServer({
       getBotInstance: vi.fn().mockResolvedValueOnce({ user: { id: 'bot1' } }),
       getDiscordGuild: vi.fn().mockResolvedValueOnce(guild),
-      getSyncTeamRoles: vi.fn().mockResolvedValueOnce([{ roleID: 'r1', teamName: 'red', enable: true }]),
+      getEffectiveSyncTeamRoles: vi.fn().mockResolvedValueOnce([{ roleID: 'r1', teamName: 'red', enable: true }]),
     })
     getServerFromIDMock.mockResolvedValueOnce(server)
     getUserFromSteamID64Mock.mockResolvedValueOnce({ getDiscordID: () => 'd1' })
@@ -575,7 +587,7 @@ describe('discordQueueWorkers - discordUpdateTeamRoleWorker', () => {
     const server = makeServer({
       getBotInstance: vi.fn().mockResolvedValueOnce({ user: { id: 'bot1' } }),
       getDiscordGuild: vi.fn().mockResolvedValueOnce(guild),
-      getSyncTeamRoles: vi.fn().mockResolvedValueOnce([{ roleID: 'r1', teamName: 'red', enable: true }]),
+      getEffectiveSyncTeamRoles: vi.fn().mockResolvedValueOnce([{ roleID: 'r1', teamName: 'red', enable: true }]),
     })
     getServerFromIDMock.mockResolvedValueOnce(server)
     getUserFromSteamID64Mock.mockResolvedValueOnce({ getDiscordID: () => 'd1' })
@@ -616,7 +628,7 @@ describe('discordQueueWorkers - discordUpdateTeamRoleWorker', () => {
     const server = makeServer({
       getBotInstance: vi.fn().mockResolvedValueOnce({ user: { id: 'bot1' } }),
       getDiscordGuild: vi.fn().mockResolvedValueOnce(guild),
-      getSyncTeamRoles: vi.fn().mockResolvedValueOnce(syncRoles),
+      getEffectiveSyncTeamRoles: vi.fn().mockResolvedValueOnce(syncRoles),
     })
     getServerFromIDMock.mockResolvedValueOnce(server)
     getUserFromSteamID64Mock.mockResolvedValueOnce({ getDiscordID: () => 'd1' })
@@ -645,7 +657,9 @@ describe('discordQueueWorkers - discordUpdateTeamRoleWorker', () => {
     const server = makeServer({
       getBotInstance: vi.fn().mockResolvedValueOnce({ user: { id: 'bot1' } }),
       getDiscordGuild: vi.fn().mockResolvedValueOnce(guild),
-      getSyncTeamRoles: vi.fn().mockResolvedValueOnce([{ roleID: 'already-has', teamName: 'red', enable: true }]),
+      getEffectiveSyncTeamRoles: vi
+        .fn()
+        .mockResolvedValueOnce([{ roleID: 'already-has', teamName: 'red', enable: true }]),
     })
     getServerFromIDMock.mockResolvedValueOnce(server)
     getUserFromSteamID64Mock.mockResolvedValueOnce({ getDiscordID: () => 'd1' })

@@ -25,8 +25,9 @@ model banUsers {
 
 model gm_discordToken {
   discordID      String   @id @db.Char(255)
-  accessToken    String   @db.VarChar(255)
-  refreshToken   String   @db.VarChar(255)
+  accessToken    String   @db.Text
+  refreshToken   String   @db.Text
+  version        Int      @default(0)
   creationDate   DateTime @default(now())
   expirationDate DateTime @default(dbgenerated("(current_timestamp() + interval 7 day)"))
   createdAt      DateTime @default(now())
@@ -41,6 +42,8 @@ model gm_gmodstore_purchases {
   revoke    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([guild, revoke])
 }
 
 model gm_guild {
@@ -48,6 +51,7 @@ model gm_guild {
   name                        String                        @default("") @db.VarChar(255)
   member                      Int                           @default(0)
   language                    String                        @default("en") @db.VarChar(255)
+  isPartner                   Boolean                       @default(false)
   addDate                     DateTime?                     @default(now()) @db.Timestamp(0)
   createdAt                   DateTime                      @default(now())
   updatedAt                   DateTime                      @updatedAt
@@ -83,6 +87,7 @@ model gm_guild_premium {
   guildID     String   @id @db.VarChar(255)
   transaction String?  @db.Text
   buyer       String?  @db.Text
+  revoked     Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -130,8 +135,16 @@ model gm_panelToken {
   revoke         Boolean  @default(false)
   creationDate   DateTime @default(now())
   expirationDate DateTime @default(dbgenerated("(current_timestamp() + interval 7 day)"))
+  absoluteExpiresAt DateTime?
+  lastSeenAt       DateTime?
+  actorDiscordID   String? @db.VarChar(255)
+  actorSessionID   String? @db.Char(36)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([discordID, revoke, expirationDate])
+  @@index([accessToken, revoke, expirationDate])
+  @@index([actorSessionID])
 }
 
 model gm_role_auto {
@@ -360,6 +373,7 @@ model gm_server_stat {
   gm_user_steam     gm_user_steam @relation(fields: [steam_id], references: [steam_id], onDelete: Cascade, map: "gm_server_stat_gm_user_steam_steam_id_fk")
 
   @@id([server_id, steam_id])
+  @@index([server_id, first_join], map: "gm_server_stat_server_id_first_join_idx")
   @@index([steam_id], map: "gm_server_stat_gm_user_steam_steam_id_fk")
 }
 
@@ -392,6 +406,7 @@ model gm_server_stat_session {
   gm_user_steam       gm_user_steam? @relation(fields: [steamID64], references: [steam_id], onDelete: Cascade, map: "gm_server_stat_session_ibfk_126")
 
   @@index([serverID], map: "gm_server_stat_session_1_gm_user_steam_steam_id_fk")
+  @@index([serverID, sessionEndTimeStamp], map: "gm_server_stat_session_serverID_end_idx")
   @@index([steamID64], map: "gm_server_stat_session_gm_user_steam_steam_id_fk")
 }
 
@@ -676,6 +691,37 @@ model gm_users_notifications {
   gm_user   gm_user  @relation(fields: [discordID], references: [id], onDelete: Cascade, map: "gm_users_notifications_ibfk_1")
 
   @@index([discordID], map: "discordID")
+}
+
+// Independent from gm_user: the minimal request evidence survives profile deletion.
+model gm_user_erasure {
+  id             String    @id @db.Char(36)
+  discordSubject String    @db.Char(64)
+  steamSubject   String?   @db.Char(64)
+  receiptHash    String    @unique @db.Char(64)
+  status         String    @default("pending") @db.VarChar(16)
+  requestedAt    DateTime  @default(now())
+  completedAt    DateTime?
+  reactivatedAt  DateTime?
+  payload        Json?
+  progress       Json?
+  attempts       Int       @default(0)
+  lastError      String?   @db.VarChar(64)
+  leaseUntil     DateTime?
+  leaseToken     String?   @db.Char(36)
+  nextAttemptAt  DateTime  @default(now())
+
+  @@index([steamSubject])
+  @@index([discordSubject, reactivatedAt])
+  @@index([status, nextAttemptAt])
+}
+
+// No names, contact details, sessions or activity history are retained here.
+model gm_user_security {
+  subject   String   @id @db.Char(64)
+  trust     Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model users {

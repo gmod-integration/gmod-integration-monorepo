@@ -1,5 +1,6 @@
 ---
 sidebar_position: 3
+description: Activate your GmodStore purchase for a Discord guild by linking your Steam account and using the Gmod Integration dashboard.
 ---
 
 # Gmod Store Premium

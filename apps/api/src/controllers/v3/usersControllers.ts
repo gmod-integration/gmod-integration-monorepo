@@ -1,6 +1,31 @@
+import {
+  DashboardChannelConfigurationSchema,
+  DashboardChatConfigurationSchema,
+} from '@gmod/schema/server/DashboardChannelSchema.js'
+import { DashboardLinkSchema } from '@gmod/schema/server/DashboardEntitiesSchema.js'
+import { StatusConfigurationButtonSchema } from '@gmod/schema/server/StatusConfigurationSchema.js'
+import {
+  CustomBotProfileCommandSchema,
+  CustomBotTokenCommandSchema,
+} from '@gmod/schema/server/CustomBotProfileSchema.js'
+import { AccessDeniedError, assertCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
+import { canAccessDashboardGuild } from '@gmod/domain-user/dashboardAccess.js'
 import { getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js'
-import { ConfigDiscord } from '@gmod/config'
+import { ConfigAuth, ConfigDiscord } from '@gmod/config'
+import { beginOAuthFlow, consumeOAuthFlow } from '@gmod/domain-auth/oauthState.js'
+import {
+  actorCookieName,
+  AuthSessionError,
+  oauthCookieName,
+  readCookie,
+  readSessionCredential,
+  resolveApplicationSession,
+  revokeApplicationSession,
+  serializeAuthCookie,
+  sessionCookieName,
+} from '@gmod/domain-auth/authSessions.js'
+import redis from '@gmod/infra-redis'
 import {
   addUserToGuild,
   getDiscordUserFromID,
@@ -10,10 +35,9 @@ import {
   saveUser,
   saveUserPanel,
 } from '@gmod/domain-guild/discordModels.js'
-import { badArgument, todoControllers } from '@gmod/core/utils/tools.js'
+import { badArgument } from '@gmod/core/utils/tools.js'
 import moment from 'moment'
 import { getUserDataGRPD } from '@gmod/domain-compliance/gdrp.js'
-import redis from '@gmod/infra-redis'
 import prisma from '@gmod/infra-prisma'
 import { type NextFunction, type Request, type Response } from 'express'
 import {
@@ -29,6 +53,7 @@ import {
   processGetAutoRoles,
   processGetGuildBans,
   processGetProfile,
+  processGetSteamProfile,
   processGetScreenshotsList,
   processGetServerLogs,
   processGetServerPlayers,
@@ -36,7 +61,6 @@ import {
   processGetUserGmodStorePurchases,
   processGetUserSessions,
   processLogOut,
-  processPatchUserNotifications,
   processPostAutoRoles,
   processPostGmodPurchase,
   processPostServerLogsTrigger,
@@ -65,18 +89,36 @@ import {
   enqueueDiscordServerSyncChatDelete,
 } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 import { getSingleParam } from '@/utils/requestParams.js'
+import { processGetPublicServerRanking } from '@gmod/core/models/v3/publicServerRankingModels.js'
+import { processPreviewServerStatus } from '@gmod/core/models/v3/statusMessagePreviewModels.js'
+import { processDeleteGuildBotInstance } from '@gmod/core/models/v3/customBotRemovalModels.js'
+import {
+  createDashboardServerEntity,
+  createDashboardLink,
+  createDashboardVerificationRole,
+} from '@gmod/core/models/v6/dashboardEntities.js'
 
 export async function getProfile(req: Request, res: Response) {
   const result = await processGetProfile(req.query.steamID64, req.query.discordID)
   return res.status(result.status).send(result.body)
 }
 
+export async function getSteamProfile(req: Request, res: Response) {
+  res.setHeader('Cache-Control', 'no-store')
+  const result = await processGetSteamProfile(req.panelUser!.discordID)
+  return res.status(result.status).send(result.body)
+}
+
 export async function getUserSessions(req: Request, res: Response) {
-  const result = await processGetUserSessions(String(req.params.discordID))
+  if (req.authSession?.actorDiscordID)
+    throw new AuthSessionError(403, 'impersonation_forbidden', 'This operation requires your own account session.')
+  const result = await processGetUserSessions(getSingleParam(req.params.discordID), req.authSession?.id)
   return res.status(result.status).send(result.body)
 }
 
 export async function deleteUserSession(req: Request, res: Response) {
+  if (req.authSession?.actorDiscordID)
+    throw new AuthSessionError(403, 'impersonation_forbidden', 'This operation requires your own account session.')
   const discordID = getSingleParam(req.params.discordID)
   const sessionID = getSingleParam(req.params.sessionID)
   const result = await processDeleteUserSession(String(discordID), String(sessionID))
@@ -85,7 +127,14 @@ export async function deleteUserSession(req: Request, res: Response) {
 
 export async function logOut(req: Request, res: Response) {
   const panelUser = req.panelUser!
-  const result = await processLogOut(panelUser.discordID, panelUser.panelToken.token)
+  if (req.authSession) {
+    await revokeApplicationSession(req.authSession.id, req.authSession.discordID)
+    res.append('Set-Cookie', serializeAuthCookie(sessionCookieName(), '', new Date(0)))
+    return res.status(200).json({ revoked: true })
+  }
+  const credential = readSessionCredential(req)
+  if (!credential) throw new AuthSessionError(401, 'unauthorized', 'A valid session is required.')
+  const result = await processLogOut(panelUser.discordID, credential)
   return res.status(result.status).json(result.body)
 }
 
@@ -94,86 +143,89 @@ export async function findCurrentUser(req: Request, res: Response) {
 }
 
 export async function oauthLogin(req: Request, res: Response) {
+  res.setHeader('Cache-Control', 'no-store')
+  res.setHeader('Referrer-Policy', 'no-referrer')
   const { code } = req.query
-
-  if (!code) {
-    const { redirect } = req.query
-    return res.redirect(ConfigDiscord.oauthPanel + (redirect ? `&state=redirect:${redirect}` : ''))
+  if (!code && !req.query.error) {
+    const flow = await beginOAuthFlow(req.query.redirect, readCookie(req, oauthCookieName()))
+    const authorization = new URL(ConfigDiscord.oauthPanel)
+    authorization.searchParams.set('response_type', 'code')
+    authorization.searchParams.set('state', flow.state)
+    authorization.searchParams.set('code_challenge', flow.codeChallenge)
+    authorization.searchParams.set('code_challenge_method', 'S256')
+    res.append(
+      'Set-Cookie',
+      serializeAuthCookie(
+        oauthCookieName(),
+        flow.browserBinding,
+        new Date(Date.now() + ConfigAuth.oauthStateTtlSeconds * 1000),
+      ),
+    )
+    return res.redirect(authorization.toString())
   }
-
-  const redirect = typeof req.query.state === 'string' ? req.query.state.split('redirect:')[1] : null
-  const codeString = typeof code === 'string' ? code : ''
-  let oauthRedirectUri = `${req.protocol}://${req.headers.host}${req.originalUrl.split('?')[0]}`
-  try {
-    const configuredRedirectUri = new URL(ConfigDiscord.oauthPanel).searchParams.get('redirect_uri')
-    if (configuredRedirectUri) {
-      oauthRedirectUri = configuredRedirectUri
-    }
-  } catch {
-    // Keep runtime-derived URI fallback when oauthPanel is malformed.
+  const flow = await consumeOAuthFlow(req.query.state, readCookie(req, oauthCookieName()))
+  if (req.query.iss !== undefined && req.query.iss !== 'https://discord.com')
+    throw new AuthSessionError(400, 'oauth_issuer_invalid', 'This authorization response is not valid.')
+  if (req.query.error) {
+    const destination = new URL(ConfigDiscord.oauthPanelRedirect)
+    destination.searchParams.set('error', 'oauth_denied')
+    destination.searchParams.set('redirect', flow.redirect)
+    return res.redirect(destination.toString())
   }
-  const discordUserToken = await getUserTokenFromCode(codeString, oauthRedirectUri)
-  if (!discordUserToken) {
-    return res.status(401).send({
-      error: 'unauthorized',
-    })
-  }
-
-  const guildIDMatch = typeof req.query.state === 'string' ? req.query.state.match(/guildID=([0-9]+)/) : null
-  const guildID = guildIDMatch ? guildIDMatch[1] : null
-
-  discordUserToken.expirationDate = new Date(Date.now() + discordUserToken.expires_in * 1000)
-  discordUserToken.creationDate = new Date()
-
+  if (typeof code !== 'string' || !code)
+    throw new AuthSessionError(400, 'oauth_code_invalid', 'An authorization code is required.')
+  const configured = new URL(ConfigDiscord.oauthPanel).searchParams.get('redirect_uri')
+  if (!configured)
+    throw new AuthSessionError(503, 'oauth_configuration_invalid', 'Discord sign-in is temporarily unavailable.')
+  const discordUserToken = await getUserTokenFromCode(code, configured, flow.verifier)
+  if (!discordUserToken) throw new AuthSessionError(401, 'oauth_code_invalid', 'Please start a new sign-in attempt.')
   const discordUser = await getUserFromToken(`${discordUserToken.token_type} ${discordUserToken.access_token}`)
-  if (!discordUser) {
-    return res.status(401).send({
-      error: 'unauthorized',
-    })
+  if (!discordUser)
+    throw new AuthSessionError(503, 'provider_unavailable', 'Discord sign-in is temporarily unavailable.')
+  let skipGuildJoin = false
+  if (flow.guildID) {
+    const dscGuild = await enqueueDiscordGuildSnapshot(flow.guildID)
+    if (dscGuild)
+      skipGuildJoin = await new Guild({ id: dscGuild.id }).getEffectiveSetting('verification_dont_join_support')
   }
-
-  let skipGuidJoin = false
-
-  if (guildID) {
-    const dscGuild = await enqueueDiscordGuildSnapshot(guildID)
-    if (!dscGuild) {
-      return res.status(404).send({
-        error: 'guild_not_found',
-      })
-    }
-
-    const guild = new Guild({ id: dscGuild.id })
-
-    skipGuidJoin = await guild.getSetting('verification_dont_join_support')
+  if (!skipGuildJoin && discordUserToken.scope?.split(' ').includes('guilds.join')) {
+    await addUserToGuild(ConfigDiscord.guildID, discordUser.id, discordUserToken.access_token).catch(() => false)
   }
-
-  if (!skipGuidJoin) {
-    await addUserToGuild(ConfigDiscord.guildID, discordUser.id, discordUserToken.access_token)
-      .then(() => {
-        console.log('User added to guild')
-      })
-      .catch((error) => {
-        console.error(error)
-      })
-  }
-
-  const userIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress
-  const userCountry = req.headers['cf-ipcountry'] || 'XX'
-  const userUA = req.useragent
-
-  const panelAccessToken = await saveUserPanel(discordUser.id, discordUserToken, {
-    os: userUA?.os || 'Unknown',
-    browser: userUA?.browser || 'Unknown',
-    ip: userIP,
-    country: userCountry,
+  const token = await saveUserPanel(discordUser.id, discordUserToken, {
+    os: req.useragent?.os || 'Unknown',
+    browser: req.useragent?.browser || 'Unknown',
+    ip: req.ip || req.connection.remoteAddress,
+    country: req.headers['cf-ipcountry'] || 'XX',
   })
   await saveUser(discordUser.id, discordUser.username)
-
-  return res.redirect(
-    `${ConfigDiscord.oauthPanelRedirect}?discordID=${discordUser.id}&accessToken=${panelAccessToken}&expirationDate=${discordUserToken.expirationDate.getTime()}${
-      redirect ? `&redirect=${redirect}` : ''
-    }`,
-  )
+  const session = await resolveApplicationSession(token, { touch: false })
+  if (!session) throw new AuthSessionError(401, 'unauthorized', 'Please start a new sign-in attempt.')
+  try {
+    await redis.set(
+      `gmi:auth:profile:${discordUser.id}`,
+      JSON.stringify({
+        globalName: discordUser.global_name || discordUser.username,
+        displayName: discordUser.global_name || discordUser.username,
+        avatarURL: discordUser.avatar
+          ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.webp`
+          : '',
+        discriminator: discordUser.discriminator || '',
+      }),
+      'EX',
+      3600,
+    )
+  } catch {
+    /* Cached profile decoration is independent from the successful sign-in. */
+  }
+  if (!(await resolveApplicationSession(token, { touch: false }))) {
+    await redis.del(`gmi:auth:profile:${discordUser.id}`).catch(() => {})
+    throw new AuthSessionError(401, 'unauthorized', 'Please start a new sign-in attempt.')
+  }
+  res.append('Set-Cookie', serializeAuthCookie(actorCookieName(), '', new Date(0)))
+  res.append('Set-Cookie', serializeAuthCookie(sessionCookieName(), token, session.absoluteExpiresAt))
+  const destination = new URL(ConfigDiscord.oauthPanelRedirect)
+  destination.searchParams.set('redirect', flow.redirect)
+  return res.redirect(destination.toString())
 }
 
 export async function getUserGuildsOwnOrAdmins(req: Request, res: Response) {
@@ -193,7 +245,7 @@ export async function findGuild(req: Request, res: Response) {
   })
 }
 
-export async function findGuildChannels(req: Request, res: Response, next: NextFunction) {
+export async function findGuildChannels(req: Request, res: Response, _next: NextFunction) {
   const dscGuild = req.dscGuild!
 
   return res.send(dscGuild.channels)
@@ -217,8 +269,15 @@ export async function getGuildRoles(req: Request, res: Response) {
 
 export async function findGuildServers(req: Request, res: Response) {
   const dscGuild = req.dscGuild!
+  return res.send(await dashboardServers(req, dscGuild.id))
+}
 
-  return res.send(await getServersFromDiscordGuildID(dscGuild.id))
+async function dashboardServers(req: Request, guildID: string) {
+  const servers = await getServersFromDiscordGuildID(guildID)
+  const allowed = await Promise.all(
+    servers.map((server) => canAccessDashboardGuild(req.panelUser!, guildID, { serverID: server.id })),
+  )
+  return servers.filter((_server, index) => allowed[index])
 }
 
 export async function findGuildServer(req: Request, res: Response) {
@@ -242,23 +301,16 @@ export async function getGuildLinks(req: Request, res: Response) {
 }
 
 export async function postGuildLinks(req: Request, res: Response) {
-  const guild = req.guild!
-  const isPremium = await guild.isPremium()
-
-  const links = await guild.getLinks()
-  if (links.length >= 2 && !isPremium) {
-    return res.status(403).send({
-      error: 'max links reached',
-    })
-  }
-
-  return res.send(await guild.createNewLink())
+  const result = await createDashboardLink(req.guild!, req.body, !req.body || Object.keys(req.body).length === 0)
+  return res.status(result.status).send(result.body)
 }
 
 export async function putGuildLinks(req: Request, res: Response) {
   const linkID = getSingleParam(req.params.linkID)
   const guild = req.guild!
-  const { url, alias, active } = req.body
+  const patch = DashboardLinkSchema.partial().safeParse(req.body)
+  if (!patch.success) return res.status(400).send({ error: 'invalid_link' })
+  const { url, alias, active } = patch.data
 
   const link = await guild.getLink(Number(linkID))
   if (!link) {
@@ -267,6 +319,12 @@ export async function putGuildLinks(req: Request, res: Response) {
     })
   }
 
+  if (
+    (active ?? link.active) &&
+    !DashboardLinkSchema.safeParse({ url: url ?? link.url, alias: alias ?? link.alias, active: active ?? link.active })
+      .success
+  )
+    return res.status(400).send({ error: 'invalid_link' })
   return res.send(
     await prisma.gm_server_links.update({
       where: {
@@ -331,7 +389,11 @@ export async function getGuildAdmins(req: Request, res: Response) {
 
 export async function getGuildBans(req: Request, res: Response) {
   const guild = req.guild!
-  const result = await processGetGuildBans(guild)
+  const servers = await dashboardServers(req, guild.id)
+  const result = await processGetGuildBans(
+    guild,
+    servers.map((server) => server.id),
+  )
   return res.status(result.status).json(result.body)
 }
 
@@ -393,31 +455,16 @@ export async function deleteGuildVerificationsRoles(req: Request, res: Response)
 }
 
 export async function createGuildVerificationsRoles(req: Request, res: Response) {
-  const guild = req.guild!
   const roleID = getSingleParam(req.params.roleID)
-  const isPremium = await guild.isPremium()
-
-  const verificationRoles = await guild.getVerificationRoles()
-  if (verificationRoles.length >= 2 && !isPremium) {
-    return res.status(403).send({
-      error: 'max verification roles reached',
-    })
-  }
-
-  if (verificationRoles.find((role) => role.roleID === roleID)) {
-    return res.status(409).send({
-      error: 'role already exists',
-    })
-  }
-
-  const dscGuild = req.dscGuild!
-  if (!dscGuild.roles.some((role: any) => role.id === roleID)) {
-    return res.status(404).send({
-      error: 'role not found',
-    })
-  }
-
-  return res.send(await guild.createVerificationRole(roleID))
+  if (!req.dscGuild!.roles.some((role: any) => role.id === roleID))
+    return res.status(404).send({ error: 'role not found' })
+  const result = await createDashboardVerificationRole(
+    req.guild!,
+    roleID,
+    req.body,
+    !req.body || Object.keys(req.body).length === 0,
+  )
+  return res.status(result.status).send(result.body)
 }
 
 // Status Buttons
@@ -438,6 +485,11 @@ export async function postServerStatus(req: Request, res: Response) {
   return res.send(await enqueueDiscordServerStatusCreate(server.id, channelID))
 }
 
+export async function previewServerStatus(req: Request, res: Response) {
+  const result = await processPreviewServerStatus(req.server!, req.body)
+  return res.status(result.status).send(result.body)
+}
+
 export async function getServerStatusButtons(req: Request, res: Response) {
   const server = req.server!
   // findStatusButtons() always resolves to an array (never null), so no fallback is needed.
@@ -447,7 +499,9 @@ export async function getServerStatusButtons(req: Request, res: Response) {
 export async function putServerStatusButtons(req: Request, res: Response) {
   const server = req.server!
   const buttonID = getSingleParam(req.params.buttonID)
-  const { name, emoji, url, enable } = req.body
+  const patch = StatusConfigurationButtonSchema.omit({ id: true }).partial().safeParse(req.body)
+  if (!patch.success) return res.status(400).send({ error: 'invalid_status_button' })
+  const { name, emoji, url, enable } = patch.data
 
   const button = await server.findStatusButton(Number(buttonID))
   if (!button) {
@@ -456,6 +510,16 @@ export async function putServerStatusButtons(req: Request, res: Response) {
     })
   }
 
+  if (
+    (enable ?? button.enable) &&
+    !StatusConfigurationButtonSchema.omit({ id: true }).safeParse({
+      name: name ?? button.name,
+      emoji: emoji ?? button.emoji,
+      url: url ?? button.url,
+      enable: enable ?? button.enable,
+    }).success
+  )
+    return res.status(400).send({ error: 'invalid_status_button' })
   const updateButton = await prisma.gm_status_button.update({
     where: {
       id: button.id,
@@ -469,7 +533,7 @@ export async function putServerStatusButtons(req: Request, res: Response) {
     },
   })
 
-  if (updateButton.enable) {
+  if (button.enable || updateButton.enable) {
     await enqueueDiscordServerStatusRefresh(server.id)
   }
 
@@ -504,34 +568,42 @@ export async function deleteServerStatusButtons(req: Request, res: Response) {
 
 export async function findServerScreenshots(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await server.getScreenshotsChannel()) || {})
+  return res.send(DashboardChannelConfigurationSchema.parse((await server.getScreenshotsChannel()) || {}))
 }
 
 export async function postServerScreenshots(req: Request, res: Response) {
   const server = req.server!
   const { channelID } = req.body
-  return res.send((await enqueueDiscordServerScreenshotChannelCreate(server.id, channelID)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse(
+      (await enqueueDiscordServerScreenshotChannelCreate(server.id, channelID)) || {},
+    ),
+  )
 }
 
 export async function deleteServerScreenshots(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await enqueueDiscordServerScreenshotChannelDelete(server.id)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse((await enqueueDiscordServerScreenshotChannelDelete(server.id)) || {}),
+  )
 }
 
 export async function findServerSyncChat(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await server.getSyncChat()) || {})
+  return res.send(DashboardChatConfigurationSchema.parse((await server.getSyncChat()) || {}))
 }
 
 export async function postServerSyncChat(req: Request, res: Response) {
   const server = req.server!
   const { channelID } = req.body
-  return res.send((await enqueueDiscordServerSyncChatCreate(server.id, channelID)) || {})
+  return res.send(
+    DashboardChatConfigurationSchema.parse((await enqueueDiscordServerSyncChatCreate(server.id, channelID)) || {}),
+  )
 }
 
 export async function deleteServerSyncChat(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await enqueueDiscordServerSyncChatDelete(server.id)) || {})
+  return res.send(DashboardChatConfigurationSchema.parse((await enqueueDiscordServerSyncChatDelete(server.id)) || {}))
 }
 
 export async function getGmodToDiscordFilter(req: Request, res: Response) {
@@ -547,16 +619,14 @@ export async function getGmodToDiscordFilter(req: Request, res: Response) {
 }
 
 export async function postGmodToDiscordFilter(req: Request, res: Response) {
-  const server = req.server!
-
-  const filter = await prisma.gm_server_sync_chat_filter.create({
-    data: {
-      serverID: server.id,
-    },
-  })
-
-  await redis.del(`server:${server.id}:gmodToDiscordFilter`)
-  return res.send(filter)
+  const result = await createDashboardServerEntity(
+    req.server!,
+    'chatFilter',
+    req.body,
+    undefined,
+    !req.body || Object.keys(req.body).length === 0,
+  )
+  return res.status(result.status).send(result.body)
 }
 
 export async function putGmodToDiscordFilter(req: Request, res: Response) {
@@ -593,7 +663,7 @@ export async function putPlayerBypassMaintenance(req: Request, res: Response) {
 }
 
 export async function postUserStartVerification(req: Request, res: Response) {
-  const result = await processPostUserStartVerification(String(req.params.discordID))
+  const result = await processPostUserStartVerification(getSingleParam(req.params.discordID))
   return res.status(result.status).json(result.body)
 }
 
@@ -612,7 +682,7 @@ export async function deleteAutoRoles(req: Request, res: Response) {
 }
 
 export async function getAutoRoles(req: Request, res: Response) {
-  const result = await processGetAutoRoles(String(req.params.guildID))
+  const result = await processGetAutoRoles(getSingleParam(req.params.guildID))
   return res.status(result.status).send(result.body)
 }
 
@@ -726,6 +796,11 @@ export async function deleteVerificationMessage(req: Request, res: Response) {
   return res.send(msg)
 }
 
+export async function getPublicServerRanking(req: Request, res: Response) {
+  const result = await processGetPublicServerRanking(req.query)
+  return res.status(result.status).send(result.body)
+}
+
 export async function getPublicServers(req: Request, res: Response) {
   const serversData = await prisma.gm_server.findMany({
     where: {
@@ -771,7 +846,7 @@ export async function getPublicServers(req: Request, res: Response) {
 
 export async function getVoteChannels(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await server.getVoteChannel()) || {})
+  return res.send(DashboardChannelConfigurationSchema.parse((await server.getVoteChannel()) || {}))
 }
 
 export async function postVoteChannels(req: Request, res: Response) {
@@ -784,17 +859,23 @@ export async function postVoteChannels(req: Request, res: Response) {
     })
   }
 
-  return res.send((await enqueueDiscordServerVoteChannelCreate(server.id, channelID)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse(
+      (await enqueueDiscordServerVoteChannelCreate(server.id, channelID)) || {},
+    ),
+  )
 }
 
 export async function deleteVoteChannels(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await enqueueDiscordServerVoteChannelDelete(server.id)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse((await enqueueDiscordServerVoteChannelDelete(server.id)) || {}),
+  )
 }
 
 export async function getLogsChannel(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await server.getLogsChannel()) || {})
+  return res.send(DashboardChannelConfigurationSchema.parse((await server.getLogsChannel()) || {}))
 }
 
 export async function postLogsChannel(req: Request, res: Response) {
@@ -807,12 +888,18 @@ export async function postLogsChannel(req: Request, res: Response) {
     })
   }
 
-  return res.send((await enqueueDiscordServerLogsChannelCreate(server.id, channelID)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse(
+      (await enqueueDiscordServerLogsChannelCreate(server.id, channelID)) || {},
+    ),
+  )
 }
 
 export async function deleteLogsChannel(req: Request, res: Response) {
   const server = req.server!
-  return res.send((await enqueueDiscordServerLogsChannelDelete(server.id)) || {})
+  return res.send(
+    DashboardChannelConfigurationSchema.parse((await enqueueDiscordServerLogsChannelDelete(server.id)) || {}),
+  )
 }
 
 export async function getGuildSettings(req: Request, res: Response) {
@@ -837,7 +924,7 @@ export async function getGuildSetting(req: Request, res: Response) {
     return res.send({
       value: await guild.getSetting(setting),
     })
-  } catch (error) {
+  } catch {
     return res.status(404).send({
       error: 'Setting not found',
     })
@@ -858,6 +945,7 @@ export async function putGuildSetting(req: Request, res: Response) {
   try {
     return res.send(await guild.setSetting(setting, value))
   } catch (error) {
+    if (error instanceof AccessDeniedError) throw error
     return res.status(404).json({
       error: 'Setting not found or not allowed',
     })
@@ -878,7 +966,7 @@ export async function getServerSetting(req: Request, res: Response) {
     return res.send({
       value: await server.getSetting(setting),
     })
-  } catch (error) {
+  } catch {
     return res.status(404).send({
       error: 'Setting not found',
     })
@@ -901,6 +989,7 @@ export async function putServerSetting(req: Request, res: Response) {
   try {
     updatedSetting = await server.setSetting(setting, value, 'dashboard')
   } catch (error) {
+    if (error instanceof AccessDeniedError) throw error
     return res.status(404).send({
       error: 'Setting not found or not allowed',
     })
@@ -909,7 +998,7 @@ export async function putServerSetting(req: Request, res: Response) {
   if (statusRefreshSettings.has(setting)) {
     try {
       await enqueueDiscordServerStatusRefresh(server.id)
-    } catch (error) {
+    } catch {
       return res.status(502).send({
         error: 'Setting updated but status refresh dispatch failed',
       })
@@ -943,17 +1032,14 @@ export async function getServerRoles(req: Request, res: Response) {
 }
 
 export async function postServerRoles(req: Request, res: Response) {
-  const serverID = getSingleParam(req.params.serverID)
-  const roleID = getSingleParam(req.params.roleID)
-
-  const role = await prisma.gm_server_sync_roles.create({
-    data: {
-      serverID,
-      roleID,
-    },
-  })
-
-  return res.send(role)
+  const result = await createDashboardServerEntity(
+    req.server!,
+    'role',
+    req.body,
+    getSingleParam(req.params.roleID),
+    !req.body || Object.keys(req.body).length === 0,
+  )
+  return res.status(result.status).send(result.body)
 }
 
 export async function putServerRoles(req: Request, res: Response) {
@@ -1033,17 +1119,14 @@ export async function getServerTeams(req: Request, res: Response) {
 }
 
 export async function postServerTeams(req: Request, res: Response) {
-  const serverID = getSingleParam(req.params.serverID)
-  const roleID = getSingleParam(req.params.roleID)
-
-  const role = await prisma.gm_server_sync_team_roles.create({
-    data: {
-      serverID,
-      roleID,
-    },
-  })
-
-  return res.send(role)
+  const result = await createDashboardServerEntity(
+    req.server!,
+    'team',
+    req.body,
+    getSingleParam(req.params.roleID),
+    !req.body || Object.keys(req.body).length === 0,
+  )
+  return res.status(result.status).send(result.body)
 }
 
 export async function putServerTeams(req: Request, res: Response) {
@@ -1064,6 +1147,8 @@ export async function putServerTeams(req: Request, res: Response) {
   }
 
   const { teamName, enable } = req.body
+  const disableOnly = enable === false && (teamName === undefined || teamName === role.teamName)
+  if (!disableOnly) assertCapability(await resolveGuildAccess(req.server!.guild), 'sync.teams')
   return res.send(
     await prisma.gm_server_sync_team_roles.update({
       where: {
@@ -1126,8 +1211,8 @@ export async function getGuildBotRoleSubordination(req: Request, res: Response) 
 }
 
 export async function patchGuildBotInstance(req: Request, res: Response) {
-  const { token } = req.body
-  if (badArgument([token])) {
+  const input = CustomBotTokenCommandSchema.safeParse(req.body)
+  if (!input.success) {
     return res.status(400).send({
       error: 'Missing required arguments',
     })
@@ -1135,14 +1220,13 @@ export async function patchGuildBotInstance(req: Request, res: Response) {
 
   const guild = req.guild!
   try {
-    await guild.updateBotInstanceToken(token)
+    await guild.updateBotInstanceToken(input.data.token)
     // getBotClientInfo() always resolves to an object (or throws), never falsy, so no
     // fallback is needed here.
     return res.send(await guild.getBotClientInfo(req.panelUser!.user))
-  } catch (error: any) {
-    return res.status(400).send({
-      error: error.message,
-    })
+  } catch (error) {
+    if (error instanceof AccessDeniedError) throw error
+    return res.status(400).send({ error: 'Unable to configure the custom bot.' })
   }
 }
 
@@ -1154,49 +1238,34 @@ export async function postGmodPurchase(req: Request, res: Response) {
 }
 
 export async function deleteGmodPurchase(req: Request, res: Response) {
-  const result = await processDeleteGmodPurchase(String(req.params.discordID), req.guild!)
+  const result = await processDeleteGmodPurchase(getSingleParam(req.params.discordID), req.guild!)
   return res.status(result.status).send(result.body)
 }
 
 export async function deleteUserGmodPurchase(req: Request, res: Response) {
   const guildID = getSingleParam(req.params.guildID)
-  const dscGuild = await enqueueDiscordGuildSnapshot(guildID)
-
-  if (dscGuild && !(await req.panelUser!.isAdminOfGuild(guildID))) {
-    return res.status(403).send({
-      error: 'not_admin_of_guild',
-    })
-  }
-
+  // This personal recovery operation verifies purchase ownership through the linked Steam
+  // identity in its model, even after Discord access or the guild's bot has disappeared.
   const result = await processDeleteUserGmodPurchase(getSingleParam(req.params.discordID), guildID)
   return res.status(result.status).send(result.body)
 }
 
 export async function putGuildBotInstance(req: Request, res: Response) {
-  const { username, avatar, token, status } = req.body
+  const input = CustomBotProfileCommandSchema.safeParse(req.body)
+  if (!input.success) return res.status(400).send({ error: 'Invalid custom bot profile.' })
   const guild = req.guild!
-
-  if (badArgument([username, avatar, token, status])) {
-    return res.status(400).send({
-      error: 'Missing required arguments',
-    })
-  }
-
-  await guild.updateBotInstanceInfo({ username, avatar, token, status })
-  // getBotClientInfo() always resolves to an object (or throws), never falsy, so no
-  // fallback is needed here.
+  await guild.updateBotInstanceInfo(input.data)
   return res.send(await guild.getBotClientInfo(req.panelUser!.user))
 }
 
 export async function deleteGuildBotInstance(req: Request, res: Response) {
-  return todoControllers(req, res)
-  // const guild = req.guild!;
-  // await guild.deleteBotInstance();
-  // return res.send(await guild.getBotClientInfo(req.panelUser!.user));
+  res.setHeader('Cache-Control', 'no-store')
+  const result = await processDeleteGuildBotInstance(req.guild!)
+  return res.status(result.status).send(result.body)
 }
 
 export async function getUserGmodStorePurchases(req: Request, res: Response) {
-  const result = await processGetUserGmodStorePurchases(String(req.params.discordID))
+  const result = await processGetUserGmodStorePurchases(getSingleParam(req.params.discordID))
   return res.status(result.status).send(result.body)
 }
 
@@ -1213,15 +1282,14 @@ export async function getServerPseudo(req: Request, res: Response) {
 }
 
 export async function postServerPseudo(req: Request, res: Response) {
-  const serverID = getSingleParam(req.params.serverID)
-
-  const pseudo = await prisma.gm_server_pseudo.create({
-    data: {
-      serverID,
-    },
-  })
-
-  return res.send(pseudo)
+  const result = await createDashboardServerEntity(
+    req.server!,
+    'pseudo',
+    req.body,
+    undefined,
+    !req.body || Object.keys(req.body).length === 0,
+  )
+  return res.status(result.status).send(result.body)
 }
 
 export async function putServerPseudo(req: Request, res: Response) {
@@ -1236,22 +1304,6 @@ export async function deleteServerPseudo(req: Request, res: Response) {
   const roleID = getSingleParam(req.params.roleID)
   const result = await processDeleteServerPseudo(String(serverID), roleID)
   return res.status(result.status).send(result.body)
-}
-
-export async function getUserNotifications(req: Request, res: Response) {
-  const discordID = getSingleParam(req.params.discordID)
-  return res.json(
-    await prisma.gm_users_notifications.findMany({
-      where: { discordID },
-    }),
-  )
-}
-
-export async function patchUserNotifications(req: Request, res: Response) {
-  const discordID = getSingleParam(req.params.discordID)
-  const notificationID = getSingleParam(req.params.notificationID)
-  const result = await processPatchUserNotifications(String(discordID), notificationID)
-  return res.status(result.status).json(result.body)
 }
 
 export async function getUserDataRequest(req: Request, res: Response) {
@@ -1300,7 +1352,7 @@ export async function getServerReportBugs(req: Request, res: Response) {
 }
 
 export async function getServerLogs(req: Request, res: Response) {
-  const result = await processGetServerLogs(String(req.params.serverID), req.query)
+  const result = await processGetServerLogs(req.server!.id, req.query, req.server!.guild)
   return res.status(result.status).send(result.body)
 }
 
@@ -1317,14 +1369,7 @@ export async function getScreenshotsList(req: Request, res: Response) {
 }
 
 export async function getServerLogsTrigger(req: Request, res: Response) {
-  const server = req.server!
-  if (!(await server.isPremium())) {
-    return res.status(403).send({
-      error: 'Server is not premium',
-    })
-  }
-  // getLogsTrigger() always resolves to an array (never null), so no fallback is needed here.
-  return res.send(await server.getLogsTrigger())
+  return res.send(await req.server!.getLogsTrigger())
 }
 
 export async function postServerLogsTrigger(req: Request, res: Response) {

@@ -10,9 +10,8 @@ vi.mock('../../../../../../src/utils/api.js', () => ({
 }))
 
 const { fetchAPI } = await import('../../../../../../src/utils/api.js')
-const { ServerScreenshotList } = await import(
-  '../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.js'
-)
+const { ServerScreenshotList } =
+  await import('../../../../../../src/pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.js')
 
 const SCREENSHOTS_URL_PREFIX = '/users/:discordID/guilds/:guildID/servers/:serverID/screenshots?'
 
@@ -135,7 +134,7 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.tsx', 
   it('shows the end-of-list message once a short page indicates no more results', async () => {
     ;(fetchAPI as Mock).mockResolvedValue(okJson(page([shot()])))
     renderPage()
-    await vi.waitFor(() => expect(screen.getByText('End of List')).toBeInTheDocument())
+    await vi.waitFor(() => expect(screen.getByText('All received screenshots have been loaded.')).toBeInTheDocument())
   })
 
   it('does not show the end-of-list message while more pages remain', async () => {
@@ -143,15 +142,13 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.tsx', 
     ;(fetchAPI as Mock).mockResolvedValue(okJson(page(fullPage)))
     renderPage()
     await vi.waitFor(() => expect(screen.getAllByText('Shot').length).toBe(20))
-    expect(screen.queryByText('End of List')).not.toBeInTheDocument()
+    expect(screen.queryByText('All received screenshots have been loaded.')).not.toBeInTheDocument()
   })
 
   it('loads a second page on scroll, appending items and advancing the offset', async () => {
     const firstPage = Array.from({ length: 20 }, (_, i) => shot({ id: i, title: `Shot ${i}` }))
     const secondPage = [shot({ id: 100, title: 'Shot 100' })]
-    ;(fetchAPI as Mock)
-      .mockResolvedValueOnce(okJson(page(firstPage)))
-      .mockResolvedValueOnce(okJson(page(secondPage)))
+    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson(page(firstPage))).mockResolvedValueOnce(okJson(page(secondPage)))
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('Shot 0')).toBeInTheDocument())
 
@@ -166,12 +163,20 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.tsx', 
     await vi.waitFor(() => expect(screen.getByText('Shot 100')).toBeInTheDocument())
   })
 
-  it('logs an error and stops loading when the fetch response is not ok', async () => {
+  it('shows a failed page, pauses automatic loading and retries only on request', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     ;(fetchAPI as Mock).mockResolvedValue({ ok: false, json: async () => ({}) })
     const { container } = renderPage()
     await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
     expect(container.querySelector('.loading-spinner')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toBeInTheDocument()
+    sentinelNearViewport = true
+    await fireEvent.scroll(window)
+    expect(fetchAPI).toHaveBeenCalledOnce()
+    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson(page([shot({ title: 'Recovered screenshot' })])))
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await vi.waitFor(() => expect(screen.getByText('Recovered screenshot')).toBeInTheDocument())
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     errorSpy.mockRestore()
   })
 
@@ -200,9 +205,7 @@ describe('pages/dashboard/guilds/servers/screenshots/ServerScreenshotList.tsx', 
 
     const firstPage = Array.from({ length: 20 }, (_, i) => shot({ id: i, title: `Shot ${i}` }))
     const secondPage = [shot({ id: 200, title: 'Shot 200' })]
-    ;(fetchAPI as Mock)
-      .mockResolvedValueOnce(okJson(page(firstPage)))
-      .mockResolvedValueOnce(okJson(page(secondPage)))
+    ;(fetchAPI as Mock).mockResolvedValueOnce(okJson(page(firstPage))).mockResolvedValueOnce(okJson(page(secondPage)))
     renderPage()
     await vi.waitFor(() => expect(screen.getByText('Shot 0')).toBeInTheDocument())
 

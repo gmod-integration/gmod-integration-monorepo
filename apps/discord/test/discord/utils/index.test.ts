@@ -120,6 +120,17 @@ describe('discord/utils/index', () => {
   })
 
   describe('getServerChart', () => {
+    it('renders preview PNGs without touching Redis or MinIO even if a stored cache exists', async () => {
+      redisMock.get.mockResolvedValue('stored-chart')
+      prismaMock.gm_server_status_history.findMany.mockResolvedValueOnce([])
+      prismaMock.gm_server_status.findFirst.mockResolvedValueOnce({ maxPlayers: 32 })
+      expect(await getServerChart(makeServer(), { persist: false })).toEqual(Buffer.from('fake-png-bytes'))
+      expect(redisMock.get).not.toHaveBeenCalled()
+      expect(redisMock.set).not.toHaveBeenCalled()
+      expect(createBucketIfNotExistsMock).not.toHaveBeenCalled()
+      expect(s3SendMock).not.toHaveBeenCalled()
+      expect(sharpMock).toHaveBeenCalledOnce()
+    })
     it('returns the cached PNG straight from MinIO when a cache entry exists', async () => {
       redisMock.get.mockResolvedValueOnce('1')
       s3SendMock.mockResolvedValueOnce({ Body: readableFrom([Buffer.from('a'), Buffer.from('b')]) })
@@ -143,7 +154,7 @@ describe('discord/utils/index', () => {
 
       expect(errorSpy).toHaveBeenCalledWith('Error fetching server chart from MinIO:', expect.any(Error))
       expect(result).toEqual(Buffer.from('fake-png-bytes'))
-      expect(redisMock.set).toHaveBeenCalledWith('server:srv1:chart', true, 'EX', 240)
+      expect(redisMock.set).toHaveBeenCalledWith('server:srv1:chart', 'true', 'EX', 240)
     })
 
     it('regenerates the chart when there is no cache entry, defaulting maxPlayers when absent', async () => {

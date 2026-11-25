@@ -28,7 +28,13 @@ describe('instrument', () => {
     await import('../../src/utils/instrument.js')
 
     expect(sentryInitMock).toHaveBeenCalledWith(
-      expect.objectContaining({ dsn: 'https://dsn.example', tracesSampleRate: 1.0, profilesSampleRate: 1.0 }),
+      expect.objectContaining({
+        dsn: 'https://dsn.example',
+        sendDefaultPii: false,
+        integrations: ['profiling-integration'],
+        tracesSampleRate: 1.0,
+        profilesSampleRate: 1.0,
+      }),
     )
   })
 

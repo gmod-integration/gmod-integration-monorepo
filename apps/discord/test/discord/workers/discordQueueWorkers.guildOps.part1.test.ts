@@ -1,6 +1,31 @@
+import type * as DomainAccess from '@gmod/domain-access/index.js'
 import { EventEmitter } from 'node:events'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FakeCollection, makeChannel, makeGuild, makeGuildClient, makeJob, makeMember, makeRole } from './fixtures.js'
+
+const accessMock = vi.hoisted(() => vi.fn())
+const prepareAvatarMock = vi.hoisted(() => vi.fn())
+const luaErrorsMocks = vi.hoisted(() => ({ validate: vi.fn(), send: vi.fn() }))
+const sendBugReportMock = vi.hoisted(() => vi.fn())
+vi.mock('../../../src/discord/utils/bugReports.js', () => ({ sendBugReport: sendBugReportMock }))
+vi.mock('../../../src/discord/utils/luaErrors.js', () => ({
+  validateLuaErrorsChannel: luaErrorsMocks.validate,
+  sendLuaError: luaErrorsMocks.send,
+}))
+vi.mock('../../../src/discord/utils/customBotAvatar.js', () => ({ prepareCustomBotAvatar: prepareAvatarMock }))
+vi.mock('@gmod/domain-access/index.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof DomainAccess>()),
+  resolveGuildAccess: accessMock,
+}))
+const access = (premium = true) => ({
+  guildID: 'g1',
+  premium,
+  customBot: false,
+  state: 'ready' as const,
+  sources: [],
+  revision: 'rev',
+  validUntil: '2030-01-01T00:00:00.000Z',
+})
 
 class FakeWorker extends EventEmitter {
   name: string
@@ -17,7 +42,7 @@ vi.mock('bullmq', () => ({ Worker: FakeWorker }))
 vi.mock('@gmod/infra-bullmq', () => ({ connection: {} }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const prismaMock: any = {
   gm_guild_verify_msg: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
@@ -72,6 +97,10 @@ function processor() {
 }
 
 function resetAllMocks() {
+  sendBugReportMock.mockReset().mockResolvedValue(undefined)
+  luaErrorsMocks.validate.mockReset().mockResolvedValue({ valid: true })
+  luaErrorsMocks.send.mockReset().mockResolvedValue(undefined)
+  accessMock.mockReset().mockResolvedValue(access())
   gmLogMock.mockClear()
   prismaMock.gm_guild_verify_msg.findFirst.mockReset()
   prismaMock.gm_guild_verify_msg.delete.mockReset().mockResolvedValue(undefined)
@@ -100,7 +129,106 @@ function lastReplyPayload() {
 describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
   beforeEach(() => resetAllMocks())
 
+  it('dispatches only persisted bug report identities without caller content or destinations', async () => {
+    const data = { serverID: 'server', reportID: 42 }
+    await processor()(makeJob('serverBugReport', data))
+    expect(sendBugReportMock).toHaveBeenCalledExactlyOnceWith(data)
+    expect(redisMock.set).not.toHaveBeenCalled()
+    for (const extra of [{ channelID: 'foreign' }, { report: { description: 'private' } }, { reportID: -1 }])
+      await expect(processor()(makeJob('serverBugReport', { ...data, ...extra }))).rejects.toThrow()
+    expect(sendBugReportMock).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches scoped Lua-error channel validation and returns only its safe result', async () => {
+    luaErrorsMocks.validate.mockResolvedValueOnce({ valid: false, reason: 'missing_permissions' })
+    const data = { serverID: 'server', channelID: '111111111111111111', correlationId: 'reply' }
+    await processor()(makeJob('serverErrorsChannelValidate', data))
+    expect(luaErrorsMocks.validate).toHaveBeenCalledExactlyOnceWith(data.serverID, data.channelID)
+    expect(lastReplyPayload()).toEqual({ correlationId: 'reply', valid: false, reason: 'missing_permissions' })
+    await expect(
+      processor()(makeJob('serverErrorsChannelValidate', { ...data, channelID: 'foreign', valid: true })),
+    ).rejects.toThrow()
+    expect(luaErrorsMocks.validate).toHaveBeenCalledOnce()
+  })
+
+  it('dispatches only strict saved Lua-error payloads without reply secrets or supplied destinations', async () => {
+    const data = {
+      serverID: 'server',
+      errorID: '0123456789abcdef01234567',
+      report: { error: 'boom', stack: 'line1', realm: 'server', count: 1, uptime: 10 },
+    }
+    await processor()(makeJob('serverLuaError', data))
+    expect(luaErrorsMocks.send).toHaveBeenCalledExactlyOnceWith(data)
+    expect(redisMock.set).not.toHaveBeenCalled()
+    await expect(processor()(makeJob('serverLuaError', { ...data, channelID: '111111111111111111' }))).rejects.toThrow()
+    expect(luaErrorsMocks.send).toHaveBeenCalledOnce()
+  })
+
+  it('replies to a fresh scoped member role lookup without returning member data', async () => {
+    const guildID = '111111111111111111',
+      discordID = '222222222222222222',
+      roleID = '333333333333333333'
+    const role = { id: roleID, guild: { id: guildID } }
+    const guild = {
+      id: guildID,
+      roles: { fetch: vi.fn().mockResolvedValue(role) },
+      members: {
+        fetch: vi.fn().mockResolvedValue({
+          id: discordID,
+          guild: { id: guildID },
+          partial: false,
+          roles: { cache: new Map([[roleID, role]]) },
+        }),
+      },
+    }
+    getGuildClientMock.mockResolvedValueOnce({ guilds: { fetch: vi.fn().mockResolvedValue(guild) } })
+    await processor()(makeJob('guildMemberRole', { guildID, discordID, roleID, correlationId: 'reply' }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'reply', available: true, hasRole: true, roleExists: true })
+    expect(guild.members.fetch).toHaveBeenCalledWith({ user: discordID, force: true, cache: false })
+  })
+
   describe('guildSnapshot', () => {
+    it('fetches independent guild data and its icon concurrently before replying', async () => {
+      let finishFetches!: () => void
+      let finishIcon!: (value: string) => void
+      const pendingFetch = new Promise<void>((resolve) => (finishFetches = resolve))
+      const pendingIcon = new Promise<string>((resolve) => (finishIcon = resolve))
+      const guild = makeGuild('g1')
+      guild.channels.fetch = vi.fn().mockReturnValue(pendingFetch)
+      guild.roles.fetch = vi.fn().mockReturnValue(pendingFetch)
+      guild.emojis.fetch = vi.fn().mockReturnValue(pendingFetch)
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+      ensureAvatarStoredMock.mockReturnValueOnce(pendingIcon)
+
+      const result = processor()(makeJob('guildSnapshot', { guildID: 'g1', correlationId: 'c1' }))
+      try {
+        await vi.waitFor(() => {
+          expect(guild.channels.fetch).toHaveBeenCalledOnce()
+          expect(guild.roles.fetch).toHaveBeenCalledOnce()
+          expect(guild.emojis.fetch).toHaveBeenCalledOnce()
+          expect(ensureAvatarStoredMock).toHaveBeenCalledOnce()
+        })
+        expect(redisMock.set).not.toHaveBeenCalled()
+        finishFetches()
+        await Promise.resolve()
+        expect(redisMock.set).not.toHaveBeenCalled()
+      } finally {
+        finishFetches()
+        finishIcon('stored-icon')
+        await result
+      }
+      expect(lastReplyPayload().guild.icon).toBe('stored-icon')
+    })
+
+    it('does not publish a snapshot if storing its icon fails', async () => {
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(makeGuild('g1')))
+      ensureAvatarStoredMock.mockRejectedValueOnce(new Error('Avatar unavailable'))
+      await expect(processor()(makeJob('guildSnapshot', { guildID: 'g1', correlationId: 'c1' }))).rejects.toThrow(
+        'Avatar unavailable',
+      )
+      expect(redisMock.set).not.toHaveBeenCalled()
+    })
+
     it('replies with guild=null when the guild cannot be fetched', async () => {
       const client = makeGuildClient(null)
       client.guilds.fetch = vi.fn().mockRejectedValueOnce(new Error('nope'))
@@ -500,6 +628,11 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
   })
 
   describe('guildUpdateBotProfile', () => {
+    const image = 'data:image/png;base64,AA=='
+    beforeEach(() => {
+      accessMock.mockResolvedValue({ ...access(), customBot: true })
+      prepareAvatarMock.mockReset().mockResolvedValue(Buffer.from('safe raster bytes'))
+    })
     function baseData(overrides: Record<string, any> = {}) {
       return { guildID: 'g1', correlationId: 'c1', ...overrides }
     }
@@ -516,39 +649,60 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', updated: false, error: 'Bot client is not custom' })
     })
 
+    it.each(['http://127.0.0.1/image', '/tmp/image.png', 'data:image/svg+xml;base64,AAAA'])(
+      'rejects an old job containing a resource-resolving avatar: %s',
+      async (avatar) => {
+        await expect(
+          processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'Changed name', avatar }))),
+        ).rejects.toThrow()
+        expect(getGuildClientMock).not.toHaveBeenCalled()
+        expect(prepareAvatarMock).not.toHaveBeenCalled()
+      },
+    )
+    it('does not mutate the username before rejecting invalid image bytes', async () => {
+      const edit = vi.fn()
+      getGuildClientMock.mockResolvedValueOnce({
+        user: { id: 'custom-bot', username: 'Existing', edit },
+      })
+      prepareAvatarMock.mockRejectedValueOnce(new Error('Invalid image bytes'))
+      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'Changed name', avatar: image })))
+      expect(edit).not.toHaveBeenCalled()
+      expect(lastReplyPayload().updated).toBe(false)
+    })
+    it('checks current custom-bot access before contacting the bot instance', async () => {
+      accessMock.mockResolvedValueOnce({ ...access(), customBot: false })
+      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'Changed name' })))
+      expect(getGuildClientMock).not.toHaveBeenCalled()
+      expect(lastReplyPayload().updated).toBe(false)
+    })
     it('updates username and avatar when both differ from current, and replies updated=true', async () => {
-      const setUsername = vi.fn().mockResolvedValue(undefined)
-      const setAvatar = vi.fn().mockResolvedValue(undefined)
+      const edit = vi.fn().mockResolvedValue(undefined)
       getGuildClientMock.mockResolvedValueOnce({
         user: {
           id: 'custom-bot',
           username: 'OldName',
           avatarURL: vi.fn().mockReturnValue('old-avatar'),
-          setUsername,
-          setAvatar,
+          edit,
         },
       })
-      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'NewName', avatar: 'new-avatar-data' })))
-      expect(setUsername).toHaveBeenCalledWith('NewName')
-      expect(setAvatar).toHaveBeenCalledWith('new-avatar-data')
+      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'NewName', avatar: image })))
+      expect(prepareAvatarMock).toHaveBeenCalledWith(image)
+      expect(edit).toHaveBeenCalledExactlyOnceWith({ username: 'NewName', avatar: Buffer.from('safe raster bytes') })
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', updated: true })
     })
 
     it('skips updates when username/avatar are unchanged or absent', async () => {
-      const setUsername = vi.fn().mockResolvedValue(undefined)
-      const setAvatar = vi.fn().mockResolvedValue(undefined)
+      const edit = vi.fn().mockResolvedValue(undefined)
       getGuildClientMock.mockResolvedValueOnce({
         user: {
           id: 'custom-bot',
           username: 'SameName',
           avatarURL: vi.fn().mockReturnValue('same-avatar'),
-          setUsername,
-          setAvatar,
+          edit,
         },
       })
-      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'SameName', avatar: 'same-avatar' })))
-      expect(setUsername).not.toHaveBeenCalled()
-      expect(setAvatar).not.toHaveBeenCalled()
+      await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'SameName' })))
+      expect(edit).not.toHaveBeenCalled()
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', updated: true })
     })
 
@@ -558,11 +712,15 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
           id: 'custom-bot',
           username: 'OldName',
           avatarURL: vi.fn().mockReturnValue('old-avatar'),
-          setUsername: vi.fn().mockRejectedValueOnce(new Error('rate limited')),
+          edit: vi.fn().mockRejectedValueOnce(new Error('rate limited')),
         },
       })
       await processor()(makeJob('guildUpdateBotProfile', baseData({ username: 'NewName' })))
-      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', updated: false, error: 'rate limited' })
+      expect(lastReplyPayload()).toEqual({
+        correlationId: 'c1',
+        updated: false,
+        error: 'Unable to update custom bot profile.',
+      })
     })
   })
 
@@ -613,21 +771,21 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
   })
 
   describe('guildAdmins', () => {
-    it('replies admins=[] when the guild cannot be fetched', async () => {
+    it('reports unavailable when the guild cannot be fetched', async () => {
       const client = makeGuildClient(null)
       client.guilds.fetch = vi.fn().mockRejectedValueOnce(new Error('nope'))
       getGuildClientMock.mockResolvedValueOnce(client)
       await processor()(makeJob('guildAdmins', { guildID: 'g1', correlationId: 'c1' }))
-      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', admins: [] })
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', available: false, admins: [] })
     })
 
-    it('replies admins=[] when members cannot be fetched', async () => {
+    it('reports unavailable when members cannot be fetched', async () => {
       const guild = makeGuild('g1', {
         members: { fetch: vi.fn().mockRejectedValueOnce(new Error('nope')), cache: new FakeCollection() },
       })
       getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
       await processor()(makeJob('guildAdmins', { guildID: 'g1', correlationId: 'c1' }))
-      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', admins: [] })
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', available: false, admins: [] })
     })
 
     it('filters to human administrators, with stored avatars', async () => {
@@ -702,6 +860,53 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 1)', () => {
         ...overrides,
       }
     }
+
+    it('rechecks a queued trigger after expiry and acknowledges a skipped delivery without calling Discord', async () => {
+      const queued = makeJob('guildSendLogMessage', baseData({ requiredCapability: 'logs.triggers' }))
+      accessMock.mockResolvedValueOnce(access(false))
+      await processor()(queued)
+      expect(accessMock).toHaveBeenCalledWith('g1')
+      expect(getGuildClientMock).not.toHaveBeenCalled()
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: false, error: 'upgrade_required' })
+    })
+
+    it('keeps unknown entitlement verification distinct from Free and skips the queued trigger', async () => {
+      accessMock.mockResolvedValueOnce({ ...access(false), state: 'unknown' })
+      await processor()(makeJob('guildSendLogMessage', baseData({ requiredCapability: 'logs.triggers' })))
+      expect(getGuildClientMock).not.toHaveBeenCalled()
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: false, error: 'entitlement_unknown' })
+    })
+
+    it('delivers an entitled trigger through the existing Discord queue adapter path', async () => {
+      const channel = makeChannel('chan1')
+      const guild = makeGuild('g1', { channels: { cache: new FakeCollection([['chan1', channel]]), fetch: vi.fn() } })
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+      await processor()(makeJob('guildSendLogMessage', baseData({ requiredCapability: 'logs.triggers' })))
+      expect(channel.send).toHaveBeenCalledOnce()
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: true })
+    })
+
+    it('rechecks a trigger when access expires while Discord becomes ready', async () => {
+      accessMock.mockResolvedValueOnce(access(true)).mockResolvedValueOnce(access(false))
+      const channel = makeChannel('chan1')
+      const guild = makeGuild('g1', { channels: { cache: new FakeCollection([['chan1', channel]]), fetch: vi.fn() } })
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+      await processor()(makeJob('guildSendLogMessage', baseData({ requiredCapability: 'logs.triggers' })))
+      expect(accessMock).toHaveBeenCalledTimes(2)
+      expect(channel.send).not.toHaveBeenCalled()
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: false, error: 'upgrade_required' })
+    })
+
+    it('keeps ordinary log deliveries free and does not require an entitlement lookup', async () => {
+      accessMock.mockResolvedValueOnce(access(false))
+      const channel = makeChannel('chan1')
+      const guild = makeGuild('g1', { channels: { cache: new FakeCollection([['chan1', channel]]), fetch: vi.fn() } })
+      getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+      await processor()(makeJob('guildSendLogMessage', baseData()))
+      expect(accessMock).not.toHaveBeenCalled()
+      expect(channel.send).toHaveBeenCalledOnce()
+      expect(lastReplyPayload()).toEqual({ correlationId: 'c1', sent: true })
+    })
 
     it('replies sent=false with error when the guild cannot be fetched', async () => {
       const client = makeGuildClient(null)

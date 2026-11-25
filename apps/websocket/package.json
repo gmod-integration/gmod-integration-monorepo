@@ -8,6 +8,7 @@
     "start": "tsx src/index.ts"
   },
   "dependencies": {
+    "@gmod/schema": "workspace:*",
     "@gmod/config": "workspace:*",
     "@gmod/core": "workspace:*",
     "@gmod/domain-server": "workspace:*",
@@ -16,6 +17,11 @@
     "@gmod/infra-redis": "workspace:*",
     "@gmod/infra-websocket": "workspace:*",
     "bullmq": "^5.71.0",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "@gmod/shared": "workspace:*",
+    "@gmod/domain-guild": "workspace:*",
+    "@gmod/infra-prisma": "workspace:*",
+    "@gmod/domain-access": "workspace:*",
+    "@gmod/domain-auth": "workspace:*"
   }
 }

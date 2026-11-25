@@ -1,0 +1,70 @@
+sequenceDiagram
+    autonumber
+    participant Web as Dashboard<br/>apps/website
+    participant API as API HTTP<br/>apps/api
+    participant WS as Passerelle WS<br/>apps/websocket
+    participant DB as MariaDB<br/>infra-prisma
+    participant Redis as Redis
+    participant Rights as domain-user / domain-guild<br/>droits Discord
+
+    Note over Web,API: Session applicative déjà créée : cookie HttpOnly<br/>les requêtes HTTP utilisent credentials: include
+    Web->>API: GET /v6/auth/session + cookie
+    API->>DB: Résoudre la session via domain-auth<br/>expiration, révocation et confidentialité
+    DB-->>API: Session valide
+    API-->>Web: Identité, échéances, csrfToken<br/>Cache-Control: no-store
+
+    Web->>API: POST /v6/auth/ws-ticket<br/>cookie + X-CSRF-Token
+    API->>API: Vérifier origine et CSRF
+    API->>DB: Revalider la session
+    DB-->>API: Session valide
+    API->>Redis: SET gmi:auth:ws-ticket:hash(ticket) = sessionID<br/>EX min(30 s, durée restante de session)
+    API-->>Web: ticket, expiresAt
+
+    Web->>WS: Handshake WebSocket ?ticket=...
+    WS->>WS: Vérifier l'origine
+    WS->>Redis: GETDEL gmi:auth:ws-ticket:hash(ticket)
+    Redis-->>WS: sessionID une seule fois, sinon null
+    opt Ticket trouvé
+        WS->>DB: validateApplicationSession(sessionID)
+        DB-->>WS: État durable de la session
+    end
+    alt Ticket absent, expiré, déjà utilisé ou session invalide
+        WS-->>Web: Refus HTTP 401
+    else Session valide
+        WS-->>Web: HTTP 101, connexion ouverte
+        WS->>Rights: Charger les guildes et serveurs administrables
+        Rights-->>WS: Guildes et serveurs autorisés
+        WS->>DB: Revalider la session avant utilisation
+        Note over Web,WS: L'ouverture du transport précède les contrôles initiaux de droits<br/>la passerelle peut encore fermer la connexion
+    end
+
+    loop Message serveur reçu ou push vers le dashboard
+        WS->>DB: Revalider session, expiration et confidentialité
+        WS->>Redis: Lire la révision courante des droits
+        opt Révision modifiée, invalidation reçue ou cache de 30 s expiré
+            WS->>Rights: Recharger les droits
+            Rights-->>WS: Guildes et serveurs autorisés
+        end
+        WS->>WS: Vérifier l'accès au serverID concerné
+        WS-->>Web: Réponse ou push si autorisé
+    end
+
+    opt Déconnexion ou révocation de session par HTTP
+        Web->>API: POST /v6/auth/logout<br/>cookie + X-CSRF-Token
+        API->>DB: revoke = true<br/>session et délégations associées
+        API->>Redis: PUBLISH gmi:auth:session-revoked
+        Redis-->>WS: Notification à chaque réplique
+        WS-->>Web: Fermer la connexion, code 1008
+        API-->>Web: revoked: true, effacer le cookie
+    end
+
+    Note over WS,DB: MariaDB reste l'autorité si une notification est manquée
+    loop Au plus toutes les 60 s, ou plus tôt à l'échéance de session
+        WS->>DB: validateApplicationSession(sessionID)
+        DB-->>WS: Session actuelle
+        opt Session expirée ou révoquée
+            WS-->>Web: Fermer la connexion, code 1008
+        end
+    end
+
+    Note over Web,WS: Après une fermeture 1008, le navigateur relit la session HTTP<br/>chaque tentative de reconnexion exige un nouveau ticket

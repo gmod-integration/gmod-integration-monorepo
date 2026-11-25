@@ -1,5 +1,7 @@
-import { Component, ParentProps } from 'solid-js'
+import { Show, type Component, type ParentProps } from 'solid-js'
+import { DashboardLinkSchema } from '@gmod/schema/server/DashboardEntitiesSchema.js'
 import { A } from '@solidjs/router'
+import { CopyableValue } from '../ui/CopyableValue.js'
 
 interface LinkValue extends ParentProps {
   text?: string
@@ -8,19 +10,24 @@ interface LinkValue extends ParentProps {
 }
 
 export const LinkValue: Component<LinkValue> = (props) => {
-  if (!props.text) {
-    props.text = props.url.replace(/https?:\/\//, '').replace(/\/$/, '')
+  const href = () => {
+    const parsed = DashboardLinkSchema.shape.url.safeParse(props.url)
+    return parsed.success ? parsed.data : undefined
   }
+  const text = () => props.text || props.url.replace(/https?:\/\//, '').replace(/\/$/, '')
   return (
-    <A
-      href={props.url}
-      target="_blank"
-      class="w-min text-nowrap rounded-md px-1 link link-hover"
-      style={{
-        'background-color': `hsla(0, 0%, 52%, 0.1)`,
-      }}
-    >
-      {props.text || ''}
-    </A>
+    <CopyableValue
+      value={props.url}
+      class={props.class}
+      display={
+        <Show when={href()} fallback={<span>{text()}</span>}>
+          {(url) => (
+            <A href={url()} target="_blank" rel="noopener noreferrer" class="link link-hover">
+              {text()}
+            </A>
+          )}
+        </Show>
+      }
+    />
   )
 }

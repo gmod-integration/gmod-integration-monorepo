@@ -1,20 +1,42 @@
 sequenceDiagram
-    participant Lua as GMod addon (submodule)
-    participant API as apps/api
+    autonumber
+    participant Lua as Addon GMod
     participant WS as apps/websocket
-    participant DB as MariaDB / Mongo (infra-prisma / infra-mongo)
-    participant BullMQ as packages/infra-bullmq (Redis)
-    participant Discord as apps/discord
-    participant Web as apps/website (dashboard)
+    participant Core as core / domain-*<br/>(code local)
+    participant DB as MariaDB / MongoDB
+    participant Relay as apps/webhook-relay
+    participant Discord as Discord
+    participant Web as Dashboard
+    participant API as apps/api
+    participant Queue as Redis / BullMQ
 
-    Lua->>API: HTTP request (server token/ID auth)
-    Lua->>WS: persistent WebSocket (server id/token)
-    API->>DB: read/write via domain-* classes
-    API->>BullMQ: enqueue job (e.g. sync role, post log)
-    BullMQ->>Discord: worker consumes job
-    Discord-->>BullMQ: reply written to Redis key (if a result is needed)
-    BullMQ-->>API: reply polled back (or timeout)
-    Web->>API: HTTP (dashboard CRUD)
-    Web->>WS: WebSocket (discordID + token auth)
-    WS-->>Web: live push (server status, ack)
-    WS->>BullMQ: wsSendToServerQueue / wsSendToAllClientsOfServerQueue
+    Note over Lua,Discord: 1. Chat en jeu vers Discord · connexion addon déjà prête
+    Lua->>WS: addon.request {id, method: POST, endpoint, body}
+    WS->>WS: Revalider les identifiants<br/>Valider contrat et limites
+    WS->>Core: handleAddonRequest(server, request)
+    Core->>DB: Journaliser l'événement<br/>Lire les réglages applicables
+    opt Sync autorisée, canal configuré<br/>et message accepté
+        Core->>Relay: POST authentifié · message filtré
+        Relay->>Discord: WebhookClient.send(message)
+        Discord-->>Relay: Résultat de publication
+        Relay-->>Core: Succès ou échec HTTP
+    end
+    Core-->>WS: Résultat métier {status, body}
+    WS-->>Lua: addon.response {id, status, body}
+    Note over WS,Core: Les endpoints désignent des opérations WS<br/>exécutées dans le processus WS
+
+    Note over Lua,Queue: 2. Modification d'un réglage ig_* depuis le dashboard
+    Web->>API: Mutation HTTP<br/>session, CSRF et autorisations
+    API->>Core: saveServerDashboardSettings<br/>(server, settings)
+    Core->>Core: Valider schéma et droits<br/>de modification
+    Core->>DB: Transaction Prisma · enregistrer les réglages
+    DB-->>Core: Transaction validée
+    Core->>Queue: Invalider le cache<br/>Ajouter wsSendToServer / wsEditSetting
+    Core-->>API: Réglages sauvegardés, sync: pending
+    API-->>Web: Confirmation de sauvegarde
+    opt Commande remise à une passerelle<br/>et socket addon disponible
+        Queue->>WS: Worker consomme wsSendToServer
+        WS->>Lua: wsEditSetting · livraison locale ou via pub/sub
+    end
+    Note over Web,Queue: L'enregistrement reste valide<br/>si la synchronisation échoue
+    Note over Lua,WS: La livraison au socket ne confirme pas<br/>l'application du réglage en jeu

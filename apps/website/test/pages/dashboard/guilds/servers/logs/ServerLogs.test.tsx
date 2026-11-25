@@ -31,7 +31,7 @@ describe('pages/dashboard/guilds/servers/logs/ServerLogs.tsx', () => {
       history: historyAt('/dashboard/guilds/g1/config/servers/s1/logs'),
     })
     await vi.waitFor(() => expect(screen.getByText('Logs Channel')).toBeInTheDocument())
-    expect(screen.getByText('Logs Trigger')).toBeInTheDocument()
+    expect(screen.getByText('Log alerts')).toBeInTheDocument()
     expect(screen.getByText('Logs')).toBeInTheDocument()
   })
 })

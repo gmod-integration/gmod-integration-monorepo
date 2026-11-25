@@ -77,7 +77,31 @@
     "loading_message": "Cela dépend de la taille de vos données, cela peut prendre un certain temps.",
     "request_my_data": "Demande de mes données",
     "delete_my_data": "Supprimer mes données",
-    "error_create_data_request": "Impossible de créer la requête de données"
+    "error_create_data_request": "Impossible de créer la requête de données",
+    "description": "Bağlı hesaplarınızı, oturumlarınızı ve kişisel verilerinizi yönetin.",
+    "erasure": {
+      "submit_error": "İstek doğrulanamadı. Tekrar deneyin; aynı istek yeniden kullanılacaktır.",
+      "title": "Hesabın silinmesini iste",
+      "scope": "Bu işlem kişisel profillerinizi, istatistiklerinizi, oturumlarınızı, dosyalarınızı ve veri dışa aktarımlarınızı siler.",
+      "retained": "İsteğin asgari kaydı, genel yasaklar ve itibar korunur. Topluluklar ve ortak satın alımlar kalır.",
+      "new_account": "Silme işleminden sonra yeniden giriş yaptığınızda yeni bir hesap oluşturulur.",
+      "confirmation": "Onaylamak için DELETE yazın",
+      "signout": "İstek kabul edildiğinde oturumunuz kapatılır. Bu tarayıcı, ilerlemeyi takip edebilmeniz için bir alındı kaydı saklar.",
+      "submit": "Silme isteğini onayla",
+      "completed": "İstenen silme işlemi tamamlandı.",
+      "running": "Kişisel verileriniz siliniyor. Oturumunuz kapandıktan sonra da ilerlemeyi buradan takip edebilirsiniz.",
+      "retry": "İsteğiniz korunuyor. İşlem otomatik olarak sürdürülecek; yeni bir istek göndermeniz gerekmez.",
+      "pending": "İsteğiniz kabul edildi ve işleme alınmayı bekliyor. Silme işlemi henüz tamamlanmadı.",
+      "checking": "Silme isteğiniz kontrol ediliyor…",
+      "progress": "Silme ilerlemesi",
+      "completed_date": "Tamamlanma tarihi",
+      "status_error": "İsteğin durumu kontrol edilemedi. Tekrar deneyin; alındı kaydınız korunur ve yeni bir istek oluşturulmaz.",
+      "paused": "Otomatik kontroller duraklatıldı. İsteğiniz etkin kalır; takibi sürdürmek için yeniden kontrol edin.",
+      "check_again": "Durumu yeniden kontrol et",
+      "sign_in_again": "Yeni hesap oluşturmak için giriş yap",
+      "return_account": "Hesaba dön",
+      "external_copies": "Discord’da paylaşılmış veya yedeklerde saklanan kopyalar ayrı olarak işlenmelidir. Bu kopyalar için destek ekibiyle iletişime geçin."
+    }
   },
   "premium": {
     "sync_chat": "Synchronisation",
@@ -115,7 +139,7 @@
     "guild_verification": "Vérification de la guilde",
     "guild_verification_role_limit": "Vérification de la guilde - Limite de rôle",
     "force_ply_link": "Forcer le lien du joueur",
-    "maintenance_white_list": "Entretien",
+    "maintenance_white_list": "Beyaz liste modu",
     "rcon": "Exécution RCON",
     "reward": "Récompenses",
     "free": "Gratuit",
@@ -175,8 +199,9 @@
   },
   "tools": {
     "needRolesPerms": "Le bot n'a pas la permission d'attribuer ou de supprimer des rôles aux utilisateurs. Mettez le rôle bot plus haut dans la liste des rôles, rôles affectés : {1}",
-    "needWS_1": "Cette fonctionnalité nécessite une",
-    "needWS_2": "connexion au travail correctement.",
+    "needWS_required": "GWSockets zorunludur",
+    "needWS_1": "Sunucunuza",
+    "needWS_2": "modülünü, Garry’s Mod adanmış sunucunuzun işletim sistemi ve mimarisine uygun sürümü seçerek garrysmod/lua/bin klasörüne kurun ve sunucuyu yeniden başlatın. WebSocket eklentinin tamamı için zorunludur; WebSocket bağlantısı olmadan eklenti kullanılamaz.",
     "needAddon": "Pour utiliser cette fonctionnalité, vous devez installer le(s) addon(s) :",
     "needAddon2": "de travailler correctement.",
     "upgrade_now": "Mise à jour maintenant",
@@ -205,7 +230,9 @@
     "type": "Type",
     "message": "Message",
     "actions": "Actions",
-    "mark_as_read": "Marquer comme lus"
+    "mark_as_read": "Marquer comme lus",
+    "mark_as_read_error": "Bildirim okundu olarak işaretlenemedi",
+    "mark_all_read_error": "Tüm bildirimler okundu olarak işaretlenemedi"
   },
   "home": {
     "hero": {
@@ -249,6 +276,111 @@
         "title": "Base de données des lecteurs",
         "description": "Voir tous les joueurs qui ont rejoint votre serveur, vous pouvez voir leur nom, steam id, discord id, date de jointure, date de la dernière jointure, temps total passé sur votre serveur, avertissements totaux, bans total ect... Vous pouvez également rechercher un lecteur par nom, steam id ou discord id."
       }
+    },
+    "catalog": {
+      "eyebrow": "Bir sohbet köprüsünden fazlası",
+      "title": "Tek topluluk. Tüm bağlantılar.",
+      "description": "Oyuncunun ilk bağlantısından sonraki hata raporuna kadar oyun ve Discord’un birlikte çalışmasını sağlayın.",
+      "documentation": "Rehberleri okuyun",
+      "explore": "Özellikleri keşfedin",
+      "all": "Tüm özellikler",
+      "availability": "Bazı özellikler Premium, GmodStore satın alımı veya uyumlu bir eklenti gerektirir. Sınırlar planınıza bağlıdır.",
+      "compare_plans": "Planları karşılaştırın",
+      "groups": {
+        "status": {
+          "title": "Sunucu durumu",
+          "intro": "Topluluğunuza oyunda neler olduğunu doğrudan Discord’da gösterin.",
+          "one": "Bağlantı, oyuncu sayısı, harita ve oyun modu",
+          "two": "Özel durum mesajları ve etkileşimli düğmeler",
+          "three": "Yayımlamadan önce durum mesajını önizleyin",
+          "four": "Oyuncu etkinlik grafikleri"
+        },
+        "chat": {
+          "title": "Sohbet ve görüntüler",
+          "intro": "Sohbetleri ve güzel anları oyun ile Discord arasında paylaşın.",
+          "one": "Oyun sohbetini seçilen Discord kanalına gönderme",
+          "two": "Discord’dan oyuna aktarım ve mesaj filtreleri",
+          "three": "Başlık ve çekim bilgileriyle oyuncu ekran görüntüleri",
+          "four": "Ekran görüntüsü galerisi ve Discord’da paylaşım"
+        },
+        "accounts": {
+          "title": "Bağlı hesaplar",
+          "intro": "Oyuncularınızı tanıyın ve yeni topluluk üyelerini karşılayın.",
+          "one": "Bağlı Steam ve Discord profilleri",
+          "two": "Doğrulama mesajları ve rol kuralları",
+          "three": "Discord’a katılan üyelere otomatik roller",
+          "four": "İsteğe bağlı doğrulama hatırlatmaları ve üye tercihleri"
+        },
+        "sync": {
+          "title": "Roller ve takma adlar",
+          "intro": "Oyundaki kimlikleri ve Discord rollerini kendi kurallarınızla bağlayın.",
+          "one": "Oyun gruplarını Discord rollerine bağlama",
+          "two": "Oyun içi meslekler veya takımlar için Discord rolleri",
+          "three": "Takma ad kuralları, önekler, sonekler ve biçimler",
+          "four": "Discord’dan oyuna isteğe bağlı rol ve ad eşitleme"
+        },
+        "players": {
+          "title": "Oyuncular ve etkinlik",
+          "intro": "Oturumlardaki oyuncuları bulun ve gelişimlerini takip edin.",
+          "one": "Oyuncu geçmişi, oyun süresi ve bağlantı sayıları",
+          "two": "Oyuncu istatistikleri, öldürmeler ve ölümler",
+          "three": "Etkinlik ve meslek başına süre grafikleri",
+          "four": "Sıralamalar ve desteklenen özel istatistikler"
+        },
+        "moderation": {
+          "title": "Moderasyon ve erişim",
+          "intro": "Kimin oynayabileceğini belirleyin ve moderasyon kayıtlarını elinizin altında tutun.",
+          "one": "Platformlar arası yasak kayıtları ve giriş kontrolleri",
+          "two": "Yönetici ve gerekçeyle AWarn3 uyarı geçmişi",
+          "three": "Elle verilen veya Discord rolüyle sağlanan beyaz liste erişimi",
+          "four": "Zorunlu hesap bağlantısı, istemci dalı ve Family Sharing kontrolleri"
+        },
+        "diagnostics": {
+          "title": "Günlükler ve tanılama",
+          "intro": "Sunucuda yaşanan olayların ayrıntılarını saklayın.",
+          "one": "Oyun olay günlükleri ve Discord hedefleri",
+          "two": "Belirlediğiniz koşullarla olay eylemleri",
+          "three": "Zaman damgası ve yığın izleriyle Lua hataları",
+          "four": "Adımlar ve ekran görüntüleriyle oyun içi hata raporları"
+        },
+        "community": {
+          "title": "Topluluk araçları",
+          "intro": "Sunucunuzu yönetin ve topluluğunuza kendi kimliğini kazandırın.",
+          "one": "Topluluk bağlantıları ve herkese açık sunucu sıralamaları",
+          "two": "Sunucu oyları ve Discord oy bildirimleri",
+          "three": "İzinlerle denetlenen RCON konsol komutları",
+          "four": "Özel bot profili ve etkinliği"
+        }
+      }
+    },
+    "presentation": {
+      "style_label": "Görünüm",
+      "hero_label": "Ana bölüm",
+      "stats_label": "İstatistikler",
+      "panorama": "Panorama",
+      "console": "Konsol",
+      "editorial": "Editoryal",
+      "ribbon": "Şerit",
+      "spotlight": "Büyük sayılar",
+      "ledger": "Kayıt",
+      "headline_first": "Sunucunuz.",
+      "headline_second": "Topluluğunuz.",
+      "headline_accent": "Birbirine bağlı.",
+      "discover": "Özellikleri keşfedin",
+      "preview_label": "Discord’unuza bir bakış",
+      "preview_caption": "Topluluğunuzdaki entegrasyondan bir örnek.",
+      "community_kicker": "Topluluk genelinde",
+      "community_title": "Sayılarla bağlantılar.",
+      "community_note": "Gmod Integration’da kaydedilen toplamlar.",
+      "metric_guild": "Discord toplulukları",
+      "metric_guild_detail": "Kayıtlı topluluklar",
+      "metric_server": "Oyun sunucuları",
+      "metric_server_detail": "Kayıtlı sunucular",
+      "metric_verified": "Bağlı hesaplar",
+      "metric_verified_detail": "Steam ve Discord bağlantısı",
+      "closing_kicker": "Sunucunuzdan Discord’unuza",
+      "closing_title": "Topluluğunuzu bir araya getirin.",
+      "closing_description": "Kurulum rehberini izleyin, sunucunuzu bağlayın ve topluluğunuz için uygun özellikleri seçin."
     }
   },
   "dashboard": {
@@ -259,7 +391,18 @@
       },
       "bugsReport": {
         "title": "Rapport sur les bogues",
-        "description": "Liste de tous les bogues signalés sur votre serveur"
+        "description": "Liste de tous les bogues signalés sur votre serveur",
+        "channel": {
+          "title": "Discord’da hata raporları",
+          "description": "Oyuncuların yeni hata raporlarını bir Discord metin kanalına gönderin. Kaydedilen raporlar ve ekran görüntüleri aşağıda kullanılabilir olmaya devam eder.",
+          "destination": "Hedef Discord kanalı",
+          "destination_help": "Yeni hata raporlarını almak için bir kanal seçin ve seçimi onaylayın.",
+          "select": "Kanal seç",
+          "remove": "Hedefi kaldır",
+          "empty": "Hedef kanal yok",
+          "load_error": "Hata raporu hedefi yüklenemedi.",
+          "remove_help": "Bu hedefe hata raporu göndermeyi durdurmak istiyor musunuz? Discord kanalı ve kaydedilen raporlar korunacak."
+        }
       },
       "chat": {
         "chats": "Chats",
@@ -505,8 +648,29 @@
         "active": "Activité",
         "actions": "Actions",
         "remove_status": "Supprimer l' état",
-        "description": "Ici, vous pouvez gérer votre message d'état du serveur et les boutons.",
+        "description": "Sunucu durum mesajını, oyuncu bilgilerini ve bağlantı düğmelerini hazırlayın. Ayarlar otomatik olarak kaydedilir; hazır olduğunda mesajı bir Discord kanalında yayımlayın.",
         "status_buttons_description": "Ajoutez des boutons d'utilitaire à votre message d'état du serveur.",
+        "preview": {
+          "title": "Canlı Discord önizlemesi",
+          "simulation": "Simülasyon",
+          "simulation_note": "Kurgusal oyuncular düzeni test etmenize yardımcı olur. Gönderirken sunucunun gerçek verileri kullanılır.",
+          "caption": "Ayarlar ve onaylanan düğme değişiklikleri otomatik olarak kaydedilir ve mevcut mesajı günceller. Yeni bir mesaj göndermek için yayımlayın.",
+          "loading": "Önizleme güncelleniyor…",
+          "unavailable": "Önizleme kullanılamıyor.",
+          "error": "Önizleme yüklenemedi.",
+          "buttons_note": "Önizlemedeki düğmeler etkileşimli değildir.",
+          "chart_alt": "Sunucudaki oyuncu etkinliği grafiği",
+          "app": "APP",
+          "confirm_send": "Bir kanal seçin, önizlemeyi kontrol edin ve mesajı gönderin.",
+          "cancel": "İptal",
+          "send": "Discord’a gönder",
+          "save_error": "Durum ayarları kaydedilemedi.",
+          "send_error": "Durum mesajı gönderilemedi.",
+          "remove_error": "Durum mesajı kaldırılamadı.",
+          "settings_error": "Durum ayarları yüklenemedi.",
+          "unsaved": "Yalnızca önizleme — bu değişiklikleri Discord’da uygulamak için kaydedin.",
+          "refresh": "Önizlemeyi yenile"
+        },
         "status_message_description": "Configurez le message d'état qui sera affiché dans votre serveur Discord.",
         "buttons_panel_title": "Boutons de statut",
         "message_panel_title": "Message d'état",
@@ -546,7 +710,8 @@
         "delete_confirmation": "Voulez-vous vraiment supprimer ce bouton ?",
         "premium_limit": "Limité à 2 boutons pour les utilisateurs gratuits",
         "required_field": "Ce champ est requis",
-        "invalid_url": "Format URL non valide"
+        "invalid_url": "Format URL non valide",
+        "timeLastTeamChange": "Son takım değişikliğinden beri geçen süre"
       },
       "importance": "Importance",
       "description": "Désignation des marchandises",
@@ -564,6 +729,17 @@
         },
         "actions": {
           "actions": "Actions"
+        },
+        "channel": {
+          "title": "Discord’da Lua hataları",
+          "description": "Oyun sunucusu ve oyunculardan gelen yeni Lua hata raporlarını bir Discord metin kanalına gönderin. Kaydedilen hatalar aşağıda erişilebilir kalır.",
+          "destination": "Hedef Discord kanalı",
+          "destination_help": "Yeni hata raporlarını almak için bir kanal seçin ve seçimi onaylayın.",
+          "select": "Kanal seç",
+          "remove": "Hedefi kaldır",
+          "empty": "Hedef kanal yok",
+          "load_error": "Lua hatalarının hedefi yüklenemedi.",
+          "remove_help": "Bu hedefe Lua hataları göndermeyi durdurmak istiyor musunuz? Discord kanalı ve kayıtlı hata geçmişi korunur."
         }
       },
       "logs_trigger": {
@@ -646,23 +822,25 @@
         "information": "Renseignements",
         "player_metadata": "Métadonnées du lecteur",
         "end_of_list": "Fin de liste",
-        "capture_metadata": "Capturer les métadonnées"
+        "capture_metadata": "Capturer les métadonnées",
+        "copy_url": "Ekran görüntüsü URL’sini kopyala"
       },
       "edit_player": {
         "title": "Modifier le lecteur",
-        "bypass_maintenance": "Entretien par passe",
+        "bypass_maintenance": "Elle verilen beyaz liste erişimi",
         "yes": "Oui",
         "no": "Numéro",
-        "save": "Enregistrer"
+        "save": "Enregistrer",
+        "bypass_help": "Bu oyuncunun sunucu rolünden bağımsız olarak beyaz liste modunda katılmasına izin verin. Elle eklenen kaydı kaldırmak, rolün veya başka bir iznin sağladığı erişimi korur. Uygulamak için kaydedin."
       },
       "players_database": {
         "title": "Base de données des joueurs",
-        "description": "Liste de tous les joueurs du serveur",
+        "description": "Kayıtlı oyuncuları, oyun süresini ve bağlantıları görüntüleyin. Elle verilen beyaz liste erişimi için oyuncuyu düzenleyin; rol erişimi ayrı yönetilir.",
         "name": "Dénomination",
         "rank": "Classement",
         "total_time": "Durée totale",
         "total_connect": "Total Connecter",
-        "bypass_maintenance": "Entretien du passage",
+        "bypass_maintenance": "Elle eklenen beyaz liste",
         "actions": "Actions",
         "steam": "vapeur",
         "edit": "Modifier"
@@ -709,9 +887,9 @@
         "http_request_fallback_part3": "pour plus d'informations.",
         "http_request_success": "Félicitations pour votre serveur, vous pouvez maintenant le configurer correctement.",
         "websocket_title": "WebSocket",
-        "websocket_fallback_part1": "Votre serveur n'est pas connecté au websocket, les fonctionnalités avancées ne sont pas disponibles, pour les utiliser, vous devez installer le",
-        "websocket_fallback_part2": "sur votre serveur.",
-        "websocket_success": "Félicitations vous avez bien connecté à votre serveur dans websocket, fonctionnalités avancées sont maintenant disponibles.",
+        "websocket_fallback_part1": "Canlı bağlantı kullanılamıyor; bu nedenle eklentinin oyun entegrasyonları çalışamaz. Sunucu konsolunu kontrol edin ve zorunlu olan",
+        "websocket_fallback_part2": "modülünün sunucunuzun işletim sistemi ve mimarisine uygun olarak kurulu olduğundan emin olun. Ardından oyun sunucusunu yeniden başlatıp bağlantıyı tekrar test edin.",
+        "websocket_success": "Eklenti GWSockets üzerinden bağlı. Oyun entegrasyonları Gmod Integration ile iletişim kurabilir.",
         "version_title": "Version",
         "version_fallback_http_part1": "Nous ne pouvons pas vérifier la version de votre serveur, assurez-vous d'avoir installé le",
         "version_fallback_http_part2": "correctement et ont entièrement configuré votre serveur id & token, lire la",
@@ -796,10 +974,10 @@
       },
       "config": {
         "title": "Configuration",
-        "description": "Manage the in game configuration of this server.",
+        "description": "Bu sunucunun oyun içi yapılandırmasını yönetin.",
         "error_occurred": "Sunucu yapılandırması alınırken bir hata oluştu.",
         "default": "Varsayılan",
-        "add_admin_rank": "Add rank",
+        "add_admin_rank": "Rütbe ekle",
         "settings": {
           "ig_syncBan": {
             "title": "Yasakları Senkronize Et",
@@ -850,8 +1028,8 @@
             "description": "Oyuncu gereksinimleri karşılamadığında gösterilen destek bağlantısı."
           },
           "ig_maintenance": {
-            "title": "Bakım Modu",
-            "description": "Yalnızca bakım atlamasına sahip oyuncuların katılmasına izin ver (oyuncu > düzenle > atlama)"
+            "title": "Beyaz liste modu",
+            "description": "Erişimi izin verilen oyuncularla sınırlandırın. Oyuncular bölümündeki elle eklenen kayıt veya sunucunun beyaz liste rolü bağımsız olarak erişim sağlar. Yapılandırılmış oyun yönetici grupları da erişebilir."
           },
           "ig_language": {
             "title": "Eklenti Dili",
@@ -863,9 +1041,19 @@
           },
           "ig_adminRank": {
             "title": "Yönetici Rütbeleri",
-            "description": "Yapılandırmayı düzenlemesi veya bakım modunu atlaması izin verilen rütbeler."
+            "description": "superadmin gibi tam oyun kullanıcı gruplarını girin. Üyeler eklenti ayarlarını düzenleyebilir ve beyaz liste modunda katılabilir. Bunlar Discord rolleri değildir."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Sunucu beyaz liste rolü",
+            "description": "Steam ve Discord hesapları bağlı oyuncular bu rol üzerinden beyaz liste modunda katılabilir. Oyuncular bölümünde elle verilen erişim bağımsızdır. Beyaz liste modu etkinken rolünü kaybeden oyuncu, başka bir izin erişim sağlamıyorsa sunucudan atılır."
           }
-        }
+        },
+        "remove_admin_rank": "Rütbeyi kaldır",
+        "whitelist_no_role": "Discord rolü yok",
+        "whitelist_role_missing": "Kullanılamayan rol ({1})",
+        "whitelist_roles_loading": "Discord rolleri yükleniyor…",
+        "whitelist_roles_error": "Discord rolleri yüklenemedi. Yeniden deneyin veya mevcut rolü kaldırın.",
+        "whitelist_role_invalid": "Kullanılabilir bir Discord rolü seçin veya rol seçmeyin."
       },
       "team_roles": {
         "error_occurred": "Une erreur s'est produite lors de la recherche de la synchronisation des rôles.",
@@ -910,8 +1098,12 @@
         "modal_title": "Modifier le rôle automatique",
         "modal_description": "Modifier les paramètres de ce rôle automatique.",
         "close_button": "Fermer",
-        "failed_to_load": "Impossible de charger les liens",
-        "add_role": "Ajouter un rôle"
+        "failed_to_load": "Roller yüklenemedi.",
+        "add_role": "Ajouter un rôle",
+        "delete_confirmation": "Yeni üyelere bu rol artık otomatik verilmez. Mevcut üyeler rollerini korur.",
+        "delete": "Sil",
+        "premium": "Ücretsiz kullanıcılar için 3 otomatik rolle sınırlıdır.",
+        "active_help": "Bu listedeki tüm roller yeni üyelere otomatik olarak atanır."
       },
       "verification": {
         "check_button": "Vérifier tous les rôles",
@@ -946,7 +1138,13 @@
         "edit_tooltip": "Modifier",
         "delete_tooltip": "Supprimer",
         "failed_to_load_links": "Impossible de charger les liens",
-        "add_role_button": "Ajouter un rôle"
+        "add_role_button": "Ajouter un rôle",
+        "publish_confirmation": "Doğrulama #{1} kanalında yayımlansın mı?",
+        "publish_consequence": "Üyeler, hesaplarını bağlamak için bu mesajı kullanabilir.",
+        "delete_message_confirmation": "#{1} kanalındaki doğrulama silinsin mi?",
+        "delete_message_consequence": "Üyeler artık bu mesajdan doğrulama başlatamaz.",
+        "delete_role_consequence": "Doğrulama artık bu rolü vermez veya kaldırmaz. Mevcut üyeler geçerli rollerini korur.",
+        "check_confirmation": "{1} üyelerinin rolleri kontrol edilsin mi?"
       },
       "information": {
         "title": "Informations",
@@ -1003,7 +1201,8 @@
         "edit_link": "Modifier le lien",
         "save": "Enregistrer",
         "yes": "Oui",
-        "no": "Numéro"
+        "no": "Numéro",
+        "delete_confirmation": "Bu kısayol artık üyeler tarafından kullanılamaz."
       }
     },
     "menu": {
@@ -1040,6 +1239,211 @@
         "tickets": "Billets",
         "teams": "Équipes"
       }
+    },
+    "ui": {
+      "overview": "Genel bakış",
+      "configuration": "Yapılandırma",
+      "activity": "Etkinlik",
+      "workspace": "Yönetim alanı",
+      "workspace_description": "Topluluğunuzu ve bağlı sunucuları yönetin.",
+      "server_description": "Sunucunuzu yapılandırın ve etkinliğini izleyin.",
+      "admin_description": "Platformu ve toplulukları yönetin.",
+      "navigation": "Gezinme",
+      "community": "Topluluk",
+      "breadcrumb": "Gezinme yolu"
     }
+  },
+  "ui": {
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "close": "Kapat",
+    "empty": "Henüz gösterilecek öğe yok.",
+    "save_error": "Kaydedilemedi. Lütfen tekrar deneyin.",
+    "saved": "Kaydedildi",
+    "unsaved": "Kaydedilmemiş değişiklikler",
+    "load_error": "Bu içerik yüklenemedi.",
+    "loading": "Yükleniyor…",
+    "retry": "Tekrar dene",
+    "no_category": "Kategori yok",
+    "remove": "Kaldır",
+    "autosave": "Değişiklikler otomatik olarak kaydedilir.",
+    "redirecting": "Yönlendiriliyor…",
+    "logging_out": "Oturum kapatılıyor",
+    "not_found_description": "Aradığınız sayfa mevcut değil.",
+    "back_home": "Ana sayfaya dön",
+    "contents": "İçindekiler",
+    "enabled": "Etkin",
+    "disabled": "Devre dışı",
+    "delete_target": "{1} silinsin mi?",
+    "invalid_value": "Geçerli bir değer girin.",
+    "publish": "Yayımla",
+    "delete": "Sil",
+    "create": "Oluştur",
+    "sync_pending": "Kaydedildi. Eşitleme bekleniyor.",
+    "required": "Bu alan zorunludur.",
+    "confirm_delete": "Bu öğe silinsin mi?",
+    "invalid_url": "Geçerli bir HTTP veya HTTPS URL’si girin.",
+    "action_error": "İşlem başarısız oldu. Tekrar deneyin.",
+    "confirm": "Onayla",
+    "leave_title": "Kaydetmeden çıkılsın mı?",
+    "wait_saving": "Çıkmadan önce kaydetme işleminin bitmesini bekleyin.",
+    "leave_description": "Kaydedilmemiş değişiklikleriniz atılacak.",
+    "stay": "Bu sayfada kal",
+    "discard_leave": "Değişiklikleri at ve çık",
+    "copy": "Kopyala",
+    "copied": "Kopyalandı!",
+    "copy_error": "Kopyalanamadı. Lütfen tekrar deneyin.",
+    "saving": "Kaydediliyor…",
+    "template_variables": {
+      "title": "Kullanılabilir değişkenler",
+      "syntax": "Sözdizimi",
+      "format": "Biçim",
+      "example": "Örnek",
+      "template_example": "Şablon örneği",
+      "copy": "{1} kopyala",
+      "text": "Metin",
+      "number": "Sayı",
+      "duration": "Süre (ör. 1h 2m 3s)",
+      "raw": "Ham değer",
+      "formatting": "Desteklenen biçimlendirme",
+      "bold": "Kalın",
+      "inline_code": "Satır içi kod",
+      "underline": "Altı çizili",
+      "strikethrough": "Üstü çizili"
+    }
+  },
+  "settings": {
+    "access": "Erişim ve doğrulama",
+    "access_description": "Oyuncuların hesaplarını nasıl bağlayacağını ve katılırken nasıl doğrulanacağını seçin.",
+    "administration": "Yönetim",
+    "administration_description": "Yönetici erişimini ve beyaz liste modunu yönetin.",
+    "advanced": "Gelişmiş ayarlar",
+    "advanced_description": "İstemci uyumluluğu, sorun giderme ve kayıt biçimi.",
+    "all": "Tüm ayarlar",
+    "bot_connected": "Bot zaten bu Discord sunucusunda.",
+    "bot_connection": "Bağlantı ve kimlik bilgileri",
+    "bot_identity": "Kimlik ve durum",
+    "bot_invite_hint": "Kimliğini düzenlemeden önce özel botu davet edin.",
+    "bot_membership": "Discord sunucusu",
+    "bot_token_hint": "Özel botun tokenini ayarlamak veya değiştirmek için kurulumu kullanın.",
+    "categories": "Ayar kategorileri",
+    "channel_confirmation": "Bir kanal seçin ve seçiminizi onaylayın. Kanalı kaldırdığınızda buraya yeni mesaj gönderilmez.",
+    "chat_default_help": "Oyun mesajlarının varsayılan olarak aktarılmasını veya engellenmesini seçin. İstisnaları aşağıdaki kurallarda ayarlayın.",
+    "chat_destination": "Discord hedefi",
+    "chat_destination_help": "Mesajlar bu kanal üzerinden aktarılır. Sohbet köprüsünü bağlamak için bir kanal seçin.",
+    "chat_direction_help": "Aktarıcı üzerinden hangi tarafın mesaj gönderebileceğini seçin.",
+    "chat_ping_help": "Aktarılan mesajların Discord üyelerinden ve rollerinden bahsetmesini engelleyin.",
+    "chat_rules": "Filtre kuralları",
+    "general": "Genel",
+    "general_description": "Oyunculara gösterilen dil ve destek bilgileri.",
+    "kick_delay_dependency": "Bağlanmamış hesap nedeniyle sunucudan atma, zorunlu hesap bağlantısı gerektirir. İstemci dalı kontrolleri de bu süreyi kullanır; değer 0 ise süre 600 saniyedir.",
+    "log_content": "Kayıt içeriği",
+    "log_file_help": "Kayıt bilgilerini Discord’da dosya eki olarak gönderin.",
+    "log_ip_help": "Discord’da yayımlanan kayıtlarda oyuncuların IP adreslerini gizleyin.",
+    "message_content": "Mesaj içeriği",
+    "moderation": "Moderasyon",
+    "moderation_description": "Yaptırımları Discord ile oyun sunucusu arasında eşitleyin.",
+    "nickname_format_help": "Takma ad şablonunu düzenleyin ve canlı önizlemeyi kontrol edin.",
+    "no_results": "Bu kategoride aramanızla eşleşen ayar yok.",
+    "pseudo_rules_help": "Ön ekler ve rol adları yalnızca biçim {rolePrefix} veya {roleName} içeriyorsa kullanılır.",
+    "reset_filters": "Filtreleri sıfırla",
+    "results": "ayar gösteriliyor",
+    "rule_setup_help": "Discord rolü, eşitleme seçenekleri ve etkinleştirme durumuyla eksiksiz bir kural oluşturun.",
+    "saved_preview": "Kaydedilen önizleme",
+    "search": "Ayar ara",
+    "search_placeholder": "Ada veya açıklamaya göre ara…",
+    "server_connection": "Bağlantı bilgileri",
+    "server_delete_hint": "Bu sunucuyu topluluktan ve kontrol panelinden kaldırın.",
+    "server_identity": "Kimlik ve görünürlük",
+    "server_public_hint": "Bu sunucunun herkese açık sunucu sıralamasında görünüp görünmeyeceğini seçin.",
+    "server_removal": "Sunucuyu kaldır",
+    "server_reset_hint": "Yeni bir token oluşturun, ardından Garry’s Mod yapılandırmanızda güncelleyin.",
+    "server_sensitive": "Hassas işlemler",
+    "status_chart_help": "Durum mesajına oyuncu etkinliği grafiği ekleyin.",
+    "status_content_help": "Mesaj içeriğini seçin ve canlı önizlemeyi inceleyin. Geçerli değişiklikler otomatik olarak kaydedilir.",
+    "status_players_help": "Bağlı oyuncuları gösterin ve her biri için görüntülenen bilgileri özelleştirin.",
+    "sync_behavior": "Eşitleme davranışı",
+    "sync_direction_help": "Bu yön, aşağıdaki tüm kurallar için geçerlidir.",
+    "sync_disabled": "Eşitleme devre dışı. Biçiminiz ve kurallarınız, yeniden etkinleştirdiğinizde kullanılmak üzere korunur.",
+    "sync_premium_help": "Discord’dan oyuna ve iki yönlü eşitleme Premium gerektirir.",
+    "verification_dependency": "Bu kontrol, hesap bağlantısı zorunlu olduğunda uygulanır.",
+    "verification_existing_members": "Mevcut üyeler",
+    "verification_message": "Doğrulamaya giriş",
+    "verification_message_hint": "Üyelerin hesaplarını bağlamak için kullanacağı mesajı bir Discord kanalında yayımlayın.",
+    "verification_preferences": "Üye deneyimi",
+    "explicit_save": "Değişiklikler bu bölümü kaydettiğinizde uygulanır.",
+    "channel_draft_help": "Bir hedef seçin, ardından uygulamak için kaydedin.",
+    "server_port_invalid": "1 ile 65535 arasında bir bağlantı noktası girin.",
+    "image_url_invalid": "HTTP veya HTTPS resim URL’si girin.",
+    "server_reset_confirm": "Geçerli belirteç çalışmayı durdurur. Sıfırladıktan sonra Garry’s Mod yapılandırmanızda güncelleyin.",
+    "server_delete_confirm": "Bu sunucuyu ve kontrol paneli verilerini kaldırın. Bu işlem geri alınamaz.",
+    "server_edit_help": "Sunucu kimliğini ve bağlantı ayrıntılarını düzenleyin.",
+    "general_administration": "Genel ve yönetim",
+    "general_administration_description": "Dil, destek bilgileri ve yönetici erişimi.",
+    "chat_relay": "Sohbet aktarımı"
+  },
+  "editing": {
+    "remove_channel": "Bu hedef kaldırılsın mı? Sonraki mesajlar artık bu kanala gönderilmez.",
+    "section_help": "Bu ayarları düzenleyin, ardından uygulamak için bölümü kaydedin.",
+    "remove_status_help": "Discord’da yayımlanan durum mesajını kaldırın. Kaydedilen yapılandırma korunur.",
+    "publish_saved_first": "Mesaj yayımlamadan önce değişikliklerinizi kaydedin veya iptal edin.",
+    "status_scope": "Mesaj ve düğmelerindeki değişiklikler birlikte kaydedilir.",
+    "conflict": "Kaydedilen değerler değişti. Yeniden kaydetmeden önce bunları tekrar yükleyin.",
+    "sync_pending": "Yapılandırma kaydedildi. Discord güncellemesi henüz onaylanmadı.",
+    "reload_saved": "Değişiklikleri at ve kayıtlı değerleri yeniden yükle",
+    "save_status": "Durum yapılandırmasını kaydet",
+    "invalid_status": "Kaydetmeden önce düğme adlarını ve URL’lerini kontrol edin.",
+    "apply_draft": "Taslağa uygula",
+    "delete_trigger": "Tetikleyici silinsin mi?",
+    "delete_trigger_help": "Seçili olay eylemi artık çalışmaz. Bu işlem geri alınamaz."
+  },
+  "access": {
+    "unavailable": "Erişim hakları doğrulanamadı. Kaydedilmiş yapılandırmanız korunur.",
+    "quota": "{1} / {2} kullanıldı",
+    "upgrade_required": "Bu özellik Premium gerektirir.",
+    "quota_reached": "Bu özellik için sınıra ulaştınız.",
+    "historical_bot": "GmodStore satın alımı gerektirir",
+    "suspended": "Kaydedilen bu özellik askıya alındı. Yapılandırmasını yine de devre dışı bırakabilir veya kaldırabilirsiniz.",
+    "count_buttons": "{1} düğme",
+    "count_links": "{1} bağlantı",
+    "history_count": "Son {1} kayıt",
+    "permission_denied": "Bu topluluğu yönetme izniniz yok.",
+    "status_chart": "Durum etkinlik grafiği",
+    "auto_roles_limit": "Otomatik roller - Sınır",
+    "nickname_rules_limit": "Takma ad kuralları - Sınır",
+    "chat_filters": "Sohbet filtreleri",
+    "log_triggers": "Günlük olayı eylemleri",
+    "reverse_sync": "Discord’dan oyuna eşitleme",
+    "errors_history": "Hata geçmişi",
+    "verification_preferences": "Doğrulama tercihleri"
+  },
+  "server_setup": {
+    "title": "Gmod Integration eklentisini bağlayın",
+    "description": "Eklentiyi yükledikten sonra bu komutları, barındırma sağlayıcınızın panelinden erişebileceğiniz Garry’s Mod sunucu konsolunda sırayla çalıştırın.",
+    "credentials": "Sunucu kimlik bilgileri",
+    "copy_id": "Sunucu kimliğini kopyala",
+    "copy_token": "Sunucu belirtecini kopyala",
+    "commands": "Konsol komutları",
+    "set_id": "1. Sunucu kimliğini ayarlayın",
+    "copy_id_command": "Sunucu kimliğini ayarlama komutunu kopyala",
+    "set_token": "2. Sunucu belirtecini ayarlayın",
+    "token_hint": "Bu komutu kopyaladığınızda, gizli olsa bile sunucu belirteciniz de kopyalanır.",
+    "copy_token_command": "Sunucu belirtecini ayarlama komutunu kopyala",
+    "test": "3. Bağlantıyı test edin",
+    "copy_test_command": "Bağlantı testi komutunu kopyala",
+    "saved_hint": "Eklenti bu ayarları hemen kaydeder ve her iki kimlik bilgisi de ayarlandığında bağlantıyı otomatik olarak test eder.",
+    "diagnostics": "Tanılama",
+    "help": "Bağlantı durumunu ve kullanılabilir komutları kontrol edin",
+    "copy_help_command": "Tanılama komutunu kopyala",
+    "version": "Yüklü eklenti sürümünü kontrol edin",
+    "copy_version_command": "Sürüm kontrolü komutunu kopyala"
+  },
+  "auth": {
+    "unavailable": "Bağlantı geçici olarak kullanılamıyor. Oturumunuz ve kaydedilmemiş değişiklikleriniz korunur.",
+    "reconnect_discord": "Devam etmek için Discord’u yeni bir sekmede yeniden bağlayın. Kaydedilmemiş değişiklikleriniz burada kalır.",
+    "logout_unconfirmed": "Bu cihazda oturumunuz kapatıldı. Sunucudaki iptal doğrulanamadı; bağlantı geri geldiğinde tekrar deneyin.",
+    "stop_impersonation": "Hesabınıza dönün",
+    "impersonation_erasure": "Silme isteğinde bulunmadan önce kendi hesabınıza dönün.",
+    "oauth_denied": "Discord oturumu açma işlemi tamamlanmadı. Hazır olduğunuzda tekrar deneyebilirsiniz."
   }
 }

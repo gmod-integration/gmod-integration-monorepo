@@ -1,146 +1,139 @@
-import { Component, createEffect, createSignal, For, Show } from 'solid-js'
+import { createSignal, createUniqueId, For, Show, type Component } from 'solid-js'
 import { A, useLocation } from '@solidjs/router'
-
-import { getUrlWithActualParams } from '../../../utils/api'
-
-const linksData = [
-  {
-    name: 'Admin',
-    condition: (url: string) => !url.includes('/servers/'),
-    back: '/dashboard/admins',
-    content: [
-      {
-        label: 'Informations',
-        emoji: 'fa-info',
-        url: '/dashboard/admins/informations',
-      },
-      {
-        label: 'Guilds',
-        emoji: 'fa-server',
-        url: '/dashboard/admins/guilds',
-      },
-      {
-        label: 'Users',
-        emoji: 'fa-user',
-        url: '/dashboard/admins/users',
-      },
-      {
-        label: 'Errors',
-        emoji: 'fa-bug',
-        url: '/dashboard/admins/errors',
-      },
-      {
-        label: 'Logs',
-        emoji: 'fa-scroll',
-        url: '/dashboard/admins/logs',
-      },
-      {
-        label: 'Impersonate',
-        emoji: 'fa-user-secret',
-        url: '/dashboard/admins/impersonate',
-      },
-    ],
-  },
-]
-
-class navLink {
-  emoji: string
-  label: string
-  url: string
-  current?: boolean
-
-  constructor(emoji: string, label: string, url: string, current?: boolean) {
-    this.emoji = emoji
-    this.label = label
-    this.url = url
-    this.current = current
-  }
-}
+import { useI18n } from '../../../i18n.js'
+import { Icon, type IconName } from '../../ui/index.js'
+import { authSession } from '../../../utils/authClient.js'
 
 export const AdminMenu: Component = () => {
-  const [onlyShowEmoji, setOnlyShowEmoji] = createSignal(false)
-  const [hoverExpand, setHoverExpand] = createSignal(false)
-  const [backUrl, setBackUrl] = createSignal('/dashboard/guilds')
-  const [actualLinksData, setActualLinksData] = createSignal([] as navLink[])
-
-  function refreshLinks(pathname: string) {
-    linksData.forEach((category) => {
-      if (category.condition(pathname)) {
-        setBackUrl(category.back)
-        setActualLinksData(
-          category.content.map(
-            (link) => new navLink(link.emoji, link.label, link.url, getUrlWithActualParams(link.url) === pathname),
-          ),
-        )
-      }
-    })
-  }
-
+  const { t } = useI18n()
   const location = useLocation()
-  createEffect(() => {
-    refreshLinks(location.pathname)
-  }, [location.pathname])
+  const navigationId = createUniqueId()
+  const [onlyShowEmoji, setOnlyShowEmoji] = createSignal(
+    (() => {
+      try {
+        return localStorage.getItem('admin-navigation-collapsed') === 'true'
+      } catch {
+        return false
+      }
+    })(),
+  )
+  const [mobileOpen, setMobileOpen] = createSignal(false)
+  const [hoverExpand, setHoverExpand] = createSignal(false)
+  const expanded = () => !onlyShowEmoji() || hoverExpand() || mobileOpen()
+  const toggleCollapsed = () => {
+    const next = !onlyShowEmoji()
+    setOnlyShowEmoji(next)
+    try {
+      localStorage.setItem('admin-navigation-collapsed', String(next))
+    } catch {
+      // The menu still works when browser storage is unavailable.
+    }
+  }
+  const links = (): { label: string; icon: IconName; url: string }[] => [
+    {
+      label: t('admin_v6.nav_overview', 'Overview'),
+      icon: 'layout-dashboard',
+      url: '/dashboard/admins/informations',
+    },
+    { label: t('main.guilds', 'Discord communities'), icon: 'server', url: '/dashboard/admins/guilds' },
+    { label: t('admin_v6.nav_servers', 'Game servers'), icon: 'gamepad-2', url: '/dashboard/admins/servers' },
+    { label: t('admin_v6.nav_users', 'User accounts'), icon: 'users', url: '/dashboard/admins/users' },
+    { label: t('admin_v6.nav_premium', 'Premium access'), icon: 'crown', url: '/dashboard/admins/premium' },
+    { label: t('admin_monitoring.title', 'Monitoring'), icon: 'activity', url: '/dashboard/admins/monitoring' },
+    { label: t('admin_previews.title', 'Server previews'), icon: 'eye', url: '/dashboard/admins/previews' },
+    {
+      label: t('dashboard.menu.admin.impersonate', 'Support access'),
+      icon: 'user-round-cog',
+      url: '/dashboard/admins/impersonate',
+    },
+  ]
 
   return (
-    <>
-      <div
-        class="flex flex-col p-4 gap-2"
-        classList={{
-          'min-w-[240px]': !onlyShowEmoji() || hoverExpand(),
-        }}
-        onMouseEnter={() => setHoverExpand(true)}
-        onMouseLeave={() => setHoverExpand(false)}
-      >
-        <div class="flex items-center p-2 gap-4">
-          <div class="flex justify-center items-center min-w-6 min-h-6">
-            <i class="fa-solid fa-screwdriver-wrench"></i>
+    <aside
+      class="dashboard-sidebar"
+      data-collapsed={!expanded()}
+      data-mobile-open={mobileOpen()}
+      onMouseEnter={() => setHoverExpand(true)}
+      onMouseLeave={() => setHoverExpand(false)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setMobileOpen(false)
+      }}
+    >
+      <div class="dashboard-context">
+        <span class="dashboard-context-icon">
+          <Icon name="wrench" size={20} />
+        </span>
+        <Show when={expanded()}>
+          <div class="min-w-0 flex-1">
+            <span class="dashboard-context-label">Gmod Integration</span>
+            <strong class="dashboard-context-name">{t('dashboard.menu.admin.title', 'Admin')}</strong>
           </div>
-          <Show when={!onlyShowEmoji() || hoverExpand()}>Admin</Show>
-        </div>
-
-        <hr class="border border-base-200" />
-
-        <For each={actualLinksData()}>
-          {(link) => (
-            <A
-              href={getUrlWithActualParams(link.url)}
-              class="flex items-center gap-4 p-2 rounded-md"
-              classList={{
-                'bg-base-200': link.current,
-              }}
-            >
-              <div class="flex justify-center items-center min-w-6 min-h-6">
-                <i class={`fa-solid ${link.emoji}`}></i>
-              </div>
-              <span
-                classList={{
-                  visible: !onlyShowEmoji() || hoverExpand(),
-                  hidden: onlyShowEmoji() && !hoverExpand(),
-                }}
-              >
-                {link.label}
-              </span>
-            </A>
-          )}
-        </For>
-
-        <div class="flex flex-col mt-auto hover:cursor-pointer" onClick={() => setOnlyShowEmoji(!onlyShowEmoji())}>
-          <hr class="border border-base-200 mb-4" />
-          <div class="flex items-center p-2 gap-4 hover:font-bold">
-            <div class="flex justify-center items-center min-w-6 min-h-6">
-              <i
-                class="fa-solid"
-                classList={{
-                  'fa-angle-double-right': onlyShowEmoji(),
-                  'fa-angle-double-left': !onlyShowEmoji(),
-                }}
-              ></i>
-            </div>
-            {!onlyShowEmoji() ? <span>Collapse</span> : hoverExpand() ? <span>Expand</span> : ''}
-          </div>
-        </div>
+        </Show>
+        <button
+          type="button"
+          class="dashboard-mobile-toggle"
+          aria-label={t('ui.toggle_navigation', 'Toggle navigation')}
+          aria-controls={navigationId}
+          aria-expanded={mobileOpen()}
+          onClick={() => setMobileOpen(!mobileOpen())}
+        >
+          <Icon name={mobileOpen() ? 'x' : 'menu'} size={20} />
+        </button>
       </div>
-      <div class="border border-base-200" />
-    </>
+      <nav id={navigationId} aria-label={t('dashboard.menu.admin.title', 'Admin')} class="dashboard-navigation">
+        <div class="dashboard-nav-group">
+          <Show when={expanded()}>
+            <p class="dashboard-nav-group-title">{t('admin_v6.platform', 'Platform')}</p>
+          </Show>
+          <For
+            each={
+              authSession()?.session.actorDiscordID
+                ? [
+                    {
+                      label: t('auth.stop_impersonation', 'Return to your account'),
+                      icon: 'user-round-cog' as IconName,
+                      url: '/dashboard/admins/stop-impersonate',
+                    },
+                  ]
+                : links()
+            }
+          >
+            {(link) => (
+              <A
+                href={link.url}
+                class="dashboard-nav-item"
+                classList={{ 'is-active': location.pathname === link.url }}
+                aria-label={link.label}
+                aria-current={location.pathname === link.url ? 'page' : undefined}
+                title={onlyShowEmoji() ? link.label : undefined}
+                onClick={() => setMobileOpen(false)}
+              >
+                <Icon name={link.icon} size={20} />
+                <Show when={expanded()}>
+                  <span class="dashboard-nav-label">{link.label}</span>
+                </Show>
+              </A>
+            )}
+          </For>
+        </div>
+      </nav>
+      <div class="dashboard-sidebar-footer">
+        <button
+          type="button"
+          class="dashboard-nav-collapse"
+          aria-label={onlyShowEmoji() ? t('dashboard.menu.expand', 'Expand') : t('dashboard.menu.collapse', 'Collapse')}
+          aria-controls={navigationId}
+          aria-expanded={expanded()}
+          onClick={toggleCollapsed}
+        >
+          <Icon name={onlyShowEmoji() ? 'panel-left-open' : 'panel-left-close'} size={20} />
+          <Show when={expanded()}>
+            <span>
+              {onlyShowEmoji() ? t('dashboard.menu.expand', 'Expand') : t('dashboard.menu.collapse', 'Collapse')}
+            </span>
+          </Show>
+        </button>
+      </div>
+    </aside>
   )
 }

@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 const badArgumentMock = vi.fn()
 vi.mock('../../../src/utils/tools.js', () => ({ badArgument: badArgumentMock }))
 
@@ -13,7 +22,7 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
 
 const prismaMock: any = {
   gm_server_status: { findFirst: vi.fn() },
-  gm_server_warn: { findFirst: vi.fn(), create: vi.fn() },
+  gm_server_warn: { findFirst: vi.fn(), create: vi.fn(), deleteMany: vi.fn(), updateMany: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
@@ -33,6 +42,7 @@ const {
 } = await import('../../../src/models/v3/serversControllerModels.js')
 
 function resetAllMocks() {
+  isErasureBlockedMock.mockReset().mockResolvedValue(false)
   badArgumentMock.mockReset().mockReturnValue(false)
   logServerMock.mockReset()
   enqueueDiscordServerStatusRefreshAsyncMock.mockReset().mockResolvedValue(undefined)
@@ -124,9 +134,17 @@ describe('serversControllerModels', () => {
 
       const result = await processPostStatus(server, validBody)
 
-      expect(server.saveStatus).toHaveBeenCalledWith('1.2.3.4', '27015', 'My Server', 'gm_construct', 'sandbox', 5, 10, 1000, [
-        { name: 'Bob' },
-      ])
+      expect(server.saveStatus).toHaveBeenCalledWith(
+        '1.2.3.4',
+        '27015',
+        'My Server',
+        'gm_construct',
+        'sandbox',
+        5,
+        10,
+        1000,
+        [{ name: 'Bob' }],
+      )
       expect(enqueueDiscordServerStatusRefreshAsyncMock).toHaveBeenCalledWith('s1')
       expect(result).toEqual({ status: 200, body: { success: true } })
     })
@@ -210,6 +228,73 @@ describe('serversControllerModels', () => {
   })
 
   describe('processServerImportWarns', () => {
+    it('skips importing moderation history for an erased subject', async () => {
+      isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => steamID64 === 'p1')
+      await processServerImportWarns(makeServer(), [{ adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 }])
+      expect(prismaMock.gm_server_warn.findFirst).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_warn.create).not.toHaveBeenCalled()
+    })
+    it('imports another player’s moderation history without restoring an erased author', async () => {
+      isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => steamID64 === 'a1')
+      prismaMock.gm_server_warn.create.mockResolvedValueOnce({ id: 42 })
+      await processServerImportWarns(makeServer(), [
+        { adminSteamID64: 'a1', playerSteamID64: 'p1', reason: 'Rule', date: 1700000000 },
+      ])
+      expect(prismaMock.gm_server_warn.create).toHaveBeenCalledWith({
+        data: {
+          serverID: 's1',
+          userSteamID64: 'p1',
+          adminSteamID64: '',
+          reason: 'Rule',
+          createdAt: new Date(1700000000 * 1000),
+        },
+      })
+      expect(prismaMock.gm_server_warn.updateMany).not.toHaveBeenCalled()
+    })
+    it('removes only an imported warn inserted after its subject becomes suppressed', async () => {
+      let blocked = false
+      isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => blocked && steamID64 === 'p1')
+      let resolveWrite!: (warn: { id: number }) => void
+      prismaMock.gm_server_warn.create.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveWrite = resolve
+          }),
+      )
+      const operation = processServerImportWarns(makeServer(), [
+        { adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 },
+      ])
+      await vi.waitFor(() => expect(prismaMock.gm_server_warn.create).toHaveBeenCalledOnce())
+      blocked = true
+      resolveWrite({ id: 42 })
+      await operation
+      expect(prismaMock.gm_server_warn.deleteMany).toHaveBeenCalledExactlyOnceWith({ where: { id: 42 } })
+      expect(prismaMock.gm_server_warn.updateMany).not.toHaveBeenCalled()
+    })
+
+    it('preserves another player’s imported warn when only its author is erased during insertion', async () => {
+      let blocked = false
+      isErasureBlockedMock.mockImplementation(async (_discordID, steamID64) => blocked && steamID64 === 'a1')
+      let resolveWrite!: (warn: { id: number }) => void
+      prismaMock.gm_server_warn.create.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveWrite = resolve
+          }),
+      )
+      const operation = processServerImportWarns(makeServer(), [
+        { adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 },
+      ])
+      await vi.waitFor(() => expect(prismaMock.gm_server_warn.create).toHaveBeenCalledOnce())
+      blocked = true
+      resolveWrite({ id: 42 })
+      await operation
+      expect(prismaMock.gm_server_warn.deleteMany).not.toHaveBeenCalled()
+      expect(prismaMock.gm_server_warn.updateMany).toHaveBeenCalledExactlyOnceWith({
+        where: { id: 42, adminSteamID64: 'a1' },
+        data: { adminSteamID64: '' },
+      })
+    })
     it('returns 400 when warns is missing', async () => {
       const result = await processServerImportWarns(makeServer(), undefined)
       expect(result.status).toBe(400)
@@ -222,9 +307,7 @@ describe('serversControllerModels', () => {
     })
 
     it('skips a warn entry with an unparseable date', async () => {
-      await processServerImportWarns(makeServer(), [
-        { adminSteamID64: 'a1', playerSteamID64: 'p1', date: {} },
-      ])
+      await processServerImportWarns(makeServer(), [{ adminSteamID64: 'a1', playerSteamID64: 'p1', date: {} }])
       expect(prismaMock.gm_server_warn.create).not.toHaveBeenCalled()
     })
 
@@ -240,9 +323,7 @@ describe('serversControllerModels', () => {
 
     it('accepts a numeric epoch-seconds date and defaults the reason', async () => {
       prismaMock.gm_server_warn.findFirst.mockResolvedValueOnce(null)
-      await processServerImportWarns(makeServer(), [
-        { adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 },
-      ])
+      await processServerImportWarns(makeServer(), [{ adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 }])
       expect(prismaMock.gm_server_warn.create).toHaveBeenCalledWith(
         expect.objectContaining({ data: expect.objectContaining({ reason: 'No reason provided' }) }),
       )
@@ -250,9 +331,7 @@ describe('serversControllerModels', () => {
 
     it('skips a warn that already exists', async () => {
       prismaMock.gm_server_warn.findFirst.mockResolvedValueOnce({ id: 1 })
-      await processServerImportWarns(makeServer(), [
-        { adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 },
-      ])
+      await processServerImportWarns(makeServer(), [{ adminSteamID64: 'a1', playerSteamID64: 'p1', date: 1700000000 }])
       expect(prismaMock.gm_server_warn.create).not.toHaveBeenCalled()
     })
 
@@ -466,14 +545,15 @@ describe('serversControllerModels', () => {
 
   describe('processMultiLog', () => {
     it('skips a log entry missing endpoint or data', async () => {
-      await processMultiLog(makeServer(), [{ endpoint: '', data: {} }, { endpoint: '/x', data: null }])
+      await processMultiLog(makeServer(), [
+        { endpoint: '', data: {} },
+        { endpoint: '/x', data: null },
+      ])
       expect(logServerMock).not.toHaveBeenCalled()
     })
 
     it('logs directly for an endpoint mapped to a log type', async () => {
-      await processMultiLog(makeServer(), [
-        { endpoint: '/servers/s1/players/765/ready', data: { steamID64: '765' } },
-      ])
+      await processMultiLog(makeServer(), [{ endpoint: '/servers/s1/players/765/ready', data: { steamID64: '765' } }])
       expect(logServerMock).toHaveBeenCalledWith(expect.anything(), 'player_ready', { steamID64: '765' })
     })
 

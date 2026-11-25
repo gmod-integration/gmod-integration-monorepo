@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { cleanup, render } from '@solidjs/testing-library'
 import LinePlot from '../../../../src/pages/dashboard/admins/linePlot.js'
+import { createSignal } from 'solid-js'
 
 afterEach(() => cleanup())
 
@@ -48,5 +49,16 @@ describe('pages/dashboard/admins/linePlot.tsx', () => {
     const { container } = render(() => <LinePlot data={[7]} />)
     const svg = container.querySelector('svg')!
     expect(svg.querySelectorAll('circle')).toHaveLength(1)
+  })
+
+  it('redraws when refreshed data arrives without remounting the chart', () => {
+    const [data, setData] = createSignal([0, 10])
+    const { container } = render(() => <LinePlot data={data()} />)
+    const previousPath = container.querySelector('path')?.getAttribute('d')
+
+    setData([10, 2, 6])
+
+    expect(container.querySelectorAll('circle')).toHaveLength(3)
+    expect(container.querySelector('path')?.getAttribute('d')).not.toBe(previousPath)
   })
 })

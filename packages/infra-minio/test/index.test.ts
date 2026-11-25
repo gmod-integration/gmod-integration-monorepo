@@ -3,6 +3,8 @@ import { S3ServiceException } from '@aws-sdk/client-s3'
 import type * as AwsS3Client from '@aws-sdk/client-s3'
 
 const sendMock = vi.fn()
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/infra-prisma/privacy.js', () => ({ isErasureBlocked: isErasureBlockedMock }))
 
 vi.mock('@aws-sdk/client-s3', async (importOriginal) => {
   const actual = await importOriginal<typeof AwsS3Client>()
@@ -36,6 +38,7 @@ function s3Error(name: string, httpStatusCode: number) {
 describe('packages/infra-minio src/index.ts', () => {
   beforeEach(() => {
     sendMock.mockReset()
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
   })
 
   afterEach(() => {
@@ -153,6 +156,46 @@ describe('packages/infra-minio src/index.ts', () => {
   })
 
   describe('ensureAvatarStored', () => {
+    it('does not fetch, store or return the remote avatar of a suppressed account', async () => {
+      isErasureBlockedMock.mockResolvedValue(true)
+      const fetchMock = vi.fn()
+      vi.stubGlobal('fetch', fetchMock)
+      const { ensureAvatarStored } = await import('../src/index.js')
+      await expect(ensureAvatarStored('discord', 'u1', 'https://cdn.discordapp.com/a.png')).resolves.toBeNull()
+      expect(sendMock).not.toHaveBeenCalled()
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('deletes an avatar whose upload finishes after the erasure marker was created', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      sendMock.mockRejectedValueOnce(s3Error('NotFound', 404)).mockResolvedValue({})
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({ ok: true, headers: new Map(), arrayBuffer: async () => new ArrayBuffer(2) }),
+      )
+      const { ensureAvatarStored } = await import('../src/index.js')
+      await expect(ensureAvatarStored('steam', '765', 'https://steamcdn.example.com/a.png')).resolves.toBeNull()
+      expect(sendMock.mock.calls.at(-1)?.[0].constructor.name).toBe('DeleteObjectCommand')
+      expect(sendMock.mock.calls.at(-1)?.[0].input).toEqual({ Bucket: 'gmi-user-avatars', Key: 'steam/765' })
+    })
+
+    it('fails closed when the privacy lookup fails instead of returning a remote URL', async () => {
+      isErasureBlockedMock.mockRejectedValue(new Error('privacy store unavailable'))
+      const { ensureAvatarStored } = await import('../src/index.js')
+      await expect(ensureAvatarStored('discord', 'u1', 'https://cdn.discordapp.com/a.png')).rejects.toThrow(
+        'privacy store unavailable',
+      )
+      expect(sendMock).not.toHaveBeenCalled()
+    })
+
+    it('retries rather than hiding a failed deletion after a late upload', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      sendMock.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('delete failed'))
+      const { ensureAvatarStored } = await import('../src/index.js')
+      await expect(ensureAvatarStored('discord', 'u1', 'https://cdn.discordapp.com/a.png')).rejects.toThrow(
+        'delete failed',
+      )
+    })
     it('returns null when remoteUrl is not provided', async () => {
       const { ensureAvatarStored } = await import('../src/index.js')
       expect(await ensureAvatarStored('discord', 'u1', null)).toBeNull()
@@ -230,6 +273,24 @@ describe('packages/infra-minio src/index.ts', () => {
   })
 
   describe('replaceStoredAvatar', () => {
+    it('does not refresh a suppressed account avatar', async () => {
+      isErasureBlockedMock.mockResolvedValue(true)
+      const { replaceStoredAvatar } = await import('../src/index.js')
+      await expect(replaceStoredAvatar('discord', 'u1', 'https://cdn.discordapp.com/a.png')).resolves.toBeNull()
+      expect(sendMock).not.toHaveBeenCalled()
+    })
+
+    it('removes a replacement written while erasure was requested', async () => {
+      isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+      sendMock.mockResolvedValue({})
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({ ok: true, headers: new Map(), arrayBuffer: async () => new ArrayBuffer(2) }),
+      )
+      const { replaceStoredAvatar } = await import('../src/index.js')
+      await expect(replaceStoredAvatar('discord', 'u1', 'https://cdn.discordapp.com/a.png')).resolves.toBeNull()
+      expect(sendMock.mock.calls.at(-1)?.[0].constructor.name).toBe('DeleteObjectCommand')
+    })
     it('returns null when remoteUrl is not provided', async () => {
       const { replaceStoredAvatar } = await import('../src/index.js')
       expect(await replaceStoredAvatar('discord', 'u1', null)).toBeNull()
@@ -284,7 +345,10 @@ describe('packages/infra-minio src/index.ts', () => {
       const { deleteStoredAvatar } = await import('../src/index.js')
 
       await expect(deleteStoredAvatar('discord', 'u1')).resolves.toBeUndefined()
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to delete discord avatar'), expect.any(Error))
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to delete discord avatar'),
+        expect.any(Error),
+      )
     })
   })
 })

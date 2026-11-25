@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "vite",
-    "dev": "vite --host",
-    "build": "vite build",
-    "serve": "vite preview",
-    "format": "prettier --write ."
+    "prepare:config": "bun run --cwd ../../packages/config build",
+    "start": "bun run prepare:config && vite",
+    "dev": "bun run prepare:config && vite --host",
+    "build": "bun run prepare:config && vite build",
+    "serve": "bun run prepare:config && vite preview",
+    "format": "prettier --write .",
+    "typecheck": "tsc --noEmit"
   },
   "license": "MIT",
   "devDependencies": {
@@ -16,26 +18,21 @@
     "@types/d3": "^7.4.3",
     "daisyui": "^5.5.19",
     "postcss": "^8.5.8",
-    "solid-devtools": "^0.34.5",
     "tailwindcss": "^4.2.1",
     "typescript": "^5.9.3",
-    "vite": "^7.3.1",
-    "vite-plugin-solid": "^2.11.10",
-    "vite-plugin-static-copy": "^3.2.0"
+    "vite": "^7.3.8",
+    "vite-plugin-solid": "^2.11.17"
   },
   "dependencies": {
     "@gmod/config": "workspace:*",
     "@gmod/schema": "workspace:*",
-    "@sentry/solid": "^10.42.0",
-    "@sentry/vite-plugin": "^5.1.1",
-    "@solid-primitives/i18n": "^2.2.1",
-    "@solid-primitives/storage": "^4.3.4",
     "@solidjs/router": "^0.15.4",
     "d3": "^7.9.0",
     "emoji-picker-element": "^1.29.1",
     "highlight.js": "^11.11.1",
+    "lucide-solid": "^1.77.0",
     "prettier": "^3.8.1",
-    "solid-js": "^1.9.11"
+    "solid-js": "^1.9.20"
   },
   "module": "src/index.tsx",
   "type": "module",

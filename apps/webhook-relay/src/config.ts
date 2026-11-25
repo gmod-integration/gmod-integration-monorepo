@@ -4,7 +4,8 @@ import { z } from 'zod'
 // Discord bot, MinIO, ...), and the relay has to boot on its own, on a host that has none of them.
 // The relay reads exactly these three variables and nothing else.
 
-// `.env.example`-style files ship `APP_PORT=''`; treat an empty value like an unset one.
+// Treat empty values in existing .env files like unset variables.
+// The local example uses 3002 to leave port 3000 available for the website's OAuth callback.
 const emptyAsUndefined = (value: unknown) => (value === '' ? undefined : value)
 
 const RelayConfigSchema = z.object({

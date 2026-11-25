@@ -1,4 +1,6 @@
 import prisma from '@gmod/infra-prisma'
+import { getPlatformRank, isDeveloper } from '@gmod/config/developers.js'
+import { isErasureBlocked } from './privacy.js'
 
 export class User {
   steamID64: string | null
@@ -10,19 +12,18 @@ export class User {
   constructor({
     steamID64,
     discordID,
-    rank,
     lastVerification,
     trustLevel,
   }: {
     steamID64: string | null
     discordID: string
-    rank: string
+    rank?: string
     lastVerification: Date | null
     trustLevel: number
   }) {
     this.steamID64 = steamID64
     this.discordID = discordID
-    this.rank = rank
+    this.rank = getPlatformRank(discordID)
     this.lastVerification = lastVerification
     this.trustLevel = trustLevel
   }
@@ -36,7 +37,7 @@ export class User {
   }
 
   isDeveloper() {
-    return this.rank === 'developer'
+    return isDeveloper(this.discordID)
   }
 }
 
@@ -48,13 +49,14 @@ export async function getUserFromSteamID64(steamID64: string) {
   })
 
   if (!user) return null
+  if (await isErasureBlocked(user.id, user.steam)) return null
 
   return new User({
     steamID64: user.steam,
     discordID: user.id,
     rank: user.rank,
     lastVerification: user.last_oauth,
-    trustLevel: user.trust || 50,
+    trustLevel: user.trust ?? 50,
   })
 }
 
@@ -66,12 +68,13 @@ export async function getUserFromDiscordID(discordID: string) {
   })
 
   if (!user) return null
+  if (await isErasureBlocked(user.id, user.steam)) return null
 
   return new User({
     steamID64: user.steam,
     discordID: user.id,
     rank: user.rank,
     lastVerification: user.last_oauth,
-    trustLevel: user.trust || 50,
+    trustLevel: user.trust ?? 50,
   })
 }

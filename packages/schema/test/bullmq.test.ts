@@ -15,6 +15,30 @@ interface Case {
 // hand-written blocks here.
 const cases: Case[] = [
   {
+    name: 'DiscordServerStatusPreviewJobSchema',
+    schema: bullmq.DiscordServerStatusPreviewJobSchema,
+    valid: { serverID: 's1', draft: {}, correlationId: 'c1' },
+    requiredKeys: ['serverID', 'draft', 'correlationId'],
+  },
+  {
+    name: 'DiscordServerStatusPreviewReplySchema',
+    schema: bullmq.DiscordServerStatusPreviewReplySchema,
+    valid: { correlationId: 'c1', preview: null, error: 'Unavailable' },
+    requiredKeys: ['correlationId', 'preview'],
+  },
+  {
+    name: 'DiscordGuildPublicInviteJobSchema',
+    schema: bullmq.DiscordGuildPublicInviteJobSchema,
+    valid: { guildID: 'g1', correlationId: 'c1' },
+    requiredKeys: ['guildID', 'correlationId'],
+  },
+  {
+    name: 'DiscordGuildPublicInviteReplySchema',
+    schema: bullmq.DiscordGuildPublicInviteReplySchema,
+    valid: { correlationId: 'c1', inviteUrl: 'https://discord.gg/valid-Code' },
+    requiredKeys: ['correlationId', 'inviteUrl'],
+  },
+  {
     name: 'UpdateGuildUserPseudoJobSchema',
     schema: bullmq.UpdateGuildUserPseudoJobSchema,
     valid: { serverID: 's1', steamID64: '76561198219049673', playerName: 'Bob', userGroup: 'user' },
@@ -484,6 +508,22 @@ describe('bullmq job/reply/record schemas', () => {
 })
 
 describe('bullmq schemas: extra constraints beyond required-field presence', () => {
+  it('only accepts canonical Discord public invitation links or an unavailable result', () => {
+    expect(
+      bullmq.DiscordGuildPublicInviteReplySchema.parse({ correlationId: 'c1', inviteUrl: null }).inviteUrl,
+    ).toBeNull()
+    for (const inviteUrl of [
+      'javascript:alert(1)',
+      'http://discord.gg/code',
+      'https://discord.gg.evil.example/code',
+      'https://discord.gg/code/extra',
+      'https://discord.gg/',
+    ]) {
+      expect(bullmq.DiscordGuildPublicInviteReplySchema.safeParse({ correlationId: 'c1', inviteUrl }).success).toBe(
+        false,
+      )
+    }
+  })
   it('DiscordGuildSyncBanJobSchema rejects an empty oldDiscordIDs array', () => {
     const result = bullmq.DiscordGuildSyncBanJobSchema.safeParse({
       guildID: 'g1',
@@ -545,9 +585,25 @@ describe('bullmq schemas: extra constraints beyond required-field presence', () 
       guildID: 'g1',
       correlationId: 'c1',
       username: 'NewName',
-      avatar: 'data:image/png;base64,xyz',
+      avatar: 'data:image/png;base64,eHl6',
     })
     expect(result.success).toBe(true)
+  })
+
+  it('preserves the explicit trigger requirement while rejecting unknown capability labels', () => {
+    const job = {
+      guildID: 'g',
+      channelID: 'c',
+      title: 'Trigger',
+      color: '#fff',
+      footer: 'Server',
+      correlationId: 'r',
+      requiredCapability: 'logs.triggers',
+    }
+    expect(bullmq.DiscordGuildSendLogMessageJobSchema.parse(job).requiredCapability).toBe('logs.triggers')
+    expect(bullmq.DiscordGuildSendLogMessageJobSchema.safeParse({ ...job, requiredCapability: 'typo' }).success).toBe(
+      false,
+    )
   })
 
   it('DiscordGuildSendLogMessageJobSchema accepts a null description', () => {

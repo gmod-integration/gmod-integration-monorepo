@@ -57,9 +57,7 @@ describe('ServerStatusChannel', () => {
   it('get() returns an empty placeholder record when none exists', async () => {
     findFirstMock.mockResolvedValueOnce(null)
     const result = await ServerStatusChannel.get(fakeServer)
-    expect(result).toEqual(
-      expect.objectContaining({ id: '', serverID: 's1', channelID: '', format: '' }),
-    )
+    expect(result).toEqual(expect.objectContaining({ id: '', serverID: 's1', channelID: '', format: '' }))
   })
 
   it('create() creates and returns a parsed record', async () => {

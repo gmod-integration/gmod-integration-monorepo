@@ -47,6 +47,7 @@ function makeInteraction(overrides: Record<string, any> = {}) {
 function makeServer(overrides: Record<string, any> = {}) {
   return {
     getName: () => 'My Server',
+    getGuildID: () => 'g1',
     ...overrides,
   }
 }
@@ -62,6 +63,19 @@ beforeEach(() => {
 })
 
 describe('commands/player/chart execute', () => {
+  it('rejects a foreign private or public server before resolving players or generating a chart', async () => {
+    for (const isPublic of [false, true]) {
+      const interaction = makeInteraction()
+      interaction.options.getString.mockImplementation((name: string) => (name === 'server' ? 'foreign' : 'kills'))
+      getServerFromIDMock.mockResolvedValueOnce(makeServer({ getGuildID: () => 'foreign-guild', isPublic }))
+      await chart.execute(interaction)
+      expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', flags: expect.anything() })
+    }
+    expect(getUserFromDiscordIDMock).not.toHaveBeenCalled()
+    expect(playerConnectionChartMock).not.toHaveBeenCalled()
+    expect(playerTeamTimeChatMock).not.toHaveBeenCalled()
+  })
+
   it('returns early when there is no guild', async () => {
     const interaction = makeInteraction({ guild: null })
     const result = await chart.execute(interaction)
@@ -72,7 +86,7 @@ describe('commands/player/chart execute', () => {
     const interaction = makeInteraction()
     interaction.options.getString.mockReturnValue(null)
     await chart.execute(interaction)
-    expect(interaction.reply).toHaveBeenCalledWith('server_not_found')
+    expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', flags: expect.anything() })
   })
 
   it('replies server_not_found when the server cannot be found', async () => {
@@ -80,7 +94,7 @@ describe('commands/player/chart execute', () => {
     interaction.options.getString.mockImplementation((name: string) => (name === 'server' ? 's1' : null))
     getServerFromIDMock.mockResolvedValueOnce(null)
     await chart.execute(interaction)
-    expect(interaction.reply).toHaveBeenCalledWith('server_not_found')
+    expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', flags: expect.anything() })
   })
 
   it('replies stat_not_found when the stat option is missing', async () => {

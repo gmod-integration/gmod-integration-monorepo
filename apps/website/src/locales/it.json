@@ -77,7 +77,31 @@
     "loading_message": "Dipende dalla dimensione dei dati, questo può richiedere un po '.",
     "request_my_data": "Richiedi i miei dati",
     "delete_my_data": "Elimina i miei dati",
-    "error_create_data_request": "Creazione della richiesta di dati non riuscita"
+    "error_create_data_request": "Creazione della richiesta di dati non riuscita",
+    "description": "Gestisci gli account collegati, le sessioni e i dati personali.",
+    "erasure": {
+      "submit_error": "Impossibile confermare la richiesta. Riprova: verrà riutilizzata la stessa richiesta.",
+      "title": "Richiedi la cancellazione dell’account",
+      "scope": "Questa operazione cancella i tuoi profili personali, statistiche, sessioni, file ed esportazioni dei dati.",
+      "retained": "Vengono conservati una traccia minima della richiesta, i ban globali e la reputazione. Le comunità e gli acquisti collettivi rimangono.",
+      "new_account": "Accedendo nuovamente dopo la cancellazione, viene creato un nuovo account.",
+      "confirmation": "Digita DELETE per confermare",
+      "signout": "Verrai disconnesso quando la richiesta sarà accettata. Questo browser conserva una ricevuta per consentirti di seguirne l’avanzamento.",
+      "submit": "Conferma la richiesta di cancellazione",
+      "completed": "La cancellazione richiesta è completata.",
+      "running": "I tuoi dati personali sono in fase di cancellazione. Puoi seguirne l’avanzamento qui anche dopo la disconnessione.",
+      "retry": "La tua richiesta è conservata. L’elaborazione riprenderà automaticamente: non devi inviare un’altra richiesta.",
+      "pending": "La tua richiesta è stata accettata ed è in attesa di elaborazione. La cancellazione non è ancora completata.",
+      "checking": "Verifica della richiesta di cancellazione…",
+      "progress": "Avanzamento della cancellazione",
+      "completed_date": "Completata il",
+      "status_error": "Impossibile verificare lo stato della richiesta. Riprova: la ricevuta è conservata e non verrà creata una nuova richiesta.",
+      "paused": "I controlli automatici sono in pausa. La richiesta rimane attiva: verifica di nuovo per riprendere il monitoraggio.",
+      "check_again": "Verifica di nuovo lo stato",
+      "sign_in_again": "Accedi per creare un nuovo account",
+      "return_account": "Torna all’account",
+      "external_copies": "Le copie già condivise su Discord o conservate nei backup richiedono una gestione separata. Contatta il supporto per queste copie."
+    }
   },
   "premium": {
     "sync_chat": "Sincronizza conversazione",
@@ -115,7 +139,7 @@
     "guild_verification": "Verifica della colpa",
     "guild_verification_role_limit": "Verifica della Gilda - Limite di Ruolo",
     "force_ply_link": "Forza collegamento giocatore",
-    "maintenance_white_list": "Manutenzione",
+    "maintenance_white_list": "Modalità whitelist",
     "rcon": "Esecuzione RCON",
     "reward": "Premio",
     "free": "Libero",
@@ -175,8 +199,9 @@
   },
   "tools": {
     "needRolesPerms": "Il bot non ha il permesso di assegnare o rimuovere ruoli agli utenti. Metti il ruolo del bot più alto nella lista dei ruoli, ruoli interessati: {1}",
-    "needWS_1": "Questa funzione richiede un",
-    "needWS_2": "connessione al lavoro correttamente.",
+    "needWS_required": "GWSockets è obbligatorio",
+    "needWS_1": "Installa il modulo",
+    "needWS_2": "in garrysmod/lua/bin sul tuo server dedicato Garry’s Mod. Scegli la versione adatta al sistema operativo e all’architettura del server, quindi riavvialo. WebSocket è obbligatorio per l’intero addon; senza una connessione WebSocket, l’addon è inutilizzabile.",
     "needAddon": "Per utilizzare questa funzione è necessario installare l'addon(s):",
     "needAddon2": "per lavorare correttamente.",
     "upgrade_now": "Aggiorna ora",
@@ -205,7 +230,9 @@
     "type": "Tipo",
     "message": "Messaggio",
     "actions": "Azioni",
-    "mark_as_read": "Contrassegna come letto"
+    "mark_as_read": "Contrassegna come letto",
+    "mark_as_read_error": "Impossibile contrassegnare la notifica come letta",
+    "mark_all_read_error": "Impossibile contrassegnare tutte le notifiche come lette"
   },
   "home": {
     "hero": {
@@ -249,6 +276,111 @@
         "title": "Banca dati dei giocatori",
         "description": "Visualizza tutti i giocatori che hanno aderito al tuo server, puoi vedere il loro nome, id vapore, id discord, data di iscrizione, ultima data di iscrizione, tempo totale speso sul tuo server, avvisi totali, divieti totali ect... Puoi anche cercare un giocatore per nome, id vapore o id discord."
       }
+    },
+    "catalog": {
+      "eyebrow": "Molto più di un ponte per la chat",
+      "title": "Una comunità. Tutti i collegamenti.",
+      "description": "Dal primo accesso di un giocatore alla prossima segnalazione, fai lavorare insieme il gioco e Discord.",
+      "documentation": "Leggi le guide",
+      "explore": "Esplora le funzioni",
+      "all": "Tutte le funzioni",
+      "availability": "Alcune funzioni richiedono Premium, un acquisto su GmodStore o un addon compatibile. I limiti dipendono dal piano.",
+      "compare_plans": "Confronta i piani",
+      "groups": {
+        "status": {
+          "title": "Stato del server",
+          "intro": "Mostra alla comunità cosa succede nel gioco, direttamente su Discord.",
+          "one": "Connessione, numero di giocatori, mappa e modalità",
+          "two": "Messaggi di stato personalizzati e pulsanti interattivi",
+          "three": "Anteprima del messaggio prima della pubblicazione",
+          "four": "Grafici dell’attività dei giocatori"
+        },
+        "chat": {
+          "title": "Chat e screenshot",
+          "intro": "Condividi conversazioni e momenti speciali tra i due mondi.",
+          "one": "Chat di gioco nel canale Discord scelto",
+          "two": "Messaggi da Discord al gioco e filtri",
+          "three": "Screenshot dei giocatori con titolo e dettagli",
+          "four": "Galleria degli screenshot e condivisione su Discord"
+        },
+        "accounts": {
+          "title": "Account collegati",
+          "intro": "Riconosci i giocatori e accogli i nuovi membri della comunità.",
+          "one": "Profili Steam e Discord collegati",
+          "two": "Messaggi di verifica e regole dei ruoli",
+          "three": "Ruoli automatici all’ingresso su Discord",
+          "four": "Promemoria di verifica e preferenze dei membri"
+        },
+        "sync": {
+          "title": "Ruoli e soprannomi",
+          "intro": "Collega le identità nel gioco e i ruoli Discord con le tue regole.",
+          "one": "Gruppi del gioco collegati ai ruoli Discord",
+          "two": "Ruoli Discord per lavori o squadre nel gioco",
+          "three": "Regole dei nomi, prefissi, suffissi e formati",
+          "four": "Sincronizzazione opzionale di ruoli e nomi da Discord al gioco"
+        },
+        "players": {
+          "title": "Giocatori e attività",
+          "intro": "Trova i giocatori di ogni sessione e segui i loro progressi.",
+          "one": "Storico dei giocatori, tempo di gioco e connessioni",
+          "two": "Statistiche, uccisioni e morti dei giocatori",
+          "three": "Grafici dell’attività e del tempo per lavoro",
+          "four": "Classifiche e statistiche personalizzate supportate"
+        },
+        "moderation": {
+          "title": "Moderazione e accesso",
+          "intro": "Decidi chi può giocare e tieni a portata di mano i dati di moderazione.",
+          "one": "Registri dei ban tra piattaforme e controlli di accesso",
+          "two": "Storico degli avvisi AWarn3 con amministratore e motivo",
+          "three": "Modalità whitelist con accesso manuale o tramite ruolo Discord",
+          "four": "Account collegati obbligatori, ramo del client e controlli Family Sharing"
+        },
+        "diagnostics": {
+          "title": "Log e diagnostica",
+          "intro": "Conserva il contesto quando accade qualcosa sul server.",
+          "one": "Log degli eventi di gioco e destinazioni Discord",
+          "two": "Azioni sugli eventi con le tue condizioni",
+          "three": "Errori Lua con data e stack trace",
+          "four": "Segnalazioni dal gioco con passaggi e screenshot"
+        },
+        "community": {
+          "title": "Strumenti della comunità",
+          "intro": "Gestisci il server e dai alla comunità la sua identità.",
+          "one": "Link della comunità e classifica pubblica dei server",
+          "two": "Voti del server e notifiche su Discord",
+          "three": "Comandi console RCON controllati dai permessi",
+          "four": "Profilo e attività personalizzati del bot"
+        }
+      }
+    },
+    "presentation": {
+      "style_label": "Aspetto",
+      "hero_label": "Copertina",
+      "stats_label": "Statistiche",
+      "panorama": "Panorama",
+      "console": "Console",
+      "editorial": "Editoriale",
+      "ribbon": "Fascia",
+      "spotlight": "Grandi numeri",
+      "ledger": "Registro",
+      "headline_first": "Il tuo server.",
+      "headline_second": "La tua comunità.",
+      "headline_accent": "Collegati.",
+      "discover": "Esplora le funzioni",
+      "preview_label": "Uno sguardo al tuo Discord",
+      "preview_caption": "Esempio dell’integrazione nella tua comunità.",
+      "community_kicker": "Nella comunità",
+      "community_title": "Collegati, in numeri.",
+      "community_note": "Totali registrati su Gmod Integration.",
+      "metric_guild": "Comunità Discord",
+      "metric_guild_detail": "Comunità registrate",
+      "metric_server": "Server di gioco",
+      "metric_server_detail": "Server registrati",
+      "metric_verified": "Account collegati",
+      "metric_verified_detail": "Steam collegato a Discord",
+      "closing_kicker": "Dal tuo server al tuo Discord",
+      "closing_title": "Riunisci la tua comunità.",
+      "closing_description": "Segui la guida di installazione, collega il server e scegli le funzioni adatte alla tua comunità."
     }
   },
   "dashboard": {
@@ -259,7 +391,18 @@
       },
       "bugsReport": {
         "title": "Rapporto bug",
-        "description": "Elenco di tutti i bug segnalati sul server"
+        "description": "Elenco di tutti i bug segnalati sul server",
+        "channel": {
+          "title": "Segnalazioni di bug su Discord",
+          "description": "Invia le nuove segnalazioni di bug dei giocatori a un canale di testo Discord. Le segnalazioni e gli screenshot salvati restano disponibili qui sotto.",
+          "destination": "Canale Discord di destinazione",
+          "destination_help": "Scegli un canale e conferma la selezione per ricevere le nuove segnalazioni di bug.",
+          "select": "Seleziona un canale",
+          "remove": "Rimuovi destinazione",
+          "empty": "Nessun canale di destinazione",
+          "load_error": "Impossibile caricare la destinazione delle segnalazioni di bug.",
+          "remove_help": "Interrompere l’invio delle segnalazioni di bug a questa destinazione? Il canale Discord e le segnalazioni salvate verranno conservati."
+        }
       },
       "chat": {
         "chats": "Chat",
@@ -505,8 +648,29 @@
         "active": "Attivo",
         "actions": "Azioni",
         "remove_status": "Rimuovi stato",
-        "description": "Qui puoi gestire il tuo messaggio di stato del server e i pulsanti.",
+        "description": "Prepara il messaggio di stato del server, le informazioni sui giocatori e i pulsanti dei collegamenti. Le impostazioni vengono salvate automaticamente; pubblica il messaggio in un canale Discord quando è pronto.",
         "status_buttons_description": "Aggiungere pulsanti utility al messaggio di stato del server.",
+        "preview": {
+          "title": "Anteprima Discord in tempo reale",
+          "simulation": "Simulazione",
+          "simulation_note": "I giocatori fittizi ti aiutano a provare la disposizione. L’invio utilizza i dati reali del server.",
+          "caption": "Le impostazioni e le modifiche confermate ai pulsanti vengono salvate automaticamente e aggiornano un messaggio esistente. Pubblica per inviare un nuovo messaggio.",
+          "loading": "Aggiornamento dell’anteprima…",
+          "unavailable": "Anteprima non disponibile.",
+          "error": "Impossibile caricare l’anteprima.",
+          "buttons_note": "I pulsanti dell’anteprima non sono interattivi.",
+          "chart_alt": "Grafico dell’attività dei giocatori del server",
+          "app": "APP",
+          "confirm_send": "Scegli un canale, controlla l’anteprima e invia il messaggio.",
+          "cancel": "Annulla",
+          "send": "Invia su Discord",
+          "save_error": "Impossibile salvare le impostazioni dello stato.",
+          "send_error": "Impossibile inviare il messaggio di stato.",
+          "remove_error": "Impossibile rimuovere il messaggio di stato.",
+          "settings_error": "Impossibile caricare le impostazioni dello stato.",
+          "unsaved": "Solo anteprima — salva per applicare queste modifiche su Discord.",
+          "refresh": "Aggiorna anteprima"
+        },
         "status_message_description": "Configura il messaggio di stato che verrà visualizzato nel tuo server Discord.",
         "buttons_panel_title": "Pulsanti stato",
         "message_panel_title": "Messaggio di stato",
@@ -546,7 +710,8 @@
         "delete_confirmation": "Eliminare veramente questo pulsante?",
         "premium_limit": "Limitato a 2 pulsanti per utenti gratuiti",
         "required_field": "Questo campo è obbligatorio",
-        "invalid_url": "Formato URL non valido"
+        "invalid_url": "Formato URL non valido",
+        "timeLastTeamChange": "Tempo dall’ultimo cambio di squadra"
       },
       "importance": "Importanza",
       "description": "Designazione delle merci",
@@ -564,6 +729,17 @@
         },
         "actions": {
           "actions": "Azioni"
+        },
+        "channel": {
+          "title": "Errori Lua su Discord",
+          "description": "Invia i prossimi rapporti degli errori Lua del server di gioco e dei giocatori a un canale testuale Discord. Gli errori salvati restano disponibili qui sotto.",
+          "destination": "Canale Discord di destinazione",
+          "destination_help": "Scegli un canale e conferma la selezione per ricevere i nuovi rapporti degli errori.",
+          "select": "Seleziona un canale",
+          "remove": "Rimuovi destinazione",
+          "empty": "Nessun canale di destinazione",
+          "load_error": "Impossibile caricare la destinazione degli errori Lua.",
+          "remove_help": "Interrompere l’invio degli errori Lua a questa destinazione? Il canale Discord e la cronologia degli errori salvata verranno conservati."
         }
       },
       "logs_trigger": {
@@ -646,23 +822,25 @@
         "information": "Informazioni",
         "player_metadata": "Metadati del giocatore",
         "end_of_list": "Fine dell'elenco",
-        "capture_metadata": "Cattura metadati"
+        "capture_metadata": "Cattura metadati",
+        "copy_url": "Copia l’URL dello screenshot"
       },
       "edit_player": {
         "title": "Modifica lettore",
-        "bypass_maintenance": "Manutenzione tramite messaggio",
+        "bypass_maintenance": "Accesso manuale alla whitelist",
         "yes": "Sì",
         "no": "No.",
-        "save": "Salva"
+        "save": "Salva",
+        "bypass_help": "Consenti a questo giocatore di entrare in modalità whitelist indipendentemente dal ruolo del server. Rimuovere questa voce manuale conserva l’accesso tramite il ruolo o altri permessi. Salva per applicare."
       },
       "players_database": {
         "title": "Banca dati dei giocatori",
-        "description": "Elenco di tutti i giocatori nel server",
+        "description": "Consulta i giocatori registrati, il tempo di gioco e le connessioni. Modifica un giocatore per gestire l’accesso manuale alla whitelist; l’accesso tramite ruolo resta separato.",
         "name": "Nome",
         "rank": "Classifica",
         "total_time": "Tempo totale",
         "total_connect": "Totale Connect",
-        "bypass_maintenance": "Manutenzione bypass",
+        "bypass_maintenance": "Whitelist manuale",
         "actions": "Azioni",
         "steam": "Steam",
         "edit": "Modifica"
@@ -709,9 +887,9 @@
         "http_request_fallback_part3": "per ulteriori informazioni.",
         "http_request_success": "Complimenti al server che è stato configurato correttamente è ora possibile configurarlo.",
         "websocket_title": "WebSocket",
-        "websocket_fallback_part1": "Il server non è connesso al websocket, le funzionalità avanzate non sono disponibili, per utilizzarle è necessario installare il",
-        "websocket_fallback_part2": "sul tuo server.",
-        "websocket_success": "Complimenti per aver collegato con successo al server in websocket, le funzionalità avanzate sono ora disponibili.",
+        "websocket_fallback_part1": "La connessione in tempo reale non è disponibile, quindi nessuna integrazione di gioco dell’addon può funzionare. Controlla la console del server e verifica che il modulo obbligatorio",
+        "websocket_fallback_part2": "sia installato per il sistema operativo e l’architettura del server. Riavvia quindi il server di gioco e prova nuovamente la connessione.",
+        "websocket_success": "L’addon è connesso tramite GWSockets. Le sue integrazioni di gioco possono comunicare con Gmod Integration.",
         "version_title": "Versione",
         "version_fallback_http_part1": "Non possiamo controllare la versione del server, assicurarci di aver installato il",
         "version_fallback_http_part2": "correttamente e hanno completamente configurato il & token del server, leggere il",
@@ -796,10 +974,10 @@
       },
       "config": {
         "title": "Configuration",
-        "description": "Manage the in game configuration of this server.",
+        "description": "Gestisci la configurazione di gioco di questo server.",
         "error_occurred": "Si è verificato un errore durante il recupero della configurazione del server.",
         "default": "Predefinito",
-        "add_admin_rank": "Add rank",
+        "add_admin_rank": "Aggiungi grado",
         "settings": {
           "ig_syncBan": {
             "title": "Sincronizza ban",
@@ -850,8 +1028,8 @@
             "description": "Link di supporto mostrato quando un giocatore non soddisfa i requisiti."
           },
           "ig_maintenance": {
-            "title": "Modalità manutenzione",
-            "description": "Permetti solo ai giocatori con bypass manutenzione di unirsi (giocatore > modifica > bypass)"
+            "title": "Modalità whitelist",
+            "description": "Limita l’accesso ai giocatori autorizzati. Una voce manuale in Giocatori o il ruolo whitelist del server concede accesso indipendentemente. Sono ammessi anche i gruppi di amministratori del gioco configurati."
           },
           "ig_language": {
             "title": "Lingua dell'add-on",
@@ -863,9 +1041,19 @@
           },
           "ig_adminRank": {
             "title": "Ranghi admin",
-            "description": "Ranghi autorizzati a modificare la configurazione o aggirarare la modalità manutenzione."
+            "description": "Inserisci i gruppi esatti del gioco, come superadmin. I membri possono modificare la configurazione dell’addon ed entrare in modalità whitelist. Non sono ruoli Discord."
+          },
+          "maintenance_whitelist_role": {
+            "title": "Ruolo whitelist del server",
+            "description": "I giocatori con account Steam e Discord collegati possono accedere in modalità whitelist tramite questo ruolo. L’accesso manuale concesso in Giocatori è indipendente. Se un giocatore perde il ruolo mentre la modalità whitelist è attiva, viene espulso salvo che un altro permesso consenta ancora l’accesso."
           }
-        }
+        },
+        "remove_admin_rank": "Rimuovi grado",
+        "whitelist_no_role": "Nessun ruolo Discord",
+        "whitelist_role_missing": "Ruolo non disponibile ({1})",
+        "whitelist_roles_loading": "Caricamento dei ruoli Discord…",
+        "whitelist_roles_error": "Impossibile caricare i ruoli Discord. Riprova o rimuovi il ruolo attuale.",
+        "whitelist_role_invalid": "Scegli un ruolo Discord disponibile o nessun ruolo."
       },
       "team_roles": {
         "error_occurred": "Si è verificato un errore durante la sincronizzazione dei ruoli.",
@@ -910,8 +1098,12 @@
         "modal_title": "Modifica ruolo automatico",
         "modal_description": "Modifica le impostazioni per questo ruolo automatico.",
         "close_button": "Chiudi",
-        "failed_to_load": "Caricamento dei collegamenti non riuscito",
-        "add_role": "Aggiungi ruolo"
+        "failed_to_load": "Impossibile caricare i ruoli.",
+        "add_role": "Aggiungi ruolo",
+        "delete_confirmation": "I nuovi membri non riceveranno più questo ruolo automaticamente. I membri attuali manterranno il loro ruolo.",
+        "delete": "Elimina",
+        "premium": "Limitato a 3 ruoli automatici per gli utenti gratuiti.",
+        "active_help": "Tutti i ruoli in questo elenco vengono assegnati automaticamente ai nuovi membri."
       },
       "verification": {
         "check_button": "Controlla tutti i ruoli",
@@ -946,7 +1138,13 @@
         "edit_tooltip": "Modifica",
         "delete_tooltip": "Elimina",
         "failed_to_load_links": "Caricamento dei collegamenti non riuscito",
-        "add_role_button": "Aggiungi ruolo"
+        "add_role_button": "Aggiungi ruolo",
+        "publish_confirmation": "Pubblicare la verifica in #{1}?",
+        "publish_consequence": "I membri potranno usare questo messaggio per collegare i propri account.",
+        "delete_message_confirmation": "Eliminare la verifica da #{1}?",
+        "delete_message_consequence": "I membri non potranno più avviare la verifica da questo messaggio.",
+        "delete_role_consequence": "La verifica non assegnerà né rimuoverà più questo ruolo. I membri attuali manterranno i loro ruoli.",
+        "check_confirmation": "Controllare i ruoli dei membri di {1}?"
       },
       "information": {
         "title": "Informazioni",
@@ -1003,7 +1201,8 @@
         "edit_link": "Modifica collegamento",
         "save": "Salva",
         "yes": "Sì",
-        "no": "No."
+        "no": "No.",
+        "delete_confirmation": "Questa scorciatoia non sarà più disponibile per i membri."
       }
     },
     "menu": {
@@ -1040,6 +1239,211 @@
         "tickets": "Biglietti",
         "teams": "Squadre"
       }
+    },
+    "ui": {
+      "overview": "Panoramica",
+      "configuration": "Configurazione",
+      "activity": "Attività",
+      "workspace": "Area di gestione",
+      "workspace_description": "Gestisci la tua community e i server collegati.",
+      "server_description": "Configura il server e segui la sua attività.",
+      "admin_description": "Gestisci la piattaforma e le community.",
+      "navigation": "Navigazione",
+      "community": "Community",
+      "breadcrumb": "Percorso di navigazione"
     }
+  },
+  "ui": {
+    "save": "Salva",
+    "cancel": "Annulla",
+    "close": "Chiudi",
+    "empty": "Nessun elemento da visualizzare.",
+    "save_error": "Impossibile salvare. Riprova.",
+    "saved": "Salvato",
+    "unsaved": "Modifiche non salvate",
+    "load_error": "Impossibile caricare questo contenuto.",
+    "loading": "Caricamento…",
+    "retry": "Riprova",
+    "no_category": "Senza categoria",
+    "remove": "Rimuovi",
+    "autosave": "Le modifiche vengono salvate automaticamente.",
+    "redirecting": "Reindirizzamento…",
+    "logging_out": "Disconnessione",
+    "not_found_description": "La pagina che cerchi non esiste.",
+    "back_home": "Torna alla home",
+    "contents": "Indice",
+    "enabled": "Attivato",
+    "disabled": "Disattivato",
+    "delete_target": "Eliminare {1}?",
+    "invalid_value": "Inserisci un valore valido.",
+    "publish": "Pubblica",
+    "delete": "Elimina",
+    "create": "Crea",
+    "sync_pending": "Salvato. La sincronizzazione è in attesa.",
+    "required": "Questo campo è obbligatorio.",
+    "confirm_delete": "Eliminare questo elemento?",
+    "invalid_url": "Inserisci un URL HTTP o HTTPS valido.",
+    "action_error": "L’azione non è riuscita. Riprova.",
+    "confirm": "Conferma",
+    "leave_title": "Uscire senza salvare?",
+    "wait_saving": "Attendi il completamento del salvataggio prima di uscire.",
+    "leave_description": "Le modifiche non salvate verranno scartate.",
+    "stay": "Rimani su questa pagina",
+    "discard_leave": "Scarta ed esci",
+    "copy": "Copia",
+    "copied": "Copiato!",
+    "copy_error": "Impossibile copiare. Riprova.",
+    "saving": "Salvataggio…",
+    "template_variables": {
+      "title": "Variabili disponibili",
+      "syntax": "Sintassi",
+      "format": "Formato",
+      "example": "Esempio",
+      "template_example": "Esempio di modello",
+      "copy": "Copia {1}",
+      "text": "Testo",
+      "number": "Numero",
+      "duration": "Durata (es. 1h 2m 3s)",
+      "raw": "Valore grezzo",
+      "formatting": "Formattazione supportata",
+      "bold": "Grassetto",
+      "inline_code": "Codice in linea",
+      "underline": "Sottolineato",
+      "strikethrough": "Barrato"
+    }
+  },
+  "settings": {
+    "access": "Accesso e verifica",
+    "access_description": "Scegli come i giocatori collegano i propri account e vengono verificati all’accesso.",
+    "administration": "Amministrazione",
+    "administration_description": "Gestisci l’accesso degli amministratori e la modalità whitelist.",
+    "advanced": "Impostazioni avanzate",
+    "advanced_description": "Compatibilità del client, risoluzione dei problemi e formato dei registri.",
+    "all": "Tutte le impostazioni",
+    "bot_connected": "Il bot è già presente in questo server Discord.",
+    "bot_connection": "Connessione e credenziali",
+    "bot_identity": "Identità e presenza",
+    "bot_invite_hint": "Invita il bot personalizzato prima di modificarne l’identità.",
+    "bot_membership": "Server Discord",
+    "bot_token_hint": "Usa la configurazione per impostare o sostituire il token del bot personalizzato.",
+    "categories": "Categorie delle impostazioni",
+    "channel_confirmation": "Scegli un canale e conferma la selezione. Rimuovendolo, non verranno più inviati messaggi in quel canale.",
+    "chat_default_help": "Scegli se inoltrare o bloccare i messaggi del gioco per impostazione predefinita. Configura le eccezioni nelle regole seguenti.",
+    "chat_destination": "Destinazione Discord",
+    "chat_destination_help": "I messaggi vengono inoltrati tramite questo canale. Seleziona un canale per collegare il relay.",
+    "chat_direction_help": "Scegli quale lato può inviare messaggi attraverso il relay.",
+    "chat_ping_help": "Impedisci ai messaggi inoltrati di menzionare membri e ruoli Discord.",
+    "chat_rules": "Regole di filtro",
+    "general": "Generale",
+    "general_description": "Lingua e informazioni di assistenza mostrate ai giocatori.",
+    "kick_delay_dependency": "L’espulsione per un account non collegato richiede il collegamento obbligatorio. Anche i controlli del ramo del client usano questo intervallo, oppure 600 secondi se impostato su 0.",
+    "log_content": "Contenuto dei registri",
+    "log_file_help": "Includi le informazioni del registro come file allegato in Discord.",
+    "log_ip_help": "Nascondi gli indirizzi IP dei giocatori nei registri pubblicati su Discord.",
+    "message_content": "Contenuto del messaggio",
+    "moderation": "Moderazione",
+    "moderation_description": "Sincronizza le sanzioni tra Discord e il server di gioco.",
+    "nickname_format_help": "Modifica il modello del nickname e controlla l’anteprima in tempo reale.",
+    "no_results": "Nessuna impostazione corrisponde alla ricerca in questa categoria.",
+    "pseudo_rules_help": "I prefissi e i nomi dei ruoli vengono usati solo se il formato contiene {rolePrefix} o {roleName}.",
+    "reset_filters": "Reimposta filtri",
+    "results": "impostazioni visualizzate",
+    "rule_setup_help": "Crea una regola completa con un ruolo Discord, le opzioni di sincronizzazione e lo stato di attivazione.",
+    "saved_preview": "Anteprima salvata",
+    "search": "Cerca impostazioni",
+    "search_placeholder": "Cerca per nome o descrizione…",
+    "server_connection": "Dettagli di connessione",
+    "server_delete_hint": "Rimuovi questo server dalla comunità e dal relativo pannello.",
+    "server_identity": "Identità e visibilità",
+    "server_public_hint": "Scegli se mostrare questo server nella classifica pubblica dei server.",
+    "server_removal": "Rimuovi server",
+    "server_reset_hint": "Genera un nuovo token, poi aggiornalo nella configurazione di Garry’s Mod.",
+    "server_sensitive": "Azioni sensibili",
+    "status_chart_help": "Aggiungi un grafico dell’attività dei giocatori al messaggio di stato.",
+    "status_content_help": "Scegli il contenuto del messaggio e controlla l’anteprima in tempo reale. Le modifiche valide vengono salvate automaticamente.",
+    "status_players_help": "Includi i giocatori connessi e personalizza le informazioni di ciascuno.",
+    "sync_behavior": "Comportamento della sincronizzazione",
+    "sync_direction_help": "Questa direzione si applica a tutte le regole seguenti.",
+    "sync_disabled": "La sincronizzazione è disattivata. Il formato e le regole vengono conservati per la prossima attivazione.",
+    "sync_premium_help": "La sincronizzazione da Discord al gioco e in entrambe le direzioni richiede Premium.",
+    "verification_dependency": "Questo controllo si applica quando il collegamento degli account è obbligatorio.",
+    "verification_existing_members": "Membri esistenti",
+    "verification_message": "Accesso alla verifica",
+    "verification_message_hint": "Pubblica in un canale Discord il messaggio che i membri useranno per collegare i propri account.",
+    "verification_preferences": "Esperienza dei membri",
+    "explicit_save": "Le modifiche vengono applicate quando salvi questa sezione.",
+    "channel_draft_help": "Scegli una destinazione, poi salva per applicarla.",
+    "server_port_invalid": "Inserisci una porta tra 1 e 65535.",
+    "image_url_invalid": "Inserisci un URL immagine HTTP o HTTPS.",
+    "server_reset_confirm": "Il token attuale smetterà di funzionare. Aggiornalo nella configurazione di Garry’s Mod dopo averlo reimpostato.",
+    "server_delete_confirm": "Rimuovere questo server e i suoi dati dal pannello. Questa azione non può essere annullata.",
+    "server_edit_help": "Modifica l’identità del server e i dettagli di connessione.",
+    "general_administration": "Generale e amministrazione",
+    "general_administration_description": "Lingua, informazioni di supporto e accesso degli amministratori.",
+    "chat_relay": "Collegamento chat"
+  },
+  "editing": {
+    "remove_channel": "Rimuovere questa destinazione? I prossimi messaggi non verranno più inviati a questo canale.",
+    "section_help": "Modifica queste impostazioni, poi salva la sezione per applicarle.",
+    "remove_status_help": "Rimuovere il messaggio di stato pubblicato su Discord. La configurazione salvata viene mantenuta.",
+    "publish_saved_first": "Salva o annulla le modifiche prima di pubblicare un messaggio.",
+    "status_scope": "Le modifiche al messaggio e ai suoi pulsanti vengono salvate insieme.",
+    "conflict": "I valori salvati sono cambiati. Ricaricali prima di salvare di nuovo.",
+    "sync_pending": "La configurazione è salvata. L’aggiornamento di Discord non è ancora stato confermato.",
+    "reload_saved": "Scarta le modifiche e ricarica i valori salvati",
+    "save_status": "Salva la configurazione dello stato",
+    "invalid_status": "Controlla i nomi e gli URL dei pulsanti prima di salvare.",
+    "apply_draft": "Applica alla bozza",
+    "delete_trigger": "Eliminare il trigger?",
+    "delete_trigger_help": "L’azione dell’evento selezionato non verrà più eseguita. Questa azione non può essere annullata."
+  },
+  "access": {
+    "unavailable": "Impossibile verificare i diritti di accesso. La configurazione salvata viene conservata.",
+    "quota": "{1} / {2} utilizzati",
+    "upgrade_required": "Questa funzione richiede Premium.",
+    "quota_reached": "Hai raggiunto il limite per questa funzione.",
+    "historical_bot": "Richiede un acquisto GmodStore",
+    "suspended": "Questa funzione salvata è sospesa. Puoi ancora disattivare o rimuovere la configurazione.",
+    "count_buttons": "{1} pulsanti",
+    "count_links": "{1} collegamenti",
+    "history_count": "Le ultime {1} voci",
+    "permission_denied": "Non hai il permesso di gestire questa comunità.",
+    "status_chart": "Grafico attività dello stato",
+    "auto_roles_limit": "Ruoli automatici - Limite",
+    "nickname_rules_limit": "Regole soprannomi - Limite",
+    "chat_filters": "Filtri chat",
+    "log_triggers": "Azioni sugli eventi dei log",
+    "reverse_sync": "Sincronizzazione da Discord al gioco",
+    "errors_history": "Cronologia errori",
+    "verification_preferences": "Preferenze di verifica"
+  },
+  "server_setup": {
+    "title": "Collega l’addon Gmod Integration",
+    "description": "Dopo aver installato l’addon, esegui questi comandi uno alla volta nella console del tuo server Garry’s Mod, disponibile nel pannello del tuo provider di hosting.",
+    "credentials": "Credenziali del server",
+    "copy_id": "Copia l’ID del server",
+    "copy_token": "Copia il token del server",
+    "commands": "Comandi della console",
+    "set_id": "1. Imposta l’ID del server",
+    "copy_id_command": "Copia il comando per impostare l’ID del server",
+    "set_token": "2. Imposta il token del server",
+    "token_hint": "La copia di questo comando include il tuo token, anche quando è nascosto.",
+    "copy_token_command": "Copia il comando per impostare il token del server",
+    "test": "3. Verifica la connessione",
+    "copy_test_command": "Copia il comando di verifica della connessione",
+    "saved_hint": "L’addon salva subito queste impostazioni e verifica automaticamente la connessione una volta impostate entrambe le credenziali.",
+    "diagnostics": "Diagnostica",
+    "help": "Controlla lo stato della connessione e i comandi disponibili",
+    "copy_help_command": "Copia il comando di diagnostica",
+    "version": "Controlla la versione installata dell’addon",
+    "copy_version_command": "Copia il comando di verifica della versione"
+  },
+  "auth": {
+    "unavailable": "La connessione è temporaneamente non disponibile. La sessione e le modifiche non salvate vengono conservate.",
+    "reconnect_discord": "Ricollega Discord in una nuova scheda per continuare. Le modifiche non salvate rimangono qui.",
+    "logout_unconfirmed": "Hai effettuato la disconnessione su questo dispositivo. Non è stato possibile confermare la revoca sul server; riprova al ripristino della connessione.",
+    "stop_impersonation": "Torna al tuo account",
+    "impersonation_erasure": "Torna al tuo account prima di richiedere la cancellazione.",
+    "oauth_denied": "L’accesso a Discord non è stato completato. Puoi riprovare quando vuoi."
   }
 }

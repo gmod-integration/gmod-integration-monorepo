@@ -9,6 +9,9 @@ vi.mock('../../../../src/discord/utils/messages.js', () => ({ getUserStatisticMe
 const getTranslateMock = vi.fn(async (key: string) => key)
 vi.mock('@gmod/core/utils/localizations.js', () => ({ getTranslate: getTranslateMock }))
 
+const getServerFromIDMock = vi.fn()
+vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: getServerFromIDMock }))
+
 const statistic = (await import('../../../../src/discord/commands/player/statistic.js')).default
 
 function makeInteraction(overrides: Record<string, any> = {}) {
@@ -27,12 +30,33 @@ function makeInteraction(overrides: Record<string, any> = {}) {
 }
 
 beforeEach(() => {
+  getServerFromIDMock.mockReset().mockResolvedValue({ getGuildID: () => 'g1' })
   getServerListMock.mockReset()
   getUserStatisticMessageMock.mockClear()
   getTranslateMock.mockClear()
 })
 
 describe('commands/player/statistic execute', () => {
+  it('rejects a manually supplied foreign server before reading player statistics', async () => {
+    const interaction = makeInteraction()
+    interaction.options.getString.mockReturnValue('foreign-server')
+    getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'foreign-guild' })
+    await statistic.execute(interaction)
+    expect(getUserStatisticMessageMock).not.toHaveBeenCalled()
+    expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', flags: expect.anything() })
+  })
+  it('keeps the explicit global statistics option independent of a server identifier', async () => {
+    const interaction = makeInteraction()
+    interaction.options.getString.mockImplementation((name: string) => (name === 'server' ? 'global' : null))
+    await statistic.execute(interaction)
+    expect(getServerFromIDMock).not.toHaveBeenCalled()
+    expect(getUserStatisticMessageMock).toHaveBeenCalledWith(interaction.user, 'global', interaction.guild, null)
+  })
+  it('does not process a direct message', async () => {
+    await statistic.execute(makeInteraction({ guild: null }))
+    expect(getUserStatisticMessageMock).not.toHaveBeenCalled()
+  })
+
   it('defaults to the invoking user and forwards options to getUserStatisticMessage', async () => {
     const interaction = makeInteraction()
     interaction.options.getString.mockImplementation((name: string) => (name === 'server' ? 's1' : null))

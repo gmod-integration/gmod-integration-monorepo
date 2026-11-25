@@ -1,28 +1,45 @@
-import { Component, onMount } from 'solid-js'
-import { normalizeDiscordUserPayload, setDiscordUser, setIsLogged } from '../utils/event'
+import { type Component, createSignal, onMount, Show } from 'solid-js'
+import { clearAccountSession } from '../utils/accountSession.js'
+import { signOut } from '../utils/authClient.js'
 import { useNavigate } from '@solidjs/router'
-import { useI18n } from '../i18n'
-import { fetchAPI } from '../utils/api'
+import { useI18n } from '../i18n.js'
+import { Button, ButtonLink, PageState } from '../components/ui/index.js'
 
 const Logout: Component = () => {
   const navigate = useNavigate()
   const { t } = useI18n()
-
-  onMount(async () => {
-    await fetchAPI(`/users/:discordID/logout`, 'POST')
-    localStorage.clear()
-    setIsLogged(false)
-    setDiscordUser(normalizeDiscordUserPayload({}))
-    navigate('/')
-  })
-
+  const [pending, setPending] = createSignal(false)
+  const [unconfirmed, setUnconfirmed] = createSignal(false)
+  const logout = async () => {
+    if (pending()) return
+    setPending(true)
+    try {
+      await signOut()
+      clearAccountSession()
+      navigate('/', { replace: true })
+    } catch {
+      clearAccountSession()
+      setUnconfirmed(true)
+    } finally {
+      setPending(false)
+    }
+  }
+  onMount(() => void logout())
   return (
-    <>
-      <a class="link-hover" href="/">
-        {t('main.click_if_not_redirected', 'Click here if you are not redirected.')}
-      </a>
-    </>
+    <PageState icon="log-out" title={t('ui.logging_out', 'Signing out')} status>
+      <Show when={unconfirmed()}>
+        <p>
+          {t(
+            'auth.logout_unconfirmed',
+            'Sign-out is not confirmed. Your server session may still be active. Retry to finish signing out.',
+          )}
+        </p>
+        <Button loading={pending()} onClick={() => void logout()}>
+          {t('ui.retry', 'Try again')}
+        </Button>
+      </Show>
+      <ButtonLink href="/">{t('ui.back_home', 'Back to home')}</ButtonLink>
+    </PageState>
   )
 }
-
 export default Logout

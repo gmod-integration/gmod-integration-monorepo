@@ -1,5 +1,10 @@
 # `@gmod/infra-minio`
 
+Personal avatar writes check the erasure registry before and after upload. If erasure starts while a
+remote avatar is downloading, the new object is deleted instead of exposing its URL. Privacy lookup or
+cleanup failures do not fall back to a remote personal avatar URL. The technical registry adapter is
+`@gmod/infra-prisma/privacy.js`; guild icons remain independent of account erasure.
+
 S3-compatible object storage client (MinIO), via `@aws-sdk/client-s3`. Used for anything that shouldn't live
 in the relational/document databases: avatars, screenshots, GDPR export archives.
 

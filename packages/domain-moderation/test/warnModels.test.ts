@@ -22,18 +22,17 @@ vi.mock('@gmod/config', () => ({ ConfigDiscord: { embedColor: 0x393a41 } }))
 const getTranslateMock = vi.fn(async (key: string) => key)
 vi.mock('@gmod/core/utils/localizations.js', () => ({ getTranslate: getTranslateMock }))
 
+const getUserFromDiscordIDMock = vi.fn()
+vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromDiscordID: getUserFromDiscordIDMock }))
+
 const getServerFromIDMock = vi.fn()
 vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: getServerFromIDMock }))
 
-const {
-  getServerUserWarn,
-  saveWarnListOptions,
-  getWarnMessageEmbed,
-  handleWarnInteraction,
-} = await import('../src/warnModels.js')
+const { getServerUserWarn, saveWarnListOptions, getWarnMessageEmbed, handleWarnInteraction, canViewWarningHistory } =
+  await import('../src/warnModels.js')
 
 function fakeServer() {
-  return { getName: () => 'My Server', getID: () => 's1' }
+  return { getName: () => 'My Server', getID: () => 's1', getGuildID: () => 'g1' }
 }
 
 describe('getServerUserWarn', () => {
@@ -155,6 +154,44 @@ describe('getWarnMessageEmbed', () => {
 })
 
 describe('handleWarnInteraction', () => {
+  it('rejects a saved warning message belonging to another community', async () => {
+    optionsFindFirstMock.mockResolvedValueOnce({ serverID: 'foreign', steamID64: '765' })
+    getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'other' })
+    const interaction = fakeInteraction()
+    await handleWarnInteraction(interaction as any)
+    expect(interaction.reply).toHaveBeenCalledWith({ content: 'server_not_found', ephemeral: true })
+    expect(countMock).not.toHaveBeenCalled()
+    expect(interaction.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects a now unauthorized viewer before reading another page', async () => {
+    optionsFindFirstMock.mockResolvedValueOnce({ serverID: 's1', steamID64: '765' })
+    getServerFromIDMock.mockResolvedValueOnce(fakeServer())
+    getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => 'other' })
+    const interaction = fakeInteraction({ memberPermissions: { has: () => false } })
+    await handleWarnInteraction(interaction as any)
+    expect(interaction.reply).toHaveBeenCalledWith({ content: 'missing_permission', ephemeral: true })
+    expect(countMock).not.toHaveBeenCalled()
+    expect(interaction.update).not.toHaveBeenCalled()
+  })
+
+  it('moves legacy public pagination into a private reply without editing the public message', async () => {
+    optionsFindFirstMock.mockResolvedValueOnce({ serverID: 's1', steamID64: '765', limit: 5, offset: 0, order: 'DESC' })
+    getServerFromIDMock.mockResolvedValueOnce(fakeServer())
+    countMock.mockResolvedValueOnce(10)
+    findManyMock.mockResolvedValueOnce([])
+    optionsFindFirstMock.mockResolvedValueOnce(null)
+    const interaction = fakeInteraction({ message: { id: 'legacy', flags: { has: () => false } } })
+    interaction.reply.mockResolvedValueOnce({ id: 'private' })
+    await handleWarnInteraction(interaction as any)
+    expect(interaction.reply).toHaveBeenCalledWith(expect.objectContaining({ ephemeral: true, fetchReply: true }))
+    expect(optionsCreateMock).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ msgID: 'private' }) }),
+    )
+    expect(interaction.update).not.toHaveBeenCalled()
+    expect(interaction.channel.messages.fetch).not.toHaveBeenCalled()
+  })
+
   beforeEach(() => {
     countMock.mockReset()
     findManyMock.mockReset()
@@ -167,11 +204,13 @@ describe('handleWarnInteraction', () => {
   function fakeInteraction(overrides: Record<string, any> = {}) {
     return {
       isButton: () => true,
-      user: { bot: false },
-      guild: { preferredLocale: 'en' },
+      user: { id: 'u1', bot: false },
+      memberPermissions: { has: () => true },
+      guild: { id: 'g1', ownerId: 'owner', preferredLocale: 'en' },
       channel: { messages: { fetch: vi.fn() } },
       customId: 'warn_next',
-      message: { id: 'm1' },
+      message: { id: 'm1', flags: { has: () => true } },
+      update: vi.fn().mockResolvedValue(undefined),
       reply: vi.fn().mockResolvedValue(undefined),
       deferUpdate: vi.fn().mockResolvedValue(undefined),
       ...overrides,
@@ -260,7 +299,7 @@ describe('handleWarnInteraction', () => {
 
   it('warn_previous clamps the offset at 0 when it would go negative', async () => {
     const { fetchMock } = await runInteractionFlow('warn_previous', 2, 5)
-    expect(fetchMock).toHaveBeenCalledWith('m1')
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(optionsUpdateMock).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ offset: 0 }) }),
     )
@@ -273,11 +312,10 @@ describe('handleWarnInteraction', () => {
     )
   })
 
-  it('leaves the offset unchanged for a warn_ customId that matches none of the known actions', async () => {
-    await runInteractionFlow('warn_unknown_action', 8, 5)
-    expect(optionsUpdateMock).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ offset: 8 }) }),
-    )
+  it('ignores an unrecognized button action before querying history', async () => {
+    const interaction = fakeInteraction({ customId: 'warn_unknown_action' })
+    await handleWarnInteraction(interaction as any)
+    expect(optionsFindFirstMock).not.toHaveBeenCalled()
   })
 
   it('warn_next advances the offset', async () => {
@@ -294,9 +332,41 @@ describe('handleWarnInteraction', () => {
     )
   })
 
-  it('edits the message and defers the update after saving options', async () => {
+  it('updates the private interaction without fetching or editing a channel message', async () => {
     const { editMock, interaction } = await runInteractionFlow('warn_next', 0, 5)
-    expect(editMock).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }))
-    expect(interaction.deferUpdate).toHaveBeenCalled()
+    expect(editMock).not.toHaveBeenCalled()
+    expect(interaction.update).toHaveBeenCalledWith(expect.objectContaining({ embeds: expect.any(Array) }))
+    expect(interaction.deferUpdate).not.toHaveBeenCalled()
+  })
+})
+
+describe('warning history access', () => {
+  beforeEach(() => getUserFromDiscordIDMock.mockReset())
+  const viewer = (overrides: any = {}) => ({
+    guild: { id: 'g1', ownerId: 'owner' },
+    user: { id: 'u1' },
+    memberPermissions: { has: () => false },
+    ...overrides,
+  })
+  it('allows an ordinary verified user to view their own warnings', async () => {
+    getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+    expect(await canViewWarningHistory(viewer() as any, '765')).toBe(true)
+  })
+  it.each([null, { getSteamID64: () => null }, { getSteamID64: () => 'another' }])(
+    'denies unlinked or other-player access (%j)',
+    async (user) => {
+      getUserFromDiscordIDMock.mockResolvedValueOnce(user)
+      expect(await canViewWarningHistory(viewer() as any, '765')).toBe(false)
+    },
+  )
+  it.each([{ user: { id: 'owner' } }, { memberPermissions: { has: () => true } }])(
+    'allows the community owner or Discord Administrator without requiring a Steam link (%j)',
+    async (overrides) => {
+      expect(await canViewWarningHistory(viewer(overrides) as any, '765')).toBe(true)
+      expect(getUserFromDiscordIDMock).not.toHaveBeenCalled()
+    },
+  )
+  it('denies a viewer outside a guild', async () => {
+    expect(await canViewWarningHistory(viewer({ guild: null }) as any, '765')).toBe(false)
   })
 })

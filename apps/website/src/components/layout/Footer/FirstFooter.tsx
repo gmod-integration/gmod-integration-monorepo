@@ -1,4 +1,4 @@
-import { Component, For } from 'solid-js'
+import { For, type Component } from 'solid-js'
 import { A } from '@solidjs/router'
 import { useI18n } from '../../../i18n'
 
@@ -15,7 +15,7 @@ interface footerCategory {
 const FirstFooter: Component = () => {
   const { t } = useI18n()
 
-  const footerLinks: footerCategory[] = [
+  const footerLinks = (): footerCategory[] => [
     {
       title: t('main.services', 'Services'),
       links: [
@@ -41,13 +41,13 @@ const FirstFooter: Component = () => {
           href: '/premium',
         },
         {
-          title: t('main.support', 'Support'),
+          title: t('main.support', 'Help and support'),
           href: '/support',
         },
       ],
     },
     {
-      title: 'Legal',
+      title: t('ui.legal', 'Legal'),
       links: [
         {
           title: t('main.terms', 'Terms of Service'),
@@ -62,14 +62,14 @@ const FirstFooter: Component = () => {
   ]
 
   return (
-    <footer class="footer md:footer-horizontal p-10 bg-base-100 text-base-content justify-around max-w-(--breakpoint-2xl) mx-auto">
-      <For each={footerLinks}>
+    <div class="site-footer-links">
+      <For each={footerLinks()}>
         {({ title, links }) => (
-          <nav>
-            <h6 class="footer-title opacity-100">{title}</h6>
+          <nav aria-label={title}>
+            <h3>{title}</h3>
             <For each={links}>
               {({ title, href }) => (
-                <A class="link link-hover text-base-content/50" href={href}>
+                <A class="site-footer-link" href={href}>
                   {title}
                 </A>
               )}
@@ -77,7 +77,7 @@ const FirstFooter: Component = () => {
           </nav>
         )}
       </For>
-    </footer>
+    </div>
   )
 }
 

@@ -10,6 +10,7 @@
   "dependencies": {
     "@gmod/config": "workspace:*",
     "@gmod/infra-redis": "workspace:*",
-    "steamapi": "^2.5.0"
+    "steamapi": "^2.5.0",
+    "@gmod/infra-minio": "workspace:*"
   }
 }

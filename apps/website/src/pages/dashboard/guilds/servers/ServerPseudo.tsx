@@ -1,405 +1,462 @@
-import { Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
-import AdminPanel from '../../../../components/AdminPanel'
-import AdminModal from '../../../../components/AdminModal'
-import { useI18n } from '../../../../i18n'
-import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket'
-import { BuyPremiumBtn, premium, PremiumBadge } from '../../../../utils/premium'
-import { PremiumOnly } from '../../../../components/PremiumOnly'
-import { fetchAPI } from '../../../../utils/api'
-import { TextValue } from '../../../../components/popup/TextValue'
+import Pagination from '../../../../components/Pagination.js'
+import { createListPagination } from '../../../../hooks/createListPagination.js'
+import { FeatureGate, SuspendedFeature } from '../../../../components/FeatureGate.js'
+import { useFeatureAccess } from '../../../../components/AccessProvider.js'
+import { closeDialog, showDialog } from '../../../../utils/dialog.js'
+import { type Component, createEffect, createResource, createSignal, For, Show } from 'solid-js'
+import AdminPanel from '../../../../components/AdminPanel.js'
+import AdminModal from '../../../../components/AdminModal.js'
+import ConfirmActionDialog from '../../../../components/ConfirmActionDialog.js'
+import { useI18n } from '../../../../i18n.js'
+import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket.js'
+import { fetchAPI } from '../../../../utils/api.js'
+import { TextValue } from '../../../../components/popup/TextValue.js'
+import {
+  BooleanStatus,
+  AsyncState,
+  Button,
+  FormActions,
+  FormField,
+  IconButton,
+  TableState,
+  Icon,
+  SettingRow,
+  AutosaveFeedback,
+  TemplateVariables,
+} from '../../../../components/ui/index.js'
+import { createDraftForm } from '../../../../hooks/createDraftForm.js'
+import { createAutosave } from '../../../../hooks/createAutosave.js'
+import { saveDashboardSettings } from '../../../../utils/dashboardSettings.js'
+
+type PseudoRule = { id: number; enabled: boolean; role: string; name: string; prefix: string }
+const URL = '/users/:discordID/guilds/:guildID/servers/:serverID/pseudo'
+const emptyRule = (): PseudoRule => ({ id: 0, enabled: false, role: '', name: '', prefix: '' })
+const renderFormat = (value: string) =>
+  value
+    .replaceAll('{plyName}', 'John Doe')
+    .replaceAll('{plySteamID64}', '76500000000000000')
+    .replaceAll('{rolePrefix}', 'A')
+    .replaceAll('{roleName}', 'Admin')
 
 const ServerPseudo: Component = () => {
-  function getSelectorClassList(direction: string) {
-    return !pseudoDirection.loading ? pseudoDirection().value === direction : false
-  }
-
   const { t } = useI18n()
-
-  const [format, setFormat] = createSignal('')
-  const [preview, setPreview] = createSignal('')
-
+  const reverseAccess = useFeatureAccess('sync.nicknames.reverse')
+  const quotaAccess = useFeatureAccess('sync.nicknames.rules')
+  const [syncPending, setSyncPending] = createSignal(false)
+  const [creating, setCreating] = createSignal(false)
+  const [removing, setRemoving] = createSignal<PseudoRule>()
+  const settings = createDraftForm({
+    initial: { direction: 'disable', format: '' },
+    allowPendingEdits: true,
+    validate: (draft) => ({
+      ...(!['disable', 'gmod-to-discord', 'discord-to-gmod', 'both'].includes(draft.direction)
+        ? { direction: t('ui.invalid_value', 'Check this value.') }
+        : {}),
+      ...(draft.direction !== 'disable' && !draft.format.trim()
+        ? { format: t('ui.required', 'This field is required.') }
+        : {}),
+    }),
+    errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
+  })
+  const [configuration, { refetch: refetchConfiguration }] = createResource(async () => {
+    const [directionResponse, formatResponse] = await Promise.all([
+      fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_pseudo_direction', 'GET'),
+      fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/pseudoFormat', 'GET'),
+    ])
+    if (!directionResponse.ok || !formatResponse.ok) throw new Error('Nickname settings unavailable')
+    const [direction, format] = await Promise.all([directionResponse.json(), formatResponse.json()])
+    return { direction: direction.value || 'disable', format: format.value || '' }
+  })
   createEffect(() => {
-    const previewValue = format()
-      .replace('{plyName}', 'John Doe')
-      .replace('{plySteamID64}', '76500000000000000')
-      .replace('{rolePrefix}', 'A')
-      .replace('{roleName}', 'Admin')
-    setPreview(previewValue)
+    if (!configuration.loading && !configuration.error) settings.reset(configuration()!)
   })
-
-  const [pseudoDirection, { mutate: mutatePseudoDirection }] = createResource('pseudoDirection', async () => {
-    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_pseudo_direction', 'GET').then(
-      async (res) => {
-        if (!res.ok) throw new Error('An error occurred while fetching the pseudo direction.')
-        return (await res.json()) || {}
-      },
-    )
+  const [rules, { mutate, refetch }] = createResource(
+    async (): Promise<PseudoRule[]> => {
+      const response = await fetchAPI(URL, 'GET')
+      if (!response.ok) throw new Error('Nickname rules unavailable')
+      const data = await response.json()
+      if (!Array.isArray(data)) throw new Error('Invalid nickname rules')
+      return data
+    },
+    { initialValue: [] },
+  )
+  const editor = createDraftForm<PseudoRule>({
+    initial: emptyRule(),
+    validate: (draft) => (!draft.role.trim() ? { role: t('ui.required', 'This field is required.') } : {}),
+    errorMessage: () => t('ui.save_error', 'Unable to save. Please try again.'),
   })
-
-  function updateSyncPseudoDirection(direction: string) {
-    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/sync_pseudo_direction', 'PUT', {
-      value: direction,
+  const canCreate = () => !rules.loading && !rules.error && quotaAccess.canCreate(rules().length)
+  function begin(row?: PseudoRule) {
+    if (editor.pending() || rules.loading || rules.error || (!row && !canCreate())) return
+    setCreating(!row)
+    editor.reset(row ? { ...row } : emptyRule())
+    showDialog('edit_role_modal')
+  }
+  const directionWriteAllowed = () =>
+    reverseAccess.allowed() ||
+    settings.draft().direction === settings.saved().direction ||
+    ['disable', 'gmod-to-discord'].includes(settings.draft().direction)
+  async function saveSettings() {
+    if (configuration.loading || configuration.error || !directionWriteAllowed()) return
+    await settings.save(async (snapshot) => {
+      const changed: Record<string, unknown> = {}
+      if (snapshot.direction !== settings.saved().direction) changed.sync_pseudo_direction = snapshot.direction
+      if (snapshot.format !== settings.saved().format) changed.pseudoFormat = snapshot.format
+      const result = await saveDashboardSettings('server', changed)
+      setSyncPending(result.sync === 'pending')
+      return {
+        direction:
+          typeof result.settings.sync_pseudo_direction === 'string'
+            ? result.settings.sync_pseudo_direction
+            : snapshot.direction,
+        format: typeof result.settings.pseudoFormat === 'string' ? result.settings.pseudoFormat : snapshot.format,
+      }
     })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the pseudo direction.')
-        }
-      })
-      .then((data) => {
-        mutatePseudoDirection(data)
-      })
-      .catch((error) => console.error(error))
   }
-
-  const [pseudoFormat, { mutate: mutatePseudoFormat }] = createResource('pseudoFormat', async () => {
-    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/pseudoFormat', 'GET')
-      .then(async (res) => {
-        if (!res.ok) throw new Error('An error occurred while fetching the pseudo format.')
-        return (await res.json()) || { value: '' }
-      })
-      .then((data) => {
-        setFormat(data.value || '')
-        return data
-      })
-  })
-
-  function updatePseudoFormat(format: string) {
-    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/pseudoFormat', 'PUT', {
-      value: format,
+  async function saveRule() {
+    if (rules.loading || rules.error || (creating() && !canCreate())) return
+    const isNew = creating()
+    const saved = await editor.save(async (snapshot) => {
+      const payload = {
+        enabled: snapshot.enabled,
+        role: snapshot.role.trim(),
+        name: snapshot.name,
+        prefix: snapshot.prefix,
+      }
+      const response = await fetchAPI(isNew ? URL : `${URL}/${snapshot.id}`, isNew ? 'POST' : 'PUT', payload)
+      if (!response.ok) throw new Error('Nickname rule save failed')
+      const updated: PseudoRule = await response.json()
+      mutate((previous) =>
+        isNew ? [...previous, updated] : previous.map((row) => (row.id === updated.id ? updated : row)),
+      )
+      if (isNew) pagination.onChange({ ...pagination.query(), offset: pagination.total() - 1 })
+      return updated
     })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the pseudo format.')
-        }
-      })
-      .then((data) => {
-        mutatePseudoFormat(data)
-        // @ts-expect-error -- intentional: legacy typing gap
-        edit_format.close()
-      })
-      .catch((error) => console.error(error))
+    if (saved) closeDialog('edit_role_modal')
   }
-
-  const [activeRole, setActiveRole] = createSignal({ id: 0, enabled: false, role: '', name: '', prefix: '' })
-
-  const [pseudoRoles, { mutate: mutatePseudoRoles }] = createResource('pseudoRoles', async () => {
-    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/pseudo', 'GET').then(async (res) => {
-      if (!res.ok) throw new Error('An error occurred while fetching the pseudo roles.')
-      return (await res.json()) || []
-    })
+  const autosave = createAutosave({
+    form: settings,
+    save: saveSettings,
+    enabled: () => !configuration.loading && !configuration.error && directionWriteAllowed(),
   })
-
-  async function addRole() {
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/pseudo`, 'POST', activeRole())
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while adding the role.')
-        }
-      })
-      .then((data) => {
-        mutatePseudoRoles((prev) => [...prev, data])
-      })
-      .catch((error) => console.error(error))
-  }
-
-  async function editRole() {
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/pseudo/${activeRole().id}`, 'PUT', activeRole())
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while editing the role.')
-        }
-      })
-      .then((data) => {
-        mutatePseudoRoles((prev) => prev.map((r) => (r.id === data.id ? data : r)))
-      })
-      .catch((error) => console.error(error))
-  }
-
-  async function deleteRole(id: number) {
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/pseudo/${id}`, 'DELETE')
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while deleting the role.')
-        }
-      })
-      .then((data) => {
-        mutatePseudoRoles((prev) => prev.filter((r) => r.id !== data.id))
-      })
-      .catch((error) => console.error(error))
-  }
+  const pagination = createListPagination<PseudoRule>(() => (!rules.error ? rules() : undefined))
 
   return (
     <>
       <NeedWebsocket />
-      <AdminModal title={t('dashboard.server.pseudo.editRole', 'Edit Role')} id="edit_role_modal">
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.pseudo.userGroup', 'User Group')}</span>
-          </label>
-          <input
-            type="text"
-            class="input"
-            disabled={pseudoRoles.loading}
-            value={activeRole().role}
-            onInput={(e) => {
-              activeRole().role = e.currentTarget.value
-            }}
-          />
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.pseudo.name', 'Name')}</span>
-          </label>
-          <input
-            type="text"
-            disabled={pseudoRoles.loading}
-            class="input"
-            value={activeRole().name}
-            onInput={(e) => {
-              activeRole().name = e.currentTarget.value
-            }}
-          />
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.pseudo.prefix', 'Prefix')}</span>
-          </label>
-          <input
-            type="text"
-            disabled={pseudoRoles.loading}
-            class="input"
-            value={activeRole().prefix}
-            onInput={(e) => {
-              activeRole().prefix = e.currentTarget.value
-            }}
-          />
-        </div>
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.pseudo.active', 'Active')}</span>
-          </label>
-          <select
-            class="select"
-            disabled={pseudoRoles.loading}
-            value={activeRole().enabled ? 'true' : 'false'}
-            onChange={(e) => {
-              activeRole().enabled = e.currentTarget.value === 'true'
-            }}
-          >
-            <option value="true">{t('dashboard.server.pseudo.yes', 'Yes')}</option>
-            <option value="false">{t('dashboard.server.pseudo.no', 'No')}</option>
-          </select>
-        </div>
-        <button
-          class="btn btn-base-200 mt-2"
-          disabled={pseudoRoles.loading}
-          onClick={async () => {
-            // @ts-expect-error -- intentional: legacy typing gap
-            edit_role_modal.close()
-            await editRole()
-          }}
+      <AdminModal
+        id="edit_role_modal"
+        title={
+          creating()
+            ? t('dashboard.server.pseudo.addRole', 'Add nickname rule')
+            : t('dashboard.server.pseudo.editRole', 'Edit nickname rule')
+        }
+        busy={editor.pending()}
+        onClose={editor.discard}
+        onCancel={editor.discard}
+      >
+        <FormField
+          id="pseudo-role-group"
+          label={t('dashboard.server.pseudo.userGroup', 'Game user group')}
+          description={t(
+            'dashboard.server.pseudo.user_group_help',
+            'Enter the exact game user group, such as admin or vip. This rule supplies the name and prefix used in the nickname format.',
+          )}
+          error={editor.errors().role}
         >
-          {t('dashboard.server.pseudo.save', 'Save')}
-        </button>
-      </AdminModal>
-
-      <AdminModal title={t('dashboard.server.pseudo.editFormat', 'Edit Format')} id="edit_format">
-        <Show when={!pseudoFormat.loading}>
-          <div class="fieldset p-2">
-            <h1 class="text-lg text-base-content/70 font-bold">
-              {t('dashboard.server.pseudo.variables', 'Variables')}
-            </h1>
-            <ul class="text-base-content/60 list-inside">
-              <li>{`{plyName} - ${t('dashboard.server.pseudo.playerName', 'Player Name')}`}</li>
-              <li>{`{plySteamID64} - ${t('dashboard.server.pseudo.playerSteamID64', 'Player SteamID64')}`}</li>
-              <li>{`{rolePrefix} - ${t('dashboard.server.pseudo.rolePrefix', 'Role Prefix')}`}</li>
-              <li>{`{roleName} - ${t('dashboard.server.pseudo.roleName', 'Role Name')}`}</li>
-            </ul>
-          </div>
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.server.pseudo.format', 'Format')}</span>
-            </label>
-            <input
-              type="text"
-              class="input"
-              disabled={pseudoFormat.loading}
-              value={pseudoFormat().value}
-              onInput={(e) => {
-                pseudoFormat().value = e.currentTarget.value
-                setFormat(e.currentTarget.value)
-              }}
-            />
-          </div>
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.server.pseudo.preview', 'Preview')}</span>
-            </label>
-            <input type="text" class="input" value={preview()} readonly />
-          </div>
-          <button
-            class="btn btn-base-200 mt-2"
-            disabled={pseudoFormat.loading}
-            onClick={async () => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              edit_format.close()
-              updatePseudoFormat(pseudoFormat().value)
-            }}
-          >
-            {t('dashboard.server.pseudo.save', 'Save')}
-          </button>
+          <input
+            id="pseudo-role-group"
+            aria-describedby={`pseudo-role-group-description${editor.errors().role ? ' pseudo-role-group-error' : ''}`}
+            class="input w-full"
+            value={editor.draft().role}
+            disabled={editor.pending()}
+            aria-invalid={!!editor.errors().role}
+            onInput={(event) => editor.patch({ role: event.currentTarget.value })}
+          />
+        </FormField>
+        <FormField id="pseudo-role-name" label={t('dashboard.server.pseudo.name', 'Display name for {roleName}')}>
+          <input
+            id="pseudo-role-name"
+            class="input w-full"
+            value={editor.draft().name}
+            disabled={editor.pending()}
+            onInput={(event) => editor.patch({ name: event.currentTarget.value })}
+          />
+        </FormField>
+        <FormField id="pseudo-role-prefix" label={t('dashboard.server.pseudo.prefix', 'Prefix for {rolePrefix}')}>
+          <input
+            id="pseudo-role-prefix"
+            class="input w-full"
+            value={editor.draft().prefix}
+            disabled={editor.pending()}
+            onInput={(event) => editor.patch({ prefix: event.currentTarget.value })}
+          />
+        </FormField>
+        <FormField id="pseudo-role-active" label={t('dashboard.server.pseudo.active', 'Active')}>
+          <input
+            id="pseudo-role-active"
+            type="checkbox"
+            class="toggle"
+            checked={editor.draft().enabled}
+            disabled={editor.pending()}
+            onChange={(event) => editor.patch({ enabled: event.currentTarget.checked })}
+          />
+        </FormField>
+        <Show when={creating()}>
+          <FeatureGate
+            capability="sync.nicknames.rules"
+            used={!rules.loading && !rules.error ? rules().length : undefined}
+            loading={rules.loading}
+            error={rules.error}
+            showQuota={false}
+          />
         </Show>
+        <FormActions
+          dirty={editor.dirty()}
+          pending={editor.pending()}
+          error={editor.error()}
+          disabled={!editor.valid() || rules.loading || !!rules.error || (creating() && !canCreate())}
+          saveLabel={creating() ? t('ui.create', 'Create') : t('ui.save', 'Save')}
+          onSave={() => void saveRule()}
+          onCancel={() => {
+            editor.discard()
+            closeDialog('edit_role_modal')
+          }}
+        />
       </AdminModal>
-
+      <ConfirmActionDialog
+        id="delete-pseudo-rule"
+        title={t('ui.confirm_delete', 'Delete this item?')}
+        description={
+          removing()
+            ? `${removing()!.role} — ${removing()!.name} ${removing()!.prefix} — ${t('dashboard.server.pseudo.remove_rule_help', 'Delete this nickname rule. The game user group and Discord roles are kept.')}`
+            : ''
+        }
+        confirmLabel={t('ui.delete', 'Delete')}
+        onConfirm={async () => {
+          const target = removing()
+          if (!target) throw new Error('No rule selected')
+          const response = await fetchAPI(`${URL}/${target.id}`, 'DELETE')
+          if (!response.ok) throw new Error('Nickname rule removal failed')
+          mutate((previous) => previous.filter((row) => row.id !== target.id))
+        }}
+      />
       <AdminPanel
-        title={t('dashboard.server.pseudo.pseudo', 'Pseudo')}
+        title={t('dashboard.server.pseudo.pseudo', 'Nickname synchronization')}
         description={t(
           'dashboard.server.pseudo.description',
-          'Define the pseudo that are synchronized with your Discord server.',
+          'Synchronize player names between the game and Discord for linked accounts.',
         )}
-        info={t('dashboard.server.pseudo.info', 'Please note that Guild Owner will not have pseudo updates.')}
+        info={t(
+          'dashboard.server.pseudo.info',
+          'Discord prevents bots from changing the server owner’s nickname. The bot also needs permission to manage the target member’s nickname.',
+        )}
+        icon="arrow-left-right"
+        footer={
+          <AutosaveFeedback
+            state={autosave}
+            message={
+              syncPending() && !settings.dirty()
+                ? t('ui.sync_pending', 'Saved. Synchronization is pending.')
+                : undefined
+            }
+          />
+        }
       >
-        <div class="flex w-fit items-center">
-          <PremiumBadge onlyIcon={true} />
-          <span class="mr-2 text-nowrap">
-            {t('dashboard.server.pseudo.pseudoSyncDirection', 'Pseudo Synchronization Direction')} :{' '}
-          </span>
+        <AsyncState
+          loading={configuration.loading}
+          error={configuration.error}
+          onRetry={() => void refetchConfiguration()}
+        />
+        <SettingRow
+          controlId="server-pseudo-direction"
+          title={t('dashboard.server.pseudo.pseudoSyncDirection', 'Nickname synchronization direction')}
+          description={t('settings.sync_direction_help', 'This direction applies to every rule below.')}
+        >
           <select
-            class="select w-full max-w-xs"
-            disabled={pseudoDirection.loading}
-            onChange={(e) => {
-              updateSyncPseudoDirection(e.currentTarget.value)
-            }}
+            id="server-pseudo-direction"
+            class="select w-full"
+            aria-describedby="server-pseudo-direction-description"
+            value={settings.draft().direction}
+            disabled={configuration.loading || !!configuration.error}
+            onChange={(event) => settings.patch({ direction: event.currentTarget.value })}
           >
-            <option value="discord-to-gmod" selected={getSelectorClassList('discord-to-gmod')} disabled={!premium()}>
-              {t('dashboard.server.pseudo.fromDiscordToGmod', 'From Discord to Gmod')} <PremiumOnly />
+            <option value="disable">{t('dashboard.server.pseudo.disable', 'Disable')}</option>
+            <option value="gmod-to-discord">{t('dashboard.server.pseudo.fromGmodToDiscord', 'Game → Discord')}</option>
+            <option value="discord-to-gmod" disabled={!reverseAccess.allowed()}>
+              {t('dashboard.server.pseudo.fromDiscordToGmod', 'Discord → game')}
             </option>
-            <option value="gmod-to-discord" selected={getSelectorClassList('gmod-to-discord')}>
-              {t('dashboard.server.pseudo.fromGmodToDiscord', 'From Gmod to Discord')}
-            </option>
-            <option value="both" selected={getSelectorClassList('both')} disabled={!premium()}>
-              {t('dashboard.server.pseudo.bothWays', 'Both Ways')} <PremiumOnly />
-            </option>
-            <option value="disable" selected={getSelectorClassList('disable')}>
-              {t('dashboard.server.pseudo.disable', 'Disable')}
+            <option value="both" disabled={!reverseAccess.allowed()}>
+              {t('dashboard.server.pseudo.bothWays', 'Both directions')}
             </option>
           </select>
-        </div>
-
-        <div class="flex w-fit items-center">
-          <span class="mr-2">{t('dashboard.server.pseudo.format', 'Format')}:</span>
-          <input type="text" class="input" value={preview()} readonly />
-        </div>
-
-        <div class="flex w-fit items-center gap-4">
-          <button
-            class="btn btn-base-200"
-            onClick={() => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              edit_format.showModal()
-            }}
-          >
-            {t('dashboard.server.pseudo.editFormat', 'Edit Format')}
-          </button>
-        </div>
+        </SettingRow>
+        <SettingRow
+          controlId="pseudo-format"
+          title={t('dashboard.server.pseudo.format', 'Format')}
+          description={t('settings.nickname_format_help', 'Edit the nickname template and review the live preview.')}
+          stacked
+        >
+          <input
+            id="pseudo-format"
+            class="input w-full font-mono"
+            value={settings.draft().format}
+            disabled={configuration.loading || !!configuration.error}
+            aria-invalid={!!settings.errors().format}
+            aria-describedby="pseudo-format-description"
+            onInput={(event) => settings.patch({ format: event.currentTarget.value })}
+          />
+          <Show when={settings.errors().format}>
+            <p class="text-error text-sm">{settings.errors().format}</p>
+          </Show>
+          <div class="flex flex-col gap-2 w-full">
+            <label for="pseudo-format-preview" class="text-sm">
+              {t('dashboard.server.pseudo.preview', 'Preview')}
+            </label>
+            <input
+              id="pseudo-format-preview"
+              class="input w-full"
+              value={renderFormat(settings.draft().format)}
+              readOnly
+            />
+          </div>
+        </SettingRow>
+        <TemplateVariables
+          syntax="{variable}"
+          variables={[
+            {
+              token: '{plyName}',
+              label: t('dashboard.server.pseudo.playerName', 'Player Name'),
+              format: t('ui.template_variables.text', 'Text'),
+              example: 'John Doe',
+            },
+            {
+              token: '{plySteamID64}',
+              label: t('dashboard.server.pseudo.playerSteamID64', 'Player SteamID64'),
+              format: t('ui.template_variables.text', 'Text'),
+              example: '76500000000000000',
+            },
+            {
+              token: '{rolePrefix}',
+              label: t('dashboard.server.pseudo.rolePrefix', 'Game group prefix'),
+              format: t('ui.template_variables.text', 'Text'),
+              example: 'A',
+            },
+            {
+              token: '{roleName}',
+              label: t('dashboard.server.pseudo.roleName', 'Game group display name'),
+              format: t('ui.template_variables.text', 'Text'),
+              example: 'Admin',
+            },
+          ]}
+          example={{ template: '[{rolePrefix}] {plyName}', result: '[A] John Doe' }}
+        />
+        <FeatureGate capability="sync.nicknames.reverse" showQuota={false} />
+        <SuspendedFeature
+          capability="sync.nicknames.reverse"
+          active={['both', 'discord-to-gmod'].includes(settings.saved().direction)}
+        />
       </AdminPanel>
-
       <AdminPanel
-        title={t('dashboard.server.pseudo.rolePrefix', 'Role Prefix')}
-        description={t('dashboard.server.pseudo.rolePrefixDescription', 'Define prefixes for each user group.')}
+        title={t('dashboard.server.pseudo.rules_title', 'Nickname rules by game group')}
+        description={t(
+          'dashboard.server.pseudo.rolePrefixDescription',
+          'Choose the display name and prefix supplied by each game user group. These rules do not create or assign Discord roles.',
+        )}
         type="none"
-      >
-        <table class="table border-b border-base-300 rounded-none">
-          <thead>
-            <tr class="text-l">
-              <th>{t('dashboard.server.pseudo.userGroup', 'User Group')}</th>
-              <th>{t('dashboard.server.pseudo.name', 'Name')}</th>
-              <th>{t('dashboard.server.pseudo.prefix', 'Prefix')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.server.pseudo.active', 'Active')}</th>
-              <th class="w-1/6 text-center">{t('dashboard.server.pseudo.actions', 'Actions')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <Show
-              when={!pseudoRoles.loading}
-              fallback={
-                <div class="flex justify-center h-36">
-                  <div class="loading loading-spinner loading-lg"></div>
-                </div>
-              }
-            >
-              <For each={pseudoRoles()}>
-                {(role) => (
-                  <tr>
-                    <td>
-                      <TextValue value={role.role} />
-                    </td>
-                    <td>
-                      <TextValue value={role.name} />
-                    </td>
-                    <td>
-                      <TextValue value={role.prefix} />
-                    </td>
-                    <td>
-                      <div class="flex gap-2 justify-center">
-                        {role.enabled ? (
-                          <i class="fa-solid fa-check text-success"></i>
-                        ) : (
-                          <i class="fa-solid fa-times text-error"></i>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div class="flex gap-2 justify-center">
-                        <div class="tooltip tooltip-info" data-tip={t('dashboard.server.pseudo.edit', 'Edit')}>
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-edit"
-                            onClick={() => {
-                              // @ts-expect-error -- intentional: legacy typing gap
-                              edit_role_modal.showModal()
-                              setActiveRole(role)
-                            }}
-                          ></i>
-                        </div>
-                        <div class="tooltip tooltip-error" data-tip={t('dashboard.server.pseudo.delete', 'Delete')}>
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-trash text-error"
-                            onClick={() => deleteRole(role.id)}
-                          ></i>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </For>
-            </Show>
-          </tbody>
-        </table>
-
-        <div class="flex gap-4 p-4">
-          <BuyPremiumBtn
-            subCondition={pseudoRoles()?.length < 3}
-            btnText={t('dashboard.server.pseudo.rolePrefixPremium', 'Limited to 3 roles customization for free users.')}
-            hidden={pseudoRoles.loading}
+        footer={
+          !rules.loading && !rules.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
+        icon="list"
+        actions={
+          <FeatureGate
+            capability="sync.nicknames.rules"
+            used={!rules.loading && !rules.error ? rules().length : undefined}
+            loading={rules.loading}
+            error={rules.error}
           >
-            <button class="btn btn-base-200" onClick={addRole}>
-              {t('dashboard.server.pseudo.addRole', 'Add Role')}
-            </button>
-          </BuyPremiumBtn>
+            <Button variant="primary" disabled={!canCreate()} onClick={() => begin()}>
+              {t('dashboard.server.pseudo.addRole', 'Add nickname rule')}
+            </Button>
+          </FeatureGate>
+        }
+      >
+        <p class="settings-notice">
+          <Icon name="info" size={16} />
+          {t(
+            'settings.pseudo_rules_help',
+            'Prefixes and role names are used only when the format contains {rolePrefix} or {roleName}.',
+          )}
+        </p>
+        <div class="settings-table">
+          <table class="table w-full">
+            <thead>
+              <tr>
+                <th>{t('dashboard.server.pseudo.userGroup', 'Game user group')}</th>
+                <th>{t('dashboard.server.pseudo.name', 'Display name for {roleName}')}</th>
+                <th>{t('dashboard.server.pseudo.prefix', 'Prefix for {rolePrefix}')}</th>
+                <th class="text-center">{t('dashboard.server.pseudo.active', 'Active')}</th>
+                <th>{t('dashboard.server.pseudo.actions', 'Actions')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <TableState
+                colSpan={5}
+                loading={rules.loading}
+                error={rules.error}
+                empty={!rules.loading && !rules.error && rules().length === 0}
+                onRetry={() => void refetch()}
+              >
+                <For each={pagination.items()}>
+                  {(row) => (
+                    <tr>
+                      <td>
+                        <TextValue value={row.role} />
+                      </td>
+                      <td>
+                        <TextValue value={row.name} />
+                      </td>
+                      <td>
+                        <TextValue value={row.prefix} />
+                      </td>
+                      <td>
+                        <BooleanStatus value={row.enabled} />
+                      </td>
+                      <td>
+                        <div class="flex gap-2">
+                          <IconButton
+                            icon="pencil"
+                            label={t('dashboard.server.pseudo.edit', 'Edit')}
+                            onClick={() => begin(row)}
+                            disabled={editor.pending()}
+                          />
+                          <IconButton
+                            icon="trash-2"
+                            variant="danger"
+                            label={t('dashboard.server.pseudo.delete', 'Delete')}
+                            onClick={() => {
+                              setRemoving(row)
+                              showDialog('delete-pseudo-rule')
+                            }}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </For>
+              </TableState>
+            </tbody>
+          </table>
         </div>
       </AdminPanel>
     </>
   )
 }
-
 export default ServerPseudo

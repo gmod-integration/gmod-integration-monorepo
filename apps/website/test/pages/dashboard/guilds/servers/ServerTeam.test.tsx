@@ -1,282 +1,258 @@
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@solidjs/testing-library'
 import { historyAt, renderWithProviders } from '../../../../testUtils.js'
-import { okJson, errJson, stubDialogGlobal, clearDialogGlobals } from './testHelpers.js'
+import { okJson, errJson } from './testHelpers.js'
 
 vi.mock('../../../../../src/utils/api.js', () => ({
-  // GuildInformations.tsx's module-level guildRoles/guildChannels resources, and
-  // MissingRolePermission's subordination resource, all fire their fetches at import time (before
-  // any beforeEach runs) - the mock factory needs a working default from the start, matching
-  // GuildAutoRoles.test.tsx.
-  fetchAPI: vi.fn((endpoint: string) => {
-    if (endpoint.includes('/bot/roles/subordination')) return Promise.resolve({ ok: true, json: async () => ({}) })
-    return Promise.resolve({ ok: true, json: async () => [] })
-  }),
+  fetchAPI: vi.fn((endpoint: string) =>
+    Promise.resolve({ ok: true, json: async () => (endpoint.includes('/bot/roles/subordination') ? {} : []) }),
+  ),
   getAPIUrl: vi.fn(),
-  getUrlWithActualParams: vi.fn((s: string) => s),
+  getUrlWithActualParams: vi.fn((value: string) => value),
 }))
-
-const { guildRolesMutate, guildChannelsMutate } = await import(
-  '../../../../../src/pages/dashboard/guilds/GuildInformations.js'
-)
+vi.mock('../../../../../src/utils/dashboardSettings.js', () => ({ saveDashboardSettings: vi.fn() }))
 const { fetchAPI } = await import('../../../../../src/utils/api.js')
-const ServerTeam = (await import('../../../../../src/pages/dashboard/guilds/servers/ServerTeam.js')).default
-
-const TEAMS_URL = '/users/:discordID/guilds/:guildID/servers/:serverID/teams'
-const SUBORDINATION_URL_PART = '/bot/roles/subordination'
-
-function defaultGuildRoles() {
-  return [
-    { id: 'r1', name: 'Admin', color: 111, colorHex: '#111111' },
-    { id: 'r2', name: 'Moderator', color: 222, colorHex: '#222222' },
-    { id: 'r3', name: 'VIP', color: 333, colorHex: '#333333' },
-  ]
-}
-
-// Fresh objects every call - editRole()/the modal mutate fields of the exact object passed to
-// setSelectRole in place, so a shared module-level fixture would leak mutations across tests
-// (okJson returns its payload by reference).
-function defaultTeams() {
-  return [
-    { id: 1, serverID: 's1', roleID: 'r1', teamName: 'Red Team', enable: true },
-    { id: 2, serverID: 's1', roleID: 'r2', teamName: 'Blue Team', enable: false },
-  ]
-}
-
-function subordinationFor(roles: { id: string }[]) {
-  return Object.fromEntries(roles.map((r) => [r.id, { name: r.name, editable: true }]))
-}
-
-function setupFetchAPI({
-  teams = defaultTeams(),
-  guildRolesList = defaultGuildRoles(),
-}: { teams?: unknown; guildRolesList?: { id: string; name: string }[] } = {}) {
-  ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-    if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson(subordinationFor(guildRolesList)))
-    if (endpoint === TEAMS_URL && method === 'GET') return Promise.resolve(okJson(teams))
-    return Promise.resolve(okJson([]))
+const { saveDashboardSettings } = await import('../../../../../src/utils/dashboardSettings.js')
+const { guildRolesMutate, guildChannelsMutate } =
+  await import('../../../../../src/pages/dashboard/guilds/GuildInformations.js')
+const Page = (await import('../../../../../src/pages/dashboard/guilds/servers/ServerTeam.js')).default
+const URL = '/users/:discordID/guilds/:guildID/servers/:serverID/teams'
+const guildRoles = [
+  { id: 'r1', name: 'Admin', color: 111, colorHex: '#111111' },
+  { id: 'r2', name: 'Moderator', color: 222, colorHex: '#222222' },
+  { id: 'r3', name: 'VIP', color: 333, colorHex: '#333333' },
+]
+const rows = () => [
+  { id: 1, serverID: 's1', roleID: 'r1', teamName: 'admins', enable: true },
+  { id: 2, serverID: 's1', roleID: 'r2', teamName: 'mods', enable: false },
+]
+let write: (endpoint: string, method: string, body: unknown) => unknown
+let loadFailure = false
+function setup() {
+  ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string, body: unknown) => {
+    if (method !== 'GET') return Promise.resolve(write(endpoint, method, body))
+    if (endpoint.includes('/bot/roles/subordination'))
+      return Promise.resolve(
+        okJson(Object.fromEntries(guildRoles.map((role) => [role.id, { name: role.name, editable: true }]))),
+      )
+    if (endpoint === URL) return Promise.resolve(loadFailure ? errJson() : okJson(rows()))
+    return Promise.resolve(okJson({ value: 'gmod-to-discord' }))
   })
 }
-
 function renderPage() {
-  return renderWithProviders(() => <ServerTeam />, {
+  return renderWithProviders(() => <Page />, {
     path: '/dashboard/guilds/:guildID/config/servers/:serverID/teams',
     history: historyAt('/dashboard/guilds/g1/config/servers/s1/teams'),
   })
 }
-
-async function waitForLoaded() {
+async function loaded() {
   await vi.waitFor(() => expect(screen.getByText('@Admin')).toBeInTheDocument())
 }
-
-afterEach(() => {
-  cleanup()
-  clearDialogGlobals('select_role_modal', 'edit_role_modal')
-})
-
-describe('pages/dashboard/guilds/servers/ServerTeam.tsx', () => {
+const modal = () => within(document.getElementById('edit_role_modal')!)
+const input = (id: string) => document.getElementById(id) as HTMLInputElement
+const writes = () => (fetchAPI as Mock).mock.calls.filter(([, method]) => method !== 'GET')
+async function createDraft() {
+  await fireEvent.click(screen.getByRole('button', { name: 'Add Team Role' }))
+  await fireEvent.change(input('teams-role'), { target: { value: 'r3' } })
+  await fireEvent.input(input('teams-mapping'), { target: { value: 'vip' } })
+  await fireEvent.click(input('teams-enabled'))
+}
+afterEach(cleanup)
+describe('ServerTeam unified editing', () => {
   beforeEach(() => {
     window.localStorage.clear()
-    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
-    ;(fetchAPI as Mock).mockReset()
-    setupFetchAPI()
-    guildRolesMutate(defaultGuildRoles())
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
+    vi.clearAllMocks()
+    write = () => okJson({})
+    loadFailure = false
+    setup()
+    ;(saveDashboardSettings as Mock).mockImplementation(async (_scope, settings) => ({ settings, sync: 'applied' }))
+    guildRolesMutate(guildRoles)
     guildChannelsMutate([])
   })
-
-  it('renders the panel title and description', async () => {
+  it('discards an unfinished rule on native Escape without writing it', async () => {
     renderPage()
-    await waitForLoaded()
-    expect(screen.getByText('Team Role')).toBeInTheDocument()
+    await loaded()
+    await createDraft()
+    const dialog = document.getElementById('edit_role_modal')!
+    const cancellation = new Event('cancel', { cancelable: true })
+    await fireEvent(dialog, cancellation)
+    expect(cancellation.defaultPrevented).toBe(false)
+    expect(input('teams-mapping')).toHaveValue('')
+    expect(writes()).toHaveLength(0)
+  })
+
+  it('renders loaded mappings, statuses and the role names', async () => {
+    renderPage()
+    await loaded()
+    expect(screen.getByText('@Moderator')).toBeInTheDocument()
+    expect(screen.getByText('admins')).toBeInTheDocument()
+    const table = screen.getByRole('table')
+    expect(table.querySelectorAll('tbody tr')).toHaveLength(2)
+    expect(within(table).getByText('Enabled')).toBeInTheDocument()
+    expect(within(table).getByText('Disabled')).toBeInTheDocument()
+  })
+  it('creates one complete mapping only after explicit confirmation', async () => {
+    renderPage()
+    await loaded()
+    await createDraft()
+    expect(writes()).toHaveLength(0)
+    expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
+    write = () => okJson({ id: 3, serverID: 's1', roleID: 'r3', teamName: 'vip', enable: true })
+    await fireEvent.click(modal().getByRole('button', { name: 'Create' }))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(URL + '/r3', 'POST', { teamName: 'vip', enable: true }),
+    )
+    await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
+    expect(writes()).toHaveLength(1)
+    await vi.waitFor(() => expect(document.getElementById('edit_role_modal')).not.toHaveAttribute('open'))
+  })
+  it('requires a role and mapping before Create and discards a cancelled creation', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Team Role' }))
+    expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
+    await fireEvent.change(input('teams-role'), { target: { value: 'r3' } })
+    expect(modal().getByRole('button', { name: 'Create' })).toBeDisabled()
+    await fireEvent.input(input('teams-mapping'), { target: { value: 'draft' } })
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    expect(writes()).toHaveLength(0)
+    await fireEvent.click(screen.getByRole('button', { name: 'Add Team Role' }))
+    expect(input('teams-mapping')).toHaveValue('')
+    expect(input('teams-role')).toHaveValue('')
+  })
+  it('edits a copy and Cancel leaves the saved row unchanged', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit team role mapping' })[0])
+    expect(input('teams-role')).toBeDisabled()
+    expect(input('teams-mapping')).toHaveValue('admins')
+    await fireEvent.input(input('teams-mapping'), { target: { value: 'draft' } })
+    await fireEvent.click(modal().getByRole('button', { name: 'Cancel' }))
+    expect(screen.getByText('admins')).toBeInTheDocument()
+    expect(writes()).toHaveLength(0)
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit team role mapping' })[0])
+    expect(input('teams-mapping')).toHaveValue('admins')
+  })
+  it('keeps a failed edit open with its values and retries successfully', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit team role mapping' })[0])
+    await fireEvent.input(input('teams-mapping'), { target: { value: 'superadmins' } })
+    write = () => errJson()
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(modal().getByRole('alert')).toBeInTheDocument())
+    expect(document.getElementById('edit_role_modal')).toHaveAttribute('open')
+    expect(screen.getByText('admins')).toBeInTheDocument()
+    expect(input('teams-mapping')).toHaveValue('superadmins')
+    write = () => okJson({ ...rows()[0], teamName: 'superadmins' })
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() => expect(screen.getByText('superadmins')).toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenLastCalledWith(URL + '/1', 'PUT', { teamName: 'superadmins', enable: true })
+  })
+  it('locks the whole form and prevents duplicate requests while saving', async () => {
+    renderPage()
+    await loaded()
+    await createDraft()
+    let resolve!: (response: unknown) => void
+    write = () =>
+      new Promise((result) => {
+        resolve = result
+      })
+    const button = modal().getByRole('button', { name: 'Create' })
+    await fireEvent.click(button)
+    expect(button).toBeDisabled()
+    expect(modal().getByRole('button', { name: 'Cancel' })).toBeDisabled()
+    expect(input('teams-mapping')).toBeDisabled()
+    await fireEvent.click(button)
+    expect(writes()).toHaveLength(1)
+    resolve(okJson({ id: 3, serverID: 's1', roleID: 'r3', teamName: 'vip', enable: true }))
+    await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
+  })
+  it('names the deletion target, cancels without a request and removes only after confirmation', async () => {
+    renderPage()
+    await loaded()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete team role mapping' })[1])
+    const confirmation = within(document.getElementById('delete-role-sync')!)
     expect(
-      screen.getByText(
-        'Add temporary roles to your Discord members when they join a specific team in your game server.',
+      confirmation.getByText(
+        'Moderator — mods — Delete this team-to-role mapping. The Discord role and the team in game are kept.',
       ),
     ).toBeInTheDocument()
-  })
-
-  it('renders the loaded team role table using DiscordRole and TextValue', async () => {
-    renderPage()
-    await waitForLoaded()
+    expect(writes()).toHaveLength(0)
+    await fireEvent.click(confirmation.getByRole('button', { name: 'Cancel' }))
     expect(screen.getByText('@Moderator')).toBeInTheDocument()
-    expect(screen.getByText('Red Team')).toBeInTheDocument()
-    expect(screen.getByText('Blue Team')).toBeInTheDocument()
-    const rows = screen.getAllByRole('row').slice(1) // skip header row
-    expect(rows[0].querySelector('.fa-check')).toBeInTheDocument()
-    expect(rows[1].querySelector('.fa-times')).toBeInTheDocument()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete team role mapping' })[1])
+    await fireEvent.click(confirmation.getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(screen.queryByText('@Moderator')).not.toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(URL + '/2', 'DELETE')
+    expect(screen.getByText('@Admin')).toBeInTheDocument()
   })
-
-  it('shows a loading spinner for the table while rolesSync is loading', () => {
-    ;(fetchAPI as Mock).mockImplementation((endpoint: string) => {
-      if (endpoint === TEAMS_URL) return new Promise(() => {})
-      if (endpoint.includes(SUBORDINATION_URL_PART)) return Promise.resolve(okJson({}))
-      return Promise.resolve(okJson([]))
-    })
-    const { container } = renderPage()
-    expect(container.querySelector('.loading-spinner')).toBeInTheDocument()
+  it('keeps the targeted row and confirmation visible after a deletion error', async () => {
+    renderPage()
+    await loaded()
+    write = () => errJson()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Delete team role mapping' })[1])
+    const dialog = document.getElementById('delete-role-sync')!
+    await fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(within(dialog).getByRole('alert')).toBeInTheDocument())
+    expect(dialog).toHaveAttribute('open')
+    expect(screen.getByText('@Moderator')).toBeInTheDocument()
   })
-
-  describe('add team role (select role modal)', () => {
-    it('lists every guild role (no filtering) and adds the chosen one on change', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'select_role_modal')
-      await fireEvent.click(screen.getByText('Add Team Role'))
-
-      const modal = container.querySelector('#select_role_modal') as HTMLElement
-      const optionTexts = within(modal)
-        .getAllByRole('option', { hidden: true })
-        .map((o) => o.textContent)
-      // Unlike ServerRoles.tsx, ServerTeam.tsx's select_role_modal doesn't filter out roles that
-      // already have a team assigned - every guild role is listed every time.
-      expect(optionTexts).toEqual(expect.arrayContaining(['Admin', 'Moderator', 'VIP']))
-
-      const newTeam = { id: 3, serverID: 's1', roleID: 'r3', teamName: '', enable: true }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${TEAMS_URL}/r3` && method === 'POST') return Promise.resolve(okJson(newTeam))
-        return Promise.resolve(okJson([]))
-      })
-      const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'r3' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${TEAMS_URL}/r3`, 'POST'))
-      await vi.waitFor(() => expect(screen.getByText('@VIP')).toBeInTheDocument())
-    })
-
-    it('does not add a team role when the create request fails', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'select_role_modal')
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${TEAMS_URL}/r3` && method === 'POST') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      const modal = container.querySelector('#select_role_modal') as HTMLElement
-      const select = within(modal).getByRole('combobox', { hidden: true }) as HTMLSelectElement
-      await fireEvent.change(select, { target: { value: 'r3' } })
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${TEAMS_URL}/r3`, 'POST'))
-      expect(screen.queryByText('@VIP')).not.toBeInTheDocument()
-    })
+  it('shows a recoverable list error and prevents adding when the saved data is unknown', async () => {
+    loadFailure = true
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Add Team Role' })).toBeDisabled()
+    loadFailure = false
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await loaded()
+    expect(screen.getByRole('button', { name: 'Add Team Role' })).not.toBeDisabled()
   })
-
-  describe('edit team role modal', () => {
-    it('opens with the selected role and saves the edited team name', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
-      await fireEvent.click(editIcons[0])
-
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      const teamNameInput = within(modal).getByRole('textbox') as HTMLInputElement
-      expect(teamNameInput.value).toBe('Red Team')
-
-      const updated = { id: 1, serverID: 's1', roleID: 'r1', teamName: 'Crimson Team', enable: true }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${TEAMS_URL}/1` && method === 'PUT') return Promise.resolve(okJson(updated))
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.input(teamNameInput, { target: { value: 'Crimson Team' } })
-      await fireEvent.click(within(modal).getByText('Save'))
-
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(`${TEAMS_URL}/1`, 'PUT', {
-          id: 1,
-          serverID: 's1',
-          roleID: 'r1',
-          teamName: 'Crimson Team',
-          enable: true,
-        }),
-      )
-      await vi.waitFor(() => expect(screen.getByText('Crimson Team')).toBeInTheDocument())
-    })
-
-    it('toggles the enable field in the modal', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
-      await fireEvent.click(editIcons[0]) // Red Team row, enable: true
-
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      const selects = within(modal).getAllByRole('combobox') as HTMLSelectElement[]
-      const enableSelect = selects.find((s) => !s.disabled) as HTMLSelectElement
-      expect(enableSelect.value).toBe('true')
-      await fireEvent.change(enableSelect, { target: { value: 'false' } })
-
-      const updated = { id: 1, serverID: 's1', roleID: 'r1', teamName: 'Red Team', enable: false }
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${TEAMS_URL}/1` && method === 'PUT') return Promise.resolve(okJson(updated))
-        return Promise.resolve(okJson([]))
-      })
-      await fireEvent.click(within(modal).getByText('Save'))
-      await vi.waitFor(() =>
-        expect(fetchAPI).toHaveBeenCalledWith(`${TEAMS_URL}/1`, 'PUT', {
-          id: 1,
-          serverID: 's1',
-          roleID: 'r1',
-          teamName: 'Red Team',
-          enable: false,
-        }),
-      )
-    })
-
-    it('does not update the list when editing fails', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      stubDialogGlobal(container, 'edit_role_modal')
-      const editIcons = container.querySelectorAll('.fa-edit')
-      await fireEvent.click(editIcons[0])
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${TEAMS_URL}/1` && method === 'PUT') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      const modal = container.querySelector('#edit_role_modal') as HTMLElement
-      await fireEvent.click(within(modal).getByText('Save'))
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${TEAMS_URL}/1`, 'PUT', expect.anything()))
-      expect(screen.getByText('Red Team')).toBeInTheDocument()
-    })
+  it('disables creation for a free guild', async () => {
+    window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
+    renderPage()
+    await loaded()
+    expect(screen.getByRole('button', { name: 'Add Team Role' })).toBeDisabled()
+    expect(writes()).toHaveLength(0)
   })
-
-  describe('delete team role', () => {
-    it('deletes a team role and removes it from the list on success', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${TEAMS_URL}/2` && method === 'DELETE') return Promise.resolve(okJson({ id: 2 }))
-        return Promise.resolve(okJson([]))
-      })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
-      await fireEvent.click(deleteIcons[1])
-      await vi.waitFor(() => expect(screen.queryByText('Blue Team')).not.toBeInTheDocument())
-      expect(screen.getByText('Red Team')).toBeInTheDocument()
-    })
-
-    it('does not remove the row when deleting fails', async () => {
-      const { container } = renderPage()
-      await waitForLoaded()
-      ;(fetchAPI as Mock).mockImplementation((endpoint: string, method: string) => {
-        if (endpoint === `${TEAMS_URL}/2` && method === 'DELETE') return Promise.resolve(errJson())
-        return Promise.resolve(okJson([]))
-      })
-      const deleteIcons = container.querySelectorAll('.fa-trash')
-      await fireEvent.click(deleteIcons[1])
-      await vi.waitFor(() => expect(fetchAPI).toHaveBeenCalledWith(`${TEAMS_URL}/2`, 'DELETE'))
-      expect(screen.getByText('Blue Team')).toBeInTheDocument()
-    })
+  it('keeps an expired team mapping readable and allows disabling it without a paid entitlement', async () => {
+    localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: false }))
+    renderPage()
+    await loaded()
+    expect(screen.getByRole('button', { name: 'Add Team Role' })).toBeDisabled()
+    expect(screen.getAllByRole('button', { name: 'Delete team role mapping' })[0]).toBeEnabled()
+    await fireEvent.click(screen.getAllByRole('button', { name: 'Edit team role mapping' })[0])
+    expect(input('teams-mapping')).toBeDisabled()
+    expect(input('teams-enabled')).toBeEnabled()
+    await fireEvent.click(input('teams-enabled'))
+    write = () => okJson({ ...rows()[0], enable: false })
+    await fireEvent.click(modal().getByRole('button', { name: 'Save' }))
+    await vi.waitFor(() =>
+      expect(fetchAPI).toHaveBeenCalledWith(URL + '/1', 'PUT', { teamName: 'admins', enable: false }),
+    )
   })
-
-  describe('premium gating for Add Team Role', () => {
-    it('enables the Add Team Role button when premium', async () => {
-      window.localStorage.setItem('guilds', JSON.stringify({ id: 'g1', isPremium: true }))
-      renderPage()
-      await waitForLoaded()
-      expect(screen.getByText('Add Team Role')).not.toBeDisabled()
-    })
-
-    it('disables the Add Team Role button when not premium', async () => {
-      renderPage()
-      await waitForLoaded()
-      expect(screen.getByText('Add Team Role')).toBeDisabled()
-    })
+  it('paginates team mappings and deletes the targeted row from the last page', async () => {
+    const manyRows = Array.from({ length: 26 }, (_, index) => ({
+      id: index + 1,
+      serverID: 's1',
+      roleID: 'r1',
+      teamName: `team-${index + 1}`,
+      enable: true,
+    }))
+    const original = (fetchAPI as Mock).getMockImplementation()!
+    ;(fetchAPI as Mock).mockImplementation((endpoint, method, body) =>
+      endpoint === URL && method === 'GET' ? Promise.resolve(okJson(manyRows)) : original(endpoint, method, body),
+    )
+    renderPage()
+    await vi.waitFor(() => expect(screen.getByText('team-1')).toBeInTheDocument())
+    expect(screen.getByRole('table').querySelectorAll('tbody tr')).toHaveLength(25)
+    await fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(screen.getByText('team-26')).toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete team role mapping' }))
+    await fireEvent.click(within(document.getElementById('delete-role-sync')!).getByRole('button', { name: 'Delete' }))
+    await vi.waitFor(() => expect(screen.getByText('team-1')).toBeInTheDocument())
+    expect(fetchAPI).toHaveBeenCalledWith(URL + '/26', 'DELETE')
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument()
   })
 })

@@ -1,6 +1,6 @@
-import { themes as prismThemes } from 'prism-react-renderer';
-import type { Config } from '@docusaurus/types';
-import type * as Preset from '@docusaurus/preset-classic';
+import { themes as prismThemes } from 'prism-react-renderer'
+import type { Config } from '@docusaurus/types'
+import type * as Preset from '@docusaurus/preset-classic'
 
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
@@ -25,7 +25,7 @@ const config: Config = {
   organizationName: 'gmod-integration', // Usually your GitHub org/user name.
   projectName: 'gmod-integration-monorepo', // Usually your repo name.
 
-  onBrokenLinks: 'warn',
+  onBrokenLinks: 'throw',
 
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
@@ -39,6 +39,7 @@ const config: Config = {
     [
       'classic',
       {
+        blog: false,
         docs: {
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',
@@ -54,8 +55,7 @@ const config: Config = {
   ],
 
   themeConfig: {
-    // Replace with your project's social card
-    image: 'img/docusaurus-social-card.jpg',
+    image: 'img/logo.png',
     colorMode: {
       respectPrefersColorScheme: true,
     },
@@ -90,4 +90,4 @@ const config: Config = {
   } satisfies Preset.ThemeConfig,
 }
 
-export default config;
+export default config

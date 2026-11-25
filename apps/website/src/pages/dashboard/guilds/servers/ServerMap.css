@@ -1,0 +1,17 @@
+/* Load with the lazy page so its viewport does not depend on cached global CSS. */
+.site-shell .server-map-embed {
+  display: block;
+  flex: none;
+  width: 100%;
+  height: 72vh;
+  height: 72dvh;
+  min-height: 480px;
+  border: 0;
+  background: var(--dashboard-surface);
+}
+
+@media (max-width: 640px) {
+  .site-shell .server-map-embed {
+    min-height: 420px;
+  }
+}

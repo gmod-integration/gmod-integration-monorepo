@@ -1,21 +1,26 @@
-import { Component, createResource, createSignal, For, Index, Show } from 'solid-js'
-import AdminPanel from '../../../../components/AdminPanel'
-import { useI18n } from '../../../../i18n'
-import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket'
-import { fetchAPI } from '../../../../utils/api'
-import { createStore } from 'solid-js/store'
+import {
+  AsyncState,
+  Button,
+  Icon,
+  IconButton,
+  AutosaveFeedback,
+  SettingRow,
+  type IconName,
+} from '../../../../components/ui/index.js'
+import { createDraftForm } from '../../../../hooks/createDraftForm.js'
+import { createAutosave } from '../../../../hooks/createAutosave.js'
+import { saveDashboardSettings } from '../../../../utils/dashboardSettings.js'
+import { batch, type Component, createEffect, createResource, createSignal, For, Index, Show } from 'solid-js'
+import AdminPanel from '../../../../components/AdminPanel.js'
+import { useI18n } from '../../../../i18n.js'
+import { NeedWebsocket } from '../../../../components/popup/NeedWebsocket.js'
+import { fetchAPI } from '../../../../utils/api.js'
+
+type WhitelistRole = { id: string; name: string }
+const isRoleID = (value: unknown): value is string => typeof value === 'string' && /^\d{17,20}$/.test(value)
 
 const ServerConfig: Component = () => {
   const { t } = useI18n()
-  const [debounceTimers, setDebounceTimers] = createSignal<Record<string, NodeJS.Timeout>>({})
-
-  // Store to hold fetched config values
-  const [config, setConfig] = createStore<Record<string, unknown>>({})
-
-  // Intermediate state for admin rank list - maintains array representation
-  const [adminRankList, setAdminRankList] = createSignal<string[]>([])
-  const [adminRankListDebounce, setAdminRankListDebounce] = createSignal<NodeJS.Timeout | null>(null)
-
   const isBooleanOption = (info: { acceptedValues: unknown }) =>
     Array.isArray(info.acceptedValues) &&
     (info.acceptedValues as Array<unknown>).includes(true) &&
@@ -125,6 +130,12 @@ const ServerConfig: Component = () => {
       labelKey: 'dashboard.server.config.settings.ig_maintenance.title',
       descriptionKey: 'dashboard.server.config.settings.ig_maintenance.description',
     },
+    maintenance_whitelist_role: {
+      defaultValue: '',
+      acceptedValues: null,
+      labelKey: 'dashboard.server.config.settings.maintenance_whitelist_role.title',
+      descriptionKey: 'dashboard.server.config.settings.maintenance_whitelist_role.description',
+    },
     ig_language: {
       defaultValue: 'en',
       acceptedValues: ['en', 'fr', 'de', 'es', 'it', 'tr', 'ru'],
@@ -147,267 +158,420 @@ const ServerConfig: Component = () => {
     },
   }
 
-  const [serverConfig] = createResource('serverConfig', async () => {
-    return fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/config', 'GET').then(async (res) => {
-      if (!res.ok)
-        throw new Error(
-          t('dashboard.server.config.error_occurred', 'An error occurred while fetching the server configuration.'),
-        )
-      const data = await res.json()
-      console.log('Fetched config:', data)
-
-      // Update store with fetched config - extract settings from nested structure
-      const settings = data?.settings || {}
-
-      // Parse ig_adminRank if it's a string
-      if (settings.ig_adminRank && typeof settings.ig_adminRank === 'string') {
-        if (settings.ig_adminRank === '[object Object]') {
-          settings.ig_adminRank = { superadmin: true } // fallback to default
-        } else {
-          try {
-            settings.ig_adminRank = JSON.parse(settings.ig_adminRank)
-          } catch {
-            settings.ig_adminRank = { superadmin: true }
-          }
+  type SettingKey = keyof typeof configInfo
+  type SettingCategory = {
+    id: string
+    titleKey: string
+    title: string
+    descriptionKey: string
+    description: string
+    icon: IconName
+    keys: SettingKey[]
+  }
+  const categories: SettingCategory[] = [
+    {
+      id: 'general',
+      titleKey: 'settings.general_administration',
+      title: 'General and administration',
+      descriptionKey: 'settings.general_administration_description',
+      description: 'Language, support information and administrator access.',
+      icon: 'globe',
+      keys: ['ig_language', 'ig_supportLink', 'ig_maintenance', 'maintenance_whitelist_role', 'ig_adminRank'],
+    },
+    {
+      id: 'access',
+      titleKey: 'settings.access',
+      title: 'Access and verification',
+      descriptionKey: 'settings.access_description',
+      description: 'Choose how players link their accounts and are verified when joining.',
+      icon: 'shield-check',
+      keys: ['ig_forcePlayerLink', 'ig_verifyOnJoin', 'ig_verifyOnReadyKickTime', 'ig_verifyFamilySharing'],
+    },
+    {
+      id: 'moderation',
+      titleKey: 'settings.moderation',
+      title: 'Moderation',
+      descriptionKey: 'settings.moderation_description',
+      description: 'Synchronize sanctions between Discord and the game server.',
+      icon: 'ban',
+      keys: ['ig_syncBan', 'ig_syncTimeout', 'ig_syncKick', 'ig_filterOnBan'],
+    },
+    {
+      id: 'advanced',
+      titleKey: 'settings.advanced',
+      title: 'Advanced settings',
+      descriptionKey: 'settings.advanced_description',
+      description: 'Client compatibility, troubleshooting and log formatting.',
+      icon: 'sliders-horizontal',
+      keys: ['ig_clientBranch', 'ig_debug', 'ig_redownloadMaterials', 'ig_logTimestamp'],
+    },
+  ]
+  type ConfigValues = Partial<Record<SettingKey, unknown>>
+  const normalizeValue = (key: SettingKey, value: unknown) => {
+    const fallback = configInfo[key].defaultValue
+    if (key === 'ig_adminRank') {
+      let ranks = value
+      if (typeof ranks === 'string') {
+        try {
+          ranks = JSON.parse(ranks)
+        } catch {
+          ranks = fallback
         }
       }
-
-      setConfig(settings)
-
-      // Initialize admin rank list from the fetched config
-      const adminRankObj = (settings.ig_adminRank as Record<string, boolean>) || { superadmin: true }
-      const rankList = Object.keys(adminRankObj)
-        .filter((key) => !key.startsWith('__empty_'))
+      if (!ranks || typeof ranks !== 'object' || Array.isArray(ranks)) ranks = fallback
+      return Object.keys(ranks as Record<string, unknown>)
+        .filter((rank) => !rank.startsWith('__empty_'))
         .sort()
-      setAdminRankList(rankList)
-
-      return settings
+    }
+    if (isBooleanOption(configInfo[key])) return value === true || value === 'true' || value === 1 || value === '1'
+    return value ?? fallback
+  }
+  const groupValues = (group: SettingCategory, values: Record<string, unknown>): ConfigValues =>
+    Object.fromEntries(group.keys.map((key) => [key, normalizeValue(key, values[key] ?? configInfo[key].defaultValue)]))
+  const serializeValue = (key: SettingKey, value: unknown) => {
+    if (key === 'ig_adminRank') return Object.fromEntries((value as string[]).map((rank) => [rank.trim(), true]))
+    if (key === 'ig_verifyOnReadyKickTime') return Number(value)
+    if (key === 'ig_supportLink') return String(value).trim()
+    return value
+  }
+  const invalid = () => t('ui.invalid_value', 'Enter a valid value.')
+  const validate = (group: SettingCategory, values: ConfigValues) => {
+    const errors: Partial<Record<SettingKey, string>> = {}
+    for (const key of group.keys) {
+      const value = values[key]
+      if (key === 'ig_verifyOnReadyKickTime') {
+        const number = Number(value)
+        if (String(value).trim() === '' || !Number.isFinite(number) || !Number.isInteger(number) || number < 0)
+          errors[key] = t('dashboard.server.config.invalid_delay', 'Enter a whole number of seconds, 0 or greater.')
+      } else if (key === 'ig_supportLink' && String(value).trim()) {
+        try {
+          const url = new URL(String(value).trim())
+          if (!['http:', 'https:'].includes(url.protocol))
+            errors[key] = t(
+              'dashboard.server.config.invalid_support_url',
+              'Enter an HTTP or HTTPS link, or leave this field empty.',
+            )
+        } catch {
+          errors[key] = t(
+            'dashboard.server.config.invalid_support_url',
+            'Enter an HTTP or HTTPS link, or leave this field empty.',
+          )
+        }
+      } else if (key === 'maintenance_whitelist_role') {
+        if (value !== '' && !isRoleID(value))
+          errors[key] = t(
+            'dashboard.server.config.whitelist_role_invalid',
+            'Choose an available Discord role or no role.',
+          )
+      } else if (key === 'ig_adminRank') {
+        const ranks = value as string[]
+        const trimmed = ranks.map((rank) => rank.trim())
+        if (trimmed.some((rank) => !rank) || new Set(trimmed).size !== trimmed.length)
+          errors[key] = t(
+            'dashboard.server.config.invalid_admin_ranks',
+            'Enter a different, non-empty game user group on each row.',
+          )
+      } else if (configInfo[key].acceptedValues && !isBooleanOption(configInfo[key])) {
+        if (!(configInfo[key].acceptedValues as unknown[]).includes(value)) errors[key] = invalid()
+      }
+    }
+    return errors
+  }
+  const makeForm = (group: SettingCategory) =>
+    createDraftForm<ConfigValues>({
+      initial: groupValues(group, {}),
+      allowPendingEdits: true,
+      validate: (draft) => validate(group, draft),
+      errorMessage: () => t('ui.save_error', 'Unable to save the changes.'),
     })
+  type ConfigForm = ReturnType<typeof makeForm>
+  // Each settings group owns its saved snapshot and pending edits.
+  const forms = new Map(categories.map((group) => [group.id, makeForm(group)]))
+  const [syncPending, setSyncPending] = createSignal<Record<string, boolean>>({})
+  const formFor = (key: SettingKey) => forms.get(categories.find((group) => group.keys.includes(key))!.id)!
+
+  const [serverConfig, { refetch }] = createResource('serverConfig', async () => {
+    const response = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/config', 'GET')
+    if (!response.ok) throw new Error('Unable to load the server configuration.')
+    const data = await response.json()
+    const settings =
+      data?.settings && typeof data.settings === 'object' ? (data.settings as Record<string, unknown>) : {}
+    batch(() => {
+      for (const group of categories) forms.get(group.id)!.reset(groupValues(group, settings))
+      setSyncPending({})
+    })
+    return settings
   })
-
-  function updateSetting(setting: string, value: unknown) {
-    // Debug log to check what's being sent
-    console.log(`Updating ${setting}:`, value, typeof value)
-
-    // Convert object values to JSON strings for objects like adminRank
-    let sendValue: unknown = value
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      sendValue = JSON.stringify(value)
-    }
-
-    fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/settings/${setting}`, 'PUT', {
-      value: sendValue,
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the setting.')
-        }
-      })
-      .then((data) => {
-        console.log(`Received response for ${setting}:`, data)
-        let value = data.value
-        // Parse stringified objects back
-        if (typeof value === 'string' && (value.startsWith('{') || value === '[object Object]')) {
-          try {
-            value = JSON.parse(value)
-          } catch {
-            // Keep as string if parsing fails
-          }
-        }
-        setConfig(setting, value)
-      })
-      .catch((error) => console.error(error))
-  }
-
-  function updateAdminRank(newList: string[]) {
-    // Update the intermediate state
-    setAdminRankList(newList)
-
-    // Clear existing debounce timer
-    const existingTimer = adminRankListDebounce()
-    if (existingTimer) {
-      clearTimeout(existingTimer)
-    }
-
-    // Set new debounce timer for API update
-    const newTimer = setTimeout(() => {
-      // Clean empty values before converting to object
-      const cleanedList = newList.map((rank) => rank.trim()).filter((rank) => rank.length > 0)
-
-      // Convert to object format
-      const adminRankObject = cleanedList.reduce(
-        (acc, rank) => {
-          acc[rank] = true
-          return acc
-        },
-        {} as Record<string, boolean>,
+  const [roles, { refetch: refetchRoles }] = createResource(async (): Promise<WhitelistRole[]> => {
+    const response = await fetchAPI('/users/:discordID/guilds/:guildID/roles', 'GET')
+    if (!response.ok) throw new Error('Discord roles unavailable')
+    const data: unknown = await response.json()
+    if (!Array.isArray(data) || data.some((role) => !role || !isRoleID(role.id) || typeof role.name !== 'string'))
+      throw new Error('Invalid Discord roles')
+    return data as WhitelistRole[]
+  })
+  const availableRoles = () => (roles.loading || roles.error ? [] : (roles() ?? []))
+  const unavailable = (_form: ConfigForm) => serverConfig.loading || !!serverConfig.error
+  const rankList = () => formFor('ig_adminRank').draft().ig_adminRank as string[]
+  const updateRanks = (ranks: string[]) => formFor('ig_adminRank').patch({ ig_adminRank: ranks })
+  const saveGroup = async (group: SettingCategory) => {
+    const form = forms.get(group.id)!
+    if (unavailable(form)) return
+    await form.save(async (snapshot) => {
+      const changes = Object.fromEntries(
+        group.keys
+          .filter((key) => JSON.stringify(snapshot[key]) !== JSON.stringify(form.saved()[key]))
+          .map((key) => [key, serializeValue(key, snapshot[key])]),
       )
-
-      // Update config store with the object representation
-      setConfig('ig_adminRank', adminRankObject)
-
-      // Send to server
-      updateSetting('ig_adminRank', adminRankObject)
-    }, 500)
-
-    setAdminRankListDebounce(newTimer)
+      const result = await saveDashboardSettings('server', changes)
+      setSyncPending((previous) => ({ ...previous, [group.id]: result.sync === 'pending' }))
+      const serialized = Object.fromEntries(group.keys.map((key) => [key, serializeValue(key, snapshot[key])]))
+      return groupValues(group, { ...serialized, ...result.settings })
+    })
+  }
+  const autosaves = new Map(
+    categories.map((group) => [
+      group.id,
+      createAutosave({
+        form: forms.get(group.id)!,
+        save: () => saveGroup(group),
+        enabled: () => !serverConfig.loading && !serverConfig.error,
+      }),
+    ]),
+  )
+  const renderFeedback = (group: SettingCategory) => {
+    return (
+      <div class="settings-save-feedback">
+        <AutosaveFeedback
+          state={autosaves.get(group.id)!}
+          message={
+            !forms.get(group.id)!.dirty() && syncPending()[group.id]
+              ? t('ui.sync_pending', 'Changes saved. Synchronization is pending.')
+              : undefined
+          }
+        />
+      </div>
+    )
   }
 
-  function debouncedUpdateSetting(setting: string, value: unknown) {
-    // Clear existing timer for this setting
-    const timers = debounceTimers()
-    if (timers[setting]) {
-      clearTimeout(timers[setting])
-    }
-
-    // Update local state immediately for UI responsiveness
-    setConfig(setting, value)
-
-    // Set new timer
-    const newTimer = setTimeout(() => {
-      updateSetting(setting, value)
-    }, 500) // 500ms debounce
-
-    // Save the new timer
-    setDebounceTimers({
-      ...timers,
-      [setting]: newTimer,
-    })
+  const renderSetting = (key: SettingKey) => {
+    const info = configInfo[key]
+    const descriptionId = `${key}-description`
+    const form = formFor(key)
+    const error = () => form.errors()[key]
+    const describedBy = () => `${descriptionId}${error() ? ` ${key}-error` : ''}`
+    return (
+      <SettingRow
+        controlId={key === 'ig_adminRank' ? undefined : key}
+        title={t(info.labelKey, key)}
+        description={
+          <>
+            <span>{t(info.descriptionKey, '')}</span>
+            <Show when={key === 'ig_verifyOnJoin'}>
+              <p class="settings-dependency">
+                <Icon name="info" size={13} />
+                {t('settings.verification_dependency', 'This check applies when forced account linking is enabled.')}
+              </p>
+            </Show>
+            <Show when={key === 'ig_verifyOnReadyKickTime'}>
+              <p class="settings-dependency">
+                <Icon name="info" size={13} />
+                {t(
+                  'settings.kick_delay_dependency',
+                  'Account-link kicks require forced linking. Client-branch checks also use this delay, or 600 seconds when it is set to 0.',
+                )}
+              </p>
+            </Show>
+          </>
+        }
+        feedback={
+          error() ? (
+            <p id={`${key}-error`} role="alert" class="text-error">
+              {error()}
+            </p>
+          ) : undefined
+        }
+      >
+        <Show
+          when={key === 'ig_adminRank'}
+          fallback={
+            <Show
+              when={info.acceptedValues && Array.isArray(info.acceptedValues)}
+              fallback={
+                <Show
+                  when={key === 'maintenance_whitelist_role'}
+                  fallback={
+                    <input
+                      type={key === 'ig_verifyOnReadyKickTime' ? 'number' : key === 'ig_supportLink' ? 'url' : 'text'}
+                      min={key === 'ig_verifyOnReadyKickTime' ? 0 : undefined}
+                      step={key === 'ig_verifyOnReadyKickTime' ? 1 : undefined}
+                      id={key}
+                      aria-describedby={describedBy()}
+                      aria-invalid={!!error() || undefined}
+                      class="input w-full"
+                      value={String(form.draft()[key] ?? info.defaultValue ?? '')}
+                      disabled={unavailable(form)}
+                      onInput={(e) => {
+                        const value = e.currentTarget.value
+                        form.patch({
+                          [key]: key === 'ig_verifyOnReadyKickTime' && value !== '' ? Number(value) : value,
+                        })
+                      }}
+                    />
+                  }
+                >
+                  <div class="flex min-w-0 w-full flex-col gap-2">
+                    <select
+                      ref={(select) => {
+                        createEffect(() => {
+                          // Reapply the draft after asynchronous options replace the saved-role placeholder.
+                          availableRoles()
+                          select.value = String(form.draft()[key] ?? '')
+                        })
+                      }}
+                      id={key}
+                      class="select w-full"
+                      aria-describedby={describedBy()}
+                      aria-invalid={!!error() || undefined}
+                      value={String(form.draft()[key] ?? '')}
+                      disabled={unavailable(form) || (!form.draft()[key] && (roles.loading || !!roles.error))}
+                      onChange={(event) => {
+                        const value = event.currentTarget.value
+                        if (value === '' || availableRoles().some((role) => role.id === value))
+                          form.patch({ [key]: value })
+                      }}
+                    >
+                      <option value="">{t('dashboard.server.config.whitelist_no_role', 'No Discord role')}</option>
+                      <Show when={form.draft()[key] && !availableRoles().some((role) => role.id === form.draft()[key])}>
+                        <option value={String(form.draft()[key])} disabled>
+                          {t(
+                            'dashboard.server.config.whitelist_role_missing',
+                            'Unavailable role ({1})',
+                            String(form.draft()[key]),
+                          )}
+                        </option>
+                      </Show>
+                      <For each={availableRoles()}>
+                        {(role) => <option value={role.id}>@{role.name || role.id}</option>}
+                      </For>
+                    </select>
+                    <AsyncState
+                      loading={roles.loading}
+                      error={roles.error}
+                      loadingLabel={t('dashboard.server.config.whitelist_roles_loading', 'Loading Discord roles…')}
+                      errorLabel={t(
+                        'dashboard.server.config.whitelist_roles_error',
+                        'Unable to load Discord roles. Try again, or remove the current role.',
+                      )}
+                      onRetry={() => void refetchRoles()}
+                    />
+                  </div>
+                </Show>
+              }
+            >
+              <Show
+                when={isBooleanOption(info)}
+                fallback={
+                  <select
+                    id={key}
+                    aria-describedby={describedBy()}
+                    aria-invalid={!!error() || undefined}
+                    class="select w-full"
+                    value={String(form.draft()[key] ?? info.defaultValue ?? '')}
+                    disabled={unavailable(form)}
+                    onChange={(e) => {
+                      const value = e.currentTarget.value
+                      form.patch({ [key]: value })
+                    }}
+                  >
+                    <For each={info.acceptedValues!}>{(val) => <option value={String(val)}>{String(val)}</option>}</For>
+                  </select>
+                }
+              >
+                <input
+                  type="checkbox"
+                  id={key}
+                  aria-describedby={describedBy()}
+                  aria-invalid={!!error() || undefined}
+                  class="toggle toggle-md"
+                  checked={Boolean(form.draft()[key] ?? info.defaultValue)}
+                  disabled={unavailable(form)}
+                  onChange={(e) => form.patch({ [key]: e.currentTarget.checked })}
+                />
+              </Show>
+            </Show>
+          }
+        >
+          <div class="settings-ranks">
+            <Index each={rankList()}>
+              {(rank, index) => (
+                <div class="flex items-center gap-2">
+                  <input
+                    type="text"
+                    class="input w-full"
+                    aria-label={`${t(info.labelKey, key)} ${index + 1}`}
+                    aria-describedby={describedBy()}
+                    aria-invalid={!!error() || undefined}
+                    value={rank()}
+                    disabled={unavailable(form)}
+                    onInput={(e) => {
+                      const newList = [...rankList()]
+                      newList[index] = e.currentTarget.value
+                      updateRanks(newList)
+                    }}
+                  />
+                  <IconButton
+                    variant="ghost"
+                    size="sm"
+                    label={t('ui.remove', 'Remove')}
+                    icon="x"
+                    disabled={unavailable(form)}
+                    onClick={() => updateRanks(rankList().filter((_, i) => i !== index))}
+                  />
+                </div>
+              )}
+            </Index>
+            <Button
+              size="sm"
+              class="w-fit"
+              disabled={unavailable(form)}
+              onClick={() => updateRanks([...rankList(), ''])}
+            >
+              {t('dashboard.server.config.add_admin_rank', 'Add rank')}
+            </Button>
+          </div>
+        </Show>
+        <details class="settings-default">
+          <summary>{t('dashboard.server.config.default', 'Default')}</summary>
+          <code>
+            {typeof info.defaultValue === 'object'
+              ? JSON.stringify(info.defaultValue)
+              : String(info.defaultValue === '' ? '—' : info.defaultValue)}
+          </code>
+        </details>
+      </SettingRow>
+    )
   }
 
   return (
     <>
       <NeedWebsocket />
-
-      <AdminPanel
-        title={t('dashboard.server.config.title', 'Configuration')}
-        type="none"
-        description={t('dashboard.server.config.description', 'Manage the in game configuration of this server.')}
-      >
-        <div class="flex flex-col">
-          <For each={Object.entries(configInfo)}>
-            {([key, info]) => (
-              <div class="flex flex-col gap-2 p-4 border-b border-base-200/30 s">
-                <div class="flex items-center gap-4">
-                  <div class="flex flex-col w-1/2">
-                    <span class="font-medium">{t(info.labelKey, key)}</span>
-                    <span class="text-xs text-base-content/60">{t(info.descriptionKey, '')}</span>
-                  </div>
-                  <div class="flex items-center gap-4 w-1/2">
-                    <Show
-                      when={key === 'ig_adminRank'}
-                      fallback={
-                        <Show
-                          when={info.acceptedValues && Array.isArray(info.acceptedValues)}
-                          fallback={
-                            <input
-                              type="text"
-                              id={key}
-                              class="input"
-                              value={String(config[key] ?? info.defaultValue ?? '')}
-                              disabled={serverConfig.loading}
-                              onInput={(e) => {
-                                const newValue = e.currentTarget.value
-                                debouncedUpdateSetting(key, newValue)
-                              }}
-                            />
-                          }
-                        >
-                          <Show
-                            when={isBooleanOption(info)}
-                            fallback={
-                              <select
-                                id={key}
-                                class="select"
-                                value={String(config[key] ?? info.defaultValue ?? '')}
-                                disabled={serverConfig.loading}
-                                onChange={(e) => {
-                                  const value = e.currentTarget.value
-                                  let parsedValue: any = value
-                                  if (value === 'true') parsedValue = true
-                                  else if (value === 'false') parsedValue = false
-                                  updateSetting(key, parsedValue)
-                                }}
-                              >
-                                <For each={info.acceptedValues!}>
-                                  {(val) => (
-                                    <option value={String(val)} selected={config[key] === val}>
-                                      {String(val)}
-                                    </option>
-                                  )}
-                                </For>
-                              </select>
-                            }
-                          >
-                            <input
-                              type="checkbox"
-                              class="toggle toggle-md"
-                              checked={Boolean(config[key] ?? info.defaultValue)}
-                              disabled={serverConfig.loading}
-                              onChange={(e) => {
-                                updateSetting(key, e.currentTarget.checked)
-                              }}
-                            />
-                          </Show>
-                        </Show>
-                      }
-                    >
-                      <div class="flex flex-col gap-2">
-                        <Index each={adminRankList()}>
-                          {(rank, index) => (
-                            <div class="flex items-center gap-2">
-                              <input
-                                type="text"
-                                class="input w-full"
-                                value={rank()}
-                                disabled={serverConfig.loading}
-                                onInput={(e) => {
-                                  const newList = [...adminRankList()]
-                                  newList[index] = e.currentTarget.value
-                                  updateAdminRank(newList)
-                                }}
-                              />
-                              <button
-                                class="btn btn-ghost btn-sm"
-                                disabled={serverConfig.loading}
-                                onClick={() => {
-                                  const newList = adminRankList().filter((_, i) => i !== index)
-                                  updateAdminRank(newList)
-                                }}
-                              >
-                                <i class="fa-solid fa-xmark"></i>
-                              </button>
-                            </div>
-                          )}
-                        </Index>
-                        <button
-                          class="btn btn-base-200 btn-sm w-fit"
-                          disabled={serverConfig.loading}
-                          onClick={() => {
-                            setAdminRankList([...adminRankList(), ''])
-                          }}
-                        >
-                          {t('dashboard.server.config.add_admin_rank', 'Add rank')}
-                        </button>
-                      </div>
-                    </Show>
-                  </div>
-                </div>
-                <span class="text-xs text-base-content/60">
-                  {t('dashboard.server.config.default', 'Default')}:{' '}
-                  {key === 'ig_adminRank'
-                    ? JSON.stringify(info.defaultValue)
-                    : typeof info.defaultValue === 'object'
-                      ? JSON.stringify(info.defaultValue)
-                      : String(info.defaultValue)}
-                </span>
-              </div>
-            )}
-          </For>
-        </div>
-      </AdminPanel>
+      <AsyncState loading={serverConfig.loading} error={serverConfig.error} onRetry={() => void refetch()} />
+      <div class="settings-card-grid">
+        <For each={categories}>
+          {(group) => (
+            <AdminPanel
+              id={`config-${group.id}`}
+              title={t(group.titleKey, group.title)}
+              description={t(group.descriptionKey, group.description)}
+              icon={group.icon}
+            >
+              <For each={group.keys}>{(key) => renderSetting(key)}</For>
+              {renderFeedback(group)}
+            </AdminPanel>
+          )}
+        </For>
+      </div>
     </>
   )
 }

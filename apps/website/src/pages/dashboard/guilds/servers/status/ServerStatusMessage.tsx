@@ -1,312 +1,200 @@
-import { Component, createEffect, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
-import AdminPanel from '../../../../../components/AdminPanel'
-import AdminModal from '../../../../../components/AdminModal'
-import 'emoji-picker-element'
-import { guildChannelsRefetch } from '../../GuildInformations'
-import AdminChannelSelector from '../../../../../components/AdminChannelSelector'
-import { useI18n } from '../../../../../i18n'
-import DiscordMessage from '../../../../../components/discord/DiscordMessage'
-import { premium, PremiumBadge } from '../../../../../utils/premium'
-import { fetchAPI } from '../../../../../utils/api'
-import ServerStatusButtons from './ServerStatusButtons'
-import ServerStatusCustom from './ServerStatusCustom'
-import ServerStatusChannel from './ServerStatusChannel'
-
-const fetchStatus = async () => {
-  const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status', 'GET')
-  if (!res.ok) {
-    return {}
-  }
-  return await res.json()
-}
-
-const fetchShowPlayerList = async () => {
-  const res = await fetchAPI(
-    '/users/:discordID/guilds/:guildID/servers/:serverID/settings/show_player_list_status',
-    'GET',
-  )
-  if (!res.ok) {
-    return {}
-  }
-  return await res.json()
-}
+import { type Component, Show } from 'solid-js'
+import { useFeatureAccess } from '../../../../../components/AccessProvider.js'
+import { FeatureGate, SuspendedFeature } from '../../../../../components/FeatureGate.js'
+import { SettingRow, TemplateVariables } from '../../../../../components/ui/index.js'
+import AdminPanel from '../../../../../components/AdminPanel.js'
+import StatusCardActions from './StatusCardActions.js'
+import { PremiumBadge } from '../../../../../utils/premium.js'
+import { useI18n } from '../../../../../i18n.js'
+import { useStatusConfiguration } from './StatusConfigurationContext.js'
 
 const ServerStatusMessage: Component = () => {
-  const [status, { mutate: statusMutate }] = createResource('status', fetchStatus)
-  const [showPlayerList, { mutate: showPlayerListMutate }] = createResource('showPlayerList', fetchShowPlayerList)
   const { t } = useI18n()
-
-  const sendStatus = async (channelID: string) => {
-    const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status', 'POST', {
-      channelID,
-    })
-    if (!res.ok) {
-      return
-    }
-    const status = await res.json()
-    statusMutate(status)
-    return status
-  }
-
-  const [format, setFormat] = createSignal('')
-  const [preview, setPreview] = createSignal('')
-
-  createEffect(() => {
-    const previewValue = format()
-      .replace('{name}', 'John Doe')
-      .replace('{steamID64}', '76500000000000000')
-      .replace('{team}', 'Citizen')
-      .replace('{userGroup}', 'user')
-      .replace('{connectTime}', '00:00:00')
-      .replace('{kills}', '0')
-      .replace('{deaths}', '0')
-      .replace('{position}', '0 0 0')
-      .replace('{angle}', '0 0 0')
-      .replace('{fps}', '0')
-      .replace('{ping}', '0')
-      .replace('{adjustedTime}', '0')
-      .replace('{branch}', 'main')
-      .replace('{custom}', ':icon:')
-    setPreview(previewValue)
-  })
-
-  const [status_player_list_format, { mutate: statusPlayerListFormatMutate }] = createResource(async () => {
-    const res = await fetchAPI(
-      '/users/:discordID/guilds/:guildID/servers/:serverID/settings/status_player_list_format',
-      'GET',
-    )
-    if (!res.ok) {
-      return {}
-    }
-    const data = await res.json()
-    // A malformed/empty response body (e.g. `{}`) would otherwise set format() to undefined,
-    // crashing the createEffect below at `format().replace(...)`.
-    setFormat(data.value || '')
-    return data
-  })
-
-  function updateStatusPlayerListFormat(value: string) {
-    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/status_player_list_format', 'PUT', {
-      value: value,
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the pseudo direction.')
-        }
-      })
-      .then((data) => {
-        statusPlayerListFormatMutate(data)
-        // @ts-expect-error -- intentional: legacy typing gap
-        edit_format.close()
-      })
-      // Bug fix: a failed PUT threw inside the first .then() with nothing downstream to catch it -
-      // an unhandled promise rejection, since this function is called fire-and-forget from its
-      // onClick handler below (matches the .catch pattern already used by e.g. ServerChats.tsx's
-      // analogous update functions).
-      .catch((error) => console.error(error))
-  }
-
-  const [show_status_chart, { mutate: showStatusChartMutate }] = createResource(async () => {
-    const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/show_status_chart', 'GET')
-    if (!res.ok) {
-      return {}
-    }
-    return await res.json()
-  })
-
-  function updateShowStatusChart(value: boolean) {
-    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/show_status_chart', 'PUT', {
-      value: value,
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the pseudo direction.')
-        }
-      })
-      .then((data) => {
-        showStatusChartMutate(data)
-      })
-      .catch((error) => console.error(error))
-  }
-
-  const removeStatus = async () => {
-    const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status', 'DELETE')
-    if (!res.ok) {
-      return
-    }
-    statusMutate({})
-  }
-
-  async function editPlayerListMutate(value: boolean) {
-    fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/settings/show_player_list_status', 'PUT', {
-      value: value,
-    })
-      .then((res) => {
-        if (res.ok) {
-          return res.json()
-        } else {
-          throw new Error('An error occurred while updating the pseudo direction.')
-        }
-      })
-      .then((data) => {
-        showPlayerListMutate(data)
-      })
-      .catch((error) => console.error(error))
-  }
-
-  // @ts-expect-error -- intentional: legacy typing gap
+  const chartAccess = useFeatureAccess('status.chart')
+  const editor = useStatusConfiguration()
+  const unavailable = () => !editor.ready()
+  const variables = () => [
+    {
+      token: '{name}',
+      label: t('dashboard.server.status.playerName', 'Player Name'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: 'John Doe',
+    },
+    {
+      token: '{steamID64}',
+      label: t('dashboard.server.status.playerSteamID64', 'Player SteamID64'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: '76500000000000000',
+    },
+    {
+      token: '{team}',
+      label: t('dashboard.server.status.team', 'Team'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: 'Citizen',
+    },
+    {
+      token: '{userGroup}',
+      label: t('dashboard.server.status.userGroup', 'User Group'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: 'admin',
+    },
+    {
+      token: '{connectTime}',
+      label: t('dashboard.server.status.connectTime', 'Connect Time'),
+      format: t('ui.template_variables.duration', 'Duration (e.g. 1h 2m 3s)'),
+      example: '1h 2m 3s',
+    },
+    {
+      token: '{timeLastTeamChange}',
+      label: t('dashboard.server.status.timeLastTeamChange', 'Time since the last team change'),
+      format: t('ui.template_variables.duration', 'Duration (e.g. 1h 2m 3s)'),
+      example: '12m 5s',
+    },
+    {
+      token: '{kills}',
+      label: t('dashboard.server.status.kills', 'Kills'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '12',
+    },
+    {
+      token: '{deaths}',
+      label: t('dashboard.server.status.deaths', 'Deaths'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '3',
+    },
+    {
+      token: '{position}',
+      label: t('dashboard.server.status.position', 'Position'),
+      format: t('ui.template_variables.raw', 'Raw value'),
+    },
+    {
+      token: '{angle}',
+      label: t('dashboard.server.status.angle', 'Angle'),
+      format: t('ui.template_variables.raw', 'Raw value'),
+    },
+    {
+      token: '{fps}',
+      label: t('dashboard.server.status.fps', 'FPS'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '144',
+    },
+    {
+      token: '{ping}',
+      label: t('dashboard.server.status.ping', 'Ping'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '24',
+    },
+    {
+      token: '{adjustedTime}',
+      label: t('dashboard.server.status.adjustedTime', 'Adjusted Time'),
+      format: t('ui.template_variables.number', 'Number'),
+      example: '3600',
+    },
+    {
+      token: '{branch}',
+      label: t('dashboard.server.status.branch', 'Branch'),
+      format: t('ui.template_variables.text', 'Text'),
+      example: 'x86-64',
+    },
+  ]
   return (
-    <>
-      <AdminChannelSelector id="select_channel_modal" callback={sendStatus} />
-
-      <AdminModal title={t('dashboard.server.pseudo.editFormat', 'Edit Format')} id="edit_format">
-        <Show when={!status_player_list_format.loading}>
-          <div class="fieldset p-2">
-            <h1 class="text-lg text-base-content/70 font-bold">
-              {t('dashboard.server.pseudo.variables', 'Variables')}
-            </h1>
-            <ul class="text-base-content/60 list-inside">
-              <li>{`{name} - ${t('dashboard.server.status.playerName', 'Player Name')}`}</li>
-              <li>{`{steamID64} - ${t('dashboard.server.status.playerSteamID64', 'Player SteamID64')}`}</li>
-              <li>{`{team} - ${t('dashboard.server.status.team', 'Team')}`}</li>
-              <li>{`{userGroup} - ${t('dashboard.server.status.userGroup', 'User Group')}`}</li>
-              <li>{`{connectTime} - ${t('dashboard.server.status.connectTime', 'Connect Time')}`}</li>
-              <li>{`{kills} - ${t('dashboard.server.status.kills', 'Kills')}`}</li>
-              <li>{`{deaths} - ${t('dashboard.server.status.deaths', 'Deaths')}`}</li>
-              <li>{`{position} - ${t('dashboard.server.status.position', 'Position')}`}</li>
-              <li>{`{angle} - ${t('dashboard.server.status.angle', 'Angle')}`}</li>
-              <li>{`{fps} - ${t('dashboard.server.status.fps', 'FPS')}`}</li>
-              <li>{`{ping} - ${t('dashboard.server.status.ping', 'Ping')}`}</li>
-              <li>{`{adjustedTime} - ${t('dashboard.server.status.adjustedTime', 'Adjusted Time')}`}</li>
-              <li>{`{branch} - ${t('dashboard.server.status.branch', 'Branch')}`}</li>
-              <li>{`{custom} - ${t('dashboard.server.status.custom', 'Custom variable')}`}</li>
-            </ul>
-          </div>
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.server.pseudo.format', 'Format')}</span>
-            </label>
-            <input
-              type="text"
-              class="input"
-              value={status_player_list_format().value}
-              onInput={(e) => {
-                setFormat(e.currentTarget.value)
-              }}
-            />
-          </div>
-          <div class="fieldset">
-            <label class="label">
-              <span>{t('dashboard.server.pseudo.preview', 'Preview')}</span>
-            </label>
-            <input type="text" class="input" value={preview()} readonly />
-          </div>
-          <button
-            class="btn btn-base-200 mt-2"
-            onClick={async () => {
-              // @ts-expect-error -- intentional: legacy typing gap
-              edit_format.close()
-              updateStatusPlayerListFormat(format())
-            }}
-          >
-            {t('dashboard.server.pseudo.save', 'Save')}
-          </button>
-        </Show>
-      </AdminModal>
-
-      <AdminPanel
-        title={t('dashboard.server.status.title', 'Server Status')}
-        description={t('dashboard.server.status.description', 'Here you can see the current status of your server.')}
+    <AdminPanel
+      title={t('settings.message_content', 'Message content')}
+      description={t('editing.status_message_scope', 'Changes to the player list and chart are saved automatically.')}
+      icon="sliders-horizontal"
+      footer={<StatusCardActions scope="message" />}
+    >
+      <SettingRow
+        controlId="status-show-players"
+        title={t('dashboard.server.status.show_player_list', 'Show Player List')}
+        description={t(
+          'settings.status_players_help',
+          'Include the connected players and customize the information shown for each one.',
+        )}
       >
-        <div class="flex w-fit items-center gap-2">
-          <span>{t('dashboard.server.status.status_message', 'Status Message')}:</span>
-          <Show
-            when={!status.loading && status().channel}
-            fallback={
-              <>
-                <span>{t('dashboard.server.status.no_status_message', 'No status message')}</span>
-                <div class="tooltip tooltip-info" data-tip={t('dashboard.server.status.send_status', 'Send Status')}>
-                  <button
-                    class="btn btn-sm hover:cursor-pointer fa-solid fa-plus"
-                    disabled={status_player_list_format.loading}
-                    onClick={() => {
-                      // @ts-expect-error -- intentional: legacy typing gap
-                      select_channel_modal.showModal()
-                      guildChannelsRefetch()
-                    }}
-                  ></button>
-                </div>
-              </>
-            }
+        <input
+          id="status-show-players"
+          aria-describedby="status-show-players-description"
+          type="checkbox"
+          class="toggle toggle-sm"
+          checked={editor.form.draft().settings.show_player_list_status}
+          disabled={unavailable()}
+          onChange={(event) =>
+            editor.form.patch({
+              settings: { ...editor.form.draft().settings, show_player_list_status: event.currentTarget.checked },
+            })
+          }
+        />
+      </SettingRow>
+      <Show when={editor.form.draft().settings.show_player_list_status}>
+        <div class="settings-dependent">
+          <SettingRow
+            controlId="status-player-format"
+            title={t('dashboard.server.status.format', 'Player List Format')}
+            description={t(
+              'dashboard.server.status.format_help',
+              'Template repeated for each connected player. Use the variables below, such as {name} and {ping}, and check the Discord preview.',
+            )}
+            stacked
           >
-            <DiscordMessage messageID={status().message} channelID={status().channel} />
-            <div class="tooltip tooltip-danger" data-tip={t('dashboard.server.status.remove_status', 'Remove Status')}>
-              <button
-                class="btn btn-sm hover:cursor-pointer fa-solid fa-xmark text-error"
-                disabled={status_player_list_format.loading}
-                onClick={async () => {
-                  // @ts-expect-error -- intentional: legacy typing gap
-                  await removeStatus()
-                }}
-              ></button>
-            </div>
-          </Show>
+            <input
+              id="status-player-format"
+              aria-describedby="status-player-format-description"
+              type="text"
+              class="input w-full font-mono text-xs"
+              maxLength={255}
+              value={editor.form.draft().settings.status_player_list_format}
+              disabled={unavailable()}
+              onInput={(event) =>
+                editor.form.patch({
+                  settings: {
+                    ...editor.form.draft().settings,
+                    status_player_list_format: event.currentTarget.value,
+                  },
+                })
+              }
+            />
+            <TemplateVariables
+              variables={variables()}
+              syntax="{variable}"
+              example={{ template: '{connectTime} - {name} ({ping})', result: '1h 2m 3s - John Doe (24)' }}
+              formatting={[
+                { token: '**text**', label: t('ui.template_variables.bold', 'Bold') },
+                { token: '`text`', label: t('ui.template_variables.inline_code', 'Inline code') },
+                { token: '__text__', label: t('ui.template_variables.underline', 'Underline') },
+                { token: '~~text~~', label: t('ui.template_variables.strikethrough', 'Strikethrough') },
+              ]}
+            />
+          </SettingRow>
         </div>
-
-        <div class="flex w-fit items-center gap-2">
-          <span>{t('dashboard.server.status.show_player_list', 'Show Player List')}:</span>
-          <input
-            type="checkbox"
-            class="toggle toggle-md"
-            disabled={showPlayerList.loading}
-            checked={!showPlayerList.loading ? (showPlayerList() ? showPlayerList().value : false) : false}
-            onChange={async (e) => {
-              await editPlayerListMutate(e.currentTarget.checked)
-            }}
-          />
-        </div>
-
-        <div class="flex w-fit items-center tooltip-warning gap-2">
-          <span class="text-nowrap">{t('dashboard.server.status.format', 'Player List Format')}:</span>
-          <input type="text" class="input" value={preview()} readOnly disabled={status_player_list_format.loading} />
-          <div class="tooltip tooltip-info" data-tip={t('dashboard.server.status.edit', 'Edit')}>
-            <button
-              class="btn btn-sm hover:cursor-pointer fa-solid fa-edit"
-              disabled={status_player_list_format.loading}
-              onClick={() => {
-                // @ts-expect-error -- intentional: legacy typing gap
-                edit_format.showModal()
-              }}
-            ></button>
-          </div>
-        </div>
-
-        <div
-          class="flex w-fit items-center tooltip-warning gap-2"
-          classList={{
-            tooltip: !premium(),
-          }}
-          data-tip={t('dashboard.server.status.premium_only', 'This feature is only available for premium users.')}
-        >
-          <PremiumBadge onlyIcon={true} noMargin={true} />
-          <span>{t('dashboard.server.status.show_player_chart', 'Show Player Chart')}:</span>
-          <input
-            type="checkbox"
-            class="toggle toggle-md"
-            disabled={!premium() || show_status_chart.loading}
-            checked={!show_status_chart.loading ? (show_status_chart() ? show_status_chart().value : false) : false}
-            onChange={async (e) => {
-              await updateShowStatusChart(e.currentTarget.checked)
-            }}
-          />
-        </div>
-      </AdminPanel>
-    </>
+      </Show>
+      <SettingRow
+        controlId="status-show-chart"
+        title={
+          <>
+            {t('dashboard.server.status.show_player_chart', 'Show player activity chart')}{' '}
+            <PremiumBadge onlyIcon noMargin />
+          </>
+        }
+        description={t('settings.status_chart_help', 'Add a chart of player activity to the status message.')}
+      >
+        <input
+          id="status-show-chart"
+          aria-describedby="status-show-chart-description"
+          type="checkbox"
+          class="toggle toggle-sm"
+          checked={editor.form.draft().settings.show_status_chart}
+          disabled={unavailable() || (!chartAccess.allowed() && !editor.form.draft().settings.show_status_chart)}
+          onChange={(event) =>
+            editor.form.patch({
+              settings: { ...editor.form.draft().settings, show_status_chart: event.currentTarget.checked },
+            })
+          }
+        />
+      </SettingRow>
+      <FeatureGate capability="status.chart" showQuota={false} />
+      <SuspendedFeature capability="status.chart" active={editor.form.saved().settings.show_status_chart} />
+    </AdminPanel>
   )
 }
-
 export default ServerStatusMessage

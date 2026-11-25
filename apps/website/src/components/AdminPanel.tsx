@@ -1,65 +1,103 @@
-import { Component, Show } from 'solid-js'
+import { children, createUniqueId, Show, type Component, type JSX } from 'solid-js'
 import { A } from '@solidjs/router'
-import { linkBadge } from './layout/menu/DashboardMenu'
-import { useI18n } from '../i18n'
-import { premium, PremiumBadge } from '../utils/premium'
+import type { linkBadge } from './layout/menu/DashboardMenu.js'
+import { useI18n } from '../i18n.js'
+import { useAccess } from './AccessProvider.js'
+import { upgradeHref } from './FeatureGate.js'
+import { premium, PremiumBadge } from '../utils/premium.js'
+import { Icon, StatusBadge, type IconName } from './ui/index.js'
 
 interface AdminPanelProps {
+  id?: string
   title: string
-  description: string
-  children?: any
+  description?: string
+  children?: JSX.Element
   type?: string
   info?: string
   badge?: linkBadge
   premium?: string | boolean
+  actions?: JSX.Element
+  footer?: JSX.Element
+  icon?: IconName
 }
 
 const AdminPanel: Component<AdminPanelProps> = (props) => {
   const { t } = useI18n()
+  const access = useAccess()
+  const headingId = createUniqueId()
+  const body = children(() => props.children)
+  const footer = children(() => props.footer)
+  const hasContent = (content: JSX.Element[]) =>
+    content.some((value) => value != null && typeof value !== 'boolean' && value !== '')
   return (
     <>
-      <div class="border border-base-200 rounded-lg flex flex-col">
-        <div class="flex flex-col gap-4 p-4">
-          <div class="flex gap-4 items-center">
-            <h2 class="text-xl font-bold">{props.title}</h2>
-            <Show when={props.badge}>
-              <div class="badge badge-outline">{t('main.badge_' + props.badge, props.badge)}</div>
-            </Show>
-            <Show when={props.premium && !premium()}>
-              <PremiumBadge />
+      <section
+        id={props.id}
+        aria-labelledby={headingId}
+        class="dashboard-panel border border-base-200 rounded-lg flex flex-col min-w-0"
+      >
+        <div class="dashboard-panel-header flex flex-col gap-4 p-4">
+          <div class="flex flex-wrap gap-4 items-center justify-between min-w-0">
+            <div class="flex flex-wrap gap-3 items-center min-w-0">
+              <Show when={props.icon}>
+                <span class="dashboard-panel-icon">
+                  <Icon name={props.icon!} />
+                </span>
+              </Show>
+              <h2 id={headingId} class="dashboard-panel-title text-xl font-bold">
+                {props.title}
+              </h2>
+              <Show when={props.badge}>
+                <StatusBadge tone={props.badge === 'New' || props.badge === 'Updated' ? 'info' : 'neutral'}>
+                  {t('main.badge_' + props.badge, props.badge)}
+                </StatusBadge>
+              </Show>
+              <Show when={props.premium && access.ready() && access.snapshot()?.state === 'ready' && !premium()}>
+                <PremiumBadge />
+              </Show>
+            </div>
+            <Show when={props.actions}>
+              <div class="flex flex-wrap gap-2 items-center">{props.actions}</div>
             </Show>
           </div>
-          <Show when={props.premium && !premium()}>
+          <Show when={props.premium && access.ready() && access.snapshot()?.state === 'ready' && !premium()}>
             <p class="text-amber-400">
               {props.premium === true
-                ? t('main.buy_premium', 'This feature is only available to premium users.')
+                ? t('main.buy_premium', 'This feature requires Premium for this Discord community.')
                 : props.premium}{' '}
-              <A class="link" href="/premium">
-                {t('tools.upgrade_now', 'Upgrade Now')}
+              <A class="link" href={upgradeHref()}>
+                {t('tools.upgrade_now', 'View Premium plans')}
               </A>
             </p>
           </Show>
-          <p class="text-base-content/60">{props.description}</p>
+          <Show when={props.description}>
+            <p class="dashboard-panel-description text-base-content/60">{props.description}</p>
+          </Show>
           <Show when={props.info}>
             <div class="flex gap-2 items-center text-base-content/50">
-              <i class="fa-solid fa-circle-info"></i>
+              <Icon name="info" />
               <span>{props.info}</span>
             </div>
           </Show>
         </div>
 
-        <hr class="border-base-200" />
-
-        <div
-          class="flex flex-col"
-          classList={{
-            'gap-4': !props.type || props.type != 'none',
-            'p-4': !props.type || props.type != 'none',
-          }}
-        >
-          {props.children}
-        </div>
-      </div>
+        <Show when={hasContent(body.toArray())}>
+          <hr class="dashboard-panel-divider border-base-200" />
+          <div
+            class="dashboard-panel-body flex flex-col min-w-0"
+            classList={{
+              'is-flush': props.type === 'none',
+              'gap-4': !props.type || props.type != 'none',
+              'p-4': !props.type || props.type != 'none',
+            }}
+          >
+            {body()}
+          </div>
+        </Show>
+        <Show when={hasContent(footer.toArray())}>
+          <div class="dashboard-panel-footer border-t border-base-200 p-4">{footer()}</div>
+        </Show>
+      </section>
     </>
   )
 }

@@ -17,7 +17,7 @@ vi.mock('bullmq', () => ({ Worker: FakeWorker }))
 vi.mock('@gmod/infra-bullmq', () => ({ connection: {} }))
 
 const gmLogMock = vi.fn()
-vi.mock('@gmod/core/utils/logger.js', () => ({ gmLog: gmLogMock }))
+vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 
 const prismaMock: any = {
   gm_guild_verify_msg: { findFirst: vi.fn(), delete: vi.fn(), create: vi.fn() },
@@ -50,6 +50,10 @@ vi.mock('@gmod/domain-guild/discordModels.js', () => ({
 }))
 
 const getVerificationGuildMessageMock = vi.fn()
+const getPublicGuildInviteMock = vi.fn()
+const renderStatusPreviewMock = vi.fn()
+vi.mock('../../../src/discord/utils/statusPreview.js', () => ({ renderStatusPreview: renderStatusPreviewMock }))
+vi.mock('../../../src/discord/utils/publicInvite.js', () => ({ getPublicGuildInvite: getPublicGuildInviteMock }))
 vi.mock('../../../src/discord/utils/messages.js', () => ({
   getVerificationGuildMessage: getVerificationGuildMessageMock,
 }))
@@ -73,10 +77,12 @@ function processor() {
 }
 
 function resetAllMocks() {
+  renderStatusPreviewMock.mockReset()
   gmLogMock.mockClear()
   getServerFromIDMock.mockReset()
   redisMock.set.mockReset().mockResolvedValue(undefined)
   getGuildClientMock.mockReset()
+  getPublicGuildInviteMock.mockReset()
   addAutoRoleToUserMock.mockReset().mockResolvedValue(undefined)
   verifyUserMock.mockReset()
 }
@@ -87,7 +93,70 @@ function lastReplyPayload() {
 }
 
 describe('discordQueueWorkers - discordGuildOpsWorker (part 2: server CRUD job pairs)', () => {
+  it('returns a read-only preview reply without entering any status creation/update handler', async () => {
+    const server = {
+      getGuildID: () => 'g1',
+      createStatus: vi.fn(),
+      deleteStatus: vi.fn(),
+      editStatusChannelAndMessage: vi.fn(),
+    }
+    const guild = { id: 'g1' }
+    getServerFromIDMock.mockResolvedValueOnce(server)
+    getGuildClientMock.mockResolvedValueOnce(makeGuildClient(guild))
+    renderStatusPreviewMock.mockResolvedValueOnce({ preview: 'serialized' })
+    await processor()(
+      makeJob('serverStatusPreview', {
+        serverID: 's1',
+        correlationId: 'preview1',
+        draft: { settings: { show_player_list_status: true } },
+      }),
+    )
+    expect(renderStatusPreviewMock).toHaveBeenCalledWith(server, { settings: { show_player_list_status: true } }, guild)
+    expect(lastReplyPayload()).toEqual({ correlationId: 'preview1', preview: { preview: 'serialized' } })
+    expect(server.createStatus).not.toHaveBeenCalled()
+    expect(server.deleteStatus).not.toHaveBeenCalled()
+    expect(server.editStatusChannelAndMessage).not.toHaveBeenCalled()
+  })
+
+  it('reports missing servers, missing guilds and renderer errors as unavailable previews', async () => {
+    getServerFromIDMock.mockResolvedValueOnce(null)
+    await processor()(makeJob('serverStatusPreview', { serverID: 's1', correlationId: 'missing', draft: {} }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'missing', preview: null, error: 'Server not found' })
+    const server = { getGuildID: () => 'g1' }
+    getServerFromIDMock.mockResolvedValueOnce(server)
+    getGuildClientMock.mockResolvedValueOnce(makeGuildClient(null))
+    await processor()(makeJob('serverStatusPreview', { serverID: 's1', correlationId: 'guild', draft: {} }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'guild', preview: null, error: 'Guild not found' })
+    getServerFromIDMock.mockResolvedValueOnce(server)
+    getGuildClientMock.mockResolvedValueOnce(makeGuildClient({ id: 'g1' }))
+    renderStatusPreviewMock.mockRejectedValueOnce(new Error('Invalid draft button'))
+    await processor()(makeJob('serverStatusPreview', { serverID: 's1', correlationId: 'invalid', draft: {} }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'invalid', preview: null, error: 'Invalid draft button' })
+  })
   beforeEach(() => resetAllMocks())
+
+  it('resolves a public guild invite through the guild client and writes a correlated reply', async () => {
+    const guild = { id: 'g1' }
+    getGuildClientMock.mockResolvedValueOnce({ guilds: { fetch: vi.fn().mockResolvedValueOnce(guild) } })
+    getPublicGuildInviteMock.mockResolvedValueOnce('https://discord.gg/public-Code')
+    await processor()(makeJob('guildPublicInvite', { guildID: 'g1', correlationId: 'c1' }))
+    expect(getGuildClientMock).toHaveBeenCalledWith('g1', false)
+    expect(getPublicGuildInviteMock).toHaveBeenCalledWith(guild)
+    expect(lastReplyPayload()).toEqual({ correlationId: 'c1', inviteUrl: 'https://discord.gg/public-Code' })
+  })
+
+  it('replies with an unavailable invite for absent guilds and Discord permission failures', async () => {
+    getGuildClientMock.mockResolvedValueOnce({ guilds: { fetch: vi.fn().mockResolvedValueOnce(null) } })
+    await processor()(makeJob('guildPublicInvite', { guildID: 'missing', correlationId: 'c2' }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'c2', inviteUrl: null })
+    getGuildClientMock.mockRejectedValueOnce(new Error('Bot not present'))
+    await processor()(makeJob('guildPublicInvite', { guildID: 'denied', correlationId: 'c3' }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'c3', inviteUrl: null })
+    getGuildClientMock.mockResolvedValueOnce({ guilds: { fetch: vi.fn().mockResolvedValueOnce({ id: 'g1' }) } })
+    getPublicGuildInviteMock.mockRejectedValueOnce(new Error('Missing CreateInstantInvite permission'))
+    await processor()(makeJob('guildPublicInvite', { guildID: 'denied', correlationId: 'c4' }))
+    expect(lastReplyPayload()).toEqual({ correlationId: 'c4', inviteUrl: null })
+  })
 
   const crudCases = [
     {
@@ -257,13 +326,32 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 2: server CRUD job p
       const statusData = { players: 5 }
       const server = {
         getStatusData: vi.fn().mockResolvedValue(statusData),
-        editStatusChannelAndMessage: vi.fn().mockResolvedValue(undefined),
+        editStatusChannelAndMessage: vi.fn().mockResolvedValue(true),
       }
       getServerFromIDMock.mockResolvedValueOnce(server)
       await processor()(makeJob('serverStatusRefresh', { serverID: 's1', correlationId: 'c1' }))
       expect(server.editStatusChannelAndMessage).toHaveBeenCalledWith(statusData)
       expect(lastReplyPayload()).toEqual({ correlationId: 'c1', refreshed: true })
     })
+
+    it.each(['guildOps', 'dedicated'] as const)(
+      'reports an unsuccessful edit through the %s queue without acknowledging a refresh',
+      async (queue) => {
+        const server = {
+          getStatusData: vi.fn().mockResolvedValue(null),
+          editStatusChannelAndMessage: vi.fn().mockResolvedValue(false),
+        }
+        getServerFromIDMock.mockResolvedValueOnce(server)
+        const run = queue === 'guildOps' ? processor() : (discordStatusRefreshWorker as unknown as FakeWorker).processor
+        await run(makeJob('serverStatusRefresh', { serverID: 's1', correlationId: 'failed-edit' }))
+        expect(server.editStatusChannelAndMessage).toHaveBeenCalledWith(null)
+        expect(lastReplyPayload()).toEqual({
+          correlationId: 'failed-edit',
+          refreshed: false,
+          error: 'Status message could not be refreshed',
+        })
+      },
+    )
 
     it('replies refreshed=false with the error message when it throws', async () => {
       getServerFromIDMock.mockRejectedValueOnce(new Error('db down'))
@@ -283,7 +371,7 @@ describe('discordQueueWorkers - discordGuildOpsWorker (part 2: server CRUD job p
       const statusData = { players: 3 }
       const server = {
         getStatusData: vi.fn().mockResolvedValue(statusData),
-        editStatusChannelAndMessage: vi.fn().mockResolvedValue(undefined),
+        editStatusChannelAndMessage: vi.fn().mockResolvedValue(true),
       }
       getServerFromIDMock.mockResolvedValueOnce(server)
       await statusWorker().processor(makeJob('serverStatusRefresh', { serverID: 's1', correlationId: 'c2' }))

@@ -1,17 +1,11 @@
 import { getEmojis } from 'unicode-emoji'
-import { ConfigServer } from '@gmod/config'
+import { ConfigDiscord } from '@gmod/config'
 import prisma from '@gmod/infra-prisma'
 import { type Request, type Response } from 'express'
-import { randomBytes } from 'node:crypto'
+import { isIP } from 'node:net'
 
 export function getRandomDiscordRelay() {
-  const relays = []
-  if (ConfigServer.dev) {
-    relays.push('https://dsc-relay-dev.gmod-integration.com')
-  } else {
-    relays.push('https://1-dsc-relay.gmod-integration.com')
-  }
-  return relays[Math.floor(Math.random() * relays.length)]
+  return ConfigDiscord.relayUrl
 }
 
 export function getEmojiVersion(emoji: string) {
@@ -87,34 +81,12 @@ export function badArgument(list: any[]) {
 }
 
 export function ipGetIP(ip: string) {
-  if (ip.includes(':')) {
-    return ip.split(':')[0]
-  }
+  if (isIP(ip)) return ip
+  const bracketed = /^\[([^\]]+)\](?::\d+)?$/.exec(ip)
+  if (bracketed && isIP(bracketed[1])) return bracketed[1]
+  const ipv4WithPort = /^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/.exec(ip)
+  if (ipv4WithPort && isIP(ipv4WithPort[1]) === 4) return ipv4WithPort[1]
   return ip
-}
-
-export function generateToken(length: number) {
-  if (!Number.isInteger(length) || length <= 0) {
-    throw new Error('Token length must be a positive integer')
-  }
-
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  const charsetLength = characters.length // 62
-  const maxUnbiasedByte = 256 - (256 % charsetLength) // 248
-  let token = ''
-
-  while (token.length < length) {
-    const bytes = randomBytes(length)
-    for (let i = 0; i < bytes.length && token.length < length; i++) {
-      const value = bytes[i]
-      if (value >= maxUnbiasedByte) {
-        continue
-      }
-      token += characters[value % charsetLength]
-    }
-  }
-
-  return token
 }
 
 export async function addNotification(discordID: string, type: string, message: string) {
@@ -135,7 +107,7 @@ export function todoControllers(req: Request, res: Response) {
 }
 
 async function fetchLastTag() {
-  return await fetch('https://api.github.com/repos/gmod-integration/lua/tags')
+  return await fetch('https://api.github.com/repos/gmod-integration/gmod-integration/tags')
     .then((response) => response.json())
     .then((data) => {
       return data[0].name
@@ -166,13 +138,20 @@ setInterval(
  * versionComparator('1.0.0', '1.0.0') // 0
  */
 export function versionComparator(version1: string, version2: string) {
-  const v1 = version1.startsWith('v') ? version1.slice(1) : version1
-  const v2 = version2.startsWith('v') ? version2.slice(1) : version2
+  const parse = (value: string) => {
+    const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(value)
+    if (!match) return null
+    const parts = match.slice(1).map(Number)
+    return parts.every(Number.isSafeInteger) ? parts : null
+  }
+  const v1 = parse(version1)
+  const v2 = parse(version2)
+  if (!v1 || !v2) return 0
 
   for (let i = 0; i < v1.length; i++) {
-    if (parseInt(v1[i]) > parseInt(v2[i])) {
+    if (v1[i] > v2[i]) {
       return 1
-    } else if (parseInt(v1[i]) < parseInt(v2[i])) {
+    } else if (v1[i] < v2[i]) {
       return -1
     }
   }

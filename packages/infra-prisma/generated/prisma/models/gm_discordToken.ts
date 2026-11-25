@@ -20,14 +20,25 @@ export type gm_discordTokenModel = runtime.Types.Result.DefaultSelection<Prisma.
 
 export type AggregateGm_discordToken = {
   _count: Gm_discordTokenCountAggregateOutputType | null
+  _avg: Gm_discordTokenAvgAggregateOutputType | null
+  _sum: Gm_discordTokenSumAggregateOutputType | null
   _min: Gm_discordTokenMinAggregateOutputType | null
   _max: Gm_discordTokenMaxAggregateOutputType | null
+}
+
+export type Gm_discordTokenAvgAggregateOutputType = {
+  version: number | null
+}
+
+export type Gm_discordTokenSumAggregateOutputType = {
+  version: number | null
 }
 
 export type Gm_discordTokenMinAggregateOutputType = {
   discordID: string | null
   accessToken: string | null
   refreshToken: string | null
+  version: number | null
   creationDate: Date | null
   expirationDate: Date | null
   createdAt: Date | null
@@ -38,6 +49,7 @@ export type Gm_discordTokenMaxAggregateOutputType = {
   discordID: string | null
   accessToken: string | null
   refreshToken: string | null
+  version: number | null
   creationDate: Date | null
   expirationDate: Date | null
   createdAt: Date | null
@@ -48,6 +60,7 @@ export type Gm_discordTokenCountAggregateOutputType = {
   discordID: number
   accessToken: number
   refreshToken: number
+  version: number
   creationDate: number
   expirationDate: number
   createdAt: number
@@ -56,10 +69,19 @@ export type Gm_discordTokenCountAggregateOutputType = {
 }
 
 
+export type Gm_discordTokenAvgAggregateInputType = {
+  version?: true
+}
+
+export type Gm_discordTokenSumAggregateInputType = {
+  version?: true
+}
+
 export type Gm_discordTokenMinAggregateInputType = {
   discordID?: true
   accessToken?: true
   refreshToken?: true
+  version?: true
   creationDate?: true
   expirationDate?: true
   createdAt?: true
@@ -70,6 +92,7 @@ export type Gm_discordTokenMaxAggregateInputType = {
   discordID?: true
   accessToken?: true
   refreshToken?: true
+  version?: true
   creationDate?: true
   expirationDate?: true
   createdAt?: true
@@ -80,6 +103,7 @@ export type Gm_discordTokenCountAggregateInputType = {
   discordID?: true
   accessToken?: true
   refreshToken?: true
+  version?: true
   creationDate?: true
   expirationDate?: true
   createdAt?: true
@@ -125,6 +149,18 @@ export type Gm_discordTokenAggregateArgs<ExtArgs extends runtime.Types.Extension
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
+   * Select which fields to average
+  **/
+  _avg?: Gm_discordTokenAvgAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
+   * Select which fields to sum
+  **/
+  _sum?: Gm_discordTokenSumAggregateInputType
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+   * 
    * Select which fields to find the minimum value
   **/
   _min?: Gm_discordTokenMinAggregateInputType
@@ -155,6 +191,8 @@ export type gm_discordTokenGroupByArgs<ExtArgs extends runtime.Types.Extensions.
   take?: number
   skip?: number
   _count?: Gm_discordTokenCountAggregateInputType | true
+  _avg?: Gm_discordTokenAvgAggregateInputType
+  _sum?: Gm_discordTokenSumAggregateInputType
   _min?: Gm_discordTokenMinAggregateInputType
   _max?: Gm_discordTokenMaxAggregateInputType
 }
@@ -163,11 +201,14 @@ export type Gm_discordTokenGroupByOutputType = {
   discordID: string
   accessToken: string
   refreshToken: string
+  version: number
   creationDate: Date
   expirationDate: Date
   createdAt: Date
   updatedAt: Date
   _count: Gm_discordTokenCountAggregateOutputType | null
+  _avg: Gm_discordTokenAvgAggregateOutputType | null
+  _sum: Gm_discordTokenSumAggregateOutputType | null
   _min: Gm_discordTokenMinAggregateOutputType | null
   _max: Gm_discordTokenMaxAggregateOutputType | null
 }
@@ -194,6 +235,7 @@ export type gm_discordTokenWhereInput = {
   discordID?: Prisma.StringFilter<"gm_discordToken"> | string
   accessToken?: Prisma.StringFilter<"gm_discordToken"> | string
   refreshToken?: Prisma.StringFilter<"gm_discordToken"> | string
+  version?: Prisma.IntFilter<"gm_discordToken"> | number
   creationDate?: Prisma.DateTimeFilter<"gm_discordToken"> | Date | string
   expirationDate?: Prisma.DateTimeFilter<"gm_discordToken"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"gm_discordToken"> | Date | string
@@ -204,6 +246,7 @@ export type gm_discordTokenOrderByWithRelationInput = {
   discordID?: Prisma.SortOrder
   accessToken?: Prisma.SortOrder
   refreshToken?: Prisma.SortOrder
+  version?: Prisma.SortOrder
   creationDate?: Prisma.SortOrder
   expirationDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -218,6 +261,7 @@ export type gm_discordTokenWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.gm_discordTokenWhereInput | Prisma.gm_discordTokenWhereInput[]
   accessToken?: Prisma.StringFilter<"gm_discordToken"> | string
   refreshToken?: Prisma.StringFilter<"gm_discordToken"> | string
+  version?: Prisma.IntFilter<"gm_discordToken"> | number
   creationDate?: Prisma.DateTimeFilter<"gm_discordToken"> | Date | string
   expirationDate?: Prisma.DateTimeFilter<"gm_discordToken"> | Date | string
   createdAt?: Prisma.DateTimeFilter<"gm_discordToken"> | Date | string
@@ -228,13 +272,16 @@ export type gm_discordTokenOrderByWithAggregationInput = {
   discordID?: Prisma.SortOrder
   accessToken?: Prisma.SortOrder
   refreshToken?: Prisma.SortOrder
+  version?: Prisma.SortOrder
   creationDate?: Prisma.SortOrder
   expirationDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.gm_discordTokenCountOrderByAggregateInput
+  _avg?: Prisma.gm_discordTokenAvgOrderByAggregateInput
   _max?: Prisma.gm_discordTokenMaxOrderByAggregateInput
   _min?: Prisma.gm_discordTokenMinOrderByAggregateInput
+  _sum?: Prisma.gm_discordTokenSumOrderByAggregateInput
 }
 
 export type gm_discordTokenScalarWhereWithAggregatesInput = {
@@ -244,6 +291,7 @@ export type gm_discordTokenScalarWhereWithAggregatesInput = {
   discordID?: Prisma.StringWithAggregatesFilter<"gm_discordToken"> | string
   accessToken?: Prisma.StringWithAggregatesFilter<"gm_discordToken"> | string
   refreshToken?: Prisma.StringWithAggregatesFilter<"gm_discordToken"> | string
+  version?: Prisma.IntWithAggregatesFilter<"gm_discordToken"> | number
   creationDate?: Prisma.DateTimeWithAggregatesFilter<"gm_discordToken"> | Date | string
   expirationDate?: Prisma.DateTimeWithAggregatesFilter<"gm_discordToken"> | Date | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"gm_discordToken"> | Date | string
@@ -254,6 +302,7 @@ export type gm_discordTokenCreateInput = {
   discordID: string
   accessToken: string
   refreshToken: string
+  version?: number
   creationDate?: Date | string
   expirationDate?: Date | string
   createdAt?: Date | string
@@ -264,6 +313,7 @@ export type gm_discordTokenUncheckedCreateInput = {
   discordID: string
   accessToken: string
   refreshToken: string
+  version?: number
   creationDate?: Date | string
   expirationDate?: Date | string
   createdAt?: Date | string
@@ -274,6 +324,7 @@ export type gm_discordTokenUpdateInput = {
   discordID?: Prisma.StringFieldUpdateOperationsInput | string
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   refreshToken?: Prisma.StringFieldUpdateOperationsInput | string
+  version?: Prisma.IntFieldUpdateOperationsInput | number
   creationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expirationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -284,6 +335,7 @@ export type gm_discordTokenUncheckedUpdateInput = {
   discordID?: Prisma.StringFieldUpdateOperationsInput | string
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   refreshToken?: Prisma.StringFieldUpdateOperationsInput | string
+  version?: Prisma.IntFieldUpdateOperationsInput | number
   creationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expirationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -294,6 +346,7 @@ export type gm_discordTokenCreateManyInput = {
   discordID: string
   accessToken: string
   refreshToken: string
+  version?: number
   creationDate?: Date | string
   expirationDate?: Date | string
   createdAt?: Date | string
@@ -304,6 +357,7 @@ export type gm_discordTokenUpdateManyMutationInput = {
   discordID?: Prisma.StringFieldUpdateOperationsInput | string
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   refreshToken?: Prisma.StringFieldUpdateOperationsInput | string
+  version?: Prisma.IntFieldUpdateOperationsInput | number
   creationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expirationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -314,6 +368,7 @@ export type gm_discordTokenUncheckedUpdateManyInput = {
   discordID?: Prisma.StringFieldUpdateOperationsInput | string
   accessToken?: Prisma.StringFieldUpdateOperationsInput | string
   refreshToken?: Prisma.StringFieldUpdateOperationsInput | string
+  version?: Prisma.IntFieldUpdateOperationsInput | number
   creationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expirationDate?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -330,16 +385,22 @@ export type gm_discordTokenCountOrderByAggregateInput = {
   discordID?: Prisma.SortOrder
   accessToken?: Prisma.SortOrder
   refreshToken?: Prisma.SortOrder
+  version?: Prisma.SortOrder
   creationDate?: Prisma.SortOrder
   expirationDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
+export type gm_discordTokenAvgOrderByAggregateInput = {
+  version?: Prisma.SortOrder
+}
+
 export type gm_discordTokenMaxOrderByAggregateInput = {
   discordID?: Prisma.SortOrder
   accessToken?: Prisma.SortOrder
   refreshToken?: Prisma.SortOrder
+  version?: Prisma.SortOrder
   creationDate?: Prisma.SortOrder
   expirationDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -350,10 +411,15 @@ export type gm_discordTokenMinOrderByAggregateInput = {
   discordID?: Prisma.SortOrder
   accessToken?: Prisma.SortOrder
   refreshToken?: Prisma.SortOrder
+  version?: Prisma.SortOrder
   creationDate?: Prisma.SortOrder
   expirationDate?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+}
+
+export type gm_discordTokenSumOrderByAggregateInput = {
+  version?: Prisma.SortOrder
 }
 
 
@@ -362,6 +428,7 @@ export type gm_discordTokenSelect<ExtArgs extends runtime.Types.Extensions.Inter
   discordID?: boolean
   accessToken?: boolean
   refreshToken?: boolean
+  version?: boolean
   creationDate?: boolean
   expirationDate?: boolean
   createdAt?: boolean
@@ -374,13 +441,14 @@ export type gm_discordTokenSelectScalar = {
   discordID?: boolean
   accessToken?: boolean
   refreshToken?: boolean
+  version?: boolean
   creationDate?: boolean
   expirationDate?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type gm_discordTokenOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"discordID" | "accessToken" | "refreshToken" | "creationDate" | "expirationDate" | "createdAt" | "updatedAt", ExtArgs["result"]["gm_discordToken"]>
+export type gm_discordTokenOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"discordID" | "accessToken" | "refreshToken" | "version" | "creationDate" | "expirationDate" | "createdAt" | "updatedAt", ExtArgs["result"]["gm_discordToken"]>
 
 export type $gm_discordTokenPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "gm_discordToken"
@@ -389,6 +457,7 @@ export type $gm_discordTokenPayload<ExtArgs extends runtime.Types.Extensions.Int
     discordID: string
     accessToken: string
     refreshToken: string
+    version: number
     creationDate: Date
     expirationDate: Date
     createdAt: Date
@@ -765,6 +834,7 @@ export interface gm_discordTokenFieldRefs {
   readonly discordID: Prisma.FieldRef<"gm_discordToken", 'String'>
   readonly accessToken: Prisma.FieldRef<"gm_discordToken", 'String'>
   readonly refreshToken: Prisma.FieldRef<"gm_discordToken", 'String'>
+  readonly version: Prisma.FieldRef<"gm_discordToken", 'Int'>
   readonly creationDate: Prisma.FieldRef<"gm_discordToken", 'DateTime'>
   readonly expirationDate: Prisma.FieldRef<"gm_discordToken", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"gm_discordToken", 'DateTime'>

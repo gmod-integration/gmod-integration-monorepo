@@ -4,7 +4,8 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
   en: {
     title: 'Privacy Policy',
     updatedLabel: 'Last updated',
-    updatedDate: '20 November 2026',
+    updatedDate: '23 November 2026',
+    updatedISO: '2026-11-23',
     sections: [
       {
         title: 'Scope and contact',
@@ -94,6 +95,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'Recipients and visibility',
         paragraphs: [
+          'Signed-in website users can view player profiles showing the Steam identifier, a name recorded on a public server, the available trust score and statistics from public servers. Private server statistics are visible to the player through their linked account and to authorized administrators through server management.',
           'Recipients include service personnel handling operations or support, authorized community administrators and infrastructure providers needed for delivery. Chat, logs, reports and screenshots can be sent to the Discord channels or game recipients selected by the community. Screenshot handling can include a configured service moderation channel.',
           'Discord, Valve/Steam and GmodStore are external recipients of data needed for the integrations or purchases you use. For example, chat synchronization sends the message and associated display information to Discord. The fact that this transmission is part of the requested feature does not make the recipient internal to Gmod Integration. These platforms apply their own privacy policies to their services; Discord acts as a controller for its own service.',
           'Cloudflare is an infrastructure provider for the website and network delivery. Technical providers act as processors where they process data on our behalf and instructions, under the applicable agreement. Other recipients may act as independent controllers; being an external provider does not by itself determine the legal role. Sentry processes server-side error and performance diagnostics when enabled; browser monitoring is disabled in this version.',
@@ -144,7 +146,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'Browser storage and optional tracking',
         paragraphs: [
-          'The website uses localStorage for sign-in identifiers, access tokens and expiry, a local Discord profile, the selected guild or server, and language and theme preferences. Authentication storage supports the dashboard you request; preference storage remembers your choices. Values remain until updated or cleared; token expiry does not necessarily remove them.',
+          'The website uses an HttpOnly cookie for your authenticated session. Local browser storage keeps a Discord profile cache, the selected guild or server, language and theme preferences, and any erasure recovery receipt. Historical browser access tokens are converted to a cookie session and removed after successful conversion. Cached values remain until updated or cleared.',
           'You can clear storage through browser settings or sign out. Clearing authentication requires signing in again; clearing preferences resets your choices.',
           'Google AdSense, browser session recording (Session Replay) and optional browser performance tracking are disabled in this version. Any future activation of non-essential tracking subject to consent must offer an informed choice before activation and an equally accessible way to refuse or withdraw it.',
         ],
@@ -168,7 +170,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'How to make a request',
         paragraphs: [
-          'Use Account → Manage Data for a downloadable export, or email us for access, a supplementary copy, correction, erasure, restriction or an objection. The dashboard export facilitates access without guaranteeing coverage of every data category. The “Delete my Data” button opens an email request; it does not immediately delete an account.',
+          'Use Account → Manage Data for a downloadable export or to confirm an erasure request. The request revokes your sessions and provides a receipt for tracking the cleanup of personal records, stored captures and exports. Completion is reported only after the configured storage cleanup succeeds. A separate, minimized record of the request, active global security bans and an existing non-default reputation score are retained for their specific purposes. Community configuration and acquired community entitlements are not deleted with the personal account. Copies already shared to Discord, backups and other independently held copies require separate handling; contact us about these copies or for access, correction, restriction or an objection.',
           'No dashboard account is needed to contact us. Include the relevant Discord or Steam identifier and community if known. We may request proportionate identity verification where necessary, without routinely requiring an identity document.',
           'We must respond without undue delay and normally within one month of receipt. For complex or numerous requests, GDPR permits up to two additional months; we must explain that extension within the first month. Requests are normally free; any refusal or charge must meet GDPR conditions and be explained with the available remedies.',
           'For community-controlled processing, its administrator is also a contact. We must identify the relevant controller or assist it as appropriate, rather than treating the absence of a website account as a reason to deny your rights.',
@@ -197,7 +199,8 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
   fr: {
     title: 'Politique de confidentialité',
     updatedLabel: 'Dernière mise à jour',
-    updatedDate: '20 novembre 2026',
+    updatedDate: '23 novembre 2026',
+    updatedISO: '2026-11-23',
     sections: [
       {
         title: 'Périmètre et contact',
@@ -287,6 +290,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'Destinataires et visibilité',
         paragraphs: [
+          'Les utilisateurs connectés au site peuvent consulter les profils de joueurs indiquant l’identifiant Steam, un pseudonyme enregistré sur un serveur public, le score de confiance disponible et les statistiques des serveurs publics. Les statistiques des serveurs privés sont visibles par le joueur depuis son compte lié et par les administrateurs autorisés dans la gestion du serveur.',
           'Les destinataires incluent les personnes chargées de l’exploitation ou de l’assistance, les administrateurs autorisés et les prestataires techniques nécessaires au service. Le chat, les journaux, les signalements et les captures peuvent être transmis aux salons Discord ou destinataires en jeu choisis par la communauté. Le traitement des captures peut inclure un salon de modération du service configuré à cet effet.',
           'Discord, Valve/Steam et GmodStore sont des destinataires externes des données nécessaires aux intégrations ou achats utilisés. Par exemple, la synchronisation du chat transmet à Discord le message et les informations d’affichage associées. Le fait que cet envoi fasse partie de la fonction demandée ne rend pas son destinataire interne à Gmod Integration. Ces plateformes appliquent leurs propres politiques à leurs services ; Discord agit comme responsable du traitement pour son propre service.',
           'Cloudflare est un prestataire d’infrastructure pour le site et sa diffusion réseau. Les prestataires techniques sont sous-traitants lorsqu’ils traitent les données pour notre compte et sur nos instructions, dans le cadre de l’accord applicable. D’autres destinataires peuvent être responsables de leurs propres traitements ; le statut de prestataire externe ne détermine pas à lui seul le rôle juridique. Sentry traite le diagnostic des erreurs et performances côté serveur lorsqu’il est activé ; la surveillance du navigateur est désactivée dans cette version.',
@@ -337,7 +341,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'Stockage dans le navigateur et traceurs facultatifs',
         paragraphs: [
-          'Le site utilise localStorage pour les identifiants de connexion, jetons d’accès et expiration, une copie locale du profil Discord, la guilde ou le serveur sélectionnés, ainsi que la langue et le thème. Le stockage d’authentification permet le tableau de bord demandé ; les préférences mémorisent vos choix. Les valeurs restent présentes jusqu’à leur mise à jour ou effacement ; l’expiration d’un jeton ne les supprime pas nécessairement.',
+          'Le site utilise un cookie HttpOnly pour votre session authentifiée. Le stockage local conserve une copie du profil Discord, la guilde ou le serveur sélectionnés, la langue, le thème et un éventuel reçu de suivi d’effacement. Les anciens jetons d’accès du navigateur sont convertis en session par cookie puis supprimés après une conversion réussie. Les données en cache restent présentes jusqu’à leur mise à jour ou effacement.',
           'Vous pouvez effacer ce stockage dans les réglages du navigateur ou vous déconnecter. L’effacement de l’authentification nécessite une nouvelle connexion ; l’effacement des préférences réinitialise vos choix.',
           'Google AdSense, l’enregistrement des sessions du navigateur (Session Replay) et le suivi facultatif des performances du navigateur sont désactivés dans cette version. Toute réactivation de traceurs non essentiels soumis au consentement doit proposer un choix éclairé avant activation et un moyen aussi accessible de refuser ou retirer ce choix.',
         ],
@@ -361,7 +365,7 @@ export const privacyContent: Record<'en' | 'fr', LegalDocumentContent> = {
       {
         title: 'Exercer vos droits',
         paragraphs: [
-          'La rubrique Compte → Gérer les données permet de demander un export téléchargeable. Vous pouvez nous écrire pour un accès, une copie complémentaire, une rectification, un effacement, une limitation ou une opposition. L’export facilite l’accès sans garantir de couvrir toutes les catégories. Le bouton « Supprimer mes données » ouvre une demande par email ; il ne supprime pas immédiatement un compte.',
+          'La rubrique Compte → Gérer les données permet de demander un export ou de confirmer une demande d’effacement. La demande révoque vos sessions et fournit un reçu pour suivre le nettoyage des données personnelles, captures stockées et exports. La fin du traitement est annoncée uniquement après la réussite du nettoyage des stockages prévus. Une trace distincte et minimisée de la demande, les bans globaux de sécurité actifs et une valeur de réputation existante différente du score par défaut sont conservés pour leurs finalités précises. La configuration et les droits acquis des communautés ne sont pas supprimés avec le compte personnel. Les copies déjà partagées sur Discord, les sauvegardes et les autres copies détenues séparément nécessitent un traitement distinct ; contactez-nous à leur sujet ou pour un accès, une rectification, une limitation ou une opposition.',
           'Aucun compte sur le tableau de bord n’est nécessaire pour nous contacter. Précisez l’identifiant Discord ou Steam concerné et la communauté si connue. Des éléments proportionnés peuvent être demandés pour vérifier votre identité si nécessaire, sans demander systématiquement une pièce d’identité.',
           'Nous devons répondre dans les meilleurs délais et normalement sous un mois à compter de la réception. Pour une demande complexe ou de nombreuses demandes, le RGPD autorise jusqu’à deux mois supplémentaires ; nous devons expliquer cette prolongation pendant le premier mois. Les demandes sont normalement gratuites ; tout refus ou frais doit respecter les conditions du RGPD et être motivé avec les voies de recours.',
           'Pour les traitements contrôlés par une communauté, son administrateur est aussi un interlocuteur. Nous devons identifier le responsable concerné ou l’assister selon le cas, sans faire de l’absence de compte sur le site un motif de refus de vos droits.',

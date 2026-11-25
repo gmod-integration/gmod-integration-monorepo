@@ -1,10 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-let configServerMock: { dev: boolean }
-vi.mock('@gmod/config', () => ({
-  get ConfigServer() {
-    return configServerMock
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async () => {
+  const policy = await import('@gmod/schema/server/AccessPolicySchema.js')
+  return { ...policy, resolveGuildAccess: accessMock }
+})
+beforeEach(() =>
+  accessMock.mockImplementation(async (guildID: string) => ({
+    guildID,
+    premium: true,
+    customBot: true,
+    state: 'ready',
+    sources: ['gmodstore'],
+    revision: 'test',
+    validUntil: '2030-01-01T00:00:00.000Z',
+  })),
+)
+
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
   },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
+vi.mock('@gmod/config', () => ({
   ConfigDiscord: { embedColor: '#ffffff', barerTokenRelay: 'relay-token' },
 }))
 
@@ -55,11 +77,10 @@ vi.mock('@gmod/infra-bullmq/discordQueueAdapters.js', () => ({
   enqueueDiscordGuildSendLogMessage: enqueueDiscordGuildSendLogMessageMock,
 }))
 
-configServerMock = { dev: false }
-
-const { gmLog, logServer } = await import('../../src/utils/logger.js')
+const { logServer } = await import('../../src/utils/logger.js')
 
 function resetAllMocks() {
+  isErasureBlockedMock.mockReset().mockResolvedValue(false)
   getRandomDiscordRelayMock.mockClear()
   ipGetIPMock.mockClear()
   getTranslateMock.mockClear()
@@ -101,30 +122,72 @@ describe('logger', () => {
     vi.restoreAllMocks()
   })
 
-  describe('gmLog', () => {
-    it('logs when debug is false', () => {
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      gmLog('status', 'hello')
-      expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('[STATUS] hello'))
-    })
-
-    it('logs when debug is true and dev mode is on', () => {
-      configServerMock.dev = true
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      gmLog('status', 'debug message', true)
-      expect(logSpy).toHaveBeenCalled()
-      configServerMock.dev = false
-    })
-
-    it('skips logging when debug is true and dev mode is off', () => {
-      configServerMock.dev = false
-      const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
-      gmLog('status', 'debug message', true)
-      expect(logSpy).not.toHaveBeenCalled()
-    })
-  })
-
   describe('logServer', () => {
+    it.each([
+      'dark_rp_drop_money',
+      'dark_rp_picked_up_money',
+      'ch_atm_send_money',
+      'ch_atm_receive_money',
+      'ch_atm_take_money',
+      'ch_atm_withdraw_money',
+      'ch_atm_deposit_money',
+    ])('stores and broadcasts one canonical player snapshot for %s', async (type) => {
+      const input = {
+        player: { steamID64: '76561198000000001', name: 'Player' },
+        receiver: { steamID64: '76561198000000002', name: 'Recipient' },
+        amount: 20,
+      }
+      await logServer(makeServer(), type, input)
+      expect(addLogMock).toHaveBeenCalledTimes(1)
+      const saved = addLogMock.mock.calls[0][0].data
+      expect(saved.ply).toMatchObject({ steamID64: input.player.steamID64, name: 'Player' })
+      expect(saved).not.toHaveProperty('player')
+      expect(saved.amount).toBe(20)
+      expect(input).toHaveProperty('player')
+      expect(wsAddMock).toHaveBeenCalledExactlyOnceWith(
+        'wsSendToAllClientsOfServer',
+        expect.objectContaining({ data: { type, data: saved } }),
+      )
+    })
+
+    it.each([{ steamID64: '76561198000000002', name: 'Attacker' }, { class: 'trigger_hurt' }])(
+      'stores one attacker snapshot for a death with attacker %j',
+      async (attacker) => {
+        await logServer(makeServer(), 'player_death', {
+          attacker,
+          player: { steamID64: '76561198000000001', name: 'Victim' },
+        })
+        expect(addLogMock).toHaveBeenCalledTimes(1)
+        const saved = addLogMock.mock.calls[0][0].data
+        expect(saved.plyAttacker).toMatchObject(attacker)
+        expect(saved.plyTarget).toMatchObject({ name: 'Victim' })
+        expect(saved).not.toHaveProperty('attacker')
+        expect(wsAddMock).toHaveBeenCalledExactlyOnceWith(
+          'wsSendToAllClientsOfServer',
+          expect.objectContaining({ data: { type: 'player_death', data: saved } }),
+        )
+      },
+    )
+
+    it('does not broadcast or relay an event rejected by the storage privacy barrier', async () => {
+      addLogMock.mockResolvedValueOnce(false)
+      const server = makeServer({
+        getCachedLogsChannel: vi.fn().mockResolvedValue({ webhookID: 'webhook', webhookToken: 'secret' }),
+      })
+      await logServer(server, 'server_start')
+      await flushMicrotasks()
+      expect(addLogMock).toHaveBeenCalledOnce()
+      expect(wsAddMock).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
+    })
+    it('does not persist, broadcast or relay a log involving an erased player', async () => {
+      isErasureBlockedMock.mockResolvedValue(true)
+      await logServer(makeServer(), 'player_connect', { steamID64: '76561198219049673', name: 'Private' })
+      expect(addLogMock).not.toHaveBeenCalled()
+      expect(wsAddMock).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
+      expect(enqueueDiscordGuildSendLogMessageMock).not.toHaveBeenCalled()
+    })
     it('defaults data to {} when omitted', async () => {
       const server = makeServer()
       await logServer(server, 'server_start')
@@ -149,6 +212,50 @@ describe('logger', () => {
           playerInvolvedSteamID64: ['76561198219049673', '76561198000000001'],
         }),
       )
+    })
+
+    it('persists the explicit joining Steam ID even when a name contains an earlier unrelated ID', async () => {
+      const joiningID = '76561198000000001'
+      const otherID = '76561198000000099'
+      // The WebSocket transport appends steamID64 after the body, so the name is scanned first.
+      const body = { name: `Player ${otherID}`, address: '8.8.8.8:27015', steamID64: joiningID }
+      expect(JSON.stringify(body).indexOf(otherID)).toBeLessThan(JSON.stringify(body).indexOf(joiningID))
+      await logServer(makeServer(), 'player_connect', body)
+      expect(addLogMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ steamID64: joiningID, name: body.name }),
+          playerInvolvedSteamID64: [joiningID, otherID],
+        }),
+      )
+    })
+
+    it('retains newer explicit Steam IDs outside the legacy scan prefix for erasure and attribution', async () => {
+      const steamID64 = '76561200000000000'
+      await logServer(makeServer(), 'player_connect', { name: 'New player', steamID64 })
+      expect(isErasureBlockedMock).toHaveBeenCalledWith(undefined, steamID64)
+      expect(addLogMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ steamID64 }),
+          playerInvolvedSteamID64: [steamID64],
+        }),
+      )
+    })
+
+    it('blocks a newer joining Steam ID when its erasure guard is active', async () => {
+      const steamID64 = '76561200000000000'
+      isErasureBlockedMock.mockImplementation(async (_discordID, id) => id === steamID64)
+      await logServer(makeServer(), 'player_connect', { name: 'Erased player', steamID64 })
+      expect(addLogMock).not.toHaveBeenCalled()
+      expect(wsAddMock).not.toHaveBeenCalled()
+      expect(fetch).not.toHaveBeenCalled()
+    })
+
+    it('does not infer a joining identity from the name when the explicit ID is invalid', async () => {
+      await logServer(makeServer(), 'player_connect', {
+        name: 'Player 76561198000000099',
+        steamID64: 'invalid',
+      })
+      expect(addLogMock.mock.calls[0][0].data.steamID64).toBeNull()
     })
 
     it('pushes a wsSendToAllClientsOfServer update after saving the log', async () => {
@@ -370,7 +477,9 @@ describe('logger', () => {
       it('dark_rp_picked_up_money: defaults amount to 0 when missing', async () => {
         const server = makeServer()
         await logServer(server, 'dark_rp_picked_up_money', { player: { steamID64: '765', name: 'Bob' } })
-        expect(addLogMock).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ amount: 0 }) }))
+        expect(addLogMock).toHaveBeenCalledWith(
+          expect.objectContaining({ data: expect.objectContaining({ amount: 0 }) }),
+        )
       })
 
       it('dark_rp_picked_up_cheque: reads writer and target players', async () => {
@@ -473,10 +582,7 @@ describe('logger', () => {
           address: '1.2.3.4',
         })
 
-        expect(fetchMock).toHaveBeenCalledWith(
-          'https://relay.example',
-          expect.objectContaining({ method: 'POST' }),
-        )
+        expect(fetchMock).toHaveBeenCalledWith('https://relay.example', expect.objectContaining({ method: 'POST' }))
         const body = JSON.parse((fetchMock.mock.calls[0][1] as any).body)
         expect(body.data.filesToAdd).toHaveLength(1)
         expect(result).toBeUndefined()
@@ -573,6 +679,23 @@ describe('logger', () => {
         expect(enqueueDiscordGuildSendLogMessageMock).not.toHaveBeenCalled()
       })
 
+      it('does not execute cached paid triggers after the entitlement expires', async () => {
+        accessMock.mockResolvedValueOnce({
+          guildID: 'g1',
+          premium: false,
+          customBot: false,
+          state: 'ready',
+          sources: [],
+          revision: 'expired',
+          validUntil: '2030-01-01T00:00:00.000Z',
+        })
+        const server = makeServer({ getLogsTriggerFromRedis: vi.fn().mockResolvedValue(['dark_rp_drop_money']) })
+        await logServer(server, 'dark_rp_drop_money', { player: { steamID64: '765', name: 'Bob' }, amount: 100 })
+        await flushMicrotasks()
+        expect(server.getLogsTriggerFromRedis).not.toHaveBeenCalled()
+        expect(enqueueDiscordGuildSendLogMessageMock).not.toHaveBeenCalled()
+      })
+
       it('sends a templated message when a numeric-compare trigger matches (greaterThan)', async () => {
         const server = makeServer({
           getLogsTriggerFromRedis: vi.fn().mockResolvedValue(['dark_rp_drop_money']),
@@ -598,6 +721,7 @@ describe('logger', () => {
           expect.objectContaining({
             guildID: 'g1',
             channelID: 'ch1',
+            requiredCapability: 'logs.triggers',
             description: 'Dropped 100 by Bob',
           }),
           5000,
@@ -662,9 +786,7 @@ describe('logger', () => {
         const server = makeServer({
           getLogsTriggerFromRedis: vi.fn().mockResolvedValue(['dark_rp_drop_money']),
         })
-        redisMock.get.mockResolvedValueOnce(
-          JSON.stringify([{ compare: 'amount', operator: 'equal', value: '50' }]),
-        )
+        redisMock.get.mockResolvedValueOnce(JSON.stringify([{ compare: 'amount', operator: 'equal', value: '50' }]))
 
         await logServer(server, 'dark_rp_drop_money', { player: { steamID64: '765', name: 'Bob' } })
         await flushMicrotasks()
@@ -686,7 +808,14 @@ describe('logger', () => {
           })
           redisMock.get.mockResolvedValueOnce(
             JSON.stringify([
-              { compare: 'amount', operator, value: '50', action: 'sendMessageInChannel', channelID: 'ch1', message: 'hit' },
+              {
+                compare: 'amount',
+                operator,
+                value: '50',
+                action: 'sendMessageInChannel',
+                channelID: 'ch1',
+                message: 'hit',
+              },
             ]),
           )
           await logServer(server, 'dark_rp_drop_money', {
@@ -699,7 +828,14 @@ describe('logger', () => {
           enqueueDiscordGuildSendLogMessageMock.mockClear()
           redisMock.get.mockResolvedValueOnce(
             JSON.stringify([
-              { compare: 'amount', operator, value: '50', action: 'sendMessageInChannel', channelID: 'ch1', message: 'hit' },
+              {
+                compare: 'amount',
+                operator,
+                value: '50',
+                action: 'sendMessageInChannel',
+                channelID: 'ch1',
+                message: 'hit',
+              },
             ]),
           )
           await logServer(server, 'dark_rp_drop_money', {
@@ -723,7 +859,14 @@ describe('logger', () => {
         })
         redisMock.get.mockResolvedValueOnce(
           JSON.stringify([
-            { compare: 'amount', operator: 'contain', value: '5', action: 'sendMessageInChannel', channelID: 'ch1', message: 'hit' },
+            {
+              compare: 'amount',
+              operator: 'contain',
+              value: '5',
+              action: 'sendMessageInChannel',
+              channelID: 'ch1',
+              message: 'hit',
+            },
           ]),
         )
 

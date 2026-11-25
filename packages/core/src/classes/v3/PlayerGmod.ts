@@ -1,7 +1,8 @@
-import { BaseClass } from './BaseClass.js'
+import { BaseClass } from '@gmod/shared/BaseClass.js'
 import { Team } from './Team.js'
 import prisma from '@gmod/infra-prisma'
 import { getUserFromDiscordID, getUserFromSteamID64 } from '@gmod/domain-user/User.js'
+import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
 import { getServerFromID, type Server } from '@gmod/domain-server/Server.js'
 import redis from '@gmod/infra-redis'
 import { LogLevel } from '../../utils/logger.js'
@@ -144,10 +145,11 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   }
 
   async saveTeamTime(serverID: string) {
+    if (await isErasureBlocked(undefined, this.steamID64)) return
     if (!this.timeLastTeamChange || this.timeLastTeamChange === 0) return
 
     try {
-      await prisma.gm_server_stat_team_time.create({
+      const saved = await prisma.gm_server_stat_team_time.create({
         data: {
           serverID,
           steamID64: this.steamID64,
@@ -156,6 +158,9 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
           time: this.timeLastTeamChange,
         },
       })
+      if (await isErasureBlocked(undefined, this.steamID64)) {
+        await prisma.gm_server_stat_team_time.deleteMany({ where: { id: saved.id } })
+      }
     } catch (error) {
       console.error(error)
       throw error
@@ -163,6 +168,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   }
 
   async saveServerStat(serverID: string) {
+    if (await isErasureBlocked(undefined, this.steamID64)) return
     try {
       const { connectTime, kills, deaths, customValues, userGroup, steamID64, name } = this
       const customValuesString = JSON.stringify(customValues)
@@ -174,8 +180,9 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
         },
       })
 
+      let saved: { updatedAt: Date }
       if (player) {
-        await prisma.gm_server_stat.update({
+        saved = await prisma.gm_server_stat.update({
           where: {
             server_id_steam_id: {
               steam_id: steamID64,
@@ -192,7 +199,7 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
           },
         })
       } else {
-        await prisma.gm_server_stat.create({
+        saved = await prisma.gm_server_stat.create({
           data: {
             steam_id: steamID64,
             server_id: serverID,
@@ -207,6 +214,11 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
           },
         })
       }
+      if (await isErasureBlocked(undefined, steamID64)) {
+        await prisma.gm_server_stat.deleteMany({
+          where: { server_id: serverID, steam_id: steamID64, updatedAt: saved.updatedAt },
+        })
+      }
     } catch (error) {
       console.error(error)
       throw error
@@ -214,9 +226,10 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
   }
 
   async saveServerStatSession(serverID: string) {
+    if (await isErasureBlocked(undefined, this.steamID64)) return
     const { connectTime, deaths, kills, customValues, steamID64 } = this
 
-    await prisma.gm_server_stat_session.create({
+    const saved = await prisma.gm_server_stat_session.create({
       data: {
         serverID,
         steamID64,
@@ -226,10 +239,14 @@ export class PlayerGmod extends BaseClass implements PlayerGmodInterface {
         customValues: JSON.stringify(customValues),
       },
     })
+    if (await isErasureBlocked(undefined, steamID64)) {
+      await prisma.gm_server_stat_session.deleteMany({ where: { id: saved.id } })
+    }
   }
 }
 
 export async function updateDiscordTeamRole(server: Server, steamID64: string, teamName: string | null) {
+  if (await isErasureBlocked(undefined, steamID64)) return
   await enqueueUpdateDiscordTeamRole({
     serverID: server.getID(),
     steamID64,
@@ -238,6 +255,7 @@ export async function updateDiscordTeamRole(server: Server, steamID64: string, t
 }
 
 export async function updatePlayerUserGroup(server: Server, steamID64: string, userGroup: string) {
+  if (await isErasureBlocked(undefined, steamID64)) return
   try {
     const player = await prisma.gm_server_stat.findFirst({
       where: {

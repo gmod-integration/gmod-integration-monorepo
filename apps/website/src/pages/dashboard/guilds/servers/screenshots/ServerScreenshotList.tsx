@@ -1,11 +1,11 @@
-import { Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { type Component, createSignal, For, onCleanup, onMount, Show } from 'solid-js'
+import { AsyncState } from '../../../../../components/ui/index.js'
 import AdminPanel from '../../../../../components/AdminPanel'
 import { useI18n } from '../../../../../i18n'
 import { QuerySort } from '../../../../../utils/types/QueryTypes'
 import { fetchAPI } from '../../../../../utils/api'
 import { Screenshot } from './Screenshot'
 import { FocusImg } from './FocusImg'
-import { linkBadge } from '../../../../../components/layout/menu/DashboardMenu'
 
 export interface captureData {
   x: number
@@ -40,6 +40,7 @@ export const ServerScreenshotList: Component = () => {
   const [offset, setOffset] = createSignal(0)
   const limit = 20
   const [loading, setLoading] = createSignal(false)
+  const [error, setError] = createSignal(false)
   const [hasMore, setHasMore] = createSignal(true)
 
   let sentinel!: HTMLDivElement
@@ -47,7 +48,7 @@ export const ServerScreenshotList: Component = () => {
 
   // check if sentinel is in view or near viewport
   const checkForMore = () => {
-    if (loading() || !hasMore()) return
+    if (loading() || error() || !hasMore()) return
     const rect = sentinel.getBoundingClientRect()
     if (rect.top < window.innerHeight + 200) {
       loadPage()
@@ -72,7 +73,6 @@ export const ServerScreenshotList: Component = () => {
       if (!res.ok) throw new Error('Fetch failed')
       const body = (await res.json()) as ScreenshotResponseStructure
       const page = body.screenshots.map((s) => {
-        s.createdAt = new Date(s.createdAt).toLocaleString()
         if (s.player) {
           try {
             s.player = JSON.parse(s.player)
@@ -106,6 +106,7 @@ export const ServerScreenshotList: Component = () => {
         })
       }
     } catch (e) {
+      setError(true)
       console.error(e)
     } finally {
       setLoading(false)
@@ -116,7 +117,9 @@ export const ServerScreenshotList: Component = () => {
 
   onMount(() => {
     loadPage()
-    observer = new IntersectionObserver(([entry]) => entry.isIntersecting && loadPage(), { rootMargin: '1000px' })
+    observer = new IntersectionObserver(([entry]) => entry.isIntersecting && !error() && loadPage(), {
+      rootMargin: '1000px',
+    })
     observer.observe(sentinel)
     window.addEventListener('scroll', checkForMore)
   })
@@ -131,8 +134,11 @@ export const ServerScreenshotList: Component = () => {
 
   return (
     <AdminPanel
-      title={t('dashboard.server.screenshots_list.title', 'All Screenshots')}
-      description={t('dashboard.server.screenshots_list.description', 'See all screenshots taken on your server')}
+      title={t('dashboard.server.screenshots_list.title', 'Screenshot history')}
+      description={t(
+        'dashboard.server.screenshots_list.description',
+        'Browse screenshots received from your game server, newest first. Open an image to view it at full size and see its details.',
+      )}
     >
       <FocusImg focusImg={focusImg} />
 
@@ -140,18 +146,27 @@ export const ServerScreenshotList: Component = () => {
         <For each={items()}>{(shot) => <Screenshot screenshot={shot} setFocusImg={setFocusImg} />}</For>
       </div>
 
-      <Show when={loading()}>
-        <div class="flex justify-center my-4">
-          <span class="loading loading-spinner loading-lg" />
-        </div>
-      </Show>
+      <AsyncState
+        loading={loading()}
+        error={error()}
+        errorLabel={t(
+          'dashboard.server.screenshots_list.load_error',
+          'Unable to load screenshots. Try again to continue loading the gallery.',
+        )}
+        emptyLabel={t('dashboard.server.screenshots_list.empty', 'No screenshots have been received for this server.')}
+        empty={items().length === 0 && !hasMore()}
+        onRetry={() => {
+          setError(false)
+          void loadPage()
+        }}
+      />
 
       {/* sentinel pour IntersectionObserver */}
       <div ref={(el) => (sentinel = el!)} />
 
-      <Show when={!hasMore() && !loading()}>
+      <Show when={items().length > 0 && !hasMore() && !loading() && !error()}>
         <p class="text-center text-base-content/50 mt-4">
-          {t('dashboard.server.screenshots_list.end_of_list', "You've reached the end!")}
+          {t('dashboard.server.screenshots_list.end_of_list', 'All received screenshots have been loaded.')}
         </p>
       </Show>
     </AdminPanel>

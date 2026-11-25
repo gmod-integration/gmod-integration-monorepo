@@ -1,6 +1,7 @@
 import { getServerFromID } from '@gmod/domain-server/Server.js'
 import { type NextFunction, type Request, type Response } from 'express'
 import redis from '@gmod/infra-redis'
+import { recordAddonActivity } from '@gmod/infra-redis/addonTelemetry.js'
 import { getSingleParam } from '@/utils/requestParams.js'
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -8,11 +9,21 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
     const serverID = getSingleParam(req.params.serverID)
     const { authorization } = req.headers
 
+    if (!serverID) {
+      res.status(400).json({ error: 'missing_arguments', args: { serverID: false } })
+      return
+    }
+
     if (!authorization || !authorization.startsWith('Bearer ')) {
       res.status(400).json({ error: 'invalid_authorization' })
       return
     }
     const token = authorization.split(' ')[1]
+
+    if (!token || authorization.split(' ').length !== 2) {
+      res.status(400).json({ error: 'invalid_authorization' })
+      return
+    }
 
     const server = await getServerFromID(serverID)
     if (!server) {
@@ -25,11 +36,12 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
       return
     }
 
-    const version = req.headers['gmod-integrations-version']
+    const version = getSingleParam(req.headers['gmod-integrations-version'])
+    await recordAddonActivity(serverID, { transport: 'http', version, protocol: 'legacy' })
     const redisKeyServerVersion = `server:${serverID}:version`
-    redis.set(redisKeyServerVersion, version)
+    if (version) await redis.set(redisKeyServerVersion, version)
     const redisKeyServerLastRequest = `server:${serverID}:last_request`
-    redis.set(redisKeyServerLastRequest, new Date().toISOString())
+    await redis.set(redisKeyServerLastRequest, new Date().toISOString())
 
     req.server = server
     return next()

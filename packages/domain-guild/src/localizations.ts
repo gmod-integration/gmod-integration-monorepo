@@ -1,5 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const localesDirectory = fileURLToPath(new URL('../../locales/', import.meta.url))
 
 function insertOptions(str: string, options?: string[]): string {
   if (!options) return str
@@ -13,7 +16,7 @@ function insertOptions(str: string, options?: string[]): string {
 
 function getDefaultTrad(key: string, options?: string[]): string {
   try {
-    const defaultLanguage = JSON.parse(readFileSync(join(process.cwd(), 'packages/locales/en.json'), 'utf8'))
+    const defaultLanguage = JSON.parse(readFileSync(join(localesDirectory, 'en.json'), 'utf8'))
 
     if (key in defaultLanguage) {
       return insertOptions(defaultLanguage[key], options)
@@ -29,10 +32,10 @@ export async function getTranslate(key: string, language?: string, options?: str
   const shortLanguage = language ? language.substring(0, 2) : 'en'
 
   try {
-    let filePath = join(process.cwd(), `packages/locales/${shortLanguage}.json`)
+    let filePath = join(localesDirectory, `${shortLanguage}.json`)
 
     if (!existsSync(filePath)) {
-      filePath = join(process.cwd(), 'packages/locales/en.json')
+      filePath = join(localesDirectory, 'en.json')
     }
 
     const translate = JSON.parse(readFileSync(filePath, 'utf8'))

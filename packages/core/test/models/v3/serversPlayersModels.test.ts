@@ -1,5 +1,31 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+const accessMock = vi.hoisted(() => vi.fn())
+vi.mock('@gmod/domain-access/index.js', async () => {
+  const policy = await import('@gmod/schema/server/AccessPolicySchema.js')
+  return { ...policy, resolveGuildAccess: accessMock }
+})
+beforeEach(() =>
+  accessMock.mockImplementation(async (guildID: string) => ({
+    guildID,
+    premium: true,
+    customBot: true,
+    state: 'ready',
+    sources: ['gmodstore'],
+    revision: 'test',
+    validUntil: '2030-01-01T00:00:00.000Z',
+  })),
+)
+
+const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
+vi.mock('@gmod/domain-user/privacy.js', () => ({
+  isErasureBlocked: isErasureBlockedMock,
+  assertPersonalDataAllowed: async (discordID?: string, steamID64?: string) => {
+    if (await isErasureBlockedMock(discordID, steamID64)) throw new Error('Personal data collection is disabled')
+  },
+  PRIVACY_REVOCATION_CHANNEL: 'gmi:privacy:revoked',
+}))
+
 const getSteamUserAvatarLargeMock = vi.fn(async () => 'https://avatar.example')
 vi.mock('@gmod/infra-steam', () => ({ getSteamUserAvatarLarge: getSteamUserAvatarLargeMock }))
 
@@ -9,14 +35,13 @@ vi.mock('../../../src/utils/tools.js', () => ({ getRandomDiscordRelay: getRandom
 vi.mock('@gmod/config', () => ({ ConfigDiscord: { barerTokenRelay: 'relay-token' } }))
 
 const prismaMock: any = {
-  users: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
-  gm_user_steam: { findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
+  users: { deleteMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
+  gm_user_steam: { deleteMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
-const { sendPlayerSay, saveConnectionGlobalInfo, saveConnectionSteamInfo } = await import(
-  '../../../src/models/v3/serversPlayersModels.js'
-)
+const { sendPlayerSay, saveConnectionGlobalInfo, saveConnectionSteamInfo } =
+  await import('../../../src/models/v3/serversPlayersModels.js')
 
 function makePlayer(overrides: Record<string, any> = {}) {
   return {
@@ -30,8 +55,9 @@ function makePlayer(overrides: Record<string, any> = {}) {
 
 function makeServer(overrides: Record<string, any> = {}) {
   return {
+    getGuildID: () => 'guild',
     getSyncChatChannel: vi.fn().mockResolvedValue({ id: 'wh1', token: 'tok' }),
-    getSetting: vi.fn().mockImplementation(async (key: string) => {
+    getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
       if (key === 'syncChatDirection') return 'both'
       if (key === 'chat_sync_relay_all') return true
       if (key === 'sync_chat_prevent_ping') return false
@@ -44,6 +70,7 @@ function makeServer(overrides: Record<string, any> = {}) {
 
 describe('serversPlayersModels', () => {
   beforeEach(() => {
+    isErasureBlockedMock.mockReset().mockResolvedValue(false)
     getSteamUserAvatarLargeMock.mockReset().mockResolvedValue('https://avatar.example')
     getRandomDiscordRelayMock.mockClear()
     for (const table of Object.values(prismaMock)) {
@@ -55,6 +82,12 @@ describe('serversPlayersModels', () => {
   })
 
   describe('sendPlayerSay', () => {
+    it('does not relay a suppressed player or load their avatar', async () => {
+      isErasureBlockedMock.mockResolvedValue(true)
+      await expect(sendPlayerSay(makeServer(), makePlayer(), 'hello', false)).resolves.toMatchObject({ skip: true })
+      expect(fetch).not.toHaveBeenCalled()
+      expect(getSteamUserAvatarLargeMock).not.toHaveBeenCalled()
+    })
     it('skips when the text is empty', async () => {
       await expect(sendPlayerSay(makeServer(), makePlayer(), '', false)).resolves.toEqual({
         skip: true,
@@ -72,7 +105,9 @@ describe('serversPlayersModels', () => {
 
     it('skips when the sync direction is discord-to-gmod only', async () => {
       const server = makeServer({
-        getSetting: vi.fn().mockImplementation(async (key: string) => (key === 'syncChatDirection' ? 'discordToGmod' : true)),
+        getEffectiveSetting: vi
+          .fn()
+          .mockImplementation(async (key: string) => (key === 'syncChatDirection' ? 'discordToGmod' : true)),
       })
       await expect(sendPlayerSay(server, makePlayer(), 'hi', false)).resolves.toEqual({
         skip: true,
@@ -87,9 +122,31 @@ describe('serversPlayersModels', () => {
       })
     })
 
+    it('ignores stored paid chat filters after the entitlement expires', async () => {
+      accessMock.mockResolvedValueOnce({
+        guildID: 'guild',
+        premium: false,
+        customBot: false,
+        state: 'ready',
+        sources: [],
+        revision: 'expired',
+        validUntil: '2030-01-01T00:00:00.000Z',
+      })
+      const server = makeServer({
+        getGmodToDiscordFilter: vi
+          .fn()
+          .mockResolvedValue([
+            { element: 'message', operator: 'contain', trigger: 'hello', action: 'block', active: true },
+          ]),
+      })
+      await sendPlayerSay(server, makePlayer(), 'hello', false)
+      expect(server.getGmodToDiscordFilter).not.toHaveBeenCalled()
+      expect(fetch).toHaveBeenCalledOnce()
+    })
+
     it('skips when chat_sync_relay_all is off and no filter rule turns it back on', async () => {
       const server = makeServer({
-        getSetting: vi.fn().mockImplementation(async (key: string) => {
+        getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
           if (key === 'syncChatDirection') return 'both'
           if (key === 'chat_sync_relay_all') return false
           return false
@@ -118,7 +175,7 @@ describe('serversPlayersModels', () => {
       const fetchMock = vi.fn().mockResolvedValue({ ok: true })
       vi.stubGlobal('fetch', fetchMock)
       const server = makeServer({
-        getSetting: vi.fn().mockImplementation(async (key: string) => {
+        getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
           if (key === 'syncChatDirection') return 'both'
           if (key === 'chat_sync_relay_all') return true
           if (key === 'sync_chat_prevent_ping') return true
@@ -132,13 +189,27 @@ describe('serversPlayersModels', () => {
       expect(body.data.content).toContain('@​everyone')
     })
 
-    it('returns a failed skip result when the relay responds not-ok', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 404 }))
+    it.each([401, 404, 530])('distinguishes upstream HTTP %i from an intentional skipped message', async (status) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status }))
       await expect(sendPlayerSay(makeServer(), makePlayer(), 'hi', false)).resolves.toEqual({
-        skip: true,
         failed: true,
-        message: 'Webhook relay failed with status 404',
+        status: 502,
+        relayStatus: status,
+        message: `Webhook relay failed with status ${status}`,
       })
+    })
+
+    it('reports an unreachable relay without exposing the network exception or message', async () => {
+      vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('private credential and upstream URL')))
+      await expect(sendPlayerSay(makeServer(), makePlayer(), 'private player message', false)).resolves.toEqual({
+        failed: true,
+        status: 503,
+        message: 'Webhook relay is unavailable',
+      })
+      expect(fetch).toHaveBeenCalledExactlyOnceWith(
+        'https://relay.example',
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      )
     })
 
     it('falls back to the default avatar when the Steam avatar lookup fails', async () => {
@@ -351,7 +422,9 @@ describe('serversPlayersModels', () => {
 
       it('skips when the final output string is emptied out by a "startWith" rule', async () => {
         const server = makeServer({
-          getGmodToDiscordFilter: vi.fn().mockResolvedValue([{ ...baseRule, operator: 'startWith', trigger: 'stop', action: 'relay' }]),
+          getGmodToDiscordFilter: vi
+            .fn()
+            .mockResolvedValue([{ ...baseRule, operator: 'startWith', trigger: 'stop', action: 'relay' }]),
         })
         await expect(sendPlayerSay(server, makePlayer(), 'stop', false)).resolves.toEqual({
           skip: true,
@@ -363,7 +436,7 @@ describe('serversPlayersModels', () => {
         const fetchMock = vi.fn().mockResolvedValue({ ok: true })
         vi.stubGlobal('fetch', fetchMock)
         const server = makeServer({
-          getSetting: vi.fn().mockImplementation(async (key: string) => {
+          getEffectiveSetting: vi.fn().mockImplementation(async (key: string) => {
             if (key === 'syncChatDirection') return 'both'
             if (key === 'chat_sync_relay_all') return false
             return false
@@ -378,12 +451,44 @@ describe('serversPlayersModels', () => {
     })
   })
 
+  it('does not recreate either global player profile during or after erasure', async () => {
+    isErasureBlockedMock.mockResolvedValue(true)
+    await saveConnectionGlobalInfo('765', 'STEAM_0:0:1', '192.0.2.1', 'Name')
+    await saveConnectionSteamInfo('765', 'Name', '192.0.2.1')
+    expect(prismaMock.users.create).not.toHaveBeenCalled()
+    expect(prismaMock.users.update).not.toHaveBeenCalled()
+    expect(prismaMock.gm_user_steam.create).not.toHaveBeenCalled()
+    expect(prismaMock.gm_user_steam.update).not.toHaveBeenCalled()
+  })
+
+  it('cleans the exact global profile revision written after an erasure request', async () => {
+    const updatedAt = new Date('2026-11-21T10:00:00Z')
+    isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+    prismaMock.users.create.mockResolvedValueOnce({ updatedAt })
+    await saveConnectionGlobalInfo('765', 'STEAM_0:0:1', '192.0.2.1', 'Name')
+    expect(prismaMock.users.deleteMany).toHaveBeenCalledWith({ where: { steamID64: '765', updatedAt } })
+  })
+
+  it('cleans the exact Steam profile revision written after an erasure request', async () => {
+    const updatedAt = new Date('2026-11-21T10:00:00Z')
+    isErasureBlockedMock.mockResolvedValueOnce(false).mockResolvedValue(true)
+    prismaMock.gm_user_steam.create.mockResolvedValueOnce({ updatedAt })
+    await saveConnectionSteamInfo('765', 'Name', '192.0.2.1')
+    expect(prismaMock.gm_user_steam.deleteMany).toHaveBeenCalledWith({ where: { steam_id: '765', updatedAt } })
+  })
+
   describe('saveConnectionGlobalInfo', () => {
     it('creates a new user row when none exists', async () => {
       prismaMock.users.findFirst.mockResolvedValueOnce(null)
       await saveConnectionGlobalInfo('765', 'STEAM_0:1:1', '1.2.3.4', 'Bob')
       expect(prismaMock.users.create).toHaveBeenCalledWith({
-        data: { steamID64: '765', steamID: 'STEAM_0:1:1', name: 'Bob', lastIP: '1.2.3.4', IPS: JSON.stringify(['1.2.3.4']) },
+        data: {
+          steamID64: '765',
+          steamID: 'STEAM_0:1:1',
+          name: 'Bob',
+          lastIP: '1.2.3.4',
+          IPS: JSON.stringify(['1.2.3.4']),
+        },
       })
     })
 

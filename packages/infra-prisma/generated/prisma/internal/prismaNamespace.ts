@@ -445,6 +445,8 @@ export const ModelName = {
   gm_user_steam: 'gm_user_steam',
   gm_users_data_request: 'gm_users_data_request',
   gm_users_notifications: 'gm_users_notifications',
+  gm_user_erasure: 'gm_user_erasure',
+  gm_user_security: 'gm_user_security',
   users: 'users'
 } as const
 
@@ -461,7 +463,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "banUsers" | "gm_discordToken" | "gm_gmodstore_purchases" | "gm_guild" | "gm_guild_auto_roles" | "gm_guild_member" | "gm_guild_premium" | "gm_guild_settings" | "gm_guild_verify_msg" | "gm_guild_verify_role" | "gm_panelToken" | "gm_role_auto" | "gm_server" | "gm_server_customValues" | "gm_server_leaderboard_options" | "gm_server_links" | "gm_server_logs_channel" | "gm_server_pseudo" | "gm_server_report_bugs" | "gm_server_roles" | "gm_server_screenshot_channels" | "gm_server_screenshots" | "gm_users_transfers" | "gm_server_settings" | "gm_server_stat" | "gm_server_stat_team_time" | "gm_server_stat_session" | "gm_server_status" | "gm_server_status_history" | "gm_server_sync_chat_filter" | "gm_server_sync_roles" | "gm_guild_verification_check" | "gm_server_sync_team_roles" | "gm_server_vote" | "gm_server_vote_channels" | "gm_server_warn" | "gm_server_ban" | "gm_server_warn_options" | "gm_status" | "gm_guild_webooks" | "gm_server_logs_triggers" | "gm_server_status_channel" | "gm_status_button" | "gm_sync_chat" | "gm_user" | "gm_user_steam" | "gm_users_data_request" | "gm_users_notifications" | "users"
+    modelProps: "banUsers" | "gm_discordToken" | "gm_gmodstore_purchases" | "gm_guild" | "gm_guild_auto_roles" | "gm_guild_member" | "gm_guild_premium" | "gm_guild_settings" | "gm_guild_verify_msg" | "gm_guild_verify_role" | "gm_panelToken" | "gm_role_auto" | "gm_server" | "gm_server_customValues" | "gm_server_leaderboard_options" | "gm_server_links" | "gm_server_logs_channel" | "gm_server_pseudo" | "gm_server_report_bugs" | "gm_server_roles" | "gm_server_screenshot_channels" | "gm_server_screenshots" | "gm_users_transfers" | "gm_server_settings" | "gm_server_stat" | "gm_server_stat_team_time" | "gm_server_stat_session" | "gm_server_status" | "gm_server_status_history" | "gm_server_sync_chat_filter" | "gm_server_sync_roles" | "gm_guild_verification_check" | "gm_server_sync_team_roles" | "gm_server_vote" | "gm_server_vote_channels" | "gm_server_warn" | "gm_server_ban" | "gm_server_warn_options" | "gm_status" | "gm_guild_webooks" | "gm_server_logs_triggers" | "gm_server_status_channel" | "gm_status_button" | "gm_sync_chat" | "gm_user" | "gm_user_steam" | "gm_users_data_request" | "gm_users_notifications" | "gm_user_erasure" | "gm_user_security" | "users"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -3633,6 +3635,138 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    gm_user_erasure: {
+      payload: Prisma.$gm_user_erasurePayload<ExtArgs>
+      fields: Prisma.gm_user_erasureFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.gm_user_erasureFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_erasurePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.gm_user_erasureFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_erasurePayload>
+        }
+        findFirst: {
+          args: Prisma.gm_user_erasureFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_erasurePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.gm_user_erasureFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_erasurePayload>
+        }
+        findMany: {
+          args: Prisma.gm_user_erasureFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_erasurePayload>[]
+        }
+        create: {
+          args: Prisma.gm_user_erasureCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_erasurePayload>
+        }
+        createMany: {
+          args: Prisma.gm_user_erasureCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        delete: {
+          args: Prisma.gm_user_erasureDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_erasurePayload>
+        }
+        update: {
+          args: Prisma.gm_user_erasureUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_erasurePayload>
+        }
+        deleteMany: {
+          args: Prisma.gm_user_erasureDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.gm_user_erasureUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        upsert: {
+          args: Prisma.gm_user_erasureUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_erasurePayload>
+        }
+        aggregate: {
+          args: Prisma.Gm_user_erasureAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateGm_user_erasure>
+        }
+        groupBy: {
+          args: Prisma.gm_user_erasureGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Gm_user_erasureGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.gm_user_erasureCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Gm_user_erasureCountAggregateOutputType> | number
+        }
+      }
+    }
+    gm_user_security: {
+      payload: Prisma.$gm_user_securityPayload<ExtArgs>
+      fields: Prisma.gm_user_securityFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.gm_user_securityFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_securityPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.gm_user_securityFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_securityPayload>
+        }
+        findFirst: {
+          args: Prisma.gm_user_securityFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_securityPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.gm_user_securityFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_securityPayload>
+        }
+        findMany: {
+          args: Prisma.gm_user_securityFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_securityPayload>[]
+        }
+        create: {
+          args: Prisma.gm_user_securityCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_securityPayload>
+        }
+        createMany: {
+          args: Prisma.gm_user_securityCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        delete: {
+          args: Prisma.gm_user_securityDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_securityPayload>
+        }
+        update: {
+          args: Prisma.gm_user_securityUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_securityPayload>
+        }
+        deleteMany: {
+          args: Prisma.gm_user_securityDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.gm_user_securityUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        upsert: {
+          args: Prisma.gm_user_securityUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$gm_user_securityPayload>
+        }
+        aggregate: {
+          args: Prisma.Gm_user_securityAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateGm_user_security>
+        }
+        groupBy: {
+          args: Prisma.gm_user_securityGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Gm_user_securityGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.gm_user_securityCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.Gm_user_securityCountAggregateOutputType> | number
+        }
+      }
+    }
     users: {
       payload: Prisma.$usersPayload<ExtArgs>
       fields: Prisma.usersFieldRefs
@@ -3761,6 +3895,7 @@ export const Gm_discordTokenScalarFieldEnum = {
   discordID: 'discordID',
   accessToken: 'accessToken',
   refreshToken: 'refreshToken',
+  version: 'version',
   creationDate: 'creationDate',
   expirationDate: 'expirationDate',
   createdAt: 'createdAt',
@@ -3788,6 +3923,7 @@ export const Gm_guildScalarFieldEnum = {
   name: 'name',
   member: 'member',
   language: 'language',
+  isPartner: 'isPartner',
   addDate: 'addDate',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -3819,6 +3955,7 @@ export const Gm_guild_premiumScalarFieldEnum = {
   guildID: 'guildID',
   transaction: 'transaction',
   buyer: 'buyer',
+  revoked: 'revoked',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -3872,6 +4009,10 @@ export const Gm_panelTokenScalarFieldEnum = {
   revoke: 'revoke',
   creationDate: 'creationDate',
   expirationDate: 'expirationDate',
+  absoluteExpiresAt: 'absoluteExpiresAt',
+  lastSeenAt: 'lastSeenAt',
+  actorDiscordID: 'actorDiscordID',
+  actorSessionID: 'actorSessionID',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -4403,6 +4544,37 @@ export const Gm_users_notificationsScalarFieldEnum = {
 export type Gm_users_notificationsScalarFieldEnum = (typeof Gm_users_notificationsScalarFieldEnum)[keyof typeof Gm_users_notificationsScalarFieldEnum]
 
 
+export const Gm_user_erasureScalarFieldEnum = {
+  id: 'id',
+  discordSubject: 'discordSubject',
+  steamSubject: 'steamSubject',
+  receiptHash: 'receiptHash',
+  status: 'status',
+  requestedAt: 'requestedAt',
+  completedAt: 'completedAt',
+  reactivatedAt: 'reactivatedAt',
+  payload: 'payload',
+  progress: 'progress',
+  attempts: 'attempts',
+  lastError: 'lastError',
+  leaseUntil: 'leaseUntil',
+  leaseToken: 'leaseToken',
+  nextAttemptAt: 'nextAttemptAt'
+} as const
+
+export type Gm_user_erasureScalarFieldEnum = (typeof Gm_user_erasureScalarFieldEnum)[keyof typeof Gm_user_erasureScalarFieldEnum]
+
+
+export const Gm_user_securityScalarFieldEnum = {
+  subject: 'subject',
+  trust: 'trust',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type Gm_user_securityScalarFieldEnum = (typeof Gm_user_securityScalarFieldEnum)[keyof typeof Gm_user_securityScalarFieldEnum]
+
+
 export const UsersScalarFieldEnum = {
   steamID64: 'steamID64',
   steamID: 'steamID',
@@ -4423,6 +4595,14 @@ export const SortOrder = {
 } as const
 
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const banUsersOrderByRelevanceFieldEnum = {
@@ -4531,7 +4711,9 @@ export const gm_panelTokenOrderByRelevanceFieldEnum = {
   os: 'os',
   ip: 'ip',
   country: 'country',
-  browser: 'browser'
+  browser: 'browser',
+  actorDiscordID: 'actorDiscordID',
+  actorSessionID: 'actorSessionID'
 } as const
 
 export type gm_panelTokenOrderByRelevanceFieldEnum = (typeof gm_panelTokenOrderByRelevanceFieldEnum)[keyof typeof gm_panelTokenOrderByRelevanceFieldEnum]
@@ -4908,6 +5090,43 @@ export const gm_users_notificationsOrderByRelevanceFieldEnum = {
 export type gm_users_notificationsOrderByRelevanceFieldEnum = (typeof gm_users_notificationsOrderByRelevanceFieldEnum)[keyof typeof gm_users_notificationsOrderByRelevanceFieldEnum]
 
 
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+export const QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+} as const
+
+export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
+export const gm_user_erasureOrderByRelevanceFieldEnum = {
+  id: 'id',
+  discordSubject: 'discordSubject',
+  steamSubject: 'steamSubject',
+  receiptHash: 'receiptHash',
+  status: 'status',
+  lastError: 'lastError',
+  leaseToken: 'leaseToken'
+} as const
+
+export type gm_user_erasureOrderByRelevanceFieldEnum = (typeof gm_user_erasureOrderByRelevanceFieldEnum)[keyof typeof gm_user_erasureOrderByRelevanceFieldEnum]
+
+
+export const gm_user_securityOrderByRelevanceFieldEnum = {
+  subject: 'subject'
+} as const
+
+export type gm_user_securityOrderByRelevanceFieldEnum = (typeof gm_user_securityOrderByRelevanceFieldEnum)[keyof typeof gm_user_securityOrderByRelevanceFieldEnum]
+
+
 export const usersOrderByRelevanceFieldEnum = {
   steamID64: 'steamID64',
   steamID: 'steamID',
@@ -4999,6 +5218,20 @@ export type Enumgm_server_logs_triggers_operatorFieldRefInput<$PrismaModel> = Fi
  * Reference to a field of type 'gm_server_logs_triggers_action'
  */
 export type Enumgm_server_logs_triggers_actionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'gm_server_logs_triggers_action'>
+    
+
+
+/**
+ * Reference to a field of type 'Json'
+ */
+export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+/**
+ * Reference to a field of type 'QueryMode'
+ */
+export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -5207,6 +5440,8 @@ export type GlobalOmitConfig = {
   gm_user_steam?: Prisma.gm_user_steamOmit
   gm_users_data_request?: Prisma.gm_users_data_requestOmit
   gm_users_notifications?: Prisma.gm_users_notificationsOmit
+  gm_user_erasure?: Prisma.gm_user_erasureOmit
+  gm_user_security?: Prisma.gm_user_securityOmit
   users?: Prisma.usersOmit
 }
 

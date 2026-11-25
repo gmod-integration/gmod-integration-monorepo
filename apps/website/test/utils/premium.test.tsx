@@ -16,11 +16,15 @@ describe('utils/premium.tsx', () => {
   })
 
   describe('premium()', () => {
-    it('reflects the stored guild isPremium flag', () => {
+    it('does not grant access from an unverified stored flag outside the provider', () => {
       setGuildPremium(true)
-      expect(premium()).toBe(true)
-      setGuildPremium(false)
       expect(premium()).toBe(false)
+    })
+
+    it('reads the verified provider snapshot inside a rendered component', () => {
+      setGuildPremium(true)
+      renderWithProviders(() => <span>{premium() ? 'Verified Premium' : 'Free'}</span>)
+      expect(screen.getByText('Verified Premium')).toBeInTheDocument()
     })
   })
 
@@ -36,7 +40,7 @@ describe('utils/premium.tsx', () => {
       renderWithProviders(() => <PremiumBadge onlyIcon />)
       const link = screen.getByRole('link')
       expect(link).toHaveAttribute('href', '/premium')
-      expect(link.querySelector('.fa-crown')).toBeInTheDocument()
+      expect(link.querySelector('svg[data-icon="crown"]')).toBeInTheDocument()
     })
 
     it('renders the full badge with text when onlyIcon is not set', () => {
@@ -70,10 +74,10 @@ describe('utils/premium.tsx', () => {
       expect(screen.getByText('content')).toBeInTheDocument()
     })
 
-    it('renders a fallback buy-premium link when not premium and subCondition is false', () => {
+    it('keeps the action visible beside an upgrade link when its free quota is reached', () => {
       setGuildPremium(false)
       renderWithProviders(() => <BuyPremiumBtn subCondition={false}>content</BuyPremiumBtn>)
-      expect(screen.queryByText('content')).not.toBeInTheDocument()
+      expect(screen.getByText('content')).toBeInTheDocument()
       const link = screen.getByRole('link')
       expect(link).toHaveAttribute('href', '/premium')
     })

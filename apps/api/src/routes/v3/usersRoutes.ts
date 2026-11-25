@@ -48,7 +48,9 @@ import {
   getGuildVerificationsRoles,
   getLogsChannel,
   getProfile,
+  getSteamProfile,
   getPublicServers,
+  getPublicServerRanking,
   getScreenshotsList,
   getServerLogs,
   getServerLogsTrigger,
@@ -64,7 +66,6 @@ import {
   getUserDataRequest,
   getUserGmodStorePurchases,
   getUserGuildsOwnOrAdmins,
-  getUserNotifications,
   getUserSessions,
   getVerificationCheck,
   getVerificationMessage,
@@ -72,7 +73,6 @@ import {
   logOut,
   oauthLogin,
   patchGuildBotInstance,
-  patchUserNotifications,
   postAutoRoles,
   postGmodPurchase,
   postGmodToDiscordFilter,
@@ -84,6 +84,7 @@ import {
   postServerRoles,
   postServerScreenshots,
   postServerStatus,
+  previewServerStatus,
   postServerSyncChat,
   postServerTeams,
   postUserDataRequest,
@@ -106,15 +107,40 @@ import {
 } from '@/controllers/v3/usersControllers.js'
 import {
   userAdminGuildValidator,
+  userAdminGuildScopeValidator,
+  userAdminGuildBotRemovalValidator,
   userAdminValidator,
   userServerValidator,
   userValidator,
 } from '@/middleware/v3/userValidator.js'
 import asyncHandler from '@/middleware/asyncHandler.js'
 import { getAllPanelUsers } from '@/controllers/v3/usersAdminControllers.js'
-import { getServerErrors } from '@/controllers/website/WebsiteErrorsControllers.js'
+import {
+  getServerErrors,
+  getServerErrorsChannel,
+  postServerErrorsChannel,
+  deleteServerErrorsChannel,
+} from '@/controllers/website/WebsiteErrorsControllers.js'
+import {
+  getServerBugReportsChannel,
+  postServerBugReportsChannel,
+  deleteServerBugReportsChannel,
+} from '@/controllers/website/WebsiteBugReportsControllers.js'
 import { getIGSettings, postIGSettings } from '@/controllers/v3/serversControllers.js'
+import { getServerStatistics } from '@/controllers/website/WebsiteStatisticsControllers.js'
+import { getServerMap } from '@/controllers/website/WebsiteMapControllers.js'
+import {
+  getPlayerProfile,
+  getPlayerProfileByDiscord,
+  getPlayerProfileBySteam,
+} from '@/controllers/website/WebsitePlayerProfileControllers.js'
 import { putServerStatusChannel } from '@/controllers/v3/users/ServerStatusChannelControllers.js'
+import {
+  getNotifications,
+  getNotificationCount,
+  patchNotification,
+  patchAllNotifications,
+} from '@/controllers/v3/users/UserNotificationsControllers.js'
 
 const router = express.Router()
 
@@ -123,6 +149,11 @@ router.get('/login', asyncHandler(oauthLogin))
 
 router.use('/:discordID', userValidator)
 router.get('/:discordID', asyncHandler(findCurrentUser))
+router.get('/:discordID/steam-profile', asyncHandler(getSteamProfile))
+router.get('/:discordID/player-profile', asyncHandler(getPlayerProfile))
+router.get('/:discordID/players/discord/:targetDiscordID', asyncHandler(getPlayerProfileByDiscord))
+router.get('/:discordID/players/steam/:steamID64', asyncHandler(getPlayerProfileBySteam))
+router.get('/:discordID/players/:steamID64', asyncHandler(getPlayerProfile))
 router.post('/:discordID/logout', asyncHandler(logOut))
 router.get('/:discordID/sessions', asyncHandler(getUserSessions))
 router.delete('/:discordID/sessions/:sessionID', asyncHandler(deleteUserSession))
@@ -131,8 +162,11 @@ router.get('/:discordID/gmod-store', asyncHandler(getUserGmodStorePurchases))
 router.delete('/:discordID/gmod-store/:guildID', asyncHandler(deleteUserGmodPurchase))
 router.get('/:discordID/verifications/token', asyncHandler(postUserStartVerification))
 router.get('/:discordID/servers', asyncHandler(getPublicServers))
-router.get('/:discordID/notifications', asyncHandler(getUserNotifications))
-router.patch('/:discordID/notifications/:notificationID', asyncHandler(patchUserNotifications))
+router.get('/:discordID/servers/ranking', asyncHandler(getPublicServerRanking))
+router.get('/:discordID/notifications', asyncHandler(getNotifications))
+router.get('/:discordID/notifications/count', asyncHandler(getNotificationCount))
+router.patch('/:discordID/notifications/mark-all-read', asyncHandler(patchAllNotifications))
+router.patch('/:discordID/notifications/:notificationID', asyncHandler(patchNotification))
 router.get('/:discordID/data-requests', asyncHandler(getUserDataRequest))
 router.post('/:discordID/data-requests', asyncHandler(postUserDataRequest))
 
@@ -141,13 +175,77 @@ router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds))
 router.get('/:discordID/admins/informations', asyncHandler(getAdminInformations))
 router.get('/:discordID/admins/panel-users', asyncHandler(getAllPanelUsers))
 
+// Stored analytics and addon configuration need account/guild/server authorization, not Discord metadata.
+router.get(
+  '/:discordID/guilds/:guildID/servers/:serverID/map',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(getServerMap),
+)
+router.get(
+  '/:discordID/guilds/:guildID/servers/:serverID/statistics',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(getServerStatistics),
+)
+router.get(
+  '/:discordID/guilds/:guildID/servers/:serverID/config',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(getIGSettings),
+)
+
+// Destination reads and removal remain available without a Discord metadata snapshot.
+// Setting a destination validates the live channel through the core model after authorization.
+router.get(
+  '/:discordID/guilds/:guildID/servers/:serverID/errors/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(getServerErrorsChannel),
+)
+router.post(
+  '/:discordID/guilds/:guildID/servers/:serverID/errors/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(postServerErrorsChannel),
+)
+router.delete(
+  '/:discordID/guilds/:guildID/servers/:serverID/errors/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(deleteServerErrorsChannel),
+)
+
+router.get(
+  '/:discordID/guilds/:guildID/servers/:serverID/bugs/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(getServerBugReportsChannel),
+)
+router.post(
+  '/:discordID/guilds/:guildID/servers/:serverID/bugs/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(postServerBugReportsChannel),
+)
+router.delete(
+  '/:discordID/guilds/:guildID/servers/:serverID/bugs/channels',
+  userAdminGuildScopeValidator,
+  userServerValidator,
+  asyncHandler(deleteServerBugReportsChannel),
+)
+
+router.delete(
+  '/:discordID/guilds/:guildID/bot',
+  userAdminGuildBotRemovalValidator,
+  asyncHandler(deleteGuildBotInstance),
+)
 router.use('/:discordID/guilds/:guildID', userAdminGuildValidator)
 router.get('/:discordID/guilds/:guildID', asyncHandler(findGuild))
 router.get('/:discordID/guilds/:guildID/bot', asyncHandler(getGuildBotInstance))
 router.put('/:discordID/guilds/:guildID/bot', asyncHandler(putGuildBotInstance))
 router.get('/:discordID/guilds/:guildID/bot/roles/subordination', asyncHandler(getGuildBotRoleSubordination))
 router.patch('/:discordID/guilds/:guildID/bot', asyncHandler(patchGuildBotInstance))
-router.delete('/:discordID/guilds/:guildID/bot', asyncHandler(deleteGuildBotInstance))
 router.post('/:discordID/guilds/:guildID/gmod-store', asyncHandler(postGmodPurchase))
 router.delete('/:discordID/guilds/:guildID/gmod-store', asyncHandler(deleteGmodPurchase))
 router.get('/:discordID/guilds/:guildID/channels', asyncHandler(findGuildChannels))
@@ -197,7 +295,6 @@ router.delete('/:discordID/guilds/:guildID/servers/:serverID', asyncHandler(dele
 
 // Config
 router.post('/:discordID/guilds/:guildID/servers/:serverID/config', asyncHandler(postIGSettings))
-router.get('/:discordID/guilds/:guildID/servers/:serverID/config', asyncHandler(getIGSettings))
 
 // Settings
 router.get('/:discordID/guilds/:guildID/servers/:serverID/settings', asyncHandler(getServerSettings))
@@ -240,9 +337,6 @@ router.delete(
 
 // Errors
 router.get('/:discordID/guilds/:guildID/servers/:serverID/errors', asyncHandler(getServerErrors))
-// router.get('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(getServerErrorsChannel));
-// router.post('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(postServerErrorsChannel));
-// router.delete('/:discordID/guilds/:guildID/servers/:serverID/errors/channels', asyncHandler(deleteServerErrorsChannel));
 
 // Vote
 router.get('/:discordID/guilds/:guildID/servers/:serverID/votes', asyncHandler(getVoteChannels))
@@ -279,6 +373,7 @@ router.get('/:discordID/guilds/:guildID/servers/:serverID/warns', asyncHandler(g
 // Status
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(findServerStatus))
 router.post('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(postServerStatus))
+router.post('/:discordID/guilds/:guildID/servers/:serverID/status/preview', asyncHandler(previewServerStatus))
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(deleteServerStatus))
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status/buttons', asyncHandler(getServerStatusButtons))
 router.put(

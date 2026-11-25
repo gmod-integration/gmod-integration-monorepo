@@ -7,7 +7,7 @@ BullMQ setup and the request/reply adapters that let any app trigger a Discord a
 ## Exports
 
 - `.` / `index.js` → `src/index.ts`: the shared BullMQ `connection` config (`BULLMQ_HOST`/`BULLMQ_PORT`,
-  falling back to `REDIS_HOST`/`REDIS_PORT`). Every queue in this package and in
+  falling back to `REDIS_HOST`/`REDIS_PORT`), resolved by `@gmod/config/infrastructure.js`. Every queue in this package and in
   [infra-websocket](./infra-websocket.md) is built with this same connection.
 - `./schemas.js` → `src/schemas.ts`: re-exports `@gmod/schema/bullmq.js` (the Zod job/reply schemas) —
   imported from here for convenience so consumers don't need a second package import.
@@ -21,7 +21,7 @@ BullMQ setup and the request/reply adapters that let any app trigger a Discord a
 
 For calls that need a result:
 
-1. Build a `correlationId` (`uuidv4()`), validate the payload against the matching `*JobSchema`, `queue.add(...)`.
+1. Build a `correlationId` (`randomUUID()` from `node:crypto`), validate the payload against the matching `*JobSchema`, `queue.add(...)`.
 2. `waitForReply(correlationId, parser, timeoutMs)` polls Redis key `bullmq:reply:<correlationId>` (100ms
    interval) until the worker (in `apps/discord`) writes a reply there, parses it against the `*ReplySchema`,
    and deletes the key. Throws `BullMQReplyTimeoutError` (check with `isBullMQReplyTimeoutError`) if the

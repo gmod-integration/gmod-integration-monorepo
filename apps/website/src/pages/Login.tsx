@@ -1,74 +1,84 @@
-import { Component, createEffect } from 'solid-js'
-import { isLogged, normalizeDiscordUserPayload, setDiscordUser, setIsLogged } from '../utils/event'
+import { type Component, createSignal, onMount, Show } from 'solid-js'
 import { useLocation, useNavigate } from '@solidjs/router'
-import { useI18n } from '../i18n'
-import { getAPIUrl } from '../utils/api'
+import { useI18n } from '../i18n.js'
+import { getAPIUrl } from '../utils/api.js'
+import {
+  authStatus,
+  broadcastAuthChange,
+  refreshAuthSession,
+  safeAuthRedirect,
+  isLogoutPending,
+} from '../utils/authClient.js'
+import { Button, ButtonLink, Icon, PageState } from '../components/ui/index.js'
 
 const Login: Component = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { t } = useI18n()
-
-  console.log('Login page')
-  createEffect(async () => {
-    console.log('Login effect')
-    const urlParams = new URLSearchParams(location.search)
-
-    const discordID = urlParams.get('discordID')
-    const expirationDate = urlParams.get('expirationDate')
-    const accessToken = urlParams.get('accessToken')
-
-    if (discordID && expirationDate && accessToken) {
-      // Store the necessary information in localStorage
-      localStorage.setItem('discordID', discordID)
-      localStorage.setItem('expirationDate', expirationDate)
-      localStorage.setItem('accessToken', accessToken)
-
-      try {
-        // Fetch user data with the accessToken
-        const res = await fetch(`${getAPIUrl()}/users/${discordID}`, {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        })
-
-        if (!res.ok) {
-          setIsLogged(false)
-          return navigate('/')
-        }
-
-        const data = await res.json()
-        const normalizedUser = normalizeDiscordUserPayload(data)
-        localStorage.setItem('discordUser', JSON.stringify(normalizedUser))
-        setDiscordUser(normalizedUser)
-        setIsLogged(true)
-
-        const redirect = urlParams.get('redirect')
-        navigate(redirect || '/dashboard/guilds')
-      } catch (error) {
-        setIsLogged(false)
-      }
-    } else {
-      // If not logged in, clear localStorage and redirect to login
-      if (!isLogged()) {
-        localStorage.clear()
-        const redirect = urlParams.get('redirect')
-        window.location.href = `${getAPIUrl()}/users/login${redirect ? `?redirect=${redirect}` : ''}`
-      } else {
-        // If already logged in, redirect to the dashboard
-        const redirect = urlParams.get('redirect')
-        navigate(redirect || '/dashboard/guilds')
-      }
+  const [pending, setPending] = createSignal(false)
+  const [denied, setDenied] = createSignal(false)
+  const destination = () => safeAuthRedirect(new URLSearchParams(location.search).get('redirect'))
+  const loginUrl = () => {
+    const url = new URL(`${getAPIUrl()}/users/login`)
+    url.searchParams.set('redirect', destination())
+    return url.toString()
+  }
+  const resume = async () => {
+    if (pending()) return
+    setPending(true)
+    const value = await refreshAuthSession()
+    setPending(false)
+    if (value) {
+      broadcastAuthChange()
+      navigate(destination(), { replace: true })
+    } else if (authStatus() === 'signed_out') window.location.href = loginUrl()
+  }
+  onMount(() => {
+    const query = new URLSearchParams(location.search)
+    if (isLogoutPending()) {
+      navigate('/logout', { replace: true })
+      return
     }
+    // Remove historical bearer callbacks before any asynchronous request or navigation.
+    if (query.has('accessToken') || query.has('expirationDate') || query.has('discordID')) {
+      const clean = new URL(window.location.href)
+      for (const key of ['accessToken', 'expirationDate', 'discordID']) clean.searchParams.delete(key)
+      window.history.replaceState(window.history.state, '', clean.pathname + clean.search + clean.hash)
+    }
+    if (query.has('error')) {
+      setDenied(true)
+      return
+    }
+    // An unsolicited URL bearer is not proof that this browser initiated a login.
+    // Only the existing browser cache may use the guarded legacy conversion.
+    void resume()
   })
-
   return (
-    <>
-      <a class="link-hover text-center" href={`${getAPIUrl()}/users/login`}>
-        {t('main.click_if_not_redirected', 'Click here if you are not redirected.')}
-      </a>
-    </>
+    <PageState
+      icon="user-round"
+      title={t('header.login', 'Sign in with Discord')}
+      description={
+        denied()
+          ? t('auth.oauth_denied', 'Discord sign-in was not completed. You can try again when you are ready.')
+          : authStatus() === 'temporarily_unavailable'
+            ? t(
+                'auth.unavailable',
+                'The connection is temporarily unavailable. Your session and unsaved changes are preserved.',
+              )
+            : t('ui.redirecting', 'Redirecting...')
+      }
+      status
+    >
+      <Show when={authStatus() === 'temporarily_unavailable'}>
+        <Button loading={pending()} onClick={() => void resume()}>
+          {t('ui.retry', 'Try again')}
+        </Button>
+      </Show>
+      <ButtonLink variant="primary" href={loginUrl()}>
+        {t('header.login', 'Sign in with Discord')}
+        <Icon name="arrow-right" size={16} />
+      </ButtonLink>
+    </PageState>
   )
 }
-
 export default Login

@@ -1,23 +1,37 @@
 sequenceDiagram
-    participant Caller as apps/api or packages/domain-*
-    participant Adapter as infra-bullmq discordQueueAdapters
-    participant Queue as BullMQ queue (Redis)
-    participant Worker as apps/discord worker
-    participant ReplyKey as Redis reply key
+    autonumber
+    participant Caller as API / core / domain-*
+    participant Adapter as infra-bullmq<br/>discordQueueAdapters
+    participant Queue as File BullMQ<br/>Redis
+    participant Worker as apps/discord<br/>worker
+    participant Client as Client Discord actif<br/>bot principal ou personnalisé
+    participant Reply as Redis<br/>clé de réponse
 
-    Caller->>Adapter: enqueueDiscordGuildX(data)
-    Adapter->>Adapter: validate payload (Zod JobSchema) + generate correlationId
-    Adapter->>Queue: queue.add(jobName, payload)
-    Queue->>Worker: job delivered
-    Worker->>Worker: execute Discord action (live discord.js client)
-    Worker->>ReplyKey: SET bullmq:reply:correlationId (Zod ReplySchema, short TTL)
+    Caller->>Adapter: enqueueDiscordX(données, timeoutMs)
+    Adapter->>Adapter: Créer correlationId et valider JobSchema
+    Note over Adapter,Worker: Contrats partagés : packages/schema/src/bullmq.ts
+    Adapter->>Queue: queue.add(nom, payload, options)
 
-    loop poll every 100ms until timeoutMs
-        Adapter->>ReplyKey: GET bullmq:reply:correlationId
+    par Exécution du job
+        Queue->>Worker: Livrer le job au worker concerné
+        Worker->>Worker: Valider le payload avec JobSchema
+        Worker->>Client: Exécuter l'opération Discord
+        Client-->>Worker: Résultat ou erreur métier
+        Worker->>Reply: SET bullmq:reply:correlationId<br/>JSON, expiration 30 s
+    and Attente du résultat côté appelant
+        loop Toutes les 100 ms, jusqu'à réponse ou timeoutMs
+            Adapter->>Reply: GET bullmq:reply:correlationId
+            Reply-->>Adapter: JSON si disponible, sinon null
+        end
     end
 
-    ReplyKey-->>Adapter: reply JSON found
-    Adapter->>Adapter: parse against ReplySchema, DEL key
-    Adapter-->>Caller: typed result
+    alt Réponse reçue
+        Adapter->>Reply: DEL bullmq:reply:correlationId
+        Adapter->>Adapter: JSON.parse puis validation ReplySchema
+        Adapter-->>Caller: Résultat typé ou erreur métier
+    else Délai dépassé
+        Adapter-->>Caller: BullMQReplyTimeoutError
+        Note over Caller,Worker: Le timeout de l'appelant n'annule pas le job
+    end
 
-    Note over Adapter,ReplyKey: if no reply before timeoutMs,<br/>throws BullMQReplyTimeoutError instead
+    Note over Adapter,Queue: Certaines synchronisations sont sans réponse :<br/>l'appelant attend uniquement la mise en file

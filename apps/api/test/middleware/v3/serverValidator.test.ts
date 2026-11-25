@@ -5,6 +5,8 @@ vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: getServerFrom
 
 const redisMock = { set: vi.fn() }
 vi.mock('@gmod/infra-redis', () => ({ default: redisMock }))
+const recordAddonActivityMock = vi.fn().mockResolvedValue(undefined)
+vi.mock('@gmod/infra-redis/addonTelemetry.js', () => ({ recordAddonActivity: recordAddonActivityMock }))
 
 const { default: serverValidator } = await import('../../../src/middleware/v3/serverValidator.js')
 
@@ -27,12 +29,29 @@ describe('serverValidator', () => {
   beforeEach(() => {
     getServerFromIDMock.mockReset()
     redisMock.set.mockReset()
+    recordAddonActivityMock.mockClear()
   })
 
   it('returns 400 when authorization is missing the Bearer prefix', async () => {
     const res = makeRes()
     await serverValidator(makeReq({ headers: {} }), res, vi.fn())
     expect(res.status).toHaveBeenCalledWith(400)
+  })
+
+  it.each(['Bearer ', 'Bearer tok1 extra'])('rejects malformed authorization: %s', async (authorization) => {
+    const res = makeRes()
+    await serverValidator(makeReq({ headers: { authorization } }), res, vi.fn())
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(getServerFromIDMock).not.toHaveBeenCalled()
+  })
+
+  it('rejects missing server identifiers', async () => {
+    const res = makeRes()
+    await serverValidator(makeReq({ params: {} }), res, vi.fn())
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(getServerFromIDMock).not.toHaveBeenCalled()
   })
 
   it('returns 404 when the server is not found', async () => {
@@ -47,6 +66,7 @@ describe('serverValidator', () => {
     const res = makeRes()
     await serverValidator(makeReq(), res, vi.fn())
     expect(res.status).toHaveBeenCalledWith(401)
+    expect(recordAddonActivityMock).not.toHaveBeenCalled()
   })
 
   it('stores the version/last_request and calls next on success', async () => {
@@ -58,9 +78,50 @@ describe('serverValidator', () => {
     await serverValidator(req, makeRes(), next)
 
     expect(redisMock.set).toHaveBeenCalledWith('server:s1:version', '1.2.3')
+    expect(recordAddonActivityMock).toHaveBeenCalledExactlyOnceWith('s1', {
+      transport: 'http',
+      version: '1.2.3',
+      protocol: 'legacy',
+    })
     expect(redisMock.set).toHaveBeenCalledWith('server:s1:last_request', expect.any(String))
     expect(req.server).toBe(server)
     expect(next).toHaveBeenCalledWith()
+  })
+
+  it('accepts older clients without a version without writing undefined to Redis', async () => {
+    getServerFromIDMock.mockResolvedValueOnce({ isValidToken: () => true })
+    const next = vi.fn()
+    await serverValidator(makeReq(), makeRes(), next)
+
+    expect(redisMock.set).toHaveBeenCalledTimes(1)
+    expect(redisMock.set).toHaveBeenCalledWith('server:s1:last_request', expect.any(String))
+    expect(next).toHaveBeenCalledWith()
+  })
+
+  it('normalizes repeated version headers and route parameters', async () => {
+    getServerFromIDMock.mockResolvedValueOnce({ isValidToken: () => true })
+    await serverValidator(
+      makeReq({
+        params: { serverID: ['s1', 's2'] },
+        headers: { authorization: 'Bearer tok1', 'gmod-integrations-version': ['1.2.3', '1.2.4'] },
+      }),
+      makeRes(),
+      vi.fn(),
+    )
+
+    expect(getServerFromIDMock).toHaveBeenCalledWith('s1')
+    expect(redisMock.set).toHaveBeenCalledWith('server:s1:version', '1.2.3')
+  })
+
+  it('forwards failed Redis updates instead of leaving an unhandled rejection', async () => {
+    getServerFromIDMock.mockResolvedValueOnce({ isValidToken: () => true })
+    const error = new Error('redis unavailable')
+    redisMock.set.mockRejectedValueOnce(error)
+    const next = vi.fn()
+    await serverValidator(makeReq(), makeRes(), next)
+
+    expect(next).toHaveBeenCalledOnce()
+    expect(next).toHaveBeenCalledWith(error)
   })
 
   it('forwards a thrown error to next', async () => {

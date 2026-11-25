@@ -17,7 +17,7 @@ describe('components/layout/Footer/FirstFooter.tsx', () => {
     expect(screen.getByRole('link', { name: 'Servers Ranking' })).toHaveAttribute('href', '/servers')
     expect(screen.getByRole('link', { name: 'Documentation' })).toHaveAttribute('href', '/docs')
     expect(screen.getByRole('link', { name: 'Premium' })).toHaveAttribute('href', '/premium')
-    expect(screen.getByRole('link', { name: 'Support' })).toHaveAttribute('href', '/support')
+    expect(screen.getByRole('link', { name: 'Help and support' })).toHaveAttribute('href', '/support')
     expect(screen.getByRole('link', { name: 'Terms of Service' })).toHaveAttribute('href', '/legal/terms')
     expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/legal/privacy')
   })

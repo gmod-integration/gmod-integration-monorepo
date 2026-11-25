@@ -13,7 +13,7 @@ src/
   gmod/        Schemas for entities reported by the GMod addon: players, teams, weapons, entities, positions,
                angles, screenshots, errors, capture data, server info.
   db/          Schemas describing persisted shapes not owned by Prisma directly (ServerSchema, QuerySchema).
-  server/      ServerStatusChannelSchema (the "server status" embed/channel config).
+  server/      Server status, dashboard configuration, ranking and server-statistics HTTP contracts.
 ```
 
 ## Rule
@@ -26,3 +26,19 @@ must be parsed at the entry point (producer and consumer), not "somewhere in the
 
 `packages/infra-bullmq` (job/reply validation), `packages/domain-gmod` (typed GMod entity classes),
 `apps/api` (request validation, OpenAPI generation), `apps/discord` (worker payload parsing).
+
+## Browser destination configuration
+
+`server/DashboardChannelSchema.ts` defines the HTTP-facing channel configuration projections for
+screenshots, chat, logs and vote destinations. The browser receives only the destination channel and
+optional screenshot administration flag, including read, create and remove responses. Unknown fields
+are stripped by these schemas before JSON responses or feature state. Internal BullMQ/domain records
+still carry their webhook credentials for server-side delivery; they are not browser DTOs.
+
+## Server statistics
+
+`server/ServerStatisticsSchema.ts` validates the analytics period query and response consumed by the
+server dashboard. Custom UTC intervals are bounded to ninety days. Missing population samples and
+unavailable live snapshots remain distinct from observed zero counts. The response exposes only
+the aggregates, public Steam player identity needed for the top-player list and branch counts;
+it never forwards raw player snapshots or server credentials.

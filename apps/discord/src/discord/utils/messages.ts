@@ -1,5 +1,5 @@
 import { getTranslate } from '@gmod/core/utils/localizations.js'
-import { gmLog } from '@gmod/core/utils/logger.js'
+import { gmLog } from '@gmod/shared/logger.js'
 import {
   ActionRowBuilder,
   ButtonBuilder,
@@ -43,7 +43,12 @@ function normalizePlayersList(rawPlayersList: unknown): any[] {
   return []
 }
 
-export async function getStatusMessage(server: Server, data: any, lang: string) {
+export async function getStatusMessage(
+  server: Server,
+  data: any,
+  lang: string,
+  options: { persistChart?: boolean } = {},
+) {
   gmLog('status', 'refresh server status message for ' + server.getID())
 
   let { servOnline, hostname, map, gameMode, players, maxPlayers, ip, port, playersList } = data || {}
@@ -57,10 +62,11 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   port = port === undefined ? '' : port
   playersList = normalizePlayersList(playersList)
 
-  const showChar = await server.getSetting('show_status_chart')
+  const showChar = await server.getEffectiveSetting('show_status_chart')
   let bufferChart: Buffer | null = null
   if (showChar) {
-    bufferChart = await getServerChart(server)
+    bufferChart =
+      options.persistChart === false ? await getServerChart(server, { persist: false }) : await getServerChart(server)
   }
 
   const embed = new EmbedBuilder()
@@ -115,12 +121,12 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
     )
     .setTimestamp(new Date())
 
-  if (servOnline && playersList.length > 0 && (await server.getSetting('show_player_list_status'))) {
+  if (servOnline && playersList.length > 0 && (await server.getEffectiveSetting('show_player_list_status'))) {
     playersList.sort((a: any, b: any) => {
       return b.connectTime - a.connectTime
     })
 
-    const status_player_list_format = await server.getSetting('status_player_list_format')
+    const status_player_list_format = await server.getEffectiveSetting('status_player_list_format')
 
     const playersListString = playersList.map((player: any) => {
       player = new PlayerGmod(player)
@@ -138,9 +144,10 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
       }
     }
 
+    const playerListValue = playersListString.join('\n')
     embed.addFields({
       name: '👤⠀' + (await getTranslate('player_list', lang)),
-      value: playersListString.join('\n'),
+      value: playerListValue.trim() ? playerListValue : '\u200b',
     })
   }
 
@@ -154,12 +161,22 @@ export async function getStatusMessage(server: Server, data: any, lang: string) 
   const row3 = new ActionRowBuilder<ButtonBuilder>()
   const row4 = new ActionRowBuilder<ButtonBuilder>()
   const row5 = new ActionRowBuilder<ButtonBuilder>()
+  const buttons = await server.getEffectiveStatusButtons()
 
   if (servOnline) {
-    row1.addComponents(await ButtonConnect(lang, ip, port))
+    const connect = await ButtonConnect(lang, ip, port)
+    if (buttons.length >= 25) {
+      // Discord permits 25 buttons total. Preserve all 25 paid custom buttons and offer
+      // the same connection link in the embed when its button row is full.
+      const component = connect.toJSON()
+      if ('url' in component)
+        embed.addFields({
+          name: component.label || (await getTranslate('server-connect', lang)),
+          value: `[${ip}:${port}](${component.url})`,
+          inline: false,
+        })
+    } else row1.addComponents(connect)
   }
-
-  const buttons = await server.getServerStatusButtons()
 
   function addButtons(
     button: {
@@ -553,7 +570,9 @@ export async function getUserStatisticMessage(
     const serverDB = await prisma.gm_server.findFirst({
       where: {
         id: serverInstanceID,
+        guild: guild.id,
       },
+      select: { id: true, name: true },
     })
 
     if (!serverDB) {

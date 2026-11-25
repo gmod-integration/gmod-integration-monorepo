@@ -1,7 +1,11 @@
-import { Component, createResource, createSignal, For, Show } from 'solid-js'
+import { type Component, createResource, createSignal, For, Show } from 'solid-js'
+import Pagination from '../../../../components/Pagination.js'
+import { createListPagination } from '../../../../hooks/createListPagination.js'
 import AdminPanel from '../../../../components/AdminPanel'
+import { DateTime, IconButton, TableState, Icon, StatusBadge } from '../../../../components/ui/index.js'
 import { useI18n } from '../../../../i18n'
 import { fetchAPI, getAPIUrl } from '../../../../utils/api'
+import { ServerBugsParameters } from './ServerBugsParameters.js'
 
 enum Status {
   OPEN = 'open',
@@ -16,6 +20,22 @@ enum Importance {
   CRITICAL = 'critical',
 }
 
+const importanceAppearance = (importance: Importance) => {
+  switch (importance) {
+    case Importance.CRITICAL:
+      return { tone: 'danger', icon: 'circle-alert' } as const
+    case Importance.HIGH:
+      return { tone: 'warning', icon: 'triangle-alert' } as const
+    case Importance.MEDIUM:
+      return { tone: 'info', icon: 'info' } as const
+    case Importance.LOW:
+    case Importance.TRIVIAL:
+      return { tone: 'neutral', icon: 'info' } as const
+    default:
+      return { tone: 'neutral', icon: 'circle-help' } as const
+  }
+}
+
 interface AddReportBugs {
   steamID64: string
   description: string
@@ -25,16 +45,14 @@ interface AddReportBugs {
   expected: string
   screenshot: string
   steps: string
-  id: string
+  id: number
   createAt: Date
+  expanded: boolean
+  onToggle: () => void
 }
 
-const [selectReport, setSelectReport] = createSignal(0)
-const [hasLoadScreenshot, setHasLoadScreenshot] = createSignal(false)
-let idxLog = 0
 const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
-  idxLog++
-  const localIdxLog = idxLog
+  const [hasLoadScreenshot, setHasLoadScreenshot] = createSignal(false)
   let shortDescription = props.description.substring(0, 160)
   if (props.description.length > 160) {
     shortDescription += '...'
@@ -43,39 +61,49 @@ const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
   return (
     <>
       <tr>
-        <td class="w-1/6 text-base-content/70 text-nowrap">{props.createAt.toLocaleString()}</td>
+        <td class="w-1/6 text-base-content/70 text-nowrap">
+          <DateTime value={props.createAt} />
+        </td>
         <td class="w-1/6 text-nowrap">{props.steamID64}</td>
         {/*<td class="w-1/12">{props.status}</td>*/}
-        <td class="w-1/12">{props.importance}</td>
+        <td class="w-1/12">
+          <StatusBadge
+            tone={importanceAppearance(props.importance).tone}
+            icon={importanceAppearance(props.importance).icon}
+          >
+            {Object.values(Importance).includes(props.importance)
+              ? t(`dashboard.server.bugsReport.importance_levels.${props.importance}`, props.importance)
+              : t('ui.unknown', 'Unknown')}
+          </StatusBadge>
+        </td>
         <td class="wrap-break-word">{shortDescription}</td>
         <td>
           <div class="flex gap-2 justify-center">
-            <div
+            <IconButton
               class="tooltip tooltip-info"
-              data-tip={t('dashboard.server.actions.showMore', 'Show More')}
+              variant="ghost"
+              size="sm"
+              label={t('dashboard.server.actions.showMore', 'Show More')}
+              aria-expanded={props.expanded}
               onClick={() => {
                 setHasLoadScreenshot(false)
-                if (selectReport() === localIdxLog) {
-                  setSelectReport(0)
-                } else {
-                  setSelectReport(localIdxLog)
-                }
+                props.onToggle()
               }}
             >
-              <Show when={selectReport() === localIdxLog}>
-                <i class="fa-solid fa-chevron-up"></i>
+              <Show when={props.expanded}>
+                <Icon name="chevron-up" />
               </Show>
-              <Show when={selectReport() !== localIdxLog}>
-                <i class="fa-solid fa-chevron-down"></i>
+              <Show when={!props.expanded}>
+                <Icon name="chevron-down" />
               </Show>
-            </div>
+            </IconButton>
           </div>
         </td>
       </tr>
 
-      <Show when={selectReport() === localIdxLog}>
+      <Show when={props.expanded}>
         <tr>
-          <td colspan="6">
+          <td colspan="5">
             <h3 class="font-bold">{t('dashboard.server.screenshot', 'Screenshot')}</h3>
             <Show when={!hasLoadScreenshot()}>
               <span class="loading loading-lg"></span>
@@ -83,7 +111,7 @@ const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
             <img
               class="w-1/2 h-1/2"
               src={`${getAPIUrl(false)}/screenshots/${props.screenshot}`}
-              alt="screenshot"
+              alt={t('dashboard.server.bugsReport.screenshot_alt', 'Screenshot attached to the bug report')}
               onLoad={() => setHasLoadScreenshot(true)}
               onError={() => setHasLoadScreenshot(false)}
               classList={{
@@ -117,22 +145,22 @@ type Bugs = {
   serverID: string
   steamID64: string
   description: string
-  status: string
+  status: Status
   steps: string
   expected: string
   actual: string
-  importance: string
+  importance: Importance
   screenshot: string
   createdAt: string
   updatedAt: string
 }
 
 const ServerBugs: Component = () => {
-  const [bugsReport, { mutate: bugsReportMutate }] = createResource('bugsReport', async () => {
+  const [bugsReport, { refetch }] = createResource('bugsReport', async () => {
     return await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/bugs', 'GET')
       .then(async (res) => {
         if (!res.ok) {
-          return [] as Bugs[]
+          throw new Error('Bug reports request failed')
         }
         return (await res.json()) as Bugs[]
       })
@@ -142,13 +170,29 @@ const ServerBugs: Component = () => {
   })
 
   const { t } = useI18n()
+  const [selectedReport, setSelectedReport] = createSignal<number>()
+  const pagination = createListPagination(() => (!bugsReport.error ? bugsReport() : undefined))
 
   return (
     <>
+      <ServerBugsParameters />
       <AdminPanel
-        title={t('dashboard.server.bugsReport.title', 'Bugs Report')}
-        description={t('dashboard.server.bugsReport.description', 'List of all bugs reported on your server')}
+        title={t('dashboard.server.bugsReport.title', 'Bug reports')}
+        description={t(
+          'dashboard.server.bugsReport.description',
+          'Read reports submitted by players. Expand a report to see what happened, the expected result and steps to reproduce it.',
+        )}
         type="none"
+        footer={
+          !bugsReport.loading && !bugsReport.error && pagination.visible() ? (
+            <Pagination
+              standalone
+              query={pagination.query()}
+              total={pagination.total()}
+              onChange={pagination.onChange}
+            />
+          ) : undefined
+        }
       >
         <table class="table">
           <thead>
@@ -162,8 +206,16 @@ const ServerBugs: Component = () => {
             </tr>
           </thead>
           <tbody>
-            <Show when={!bugsReport.loading} fallback={<span class="loading loading-lg"></span>}>
-              <For each={bugsReport()}>
+            <TableState
+              colSpan={5}
+              loading={bugsReport.loading}
+              error={bugsReport.error}
+              errorLabel={t('dashboard.server.bugsReport.load_error', 'Unable to load bug reports. Try again.')}
+              emptyLabel={t('dashboard.server.bugsReport.empty', 'No bug reports have been received for this server.')}
+              empty={!bugsReport.loading && !bugsReport.error && bugsReport()?.length === 0}
+              onRetry={() => void refetch()}
+            >
+              <For each={pagination.items()}>
                 {(reportData) => (
                   <AddReportBugsComponent
                     status={reportData.status}
@@ -175,11 +227,13 @@ const ServerBugs: Component = () => {
                     screenshot={reportData.screenshot}
                     steps={reportData.steps}
                     id={reportData.id}
+                    expanded={selectedReport() === reportData.id}
+                    onToggle={() => setSelectedReport(selectedReport() === reportData.id ? undefined : reportData.id)}
                     createAt={new Date(reportData.createdAt)}
                   />
                 )}
               </For>
-            </Show>
+            </TableState>
           </tbody>
         </table>
       </AdminPanel>

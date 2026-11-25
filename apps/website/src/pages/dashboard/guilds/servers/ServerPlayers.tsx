@@ -1,16 +1,31 @@
-import { Component, createResource, createSignal, For, Match, Show, Switch } from 'solid-js'
-import AdminPanel from '../../../../components/AdminPanel'
-import AdminModal from '../../../../components/AdminModal'
-import Pagination from '../../../../components/Pagination'
-import { useI18n } from '../../../../i18n'
-import { convertSecToTime } from '../../../../utils/convertSecToTime'
-import { fetchAPI } from '../../../../utils/api'
-import { ClientQuery, QuerySort } from '../../../../utils/types/QueryTypes'
+import { closeDialog, showDialog } from '../../../../utils/dialog.js'
+import { type Component, createResource, createSignal, For } from 'solid-js'
+import {
+  BooleanStatus,
+  Button,
+  FormActions,
+  FormField,
+  IconButton,
+  IconButtonLink,
+  TableState,
+  Icon,
+  type IconName,
+} from '../../../../components/ui/index.js'
+import { createDraftForm } from '../../../../hooks/createDraftForm.js'
+import AdminPanel from '../../../../components/AdminPanel.js'
+import AdminModal from '../../../../components/AdminModal.js'
+import Pagination from '../../../../components/Pagination.js'
+import { useI18n } from '../../../../i18n.js'
+import { convertSecToTime } from '../../../../utils/convertSecToTime.js'
+import { fetchAPI } from '../../../../utils/api.js'
+import { QuerySort, type ClientQuery, type ServerQuery } from '../../../../utils/types/QueryTypes.js'
 
-const fetchPlayers = async () => {
+type PlayerList = { rows: Player[]; query?: ServerQuery }
+
+const fetchPlayers = async (): Promise<PlayerList> => {
   const res = await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/players', 'GET')
   if (!res.ok) {
-    return {}
+    throw new Error('Players request failed')
   }
   return await res.json()
 }
@@ -41,8 +56,9 @@ class Player {
 }
 
 const ServerPlayer: Component = () => {
-  const [playersList, { mutate }] = createResource('playersList', fetchPlayers)
-  const [currentPlayers, setCurrentPlayers] = createSignal(new Player('', '', 0, 0, 0, false))
+  const [playersList, { mutate, refetch }] = createResource('playersList', fetchPlayers, {
+    initialValue: { rows: [], query: undefined },
+  })
   const [sortInfo, setSortInfo] = createSignal({
     dsc: true,
     lastKey: '',
@@ -54,8 +70,17 @@ const ServerPlayer: Component = () => {
     orderBy: QuerySort.DESC,
   })
   const { t } = useI18n()
+  const editor = createDraftForm({
+    initial: new Player('', '', 0, 0, 0, false),
+    validate: (draft) =>
+      !/^\d{17}$/.test(draft.steam_id) || typeof draft.bypassMaintenance !== 'boolean'
+        ? { steam_id: t('ui.invalid_value', 'Check this value.') }
+        : {},
+    errorMessage: () => t('ui.save_error', 'Unable to save the changes.'),
+  })
 
   const [loadSearch, setLoadSearch] = createSignal(false)
+  const [searchError, setSearchError] = createSignal(false)
   const [searchValue, setSearchValue] = createSignal('')
 
   async function sortPlayerBy(
@@ -79,6 +104,7 @@ const ServerPlayer: Component = () => {
       orderBy: !sortInfo().dsc ? QuerySort.ASC : QuerySort.DESC,
       offset: offset,
     }
+    setQuery(newQuery)
 
     const params = {
       order: newQuery.orderBy,
@@ -89,33 +115,38 @@ const ServerPlayer: Component = () => {
     }
 
     // transform the object into a query string
-    const queryString = Object.keys(params)
-      .map((k) => `${k}=${(params as Record<string, any>)[k]}`)
-      .join('&')
+    const queryString = new URLSearchParams(
+      Object.entries(params).map(([key, value]) => [key, String(value)]),
+    ).toString()
 
     setLoadSearch(true)
-    mutate(() => {
-      return {
-        ...playersList(),
-        rows: [],
-      }
-    })
-    const res = await fetchAPI(`/users/:discordID/guilds/:guildID/servers/:serverID/players?${queryString}`, 'GET')
-    setLoadSearch(false)
-    if (!res.ok) {
-      return
+    setSearchError(false)
+    if (!playersList.error) mutate((previous) => ({ ...previous, rows: [] }))
+    try {
+      const response = await fetchAPI(
+        `/users/:discordID/guilds/:guildID/servers/:serverID/players?${queryString}`,
+        'GET',
+      )
+      if (!response.ok) throw new Error('Player search failed')
+      mutate(await response.json())
+    } catch {
+      setSearchError(true)
+    } finally {
+      setLoadSearch(false)
     }
-
-    const data = await res.json()
-    mutate(() => data)
   }
 
-  function getSortIcon(key: string) {
+  function getSortIcon(key: string): IconName {
     const sortInfoValue = sortInfo()
     if (sortInfoValue.lastKey === key) {
-      return sortInfoValue.dsc ? 'fa-solid fa-sort-down' : 'fa-solid fa-sort-up'
+      return sortInfoValue.dsc ? 'arrow-down' : 'arrow-up'
     }
-    return 'fa-solid fa-sort'
+    return 'arrow-up-down'
+  }
+
+  function getSortDirection(key: string): 'none' | 'ascending' | 'descending' {
+    if (sortInfo().lastKey !== key) return 'none'
+    return sortInfo().dsc ? 'descending' : 'ascending'
   }
 
   async function handleQueryChange(newQuery: ClientQuery) {
@@ -124,64 +155,91 @@ const ServerPlayer: Component = () => {
   }
 
   async function savePlayer() {
-    const res = await fetchAPI(
-      `/users/:discordID/guilds/:guildID/servers/:serverID/players/${currentPlayers().steam_id}`,
-      'PUT',
-      currentPlayers(),
-    )
-    if (!res.ok) {
-      return
-    }
-    const ply = await res.json()
-    mutate((prevPlayers) => {
-      if (!prevPlayers) return prevPlayers
-      return {
-        ...prevPlayers,
-        rows: prevPlayers.rows.map((p) =>
-          p.steam_id === ply.steam_id ? { ...p, bypassMaintenance: ply.bypassMaintenance } : p,
+    if (playersList.loading || playersList.error || loadSearch() || searchError()) return
+    const saved = await editor.save(async (snapshot) => {
+      const response = await fetchAPI(
+        `/users/:discordID/guilds/:guildID/servers/:serverID/players/${snapshot.steam_id}`,
+        'PUT',
+        { bypassMaintenance: snapshot.bypassMaintenance },
+      )
+      if (!response.ok) throw new Error('Player update failed')
+      const accepted = await response.json()
+      if (typeof accepted.bypassMaintenance !== 'boolean') throw new Error('Invalid player permission')
+      mutate((previous) => ({
+        ...previous,
+        rows: previous.rows.map((player) =>
+          player.steam_id === snapshot.steam_id ? { ...player, bypassMaintenance: accepted.bypassMaintenance } : player,
         ),
-      }
+      }))
+      return { ...snapshot, bypassMaintenance: accepted.bypassMaintenance }
     })
+    if (saved) closeDialog('edit_player')
   }
 
   const [inputID, setInputID] = createSignal(0)
   return (
     <>
-      <AdminModal title={t('dashboard.server.edit_player.title', 'Edit Player')} id="edit_player">
-        <div class="fieldset">
-          <label class="label">
-            <span>{t('dashboard.server.edit_player.bypass_maintenance', 'ByPass Maintenance')}</span>
-          </label>
+      <AdminModal
+        title={t('dashboard.server.edit_player.title', 'Edit player access')}
+        id="edit_player"
+        description={editor.draft().steam_id ? `${editor.draft().name} · ${editor.draft().steam_id}` : undefined}
+        busy={editor.pending()}
+        onClose={editor.discard}
+        onCancel={editor.discard}
+      >
+        <FormField
+          id="player-bypass-maintenance"
+          label={t('dashboard.server.edit_player.bypass_maintenance', 'Manual whitelist access')}
+          description={t(
+            'dashboard.server.edit_player.bypass_help',
+            'Allow this player to join in whitelist mode independently of the Server whitelist role. Disabling this manual entry keeps any access provided by the role or another permission. Save to apply.',
+          )}
+        >
           <select
+            id="player-bypass-maintenance"
+            aria-describedby="player-bypass-maintenance-description"
             class="select"
-            disabled={playersList.loading}
-            value={currentPlayers().bypassMaintenance ? 'true' : 'false'}
+            disabled={playersList.loading || !!playersList.error || editor.pending()}
+            value={editor.draft().bypassMaintenance ? 'true' : 'false'}
             onChange={(e) => {
-              currentPlayers().bypassMaintenance = e.currentTarget.value === 'true'
+              editor.patch({ bypassMaintenance: e.currentTarget.value === 'true' })
             }}
           >
             <option value="true">{t('dashboard.server.edit_player.yes', 'Yes')}</option>
             <option value="false">{t('dashboard.server.edit_player.no', 'No')}</option>
           </select>
-        </div>
-
-        <button
-          class="btn btn-base-200 mt-2"
-          disabled={playersList.loading}
-          onClick={async () => {
-            // @ts-expect-error -- intentional: legacy typing gap
-            edit_player.close()
-            await savePlayer()
+        </FormField>
+        <FormActions
+          dirty={editor.dirty()}
+          pending={editor.pending()}
+          disabled={playersList.loading || !!playersList.error || loadSearch() || searchError() || !editor.valid()}
+          error={editor.error()}
+          onSave={() => void savePlayer()}
+          onCancel={() => {
+            editor.discard()
+            closeDialog('edit_player')
           }}
-        >
-          {t('dashboard.server.edit_player.save', 'Save')}
-        </button>
+          saveLabel={t('dashboard.server.edit_player.save', 'Save')}
+        />
       </AdminModal>
 
       <AdminPanel
-        title={t('dashboard.server.players_database.title', 'Players Database')}
-        description={t('dashboard.server.players_database.description', 'List of all players in the server')}
+        title={t('dashboard.server.players_database.title', 'Player records')}
+        description={t(
+          'dashboard.server.players_database.description',
+          'View recorded players, their total playtime and connection count. Edit a player to manage manual whitelist access; role-based access is handled separately.',
+        )}
         type="none"
+        footer={
+          !playersList.loading && !playersList.error && !loadSearch() && !searchError() ? (
+            <Pagination
+              standalone
+              query={query()}
+              total={playersList().query?.total ?? 0}
+              onChange={handleQueryChange}
+            />
+          ) : undefined
+        }
       >
         {/* search*/}
         <div class="p-4">
@@ -189,7 +247,11 @@ const ServerPlayer: Component = () => {
             <input
               type="text"
               class="grow"
-              placeholder="Search for SteamID64, Name, Rank..."
+              aria-label={t('dashboard.server.players_database.search_label', 'Search players')}
+              placeholder={t(
+                'dashboard.server.players_database.search_placeholder',
+                'Search by SteamID64, name or rank…',
+              )}
               onInput={(e) => {
                 const value = e.currentTarget.value
                 setSearchValue(value)
@@ -197,128 +259,142 @@ const ServerPlayer: Component = () => {
                 setInputID(currentID)
                 setTimeout(async () => {
                   if (currentID === inputID()) {
-                    console.log(value)
                     await sortPlayerBy(query().sort, false, 0, value)
                   }
                 }, 400)
               }}
             />
-            <i class="fa-solid fa-search"></i>
+            <Icon name="search" />
           </label>
         </div>
         <table class="table table-auto table-fixed border-t border-base-200 rounded-none">
           <thead>
-            <tr class="text-l hover:cursor-pointer">
-              <th class="w-1/4" onClick={() => sortPlayerBy('name')}>
-                {t('dashboard.server.players_database.name', 'Name')} <i class={getSortIcon('name')}></i>
+            <tr class="text-l">
+              <th class="w-1/4" scope="col" aria-sort={getSortDirection('name')}>
+                <Button variant="ghost" size="sm" class="ui-table-sort" onClick={() => void sortPlayerBy('name')}>
+                  {t('dashboard.server.players_database.name', 'Name')} <Icon name={getSortIcon('name')} />
+                </Button>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('rank')}>
-                {t('dashboard.server.players_database.rank', 'Rank')} <i class={getSortIcon('rank')}></i>
+              <th class="w-1/6 text-center" scope="col" aria-sort={getSortDirection('rank')}>
+                <Button variant="ghost" size="sm" class="ui-table-sort" onClick={() => void sortPlayerBy('rank')}>
+                  {t('dashboard.server.players_database.rank', 'Rank')} <Icon name={getSortIcon('rank')} />
+                </Button>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('total_time')}>
-                {t('dashboard.server.players_database.total_time', 'Total Time')}{' '}
-                <i class={getSortIcon('total_time')}></i>
+              <th class="w-1/6 text-center" scope="col" aria-sort={getSortDirection('total_time')}>
+                <Button variant="ghost" size="sm" class="ui-table-sort" onClick={() => void sortPlayerBy('total_time')}>
+                  {t('dashboard.server.players_database.total_time', 'Total playtime')}{' '}
+                  <Icon name={getSortIcon('total_time')} />
+                </Button>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('total_connect')}>
-                {t('dashboard.server.players_database.total_connect', 'Total Connect')}{' '}
-                <i class={getSortIcon('total_connect')}></i>
+              <th class="w-1/6 text-center" scope="col" aria-sort={getSortDirection('total_connect')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  class="ui-table-sort"
+                  onClick={() => void sortPlayerBy('total_connect')}
+                >
+                  {t('dashboard.server.players_database.total_connect', 'Connections')}{' '}
+                  <Icon name={getSortIcon('total_connect')} />
+                </Button>
               </th>
-              <th class="w-1/6 text-center" onClick={() => sortPlayerBy('bypassMaintenance')}>
-                {t('dashboard.server.players_database.bypass_maintenance', 'Bypass Maintenance')}{' '}
-                <i class={getSortIcon('bypassMaintenance')}></i>
+              <th class="w-1/6 text-center" scope="col" aria-sort={getSortDirection('bypassMaintenance')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  class="ui-table-sort"
+                  onClick={() => void sortPlayerBy('bypassMaintenance')}
+                >
+                  {t('dashboard.server.players_database.bypass_maintenance', 'Manual whitelist')}{' '}
+                  <Icon name={getSortIcon('bypassMaintenance')} />
+                </Button>
               </th>
-              <th class="hover:cursor-default w-1/6 text-center">
+              <th class="w-1/6 text-center" scope="col">
                 {t('dashboard.server.players_database.actions', 'Actions')}
               </th>
             </tr>
           </thead>
           <tbody>
-            {/* Bug fix: also gate on !playersList.error - `playersList().rows` is read unguarded
-                below (via <For each={playersList().rows}>). On a fetch failure there's no
-                previously-loaded value to fall back to, so `playersList()` is `undefined` and
-                `.rows` throws a TypeError. Without this guard, the tbody's render effect threw on
-                every fetch failure, which the dev @solid-refresh wrapper caught and silently
-                retried forever, meaning `playersList.loading` never visibly settled and the
-                `Match when={playersList.error}` failed-to-load message below was unreachable dead
-                code. */}
-            <Show when={!playersList.loading && !playersList.error}>
-              <Show when={loadSearch()}>
-                <tr>
-                  <td colSpan="6">
-                    <div class="flex justify-center h-36">
-                      <div class="loading loading-spinner loading-lg"></div>
-                    </div>
-                  </td>
-                </tr>
-              </Show>
-              <For each={playersList().rows}>
+            <TableState
+              colSpan={6}
+              loading={playersList.loading || loadSearch()}
+              error={playersList.error || searchError()}
+              errorLabel={t(
+                'dashboard.server.players_database.load_error',
+                'Unable to load players. Try again to reload the current search.',
+              )}
+              emptyLabel={t(
+                'dashboard.server.players_database.empty',
+                'No players match this search. Try another name, SteamID64 or rank, or clear the search.',
+              )}
+              empty={
+                !playersList.loading &&
+                !playersList.error &&
+                !loadSearch() &&
+                !searchError() &&
+                playersList().rows.length === 0
+              }
+              onRetry={() => {
+                if (searchError()) void sortPlayerBy(query().sort, false, query().offset, searchValue())
+                else void refetch()
+              }}
+            >
+              <For each={!playersList.error ? playersList().rows : []}>
                 {(player) => (
                   <tr>
                     <td class="w-1/4 truncate overflow-hidden text-ellipsis whitespace-nowrap">
-                      <span>{player.name}</span>
+                      <a class="text-primary hover:underline" href={`/players/${encodeURIComponent(player.steam_id)}`}>
+                        {player.name || player.steam_id}
+                      </a>
                     </td>
                     <td class="w-1/6 text-center">{player.rank}</td>
                     <td class="w-1/6 text-center">{convertSecToTime(player.total_time)}</td>
                     <td class="w-1/6 text-center">{player.total_connect}</td>
                     <td class="w-1/6 text-center">
                       <div class="flex gap-2 justify-center">
-                        {player.bypassMaintenance ? (
-                          <i class="fa-solid fa-check text-success"></i>
-                        ) : (
-                          <i class="fa-solid fa-times text-error"></i>
-                        )}
+                        <BooleanStatus
+                          value={player.bypassMaintenance}
+                          trueLabel={t('dashboard.server.edit_player.yes', 'Yes')}
+                          falseLabel={t('dashboard.server.edit_player.no', 'No')}
+                        />
                       </div>
                     </td>
                     <td class="w-1/6">
                       <div class="flex gap-2 justify-center">
-                        <a
+                        <IconButtonLink
+                          href={`/players/${encodeURIComponent(player.steam_id)}`}
+                          variant="ghost"
+                          size="sm"
+                          label={t('player_profile.view_profile', 'View player profile')}
+                          icon="user-round"
+                        />
+                        <IconButtonLink
                           href={`https://steamcommunity.com/profiles/${player.steam_id}`}
                           target="_blank"
-                          class="tooltip tooltip-info"
-                          data-tip={t('dashboard.server.players_database.steam', 'Steam')}
-                        >
-                          <i class="fa-brands fa-steam"></i>
-                        </a>
-                        <div
-                          class="tooltip tooltip-info"
-                          data-tip={t('dashboard.server.players_database.edit', 'Edit')}
-                        >
-                          <i
-                            class="hover:cursor-pointer fa-solid fa-edit"
-                            onClick={() => {
-                              setCurrentPlayers(player)
-                              // @ts-expect-error -- intentional: legacy typing gap
-                              edit_player.showModal()
-                            }}
-                          />
-                        </div>
+                          rel="noopener noreferrer"
+                          variant="ghost"
+                          size="sm"
+                          label={t('dashboard.server.players_database.steam', 'Open Steam profile')}
+                          icon="gamepad-2"
+                        />
+                        <IconButton
+                          variant="ghost"
+                          size="sm"
+                          label={t('dashboard.server.players_database.edit', 'Edit')}
+                          icon="pencil"
+                          disabled={editor.pending() || playersList.loading || loadSearch()}
+                          onClick={() => {
+                            editor.reset({ ...player })
+                            showDialog('edit_player')
+                          }}
+                        />
                       </div>
                     </td>
                   </tr>
                 )}
               </For>
-              <Pagination
-                query={query()}
-                total={playersList().query?.total ?? 0}
-                onChange={handleQueryChange}
-                colSpan={6}
-              />
-            </Show>
+            </TableState>
           </tbody>
         </table>
-
-        <Switch>
-          <Match when={playersList.loading}>
-            <div class="flex justify-center h-36">
-              <div class="loading loading-spinner loading-lg"></div>
-            </div>
-          </Match>
-          <Match when={playersList.error}>
-            <tr>
-              <td colSpan="4">{t('dashboard.server.players_database.failed_to_load', 'Failed to load the links')}</td>
-            </tr>
-          </Match>
-        </Switch>
       </AdminPanel>
     </>
   )

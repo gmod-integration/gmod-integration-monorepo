@@ -45,9 +45,71 @@ function validEnv(overrides: Record<string, string | undefined> = {}) {
 }
 
 describe('ConfigSchema', () => {
+  it('trusts no proxy by default and validates explicit proxy peers', () => {
+    expect(ConfigSchema.parse(validEnv()).API_TRUSTED_PROXIES).toBe('')
+    for (const value of ['loopback', '127.0.0.1,172.20.0.0/16', '::1,fd00::/64', '127.0.0.1/32', '::1/128'])
+      expect(ConfigSchema.safeParse(validEnv({ API_TRUSTED_PROXIES: value })).success).toBe(true)
+    for (const value of [
+      'true',
+      '*',
+      '0.0.0.0/0',
+      '::/0',
+      '198.51.100.1/33',
+      'malformed.example',
+      '::1/129',
+      '127.0.0.1/24/1',
+      '::1/64/1',
+    ])
+      expect(ConfigSchema.safeParse(validEnv({ API_TRUSTED_PROXIES: value })).success).toBe(false)
+  })
+
   it('parses a fully valid environment', () => {
     const result = ConfigSchema.safeParse(validEnv())
     expect(result.success).toBe(true)
+  })
+
+  it('allows an optional HTTP relay destination and treats blank values as unset', () => {
+    expect(ConfigSchema.parse(validEnv()).DISCORD_RELAY_URL).toBeUndefined()
+    expect(ConfigSchema.parse(validEnv({ DISCORD_RELAY_URL: '   ' })).DISCORD_RELAY_URL).toBeUndefined()
+    expect(ConfigSchema.parse(validEnv({ DISCORD_RELAY_URL: ' http://127.0.0.1:3002 ' })).DISCORD_RELAY_URL).toBe(
+      'http://127.0.0.1:3002',
+    )
+    expect(ConfigSchema.parse(validEnv({ DISCORD_RELAY_URL: 'https://relay.example.com' })).DISCORD_RELAY_URL).toBe(
+      'https://relay.example.com',
+    )
+  })
+
+  it.each(['not-a-url', 'file:///tmp/relay', 'ftp://relay.example.com', 'https://user:secret@relay.example.com'])(
+    'rejects an invalid or credential-bearing Discord relay URL: %s',
+    (value) => {
+      expect(ConfigSchema.safeParse(validEnv({ DISCORD_RELAY_URL: value })).success).toBe(false)
+    },
+  )
+
+  it('provides separate, bounded session lifetime defaults and an optional encryption key', () => {
+    const parsed = ConfigSchema.parse(validEnv())
+    expect(parsed.AUTH_SESSION_ABSOLUTE_TTL_SECONDS).toBe(2592000)
+    expect(parsed.AUTH_SESSION_IDLE_TTL_SECONDS).toBe(604800)
+    expect(parsed.AUTH_TOKEN_ENCRYPTION_KEY).toBeUndefined()
+  })
+
+  it.each(['0', '-1', 'forever', '31536001'])('rejects an invalid absolute session lifetime %s', (value) => {
+    expect(ConfigSchema.safeParse(validEnv({ AUTH_SESSION_ABSOLUTE_TTL_SECONDS: value })).success).toBe(false)
+  })
+
+  it('rejects a short dedicated OAuth encryption key', () => {
+    expect(ConfigSchema.safeParse(validEnv({ AUTH_TOKEN_ENCRYPTION_KEY: 'short' })).success).toBe(false)
+  })
+
+  it('keeps account erasure optional until its dedicated privacy secret is configured', () => {
+    expect(ConfigSchema.parse(validEnv()).PRIVACY_HASH_SECRET).toBeUndefined()
+    expect(
+      ConfigSchema.parse(validEnv({ PRIVACY_HASH_SECRET: 'a-separate-stable-privacy-secret' })).PRIVACY_HASH_SECRET,
+    ).toBe('a-separate-stable-privacy-secret')
+  })
+
+  it.each(['', 'short', 'SECRET', 'root'])('rejects an insecure privacy secret: %s', (secret) => {
+    expect(ConfigSchema.safeParse(validEnv({ PRIVACY_HASH_SECRET: secret })).success).toBe(false)
   })
 
   it('defaults DEV to "false" when omitted', () => {
@@ -118,9 +180,7 @@ describe('ConfigSchema', () => {
     })
 
     it('rejects the forbidden value "secret" case-insensitively', () => {
-      expect(ConfigSchema.safeParse(validEnv({ MARIA_PASSWORD: 'SECRETSECRETSECRET'.slice(0, 17) })).success).toBe(
-        true,
-      )
+      expect(ConfigSchema.safeParse(validEnv({ MARIA_PASSWORD: 'SECRETSECRETSECRET'.slice(0, 17) })).success).toBe(true)
       expect(ConfigSchema.safeParse(validEnv({ MARIA_PASSWORD: 'SeCrEt' })).success).toBe(false)
     })
 
@@ -130,9 +190,9 @@ describe('ConfigSchema', () => {
 
     it('trims surrounding whitespace before checking length/forbidden values', () => {
       expect(ConfigSchema.safeParse(validEnv({ MINIO_SECRET_KEY: '   root   ' })).success).toBe(false)
-      expect(
-        ConfigSchema.safeParse(validEnv({ MINIO_SECRET_KEY: '   a-valid-secret-value-here   ' })).success,
-      ).toBe(true)
+      expect(ConfigSchema.safeParse(validEnv({ MINIO_SECRET_KEY: '   a-valid-secret-value-here   ' })).success).toBe(
+        true,
+      )
     })
   })
 
