@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "vite",
-    "dev": "vite --host",
-    "build": "vite build",
-    "serve": "vite preview",
+    "prepare:config": "bun run --cwd ../../packages/config build",
+    "start": "bun run prepare:config && vite",
+    "dev": "bun run prepare:config && vite --host",
+    "build": "bun run prepare:config && vite build",
+    "serve": "bun run prepare:config && vite preview",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit"
   },

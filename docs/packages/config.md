@@ -27,8 +27,10 @@ nothing else in the codebase should read `process.env` directly (see
   environment object. Importing this submodule does not run the global server bootstrap, load `.env`
   files, validate unrelated service credentials or connect a client. Application entrypoints retain
   responsibility for the normal server config bootstrap.
-- `./website-runtime.js` → `dist/website.js`: prebuilt output of `website.ts` for environments that can't run
-  the TS loader.
+- `./website-runtime.js` uses `src/website.ts` for the TypeScript `types` condition and `dist/website.js`
+  for runtime loading in environments that cannot run a TS loader. Typechecking works before any
+  generated output exists. The website's `start`, `dev`, `build` and `serve` scripts run `prepare:config`
+  first to compile this runtime entry; generated files remain ignored by Git.
 
 ## Platform developer allowlist
 
