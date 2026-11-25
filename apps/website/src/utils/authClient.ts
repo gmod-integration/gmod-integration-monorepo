@@ -1,6 +1,7 @@
 import { batch, createSignal } from 'solid-js'
 import { WEBSITE_CONFIG } from '../config.js'
 import { normalizeDiscordUserPayload, setDiscordUser, setIsAdmin, setIsLogged, type DiscordUserState } from './event.js'
+import { notifyDashboardAccessDenied } from './accessEvents.js'
 
 export type AuthStatus = 'checking' | 'authenticated' | 'temporarily_unavailable' | 'reauth_required' | 'signed_out'
 export type AuthSession = {
@@ -267,6 +268,17 @@ async function restoreForRequest(signal?: AbortSignal | null) {
   }
 }
 
+async function observeForbiddenResponse(response: Response, requestURL: string, current: number): Promise<void> {
+  if (response.status !== 403) return
+  const denied = await response
+    .clone()
+    .json()
+    .catch(() => undefined)
+  const code = typeof denied?.error === 'string' ? denied.error : denied?.error?.code
+  if (current === generation && code === 'discord_reauth_required') setAuthStatus('reauth_required')
+  if (current === generation) notifyDashboardAccessDenied(requestURL, denied, authSession()?.session.id)
+}
+
 /** All authenticated v3/v6 requests use cookies and the same CSRF/session recovery contract. */
 export async function authenticatedFetch(input: string | (() => string), init: RequestInit = {}): Promise<Response> {
   if (isLogoutPending()) throw new Error('Logout must be confirmed before making authenticated requests')
@@ -287,15 +299,9 @@ export async function authenticatedFetch(input: string | (() => string), init: R
   if (mutation && authSession()?.csrfToken) headers.set('X-CSRF-Token', authSession()!.csrfToken)
   const current = generation
   const url = () => (typeof input === 'function' ? input() : input)
-  const response = await sendAuthenticated(url(), { ...init, headers }, current)
-  if (response.status === 403) {
-    const denied = await response
-      .clone()
-      .json()
-      .catch(() => undefined)
-    const code = typeof denied?.error === 'string' ? denied.error : denied?.error?.code
-    if (current === generation && code === 'discord_reauth_required') setAuthStatus('reauth_required')
-  }
+  const requestURL = url()
+  const response = await sendAuthenticated(requestURL, { ...init, headers }, current)
+  await observeForbiddenResponse(response, requestURL, current)
   if (response.status !== 401 || current !== generation) return response
   const before = authSession()?.session.id
   const updated = await restoreForRequest(init.signal)
@@ -303,8 +309,12 @@ export async function authenticatedFetch(input: string | (() => string), init: R
   if (current !== generation) throw new Error('The session changed while the request was pending')
   init.signal?.throwIfAborted()
   // GET is safe to retry once. A mutation is never replayed without an idempotency guarantee.
-  if (!mutation && updated && updated.session.id === before)
-    return sendAuthenticated(url(), { ...init, headers: new Headers(init.headers) }, current)
+  if (!mutation && updated && updated.session.id === before) {
+    const retryURL = url()
+    const retried = await sendAuthenticated(retryURL, { ...init, headers: new Headers(init.headers) }, current)
+    await observeForbiddenResponse(retried, retryURL, current)
+    return retried
+  }
   return response
 }
 

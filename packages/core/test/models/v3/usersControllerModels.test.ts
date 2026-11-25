@@ -1219,6 +1219,31 @@ describe('usersControllerModels', () => {
       })
     })
 
+    it('limits GMod bans and cross-platform flags to the authorized community servers', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ getID: () => 's1' }, { getID: () => 's2' }])
+      prismaMock.gm_server_ban.findMany.mockResolvedValueOnce([])
+      getUserFromDiscordIDMock.mockResolvedValueOnce({ getSteamID64: () => '765' })
+
+      const result = await processGetGuildBans(
+        makeGuild({ getDiscordBans: vi.fn().mockResolvedValue([{ id: 'd1' }]) }),
+        ['s1', 'outside-community'],
+      )
+
+      expect(prismaMock.gm_server_ban.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { serverID: { in: ['s1'] } } }),
+      )
+      expect(result.body.discordBans).toEqual([{ id: 'd1', linkedSteamID64: '765', gmodAlsoBanned: false }])
+    })
+
+    it('does not query any GMod bans when the caller has lost all server scopes', async () => {
+      getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ getID: () => 's1' }])
+
+      const result = await processGetGuildBans(makeGuild(), [])
+
+      expect(prismaMock.gm_server_ban.findMany).not.toHaveBeenCalled()
+      expect(result.body.gmodBans).toEqual([])
+    })
+
     it('flags a GMod ban as also-banned-on-Discord when the linked account is in the Discord ban list', async () => {
       getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ getID: () => 's1' }])
       prismaMock.gm_server_ban.findMany.mockResolvedValueOnce([{ userSteamID64: '765', reason: 'cheating' }])

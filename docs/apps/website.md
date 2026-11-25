@@ -38,6 +38,21 @@ scoped to the site shell. Public page layouts in `src/styles/site.css` reuse the
 Community and server selectors display searchable identity cards and handle loading, empty results and
 request failures. All UI icons use the shared Lucide SVG registry; icon fonts are no longer loaded.
 
+A confirmed dashboard authorization refusal opens `DashboardAccessHelpModal` once while keeping the
+editor mounted, hidden and inert. Its safe API reason explains the missing Discord permission, Steam
+link or game administrator group. The translated procedure links to Account, identifies who can grant
+each permission, and explains joining then leaving the game once to synchronize a changed group.
+The owner and active linked GmodStore buyer exceptions remain explicit. Rechecking is read-only and
+preserves the draft; a successful check closes the dialog and restores the same editor. The user can
+dismiss and reopen help without repeated background prompts. `authenticatedFetch` forwards policy
+refusals from writes as well as reads only to the matching community/server and session. Provider,
+reauthorization and commercial failures do not trigger this permission procedure.
+
+Community discovery opens general access guidance after a successful empty result and always offers
+a help button. Filtering an existing list to zero results or failing to load communities does not open
+that dialog. A successful recheck closes it when an accessible community appears. The guidance neither
+assigns permissions nor displays inaccessible communities or private administrator configuration.
+
 The public header has collapsible mobile navigation and mutually exclusive navigation, language and
 account menus. The home, premium and ranking pages share heading, card and action patterns. Account
 settings reuse dashboard panels and tables; notifications use a responsive list with pending/error
@@ -67,6 +82,45 @@ The homepage uses the Console hero and Ribbon statistics without visitor-facing 
 The integration preview tabs remain interactive. Statistics show non-negative safe integer totals in
 the selected locale; invalid or missing totals stay unknown. The ribbon becomes label/value rows on
 narrow screens so translated labels and large numbers remain readable.
+
+## Rewards
+
+The server Rewards page manages Premium reward rules, integration reports, dry-run eligibility,
+confirmed manual attribution and paginated per-action history. Entity editors retain complete drafts
+and optimistic revisions; access suspension still permits disabling/deleting saved rules. See the
+[Rewards contracts](../features/rewards.md) for delivery and lifecycle details.
+
+## Live server console
+
+`/dashboard/guilds/:guildID/config/servers/:serverID/console` opens a live console for the selected
+server. It requires the existing `console.rcon` capability and server administration rights. The page
+subscribes over the shared dashboard WebSocket, renews every 10 seconds while mounted and
+unsubscribes on navigation, pagehide, scope change, socket replacement or access loss. Restoring the
+page or reconnecting starts a fresh subscription. Other dashboard pages are not console subscribers.
+
+`ServerConsole.tsx` renders incoming chunks as text, preserves their line breaks, keeps at most
+2,000 lines / 128 Ki characters, and supports follow/clear. It ignores other servers and malformed
+packets and shows explicit pending/offline/denied/unavailable states. A gateway acknowledgement
+confirms subscription only; a compatible updated addon is required to produce console messages.
+The capture covers Lua `print`, `Msg`, `MsgN` and `MsgC` rather than native engine/binary output.
+There is no persisted console history. See the [gateway lifecycle](./websocket.md#temporary-server-console-viewers)
+for last-viewer shutdown and the 30-second fallback after abnormal network loss.
+
+The command form captures a server, account session, request UUID and validated single-line command
+before confirmation. Only an explicit confirmation posts to
+`/v6/guilds/:guildID/servers/:serverID/console/commands`; page loading and reconnection never execute a
+command. Dashboard access requires Discord administrator permission and an enabled in-game rank on
+the target server, except for the Discord owner or the buyer of an active purchase linked to that
+community. The API checks the linked Steam account's recorded rank without requiring an online player.
+Authorized support sessions use their authenticated operator as the
+actor while retaining the subject account's server permissions. The API derives that identity,
+enforces fresh community permissions and `console.rcon`, and reserves the request across replicas
+for ten minutes, bound to the actor, subject, server and command digest. Confirmed outcomes are accepted, rejected or
+uncertain; only a matching addon acknowledgement confirms console submission, without promising
+command effects or captured native output. A timeout is never automatically replayed. Failed or
+uncertain actions preserve the draft; successful submission clears it only if it still matches the
+submitted draft. No command history is persisted in the browser and command bodies are redacted from
+API request logs.
 
 ## Internal administration
 
@@ -135,7 +189,10 @@ statistics. The stored trust score remains available to internal account/API log
 on the player profile. The owner
 can see all their recorded servers; other users see only public servers. Summary totals and activity
 dates use that same visibility filter, and another player's displayed name comes from a visible server.
-Profiles show copyable Steam/Discord identifiers and external profile links. Share uses the native
+Profiles show Steam and linked Discord avatars with copyable platform identifiers. External profile
+links and sharing actions sit to the right on desktop and below the identity on smaller screens.
+Avatars load as optional decoration after visibility and erasure checks; provider failures keep the
+recorded statistics available. Share uses the native
 browser share sheet when available, with a clipboard fallback; a separate copy action always provides
 the stable explicit Steam profile URL. Report player opens Discord support, with guidance to include
 that URL. It does not create a report record or issue a sanction.

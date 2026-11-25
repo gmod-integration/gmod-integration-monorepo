@@ -158,7 +158,7 @@ const GuildAutoRole: Component = () => {
           )}
         </p>
         <div class="min-w-0 w-full overflow-x-auto">
-          <table class="table border-b border-base-300 rounded-none">
+          <table class="table rounded-none">
             <thead>
               <tr class="text-l">
                 <th>{t('dashboard.guild.auto_role.role_name', 'Role')}</th>

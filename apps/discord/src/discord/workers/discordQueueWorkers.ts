@@ -4,6 +4,7 @@ import { hasCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { ensureAvatarStored, s3 } from '@gmod/infra-minio'
 import { GetObjectCommand } from '@aws-sdk/client-s3'
 import {
+  DiscordRewardRoleJobSchema,
   DiscordGuildPublicInviteJobSchema,
   type DiscordGuildPublicInviteJob,
   type UpdateGuildUserPseudoJob,
@@ -95,6 +96,7 @@ import { prepareCustomBotAvatar } from '../utils/customBotAvatar.js'
 import { getGuildMemberRole } from '../utils/memberRole.js'
 import { sendLuaError, validateLuaErrorsChannel } from '../utils/luaErrors.js'
 import { sendBugReport } from '../utils/bugReports.js'
+import { deliverRewardRole } from '../utils/rewardRole.js'
 
 async function writeReply(correlationId: string, payload: unknown) {
   await redis.set(`bullmq:reply:${correlationId}`, JSON.stringify(payload), 'EX', 30)
@@ -707,6 +709,17 @@ export const discordGuildOpsWorker = new Worker<
       const payload = DiscordGuildMemberRoleJobSchema.parse(job.data)
       const result = await getGuildMemberRole(payload.guildID, payload.discordID, payload.roleID)
       await writeReply(payload.correlationId, { correlationId: payload.correlationId, ...result })
+      return
+    }
+
+    if (job.name === 'rewardRole') {
+      const payload = DiscordRewardRoleJobSchema.parse(job.data)
+      const { correlationId, timestamp, ...input } = payload
+      const result =
+        Date.now() - timestamp.getTime() > 60_000
+          ? { status: 'uncertain' as const, reason: 'queue_expired' }
+          : await deliverRewardRole(input)
+      await writeReply(correlationId, { correlationId, ...result })
       return
     }
 

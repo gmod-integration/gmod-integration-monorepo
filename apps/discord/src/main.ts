@@ -9,12 +9,15 @@ import { gracefulShutdownDiscord, getGuildClient, loadDiscordMain, loadDiscordSl
 import { initializeDiscordQueueWorkers } from './discord/workers/discordQueueWorkers.js'
 import { setDiscordGuildClientResolver, setDiscordStatusMessageBuilder } from '@gmod/domain-server/discordBridge.js'
 import { getStatusMessage } from './discord/utils/messages.js'
+import { startRewardsWorker } from './rewardsWorker.js'
 
 let inShutdown = false
+let stopRewardsWorker: (() => void) | undefined
 
 export async function gracefulShutdown() {
   if (inShutdown) return
   inShutdown = true
+  stopRewardsWorker?.()
   gmLog('shutdown', 'Gracefully shutting down discord app...')
   await gracefulShutdownDiscord()
   await gracefulShutdownRedis()
@@ -37,6 +40,8 @@ export async function main() {
   await loadDiscordMain()
   await workersStarted
   await loadDiscordSlave()
+  stopRewardsWorker?.()
+  stopRewardsWorker = startRewardsWorker()
 
   process.on('unhandledRejection', (error: Error) => {
     gmLog('unhandledRejection', error.message, true)

@@ -16,6 +16,7 @@ import {
 } from '../../src/utils/authClient.js'
 import { isLogged } from '../../src/utils/event.js'
 import { sessionFixture } from '../authFixture.js'
+import { DASHBOARD_ACCESS_DENIED_EVENT } from '../../src/utils/accessEvents.js'
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status })
 beforeEach(() => {
@@ -438,6 +439,138 @@ describe('authoritative browser session client', () => {
       expect(safeAuthRedirect(value)).toBe('/dashboard/guilds')
     },
   )
+})
+
+describe('scoped dashboard permission refusals', () => {
+  const received = vi.fn()
+  beforeEach(() => {
+    received.mockReset()
+    window.addEventListener(DASHBOARD_ACCESS_DENIED_EVENT, received)
+    acceptAuthSession(sessionFixture())
+  })
+  afterEach(() => window.removeEventListener(DASHBOARD_ACCESS_DENIED_EVENT, received))
+
+  it.each([
+    {
+      url: 'http://localhost:5001/v6/guilds/g1/servers/s1/settings',
+      body: {
+        error: { code: 'dashboard_access_denied', reason: 'steam_link_required', message: '<script>private</script>' },
+      },
+    },
+    {
+      url: 'http://localhost:5001/v3/users/u1/guilds/g1/servers/s1/settings/ig_debug',
+      body: { error: 'dashboard_access_denied', reason: 'steam_link_required', message: '<script>private</script>' },
+    },
+  ])('notifies for a denied mutation without replaying it or consuming its response: $url', async ({ url, body }) => {
+    const response = json(body, 403)
+    const network = vi.fn().mockResolvedValue(response)
+    vi.stubGlobal('fetch', network)
+    const result = await authenticatedFetch(url, { method: 'PUT', body: '{"settings":{"ig_debug":true}}' })
+    expect(network).toHaveBeenCalledOnce()
+    expect(new Headers(network.mock.calls[0][1].headers).get('X-CSRF-Token')).toBe('csrf-token')
+    expect(result).toBe(response)
+    expect(result.bodyUsed).toBe(false)
+    expect(await result.json()).toEqual(body)
+    expect(received).toHaveBeenCalledOnce()
+    expect((received.mock.calls[0][0] as CustomEvent).detail).toEqual({
+      guildID: 'g1',
+      serverID: 's1',
+      reason: 'steam_link_required',
+      sessionID: 'session-current-123',
+    })
+    expect(authStatus()).toBe('authenticated')
+    expect(authSession()?.session.id).toBe('session-current-123')
+  })
+
+  it.each([
+    { error: { code: 'premium_required', reason: 'game_admin_required' } },
+    { error: { code: 'provider_unavailable', reason: 'game_admin_required' } },
+    { error: { code: 'forbidden' } },
+    { error: { code: 'dashboard_access_denied', reason: 'unknown' } },
+  ])('does not display the missing-access procedure for another refusal: %j', async (body) => {
+    const network = vi.fn().mockResolvedValue(json(body, 403))
+    vi.stubGlobal('fetch', network)
+    expect((await authenticatedFetch('/v6/guilds/g1/servers/s1/settings', { method: 'PUT', body: '{}' })).status).toBe(
+      403,
+    )
+    expect(received).not.toHaveBeenCalled()
+    expect(network).toHaveBeenCalledOnce()
+  })
+
+  it('does not emit a stale denial after the response clone finishes parsing for another session', async () => {
+    let finish!: (body: unknown) => void
+    let started!: () => void
+    const parsing = new Promise<unknown>((resolve) => {
+      finish = resolve
+    })
+    const parsingStarted = new Promise<void>((resolve) => {
+      started = resolve
+    })
+    const body = { error: { code: 'dashboard_access_denied', reason: 'game_admin_required' } }
+    const response = json(body, 403)
+    vi.spyOn(response, 'clone').mockReturnValue({
+      json: () => {
+        started()
+        return parsing
+      },
+    } as Response)
+    const network = vi.fn().mockResolvedValue(response)
+    vi.stubGlobal('fetch', network)
+    const pending = authenticatedFetch('/v6/guilds/g1/servers/s1/settings', { method: 'PUT', body: '{}' })
+    await parsingStarted
+    acceptAuthSession(sessionFixture({ session: { ...sessionFixture().session, id: 'replacement-session' } }))
+    finish(body)
+    expect((await pending).status).toBe(403)
+    expect(received).not.toHaveBeenCalled()
+    expect(network).toHaveBeenCalledOnce()
+    expect(authSession()?.session.id).toBe('replacement-session')
+  })
+
+  it('keeps the original URL factory scope when navigation changes during denial parsing', async () => {
+    let current = '/v6/guilds/original-guild/servers/original-server/settings'
+    const url = vi.fn(() => current)
+    const body = { error: { code: 'dashboard_access_denied', reason: 'game_admin_required' } }
+    const response = json(body, 403)
+    vi.spyOn(response, 'clone').mockReturnValue({
+      json: async () => {
+        current = '/v6/guilds/next-guild/servers/next-server/settings'
+        return body
+      },
+    } as Response)
+    const network = vi.fn().mockResolvedValue(response)
+    vi.stubGlobal('fetch', network)
+    const result = await authenticatedFetch(url, { method: 'PUT', body: '{}' })
+    expect(result.status).toBe(403)
+    expect(url).toHaveBeenCalledOnce()
+    expect(network.mock.calls[0][0]).toBe('/v6/guilds/original-guild/servers/original-server/settings')
+    expect((received.mock.calls[0][0] as CustomEvent).detail).toMatchObject({
+      guildID: 'original-guild',
+      serverID: 'original-server',
+      sessionID: 'session-current-123',
+    })
+    expect(await result.json()).toEqual(body)
+  })
+
+  it('notifies when the one safe GET retry receives a missing-access denial after session recovery', async () => {
+    const url = 'http://localhost:5001/v6/guilds/g1/servers/s1/access'
+    const body = { error: { code: 'dashboard_access_denied', reason: 'game_admin_required' } }
+    const network = vi
+      .fn()
+      .mockResolvedValueOnce(json({}, 401))
+      .mockResolvedValueOnce(json(sessionFixture()))
+      .mockResolvedValueOnce(json(body, 403))
+    vi.stubGlobal('fetch', network)
+    const response = await authenticatedFetch(url)
+    expect(response.status).toBe(403)
+    expect(network.mock.calls.map(([input]) => input)).toEqual([url, 'http://localhost:5001/v6/auth/session', url])
+    expect(received).toHaveBeenCalledOnce()
+    expect((received.mock.calls[0][0] as CustomEvent).detail).toMatchObject({
+      guildID: 'g1',
+      serverID: 's1',
+      reason: 'game_admin_required',
+    })
+    expect(await response.json()).toEqual(body)
+  })
 })
 
 describe('pending logout isolation', () => {

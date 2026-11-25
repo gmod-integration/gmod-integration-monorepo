@@ -5,6 +5,17 @@
 .env
 .env.local
 .env.*
+**/.env
+**/.env.*
+# Terraform state and variable files contain credentials; never send them to the builder.
+infra
+**/.terraform
+**/*.tfstate*
+**/*.tfvars*
+**/*.tfplan
+.aws
+.agents
+.codex
 node_modules
 dist
 logs

@@ -1,4 +1,4 @@
-import { createResource, createSignal, For, Show, type JSX } from 'solid-js'
+import { createResource, createSignal, For, onCleanup, onMount, Show, type JSX } from 'solid-js'
 import {
   AdminConnectionsSchema,
   AdminErrorsSchema,
@@ -9,7 +9,7 @@ import {
 } from '@gmod/schema/admin/AdminMonitoringSchema.js'
 import AdminPanel from '../../../components/AdminPanel.js'
 import Pagination from '../../../components/Pagination.js'
-import { Button, ButtonLink, FormField, StatusBadge, TableState } from '../../../components/ui/index.js'
+import { Button, ButtonLink, DateTime, FormField, StatusBadge, TableState } from '../../../components/ui/index.js'
 import { useI18n } from '../../../i18n.js'
 import { QuerySort, type ClientQuery } from '../../../utils/types/QueryTypes.js'
 import { adminGet, type AdminListQuery } from './adminApi.js'
@@ -53,7 +53,34 @@ export default function AdminMonitoring() {
   const [errorSearch, setErrorSearch] = createSignal('')
   const [bugSearch, setBugSearch] = createSignal('')
   const number = (value: number) => value.toLocaleString(locale())
-  const date = (value: string) => new Date(value).toLocaleString(locale())
+  const traffic = (value: number | null) => (value === null ? t('ui.unknown', 'Unknown') : number(value))
+  onMount(() => {
+    let refreshTimer: ReturnType<typeof setInterval> | undefined
+    const refresh = () => {
+      if (document.visibilityState === 'visible' && !connections.resource.loading) void connections.refetch()
+    }
+    const watchVisibility = () => {
+      if (refreshTimer !== undefined) clearInterval(refreshTimer)
+      refreshTimer = undefined
+      if (document.visibilityState === 'visible') {
+        refreshTimer = setInterval(refresh, 15_000)
+        refresh()
+      }
+    }
+    // The resource already owns the initial load; visibility changes resume only this list.
+    if (document.visibilityState === 'visible') refreshTimer = setInterval(refresh, 15_000)
+    document.addEventListener('visibilitychange', watchVisibility)
+    onCleanup(() => {
+      if (refreshTimer !== undefined) clearInterval(refreshTimer)
+      document.removeEventListener('visibilitychange', watchVisibility)
+    })
+  })
+  const pageTraffic = () => {
+    const page = connections.data()
+    if (!page || page.telemetry !== 'ready' || page.items.some((server) => server.requestsPerMinute === null))
+      return null
+    return page.items.reduce((total, server) => total + server.requestsPerMinute!, 0)
+  }
   const toolbar = (
     id: string,
     list: typeof connections | typeof errors | typeof bugs,
@@ -65,6 +92,7 @@ export default function AdminMonitoring() {
       class="flex min-w-0 flex-wrap items-end gap-3 p-4"
       onSubmit={(event) => {
         event.preventDefault()
+        if (list === connections && list.resource.loading) return
         list.change({ search: search() })
       }}
     >
@@ -117,12 +145,14 @@ export default function AdminMonitoring() {
     </>
   )
   const footer = (list: typeof connections | typeof errors | typeof bugs) => (
-    <Show when={!list.resource.loading && list.data()}>
+    <Show when={(!list.resource.loading || list === connections) && list.data()}>
       {(page) => (
         <Pagination
           query={{ ...list.query(), offset: page().query.offset }}
           total={page().total}
-          onChange={list.paginate}
+          onChange={(query) => {
+            if (!list.resource.loading) list.paginate(query)
+          }}
           standalone
         />
       )}
@@ -171,7 +201,7 @@ export default function AdminMonitoring() {
                     <td class="tabular-nums">{number((incident as AdminErrors['items'][number]).occurrences)}</td>
                   </Show>
                   <td>
-                    <time dateTime={incident.lastSeenAt}>{date(incident.lastSeenAt)}</time>
+                    <DateTime value={incident.lastSeenAt} />
                   </td>
                 </tr>
               )}
@@ -184,16 +214,56 @@ export default function AdminMonitoring() {
   return (
     <>
       <AdminPanel
-        title={t('admin_monitoring.connections', 'WebSocket connections')}
+        title={t('admin_monitoring.connections', 'Server connections')}
         description={t(
           'admin_monitoring.connections_note',
-          'Connections confirmed by the gateway for each registered server. A disconnected server may remain visible for up to 90 seconds. Missing confirmation is shown separately from unavailable monitoring.',
+          'WebSocket presence and authenticated requests received over the last 60 seconds. HTTP activity does not confirm a WebSocket connection. Presence may take up to 90 seconds to expire. Refreshes every 15 seconds while this page is visible.',
         )}
         icon="server"
         type="none"
         footer={footer(connections)}
       >
         {toolbar('admin-connections', connections, connectionSearch, setConnectionSearch)}
+        <Show when={connections.data()}>
+          {(page) => (
+            <div class="px-4 pb-4">
+              <p class="mb-2 text-xs font-medium text-base-content/65">
+                {t('admin_monitoring.current_page', 'Current page')}
+              </p>
+              <dl class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div>
+                  <dt class="text-xs text-base-content/65">{t('admin_monitoring.servers_shown', 'Servers shown')}</dt>
+                  <dd class="font-semibold tabular-nums">{number(page().items.length)}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-base-content/65">
+                    {t('admin_monitoring.connected_servers', 'Servers with a confirmed WebSocket')}
+                  </dt>
+                  <dd class="font-semibold tabular-nums">
+                    {page().presence === 'unavailable' || page().items.some((server) => server.activeSockets === null)
+                      ? t('ui.unknown', 'Unknown')
+                      : number(
+                          page().items.filter((server) => server.activeSockets !== null && server.activeSockets > 0)
+                            .length,
+                        )}
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-base-content/65">
+                    {t('admin_monitoring.requests_per_minute', 'Requests / min')}
+                  </dt>
+                  <dd class="font-semibold tabular-nums">{traffic(pageTraffic())}</dd>
+                </div>
+              </dl>
+              <Show when={page().trafficObservedAt}>
+                <p class="mt-3 text-xs text-base-content/65">
+                  {t('admin_monitoring.measured_at', 'Traffic measured at')}{' '}
+                  <DateTime value={page().trafficObservedAt} />
+                </p>
+              </Show>
+            </div>
+          )}
+        </Show>
         <Show when={connections.data()?.presence === 'unavailable'}>
           <p role="status" class="px-4 pb-4 text-warning">
             {t(
@@ -202,20 +272,31 @@ export default function AdminMonitoring() {
             )}
           </p>
         </Show>
+        <Show when={connections.data()?.telemetry === 'unavailable'}>
+          <p role="status" class="px-4 pb-4 text-warning">
+            {t(
+              'admin_monitoring.telemetry_unavailable',
+              'Request monitoring is unavailable. Traffic and activity are unknown.',
+            )}
+          </p>
+        </Show>
         <div class="min-w-0 overflow-x-auto">
           <table class="table admin-monitoring-table">
             <thead>
               <tr>
                 <th>{t('admin_v6.server_name', 'Server name')}</th>
-                <th>{t('admin_monitoring.connection', 'Connection')}</th>
-                <th>{t('admin_monitoring.sockets', 'Sockets')}</th>
+                <th>{t('admin_monitoring.websocket_presence', 'WebSocket presence')}</th>
+                <th>{t('admin_monitoring.addon_version', 'Addon version')}</th>
+                <th>{t('admin_monitoring.protocol', 'Observed protocol')}</th>
+                <th>{t('admin_monitoring.requests_per_minute', 'Requests / min')}</th>
+                <th>{t('admin_monitoring.last_activity', 'Last received activity')}</th>
                 <th>{t('admin_monitoring.actions', 'Inspect')}</th>
               </tr>
             </thead>
             <tbody>
               <TableState
-                colSpan={4}
-                loading={connections.resource.loading}
+                colSpan={7}
+                loading={connections.resource.loading && !connections.data()}
                 error={connections.resource.error}
                 empty={connections.data()?.items.length === 0}
                 onRetry={() => void connections.refetch()}
@@ -226,6 +307,7 @@ export default function AdminMonitoring() {
                       <td>
                         <strong class="[overflow-wrap:anywhere]">{server.name}</strong>
                         <p class="text-xs text-base-content/65">{server.guildName}</p>
+                        <p class="mt-1 font-mono text-xs text-base-content/65 [overflow-wrap:anywhere]">{server.id}</p>
                       </td>
                       <td>
                         <StatusBadge
@@ -237,10 +319,50 @@ export default function AdminMonitoring() {
                             ? t('ui.unknown', 'Unknown')
                             : server.activeSockets > 0
                               ? t('admin_monitoring.connected', 'Connected')
-                              : t('admin_monitoring.no_connection', 'No confirmed connection')}
+                              : t('admin_monitoring.no_connection', 'No confirmed WebSocket')}
+                        </StatusBadge>
+                        <p class="mt-1 text-xs text-base-content/65">
+                          {t('admin_monitoring.sockets', 'Sockets')}: {traffic(server.activeSockets)}
+                        </p>
+                      </td>
+                      <td class="font-mono">{server.addonVersion || t('ui.unknown', 'Unknown')}</td>
+                      <td>
+                        <StatusBadge tone={server.protocol === 'acknowledged' ? 'info' : 'neutral'}>
+                          {server.protocol === 'acknowledged'
+                            ? t('admin_monitoring.protocol_acknowledged', 'Acknowledged WebSocket')
+                            : server.protocol === 'legacy'
+                              ? t('admin_monitoring.protocol_legacy', 'HTTP / legacy WebSocket')
+                              : t('ui.unknown', 'Unknown')}
                         </StatusBadge>
                       </td>
-                      <td>{server.activeSockets === null ? '—' : number(server.activeSockets)}</td>
+                      <td class="tabular-nums">
+                        <strong>{traffic(server.requestsPerMinute)}</strong>
+                        <p class="mt-1 whitespace-nowrap text-xs text-base-content/65">
+                          {t(
+                            'admin_monitoring.request_breakdown',
+                            'HTTP: {1} · WS: {2}',
+                            traffic(server.httpRequestsPerMinute),
+                            traffic(server.websocketRequestsPerMinute),
+                          )}
+                        </p>
+                        <Show when={server.requestsPerMinute === 0}>
+                          <p class="mt-1 text-xs text-base-content/65">
+                            {t('admin_monitoring.no_recent_requests', 'No requests in the last 60 seconds')}
+                          </p>
+                        </Show>
+                      </td>
+                      <td>
+                        <Show
+                          when={server.lastSeenAt}
+                          fallback={
+                            connections.data()?.telemetry === 'unavailable'
+                              ? t('ui.unknown', 'Unknown')
+                              : t('admin_monitoring.no_activity', 'No recorded activity')
+                          }
+                        >
+                          <DateTime value={server.lastSeenAt} />
+                        </Show>
+                      </td>
                       <td>
                         <ButtonLink
                           size="sm"

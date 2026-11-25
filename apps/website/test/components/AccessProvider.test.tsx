@@ -12,7 +12,7 @@ import { FeatureGate } from '../../src/components/FeatureGate.js'
 import { PremiumBadge } from '../../src/utils/premium.js'
 import { I18nProvider } from '../../src/i18n.js'
 import { historyAt, renderWithProviders } from '../testUtils.js'
-import { ACCESS_REFRESH_EVENT, refreshAccess } from '../../src/utils/accessEvents.js'
+import { ACCESS_REFRESH_EVENT, notifyDashboardAccessDenied, refreshAccess } from '../../src/utils/accessEvents.js'
 import { acceptAuthSession, resetAuthentication } from '../../src/utils/authClient.js'
 import { sessionFixture } from '../authFixture.js'
 
@@ -45,6 +45,8 @@ function Harness() {
   return (
     <>
       <output aria-label="Verified community">{access.snapshot()?.guildID}</output>
+      <output aria-label="Permission denied">{String(access.permissionDenied())}</output>
+      <output aria-label="Denial reason">{access.denialReason()}</output>
       <input aria-label="Draft" value={draft()} onInput={(event) => setDraft(event.currentTarget.value)} />
       <FeatureGate capability="sync.roles.rules" used={4}>
         <button disabled={!access.canCreate(4)}>Add rule</button>
@@ -260,6 +262,7 @@ describe('authoritative reactive access', () => {
           <output aria-label="Snapshot">{access.snapshot()?.guildID || 'No verified community'}</output>
           <output aria-label="Loading">{String(access.loading())}</output>
           <output aria-label="Error">{String(access.error())}</output>
+          <output aria-label="Permission denied">{String(access.permissionDenied())}</output>
           <output aria-label="Ready">{String(access.ready())}</output>
           <button onClick={access.refresh}>Refresh missing access</button>
         </>
@@ -271,6 +274,7 @@ describe('authoritative reactive access', () => {
     expect(screen.getByLabelText('Snapshot')).toHaveTextContent('No verified community')
     expect(screen.getByLabelText('Loading')).toHaveTextContent('false')
     expect(screen.getByLabelText('Error')).toHaveTextContent('true')
+    expect(screen.getByLabelText('Permission denied')).toHaveTextContent('false')
     expect(screen.getByLabelText('Ready')).toHaveTextContent('false')
     await fireEvent.click(screen.getByRole('button', { name: 'Refresh missing access' }))
     expect(network).not.toHaveBeenCalled()
@@ -377,6 +381,100 @@ describe('authoritative reactive access', () => {
     await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('You do not have permission'))
     expect(screen.queryByRole('link', { name: 'View Premium plans' })).not.toBeInTheDocument()
   })
+
+  it('keeps a safe API denial reason until access is positively restored', async () => {
+    const network = vi
+      .fn()
+      .mockResolvedValueOnce(
+        response({ error: { code: 'dashboard_access_denied', reason: 'steam_link_required' } }, 403),
+      )
+      .mockResolvedValueOnce(response({}, 503))
+      .mockResolvedValueOnce(response(snapshot({ serverID: 's1' })))
+    vi.stubGlobal('fetch', network)
+    renderRemote()
+    await vi.waitFor(() => expect(screen.getByLabelText('Denial reason')).toHaveTextContent('steam_link_required'))
+    refreshAccess()
+    await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(2))
+    expect(screen.getByLabelText('Denial reason')).toHaveTextContent('steam_link_required')
+    refreshAccess()
+    await vi.waitFor(() => expect(screen.getByLabelText('Permission denied')).toHaveTextContent('false'))
+    expect(screen.getByLabelText('Denial reason')).toBeEmptyDOMElement()
+  })
+
+  it('applies a denied action only to the current session and community/server scope', async () => {
+    const session = sessionFixture()
+    acceptAuthSession(session)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(snapshot({ serverID: 's1' }))))
+    renderRemote()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Fourth free rule' })).toBeEnabled())
+    const body = { error: { code: 'dashboard_access_denied', reason: 'game_admin_required' } }
+    notifyDashboardAccessDenied('/v6/guilds/g2/servers/s1/settings', body, session.session.id)
+    notifyDashboardAccessDenied('/v6/guilds/g1/servers/s2/settings', body, session.session.id)
+    notifyDashboardAccessDenied('/v6/guilds/g1/servers/s1/settings', body, 'old-session')
+    expect(screen.getByLabelText('Permission denied')).toHaveTextContent('false')
+    notifyDashboardAccessDenied('/v6/guilds/g1/servers/s1/settings', body, session.session.id)
+    expect(screen.getByLabelText('Permission denied')).toHaveTextContent('true')
+    expect(screen.getByLabelText('Denial reason')).toHaveTextContent('game_admin_required')
+    expect(screen.getByRole('button', { name: 'Fourth free rule' })).toBeDisabled()
+  })
+
+  it('does not label Discord reauthorization or a paid feature refusal as missing administrator rights', async () => {
+    for (const code of ['discord_reauth_required', 'upgrade_required']) {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ error: { code } }, 403)))
+      renderRemote()
+      await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('Access could not be verified'))
+      expect(screen.getByLabelText('Permission denied')).toHaveTextContent('false')
+      expect(screen.getByLabelText('Denial reason')).toBeEmptyDOMElement()
+      cleanup()
+    }
+  })
+
+  it('retains a confirmed denial through pending and failed retries until the scope is positively authorized', async () => {
+    const retry = deferredResponse()
+    const network = vi
+      .fn()
+      .mockResolvedValueOnce(response(snapshot({ serverID: 's1' })))
+      .mockResolvedValueOnce(response({}, 403))
+      .mockReturnValueOnce(retry.promise)
+      .mockResolvedValueOnce(response(snapshot({ serverID: 's1', premium: true })))
+    vi.stubGlobal('fetch', network)
+    renderRemote()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Fourth free rule' })).toBeEnabled())
+    await fireEvent.input(screen.getByLabelText('Draft'), { target: { value: 'Retain this edit' } })
+    refreshAccess()
+    await vi.waitFor(() => expect(screen.getByLabelText('Permission denied')).toHaveTextContent('true'))
+    refreshAccess()
+    expect(network).toHaveBeenCalledTimes(3)
+    expect(screen.getByLabelText('Permission denied')).toHaveTextContent('true')
+    retry.resolve(response({}, 503))
+    await vi.waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('You do not have permission'))
+    expect(screen.getByLabelText('Permission denied')).toHaveTextContent('true')
+    refreshAccess()
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Reverse direction' })).toBeEnabled())
+    expect(screen.getByLabelText('Permission denied')).toHaveTextContent('false')
+    expect(screen.getByLabelText('Draft')).toHaveValue('Retain this edit')
+  })
+
+  it.each(['scope', 'session'])(
+    'clears an old denial when the %s changes without trusting a pending response',
+    async (change) => {
+      acceptAuthSession(sessionFixture())
+      const fresh = deferredResponse()
+      const network = vi.fn().mockResolvedValueOnce(response({}, 403)).mockReturnValueOnce(fresh.promise)
+      vi.stubGlobal('fetch', network)
+      const view = renderRemote()
+      await vi.waitFor(() => expect(screen.getByLabelText('Permission denied')).toHaveTextContent('true'))
+      if (change === 'scope') view.history.set({ value: '/dashboard/guilds/g2/config/servers/s2/roles' })
+      else acceptAuthSession(sessionFixture({ session: { ...sessionFixture().session, id: 'fresh-session' } }))
+      await vi.waitFor(() => expect(network).toHaveBeenCalledTimes(2))
+      expect(screen.getByLabelText('Permission denied')).toHaveTextContent('false')
+      fresh.resolve(
+        response(snapshot({ guildID: change === 'scope' ? 'g2' : 'g1', serverID: change === 'scope' ? 's2' : 's1' })),
+      )
+      await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Fourth free rule' })).toBeEnabled())
+      expect(screen.getByLabelText('Permission denied')).toHaveTextContent('false')
+    },
+  )
 
   it('reloads for a different community and rejects a response for the previous scope', async () => {
     const network = vi.fn().mockImplementation(async () => response(snapshot({ premium: true, serverID: 's1' })))

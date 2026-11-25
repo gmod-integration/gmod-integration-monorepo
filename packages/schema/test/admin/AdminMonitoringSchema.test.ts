@@ -4,6 +4,7 @@ import {
   AdminErrorsQuerySchema,
   AdminBugsQuerySchema,
   AdminConnectionsSchema,
+  AdminConnectionRowSchema,
   AdminErrorsSchema,
   AdminBugsSchema,
 } from '../../src/admin/AdminMonitoringSchema.js'
@@ -81,5 +82,35 @@ describe('administration monitoring contracts', () => {
     expect(AdminBugsSchema.safeParse(bugs).success).toBe(true)
     expect(AdminBugsSchema.safeParse({ ...bugs, items: [{ ...incident, reports: -1 }] }).success).toBe(false)
     expect(AdminBugsSchema.safeParse({ ...bugs, items: [{ ...incident, steamID64: 'private' }] }).success).toBe(false)
+  })
+
+  it('keeps unreported addon metadata unknown and validates measured rates and wire protocols', () => {
+    const row = { id: 's1', name: 'Server', guildID: 'g1', guildName: 'Guild', activeSockets: 1, leaseExpiresAt: time }
+    expect(AdminConnectionRowSchema.parse(row)).toMatchObject({
+      addonVersion: null,
+      protocol: null,
+      requestsPerMinute: null,
+      lastSeenAt: null,
+    })
+    expect(
+      AdminConnectionRowSchema.safeParse({
+        ...row,
+        addonVersion: 'v5.2.8',
+        protocol: 'legacy',
+        requestsPerMinute: 10,
+        httpRequestsPerMinute: 10,
+        websocketRequestsPerMinute: 0,
+        lastSeenAt: time,
+      }).success,
+    ).toBe(true)
+    for (const metadata of [
+      { addonVersion: 'private token' },
+      { requestsPerMinute: -1 },
+      { websocketRequestsPerMinute: 1.5 },
+      { protocol: 'probably-modern' },
+      { lastSeenAt: 'invalid' },
+      { token: 'secret' },
+    ])
+      expect(AdminConnectionRowSchema.safeParse({ ...row, ...metadata }).success).toBe(false)
   })
 })

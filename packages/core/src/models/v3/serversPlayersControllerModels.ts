@@ -9,6 +9,7 @@ import {
 import prisma from '@gmod/infra-prisma'
 import { type Server } from '@gmod/domain-server/Server.js'
 import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
+import { notifyPlayerRewards } from '../v6/rewardsEvents.js'
 
 type EndpointResult = {
   status: number
@@ -192,6 +193,7 @@ export async function processPlayerConnect(
   await saveConnectionGlobalInfo(steamID64, networkid, ip, name)
   await saveConnectionSteamInfo(steamID64, name, ip)
   await server.saveUserConnectionInfo(steamID64, name)
+  void notifyPlayerRewards(server.getID(), steamID64)
   return ok()
 }
 
@@ -216,6 +218,7 @@ export async function processPlayerDisconnect(server: Server, body: any): Promis
   await ply.saveServerStatSession(server.getID())
   await ply.saveTeamTime(server.getID())
   if (await isErasureBlocked(undefined, ply.steamID64)) return ok()
+  void notifyPlayerRewards(server.getID(), ply.steamID64)
   await enqueueUpdatePlayerUserGroup({
     serverID: server.getID(),
     steamID64: ply.steamID64,

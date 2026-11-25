@@ -78,6 +78,62 @@ export function createAsyncApiDocument(wsUrl: string, apiUrl: string) {
         additionalProperties: true,
       },
     }),
+    ConsoleSubscribe: {
+      ...envelope('action', 'console_subscribe', {
+        data: {
+          type: 'object',
+          required: ['serverID'],
+          properties: { serverID: identifier },
+          additionalProperties: false,
+        },
+      }),
+      additionalProperties: false,
+    },
+    ConsoleUnsubscribe: {
+      ...envelope('action', 'console_unsubscribe', {
+        data: {
+          type: 'object',
+          required: ['serverID'],
+          properties: { serverID: identifier },
+          additionalProperties: false,
+        },
+      }),
+      additionalProperties: false,
+    },
+    ConsoleSubscription: {
+      type: 'object',
+      required: ['action', 'serverID', 'enabled'],
+      additionalProperties: false,
+      properties: {
+        action: { type: 'string', const: 'console_subscription' },
+        serverID: identifier,
+        enabled: { type: 'boolean' },
+        error: { type: 'string', enum: ['forbidden', 'unavailable', 'server_offline'] },
+      },
+    },
+    ConsoleOutput: {
+      ...envelope('action', 'console_live_exporter', {
+        serverID: identifier,
+        data: {
+          type: 'object',
+          required: ['data'],
+          properties: { data: { type: 'string', maxLength: 32768 } },
+          additionalProperties: false,
+        },
+      }),
+      additionalProperties: false,
+    },
+    ConsoleStream: {
+      ...envelope('method', 'wsConsoleStream', {
+        enabled: { type: 'boolean' },
+        expiresAt: { type: 'integer', minimum: 0 },
+      }),
+      additionalProperties: false,
+      oneOf: [
+        { properties: { enabled: { const: true }, expiresAt: { minimum: 1 } } },
+        { properties: { enabled: { const: false }, expiresAt: { const: 0 } } },
+      ],
+    },
     SaveConfig: envelope('action', 'save_config', {
       config: { type: 'object', additionalProperties: true },
     }),
@@ -145,6 +201,15 @@ export function createAsyncApiDocument(wsUrl: string, apiUrl: string) {
       }),
       additionalProperties: false,
     },
+    PanelRcon: {
+      ...envelope('method', 'wsPanelRcon', {
+        requestID: { type: 'string', format: 'uuid' },
+        actorDiscordID: { type: 'string', pattern: '^[0-9]{1,20}$' },
+        command: { type: 'string', minLength: 1, maxLength: 8192, pattern: '^[^\\u0000\\r\\n]+$' },
+        expiresAt: { type: 'integer', minimum: 1 },
+      }),
+      additionalProperties: false,
+    },
     AddonCommandResult: {
       type: 'object',
       required: ['action', 'id', 'method', 'ok', 'code'],
@@ -152,7 +217,7 @@ export function createAsyncApiDocument(wsUrl: string, apiUrl: string) {
       properties: {
         action: { type: 'string', const: 'addon.command-result' },
         id: { type: 'string', format: 'uuid' },
-        method: { type: 'string', const: 'wsAuthorizedRcon' },
+        method: { type: 'string', enum: ['wsAuthorizedRcon', 'wsPanelRcon'] },
         ok: { type: 'boolean' },
         code: { type: 'string', enum: ['executed', 'permission_denied', 'expired', 'execution_failed'] },
       },
@@ -206,6 +271,51 @@ export function createAsyncApiDocument(wsUrl: string, apiUrl: string) {
       'dashboard',
       'server-to-client',
       { action: 'server_logs', serverID, data: { type: 'connect', data: { name: 'Example player' } } },
+    ),
+    consoleSubscribe: message(
+      'console_subscribe',
+      'Open or renew a server console stream',
+      'Requires server administration permission and console.rcon. One server per dashboard socket. Renew every 10 seconds while the console page is open; the viewer lease expires after 30 seconds without renewal.',
+      'ConsoleSubscribe',
+      'dashboard',
+      'client-to-server',
+      { action: 'console_subscribe', data: { serverID } },
+    ),
+    consoleUnsubscribe: message(
+      'console_unsubscribe',
+      'Close a server console stream',
+      'Remove this socket viewer when leaving the console page. The last viewer disables the addon exporter; other subscribed tabs remain active. Socket closure also removes its viewer.',
+      'ConsoleUnsubscribe',
+      'dashboard',
+      'client-to-server',
+      { action: 'console_unsubscribe', data: { serverID } },
+    ),
+    consoleSubscription: message(
+      'console_subscription',
+      'Receive console subscription state',
+      'Acknowledges the gateway subscription, not addon execution or output availability. An offline server, unavailable store or denied permission is explicit. A matching updated addon is required for capture.',
+      'ConsoleSubscription',
+      'dashboard',
+      'server-to-client',
+      { action: 'console_subscription', serverID, enabled: true },
+    ),
+    consoleOutput: message(
+      'console_live_exporter.dashboard',
+      'Receive live console text',
+      'Delivered only to explicitly subscribed sockets with revalidated server access and console.rcon. Plain text, no durable history or replay. Supported capture covers Lua print, Msg, MsgN and MsgC, not every native engine output.',
+      'ConsoleOutput',
+      'dashboard',
+      'server-to-client',
+      { action: 'console_live_exporter', serverID, data: { data: 'Example console message\n' } },
+    ),
+    consoleStream: message(
+      'wsConsoleStream',
+      'Enable or disable temporary addon console capture',
+      'Only the addon-owning gateway sends this command. enabled=true carries a Unix millisecond lease of at most 30 seconds; expiry, disconnect or enabled=false resets config.consoleLiveExporter and enableConsoleLiveExporter to false. Disabling uses expiresAt=0. The flag is never persisted as true.',
+      'ConsoleStream',
+      'addon',
+      'server-to-client',
+      { method: 'wsConsoleStream', enabled: true, expiresAt: 1893456000000 },
     ),
     saveConfig: message(
       'save_config',
@@ -264,7 +374,7 @@ export function createAsyncApiDocument(wsUrl: string, apiUrl: string) {
     rcon: message(
       'wsAuthorizedRcon',
       'Exécuter une commande console',
-      'Requires console.rcon and a linked player currently online with a configured administrator rank. Generate a fresh requestID and short expiresAt deadline. Only a matching addon.command-result confirms console acceptance, not command output. The legacy wsRcon method is rejected.',
+      'Discord RCON requires console.rcon and a linked player currently online with a configured administrator rank. Generate a fresh requestID and short expiresAt deadline. Only a matching addon.command-result confirms console acceptance, not command output. The legacy wsRcon method is rejected. Dashboard commands use wsPanelRcon instead.',
       'Rcon',
       'addon',
       'server-to-client',
@@ -272,6 +382,21 @@ export function createAsyncApiDocument(wsUrl: string, apiUrl: string) {
         method: 'wsAuthorizedRcon',
         requestID: serverID,
         steamID: steamID64,
+        command: 'status',
+        expiresAt: 1893456000000,
+      },
+    ),
+    panelRcon: message(
+      'wsPanelRcon',
+      'Execute a command authorized by the server dashboard',
+      'The API verifies current dashboard permissions and console.rcon before dispatch. Dashboard access requires Discord administrator plus a recorded in-game rank enabled on the target server; the Discord owner and buyer of an active purchase linked to that community are exceptions. No player presence or additional game-side rank check is required. actorDiscordID is derived from the authenticated session, including its support actor. A UUID and short deadline protect against duplicates and stale commands. Only a matching authenticated addon.command-result for this method confirms console acceptance.',
+      'PanelRcon',
+      'addon',
+      'server-to-client',
+      {
+        method: 'wsPanelRcon',
+        requestID: serverID,
+        actorDiscordID: '123456789012345678',
         command: 'status',
         expiresAt: 1893456000000,
       },

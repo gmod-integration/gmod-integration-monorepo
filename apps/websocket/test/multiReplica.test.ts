@@ -9,6 +9,11 @@ const { redis } = await vi.hoisted(async () => {
 const sessions = new Map<string, any>()
 const tickets = new Map<string, any>()
 const permissions = new Map<string, boolean>()
+const deniedServerScopes = new Set<string>()
+vi.mock('@gmod/domain-user/dashboardAccess.js', () => ({
+  canAccessDashboardGuild: async (panel: { discordID: string }, _guild: string, options: { serverID?: string } = {}) =>
+    permissions.get(panel.discordID) === true && !deniedServerScopes.has(`${panel.discordID}:${options.serverID}`),
+}))
 
 vi.mock('@gmod/infra-redis', () => ({ default: redis, gracefulShutdownRedis: vi.fn() }))
 vi.mock('@gmod/config', () => ({ ConfigServer: { ports: { websocket: 9999 } } }))
@@ -188,6 +193,7 @@ describe('independent WebSocket replicas using shared Redis', () => {
     sessions.clear()
     tickets.clear()
     permissions.clear()
+    deniedServerScopes.clear()
     vi.restoreAllMocks()
     vi.useRealTimers()
   })
@@ -212,6 +218,16 @@ describe('independent WebSocket replicas using shared Redis', () => {
     expect(local.send).toHaveBeenCalledTimes(1)
     expect(remote.send).not.toHaveBeenCalled()
     expect(remote.close).toHaveBeenCalledWith(1008, 'Session revoked')
+  })
+
+  it('rechecks a remote server-rank or purchase revocation without waiting for Discord cache expiry', async () => {
+    const local = await connectDashboard(first, 'local-user')
+    const remote = await connectDashboard(second, 'remote-user')
+    deniedServerScopes.add('remote-user:addon-server')
+    await first.dashboardWorker.processor(logJob)
+    expect(local.send).toHaveBeenCalledOnce()
+    expect(remote.send).not.toHaveBeenCalled()
+    expect(permissions.get('remote-user')).toBe(true)
   })
 
   it('refreshes permissions independently on the receiving replica before revealing a log', async () => {

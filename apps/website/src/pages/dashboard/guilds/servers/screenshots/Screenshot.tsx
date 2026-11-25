@@ -1,4 +1,4 @@
-import { CopyButton, IconButton, IconButtonLink } from '../../../../../components/ui/index.js'
+import { CopyButton, DateTime, IconButton, IconButtonLink } from '../../../../../components/ui/index.js'
 import { showDialog } from '../../../../../utils/dialog.js'
 import { type Component, type ParentProps, Show } from 'solid-js'
 import { type ScreenshotStructure } from './ServerScreenshotList'
@@ -65,7 +65,7 @@ export const Screenshot: Component<ScreenshotProps> = (props) => {
       {/* Métadonnées */}
       <div class="flex flex-col gap-2 items-start w-full mt-2">
         <p class="text-sm text-base-content/50">
-          {t('dashboard.server.screenshots_list.date', 'Date')} : {props.screenshot.createdAt}
+          {t('dashboard.server.screenshots_list.date', 'Date')} : <DateTime value={props.screenshot.createdAt} />
         </p>
         <Show when={props.screenshot.player !== null}>
           <p class="text-sm text-base-content/50">

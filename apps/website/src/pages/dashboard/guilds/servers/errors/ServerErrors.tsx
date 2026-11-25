@@ -1,6 +1,6 @@
 import { FeatureGate } from '../../../../../components/FeatureGate.js'
 import { type Component, createResource, createSignal, For, type ParentProps, Show } from 'solid-js'
-import { IconButton, IconButtonLink, TableState, Icon } from '../../../../../components/ui/index.js'
+import { DateTime, IconButton, IconButtonLink, TableState, Icon } from '../../../../../components/ui/index.js'
 import AdminPanel from '../../../../../components/AdminPanel'
 import { useI18n } from '../../../../../i18n'
 import JsonViewer from '../../../../../components/JsonViewer'
@@ -55,7 +55,9 @@ const AddErrorComponent: Component<AddErrorProps> = (props) => {
   return (
     <>
       <tr>
-        <td class="text-base-content/70 text-nowrap">{new Date(props.error.createdAt).toLocaleString()}</td>
+        <td class="text-base-content/70 text-nowrap">
+          <DateTime value={props.error.createdAt} />
+        </td>
         <td
           classList={{
             'text-sky-500': props.error.realm === 'client',

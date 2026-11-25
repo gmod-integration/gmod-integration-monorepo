@@ -270,9 +270,8 @@ const Premium: Component = () => {
     },
     ['reward']: {
       ['name']: t('premium.reward', 'Reward'),
-      ['free_value']: false,
-      ['premium_value']: true,
-      ['inDev']: true,
+      ['free_value']: included('rewards.rules', false),
+      ['premium_value']: included('rewards.rules', true),
     },
   }))
 

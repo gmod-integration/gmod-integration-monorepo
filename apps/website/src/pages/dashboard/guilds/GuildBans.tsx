@@ -69,7 +69,7 @@ const GuildBans: Component = () => {
           ) : undefined
         }
       >
-        <table class="table border-b border-base-300 rounded-none">
+        <table class="table rounded-none">
           <thead>
             <tr class="text-l">
               <th>{t('dashboard.guild.bans.steam_id', 'Player SteamID64')}</th>
@@ -142,7 +142,7 @@ const GuildBans: Component = () => {
           ) : undefined
         }
       >
-        <table class="table border-b border-base-300 rounded-none">
+        <table class="table rounded-none">
           <thead>
             <tr class="text-l">
               <th>{t('dashboard.guild.bans.user', 'User')}</th>

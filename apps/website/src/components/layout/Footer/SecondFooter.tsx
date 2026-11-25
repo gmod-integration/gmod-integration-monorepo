@@ -1,11 +1,10 @@
 import type { Component } from 'solid-js'
 import logo from '../../../assets/brand/logo.png'
 import { useI18n } from '../../../i18n'
+import { DateTime } from '../../ui/index.js'
 
 const SecondFooter: Component = () => {
-  const { t, locale } = useI18n()
-
-  const lastBuildDate = () => new Date(__BUILD_DATE__).toLocaleString(locale())
+  const { t } = useI18n()
 
   return (
     <div class="site-footer-meta">
@@ -21,7 +20,9 @@ const SecondFooter: Component = () => {
           </p>
         </div>
       </div>
-      <div class="site-footer-build">{t('footer.last_build_date', 'Last build date') + `: ${lastBuildDate()}`}</div>
+      <div class="site-footer-build">
+        {t('footer.last_build_date', 'Last build date')}: <DateTime value={__BUILD_DATE__} />
+      </div>
     </div>
   )
 }

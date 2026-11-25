@@ -1,0 +1,97 @@
+# Compose override for a single Proxmox LXC. Use gmodctl bootstrap for a new installation.
+# A plain compose up leaves all writers and the migration service at zero replicas.
+name: gmod
+
+services:
+  traefik:
+    image: ${TRAEFIK_IMAGE:?TRAEFIK_IMAGE must be an immutable digest}
+    command: !override
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=${COMPOSE_PROJECT_NAME:-gmod}_net
+      - "--providers.docker.constraints=Label(`com.docker.compose.project`,`${COMPOSE_PROJECT_NAME:-gmod}`)"
+      - --entrypoints.web.address=:80
+      - --entrypoints.metrics.address=:9100
+      - --accesslog=true
+      - --metrics.prometheus=true
+      - --metrics.prometheus.entryPoint=metrics
+    ports: !override
+      - "127.0.0.1:${GMOD_INGRESS_PORT:-80}:80"
+    restart: unless-stopped
+    deploy: !reset {}
+
+  api:
+    restart: unless-stopped
+    deploy: !override
+      replicas: 0
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${COMPOSE_PROJECT_NAME:-gmod}_net
+      - traefik.http.routers.api.rule=Host(`${API_HOST:?API_HOST must be set}`)
+      - traefik.http.routers.api.entrypoints=web
+      - traefik.http.services.api.loadbalancer.server.port=53136
+
+  websocket:
+    restart: unless-stopped
+    deploy: !override
+      replicas: 0
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${COMPOSE_PROJECT_NAME:-gmod}_net
+      - traefik.http.routers.websocket.rule=Host(`${WS_HOST:?WS_HOST must be set}`)
+      - traefik.http.routers.websocket.entrypoints=web
+      - traefik.http.services.websocket.loadbalancer.server.port=53139
+
+  discord:
+    restart: unless-stopped
+    deploy: !override
+      replicas: 0
+
+  prisma-migrate:
+    restart: "no"
+    deploy: !override
+      replicas: 0
+
+  mariadb:
+    ports: !reset []
+    restart: unless-stopped
+    deploy: !reset {}
+
+  redis:
+    command: !override
+      - redis-server
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-768mb}
+      - --maxmemory-policy
+      - noeviction
+    ports: !reset []
+    restart: unless-stopped
+    deploy: !override
+      resources:
+        limits:
+          memory: ${REDIS_MEMORY_LIMIT:-1G}
+
+  mongo:
+    ports: !reset []
+    restart: unless-stopped
+    deploy: !reset {}
+
+  minio:
+    ports: !reset []
+    restart: unless-stopped
+    deploy: !reset {}
+
+  cloudflared:
+    image: ${CLOUDFLARED_IMAGE:?CLOUDFLARED_IMAGE must be an immutable digest}
+    command: tunnel --no-autoupdate run
+    env_file:
+      - cloudflared.env
+    network_mode: host
+    restart: unless-stopped
+    profiles:
+      - tunnel
+
+networks:
+  gmod_net: !override
+    name: ${COMPOSE_PROJECT_NAME:-gmod}_net
+    driver: bridge

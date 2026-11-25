@@ -67,7 +67,9 @@ a short-lived ack key, instead of assuming the local process has the connection.
 
 MariaDB via Prisma (`packages/infra-prisma`) is the relational source of truth: servers, guilds, users, bans,
 warns, config. MongoDB (`packages/infra-mongo`) holds high-volume, loosely structured data that would bloat a
-relational table — primarily `gm_server_logs` (in-game chat/kill/event logs).
+relational table — primarily `gm_server_logs` (in-game chat/kill/event logs). It also stores versioned
+reward rules and durable per-action grants with unique deduplication indexes; SQL remains authoritative
+for their server, linked identity, vote and recorded-playtime eligibility. See [Rewards](./features/rewards.md).
 
 ### Why is the Redis role split into cache / pub-sub / BullMQ backing store?
 

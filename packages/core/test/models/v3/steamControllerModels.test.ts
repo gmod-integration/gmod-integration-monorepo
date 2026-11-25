@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('../../../src/models/v6/rewardsEvents.js', () => ({ notifyVerifiedRewards: vi.fn() }))
 
 const isErasureBlockedMock = vi.fn().mockResolvedValue(false)
 const retainedTrustMock = vi.fn().mockResolvedValue(null)

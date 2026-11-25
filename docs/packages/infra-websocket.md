@@ -22,6 +22,16 @@ its Redis operation atomically matches the pending server/request ID and accepts
 unexpired terminal result. A successful queue/socket dispatch is insufficient. Timeouts remain
 uncertain, are not automatically replayed, and clean up the pending keys.
 
+`enqueuePanelRconAndWaitDetailed({serverID, actorDiscordID, command})` sends the separate
+`wsPanelRcon` command after the API has verified dashboard authorization, including Discord and
+recorded in-game administrator rights or the community owner/linked active buyer exceptions. The
+transport adds no player-presence or game-side rank requirement. The session supplies the actor, including an
+authorized support operator. Pending outcomes match the server, UUID and exact command method;
+an acknowledgement for Discord RCON cannot complete a dashboard command or occupy its result.
+The detailed result retains explicit rejection codes and prioritizes a valid addon acknowledgement
+even if queue delivery acknowledgement or pending-state cleanup fails. The Discord boolean adapter
+and its live-player checks remain separate.
+
 ## Consumer
 
 `apps/websocket/src/main.ts` runs the BullMQ `Worker`s for both queues — see

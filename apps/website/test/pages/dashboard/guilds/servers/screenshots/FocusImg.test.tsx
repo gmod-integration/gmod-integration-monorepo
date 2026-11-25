@@ -13,7 +13,7 @@ const baseShot: ScreenshotStructure = {
   title: 'My Screenshot',
   player: { name: 'Bob', steamID64: '765123' },
   url: 'https://example.com/shot.png',
-  createdAt: '1/1/2024, 12:00:00 AM',
+  createdAt: '2024-01-01T00:00:00.000Z',
   channelID: 'c1',
   captureData: { x: 0, y: 0, w: 100, h: 100, quality: 90, format: 'png' },
 }
@@ -41,7 +41,7 @@ describe('pages/dashboard/guilds/servers/screenshots/FocusImg.tsx', () => {
     // so query the <img> directly rather than via getByRole.
     const img = container.querySelector('img') as HTMLImageElement
     expect(img).toHaveAttribute('src', baseShot.url)
-    expect(screen.getByText(/1\/1\/2024/)).toBeInTheDocument()
+    expect(container.querySelector('time')).toHaveAttribute('datetime', baseShot.createdAt)
     // "Bob"/"765123" also appear inside the JsonViewer's highlighted JSON dump below, so scope
     // to the plain metadata paragraphs specifically.
     const infoParagraphs = Array.from(container.querySelectorAll('p')).map((p) => p.textContent)

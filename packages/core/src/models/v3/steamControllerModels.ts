@@ -6,6 +6,7 @@ import { removeDiscordSync, removeServerSync } from '../../classes/v3/PlayerGmod
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js'
 import { getRetainedTrust, isErasureBlocked } from '@gmod/domain-user/privacy.js'
 import { enqueueDiscordGuildVerifyUser } from '@gmod/infra-bullmq/discordQueueAdapters.js'
+import { notifyVerifiedRewards } from '../v6/rewardsEvents.js'
 
 const steamAuthUrl = 'https://steamcommunity.com/openid/login'
 
@@ -155,6 +156,7 @@ export async function processSteamVerificationReturn(query: Record<string, unkno
           },
         })
         if (!dbGuild) continue
+        void notifyVerifiedRewards(aGuild.id, steamID64)
         await enqueueDiscordGuildVerifyUser(aGuild.id, user.id)
       }
     }

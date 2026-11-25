@@ -11,6 +11,8 @@ import { createBucketIfNotExists, s3 } from '@gmod/infra-minio'
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3'
 import prisma from '@gmod/infra-prisma'
 import { Readable } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+import { mongoClient } from '@gmod/infra-mongo'
 import { getErrorsBySteamID, getErrorsCountBySteamID } from '@gmod/domain-gmod/GmodErrors.js'
 import { assertPersonalDataAllowed, isErasureBlocked, PersonalDataErasureError } from '@gmod/domain-user/privacy.js'
 
@@ -31,6 +33,44 @@ export async function getUserDataGRPD(user: User) {
   const baseTempPath = path.join(os.tmpdir(), 'gmod-integration', 'gdpr')
   const tempPath = path.join(baseTempPath, request.id)
   fs.mkdirSync(tempPath, { recursive: true })
+
+  const rewardCursor = mongoClient
+    .db('gmod_integration')
+    .collection('gm_reward_grants')
+    .find(
+      {
+        $or: [{ discordID }, ...(steamID64 ? [{ steamID64 }] : [])],
+      },
+      {
+        projection: {
+          _id: 0,
+          deliveryToken: 0,
+          dedupeKey: 0,
+          onceSteamKey: 0,
+          onceDiscordKey: 0,
+          requestID: 0,
+          requestRevision: 0,
+          sweptAt: 0,
+          version: 0,
+          'actions.code': 0,
+        },
+      },
+    )
+    .batchSize(250)
+  async function* rewardRecords() {
+    let first = true
+    yield '['
+    try {
+      for await (const reward of rewardCursor) {
+        yield `${first ? '' : ','}${JSON.stringify(reward)}`
+        first = false
+      }
+      yield ']'
+    } finally {
+      await rewardCursor.close()
+    }
+  }
+  await pipeline(Readable.from(rewardRecords()), fs.createWriteStream(path.join(tempPath, 'rewards.json')))
 
   if (discordID) {
     const userData: any = {

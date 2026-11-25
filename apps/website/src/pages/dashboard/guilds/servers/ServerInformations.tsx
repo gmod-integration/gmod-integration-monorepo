@@ -158,7 +158,9 @@ const ServerInformations: Component = () => {
               </SettingRow>
             )}
           </For>
-          <SettingRow title={t('dashboard.server.server_informations.server_logo', 'Logo')}>
+          <SettingRow
+            title={<span class="ui-value-label">{t('dashboard.server.server_informations.server_logo', 'Logo')}</span>}
+          >
             <img
               class="w-10 h-10 rounded-lg object-cover"
               src={editor.draft().image || defaultServer}
@@ -236,10 +238,22 @@ const ServerInformations: Component = () => {
           )}
           icon="id-card"
         >
-          <SettingRow title={t('dashboard.server.server_informations.server_id', 'Gmod Integration server ID')}>
+          <SettingRow
+            title={
+              <span class="ui-value-label">
+                {t('dashboard.server.server_informations.server_id', 'Gmod Integration server ID')}
+              </span>
+            }
+          >
             <CopyableValue value={server().id || ''} label={t('server_setup.copy_id', 'Copy server ID')} />
           </SettingRow>
-          <SettingRow title={t('dashboard.server.server_informations.server_token', 'Connection token')}>
+          <SettingRow
+            title={
+              <span class="ui-value-label">
+                {t('dashboard.server.server_informations.server_token', 'Connection token')}
+              </span>
+            }
+          >
             <div class="flex min-w-0 flex-wrap items-center gap-2">
               <CopyableValue
                 value={server().token || ''}

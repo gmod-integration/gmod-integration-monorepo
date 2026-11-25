@@ -17,6 +17,8 @@ import {
 import asyncHandler from '../../middleware/asyncHandler.js'
 import dashboardSettingsRoutes from './dashboardSettingsRoutes.js'
 import statusSettingsRoutes from './statusSettingsRoutes.js'
+import rewardsRoutes from './rewardsRoutes.js'
+import serverConsoleRoutes from './serverConsoleRoutes.js'
 import accessRoutes from './accessRoutes.js'
 import authRoutes from './authRoutes.js'
 import adminRoutes from './adminRoutes.js'
@@ -45,6 +47,8 @@ router.get('/', (_req, res) => {
 router.use('/docs', docsRoutes)
 router.use(dashboardSettingsRoutes)
 router.use(statusSettingsRoutes)
+router.use(rewardsRoutes)
+router.use(serverConsoleRoutes)
 router.use(accessRoutes)
 router.use('/auth', authRoutes)
 router.use('/admin', adminRoutes)

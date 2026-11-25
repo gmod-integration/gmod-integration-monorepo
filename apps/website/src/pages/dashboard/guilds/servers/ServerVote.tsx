@@ -71,7 +71,9 @@ const ServerVote: Component = () => {
       >
         <AsyncState loading={votes.loading} error={votes.error} onRetry={() => void refetch()}>
           <SettingRow
-            title={t('dashboard.server.vote.vote_channel', 'Notification channel')}
+            title={
+              <span class="ui-value-label">{t('dashboard.server.vote.vote_channel', 'Notification channel')}</span>
+            }
             description={t(
               'settings.channel_confirmation',
               'Choose a channel, then confirm your selection. Removing it stops future messages in that channel.',

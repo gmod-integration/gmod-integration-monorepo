@@ -258,7 +258,7 @@ const ServerTeam: Component = () => {
                       <td>
                         <TextValue value={row.teamName} />
                       </td>
-                      <td>
+                      <td class="text-center">
                         <BooleanStatus value={row.enable} />
                       </td>
                       <td>

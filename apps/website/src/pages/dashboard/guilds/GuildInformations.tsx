@@ -138,18 +138,18 @@ const GuildInformations: Component = () => {
         )}
       >
         <div class="flex flex-wrap items-center gap-2">
-          <span>{t('dashboard.guild.information.guild_name', 'Discord server name')}:</span>
+          <span class="ui-value-label">{t('dashboard.guild.information.guild_name', 'Discord server name')}:</span>
           <span class="min-w-0 wrap-anywhere">{getGuild().name}</span>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <span>{t('dashboard.guild.information.guild_id', 'Discord server ID')}:</span>
+          <span class="ui-value-label">{t('dashboard.guild.information.guild_id', 'Discord server ID')}:</span>
           <CopyableValue
             value={getGuild().id ?? ''}
             label={t('dashboard.guild.information.copy_guild_id', 'Copy Discord server ID')}
           />
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <span class="mr-2">{t('dashboard.guild.information.admins', 'Admins')}:</span>
+          <span class="ui-value-label mr-2">{t('dashboard.guild.information.admins', 'Admins')}:</span>
           <AsyncState
             loading={guildAdmins.loading}
             error={guildAdmins.error}
@@ -180,7 +180,7 @@ const GuildInformations: Component = () => {
           </AsyncState>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <span>{t('dashboard.guild.information.premium', 'Premium')}:</span>
+          <span class="ui-value-label">{t('dashboard.guild.information.premium', 'Premium')}:</span>
           <Show
             when={access.ready() && access.snapshot()?.state === 'ready'}
             fallback={

@@ -10,6 +10,7 @@ import {
   Button,
   ButtonLink,
   CopyableValue,
+  DateTime,
   FormActions,
   FormField,
   SettingRow,
@@ -116,7 +117,6 @@ export default function ServerList() {
     setReason('')
     showDialog('admin-server-command')
   }
-  const date = (value: string) => new Date(value).toLocaleString(locale())
   return (
     <>
       <AdminPanel
@@ -254,7 +254,11 @@ export default function ServerList() {
                                 : t('admin_v6.no_recent_activity', 'No recent activity')}
                           </StatusBadge>
                           <span class="text-xs text-base-content/65">
-                            {server.lastSeenAt ? date(server.lastSeenAt) : t('admin_v6.not_reported', 'Not reported')}
+                            {server.lastSeenAt ? (
+                              <DateTime value={server.lastSeenAt} />
+                            ) : (
+                              t('admin_v6.not_reported', 'Not reported')
+                            )}
                           </span>
                           <span class="text-xs text-base-content/65">
                             {t('admin_v6.addon_version', 'Addon version')}:{' '}
@@ -262,7 +266,9 @@ export default function ServerList() {
                           </span>
                         </div>
                       </td>
-                      <td>{date(server.createdAt)}</td>
+                      <td>
+                        <DateTime value={server.createdAt} />
+                      </td>
                       <td>
                         <div class="flex flex-wrap gap-2">
                           <ButtonLink

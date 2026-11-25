@@ -2,7 +2,7 @@ import { createEffect, Show, type Component, type ParentProps } from 'solid-js'
 import type { ScreenshotStructure } from './ServerScreenshotList.js'
 import JsonViewer from '../../../../../components/JsonViewer'
 import { useI18n } from '../../../../../i18n'
-import { IconButton } from '../../../../../components/ui/index.js'
+import { DateTime, IconButton } from '../../../../../components/ui/index.js'
 import { closeDialog } from '../../../../../utils/dialog.js'
 
 interface FocusImgProps extends ParentProps {
@@ -56,7 +56,7 @@ export const FocusImg: Component<FocusImgProps> = (props) => {
           <h2 class="font-bold text-lg">{t('dashboard.server.screenshots_list.information', 'Information')}</h2>
           <div class="py-4 w-full flex flex-col gap-2">
             <p class="text-sm text-base-content/50">
-              {t('dashboard.server.screenshots_list.date', 'Date')} : {props.focusImg()!.createdAt}
+              {t('dashboard.server.screenshots_list.date', 'Date')} : <DateTime value={props.focusImg()!.createdAt} />
             </p>
             <p class="text-sm text-base-content/50">
               {t('dashboard.server.screenshots_list.player', 'Player')} :{' '}

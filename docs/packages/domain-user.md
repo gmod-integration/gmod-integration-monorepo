@@ -11,6 +11,8 @@ Player and dashboard-user identity.
   compatibility `panelToken` view. HTTP middleware passes the resolved session; WebSocket clients receive
   it from their single-use handshake ticket. Provider credentials are resolved when needed through
   `@gmod/domain-auth`; refresh tokens are not stored on `PanelUser`.
+- `dashboardAccess.ts` — shared community/server dashboard authorization and discovery, independent
+  of commercial capability checks.
 - `privacy.ts` — account-erasure checks, minimized retained trust, and explicit OAuth reactivation after
   completed erasure. Ordinary token refreshes cannot reactivate an erased account.
 - `purchasePrivacy.ts` — pseudonymous purchase keys for preserving a community entitlement after its
@@ -82,12 +84,33 @@ A repeated provider `401` requires Discord reauthorization. If erasure starts du
 personal data is not cached or returned.
 
 `findGuildsWithPerms()` accepts guild owners or the Discord administrator permission, using `BigInt` for
-permission bitfields. `isAdminOfGuild(guildID)` uses that result; platform developer status does not
-replace these guild permissions. Delegated dashboard connections use the target account's guild rights.
+permission bitfields. `isAdminOfGuild(guildID)` remains a Discord-only permission lookup.
+
+Dashboard access uses `canAccessDashboardGuild` instead: the subject must have both Discord
+administrator permission and a linked Steam account whose recorded server rank is enabled (`true`)
+in that server's `ig_adminRank` map. Community scope requires an administrator rank on at least one
+of its servers; server scope requires the rank on that exact server. A missing setting defaults to
+`superadmin: true`; a malformed or explicitly disabled entry grants nothing. Rank checks use the
+last value reported by the addon in `gm_server_stat`, without requiring an online player.
+
+`resolveDashboardAccess` returns the same policy decision with a safe refusal reason defined by
+`@gmod/schema/user/DashboardAccessSchema.js`. The boolean helper remains available for sockets and
+discovery. Missing or foreign server scopes use the same `scope_unavailable` result; diagnostics
+never disclose recorded ranks, configuration, owner identities or purchase details. External failures
+remain exceptions and are not converted into missing-permission decisions.
+
+The Discord community owner and the buyer of an active GmodStore purchase linked to that exact
+community are separate exceptions to the dual-administrator requirement. Purchase ownership uses
+the account's current durable Steam link, never the GmodStore account ID or a purchase from another
+community. These checks reread the link, purchase, settings and ranks from the database. Buyer rights
+remain verifiable during a Discord permission outage; unknown owner/admin rights never grant access.
+`findDashboardGuilds` applies the same rule to community discovery, including linked buyer communities.
+Platform developer status adds no community exception, and delegated sessions use the subject's rights.
 The [WebSocket gateway](../apps/websocket.md) adds its own bounded permission snapshot and revalidates sessions
 before messages and delivery.
 
-Mutations use `isAdminOfGuild(guildID, { fresh: true })` to bypass cached Discord rights. Read caches
+Dashboard mutations use `canAccessDashboardGuild(panel, guildID, { fresh: true, serverID? })` to bypass
+cached Discord rights as well. Read caches
 carry user/global revisions from `guildPermissions.ts`; old raw-array caches are discarded. Discord
 member/role/ownership events invalidate those revisions and notify gateways. Reads verify revisions
 before returning cached rights and before storing a completed lookup, so an invalidated in-flight
@@ -95,7 +118,7 @@ result cannot restore old permissions. Gateways also check durable revisions bef
 
 ## Depends on
 
-`@gmod/config`, `@gmod/domain-auth`, `@gmod/infra-prisma`, `@gmod/infra-redis`.
+`@gmod/config`, `@gmod/domain-auth`, `@gmod/infra-prisma`, `@gmod/infra-redis`, `@gmod/schema`.
 
 ## Used by
 

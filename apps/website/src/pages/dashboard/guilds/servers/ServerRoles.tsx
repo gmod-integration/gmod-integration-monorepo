@@ -359,7 +359,7 @@ const ServerRoles: Component = () => {
                       <td>
                         <TextValue value={row.userGroup} />
                       </td>
-                      <td>
+                      <td class="text-center">
                         <BooleanStatus value={row.enable} />
                       </td>
                       <td>

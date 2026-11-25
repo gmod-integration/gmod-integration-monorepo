@@ -1,6 +1,8 @@
 import { assertSessionRequest, resolveRequestSession, readSessionCredential } from '@gmod/domain-auth/authSessions.js'
 import { badArgument } from '@gmod/core/utils/tools.js'
 import { getPanelUserFromDiscordID } from '@gmod/domain-user/PanelUser.js'
+import { resolveDashboardAccess } from '@gmod/domain-user/dashboardAccess.js'
+import { DashboardAccessDenialSchema, type DashboardAccessDenial } from '@gmod/schema/user/DashboardAccessSchema.js'
 import { getServerFromID } from '@gmod/domain-server/Server.js'
 import { Guild } from '@gmod/domain-guild/Guild.js'
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
@@ -45,16 +47,23 @@ export async function userValidator(req: Request, res: Response, next: NextFunct
   }
 }
 
+function denyDashboardAccess(res: Response, denial: DashboardAccessDenial) {
+  const { reason } = DashboardAccessDenialSchema.parse(denial)
+  res.status(403).json({ error: 'dashboard_access_denied', reason })
+}
+
 async function requireGuildAdministrator(req: Request, res: Response): Promise<string | null> {
   const guildID = getSingleParam(req.params.guildID)
   const panelUser = req.panelUser!
-  const allowed = await timeRequestStep(res, 'permissions', () =>
-    ['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET')
-      ? panelUser.isAdminOfGuild(guildID)
-      : panelUser.isAdminOfGuild(guildID, { fresh: true }),
+  if (!guildID || !panelUser) {
+    denyDashboardAccess(res, { allowed: false, reason: 'scope_unavailable' })
+    return null
+  }
+  const access = await timeRequestStep(res, 'permissions', () =>
+    resolveDashboardAccess(panelUser, guildID, { fresh: !['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET') }),
   )
-  if (!allowed) {
-    res.status(403).json({ error: 'not_admin_of_guild' })
+  if (!access.allowed) {
+    denyDashboardAccess(res, access)
     return null
   }
   return guildID
@@ -112,9 +121,20 @@ export async function userServerValidator(req: Request, res: Response, next: Nex
     }
 
     if (server.getGuildID() !== req.guild!.id) {
-      res.status(403).json({
-        error: 'server_not_in_guild',
-      })
+      denyDashboardAccess(res, { allowed: false, reason: 'scope_unavailable' })
+      return
+    }
+
+    const access = req.panelUser
+      ? await timeRequestStep(res, 'permissions', () =>
+          resolveDashboardAccess(req.panelUser!, req.guild!.id, {
+            serverID,
+            fresh: !['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET'),
+          }),
+        )
+      : { allowed: false as const, reason: 'scope_unavailable' as const }
+    if (!access.allowed) {
+      denyDashboardAccess(res, access)
       return
     }
 

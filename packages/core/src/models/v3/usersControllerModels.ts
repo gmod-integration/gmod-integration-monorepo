@@ -771,9 +771,10 @@ export async function processGetServerWarns(
 // ban counts are realistically in the dozens-to-low-hundreds range.
 const GUILD_BANS_ROW_CAP = 1000
 
-export async function processGetGuildBans(guild: Guild): Promise<EndpointResult> {
+export async function processGetGuildBans(guild: Guild, allowedServerIDs?: readonly string[]): Promise<EndpointResult> {
   const servers = await getServersFromDiscordGuildID(guild.id)
-  const serverIDs = servers.map((server) => server.getID())
+  const allowed = allowedServerIDs === undefined ? undefined : new Set(allowedServerIDs)
+  const serverIDs = servers.map((server) => server.getID()).filter((id) => !allowed || allowed.has(id))
 
   const gmodBansRaw = serverIDs.length
     ? await prisma.gm_server_ban.findMany({

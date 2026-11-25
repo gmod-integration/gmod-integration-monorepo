@@ -2,7 +2,7 @@ import { type Component, createResource, createSignal, For, Show } from 'solid-j
 import Pagination from '../../../../components/Pagination.js'
 import { createListPagination } from '../../../../hooks/createListPagination.js'
 import AdminPanel from '../../../../components/AdminPanel'
-import { IconButton, TableState, Icon, StatusBadge } from '../../../../components/ui/index.js'
+import { DateTime, IconButton, TableState, Icon, StatusBadge } from '../../../../components/ui/index.js'
 import { useI18n } from '../../../../i18n'
 import { fetchAPI, getAPIUrl } from '../../../../utils/api'
 import { ServerBugsParameters } from './ServerBugsParameters.js'
@@ -61,7 +61,9 @@ const AddReportBugsComponent: Component<AddReportBugs> = (props) => {
   return (
     <>
       <tr>
-        <td class="w-1/6 text-base-content/70 text-nowrap">{props.createAt.toLocaleString()}</td>
+        <td class="w-1/6 text-base-content/70 text-nowrap">
+          <DateTime value={props.createAt} />
+        </td>
         <td class="w-1/6 text-nowrap">{props.steamID64}</td>
         {/*<td class="w-1/12">{props.status}</td>*/}
         <td class="w-1/12">

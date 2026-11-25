@@ -71,7 +71,10 @@ export const ReportChannelSettings: Component<ReportChannelSettingsProps> = (pro
           errorLabel={props.labels.loadError}
           onRetry={() => void refetch()}
         >
-          <SettingRow title={props.labels.destination} description={props.labels.destinationHelp}>
+          <SettingRow
+            title={<span class="ui-value-label">{props.labels.destination}</span>}
+            description={props.labels.destinationHelp}
+          >
             <div class="flex w-full min-w-0 items-center gap-2">
               <Show when={configuredID()} fallback={<span class="text-base-content/60">{props.labels.empty}</span>}>
                 <Show when={knownChannel()} fallback={<span class="text-base-content/60">#{configuredID()}</span>}>

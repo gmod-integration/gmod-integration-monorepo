@@ -107,7 +107,7 @@ describe('pages/dashboard/guilds/servers/ServerWarns.tsx', () => {
     expect(screen.getByRole('navigation', { name: 'Pagination' }).closest('table')).toBeNull()
     const firstRow = rows[0]
     const cells = firstRow.querySelectorAll('td')
-    expect(cells[0]).toHaveTextContent(new Date('2024-01-01T10:00:00.000Z').toLocaleString())
+    expect(cells[0].querySelector('time')).toHaveAttribute('datetime', '2024-01-01T10:00:00.000Z')
     expect(cells[1]).toHaveTextContent('76500000000000009')
     expect(cells[2]).toHaveTextContent('76500000000000001')
     expect(cells[3]).toHaveTextContent('Spamming chat')

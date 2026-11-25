@@ -1,6 +1,9 @@
 import { Queue } from 'bullmq'
 import { connection } from './index.js'
 import {
+  DiscordRewardRoleJobSchema,
+  DiscordRewardRoleReplySchema,
+  type DiscordRewardRoleInput,
   DiscordPublicInviteUrlSchema,
   DiscordGuildPublicInviteJobSchema,
   DiscordGuildPublicInviteReplySchema,
@@ -725,6 +728,19 @@ export async function enqueueDiscordGuildMemberRole(
   })
   const reply = await waitForReply(correlationId, (value) => DiscordGuildMemberRoleReplySchema.parse(value), timeoutMs)
   return { available: reply.available, hasRole: reply.hasRole, roleExists: reply.roleExists }
+}
+
+/** Reward roles are additive and require a provider acknowledgement, not a queue receipt. */
+export async function enqueueDiscordRewardRole(input: DiscordRewardRoleInput, timeoutMs = 10_000) {
+  const correlationId = randomUUID()
+  const payload = DiscordRewardRoleJobSchema.parse({ ...input, correlationId, timestamp: new Date() })
+  await discordGuildOpsQueue.add('rewardRole', payload, {
+    priority: JobPriority.INTERACTIVE,
+    attempts: 1,
+    removeOnComplete: true,
+  })
+  const reply = await waitForReply(correlationId, (value) => DiscordRewardRoleReplySchema.parse(value), timeoutMs)
+  return { status: reply.status, ...(reply.reason ? { reason: reply.reason } : {}) }
 }
 
 export async function enqueueDiscordGuildBans(

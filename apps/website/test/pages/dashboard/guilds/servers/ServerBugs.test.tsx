@@ -149,7 +149,7 @@ describe('pages/dashboard/guilds/servers/ServerBugs.tsx', () => {
     await waitForLoaded()
     const row = rowFor(container, '76500000000000001')
     const cells = row.querySelectorAll('td')
-    expect(cells[0]).toHaveTextContent(new Date('2024-01-01T10:00:00.000Z').toLocaleString())
+    expect(cells[0].querySelector('time')).toHaveAttribute('datetime', '2024-01-01T10:00:00.000Z')
     expect(cells[1]).toHaveTextContent('76500000000000001')
     expect(cells[2]).toHaveTextContent('High')
   })

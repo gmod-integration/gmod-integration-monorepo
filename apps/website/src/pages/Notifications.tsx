@@ -1,4 +1,4 @@
-import { AsyncState, Button, Icon, IconButton, StatusBadge } from '../components/ui/index.js'
+import { AsyncState, Button, DateTime, Icon, IconButton, StatusBadge } from '../components/ui/index.js'
 import { type Component, createResource, createSignal, For, Show } from 'solid-js'
 import Pagination from '../components/Pagination.js'
 import { createListPagination } from '../hooks/createListPagination.js'
@@ -27,7 +27,7 @@ const notificationAppearance = (type: string) => {
 }
 
 const Notifications: Component = () => {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const [activeID, setActiveID] = createSignal<number>()
   const action = createAsyncAction({
     errorMessage: () =>
@@ -89,9 +89,6 @@ const Notifications: Component = () => {
       }
     })
   }
-
-  const date = (value: string) =>
-    new Intl.DateTimeFormat(locale(), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 
   return (
     <>
@@ -189,9 +186,7 @@ const Notifications: Component = () => {
                                   ? t('notifications.types.info', 'Information')
                                   : notification.type}
                         </StatusBadge>
-                        <time dateTime={notification.createdAt} class="text-xs text-base-content/45">
-                          {date(notification.createdAt)}
-                        </time>
+                        <DateTime value={notification.createdAt} class="text-xs text-base-content/45" />
                       </div>
                       <p
                         class={`break-words text-sm leading-relaxed ${notification.read ? 'text-base-content/50' : 'text-base-content/90'}`}

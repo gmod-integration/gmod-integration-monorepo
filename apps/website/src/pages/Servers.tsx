@@ -1,4 +1,4 @@
-import { AsyncState, Button, ButtonLink, FormField, Icon, StatusBadge } from '../components/ui/index.js'
+import { AsyncState, Button, ButtonLink, DateTime, FormField, Icon, StatusBadge } from '../components/ui/index.js'
 import { createResource, createSignal, For, onCleanup, Show, type Component } from 'solid-js'
 import {
   PublicServerRankingResponseSchema,
@@ -16,7 +16,7 @@ import { PaginationControls } from '../components/Pagination.js'
 const initialQuery: PublicServerRankingQuery = { limit: 10, offset: 0, search: '', gameMode: '', status: 'all' }
 
 const Servers: Component = () => {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const [query, setQuery] = createSignal<PublicServerRankingQuery>({ ...initialQuery })
   const [searchInput, setSearchInput] = createSignal('')
   const [gameModes, setGameModes] = createSignal<string[]>([])
@@ -54,8 +54,6 @@ const Servers: Component = () => {
   const pages = () => Math.max(1, Math.ceil(ranking()!.pagination.total / ranking()!.pagination.limit))
   const currentPage = () => Math.floor(ranking()!.pagination.offset / ranking()!.pagination.limit) + 1
   const changePage = (offset: number) => setQuery((previous) => ({ ...previous, offset }))
-  const lastSeen = (date: string) =>
-    new Intl.DateTimeFormat(locale(), { dateStyle: 'short', timeStyle: 'short' }).format(new Date(date))
 
   const ServerCard: Component<{ server: PublicRankedServer; featured?: boolean }> = (props) => {
     const name = () => props.server.status?.hostname || props.server.name || t('servers.no_name', 'No name')
@@ -151,8 +149,7 @@ const Servers: Component = () => {
             </span>
             <Show when={!props.server.online && props.server.lastSeenAt}>
               <span>
-                {t('servers.last_seen', 'Last server update')}:{' '}
-                <time dateTime={props.server.lastSeenAt!}>{lastSeen(props.server.lastSeenAt!)}</time>
+                {t('servers.last_seen', 'Last server update')}: <DateTime value={props.server.lastSeenAt} />
               </span>
             </Show>
           </div>

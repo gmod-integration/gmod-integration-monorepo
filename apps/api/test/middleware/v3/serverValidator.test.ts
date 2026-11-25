@@ -5,6 +5,8 @@ vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: getServerFrom
 
 const redisMock = { set: vi.fn() }
 vi.mock('@gmod/infra-redis', () => ({ default: redisMock }))
+const recordAddonActivityMock = vi.fn().mockResolvedValue(undefined)
+vi.mock('@gmod/infra-redis/addonTelemetry.js', () => ({ recordAddonActivity: recordAddonActivityMock }))
 
 const { default: serverValidator } = await import('../../../src/middleware/v3/serverValidator.js')
 
@@ -27,6 +29,7 @@ describe('serverValidator', () => {
   beforeEach(() => {
     getServerFromIDMock.mockReset()
     redisMock.set.mockReset()
+    recordAddonActivityMock.mockClear()
   })
 
   it('returns 400 when authorization is missing the Bearer prefix', async () => {
@@ -63,6 +66,7 @@ describe('serverValidator', () => {
     const res = makeRes()
     await serverValidator(makeReq(), res, vi.fn())
     expect(res.status).toHaveBeenCalledWith(401)
+    expect(recordAddonActivityMock).not.toHaveBeenCalled()
   })
 
   it('stores the version/last_request and calls next on success', async () => {
@@ -74,6 +78,11 @@ describe('serverValidator', () => {
     await serverValidator(req, makeRes(), next)
 
     expect(redisMock.set).toHaveBeenCalledWith('server:s1:version', '1.2.3')
+    expect(recordAddonActivityMock).toHaveBeenCalledExactlyOnceWith('s1', {
+      transport: 'http',
+      version: '1.2.3',
+      protocol: 'legacy',
+    })
     expect(redisMock.set).toHaveBeenCalledWith('server:s1:last_request', expect.any(String))
     expect(req.server).toBe(server)
     expect(next).toHaveBeenCalledWith()

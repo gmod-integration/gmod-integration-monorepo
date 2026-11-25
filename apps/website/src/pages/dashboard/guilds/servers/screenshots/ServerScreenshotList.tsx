@@ -73,7 +73,6 @@ export const ServerScreenshotList: Component = () => {
       if (!res.ok) throw new Error('Fetch failed')
       const body = (await res.json()) as ScreenshotResponseStructure
       const page = body.screenshots.map((s) => {
-        s.createdAt = new Date(s.createdAt).toLocaleString()
         if (s.player) {
           try {
             s.player = JSON.parse(s.player)

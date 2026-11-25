@@ -1,4 +1,9 @@
 import express from 'express'
+vi.mock('@gmod/domain-user/dashboardAccess.js', async () => ({
+  canAccessDashboardGuild: (await import('../../helpers/dashboardAccessFixture.js')).dashboardAccessFromAdminFixture,
+  resolveDashboardAccess: (await import('../../helpers/dashboardAccessFixture.js'))
+    .resolveDashboardAccessFromAdminFixture,
+}))
 import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 

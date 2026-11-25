@@ -57,6 +57,11 @@ revocation publication is missed.
 
 Guild/server permissions are resolved on connection and checked again before scoped operations when
 their local snapshot is at least 30 seconds old. The underlying Discord guild cache lasts 120 seconds.
+Discovery and server IDs follow the shared dashboard rule: Discord administrator plus an enabled
+recorded in-game rank, or the community owner/linked active buyer exceptions. Every scoped delivery
+also rereads the durable Steam link, purchase and target-server rank/configuration; the 30-second
+snapshot cannot preserve a revoked game rank or purchase. Console delivery removes an unauthorized
+viewer and stops capture when no authorized viewers remain.
 Discord member/role/ownership changes invalidate shared revisions and notify all gateways; each scoped
 operation also checks the durable revision, so a missed notification cannot preserve an old snapshot.
 Revision checks fence pending lookups. The provider grant is checked before cached rights are returned.
@@ -66,9 +71,23 @@ only to the requesting socket. Live pushes also require an allowed server ID.
 Closed or revoked sockets cannot be registered after pending authentication or permission lookups.
 The dashboard discards live status on transport loss and never applies another server's status.
 
-Addon console execution uses `wsAuthorizedRcon` with an expiry and request ID. The gateway accepts
+Addon console execution uses `wsPanelRcon` for the dashboard and `wsAuthorizedRcon` for Discord,
+with an expiry and request ID. The gateway accepts
 `addon.command-result` only on a ready, reauthenticated addon connection and binds it to the actual
 server before completing its pending result. Socket delivery alone does not confirm console execution.
+The dashboard submits commands through the CSRF-protected v6 console endpoint. Fresh dashboard
+authorization requires Discord administrator permission and a linked Steam account with a recorded
+rank enabled in the target server's `ig_adminRank`; the Discord owner and the buyer of an active
+purchase linked to that community are exceptions. No player connection is required. The API also
+checks `console.rcon` and derives the actor from the authenticated session, including
+support delegation, and binds each UUID to that actor, subject account, server and command digest
+for ten minutes. The addon accepts this panel command only from its authenticated backend connection.
+Discord's separate `wsAuthorizedRcon` retains its linked-player and live administrator-rank checks. A detailed
+outcome distinguishes an explicit refusal from uncertain delivery; the original boolean Discord
+adapter remains available. Console text and native command output are separate from this acknowledgement.
+Pending acknowledgements match the exact server, request ID and command method, so the two RCON
+paths cannot complete or block each other's pending outcomes. Update the gateway and addon for
+`wsPanelRcon` before exposing dashboard execution through the matching API/website release.
 
 Application login remains independent of the Discord OAuth grant. The dashboard distinguishes these
 close codes:
@@ -138,6 +157,36 @@ credentials stripped before strict business-settings validation.
 Player uploads arrive through the authenticated dedicated-server socket after the Lua relay validates
 and rebuilds their actor identity. Console live output is size/rate bounded and forwarded only after
 checking console capability; recipient sessions and server permissions remain revalidated.
+
+## Temporary server console viewers
+
+The server dashboard's `/console` page uses the shared authenticated dashboard socket. It sends
+`console_subscribe` with `{serverID}` on open and every 10 seconds while mounted, and
+`console_unsubscribe` on navigation, page close or a server/socket change. Subscription acknowledgements
+use `console_subscription`; output uses `console_live_exporter` with the server ID and plain text.
+Both server-administration rights and the existing `console.rcon` capability are required.
+
+`consoleStreams.ts` binds a single server subscription to each socket UUID. Redis viewer leases join
+tabs across gateway replicas and expire after 30 seconds without a browser renewal. Leaving one tab
+removes only that viewer. The last viewer triggers `wsConsoleStream` with `enabled:false, expiresAt:0`.
+The owning gateway responds to viewer-change publications and reconciles every five seconds; it also
+cleans subscriptions on session revocation, permission loss and shutdown. Reads never renew viewers.
+Delivery checks the viewer's current identity and permissions rather than broadcasting console text
+to every server dashboard.
+
+An updated addon handles `wsConsoleStream` and temporarily sets `gmInte.config.consoleLiveExporter`
+and `gmInte.enableConsoleLiveExporter`. `enabled:true` includes an absolute Unix-millisecond expiry,
+bounded to 30 seconds. Lua resets both flags to false on expiry, disconnect, credential replacement,
+startup and shutdown; saved configuration always stores false. This covers a crashed browser or
+gateway even when no unsubscribe reaches the addon. Normal closure uses the immediate disable;
+abnormal loss can take up to the remaining lease to stop capture.
+
+Console text travels over ephemeral Redis pub/sub, without BullMQ job retention, database history
+or replay. Lua captures `print`, `Msg`, `MsgN` and `MsgC`, with bounded chunks, queue and output rate;
+native engine/binary output is outside these hooks. The frontend keeps at most 2,000 lines and
+128 Ki characters as text, supports follow/clear, and discards its buffer on scope changes. Deploy
+the website, gateway and updated addon together to enable this feature; older addons can still
+connect, but cannot execute `wsConsoleStream`.
 
 Run the gateway tests, including an actual loopback WebSocket with mocked feature stores:
 

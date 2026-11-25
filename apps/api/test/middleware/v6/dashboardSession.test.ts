@@ -11,6 +11,17 @@ vi.mock('@gmod/domain-auth/authSessions.js', () => ({
   assertTrustedOrigin: assertTrustedOriginMock,
 }))
 const getPanelUserMock = vi.fn()
+const dashboardAccessMock = vi.fn()
+vi.mock('@gmod/domain-user/dashboardAccess.js', () => ({
+  resolveDashboardAccess: async (...args: unknown[]) => {
+    const result = await dashboardAccessMock(...args)
+    return typeof result === 'boolean'
+      ? result
+        ? { allowed: true }
+        : { allowed: false, reason: 'discord_admin_required' }
+      : result
+  },
+}))
 vi.mock('@gmod/domain-user/PanelUser.js', () => ({ getPanelUserFromDiscordID: getPanelUserMock }))
 const getServerMock = vi.fn()
 vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: getServerMock }))
@@ -40,6 +51,11 @@ const res = (): any => {
   return response
 }
 beforeEach(() => {
+  dashboardAccessMock
+    .mockReset()
+    .mockImplementation((currentPanel, guildID, options = {}) =>
+      options.fresh ? currentPanel.isAdminOfGuild(guildID, { fresh: true }) : currentPanel.isAdminOfGuild(guildID),
+    )
   assertTrustedOriginMock.mockReset().mockImplementation((request) => {
     if (request.headers.origin && !['https://site.test', 'https://api.test'].includes(request.headers.origin))
       throw Object.assign(new Error('This origin is not allowed.'), { status: 403, code: 'origin_forbidden' })
@@ -115,6 +131,37 @@ describe('v6 exact session context', () => {
 })
 
 describe('v6 authorization stays separate from session and provider failures', () => {
+  it.each(['discord_admin_required', 'steam_link_required', 'game_admin_required', 'scope_unavailable'] as const)(
+    'exposes one safe dashboard denial reason for community and server scopes: %s',
+    async (reason) => {
+      dashboardAccessMock.mockResolvedValue({ allowed: false, reason })
+      for (const guard of [dashboardGuild, dashboardServer]) {
+        const response = res()
+        const next = vi.fn()
+        await guard(
+          req({ panelUser: panel, method: 'PUT', body: { rank: 'private-rank', ownerID: 'private-owner' } }),
+          response,
+          next,
+        )
+        expect(response.status).toHaveBeenCalledWith(403)
+        expect(response.json).toHaveBeenCalledExactlyOnceWith({
+          error: { code: 'dashboard_access_denied', reason, message: 'Access to this dashboard is not permitted.' },
+        })
+        expect(JSON.stringify(response.json.mock.calls)).not.toContain('private-')
+        expect(next).not.toHaveBeenCalled()
+      }
+      expect(getServerMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps Discord reauthorization distinguishable from a policy refusal', async () => {
+    const error = Object.assign(new Error('Reconnect Discord'), { status: 403, code: 'discord_reauth_required' })
+    dashboardAccessMock.mockRejectedValueOnce(error)
+    const response = res()
+    await expect(dashboardServer(req({ panelUser: panel }), response, vi.fn())).rejects.toBe(error)
+    expect(response.json).not.toHaveBeenCalled()
+  })
+
   it('rejects requests without a guild, panel context or server scope before accessing storage', async () => {
     for (const authorize of [dashboardGuild, dashboardServer]) {
       for (const value of [req({ params: {} }), req({ panelUser: undefined })]) {
@@ -169,5 +216,29 @@ describe('v6 authorization stays separate from session and provider failures', (
     expect(request.server).toEqual({ id: 's1', guild: 'g1' })
     expect(request.guild.id).toBe('g1')
     expect(next).toHaveBeenCalledWith()
+  })
+
+  it.each(['GET', 'PUT'])(
+    'checks the policy for the exact server on %s and denies another server’s inherited access',
+    async (method) => {
+      dashboardAccessMock.mockResolvedValueOnce(false)
+      const request = req({ method, panelUser: panel })
+      const response = res()
+      const next = vi.fn()
+      await dashboardServer(request, response, next)
+      expect(dashboardAccessMock).toHaveBeenCalledWith(panel, 'g1', { serverID: 's1', fresh: method === 'PUT' })
+      expect(response.status).toHaveBeenCalledWith(403)
+      expect(request.server).toBeUndefined()
+      expect(next).not.toHaveBeenCalled()
+    },
+  )
+
+  it('accepts the policy’s owner or associated-purchaser exception without a Discord admin shortcut', async () => {
+    panel.isAdminOfGuild.mockResolvedValue(false)
+    dashboardAccessMock.mockResolvedValueOnce(true)
+    const next = vi.fn()
+    await dashboardServer(req({ method: 'PUT', panelUser: panel }), res(), next)
+    expect(next).toHaveBeenCalledWith()
+    expect(panel.isAdminOfGuild).not.toHaveBeenCalled()
   })
 })

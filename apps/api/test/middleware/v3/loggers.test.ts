@@ -30,6 +30,18 @@ describe('loggerMiddleware', () => {
     expect(next).toHaveBeenCalled()
   })
 
+  it('redacts RCON commands before recording request bodies', () => {
+    const req = makeReq({
+      method: 'POST',
+      url: '/v6/guilds/g1/servers/s1/console/commands',
+      body: { requestID: 'operation-id', command: 'sv_password private-console-value' },
+    })
+    loggerMiddleware(req, {} as any, vi.fn())
+    expect(gmLogMock).toHaveBeenCalledWith('api', expect.stringContaining('[REDACTED]'))
+    expect(gmLogMock.mock.calls.flat().join(' ')).not.toContain('private-console-value')
+    expect(req.body.command).toBe('sv_password private-console-value')
+  })
+
   it('records the actor and subject resolved after middleware for delegated actions without secrets', () => {
     const req = makeReq({ method: 'PUT', url: '/v6/guilds/123/settings?token=private', body: { token: 'private' } })
     const res = Object.assign(new EventEmitter(), { statusCode: 200 })

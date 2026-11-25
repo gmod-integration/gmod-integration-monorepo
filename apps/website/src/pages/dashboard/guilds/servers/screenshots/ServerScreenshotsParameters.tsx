@@ -71,7 +71,11 @@ export const ServerScreenshotsParameters: Component = () => {
       >
         <AsyncState loading={screenshots.loading} error={screenshots.error} onRetry={() => void refetch()}>
           <SettingRow
-            title={t('dashboard.server.screenshots.current_channel', 'Discord destination')}
+            title={
+              <span class="ui-value-label">
+                {t('dashboard.server.screenshots.current_channel', 'Discord destination')}
+              </span>
+            }
             description={t(
               'dashboard.server.screenshots.destination_help',
               'Choose a channel and save the selection to receive future screenshots there.',

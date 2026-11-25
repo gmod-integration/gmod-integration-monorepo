@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { PlayerProfileResponseSchema } from '@gmod/schema/user/PlayerProfileSchema.js'
 
 const mocks = vi.hoisted(() => ({
@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
   warnings: vi.fn(),
   bans: vi.fn(),
   erased: vi.fn(),
+  steamAvatar: vi.fn(),
+  discordProfile: vi.fn(),
 }))
 vi.mock('@gmod/infra-prisma', () => ({
   default: {
@@ -24,12 +26,17 @@ vi.mock('@gmod/infra-prisma', () => ({
   },
 }))
 vi.mock('@gmod/domain-user/privacy.js', () => ({ isErasureBlocked: mocks.erased }))
+vi.mock('@gmod/infra-steam', () => ({ getSteamUserAvatarLarge: mocks.steamAvatar }))
+vi.mock('../../../src/models/discordProfile.js', () => ({ getDiscordProfile: mocks.discordProfile }))
 
 const { processGetPlayerProfile } = await import('../../../src/models/v3/playerProfileModels.js')
 const steamID64 = '76561198000000001'
 const now = new Date('2026-11-23T12:00:00.000Z')
 const firstJoin = new Date('2026-01-01T12:00:00.000Z')
 const viewer = { id: 'viewer', steam: steamID64, username: 'Account name', trust: 0 }
+const targetDiscordID = '333650866747867137'
+const steamAvatarURL = `https://api.example.test/avatars/steam/${steamID64}`
+const discordAvatarURL = `https://api.example.test/avatars/discord/${targetDiscordID}`
 
 function mockViewer(value: typeof viewer | { steam: null; id: string; username: string; trust: number }) {
   mocks.viewer.mockImplementation(async ({ where }) => (where.id === 'viewer' ? value : null))
@@ -78,7 +85,10 @@ beforeEach(() => {
   mocks.warnings.mockResolvedValue([])
   mocks.bans.mockResolvedValue([])
   mocks.erased.mockResolvedValue(false)
+  mocks.steamAvatar.mockResolvedValue(null)
+  mocks.discordProfile.mockResolvedValue({ avatarURL: '' })
 })
+afterEach(() => vi.useRealTimers())
 
 describe('player profile', () => {
   it('validates target and bounded pagination before reading an account', async () => {
@@ -114,6 +124,7 @@ describe('player profile', () => {
       discordID: null,
       name: 'Stored own name',
       avatarURL: null,
+      discordAvatarURL: null,
       trustLevel: 0,
       registeredAt: firstJoin.toISOString(),
     })
@@ -149,6 +160,7 @@ describe('player profile', () => {
       name: 'Latest visible player name',
       registeredAt: null,
       avatarURL: null,
+      discordAvatarURL: null,
       trustLevel: 42,
     })
     const publicWhere = { steam_id: steamID64, gm_server: { isPublic: true } }
@@ -179,6 +191,8 @@ describe('player profile', () => {
       status: 404,
       body: { error: 'player_not_found' },
     })
+    expect(mocks.steamAvatar).not.toHaveBeenCalled()
+    expect(mocks.discordProfile).not.toHaveBeenCalled()
   })
 
   it('keeps a visible profile available when the requested page is empty', async () => {
@@ -266,6 +280,119 @@ describe('player profile', () => {
     mocks.linkedUser.mockResolvedValue({ id: '333650866747867137', trust: 42 })
     const result = await processGetPlayerProfile('viewer', steamID64, {}, now)
     expect(PlayerProfileResponseSchema.parse(result.body).player.discordID).toBe('333650866747867137')
+  })
+
+  it('loads both avatars for the viewed player instead of the signed-in account', async () => {
+    mockViewer({ ...viewer, steam: '76561198000000002' })
+    mocks.linkedUser.mockResolvedValue({ id: targetDiscordID, trust: 42 })
+    mocks.steamAvatar.mockResolvedValue(steamAvatarURL)
+    mocks.discordProfile.mockResolvedValue({ avatarURL: discordAvatarURL })
+    const result = await processGetPlayerProfile('viewer', steamID64, {}, now)
+    const body = PlayerProfileResponseSchema.parse(result.body)
+    expect(body.player).toMatchObject({
+      steamID64,
+      discordID: targetDiscordID,
+      avatarURL: steamAvatarURL,
+      discordAvatarURL,
+      name: 'Latest visible player name',
+    })
+    expect(mocks.steamAvatar).toHaveBeenCalledExactlyOnceWith(steamID64)
+    expect(mocks.discordProfile).toHaveBeenCalledExactlyOnceWith(targetDiscordID)
+    expect(body.summary.servers).toBe(2)
+  })
+
+  it('keeps an unlinked player’s Steam avatar without substituting the viewer’s Discord avatar', async () => {
+    mockViewer({ ...viewer, steam: null })
+    mocks.linkedUser.mockResolvedValue(null)
+    mocks.steamAvatar.mockResolvedValue(steamAvatarURL)
+    const result = await processGetPlayerProfile('viewer', steamID64, {}, now)
+    expect(PlayerProfileResponseSchema.parse(result.body).player).toMatchObject({
+      avatarURL: steamAvatarURL,
+      discordID: null,
+      discordAvatarURL: null,
+    })
+    expect(mocks.discordProfile).not.toHaveBeenCalled()
+  })
+
+  it.each(['steam', 'discord'] as const)(
+    'preserves statistics and the other avatar when %s fails',
+    async (provider) => {
+      mockViewer({ ...viewer, steam: null })
+      mocks.linkedUser.mockResolvedValue({ id: targetDiscordID, trust: 42 })
+      mocks.steamAvatar.mockResolvedValue(steamAvatarURL)
+      mocks.discordProfile.mockResolvedValue({ avatarURL: discordAvatarURL })
+      const failing = provider === 'steam' ? mocks.steamAvatar : mocks.discordProfile
+      failing.mockRejectedValue(new Error('Provider unavailable'))
+      const result = await processGetPlayerProfile('viewer', steamID64, {}, now)
+      expect(result.status).toBe(200)
+      const body = PlayerProfileResponseSchema.parse(result.body)
+      expect(body.player.avatarURL).toBe(provider === 'steam' ? null : steamAvatarURL)
+      expect(body.player.discordAvatarURL).toBe(provider === 'discord' ? null : discordAvatarURL)
+      expect(body.summary.servers).toBe(2)
+      expect(body.servers).toHaveLength(1)
+    },
+  )
+
+  it('bounds both stalled avatar providers concurrently while preserving the profile', async () => {
+    vi.useFakeTimers()
+    mockViewer({ ...viewer, steam: null })
+    mocks.linkedUser.mockResolvedValue({ id: targetDiscordID, trust: 42 })
+    mocks.steamAvatar.mockImplementation(() => new Promise(() => {}))
+    mocks.discordProfile.mockImplementation(() => new Promise(() => {}))
+    const request = processGetPlayerProfile('viewer', steamID64, {}, now)
+    let completed = false
+    void request.then(() => {
+      completed = true
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(mocks.steamAvatar).toHaveBeenCalledExactlyOnceWith(steamID64)
+    expect(mocks.discordProfile).toHaveBeenCalledExactlyOnceWith(targetDiscordID)
+    await vi.advanceTimersByTimeAsync(2_999)
+    expect(completed).toBe(false)
+    await vi.advanceTimersByTimeAsync(1)
+    const result = await request
+    expect(result.status).toBe(200)
+    const body = PlayerProfileResponseSchema.parse(result.body)
+    expect(body.player).toMatchObject({ avatarURL: null, discordAvatarURL: null })
+    expect(body.summary.servers).toBe(2)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('treats malformed provider avatar URLs as missing decoration', async () => {
+    mockViewer({ ...viewer, steam: null })
+    mocks.linkedUser.mockResolvedValue({ id: targetDiscordID, trust: 42 })
+    mocks.steamAvatar.mockResolvedValue('not-a-url')
+    mocks.discordProfile.mockResolvedValue({ avatarURL: '' })
+    const result = await processGetPlayerProfile('viewer', steamID64, {}, now)
+    expect(result.status).toBe(200)
+    expect(PlayerProfileResponseSchema.parse(result.body).player).toMatchObject({
+      avatarURL: null,
+      discordAvatarURL: null,
+    })
+  })
+
+  it('suppresses the profile when erasure begins while its avatars are loading', async () => {
+    mockViewer({ ...viewer, steam: null })
+    mocks.linkedUser.mockResolvedValue({ id: targetDiscordID, trust: 42 })
+    let releaseAvatar!: (value: string) => void
+    let avatarStarted!: () => void
+    const started = new Promise<void>((resolve) => {
+      avatarStarted = resolve
+    })
+    mocks.steamAvatar.mockImplementation(
+      () =>
+        new Promise<string>((resolve) => {
+          releaseAvatar = resolve
+          avatarStarted()
+        }),
+    )
+    mocks.discordProfile.mockResolvedValue({ avatarURL: discordAvatarURL })
+    const request = processGetPlayerProfile('viewer', steamID64, {}, now)
+    await started
+    mocks.erased.mockResolvedValue(true)
+    releaseAvatar(steamAvatarURL)
+    expect(await request).toEqual({ status: 404, body: { error: 'player_not_found' } })
+    expect(mocks.erased).toHaveBeenLastCalledWith(targetDiscordID, steamID64)
   })
 
   it('resolves the viewer by their Discord ID without requiring any visible public server', async () => {
@@ -418,6 +545,8 @@ describe('player profile', () => {
       body: { error: 'player_not_found' },
     })
     expect(mocks.aggregate).not.toHaveBeenCalled()
+    expect(mocks.steamAvatar).not.toHaveBeenCalled()
+    expect(mocks.discordProfile).not.toHaveBeenCalled()
   })
 
   it('suppresses an erased linked Discord identity before statistics are read', async () => {
@@ -428,6 +557,8 @@ describe('player profile', () => {
       body: { error: 'player_not_found' },
     })
     expect(mocks.aggregate).not.toHaveBeenCalled()
+    expect(mocks.steamAvatar).not.toHaveBeenCalled()
+    expect(mocks.discordProfile).not.toHaveBeenCalled()
   })
 
   it('checks erasure again after loading data so an in-flight erasure cannot return a profile', async () => {
@@ -437,6 +568,8 @@ describe('player profile', () => {
       body: { error: 'player_not_found' },
     })
     expect(mocks.records).toHaveBeenCalled()
+    expect(mocks.steamAvatar).not.toHaveBeenCalled()
+    expect(mocks.discordProfile).not.toHaveBeenCalled()
   })
 
   it('keeps missing or stale server metadata offline and nullable, and avoids negative counters', async () => {

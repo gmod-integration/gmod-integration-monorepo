@@ -20,7 +20,7 @@ export class GuildPermissionsUnavailableError extends Error {
   }
 }
 
-type DiscordGuild = {
+export type DiscordGuild = {
   id: string
   name?: string
   icon?: string | null

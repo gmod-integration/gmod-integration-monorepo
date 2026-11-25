@@ -3,7 +3,15 @@ import { AdminUserRowSchema, type AdminUserRow } from '@gmod/schema/admin/AdminD
 import AdminPanel from '../../../components/AdminPanel.js'
 import ConfirmActionDialog from '../../../components/ConfirmActionDialog.js'
 import Pagination from '../../../components/Pagination.js'
-import { Button, ButtonLink, CopyableValue, FormField, StatusBadge, TableState } from '../../../components/ui/index.js'
+import {
+  Button,
+  ButtonLink,
+  CopyableValue,
+  DateTime,
+  FormField,
+  StatusBadge,
+  TableState,
+} from '../../../components/ui/index.js'
 import { useI18n } from '../../../i18n.js'
 import { authSession } from '../../../utils/authClient.js'
 import { showDialog } from '../../../utils/dialog.js'
@@ -19,8 +27,6 @@ export default function UserList() {
   const [reason, setReason] = createSignal('')
   const [notice, setNotice] = createSignal('')
   const canManage = (user: AdminUserRow) => user.id !== authSession()?.user.id
-  const date = (value: string | null) =>
-    value ? new Date(value).toLocaleString(locale()) : t('admin_v6.never_seen', 'No recorded activity')
   const openRevoke = (user: AdminUserRow) => {
     if (!canManage(user)) return
     setRevoking(user)
@@ -131,7 +137,13 @@ export default function UserList() {
                         </StatusBadge>
                       </td>
                       <td>{user.activeSessions.toLocaleString(locale())}</td>
-                      <td>{date(user.lastSeenAt)}</td>
+                      <td>
+                        {user.lastSeenAt ? (
+                          <DateTime value={user.lastSeenAt} />
+                        ) : (
+                          t('admin_v6.never_seen', 'No recorded activity')
+                        )}
+                      </td>
                       <td>
                         <div class="flex flex-wrap gap-2">
                           <Button

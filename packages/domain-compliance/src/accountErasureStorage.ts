@@ -55,6 +55,19 @@ export async function eraseMongoData(identity: ErasureIdentity, fence?: ErasureF
       await cursor.close()
     }
   }
+  await ensureLease(fence)
+  const recipients = [
+    { discordID: identity.discordID },
+    ...(identity.steamID64 ? [{ steamID64: identity.steamID64 }] : []),
+  ]
+  await db.collection('gm_reward_grants').deleteMany({ $or: recipients }, { maxTimeMS: 30_000 })
+  // Erasing an administrator must not delete other players' grants or the community's rules.
+  for (const name of ['gm_reward_grants', 'gm_reward_rules']) {
+    await ensureLease(fence)
+    await db
+      .collection(name)
+      .updateMany({ actorDiscordID: identity.discordID }, { $set: { actorDiscordID: null } }, { maxTimeMS: 30_000 })
+  }
 }
 
 async function deleteObject(bucket: string, key: string, fence?: ErasureFence) {

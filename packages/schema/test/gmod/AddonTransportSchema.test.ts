@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   AddonRequestSchema,
   AddonRconCommandSchema,
+  AddonPanelRconCommandSchema,
   AddonCommandResultSchema,
   PlayerAccessRefreshCommandSchema,
   ADDON_MAX_MESSAGE_BYTES,
@@ -100,6 +101,46 @@ describe('addon privileged command schemas', () => {
     expect(AddonCommandResultSchema.safeParse({ ...result, code: 'permission_denied' }).success).toBe(false)
     expect(AddonCommandResultSchema.safeParse({ ...result, ok: false }).success).toBe(false)
     expect(AddonCommandResultSchema.safeParse({ ...result, output: 'sensitive' }).success).toBe(false)
+  })
+  it('permits an authenticated panel RCON command without a Steam identity', () => {
+    const panel = {
+      method: 'wsPanelRcon',
+      requestID: id,
+      actorDiscordID: '123456789012345678',
+      command: 'status',
+      expiresAt: 1800000000000,
+    }
+    expect(AddonPanelRconCommandSchema.parse(panel)).toEqual(panel)
+    for (const patch of [
+      { actorDiscordID: '' },
+      { actorDiscordID: 'unverified-account' },
+      { actorDiscordID: '1'.repeat(21) },
+      { steamID: '76561198000000001' },
+      { method: 'wsAuthorizedRcon' },
+      { command: '   ' },
+      { command: 'status\nquit' },
+      { command: 'é'.repeat(4097) },
+      { expiresAt: Infinity },
+    ])
+      expect(AddonPanelRconCommandSchema.safeParse({ ...panel, ...patch }).success).toBe(false)
+    expect(
+      AddonCommandResultSchema.safeParse({
+        action: 'addon.command-result',
+        id,
+        method: 'wsPanelRcon',
+        ok: true,
+        code: 'executed',
+      }).success,
+    ).toBe(true)
+    expect(
+      AddonCommandResultSchema.safeParse({
+        action: 'addon.command-result',
+        id,
+        method: 'wsRunLua',
+        ok: true,
+        code: 'executed',
+      }).success,
+    ).toBe(false)
   })
 })
 

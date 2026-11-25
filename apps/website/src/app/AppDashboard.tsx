@@ -1,5 +1,17 @@
-import { Button, Icon } from '../components/ui/index.js'
-import { createMemo, ErrorBoundary, on, Show, type Component, type ParentComponent } from 'solid-js'
+import { Button, ButtonLink, Icon, PageState } from '../components/ui/index.js'
+import { useAccess } from '../components/AccessProvider.js'
+import {
+  createEffect,
+  createMemo,
+  ErrorBoundary,
+  on,
+  onCleanup,
+  Show,
+  type Component,
+  type ParentComponent,
+} from 'solid-js'
+import DashboardAccessHelpModal, { DASHBOARD_ACCESS_HELP_DIALOG_ID } from '../components/DashboardAccessHelpModal.js'
+import { closeDialog, showDialog } from '../utils/dialog.js'
 import { A, useLocation } from '@solidjs/router'
 import { getGuild, getServer } from '../utils/utils.js'
 import DashboardMiddleware from '../middleware/DashboardMiddleware.js'
@@ -53,10 +65,12 @@ export const DashboardPageHeader: Component<{ admin?: boolean }> = (props) => {
         players: ['players', 'Players'],
         warns: ['warns', 'Warns'],
         logs: ['logs', 'Logs'],
+        console: ['console', 'Console'],
         errors: ['errors', 'Errors'],
         bugs: ['bugs_report', 'Bugs Report'],
         screenshots: ['screenshots', 'Screenshots'],
         votes: ['vote', 'Vote'],
+        rewards: ['rewards', 'Rewards'],
       }
       const [key, fallback] = labels[section] || ['informations', 'Informations']
       return t(`dashboard.menu.servers.${key}`, fallback)
@@ -121,6 +135,18 @@ export const DashboardPageHeader: Component<{ admin?: boolean }> = (props) => {
 
 export const AppDashboard: ParentComponent = (props) => {
   const { t } = useI18n()
+  const access = useAccess()
+  let warned = false
+  createEffect(() => {
+    if (!access.permissionDenied()) {
+      warned = false
+      closeDialog(DASHBOARD_ACCESS_HELP_DIALOG_ID)
+    } else if (!warned) {
+      warned = true
+      showDialog(DASHBOARD_ACCESS_HELP_DIALOG_ID)
+    }
+  })
+  onCleanup(() => closeDialog(DASHBOARD_ACCESS_HELP_DIALOG_ID))
   return (
     <>
       <DashboardMiddleware />
@@ -128,7 +154,35 @@ export const AppDashboard: ParentComponent = (props) => {
         <DashboardMenu />
         <div class="dashboard-main">
           <DashboardPageHeader />
-          <div class="dashboard-content">
+          <Show when={access.permissionDenied()}>
+            <div class="dashboard-content">
+              <PageState
+                icon="shield"
+                title={t('access.dashboard_denied_title', 'Dashboard access denied')}
+                description={t(
+                  'access.dashboard_denied_description',
+                  'Your account does not have access to this community or game server. Check your permissions, then try again. Your pending edits are preserved.',
+                )}
+              >
+                <Button variant="secondary" onClick={() => showDialog(DASHBOARD_ACCESS_HELP_DIALOG_ID)}>
+                  {t('access.help_button', 'How to get access')}
+                </Button>
+                <Button loading={access.loading()} onClick={access.refresh}>
+                  {t('ui.retry', 'Try again')}
+                </Button>
+                <ButtonLink href="/dashboard/guilds">
+                  {t('access.choose_community', 'Choose another community')}
+                </ButtonLink>
+              </PageState>
+            </div>
+          </Show>
+          <div
+            class="dashboard-content"
+            hidden={access.permissionDenied()}
+            inert={access.permissionDenied()}
+            aria-hidden={access.permissionDenied() || undefined}
+            style={{ display: access.permissionDenied() ? 'none' : undefined }}
+          >
             <ShowErrorList />
             <ErrorBoundary
               fallback={(_error, reset) => (
@@ -147,6 +201,7 @@ export const AppDashboard: ParentComponent = (props) => {
           </div>
         </div>
       </div>
+      <DashboardAccessHelpModal reason={access.denialReason()} loading={access.loading()} onRecheck={access.refresh} />
     </>
   )
 }

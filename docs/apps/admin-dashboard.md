@@ -183,6 +183,23 @@ only its own member on close and expire crashed replicas within 90 seconds. Depl
 support with the monitoring API. A Redis failure is Unknown; an absent lease means no confirmed
 connection. The total counts registered servers, not globally connected sockets.
 
+The connection rows also expose the last reported addon version, last observed request protocol
+(`legacy` or acknowledged WebSocket), last activity, and authenticated requests received over the
+last 60 seconds, split into HTTP and WebSocket counts. Protocol is learned from actual requests,
+not inferred from the version. An unreported version or protocol remains unknown. Old installed
+addons are measured by the backend without an addon update. Recent HTTP traffic remains separate
+from confirmed socket presence, so a legacy server can have HTTP activity without a live socket.
+
+`@gmod/infra-redis/addonTelemetry.js` shares bounded per-server Redis counters across API and gateway
+replicas. The response supplies the Redis observation time and `trafficWindowSeconds: 60`;
+unavailable telemetry has null counts rather than fabricated zeroes. Each logical authenticated
+WebSocket request is counted once; retries of a deduplicated request, replies, console stream
+messages, handshakes and ping/pong frames do not increase request counts. HTTP counts include
+authenticated addon client requests. The UI refreshes only the connection list every 15 seconds
+while visible, preserves search/pagination, and labels its aggregates as applying to the current page.
+Counters start accumulating after the corresponding API and gateway release; there is no historical
+traffic backfill. Deploy both services to measure both transports.
+
 Errors are read from `gmod_integration.errors`, aggregated by addon name, realm and the first 1,000
 message characters over 7/30/90 days. The Integration filter matches addon names or paths; this is a
 heuristic, not a root-cause diagnosis. Reports and declared occurrences remain separate. Each Mongo

@@ -1,6 +1,7 @@
 import { getServerFromID } from '@gmod/domain-server/Server.js'
 import { type NextFunction, type Request, type Response } from 'express'
 import redis from '@gmod/infra-redis'
+import { recordAddonActivity } from '@gmod/infra-redis/addonTelemetry.js'
 import { getSingleParam } from '@/utils/requestParams.js'
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -36,6 +37,7 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
     }
 
     const version = getSingleParam(req.headers['gmod-integrations-version'])
+    await recordAddonActivity(serverID, { transport: 'http', version, protocol: 'legacy' })
     const redisKeyServerVersion = `server:${serverID}:version`
     if (version) await redis.set(redisKeyServerVersion, version)
     const redisKeyServerLastRequest = `server:${serverID}:last_request`

@@ -3,6 +3,7 @@ import {
   PlayerIdentifierSchema,
   PlayerProfileBanSchema,
   PlayerProfileQuerySchema,
+  PlayerProfileResponseSchema,
   PlayerProfileWarningSchema,
   PlayerSteamID64Schema,
 } from '../../src/user/PlayerProfileSchema.js'
@@ -64,5 +65,25 @@ describe('player profile input', () => {
     expect(PlayerProfileBanSchema.safeParse(ban).success).toBe(true)
     expect(PlayerProfileBanSchema.safeParse({ ...ban, durationMinutes: -1 }).success).toBe(false)
     expect(PlayerProfileBanSchema.safeParse({ ...ban, expiresAt: 'yesterday' }).success).toBe(false)
+  })
+
+  it('accepts optional Discord avatar decoration without confusing it with the Steam avatar', () => {
+    const schema = PlayerProfileResponseSchema.shape.player
+    const player = {
+      steamID64: '76561198000000001',
+      discordID: '333650866747867137',
+      name: 'Player',
+      avatarURL: 'https://api.example.test/avatars/steam/76561198000000001',
+      trustLevel: null,
+      registeredAt: null,
+    }
+    expect(schema.parse(player)).not.toHaveProperty('discordAvatarURL')
+    expect(schema.parse({ ...player, discordAvatarURL: null }).discordAvatarURL).toBeNull()
+    const discordAvatarURL = 'https://api.example.test/avatars/discord/333650866747867137'
+    expect(schema.parse({ ...player, discordAvatarURL })).toMatchObject({
+      avatarURL: player.avatarURL,
+      discordAvatarURL,
+    })
+    expect(schema.safeParse({ ...player, discordAvatarURL: 'not-a-url' }).success).toBe(false)
   })
 })

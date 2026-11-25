@@ -66,6 +66,8 @@ vi.mock('node:crypto', async (importOriginal) => ({
 
 const getUserFromDiscordIDMock = vi.fn()
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromDiscordID: getUserFromDiscordIDMock }))
+const findDashboardGuildsMock = vi.fn()
+vi.mock('@gmod/domain-user/dashboardAccess.js', () => ({ findDashboardGuilds: findDashboardGuildsMock }))
 
 const getServersFromDiscordGuildIDMock = vi.fn()
 vi.mock('@gmod/domain-server/Server.js', () => ({ getServersFromDiscordGuildID: getServersFromDiscordGuildIDMock }))
@@ -118,6 +120,7 @@ function resetAllMocks() {
   getRetainedTrustMock.mockReset().mockResolvedValue(null)
   prepareExplicitOAuthLoginMock.mockReset().mockResolvedValue(undefined)
   getUserFromDiscordIDMock.mockReset()
+  findDashboardGuildsMock.mockReset()
   getServersFromDiscordGuildIDMock.mockReset()
   isGuildPremiumMock.mockReset()
   redisMock.get.mockReset()
@@ -809,18 +812,18 @@ describe('discordModels', () => {
 
   describe('getUserGuildsWithPermsForPanel', () => {
     it('builds the guild list with hasBot/isPremium/isOwner flags', async () => {
-      const panelUser = {
-        findGuildsWithPerms: vi.fn().mockResolvedValueOnce([
-          { id: 'g1', name: 'Guild One', icon: 'icon1', owner: true },
-          { id: 'g2', name: 'Guild Two', icon: null, owner: false },
-        ]),
-      }
+      const panelUser = { discordID: 'd1' }
+      findDashboardGuildsMock.mockResolvedValueOnce([
+        { id: 'g1', name: 'Guild One', icon: 'icon1', owner: true },
+        { id: 'g2', name: 'Guild Two', icon: null, owner: false },
+      ])
       prismaMock.gm_guild.findMany.mockResolvedValueOnce([{ guild: 'g1' }])
       ensureAvatarStoredMock.mockResolvedValueOnce('stored-icon-1').mockResolvedValueOnce('stored-icon-2')
       isGuildPremiumMock.mockResolvedValueOnce(true)
 
       const result = await getUserGuildsWithPermsForPanel(panelUser as any)
 
+      expect(findDashboardGuildsMock).toHaveBeenCalledExactlyOnceWith(panelUser)
       expect(prismaMock.gm_guild.findMany).toHaveBeenCalledWith({
         select: { guild: true },
         where: { guild: { in: ['g1', 'g2'] } },
@@ -832,9 +835,8 @@ describe('discordModels', () => {
     })
 
     it('marks a guild without the bot as not premium without querying premium status', async () => {
-      const panelUser = {
-        findGuildsWithPerms: vi.fn().mockResolvedValueOnce([{ id: 'g1', name: 'Guild One', icon: null, owner: true }]),
-      }
+      const panelUser = { discordID: 'd1' }
+      findDashboardGuildsMock.mockResolvedValueOnce([{ id: 'g1', name: 'Guild One', icon: null, owner: true }])
       prismaMock.gm_guild.findMany.mockResolvedValueOnce([])
       ensureAvatarStoredMock.mockResolvedValueOnce(null)
 

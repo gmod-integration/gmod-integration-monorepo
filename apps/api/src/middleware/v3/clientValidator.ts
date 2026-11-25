@@ -3,6 +3,7 @@ import crypto from 'crypto'
 import { type NextFunction, type Request, type Response } from 'express'
 import { badArgument } from '@gmod/core/utils/tools.js'
 import redis from '@gmod/infra-redis'
+import { recordAddonActivity } from '@gmod/infra-redis/addonTelemetry.js'
 import { getSingleParam } from '@/utils/requestParams.js'
 
 export default async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -51,6 +52,12 @@ export default async (req: Request, res: Response, next: NextFunction): Promise<
       res.status(401).json({ error: 'unauthorized' })
       return
     }
+
+    await recordAddonActivity(serverID, {
+      transport: 'http',
+      version: getSingleParam(req.headers['gmod-integrations-version']),
+      protocol: 'legacy',
+    })
 
     // Short bursts trigger a one-minute block; sustained requests trigger a one-day block.
     const keyClientRequestCount1s = `client_request_count_1s_${clientID64}`

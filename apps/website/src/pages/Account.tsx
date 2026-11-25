@@ -2,6 +2,7 @@ import {
   AsyncState,
   Button,
   ButtonLink,
+  DateTime,
   DiscordAvatar,
   FormField,
   Icon,
@@ -68,7 +69,7 @@ const fetchUser = async (): Promise<SteamAccount> => {
 const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, status: ErasureStatus) => void }> = (
   props,
 ) => {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
 
   const [erasureConfirmation, setErasureConfirmation] = createSignal('')
   const erasureAction = createAsyncAction({
@@ -504,7 +505,7 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                       <tr>
                         <td class="font-mono text-xs">{session.id.substring(0, 8)}</td>
                         <td class="whitespace-nowrap text-base-content/60">
-                          {new Date(session.lastSeenAt || session.createdAt).toLocaleDateString(locale())}
+                          <DateTime value={session.lastSeenAt || session.createdAt} dateOnly />
                         </td>
                         <td class="font-mono text-xs">{session.ip}</td>
                         <td>{session.os}</td>
@@ -614,10 +615,10 @@ const AccountSettings: Component<{ onErasureAccepted: (receipt: ErasureReceipt, 
                     {(request) => (
                       <tr>
                         <td class="whitespace-nowrap text-base-content/60">
-                          {new Date(request.createdAt).toLocaleString(locale())}
+                          <DateTime value={request.createdAt} />
                         </td>
                         <td class="whitespace-nowrap text-base-content/60">
-                          {new Date(request.expirationDate).toLocaleString(locale())}
+                          <DateTime value={request.expirationDate} />
                         </td>
                         <td>
                           <StatusBadge
@@ -688,7 +689,7 @@ const AccountErasureStatus: Component<{
   onReturn: () => void
   canReturn: () => boolean
 }> = (props) => {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const [status, setStatus] = createSignal(props.initialStatus)
   const [checking, setChecking] = createSignal(false)
   const [error, setError] = createSignal(false)
@@ -792,12 +793,16 @@ const AccountErasureStatus: Component<{
             <dl class="flex flex-wrap gap-6 text-sm text-base-content/65">
               <div>
                 <dt>{t('account.request_date', 'Request Date')}</dt>
-                <dd>{new Date(value().requestedAt).toLocaleString(locale())}</dd>
+                <dd>
+                  <DateTime value={value().requestedAt} />
+                </dd>
               </div>
               <Show when={value().status === 'completed' && value().completedAt}>
                 <div>
                   <dt>{t('account.erasure.completed_date', 'Completed')}</dt>
-                  <dd>{new Date(value().completedAt!).toLocaleString(locale())}</dd>
+                  <dd>
+                    <DateTime value={value().completedAt} />
+                  </dd>
                 </div>
               </Show>
             </dl>

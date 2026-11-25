@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ transaction: vi.fn(), lock: vi.fn(), lastVote: vi.fn(), create: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  transaction: vi.fn(),
+  lock: vi.fn(),
+  lastVote: vi.fn(),
+  create: vi.fn(),
+  rewards: vi.fn(),
+}))
 vi.mock('@gmod/infra-prisma', () => ({ default: { $transaction: mocks.transaction } }))
+vi.mock('../../../src/models/v6/rewardsEvents.js', () => ({ notifyVoteRewards: mocks.rewards }))
 const { registerCommunityServerVote } = await import('../../../src/models/v3/serverVoteModels.js')
 const store = { $queryRaw: mocks.lock, gm_server_vote: { findFirst: mocks.lastVote, create: mocks.create } }
 beforeEach(() => {
@@ -22,6 +29,7 @@ describe('atomic Discord vote registration', () => {
       orderBy: { createdAt: 'desc' },
     })
     expect(mocks.create).toHaveBeenCalledWith({ data: { serverID: 's1', userID: 'u1' } })
+    expect(mocks.rewards).toHaveBeenCalledExactlyOnceWith('s1', 'u1')
     expect(mocks.lock.mock.invocationCallOrder[0]).toBeLessThan(mocks.lastVote.mock.invocationCallOrder[0])
     expect(mocks.lastVote.mock.invocationCallOrder[0]).toBeLessThan(mocks.create.mock.invocationCallOrder[0])
   })
@@ -30,6 +38,7 @@ describe('atomic Discord vote registration', () => {
     expect(await registerCommunityServerVote('s1', 'old-guild', 'u1')).toEqual({ status: 'not_found' })
     expect(mocks.lastVote).not.toHaveBeenCalled()
     expect(mocks.create).not.toHaveBeenCalled()
+    expect(mocks.rewards).not.toHaveBeenCalled()
   })
   it('keeps the three-hour cooldown and only creates an expired vote', async () => {
     mocks.lastVote.mockResolvedValueOnce({ createdAt: new Date() })
@@ -45,5 +54,6 @@ describe('atomic Discord vote registration', () => {
   it('propagates transaction failures without reporting a successful vote', async () => {
     mocks.create.mockRejectedValueOnce(new Error('Transaction failed'))
     await expect(registerCommunityServerVote('s1', 'g1', 'u1')).rejects.toThrow('Transaction failed')
+    expect(mocks.rewards).not.toHaveBeenCalled()
   })
 })

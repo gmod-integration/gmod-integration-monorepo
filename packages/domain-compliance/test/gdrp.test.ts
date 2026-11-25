@@ -6,6 +6,8 @@ import { Readable } from 'node:stream'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const privacyMocks = { allowed: vi.fn(), blocked: vi.fn() }
+const rewardsFind = vi.fn()
+vi.mock('@gmod/infra-mongo', () => ({ mongoClient: { db: () => ({ collection: () => ({ find: rewardsFind }) }) } }))
 vi.mock('@gmod/domain-user/privacy.js', () => ({
   assertPersonalDataAllowed: privacyMocks.allowed,
   isErasureBlocked: privacyMocks.blocked,
@@ -85,6 +87,13 @@ function fakeUser(discordID: string | null, steamID64: string | null) {
 }
 
 function resetAllMocks() {
+  rewardsFind.mockReset().mockImplementation(() => ({
+    batchSize() {
+      return this
+    },
+    close: vi.fn(),
+    async *[Symbol.asyncIterator]() {},
+  }))
   privacyMocks.allowed.mockReset().mockResolvedValue(undefined)
   privacyMocks.blocked.mockReset().mockResolvedValue(false)
   gmLogMock.mockReset()
@@ -162,6 +171,10 @@ describe('getUserDataGRPD', () => {
     )
     expect(addNotificationMock).toHaveBeenCalledWith('d1', 'gdpr', expect.stringContaining('GDPR request is ready'))
     expect(createBucketIfNotExistsMock).toHaveBeenCalledWith('gmi-gdpr-exports')
+    expect(rewardsFind).toHaveBeenCalledWith(
+      { $or: [{ discordID: 'd1' }, { steamID64: '76561198219049673' }] },
+      expect.objectContaining({ projection: expect.objectContaining({ 'actions.code': 0, deliveryToken: 0 }) }),
+    )
 
     // scratch dirs are cleaned up afterward
     expect(existsSync(join(tmpdir(), 'gmod-integration', 'gdpr', request.id))).toBe(false)

@@ -21,8 +21,11 @@ backup
 /docs/reports/
 
 # Local Terraform configuration, state and downloaded providers.
+.env.v6-tunnel
 **/.terraform/
 *.tfstate
 *.tfstate.*
 *.tfvars
 *.tfvars.json
+*.tfplan
+.terraform.tfstate.lock.info

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+vi.mock('../src/rewardsWorker.js', () => ({ startRewardsWorker: vi.fn(() => vi.fn()) }))
 
 vi.mock('@gmod/core/utils/update-log.js', () => ({}))
 vi.mock('@gmod/infra-bullmq', () => ({}))

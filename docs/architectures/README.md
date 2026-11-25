@@ -512,8 +512,13 @@ applications après réussite et les laisse arrêtées en cas d'échec de migrat
 imposent le placement des services de données sur leur manager propriétaire.
 
 Le site web, la documentation produit et le relais webhook ont un hébergement séparé, absent de cette
-stack. Cette vue décrit la configuration du dépôt, pas l'état réel d'un hôte. La topologie physique
-Proxmox reste à documenter : aucune définition Terraform `.tf` n'est disponible dans ce dépôt.
+stack. Cette vue décrit la configuration du dépôt, pas l'état réel d'un hôte. Le
+[module Terraform Proxmox](../../infra/proxmox/README.md) fournit aussi une variante Docker Compose
+pour un LXC non privilégié et une installation vide : préparation sans démarrage par défaut,
+migrations avant les écrivains et bootstrap explicite refusant les données existantes. Son
+[guide de préparation et de bootstrap](../deployment/proxmox.md) distingue les tests locaux des
+prérequis à vérifier ensuite sur le serveur. Cette variante ne démontre pas l'état réel de la cible
+et ne fournit pas de procédure de mise à jour d'une installation Compose contenant déjà des données.
 
 ```mermaid
 %% Sources : docker-stack.swarm.yml, scripts/swarm-ops.py, docs/deployment/swarm.md.

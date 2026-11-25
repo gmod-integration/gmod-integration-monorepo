@@ -45,8 +45,12 @@
   padding: 20px 0;
   border-bottom: 1px solid var(--dashboard-border);
 }
-.settings-row:last-child {
+/* Help, access notices and save feedback can follow the final setting. */
+.settings-row:not(:has(~ .settings-row)) {
   border-bottom: 0;
+}
+.settings-row:last-child,
+.settings-row:has(+ .settings-save-feedback:last-child) {
   padding-bottom: 0;
 }
 .settings-row:first-child {
@@ -353,7 +357,7 @@
   border-left: 2px solid var(--dashboard-border);
   padding-left: 18px;
 }
-.settings-danger {
+.settings-danger:not(:first-child) {
   border-top: 1px solid color-mix(in srgb, var(--color-error) 20%, transparent);
   padding-top: 20px;
 }

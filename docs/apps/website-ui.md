@@ -33,6 +33,15 @@ merges its changed group with the sibling's saved values, preserving pending edi
 Confirming a button modal schedules its automatic save; deletion and publication remain explicit
 commands. Adopt canonical button IDs from the response and retain synchronization-pending feedback.
 
+Read-only labels preceding values use `.ui-value-label`, which follows the shared muted color in both
+themes. Apply it to the label beside text, identifiers, avatars, mentions or status badges.
+
+Timestamps use `DateTime` with `value`, optional `dateOnly` and an explicit `timeZone` when needed.
+It shows a localized numeric date and a quieter 24-hour clock, keeps the ISO instant in `<time>`
+and exposes the complete date, seconds and timezone on hover. Missing or invalid values show `—`.
+Use `formatDateTime` from `utils/dateTime.ts` when a translated sentence needs a plain string.
+Date inputs, chart ticks and authored legal dates keep their own formats.
+
 Read-only states share `StatusBadge`: a visible label, an optional decorative icon, and a semantic
 `tone` (`success`, `neutral`, `warning`, `danger`, `info`). Use the default 24 px size in tables/cards
 and `size="sm"` (20 px) for navigation markers and counts. Long labels wrap, and each tone has shared

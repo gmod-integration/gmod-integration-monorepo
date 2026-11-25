@@ -46,6 +46,19 @@ export const AdminConnectionRowSchema = z
     guildName: z.string(),
     activeSockets: count.nullable(),
     leaseExpiresAt: z.string().datetime().nullable(),
+    addonVersion: z
+      .string()
+      .max(64)
+      .regex(/^v?\d+\.\d+\.\d+(?:[-+][a-zA-Z0-9.-]+)?$/)
+      .nullable()
+      .default(null),
+    lastSeenAt: z.string().datetime().nullable().default(null),
+    lastHttpAt: z.string().datetime().nullable().default(null),
+    lastWebsocketAt: z.string().datetime().nullable().default(null),
+    protocol: z.enum(['legacy', 'acknowledged']).nullable().default(null),
+    httpRequestsPerMinute: count.nullable().default(null),
+    websocketRequestsPerMinute: count.nullable().default(null),
+    requestsPerMinute: count.nullable().default(null),
   })
   .strict()
 export const AdminConnectionsSchema = z
@@ -56,6 +69,9 @@ export const AdminConnectionsSchema = z
     presence: z.enum(['ready', 'unavailable']),
     observedAt: z.string().datetime().nullable(),
     leaseTtlSeconds: z.literal(90),
+    telemetry: z.enum(['ready', 'unavailable']).default('unavailable'),
+    trafficWindowSeconds: z.literal(60).default(60),
+    trafficObservedAt: z.string().datetime().nullable().default(null),
     generatedAt: z.string().datetime(),
   })
   .strict()

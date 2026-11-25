@@ -1,4 +1,4 @@
-import { Icon, IconButton, IconButtonLink } from '../../../../../components/ui/index.js'
+import { DateTime, Icon, IconButton, IconButtonLink } from '../../../../../components/ui/index.js'
 import { Component, createSignal, Match, Show, Switch } from 'solid-js'
 import { useI18n } from '../../../../../i18n'
 import JsonViewer from '../../../../../components/JsonViewer'
@@ -55,7 +55,9 @@ export const AddLogComponent: Component<AddDataProps> = (props) => {
   return (
     <>
       <tr>
-        <td class="text-base-content/70">{props.createAt.toLocaleString()}</td>
+        <td class="text-base-content/70">
+          <DateTime value={props.createAt} />
+        </td>
         <ColorsLogsType category={props.category} />
         <td>
           <Switch fallback={<span>{JSON.stringify(props.data)}</span>}>

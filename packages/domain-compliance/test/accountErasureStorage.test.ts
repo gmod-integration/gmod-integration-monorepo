@@ -102,10 +102,14 @@ describe('account erasure across storage boundaries', () => {
     const errors = cursor([{ _id: 'own-error', context: JSON.stringify({ reporter: identity.discordID }) }])
     const deleteLog = vi.fn(),
       deleteError = vi.fn()
+    const deleteRewards = vi.fn(),
+      anonymizeActor = vi.fn()
     mocks.mongoDB.mockReturnValue({
       collection: (name: string) => ({
         find: () => (name === 'logs' ? logs : errors),
         deleteOne: name === 'logs' ? deleteLog : deleteError,
+        deleteMany: deleteRewards,
+        updateMany: anonymizeActor,
       }),
     })
     await eraseMongoData(identity)
@@ -115,6 +119,18 @@ describe('account erasure across storage boundaries', () => {
     expect(deleteError).toHaveBeenCalledExactlyOnceWith({ _id: 'own-error' }, { maxTimeMS: 30_000 })
     expect(logs.close).toHaveBeenCalled()
     expect(errors.close).toHaveBeenCalled()
+    expect(deleteRewards).toHaveBeenCalledExactlyOnceWith(
+      {
+        $or: [{ discordID: identity.discordID }, { steamID64: identity.steamID64 }],
+      },
+      { maxTimeMS: 30_000 },
+    )
+    expect(anonymizeActor).toHaveBeenCalledTimes(2)
+    expect(anonymizeActor).toHaveBeenCalledWith(
+      { actorDiscordID: identity.discordID },
+      { $set: { actorDiscordID: null } },
+      { maxTimeMS: 30_000 },
+    )
   })
 
   it('propagates Mongo deletion failures to the durable worker and closes the scan', async () => {

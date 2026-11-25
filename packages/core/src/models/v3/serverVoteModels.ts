@@ -1,5 +1,6 @@
 import prisma from '@gmod/infra-prisma'
 import { Prisma } from '@gmod/infra-prisma/client.js'
+import { notifyVoteRewards } from '../v6/rewardsEvents.js'
 
 const VOTE_COOLDOWN_MS = 3 * 60 * 60 * 1000
 export type CommunityVoteResult =
@@ -11,7 +12,7 @@ export async function registerCommunityServerVote(
   guildID: string,
   userID: string,
 ): Promise<CommunityVoteResult> {
-  return prisma.$transaction(async (store) => {
+  const result: CommunityVoteResult = await prisma.$transaction(async (store) => {
     const server = await store.$queryRaw<{ id: string }[]>(
       Prisma.sql`SELECT id FROM gm_server WHERE id = ${serverID} AND guild = ${guildID} FOR UPDATE`,
     )
@@ -28,4 +29,6 @@ export async function registerCommunityServerVote(
     await store.gm_server_vote.create({ data: { serverID, userID } })
     return { status: 'voted' }
   })
+  if (result.status === 'voted') void notifyVoteRewards(serverID, userID)
+  return result
 }

@@ -28,6 +28,20 @@ const mocks = vi.hoisted(() => ({
   connect: vi.fn(),
   disconnect: vi.fn(),
   warn: vi.fn(),
+  rewardsPoll: vi.fn(),
+  rewardsAck: vi.fn(),
+}))
+vi.mock('../../../src/models/v6/rewards.js', () => ({
+  pollRewards: mocks.rewardsPoll,
+  acknowledgeRewards: mocks.rewardsAck,
+  RewardsError: class extends Error {
+    constructor(
+      public status: number,
+      public code: string,
+    ) {
+      super(code)
+    }
+  },
 }))
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromSteamID64: mocks.user }))
 vi.mock('@gmod/infra-redis', () => ({ default: { eval: mocks.rate } }))
@@ -126,6 +140,50 @@ beforeEach(() => {
 })
 
 describe('authenticated addon dispatcher', () => {
+  it('binds reward polling and receipts to the authenticated server, including empty GLua player arrays', async () => {
+    const integrations = { darkrp: true, pointshop: false, pointshop2: false }
+    mocks.rewardsPoll.mockResolvedValue({ deliveries: [] })
+    expect(
+      await handleAddonRequest(server(), request('/servers/s1/rewards/poll', { integrations, players: {} })),
+    ).toEqual({ status: 200, body: { deliveries: [] } })
+    expect(mocks.rewardsPoll).toHaveBeenCalledExactlyOnceWith('s1', { integrations, players: [] })
+    const receipt = {
+      id: '9e7a47dc-e647-4418-b511-294100c34930',
+      token: '6b81ab6f-4a9a-40be-af45-d5580d1a6938',
+      results: [{ id: '7b81ab6f-4a9a-40be-af45-d5580d1a6938', status: 'delivered' }],
+    }
+    mocks.rewardsAck.mockResolvedValue({ success: true })
+    expect(await handleAddonRequest(server(), request('/servers/s1/rewards/ack', receipt))).toEqual(good)
+    expect(mocks.rewardsAck).toHaveBeenCalledExactlyOnceWith('s1', receipt)
+    expect((await handleAddonRequest(server(), request('/servers/foreign/rewards/ack', receipt))).status).toBe(403)
+    expect(mocks.rewardsAck).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([
+    { integrations: { darkrp: true, pointshop: false, pointshop2: false }, players: [id, id] },
+    { integrations: { darkrp: 'yes', pointshop: false, pointshop2: false }, players: [id] },
+    { integrations: { darkrp: true, pointshop: false, pointshop2: false }, players: [id], serverID: 'foreign' },
+  ])('rejects malformed reward polls before evaluating or issuing an award', async (body) => {
+    expect((await handleAddonRequest(server(), request('/servers/s1/rewards/poll', body))).status).toBe(400)
+    expect(mocks.rewardsPoll).not.toHaveBeenCalled()
+  })
+
+  it('rejects malformed receipts without recording success', async () => {
+    expect(
+      (
+        await handleAddonRequest(
+          server(),
+          request('/servers/s1/rewards/ack', {
+            id: '9e7a47dc-e647-4418-b511-294100c34930',
+            token: 'invalid',
+            results: [],
+          }),
+        )
+      ).status,
+    ).toBe(400)
+    expect(mocks.rewardsAck).not.toHaveBeenCalled()
+  })
+
   it('returns a safe server description and the latest release without server credentials', async () => {
     const result = await handleAddonRequest(server(), request('/servers/s1', undefined, 'GET'))
     expect(result).toEqual({

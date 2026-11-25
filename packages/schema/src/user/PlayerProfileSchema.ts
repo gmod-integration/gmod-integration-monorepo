@@ -65,6 +65,7 @@ export const PlayerProfileResponseSchema = z
         discordID: PlayerDiscordIDSchema.nullable(),
         name: z.string(),
         avatarURL: z.string().url().nullable(),
+        discordAvatarURL: z.string().url().nullable().optional(),
         trustLevel: z.number().int().min(0).max(100).nullable(),
         registeredAt: instant.nullable(),
       })

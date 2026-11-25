@@ -60,6 +60,7 @@ describe('addon WebSocket gateway', () => {
     await f.connection.receive(f.request())
     expect(f.dispatch).toHaveBeenCalledExactlyOnceWith(f.server, JSON.parse(f.request()))
     expect(f.onActivity).toHaveBeenCalledOnce()
+    expect(f.onActivity).toHaveBeenCalledWith({ protocol: 'acknowledged', countRequest: true })
     expect(f.packets().at(-1)).toEqual({ action: 'addon.response', id: 'r1', status: 200, body: { success: true } })
   })
 
@@ -75,6 +76,7 @@ describe('addon WebSocket gateway', () => {
     expect(f.socket.close).toHaveBeenCalledWith(code, expect.any(String))
     await f.connection.receive(f.request('after-close'))
     expect(f.dispatch).not.toHaveBeenCalled()
+    expect(f.onActivity).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -172,6 +174,7 @@ describe('addon WebSocket gateway', () => {
         body: { maintenance: true },
       }),
     )
+    expect(f.onActivity).toHaveBeenCalledExactlyOnceWith({ protocol: 'legacy', countRequest: true })
   })
 
   it('bounds and authenticates optional console messages and ignores unknown commands', async () => {
@@ -179,10 +182,53 @@ describe('addon WebSocket gateway', () => {
     f.connection.ready()
     await f.connection.receive(JSON.stringify({ action: 'console_live_exporter', data: { data: 'server ready' } }))
     expect(f.onConsole).toHaveBeenCalledExactlyOnceWith('server ready')
+    expect(f.onActivity).toHaveBeenCalledExactlyOnceWith({ countRequest: false })
     await f.connection.receive(JSON.stringify({ action: 'console_live_exporter', data: { data: 'x'.repeat(32_769) } }))
     await f.connection.receive(JSON.stringify({ action: 'execute-anything' }))
     expect(f.onConsole).toHaveBeenCalledOnce()
     expect(f.dispatch).not.toHaveBeenCalled()
+  })
+
+  it('preserves console wire order before asynchronous credential checks', async () => {
+    const f = fixture()
+    f.connection.ready()
+    let resume!: (server: Server) => void
+    let started!: () => void
+    const pending = new Promise<void>((resolve) => (started = resolve))
+    f.authenticate.mockImplementationOnce(() => {
+      started()
+      return new Promise((resolve) => (resume = resolve))
+    })
+    const message = (text: string) => JSON.stringify({ action: 'console_live_exporter', data: { data: text } })
+    const first = f.connection.receive(message('first'))
+    await pending
+    const second = f.connection.receive(message('second'))
+    expect(f.authenticate).toHaveBeenCalledOnce()
+    resume(f.server)
+    await Promise.all([first, second])
+    expect(f.onConsole.mock.calls.map(([text]) => text)).toEqual(['first', 'second'])
+  })
+
+  it.each([
+    [8192, 20, 8],
+    [1, 80, 64],
+  ])('bounds pending console bytes/chunks: size=%s', async (size, count, accepted) => {
+    const f = fixture()
+    f.connection.ready()
+    let resume!: (server: Server) => void
+    let started!: () => void
+    const pending = new Promise<void>((resolve) => (started = resolve))
+    f.authenticate.mockImplementationOnce(() => {
+      started()
+      return new Promise((resolve) => (resume = resolve))
+    })
+    const messages = Array.from({ length: count }, () =>
+      f.connection.receive(JSON.stringify({ action: 'console_live_exporter', data: { data: 'x'.repeat(size) } })),
+    )
+    await pending
+    resume(f.server)
+    await Promise.all(messages)
+    expect(f.onConsole).toHaveBeenCalledTimes(accepted)
   })
 
   it('closes a flooding peer and does not leak internal failures in replies', async () => {
@@ -226,6 +272,7 @@ describe('addon WebSocket gateway', () => {
     await f.connection.receive(f.request())
     await f.connection.receive(f.request())
     expect(f.dispatch).toHaveBeenCalledOnce()
+    expect(f.onActivity).toHaveBeenCalledOnce()
     expect(f.socket.close).not.toHaveBeenCalled()
   })
 

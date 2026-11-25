@@ -29,6 +29,8 @@ const accessSnapshot = (premium = true) => ({
 })
 
 const getUserFromDiscordIDMock = vi.fn()
+const dashboardAccessMock = vi.fn()
+vi.mock('@gmod/domain-user/dashboardAccess.js', () => ({ canAccessDashboardGuild: dashboardAccessMock }))
 vi.mock('@gmod/domain-user/User.js', () => ({ getUserFromDiscordID: getUserFromDiscordIDMock }))
 
 const getServersFromDiscordGuildIDMock = vi.fn()
@@ -216,6 +218,7 @@ function makeRes() {
 }
 
 function resetAllMocks() {
+  dashboardAccessMock.mockReset().mockResolvedValue(true)
   authMocks.resolve.mockReset().mockResolvedValue({
     id: 'current-session',
     discordID: 'd1',
@@ -711,11 +714,18 @@ describe('usersControllers', () => {
     ])
   })
 
-  it('findGuildServers delegates to getServersFromDiscordGuildID', async () => {
-    getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ id: 's1' }])
+  it('filters the server list before exposing stored credentials', async () => {
+    const allowed = { id: 's1', token: 'allowed-server-token' }
+    const forbidden = { id: 's2', token: 'forbidden-server-token' }
+    getServersFromDiscordGuildIDMock.mockResolvedValueOnce([allowed, forbidden])
+    dashboardAccessMock.mockImplementation((_panel, _guild, options) => options.serverID === 's1')
     const res = makeRes()
-    await c.findGuildServers({ dscGuild: { id: 'g1' } } as any, res)
+    const panelUser = { discordID: 'viewer' }
+    await c.findGuildServers({ dscGuild: { id: 'g1' }, panelUser } as any, res)
     expect(getServersFromDiscordGuildIDMock).toHaveBeenCalledWith('g1')
+    expect(res.send).toHaveBeenCalledWith([allowed])
+    expect(JSON.stringify(res.send.mock.calls)).not.toContain(forbidden.token)
+    expect(dashboardAccessMock).toHaveBeenCalledWith(panelUser, 'g1', { serverID: 's2' })
   })
 
   it('findGuildServer sends req.server', async () => {
@@ -962,10 +972,12 @@ describe('usersControllers', () => {
 
   it('getGuildBans delegates to processGetGuildBans', async () => {
     const guild = { id: 'g1' }
+    getServersFromDiscordGuildIDMock.mockResolvedValueOnce([{ id: 's1' }, { id: 's2' }])
+    dashboardAccessMock.mockImplementation((_panel, _guild, options) => options.serverID === 's1')
     modelMocks.processGetGuildBans.mockResolvedValueOnce({ status: 200, body: { gmodBans: [], discordBans: [] } })
     const res = makeRes()
     await c.getGuildBans({ guild } as any, res)
-    expect(modelMocks.processGetGuildBans).toHaveBeenCalledWith(guild)
+    expect(modelMocks.processGetGuildBans).toHaveBeenCalledWith(guild, ['s1'])
     expect(res.status).toHaveBeenCalledWith(200)
     expect(res.json).toHaveBeenCalledWith({ gmodBans: [], discordBans: [] })
   })
@@ -2046,12 +2058,15 @@ describe('usersControllers', () => {
   })
 
   describe('deleteUserGmodPurchase', () => {
-    it('returns 403 when a real guild exists and the user is not admin of it', async () => {
-      bullmqMocks.enqueueDiscordGuildSnapshot.mockResolvedValueOnce({ id: 'g1' })
+    it('allows personal purchase recovery without Discord administration or a bot snapshot', async () => {
+      modelMocks.processDeleteUserGmodPurchase.mockResolvedValueOnce({ status: 200, body: {} })
       const panelUser = { isAdminOfGuild: vi.fn().mockResolvedValueOnce(false) }
       const res = makeRes()
       await c.deleteUserGmodPurchase({ params: { guildID: 'g1', discordID: 'd1' }, panelUser } as any, res)
-      expect(res.status).toHaveBeenCalledWith(403)
+      expect(res.status).toHaveBeenCalledWith(200)
+      expect(panelUser.isAdminOfGuild).not.toHaveBeenCalled()
+      expect(bullmqMocks.enqueueDiscordGuildSnapshot).not.toHaveBeenCalled()
+      expect(modelMocks.processDeleteUserGmodPurchase).toHaveBeenCalledWith('d1', 'g1')
     })
 
     it('proceeds when the guild snapshot is falsy (guild no longer exists)', async () => {

@@ -124,10 +124,36 @@ describe('Community selection', () => {
     vi.mocked(fetchAPI).mockResolvedValue(response([]))
     renderGuilds()
     await vi.waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'No manageable Discord servers were found. Check that you are signed in with the right Discord account and have permission to manage a server.',
-      ),
+      expect(screen.getByRole('status')).toHaveTextContent('No communities match this account’s dashboard access.'),
     )
+    expect(screen.getByRole('dialog', { name: 'Get dashboard access' })).toHaveAttribute('open')
+  })
+
+  it('lets an excluded user close the procedure, re-open it, and recheck after rights are granted', async () => {
+    vi.mocked(fetchAPI).mockResolvedValueOnce(response([])).mockResolvedValueOnce(response(guilds))
+    renderGuilds()
+    const help = await screen.findByRole('dialog', { name: 'Get dashboard access' })
+    expect(within(help).getByRole('link', { name: 'Open Account' })).toHaveAttribute('href', '/account')
+    await fireEvent.click(within(help).getAllByRole('button', { name: 'Close' }).at(-1)!)
+    expect(help).not.toHaveAttribute('open')
+    await fireEvent.click(screen.getByRole('button', { name: 'How to get access' }))
+    expect(help).toHaveAttribute('open')
+    await fireEvent.click(within(help).getByRole('button', { name: 'Recheck access' }))
+    await loadedGuilds()
+    expect(help).not.toHaveAttribute('open')
+    expect(vi.mocked(fetchAPI).mock.calls.every((call) => call[1] === 'GET')).toBe(true)
+  })
+
+  it('does not open an access warning for a failed lookup or an empty search result', async () => {
+    vi.mocked(fetchAPI).mockResolvedValueOnce(response({}, 503)).mockResolvedValueOnce(response(guilds))
+    renderGuilds()
+    await screen.findByRole('alert')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await loadedGuilds()
+    await fireEvent.input(screen.getByRole('searchbox'), { target: { value: 'unknown community' } })
+    expect(screen.getByRole('status')).toHaveTextContent('No results match your search')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('filters communities by name without changing selection or fetching again', async () => {

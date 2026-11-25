@@ -58,7 +58,7 @@ const PlayerProfileActions: Component<{ profile: PlayerProfileResponse }> = (pro
   }
 
   return (
-    <div class="mt-4 flex min-w-0 flex-col gap-3">
+    <div class="flex min-w-0 flex-col gap-3">
       <div class="flex flex-wrap items-center gap-2">
         <Button size="sm" onClick={() => void share()} loading={action.pending()}>
           <Icon name="share-2" size={16} />

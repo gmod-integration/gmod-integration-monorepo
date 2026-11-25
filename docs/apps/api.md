@@ -70,6 +70,21 @@ The snapshot worker loads channels, roles, emojis and its icon concurrently. Rea
 configuration bypasses that snapshot while retaining session, guild administrator and server ownership
 checks. Access snapshots resolve entitlements and usage counts concurrently after authorization.
 
+Community and server dashboard routes, including v3 compatibility routes, use the shared
+`@gmod/domain-user/dashboardAccess.js` authorization. Discord administrator permission and a recorded
+in-game rank enabled in `ig_adminRank` are both required, with exceptions for the Discord community
+owner or the buyer of an active GmodStore purchase linked to this exact community. Community scope
+accepts a qualifying rank on any of its servers; server scope checks the target server. Steam links,
+purchases, rank settings and player ranks are read from the database, and mutations also request fresh
+Discord permissions. No connected player is required. Discovery and server lists filter by these same
+rights; platform administration and personal-account operations keep their distinct authorization.
+
+Confirmed policy refusals return HTTP 403 with `dashboard_access_denied` and a closed public `reason`
+(`discord_admin_required`, `steam_link_required`, `game_admin_required` or `scope_unavailable`). The v6
+response nests both fields under `error`; v3 preserves its string `error` and adds a sibling `reason`.
+The response reveals no player rank, administrator map or owner/purchase identity. Discord outages,
+reauthorization and CSRF failures keep their separate codes; they do not fabricate a missing role.
+
 ## Linked Steam profile
 
 `GET /v3/users/:discordID/steam-profile` requires the account's authenticated dashboard session and

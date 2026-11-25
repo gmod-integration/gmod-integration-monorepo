@@ -9,7 +9,15 @@ import {
 } from '@gmod/schema/server/DashboardSettingsSchema.js'
 import { StatusConfigurationSaveSchema } from '@gmod/schema/server/StatusConfigurationSchema.js'
 import { AccountErasureRequestSchema } from '@gmod/schema/user/AccountErasureSchema.js'
+import {
+  RewardManualGrantSchema,
+  RewardRuleDeleteSchema,
+  RewardRuleInputSchema,
+  RewardRuleSaveSchema,
+  RewardSimulationInputSchema,
+} from '@gmod/schema/server/RewardsSchema.js'
 import { createOpenApiDocument } from '../../src/docs/openapi.js'
+import { ConsoleRconRequestSchema } from '@gmod/schema/gmod/ConsoleStreamSchema.js'
 
 const methods = ['get', 'put', 'post', 'delete', 'patch', 'head', 'options']
 const document = createOpenApiDocument('http://localhost:53136/')
@@ -35,8 +43,21 @@ function mountedOperations(file: string, prefix = ''): string[] {
       }
     }
   }
-  const text = (node: ts.Node | undefined) =>
-    node && ts.isStringLiteral(node) ? node.text : node && ts.isIdentifier(node) ? strings.get(node.text) : undefined
+  const text = (node: ts.Node | undefined): string | undefined => {
+    if (!node) return undefined
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text
+    if (ts.isIdentifier(node)) return strings.get(node.text)
+    if (ts.isTemplateExpression(node)) {
+      let value = node.head.text
+      for (const span of node.templateSpans) {
+        const expression = text(span.expression)
+        if (expression === undefined) return undefined
+        value += expression + span.literal.text
+      }
+      return value
+    }
+    return undefined
+  }
   const result: string[] = []
   function visit(node: ts.Node) {
     if (
@@ -71,13 +92,49 @@ function mountedOperations(file: string, prefix = ''): string[] {
 }
 
 describe('v6 OpenAPI contract', () => {
+  it('documents the closed dashboard denial reasons without exposing authorization evidence', () => {
+    const error = document.components?.schemas?.Error
+    expect(error).toMatchObject({
+      properties: {
+        error: {
+          properties: {
+            reason: {
+              enum: ['discord_admin_required', 'steam_link_required', 'game_admin_required', 'scope_unavailable'],
+            },
+          },
+        },
+      },
+    })
+    const response = paths['/guilds/{guildID}/servers/{serverID}/access'].get!.responses!['403']
+    expect(JSON.stringify(response)).toContain('dashboard_access_denied')
+    expect(JSON.stringify(error)).not.toContain('ownerID')
+    expect(JSON.stringify(error)).not.toContain('ig_adminRank')
+  })
+
+  it('describes acknowledged and uncertain RCON outcomes without accepting caller identities', () => {
+    const operation = paths['/guilds/{guildID}/servers/{serverID}/console/commands'].post!
+    expect(operation.responses).toHaveProperty('200')
+    expect(operation.responses).toHaveProperty('409')
+    expect(operation.responses).toHaveProperty('429')
+    expect(operation.description).toContain('valid dashboard session')
+    expect(operation.description).toContain('Discord administrator plus a linked Steam account')
+    expect(operation.description).toContain('ig_adminRank')
+    expect(operation.description).toContain('buyer of an active purchase linked to this community are exceptions')
+    expect(operation.description).toContain('No player connection is required')
+    expect(operation.description).toContain('ten minutes')
+    expect(operation.description).toContain('8192 UTF-8 bytes')
+    const input = { requestID: 'f58fc7eb-7d03-4d48-b9d3-e97f745d9ab4', command: 'status' }
+    expect(ConsoleRconRequestSchema.safeParse(input).success).toBe(true)
+    expect(ConsoleRconRequestSchema.safeParse({ ...input, steamID: '76561198000000001' }).success).toBe(false)
+  })
+
   it('documents exactly the operations mounted by the current v6 router', () => {
     const actual = mountedOperations(fileURLToPath(new URL('../../src/routes/v6/_v6Routes.ts', import.meta.url)))
     const described = Object.entries(paths).flatMap(([path, item]) =>
       methods.filter((method) => method in item).map((method) => `${method.toUpperCase()} ${path}`),
     )
     expect(described.sort()).toEqual(actual.sort())
-    expect(described).toHaveLength(36)
+    expect(described).toHaveLength(44)
     expect(new Set(described).size).toBe(described.length)
   })
 
@@ -137,7 +194,13 @@ describe('v6 OpenAPI contract', () => {
       paths['/auth/impersonations/end'].post,
       paths['/guilds/{guildID}/settings'].put,
       paths['/guilds/{guildID}/servers/{serverID}/settings'].put,
+      paths['/guilds/{guildID}/servers/{serverID}/console/commands'].post,
       paths['/guilds/{guildID}/servers/{serverID}/status/configuration'].put,
+      paths['/guilds/{guildID}/servers/{serverID}/rewards/rules'].post,
+      paths['/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}'].put,
+      paths['/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}'].delete,
+      paths['/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}/simulate'].post,
+      paths['/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}/grant'].post,
       paths['/account/erasure-requests'].post,
     ]
     for (const operation of writes)
@@ -158,6 +221,11 @@ describe('v6 OpenAPI contract', () => {
       [paths['/guilds/{guildID}/servers/{serverID}/settings'].put, ServerDashboardSettingsRequestSchema],
       [paths['/guilds/{guildID}/servers/{serverID}/status/configuration'].put, StatusConfigurationSaveSchema],
       [paths['/account/erasure-requests'].post, AccountErasureRequestSchema],
+      [paths['/guilds/{guildID}/servers/{serverID}/rewards/rules'].post, RewardRuleInputSchema],
+      [paths['/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}'].put, RewardRuleSaveSchema],
+      [paths['/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}'].delete, RewardRuleDeleteSchema],
+      [paths['/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}/simulate'].post, RewardSimulationInputSchema],
+      [paths['/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}/grant'].post, RewardManualGrantSchema],
     ] as const
     for (const [operation, validator] of operations) {
       const requestBody = operation?.requestBody
@@ -186,5 +254,20 @@ describe('v6 OpenAPI contract', () => {
     expect(JSON.stringify(session)).not.toContain('accessToken')
     expect(JSON.stringify(document.components?.schemas?.SessionList)).not.toContain('tokenHash')
     expect(JSON.stringify(document.components?.schemas?.AccountErasureStatus)).not.toContain('receipt')
+  })
+
+  it('keeps reward creation, revision conflicts and queued-delivery acknowledgements explicit', () => {
+    expect(paths['/guilds/{guildID}/servers/{serverID}/rewards/rules'].post?.responses).toHaveProperty('201')
+    const rule = paths['/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}']
+    expect(rule.put?.responses).toHaveProperty('409')
+    expect(rule.delete?.responses).toHaveProperty('409')
+    const grant = paths['/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}/grant'].post!
+    expect(grant.responses).toHaveProperty('202')
+    expect(grant.responses).toHaveProperty('409')
+    expect(grant.responses).not.toHaveProperty('200')
+    expect(grant.description).toContain('not completed delivery')
+    expect(paths['/guilds/{guildID}/servers/{serverID}/rewards/history'].get?.parameters).toContainEqual(
+      expect.objectContaining({ in: 'query', name: 'pageSize' }),
+    )
   })
 })

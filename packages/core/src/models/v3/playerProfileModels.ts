@@ -1,5 +1,7 @@
 import prisma from '@gmod/infra-prisma'
 import { isErasureBlocked } from '@gmod/domain-user/privacy.js'
+import { getSteamUserAvatarLarge } from '@gmod/infra-steam'
+import { getDiscordProfile } from '../discordProfile.js'
 import {
   PlayerProfileQuerySchema,
   PlayerProfileResponseSchema,
@@ -11,6 +13,25 @@ import {
 
 type ProfileResult = { status: 200; body: PlayerProfileResponse } | { status: 400 | 404; body: { error: string } }
 const notFound = (): ProfileResult => ({ status: 404, body: { error: 'player_not_found' } })
+
+/** Provider decoration is optional: unavailable or stalled avatars cannot hide recorded activity. */
+async function optionalAvatar(load: () => Promise<string | null | undefined>): Promise<string | null> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    const value = await Promise.race([
+      load(),
+      new Promise<null>((resolve) => {
+        timeout = setTimeout(() => resolve(null), 3_000)
+      }),
+    ])
+    const parsed = PlayerProfileResponseSchema.shape.player.shape.avatarURL.safeParse(value)
+    return parsed.success ? parsed.data : null
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timeout)
+  }
+}
 
 /** The visible server records are the source of every aggregate, including dates and player names. */
 export async function processGetPlayerProfile(
@@ -146,17 +167,24 @@ export async function processGetPlayerProfile(
   // An erased account, or one with only private records, has no profile for another visitor.
   if (!ownProfile && summary._count._all === 0 && warningsTotal === 0 && bansTotal === 0) return notFound()
   if (await isErasureBlocked(linkedUser?.id, steamID64)) return notFound()
+  const discordID = PlayerDiscordIDSchema.safeParse(linkedUser?.id).success ? linkedUser!.id : null
+  const [avatarURL, discordAvatarURL] = await Promise.all([
+    optionalAvatar(() => getSteamUserAvatarLarge(steamID64)),
+    discordID ? optionalAvatar(async () => (await getDiscordProfile(discordID)).avatarURL) : null,
+  ])
+  if (await isErasureBlocked(linkedUser?.id, steamID64)) return notFound()
   const trust = linkedUser?.trust
 
   const body: PlayerProfileResponse = {
     player: {
       steamID64,
-      discordID: PlayerDiscordIDSchema.safeParse(linkedUser?.id).success ? linkedUser!.id : null,
+      discordID,
       name:
         (ownProfile ? storedPlayer?.username || viewer.username : latestVisible?.name) ||
         latestVisible?.name ||
         steamID64,
-      avatarURL: null,
+      avatarURL,
+      discordAvatarURL,
       trustLevel: typeof trust === 'number' && Number.isInteger(trust) && trust >= 0 && trust <= 100 ? trust : null,
       registeredAt: storedPlayer?.createdAt.toISOString() ?? null,
     },

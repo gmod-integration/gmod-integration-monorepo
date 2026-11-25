@@ -393,7 +393,13 @@ const GuildVerification: Component = () => {
           )}
           icon="send"
         >
-          <SettingRow title={t('dashboard.guild.verification.verification_message_label', 'Verification Message:')}>
+          <SettingRow
+            title={
+              <span class="ui-value-label">
+                {t('dashboard.guild.verification.verification_message_label', 'Verification Message:')}
+              </span>
+            }
+          >
             <AsyncState
               loading={verifyMessage.loading}
               error={verifyMessage.error}
@@ -582,7 +588,7 @@ const GuildVerification: Component = () => {
       >
         <GuildRolesState />
         <div class="min-w-0 w-full overflow-x-auto">
-          <table class="table border-b border-base-300 rounded-none">
+          <table class="table rounded-none">
             <thead>
               <tr class="text-l">
                 <th>{t('dashboard.guild.verification.role_column', 'Role')}</th>

@@ -19,9 +19,17 @@ import {
   capabilityLimit,
   hasCapability,
 } from '@gmod/schema/server/AccessPolicySchema.js'
+import {
+  DashboardAccessDenialReasonSchema,
+  type DashboardAccessDenialReason,
+} from '@gmod/schema/user/DashboardAccessSchema.js'
 import { getAPIUrl } from '../utils/api.js'
 import { AUTH_CHANGE_EVENT, authenticatedFetch, authSession } from '../utils/authClient.js'
-import { ACCESS_REFRESH_EVENT } from '../utils/accessEvents.js'
+import {
+  ACCESS_REFRESH_EVENT,
+  DASHBOARD_ACCESS_DENIED_EVENT,
+  type DashboardAccessDeniedEvent,
+} from '../utils/accessEvents.js'
 import { useI18n } from '../i18n.js'
 import { Button } from './ui/Button.js'
 
@@ -33,6 +41,8 @@ type AccessState = {
   snapshot: Accessor<DashboardAccessSnapshot | undefined>
   loading: Accessor<boolean>
   error: Accessor<boolean>
+  permissionDenied: Accessor<boolean>
+  denialReason: Accessor<DashboardAccessDenialReason | undefined>
   ready: Accessor<boolean>
   refresh: () => void
 }
@@ -41,6 +51,8 @@ const missing: AccessState = {
   snapshot: () => undefined,
   loading: () => false,
   error: () => true,
+  permissionDenied: () => false,
+  denialReason: () => undefined,
   ready: () => false,
   refresh: () => {},
 }
@@ -55,6 +67,7 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
   const [loading, setLoading] = createSignal(false)
   const [error, setError] = createSignal(false)
   const [permissionDenied, setPermissionDenied] = createSignal(false)
+  const [denialReason, setDenialReason] = createSignal<DashboardAccessDenialReason>()
   let generation = 0
   let active = true
   const scope = createMemo(
@@ -88,11 +101,11 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
       setLoading(false)
       setError(false)
       setPermissionDenied(false)
+      setDenialReason(undefined)
       return
     }
     setLoading(true)
     setError(false)
-    setPermissionDenied(false)
     const operation = {
       target,
       controller: new AbortController(),
@@ -107,7 +120,16 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
         signal: operation.controller.signal,
       })
       if (!response.ok) {
-        if (active && current === generation) setPermissionDenied(response.status === 403)
+        if (active && current === generation && response.status === 403) {
+          const denied = await response.json().catch(() => undefined)
+          if (!active || current !== generation) throw new Error('The dashboard scope changed')
+          const code = typeof denied?.error === 'string' ? denied.error : denied?.error?.code
+          if (!code || code === 'forbidden' || code === 'dashboard_access_denied') {
+            setPermissionDenied(true)
+            const reason = DashboardAccessDenialReasonSchema.safeParse(denied?.error?.reason)
+            setDenialReason(reason.success ? reason.data : undefined)
+          }
+        }
         throw new Error('Access unavailable')
       }
       const value: unknown = await response.json()
@@ -115,7 +137,11 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
       if (parsed.guildID !== target.guildID) throw new Error('Wrong community access')
       const extra = value as { usages?: Partial<Record<CapabilityKey, number>>; serverID?: string }
       if (target.serverID && extra.serverID !== target.serverID) throw new Error('Wrong server access')
-      if (active && current === generation) setSnapshot({ ...parsed, usages: extra.usages, serverID: extra.serverID })
+      if (active && current === generation) {
+        setSnapshot({ ...parsed, usages: extra.usages, serverID: extra.serverID })
+        setPermissionDenied(false)
+        setDenialReason(undefined)
+      }
     } catch {
       if (active && current === generation) {
         setSnapshot(undefined)
@@ -138,6 +164,8 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
     scope()
     if (!props.snapshot) {
       setSnapshot(undefined)
+      setPermissionDenied(false)
+      setDenialReason(undefined)
       void refresh(false)
     }
   })
@@ -154,12 +182,14 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
     const onAuthChange = () => {
       const previous = sessionID
       sessionID = authSession()?.session.id
+      if (previous === sessionID) return
+      setPermissionDenied(false)
+      setDenialReason(undefined)
       // Initial cookie restoration can share the pending lookup; a changed identity cannot.
       if (!previous) {
         if (sessionID && !pending && !snapshot()) void refresh(false)
         return
       }
-      if (previous === sessionID) return
       generation++
       pending?.controller.abort()
       pending = undefined
@@ -171,11 +201,29 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
     }
     const onRefresh = (event: Event) =>
       void refresh((event as CustomEvent<{ reason?: string }>).detail?.reason !== 'background')
+    const onDenied = (event: Event) => {
+      const detail = (event as CustomEvent<DashboardAccessDeniedEvent>).detail
+      const target = scope()
+      if (
+        !target ||
+        detail?.guildID !== target.guildID ||
+        (detail.serverID && detail.serverID !== target.serverID) ||
+        detail.sessionID !== authSession()?.session.id
+      )
+        return
+      const parsed = DashboardAccessDenialReasonSchema.safeParse(detail.reason)
+      if (!parsed.success) return
+      setSnapshot(undefined)
+      setPermissionDenied(true)
+      setDenialReason(parsed.data)
+      setError(true)
+    }
     const onBackgroundRefresh = () => void refresh(false)
     const onVisible = () => {
       if (document.visibilityState === 'visible') onBackgroundRefresh()
     }
     window.addEventListener(ACCESS_REFRESH_EVENT, onRefresh)
+    window.addEventListener(DASHBOARD_ACCESS_DENIED_EVENT, onDenied)
     window.addEventListener(AUTH_CHANGE_EVENT, onAuthChange)
     window.addEventListener('focus', onBackgroundRefresh)
     window.addEventListener('storage', onBackgroundRefresh)
@@ -190,6 +238,7 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
       clearInterval(timer)
       clearInterval(expiryTimer)
       window.removeEventListener(ACCESS_REFRESH_EVENT, onRefresh)
+      window.removeEventListener(DASHBOARD_ACCESS_DENIED_EVENT, onDenied)
       window.removeEventListener(AUTH_CHANGE_EVENT, onAuthChange)
       window.removeEventListener('focus', onBackgroundRefresh)
       window.removeEventListener('storage', onBackgroundRefresh)
@@ -198,7 +247,15 @@ export const AccessProvider: ParentComponent<{ snapshot?: DashboardAccessSnapsho
   })
   const current = () => props.snapshot ?? snapshot()
   const ready = () => !!current() && Date.parse(current()!.validUntil) > now()
-  const value: AccessState = { snapshot: current, loading, error, ready, refresh: () => void refresh() }
+  const value: AccessState = {
+    snapshot: current,
+    loading,
+    error,
+    permissionDenied,
+    denialReason,
+    ready,
+    refresh: () => void refresh(),
+  }
   return (
     <AccessContext.Provider value={value}>
       <Show

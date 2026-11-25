@@ -36,4 +36,10 @@ describe('redactLogData', () => {
     expect(redactLogData('diagnostic')).toBe('diagnostic')
     expect(redactLogData(0)).toBe(0)
   })
+
+  it('redacts console commands without changing the executable request', () => {
+    const request = { requestID: 'operation-id', command: 'sv_password private-console-value' }
+    expect(redactLogData(request)).toEqual({ requestID: 'operation-id', command: '[REDACTED]' })
+    expect(request.command).toBe('sv_password private-console-value')
+  })
 })

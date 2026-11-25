@@ -13,6 +13,19 @@ import {
 } from '@gmod/schema/server/StatusConfigurationSchema.js'
 import { AccessResponseSchema } from '@gmod/schema/server/AccessPolicySchema.js'
 import {
+  RewardGrantSchema,
+  RewardHistoryQuerySchema,
+  RewardHistorySchema,
+  RewardManualGrantSchema,
+  RewardRuleDeleteSchema,
+  RewardRuleInputSchema,
+  RewardRuleSaveSchema,
+  RewardRuleSchema,
+  RewardsDashboardSchema,
+  RewardSimulationInputSchema,
+  RewardSimulationSchema,
+} from '@gmod/schema/server/RewardsSchema.js'
+import {
   AccountErasureRequestSchema,
   AccountErasureResponseSchema,
   AccountErasureStatusResponseSchema,
@@ -47,6 +60,8 @@ import {
 } from '@gmod/schema/admin/AdminMonitoringSchema.js'
 import { AdminPreviewQuerySchema, AdminServerPreviewsSchema } from '@gmod/schema/admin/AdminServerPreviewsSchema.js'
 import { StatusMessagePreviewSchema } from '@gmod/schema/server/StatusMessagePreviewSchema.js'
+import { ConsoleRconRequestSchema, ConsoleRconResponseSchema } from '@gmod/schema/gmod/ConsoleStreamSchema.js'
+import { DashboardAccessDenialReasonSchema } from '@gmod/schema/user/DashboardAccessSchema.js'
 
 const date = z.string().datetime({ offset: true })
 const identity = z.string().min(1)
@@ -91,6 +106,7 @@ const ErrorSchema = z.object({
   error: z.object({
     code: z.string(),
     message: z.string(),
+    reason: DashboardAccessDenialReasonSchema.optional(),
     capability: z.string().optional(),
     limit: z.number().nullable().optional(),
     used: z.number().optional(),
@@ -118,7 +134,10 @@ const json = (name: string, description: string) => ({
 const errors: ZodOpenApiResponsesObject = {
   400: json('Error', 'Invalid parameters, body or configuration.'),
   401: json('Error', 'The application session is absent, expired or revoked.'),
-  403: json('Error', 'Origin, CSRF, permissions, provider authorization or commercial access denied.'),
+  403: json(
+    'Error',
+    'Origin, CSRF, permissions, provider authorization or commercial access denied. Dashboard policy refusals use code dashboard_access_denied with a single reason: discord_admin_required, steam_link_required, game_admin_required or scope_unavailable. Provider authorization errors keep their own code.',
+  ),
   404: json('Error', 'The resource was not found within the authorized scope.'),
   503: {
     ...json('Error', 'A required service is temporarily unavailable. This does not revoke the session.'),
@@ -140,8 +159,28 @@ const pathParameter = (name: string, description: string) => ({
   description,
   schema: { type: 'string' as const, minLength: 1 },
 })
-const guild = pathParameter('guildID', 'Discord community ID. The actor must administer this community.')
-const server = pathParameter('serverID', 'GMod server ID. The server must belong to the named community.')
+const guild = pathParameter(
+  'guildID',
+  'Discord community ID. Dashboard access requires Discord administrator permission plus a recorded in-game administrator rank on a community server. The Discord owner or buyer of an active GmodStore purchase linked to this community is exempt.',
+)
+const server = pathParameter(
+  'serverID',
+  'GMod server ID belonging to the named community. The in-game administrator rank must be enabled in ig_adminRank on this exact server, unless the community owner or linked active buyer exception applies. No player connection is required.',
+)
+const rewardRule = {
+  ...pathParameter('ruleID', 'UUID of a reward rule belonging to this server.'),
+  schema: { type: 'string' as const, format: 'uuid' },
+}
+const rewardExample = {
+  name: 'Account linked',
+  description: 'Reward the first verified account link.',
+  enabled: true,
+  trigger: { type: 'verification' },
+  actions: [{ type: 'darkrp_money', amount: 5000 }],
+  pendingDays: 7,
+  startsAt: null,
+  endsAt: null,
+}
 const body = (schema: z.ZodTypeAny, example: Record<string, unknown>) => ({
   required: true,
   content: { 'application/json': { schema, example } },
@@ -197,6 +236,8 @@ export function createOpenApiDocument(apiUrl: string) {
       { name: 'Access', description: 'Authoritative community/server capabilities and usages.' },
       { name: 'Settings', description: 'Atomic dashboard configuration saves.' },
       { name: 'Status', description: 'Versioned status message and button configuration.' },
+      { name: 'Console', description: 'Acknowledged server console commands.' },
+      { name: 'Rewards', description: 'Server reward rules, eligibility and delivery history.' },
       { name: 'Administration', description: 'Developer-only platform administration and support.' },
       { name: 'Privacy', description: 'Account erasure requests and receipt-scoped recovery.' },
     ],
@@ -509,6 +550,29 @@ export function createOpenApiDocument(apiUrl: string) {
           },
         ),
       },
+      '/guilds/{guildID}/servers/{serverID}/console/commands': {
+        post: operation(
+          'executeServerConsoleCommand',
+          'Console',
+          'Submit an acknowledged RCON command',
+          'ConsoleRconResponse',
+          {
+            parameters: [guild, server, csrf],
+            requestBody: body(ConsoleRconRequestSchema, {
+              requestID: 'f58fc7eb-7d03-4d48-b9d3-e97f745d9ab4',
+              command: 'status',
+            }),
+            description:
+              'Requires a valid dashboard session, fresh dashboard permission on this exact server and console.rcon. Dashboard permission requires Discord administrator plus a linked Steam account with a recorded rank enabled in this server’s ig_adminRank; the Discord owner and buyer of an active purchase linked to this community are exceptions. No player connection is required. Authorized delegated sessions use the support actor from the authenticated session; caller-supplied identities are rejected. Commands are one line, at most 8192 UTF-8 bytes, with no NUL/CR/LF. A matching addon acknowledgement confirms console acceptance, not the command’s eventual effect or output. Missing acknowledgements return status unknown and must not be automatically replayed. requestID is reserved across API replicas for ten minutes and bound to the actor, subject account, server and command digest; a matching retry returns the prior outcome, a pending or conflicting request returns 409. Only one command per server can be active. Rate limits are 12 per account/server and 60 per server in a minute. Request logs redact command text.',
+            responses: {
+              200: json('ConsoleRconResponse', 'Matching addon acceptance, explicit rejection, or uncertain delivery.'),
+              ...errors,
+              409: json('Error', 'Request pending/conflicting, another command active, or server offline.'),
+              429: json('Error', 'The command rate limit has been reached.'),
+            },
+          },
+        ),
+      },
       '/guilds/{guildID}/servers/{serverID}/status/configuration': {
         get: operation(
           'getStatusConfiguration',
@@ -551,6 +615,109 @@ export function createOpenApiDocument(apiUrl: string) {
             },
           },
         ),
+      },
+      '/guilds/{guildID}/servers/{serverID}/rewards': {
+        get: operation(
+          'getRewardsDashboard',
+          'Rewards',
+          'Read server reward rules and integrations',
+          'RewardsDashboard',
+          {
+            parameters: [guild, server],
+            description: 'Requires community administration permission. Query parameters are rejected.',
+          },
+        ),
+      },
+      '/guilds/{guildID}/servers/{serverID}/rewards/history': {
+        get: operation(
+          'getRewardHistory',
+          'Rewards',
+          'Read paginated server reward delivery history',
+          'RewardHistory',
+          {
+            parameters: [guild, server],
+            requestParams: { query: RewardHistoryQuerySchema },
+            description:
+              'Filter by status, ruleID or steamID64. pageSize accepts 25, 50, 250 or 500; unknown query parameters are rejected.',
+          },
+        ),
+      },
+      '/guilds/{guildID}/servers/{serverID}/rewards/rules': {
+        post: operation('createRewardRule', 'Rewards', 'Create a server reward rule', 'RewardRule', {
+          parameters: [guild, server, csrf],
+          requestBody: body(RewardRuleInputSchema, rewardExample),
+          description:
+            'Requires the effective rewards capability. Actions are configuration, not an immediate delivery. Query parameters are rejected.',
+          responses: {
+            201: json('RewardRule', 'Created rule and initial revision.'),
+            ...errors,
+            409: json('Error', 'The operational reward-rule limit was reached.'),
+          },
+        }),
+      },
+      '/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}': {
+        put: operation('updateRewardRule', 'Rewards', 'Save a reward rule using its current revision', 'RewardRule', {
+          parameters: [guild, server, rewardRule, csrf],
+          requestBody: body(RewardRuleSaveSchema, { revision: 1, rule: rewardExample }),
+          description:
+            'An outdated revision returns 409 conflict. Reload before saving again; query parameters are rejected.',
+          responses: {
+            200: json('RewardRule', 'Saved rule and its incremented revision.'),
+            ...errors,
+            409: json('Error', 'The rule changed since this revision.'),
+          },
+        }),
+        delete: operation(
+          'deleteRewardRule',
+          'Rewards',
+          'Delete a reward rule using its current revision',
+          'RewardRuleDeleted',
+          {
+            parameters: [guild, server, rewardRule, csrf],
+            requestBody: body(RewardRuleDeleteSchema, { revision: 1 }),
+            description: 'Requires the current revision in a JSON body. Query parameters are rejected.',
+            responses: {
+              200: json('RewardRuleDeleted', 'Rule deletion accepted.'),
+              ...errors,
+              409: json('Error', 'The rule changed since this revision.'),
+            },
+          },
+        ),
+      },
+      '/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}/simulate': {
+        post: operation(
+          'simulateReward',
+          'Rewards',
+          'Check reward eligibility without granting it',
+          'RewardSimulation',
+          {
+            parameters: [guild, server, rewardRule, csrf],
+            requestBody: body(RewardSimulationInputSchema, { steamID64: '76561198012345678' }),
+            description:
+              'Reports eligibility and missing integrations; does not deliver a reward. Query parameters are rejected.',
+          },
+        ),
+      },
+      '/guilds/{guildID}/servers/{serverID}/rewards/rules/{ruleID}/grant': {
+        post: operation('grantManualReward', 'Rewards', 'Queue an eligible manual reward grant', 'RewardGrant', {
+          parameters: [guild, server, rewardRule, csrf],
+          requestBody: body(RewardManualGrantSchema, {
+            revision: 1,
+            steamID64: '76561198012345678',
+            reason: 'Tournament winner',
+            requestID: '00000000-0000-4000-8000-000000000000',
+          }),
+          description:
+            'Use the current rule revision and a stable UUID requestID for this manual request. A matching request can reuse its grant; a different payload with the same requestID conflicts. 202 acknowledges the grant record, not completed delivery. Inspect history for pending, delivered, failed, uncertain or expired status. Query parameters are rejected.',
+          responses: {
+            202: json('RewardGrant', 'Grant recorded or matching prior grant returned; delivery may still be pending.'),
+            ...errors,
+            409: json(
+              'Error',
+              'Revision/idempotency conflict, unmet eligibility, an unlinked account or a temporarily busy reward.',
+            ),
+          },
+        }),
       },
       '/account/erasure-requests': {
         post: operation(
@@ -663,6 +830,13 @@ export function createOpenApiDocument(apiUrl: string) {
         ServerSettingsResponse: ServerSettingsResponseSchema,
         StatusConfigurationSnapshot: StatusConfigurationSnapshotSchema,
         StatusConfigurationSaveResponse: StatusConfigurationSaveResponseSchema,
+        ConsoleRconResponse: ConsoleRconResponseSchema,
+        RewardsDashboard: RewardsDashboardSchema,
+        RewardRule: RewardRuleSchema,
+        RewardHistory: RewardHistorySchema,
+        RewardSimulation: RewardSimulationSchema,
+        RewardGrant: RewardGrantSchema,
+        RewardRuleDeleted: z.object({ success: z.literal(true) }),
         AccountErasureResponse: AccountErasureResponseSchema,
         AccountErasureStatus: AccountErasureStatusResponseSchema,
       },

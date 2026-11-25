@@ -1,4 +1,9 @@
 import express from 'express'
+vi.mock('@gmod/domain-user/dashboardAccess.js', async () => ({
+  canAccessDashboardGuild: (await import('../../helpers/dashboardAccessFixture.js')).dashboardAccessFromAdminFixture,
+  resolveDashboardAccess: (await import('../../helpers/dashboardAccessFixture.js'))
+    .resolveDashboardAccessFromAdminFixture,
+}))
 import request from 'supertest'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -92,7 +97,7 @@ describe('server statistics authorization with actual middleware and controller'
       .query({ guildID: 'guild-one' })
       .set('Cookie', 'session=test')
     expect(result.status).toBe(403)
-    expect(result.body).toEqual({ error: 'not_admin_of_guild' })
+    expect(result.body).toEqual({ error: 'dashboard_access_denied', reason: 'discord_admin_required' })
     expect(auth.permissions).toHaveBeenCalledExactlyOnceWith('foreign-guild')
     expect(auth.server).not.toHaveBeenCalled()
     expect(statistics.get).not.toHaveBeenCalled()
@@ -102,7 +107,7 @@ describe('server statistics authorization with actual middleware and controller'
     auth.server.mockResolvedValueOnce({ getID: () => 'server-one', getGuildID: () => 'foreign-guild' })
     const result = await request(app).get(endpoint).set('Cookie', 'session=test')
     expect(result.status).toBe(403)
-    expect(result.body).toEqual({ error: 'server_not_in_guild' })
+    expect(result.body).toEqual({ error: 'dashboard_access_denied', reason: 'scope_unavailable' })
     expect(auth.server).toHaveBeenCalledExactlyOnceWith('server-one')
     expect(statistics.get).not.toHaveBeenCalled()
     expect(auth.snapshot).not.toHaveBeenCalled()
@@ -121,7 +126,9 @@ describe('server statistics authorization with actual middleware and controller'
     expect(result.status).toBe(200)
     expect(result.headers['cache-control']).toBe('no-store')
     expect(result.body).toEqual(body)
-    expect(auth.permissions).toHaveBeenCalledExactlyOnceWith('guild-one')
+    expect(auth.permissions).toHaveBeenCalledTimes(2)
+    expect(auth.permissions).toHaveBeenNthCalledWith(1, 'guild-one')
+    expect(auth.permissions).toHaveBeenNthCalledWith(2, 'guild-one')
     expect(statistics.get).toHaveBeenCalledExactlyOnceWith('server-one', { period: '7d' })
     expect(auth.snapshot).not.toHaveBeenCalled()
   })

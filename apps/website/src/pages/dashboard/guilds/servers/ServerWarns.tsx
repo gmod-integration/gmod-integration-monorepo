@@ -1,6 +1,6 @@
 // ServerWarns.tsx
 import { Component, createResource, createSignal, For, Show } from 'solid-js'
-import { TableState } from '../../../../components/ui/index.js'
+import { DateTime, TableState } from '../../../../components/ui/index.js'
 import AdminPanel from '../../../../components/AdminPanel'
 import { useI18n } from '../../../../i18n'
 import Pagination from '../../../../components/Pagination'
@@ -113,7 +113,9 @@ const ServerWarns: Component = () => {
               <For each={warnsData().warns}>
                 {(warn) => (
                   <tr>
-                    <td class="w-1/6 text-base-content/70 text-nowrap">{new Date(warn.createdAt).toLocaleString()}</td>
+                    <td class="w-1/6 text-base-content/70 text-nowrap">
+                      <DateTime value={warn.createdAt} />
+                    </td>
                     <td class="w-1/8 text-nowrap">{warn.adminSteamID64}</td>
                     <td class="w-1/8 text-nowrap">{warn.userSteamID64}</td>
                     <td class="wrap-break-word">{warn.reason}</td>

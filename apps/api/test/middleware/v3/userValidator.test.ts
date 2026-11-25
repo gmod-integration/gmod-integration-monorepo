@@ -16,6 +16,17 @@ const badArgumentMock = vi.fn()
 vi.mock('@gmod/core/utils/tools.js', () => ({ badArgument: badArgumentMock }))
 
 const getPanelUserFromDiscordIDMock = vi.fn()
+const dashboardAccessMock = vi.fn()
+vi.mock('@gmod/domain-user/dashboardAccess.js', () => ({
+  resolveDashboardAccess: async (...args: unknown[]) => {
+    const result = await dashboardAccessMock(...args)
+    return typeof result === 'boolean'
+      ? result
+        ? { allowed: true }
+        : { allowed: false, reason: 'discord_admin_required' }
+      : result
+  },
+}))
 vi.mock('@gmod/domain-user/PanelUser.js', () => ({ getPanelUserFromDiscordID: getPanelUserFromDiscordIDMock }))
 
 const getServerFromIDMock = vi.fn()
@@ -55,6 +66,11 @@ function makeRes() {
 }
 
 function resetAllMocks() {
+  dashboardAccessMock
+    .mockReset()
+    .mockImplementation((panel, guildID, options = {}) =>
+      options.fresh ? panel.isAdminOfGuild(guildID, { fresh: true }) : panel.isAdminOfGuild(guildID),
+    )
   resolveRequestSessionMock
     .mockReset()
     .mockImplementation(async (req: any) => (req.headers.authorization || req.headers.cookie ? exactSession : null))
@@ -71,6 +87,55 @@ describe('userValidator', () => {
   beforeEach(() => {
     resetAllMocks()
   })
+
+  it.each(['discord_admin_required', 'steam_link_required', 'game_admin_required', 'scope_unavailable'] as const)(
+    'returns only the closed denial reason across legacy dashboard guards: %s',
+    async (reason) => {
+      getServerFromIDMock.mockResolvedValue({ getGuildID: () => 'g1' })
+      dashboardAccessMock.mockResolvedValue({ allowed: false, reason })
+      for (const guard of [
+        userAdminGuildValidator,
+        userAdminGuildScopeValidator,
+        userAdminGuildBotRemovalValidator,
+        userServerValidator,
+      ]) {
+        const response = makeRes()
+        const next = vi.fn()
+        await guard(
+          {
+            method: 'PUT',
+            params: { guildID: 'g1', serverID: 's1' },
+            guild: { id: 'g1' },
+            panelUser: {},
+            body: { rank: 'private-rank', ownerID: 'private-owner' },
+          } as any,
+          response,
+          next,
+        )
+        expect(response.status).toHaveBeenCalledWith(403)
+        expect(response.json).toHaveBeenCalledExactlyOnceWith({ error: 'dashboard_access_denied', reason })
+        expect(JSON.stringify(response.json.mock.calls)).not.toContain('private-')
+        expect(next).not.toHaveBeenCalled()
+      }
+      expect(enqueueDiscordGuildSnapshotMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each([
+    [503, 'provider_unavailable'],
+    [403, 'discord_reauth_required'],
+  ] as const)(
+    'preserves provider/auth failures instead of turning %s %s into a dashboard denial',
+    async (status, code) => {
+      const error = Object.assign(new Error('Provider unavailable'), { status, code })
+      dashboardAccessMock.mockRejectedValueOnce(error)
+      const response = makeRes()
+      const next = vi.fn()
+      await userAdminGuildScopeValidator({ params: { guildID: 'g1' }, panelUser: {} } as any, response, next)
+      expect(next).toHaveBeenCalledExactlyOnceWith(error)
+      expect(response.json).not.toHaveBeenCalled()
+    },
+  )
 
   describe('userValidator', () => {
     it('passes an absent compatibility credential as undefined after exact session resolution', async () => {
@@ -363,7 +428,12 @@ describe('userValidator', () => {
 
   describe('userServerValidator', () => {
     function makeReq(overrides: Record<string, any> = {}) {
-      return { params: { serverID: 's1' }, guild: { id: 'g1' }, ...overrides } as any
+      return {
+        params: { serverID: 's1' },
+        guild: { id: 'g1' },
+        panelUser: { isAdminOfGuild: vi.fn().mockResolvedValue(true) },
+        ...overrides,
+      } as any
     }
 
     it('returns 404 when the server is not found', async () => {
@@ -391,6 +461,25 @@ describe('userValidator', () => {
       expect(req.server).toBe(server)
       expect(next).toHaveBeenCalledWith()
     })
+
+    it.each(['GET', 'PUT', 'POST', 'DELETE'])(
+      'rechecks the exact target server instead of inheriting another server’s guild grant: %s',
+      async (method) => {
+        getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'g1' })
+        dashboardAccessMock.mockResolvedValueOnce(false)
+        const req = makeReq({ method })
+        const res = makeRes()
+        const next = vi.fn()
+        await userServerValidator(req, res, next)
+        expect(dashboardAccessMock).toHaveBeenCalledWith(req.panelUser, 'g1', {
+          serverID: 's1',
+          fresh: method !== 'GET',
+        })
+        expect(res.status).toHaveBeenCalledWith(403)
+        expect(req.server).toBeUndefined()
+        expect(next).not.toHaveBeenCalled()
+      },
+    )
 
     it('forwards a thrown error to next', async () => {
       getServerFromIDMock.mockRejectedValueOnce(new Error('db down'))

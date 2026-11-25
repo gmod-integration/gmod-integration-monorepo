@@ -1,4 +1,5 @@
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
+import { findDashboardGuilds } from '@gmod/domain-user/dashboardAccess.js'
 import {
   assertPersonalDataAllowed,
   getRetainedTrust,
@@ -250,7 +251,7 @@ export async function verifyUser(guild: Guild, member: GuildMember) {
 
 export async function getUserGuildsWithPermsForPanel(panelUser: PanelUser) {
   const guilds = []
-  const permGuilds = await panelUser.findGuildsWithPerms()
+  const permGuilds = await findDashboardGuilds(panelUser)
   const permGuildsID = permGuilds.map((guild) => guild.id)
 
   const rows = await prisma.gm_guild.findMany({

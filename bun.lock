@@ -339,6 +339,7 @@
         "@gmod/domain-auth": "workspace:*",
         "@gmod/infra-prisma": "workspace:*",
         "@gmod/infra-redis": "workspace:*",
+        "@gmod/schema": "workspace:*",
       },
     },
     "packages/infra-bullmq": {

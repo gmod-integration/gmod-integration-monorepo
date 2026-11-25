@@ -9,6 +9,8 @@ import { historyAt, renderWithProviders } from '../testUtils.js'
 const STEAM = '76561198000000001'
 const OTHER_STEAM = '76561198000000002'
 const DISCORD = '333650866747867137'
+const STEAM_AVATAR = 'https://avatars.steamstatic.com/viewed-player.jpg'
+const DISCORD_AVATAR = `https://cdn.discordapp.com/avatars/${DISCORD}/viewed-player.webp`
 const joined = '2026-10-01T10:00:00.000Z'
 const active = '2026-11-22T15:30:00.000Z'
 
@@ -60,6 +62,8 @@ function profile(overrides: Partial<PlayerProfileResponse> = {}): PlayerProfileR
 const ok = (value: unknown) => new Response(JSON.stringify(value), { headers: { 'Content-Type': 'application/json' } })
 const ready = (name = 'Ely') => vi.waitFor(() => expect(screen.getByRole('heading', { name })).toBeInTheDocument())
 const lastURL = (mock: ReturnType<typeof vi.fn>) => new URL(String(mock.mock.calls.at(-1)![0]))
+const platformAvatar = (identity: HTMLElement, platform: 'Steam' | 'Discord') =>
+  within(identity).getByText(platform, { selector: 'figcaption' }).closest('figure')!
 
 beforeEach(() => {
   localStorage.clear()
@@ -73,15 +77,24 @@ afterEach(() => {
 })
 
 describe('player profile', () => {
-  it('shows and copies both platform identifiers and links the linked Discord account', async () => {
+  it('shows the viewed player’s platform avatars, copies both identifiers and links the linked Discord account', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined)
+    const value = profile()
+    value.player.avatarURL = STEAM_AVATAR
+    value.player.discordAvatarURL = DISCORD_AVATAR
+    const viewerAvatar = 'https://cdn.discordapp.com/avatars/123456789012345678/viewer.webp'
+    localStorage.setItem('discordUser', JSON.stringify({ id: '123456789012345678', avatarURL: viewerAvatar }))
     vi.stubGlobal('navigator', { clipboard: { writeText } })
     vi.stubGlobal(
       'fetch',
-      vi.fn(async () => ok(profile())),
+      vi.fn(async () => ok(value)),
     )
     renderWithProviders(() => <PlayerProfile />)
     await ready()
+    const identity = screen.getByRole('region', { name: 'Ely' })
+    expect(platformAvatar(identity, 'Steam').querySelector('img')).toHaveAttribute('src', STEAM_AVATAR)
+    expect(platformAvatar(identity, 'Discord').querySelector('img')).toHaveAttribute('src', DISCORD_AVATAR)
+    expect(identity.querySelector(`img[src="${viewerAvatar}"]`)).not.toBeInTheDocument()
     expect(screen.getByText(STEAM)).toBeInTheDocument()
     expect(screen.getByText(DISCORD)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open Discord profile' })).toHaveAttribute(
@@ -97,15 +110,49 @@ describe('player profile', () => {
   it('explains a missing Discord link without inventing an identity or profile link', async () => {
     const value = profile()
     value.player.discordID = null
+    value.player.avatarURL = STEAM_AVATAR
+    value.player.discordAvatarURL = DISCORD_AVATAR
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => ok(value)),
     )
     renderWithProviders(() => <PlayerProfile />)
     await ready()
+    const identity = screen.getByRole('region', { name: 'Ely' })
+    expect(platformAvatar(identity, 'Steam').querySelector('img')).toHaveAttribute('src', STEAM_AVATAR)
+    expect(within(identity).queryByText('Discord', { selector: 'figcaption' })).not.toBeInTheDocument()
+    expect(identity.querySelector(`img[src="${DISCORD_AVATAR}"]`)).not.toBeInTheDocument()
     expect(screen.getByText('No linked Discord account')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Open Discord profile' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Copy Discord ID' })).not.toBeInTheDocument()
+  })
+
+  it('keeps both platform identities readable when their avatar images fail', async () => {
+    const value = profile()
+    value.player.avatarURL = STEAM_AVATAR
+    value.player.discordAvatarURL = DISCORD_AVATAR
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ok(value)),
+    )
+    renderWithProviders(() => <PlayerProfile />)
+    await ready()
+    const identity = screen.getByRole('region', { name: 'Ely' })
+    const steam = platformAvatar(identity, 'Steam')
+    const discord = platformAvatar(identity, 'Discord')
+
+    await fireEvent.error(steam.querySelector('img')!)
+    expect(steam.querySelector('img')).not.toBeInTheDocument()
+    expect(steam.querySelector('[data-icon="user-round"]')).toBeInTheDocument()
+    expect(discord.querySelector('img')).toHaveAttribute('src', DISCORD_AVATAR)
+
+    await fireEvent.error(discord.querySelector('img')!)
+    expect(discord.querySelector('img')).toHaveAttribute('src', 'https://cdn.discordapp.com/embed/avatars/0.png')
+    await fireEvent.error(discord.querySelector('img')!)
+    expect(discord.querySelector('img')).not.toBeInTheDocument()
+    expect(discord.querySelector('[data-icon="user-round"]')).toBeInTheDocument()
+    expect(within(identity).getByText(STEAM)).toBeInTheDocument()
+    expect(within(identity).getByText(DISCORD)).toBeInTheDocument()
   })
 
   it.each([
@@ -318,7 +365,10 @@ describe('player profile', () => {
           resolveOther = resolve
         })
       const offset = Number(url.searchParams.get('offset'))
-      return ok(profile({ servers: [server(offset + 1)], pagination: { total: 20, limit: 10, offset } }))
+      const value = profile({ servers: [server(offset + 1)], pagination: { total: 20, limit: 10, offset } })
+      value.player.avatarURL = STEAM_AVATAR
+      value.player.discordAvatarURL = DISCORD_AVATAR
+      return ok(value)
     })
     vi.stubGlobal('fetch', fetchMock)
     const history = historyAt(`/players/${STEAM}`)
@@ -332,9 +382,23 @@ describe('player profile', () => {
     expect(screen.queryByRole('heading', { name: 'Ely' })).not.toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent('Loading player profile…')
     const other = profile()
-    other.player = { ...other.player, name: 'Another player', steamID64: OTHER_STEAM }
+    const otherSteamAvatar = 'https://avatars.steamstatic.com/another-player.jpg'
+    const otherDiscordAvatar = 'https://cdn.discordapp.com/avatars/444444444444444444/another-player.webp'
+    other.player = {
+      ...other.player,
+      name: 'Another player',
+      steamID64: OTHER_STEAM,
+      discordID: '444444444444444444',
+      avatarURL: otherSteamAvatar,
+      discordAvatarURL: otherDiscordAvatar,
+    }
     resolveOther(ok(other))
     await ready('Another player')
+    const identity = screen.getByRole('region', { name: 'Another player' })
+    expect(platformAvatar(identity, 'Steam').querySelector('img')).toHaveAttribute('src', otherSteamAvatar)
+    expect(platformAvatar(identity, 'Discord').querySelector('img')).toHaveAttribute('src', otherDiscordAvatar)
+    expect(identity.querySelector(`img[src="${STEAM_AVATAR}"]`)).not.toBeInTheDocument()
+    expect(identity.querySelector(`img[src="${DISCORD_AVATAR}"]`)).not.toBeInTheDocument()
     history.set({ value: `/players/${STEAM}` })
     await ready()
     expect(lastURL(fetchMock).searchParams.get('offset')).toBe('0')

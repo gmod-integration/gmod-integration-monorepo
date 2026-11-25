@@ -91,12 +91,29 @@ export const AddonRconCommandSchema = z
   })
   .strict()
 
+/** The authenticated panel authorizes this command; it does not impersonate a game player. */
+export const AddonPanelRconCommandSchema = z
+  .object({
+    method: z.literal('wsPanelRcon'),
+    requestID: z.string().uuid(),
+    actorDiscordID: z.string().regex(/^\d{1,20}$/),
+    command: z
+      .string()
+      .min(1)
+      .max(8192)
+      .regex(/^[^\0\r\n]+$/)
+      .regex(/\S/)
+      .refine((value) => new TextEncoder().encode(value).length <= 8192, 'The command exceeds 8192 UTF-8 bytes.'),
+    expiresAt: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  })
+  .strict()
+
 export const AddonCommandResultSchema = z.discriminatedUnion('ok', [
   z
     .object({
       action: z.literal('addon.command-result'),
       id: z.string().uuid(),
-      method: z.literal('wsAuthorizedRcon'),
+      method: z.enum(['wsAuthorizedRcon', 'wsPanelRcon']),
       ok: z.literal(true),
       code: z.literal('executed'),
     })
@@ -105,7 +122,7 @@ export const AddonCommandResultSchema = z.discriminatedUnion('ok', [
     .object({
       action: z.literal('addon.command-result'),
       id: z.string().uuid(),
-      method: z.literal('wsAuthorizedRcon'),
+      method: z.enum(['wsAuthorizedRcon', 'wsPanelRcon']),
       ok: z.literal(false),
       code: z.enum(['permission_denied', 'expired', 'execution_failed']),
     })

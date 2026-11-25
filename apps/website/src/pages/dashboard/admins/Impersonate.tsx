@@ -4,7 +4,7 @@ import { AdminUserRowSchema, type AdminUserRow } from '@gmod/schema/admin/AdminD
 import AdminPanel from '../../../components/AdminPanel.js'
 import ConfirmActionDialog from '../../../components/ConfirmActionDialog.js'
 import Pagination from '../../../components/Pagination.js'
-import { Button, StatusBadge, TableState } from '../../../components/ui/index.js'
+import { Button, DateTime, StatusBadge, TableState } from '../../../components/ui/index.js'
 import { createAsyncAction } from '../../../hooks/createAsyncAction.js'
 import { useI18n } from '../../../i18n.js'
 import { authCommand, authSession } from '../../../utils/authClient.js'
@@ -14,7 +14,7 @@ import AdminUserIdentity from './AdminUserIdentity.js'
 import AdminListToolbar from './AdminListToolbar.js'
 
 function SupportDirectory() {
-  const { t, locale } = useI18n()
+  const { t } = useI18n()
   const navigate = useNavigate()
   const location = useLocation()
   const initialSearch = new URLSearchParams(location.search).get('user')?.slice(0, 100) ?? ''
@@ -84,9 +84,11 @@ function SupportDirectory() {
                         <AdminUserIdentity user={user} />
                       </td>
                       <td>
-                        {user.lastSeenAt
-                          ? new Date(user.lastSeenAt).toLocaleString(locale())
-                          : t('admin_v6.never_seen', 'No recorded activity')}
+                        {user.lastSeenAt ? (
+                          <DateTime value={user.lastSeenAt} />
+                        ) : (
+                          t('admin_v6.never_seen', 'No recorded activity')
+                        )}
                       </td>
                       <td>
                         <Show

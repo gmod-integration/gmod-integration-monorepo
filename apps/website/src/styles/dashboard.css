@@ -62,6 +62,25 @@
   flex-shrink: 0;
   vertical-align: middle;
 }
+.site-shell .ui-value-label {
+  color: var(--dashboard-muted);
+}
+.ui-date-time {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.35em;
+  max-width: 100%;
+  font-variant-numeric: tabular-nums;
+  vertical-align: baseline;
+}
+.ui-date-time > span {
+  white-space: nowrap;
+}
+.ui-date-time-separator,
+.ui-date-time-clock {
+  color: var(--dashboard-muted);
+}
 .ui-status-badge {
   --status-color: var(--status-neutral, #a4afc2);
   display: inline-flex;

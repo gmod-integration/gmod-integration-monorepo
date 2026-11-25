@@ -161,7 +161,6 @@ export const DashboardMenu: Component = () => {
           icon: 'gift',
           label: t('dashboard.menu.servers.rewards', 'Rewards'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/rewards',
-          badge: linkBadge.SOON,
         },
         {
           icon: 'users',
@@ -177,6 +176,11 @@ export const DashboardMenu: Component = () => {
           icon: 'scroll-text',
           label: t('dashboard.menu.servers.logs', 'Logs'),
           url: '/dashboard/guilds/:guildID/config/servers/:serverID/logs',
+        },
+        {
+          icon: 'monitor',
+          label: t('dashboard.menu.servers.console', 'Console'),
+          url: '/dashboard/guilds/:guildID/config/servers/:serverID/console',
         },
         {
           icon: 'circle-alert',
@@ -249,6 +253,7 @@ export const DashboardMenu: Component = () => {
         'map',
         'warns',
         'logs',
+        'console',
         'errors',
         'bugs',
         'screenshots',

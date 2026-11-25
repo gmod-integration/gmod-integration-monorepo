@@ -4,6 +4,7 @@ import { AdminAnalyticsSchema, type AdminAnalyticsDays } from '@gmod/schema/admi
 import AdminPanel from '../../../components/AdminPanel.js'
 import { AsyncState, Button, ButtonLink, FormField } from '../../../components/ui/index.js'
 import { useI18n } from '../../../i18n.js'
+import { formatDateTime } from '../../../utils/dateTime.js'
 import { adminGet } from './adminApi.js'
 import AdminRegistrationsChart, { type RegistrationMetric } from './AdminRegistrationsChart.js'
 import AdminDistributionChart from './AdminDistributionChart.js'
@@ -86,7 +87,7 @@ export default function AdminInformations() {
                   </For>
                 </div>
                 <p class="text-xs text-base-content/60">
-                  {t('admin_v6.generated_at', 'Updated {1}', new Date(value().generatedAt).toLocaleString(locale()))}
+                  {t('admin_v6.generated_at', 'Updated {1}', formatDateTime(value().generatedAt, locale()))}
                 </p>
               </>
             )}

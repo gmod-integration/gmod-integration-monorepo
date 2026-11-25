@@ -9,6 +9,8 @@ vi.mock('@gmod/core/utils/tools.js', () => ({ badArgument: badArgumentMock }))
 
 const redisMock = { get: vi.fn(), set: vi.fn(), incr: vi.fn() }
 vi.mock('@gmod/infra-redis', () => ({ default: redisMock }))
+const recordAddonActivityMock = vi.fn().mockResolvedValue(undefined)
+vi.mock('@gmod/infra-redis/addonTelemetry.js', () => ({ recordAddonActivity: recordAddonActivityMock }))
 
 const { default: clientValidator } = await import('../../../src/middleware/v3/clientValidator.js')
 
@@ -40,6 +42,7 @@ describe('clientValidator', () => {
     redisMock.get.mockReset()
     redisMock.set.mockReset()
     redisMock.incr.mockReset()
+    recordAddonActivityMock.mockClear()
   })
 
   it('returns 400 when required fields are missing', async () => {
@@ -101,6 +104,7 @@ describe('clientValidator', () => {
     await clientValidator(makeReq({ headers: { authorization: 'Bearer wrong-token userid1' } }), res, vi.fn())
 
     expect(res.status).toHaveBeenCalledWith(401)
+    expect(recordAddonActivityMock).not.toHaveBeenCalled()
     expect(errorSpy).toHaveBeenCalledWith('Unauthorized client request')
     expect(JSON.stringify(errorSpy.mock.calls)).not.toContain(tokenFor('765', 'pub1', 'tok1', 'userid1'))
     expect(JSON.stringify(errorSpy.mock.calls)).not.toContain('wrong-token')
@@ -118,6 +122,11 @@ describe('clientValidator', () => {
     await clientValidator(makeReq({ headers: { authorization: `Bearer ${validToken} userid1` } }), res, vi.fn())
 
     expect(res.status).toHaveBeenCalledWith(429)
+    expect(recordAddonActivityMock).toHaveBeenCalledExactlyOnceWith('s1', {
+      transport: 'http',
+      version: '',
+      protocol: 'legacy',
+    })
   })
 
   it('initializes both counters on the first request and calls next', async () => {
@@ -134,6 +143,7 @@ describe('clientValidator', () => {
     expect(redisMock.set).toHaveBeenCalledWith('client_request_count_60s_765', 1, 'EX', 60)
     expect(req.server).toBe(server)
     expect(req.headers.guild).toBe('g1')
+    expect(recordAddonActivityMock).toHaveBeenCalledOnce()
     expect(next).toHaveBeenCalledWith()
   })
 

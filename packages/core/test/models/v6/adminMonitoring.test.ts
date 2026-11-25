@@ -1,9 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ count: vi.fn(), servers: vi.fn(), raw: vi.fn(), eval: vi.fn(), aggregate: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+  count: vi.fn(),
+  servers: vi.fn(),
+  raw: vi.fn(),
+  eval: vi.fn(),
+  aggregate: vi.fn(),
+  telemetry: vi.fn(),
+}))
 vi.mock('@gmod/infra-prisma', () => ({
   default: { gm_server: { count: mocks.count, findMany: mocks.servers }, $queryRaw: mocks.raw },
 }))
 vi.mock('@gmod/infra-redis', () => ({ default: { eval: mocks.eval } }))
+vi.mock('@gmod/infra-redis/addonTelemetry.js', () => ({ readAddonTelemetry: mocks.telemetry }))
 vi.mock('@gmod/infra-mongo', () => ({
   mongoClient: { db: () => ({ collection: () => ({ aggregate: mocks.aggregate }) }) },
 }))
@@ -15,6 +23,20 @@ beforeEach(() => {
   mocks.count.mockResolvedValue(1)
   mocks.servers.mockResolvedValue([{ id: 's1', name: 'Test server', guild: 'g1', gm_guild: { name: 'Community' } }])
   mocks.eval.mockResolvedValue([now, 1, now + 90_000])
+  mocks.telemetry.mockImplementation(async (ids: string[]) => ({
+    available: true,
+    observedAt: '2026-11-22T12:00:00.000Z',
+    items: ids.map(() => ({
+      addonVersion: '5.2.8',
+      lastSeenAt: '2026-11-22T11:59:59.000Z',
+      lastHttpAt: '2026-11-22T11:59:59.000Z',
+      lastWebsocketAt: null,
+      protocol: 'legacy',
+      httpRequestsPerMinute: 12,
+      websocketRequestsPerMinute: 0,
+      requestsPerMinute: 12,
+    })),
+  }))
   mocks.aggregate.mockReturnValue({ toArray: async () => [] })
   mocks.raw.mockResolvedValue([])
 })
@@ -32,6 +54,52 @@ describe('administration operational monitoring', () => {
     expect(mocks.eval.mock.calls[0][0]).not.toMatch(/ZADD|ZREM|PEXPIRE|KEYS\(/)
     expect(mocks.servers.mock.calls[0][0].select).not.toHaveProperty('token')
     expect(mocks.servers.mock.calls[0][0]).toMatchObject({ skip: 0, take: 25 })
+  })
+  it('adds measured traffic and version for the requested page without using HTTP activity as socket presence', async () => {
+    mocks.eval.mockResolvedValueOnce([now, 0, 0])
+    const data = await listAdminConnections({})
+    expect(data).toMatchObject({
+      telemetry: 'ready',
+      trafficWindowSeconds: 60,
+      trafficObservedAt: '2026-11-22T12:00:00.000Z',
+    })
+    expect(data.items[0]).toMatchObject({
+      activeSockets: 0,
+      addonVersion: '5.2.8',
+      protocol: 'legacy',
+      httpRequestsPerMinute: 12,
+      websocketRequestsPerMinute: 0,
+      requestsPerMinute: 12,
+      lastSeenAt: '2026-11-22T11:59:59.000Z',
+    })
+    expect(mocks.telemetry).toHaveBeenCalledExactlyOnceWith(['s1'])
+  })
+  it('keeps live socket presence when traffic measurements are unavailable', async () => {
+    mocks.telemetry.mockResolvedValueOnce({
+      available: false,
+      observedAt: null,
+      items: [
+        {
+          addonVersion: null,
+          lastSeenAt: null,
+          lastHttpAt: null,
+          lastWebsocketAt: null,
+          protocol: null,
+          httpRequestsPerMinute: null,
+          websocketRequestsPerMinute: null,
+          requestsPerMinute: null,
+        },
+      ],
+    })
+    const data = await listAdminConnections({})
+    expect(data).toMatchObject({ presence: 'ready', telemetry: 'unavailable', trafficObservedAt: null })
+    expect(data.items[0]).toMatchObject({ activeSockets: 1, requestsPerMinute: null, protocol: null })
+  })
+  it('preserves measured traffic when socket presence is unavailable', async () => {
+    mocks.eval.mockRejectedValueOnce(new Error('Presence unavailable'))
+    const data = await listAdminConnections({})
+    expect(data).toMatchObject({ presence: 'unavailable', telemetry: 'ready' })
+    expect(data.items[0]).toMatchObject({ activeSockets: null, requestsPerMinute: 12 })
   })
   it('keeps absent leases distinct from unavailable or malformed presence data', async () => {
     mocks.eval.mockResolvedValueOnce([now, 0, 0])

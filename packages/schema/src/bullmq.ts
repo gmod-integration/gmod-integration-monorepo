@@ -4,6 +4,29 @@ import { StatusMessagePreviewInputSchema, StatusMessagePreviewSchema } from './s
 
 export const DiscordPublicInviteUrlSchema = z.string().regex(/^https:\/\/discord\.gg\/[A-Za-z0-9_-]{1,100}$/)
 
+export const DiscordRewardRoleInputSchema = z
+  .object({
+    serverID: z.string().min(1).max(255),
+    grantID: z.string().uuid(),
+    actionID: z.string().uuid(),
+    steamID64: z.string().regex(/^\d{17}$/),
+    discordID: z.string().regex(/^\d{15,22}$/),
+    roleID: z.string().regex(/^\d{15,22}$/),
+  })
+  .strict()
+export type DiscordRewardRoleInput = z.infer<typeof DiscordRewardRoleInputSchema>
+export const DiscordRewardRoleJobSchema = DiscordRewardRoleInputSchema.extend({
+  correlationId: z.string().uuid(),
+  timestamp: z.coerce.date(),
+}).strict()
+export const DiscordRewardRoleReplySchema = z
+  .object({
+    correlationId: z.string().uuid(),
+    status: z.enum(['delivered', 'failed', 'uncertain']),
+    reason: z.string().max(100).optional(),
+  })
+  .strict()
+
 export const DiscordGuildPublicInviteJobSchema = z.object({
   guildID: z.string().min(1, 'guildID required'),
   correlationId: z.string().min(1, 'correlationId required'),

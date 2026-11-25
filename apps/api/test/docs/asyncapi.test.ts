@@ -4,7 +4,11 @@ import { resolve } from 'node:path'
 import Ajv from 'ajv'
 import { describe, expect, it } from 'vitest'
 import { createAsyncApiDocument } from '../../src/docs/asyncapi.js'
-import { PlayerAccessRefreshCommandSchema } from '@gmod/schema/gmod/AddonTransportSchema.js'
+import {
+  AddonPanelRconCommandSchema,
+  PlayerAccessRefreshCommandSchema,
+} from '@gmod/schema/gmod/AddonTransportSchema.js'
+import { ConsoleStreamCommandSchema } from '@gmod/schema/gmod/ConsoleStreamSchema.js'
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url))
 const source = (path: string) => readFileSync(resolve(root, path), 'utf8')
@@ -165,6 +169,7 @@ describe('the implemented WebSocket AsyncAPI contract', () => {
       'packages/domain-server/src/playerAccess.ts',
       'packages/core/src/models/v3/guildsControllerModels.ts',
       'packages/infra-websocket/src/addonCommands.ts',
+      'apps/websocket/src/consoleStreams.ts',
     ]
     const emitted = new Set(
       producerPaths.flatMap((path) => [...source(path).matchAll(/method: '(ws[^']+)'/g)].map((match) => match[1])),
@@ -183,6 +188,7 @@ describe('the implemented WebSocket AsyncAPI contract', () => {
       'modules/sync_pseudos/sv_sync_names.lua',
       'modules/sync_chat/sv_sync_chat.lua',
       'modules/console_commands/sv_rcon.lua',
+      'modules/console_live_exporter/sv_main.lua',
       'modules/players_filter_whitelist/sv_filtrers.lua',
     ]
     const luaHandlers = new Set(
@@ -195,6 +201,26 @@ describe('the implemented WebSocket AsyncAPI contract', () => {
     expect(documented).toEqual(luaHandlers)
     expect(document().components.messages.rcon.examples[0].payload).toHaveProperty('steamID')
     expect(document().components.messages.updateGroup.examples[0].payload).toHaveProperty('steamID64')
+  })
+
+  it('documents dashboard-authorized RCON without allowing a supplied Steam identity', () => {
+    const doc = document()
+    const validate = new Ajv({ allErrors: true }).compile(doc.components.schemas.PanelRcon)
+    const packet = doc.components.messages.panelRcon.examples[0].payload
+    expect(validate(packet)).toBe(true)
+    expect(AddonPanelRconCommandSchema.safeParse(packet).success).toBe(true)
+    for (const patch of [
+      { actorDiscordID: 'forged-name' },
+      { steamID: '76561198000000001' },
+      { command: 'status\nquit' },
+    ]) {
+      expect(validate({ ...packet, ...patch })).toBe(false)
+      expect(AddonPanelRconCommandSchema.safeParse({ ...packet, ...patch }).success).toBe(false)
+    }
+    expect(doc.components.messages.panelRcon.summary).toContain('Discord administrator plus a recorded in-game rank')
+    expect(doc.components.messages.panelRcon.summary).toContain('linked to that community are exceptions')
+    expect(doc.components.messages.panelRcon.summary).toContain('No player presence')
+    expect(doc.components.messages.rcon.summary).toContain('Discord RCON')
   })
 
   it('keeps unsupported messages and transport guarantees distinct from the active protocol', () => {
@@ -213,5 +239,23 @@ describe('the implemented WebSocket AsyncAPI contract', () => {
       discordPermissionCacheSeconds: 120,
       presenceLeaseMaxSeconds: 90,
     })
+  })
+
+  it('documents temporary console control without permitting persistent or executable payloads', () => {
+    const doc = document()
+    const validate = new Ajv({ allErrors: true }).compile(doc.components.schemas.ConsoleStream)
+    for (const [payload, accepted] of [
+      [{ method: 'wsConsoleStream', enabled: true, expiresAt: 1893456000000 }, true],
+      [{ method: 'wsConsoleStream', enabled: false, expiresAt: 0 }, true],
+      [{ method: 'wsConsoleStream', enabled: true, expiresAt: 0 }, false],
+      [{ method: 'wsConsoleStream', enabled: false, expiresAt: 1 }, false],
+      [{ method: 'wsConsoleStream', enabled: true, expiresAt: 1, command: 'status' }, false],
+    ] as const) {
+      expect(validate(payload)).toBe(accepted)
+      expect(ConsoleStreamCommandSchema.safeParse(payload).success).toBe(accepted)
+    }
+    expect(doc.components.messages.consoleSubscribe.summary).toContain('30 seconds')
+    expect(doc.components.messages.consoleOutput.summary).toContain('explicitly subscribed')
+    expect(doc.components.messages.consoleStream.summary).toContain('never persisted')
   })
 })

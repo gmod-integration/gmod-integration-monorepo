@@ -21,6 +21,7 @@ import {
 } from '../../../components/ui/index.js'
 import { useI18n } from '../../../i18n.js'
 import { showDialog } from '../../../utils/dialog.js'
+import { formatDateTime } from '../../../utils/dateTime.js'
 import { adminGet, adminMutate, createAdminList } from './adminApi.js'
 import AdminListToolbar from './AdminListToolbar.js'
 
@@ -272,7 +273,7 @@ export default function PremiumList() {
                 </Button>
                 <CopyableValue value={data().guild.id} label={t('admin_v6.copy_guild_id', 'Copy Discord server ID')} />
                 <div class="flex flex-wrap items-center gap-2">
-                  <span>{t('admin_v6.effective_premium', 'Effective Premium')}:</span>
+                  <span class="ui-value-label">{t('admin_v6.effective_premium', 'Effective Premium')}:</span>
                   <BooleanStatus value={data().access.state === 'ready' ? data().access.premium : undefined} />
                 </div>
                 <Show when={data().access.state !== 'ready'}>
@@ -284,7 +285,7 @@ export default function PremiumList() {
                   </p>
                 </Show>
                 <div class="flex flex-wrap items-center gap-2">
-                  <span>{t('admin_v6.verified_sources', 'Verified sources')}:</span>
+                  <span class="ui-value-label">{t('admin_v6.verified_sources', 'Verified sources')}:</span>
                   <For
                     each={data().access.sources}
                     fallback={<StatusBadge>{t('admin_v6.no_verified_source', 'No verified source')}</StatusBadge>}
@@ -304,7 +305,7 @@ export default function PremiumList() {
                   {t(
                     'admin_v6.verified_until',
                     'Verification valid until {1}',
-                    new Date(data().access.validUntil).toLocaleString(locale()),
+                    formatDateTime(data().access.validUntil, locale()),
                   )}
                 </p>
               </div>

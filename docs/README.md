@@ -19,6 +19,7 @@ of everything else.
 | [best-practices.md](./best-practices.md)         | Where do I put new code, how do I keep it consistent with the rest?                                                                                                               |
 | [migration-playbook.md](./migration-playbook.md) | How do I move code from an `app` into a shared `package` safely?                                                                                                                  |
 | [deployment/swarm.md](./deployment/swarm.md)     | How do I deploy/operate the production Docker Swarm stack?                                                                                                                        |
+| [deployment/proxmox.md](./deployment/proxmox.md) | How do I test locally, prepare a Proxmox LXC and explicitly bootstrap a fresh backend with Docker Compose?                                                                        |
 
 Audit and investigation reports are private local files in `docs/reports/`, excluded by `.gitignore`.
 Do not commit their contents or link to them from public documentation, commits, pull requests or issues.
@@ -28,6 +29,9 @@ Do not commit their contents or link to them from public documentation, commits,
 - [GMI v6 specification](./v6-specification.md) — proposed product scope, API and WebSocket contracts,
   promised features, remote administration, script fixes, modular purchases, Premium and migration.
   This proposal does not describe currently available v6 functionality.
+
+The implemented [Rewards feature](./features/rewards.md) documents rule configuration, delivery,
+deduplication, offline expiry, Discord integration and the required game-server acceptance checks.
 
 ## Repo map
 

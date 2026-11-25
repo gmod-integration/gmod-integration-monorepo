@@ -15,7 +15,7 @@ const baseShot: ScreenshotStructure = {
   title: 'My Screenshot',
   player: { name: 'Bob', steamID64: '765123' },
   url: 'https://example.com/shot.png',
-  createdAt: '1/1/2024, 12:00:00 AM',
+  createdAt: '2024-01-01T00:00:00.000Z',
   channelID: 'c1',
 }
 
@@ -38,7 +38,7 @@ describe('pages/dashboard/guilds/servers/screenshots/Screenshot.tsx', () => {
     const img = container.querySelector('img') as HTMLImageElement
     expect(img).toHaveAttribute('src', baseShot.url)
     expect(img).toHaveAttribute('alt', 'Game screenshot')
-    expect(container.textContent).toContain('1/1/2024')
+    expect(container.querySelector('time')).toHaveAttribute('datetime', baseShot.createdAt)
     expect(container.textContent).toContain('Bob')
   })
 

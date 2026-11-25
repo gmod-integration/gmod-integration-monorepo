@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { RewardAckSchema, RewardPollSchema } from '@gmod/schema/server/RewardsSchema.js'
 import type { Server } from '@gmod/domain-server/Server.js'
 import { getUserFromSteamID64 } from '@gmod/domain-user/User.js'
 import redis from '@gmod/infra-redis'
@@ -385,6 +386,23 @@ export async function handleAddonRequest(server: Server, rawRequest: AddonReques
   }
   if (!record.safeParse(request.body).success) return invalid()
   const body = request.body as Record<string, unknown>
+  if (path === '/rewards/poll' || path === '/rewards/ack') {
+    const normalized = path === '/rewards/poll' && emptyLuaTable(body.players) ? { ...body, players: [] } : body
+    const input = (path === '/rewards/poll' ? RewardPollSchema : RewardAckSchema).safeParse(normalized)
+    if (!input.success) return invalid()
+    const rewards = await import('../v6/rewards.js')
+    try {
+      return ok(
+        path === '/rewards/poll'
+          ? await rewards.pollRewards(String(server.getID()), input.data)
+          : await rewards.acknowledgeRewards(String(server.getID()), input.data),
+      )
+    } catch (error) {
+      if (error instanceof rewards.RewardsError) return { status: error.status, body: { error: error.code } }
+      if (error instanceof AccessDeniedError) return { status: error.status, body: { error: error.code } }
+      throw error
+    }
+  }
   if (path === '/config') {
     const settings = Object.fromEntries(Object.entries(body).map(([key, value]) => [`ig_${key}`, value]))
     const accepted = ServerDashboardSettingsSchema.safeParse(settings)

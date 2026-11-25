@@ -74,6 +74,7 @@ describe('Dashboard navigation', () => {
       'Players',
       'Warns',
       'Logs',
+      'Console',
       'Lua errors',
       'Forwards',
       'Player bug reports',
@@ -97,6 +98,10 @@ describe('Dashboard navigation', () => {
     expect(screen.getByRole('link', { name: 'Map' })).toHaveAttribute(
       'href',
       '/dashboard/guilds/g1/config/servers/s1/map',
+    )
+    expect(screen.getByRole('link', { name: 'Console' })).toHaveAttribute(
+      'href',
+      '/dashboard/guilds/g1/config/servers/s1/console',
     )
     expect(
       within(screen.getByRole('link', { name: 'Map' }).closest('.dashboard-nav-group') as HTMLElement).getByText(
@@ -208,13 +213,13 @@ describe('Production dashboard navigation', () => {
     expect(screen.getByRole('link', { name: 'Community settings' })).toBeInTheDocument()
   })
 
-  it('announces unavailable destinations and prevents navigation', () => {
+  it('opens the available rewards destination in production', async () => {
     const history = historyAt('/dashboard/guilds/g1/config/servers/s1')
     renderWithProviders(() => <DashboardMenu />, { path: '*', history })
     const rewards = screen.getByRole('link', { name: 'Rewards' })
-    expect(rewards).toHaveAttribute('aria-disabled', 'true')
-    expect(within(rewards).getByText('Soon').closest('[data-tone]')).toHaveAttribute('data-tone', 'neutral')
+    expect(rewards).not.toHaveAttribute('aria-disabled', 'true')
+    expect(within(rewards).queryByText('Soon')).not.toBeInTheDocument()
     fireEvent.click(rewards)
-    expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1')
+    await vi.waitFor(() => expect(history.get()).toBe('/dashboard/guilds/g1/config/servers/s1/rewards'))
   })
 })

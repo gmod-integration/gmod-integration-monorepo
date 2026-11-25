@@ -38,8 +38,10 @@ const ServerRoles = lazy(() => import('./pages/dashboard/guilds/servers/ServerRo
 const ServerChats = lazy(() => import('./pages/dashboard/guilds/servers/ServerChats.js'))
 const ServerPseudo = lazy(() => import('./pages/dashboard/guilds/servers/ServerPseudo.js'))
 const ServerScreenshots = lazy(() => import('./pages/dashboard/guilds/servers/screenshots/ServerScreenshots.js'))
+const ServerRewards = lazy(() => import('./pages/dashboard/guilds/servers/ServerRewards.js'))
 const ServerVote = lazy(() => import('./pages/dashboard/guilds/servers/ServerVote.js'))
 const ServerLogs = lazy(() => import('./pages/dashboard/guilds/servers/logs/ServerLogs.js'))
+const ServerConsole = lazy(() => import('./pages/dashboard/guilds/servers/ServerConsole.js'))
 const ServerErrors = lazy(() => import('./pages/dashboard/guilds/servers/errors/ServerErrors.js'))
 const ServerBugs = lazy(() => import('./pages/dashboard/guilds/servers/ServerBugs.js'))
 const ServerTeam = lazy(() => import('./pages/dashboard/guilds/servers/ServerTeam.js'))
@@ -106,10 +108,12 @@ render(
         <Route path="/config/servers/:serverID/statistics" component={ServerStatistics} />
         <Route path="/config/servers/:serverID/players" component={ServerPlayer} />
         <Route path="/config/servers/:serverID/votes" component={ServerVote} />
+        <Route path="/config/servers/:serverID/rewards" component={ServerRewards} />
         <Route path="/config/servers/:serverID/roles" component={ServerRoles} />
         <Route path="/config/servers/:serverID/teams" component={ServerTeam} />
         <Route path="/config/servers/:serverID/chats" component={ServerChats} />
         <Route path="/config/servers/:serverID/logs" component={ServerLogs} />
+        <Route path="/config/servers/:serverID/console" component={ServerConsole} />
         <Route path="/config/servers/:serverID/errors" component={ServerErrors} />
         <Route path="/config/servers/:serverID/warns" component={ServerWarns} />
         <Route path="/config/servers/:serverID/pseudo" component={ServerPseudo} />

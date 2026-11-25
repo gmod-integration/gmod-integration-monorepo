@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import prisma from '@gmod/infra-prisma'
 import { Prisma } from '@gmod/infra-prisma/client.js'
 import redis from '@gmod/infra-redis'
+import { readAddonTelemetry } from '@gmod/infra-redis/addonTelemetry.js'
 import { mongoClient } from '@gmod/infra-mongo'
 import {
   AdminBugsQuerySchema,
@@ -65,6 +66,33 @@ end
 return result
 `
 
+async function connectionPresence(serverIDs: string[]): Promise<{
+  observedAt: string | null
+  presence: 'ready' | 'unavailable'
+  leases: number[] | undefined
+}> {
+  if (!serverIDs.length) return { observedAt: null, presence: 'ready', leases: undefined }
+  try {
+    const result = await redis.eval(
+      readPresence,
+      serverIDs.length,
+      ...serverIDs.map((id) => `ws:server-presence:${id}`),
+    )
+    if (!Array.isArray(result) || result.length !== 1 + 2 * serverIDs.length)
+      throw new Error('Invalid presence response.')
+    const values = result.map(integer)
+    const observedAt = new Date(values[0]).toISOString()
+    const leases = values.slice(1)
+    for (let i = 0; i < leases.length; i += 2) {
+      if ((leases[i] === 0) !== (leases[i + 1] === 0) || (leases[i] > 0 && leases[i + 1] <= values[0]))
+        throw new Error('Invalid presence lease.')
+    }
+    return { observedAt, presence: 'ready', leases }
+  } catch {
+    return { observedAt: null, presence: 'unavailable', leases: undefined }
+  }
+}
+
 export async function listAdminConnections(raw: unknown): Promise<AdminConnections> {
   const query = parse(AdminConnectionsQuerySchema, raw)
   const where: Prisma.gm_serverWhereInput = {
@@ -88,26 +116,11 @@ export async function listAdminConnections(raw: unknown): Promise<AdminConnectio
     take: accepted.limit,
     orderBy: [{ createdAt: accepted.orderBy.toLowerCase() as 'asc' | 'desc' }, { id: 'asc' }],
   })
-  let observedAt: string | null = null
-  let presence: 'ready' | 'unavailable' = 'ready'
-  let leases: number[] | undefined
-  if (rows.length) {
-    try {
-      const result = await redis.eval(readPresence, rows.length, ...rows.map((row) => `ws:server-presence:${row.id}`))
-      if (!Array.isArray(result) || result.length !== 1 + 2 * rows.length) throw new Error('Invalid presence response.')
-      const values = result.map(integer)
-      observedAt = new Date(values[0]).toISOString()
-      leases = values.slice(1)
-      for (let i = 0; i < leases.length; i += 2) {
-        if ((leases[i] === 0) !== (leases[i + 1] === 0) || (leases[i] > 0 && leases[i + 1] <= values[0]))
-          throw new Error('Invalid presence lease.')
-      }
-    } catch {
-      presence = 'unavailable'
-      observedAt = null
-      leases = undefined
-    }
-  }
+  const serverIDs = rows.map((row) => row.id)
+  const [{ observedAt, presence, leases }, traffic] = await Promise.all([
+    connectionPresence(serverIDs),
+    readAddonTelemetry(serverIDs),
+  ])
   return AdminConnectionsSchema.parse({
     items: rows.map((row, index) => ({
       id: row.id,
@@ -116,12 +129,16 @@ export async function listAdminConnections(raw: unknown): Promise<AdminConnectio
       guildName: row.gm_guild.name || '',
       activeSockets: leases ? leases[index * 2] : null,
       leaseExpiresAt: leases?.[index * 2 + 1] ? new Date(leases[index * 2 + 1]).toISOString() : null,
+      ...traffic.items[index],
     })),
     total,
     query: accepted,
     presence,
     observedAt,
     leaseTtlSeconds: 90,
+    telemetry: traffic.available ? 'ready' : 'unavailable',
+    trafficWindowSeconds: 60,
+    trafficObservedAt: traffic.observedAt,
     generatedAt: new Date().toISOString(),
   })
 }

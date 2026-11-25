@@ -20,7 +20,9 @@ describe('shared access policy', () => {
     expect(hasCapability(free, 'sync.teams')).toBe(false)
     expect(hasCapability(free, 'console.rcon')).toBe(false)
     expect(hasCapability({ ...free, premium: true }, 'console.rcon')).toBe(true)
-    expect(Object.keys(ACCESS_POLICY)).toHaveLength(22)
+    expect(hasCapability(free, 'rewards.rules')).toBe(false)
+    expect(hasCapability({ ...free, premium: true }, 'rewards.rules')).toBe(true)
+    expect(Object.keys(ACCESS_POLICY)).toHaveLength(23)
   })
   it('keeps historical custom bot access separate from premium', () => {
     expect(hasCapability({ ...free, premium: true }, 'bot.custom')).toBe(false)

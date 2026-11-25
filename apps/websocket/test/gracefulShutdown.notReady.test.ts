@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+vi.mock('@gmod/domain-user/dashboardAccess.js', () => ({ canAccessDashboardGuild: vi.fn() }))
 
 // gracefulShutdown() resolves its internal `wss.close()` promise immediately when `wss` was
 // never assigned - this only happens if it's called before main() ever runs, so this file

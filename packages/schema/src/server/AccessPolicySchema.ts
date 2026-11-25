@@ -28,6 +28,7 @@ export const ACCESS_POLICY = {
   'bot.presence': { scope: 'guild', entitlement: 'premium', freeLimit: 0, premiumLimit: 1 },
   'bot.custom': { scope: 'guild', entitlement: 'gmodstore', freeLimit: 0, premiumLimit: 1 },
   'console.rcon': { scope: 'server', entitlement: 'premium', freeLimit: 0, premiumLimit: 1 },
+  'rewards.rules': { scope: 'server', entitlement: 'premium', freeLimit: 0, premiumLimit: null },
   'logs.history': { scope: 'server', entitlement: 'free', freeLimit: 500, premiumLimit: null },
   'errors.history': { scope: 'server', entitlement: 'free', freeLimit: 50, premiumLimit: null },
   'sync.nicknames.format': { scope: 'server', entitlement: 'free', freeLimit: null, premiumLimit: null },

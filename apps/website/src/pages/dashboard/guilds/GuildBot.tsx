@@ -598,9 +598,9 @@ const GuildBot: Component = () => {
               }
             >
               <dl class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 min-w-0">
-                <dt class="text-base-content/70">{t('dashboard.guild.bot.name', 'Name')}</dt>
+                <dt class="ui-value-label">{t('dashboard.guild.bot.name', 'Name')}</dt>
                 <dd class="break-words">{bot()!.username}</dd>
-                <dt class="text-base-content/70">{t('dashboard.guild.bot.avatar', 'Avatar')}</dt>
+                <dt class="ui-value-label">{t('dashboard.guild.bot.avatar', 'Avatar')}</dt>
                 <dd>
                   <img
                     src={bot()!.avatar || undefined}
@@ -608,7 +608,7 @@ const GuildBot: Component = () => {
                     class="w-8 h-8 rounded-full"
                   />
                 </dd>
-                <dt class="text-base-content/70">{t('dashboard.guild.bot.status', 'Discord activity')}</dt>
+                <dt class="ui-value-label">{t('dashboard.guild.bot.status', 'Discord activity')}</dt>
                 <dd>
                   <StatusBadge
                     tone={
@@ -642,7 +642,7 @@ const GuildBot: Component = () => {
             >
               <AdminPanel title={t('settings.bot_connection', 'Connection and credentials')} icon="link">
                 <SettingRow
-                  title={t('settings.bot_membership', 'Discord server')}
+                  title={<span class="ui-value-label">{t('settings.bot_membership', 'Discord server')}</span>}
                   description={
                     bot()!.onGuild
                       ? t('settings.bot_connected', 'The bot is already in this Discord server.')
@@ -665,7 +665,7 @@ const GuildBot: Component = () => {
                   </Show>
                 </SettingRow>
                 <SettingRow
-                  title={t('dashboard.guild.bot.token', 'Bot token')}
+                  title={<span class="ui-value-label">{t('dashboard.guild.bot.token', 'Bot token')}</span>}
                   description={t(
                     'settings.bot_token_hint',
                     'Use setup to configure or replace the custom bot token. Saved tokens are never shown.',

@@ -20,6 +20,10 @@ import { INVITE_URL } from '../../../utils/utils.js'
 import { fetchAPI } from '../../../utils/api.js'
 import Pagination from '../../../components/Pagination.js'
 import { createListPagination } from '../../../hooks/createListPagination.js'
+import DashboardAccessHelpModal from '../../../components/DashboardAccessHelpModal.js'
+import { closeDialog, showDialog } from '../../../utils/dialog.js'
+
+const ACCESS_HELP_DIALOG = 'community-access-help'
 
 type GuildSummary = {
   id: string
@@ -53,6 +57,22 @@ const GuildsSelector: Component = () => {
   }
   const pagination = createListPagination(filteredGuilds, { resetKey: search })
   const inviteTimers = new Set<ReturnType<typeof setInterval>>()
+  let warnedEmpty = false
+
+  createEffect(() => {
+    if (!isLogged()) {
+      warnedEmpty = false
+      return closeDialog(ACCESS_HELP_DIALOG)
+    }
+    if (guilds.loading || guilds.error || !guilds()) return
+    if (guilds()!.length > 0) {
+      warnedEmpty = false
+      closeDialog(ACCESS_HELP_DIALOG)
+    } else if (!warnedEmpty) {
+      warnedEmpty = true
+      showDialog(ACCESS_HELP_DIALOG)
+    }
+  })
 
   createEffect(() => {
     if (!isLogged() && authStatus() === 'signed_out') navigate('/login')
@@ -61,7 +81,10 @@ const GuildsSelector: Component = () => {
     localStorage.removeItem('server')
     localStorage.removeItem('guilds')
   })
-  onCleanup(() => inviteTimers.forEach((timer) => clearInterval(timer)))
+  onCleanup(() => {
+    inviteTimers.forEach((timer) => clearInterval(timer))
+    closeDialog(ACCESS_HELP_DIALOG)
+  })
 
   const invite = (guild: GuildSummary) => {
     setPopupBlocked(false)
@@ -99,6 +122,15 @@ const GuildsSelector: Component = () => {
                 "Open a Discord server's dashboard to configure its bot and linked game servers. If the bot is missing, use Add Bot to invite it.",
               )}
             </p>
+            <p class="max-w-xl text-sm leading-relaxed text-base-content/65">
+              {t(
+                'dashboard.guild.select.access_rules',
+                'Access requires Discord Administrator permission and a linked Steam account in a configured game administrator group. Community access requires this group on at least one linked server; each server dashboard requires it on that server. The Discord server owner and the active GmodStore buyer assigned to the community are exempt.',
+              )}
+            </p>
+            <Button variant="ghost" class="self-start" onClick={() => showDialog(ACCESS_HELP_DIALOG)}>
+              {t('access.help_button', 'How to get access')}
+            </Button>
           </div>
           <a
             href="discord://-/guilds/create"
@@ -166,7 +198,7 @@ const GuildsSelector: Component = () => {
                       ? t('ui.no_search_results', 'No results match your search.')
                       : t(
                           'dashboard.guild.select.empty',
-                          'No manageable Discord servers were found. Check that you are signed in with the right Discord account and have permission to manage a server.',
+                          'No communities match this account’s dashboard access. Check your Discord account, linked Steam account and game administrator group, or your owner or active GmodStore buyer access.',
                         )}
                   </p>
                 }
@@ -228,6 +260,7 @@ const GuildsSelector: Component = () => {
           <Pagination standalone query={pagination.query()} total={pagination.total()} onChange={pagination.onChange} />
         </Show>
       </div>
+      <DashboardAccessHelpModal id={ACCESS_HELP_DIALOG} loading={guilds.loading} onRecheck={() => void refetch()} />
     </>
   )
 }

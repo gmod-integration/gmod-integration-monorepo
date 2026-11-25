@@ -61,9 +61,13 @@ Run `python3 submodules/gmod-integration/scripts/test_lua.py` from this reposito
 and relay regressions. These checks complement the TypeScript schema/core/gateway tests; they do not
 replace staging on a dedicated Garry's Mod server with GWSockets and ordinary/admin test clients.
 
-Console commands use `wsAuthorizedRcon`, not the legacy `wsRcon` handler. The addon validates the
-bounded command, linked SteamID64, UUID and deadline, then requires an online player allowed by
-`gmInte.config.adminRank`. Request IDs are deduplicated before console submission. It returns a
+Dashboard console commands use `wsPanelRcon`: the API checks current server dashboard permissions
+and the addon validates the bounded command, authenticated Discord actor, UUID and deadline. Dashboard
+access requires Discord administrator plus a recorded rank enabled on the target server, except for
+the Discord owner or linked active GmodStore buyer. The addon adds no player connection or live rank
+requirement to that authorization. Discord RCON continues to
+use `wsAuthorizedRcon`, with its linked SteamID64 and online `gmInte.config.adminRank` check.
+Both methods reject the legacy `wsRcon` handler. Request IDs are deduplicated before console submission. It returns a
 matching `addon.command-result`; success means console acceptance, not verification of command
 output. The old method is rejected. An older addon cannot execute the new method, so upgrade the
 addon with the matching backend release. Deadlines require reasonably aligned server clocks.

@@ -6,7 +6,7 @@ import { StatusMessagePreviewSchema } from '@gmod/schema/server/StatusMessagePre
 import AdminPanel from '../../../components/AdminPanel.js'
 import DiscordStatusPreview from '../../../components/discord/DiscordStatusPreview.js'
 import DiscordMessagePreview from '../../../components/discord/DiscordMessagePreview.js'
-import { AsyncState, Button, ButtonLink, CopyableValue, FormField } from '../../../components/ui/index.js'
+import { AsyncState, Button, ButtonLink, CopyableValue, DateTime, FormField } from '../../../components/ui/index.js'
 import { useI18n } from '../../../i18n.js'
 import { adminGet } from './adminApi.js'
 
@@ -149,7 +149,7 @@ export default function ServerPreviews() {
                     />
                     <figcaption class="mt-2 text-sm [overflow-wrap:anywhere]">
                       {capture.title || t('admin_previews.screenshot_alt', 'Game screenshot')} ·{' '}
-                      {new Date(capture.createdAt).toLocaleString(locale())}
+                      <DateTime value={capture.createdAt} />
                     </figcaption>
                   </figure>
                 )}

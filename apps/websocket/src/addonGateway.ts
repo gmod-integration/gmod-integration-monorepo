@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import type { Server } from '@gmod/domain-server/Server.js'
 import type { AddonRequest, AddonResult } from '@gmod/core/models/gmod/addonTransport.js'
 import { AddonCommandResultSchema, type AddonCommandResult } from '@gmod/schema/gmod/AddonTransportSchema.js'
+import { createConsoleChunkQueue } from './consoleStreams.js'
 
 // Also configured on WebSocketServer so oversized frames are rejected before JSON parsing.
 export const ADDON_MAX_FRAME_BYTES = 12 * 1024 * 1024
@@ -32,7 +33,7 @@ interface AddonGatewayOptions {
   socket: AddonSocket
   serverID: string
   authenticate: () => Promise<Server | undefined>
-  onActivity?: () => Promise<void>
+  onActivity?: (activity: { protocol?: 'legacy' | 'acknowledged'; countRequest: boolean }) => Promise<void>
   onConsole?: (text: string) => Promise<void>
   onCommandResult?: (packet: AddonCommandResult) => Promise<void>
   dispatch?: (server: Server, request: AddonRequest) => Promise<AddonResult>
@@ -51,6 +52,7 @@ interface RecentRequest {
 export function createAddonGateway(options: AddonGatewayOptions) {
   const now = options.now ?? Date.now
   const recent = new Map<string, RecentRequest>()
+  const queueConsole = createConsoleChunkQueue()
   let closed = false
   let ready = false
   let active = 0
@@ -137,7 +139,8 @@ export function createAddonGateway(options: AddonGatewayOptions) {
     }
     // Older installations only send config updates on the socket. Keep that narrow compatibility
     // path behind the same authenticated dispatcher while they move to the acknowledged protocol.
-    if (packet.action === 'save_config' || packet.method === 'config_save') {
+    const legacyConfig = packet.action === 'save_config' || packet.method === 'config_save'
+    if (legacyConfig) {
       const settings = packet.config ?? (packet.data as { data?: unknown } | undefined)?.data
       packet = {
         action: 'addon.request',
@@ -153,19 +156,27 @@ export function createAddonGateway(options: AddonGatewayOptions) {
     if (packet.action === 'console_live_exporter' || packet.method === 'console_live_exporter') {
       const text = (packet.data as { data?: unknown } | undefined)?.data
       if (!ready || typeof text !== 'string' || text.length > 32_768 || !options.onConsole) return
-      try {
-        if (await authenticate()) await options.onConsole(text)
-      } catch {
-        terminate(1013, 'Server verification unavailable')
-      }
-      return
+      return queueConsole(text, async () => {
+        if (closed || !ready || options.socket.readyState !== 1) return
+        try {
+          if (await authenticate()) {
+            await options.onActivity?.({ countRequest: false })
+            await options.onConsole!(text)
+          }
+        } catch {
+          terminate(1013, 'Server verification unavailable')
+        }
+      })
     }
     if (packet.action === 'addon.command-result') {
       if (!ready || !options.onCommandResult) return
       const parsed = AddonCommandResultSchema.safeParse(packet)
       if (!parsed.success) return
       try {
-        if (await authenticate()) await options.onCommandResult(parsed.data)
+        if (await authenticate()) {
+          await options.onActivity?.({ protocol: 'acknowledged', countRequest: false })
+          await options.onCommandResult(parsed.data)
+        }
       } catch {
         terminate(1013, 'Server verification unavailable')
       }
@@ -225,7 +236,7 @@ export function createAddonGateway(options: AddonGatewayOptions) {
         // reservations remain held until the actual operation finishes, even after uncertainty.
         void Promise.resolve()
           .then(async () => {
-            await options.onActivity?.()
+            await options.onActivity?.({ protocol: legacyConfig ? 'legacy' : 'acknowledged', countRequest: true })
             return (options.dispatch ?? handleAddonRequest)(server, parsed.data)
           })
           .catch(() => failure(500, 'request_failed'))

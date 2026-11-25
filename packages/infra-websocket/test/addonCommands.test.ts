@@ -7,8 +7,14 @@ const { redis } = await vi.hoisted(async () => {
 vi.mock('@gmod/infra-redis', () => ({ default: redis }))
 const dispatch = vi.fn()
 vi.mock('../src/queues.js', () => ({ enqueueWSSendToServerAndWait: dispatch }))
-const { enqueueAddonRconAndWait, acceptAddonCommandResult } = await import('../src/addonCommands.js')
+const {
+  enqueueAddonRconAndWait,
+  enqueueAddonRconAndWaitDetailed,
+  enqueuePanelRconAndWaitDetailed,
+  acceptAddonCommandResult,
+} = await import('../src/addonCommands.js')
 const input = { serverID: 'server-1', steamID: '76561198000000001', command: 'status' }
+const panelInput = { serverID: 'server-1', actorDiscordID: '123456789012345678', command: 'status' }
 const success = (id: string) => ({
   action: 'addon.command-result',
   method: 'wsAuthorizedRcon',
@@ -22,7 +28,10 @@ beforeEach(async () => {
   await redis.flushall()
   dispatch.mockReset()
 })
-afterEach(() => vi.useRealTimers())
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.useRealTimers()
+})
 afterAll(() => redis.disconnect())
 
 async function start() {
@@ -104,5 +113,164 @@ describe('authenticated addon execution acknowledgement', () => {
     dispatch.mockRejectedValueOnce(new Error('queue unavailable'))
     await expect(enqueueAddonRconAndWait(input)).rejects.toThrow('queue unavailable')
     expect(await redis.keys('ws:addon-command:*')).toEqual([])
+  })
+})
+
+describe('detailed console execution outcomes', () => {
+  it.each(['executed', 'permission_denied', 'expired', 'execution_failed'] as const)(
+    'returns the authenticated terminal addon outcome: %s',
+    async (code) => {
+      dispatch.mockResolvedValueOnce(true)
+      const waiting = enqueueAddonRconAndWaitDetailed(input, 100)
+      await vi.advanceTimersByTimeAsync(0)
+      const packet = dispatch.mock.calls[0][0].data
+      await acceptAddonCommandResult(input.serverID, { ...success(packet.requestID), ok: code === 'executed', code })
+      await vi.advanceTimersByTimeAsync(50)
+      expect(await waiting).toBe(code)
+    },
+  )
+
+  it.each(['false', 'error'] as const)(
+    'prefers an already stored addon ACK when queue delivery returns %s',
+    async (failure) => {
+      dispatch.mockImplementationOnce(async ({ data }) => {
+        await acceptAddonCommandResult(input.serverID, success(data.requestID))
+        if (failure === 'error') throw new Error('Queue acknowledgement unavailable')
+        return false
+      })
+      const waiting = enqueueAddonRconAndWaitDetailed(input, 100)
+      await vi.advanceTimersByTimeAsync(50)
+      expect(await waiting).toBe('executed')
+    },
+  )
+
+  it('accepts the addon ACK while the queue delivery acknowledgement is still pending', async () => {
+    dispatch.mockReturnValueOnce(new Promise(() => {}))
+    const waiting = enqueueAddonRconAndWaitDetailed(input, 100)
+    await vi.advanceTimersByTimeAsync(0)
+    const packet = dispatch.mock.calls[0][0].data
+    await acceptAddonCommandResult(input.serverID, success(packet.requestID))
+    await vi.advanceTimersByTimeAsync(50)
+    expect(await waiting).toBe('executed')
+  })
+
+  it.each(['rejected', 'stalled'] as const)('does not degrade a known ACK when cleanup is %s', async (failure) => {
+    vi.spyOn(redis, 'del').mockImplementationOnce(() =>
+      failure === 'rejected' ? Promise.reject(new Error('Cleanup failed')) : new Promise(() => {}),
+    )
+    dispatch.mockResolvedValueOnce(true)
+    const waiting = enqueueAddonRconAndWaitDetailed(input, 100)
+    await vi.advanceTimersByTimeAsync(0)
+    await acceptAddonCommandResult(input.serverID, success(dispatch.mock.calls[0][0].data.requestID))
+    await vi.advanceTimersByTimeAsync(50)
+    expect(await waiting).toBe('executed')
+  })
+
+  it('returns unknown for missing ACKs and bounds a stalled result store', async () => {
+    dispatch.mockResolvedValueOnce(true)
+    vi.spyOn(redis, 'get').mockReturnValueOnce(new Promise(() => {}))
+    const waiting = enqueueAddonRconAndWaitDetailed(input, 100)
+    await vi.advanceTimersByTimeAsync(101)
+    expect(await waiting).toBe('delivery_uncertain')
+  })
+
+  it('does not enqueue an expired command after a delayed pending-key write', async () => {
+    const set = redis.set.bind(redis)
+    let finish!: () => void
+    vi.spyOn(redis, 'set').mockImplementationOnce(
+      (...args: any[]) => new Promise((resolve, reject) => (finish = () => set(...args).then(resolve, reject))),
+    )
+    const waiting = enqueueAddonRconAndWaitDetailed(input, 100)
+    await vi.advanceTimersByTimeAsync(101)
+    expect(await waiting).toBe('delivery_uncertain')
+    finish()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+})
+
+describe('panel-authorized console commands', () => {
+  it('sends the authenticated panel actor without Steam or an in-game player requirement', async () => {
+    dispatch.mockResolvedValueOnce(true)
+    const waiting = enqueuePanelRconAndWaitDetailed(panelInput, 100)
+    await vi.advanceTimersByTimeAsync(0)
+    const packet = dispatch.mock.calls[0][0].data
+    expect(packet).toMatchObject({
+      method: 'wsPanelRcon',
+      actorDiscordID: panelInput.actorDiscordID,
+      command: 'status',
+    })
+    expect(packet).not.toHaveProperty('steamID')
+    await acceptAddonCommandResult(panelInput.serverID, { ...success(packet.requestID), method: 'wsPanelRcon' })
+    await vi.advanceTimersByTimeAsync(50)
+    expect(await waiting).toBe('executed')
+  })
+
+  it.each(['wsAuthorizedRcon', 'wsPanelRcon'] as const)(
+    'ignores an ACK for the other method before accepting the correct %s ACK',
+    async (method) => {
+      dispatch.mockResolvedValueOnce(true)
+      const waiting =
+        method === 'wsAuthorizedRcon'
+          ? enqueueAddonRconAndWait(input, 100)
+          : enqueuePanelRconAndWaitDetailed(panelInput, 100)
+      await vi.advanceTimersByTimeAsync(0)
+      const packet = dispatch.mock.calls[0][0].data
+      const pendingKey = `ws:addon-command:${packet.requestID}`
+      if (method === 'wsAuthorizedRcon') expect(await redis.get(pendingKey)).toBe(input.serverID)
+      else expect(await redis.get(pendingKey)).toBe(JSON.stringify([input.serverID, method]))
+      await acceptAddonCommandResult(input.serverID, {
+        ...success(packet.requestID),
+        method: method === 'wsPanelRcon' ? 'wsAuthorizedRcon' : 'wsPanelRcon',
+      })
+      expect(await redis.get(`${pendingKey}:result`)).toBeNull()
+      await acceptAddonCommandResult(input.serverID, { ...success(packet.requestID), method })
+      await vi.advanceTimersByTimeAsync(50)
+      expect(await waiting).toBe(method === 'wsAuthorizedRcon' ? true : 'executed')
+    },
+  )
+
+  it.each(['permission_denied', 'expired', 'execution_failed'] as const)(
+    'preserves a panel command’s %s acknowledgement',
+    async (code) => {
+      dispatch.mockResolvedValueOnce(true)
+      const waiting = enqueuePanelRconAndWaitDetailed(panelInput, 100)
+      await vi.advanceTimersByTimeAsync(0)
+      await acceptAddonCommandResult(input.serverID, {
+        ...success(dispatch.mock.calls[0][0].data.requestID),
+        method: 'wsPanelRcon',
+        ok: false,
+        code,
+      })
+      await vi.advanceTimersByTimeAsync(50)
+      expect(await waiting).toBe(code)
+    },
+  )
+
+  it('does not accept a valid legacy ACK injected under a panel result key', async () => {
+    dispatch.mockResolvedValueOnce(true)
+    const waiting = enqueuePanelRconAndWaitDetailed(panelInput, 100)
+    await vi.advanceTimersByTimeAsync(0)
+    const requestID = dispatch.mock.calls[0][0].data.requestID
+    await redis.set(`ws:addon-command:${requestID}:result`, JSON.stringify(success(requestID)))
+    await vi.advanceTimersByTimeAsync(50)
+    expect(await waiting).toBe('delivery_uncertain')
+  })
+
+  it('leaves execution uncertain when a panel command has no matching ACK', async () => {
+    dispatch.mockResolvedValueOnce(true)
+    const waiting = enqueuePanelRconAndWaitDetailed(panelInput, 100)
+    await vi.advanceTimersByTimeAsync(101)
+    expect(await waiting).toBe('delivery_uncertain')
+  })
+
+  it('preserves a panel execution ACK even when the delivery queue rejects afterwards', async () => {
+    dispatch.mockImplementationOnce(async ({ data }) => {
+      await acceptAddonCommandResult(input.serverID, { ...success(data.requestID), method: 'wsPanelRcon' })
+      throw new Error('Delivery acknowledgement failed')
+    })
+    const waiting = enqueuePanelRconAndWaitDetailed(panelInput, 100)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(await waiting).toBe('executed')
   })
 })

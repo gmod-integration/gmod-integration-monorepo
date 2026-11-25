@@ -8,6 +8,7 @@ import {
   AdminConnectionsQuerySchema,
   AdminErrorsQuerySchema,
   AdminBugsQuerySchema,
+  type AdminConnections,
 } from '@gmod/schema/admin/AdminMonitoringSchema.js'
 vi.mock('../../../../src/utils/api.js', () => ({ fetchAPI: vi.fn() }))
 const timestamp = '2026-11-22T12:00:00.000Z'
@@ -16,10 +17,13 @@ const fixture = (endpoint: string) => {
   const query = Object.fromEntries(url.searchParams)
   if (url.pathname.endsWith('/connections')) {
     const q = AdminConnectionsQuerySchema.parse(query)
-    return {
+    const page: AdminConnections = {
       query: q,
       total: 26,
       presence: 'ready',
+      telemetry: 'ready',
+      trafficObservedAt: timestamp,
+      trafficWindowSeconds: 60,
       observedAt: timestamp,
       leaseTtlSeconds: 90,
       generatedAt: timestamp,
@@ -31,9 +35,18 @@ const fixture = (endpoint: string) => {
           guildName: 'Example community',
           activeSockets: 2,
           leaseExpiresAt: '2026-11-22T12:01:30.000Z',
+          addonVersion: '5.2.8',
+          protocol: 'legacy',
+          lastSeenAt: timestamp,
+          lastHttpAt: timestamp,
+          lastWebsocketAt: null,
+          httpRequestsPerMinute: 12,
+          websocketRequestsPerMinute: 0,
+          requestsPerMinute: 12,
         },
       ],
     }
+    return page
   }
   const isError = url.pathname.endsWith('/errors')
   return {
@@ -56,11 +69,16 @@ const fixture = (endpoint: string) => {
 }
 beforeEach(() => {
   localStorage.clear()
+  vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
   vi.mocked(fetchAPI)
     .mockReset()
     .mockImplementation(async (endpoint) => ok(fixture(endpoint)) as Response)
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
 describe('administration monitoring', () => {
   it('submits incident searches and combines period, recurrence and state filters without changing other sources', async () => {
     renderWithProviders(AdminMonitoring)
@@ -93,7 +111,7 @@ describe('administration monitoring', () => {
   it('retries unavailable connection monitoring independently of the incident lists', async () => {
     vi.mocked(fetchAPI).mockImplementationOnce(async () => failed() as Response)
     renderWithProviders(AdminMonitoring)
-    const panel = screen.getByRole('region', { name: 'WebSocket connections' })
+    const panel = screen.getByRole('region', { name: 'Server connections' })
     await within(panel).findByRole('alert')
     await screen.findByText('Example Lua failure')
     await fireEvent.click(within(panel).getByRole('button', { name: 'Try again' }))
@@ -103,7 +121,7 @@ describe('administration monitoring', () => {
 
   it('keeps each source independent and paginates registered server leases on the backend', async () => {
     renderWithProviders(AdminMonitoring)
-    const panel = screen.getByRole('region', { name: 'WebSocket connections' })
+    const panel = screen.getByRole('region', { name: 'Server connections' })
     await within(panel).findByText('Example 1')
     expect(within(panel).getByText('Connected')).toBeInTheDocument()
     expect(screen.getByText('Example Lua failure')).toBeInTheDocument()
@@ -145,13 +163,142 @@ describe('administration monitoring', () => {
       return ok(body) as Response
     })
     renderWithProviders(AdminMonitoring)
-    const panel = screen.getByRole('region', { name: 'WebSocket connections' })
-    await within(panel).findByText('Unknown')
+    const panel = screen.getByRole('region', { name: 'Server connections' })
+    await within(panel).findAllByText('Unknown')
     expect(within(panel).queryByText('Connected')).not.toBeInTheDocument()
     const errors = screen.getByRole('region', { name: 'Detected Lua errors' })
     await fireEvent.change(within(errors).getByRole('combobox', { name: 'Source' }), { target: { value: 'all' } })
     await vi.waitFor(() =>
       expect(vi.mocked(fetchAPI).mock.calls.some(([path]) => path.includes('source=all'))).toBe(true),
     )
+  })
+
+  it('distinguishes HTTP traffic, an idle acknowledged socket and missing observations without inferring protocol from version', async () => {
+    vi.mocked(fetchAPI).mockImplementation(async (endpoint) => {
+      const body = fixture(endpoint)
+      if ('presence' in body) {
+        const server = body.items[0]
+        body.items = [
+          { ...server, activeSockets: 0, leaseExpiresAt: null },
+          {
+            ...server,
+            id: 'server-new',
+            name: 'Acknowledged server',
+            addonVersion: '5.2.8',
+            protocol: 'acknowledged',
+            httpRequestsPerMinute: 0,
+            websocketRequestsPerMinute: 0,
+            requestsPerMinute: 0,
+          },
+          {
+            ...server,
+            id: 'server-unknown',
+            name: 'Unobserved server',
+            addonVersion: null,
+            protocol: null,
+            lastSeenAt: null,
+            lastHttpAt: null,
+            lastWebsocketAt: null,
+          },
+        ]
+      }
+      return ok(body) as Response
+    })
+    renderWithProviders(AdminMonitoring)
+    const panel = screen.getByRole('region', { name: 'Server connections' })
+    await within(panel).findByText('Acknowledged server')
+    const legacy = within(panel).getByText('Example 1').closest('tr')!
+    expect(within(legacy).getByText('server-1')).toBeInTheDocument()
+    expect(within(legacy).getByText('Example community')).toBeInTheDocument()
+    expect(within(legacy).getByText('5.2.8')).toBeInTheDocument()
+    expect(within(legacy).getByText('HTTP / legacy WebSocket')).toBeInTheDocument()
+    expect(within(legacy).getByText('No confirmed WebSocket')).toBeInTheDocument()
+    expect(within(legacy).getByText('HTTP: 12 · WS: 0')).toBeInTheDocument()
+    expect(legacy.querySelector('time')).toHaveAttribute('datetime', timestamp)
+    const acknowledged = within(panel).getByText('Acknowledged server').closest('tr')!
+    expect(within(acknowledged).getByText('Connected')).toBeInTheDocument()
+    expect(within(acknowledged).getByText('Acknowledged WebSocket')).toBeInTheDocument()
+    expect(within(acknowledged).getByText('No requests in the last 60 seconds')).toBeInTheDocument()
+    const unknown = within(panel).getByText('Unobserved server').closest('tr')!
+    expect(within(unknown).getAllByText('Unknown')).toHaveLength(2)
+    expect(within(unknown).getByText('No recorded activity')).toBeInTheDocument()
+    expect(within(panel).getByText('Current page')).toBeInTheDocument()
+  })
+
+  it('keeps confirmed presence distinct from unavailable request monitoring', async () => {
+    vi.mocked(fetchAPI).mockImplementation(async (endpoint) => {
+      const body = fixture(endpoint)
+      if ('presence' in body) {
+        body.telemetry = 'unavailable'
+        body.trafficObservedAt = null
+        body.items = body.items.map((server) => ({
+          ...server,
+          addonVersion: null,
+          protocol: null,
+          lastSeenAt: null,
+          lastHttpAt: null,
+          lastWebsocketAt: null,
+          httpRequestsPerMinute: null,
+          websocketRequestsPerMinute: null,
+          requestsPerMinute: null,
+        }))
+      }
+      return ok(body) as Response
+    })
+    renderWithProviders(AdminMonitoring)
+    const panel = screen.getByRole('region', { name: 'Server connections' })
+    await within(panel).findByText('Connected')
+    expect(within(panel).getByText('HTTP: Unknown · WS: Unknown')).toBeInTheDocument()
+    expect(
+      within(panel).getByText('Request monitoring is unavailable. Traffic and activity are unknown.'),
+    ).toBeInTheDocument()
+    expect(within(panel).queryByText('No recorded activity')).not.toBeInTheDocument()
+    expect(within(panel).queryByText('No requests in the last 60 seconds')).not.toBeInTheDocument()
+  })
+
+  it('refreshes only connections while visible, skips pending requests and stops on unmount', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
+    const view = renderWithProviders(AdminMonitoring)
+    const panel = screen.getByRole('region', { name: 'Server connections' })
+    await within(panel).findByText('Example 1')
+    const countConnections = () =>
+      vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/connections')).length
+    await fireEvent.input(within(panel).getByRole('searchbox'), { target: { value: 'community' } })
+    await fireEvent.submit(within(panel).getByRole('searchbox').closest('form')!)
+    await vi.waitFor(() => expect(within(panel).getByRole('button', { name: 'Refresh' })).toBeEnabled())
+    await fireEvent.click(within(panel).getByRole('button', { name: 'Next page' }))
+    await within(panel).findByText('Example 26')
+    let finish: ((response: Response) => void) | undefined
+    vi.mocked(fetchAPI).mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve
+        }),
+    )
+    const before = countConnections()
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(countConnections()).toBe(before + 1)
+    const request = vi.mocked(fetchAPI).mock.calls.at(-1)![0]
+    expect(request).toContain('offset=25')
+    expect(request).toContain('search=community')
+    // Keep the previous snapshot visible while the new observation is pending.
+    expect(within(panel).getByText('Example 26')).toBeInTheDocument()
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(countConnections()).toBe(before + 1)
+    finish!(ok(fixture(request)) as Response)
+    await vi.waitFor(() => expect(within(panel).getByRole('button', { name: 'Refresh' })).toBeEnabled())
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(countConnections()).toBe(before + 1)
+    vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
+    document.dispatchEvent(new Event('visibilitychange'))
+    await vi.waitFor(() => expect(countConnections()).toBe(before + 2))
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/errors'))).toHaveLength(1)
+    expect(vi.mocked(fetchAPI).mock.calls.filter(([path]) => path.includes('/bugs'))).toHaveLength(1)
+    view.unmount()
+    await vi.advanceTimersByTimeAsync(30_000)
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(countConnections()).toBe(before + 2)
   })
 })

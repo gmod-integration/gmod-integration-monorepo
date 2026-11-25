@@ -488,7 +488,7 @@ export const ServerLogsTriggers: Component = () => {
           capability="logs.triggers"
           active={!logTriggers.loading && !logTriggers.error && logTriggers().length > 0}
         />
-        <table class="table border-b border-base-300 rounded-none">
+        <table class="table rounded-none">
           <thead>
             <tr class="text-l">
               <th class="w-1/6">{t('dashboard.server.logs_trigger.trigger', 'Event')}</th>

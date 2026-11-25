@@ -24,6 +24,8 @@ import {
   Button,
   ButtonLink,
   CopyableValue,
+  DateTime,
+  DiscordAvatar,
   FormField,
   Icon,
   PageState,
@@ -54,6 +56,7 @@ const PlayerProfile: Component = () => {
   const [pagination, setPagination] = createSignal(emptyPagination())
   const [lookup, setLookup] = createSignal(target())
   const [invalidLookup, setInvalidLookup] = createSignal(false)
+  const [failedSteamAvatar, setFailedSteamAvatar] = createSignal<string>()
   const authenticated = () => isLogged() && Boolean(authSession())
   createEffect(
     on(
@@ -62,6 +65,7 @@ const PlayerProfile: Component = () => {
         setPagination(emptyPagination())
         setLookup(target())
         setInvalidLookup(false)
+        setFailedSteamAvatar(undefined)
       },
       { defer: true },
     ),
@@ -113,9 +117,11 @@ const PlayerProfile: Component = () => {
     return value?.kind === 'ready' ? value.profile : undefined
   }
   const state = () => (!result.error && authenticated() ? result()?.kind : undefined)
+  const steamAvatar = () => {
+    const url = data()?.player.avatarURL
+    return url && failedSteamAvatar() !== url ? url : undefined
+  }
   const number = (value: number) => new Intl.NumberFormat(locale()).format(value)
-  const date = (value: string) =>
-    new Intl.DateTimeFormat(locale(), { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
   const duration = (seconds: number) => {
     if (seconds < 60) return t('player_profile.duration_seconds', '{1} s', number(seconds))
     const minutes = Math.floor(seconds / 60)
@@ -187,7 +193,7 @@ const PlayerProfile: Component = () => {
                     <div>
                       <dt>{t('player_profile.issued_at', 'Issued')}</dt>
                       <dd>
-                        <time dateTime={sanction.createdAt}>{date(sanction.createdAt)}</time>
+                        <DateTime value={sanction.createdAt} />
                       </dd>
                     </div>
                     <Show when={'durationMinutes' in sanction ? sanction : undefined}>
@@ -206,7 +212,7 @@ const PlayerProfile: Component = () => {
                               <div>
                                 <dt>{t('player_profile.ban_expires', 'Expires')}</dt>
                                 <dd>
-                                  <time dateTime={expiresAt()}>{date(expiresAt())}</time>
+                                  <DateTime value={expiresAt()} />
                                 </dd>
                               </div>
                             )}
@@ -298,13 +304,13 @@ const PlayerProfile: Component = () => {
         <div>
           <dt>{t('player_profile.first_joined', 'First joined')}</dt>
           <dd>
-            <time dateTime={props.server.firstJoinedAt}>{date(props.server.firstJoinedAt)}</time>
+            <DateTime value={props.server.firstJoinedAt} />
           </dd>
         </div>
         <div>
           <dt>{t('player_profile.last_seen', 'Last recorded activity')}</dt>
           <dd>
-            <time dateTime={props.server.lastSeenAt}>{date(props.server.lastSeenAt)}</time>
+            <DateTime value={props.server.lastSeenAt} />
           </dd>
         </div>
       </dl>
@@ -401,16 +407,37 @@ const PlayerProfile: Component = () => {
 
                   <section class="public-card player-profile-identity" aria-labelledby="player-identity-name">
                     <div class="player-profile-player">
-                      <Show
-                        when={profile().player.avatarURL}
-                        fallback={
-                          <span class="player-profile-avatar" aria-hidden="true">
-                            <Icon name="user-round" size={32} />
-                          </span>
-                        }
-                      >
-                        <img class="player-profile-avatar" src={profile().player.avatarURL!} alt="" />
-                      </Show>
+                      <div class="player-profile-avatars">
+                        <figure>
+                          <div class="player-profile-avatar" aria-hidden="true">
+                            <Show when={steamAvatar()} keyed fallback={<Icon name="user-round" size={32} />}>
+                              {(src) => (
+                                <img
+                                  src={src}
+                                  alt=""
+                                  decoding="async"
+                                  onError={() => {
+                                    if (data()?.player.avatarURL === src) setFailedSteamAvatar(src)
+                                  }}
+                                />
+                              )}
+                            </Show>
+                          </div>
+                          <figcaption>Steam</figcaption>
+                        </figure>
+                        <Show when={profile().player.discordID}>
+                          {(id) => (
+                            <figure>
+                              <div class="player-profile-avatar">
+                                <DiscordAvatar
+                                  user={{ id: id(), avatarURL: profile().player.discordAvatarURL ?? undefined }}
+                                />
+                              </div>
+                              <figcaption>Discord</figcaption>
+                            </figure>
+                          )}
+                        </Show>
+                      </div>
                       <div class="min-w-0 flex-1">
                         <h2 id="player-identity-name">
                           {profile().player.name || t('player_profile.unknown_player', 'Unknown player')}
@@ -449,37 +476,37 @@ const PlayerProfile: Component = () => {
                         <Show when={profile().player.registeredAt}>
                           <p class="player-profile-created">
                             {t('player_profile.registered', 'Profile created')}{' '}
-                            <time dateTime={profile().player.registeredAt!}>
-                              {date(profile().player.registeredAt!)}
-                            </time>
+                            <DateTime value={profile().player.registeredAt} />
                           </p>
                         </Show>
-                        <div class="player-profile-links">
-                          <ButtonLink
-                            size="sm"
-                            href={`https://steamcommunity.com/profiles/${profile().player.steamID64}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            <Icon name="external-link" size={15} />
-                            {t('player_profile.open_steam', 'Open Steam profile')}
-                          </ButtonLink>
-                          <Show when={profile().player.discordID}>
-                            {(id) => (
-                              <ButtonLink
-                                size="sm"
-                                href={`https://discord.com/users/${id()}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                <Icon name="external-link" size={15} />
-                                {t('player_profile.open_discord', 'Open Discord profile')}
-                              </ButtonLink>
-                            )}
-                          </Show>
-                        </div>
-                        <PlayerProfileActions profile={profile()} />
                       </div>
+                    </div>
+                    <div class="player-profile-action-panel">
+                      <div class="player-profile-links">
+                        <ButtonLink
+                          size="sm"
+                          href={`https://steamcommunity.com/profiles/${profile().player.steamID64}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Icon name="external-link" size={15} />
+                          {t('player_profile.open_steam', 'Open Steam profile')}
+                        </ButtonLink>
+                        <Show when={profile().player.discordID}>
+                          {(id) => (
+                            <ButtonLink
+                              size="sm"
+                              href={`https://discord.com/users/${id()}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Icon name="external-link" size={15} />
+                              {t('player_profile.open_discord', 'Open Discord profile')}
+                            </ButtonLink>
+                          )}
+                        </Show>
+                      </div>
+                      <PlayerProfileActions profile={profile()} />
                     </div>
                   </section>
 
@@ -520,9 +547,7 @@ const PlayerProfile: Component = () => {
                         <div>
                           <dt>{t('player_profile.first_joined', 'First joined')}</dt>
                           <dd>
-                            <time dateTime={profile().summary.firstJoinedAt!}>
-                              {date(profile().summary.firstJoinedAt!)}
-                            </time>
+                            <DateTime value={profile().summary.firstJoinedAt} />
                           </dd>
                         </div>
                       </Show>
@@ -530,7 +555,7 @@ const PlayerProfile: Component = () => {
                         <div>
                           <dt>{t('player_profile.last_seen', 'Last recorded activity')}</dt>
                           <dd>
-                            <time dateTime={profile().summary.lastSeenAt!}>{date(profile().summary.lastSeenAt!)}</time>
+                            <DateTime value={profile().summary.lastSeenAt} />
                           </dd>
                         </div>
                       </Show>

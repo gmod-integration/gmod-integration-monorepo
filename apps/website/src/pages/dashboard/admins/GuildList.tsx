@@ -16,12 +16,14 @@ import {
   Button,
   ButtonLink,
   CopyableValue,
+  DateTime,
   FormField,
   StatusBadge,
   TableState,
 } from '../../../components/ui/index.js'
 import { useI18n } from '../../../i18n.js'
 import { closeDialog, showDialog } from '../../../utils/dialog.js'
+import { formatDateTime } from '../../../utils/dateTime.js'
 import { adminGet, adminMutate, createAdminList } from './adminApi.js'
 import AdminListToolbar from './AdminListToolbar.js'
 
@@ -53,7 +55,6 @@ export default function GuildList() {
     setPartnerSaved(false)
     showDialog('admin-community-partner')
   }
-  const date = (value: string) => new Date(value).toLocaleString(locale())
   return (
     <>
       <AdminPanel
@@ -303,11 +304,15 @@ export default function GuildList() {
                     </div>
                     <div>
                       <dt class="text-sm text-base-content/65">{t('admin_v6.registered', 'Registered')}</dt>
-                      <dd>{date(value().guild.createdAt)}</dd>
+                      <dd>
+                        <DateTime value={value().guild.createdAt} />
+                      </dd>
                     </div>
                     <div>
                       <dt class="text-sm text-base-content/65">{t('admin_v6.updated', 'Updated')}</dt>
-                      <dd>{date(value().guild.updatedAt)}</dd>
+                      <dd>
+                        <DateTime value={value().guild.updatedAt} />
+                      </dd>
                     </div>
                   </dl>
                   <ButtonLink href={`/dashboard/admins/servers?guildID=${encodeURIComponent(value().guild.id)}`}>
@@ -328,11 +333,11 @@ export default function GuildList() {
                     </StatusBadge>
                   </Show>
                   <div class="flex flex-wrap items-center justify-between gap-3">
-                    <span>Premium</span>
+                    <span class="ui-value-label">Premium</span>
                     <BooleanStatus value={value().access.state === 'ready' ? value().access.premium : undefined} />
                   </div>
                   <div class="flex flex-wrap items-center justify-between gap-3">
-                    <span>{t('admin_v6.custom_bot', 'Custom bot access')}</span>
+                    <span class="ui-value-label">{t('admin_v6.custom_bot', 'Custom bot access')}</span>
                     <BooleanStatus value={value().access.state === 'ready' ? value().access.customBot : undefined} />
                   </div>
                   <div class="flex flex-wrap gap-2">
@@ -349,7 +354,11 @@ export default function GuildList() {
                     </For>
                   </div>
                   <p class="text-xs text-base-content/60">
-                    {t('admin_v6.access_valid_until', 'Snapshot valid until {1}', date(value().access.validUntil))}
+                    {t(
+                      'admin_v6.access_valid_until',
+                      'Snapshot valid until {1}',
+                      formatDateTime(value().access.validUntil, locale()),
+                    )}
                   </p>
                 </AdminPanel>
               </div>

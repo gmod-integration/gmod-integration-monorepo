@@ -118,7 +118,11 @@ export const ServerLogsParameters: Component = () => {
         >
           <AsyncState loading={logsChannel.loading} error={logsChannel.error} onRetry={() => void refetchChannel()}>
             <SettingRow
-              title={t('dashboard.server.logs.label.chats_channels', 'Discord destination')}
+              title={
+                <span class="ui-value-label">
+                  {t('dashboard.server.logs.label.chats_channels', 'Discord destination')}
+                </span>
+              }
               description={t(
                 'dashboard.server.logs.destination_help',
                 'Choose a channel and save the selection to receive future logs there.',

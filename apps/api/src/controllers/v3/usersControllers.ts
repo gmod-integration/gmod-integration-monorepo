@@ -10,6 +10,7 @@ import {
 } from '@gmod/schema/server/CustomBotProfileSchema.js'
 import { AccessDeniedError, assertCapability, resolveGuildAccess } from '@gmod/domain-access/index.js'
 import { getUserFromDiscordID } from '@gmod/domain-user/User.js'
+import { canAccessDashboardGuild } from '@gmod/domain-user/dashboardAccess.js'
 import { getServersFromDiscordGuildID, Server } from '@gmod/domain-server/Server.js'
 import { ConfigAuth, ConfigDiscord } from '@gmod/config'
 import { beginOAuthFlow, consumeOAuthFlow } from '@gmod/domain-auth/oauthState.js'
@@ -268,8 +269,15 @@ export async function getGuildRoles(req: Request, res: Response) {
 
 export async function findGuildServers(req: Request, res: Response) {
   const dscGuild = req.dscGuild!
+  return res.send(await dashboardServers(req, dscGuild.id))
+}
 
-  return res.send(await getServersFromDiscordGuildID(dscGuild.id))
+async function dashboardServers(req: Request, guildID: string) {
+  const servers = await getServersFromDiscordGuildID(guildID)
+  const allowed = await Promise.all(
+    servers.map((server) => canAccessDashboardGuild(req.panelUser!, guildID, { serverID: server.id })),
+  )
+  return servers.filter((_server, index) => allowed[index])
 }
 
 export async function findGuildServer(req: Request, res: Response) {
@@ -381,7 +389,11 @@ export async function getGuildAdmins(req: Request, res: Response) {
 
 export async function getGuildBans(req: Request, res: Response) {
   const guild = req.guild!
-  const result = await processGetGuildBans(guild)
+  const servers = await dashboardServers(req, guild.id)
+  const result = await processGetGuildBans(
+    guild,
+    servers.map((server) => server.id),
+  )
   return res.status(result.status).json(result.body)
 }
 
@@ -1232,14 +1244,8 @@ export async function deleteGmodPurchase(req: Request, res: Response) {
 
 export async function deleteUserGmodPurchase(req: Request, res: Response) {
   const guildID = getSingleParam(req.params.guildID)
-  const dscGuild = await enqueueDiscordGuildSnapshot(guildID)
-
-  if (dscGuild && !(await req.panelUser!.isAdminOfGuild(guildID))) {
-    return res.status(403).send({
-      error: 'not_admin_of_guild',
-    })
-  }
-
+  // This personal recovery operation verifies purchase ownership through the linked Steam
+  // identity in its model, even after Discord access or the guild's bot has disappeared.
   const result = await processDeleteUserGmodPurchase(getSingleParam(req.params.discordID), guildID)
   return res.status(result.status).send(result.body)
 }
