@@ -185,9 +185,16 @@ describe('v6 authorization stays separate from session and provider failures', (
       }
     },
   )
-  it('allows the bounded read cache for GET', async () => {
-    await dashboardGuild(req({ panelUser: panel }), res(), vi.fn())
+  it.each(['GET', 'HEAD', 'OPTIONS', undefined])('allows the bounded read cache for method %s', async (method) => {
+    const request = req({ panelUser: panel, method })
+    const next = vi.fn()
+    await dashboardGuild(request, res(), next)
     expect(panel.isAdminOfGuild).toHaveBeenCalledExactlyOnceWith('g1')
+    expect(dashboardAccessMock).toHaveBeenCalledExactlyOnceWith(panel, 'g1', {
+      fresh: false,
+      permissionScope: request,
+    })
+    expect(next).toHaveBeenCalledWith()
   })
 
   it('authorizes a read-only POST without forcing a provider refresh while still checking the exact server', async () => {
