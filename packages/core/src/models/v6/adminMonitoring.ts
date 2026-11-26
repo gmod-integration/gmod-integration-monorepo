@@ -93,52 +93,172 @@ async function connectionPresence(serverIDs: string[]): Promise<{
   }
 }
 
-export async function listAdminConnections(raw: unknown): Promise<AdminConnections> {
-  const query = parse(AdminConnectionsQuerySchema, raw)
-  const where: Prisma.gm_serverWhereInput = {
-    ...(query.guildID ? { guild: query.guildID } : {}),
-    ...(query.search
-      ? {
-          OR: [
-            { id: { contains: query.search } },
-            { name: { contains: query.search } },
-            { gm_guild: { name: { contains: query.search } } },
-          ],
-        }
-      : {}),
-  }
-  const total = await prisma.gm_server.count({ where })
-  const accepted = { ...query, offset: pageOffset(query.offset, query.limit, total) }
-  const rows = await prisma.gm_server.findMany({
-    where,
-    select: { id: true, name: true, guild: true, gm_guild: { select: { name: true } } },
-    skip: accepted.offset,
-    take: accepted.limit,
-    orderBy: [{ createdAt: accepted.orderBy.toLowerCase() as 'asc' | 'desc' }, { id: 'asc' }],
-  })
+const connectionSelect = {
+  id: true,
+  name: true,
+  guild: true,
+  createdAt: true,
+  gm_guild: { select: { name: true } },
+} satisfies Prisma.gm_serverSelect
+type ConnectionSource = Prisma.gm_serverGetPayload<{ select: typeof connectionSelect }>
+type ConnectionRow = AdminConnections['items'][number]
+type ObservedConnection = { data: ConnectionRow; createdAt: Date }
+
+async function observeConnections(rows: ConnectionSource[]) {
   const serverIDs = rows.map((row) => row.id)
   const [{ observedAt, presence, leases }, traffic] = await Promise.all([
     connectionPresence(serverIDs),
     readAddonTelemetry(serverIDs),
   ])
-  return AdminConnectionsSchema.parse({
-    items: rows.map((row, index) => ({
-      id: row.id,
-      name: row.name || '',
-      guildID: row.guild,
-      guildName: row.gm_guild.name || '',
-      activeSockets: leases ? leases[index * 2] : null,
-      leaseExpiresAt: leases?.[index * 2 + 1] ? new Date(leases[index * 2 + 1]).toISOString() : null,
-      ...traffic.items[index],
+  return {
+    rows: rows.map((row, index): ObservedConnection => ({
+      createdAt: row.createdAt,
+      data: {
+        id: row.id,
+        name: row.name || '',
+        guildID: row.guild,
+        guildName: row.gm_guild.name || '',
+        activeSockets: leases ? leases[index * 2] : null,
+        leaseExpiresAt: leases?.[index * 2 + 1] ? new Date(leases[index * 2 + 1]).toISOString() : null,
+        ...traffic.items[index],
+      },
     })),
-    total,
-    query: accepted,
     presence,
     observedAt,
-    leaseTtlSeconds: 90,
-    telemetry: traffic.available ? 'ready' : 'unavailable',
-    trafficWindowSeconds: 60,
+    telemetry: traffic.available ? ('ready' as const) : ('unavailable' as const),
     trafficObservedAt: traffic.observedAt,
+  }
+}
+
+type ConnectionsQuery = z.output<typeof AdminConnectionsQuerySchema>
+const naturalOrder = new Intl.Collator('en', { numeric: true, sensitivity: 'base' })
+
+// Compare the numeric version components naturally; a release follows its prereleases.
+function compareVersions(left: string, right: string) {
+  const [leftCore, leftPre] = left.replace(/^v/, '').split('+')[0].split(/-(.*)/s)
+  const [rightCore, rightPre] = right.replace(/^v/, '').split('+')[0].split(/-(.*)/s)
+  const core = naturalOrder.compare(leftCore, rightCore)
+  if (core) return core
+  if (leftPre === undefined || rightPre === undefined) return leftPre === rightPre ? 0 : leftPre === undefined ? 1 : -1
+  return naturalOrder.compare(leftPre, rightPre)
+}
+
+function compareConnections(left: ObservedConnection, right: ObservedConnection, query: ConnectionsQuery) {
+  const direction = query.orderBy === 'ASC' ? 1 : -1
+  const leftValue = query.sort === 'createdAt' ? left.createdAt.getTime() : left.data[query.sort]
+  const rightValue = query.sort === 'createdAt' ? right.createdAt.getTime() : right.data[query.sort]
+  // Unknown telemetry always follows known values, independently of sort direction.
+  if (leftValue === null || rightValue === null)
+    return leftValue === rightValue ? left.data.id.localeCompare(right.data.id) : leftValue === null ? 1 : -1
+  const compared =
+    typeof leftValue === 'number' && typeof rightValue === 'number'
+      ? leftValue - rightValue
+      : query.sort === 'lastSeenAt'
+        ? Date.parse(String(leftValue)) - Date.parse(String(rightValue))
+        : query.sort === 'addonVersion'
+          ? compareVersions(String(leftValue), String(rightValue))
+          : naturalOrder.compare(String(leftValue), String(rightValue))
+  return compared * direction || left.data.id.localeCompare(right.data.id)
+}
+
+function matchesConnection(row: ConnectionRow, query: ConnectionsQuery) {
+  if (query.connectionState === 'connected' && (row.activeSockets === null || row.activeSockets === 0)) return false
+  if (query.connectionState === 'disconnected' && row.activeSockets !== 0) return false
+  if (query.connectionState === 'unknown' && row.activeSockets !== null) return false
+  if (query.addonVersion && !row.addonVersion?.toLowerCase().includes(query.addonVersion.toLowerCase())) return false
+  if (query.protocol === 'unknown' && row.protocol !== null) return false
+  if (query.protocol !== 'all' && query.protocol !== 'unknown' && row.protocol !== query.protocol) return false
+  if (
+    query.minRequestsPerMinute !== undefined &&
+    (row.requestsPerMinute === null || row.requestsPerMinute < query.minRequestsPerMinute)
+  )
+    return false
+  if (
+    query.maxRequestsPerMinute !== undefined &&
+    (row.requestsPerMinute === null || row.requestsPerMinute > query.maxRequestsPerMinute)
+  )
+    return false
+  if (query.lastSeenFrom && (row.lastSeenAt === null || Date.parse(row.lastSeenAt) < Date.parse(query.lastSeenFrom)))
+    return false
+  if (query.lastSeenTo && (row.lastSeenAt === null || Date.parse(row.lastSeenAt) > Date.parse(query.lastSeenTo)))
+    return false
+  return true
+}
+
+export async function listAdminConnections(raw: unknown): Promise<AdminConnections> {
+  const query = parse(AdminConnectionsQuerySchema, raw)
+  const searchWhere = (search: string): Prisma.gm_serverWhereInput => ({
+    OR: [{ id: { contains: search } }, { name: { contains: search } }, { gm_guild: { name: { contains: search } } }],
+  })
+  const where: Prisma.gm_serverWhereInput = {
+    ...(query.guildID ? { guild: query.guildID } : {}),
+    ...(query.search ? searchWhere(query.search) : {}),
+    ...(query.name ? { name: { contains: query.name } } : {}),
+  }
+  const requiresAllCandidates =
+    !['createdAt', 'name'].includes(query.sort) ||
+    query.connectionState !== 'all' ||
+    query.addonVersion !== '' ||
+    query.protocol !== 'all' ||
+    query.minRequestsPerMinute !== undefined ||
+    query.maxRequestsPerMinute !== undefined ||
+    query.lastSeenFrom !== undefined ||
+    query.lastSeenTo !== undefined
+  let total: number
+  let snapshot: Awaited<ReturnType<typeof observeConnections>>
+  if (!requiresAllCandidates) {
+    total = await prisma.gm_server.count({ where })
+    const rows = await prisma.gm_server.findMany({
+      where,
+      select: connectionSelect,
+      skip: pageOffset(query.offset, query.limit, total),
+      take: query.limit,
+      orderBy: [{ [query.sort]: query.orderBy.toLowerCase() as 'asc' | 'desc' }, { id: 'asc' }],
+    })
+    snapshot = await observeConnections(rows)
+  } else {
+    // Telemetry lives in Redis, so sorting/filtering it must precede pagination. Read
+    // candidates with bounded database and Redis batches instead of sorting one page.
+    const batchSize = 250
+    const observed: ObservedConnection[] = []
+    snapshot = { rows: [], presence: 'ready', observedAt: null, telemetry: 'ready', trafficObservedAt: null }
+    let cursor: string | undefined
+    while (true) {
+      const rows = await prisma.gm_server.findMany({
+        where,
+        select: connectionSelect,
+        take: batchSize,
+        orderBy: { id: 'asc' },
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      })
+      if (!rows.length) break
+      const batch = await observeConnections(rows)
+      observed.push(...batch.rows)
+      if (batch.presence === 'unavailable') snapshot.presence = 'unavailable'
+      if (batch.telemetry === 'unavailable') snapshot.telemetry = 'unavailable'
+      snapshot.observedAt ??= batch.observedAt
+      snapshot.trafficObservedAt ??= batch.trafficObservedAt
+      if (rows.length < batchSize) break
+      cursor = rows[rows.length - 1].id
+    }
+    const matching = observed.filter((row) => matchesConnection(row.data, query))
+    matching.sort((left, right) => compareConnections(left, right, query))
+    total = matching.length
+    const offset = pageOffset(query.offset, query.limit, total)
+    snapshot.rows = matching.slice(offset, offset + query.limit)
+    if (snapshot.presence === 'unavailable') snapshot.observedAt = null
+    if (snapshot.telemetry === 'unavailable') snapshot.trafficObservedAt = null
+  }
+  return AdminConnectionsSchema.parse({
+    items: snapshot.rows.map((row) => row.data),
+    total,
+    query: { ...query, offset: pageOffset(query.offset, query.limit, total) },
+    presence: snapshot.presence,
+    observedAt: snapshot.observedAt,
+    leaseTtlSeconds: 90,
+    telemetry: snapshot.telemetry,
+    trafficWindowSeconds: 60,
+    trafficObservedAt: snapshot.trafficObservedAt,
     generatedAt: new Date().toISOString(),
   })
 }

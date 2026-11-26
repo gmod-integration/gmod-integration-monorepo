@@ -533,7 +533,9 @@
       "metric_verified_detail": "Steam connected to Discord",
       "closing_kicker": "From your server to your Discord",
       "closing_title": "Bring your community together.",
-      "closing_description": "Follow the setup guide, connect your server and choose the features that work for your community."
+      "closing_description": "Follow the setup guide, connect your server and choose the features that work for your community.",
+      "metric_users": "Users",
+      "metric_users_detail": "Registered Steam and Discord accounts"
     }
   },
   "dashboard": {
@@ -849,7 +851,8 @@
           "remove_error": "Unable to remove the status message.",
           "settings_error": "Unable to load the status settings.",
           "unsaved": "Preview only — save to apply these changes to Discord.",
-          "refresh": "Refresh preview"
+          "refresh": "Refresh preview",
+          "local_access_unknown": "Premium could not be verified locally. This preview uses the free limits."
         },
         "cancel": "Cancel",
         "edit": "Edit",
@@ -1938,7 +1941,7 @@
     "platform_overview": "Platform overview",
     "premium_description": "Manage local Premium grants and inspect effective access. Discord subscriptions and GmodStore purchases remain separate sources.",
     "premium_empty": "No communities match these filters.",
-    "premium_list_hint": "These filters use local grants and recorded GmodStore purchases. Open access details to verify Discord entitlements and the effective result.",
+    "premium_list_hint": "These filters include local grants, recorded GmodStore purchases and verified Discord subscriptions. Open access details to inspect the effective result.",
     "premium_load_error": "Unable to load Premium records. Try again.",
     "premium_saved": "The local grant was saved. Other verified Premium sources still apply.",
     "premium_saved_pending": "The local grant was saved. Effective access could not yet be confirmed; refresh its details to check again.",
@@ -2035,7 +2038,13 @@
     "all_registrations": "All registrations",
     "analytics_load_error": "Unable to load registration history. Try again.",
     "no_recorded_premium_sources": "No active recorded Premium grants.",
-    "server_id": "Server ID"
+    "server_id": "Server ID",
+    "discord_subscription": "Discord subscription",
+    "active_subscription": "Active subscription",
+    "no_active_subscription": "No active subscription",
+    "discord_premium": "Discord subscriptions",
+    "discord_premium_unavailable": "Discord subscriptions could not be verified. Other sources remain available.",
+    "discord_subscription_unknown": "Discord subscription unknown"
   },
   "admin_previews": {
     "title": "Server previews",
@@ -2068,7 +2077,7 @@
     "last_seen": "Last received",
     "no_summary": "No summary available",
     "connections": "Server connections",
-    "connections_note": "WebSocket presence and authenticated requests received over the last 60 seconds. HTTP activity does not confirm a WebSocket connection. Presence may take up to 90 seconds to expire. Refreshes every 15 seconds while this page is visible.",
+    "connections_note": "WebSocket presence and authenticated requests received over the last 60 seconds. HTTP activity does not confirm a WebSocket connection. Presence may take up to 90 seconds to expire. Use Refresh to update the data.",
     "presence_unavailable": "Connection monitoring is unavailable. Server connection states are unknown.",
     "connection": "Connection",
     "sockets": "Sockets",
@@ -2101,7 +2110,19 @@
     "no_recent_requests": "No requests in the last 60 seconds",
     "no_activity": "No recorded activity",
     "request_breakdown": "HTTP: {1} · WS: {2}",
-    "telemetry_unavailable": "Request monitoring is unavailable. Traffic and activity are unknown."
+    "telemetry_unavailable": "Request monitoring is unavailable. Traffic and activity are unknown.",
+    "apply_filters": "Apply filters",
+    "reset_filters": "Reset filters",
+    "invalid_filters": "Check the request limits and activity dates: minimums must not exceed maximums.",
+    "filter_name": "Filter by server name",
+    "filter_presence": "Filter by WebSocket presence",
+    "filter_version": "Filter by addon version",
+    "filter_protocol": "Filter by protocol",
+    "all_values": "All",
+    "min_requests": "Minimum requests per minute",
+    "max_requests": "Maximum requests per minute",
+    "activity_from": "Activity from",
+    "activity_until": "Activity until"
   },
   "server_statistics": {
     "invalid_dates": "Choose a start before the end of the period.",

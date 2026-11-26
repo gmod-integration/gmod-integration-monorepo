@@ -68,6 +68,12 @@ describe('ConfigSchema', () => {
     expect(result.success).toBe(true)
   })
 
+  it('defaults a missing subscription SKU to the current offer', () => {
+    expect(ConfigSchema.parse(validEnv({ DISCORD_SUBSCRIPTION_SKU_ID: undefined })).DISCORD_SUBSCRIPTION_SKU_ID).toBe(
+      '1260321278208770150',
+    )
+  })
+
   it('allows an optional HTTP relay destination and treats blank values as unset', () => {
     expect(ConfigSchema.parse(validEnv()).DISCORD_RELAY_URL).toBeUndefined()
     expect(ConfigSchema.parse(validEnv({ DISCORD_RELAY_URL: '   ' })).DISCORD_RELAY_URL).toBeUndefined()

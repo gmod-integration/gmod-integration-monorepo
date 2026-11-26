@@ -107,6 +107,7 @@ export default function PremiumList() {
               <option value="all">{t('admin_v6.all_communities', 'All communities')}</option>
               <option value="manual">{t('admin_v6.local_grant', 'Local grant')}</option>
               <option value="gmodstore">GmodStore</option>
+              <option value="discord">{t('admin_v6.discord_subscription', 'Discord subscription')}</option>
               <option value="none">{t('admin_v6.no_recorded_grant', 'No active recorded grant')}</option>
             </select>
           </FormField>
@@ -114,7 +115,7 @@ export default function PremiumList() {
         <p class="px-4 pb-3 text-xs text-base-content/60">
           {t(
             'admin_v6.premium_list_hint',
-            'These filters use local grants and recorded GmodStore purchases. Open access details to verify Discord entitlements and the effective result.',
+            'These filters include local grants, recorded GmodStore purchases and verified Discord subscriptions. Open access details to inspect the effective result.',
           )}
         </p>
         <div class="min-w-0 w-full overflow-x-auto">
@@ -124,13 +125,14 @@ export default function PremiumList() {
                 <th>{t('admin_v6.community', 'Community')}</th>
                 <th>{t('admin_v6.local_grant', 'Local grant')}</th>
                 <th>GmodStore</th>
+                <th>{t('admin_v6.discord_subscription', 'Discord subscription')}</th>
                 <th>{t('admin_v6.servers', 'Game servers')}</th>
                 <th>{t('ui.actions', 'Actions')}</th>
               </tr>
             </thead>
             <tbody>
               <TableState
-                colSpan={5}
+                colSpan={6}
                 loading={list.results.loading}
                 error={list.results.error}
                 empty={!list.results.loading && !list.results.error && list.results()?.items.length === 0}
@@ -162,6 +164,13 @@ export default function PremiumList() {
                           value={guild.gmodstore}
                           trueLabel={t('admin_v6.recorded', 'Recorded')}
                           falseLabel={t('admin_v6.not_recorded', 'Not recorded')}
+                        />
+                      </td>
+                      <td>
+                        <BooleanStatus
+                          value={guild.discordPremium}
+                          trueLabel={t('admin_v6.active_subscription', 'Active subscription')}
+                          falseLabel={t('admin_v6.no_active_subscription', 'No active subscription')}
                         />
                       </td>
                       <td>{guild.serverCount.toLocaleString(locale())}</td>
@@ -275,6 +284,14 @@ export default function PremiumList() {
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="ui-value-label">{t('admin_v6.effective_premium', 'Effective Premium')}:</span>
                   <BooleanStatus value={data().access.state === 'ready' ? data().access.premium : undefined} />
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="ui-value-label">{t('admin_v6.discord_subscription', 'Discord subscription')}:</span>
+                  <BooleanStatus
+                    value={data().guild.discordPremium}
+                    trueLabel={t('admin_v6.active_subscription', 'Active subscription')}
+                    falseLabel={t('admin_v6.no_active_subscription', 'No active subscription')}
+                  />
                 </div>
                 <Show when={data().access.state !== 'ready'}>
                   <p class="text-sm text-warning">

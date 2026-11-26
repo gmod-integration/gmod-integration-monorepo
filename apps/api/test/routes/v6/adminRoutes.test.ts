@@ -181,6 +181,34 @@ describe('platform admin API and own-session authorization', () => {
     expect(mocks.users).not.toHaveBeenCalled()
   })
   it.each([
+    ['/guilds', 'guilds'],
+    ['/premium', 'premium'],
+  ] as const)(
+    'accepts the Discord subscription filter on %s and preserves provider unavailability',
+    async (path, key) => {
+      const result = await request(app()).get(`/v6/admin${path}?premium=discord&offset=25`)
+      expect(result.status).toBe(200)
+      expect(mocks[key]).toHaveBeenCalledExactlyOnceWith({
+        offset: 25,
+        limit: 25,
+        search: '',
+        sort: 'createdAt',
+        orderBy: 'DESC',
+        premium: 'discord',
+      })
+      mocks[key].mockRejectedValueOnce(
+        Object.assign(new Error('Discord unavailable'), {
+          name: 'AdminDashboardError',
+          status: 503,
+          code: 'discord_entitlements_unavailable',
+        }),
+      )
+      const unavailable = await request(app()).get(`/v6/admin${path}?premium=none`)
+      expect(unavailable.status).toBe(503)
+      expect(unavailable.body.error.code).toBe('discord_entitlements_unavailable')
+    },
+  )
+  it.each([
     ['patch', '/servers/s1', { name: 'New name', reason: 'Support correction' }, 'update'],
     ['delete', '/servers/s1', { confirm: 's1', reason: 'Support correction' }, 'remove'],
     ['post', '/servers/s1/reset-token', { confirm: 's1', reason: 'Support correction' }, 'reset'],

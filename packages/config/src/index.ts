@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import dotenv from 'dotenv'
 import { ZodError } from 'zod'
 import { ConfigSchema, type ConfigInput } from './schema.js'
+import { discordSubscriptionSKUs } from './discordPremium.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -126,7 +127,7 @@ export const ConfigDiscord = {
   premiumRoleID: config.DISCORD_GUILD_PREMIUM_ROLE_ID,
   gmodStorePremiumRoleID: config.DISCORD_GUILD_GMODSTORE_PREMIUM_ROLE_ID,
   discordPremiumRoleID: config.DISCORD_GUILD_DISCORD_PREMIUM_ROLE_ID,
-  subscriptionSKUID: config.DISCORD_SUBSCRIPTION_SKU_ID,
+  ...discordSubscriptionSKUs(config.DISCORD_SUBSCRIPTION_SKU_ID),
   gmodIntegrationLogo: 'https://gmod-integration.com/src/assets/brand/logo.png',
   embedColor: 0x393a41,
 }

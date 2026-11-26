@@ -82,6 +82,10 @@ The homepage uses the Console hero and Ribbon statistics without visitor-facing 
 The integration preview tabs remain interactive. Statistics show non-negative safe integer totals in
 the selected locale; invalid or missing totals stay unknown. The ribbon becomes label/value rows on
 narrow screens so translated labels and large numbers remain readable.
+The user metric comes from `GET /v3/stats.totalUsers`: registered Discord accounts plus stored Steam
+profiles, including accounts without a link between the two platforms. It counts accounts rather than
+unique people. The existing `user` and `verifyUser` fields retain their legacy meanings; the public
+statistics cache uses `stats:v3` with a 120-second TTL.
 
 ## Rewards
 
@@ -257,12 +261,18 @@ retry remain available. Successful preview and reward-simulation POSTs do not in
 snapshot; permission refusals still refresh access.
 
 The server status page shares a draft between its settings and button editors. A 250 ms debounce
-requests the bot's serialized status render, with stale responses ignored after edits or navigation.
+requests a locally built status payload from the API, with stale responses ignored after edits or navigation.
 The preview is also visible inside the format/button dialogs and the channel-send confirmation.
 On wide screens the settings and buttons sit on the left and the preview stays on the right; smaller
 screens stack them. The editor requests simulation mode with five clearly marked fictional players,
 so the player-list format can be tested even when the game server is offline. These players exist
 only in the preview; publication always reads the actual game-server status.
+
+`DiscordMessagePreview` renders text, embeds and inactive buttons directly in the browser and is shared
+by the status preview and the administration sandbox. The rendering step does not require a Discord
+worker, bot connection or Discord API request; normal endpoint authorization still applies. It uses locally verified access data and explains when
+free limits are used because Premium could not be verified locally. Actual publication retains its
+normal Discord transport and current access checks.
 
 Typing, toggling options and selecting a destination do not publish the draft. Settings and buttons
 are applied only after an explicit save, and creating the message requires the separate send action.

@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   grantUpdate: vi.fn(),
   cache: vi.fn(),
   access: vi.fn(),
+  entitlements: vi.fn(),
   invalidate: vi.fn(),
   domainServer: vi.fn(),
 }))
@@ -50,6 +51,7 @@ vi.mock('@gmod/domain-server/Server.js', () => ({ getServerFromID: mocks.domainS
 vi.mock('@gmod/domain-access/index.js', () => ({
   resolveGuildAccess: mocks.access,
   invalidateGuildAccess: mocks.invalidate,
+  getDiscordEntitlements: mocks.entitlements,
 }))
 const {
   listAdminGuilds,
@@ -120,6 +122,7 @@ beforeEach(() => {
   mocks.serverFind.mockResolvedValue({ id: 's1' })
   mocks.serverUpdate.mockResolvedValue(server())
   mocks.access.mockResolvedValue(access())
+  mocks.entitlements.mockResolvedValue([])
   mocks.invalidate.mockResolvedValue(undefined)
   mocks.grantUpsert.mockResolvedValue({})
   mocks.grantUpdate.mockResolvedValue({ count: 1 })
@@ -142,7 +145,17 @@ describe('platform administration projections and bounded lists', () => {
       expect(result).toMatchObject({
         total: 31,
         query: { offset: 25, limit: 25, premium: 'manual' },
-        items: [{ id: 'g1', members: 10, serverCount: 2, manualPremium: true, gmodstore: false, partner: true }],
+        items: [
+          {
+            id: 'g1',
+            members: 10,
+            serverCount: 2,
+            manualPremium: true,
+            gmodstore: false,
+            discordPremium: false,
+            partner: true,
+          },
+        ],
       })
       expect(JSON.stringify(result)).not.toContain('never return')
       const sql = mocks.raw.mock.calls[1][0]
@@ -155,18 +168,67 @@ describe('platform administration projections and bounded lists', () => {
       expect(mocks.raw).toHaveBeenCalledTimes(2)
     },
   )
-  it.each([{ limit: 999 }, { sort: 'token' }, { premium: 'discord' }, { offset: [] }, { search: 'x'.repeat(101) }])(
+  it.each([{ limit: 999 }, { sort: 'token' }, { premium: 'unknown' }, { offset: [] }, { search: 'x'.repeat(101) }])(
     'rejects invalid guild filters before any query %j',
     async (query) => {
       await expect(listAdminGuilds(query)).rejects.toMatchObject({ status: 400, code: 'invalid_request' })
       expect(mocks.raw).not.toHaveBeenCalled()
     },
   )
-  it('distinguishes no recorded grant from provider-resolved effective access', async () => {
+  it('excludes active Discord subscriptions as well as database grants from the no-Premium filter', async () => {
+    mocks.entitlements.mockResolvedValueOnce([{ guild_id: 'discord-only', sku_id: '1260321278208770150' }])
     mocks.raw.mockResolvedValueOnce([{ total: 0n }]).mockResolvedValueOnce([])
     await listAdminPremium({ premium: 'none' })
     expect(mocks.raw.mock.calls[0][0].sql).toContain('NOT EXISTS')
+    expect(mocks.raw.mock.calls[0][0].sql).toContain('AND NOT (g.guild IN (?))')
+    expect(mocks.raw.mock.calls[0][0].values).toContain('discord-only')
+    expect(mocks.entitlements).toHaveBeenCalledTimes(1)
     expect(mocks.access).not.toHaveBeenCalled()
+  })
+  it('filters Discord subscriptions before counting and paging and counts both SKU sources only once per community', async () => {
+    mocks.entitlements.mockResolvedValueOnce([
+      { guild_id: 'g1', sku_id: '1260321278208770150' },
+      { guild_id: 'g1', sku_id: '1224469371225636965' },
+      { guild_id: 'g2', sku_id: '1224469371225636965' },
+      { sku_id: '1260321278208770150' },
+    ])
+    mocks.raw.mockResolvedValueOnce([{ total: 26n }]).mockResolvedValueOnce([guild()])
+    const page = await listAdminPremium({ premium: 'discord', offset: 999, limit: 25 })
+    expect(page).toMatchObject({ total: 26, query: { offset: 25 }, items: [{ discordPremium: true }] })
+    for (const [query] of mocks.raw.mock.calls) {
+      expect(query.sql).toContain('g.guild IN (?,?)')
+      expect(query.values.filter((value: unknown) => value === 'g1')).toHaveLength(1)
+      expect(query.values).toContain('g2')
+    }
+    expect(mocks.raw.mock.calls[1][0].values.slice(-2)).toEqual([25, 25])
+    expect(mocks.entitlements).toHaveBeenCalledExactlyOnceWith(undefined)
+    expect(mocks.access).not.toHaveBeenCalled()
+  })
+  it.each(['all', 'manual', 'gmodstore'])(
+    'preserves the directory with unknown Discord state when provider lookup fails: %s',
+    async (premium) => {
+      mocks.entitlements.mockRejectedValueOnce(new Error('Provider unavailable'))
+      mocks.raw.mockResolvedValueOnce([{ total: 1n }]).mockResolvedValueOnce([guild()])
+      const page = await listAdminGuilds({ premium })
+      expect(page.items[0]).toMatchObject({ manualPremium: true, discordPremium: null })
+      expect(mocks.raw).toHaveBeenCalledTimes(2)
+    },
+  )
+  it.each(['discord', 'none'])(
+    'does not turn an unavailable Discord provider into a confirmed %s result',
+    async (premium) => {
+      mocks.entitlements.mockRejectedValueOnce(new Error('Provider unavailable'))
+      await expect(listAdminGuilds({ premium })).rejects.toMatchObject({
+        status: 503,
+        code: 'discord_entitlements_unavailable',
+      })
+      expect(mocks.raw).not.toHaveBeenCalled()
+    },
+  )
+  it('uses a false Discord predicate when there are no active entitlements', async () => {
+    await listAdminPremium({ premium: 'discord' })
+    expect(mocks.raw.mock.calls[0][0].sql).toContain('AND false')
+    expect(mocks.raw.mock.calls[0][0].values).toEqual([])
   })
   it('scopes and paginates server records without returning credentials', async () => {
     mocks.serverCount.mockResolvedValueOnce(31)
@@ -364,6 +426,7 @@ describe('platform administration projections and bounded lists', () => {
         activeSessions: 0,
         manualPremium: 1,
         gmodstorePremium: 2,
+        discordPremium: 0,
       },
       recent: { days: 7, guilds: 2, servers: 2, users: 2 },
       languages: [{ language: 'en', count: 2 }],
@@ -377,16 +440,42 @@ describe('platform administration projections and bounded lists', () => {
       }),
     )
   })
-  it('resolves actual entitlements only when inspecting one existing guild', async () => {
+  it('counts distinct registered Discord communities independently of overlapping grants', async () => {
+    mocks.entitlements.mockResolvedValueOnce([
+      { guild_id: 'g1', sku_id: '1260321278208770150' },
+      { guild_id: 'g1', sku_id: '1224469371225636965' },
+      { guild_id: 'g2', sku_id: '1224469371225636965' },
+      { guild_id: 'unregistered', sku_id: '1260321278208770150' },
+    ])
+    mocks.guildCount.mockImplementation(async (query) => (query?.where?.guild ? 2 : 7))
+    const overview = await getAdminOverview()
+    expect(overview.totals).toMatchObject({ guilds: 7, discordPremium: 2 })
+    expect(mocks.guildCount).toHaveBeenCalledWith({ where: { guild: { in: ['g1', 'g2', 'unregistered'] } } })
+    expect(mocks.entitlements).toHaveBeenCalledExactlyOnceWith(undefined)
+  })
+  it('preserves overview statistics while reporting an unavailable Discord count as unknown', async () => {
+    mocks.entitlements.mockRejectedValueOnce(new Error('Provider unavailable'))
+    mocks.raw.mockResolvedValueOnce([{ manualPremium: 1n, gmodstorePremium: 2n }])
+    expect((await getAdminOverview()).totals).toMatchObject({
+      guilds: 2,
+      manualPremium: 1,
+      gmodstorePremium: 2,
+      discordPremium: null,
+    })
+  })
+  it('resolves effective access and the Discord source separately when inspecting an existing guild', async () => {
     mocks.raw.mockResolvedValueOnce([guild()])
-    mocks.access.mockResolvedValueOnce(access(true, ['discord']))
+    mocks.access.mockResolvedValueOnce(access(true, ['legacy']))
+    mocks.entitlements.mockResolvedValueOnce([{ guild_id: 'g1', sku_id: '1224469371225636965' }])
     expect(await getAdminGuildDetail('g1')).toMatchObject({
-      guild: { manualPremium: true },
-      access: { sources: ['discord'] },
+      guild: { manualPremium: true, discordPremium: true },
+      access: { sources: ['legacy'] },
     })
     expect(mocks.access).toHaveBeenCalledExactlyOnceWith('g1')
+    expect(mocks.entitlements).toHaveBeenCalledExactlyOnceWith('g1')
     mocks.raw.mockResolvedValueOnce([])
     await expect(getAdminGuildDetail('missing')).rejects.toMatchObject({ status: 404 })
+    expect(mocks.entitlements).toHaveBeenCalledTimes(1)
   })
 })
 

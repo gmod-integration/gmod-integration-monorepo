@@ -103,6 +103,7 @@ export default function GuildList() {
               <option value="all">{t('admin_v6.all_sources', 'All sources')}</option>
               <option value="manual">{t('admin_v6.manual_grant', 'Manual grant')}</option>
               <option value="gmodstore">GmodStore</option>
+              <option value="discord">{t('admin_v6.discord_subscription', 'Discord subscription')}</option>
               <option value="none">{t('admin_v6.no_recorded_grant', 'No active recorded grant')}</option>
             </select>
           </FormField>
@@ -165,7 +166,17 @@ export default function GuildList() {
                           <Show when={guild.gmodstore}>
                             <StatusBadge tone="success">GmodStore</StatusBadge>
                           </Show>
-                          <Show when={!guild.manualPremium && !guild.gmodstore}>
+                          <Show when={guild.discordPremium}>
+                            <StatusBadge tone="info">
+                              {t('admin_v6.discord_subscription', 'Discord subscription')}
+                            </StatusBadge>
+                          </Show>
+                          <Show when={guild.discordPremium === null}>
+                            <StatusBadge tone="warning">
+                              {t('admin_v6.discord_subscription_unknown', 'Discord subscription unknown')}
+                            </StatusBadge>
+                          </Show>
+                          <Show when={!guild.manualPremium && !guild.gmodstore && guild.discordPremium === false}>
                             <StatusBadge>{t('admin_v6.no_recorded_grant', 'No active recorded grant')}</StatusBadge>
                           </Show>
                         </div>
@@ -339,6 +350,14 @@ export default function GuildList() {
                   <div class="flex flex-wrap items-center justify-between gap-3">
                     <span class="ui-value-label">{t('admin_v6.custom_bot', 'Custom bot access')}</span>
                     <BooleanStatus value={value().access.state === 'ready' ? value().access.customBot : undefined} />
+                  </div>
+                  <div class="flex flex-wrap items-center justify-between gap-3">
+                    <span class="ui-value-label">{t('admin_v6.discord_subscription', 'Discord subscription')}</span>
+                    <BooleanStatus
+                      value={value().guild.discordPremium}
+                      trueLabel={t('admin_v6.active_subscription', 'Active subscription')}
+                      falseLabel={t('admin_v6.no_active_subscription', 'No active subscription')}
+                    />
                   </div>
                   <div class="flex flex-wrap gap-2">
                     <For each={value().access.sources}>

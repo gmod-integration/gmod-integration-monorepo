@@ -15,8 +15,11 @@ and `validUntil`. Sources are a legacy community grant, an assigned non-revoked 
 or a valid Discord subscription entitlement. The custom bot requires the GmodStore source specifically.
 Removing one source preserves access granted by another valid source.
 
-Discord lookup validates the application, configured SKU, community, dates, deletion and consumption
-state, and follows bounded pagination. Provider failure produces `state: unknown` when no independent
+Discord lookup validates the application, configured Premium SKUs, community, dates, deletion and consumption
+state, and follows bounded pagination. Both official subscriptions, current `1260321278208770150` and
+retired `1224469371225636965`, grant Premium while active; only the current SKU is offered by purchase
+buttons. The list request includes both SKUs and validates each returned entitlement locally.
+Provider failure produces `state: unknown` when no independent
 source proves access. It is not recorded as a confirmed free subscription.
 
 The shared snapshot cache lasts at most 60 seconds, shortened by known subscription expiry.

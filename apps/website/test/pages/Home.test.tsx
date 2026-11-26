@@ -11,7 +11,7 @@ afterEach(() => {
 })
 beforeEach(() => window.localStorage.clear())
 
-const validStats = { guild: 1234, server: 42, user: 98765, verifyUser: 555 }
+const validStats = { guild: 1234, server: 42, user: 98765, verifyUser: 555, totalUsers: 23456 }
 const response = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status })
 
 describe('Home', () => {
@@ -37,16 +37,18 @@ describe('Home', () => {
     ).toBeInTheDocument()
   })
 
-  it('renders the three defined totals without presenting cumulative membership as unique users', async () => {
+  it('shows all registered Steam and Discord accounts instead of linked accounts or cumulative membership', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(validStats)))
     renderWithProviders(() => <Home />)
     const statistics = screen.getByRole('region', { name: 'Community statistics' })
     await vi.waitFor(() => expect(statistics).toHaveAttribute('aria-busy', 'false'))
-    for (const number of [validStats.guild, validStats.server, validStats.verifyUser]) {
+    for (const number of [validStats.guild, validStats.server, validStats.totalUsers]) {
       expect(within(statistics).getByText(number.toLocaleString())).toBeInTheDocument()
     }
     expect(within(statistics).queryByText(validStats.user.toLocaleString())).not.toBeInTheDocument()
-    expect(within(statistics).queryByText('Users')).not.toBeInTheDocument()
+    expect(within(statistics).queryByText(validStats.verifyUser.toLocaleString())).not.toBeInTheDocument()
+    expect(within(statistics).getByText('Users')).toBeInTheDocument()
+    expect(within(statistics).getByText('Registered Steam and Discord accounts')).toBeInTheDocument()
   })
 
   it.each(['network', 'http', 'invalid JSON', 'null payload'])(
@@ -73,16 +75,23 @@ describe('Home', () => {
   )
 
   it('preserves unknown counts as unavailable rather than displaying invented zeroes', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(response({ guild: -5, server: 'unknown', user: null, verifyUser: 12.8 })),
-    )
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ guild: -5, server: 'unknown', totalUsers: 12.8 })))
     renderWithProviders(() => <Home />)
     const statistics = screen.getByRole('region', { name: 'Community statistics' })
     await vi.waitFor(() => expect(statistics).toHaveAttribute('aria-busy', 'false'))
     expect(within(statistics).getAllByText('—')).toHaveLength(3)
     expect(within(statistics).queryByText('0')).not.toBeInTheDocument()
     expect(within(statistics).queryByText('12')).not.toBeInTheDocument()
+  })
+
+  it('keeps the account total unavailable when an older API returns only linked-account counts', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ guild: 12, server: 3, verifyUser: 555, user: 999 })))
+    renderWithProviders(() => <Home />)
+    const statistics = screen.getByRole('region', { name: 'Community statistics' })
+    await vi.waitFor(() => expect(statistics).toHaveAttribute('aria-busy', 'false'))
+    expect(within(statistics).getByText('—')).toBeInTheDocument()
+    expect(within(statistics).queryByText('555')).not.toBeInTheDocument()
+    expect(within(statistics).queryByText('999')).not.toBeInTheDocument()
   })
 
   it('keeps the selected Console and Ribbon presentation for visitors with an old design preference', async () => {
@@ -98,7 +107,7 @@ describe('Home', () => {
 
   it('formats large totals with the chosen language and preserves genuine zero counts', async () => {
     window.localStorage.setItem('locale', 'fr')
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ guild: 0, server: 12345, verifyUser: 67890 })))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response({ guild: 0, server: 12345, totalUsers: 67890 })))
     renderWithProviders(() => <Home />)
     const statistics = screen.getByRole('region', { name: 'Statistiques des communautés' })
     await vi.waitFor(() => expect(statistics).toHaveAttribute('aria-busy', 'false'))

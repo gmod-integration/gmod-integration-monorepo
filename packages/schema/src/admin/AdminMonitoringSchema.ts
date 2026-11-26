@@ -19,8 +19,30 @@ const recurring = z.preprocess(
 
 export const AdminConnectionsQuerySchema = pagination
   .omit({ sort: true })
-  .extend({ sort: z.literal('createdAt').default('createdAt') })
+  .extend({
+    sort: z
+      .enum(['createdAt', 'name', 'activeSockets', 'addonVersion', 'protocol', 'requestsPerMinute', 'lastSeenAt'])
+      .default('createdAt'),
+    name: z.string().trim().max(100).default(''),
+    connectionState: z.enum(['all', 'connected', 'disconnected', 'unknown']).default('all'),
+    addonVersion: z.string().trim().max(64).default(''),
+    protocol: z.enum(['all', 'legacy', 'acknowledged', 'unknown']).default('all'),
+    minRequestsPerMinute: z.preprocess(number, count.optional()),
+    maxRequestsPerMinute: z.preprocess(number, count.optional()),
+    lastSeenFrom: z.string().datetime().optional(),
+    lastSeenTo: z.string().datetime().optional(),
+  })
   .strict()
+  .superRefine((query, context) => {
+    if (
+      query.minRequestsPerMinute !== undefined &&
+      query.maxRequestsPerMinute !== undefined &&
+      query.minRequestsPerMinute > query.maxRequestsPerMinute
+    )
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['maxRequestsPerMinute'], message: 'Invalid rate range.' })
+    if (query.lastSeenFrom && query.lastSeenTo && Date.parse(query.lastSeenFrom) > Date.parse(query.lastSeenTo))
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['lastSeenTo'], message: 'Invalid activity range.' })
+  })
 export const AdminErrorsQuerySchema = pagination
   .omit({ guildID: true })
   .extend({

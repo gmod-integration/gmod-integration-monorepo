@@ -10,6 +10,7 @@ export {
 export { LanguageFlag } from './LanguageFlag.js'
 export { DiscordAvatar, type DiscordAvatarProps } from './DiscordAvatar.js'
 export { DateTime, type DateTimeProps } from './DateTime.js'
+export { SortableTableHeader, type SortableTableHeaderProps } from './SortableTableHeader.js'
 export { PageState } from './PageState.js'
 export { SettingGroup, SettingRow, SettingFeedback, type SettingGroupProps, type SettingRowProps } from './Settings.js'
 export { IconButton, IconButtonLink, type IconButtonProps, type IconButtonLinkProps } from './IconButton.js'

@@ -21,6 +21,7 @@ const prismaMock: any = {
   gm_guild: { aggregate: vi.fn(), count: vi.fn() },
   gm_server: { count: vi.fn() },
   gm_user: { count: vi.fn() },
+  gm_user_steam: { count: vi.fn() },
 }
 vi.mock('@gmod/infra-prisma', () => ({ default: prismaMock }))
 
@@ -44,6 +45,8 @@ function resetAllMocks() {
 describe('mainModels', () => {
   beforeEach(() => {
     resetAllMocks()
+    prismaMock.gm_user.count.mockResolvedValue(0)
+    prismaMock.gm_user_steam.count.mockResolvedValue(0)
   })
 
   afterEach(() => {
@@ -53,10 +56,14 @@ describe('mainModels', () => {
 
   describe('getStats', () => {
     it('returns the cached stats from redis when present', async () => {
-      redisMock.get.mockResolvedValueOnce(JSON.stringify({ user: 1, guild: 2, server: 3, verifyUser: 4 }))
-      await expect(getStats()).resolves.toEqual({ user: 1, guild: 2, server: 3, verifyUser: 4 })
-      expect(redisMock.get).toHaveBeenCalledWith('stats:v2')
+      redisMock.get.mockResolvedValueOnce(
+        JSON.stringify({ user: 1, guild: 2, server: 3, verifyUser: 4, totalUsers: 5 }),
+      )
+      await expect(getStats()).resolves.toEqual({ user: 1, guild: 2, server: 3, verifyUser: 4, totalUsers: 5 })
+      expect(redisMock.get).toHaveBeenCalledWith('stats:v3')
       expect(prismaMock.users.count).not.toHaveBeenCalled()
+      expect(prismaMock.gm_user.count).not.toHaveBeenCalled()
+      expect(prismaMock.gm_user_steam.count).not.toHaveBeenCalled()
     })
 
     it('computes, caches, and returns fresh stats when not cached', async () => {
@@ -65,17 +72,20 @@ describe('mainModels', () => {
       prismaMock.gm_guild.aggregate.mockResolvedValueOnce({ _sum: { member: 100 } })
       prismaMock.gm_guild.count.mockResolvedValueOnce(5)
       prismaMock.gm_server.count.mockResolvedValueOnce(8)
-      prismaMock.gm_user.count.mockResolvedValueOnce(3)
+      prismaMock.gm_user.count.mockResolvedValueOnce(3).mockResolvedValueOnce(17)
+      prismaMock.gm_user_steam.count.mockResolvedValueOnce(25)
 
       const stats = await getStats()
 
-      expect(stats).toEqual({ verifyUser: 3, user: 110, guild: 5, server: 8 })
-      expect(redisMock.set).toHaveBeenCalledWith('stats:v2', JSON.stringify(stats), 'EX', 120)
+      expect(stats).toEqual({ verifyUser: 3, user: 110, totalUsers: 42, guild: 5, server: 8 })
+      expect(prismaMock.gm_user.count).toHaveBeenNthCalledWith(2)
+      expect(prismaMock.gm_user_steam.count).toHaveBeenCalledExactlyOnceWith()
+      expect(redisMock.set).toHaveBeenCalledWith('stats:v3', JSON.stringify(stats), 'EX', 120)
     })
 
-    it('counts only nonempty linked Steam accounts and bypasses the legacy cached count', async () => {
+    it('preserves the linked account count and bypasses cached payloads without registered-account totals', async () => {
       redisMock.get.mockImplementation(async (key) =>
-        key === 'stats' ? JSON.stringify({ verifyUser: 2, user: 0, guild: 1, server: 1 }) : null,
+        key === 'stats' || key === 'stats:v2' ? JSON.stringify({ verifyUser: 2, user: 0, guild: 1, server: 1 }) : null,
       )
       prismaMock.users.count.mockResolvedValueOnce(0)
       prismaMock.gm_guild.aggregate.mockResolvedValueOnce({ _sum: { member: 0 } })
@@ -88,9 +98,9 @@ describe('mainModels', () => {
       expect(prismaMock.gm_user.count).toHaveBeenCalledWith({
         where: { AND: [{ steam: { not: null } }, { steam: { not: '' } }] },
       })
-      expect(stats).toEqual({ verifyUser: 1, user: 0, guild: 1, server: 1 })
-      expect(redisMock.get).toHaveBeenCalledExactlyOnceWith('stats:v2')
-      expect(redisMock.set).toHaveBeenCalledWith('stats:v2', JSON.stringify(stats), 'EX', 120)
+      expect(stats).toEqual({ verifyUser: 1, user: 0, totalUsers: 0, guild: 1, server: 1 })
+      expect(redisMock.get).toHaveBeenCalledExactlyOnceWith('stats:v3')
+      expect(redisMock.set).toHaveBeenCalledWith('stats:v3', JSON.stringify(stats), 'EX', 120)
     })
 
     it('defaults the aggregated member sum to 0 when null', async () => {

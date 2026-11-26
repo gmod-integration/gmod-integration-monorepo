@@ -52,15 +52,18 @@ See [architecture.md — Discord boundary](../architecture.md#discord-boundary) 
 
 ## Status preview rendering
 
-`serverStatusPreview` creates a temporary server view with in-memory settings/button overrides and
-calls the same `getStatusMessage` renderer used for publication. It uses the guild's preferred locale,
-player formatting/truncation and button layout. The reply serializes embeds and buttons and converts
-any chart buffer to a PNG data URL.
+The website's editor and administrator previews are built locally by the API and rendered by its
+shared `DiscordMessagePreview` component. They do not enqueue `serverStatusPreview` or require a live
+Discord client. Status construction and chart rendering live in shared core utilities, so real
+publication uses the same player formatting/truncation and button layout. The old worker operation
+remains available for already-queued jobs and compatibility.
 
 Preview rendering uses `getStatusMessage(..., { persistChart: false })`, which calls
 `getServerChart(server, { persist: false })`. This mode renders the chart without reading/writing its
 Redis cache, accessing MinIO or uploading files. The default publication path retains its cache.
-The preview handler does not save settings or call Discord message send/edit/delete methods.
+The preview handlers do not save settings or call Discord message send/edit/delete methods. Local
+preview access uses a valid cached snapshot or database grants and never verifies entitlements with
+Discord; missing local verification is reported to the UI and applies conservative free limits.
 
 ## Authorization
 

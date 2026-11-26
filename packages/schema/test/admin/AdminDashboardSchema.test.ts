@@ -9,6 +9,7 @@ import {
   AdminPartnerUpdateSchema,
   AdminPartnerMutationResultSchema,
   AdminGuildRowSchema,
+  AdminOverviewSchema,
   AdminRevokeSessionsSchema,
 } from '../../src/admin/AdminDashboardSchema.js'
 
@@ -36,6 +37,7 @@ describe('administration request contracts', () => {
     expect(AdminGuildListQuerySchema.safeParse(query).success).toBe(false)
   })
   it('restricts filters and sorts to the requested resource', () => {
+    expect(AdminGuildListQuerySchema.parse({ premium: 'discord' }).premium).toBe('discord')
     expect(AdminServerListQuerySchema.safeParse({ rank: 'developer' }).success).toBe(false)
     expect(AdminUserListQuerySchema.safeParse({ sort: 'lastSeenAt' }).success).toBe(false)
     expect(AdminUserListQuerySchema.safeParse({ sort: 'rank' }).success).toBe(false)
@@ -98,6 +100,37 @@ describe('administration request contracts', () => {
       updatedAt: '2026-11-23T00:00:00.000Z',
     }
     expect(AdminGuildRowSchema.parse(guild).partner).toBe(false)
+    expect(AdminGuildRowSchema.parse(guild).discordPremium).toBeNull()
     expect(AdminGuildRowSchema.parse({ ...guild, partner: true }).partner).toBe(true)
+    for (const discordPremium of [true, false, null])
+      expect(AdminGuildRowSchema.parse({ ...guild, discordPremium }).discordPremium).toBe(discordPremium)
+  })
+  it('keeps unavailable or older Discord overview counts unknown and validates known counts', () => {
+    const overview = {
+      totals: {
+        guilds: 1,
+        servers: 1,
+        discordUsers: 1,
+        linkedUsers: 1,
+        steamProfiles: 1,
+        discordMemberships: 1,
+        activeSessions: 1,
+        manualPremium: 1,
+        gmodstorePremium: 1,
+      },
+      recent: { days: 7, guilds: 1, servers: 1, users: 1 },
+      languages: [],
+      generatedAt: '2026-11-23T00:00:00.000Z',
+    }
+    expect(AdminOverviewSchema.parse(overview).totals.discordPremium).toBeNull()
+    for (const discordPremium of [0, 3, null])
+      expect(
+        AdminOverviewSchema.parse({ ...overview, totals: { ...overview.totals, discordPremium } }).totals
+          .discordPremium,
+      ).toBe(discordPremium)
+    for (const discordPremium of [-1, 0.5, '3'])
+      expect(
+        AdminOverviewSchema.safeParse({ ...overview, totals: { ...overview.totals, discordPremium } }).success,
+      ).toBe(false)
   })
 })
