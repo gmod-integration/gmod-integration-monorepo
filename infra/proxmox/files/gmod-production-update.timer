@@ -1,0 +1,11 @@
+[Unit]
+Description=Check GMod production package updates every five minutes
+
+[Timer]
+OnCalendar=*-*-* *:0/5:00 Europe/Paris
+RandomizedDelaySec=30
+Persistent=true
+Unit=gmod-production-update.service
+
+[Install]
+WantedBy=timers.target

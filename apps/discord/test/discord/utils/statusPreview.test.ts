@@ -293,7 +293,7 @@ describe('read-only Discord status preview', () => {
     expect(new Set(players.map((player) => player.steamID64)).size).toBe(5)
     expect(new Set(players.map((player) => player.team.name)).size).toBe(5)
     expect(new Set(players.map((player) => player.userGroup)).size).toBeGreaterThan(1)
-    expect(players.every((player) => player.name.includes('[SIMULATION]'))).toBe(true)
+    expect(players.map((player) => player.name)).toEqual(['Alex', 'Camille', 'Sam', 'Léa', 'Noa'])
     expect(players.map((player) => player.connectTime)).toEqual([4200, 3600, 3000, 2400, 1800])
     const lines = preview.embeds[0].fields.find((field) => field.name.includes('player_list'))!.value.split('\n')
     expect(lines).toHaveLength(5)

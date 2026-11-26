@@ -4,7 +4,8 @@
 The default `deployment_mode = "prepare"` installs and validates the bundle **without starting
 application containers**. Starting a fresh installation is a separate, explicit operation.
 This workflow does not import an existing production database or implement routine releases over
-an installation containing data.
+an installation containing data. Existing CT115 production uses the separate
+[automatic package and migration procedure](./proxmox-updates.md).
 
 ## Layout
 
@@ -99,9 +100,15 @@ It does not publish images, contact a server or start applications. `--skip-buil
 private env/source bundle for inspection.
 
 The test env keeps `DEV=true`, uses the two v6 backend origins and fresh SQL/MinIO/auth/privacy
-credentials, and sets the website origin plus its `/login` OAuth callback when `--website-url` is
-provided. Register that callback in the matching test Discord application. Production Terraform
-deliberately forces `DEV=false`; do not apply its production profile to obtain this test env.
+credentials, and targets the test Discord application in `OAUTH_PANEL_URL` while preserving its
+configured authorization scopes. Its Discord `redirect_uri` is always
+`https://v6-gmi-api.linv.dev/v3/users/login`: register this API callback in the matching test Discord
+application. The API validates the OAuth state, exchanges the code and sets the session cookie there.
+When `--website-url` is provided, `WEBSITE_URL` is that origin and `OAUTH_REDIRECT_URL` is its `/login`
+page, where the API sends the browser after successful authentication. That frontend landing page is
+distinct from the callback registered with Discord. Without the option, the source frontend origin
+and landing URL stay unchanged. Production Terraform deliberately forces `DEV=false`; do not apply
+its production profile to obtain this test env.
 
 Verify the archive checksum before loading it into the target daemon. Docker's containerd image store
 can report an image-index `Id`, while a classic image store reports the image-config digest for the
@@ -137,9 +144,11 @@ shell arguments, source control, logs or the application env. The website hostna
 Cloudflare Pages custom-domain configuration, rather than either backend tunnel route.
 
 Build the existing Cloudflare frontend with `DOMAIN_URL=https://v6-gmi-api.linv.dev`,
-`WEBSITE_WS_URL=wss://v6-gmi-ws.linv.dev`, `WEBSITE_URL=https://v6-gmi-web.linv.dev` and the matching
-test Discord client ID. These values are baked into the website build; changing the backend env does
-not update an already deployed frontend. Its `linv.dev` custom domain keeps browser sessions
+`WEBSITE_WS_URL=wss://v6-gmi-ws.linv.dev`, `WEBSITE_URL=https://v6-gmi-web.linv.dev` and
+`DISCORD_CLIENT_ID` set to the matching test application. Configure the environment used by the Pages
+deployment (Preview for a preview deployment), then rebuild and redeploy it. These values are baked
+into the website build; changing the backend env does not update an already deployed frontend.
+Its `linv.dev` custom domain keeps browser sessions
 same-site with the API's `Secure; SameSite=Lax` cookies. A `pages.dev` preview domain does not provide
 that same-site relationship. Keep exact CORS/Origin checks and cookie protections in place.
 
@@ -162,8 +171,8 @@ inputs instead of copying it over existing secrets or state.
 - `ingress_images` supplies immutable Traefik and cloudflared versions, including when the optional
   tunnel is disabled. Do not use floating tags as release inputs.
 - `deployment_mode` defaults to `prepare`. `bootstrap` is reserved for a reviewed fresh installation.
-- `auto_update = false` is required. The old image-update timer is disabled; schema-changing updates
-  must not run unattended.
+- `auto_update = false` is required for this bootstrap module. The old image-update timer is disabled.
+  Existing CT115 production uses the separate [coordinated updater](./proxmox-updates.md).
 - `replicas` defaults to API 2, WebSocket 2 and Discord 1. Discord must remain at exactly one replica.
 
 Terraform renders the private application env file from generated secrets, `env_file`, `app_env`,
@@ -178,9 +187,12 @@ must describe the target environment. An unchanged development env file is not a
 Optional fields such as Sentry URLs must be valid when supplied; remove unused placeholders.
 
 Use exact HTTPS public origins. The website and API must be same-site for the HttpOnly SameSite=Lax
-session cookie. `OAUTH_REDIRECT_URL` must point to `/login` on the website origin and be registered in
-the matching Discord application. Build the website with those API/WS origins and the matching Discord
-client ID. Preserve dedicated auth/privacy keys across subsequent releases.
+session cookie. The `redirect_uri` query parameter inside `OAUTH_PANEL_URL` must point to
+`/v3/users/login` on the API origin and be registered in the matching Discord application. The
+`client_id` in that authorization URL must match `DISCORD_CLIENT_ID`. `OAUTH_REDIRECT_URL` points
+to `/login` on the website origin: it is the destination after the API has completed OAuth and set
+the session cookie. Build the website with those API/WS origins and the matching Discord client ID.
+Preserve dedicated auth/privacy keys across subsequent releases.
 
 Set `API_TRUSTED_PROXIES` from the actual Traefik peer IP or the CIDR of the dedicated trusted proxy
 network, after inspecting the target Docker network. Do not invent a production CIDR or trust every
@@ -292,7 +304,8 @@ container is removed after its one-shot run, so use that private diagnostic for 
 logs without inspecting and redacting their contents.
 
 This Compose workflow intentionally refuses `gmodctl update` and the old `deploy` entrypoint. It does
-not provide safe maintenance upgrades over populated data. The separate [Swarm recovery procedure](./swarm.md)
+not provide maintenance upgrades over populated data; CT115 uses the
+[production updater](./proxmox-updates.md). The separate [Swarm recovery procedure](./swarm.md)
 requires Swarm service/volume metadata and must not be applied blindly to Compose volumes. Configure
 and verify a target-appropriate backup/recovery strategy before relying on this installation for
 persistent production data. An optional Proxmox vzdump includes the Docker mount when configured, but

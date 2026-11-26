@@ -1,0 +1,26 @@
+[Unit]
+Description=Encrypted offsite backup of CT115 production data with Plakar
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+RequiresMountsFor=/var/lib/docker
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+UMask=0077
+Environment=HOME=/root
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=XDG_CONFIG_HOME=/root/.config
+Environment=XDG_CACHE_HOME=/var/lib/docker/gmod-plakar-backup/cache
+Environment=AWS_EC2_METADATA_DISABLED=true
+ExecStart=/usr/local/sbin/gmod-plakar-backup --run
+TimeoutStartSec=8h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+CPUWeight=20
+IOWeight=20
+NoNewPrivileges=true
+PrivateTmp=true

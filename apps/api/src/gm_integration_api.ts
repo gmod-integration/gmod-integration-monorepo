@@ -25,6 +25,8 @@ let stopDiscordTokenRefreshWorker: (() => void) | undefined
 // Express
 export const app = express()
 app.set('trust proxy', ConfigServer.trustedProxies?.length ? ConfigServer.trustedProxies : false)
+let httpServer: ReturnType<typeof app.listen> | undefined
+let shutdownPromise: Promise<void> | undefined
 
 const allowedCorsOrigins = new Set<string>()
 for (const candidate of [ConfigServer.websiteUrl, ConfigServer.domain]) {
@@ -173,16 +175,41 @@ app.all(/.*/, (req: Request, res: Response, _next: NextFunction) => {
 // Errors
 app.use(errorMiddleware)
 
-export async function gracefulShutdown() {
-  gmLog('shutdown', 'Gracefully shutting down...')
+export function gracefulShutdown(): Promise<void> {
+  if (shutdownPromise) return shutdownPromise
   inShutdown = true
-  stopAccountErasureWorker?.()
-  await stopDiscordTokenRefreshWorker?.()
-  // await Sentry.flush(2000);
-  await gracefulShutdownRedis()
-  await gracefulShutdownPrisma()
-  await gracefulShutdownMongo()
-  process.exit(0)
+  gmLog('shutdown', 'Gracefully shutting down...')
+  shutdownPromise = (async () => {
+    let deadline: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_resolve, reject) => {
+      // Leave time for Docker's 120-second stop grace period to collect the exit.
+      deadline = setTimeout(() => reject(new Error('API shutdown deadline exceeded')), 105_000)
+      deadline.unref()
+    })
+    const drain = async () => {
+      stopAccountErasureWorker?.()
+      await Promise.all([
+        new Promise<void>((resolve, reject) => {
+          if (!httpServer) return resolve()
+          httpServer.close((error) => (error ? reject(error) : resolve()))
+          httpServer.closeIdleConnections?.()
+        }),
+        stopDiscordTokenRefreshWorker?.(),
+      ])
+      await Promise.all([gracefulShutdownRedis(), gracefulShutdownPrisma(), gracefulShutdownMongo()])
+    }
+    try {
+      await Promise.race([drain(), timeout])
+      process.exit(0)
+    } catch {
+      gmLog('shutdown', 'API shutdown could not complete before exit', true)
+      httpServer?.closeAllConnections?.()
+      process.exit(1)
+    } finally {
+      clearTimeout(deadline)
+    }
+  })()
+  return shutdownPromise
 }
 
 export async function main() {
@@ -191,7 +218,7 @@ export async function main() {
   stopDiscordTokenRefreshWorker = startDiscordTokenRefreshWorker()
 
   // Listen
-  app.listen(ConfigServer.ports.api, () => {
+  httpServer = app.listen(ConfigServer.ports.api, () => {
     gmLog('express', '- - - - - - - - - - - - - - - - - - -')
     gmLog('express', `Server started and listening on port ${ConfigServer.ports.api}`)
     gmLog('express', '- - - - - - - - - - - - - - - - - - -')

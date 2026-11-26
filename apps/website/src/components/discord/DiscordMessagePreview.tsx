@@ -1,4 +1,4 @@
-import { For, Show, type Component } from 'solid-js'
+import { createSignal, For, Show, type Component } from 'solid-js'
 import type { StatusMessagePreview } from '@gmod/schema/server/StatusMessagePreviewSchema.js'
 import { useI18n } from '../../i18n.js'
 import DiscordText from './DiscordText.js'
@@ -16,6 +16,8 @@ export interface DiscordMessagePreviewProps {
 /** Local renderer for message text, embeds and inert buttons. It never fetches or publishes a message. */
 const DiscordMessagePreview: Component<DiscordMessagePreviewProps> = (props) => {
   const { t, locale } = useI18n()
+  const [failedAvatar, setFailedAvatar] = createSignal<string>()
+  const avatarUrl = () => (props.avatarUrl && props.avatarUrl !== failedAvatar() ? props.avatarUrl : '/logo.png')
   const invisible = (name: string, value: string) => !`${name}${value}`.replace(/[\s\u200b]/g, '')
   const timestamp = (value: string) =>
     new Intl.DateTimeFormat(locale(), { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value))
@@ -28,19 +30,14 @@ const DiscordMessagePreview: Component<DiscordMessagePreviewProps> = (props) => 
       style={{ 'font-family': "'gg sans', 'Noto Sans', Helvetica, Arial, sans-serif" }}
     >
       <div class="flex gap-3 min-w-0">
-        <Show
-          when={props.avatarUrl}
-          fallback={
-            <span
-              class="flex items-center justify-center w-9 h-9 shrink-0 rounded-full bg-[#5865f2] text-white font-bold"
-              aria-hidden="true"
-            >
-              G
-            </span>
-          }
-        >
-          <img src={props.avatarUrl!} alt="" class="w-9 h-9 rounded-full shrink-0" />
-        </Show>
+        <img
+          src={avatarUrl()}
+          alt=""
+          class="w-9 h-9 rounded-full shrink-0 object-cover"
+          onError={() => {
+            if (avatarUrl() !== '/logo.png') setFailedAvatar(props.avatarUrl!)
+          }}
+        />
         <div class="flex flex-col gap-2 min-w-0 flex-1">
           <div class="flex flex-wrap gap-1.5 items-center min-w-0">
             <span class="font-semibold text-[#f2f3f5] break-words">{props.author}</span>

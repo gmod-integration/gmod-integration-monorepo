@@ -231,9 +231,13 @@ describe('website status preview without Discord', () => {
     })
     expect(preview).toMatchObject({ online: true, simulation: true })
     expect(preview.embeds[0].fields.some((field) => field.value === '5/64')).toBe(true)
-    expect(
-      preview.embeds[0].fields.find((field) => field.name.includes('player_list'))?.value.split('\n'),
-    ).toHaveLength(5)
+    expect(preview.embeds[0].fields.find((field) => field.name.includes('player_list'))?.value.split('\n')).toEqual([
+      'Alex',
+      'Camille',
+      'Sam',
+      'Léa',
+      'Noa',
+    ])
     expect(source.getStatusData).not.toHaveBeenCalled()
     expect(source.setSetting).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled()

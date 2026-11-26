@@ -1,5 +1,4 @@
 import { Show, type Component } from 'solid-js'
-import { hexToHSL } from '../../utils/hexToHSL.js'
 import type { TypeDiscordRole } from '../../utils/types/DiscordTypes.js'
 import { guildRoles } from '../../pages/dashboard/guilds/GuildInformations.js'
 
@@ -19,14 +18,10 @@ const DiscordRole: Component<DiscordRoleProps> = (props) => {
     <Show when={resolvedRole()}>
       {(role) => {
         const color = () => (role().color === 0 ? '#7d95ff' : role().colorHex)
-        const hsl = () => hexToHSL(color())
         return (
           <p
-            class="w-min h-min text-nowrap rounded-md px-1"
-            style={{
-              color: color(),
-              'background-color': `hsl(${hsl().h}, ${hsl().s}%, ${hsl().l}%, 0.1)`,
-            }}
+            class="discord-role-mention w-min h-min text-nowrap rounded-md px-1"
+            style={{ '--discord-role-color': color() }}
           >{`@${role().name}`}</p>
         )
       }}

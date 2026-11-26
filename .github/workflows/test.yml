@@ -51,6 +51,17 @@ jobs:
       - name: Replay SQL migrations and verify real backup and restore
         run: python3 scripts/tests/swarm_recovery_roundtrip.py --run-disposable-docker-test
 
+      - name: Pull isolated rolling test images
+        run: |
+          docker pull oven/bun:1.3.9
+          docker pull traefik:v2.11
+
+      - name: Verify rolling replacement through Traefik
+        env:
+          GMOD_ROLLING_DOCKER_TEST: "1"
+          GMOD_ROLLING_BASE_IMAGE: oven/bun:1.3.9
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p 'test_proxmox_rolling_docker.py'
+
   quality:
     name: Lint, architecture, types and web builds
     runs-on: ubuntu-latest
@@ -96,6 +107,11 @@ jobs:
 
       - name: Test deployment and recovery guards
         run: PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p 'test_swarm_ops.py'
+
+      - name: Test production package update and migration guards
+        run: |
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p 'test_proxmox_production_update.py'
+          PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/tests -p 'test_proxmox_rolling*.py'
 
       - name: Test migration readiness guards
         run: bun test scripts/swarm-migration-status.test.ts

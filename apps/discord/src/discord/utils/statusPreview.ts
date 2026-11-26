@@ -20,7 +20,7 @@ async function simulationData(server: Server) {
     const account = 4_000_000_000n + BigInt(index)
     const connectTime = 4200 - index * 600
     return {
-      name: `${name} [SIMULATION]`,
+      name,
       steamID64: String(76561197960265728n + account),
       steamID: `STEAM_0:${account % 2n}:${account / 2n}`,
       userGroup: ['admin', 'vip', 'user', 'user', 'moderator'][index],

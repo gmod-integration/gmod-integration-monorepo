@@ -10,6 +10,7 @@ export default [
       '**/.turbo/**',
       '**/coverage/**',
       'logs/**',
+      'backup/**',
       'packages/infra-prisma/generated/**',
       'apps/docs/build/**',
       'apps/docs/.docusaurus/**',

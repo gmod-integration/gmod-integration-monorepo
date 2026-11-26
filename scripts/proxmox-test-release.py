@@ -20,7 +20,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +42,15 @@ def website_origin(value):
                    for part in hostname.split("."))):
         raise argparse.ArgumentTypeError("--website-url requires an HTTPS origin without credentials, path or query.")
     return "https://" + hostname.lower() + (":" + str(port) if port not in (None, 443) else "")
+
+
+def oauth_authorization_url(value, client_id, api_origin):
+    """Keep configured authorization scopes while targeting the test app and API callback."""
+    parsed = urlsplit(value)
+    parameters = [(key, item) for key, item in parse_qsl(parsed.query, keep_blank_values=True)
+                  if key not in {"client_id", "redirect_uri"}]
+    parameters.extend((("client_id", client_id), ("redirect_uri", api_origin.rstrip("/") + "/v3/users/login")))
+    return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, urlencode(parameters), parsed.fragment))
 
 
 def config_sha256(value):
@@ -90,7 +99,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
     parser.add_argument("--output", type=Path)
-    parser.add_argument("--website-url", type=website_origin, help="HTTPS Cloudflare frontend origin; sets its /login OAuth callback.")
+    parser.add_argument("--website-url", type=website_origin, help="HTTPS Cloudflare frontend origin; sets its /login landing page after API OAuth completes.")
     parser.add_argument("--skip-build", action="store_true", help="Only prepare the private env/source bundle.")
     args = parser.parse_args()
     stamp = dt.datetime.now(ZoneInfo("Europe/Paris")).strftime("%Y%m%dT%H%M%S")
@@ -128,6 +137,9 @@ def main():
         if args.website_url:
             values["WEBSITE_URL"] = args.website_url
             values["OAUTH_REDIRECT_URL"] = args.website_url + "/login"
+        values["OAUTH_PANEL_URL"] = oauth_authorization_url(
+            values["OAUTH_PANEL_URL"], values["DISCORD_CLIENT_ID"], values["DOMAIN_URL"],
+        )
         for name in ("SENTRY_DSN", "SENTRY_AUTH_TOKEN", "MARIA_URL"):
             values.pop(name, None)
 
@@ -171,6 +183,7 @@ def main():
             "source_sha256": source_sha256, "revision": revision, "images": images,
             "api_url": values["DOMAIN_URL"], "websocket_url": values["WEBSITE_WS_URL"],
             "frontend_url": values.get("WEBSITE_URL"), "oauth_redirect_url": values.get("OAUTH_REDIRECT_URL"),
+            "discord_oauth_callback_url": values["DOMAIN_URL"] + "/v3/users/login",
             "frontend_url_was_overridden": args.website_url is not None,
             "requires_image_digest_resolution": True, "tunnel_managed_separately": True,
             "relay": {"network_alias": "webhook-relay", "internal_port": 3000, "env_file": ".relay.env", "publish_host_ports": False},

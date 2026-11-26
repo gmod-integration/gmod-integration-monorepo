@@ -1,0 +1,28 @@
+name: gmod-webhook-relay
+
+services:
+  relay:
+    image: ${WEBHOOK_RELAY_IMAGE:?Set WEBHOOK_RELAY_IMAGE to an immutable image digest}
+    restart: unless-stopped
+    init: true
+    environment:
+      BARER_TOKEN: ${BARER_TOKEN:?Set BARER_TOKEN to the API BARER_DISCORD_RELAY}
+      APP_HOST: 0.0.0.0
+      APP_PORT: "3000"
+    ports:
+      - 127.0.0.1:${WEBHOOK_RELAY_PORT:-3000}:3000
+    read_only: true
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+    pids_limit: 128
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"

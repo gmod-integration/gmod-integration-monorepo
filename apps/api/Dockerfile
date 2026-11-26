@@ -13,6 +13,12 @@ FROM deps AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Status previews render SVG charts with sharp inside the API container.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends fontconfig fonts-roboto fonts-dejavu-core fonts-noto-core \
+  && fc-cache -f \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY . .
 
 EXPOSE 53136

@@ -43,6 +43,7 @@ describe('DiscordStatusPreview', () => {
   it('shows the exact embed fields, bot identity, chart and button rows', () => {
     const { container } = renderWithProviders(() => <DiscordStatusPreview data={preview} />)
     expect(screen.getByText('Development bot')).toBeInTheDocument()
+    expect(container.querySelector('img[alt=""]')).toHaveAttribute('src', preview.bot.avatarUrl)
     expect(screen.getByText('Demo Server').tagName).toBe('STRONG')
     expect(screen.getByText('18/64')).toBeInTheDocument()
     expect(screen.getByText('Alice').tagName).toBe('STRONG')
@@ -84,7 +85,9 @@ describe('DiscordStatusPreview', () => {
     expect(screen.getByText('<script>bad()</script>')).toBeInTheDocument()
     expect(screen.getByText('<img src=x onerror=bad()>')).toBeInTheDocument()
     expect(screen.getByText('Offline')).toBeInTheDocument()
-    expect(container.querySelectorAll('script,img')).toHaveLength(0)
+    expect(container.querySelectorAll('script')).toHaveLength(0)
+    expect(container.querySelectorAll('img')).toHaveLength(1)
+    expect(container.querySelector('img')).toHaveAttribute('src', '/logo.png')
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
