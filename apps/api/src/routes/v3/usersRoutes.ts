@@ -108,9 +108,11 @@ import {
 import {
   userAdminGuildValidator,
   userAdminGuildScopeValidator,
+  userAdminGuildReadOnlyValidator,
   userAdminGuildBotRemovalValidator,
   userAdminValidator,
   userServerValidator,
+  userServerReadOnlyValidator,
   userValidator,
 } from '@/middleware/v3/userValidator.js'
 import asyncHandler from '@/middleware/asyncHandler.js'
@@ -174,6 +176,15 @@ router.use('/:discordID/admins', userAdminValidator)
 router.get('/:discordID/admins/guilds', asyncHandler(getAdminGuilds))
 router.get('/:discordID/admins/informations', asyncHandler(getAdminInformations))
 router.get('/:discordID/admins/panel-users', asyncHandler(getAllPanelUsers))
+
+// Previewing a draft does not mutate settings or Discord messages. Keep its authorization
+// cached like other reads, while userValidator still enforces the POST's session/CSRF checks.
+router.post(
+  '/:discordID/guilds/:guildID/servers/:serverID/status/preview',
+  userAdminGuildReadOnlyValidator,
+  userServerReadOnlyValidator,
+  asyncHandler(previewServerStatus),
+)
 
 // Stored analytics and addon configuration need account/guild/server authorization, not Discord metadata.
 router.get(
@@ -373,7 +384,6 @@ router.get('/:discordID/guilds/:guildID/servers/:serverID/warns', asyncHandler(g
 // Status
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(findServerStatus))
 router.post('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(postServerStatus))
-router.post('/:discordID/guilds/:guildID/servers/:serverID/status/preview', asyncHandler(previewServerStatus))
 router.delete('/:discordID/guilds/:guildID/servers/:serverID/status', asyncHandler(deleteServerStatus))
 router.get('/:discordID/guilds/:guildID/servers/:serverID/status/buttons', asyncHandler(getServerStatusButtons))
 router.put(

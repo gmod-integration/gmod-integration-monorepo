@@ -69,6 +69,9 @@ export async function fetchAPI(
     body: JSON.stringify(body),
     ...options,
   })
-  if (response.status === 403 || (response.ok && method !== 'GET')) refreshAccess()
+  // Preview accepts a draft by POST but never changes saved configuration or access.
+  const readOnlyPreview =
+    method === 'POST' && /^\/users\/[^/]+\/guilds\/[^/]+\/servers\/[^/]+\/status\/preview\/?$/.test(scopedEndpoint)
+  if (response.status === 403 || (response.ok && method !== 'GET' && !readOnlyPreview)) refreshAccess()
   return response
 }

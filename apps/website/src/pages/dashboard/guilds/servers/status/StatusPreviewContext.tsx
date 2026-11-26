@@ -69,9 +69,14 @@ export const StatusPreviewProvider: ParentComponent = (props) => {
         if (active && current === generation) {
           const serverError = detail && typeof detail === 'object' && 'error' in detail ? detail.error : undefined
           setError(
-            typeof serverError === 'string' && serverError.length <= 500
-              ? serverError
-              : t('dashboard.server.status.preview.error', 'Unable to load the preview.'),
+            serverError === 'provider_unavailable' || serverError === 'discord_service_unavailable'
+              ? t(
+                  'dashboard.server.status.preview.temporarily_unavailable',
+                  'Discord is temporarily unavailable. Wait a moment, then try again.',
+                )
+              : typeof serverError === 'string' && serverError.length <= 500
+                ? serverError
+                : t('dashboard.server.status.preview.error', 'Unable to load the preview.'),
           )
         }
         return
