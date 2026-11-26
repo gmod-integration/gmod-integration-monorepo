@@ -54,6 +54,7 @@ const {
   userAdminGuildScopeValidator,
   userAdminGuildReadOnlyValidator,
   userAdminGuildBotRemovalValidator,
+  userGuildSnapshotValidator,
   userServerValidator,
   userServerReadOnlyValidator,
   userAdminValidator,
@@ -244,6 +245,24 @@ describe('userValidator', () => {
       } as any
     }
 
+    it.each([{ params: {} }, { panelUser: undefined }])(
+      'rejects an incomplete guild scope before checking permissions: %j',
+      async (overrides) => {
+        const req = makeReq(overrides)
+        const res = makeRes()
+        const next = vi.fn()
+
+        await userAdminGuildValidator(req, res, next)
+
+        expect(res.status).toHaveBeenCalledWith(403)
+        expect(res.json).toHaveBeenCalledWith({ error: 'dashboard_access_denied', reason: 'scope_unavailable' })
+        expect(dashboardAccessMock).not.toHaveBeenCalled()
+        expect(enqueueDiscordGuildSnapshotMock).not.toHaveBeenCalled()
+        expect(req.guild).toBeUndefined()
+        expect(next).not.toHaveBeenCalled()
+      },
+    )
+
     it('returns 403 when the panel user is not an admin of the guild', async () => {
       const req = makeReq({ panelUser: { isAdminOfGuild: vi.fn().mockResolvedValueOnce(false) } })
       const res = makeRes()
@@ -300,6 +319,35 @@ describe('userValidator', () => {
       const next = vi.fn()
       await userAdminGuildValidator(req, makeRes(), next)
       expect(next).toHaveBeenCalledWith(expect.any(Error))
+    })
+  })
+
+  describe('userGuildSnapshotValidator', () => {
+    it.each([undefined, {}])('rejects a missing guild identity without contacting Discord: %j', async (guild) => {
+      const res = makeRes()
+      const next = vi.fn()
+
+      await userGuildSnapshotValidator({ guild } as any, res, next)
+
+      expect(res.status).toHaveBeenCalledWith(403)
+      expect(res.json).toHaveBeenCalledWith({ error: 'dashboard_access_denied', reason: 'scope_unavailable' })
+      expect(enqueueDiscordGuildSnapshotMock).not.toHaveBeenCalled()
+      expect(next).not.toHaveBeenCalled()
+    })
+
+    it('forwards a snapshot provider failure without attaching Discord metadata', async () => {
+      const unavailable = new Error('Discord snapshot unavailable')
+      enqueueDiscordGuildSnapshotMock.mockRejectedValueOnce(unavailable)
+      const req = { guild: { id: 'g1' } } as any
+      const res = makeRes()
+      const next = vi.fn()
+
+      await userGuildSnapshotValidator(req, res, next)
+
+      expect(enqueueDiscordGuildSnapshotMock).toHaveBeenCalledExactlyOnceWith('g1')
+      expect(req.dscGuild).toBeUndefined()
+      expect(res.json).not.toHaveBeenCalled()
+      expect(next).toHaveBeenCalledExactlyOnceWith(unavailable)
     })
   })
 
@@ -577,6 +625,21 @@ describe('userValidator', () => {
       const res = makeRes()
       await userServerValidator(makeReq(), res, vi.fn())
       expect(res.status).toHaveBeenCalledWith(403)
+    })
+
+    it('rejects a missing panel context without granting access to the server', async () => {
+      getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'g1' })
+      const req = makeReq({ panelUser: undefined })
+      const res = makeRes()
+      const next = vi.fn()
+
+      await userServerValidator(req, res, next)
+
+      expect(res.status).toHaveBeenCalledWith(403)
+      expect(res.json).toHaveBeenCalledWith({ error: 'dashboard_access_denied', reason: 'scope_unavailable' })
+      expect(dashboardAccessMock).not.toHaveBeenCalled()
+      expect(req.server).toBeUndefined()
+      expect(next).not.toHaveBeenCalled()
     })
 
     it('attaches the server and calls next on success', async () => {
