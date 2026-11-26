@@ -484,4 +484,6 @@ inactive buttons. Pass `author`, optional `avatarUrl`, `content`, `embeds`, `but
 `dimmed`; it knows no endpoint and never fetches or sends a Discord message. `DiscordStatusPreview`
 adds loading/error/retry, simulation and local-access notes around this same renderer. `DiscordText`
 is a separate safe formatting component that never interprets HTML. Keep examples and effective saved
-configuration visibly distinct.
+configuration visibly distinct. A supplied bot avatar takes priority; missing or failed avatars use
+the local Gmod Integration logo. Simulated players keep plain example names, with simulation identified
+by the surrounding badge and note rather than a suffix on every player.

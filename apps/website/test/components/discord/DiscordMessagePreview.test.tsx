@@ -33,6 +33,10 @@ describe('local Discord message preview', () => {
       />
     ))
     expect(screen.getByRole('region', { name: 'Local message' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Local message' }).querySelector('img')).toHaveAttribute(
+      'src',
+      '/logo.png',
+    )
     expect(screen.getByText('Hello')).toHaveProperty('tagName', 'STRONG')
     expect(screen.getByText('Example')).toHaveProperty('tagName', 'STRONG')
     expect(screen.getByText('4/32')).toBeInTheDocument()
@@ -57,11 +61,30 @@ describe('local Discord message preview', () => {
     expect(screen.getByText('<script>author()</script>')).toBeInTheDocument()
     expect(container).toHaveTextContent('<img src=x onerror=execute()>')
     expect(screen.getByText('Safe formatting')).toHaveProperty('tagName', 'STRONG')
-    expect(container.querySelectorAll('script,img,a')).toHaveLength(0)
+    expect(container.querySelectorAll('script,a')).toHaveLength(0)
+    expect(container.querySelectorAll('img')).toHaveLength(1)
+    expect(container.querySelector('img')).toHaveAttribute('src', '/logo.png')
     const action = screen.getByRole('button', { name: 'Example action' })
     expect(action).toHaveAttribute('aria-disabled', 'true')
     await fireEvent.click(action)
     expect(open).not.toHaveBeenCalled()
     expect(fetch).not.toHaveBeenCalled()
+  })
+
+  it('shows the supplied bot avatar, falls back to the logo on failure and follows identity updates', async () => {
+    const [avatarUrl, setAvatarUrl] = createSignal<string | null>('https://cdn.discordapp.com/first.png')
+    const { container } = renderWithProviders(() => (
+      <DiscordMessagePreview author="Custom bot" avatarUrl={avatarUrl()} />
+    ))
+    const avatar = () => container.querySelector('img')!
+    expect(avatar()).toHaveAttribute('src', 'https://cdn.discordapp.com/first.png')
+    await fireEvent.error(avatar())
+    expect(avatar()).toHaveAttribute('src', '/logo.png')
+    await fireEvent.error(avatar())
+    expect(avatar()).toHaveAttribute('src', '/logo.png')
+    setAvatarUrl('https://cdn.discordapp.com/second.png')
+    expect(avatar()).toHaveAttribute('src', 'https://cdn.discordapp.com/second.png')
+    setAvatarUrl(null)
+    expect(avatar()).toHaveAttribute('src', '/logo.png')
   })
 })
