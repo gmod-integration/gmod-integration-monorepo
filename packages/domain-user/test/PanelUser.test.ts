@@ -159,6 +159,21 @@ describe('bounded and typed Discord permission lookup', () => {
     expect(redisSetMock.mock.calls.filter(([key]) => key === 'user:d1:guilds')).toEqual([])
     expect(redisEvalMock).toHaveBeenCalled()
   })
+  it('rejects rights invalidated while their durable membership revision is being read', async () => {
+    let invalidated = false
+    redisMgetMock.mockImplementation(async (...keys: string[]) => {
+      if (keys.includes('guild:g1:oauth-permissions-revision')) invalidated = true
+      return keys.map((key) => (invalidated && key === 'gmi:discord:guild-permissions:revision' ? 'changed' : null))
+    })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify([{ id: 'g1', owner: true }]))))
+
+    await expect(buildPanelUser().findGuilds({ fresh: true })).rejects.toMatchObject({
+      status: 503,
+      code: 'provider_unavailable',
+    })
+    expect(redisSetMock.mock.calls.filter(([key]) => key === 'user:d1:guilds')).toEqual([])
+    expect(redisEvalMock).toHaveBeenCalled()
+  })
   it('does not fall back to cached rights when a fresh provider check fails', async () => {
     redisGetMock.mockResolvedValue(cachedGuilds([{ id: 'g1', owner: true }]))
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503 }))
@@ -217,6 +232,17 @@ describe('bounded and typed Discord permission lookup', () => {
       expect(redisEvalMock).toHaveBeenCalled()
     },
   )
+  it('retains a retryable cooldown when a rate-limit response has an unreadable JSON body', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('invalid JSON', { status: 429 })))
+
+    await expect(buildPanelUser().findGuilds()).rejects.toMatchObject({
+      status: 503,
+      code: 'provider_unavailable',
+      retryAfter: 1,
+    })
+    expect(redisSetMock).toHaveBeenCalledWith('user:d1:guild-permissions-retry', expect.any(String), 'PX', 1_000)
+    expect(redisEvalMock).toHaveBeenCalled()
+  })
   it('bounds network requests and preserves a retryable network error', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('network error'))
     vi.stubGlobal('fetch', fetchMock)
