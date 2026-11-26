@@ -535,6 +535,56 @@ describe('packages/infra-bullmq src/discordQueueAdapters.ts', () => {
     )
   })
 
+  describe('acknowledged reward role grants', () => {
+    const input = {
+      serverID: 'reward-server',
+      grantID: '741907e2-5b7f-4b87-86b8-76477922bd7f',
+      actionID: '30c33265-9d1c-4704-8f1a-9859321a1d14',
+      steamID64: '76561198000000001',
+      discordID: '123456789012345678',
+      roleID: '223456789012345678',
+    }
+
+    it.each([
+      { status: 'delivered' as const },
+      { status: 'failed' as const, reason: 'role_not_assignable' },
+      { status: 'uncertain' as const, reason: 'provider_timeout' },
+    ])('returns the provider acknowledgement rather than the queue receipt: %j', async (reply) => {
+      const queue = queueInstances.get('discord-guildOps')!
+      redisGetMock.mockImplementationOnce(async () =>
+        JSON.stringify({ correlationId: queue.add.mock.calls[0][1].correlationId, ...reply }),
+      )
+      await expect(adapters.enqueueDiscordRewardRole(input)).resolves.toEqual(reply)
+      expect(queue.add).toHaveBeenCalledExactlyOnceWith(
+        'rewardRole',
+        { ...input, correlationId: expect.any(String), timestamp: expect.any(Date) },
+        { priority: JobPriority.INTERACTIVE, attempts: 1, removeOnComplete: true },
+      )
+      const correlationID = queue.add.mock.calls[0][1].correlationId
+      expect(redisGetMock).toHaveBeenCalledWith(`bullmq:reply:${correlationID}`)
+      expect(redisDelMock).toHaveBeenCalledWith(`bullmq:reply:${correlationID}`)
+    })
+
+    it('rejects malformed grants before enqueueing and preserves queue failures', async () => {
+      const queue = queueInstances.get('discord-guildOps')!
+      await expect(adapters.enqueueDiscordRewardRole({ ...input, steamID64: 'invalid' })).rejects.toThrow()
+      expect(queue.add).not.toHaveBeenCalled()
+      const unavailable = new Error('Reward queue unavailable')
+      queue.add.mockRejectedValueOnce(unavailable)
+      await expect(adapters.enqueueDiscordRewardRole(input)).rejects.toBe(unavailable)
+      expect(redisGetMock).not.toHaveBeenCalled()
+    })
+
+    it('rejects an invalid provider acknowledgement instead of treating queue acceptance as delivery', async () => {
+      const queue = queueInstances.get('discord-guildOps')!
+      redisGetMock.mockImplementationOnce(async () =>
+        JSON.stringify({ correlationId: queue.add.mock.calls[0][1].correlationId, status: 'queued' }),
+      )
+      await expect(adapters.enqueueDiscordRewardRole(input)).rejects.toThrow()
+      expect(queue.add).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('waitForReply polling behavior', () => {
     it('polls again and succeeds once the reply key appears', async () => {
       redisGetMock

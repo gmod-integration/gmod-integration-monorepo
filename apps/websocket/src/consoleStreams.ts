@@ -207,8 +207,9 @@ export function createConsoleStreams<Client extends object>(options: ConsoleStre
           }
           if (!valid()) return
           if (currentState.current && currentState.current.serverID !== serverID) {
-            const previous = detach(currentState)
-            if (previous) await remove(previous)
+            const previous = currentState.current
+            detach(currentState)
+            await remove(previous)
           }
           if (!valid()) return
           await options.renewViewer(serverID, currentState.viewerID)

@@ -159,6 +159,8 @@ describe('addon transport telemetry', () => {
     [
       [],
       [0],
+      [null, ['', '', '', '', '', 0, 0]],
+      ['invalid-clock', ['', '', '', '', '', 0, 0]],
       [Date.now(), []],
       [Date.now(), ['', '', '', '', '', -1, 0]],
       [Date.now(), ['', '', '', '', '', Number.MAX_SAFE_INTEGER, 1]],

@@ -206,7 +206,7 @@ describe('durable dashboard authorization', () => {
     )
   })
 
-  it.each([8.5, Infinity, NaN, -1, 9_007_199_254_741_000, '-1', '8.0', ' 8', '0x8', ''])(
+  it.each([8.5, Infinity, NaN, -1, Number.MAX_SAFE_INTEGER + 1, 9_007_199_254_741_000, '-1', '8.0', ' 8', '0x8', ''])(
     'rejects an invalid or imprecise Discord permissions bitfield: %s',
     async (permissions) => {
       panel.findGuilds.mockResolvedValue([{ id: 'g1', permissions }])
@@ -214,11 +214,19 @@ describe('durable dashboard authorization', () => {
     },
   )
 
-  it.each([8, '8', '9007199254741000'])(
+  it.each([8, '8', '9007199254741000', Number.MAX_SAFE_INTEGER, '18446744073709551615'])(
     'accepts a precise administrator permissions bitfield: %s',
     async (permissions) => {
       panel.findGuilds.mockResolvedValue([{ id: 'g1', permissions }])
       await expect(canAccessDashboardGuild(panel, 'g1', { serverID: 's1' })).resolves.toBe(true)
+    },
+  )
+
+  it.each([0, '0', '18446744073709551607'])(
+    'does not grant administrator access when a valid bitfield lacks its administrator bit: %s',
+    async (permissions) => {
+      panel.findGuilds.mockResolvedValue([{ id: 'g1', permissions }])
+      await expect(canAccessDashboardGuild(panel, 'g1', { serverID: 's1' })).resolves.toBe(false)
     },
   )
 

@@ -211,6 +211,14 @@ describe('dashboard console command HTTP route', () => {
     )
   })
 
+  it('passes unexpected provider failures to the error handler without leaking private command data', async () => {
+    mocks.execute.mockRejectedValueOnce(new Error('private provider details'))
+    const result = await post({ ...input, command: 'echo private-console-command' })
+    expect(result.status).toBe(503)
+    expect(result.body).toEqual({ error: { code: 'service_unavailable' } })
+    expect(JSON.stringify(result.body)).not.toMatch(/private|session-token/)
+  })
+
   it.each([
     [409, 'request_pending'],
     [409, 'command_in_progress'],

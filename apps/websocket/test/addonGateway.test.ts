@@ -209,6 +209,18 @@ describe('addon WebSocket gateway', () => {
     expect(f.onConsole.mock.calls.map(([text]) => text)).toEqual(['first', 'second'])
   })
 
+  it('drops queued console output when the addon closes before its turn', async () => {
+    const f = fixture()
+    f.connection.ready()
+    const pending = f.connection.receive(
+      JSON.stringify({ action: 'console_live_exporter', data: { data: 'private output' } }),
+    )
+    f.connection.close()
+    await pending
+    expect(f.authenticate).not.toHaveBeenCalled()
+    expect(f.onConsole).not.toHaveBeenCalled()
+  })
+
   it.each([
     [8192, 20, 8],
     [1, 80, 64],
