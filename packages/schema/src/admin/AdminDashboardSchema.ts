@@ -9,7 +9,7 @@ export const AdminIDSchema = z
   .regex(/^[a-zA-Z0-9_-]+$/)
 export const AdminReasonSchema = z.string().trim().min(5).max(500)
 export const AdminRankSchema = z.enum(['user', 'developer'])
-export const AdminPremiumFilterSchema = z.enum(['all', 'manual', 'gmodstore', 'none'])
+export const AdminPremiumFilterSchema = z.enum(['all', 'manual', 'gmodstore', 'discord', 'none'])
 const queryNumber = (value: unknown) => (typeof value === 'string' && /^\d+$/.test(value) ? Number(value) : value)
 const offset = z.preprocess(queryNumber, z.number().int().min(0).max(10_000_000).default(0))
 const limit = z.preprocess(
@@ -72,6 +72,7 @@ export const AdminGuildRowSchema = z
     serverCount: z.number().int().nonnegative(),
     manualPremium: z.boolean(),
     gmodstore: z.boolean(),
+    discordPremium: z.boolean().nullable().default(null),
     partner: z.boolean().default(false),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
@@ -123,6 +124,7 @@ export const AdminOverviewSchema = z
         activeSessions: z.number().nonnegative(),
         manualPremium: z.number().nonnegative(),
         gmodstorePremium: z.number().nonnegative(),
+        discordPremium: z.number().int().nonnegative().nullable().default(null),
       })
       .strict(),
     recent: z

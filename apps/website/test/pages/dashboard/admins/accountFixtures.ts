@@ -22,6 +22,7 @@ export const guildRow = (manualPremium = false): AdminGuildRow => ({
   serverCount: 3,
   manualPremium,
   gmodstore: false,
+  discordPremium: false,
   partner: false,
   createdAt: '2026-11-01T12:00:00.000Z',
   updatedAt: '2026-11-20T12:00:00.000Z',

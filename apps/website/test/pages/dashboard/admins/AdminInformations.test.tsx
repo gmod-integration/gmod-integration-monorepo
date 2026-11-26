@@ -68,6 +68,7 @@ describe('platform overview', () => {
     expect(screen.getByText('24')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'English: 80' })).toBeInTheDocument()
     expect(screen.getByRole('img', { name: 'French: 40' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Discord subscriptions: 8' })).toBeInTheDocument()
     expect(screen.getByText(/Memberships are counted per community/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Manage Premium' })).toHaveAttribute('href', '/dashboard/admins/premium')
     await fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
@@ -96,6 +97,23 @@ describe('platform overview', () => {
     expect(
       within(screen.getByRole('region', { name: 'Platform overview' })).queryByRole('link', { name: 'View records' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('keeps Discord subscription counts unknown when verification is unavailable', async () => {
+    const overview = overviewFixture()
+    overview.totals.discordPremium = null
+    vi.mocked(fetchAPI).mockImplementation(
+      async (endpoint) => ok(endpoint.includes('/analytics') ? analyticsFor(endpoint) : overview) as Response,
+    )
+    renderPage()
+    const panel = await screen.findByRole('region', { name: 'Premium access sources' })
+    await within(panel).findByText('Discord subscriptions could not be verified. Other sources remain available.')
+    expect(within(panel).getByRole('img', { name: 'Manual Premium grants: 15' })).toBeInTheDocument()
+    expect(within(panel).queryByRole('img', { name: /Discord subscriptions:/ })).not.toBeInTheDocument()
+    expect(within(within(panel).getByRole('list')).getByText('Unknown')).toBeInTheDocument()
+    await fireEvent.click(within(panel).getByText('View chart data'))
+    const row = within(panel).getByRole('rowheader', { name: 'Discord subscriptions' }).closest('tr')!
+    expect(within(row).getByRole('cell')).toHaveTextContent('Unknown')
   })
 
   it('requests the selected UTC window and switches chart metrics without another request', async () => {

@@ -321,20 +321,23 @@ the Discord queue adapter, with cached successful/unavailable results.
 
 `POST /v3/users/:discordID/guilds/:guildID/servers/:serverID/status/preview` requires the normal session,
 guild-administrator and server checks, using the bounded permission read cache despite its POST method.
+A cold authorization cache can still require Discord permission verification; rendering itself is local.
 The read-only rewards simulation at `POST /v6/guilds/:guildID/servers/:serverID/rewards/rules/:ruleID/simulate`
 uses the same read authorization, including session/CSRF and exact-server checks. Publication and reward
 grants retain fresh permission checks. The preview's shared `StatusMessagePreviewSchema` contract accepts
 optional draft settings and buttons, then returns the bot identity, embed fields, button rows and an
-optional PNG image. Preview settings and buttons use the effective access policy, including a disabled
-chart and the free custom-button limit after entitlement expiry. The worker rechecks access when
-rendering a queued preview; the saved configuration remains unchanged.
+optional PNG image. Preview settings and buttons use a valid cached access snapshot or local Premium
+grants. Rendering never requests Discord entitlements, guild members or a live bot client. Without a
+locally verified subscription, it applies conservative free limits and returns `accessState: unknown`
+so the website can explain the result. The saved configuration remains unchanged; actual publication
+continues to verify current access through the normal resolver.
 The optional `simulation` flag uses five temporary fictional players and returns `simulation:true`.
 Without that flag, the endpoint continues to preview the actual server state. The flag is not a
 stored setting and is never used by the publication endpoints.
 
-The endpoint enqueues `serverStatusPreview`; it does not save settings or create/edit a message.
-Invalid drafts return 400 and worker timeouts return 503, allowing the editor to retry without
-publishing partial changes.
+The API builds the preview locally using the shared status-message builder and stored/latest server
+data. It does not enqueue a Discord job, save settings or create/edit a message. Invalid drafts return
+400; local rendering failures can be retried without publishing partial changes.
 
 ## Platform administration
 

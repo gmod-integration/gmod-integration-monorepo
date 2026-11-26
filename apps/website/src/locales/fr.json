@@ -533,7 +533,9 @@
       "metric_verified_detail": "Steam relié à Discord",
       "closing_kicker": "De votre serveur à votre Discord",
       "closing_title": "Faites le lien avec votre communauté.",
-      "closing_description": "Suivez le guide d’installation, connectez votre serveur et choisissez les fonctions utiles à votre communauté."
+      "closing_description": "Suivez le guide d’installation, connectez votre serveur et choisissez les fonctions utiles à votre communauté.",
+      "metric_users": "Utilisateurs",
+      "metric_users_detail": "Comptes Steam et Discord enregistrés"
     }
   },
   "dashboard": {
@@ -849,7 +851,8 @@
           "remove_error": "Impossible de supprimer le message de statut.",
           "settings_error": "Impossible de charger les réglages du statut.",
           "unsaved": "Brouillon — enregistrez pour appliquer ces modifications sur Discord.",
-          "refresh": "Actualiser l’aperçu"
+          "refresh": "Actualiser l’aperçu",
+          "local_access_unknown": "Le Premium n’a pas pu être vérifié localement. Cet aperçu utilise les limites gratuites."
         },
         "cancel": "Annuler",
         "edit": "Modifier",
@@ -1942,7 +1945,7 @@
     "platform_overview": "Vue d’ensemble de la plateforme",
     "premium_description": "Gérez les accès Premium locaux et consultez les droits effectifs. Les abonnements Discord et les achats GmodStore restent des sources distinctes.",
     "premium_empty": "Aucune communauté ne correspond à ces filtres.",
-    "premium_list_hint": "Ces filtres utilisent les accès locaux et les achats GmodStore enregistrés. Ouvrez les détails des droits pour vérifier les avantages Discord et le résultat effectif.",
+    "premium_list_hint": "Ces filtres incluent les attributions locales, les achats GmodStore enregistrés et les abonnements Discord vérifiés. Ouvrez les détails des droits pour consulter le résultat effectif.",
     "premium_load_error": "Impossible de charger les données Premium. Réessayez.",
     "premium_saved": "L’accès local a été enregistré. Les autres sources Premium vérifiées continuent de s’appliquer.",
     "premium_saved_pending": "L’accès local a été enregistré. Les droits effectifs n’ont pas encore pu être confirmés ; actualisez leurs détails pour les vérifier à nouveau.",
@@ -2038,7 +2041,13 @@
     "all_registrations": "Toutes les inscriptions",
     "analytics_load_error": "Impossible de charger l’historique des inscriptions. Réessayez.",
     "no_recorded_premium_sources": "Aucun accès Premium actif enregistré.",
-    "server_id": "Identifiant du serveur"
+    "server_id": "Identifiant du serveur",
+    "discord_subscription": "Abonnement Discord",
+    "active_subscription": "Abonnement actif",
+    "no_active_subscription": "Aucun abonnement actif",
+    "discord_premium": "Abonnements Discord",
+    "discord_premium_unavailable": "Impossible de vérifier les abonnements Discord. Les autres sources restent disponibles.",
+    "discord_subscription_unknown": "Abonnement Discord inconnu"
   },
   "admin_previews": {
     "title": "Aperçus des serveurs",
@@ -2071,7 +2080,7 @@
     "last_seen": "Dernière réception",
     "no_summary": "Aucun résumé disponible",
     "connections": "Connexions des serveurs",
-    "connections_note": "Présence WebSocket et requêtes authentifiées reçues sur les 60 dernières secondes. Une activité HTTP ne confirme pas une connexion WebSocket. La présence peut mettre jusqu’à 90 secondes à expirer. Actualisation toutes les 15 secondes lorsque cette page est visible.",
+    "connections_note": "Présence WebSocket et requêtes authentifiées reçues sur les 60 dernières secondes. Une activité HTTP ne confirme pas une connexion WebSocket. La présence peut mettre jusqu’à 90 secondes à expirer. Utilisez Actualiser pour recharger les données.",
     "presence_unavailable": "La supervision des connexions est indisponible. L’état des connexions des serveurs est inconnu.",
     "connection": "Connexion",
     "sockets": "Connexions",
@@ -2104,7 +2113,19 @@
     "no_recent_requests": "Aucune requête sur les 60 dernières secondes",
     "no_activity": "Aucune activité enregistrée",
     "request_breakdown": "HTTP : {1} · WS : {2}",
-    "telemetry_unavailable": "La supervision des requêtes est indisponible. Le trafic et l’activité sont inconnus."
+    "telemetry_unavailable": "La supervision des requêtes est indisponible. Le trafic et l’activité sont inconnus.",
+    "apply_filters": "Appliquer les filtres",
+    "reset_filters": "Réinitialiser les filtres",
+    "invalid_filters": "Vérifiez les limites de requêtes et les dates d’activité : les minimums ne doivent pas dépasser les maximums.",
+    "filter_name": "Filtrer par nom de serveur",
+    "filter_presence": "Filtrer par présence WebSocket",
+    "filter_version": "Filtrer par version de l’addon",
+    "filter_protocol": "Filtrer par protocole",
+    "all_values": "Tous",
+    "min_requests": "Requêtes par minute minimum",
+    "max_requests": "Requêtes par minute maximum",
+    "activity_from": "Activité à partir du",
+    "activity_until": "Activité jusqu’au"
   },
   "server_statistics": {
     "title": "Statistiques",

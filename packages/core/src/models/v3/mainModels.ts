@@ -6,8 +6,8 @@ import { lastGmodIntegrationTag } from '../../utils/tools.js'
 import { enqueueMainClientSetPresence } from '@gmod/infra-bullmq/discordQueueAdapters.js'
 
 export async function getStats() {
-  // Older cached totals may include accounts whose Steam link is an empty string.
-  const redisKey = 'stats:v2'
+  // Previous payloads do not include the total of registered Steam and Discord accounts.
+  const redisKey = 'stats:v3'
   const redisStat = await redis.get(redisKey)
   if (redisStat !== null) {
     return JSON.parse(redisStat)
@@ -29,10 +29,12 @@ export async function getStats() {
       AND: [{ steam: { not: null } }, { steam: { not: '' } }],
     },
   })
+  const [discordUserCount, steamUserCount] = await Promise.all([prisma.gm_user.count(), prisma.gm_user_steam.count()])
 
   const stats = {
     verifyUser: verifiedUserCount,
     user: memberCount + usersCount,
+    totalUsers: discordUserCount + steamUserCount,
     guild: guildCount,
     server: serverCount,
   }

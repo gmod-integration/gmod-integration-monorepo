@@ -78,4 +78,24 @@ describe('accessible administration charts', () => {
     await fireEvent.click(screen.getByText('View chart data'))
     expect(screen.getByRole('table', { name: 'Recorded Premium sources' })).toHaveTextContent('GmodStore10')
   })
+
+  it('keeps unavailable source counts unknown in the chart and exact-value table', async () => {
+    const { container } = renderWithProviders(() => (
+      <AdminDistributionChart
+        label="Premium sources"
+        items={[
+          { label: 'Discord', value: null },
+          { label: 'Manual grants', value: 0 },
+        ]}
+        emptyLabel="No active grants"
+      />
+    ))
+    expect(screen.queryByText('No active grants')).not.toBeInTheDocument()
+    expect(within(screen.getByRole('list')).getByText('Unknown')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /Discord:/ })).not.toBeInTheDocument()
+    expect(container.querySelectorAll('[data-distribution-bar]')).toHaveLength(1)
+    await fireEvent.click(screen.getByText('View chart data'))
+    const row = screen.getByRole('rowheader', { name: 'Discord' }).closest('tr')!
+    expect(within(row).getByRole('cell')).toHaveTextContent('Unknown')
+  })
 })

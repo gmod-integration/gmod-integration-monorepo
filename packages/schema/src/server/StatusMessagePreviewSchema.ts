@@ -30,6 +30,7 @@ export const StatusMessagePreviewInputSchema = z
 
 export const StatusMessagePreviewSchema = z.object({
   bot: z.object({ name: z.string(), avatarUrl: z.string().url().nullable() }),
+  accessState: z.enum(['ready', 'unknown']).optional(),
   simulation: z.boolean().optional(),
   online: z.boolean(),
   embeds: z

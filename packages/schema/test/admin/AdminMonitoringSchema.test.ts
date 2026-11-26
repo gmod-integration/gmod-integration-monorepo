@@ -27,6 +27,10 @@ describe('administration monitoring contracts', () => {
       search: '',
       sort: 'createdAt',
       orderBy: 'DESC',
+      name: '',
+      connectionState: 'all',
+      addonVersion: '',
+      protocol: 'all',
     })
     expect(
       AdminErrorsQuerySchema.parse({ days: '30', recurringOnly: 'true', offset: '25', limit: '50', search: ' error ' }),
@@ -54,6 +58,56 @@ describe('administration monitoring contracts', () => {
     expect(AdminErrorsQuerySchema.safeParse({ recurringOnly: '1' }).success).toBe(false)
     expect(AdminErrorsQuerySchema.safeParse({ days: 365 }).success).toBe(false)
     expect(AdminBugsQuerySchema.safeParse({ guildID: 'unscoped' }).success).toBe(false)
+  })
+
+  it('accepts allowlisted connection columns and normalizes bounded column filters', () => {
+    for (const sort of [
+      'createdAt',
+      'name',
+      'activeSockets',
+      'addonVersion',
+      'protocol',
+      'requestsPerMinute',
+      'lastSeenAt',
+    ])
+      expect(AdminConnectionsQuerySchema.parse({ sort }).sort).toBe(sort)
+    expect(
+      AdminConnectionsQuerySchema.parse({
+        name: ' server ',
+        addonVersion: ' V5.2 ',
+        connectionState: 'connected',
+        protocol: 'acknowledged',
+        minRequestsPerMinute: '0',
+        maxRequestsPerMinute: '12',
+        lastSeenFrom: time,
+        lastSeenTo: time,
+      }),
+    ).toMatchObject({
+      name: 'server',
+      addonVersion: 'V5.2',
+      connectionState: 'connected',
+      protocol: 'acknowledged',
+      minRequestsPerMinute: 0,
+      maxRequestsPerMinute: 12,
+      lastSeenFrom: time,
+      lastSeenTo: time,
+    })
+  })
+
+  it('rejects invalid connection ranges and oversized or ambiguous column filters', () => {
+    for (const changes of [
+      { name: 'a'.repeat(101) },
+      { addonVersion: 'a'.repeat(65) },
+      { connectionState: 'probably-connected' },
+      { protocol: 'websocket' },
+      { minRequestsPerMinute: '-1' },
+      { maxRequestsPerMinute: '1.5' },
+      { minRequestsPerMinute: ['1'] },
+      { minRequestsPerMinute: 2, maxRequestsPerMinute: 1 },
+      { lastSeenFrom: 'yesterday' },
+      { lastSeenFrom: '2026-11-24T00:00:00.000Z', lastSeenTo: time },
+    ])
+      expect(AdminConnectionsQuerySchema.safeParse(changes).success).toBe(false)
   })
 
   it('preserves unavailable socket presence as unknown and refuses credentials in responses', () => {

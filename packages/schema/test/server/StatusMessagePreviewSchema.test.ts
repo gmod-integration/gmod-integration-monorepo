@@ -63,6 +63,9 @@ describe('status message preview contract', () => {
       buttonRows: [[{ label: 'Rules', emoji: '📘', url: 'https://example.test' }]],
     }
     expect(StatusMessagePreviewSchema.parse(response)).toEqual(response)
+    for (const accessState of ['ready', 'unknown'])
+      expect(StatusMessagePreviewSchema.parse({ ...response, accessState }).accessState).toBe(accessState)
+    expect(StatusMessagePreviewSchema.safeParse({ ...response, accessState: 'premium' }).success).toBe(false)
     const withImage = { ...response, embeds: [{ ...response.embeds[0], imageUrl: 'data:image/png;base64,aGVsbG8=' }] }
     expect(StatusMessagePreviewSchema.safeParse(withImage).success).toBe(true)
     for (const imageUrl of ['https://example.test/chart.png', 'javascript:alert(1)', 'data:image/svg+xml,<svg/>']) {

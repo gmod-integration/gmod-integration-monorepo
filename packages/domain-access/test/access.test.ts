@@ -3,7 +3,12 @@ import type { AccessSnapshot } from '@gmod/schema/server/AccessPolicySchema.js'
 
 const mocks = vi.hoisted(() => ({ legacy: vi.fn(), purchase: vi.fn(), get: vi.fn(), set: vi.fn(), del: vi.fn() }))
 vi.mock('@gmod/config', () => ({
-  ConfigDiscord: { clientID: 'app', botToken: 'dummy-token', subscriptionSKUID: 'sku' },
+  ConfigDiscord: {
+    clientID: 'app',
+    botToken: 'dummy-token',
+    subscriptionSKUID: '1260321278208770150',
+    subscriptionSKUIDs: ['1260321278208770150', '1224469371225636965'],
+  },
 }))
 vi.mock('@gmod/infra-prisma', () => ({
   default: { gm_guild_premium: { findFirst: mocks.legacy }, gm_gmodstore_purchases: { findFirst: mocks.purchase } },
@@ -18,6 +23,7 @@ const {
   effectiveGuildSetting,
   assertServerSettingChange,
   assertGuildSettingChange,
+  getDiscordEntitlements,
 } = await import('../src/index.js')
 
 const ready = (overrides: Partial<AccessSnapshot> = {}): AccessSnapshot => ({
@@ -33,7 +39,7 @@ const ready = (overrides: Partial<AccessSnapshot> = {}): AccessSnapshot => ({
 const entitlement = (overrides: Record<string, unknown> = {}) => ({
   id: '1',
   application_id: 'app',
-  sku_id: 'sku',
+  sku_id: '1260321278208770150',
   guild_id: 'g1',
   deleted: false,
   starts_at: null,
@@ -59,6 +65,18 @@ afterEach(() => {
 })
 
 describe('one authoritative entitlement resolution', () => {
+  it.each(['1260321278208770150', '1224469371225636965'])(
+    'grants Premium for the active or retired subscription SKU %s',
+    async (sku_id) => {
+      vi.mocked(fetch).mockResolvedValue(respond([entitlement({ sku_id })]) as Response)
+      expect(await resolveGuildAccess('g1')).toMatchObject({
+        premium: true,
+        customBot: false,
+        sources: ['discord'],
+        state: 'ready',
+      })
+    },
+  )
   it('combines legacy and GmodStore sources and keeps custom bot separate from a subscription', async () => {
     mocks.legacy.mockResolvedValue({ guildID: 'g1' })
     mocks.purchase.mockResolvedValue({ guild: 'g1' })
@@ -131,10 +149,41 @@ describe('one authoritative entitlement resolution', () => {
     expect((await resolveGuildAccess('g1')).premium).toBe(true)
     const urls = vi.mocked(fetch).mock.calls.map(([url]) => new URL(String(url)))
     expect(urls).toHaveLength(2)
-    expect(urls[0]!.searchParams.get('sku_ids')).toBe('sku')
+    expect(urls[0]!.searchParams.get('sku_ids')).toBe('1260321278208770150,1224469371225636965')
     expect(urls[0]!.searchParams.get('guild_id')).toBe('g1')
     expect(urls[0]!.searchParams.get('exclude_ended')).toBe('true')
     expect(urls[1]!.searchParams.get('after')).toBe('100')
+  })
+  it('deduplicates repeated entitlements across pages without dropping either subscription offer', async () => {
+    const firstPage = Array.from({ length: 100 }, (_, index) => entitlement({ id: String(index + 1) }))
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(respond(firstPage) as Response)
+      .mockResolvedValueOnce(
+        respond([entitlement({ id: '100' }), entitlement({ id: '101', sku_id: '1224469371225636965' })]) as Response,
+      )
+    const entries = await getDiscordEntitlements()
+    expect(entries).toHaveLength(101)
+    expect(new Set(entries.map((entry) => entry.id)).size).toBe(101)
+    expect(new Set(entries.map((entry) => entry.sku_id))).toEqual(
+      new Set(['1260321278208770150', '1224469371225636965']),
+    )
+  })
+  it('preserves Premium from the retired offer after a newer subscription expires', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      respond([
+        entitlement({ id: 'current', ends_at: '2026-11-21T12:00:05.000Z' }),
+        entitlement({ id: 'legacy', sku_id: '1224469371225636965', ends_at: '2026-11-21T12:00:10.000Z' }),
+      ]) as Response,
+    )
+    expect(await resolveGuildAccess('g1')).toMatchObject({
+      premium: true,
+      sources: ['discord'],
+      validUntil: '2026-11-21T12:00:10.000Z',
+    })
+    vi.setSystemTime(new Date('2026-11-21T12:00:05.000Z'))
+    expect((await resolveGuildAccess('g1')).premium).toBe(true)
+    vi.setSystemTime(new Date('2026-11-21T12:00:10.000Z'))
+    expect((await resolveGuildAccess('g1')).premium).toBe(false)
   })
   it('bounds a positive proof at the expiry of its last active source', async () => {
     vi.mocked(fetch).mockResolvedValue(respond([entitlement({ ends_at: '2026-11-21T12:00:10.000Z' })]) as Response)
