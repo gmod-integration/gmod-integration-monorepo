@@ -16,6 +16,11 @@ COPY . .
 ENV NODE_ENV=production
 
 FROM base AS api
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends fontconfig fonts-roboto fonts-dejavu-core fonts-noto-core \
+  && fc-cache -f \
+  && rm -rf /var/lib/apt/lists/*
+
 CMD ["bun", "apps/api/src/gm_integration_api.ts"]
 
 FROM base AS websocket

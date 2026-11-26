@@ -58,6 +58,10 @@ Discord client. Status construction and chart rendering live in shared core util
 publication uses the same player formatting/truncation and button layout. The old worker operation
 remains available for already-queued jobs and compatibility.
 
+Both the API and Discord runtime images install Fontconfig and Roboto, DejaVu Sans and Noto Sans.
+The shared chart renderer uses these fonts to rasterize SVG labels with sharp. Installing fonts only
+in the Discord image leaves API-generated preview axes unreadable; the host's fonts are not used.
+
 Preview rendering uses `getStatusMessage(..., { persistChart: false })`, which calls
 `getServerChart(server, { persist: false })`. This mode renders the chart without reading/writing its
 Redis cache, accessing MinIO or uploading files. The default publication path retains its cache.
