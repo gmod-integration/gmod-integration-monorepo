@@ -173,6 +173,47 @@ describe('provider request sharing and rate limiting', () => {
     expect(network).toHaveBeenCalledTimes(2)
   })
 
+  it('keeps a pending fresh upgrade shared after the earlier ordinary lookup finishes', async () => {
+    let finishOrdinary!: (response: Response) => void
+    let finishFresh!: (response: Response) => void
+    const network = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            finishOrdinary = resolve
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((resolve) => {
+            finishFresh = resolve
+          }),
+      )
+    vi.stubGlobal('fetch', network)
+    const account = panel(),
+      requestScope = {}
+    const ordinary = account.findGuilds({ requestScope })
+    await vi.advanceTimersByTimeAsync(0)
+    const fresh = account.findGuilds({ fresh: true, requestScope })
+    await vi.advanceTimersByTimeAsync(0)
+    finishOrdinary(ok([{ id: 'guild', owner: true }]))
+    await ordinary
+
+    let sharedSettled = false
+    const shared = account.findGuilds({ fresh: true, requestScope }).then((guilds) => {
+      sharedSettled = true
+      return guilds
+    })
+    await vi.advanceTimersByTimeAsync(0)
+    expect(sharedSettled).toBe(false)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(network).toHaveBeenCalledTimes(2)
+    finishFresh(ok([]))
+    await expect(Promise.all([fresh, shared])).resolves.toEqual([[], []])
+    expect(network).toHaveBeenCalledTimes(2)
+  })
+
   it('revalidates request-local rights after a guild revision changes', async () => {
     const network = vi.fn().mockResolvedValueOnce(ok()).mockResolvedValueOnce(ok([]))
     vi.stubGlobal('fetch', network)

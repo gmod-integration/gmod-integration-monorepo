@@ -775,6 +775,42 @@ describe('apps/websocket main()', () => {
       await delivery
       expect(ws.send).not.toHaveBeenCalled()
     })
+    it.each([
+      [2, 'epoch'],
+      [2, 'membership'],
+      [2, 'session'],
+      [3, 'epoch'],
+      [3, 'membership'],
+      [3, 'session'],
+    ] as const)('suppresses delivery when %s epoch read overlaps a %s change', async (checkpoint, change) => {
+      const id = `permission-read-${checkpoint}-${change}`
+      const ws = await connectClient(id)
+      const invalidate = () =>
+        subscriberHandlers.message(
+          'gmi:discord:guild-permissions-invalidated',
+          JSON.stringify({ discordID: 'd1', revision: 'changed' }),
+        )
+      await invalidate()
+      let epochReads = 0
+      redisMock.mget.mockImplementation(async (...keys: string[]) => {
+        if (keys[0] !== 'gmi:discord:guild-permissions:revision' || ++epochReads !== checkpoint) return [null, null]
+        if (change === 'epoch') return ['changed', null]
+        if (change === 'membership') await invalidate()
+        else await subscriberHandlers.message('gmi:auth:session-revoked', JSON.stringify({ sessionID: id }))
+        return [null, null]
+      })
+      await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: { private: true } })
+      expect(epochReads).toBe(checkpoint)
+      expect(ws.send).not.toHaveBeenCalled()
+      if (change === 'session') expect(ws.close).toHaveBeenCalledExactlyOnceWith(1008, 'Session revoked')
+      else {
+        expect(ws.close).not.toHaveBeenCalled()
+        getUserGuildsWithPermsForPanelMock.mockResolvedValueOnce([])
+        await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: { private: true } })
+        expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(3)
+        expect(ws.send).not.toHaveBeenCalled()
+      }
+    })
     it('rejects a resolved session whose user disappeared before connection', async () => {
       getPanelUserFromDiscordIDMock.mockResolvedValueOnce(null)
       const ws = await connectClient('missing-profile')
@@ -970,6 +1006,34 @@ describe('apps/websocket main()', () => {
         vi.restoreAllMocks()
       }
     })
+    it.each([
+      [60, 60_000],
+      [Number.POSITIVE_INFINITY, 5_000],
+      [0, 5_000],
+    ])(
+      'waits %s provider retry seconds or the fallback before checking permissions again',
+      async (retryAfter, delay) => {
+        const ws = await connectClient('permission-provider-cooldown')
+        const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 31_000)
+        try {
+          getUserGuildsWithPermsForPanelMock.mockRejectedValueOnce(
+            Object.assign(new Error('Discord rate limited'), { retryAfter }),
+          )
+          await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+          expect(ws.send).not.toHaveBeenCalled()
+          clock.mockReturnValue(Date.now() + delay - 1)
+          await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+          expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(2)
+          expect(ws.send).not.toHaveBeenCalled()
+          clock.mockReturnValue(Date.now() + 1)
+          await simulateDashboardDelivery({ id: 'srv-bulk', action: 'server_logs', data: {} })
+          expect(getUserGuildsWithPermsForPanelMock).toHaveBeenCalledTimes(3)
+          expect(ws.send).toHaveBeenCalledWith(expect.stringContaining('"action":"server_logs"'))
+        } finally {
+          clock.mockRestore()
+        }
+      },
+    )
     it('does not answer status if a permission refresh fails after the freshness deadline', async () => {
       const ws = await connectClient('status-permission-outage')
       vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 31_000)
