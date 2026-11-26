@@ -83,7 +83,7 @@ services:
 
   cloudflared:
     image: ${CLOUDFLARED_IMAGE:?CLOUDFLARED_IMAGE must be an immutable digest}
-    command: tunnel --no-autoupdate run
+    command: tunnel --no-autoupdate --metrics 127.0.0.1:20241 run
     env_file:
       - cloudflared.env
     network_mode: host

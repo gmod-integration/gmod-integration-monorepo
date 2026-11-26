@@ -12,14 +12,16 @@ of everything else.
 
 ## Read first
 
-| Doc                                              | Answers                                                                                                                                                                           |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [architecture.md](./architecture.md)             | What are the moving pieces, why this split, how does a request flow end to end?                                                                                                   |
-| [architectures/](./architectures/README.md)      | Illustrated guide in French — editable `.mmd` sources and inline Mermaid: system, addon, dashboard sessions, application flows, BullMQ, WS delivery, dependencies and deployment. |
-| [best-practices.md](./best-practices.md)         | Where do I put new code, how do I keep it consistent with the rest?                                                                                                               |
-| [migration-playbook.md](./migration-playbook.md) | How do I move code from an `app` into a shared `package` safely?                                                                                                                  |
-| [deployment/swarm.md](./deployment/swarm.md)     | How do I deploy/operate the production Docker Swarm stack?                                                                                                                        |
-| [deployment/proxmox.md](./deployment/proxmox.md) | How do I test locally, prepare a Proxmox LXC and explicitly bootstrap a fresh backend with Docker Compose?                                                                        |
+| Doc                                                              | Answers                                                                                                                                                                           |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [architecture.md](./architecture.md)                             | What are the moving pieces, why this split, how does a request flow end to end?                                                                                                   |
+| [architectures/](./architectures/README.md)                      | Illustrated guide in French — editable `.mmd` sources and inline Mermaid: system, addon, dashboard sessions, application flows, BullMQ, WS delivery, dependencies and deployment. |
+| [best-practices.md](./best-practices.md)                         | Where do I put new code, how do I keep it consistent with the rest?                                                                                                               |
+| [migration-playbook.md](./migration-playbook.md)                 | How do I move code from an `app` into a shared `package` safely?                                                                                                                  |
+| [deployment/swarm.md](./deployment/swarm.md)                     | How do I deploy/operate the production Docker Swarm stack?                                                                                                                        |
+| [deployment/proxmox.md](./deployment/proxmox.md)                 | How do I test locally, prepare a Proxmox LXC and explicitly bootstrap a fresh backend with Docker Compose?                                                                        |
+| [deployment/proxmox-updates.md](./deployment/proxmox-updates.md) | How does CT115 deploy new backend packages automatically after backup and Prisma migrations?                                                                                      |
+| [deployment/plakar-recovery.md](./deployment/plakar-recovery.md) | How do I inspect Plakar backups and recover private files without loading application data?                                                                                       |
 
 Audit and investigation reports are private local files in `docs/reports/`, excluded by `.gitignore`.
 Do not commit their contents or link to them from public documentation, commits, pull requests or issues.

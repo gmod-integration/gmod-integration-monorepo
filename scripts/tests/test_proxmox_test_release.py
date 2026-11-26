@@ -11,6 +11,7 @@ import sys
 import tempfile
 import tarfile
 import unittest
+from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts/proxmox-test-release.py"
@@ -41,6 +42,13 @@ class TestReleasePreparation(unittest.TestCase):
             self.assertIn("DOMAIN_URL='https://v6-gmi-api.linv.dev'", env)
             self.assertIn("WEBSITE_URL='https://v6-gmi-web.linv.dev'", env)
             self.assertIn("OAUTH_REDIRECT_URL='https://v6-gmi-web.linv.dev/login'", env)
+            authorization = next(line.split("=", 1)[1].strip("'") for line in env.splitlines()
+                                 if line.startswith("OAUTH_PANEL_URL="))
+            query = parse_qs(urlsplit(authorization).query)
+            self.assertEqual(query["client_id"], ["000000000000000000"])
+            self.assertEqual(query["redirect_uri"], ["https://v6-gmi-api.linv.dev/v3/users/login"])
+            self.assertEqual(manifest["discord_oauth_callback_url"], query["redirect_uri"][0])
+            self.assertNotEqual(manifest["discord_oauth_callback_url"], manifest["oauth_redirect_url"])
             self.assertIn("DISCORD_RELAY_URL='http://webhook-relay:3000'", env)
             self.assertNotIn("MARIA_URL=", env)
             self.assertNotIn("SENTRY_DSN=", env)
@@ -56,6 +64,32 @@ class TestReleasePreparation(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn(b"DEV=true", result.stderr)
             self.assertFalse((directory / "release/source").exists())
+
+    def test_api_callback_is_correct_without_overriding_the_source_frontend(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "release"
+            result = subprocess.run([sys.executable, str(SCRIPT), "--skip-build", "--env-file", str(ROOT / ".env.test"), "--output", str(output)], capture_output=True, timeout=60)
+            self.assertEqual(result.returncode, 0, result.stderr.decode())
+            manifest = json.loads((output / "release.json").read_text())
+            self.assertEqual(manifest["frontend_url"], "http://localhost:3000")
+            self.assertEqual(manifest["oauth_redirect_url"], "http://localhost:3000/oauth/callback")
+            self.assertFalse(manifest["frontend_url_was_overridden"])
+            self.assertEqual(manifest["discord_oauth_callback_url"], "https://v6-gmi-api.linv.dev/v3/users/login")
+            env = (output / ".env").read_text()
+            authorization = next(line.split("=", 1)[1].strip("'") for line in env.splitlines()
+                                 if line.startswith("OAUTH_PANEL_URL="))
+            self.assertEqual(parse_qs(urlsplit(authorization).query)["redirect_uri"], [manifest["discord_oauth_callback_url"]])
+
+    def test_oauth_authorization_keeps_scopes_and_replaces_stale_app_and_callback(self):
+        source = "https://discord.com/api/oauth2/authorize?client_id=old&scope=identify%20guilds&redirect_uri=http%3A%2F%2Flocalhost%3A53136%2Fv3%2Fusers%2Flogin&prompt=consent&client_id=another-old&redirect_uri=https%3A%2F%2Fold.example%2Fcallback"
+        generated = release.oauth_authorization_url(source, "test-application-id", "https://v6-gmi-api.linv.dev")
+        parsed = urlsplit(generated)
+        query = parse_qs(parsed.query)
+        self.assertEqual((parsed.scheme, parsed.netloc, parsed.path), ("https", "discord.com", "/api/oauth2/authorize"))
+        self.assertEqual(query["client_id"], ["test-application-id"])
+        self.assertEqual(query["redirect_uri"], ["https://v6-gmi-api.linv.dev/v3/users/login"])
+        self.assertEqual(query["scope"], ["identify guilds"])
+        self.assertEqual(query["prompt"], ["consent"])
 
     def test_website_url_accepts_https_origins_and_rejects_paths_or_credentials(self):
         self.assertEqual(release.website_origin("https://v6-gmi-web.linv.dev/"), "https://v6-gmi-web.linv.dev")

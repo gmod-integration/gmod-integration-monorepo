@@ -23,7 +23,8 @@ vi.mock('@gmod/shared/logger.js', () => ({ gmLog: gmLogMock }))
 // middleware/CORS/shutdown-gate/error-handling wiring, not the mounted routes' behavior
 // (already covered in test/routes/mainRoutes.test.ts) - and letting every request fall through
 // to app's 404 handler is exactly what most of these tests want.
-vi.mock('@/routes/mainRoutes.js', () => ({ default: (req: any, res: any, next: any) => next() }))
+const mainRoutesMock = vi.fn((_req: any, _res: any, next: any) => next())
+vi.mock('@/routes/mainRoutes.js', () => ({ default: mainRoutesMock }))
 
 const gracefulShutdownRedisMock = vi.fn()
 vi.mock('@gmod/infra-redis', () => ({ gracefulShutdownRedis: gracefulShutdownRedisMock }))
@@ -52,10 +53,12 @@ vi.mock('@gmod/config', () => ({
   },
 }))
 
-const { app, main, gracefulShutdown } = await import('../src/gm_integration_api.js')
+let { app, main, gracefulShutdown } = await import('../src/gm_integration_api.js')
 
 describe('gm_integration_api', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules()
+    ;({ app, main, gracefulShutdown } = await import('../src/gm_integration_api.js'))
     gmLogMock.mockClear()
     startErasureWorker.mockClear()
     stopErasureWorker.mockClear()
@@ -65,6 +68,7 @@ describe('gm_integration_api', () => {
     connectPrismaMock.mockReset().mockResolvedValue(undefined)
     gracefulShutdownPrismaMock.mockReset().mockResolvedValue(undefined)
     gracefulShutdownMongoMock.mockReset().mockResolvedValue(undefined)
+    mainRoutesMock.mockImplementation((_req: any, _res: any, next: any) => next())
   })
 
   afterEach(() => {
@@ -254,10 +258,139 @@ describe('gm_integration_api', () => {
     }
   })
 
+  async function withRunningServer(server: any, exercise: () => Promise<void>) {
+    const previous = new Map(
+      ['SIGINT', 'SIGTERM', 'unhandledRejection'].map((event) => [event, new Set(process.listeners(event))]),
+    )
+    const listen = vi.spyOn(app, 'listen').mockImplementation(((_port: any, ready?: () => void) => {
+      ready?.()
+      return server
+    }) as any)
+    try {
+      await main()
+      await exercise()
+    } finally {
+      listen.mockRestore()
+      for (const [event, listeners] of previous) {
+        for (const listener of process.listeners(event)) {
+          if (!listeners.has(listener)) process.removeListener(event, listener)
+        }
+      }
+    }
+  }
+
+  it('drains HTTP requests before closing datastores and handles repeated shutdown signals once', async () => {
+    let drained!: () => void
+    const server = {
+      close: vi.fn((done: () => void) => {
+        drained = done
+      }),
+      closeIdleConnections: vi.fn(),
+      closeAllConnections: vi.fn(),
+    }
+    const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
+    await withRunningServer(server, async () => {
+      const first = gracefulShutdown()
+      const repeated = gracefulShutdown()
+      expect(repeated).toBe(first)
+      expect(server.close).toHaveBeenCalledOnce()
+      expect(server.closeIdleConnections).toHaveBeenCalledOnce()
+      expect(gracefulShutdownRedisMock).not.toHaveBeenCalled()
+      expect(gracefulShutdownPrismaMock).not.toHaveBeenCalled()
+      expect(gracefulShutdownMongoMock).not.toHaveBeenCalled()
+      drained()
+      await first
+      expect(gracefulShutdownRedisMock).toHaveBeenCalledOnce()
+      expect(gracefulShutdownPrismaMock).toHaveBeenCalledOnce()
+      expect(gracefulShutdownMongoMock).toHaveBeenCalledOnce()
+      expect(exit).toHaveBeenCalledExactlyOnceWith(0)
+      expect(server.closeAllConnections).not.toHaveBeenCalled()
+    })
+  })
+
+  it('forces an unsuccessful exit within the Docker stop grace period when an HTTP request never drains', async () => {
+    vi.useFakeTimers()
+    const server = { close: vi.fn(), closeIdleConnections: vi.fn(), closeAllConnections: vi.fn() }
+    const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
+    try {
+      await withRunningServer(server, async () => {
+        const shutdown = gracefulShutdown()
+        await vi.advanceTimersByTimeAsync(104_999)
+        expect(exit).not.toHaveBeenCalled()
+        await vi.advanceTimersByTimeAsync(1)
+        await shutdown
+        expect(server.closeAllConnections).toHaveBeenCalledOnce()
+        expect(exit).toHaveBeenCalledExactlyOnceWith(1)
+        expect(gracefulShutdownPrismaMock).not.toHaveBeenCalled()
+      })
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('lets an actual in-flight HTTP response finish while shutdown waits for server.close', async () => {
+    const { get } = await import('node:http')
+    const previous = new Map(
+      ['SIGINT', 'SIGTERM', 'unhandledRejection'].map((event) => [event, new Set(process.listeners(event))]),
+    )
+    let release!: () => void
+    let entered!: () => void
+    const requestEntered = new Promise<void>((resolve) => {
+      entered = resolve
+    })
+    const responseReady = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    mainRoutesMock.mockImplementation((_req: any, res: any) => {
+      entered()
+      void responseReady.then(() => res.status(200).send('completed before datastore shutdown'))
+    })
+    const listen = vi.spyOn(app, 'listen')
+    const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never)
+    const previousPort = configServerMock.ports.api
+    configServerMock.ports.api = 0
+    let server: ReturnType<typeof app.listen> | undefined
+    try {
+      await main()
+      server = listen.mock.results[0].value
+      if (!server!.listening) await new Promise<void>((resolve) => server!.once('listening', resolve))
+      const address = server!.address()
+      if (!address || typeof address === 'string') throw new Error('Expected an ephemeral HTTP listener')
+      const response = new Promise<{ status?: number; body: string }>((resolve, reject) => {
+        get({ hostname: '127.0.0.1', port: address.port, path: '/slow-fixture' }, (message) => {
+          let body = ''
+          message.on('data', (chunk) => {
+            body += String(chunk)
+          })
+          message.on('end', () => resolve({ status: message.statusCode, body }))
+          message.on('error', reject)
+        }).on('error', reject)
+      })
+      await requestEntered
+      const shutdown = gracefulShutdown()
+      expect(gracefulShutdownPrismaMock).not.toHaveBeenCalled()
+      release()
+      expect(await response).toEqual({ status: 200, body: 'completed before datastore shutdown' })
+      await shutdown
+      expect(gracefulShutdownPrismaMock).toHaveBeenCalledOnce()
+      expect(exit).toHaveBeenCalledExactlyOnceWith(0)
+    } finally {
+      release()
+      server?.closeAllConnections()
+      server?.close()
+      configServerMock.ports.api = previousPort
+      for (const [event, listeners] of previous) {
+        for (const listener of process.listeners(event)) {
+          if (!listeners.has(listener)) process.removeListener(event, listener)
+        }
+      }
+    }
+  })
+
   it('main() connects prisma and starts listening', async () => {
     const listenSpy = vi.spyOn(app, 'listen').mockImplementation(((_port: any, cb?: () => void) => {
       cb?.()
-      return {} as any
+      return { close: (done: () => void) => done(), closeIdleConnections: vi.fn() } as any
     }) as any)
     const sigintListenersBefore = process.listenerCount('SIGINT')
     const sigtermListenersBefore = process.listenerCount('SIGTERM')

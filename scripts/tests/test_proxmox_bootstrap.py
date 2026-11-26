@@ -207,6 +207,14 @@ class ComposeRendering(unittest.TestCase):
             fixture_rendered = fixture.config()
             self.assertIn('--providers.docker.constraints=Label(`com.docker.compose.project`,`gmi-bootstrap-0123456789ab`)',
                           fixture_rendered["services"]["traefik"]["command"])
+            # Host networking refers to the CT: connector metrics must not listen on its bridge.
+            with (directory / ".env").open("a") as stream:
+                stream.write("COMPOSE_PROFILES='tunnel'\n")
+            tunnel = ops.Bootstrap(directory, "gmod")
+            tunnel_rendered = tunnel.config()
+            self.assertTrue(tunnel.tunnel)
+            connector_command = tunnel_rendered["services"]["cloudflared"]["command"]
+            self.assertEqual(connector_command[connector_command.index("--metrics") + 1], "127.0.0.1:20241")
 
 
 if __name__ == "__main__":

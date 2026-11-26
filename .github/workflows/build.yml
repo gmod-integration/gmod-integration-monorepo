@@ -8,6 +8,11 @@ on:
   # whose build failed (e.g. on tests) is never caught up by the next push: use this then.
   workflow_dispatch:
 
+concurrency:
+  group: build-${{ github.ref }}
+  # Finish a coordinated publication before starting another one.
+  cancel-in-progress: false
+
 jobs:
   test:
     name: Test
@@ -15,6 +20,7 @@ jobs:
 
   publish_images:
     name: Publish Images
+    if: github.ref == 'refs/heads/main'
     needs: test
     runs-on: ubuntu-latest
     permissions:

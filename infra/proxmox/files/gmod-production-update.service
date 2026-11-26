@@ -1,0 +1,21 @@
+[Unit]
+Description=Update GMod production images after backup and checked-in migrations
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+ConditionPathExists=/opt/gmod-integration-production/current/compose.live.yml
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+Environment=HOME=/root
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=AWS_EC2_METADATA_DISABLED=true
+Environment=TZ=Europe/Paris
+ExecStart=/usr/local/sbin/gmod-production-update --run
+TimeoutStartSec=4h
+TimeoutStopSec=240
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

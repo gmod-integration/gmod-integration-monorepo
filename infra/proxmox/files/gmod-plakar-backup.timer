@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily CT115 offsite backup at 03:15 Europe/Paris
+
+[Timer]
+OnCalendar=*-*-* 03:15:00 Europe/Paris
+Persistent=true
+RandomizedDelaySec=60
+AccuracySec=1min
+Unit=gmod-plakar-backup.service
+
+[Install]
+WantedBy=timers.target
