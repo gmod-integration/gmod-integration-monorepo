@@ -837,6 +837,7 @@
           "loading": "Mise à jour de l’aperçu…",
           "unavailable": "Aperçu indisponible.",
           "error": "Impossible de charger l’aperçu.",
+          "temporarily_unavailable": "Discord est temporairement indisponible. Patientez un instant, puis réessayez.",
           "buttons_note": "Les boutons de l’aperçu ne sont pas interactifs.",
           "chart_alt": "Graphique d’activité des joueurs du serveur",
           "app": "APP",

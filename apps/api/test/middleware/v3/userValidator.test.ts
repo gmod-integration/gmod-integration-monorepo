@@ -52,8 +52,10 @@ const {
   userValidator,
   userAdminGuildValidator,
   userAdminGuildScopeValidator,
+  userAdminGuildReadOnlyValidator,
   userAdminGuildBotRemovalValidator,
   userServerValidator,
+  userServerReadOnlyValidator,
   userAdminValidator,
 } = await import('../../../src/middleware/v3/userValidator.js')
 
@@ -96,8 +98,10 @@ describe('userValidator', () => {
       for (const guard of [
         userAdminGuildValidator,
         userAdminGuildScopeValidator,
+        userAdminGuildReadOnlyValidator,
         userAdminGuildBotRemovalValidator,
         userServerValidator,
+        userServerReadOnlyValidator,
       ]) {
         const response = makeRes()
         const next = vi.fn()
@@ -423,6 +427,127 @@ describe('userValidator', () => {
       expect((await get()).status).toBe(503)
       expect(getServerFromIDMock).not.toHaveBeenCalled()
       expect(readSettings).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('read-only status preview authorization', () => {
+    const app = express()
+    const renderPreview = vi.fn()
+    const publish = vi.fn()
+    const prefix = '/users/:discordID/guilds/:guildID/servers/:serverID/status'
+    app.use(express.json())
+    app.post(
+      `${prefix}/preview`,
+      userValidator,
+      userAdminGuildReadOnlyValidator,
+      userServerReadOnlyValidator,
+      (_req, res) => {
+        renderPreview()
+        res.json({ preview: true })
+      },
+    )
+    app.post(prefix, userValidator, userAdminGuildValidator, userServerValidator, (_req, res) => {
+      publish()
+      res.json({ published: true })
+    })
+    app.use(
+      (
+        error: Error & { status?: number },
+        _req: express.Request,
+        res: express.Response,
+        _next: express.NextFunction,
+      ) => {
+        res.status(error.status || 503).json({ error: 'request_rejected' })
+      },
+    )
+    const endpoint = '/users/d1/guilds/g1/servers/s1/status'
+    const post = (url = `${endpoint}/preview`) => request(app).post(url).set('Authorization', 'Bearer tok1')
+    let administrator: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      renderPreview.mockReset()
+      publish.mockReset()
+      administrator = vi.fn().mockResolvedValue(true)
+      getPanelUserFromDiscordIDMock.mockResolvedValue({ isAdminOfGuild: administrator })
+      getServerFromIDMock.mockResolvedValue({ getGuildID: () => 'g1' })
+      enqueueDiscordGuildSnapshotMock.mockResolvedValue({ id: 'g1' })
+    })
+
+    it('renders successive draft previews with cached guild and exact-server authorization', async () => {
+      administrator.mockImplementation(async (_guildID, options) => {
+        if (options?.fresh) throw Object.assign(new Error('Discord rate limited'), { status: 503 })
+        return true
+      })
+      expect((await post()).status).toBe(200)
+      expect((await post()).status).toBe(200)
+      expect(renderPreview).toHaveBeenCalledTimes(2)
+      expect(dashboardAccessMock).toHaveBeenCalledTimes(4)
+      for (const [, guildID, options] of dashboardAccessMock.mock.calls) {
+        expect(guildID).toBe('g1')
+        expect(options.fresh).toBe(false)
+      }
+      expect(dashboardAccessMock).toHaveBeenCalledWith(expect.anything(), 'g1', { serverID: 's1', fresh: false })
+      expect(enqueueDiscordGuildSnapshotMock).not.toHaveBeenCalled()
+    })
+
+    it('still requires fresh permission checks when publishing a message', async () => {
+      expect((await post(endpoint)).status).toBe(200)
+      expect(administrator).toHaveBeenCalledTimes(2)
+      expect(administrator).toHaveBeenNthCalledWith(1, 'g1', { fresh: true })
+      expect(administrator).toHaveBeenNthCalledWith(2, 'g1', { fresh: true })
+      expect(publish).toHaveBeenCalledOnce()
+    })
+
+    it('rejects an anonymous preview before any permission or server lookup', async () => {
+      expect((await request(app).post(`${endpoint}/preview`)).status).toBe(401)
+      expect(dashboardAccessMock).not.toHaveBeenCalled()
+      expect(getServerFromIDMock).not.toHaveBeenCalled()
+      expect(renderPreview).not.toHaveBeenCalled()
+    })
+
+    it('keeps POST session and CSRF validation before preview authorization', async () => {
+      assertSessionRequestMock.mockImplementationOnce(() => {
+        throw Object.assign(new Error('CSRF rejected'), { status: 403 })
+      })
+      expect((await post()).status).toBe(403)
+      expect(assertSessionRequestMock).toHaveBeenCalledOnce()
+      expect(dashboardAccessMock).not.toHaveBeenCalled()
+      expect(getServerFromIDMock).not.toHaveBeenCalled()
+      expect(renderPreview).not.toHaveBeenCalled()
+    })
+
+    it('rejects access to a foreign route guild despite an authorized body override', async () => {
+      administrator.mockImplementation(async (guildID) => guildID === 'g1')
+      expect((await post(`${endpoint.replace('/g1/', '/g2/')}/preview`).send({ guildID: 'g1' })).status).toBe(403)
+      expect(administrator).toHaveBeenCalledExactlyOnceWith('g2')
+      expect(getServerFromIDMock).not.toHaveBeenCalled()
+      expect(renderPreview).not.toHaveBeenCalled()
+    })
+
+    it('rejects a server from another guild before rendering the preview', async () => {
+      getServerFromIDMock.mockResolvedValueOnce({ getGuildID: () => 'g2' })
+      expect((await post()).status).toBe(403)
+      expect(renderPreview).not.toHaveBeenCalled()
+    })
+
+    it('rechecks exact-server access even after guild authorization succeeds', async () => {
+      dashboardAccessMock
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce({ allowed: false, reason: 'game_admin_required' })
+      const result = await post()
+      expect(result.status).toBe(403)
+      expect(result.body).toEqual({ error: 'dashboard_access_denied', reason: 'game_admin_required' })
+      expect(renderPreview).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      [403, 'discord_reauth_required'],
+      [503, 'provider_unavailable'],
+    ])('forwards permission credential failure %s %s without rendering', async (status, code) => {
+      administrator.mockRejectedValueOnce(Object.assign(new Error('Credentials unavailable'), { status, code }))
+      expect((await post()).status).toBe(status)
+      expect(getServerFromIDMock).not.toHaveBeenCalled()
+      expect(renderPreview).not.toHaveBeenCalled()
     })
   })
 

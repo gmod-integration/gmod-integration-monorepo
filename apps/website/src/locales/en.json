@@ -837,6 +837,7 @@
           "loading": "Updating preview…",
           "unavailable": "Preview unavailable.",
           "error": "Unable to load the preview.",
+          "temporarily_unavailable": "Discord is temporarily unavailable. Wait a moment, then try again.",
           "buttons_note": "Preview buttons are not interactive.",
           "chart_alt": "Server player activity chart",
           "app": "APP",

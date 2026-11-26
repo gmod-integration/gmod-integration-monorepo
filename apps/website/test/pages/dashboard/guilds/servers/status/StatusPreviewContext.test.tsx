@@ -157,6 +157,29 @@ describe('StatusPreviewProvider read-only live rendering', () => {
     expect(context.preview()!.embeds[0].title).toBe('Recovered status')
   })
 
+  it.each(['provider_unavailable', 'discord_service_unavailable'])(
+    'explains %s in the selected language and retries the preserved draft',
+    async (code) => {
+      window.localStorage.setItem('locale', 'fr')
+      ;(fetchAPI as Mock)
+        .mockResolvedValueOnce({ ok: false, json: async () => ({ error: code }) })
+        .mockResolvedValueOnce(ok('Recovered status'))
+      renderProvider()
+      context.setSettings({ status_player_list_format: '**{name}**' })
+      await tick()
+      expect(context.error()).toBe('Discord est temporairement indisponible. Patientez un instant, puis réessayez.')
+      context.refetch()
+      await vi.advanceTimersByTimeAsync(0)
+      expect(fetchAPI).toHaveBeenLastCalledWith(url, 'POST', {
+        simulation: true,
+        locale: 'fr',
+        settings: { status_player_list_format: '**{name}**' },
+      })
+      expect(context.error()).toBeUndefined()
+      expect(context.preview()!.embeds[0].title).toBe('Recovered status')
+    },
+  )
+
   it('sends only enabled draft buttons within the real Discord row capacity', async () => {
     const button: StatusPreviewButton = {
       id: 1,

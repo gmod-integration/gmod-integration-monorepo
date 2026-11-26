@@ -52,16 +52,22 @@ function denyDashboardAccess(res: Response, denial: DashboardAccessDenial) {
   res.status(403).json({ error: 'dashboard_access_denied', reason })
 }
 
-async function requireGuildAdministrator(req: Request, res: Response): Promise<string | null> {
+function requiresFreshPermissions(req: Request): boolean {
+  return !['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET')
+}
+
+async function requireGuildAdministrator(
+  req: Request,
+  res: Response,
+  fresh = requiresFreshPermissions(req),
+): Promise<string | null> {
   const guildID = getSingleParam(req.params.guildID)
   const panelUser = req.panelUser!
   if (!guildID || !panelUser) {
     denyDashboardAccess(res, { allowed: false, reason: 'scope_unavailable' })
     return null
   }
-  const access = await timeRequestStep(res, 'permissions', () =>
-    resolveDashboardAccess(panelUser, guildID, { fresh: !['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET') }),
-  )
+  const access = await timeRequestStep(res, 'permissions', () => resolveDashboardAccess(panelUser, guildID, { fresh }))
   if (!access.allowed) {
     denyDashboardAccess(res, access)
     return null
@@ -70,15 +76,24 @@ async function requireGuildAdministrator(req: Request, res: Response): Promise<s
 }
 
 /** Authorize database-only operations without waiting for a Discord bot snapshot. */
-export async function userAdminGuildScopeValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
+async function validateGuildScope(req: Request, res: Response, next: NextFunction, fresh: boolean): Promise<void> {
   try {
-    const guildID = await requireGuildAdministrator(req, res)
+    const guildID = await requireGuildAdministrator(req, res, fresh)
     if (guildID === null) return
     req.guild = new Guild({ id: guildID })
     return next()
   } catch (error) {
     return next(error)
   }
+}
+
+export async function userAdminGuildScopeValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
+  return validateGuildScope(req, res, next, requiresFreshPermissions(req))
+}
+
+/** Read-only POST previews use the same bounded, revision-checked permissions as GET requests. */
+export async function userAdminGuildReadOnlyValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
+  return validateGuildScope(req, res, next, false)
 }
 
 // Cleanup must reach the independent main-client check even if no effective bot can supply a snapshot.
@@ -108,7 +123,7 @@ export async function userAdminGuildValidator(req: Request, res: Response, next:
   }
 }
 
-export async function userServerValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
+async function validateServerScope(req: Request, res: Response, next: NextFunction, fresh: boolean): Promise<void> {
   try {
     const serverID = getSingleParam(req.params.serverID)
 
@@ -129,7 +144,7 @@ export async function userServerValidator(req: Request, res: Response, next: Nex
       ? await timeRequestStep(res, 'permissions', () =>
           resolveDashboardAccess(req.panelUser!, req.guild!.id, {
             serverID,
-            fresh: !['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET'),
+            fresh,
           }),
         )
       : { allowed: false as const, reason: 'scope_unavailable' as const }
@@ -143,6 +158,14 @@ export async function userServerValidator(req: Request, res: Response, next: Nex
   } catch (error) {
     return next(error)
   }
+}
+
+export async function userServerValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
+  return validateServerScope(req, res, next, requiresFreshPermissions(req))
+}
+
+export async function userServerReadOnlyValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
+  return validateServerScope(req, res, next, false)
 }
 
 export async function userAdminValidator(req: Request, res: Response, next: NextFunction): Promise<void> {
