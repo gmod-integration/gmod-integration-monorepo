@@ -175,7 +175,6 @@ function createStatusConfiguration() {
     setSyncPending((previous) => ({ ...previous, [scope]: accepted.sync === 'pending' }))
     setConflict(false)
     setConflictScope(undefined)
-    preview?.refetch()
     return accepted.configuration
   }
   async function save(scope: StatusScope) {

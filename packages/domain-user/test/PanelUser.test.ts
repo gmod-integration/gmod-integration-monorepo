@@ -25,12 +25,19 @@ vi.mock('@gmod/domain-auth/discordOAuth.js', () => ({
 const panelTokenFindFirstMock = vi.fn()
 vi.mock('@gmod/infra-prisma', () => ({ default: { gm_panelToken: { findFirst: panelTokenFindFirstMock } } }))
 const redisGetMock = vi.fn()
+const redisRetryGetMock = vi.fn()
 const redisMgetMock = vi.fn()
 const redisSetMock = vi.fn()
 const redisDelMock = vi.fn()
 const redisEvalMock = vi.fn()
 vi.mock('@gmod/infra-redis', () => ({
-  default: { mget: redisMgetMock, get: redisGetMock, set: redisSetMock, del: redisDelMock, eval: redisEvalMock },
+  default: {
+    mget: redisMgetMock,
+    get: (key: string) => (key.endsWith(':guild-permissions-retry') ? redisRetryGetMock(key) : redisGetMock(key)),
+    set: redisSetMock,
+    del: redisDelMock,
+    eval: redisEvalMock,
+  },
 }))
 const getUserFromDiscordIDMock = vi.fn()
 vi.mock('../src/User.js', () => ({ getUserFromDiscordID: getUserFromDiscordIDMock }))
@@ -45,7 +52,10 @@ const session = (overrides: Record<string, unknown> = {}) => ({
   absoluteExpiresAt: new Date('2999-01-01'),
   ...overrides,
 })
-function cachedGuilds(guilds: unknown, revision = '["0","0"]') {
+function cachedGuilds(
+  guilds: unknown,
+  revision = JSON.stringify(['0', ...(Array.isArray(guilds) ? guilds : []).map((guild) => [guild.id, '0']).sort()]),
+) {
   return JSON.stringify({ revision, guilds })
 }
 function buildPanelUser() {
@@ -68,6 +78,7 @@ beforeEach(() => {
   refreshDiscordCredentialsMock.mockReset().mockResolvedValue({ access_token: 'fresh-token' })
   redisMgetMock.mockReset().mockResolvedValue([null, null])
   redisGetMock.mockReset().mockResolvedValue(null)
+  redisRetryGetMock.mockReset().mockResolvedValue(null)
   redisSetMock.mockReset().mockResolvedValue('OK')
   redisDelMock.mockReset().mockResolvedValue(1)
   redisEvalMock.mockReset().mockResolvedValue(1)

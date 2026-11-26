@@ -39,11 +39,11 @@ export async function dashboardGuild(req: Request, res: Response, next: NextFunc
   next()
 }
 
-export async function dashboardServer(req: Request, res: Response, next: NextFunction) {
+async function authorizeServer(req: Request, res: Response, next: NextFunction, fresh?: boolean) {
   const guildID = getSingleParam(req.params.guildID)
   if (!guildID || !req.panelUser) return denyDashboardAccess(res, { allowed: false, reason: 'scope_unavailable' })
   const serverID = getSingleParam(req.params.serverID)
-  const access = await timeRequestStep(res, 'permissions', () => resolveRequestAccess(req, guildID, serverID))
+  const access = await timeRequestStep(res, 'permissions', () => resolveRequestAccess(req, guildID, serverID, fresh))
   if (!access.allowed) return denyDashboardAccess(res, access)
   const server = serverID ? await timeRequestStep(res, 'server', () => getServerFromID(serverID)) : null
   if (!server || server.guild !== guildID)
@@ -55,6 +55,15 @@ export async function dashboardServer(req: Request, res: Response, next: NextFun
   next()
 }
 
+export async function dashboardServer(req: Request, res: Response, next: NextFunction) {
+  return authorizeServer(req, res, next)
+}
+
+/** A POST carrying a simulation draft still requires session/CSRF and exact-server read access. */
+export async function dashboardServerReadOnly(req: Request, res: Response, next: NextFunction) {
+  return authorizeServer(req, res, next, false)
+}
+
 function denyDashboardAccess(res: Response, denial: DashboardAccessDenial) {
   const { reason } = DashboardAccessDenialSchema.parse(denial)
   return res
@@ -62,9 +71,10 @@ function denyDashboardAccess(res: Response, denial: DashboardAccessDenial) {
     .json({ error: { code: 'dashboard_access_denied', reason, message: 'Access to this dashboard is not permitted.' } })
 }
 
-async function resolveRequestAccess(req: Request, guildID: string, serverID?: string) {
+async function resolveRequestAccess(req: Request, guildID: string, serverID?: string, fresh?: boolean) {
   return resolveDashboardAccess(req.panelUser!, guildID, {
-    fresh: !['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET'),
+    fresh: fresh ?? !['GET', 'HEAD', 'OPTIONS'].includes(req.method || 'GET'),
+    permissionScope: req,
     ...(serverID ? { serverID } : {}),
   })
 }

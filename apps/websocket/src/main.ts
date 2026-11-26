@@ -18,7 +18,9 @@ import { isErasureBlocked, PRIVACY_REVOCATION_CHANNEL } from '@gmod/domain-user/
 import {
   DISCORD_GUILD_PERMISSIONS_CHANNEL,
   parseDiscordGuildPermissionsInvalidation,
+  readDiscordGuildPermissionsEpoch,
   readDiscordGuildPermissionsRevision,
+  readDiscordGuildPermissionsScope,
 } from '@gmod/domain-user/guildPermissions.js'
 import { getUserGuildsWithPermsForPanel } from '@gmod/domain-guild/discordModels.js'
 import { connectPrisma, gracefulShutdownPrisma } from '@gmod/infra-prisma'
@@ -234,6 +236,7 @@ async function refreshClientPermissions(client: wsClientClient, force = false) {
     if (client.permissionsRetryAt && Date.now() < client.permissionsRetryAt) return false
     if (!force && Date.now() - client.permissionsCheckedAt < PERMISSION_RECHECK_MS) return true
     const generation = client.permissionsGeneration
+    const epoch = await readDiscordGuildPermissionsEpoch(client.panelUser.discordID)
     const guilds = await getUserGuildsWithPermsForPanel(client.panelUser)
     const guildIDs: string[] = []
     const serverIDs: string[] = []
@@ -249,7 +252,16 @@ async function refreshClientPermissions(client: wsClientClient, force = false) {
     }
     if (!isLiveClient(client) || client.permissionsGeneration !== generation) return false
     if (
-      (await readDiscordGuildPermissionsRevision(client.panelUser.discordID)) !== revision ||
+      (await readDiscordGuildPermissionsEpoch(client.panelUser.discordID)) !== epoch ||
+      client.permissionsGeneration !== generation ||
+      !isLiveClient(client)
+    ) {
+      invalidateClientPermissions(client)
+      return false
+    }
+    const finalRevision = await readDiscordGuildPermissionsRevision(client.panelUser.discordID)
+    if (
+      (await readDiscordGuildPermissionsEpoch(client.panelUser.discordID)) !== epoch ||
       client.permissionsGeneration !== generation ||
       !isLiveClient(client)
     ) {
@@ -259,6 +271,7 @@ async function refreshClientPermissions(client: wsClientClient, force = false) {
     client.guildAdminListID = guildIDs
     client.serverAdminListID = serverIDs
     client.serverGuildIDs = serverGuildIDs
+    client.permissionsRevision = finalRevision
     client.permissionsCheckedAt = Date.now()
     client.permissionsRetryAt = undefined
     return true
@@ -278,7 +291,9 @@ async function refreshClientPermissions(client: wsClientClient, force = false) {
     client.serverAdminListID = []
     client.serverGuildIDs.clear()
     client.permissionsCheckedAt = 0
-    client.permissionsRetryAt = Date.now() + 5_000
+    const retryAfter = error && typeof error === 'object' && 'retryAfter' in error ? Number(error.retryAfter) : 0
+    client.permissionsRetryAt =
+      Date.now() + (Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1_000 : 5_000)
     void consoleStreams.invalidateClient(client)
     return false
   }
@@ -421,9 +436,13 @@ export async function main() {
       const invalidation = parseDiscordGuildPermissionsInvalidation(payload)
       if (!invalidation) return
       for (const client of clients.client) {
-        // Guild-wide changes can grant rights to a member absent from the previous admin list.
-        if (!invalidation.discordID || client.panelUser.discordID === invalidation.discordID)
-          invalidateClientPermissions(client)
+        if (invalidation.discordID) {
+          if (client.panelUser.discordID === invalidation.discordID) invalidateClientPermissions(client)
+          continue
+        }
+        // Check every membership, not just the previous admin list: this also detects new grants.
+        const memberships = await readDiscordGuildPermissionsScope(client.panelUser.discordID).catch(() => null)
+        if (memberships === null || memberships.includes(invalidation.guildID!)) invalidateClientPermissions(client)
       }
       return
     }

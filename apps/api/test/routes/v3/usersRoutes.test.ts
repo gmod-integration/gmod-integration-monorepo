@@ -113,7 +113,7 @@ vi.mock('@/controllers/v3/usersControllers.js', () => ({
 }))
 
 vi.mock('@/middleware/v3/userValidator.js', () => ({
-  userAdminGuildValidator: vi.fn(),
+  userGuildSnapshotValidator: vi.fn(),
   userAdminGuildScopeValidator: vi.fn(),
   userAdminGuildReadOnlyValidator: vi.fn(),
   userAdminGuildBotRemovalValidator: vi.fn(),
@@ -147,7 +147,7 @@ vi.mock('@/controllers/v3/users/ServerStatusChannelControllers.js', () => ({ put
 const { default: router } = await import('../../../src/routes/v3/usersRoutes.js')
 const {
   userValidator,
-  userAdminGuildValidator,
+  userGuildSnapshotValidator,
   userAdminGuildScopeValidator,
   userAdminGuildReadOnlyValidator,
   userAdminGuildBotRemovalValidator,
@@ -155,6 +155,7 @@ const {
   userServerReadOnlyValidator,
 } = await import('@/middleware/v3/userValidator.js')
 const { getSteamProfile, deleteGuildBotInstance } = await import('@/controllers/v3/usersControllers.js')
+const userControllers = await import('@/controllers/v3/usersControllers.js')
 
 describe('usersRoutes', () => {
   it('registers a representative sample of routes across the whole file', () => {
@@ -171,7 +172,7 @@ describe('usersRoutes', () => {
   it('registers ranking after session authentication and before guild administration restrictions', () => {
     const ranking = router.stack.findIndex((layer: any) => layer.route?.path === '/:discordID/servers/ranking')
     const authentication = router.stack.findIndex((layer: any) => layer.handle === userValidator)
-    const guildAdministration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+    const guildAdministration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildScopeValidator)
     expect(ranking).toBeGreaterThan(authentication)
     expect(ranking).toBeLessThan(guildAdministration)
     expect(router.stack[ranking].route.methods.get).toBe(true)
@@ -180,7 +181,7 @@ describe('usersRoutes', () => {
   it('registers Steam profile decoration after account authentication', () => {
     const profile = router.stack.findIndex((layer: any) => layer.route?.path === '/:discordID/steam-profile')
     const authentication = router.stack.findIndex((layer: any) => layer.handle === userValidator)
-    const guildAdministration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+    const guildAdministration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildScopeValidator)
     expect(profile).toBeGreaterThan(authentication)
     expect(profile).toBeLessThan(guildAdministration)
     expect(router.stack[profile].route.methods.get).toBe(true)
@@ -194,7 +195,7 @@ describe('usersRoutes', () => {
   ])('registers player profile %s after account authentication and before administration restrictions', (path) => {
     const profile = router.stack.findIndex((layer: any) => layer.route?.path === path)
     const authentication = router.stack.findIndex((layer: any) => layer.handle === userValidator)
-    const administration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+    const administration = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildScopeValidator)
     expect(profile).toBeGreaterThan(authentication)
     expect(profile).toBeLessThan(administration)
     expect(router.stack[profile].route.methods.get).toBe(true)
@@ -204,7 +205,7 @@ describe('usersRoutes', () => {
     const preview = router.stack.findIndex(
       (layer: any) => layer.route?.path === '/:discordID/guilds/:guildID/servers/:serverID/status/preview',
     )
-    const guild = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+    const guild = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildScopeValidator)
     const server = router.stack.findIndex((layer: any) => layer.handle === userServerValidator)
     expect(preview).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
     expect(preview).toBeLessThan(guild)
@@ -220,11 +221,11 @@ describe('usersRoutes', () => {
     expect(publish).toBeGreaterThan(server)
   })
 
-  it('authorizes configuration reads before the middleware that loads Discord metadata', () => {
+  it('authorizes configuration reads independently of Discord metadata', () => {
     const path = '/:discordID/guilds/:guildID/servers/:serverID/config'
     const configuration = router.stack.findIndex((layer: any) => layer.route?.path === path && layer.route.methods.get)
     const authentication = router.stack.findIndex((layer: any) => layer.handle === userValidator)
-    const snapshot = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
+    const snapshot = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildScopeValidator)
     expect(configuration).toBeGreaterThan(authentication)
     expect(configuration).toBeLessThan(snapshot)
     expect(router.stack[configuration].route.stack[0].handle).toBe(userAdminGuildScopeValidator)
@@ -238,7 +239,7 @@ describe('usersRoutes', () => {
       (layer: any) => layer.route?.path === '/:discordID/guilds/:guildID/servers/:serverID/statistics',
     )
     expect(endpoint).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
-    expect(endpoint).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator))
+    expect(endpoint).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildScopeValidator))
     expect(router.stack[endpoint].route.methods.get).toBe(true)
     expect(router.stack[endpoint].route.stack[0].handle).toBe(userAdminGuildScopeValidator)
     expect(router.stack[endpoint].route.stack[1].handle).toBe(userServerValidator)
@@ -249,31 +250,35 @@ describe('usersRoutes', () => {
       (layer: any) => layer.route?.path === '/:discordID/guilds/:guildID/servers/:serverID/map',
     )
     expect(endpoint).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
-    expect(endpoint).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator))
+    expect(endpoint).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildScopeValidator))
     expect(router.stack[endpoint].route.methods.get).toBe(true)
     expect(router.stack[endpoint].route.stack[0].handle).toBe(userAdminGuildScopeValidator)
     expect(router.stack[endpoint].route.stack[1].handle).toBe(userServerValidator)
   })
 
   it.each(['get', 'post', 'delete'])(
-    'authorizes Lua-error destination %s before loading Discord metadata',
+    'authorizes Lua-error destination %s without redundant Discord metadata',
     (method) => {
       const path = '/:discordID/guilds/:guildID/servers/:serverID/errors/channels'
       const endpoint = router.stack.findIndex((layer: any) => layer.route?.path === path && layer.route.methods[method])
       expect(endpoint).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
-      expect(endpoint).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator))
+      expect(endpoint).toBeLessThan(
+        router.stack.findIndex((layer: any) => layer.handle === userAdminGuildScopeValidator),
+      )
       expect(router.stack[endpoint].route.stack[0].handle).toBe(userAdminGuildScopeValidator)
       expect(router.stack[endpoint].route.stack[1].handle).toBe(userServerValidator)
     },
   )
 
   it.each(['get', 'post', 'delete'])(
-    'authorizes bug-report destination %s before loading Discord metadata',
+    'authorizes bug-report destination %s without redundant Discord metadata',
     (method) => {
       const path = '/:discordID/guilds/:guildID/servers/:serverID/bugs/channels'
       const endpoint = router.stack.findIndex((layer: any) => layer.route?.path === path && layer.route.methods[method])
       expect(endpoint).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
-      expect(endpoint).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator))
+      expect(endpoint).toBeLessThan(
+        router.stack.findIndex((layer: any) => layer.handle === userAdminGuildScopeValidator),
+      )
       expect(router.stack[endpoint].route.stack[0].handle).toBe(userAdminGuildScopeValidator)
       expect(router.stack[endpoint].route.stack[1].handle).toBe(userServerValidator)
     },
@@ -284,9 +289,89 @@ describe('usersRoutes', () => {
       (layer: any) => layer.route?.path === '/:discordID/guilds/:guildID/bot' && layer.route.methods.delete,
     )
     expect(removal).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
-    expect(removal).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator))
+    expect(removal).toBeLessThan(router.stack.findIndex((layer: any) => layer.handle === userAdminGuildScopeValidator))
     expect(router.stack[removal].route.stack[0].handle).toBe(userAdminGuildBotRemovalValidator)
   })
+})
+
+describe('stored dashboard reads during a Discord metadata outage', () => {
+  const app = express()
+  app.use('/v3/users', router)
+  const base = '/v3/users/owner/guilds/g1'
+  const stored = [
+    ['/settings', 'getGuildSettings'],
+    ['/settings/example', 'getGuildSetting'],
+    ['/links', 'getGuildLinks'],
+    ['/auto-roles', 'getAutoRoles'],
+    ['/verifications', 'getVerificationMessage'],
+    ['/verifications/check', 'getVerificationCheck'],
+    ['/verifications/roles', 'getGuildVerificationsRoles'],
+    ['/servers', 'findGuildServers'],
+    ['/servers/s1', 'findGuildServer'],
+    ['/servers/s1/settings', 'getServerSettings'],
+    ['/servers/s1/settings/example', 'getServerSetting'],
+    ['/servers/s1/roles', 'getServerRoles'],
+    ['/servers/s1/teams', 'getServerTeams'],
+    ['/servers/s1/pseudo', 'getServerPseudo'],
+    ['/servers/s1/chats/filters', 'getGmodToDiscordFilter'],
+    ['/servers/s1/status', 'findServerStatus'],
+    ['/servers/s1/status/buttons', 'getServerStatusButtons'],
+  ] as const
+
+  beforeEach(() => {
+    vi.resetAllMocks()
+    vi.mocked(userValidator).mockImplementation((req, res, next) => {
+      if (req.header('x-test-user') !== req.params.discordID) return res.status(401).json({ error: 'unauthorized' })
+      next()
+    })
+    vi.mocked(userAdminGuildScopeValidator).mockImplementation((req, res, next) => {
+      if (req.params.guildID !== 'g1') return res.status(403).json({ error: 'forbidden' })
+      req.guild = { id: 'g1' } as NonNullable<typeof req.guild>
+      next()
+    })
+    vi.mocked(userServerValidator).mockImplementation((req, res, next) => {
+      if (req.params.serverID !== 's1') return res.status(403).json({ error: 'forbidden' })
+      next()
+    })
+    vi.mocked(userGuildSnapshotValidator).mockImplementation((_req, res) => {
+      res.status(503).json({ error: 'discord_service_unavailable' })
+    })
+    for (const [, name] of stored) {
+      vi.mocked(userControllers[name]).mockImplementation((_req, res) => res.json({ saved: name }))
+    }
+  })
+
+  it.each(stored)('keeps authorized stored data available at %s', async (path, name) => {
+    const result = await request(app).get(`${base}${path}`).set('x-test-user', 'owner')
+    expect(result.status).toBe(200)
+    expect(result.body).toEqual({ saved: name })
+    expect(userGuildSnapshotValidator).not.toHaveBeenCalled()
+    expect(userAdminGuildScopeValidator).toHaveBeenCalledOnce()
+    expect(userServerValidator).toHaveBeenCalledTimes(path.startsWith('/servers/s1') ? 1 : 0)
+  })
+
+  it.each([
+    [undefined, `${base}/servers/s1/settings`, 401],
+    ['other', `${base}/servers/s1/settings`, 401],
+    ['owner', `${base.replace('/g1', '/g2')}/servers/s1/settings`, 403],
+    ['owner', `${base}/servers/s2/settings`, 403],
+  ] as const)('still rejects an unauthorized stored read (%s, %s)', async (viewer, url, status) => {
+    const pending = request(app).get(url)
+    const result = await (viewer ? pending.set('x-test-user', viewer) : pending)
+    expect(result.status).toBe(status)
+    expect(userControllers.getServerSettings).not.toHaveBeenCalled()
+    expect(userGuildSnapshotValidator).not.toHaveBeenCalled()
+  })
+
+  it.each(['', '/channels', '/roles', '/emojis', '/bot/roles/subordination'])(
+    'still requires live Discord metadata for %s',
+    async (path) => {
+      const result = await request(app).get(`${base}${path}`).set('x-test-user', 'owner')
+      expect(result.status).toBe(503)
+      expect(userAdminGuildScopeValidator).toHaveBeenCalledOnce()
+      expect(userGuildSnapshotValidator).toHaveBeenCalledOnce()
+    },
+  )
 })
 
 describe('Steam profile account authentication', () => {
@@ -329,7 +414,7 @@ describe('custom-bot removal HTTP authorization', () => {
       if (req.header('x-test-user') !== req.params.discordID) return res.status(401).json({ error: 'Unauthorized' })
       next()
     })
-    vi.mocked(userAdminGuildValidator)
+    vi.mocked(userAdminGuildScopeValidator)
       .mockReset()
       .mockImplementation((_req, res) => res.status(404).json({ error: 'guild_not_found' }))
     vi.mocked(userAdminGuildBotRemovalValidator)
@@ -363,7 +448,7 @@ describe('custom-bot removal HTTP authorization', () => {
       .set('x-test-admin-guild', 'g1')
     expect(response.status).toBe(200)
     expect(deleteGuildBotInstance).toHaveBeenCalledTimes(1)
-    expect(userAdminGuildValidator).not.toHaveBeenCalled()
+    expect(userAdminGuildScopeValidator).not.toHaveBeenCalled()
   })
 
   it('reaches the main-bot-required response for authorized expired cleanup without a guild snapshot', async () => {
@@ -376,7 +461,7 @@ describe('custom-bot removal HTTP authorization', () => {
       .set('x-test-admin-guild', 'expired-guild')
     expect(response.status).toBe(409)
     expect(response.body).toEqual({ error: 'main_bot_required' })
-    expect(userAdminGuildValidator).not.toHaveBeenCalled()
+    expect(userAdminGuildScopeValidator).not.toHaveBeenCalled()
   })
 })
 

@@ -4,7 +4,7 @@ import type { DiscordGuild, PanelUser } from './PanelUser.js'
 import { isErasureBlocked } from './privacy.js'
 
 type Panel = Pick<PanelUser, 'discordID' | 'findGuilds'>
-type Options = { fresh?: boolean; serverID?: string }
+type Options = { fresh?: boolean; serverID?: string; permissionScope?: object }
 type ServerScope = { id: string; guild: string }
 export type DashboardAccessDecision = { allowed: true } | DashboardAccessDenial
 
@@ -89,7 +89,12 @@ export async function resolveDashboardAccess(
   }
   const steam = await linkedSteam(panel.discordID)
   if ((await purchasedGuilds(steam)).has(guildID)) return { allowed: true }
-  const guild = (await panel.findGuilds({ fresh: options.fresh })).find((row) => row.id === guildID)
+  const guild = (
+    await panel.findGuilds({
+      fresh: options.fresh,
+      ...(options.permissionScope ? { requestScope: options.permissionScope } : {}),
+    })
+  ).find((row) => row.id === guildID)
   if (!guild) return { allowed: false, reason: 'discord_admin_required' }
   if (options.serverID !== undefined) {
     target = await prisma.gm_server.findUnique({ where: { id: options.serverID }, select: { id: true, guild: true } })

@@ -721,11 +721,14 @@ describe('usersControllers', () => {
     dashboardAccessMock.mockImplementation((_panel, _guild, options) => options.serverID === 's1')
     const res = makeRes()
     const panelUser = { discordID: 'viewer' }
-    await c.findGuildServers({ dscGuild: { id: 'g1' }, panelUser } as any, res)
+    await c.findGuildServers({ guild: { id: 'g1' }, panelUser } as any, res)
     expect(getServersFromDiscordGuildIDMock).toHaveBeenCalledWith('g1')
     expect(res.send).toHaveBeenCalledWith([allowed])
     expect(JSON.stringify(res.send.mock.calls)).not.toContain(forbidden.token)
-    expect(dashboardAccessMock).toHaveBeenCalledWith(panelUser, 'g1', { serverID: 's2' })
+    expect(dashboardAccessMock).toHaveBeenCalledWith(panelUser, 'g1', {
+      serverID: 's2',
+      permissionScope: expect.objectContaining({ panelUser }),
+    })
   })
 
   it('findGuildServer sends req.server', async () => {
@@ -1493,14 +1496,14 @@ describe('usersControllers', () => {
     it('returns 404 when not found', async () => {
       prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce(null)
       const res = makeRes()
-      await c.getVerificationMessage({ dscGuild: { id: 'g1' } } as any, res)
+      await c.getVerificationMessage({ guild: { id: 'g1' } } as any, res)
       expect(res.status).toHaveBeenCalledWith(404)
     })
 
     it('sends the message when found', async () => {
       prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce({ id: 1 })
       const res = makeRes()
-      await c.getVerificationMessage({ dscGuild: { id: 'g1' } } as any, res)
+      await c.getVerificationMessage({ guild: { id: 'g1' } } as any, res)
       expect(res.send).toHaveBeenCalledWith({ id: 1 })
     })
   })
@@ -1509,14 +1512,14 @@ describe('usersControllers', () => {
     it('returns 404 when not found', async () => {
       prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce(null)
       const res = makeRes()
-      await c.deleteVerificationMessage({ dscGuild: { id: 'g1' } } as any, res)
+      await c.deleteVerificationMessage({ guild: { id: 'g1' } } as any, res)
       expect(res.status).toHaveBeenCalledWith(404)
     })
 
     it('deletes and sends the message', async () => {
       prismaMock.gm_guild_verify_msg.findFirst.mockResolvedValueOnce({ id: 1, channelID: 'ch1', messageID: 'm1' })
       const res = makeRes()
-      await c.deleteVerificationMessage({ dscGuild: { id: 'g1' } } as any, res)
+      await c.deleteVerificationMessage({ guild: { id: 'g1' } } as any, res)
       expect(bullmqMocks.enqueueDiscordDeleteVerificationMessage).toHaveBeenCalledWith('g1', 'ch1', 'm1')
       expect(prismaMock.gm_guild_verify_msg.delete).toHaveBeenCalledWith({ where: { guildID: 'g1' } })
     })

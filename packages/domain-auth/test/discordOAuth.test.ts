@@ -311,6 +311,53 @@ describe('safe Discord refresh', () => {
     expect(database.updateMany).toHaveBeenCalledTimes(1)
   })
 
+  it.each([429, 503])(
+    'honors an HTTP %s cooldown written by another replica while waiting for its lease',
+    async (status) => {
+      vi.useFakeTimers()
+      vi.resetModules()
+      const replica = await import('../src/discordOAuth.js')
+      const pending = deferred<Response>()
+      vi.mocked(fetch)
+        .mockReturnValueOnce(pending.promise)
+        .mockImplementation(async () => response({}, status, { 'Retry-After': '60' }))
+
+      const first = refreshDiscordCredentials('u1')
+      const firstRejected = expect(first).rejects.toMatchObject({ code: 'provider_unavailable', retryAfter: 60 })
+      await vi.advanceTimersByTimeAsync(0)
+      expect(fetch).toHaveBeenCalledTimes(1)
+
+      const second = replica.refreshDiscordCredentials('u1')
+      const secondRejected = expect(second).rejects.toMatchObject({ code: 'provider_unavailable', retryAfter: 60 })
+      await vi.advanceTimersByTimeAsync(0)
+      const leases = () => cache.set.mock.calls.filter(([key]) => key === 'auth:discord:refresh:hashed-u1')
+      expect(leases()).toHaveLength(2)
+      expect(leases()[0][1]).not.toBe(leases()[1][1])
+
+      pending.resolve(response({}, status, { 'Retry-After': '60' }))
+      await firstRejected
+      await vi.advanceTimersByTimeAsync(50)
+      await secondRejected
+
+      expect(fetch).toHaveBeenCalledTimes(1)
+      expect(database.updateMany).not.toHaveBeenCalled()
+      expect(database.deleteMany).not.toHaveBeenCalled()
+      expect(JSON.parse(fixtures.cache.get('auth:discord:retry:hashed-u1:0')!.value).attempt).toBe(1)
+      expect(fixtures.cache.has('auth:discord:refresh:hashed-u1')).toBe(false)
+      expect(cache.eval).toHaveBeenCalledTimes(2)
+    },
+  )
+
+  it('fails closed and releases its own lease if the cooldown cannot be rechecked under the lock', async () => {
+    cache.get.mockResolvedValueOnce(null).mockRejectedValueOnce(new Error('Redis unavailable'))
+    await expect(refreshDiscordCredentials('u1')).rejects.toMatchObject({ code: 'provider_unavailable' })
+    expect(fetch).not.toHaveBeenCalled()
+    expect(database.updateMany).not.toHaveBeenCalled()
+    expect(database.deleteMany).not.toHaveBeenCalled()
+    expect(fixtures.cache.has('auth:discord:refresh:hashed-u1')).toBe(false)
+    expect(cache.eval).toHaveBeenCalledOnce()
+  })
+
   it('uses the other process result without stealing or releasing its lease', async () => {
     vi.useFakeTimers()
     fixtures.cache.set('auth:discord:refresh:hashed-u1', { value: 'other-owner', until: Date.now() + 10_000 })

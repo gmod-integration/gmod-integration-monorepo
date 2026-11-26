@@ -106,7 +106,7 @@ import {
   putServerTeams,
 } from '@/controllers/v3/usersControllers.js'
 import {
-  userAdminGuildValidator,
+  userGuildSnapshotValidator,
   userAdminGuildScopeValidator,
   userAdminGuildReadOnlyValidator,
   userAdminGuildBotRemovalValidator,
@@ -251,19 +251,23 @@ router.delete(
   userAdminGuildBotRemovalValidator,
   asyncHandler(deleteGuildBotInstance),
 )
-router.use('/:discordID/guilds/:guildID', userAdminGuildValidator)
-router.get('/:discordID/guilds/:guildID', asyncHandler(findGuild))
+router.use('/:discordID/guilds/:guildID', userAdminGuildScopeValidator)
+router.get('/:discordID/guilds/:guildID', userGuildSnapshotValidator, asyncHandler(findGuild))
 router.get('/:discordID/guilds/:guildID/bot', asyncHandler(getGuildBotInstance))
 router.put('/:discordID/guilds/:guildID/bot', asyncHandler(putGuildBotInstance))
-router.get('/:discordID/guilds/:guildID/bot/roles/subordination', asyncHandler(getGuildBotRoleSubordination))
+router.get(
+  '/:discordID/guilds/:guildID/bot/roles/subordination',
+  userGuildSnapshotValidator,
+  asyncHandler(getGuildBotRoleSubordination),
+)
 router.patch('/:discordID/guilds/:guildID/bot', asyncHandler(patchGuildBotInstance))
 router.post('/:discordID/guilds/:guildID/gmod-store', asyncHandler(postGmodPurchase))
 router.delete('/:discordID/guilds/:guildID/gmod-store', asyncHandler(deleteGmodPurchase))
-router.get('/:discordID/guilds/:guildID/channels', asyncHandler(findGuildChannels))
-router.get('/:discordID/guilds/:guildID/roles', asyncHandler(getGuildRoles))
+router.get('/:discordID/guilds/:guildID/channels', userGuildSnapshotValidator, asyncHandler(findGuildChannels))
+router.get('/:discordID/guilds/:guildID/roles', userGuildSnapshotValidator, asyncHandler(getGuildRoles))
 router.get('/:discordID/guilds/:guildID/admins', asyncHandler(getGuildAdmins))
 router.get('/:discordID/guilds/:guildID/bans', asyncHandler(getGuildBans))
-router.get('/:discordID/guilds/:guildID/emojis', asyncHandler(getGuildEmojis))
+router.get('/:discordID/guilds/:guildID/emojis', userGuildSnapshotValidator, asyncHandler(getGuildEmojis))
 
 // Settings
 router.get('/:discordID/guilds/:guildID/settings', asyncHandler(getGuildSettings))
@@ -288,12 +292,20 @@ router.delete('/:discordID/guilds/:guildID/auto-roles/:roleID', asyncHandler(del
 // Verifications
 router.get('/:discordID/guilds/:guildID/verifications', asyncHandler(getVerificationMessage))
 router.delete('/:discordID/guilds/:guildID/verifications', asyncHandler(deleteVerificationMessage))
-router.post('/:discordID/guilds/:guildID/verifications', asyncHandler(createVerificationMessage))
+router.post(
+  '/:discordID/guilds/:guildID/verifications',
+  userGuildSnapshotValidator,
+  asyncHandler(createVerificationMessage),
+)
 router.get('/:discordID/guilds/:guildID/verifications/check', asyncHandler(getVerificationCheck))
 router.post('/:discordID/guilds/:guildID/verifications/check', asyncHandler(postVerificationCheck))
 router.get('/:discordID/guilds/:guildID/verifications/roles', asyncHandler(getGuildVerificationsRoles))
 router.put('/:discordID/guilds/:guildID/verifications/roles/:roleID', asyncHandler(putGuildVerificationsRoles))
-router.post('/:discordID/guilds/:guildID/verifications/roles/:roleID', asyncHandler(createGuildVerificationsRoles))
+router.post(
+  '/:discordID/guilds/:guildID/verifications/roles/:roleID',
+  userGuildSnapshotValidator,
+  asyncHandler(createGuildVerificationsRoles),
+)
 router.delete('/:discordID/guilds/:guildID/verifications/roles/:roleID', asyncHandler(deleteGuildVerificationsRoles))
 
 router.use('/:discordID/guilds/:guildID/servers/:serverID', userServerValidator)

@@ -196,6 +196,19 @@ async function rememberFailure(discordID: string, version: number, error: Discor
   }
 }
 
+async function assertRefreshRetryAllowed(discordID: string, version: number) {
+  try {
+    const cached = await redis.get(retryKey(discordID, version))
+    if (!cached) return
+    const schedule = JSON.parse(cached) as { until: number }
+    if (schedule.until > Date.now())
+      throw new DiscordOAuthError('provider_unavailable', Math.max(1, Math.ceil((schedule.until - Date.now()) / 1_000)))
+  } catch (error) {
+    if (error instanceof DiscordOAuthError) throw error
+    throw new DiscordOAuthError('provider_unavailable')
+  }
+}
+
 async function refresh(discordID: string, expectedVersion?: number): Promise<DiscordTokenResponse | null> {
   await assertAllowed(discordID)
   const initial = await prisma.gm_discordToken.findUnique({ where: { discordID } })
@@ -210,15 +223,7 @@ async function refresh(discordID: string, expectedVersion?: number): Promise<Dis
   const owner = randomUUID()
   let acquired = false
   try {
-    const cached = await redis.get(retryKey(discordID, version))
-    if (cached) {
-      const schedule = JSON.parse(cached) as { until: number }
-      if (schedule.until > Date.now())
-        throw new DiscordOAuthError(
-          'provider_unavailable',
-          Math.max(1, Math.ceil((schedule.until - Date.now()) / 1_000)),
-        )
-    }
+    await assertRefreshRetryAllowed(discordID, version)
     const deadline = Date.now() + LOCK_WAIT_MS
     while (!acquired) {
       acquired = (await redis.set(lockKey(discordID), owner, 'PX', LOCK_TTL_MS, 'NX')) === 'OK'
@@ -239,6 +244,8 @@ async function refresh(discordID: string, expectedVersion?: number): Promise<Dis
     const row = await prisma.gm_discordToken.findUnique({ where: { discordID } })
     if (!row) return null
     if (row.version !== version && row.expirationDate.getTime() > Date.now()) return rowResponse(row)
+    // A preceding lease owner may have failed and stored a cooldown while this replica waited.
+    await assertRefreshRetryAllowed(discordID, row.version)
     let token: DiscordTokenResponse
     try {
       token = await exchangeDiscordRefreshToken(decrypt(row.refreshToken, discordID, 'refresh'))

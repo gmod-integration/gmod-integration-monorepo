@@ -268,14 +268,15 @@ export async function getGuildRoles(req: Request, res: Response) {
 }
 
 export async function findGuildServers(req: Request, res: Response) {
-  const dscGuild = req.dscGuild!
-  return res.send(await dashboardServers(req, dscGuild.id))
+  return res.send(await dashboardServers(req, req.guild!.id))
 }
 
 async function dashboardServers(req: Request, guildID: string) {
   const servers = await getServersFromDiscordGuildID(guildID)
   const allowed = await Promise.all(
-    servers.map((server) => canAccessDashboardGuild(req.panelUser!, guildID, { serverID: server.id })),
+    servers.map((server) =>
+      canAccessDashboardGuild(req.panelUser!, guildID, { serverID: server.id, permissionScope: req }),
+    ),
   )
   return servers.filter((_server, index) => allowed[index])
 }
@@ -756,10 +757,10 @@ export async function postVerificationCheck(req: Request, res: Response) {
 }
 
 export async function getVerificationMessage(req: Request, res: Response) {
-  const dscGuild = req.dscGuild!
+  const guildID = req.guild!.id
   const msg = await prisma.gm_guild_verify_msg.findFirst({
     where: {
-      guildID: dscGuild.id,
+      guildID,
     },
   })
 
@@ -773,10 +774,10 @@ export async function getVerificationMessage(req: Request, res: Response) {
 }
 
 export async function deleteVerificationMessage(req: Request, res: Response) {
-  const dscGuild = req.dscGuild!
+  const guildID = req.guild!.id
   const msg = await prisma.gm_guild_verify_msg.findFirst({
     where: {
-      guildID: dscGuild.id,
+      guildID,
     },
   })
 
@@ -786,11 +787,11 @@ export async function deleteVerificationMessage(req: Request, res: Response) {
     })
   }
 
-  await enqueueDiscordDeleteVerificationMessage(dscGuild.id, msg.channelID, msg.messageID)
+  await enqueueDiscordDeleteVerificationMessage(guildID, msg.channelID, msg.messageID)
 
   await prisma.gm_guild_verify_msg.delete({
     where: {
-      guildID: dscGuild.id,
+      guildID,
     },
   })
   return res.send(msg)
