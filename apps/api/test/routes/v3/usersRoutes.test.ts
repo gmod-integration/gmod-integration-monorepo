@@ -115,9 +115,11 @@ vi.mock('@/controllers/v3/usersControllers.js', () => ({
 vi.mock('@/middleware/v3/userValidator.js', () => ({
   userAdminGuildValidator: vi.fn(),
   userAdminGuildScopeValidator: vi.fn(),
+  userAdminGuildReadOnlyValidator: vi.fn(),
   userAdminGuildBotRemovalValidator: vi.fn(),
   userAdminValidator: vi.fn(),
   userServerValidator: vi.fn(),
+  userServerReadOnlyValidator: vi.fn(),
   userValidator: vi.fn(),
 }))
 vi.mock('@/controllers/v3/usersAdminControllers.js', () => ({ getAllPanelUsers: vi.fn() }))
@@ -147,8 +149,10 @@ const {
   userValidator,
   userAdminGuildValidator,
   userAdminGuildScopeValidator,
+  userAdminGuildReadOnlyValidator,
   userAdminGuildBotRemovalValidator,
   userServerValidator,
+  userServerReadOnlyValidator,
 } = await import('@/middleware/v3/userValidator.js')
 const { getSteamProfile, deleteGuildBotInstance } = await import('@/controllers/v3/usersControllers.js')
 
@@ -196,15 +200,24 @@ describe('usersRoutes', () => {
     expect(router.stack[profile].route.methods.get).toBe(true)
   })
 
-  it('protects draft previews with both guild-administrator and server access checks', () => {
+  it('protects read-only draft previews without forcing live permissions or a redundant bot snapshot', () => {
     const preview = router.stack.findIndex(
       (layer: any) => layer.route?.path === '/:discordID/guilds/:guildID/servers/:serverID/status/preview',
     )
     const guild = router.stack.findIndex((layer: any) => layer.handle === userAdminGuildValidator)
     const server = router.stack.findIndex((layer: any) => layer.handle === userServerValidator)
-    expect(preview).toBeGreaterThan(guild)
-    expect(preview).toBeGreaterThan(server)
+    expect(preview).toBeGreaterThan(router.stack.findIndex((layer: any) => layer.handle === userValidator))
+    expect(preview).toBeLessThan(guild)
+    expect(preview).toBeLessThan(server)
     expect(router.stack[preview].route.methods.post).toBe(true)
+    expect(router.stack[preview].route.stack[0].handle).toBe(userAdminGuildReadOnlyValidator)
+    expect(router.stack[preview].route.stack[1].handle).toBe(userServerReadOnlyValidator)
+    const publish = router.stack.findIndex(
+      (layer: any) =>
+        layer.route?.path === '/:discordID/guilds/:guildID/servers/:serverID/status' && layer.route.methods.post,
+    )
+    expect(publish).toBeGreaterThan(guild)
+    expect(publish).toBeGreaterThan(server)
   })
 
   it('authorizes configuration reads before the middleware that loads Discord metadata', () => {

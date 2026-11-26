@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { acceptAuthSession, resetAuthentication } from '../../src/utils/authClient.js'
 import { sessionFixture } from '../authFixture.js'
 import { API_FQDN, Api, fetchAPI, getAPIUrl, getUrlWithActualParams } from '../../src/utils/api.js'
+import { ACCESS_REFRESH_EVENT } from '../../src/utils/accessEvents.js'
 
 describe('utils/api.tsx', () => {
   beforeEach(() => {
@@ -167,6 +168,54 @@ describe('utils/api.tsx', () => {
       expect(fetchMock).toHaveBeenCalledOnce()
       expect(fetchMock.mock.calls[0][1]).toMatchObject({ credentials: 'include', method: 'GET' })
       expect(fetchMock.mock.calls[0][1].signal?.aborted).toBe(true)
+    })
+
+    it('renders successive previews without invalidating access and preserves authenticated POST protection', async () => {
+      acceptAuthSession(sessionFixture())
+      localStorage.setItem('guilds', JSON.stringify({ id: 'g1' }))
+      localStorage.setItem('server', JSON.stringify({ id: 's1' }))
+      const refresh = vi.fn()
+      window.addEventListener(ACCESS_REFRESH_EVENT, refresh)
+      const network = vi.fn().mockImplementation(async () => new Response('{}'))
+      vi.stubGlobal('fetch', network)
+      try {
+        for (const name of ['Draft', 'Draft revised']) {
+          await fetchAPI('/users/:discordID/guilds/:guildID/servers/:serverID/status/preview', 'POST', {
+            settings: { status_player_list_format: name },
+          })
+        }
+        expect(network).toHaveBeenCalledTimes(2)
+        expect(refresh).not.toHaveBeenCalled()
+        for (const [url, init] of network.mock.calls) {
+          expect(url).toBe('http://localhost:5001/v3/users/u1/guilds/g1/servers/s1/status/preview')
+          expect(init).toMatchObject({ method: 'POST', credentials: 'include' })
+          expect(new Headers(init.headers).get('X-CSRF-Token')).toBe('csrf-token')
+        }
+      } finally {
+        window.removeEventListener(ACCESS_REFRESH_EVENT, refresh)
+      }
+    })
+
+    it.each([
+      ['/users/u1/guilds/g1/servers/s1/status', 'POST', 200],
+      ['/users/u1/guilds/g1/servers/s1/status/buttons', 'POST', 200],
+      ['/users/u1/guilds/g1/servers/s1/status/preview/publish', 'POST', 200],
+      ['/v6/guilds/g1/servers/s1/status/configuration', 'PUT', 200],
+      ['/users/u1/guilds/g1/servers/s1/status/preview', 'POST', 403],
+    ])('refreshes access for mutations and denied previews: %s %s %s', async (endpoint, method, status) => {
+      acceptAuthSession(sessionFixture())
+      const refresh = vi.fn()
+      window.addEventListener(ACCESS_REFRESH_EVENT, refresh)
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation(async () => new Response('{}', { status })),
+      )
+      try {
+        await fetchAPI(endpoint, method, {})
+        expect(refresh).toHaveBeenCalledOnce()
+      } finally {
+        window.removeEventListener(ACCESS_REFRESH_EVENT, refresh)
+      }
     })
   })
 })
